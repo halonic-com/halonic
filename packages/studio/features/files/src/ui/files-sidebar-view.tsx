@@ -8,6 +8,7 @@ import { startingPath } from "../new-file.ts";
 import { removeFile } from "../remove-file.ts";
 import { emptyTreeState, type TreeIntent, type TreeState } from "../tree/tree-keyboard.ts";
 import { buildTree } from "../tree/tree-model.ts";
+import { visibleRows } from "../tree/visible-rows.ts";
 import { FilesTree } from "./files-tree.tsx";
 import { NewFileDialog } from "./new-file-dialog.tsx";
 import { RenameFileDialog } from "./rename-file-dialog.tsx";
@@ -46,6 +47,9 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   }, []);
 
   const latest = useRef(0);
+  // The row that takes focus once the listing shows it: the next row after a delete, the restored
+  // row after Undo. The listing changes a moment after the host says so, so the focus waits for it.
+  const pendingFocus = useRef<string | undefined>(undefined);
 
   const load = useCallback(
     (cancelled: () => boolean) => {
@@ -88,18 +92,46 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   );
   const activePath = activeFile === "" ? undefined : activeFile;
 
+  const roots = useMemo(
+    () => (loaded.kind === "ready" ? buildTree(loaded.listing.paths, loaded.listing.marks) : []),
+    [loaded],
+  );
+
+  const focusRow = useCallback((path: string | undefined) => {
+    if (path === undefined) return;
+    pendingFocus.current = path;
+    setState((was) => ({ ...was, focus: path }));
+  }, []);
+
+  // Focus moves to the awaited row as soon as it is drawn; a row that never comes is dropped.
+  useEffect(() => {
+    const path = pendingFocus.current;
+    if (path === undefined || loaded.kind !== "ready") return;
+    const row = [...document.querySelectorAll<HTMLElement>("[data-path]")].find(
+      (item) => item.dataset["path"] === path,
+    );
+    if (row === undefined) return;
+    pendingFocus.current = undefined;
+    row.focus();
+  }, [loaded, state.focus, roots]);
+
   const onIntent = useCallback(
     (intent: TreeIntent) => {
       if (intent.kind === "open") context.openItem?.(fileItem(intent.path));
       if (intent.kind === "rename") setRenaming(intent.path);
-      if (intent.kind === "trash") void removeFile(host, toasts, intent.path);
+      if (intent.kind === "trash") {
+        pendingFocus.current = undefined;
+        // Focus goes to the next row, else the previous one, else the folder.
+        const rows = visibleRows(roots, state.expanded);
+        const index = rows.findIndex((row) => row.node.path === intent.path);
+        const target = (rows[index + 1] ?? rows[index - 1])?.node.path ?? rows[index]?.parent;
+        void removeFile(host, toasts, intent.path, {
+          removed: () => focusRow(target),
+          restored: () => focusRow(intent.path),
+        });
+      }
     },
-    [context, host, toasts],
-  );
-
-  const roots = useMemo(
-    () => (loaded.kind === "ready" ? buildTree(loaded.listing.paths, loaded.listing.marks) : []),
-    [loaded],
+    [context, host, toasts, roots, state.expanded, focusRow],
   );
 
   if (loaded.kind === "loading") {

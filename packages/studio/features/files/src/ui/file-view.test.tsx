@@ -38,6 +38,7 @@ vi.mock("@halonicjs/studio-code-editor", () => ({
         entry.text = text;
         entry.loads.push(text);
       },
+      focus: () => {},
       setProblems: (problems: readonly EditorProblem[]) => {
         entry.shown = problems;
       },
@@ -182,15 +183,39 @@ verifies("files.ui.file-tab", () => {
     expect(opened).toHaveLength(0);
   });
 
-  it("says a missing file isn't here any more", async () => {
+  it("says a missing file isn't in this workspace any more, with Go to Files", async () => {
     const page = show(
       hostOf(async () => null),
       "gone.md",
     );
     await settle();
 
-    expect(page.textContent).toContain("This file isn't here any more");
+    expect(page.textContent).toContain("This file isn't in this workspace any more.");
+    expect([...page.querySelectorAll("button")].map((b) => b.textContent)).toContain("Go to Files");
     expect(opened).toHaveLength(0);
+  });
+
+  it("says the file isn't here any more when it goes away without the trash", async () => {
+    let text: string | null = "x";
+    const notifiers: (() => void)[] = [];
+    const host: FilesHost = {
+      ...hostOf(async () => text),
+      subscribe: (listener) => {
+        notifiers.push(listener);
+        return () => {};
+      },
+    };
+    const page = show(host, "b.md");
+    await settle();
+
+    text = null;
+    await act(async () => {
+      for (const notify of notifiers) notify();
+    });
+    await settle();
+
+    expect(page.textContent).toContain("This file isn't in this workspace any more.");
+    expect(opened[0]?.destroyed).toBe(true);
   });
 
   it("says why a file can't be read", async () => {

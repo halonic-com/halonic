@@ -1,7 +1,7 @@
 import { type CodeEditor, languageFor, openCodeEditor } from "@halonicjs/studio-code-editor";
 import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { fileItem, fileName } from "../file-item.ts";
 import { sizeOf, textKindOf } from "../file-size.ts";
 import { type FileIssue, FilesHostService, type OutsideChange } from "../files-host.ts";
@@ -12,9 +12,12 @@ import {
   problemsElsewhere,
   withNewSince,
 } from "../problems-elsewhere.ts";
+import { subscribeTrashed, type Trashed, trashedFile } from "../trash.ts";
 import { CompareView } from "./compare-view.tsx";
 import { OutsideStrip } from "./outside-strip.tsx";
 import { ProblemsPanel } from "./problems-panel.tsx";
+import { TrashedStrip } from "./trashed-strip.tsx";
+import { useFileGone } from "./use-file-gone.ts";
 
 /** How long after the last change the problems are checked again, in milliseconds. */
 export const recheckDelayMs = 300;
@@ -36,6 +39,13 @@ function loadedOf(text: string | null): Loaded {
   return { kind: "ready", text, readOnly: kind === "large" };
 }
 
+/** Moves focus to the Files tree's Tab stop, where the user picks another file. */
+function goToFiles(): void {
+  document
+    .querySelector<HTMLElement>('[role="tree"][aria-label="Files"] [data-path][tabindex="0"]')
+    ?.focus();
+}
+
 /**
  * A file in its tab: the file's name over the code editor. Typing goes straight to the
  * workspace's files, which save a moment later, so the tab has no Save button and no unsaved dot
@@ -53,6 +63,12 @@ export function FileView({ item, context }: ItemViewProps) {
   const [failure, setFailure] = useState<string | undefined>();
   // Set when the user chose in the strip or in Compare: the reopened editor takes focus.
   const refocus = useRef(false);
+  // The last text the tab held, so the editor can open again greyed when the file goes to the trash.
+  const lastText = useRef<string | undefined>(undefined);
+  // The way to put the file back, while a delete in this window has it in the trash.
+  const trash: Trashed | undefined = useSyncExternalStore(subscribeTrashed, () =>
+    trashedFile(path),
+  );
   const [outside, setOutside] = useState<OutsideChange | undefined>(() => host.outside().get(path));
 
   const editorRef = useRef<CodeEditor | undefined>(undefined);
@@ -126,6 +142,7 @@ export function FileView({ item, context }: ItemViewProps) {
     host.read(path).then(
       (text) => {
         if (stopped) return;
+        lastText.current = text ?? undefined;
         setLoaded(loadedOf(text));
       },
       (error: unknown) => {
@@ -142,21 +159,33 @@ export function FileView({ item, context }: ItemViewProps) {
   }, [host, path, round]);
 
   const ready = loaded.kind === "ready";
-  const editing = ready && !comparing;
+  const gone = useFileGone(host, path, ready, trash !== undefined, () => {
+    // Back (Undo, or a restore elsewhere): the editor opens again on what the file holds now.
+    refocus.current = true;
+    reload();
+  });
+
+  // Read-only from the moment the file goes to the trash, before any read has said it is gone.
+  const trashedHere = ready && trash !== undefined;
+  const missing = loaded.kind === "missing" || (ready && gone && trash === undefined);
+  const editing = ready && !comparing && !missing;
   useEffect(() => {
     const container = parent.current;
     if (!editing || container === null) return;
     // The editor starts from this text. Later changes the editor didn't make (the workspace's
     // Undo, a rename, another feature) come through the host and are loaded below.
-    const text = loaded.kind === "ready" ? loaded.text : "";
-    const readOnly = loaded.kind === "ready" && loaded.readOnly;
+    const text = lastText.current ?? (loaded.kind === "ready" ? loaded.text : "");
+    const readOnly = trashedHere || (loaded.kind === "ready" && loaded.readOnly);
     let editor: CodeEditor | undefined;
     let stopped = false;
     const follow = (made: CodeEditor) =>
       host.subscribe(() => {
         host.read(path).then(
           (latest) => {
-            if (!stopped && latest !== null && latest !== made.text()) made.load(latest);
+            if (!stopped && latest !== null && latest !== made.text()) {
+              lastText.current = latest;
+              made.load(latest);
+            }
           },
           () => {},
         );
@@ -169,6 +198,7 @@ export function FileView({ item, context }: ItemViewProps) {
       label: filesWords.editorLabel(path),
       readOnly,
       onChange: (next) => {
+        lastText.current = next;
         edits.current += 1;
         host.edit(path, next);
       },
@@ -196,7 +226,7 @@ export function FileView({ item, context }: ItemViewProps) {
       editorRef.current = undefined;
       editor?.destroy();
     };
-  }, [editing, host, path]);
+  }, [editing, trashedHere, host, path]);
 
   /** Reads the text again, and shows no editor until it has: the old text would be stale. */
   function reload(): void {
@@ -228,11 +258,11 @@ export function FileView({ item, context }: ItemViewProps) {
           <SkeletonBar kind="title" width="1/2" />
         </div>
       )}
-      {loaded.kind === "missing" && (
+      {missing && (
         <EmptyState
           plain
           title={filesWords.missingTitle}
-          description={filesWords.missingDescription}
+          action={{ label: filesWords.goToFiles, onClick: goToFiles }}
         />
       )}
       {loaded.kind === "not-text" && (
@@ -258,7 +288,13 @@ export function FileView({ item, context }: ItemViewProps) {
           description={loaded.reason}
         />
       )}
-      {outside !== undefined && !comparing && (
+      {trashedHere && trash !== undefined && (
+        <TrashedStrip
+          announce={(text) => announcer.current.announce(text)}
+          onUndo={() => void trash.undo()}
+        />
+      )}
+      {outside !== undefined && !comparing && !trashedHere && (
         <OutsideStrip
           path={path}
           change={outside}
@@ -289,8 +325,13 @@ export function FileView({ item, context }: ItemViewProps) {
           }}
         />
       )}
-      {editing && <div ref={parent} className="min-h-0 flex-1 overflow-hidden" />}
       {editing && (
+        <div
+          ref={parent}
+          className={`min-h-0 flex-1 overflow-hidden ${trashedHere ? "opacity-60" : ""}`}
+        />
+      )}
+      {editing && !trashedHere && (
         <ProblemsPanel
           problems={problems}
           elsewhere={elsewhere}
