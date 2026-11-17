@@ -78,6 +78,8 @@ interface SectionError extends EmptyStateBase {
   /** Try again. */
   readonly action?: EmptyStateAction;
   readonly secondaryAction?: never;
+  /** "Copy details" after Try again, for a failure Halonic can't explain (microcopy 22 F13). */
+  readonly link?: EmptyStateAction;
 }
 
 /** The props of `EmptyState`. */
@@ -145,8 +147,15 @@ export function EmptyState(props: EmptyStateProps) {
   );
 }
 
-/** `align="start"`: the alert mark inline with the title, the reason, then Try again. */
-function SectionErrorState({ title, description, headingLevel, titleRef, action }: SectionError) {
+/** `align="start"`: the alert mark inline with the title, the reason, then Try again and its link. */
+function SectionErrorState({
+  title,
+  description,
+  headingLevel,
+  titleRef,
+  action,
+  link,
+}: SectionError) {
   const Heading = `h${headingLevel ?? 2}` as const;
   return (
     <div className="flex flex-col items-start gap-1.5 px-4 py-3 text-left">
@@ -161,8 +170,11 @@ function SectionErrorState({ title, description, headingLevel, titleRef, action 
         {title}
       </Heading>
       {isShown(description) ? <p className="text-small text-fg-muted">{description}</p> : null}
-      {action === undefined ? null : (
-        <div className="mt-1.5">{actionButton(action, "secondary", "lg")}</div>
+      {action === undefined && link === undefined ? null : (
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          {actionButton(action, "secondary", "lg")}
+          {actionLink(link)}
+        </div>
       )}
     </div>
   );
