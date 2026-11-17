@@ -402,7 +402,7 @@ describe("listedRun", () => {
       today,
     );
 
-    expect(row(summary, toolCallsOnly).what).toBe("Finished in Draft a reply");
+    expect(row(summary, toolCallsOnly).what).toBe("Finished");
   });
 
   it("shows a run stopped at its budget as Stopped, in the step it reached", () => {

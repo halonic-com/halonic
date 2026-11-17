@@ -142,8 +142,8 @@ export const runsListMessages = defineMessages("runsList", {
     lineOfFacts(money === undefined ? sends : [...sends, `estimated cost ${money}`]),
   /** What: a completed run with tool calls and a priced call. */
   estimatedCost: (money: string) => phrase`Estimated cost ${money}`,
-  /** What: a completed run with tool calls but no priced call, by the step it finished in. */
-  finishedIn: (step: string) => phrase`Finished in ${step}`,
+  /** What: a completed run with tool calls but no priced call. A final state is not a step, so no step name. */
+  finished: () => phrase`Finished`,
   /** What: a run stopped at its budget. */
   budgetReached: (step: string) => phrase`Budget reached in ${step}`,
   /** What: a run cancelled with Ctrl C or SIGTERM. */

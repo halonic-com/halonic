@@ -78,7 +78,7 @@ function lead(
     case "waiting":
       return waitingLine(runWait(summary), step, context.now);
     case "done":
-      return rowLineWords.finishedIn(took(summary));
+      return rowLineWords.finishedInTime(took(summary));
     case "failed":
       return enteredAStep(summary)
         ? summaryWords.failedIn(step, took(summary))

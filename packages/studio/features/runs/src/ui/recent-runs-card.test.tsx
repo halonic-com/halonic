@@ -128,7 +128,7 @@ verifies("runs.home", () => {
     expect(rows(root)).toEqual([
       "Support replyWaiting for your approval in the step SendNeeds you",
       "Support replyIn DraftRunning",
-      "Support replyFinished in DraftDone",
+      "Support replyFinishedDone",
       "Support replySupport reply failed in the step Draft.Failed",
     ]);
   });
@@ -199,7 +199,7 @@ verifies("runs.home", () => {
     await act(async () => root.querySelector("button")?.click());
     await settled();
     await settled();
-    expect(rows(root)).toEqual(["Support replyFinished in DraftDone"]);
+    expect(rows(root)).toEqual(["Support replyFinishedDone"]);
   });
 
   it("opens a run in the active tab from its row", async () => {

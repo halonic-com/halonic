@@ -57,14 +57,14 @@ verifies("cli.messages", () => {
         list.whatItSent(["sent nothing"]),
         list.whatItSent(["sent 1 email", "saved 1 Drive file"], "€0.004"),
         list.estimatedCost("€0.004"),
-        list.finishedIn("Send reply"),
+        list.finished(),
       ].map((message) => plainText(message.phrase)),
     ).toEqual([
       "Sent nothing · estimated cost €0.02",
       "Sent nothing",
       "Sent 1 email · saved 1 Drive file · estimated cost €0.004",
       "Estimated cost €0.004",
-      "Finished in Send reply",
+      "Finished",
     ]);
   });
 

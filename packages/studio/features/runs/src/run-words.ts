@@ -27,7 +27,9 @@ export const rowLineWords = {
   waitingUntil: (time: string) => `Waiting until ${time}`,
   waitingForChildRun: (shortId: string) => `Waiting for child run ${shortId}`,
   waitingIn: (step: string) => `Waiting in ${step}`,
-  finishedIn: (step: string) => `Finished in ${step}`,
+  /** A run that ended: a final state is where the flow ends, not a step, so no "in Done" (HAL-11693). */
+  finished: "Finished",
+  finishedInTime: (took: string) => `Finished in ${took}`,
   /** The failed banner's first sentence, until the banners by cause (HAL-1845). */
   failedIn: (workflow: string, step: string) => `${workflow} failed in the step ${step}.`,
   /** A failed run that never entered a step, as a refused run's banner says it (HAL-11190). */
