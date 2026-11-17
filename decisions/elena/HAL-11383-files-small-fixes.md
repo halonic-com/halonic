@@ -35,3 +35,4 @@ the other text back. A later check should not reverse this without a new approve
 - files.ui.tree-view
 - files.ui.new-file
 - shell.save-note
+- decisions/elena/HAL-11117-files-outside-strip.md
