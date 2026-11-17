@@ -67,3 +67,34 @@ function addsToStudio(content: PluginTrustContent): boolean {
     ui.panel !== undefined
   );
 }
+
+/** How many files the trust check names before it says how many more there are. */
+export const pluginTrustFileCap = 10;
+
+/** The manifest, which the sections above already show, so it isn't listed as a file. */
+const manifestPath = "plugin.yaml";
+
+/** The plugin's files the fingerprint covers, as the check lists them. */
+export interface PluginTrustFiles {
+  /** The first files by path, at most {@link pluginTrustFileCap}. */
+  readonly shown: readonly string[];
+  /** How many files come after the ones shown: the "and N more". */
+  readonly more: number;
+}
+
+/**
+ * The files in the plugin's folder that the fingerprint covers, for the
+ * check to list: the first {@link pluginTrustFileCap} by path, and how many
+ * more there are. The manifest isn't one of them. The paths come from the
+ * workspace, so a host escapes them before it shows them.
+ *
+ * @example
+ * pluginTrustFiles(weather); // { shown: ["backend/index.js"], more: 0 }
+ */
+export function pluginTrustFiles(content: PluginTrustContent): PluginTrustFiles {
+  const paths = content.files.map((file) => file.path).filter((path) => path !== manifestPath);
+  return {
+    shown: paths.slice(0, pluginTrustFileCap),
+    more: Math.max(0, paths.length - pluginTrustFileCap),
+  };
+}
