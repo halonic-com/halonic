@@ -42,7 +42,7 @@ import { StepPanel } from "./step-panel.tsx";
 const openModelsCommand = "workspace.open-models";
 
 /** The `run` item kind's page: one run of the open workspace, from `RunsListService`. */
-export function RunPage({ item, context, step }: ItemViewProps) {
+export function RunPage({ item, context, step, asked }: ItemViewProps) {
   const { openPlace, openItem } = context;
   const instructionTrust = context.services.find(InstructionTrustHostService);
   const sandboxStartCheck = context.services.find(sandboxStartCheckKey);
@@ -52,6 +52,7 @@ export function RunPage({ item, context, step }: ItemViewProps) {
       list={context.services.get(RunsListService)}
       runId={item.id}
       {...(step === undefined ? {} : { step })}
+      {...(asked === undefined ? {} : { asked })}
       {...(instructionTrust === undefined ? {} : { instructionTrust })}
       {...(sandboxStartCheck === undefined ? {} : { sandboxStartCheck })}
       announce={(line) => context.announcer.announce(line)}
@@ -80,6 +81,11 @@ export interface RunViewProps {
    * and out ›** asks for. A step the run didn't reach opens the page at the top.
    */
   readonly step?: string;
+  /**
+   * How many times the tab was asked for a step (`TabLocation.asked`). A page that is open
+   * already goes to the step again when this changes, also when it is the same step twice.
+   */
+  readonly asked?: number;
   /** Asks to trust an agent's instructions; absent on a served page or a phone, which can't ask. */
   readonly instructionTrust?: InstructionTrustHost;
   /** Checks the sandbox again, for the banner of a run it refused; absent where nothing can check. */
@@ -124,6 +130,7 @@ export function RunView({
   list,
   runId,
   step,
+  asked,
   instructionTrust,
   sandboxStartCheck,
   announce,
@@ -140,7 +147,7 @@ export function RunView({
   const run = state.runs.find((candidate) => candidate.summary.id === runId);
   const logRead = useRunLog(list.source, runId, run?.summary.lastSeq ?? 0, state);
   const log = logRead.events;
-  const [openEntry, setOpenEntry] = useOpenEntry(runId, step, log, run?.summary);
+  const [openEntry, setOpenEntry] = useOpenEntry(runId, step, asked, log, run?.summary);
   useRedrawWhenSlow(log, run?.summary.status === "running", now);
   useEffect(() => list.noteOpened(runId), [list, runId]);
   const title = runPageWords.title(shortRunId(runId));
@@ -309,12 +316,13 @@ function RunDetails({ phone, ...details }: DetailsProps & { readonly phone: bool
 function useOpenEntry(
   runId: string,
   step: string | undefined,
+  asked: number | undefined,
   log: readonly RunEvent[] | undefined,
   summary: RunSummary | undefined,
 ) {
   const [openEntry, setOpenEntry] = useState<string>();
   const [opened, setOpened] = useState<string>();
-  const request = step === undefined ? undefined : `${runId}/${step}`;
+  const request = step === undefined ? undefined : `${runId}/${step}/${asked ?? 0}`;
   if (step !== undefined && request !== opened && log !== undefined && summary !== undefined) {
     setOpened(request);
     setOpenEntry(entryIdOfStep(log, summarize(log) ?? summary, step));
