@@ -76,9 +76,9 @@ when run again. srt removes nothing while a sandboxed program runs, and leaves
 
 On Windows there is no `env`, `sh` or process group: the launcher builds one `cmd.exe` command line
 (the program's variables set first), and `killTree` is `taskkill /T /F`, with no grace period. A
-program, argument or variable with a double quote, a percent sign, a line break or a NUL is refused
-rather than quoted wrongly. The fence probe is therefore a script file in the session's temp folder,
-not `node -e`. The launcher itself, which runs outside the fence, gets only the system and
+program, argument or variable with a double quote, a percent sign, an exclamation mark, a line
+break or a NUL is refused rather than quoted wrongly. The fence probe is therefore a script file in
+the session's temp folder, not `node -e`. The launcher itself, which runs outside the fence, gets only the system and
 user-folder variables `cmd.exe` and srt need (`SystemRoot`, `ComSpec`, `PATHEXT`, `USERPROFILE`,
 `APPDATA` and the like, read in any letter case), the safe host `PATH`, and the session's temp
 folder as `TEMP`, `TMP` and `TMPDIR`. The program gets the profile's variables and the sandbox

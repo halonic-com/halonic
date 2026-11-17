@@ -6,6 +6,23 @@
 /** One path in the working folder, as segments: each reader joins them its own way. */
 export type PathSegments = readonly string[];
 
+/** One entry per file name a tool reads its config from: `base` plus each extension. */
+function configFileNames(base: string, extensions: readonly string[]): PathSegments[] {
+  return extensions.map((extension) => [`${base}${extension}`]);
+}
+
+/**
+ * lefthook reads `lefthook`, `.lefthook` and the `-local` variants of both,
+ * in the project folder and in `.config`, in each of these formats.
+ */
+const lefthookConfigPaths: readonly PathSegments[] = (() => {
+  const extensions = [".yml", ".yaml", ".json", ".jsonc", ".toml"];
+  const bases = ["lefthook", ".lefthook", "lefthook-local", ".lefthook-local"];
+  const inProjectFolder = bases.flatMap((base) => configFileNames(base, extensions));
+  const inConfigFolder = inProjectFolder.map((segments) => [".config", ...segments]);
+  return [...inProjectFolder, ...inConfigFolder];
+})();
+
 /**
  * The entries sandbox-runtime denies writing in the working folder. The
  * program may write the working folder, but not these, so it can't plant a
@@ -41,6 +58,24 @@ export const writeFencedPaths: readonly PathSegments[] = [
   [".ripgreprc"],
   [".gitmodules"],
   [".husky"],
+  // Hook managers, which run the commands named here from git's own hooks.
+  [".pre-commit-config.yaml"],
+  ...lefthookConfigPaths,
+  ...configFileNames(".lintstagedrc", [
+    "",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".js",
+    ".cjs",
+    ".mjs",
+    ".ts",
+    ".cts",
+    ".mts",
+  ]),
+  ...configFileNames("lint-staged.config", [".js", ".cjs", ".mjs", ".ts", ".cts", ".mts"]),
+  ...configFileNames(".simple-git-hooks", [".js", ".cjs", ".json"]),
+  ...configFileNames("simple-git-hooks", [".js", ".cjs", ".json"]),
   // Package manager settings, which can point installs at another registry or run scripts.
   [".npmrc"],
   [".yarnrc"],
@@ -55,6 +90,8 @@ export const writeFencedPaths: readonly PathSegments[] = [
   // Editor settings and tasks that run when the folder is opened.
   [".vscode"],
   [".idea"],
+  [".zed"],
+  [".devcontainer"],
   [".mcp.json"],
 ];
 

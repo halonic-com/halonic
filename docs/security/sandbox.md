@@ -89,7 +89,7 @@ On Windows the fence uses srt's alpha Windows mode (decision D44). It works
 only after srt's one-time install, run once as an administrator, and it has no
 `env`, `sh` or process group, so the launcher builds one `cmd.exe` command line
 and stops a program with `taskkill`. A program, argument or variable with a
-double quote, a percent sign, a line break or a NUL is refused. The CI job `sandbox-windows` proves the fence on a real Windows machine. Without the install the check reports `setup-needed`, and the CLI says to
+double quote, a percent sign, an exclamation mark, a line break or a NUL is refused. The CI job `sandbox-windows` proves the fence on a real Windows machine. Without the install the check reports `setup-needed`, and the CLI says to
 use Halonic inside WSL 2 on this computer.
 
 ## "This computer" has none of it

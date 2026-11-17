@@ -78,6 +78,8 @@ describe("windowsCommandLine", () => {
   it.each([
     ["a quote in an argument", { args: ['a"b'] }],
     ["a percent sign in an argument", { args: ["%PATH%"] }],
+    ["an exclamation mark in an argument", { args: ["!PATH!"] }],
+    ["an exclamation mark in a variable", { programEnv: { A: "hi!" } }],
     ["a line break in an argument", { args: ["a\nb"] }],
     ["a quote in the program", { program: 'a"b' }],
     ["a percent sign in a variable", { programEnv: { A: "100%" } }],

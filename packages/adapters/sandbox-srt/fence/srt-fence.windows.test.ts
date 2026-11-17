@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -145,6 +145,132 @@ console.log(JSON.stringify(result));
     });
     await expect(readFile(join(workspace, "made.txt"), "utf8")).rejects.toThrow();
   });
+
+  /**
+   * Runs a script that tries to put content into each file (as path segments below the working
+   * folder), either by writing it or by writing it elsewhere and moving it into place, and reports
+   * for each how much content is on disk afterwards. Windows lets a program create a file in a
+   * denied folder but refuses to write to it, so an empty file may be left behind: that is no
+   * content. A file that is not there counts as empty too. Also reports whether each file was
+   * there before the attempt.
+   */
+  async function contentLeftBy(
+    how: "writing" | "moving",
+    name: string,
+    attempts: Record<string, string[]>,
+  ): Promise<Record<string, { existedBefore: boolean; size: number }>> {
+    const out = await runScript(
+      name,
+      `const fs = require("node:fs");
+const path = require("node:path");
+const work = ${JSON.stringify(work)};
+const how = ${JSON.stringify(how)};
+const attempts = ${JSON.stringify(attempts)};
+const result = {};
+for (const [label, segments] of Object.entries(attempts)) {
+  const target = path.join(work, ...segments);
+  const existedBefore = fs.existsSync(target);
+  try {
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    if (how === "writing") {
+      fs.writeFileSync(target, "x");
+    } else {
+      const staged = path.join(work, "staged-" + label);
+      fs.writeFileSync(staged, "x");
+      fs.renameSync(staged, target);
+    }
+  } catch {
+    // Refused: what is left on disk says how far it got.
+  }
+  result[label] = { existedBefore, size: fs.existsSync(target) ? fs.statSync(target).size : 0 };
+}
+console.log(JSON.stringify(result));
+`,
+    );
+    return JSON.parse(out.split(/\r?\n/).pop() ?? "");
+  }
+
+  function sizes(left: Record<string, { size: number }>): Record<string, number> {
+    return Object.fromEntries(Object.entries(left).map(([label, file]) => [label, file.size]));
+  }
+
+  it("makes the root tool-settings files empty when it opens and denies them (HAL-11246)", async () => {
+    // Looked at from the host, before any program has tried anything.
+    const sizesAtOpen: Record<string, number> = {};
+    for (const file of [".npmrc", ".mcp.json", ".pre-commit-config.yaml"]) {
+      sizesAtOpen[file] = (await stat(join(work, file))).size;
+    }
+    expect(sizesAtOpen).toEqual({ ".npmrc": 0, ".mcp.json": 0, ".pre-commit-config.yaml": 0 });
+  });
+
+  it("leaves the empty root files in the working folder after the session closes (HAL-11246)", async () => {
+    const closing = join(base, "closing");
+    await mkdir(closing, { recursive: true });
+    const closed = await sandbox.open({ ...profile(), workingFolder: closing });
+    await closed.close();
+    const left: Record<string, boolean> = {};
+    for (const file of [".npmrc", ".mcp.json", ".pre-commit-config.yaml"]) {
+      left[file] = await stat(join(closing, file)).then(
+        () => true,
+        () => false,
+      );
+    }
+    // Records what srt does today (threat model 4.6). If srt starts removing them, this fails
+    // and the docs change with it.
+    expect(left).toEqual({ ".npmrc": true, ".mcp.json": true, ".pre-commit-config.yaml": true });
+  });
+
+  for (const how of ["writing", "moving"] as const) {
+    it(`can't put content into the tool folders that were made at the start, by ${how} it (HAL-11246)`, async () => {
+      // Windows denies through the file system's permissions, which need an existing folder.
+      // The folder deny covers what is made inside it later.
+      const left = await contentLeftBy(how, `folders-${how}.cjs`, {
+        claudeSettings: [".claude", "settings.json"],
+        vscodeTasks: [".vscode", "tasks.json"],
+      });
+      expect(sizes(left)).toEqual({ claudeSettings: 0, vscodeTasks: 0 });
+    });
+
+    it(`can't put content into the tool settings in the root of the working folder, by ${how} it`, async () => {
+      const left = await contentLeftBy(how, `root-${how}.cjs`, {
+        npmrc: [".npmrc"],
+        mcp: [".mcp.json"],
+        hookManager: [".pre-commit-config.yaml"],
+      });
+      expect(sizes(left)).toEqual({ npmrc: 0, mcp: 0, hookManager: 0 });
+      // srt made each of them empty when the session opened and denies it, so the program's
+      // attempt finds the file already there.
+      expect(Object.values(left).map((file) => file.existedBefore)).toEqual([true, true, true]);
+    });
+  }
+
+  it("can't create a git hook or change the git config of a repository that was there at the start", async () => {
+    const repository = join(base, "repository");
+    await mkdir(join(repository, ".git", "hooks"), { recursive: true });
+    await writeFile(join(repository, ".git", "config"), "[core]\n");
+    const withRepository = await sandbox.open({ ...profile(), workingFolder: repository });
+    try {
+      const out = await runScript(
+        "hook.cjs",
+        `const fs = require("node:fs");
+const result = {};
+try { fs.writeFileSync(${JSON.stringify(join(repository, ".git", "hooks", "pre-commit"))}, "x"); result.hook = "written"; } catch { result.hook = "refused"; }
+try { fs.appendFileSync(${JSON.stringify(join(repository, ".git", "config"))}, "x"); result.config = "written"; } catch { result.config = "refused"; }
+console.log(JSON.stringify(result));
+`,
+        withRepository,
+      );
+      expect(JSON.parse(out.split(/\r?\n/).pop() ?? "")).toEqual({
+        hook: "refused",
+        config: "refused",
+      });
+    } finally {
+      await withRepository.close();
+    }
+  });
+
+  // Known gap (HAL-11305), not tested: a repository made during the session has no deny, so a
+  // program in the fence can still write a hook into a new `.git/hooks`.
 
   it("without a bridge, reaches no loopback port and gets none of srt's network variables", async () => {
     const before = connections;
