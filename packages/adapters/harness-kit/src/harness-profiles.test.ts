@@ -118,7 +118,11 @@ verifies("harness-kit.harness-profile", () => {
       await mkdir(join(home, ".local", "share", "fish"), { recursive: true });
       await writeFile(join(home, ".local", "share", "fish", "fish_history"), "");
 
-      const { profile, deniedGroups } = await profilesWith().profileOf(writerAgent(null), bridge);
+      const { profile, deniedGroups } = await profilesWith().profileOf(
+        writerAgent(null),
+        bridge,
+        null,
+      );
 
       expect(deniedGroups.find(({ code }) => code === "registry-tokens")?.paths).toEqual([
         join(home, ".npmrc"),

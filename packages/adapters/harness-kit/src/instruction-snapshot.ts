@@ -121,6 +121,7 @@ export async function snapshotInstructions(
 ): Promise<InstructionSnapshot> {
   // Names are checked before the folder is made, so a bad name leaves nothing behind.
   await pinInstructions(files);
+  refuseFilesAHarnessMayNotLoad(files);
   const folder = await disk.makeFreshFolder(join(root, "instructions-"));
   try {
     return { folder, pin: await copyInstructions(folder, files, disk) };
@@ -128,6 +129,26 @@ export async function snapshotInstructions(
     // The copy's own error is the one worth reporting; a folder that can't be removed is left behind in the run's folder.
     await disk.removeFolder(folder).catch(() => undefined);
     throw error;
+  }
+}
+
+/** `AGENTS.md`, or a skill's `SKILL.md` in a folder named by its id. */
+const harnessInstructionName = /^(AGENTS\.md|skills\/[^/]+\/SKILL\.md)$/u;
+
+/**
+ * Claude Code treats the folder as a plugin, and loads and runs hooks,
+ * commands, agents and `.mcp.json` found in one, so the folder may hold
+ * nothing but the instructions.
+ *
+ * @throws when a file is anything but `AGENTS.md` or `skills/<id>/SKILL.md`
+ */
+function refuseFilesAHarnessMayNotLoad(files: readonly InstructionFile[]): void {
+  for (const { name } of files) {
+    if (!harnessInstructionName.test(name)) {
+      throw new Error(
+        `Instruction file '${name}' isn't AGENTS.md or skills/<id>/SKILL.md, so the harness won't be given it.`,
+      );
+    }
   }
 }
 

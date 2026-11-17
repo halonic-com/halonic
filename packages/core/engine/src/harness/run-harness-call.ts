@@ -17,6 +17,7 @@ import {
   ModelCallError,
   RunFailureError,
   type Sandbox,
+  type SandboxSession,
 } from "@halonicjs/ports";
 import { KindedError, type StopSignal, StopSource } from "@halonicjs/std";
 import { BudgetReachedError, type CallBudget, noCallBudget } from "../budget/call-budget.ts";
@@ -31,8 +32,8 @@ import type {
   PlacementAnswer,
 } from "./harness-host.ts";
 import { logHarnessStart } from "./log-harness-start.ts";
-import { harnessCauseOf } from "./start-failure-causes.ts";
 import { openSandbox, type StartedCall, startTimeoutOf } from "./open-harness-sandbox.ts";
+import { harnessCauseOf } from "./start-failure-causes.ts";
 import { type StartLimits, seconds } from "./start-limits.ts";
 import { unlessStopped } from "./unless-stopped.ts";
 
