@@ -1,5 +1,13 @@
 import type { FileChange } from "@halonicjs/app";
-import type { ChangesRead, FileTexts, Identity, UpdatesResult, Version } from "./api.ts";
+import type {
+  ChangesRead,
+  FileTexts,
+  Identity,
+  UpdateChoice,
+  UpdateMerge,
+  UpdatesResult,
+  Version,
+} from "./api.ts";
 
 /** How many versions History shows first, and how many more Show more adds. */
 export const historyPageSize = 20;
@@ -36,7 +44,16 @@ export type UndoOutcome =
 export type DiscardOutcome = UndoOutcome;
 
 /** What {@link ChangesList.getUpdates} did. */
-export type UpdatesOutcome = UpdatesResult | { readonly kind: "failed"; readonly reason: string };
+export type UpdatesOutcome =
+  | UpdatesResult
+  /** Both sides had new versions: the merge is started and the person chooses item by item. */
+  | { readonly kind: "choosing" }
+  | { readonly kind: "failed"; readonly reason: string };
+
+/** What a choice, Undo, Finish or Cancel of a started merge did: the reason it didn't work, or `undefined`. */
+export type MergeOutcome = string | undefined;
+
+export type { UpdateChoice };
 
 /** What the Changes list holds now. */
 export interface ChangesListState {
@@ -54,6 +71,15 @@ export interface ChangesListState {
   readonly hasRemote: boolean;
   /** Whether Get updates is working. */
   readonly gettingUpdates: boolean;
+  /** The merge of both sides' versions that is started and not finished; `undefined` when none is. */
+  readonly merge: UpdateMerge | undefined;
+  /**
+   * Whether the choices are open on the page. A merge found left open (the window was closed) is
+   * not open until Continue; one just started is.
+   */
+  readonly choosing: boolean;
+  /** Whether a choice, Undo, Finish or Cancel is working. */
+  readonly mergeBusy: boolean;
   /**
    * Who versions are from, as of the last read that worked; `undefined` before one. Create version
    * asks first while a part of it is not set.

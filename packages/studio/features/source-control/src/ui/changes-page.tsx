@@ -11,6 +11,7 @@ import { CreateVersionDialog } from "./create-version-dialog.tsx";
 import { GetUpdates } from "./get-updates.tsx";
 import { History } from "./history.tsx";
 import { IdentityDialog } from "./identity-dialog.tsx";
+import { MergeChoices, MergeStrip } from "./merge-choices.tsx";
 import { SharingStrip } from "./sharing-strip.tsx";
 
 /** The Changes place's page: the open workspace's changes, from `ChangesListService`. */
@@ -60,6 +61,10 @@ export function ChangesView({ list, developerView }: ChangesViewProps) {
           </span>
         ) : null}
       </header>
+      {state.merge !== undefined && !state.choosing ? <MergeStrip list={list} /> : null}
+      {state.merge !== undefined && state.choosing ? (
+        <MergeChoices list={list} phone={phone} />
+      ) : null}
       {state.read?.kind === "ready" && !state.hasRemote ? (
         <SharingStrip onAdd={() => setAddingAddress(true)} phone={phone} />
       ) : null}

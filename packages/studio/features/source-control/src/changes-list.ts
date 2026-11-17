@@ -13,6 +13,7 @@ import {
   type UndoOutcome,
   type UpdatesOutcome,
 } from "./changes-list-state.ts";
+import { MergeSteps } from "./changes-merge.ts";
 import {
   discardWords,
   pageWords,
@@ -33,6 +34,7 @@ export type {
   ChangesListState,
   DiscardOutcome,
   HistoryState,
+  MergeOutcome,
   UndoOutcome,
   UpdatesOutcome,
 } from "./changes-list-state.ts";
@@ -58,6 +60,9 @@ export class ChangesList {
     identity: undefined,
     hasRemote: false,
     gettingUpdates: false,
+    merge: undefined,
+    choosing: false,
+    mergeBusy: false,
     version: undefined,
     history: { versions: [], more: false, loaded: false, error: undefined },
   };
@@ -66,9 +71,18 @@ export class ChangesList {
   #reads = 0;
   #historyReads = 0;
   #disposed = false;
+  /** The steps of a merge of both sides: choose per item, Undo, Finish and Cancel. */
+  readonly merge: MergeSteps;
 
   constructor(source: ChangesSource) {
     this.source = source;
+    this.merge = new MergeSteps({
+      source,
+      state: () => this.#state,
+      disposed: () => this.#disposed,
+      set: (state) => this.#set(state),
+      refresh: () => this.refresh(),
+    });
     this.#stopWatching = source.subscribe(() => void this.refresh());
     void this.refresh();
   }
@@ -94,6 +108,9 @@ export class ChangesList {
     return { mark: "count", value: count, spoken: pageWords.spokenCount(count) };
   }
 
+  /** The merge left open: none, or the folder has no history, is `null`. */
+  #readMerge = async (ready: boolean) => (ready ? await this.source.readMerge() : null);
+
   /**
    * Reads the changes again. When reads overlap, only the last one started counts, so an older
    * answer never overwrites a newer one. Once the workspace has closed it does nothing.
@@ -108,8 +125,18 @@ export class ChangesList {
       const hasRemote = answer.kind === "ready" && (await this.source.hasRemote());
       if (read !== this.#reads || this.#disposed) return;
       const identity = answer.kind === "ready" ? await this.#identity() : undefined;
+      const merge = await this.#readMerge(answer.kind === "ready");
       if (read !== this.#reads || this.#disposed) return;
-      this.#set({ ...this.#state, read: answer, files, hasRemote, identity, error: undefined });
+      this.#set({
+        ...this.#state,
+        read: answer,
+        files,
+        hasRemote,
+        identity,
+        merge: merge ?? undefined,
+        choosing: merge !== null && this.#state.choosing,
+        error: undefined,
+      });
       if (answer.kind === "ready") await this.#readHistory(this.#state.history.versions.length);
     } catch (error) {
       if (read !== this.#reads || this.#disposed) return;
@@ -409,15 +436,25 @@ export class ChangesList {
     }
     this.#set({ ...this.#state, gettingUpdates: true });
     try {
-      const outcome = await this.source.getUpdates();
+      let outcome: UpdatesOutcome = await this.source.getUpdates();
+      if (outcome.kind === "both-moved") {
+        const start = await this.source.startMerge();
+        // Only when both sides moved is it chosen item by item; if that changed, the answer stays.
+        if (start.kind === "started") outcome = { kind: "choosing" };
+      }
       if (this.#disposed) return outcome;
-      this.#set({ ...this.#state, gettingUpdates: false });
-      if (outcome.kind === "got") await this.refresh();
+      this.#set({ ...this.#state, gettingUpdates: false, choosing: outcome.kind === "choosing" });
+      if (outcome.kind === "got" || outcome.kind === "choosing") await this.refresh();
       return outcome;
     } catch (error) {
       if (!this.#disposed) this.#set({ ...this.#state, gettingUpdates: false });
       return { kind: "failed", reason: loadFailureReason(error) };
     }
+  }
+
+  /** Whether a merge of both sides' versions is started: what waits for it is unavailable. */
+  get merging(): boolean {
+    return this.#state.merge !== undefined;
   }
 
   /**
