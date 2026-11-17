@@ -4,6 +4,7 @@ import {
   type AgentHostTransport,
   type SandboxSetupResult,
 } from "@halonicjs/adapter-agent-host-client";
+import { sandboxStartWords } from "@halonicjs/app";
 import type { SandboxUnavailableReason } from "@halonicjs/ports";
 import type {
   AgentSandboxHost,
@@ -13,30 +14,11 @@ import type {
 } from "@halonicjs/studio-feature-settings";
 
 /**
- * The words for a check that fails, one sentence per reason, ending in a full stop. Setting up
- * fixes `setup-needed`; a repair fixes the two that say part of the setup is there but wrong.
- * Everything else is something the person or an administrator does outside Halonic, so the
- * section says what is wrong and offers only Check again (`studio.agent-sandbox-host`).
+ * Setting up fixes `setup-needed`; a repair fixes the two that say part of the setup is there but
+ * wrong. Everything else is something the person or an administrator does outside Halonic, so the
+ * section says what is wrong, in the catalogue's sentence (`sandboxStartWords`, the one the Inbox,
+ * the run page and the CLI use), and offers only Check again (`studio.agent-sandbox-host`).
  */
-const reasons: Record<SandboxUnavailableReason, string> = {
-  windows: "this build can't run the sandbox on Windows.",
-  container: "Halonic runs inside a container, which can't hold the sandbox.",
-  "not-supported": "this version of the operating system can't run the sandbox.",
-  "blocked-by-policy": "a policy on this computer blocks the sandbox.",
-  "virtualisation-off": "hardware virtualisation is off.",
-  "wsl-missing": "Windows Subsystem for Linux isn't installed.",
-  "restart-needed": "Windows needs to restart first.",
-  "distro-missing": "the sandbox's Linux image isn't installed.",
-  "setup-conflict": "the sandbox's setup belongs to another program.",
-  "setup-needed": "the sandbox isn't set up.",
-  "user-namespaces-restricted": "the system doesn't let programs create user namespaces.",
-  "bubblewrap-missing": "bubblewrap isn't installed.",
-  "linux-tools-missing": "socat or ripgrep isn't installed.",
-  "ripgrep-missing": "ripgrep isn't installed.",
-  "sign-in-needed": "the sandbox needs you to sign in.",
-  other: "the check failed for a reason Halonic doesn't know.",
-};
-
 const needsRepair: readonly SandboxUnavailableReason[] = ["distro-missing", "setup-conflict"];
 
 /**
@@ -72,7 +54,7 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
     const reason =
       check.reason === "other" && check.missing[0] !== undefined
         ? `${check.missing[0].replace(/\.+$/, "")}.`
-        : reasons[check.reason];
+        : sandboxStartWords(check.reason).reason;
     if (check.reason === "setup-needed") return { state: "needs-setup" };
     if (check.reason === "restart-needed") return { state: "restart-needed" };
     if (needsRepair.includes(check.reason)) return { state: "needs-repair", reason };
