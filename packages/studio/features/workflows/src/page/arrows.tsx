@@ -29,7 +29,7 @@ export function Arrows({ arrows, boxes, route }: ArrowsProps) {
             key={`${arrow.from}>${arrow.to}#${index}`}
             data-taken={taken ? "" : undefined}
             // The head uses currentColor too, so line and head change together; forced colours fall back to a system colour.
-            className={taken ? "text-accent forced-colors:text-[Highlight]" : "text-fg-muted"}
+            className={taken ? "text-accent-text forced-colors:text-[Highlight]" : "text-fg-muted"}
           >
             <path d={shape.path} fill="none" stroke="currentColor" strokeWidth={1.5} />
             <polygon
