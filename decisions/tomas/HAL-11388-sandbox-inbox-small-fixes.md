@@ -3,7 +3,6 @@
 - Task: HAL-11388
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11388 (wording from microcopy 13.1a and design check HAL-11370 item X1; small wording and detail of an approved screen is a team decision, HAL-2282 rule)
 - Kind: user-visible
-- Signature: PENDING (approver signs)
 
 ## What changes
 
