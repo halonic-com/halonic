@@ -162,6 +162,8 @@ fn make_work_folder(parent: &Path) -> Result<Work, GitError> {
         EXPORTS.fetch_add(1, Ordering::SeqCst)
     );
     let folder = parent.join(name);
+    // Only Unix sets a mode.
+    #[cfg_attr(not(unix), allow(unused_mut))]
     let mut builder = fs::DirBuilder::new();
     #[cfg(unix)]
     {
