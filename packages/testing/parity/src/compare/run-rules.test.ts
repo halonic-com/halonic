@@ -104,4 +104,67 @@ verifies("parity.compare-run-logs", () => {
       approval: null,
     });
   });
+
+  it("sorts branch events by name on the new side too, when the engine starts them all first", () => {
+    const test = oneRun([
+      { type: "agent.started", branch: "vendor" },
+      { type: "agent.started", branch: "amount" },
+      { type: "llm.request", branch: "vendor" },
+      { type: "llm.request", branch: "amount" },
+    ]);
+    expect(types(rule("parallel-branches-by-name").new?.(test))).toEqual([
+      ["agent.started", "amount"],
+      ["llm.request", "amount"],
+      ["agent.started", "vendor"],
+      ["llm.request", "vendor"],
+    ]);
+  });
+
+  it("puts the fields of an old method prompt in name order and leaves other text", () => {
+    const line = (fields: string) =>
+      `Method "extract": Pull.\n\nAnswer with JSON with these fields: ${fields}.`;
+    const test = oneRun([
+      {
+        type: "agent.started",
+        prompt: line("vendor (string), amount (number), note (string, may be left out)"),
+      },
+      { type: "knowledge.searched", query: line("vendor (string), amount (number)") },
+      { type: "agent.started", prompt: "Vendor: Acme Paper" },
+    ]);
+    expect(rule("method-fields-by-name").old?.(test).runs[0]?.events).toEqual([
+      {
+        type: "agent.started",
+        prompt: line("amount (number), note (string, may be left out), vendor (string)"),
+      },
+      { type: "knowledge.searched", query: line("amount (number), vendor (string)") },
+      { type: "agent.started", prompt: "Vendor: Acme Paper" },
+    ]);
+  });
+
+  it("takes input tokens and cost out of the clerk's and notifier's calls only", () => {
+    const response = (agent: string, inputTokens: number) => ({
+      type: "llm.response",
+      agent,
+      usage: { inputTokens, outputTokens: 3 },
+      cost: 0.1,
+    });
+    const test = oneRun([response("clerk", 192), response("checker", 28)], {
+      id: "a",
+      usage: { inputTokens: 220, outputTokens: 6 },
+      cost: 0.2,
+      unpricedCalls: 1,
+    });
+    const ruled = rule("system-message-figures").old?.(test).runs[0];
+    expect(ruled?.events).toEqual([
+      { type: "llm.response", agent: "clerk", usage: { outputTokens: 3 } },
+      response("checker", 28),
+    ]);
+    expect(ruled?.summary).toEqual({ id: "a", usage: { outputTokens: 6 } });
+    const without = oneRun([response("checker", 28)], {
+      id: "a",
+      usage: { inputTokens: 28 },
+      cost: 0.1,
+    });
+    expect(rule("system-message-figures").new?.(without)).toEqual(without);
+  });
 });
