@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { type ItemViewProps, limitedLookup } from "@halonicjs/studio-shell";
+import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { requestConnectorTitleFocus } from "../connector-focus-request.ts";
@@ -81,33 +83,6 @@ describe("ConnectorPage", () => {
     );
   });
 
-  it("offers a quiet link to the file under the tools line of an every-tool connector (11.4)", async () => {
-    hostList.mockResolvedValueOnce([
-      {
-        id: "notes",
-        name: "Notes",
-        state: "connected",
-        connection: { kind: "http", url: "https://notes.acme.example/mcp", secrets: [] },
-        asks: "every-tool",
-      },
-    ]);
-    const openItem = vi.fn();
-    const page = props("notes");
-    const root = render(
-      <ConnectorPage {...page} context={{ ...page.context, openItem } as typeof page.context} />,
-    );
-    await settled();
-    const link = [...root.querySelectorAll("button")].find(
-      (each) => each.textContent === connectorToolsWords.changeInFile,
-    );
-    await act(async () => link?.click());
-    expect(openItem).toHaveBeenCalledWith({
-      kind: "file",
-      hub: "workspace",
-      id: expect.stringContaining("notes"),
-    });
-  });
-
   it("says nothing about asking first when the file doesn't say it", async () => {
     const root = render(<ConnectorPage {...props("notes")} />);
     await settled();
@@ -142,5 +117,89 @@ describe("ConnectorPage", () => {
     await settled();
     expect(root.textContent).toContain("connector");
     expect(root.textContent).not.toContain("Recent refusals");
+  });
+});
+
+const everyTool = {
+  id: "notes",
+  name: "Notes",
+  state: "connected",
+  connection: { kind: "http", url: "https://notes.acme.example/mcp", secrets: [] },
+  asks: "every-tool",
+} as const;
+
+function changeLink(root: HTMLElement) {
+  return [...root.querySelectorAll("button")].find(
+    (each) => each.textContent === connectorToolsWords.changeInFile,
+  );
+}
+
+verifies("library.connector-tools-line", () => {
+  it("offers a quiet link that opens the file under the tools line of an every-tool connector", async () => {
+    hostList.mockResolvedValueOnce([everyTool]);
+    const openItem = vi.fn();
+    const page = props("notes");
+    const root = render(
+      <ConnectorPage {...page} context={{ ...page.context, openItem } as typeof page.context} />,
+    );
+    await settled();
+    expect(root.textContent).toContain(connectorToolsWords.line);
+    await act(async () => changeLink(root)?.click());
+    expect(openItem).toHaveBeenCalledWith({
+      kind: "file",
+      hub: "workspace",
+      id: expect.stringContaining("notes"),
+    });
+  });
+
+  it("keeps the sentence but hides the link on a phone", async () => {
+    hostList.mockResolvedValueOnce([everyTool]);
+    const page = props("notes");
+    const root = render(
+      <PresentationProvider presentation="phone">
+        <ConnectorPage
+          {...page}
+          context={{ ...page.context, openItem: vi.fn() } as typeof page.context}
+        />
+      </PresentationProvider>,
+    );
+    await settled();
+    expect(root.textContent).toContain(connectorToolsWords.line);
+    expect(changeLink(root)).toBeUndefined();
+  });
+
+  it("shows no link for a connector that asks first for changes only", async () => {
+    hostList.mockResolvedValueOnce([
+      {
+        id: "notes",
+        name: "Notes",
+        state: "connected",
+        connection: { kind: "google", account: "fin@acme.example" },
+        asks: "changes",
+      },
+    ]);
+    const page = props("notes");
+    const root = render(
+      <ConnectorPage
+        {...page}
+        context={{ ...page.context, openItem: vi.fn() } as typeof page.context}
+      />,
+    );
+    await settled();
+    expect(root.textContent).toContain(asksFirstWords.changes);
+    expect(changeLink(root)).toBeUndefined();
+  });
+
+  it("shows neither sentence nor link when the file says nothing about asking first", async () => {
+    const page = props("notes");
+    const root = render(
+      <ConnectorPage
+        {...page}
+        context={{ ...page.context, openItem: vi.fn() } as typeof page.context}
+      />,
+    );
+    await settled();
+    expect(root.textContent).not.toContain(connectorToolsWords.line);
+    expect(changeLink(root)).toBeUndefined();
   });
 });
