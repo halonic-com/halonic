@@ -1,4 +1,6 @@
 import type { ToastStore } from "@halonicjs/studio-kit";
+import { copyDetailsWords } from "../errors/copy-details-words.ts";
+import { copyDetails } from "../page/copy-details.ts";
 import { type SaveFailure, type SaveReason, saveFailureFor } from "./save-failure.ts";
 
 /** Something that saves to the workspace folder: an agent, a workflow, a file. */
@@ -189,10 +191,20 @@ export class SaveState {
   }
 
   private fail(record: ItemRecord, failure: SaveFailure, retry: () => void): void {
+    const title = couldNotSaveText(record.item.title, failure.reason);
+    // A reason Halonic can't name keeps the error for Copy details, never on screen (F13).
+    const details = [title, failure.code, failure.detail].filter(Boolean).join("\n");
     const toastId = this.toasts.show({
       tone: "danger",
-      title: couldNotSaveText(record.item.title, failure.reason),
+      title,
       action: { label: "Try again", onClick: retry },
+      ...(failure.reason === "failed" && {
+        secondAction: {
+          label: copyDetailsWords.label,
+          keepOpen: true,
+          onClick: () => void copyDetails(details, this.toasts),
+        },
+      }),
     });
     record.failed = { retry, toastId };
   }

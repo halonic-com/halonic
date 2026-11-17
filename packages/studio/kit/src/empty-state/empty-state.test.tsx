@@ -173,9 +173,25 @@ verifies("kit.empty-state", () => {
     const second = <EmptyState tone="error" title="Couldn't load" secondaryAction={go} />;
     // @ts-expect-error Only a centred error has a link.
     const nothingLink = <EmptyState title="No runs yet" link={go} />;
-    // @ts-expect-error A section error has only Try again.
-    const sectionLink = <EmptyState tone="error" align="start" title="Couldn't load" link={go} />;
-    expect([start, icon, second, nothingLink, sectionLink]).toHaveLength(5);
+    expect([start, icon, second, nothingLink]).toHaveLength(4);
+  });
+
+  it("draws a section error's link as an inline link after Try again", async () => {
+    const onCopy = vi.fn();
+    const { container } = render(
+      <EmptyState
+        tone="error"
+        align="start"
+        title="Couldn't load recent runs"
+        action={{ label: "Try again", onClick: () => {} }}
+        link={{ label: "Copy details", onClick: onCopy }}
+      />,
+    );
+    const [tryAgain, copy] = container.querySelectorAll("button");
+    expect(tryAgain?.textContent).toBe("Try again");
+    expect(copy?.textContent).toBe("Copy details");
+    if (copy !== undefined) await click(copy);
+    expect(onCopy).toHaveBeenCalledTimes(1);
   });
 
   it("draws a centred error's link as an inline link after its button", async () => {
