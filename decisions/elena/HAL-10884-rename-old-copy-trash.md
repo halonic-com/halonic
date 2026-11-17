@@ -3,6 +3,7 @@
 - Approval: Liam approves this note when he signs it, after his review of this pull request, for HAL-10884, a
   follow-up of the review of HAL-10834 (#3112)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BiLMcq1tWkcFo9YP+W+eDmdcEWHYIa9TlUj6RxUoMoW8IYIPSpFCA6AQWc0Ahq2WERth73IQ/o5sZNdV/VD8Bw==
 
 ## What changes
 
