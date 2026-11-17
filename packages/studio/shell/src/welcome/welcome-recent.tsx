@@ -11,6 +11,9 @@ export interface WelcomeRecentWorkspace {
   readonly sample?: boolean | undefined;
 }
 
+/** What a screen reader hears while a row is busy: the same word as the Open folder button (microcopy 3.2). */
+export const openingStatus = "Opening…";
+
 /** The tag at the end of a sample's row: a fact, so an outline tag and not a tone chip (flow-first-run 2.1). */
 export const sampleTag = "Sample";
 
@@ -51,7 +54,7 @@ function MiddleCut({ text }: { readonly text: string }) {
  * The Welcome screen's Recent list (states-flow-map W2): the heading **Recent** and up to five
  * rows, each a button with the workspace's name over its folder, read "*Acme Support*,
  * *~/Documents/Acme Support*" (microcopy 19.6). One press opens it. The row whose folder is
- * opening is busy: a spinner at its end, `aria-busy`, and presses ignored. Hidden while nothing is
+ * opening is busy: a spinner at its end, `aria-busy`, presses ignored, and a polite "Opening…" status for screen readers. Hidden while nothing is
  * remembered, with no "No recent workspaces" sentence.
  *
  * @example
@@ -106,6 +109,9 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef, failed }: W
           );
         })}
       </ul>
+      <span role="status" aria-live="polite" className="sr-only">
+        {opening !== undefined && shown.some((workspace) => workspace.location === opening) ? openingStatus : ""}
+      </span>
     </section>
   );
 }
