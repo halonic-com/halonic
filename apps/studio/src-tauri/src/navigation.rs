@@ -56,11 +56,16 @@ pub fn guard<R: Runtime>() -> TauriPlugin<R> {
             match navigation_destination(&target(url), confirmed.as_ref()) {
                 Destination::Stay => true,
                 Destination::BackToConnect => {
-                    back_to_connect(webview);
+                    // The desktop has no connect screen: the Studio is
+                    // already showing, and loading it again would drop
+                    // what the user hasn't saved. The link only cancels.
+                    if cfg!(target_os = "android") {
+                        back_to_connect(webview);
+                    }
                     false
                 }
                 Destination::Browser => {
-                    // If no browser can open it, the tap does nothing.
+                    // If nothing can open it, the tap does nothing.
                     let _ = webview.opener().open_url(url.as_str(), None::<&str>);
                     false
                 }

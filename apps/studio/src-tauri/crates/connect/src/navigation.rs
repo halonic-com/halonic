@@ -41,16 +41,18 @@ pub enum Destination {
     /// Cancel it and open the connect screen with the address filled in:
     /// the served About page's Change address link, `halonic-app://connect`.
     BackToConnect,
-    /// Cancel it and open the link in the phone's browser.
+    /// Cancel it and hand the link to the system to open: the browser for a
+    /// web page, the mail or phone app for `mailto:` and `tel:`.
     Browser,
     /// Cancel it: `javascript:`, `file:`, `intent:` and anything else that
-    /// isn't a web page.
+    /// isn't a web page, an email address or a phone number.
     Nowhere,
 }
 
 /// Decides where a navigation goes. Only the app's own page and the
 /// address the last Connect confirmed stay in the window; any other web page
-/// opens in the browser.
+/// opens in the browser, and `mailto:` and `tel:` links open in the system's
+/// mail and phone apps.
 pub fn navigation_destination(
     target: &NavigationTarget,
     confirmed: Option<&Address>,
@@ -60,6 +62,9 @@ pub fn navigation_destination(
     }
     if is_app_page(target) {
         return Destination::Stay;
+    }
+    if target.scheme == "mailto" || target.scheme == "tel" {
+        return Destination::Browser;
     }
     if target.scheme != "http" && target.scheme != "https" {
         return Destination::Nowhere;
@@ -354,6 +359,28 @@ mod tests {
         };
         assert!(!may_stay(blob));
         assert!(!page_may_stay(&target("http", "192.168.1.20", 4280), None));
+    }
+
+    #[test]
+    fn navigation_guard_hands_email_and_phone_links_to_the_system() {
+        let laptop = confirmed("192.168.1.20:4280");
+        for scheme in ["mailto", "tel"] {
+            let link = NavigationTarget {
+                scheme,
+                host: None,
+                port: None,
+                path: "someone@example.com",
+                query: None,
+                fragment: None,
+            };
+            assert_eq!(
+                navigation_destination(&link, Some(&laptop)),
+                Destination::Browser,
+                "{scheme}"
+            );
+            // A page that loads this way isn't a page that may stay.
+            assert!(!page_may_stay(&link, Some(&laptop)), "{scheme}");
+        }
     }
 
     #[test]
