@@ -33,7 +33,7 @@ verifies("workflows.canvas.arrows", () => {
   it("draws only the branch the run took blue", async () => {
     const page = await show(<Arrows arrows={arrows} boxes={boxes} route={["start", "done"]} />);
     const [taken, notTaken, waiting] = colours(page);
-    expect(taken).toContain("text-accent");
+    expect(taken).toContain("text-accent-text");
     expect(taken).toContain("forced-colors:text-[Highlight]");
     expect(notTaken).toBe("text-fg-muted");
     expect(waiting).toBe("text-fg-muted");
