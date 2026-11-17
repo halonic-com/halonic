@@ -62,7 +62,7 @@ type Failure =
  * repository, each with its own field. **Add** stays pressable while the field is empty and says
  * what to enter. While it copies, the button is busy ("Getting halonic-weather…") and the fields
  * are unavailable. When it can't be added, a `danger` Callout says why and that nothing was
- * installed, and the button becomes **Try again**. When it's valid, `onAdded` runs, so the
+ * installed, with **Try again** beside it; the button keeps its name. When it's valid, `onAdded` runs, so the
  * trust check can open.
  *
  * @example
@@ -153,10 +153,11 @@ export function AddPluginDialog({ installer, onAdded, onOpen, onCancel }: AddPlu
       size="md"
       form
       confirm={{
-        label: failure === undefined ? ADD_PLUGIN : TRY_AGAIN,
+        label: ADD_PLUGIN,
         busyLabel: gettingLine(busyName ?? ""),
       }}
       busy={busy}
+      retryLabel={TRY_AGAIN}
       {...(failure?.kind === "line" ? { error: failure.text } : {})}
       onConfirm={() => void add()}
       onCancel={onCancel}
@@ -178,7 +179,7 @@ export function AddPluginDialog({ installer, onAdded, onOpen, onCancel }: AddPlu
         </Field>
         <p className="text-small text-fg-muted">{NOTE_LINE}</p>
         {failure === undefined || failure.kind === "line" ? null : (
-          <FailureCallout failure={failure} onOpen={onOpen} />
+          <FailureCallout failure={failure} onOpen={onOpen} onRetry={() => void add()} />
         )}
       </div>
     </Dialog>
@@ -188,9 +189,11 @@ export function AddPluginDialog({ installer, onAdded, onOpen, onCancel }: AddPlu
 function FailureCallout({
   failure,
   onOpen,
+  onRetry,
 }: {
   readonly failure: Exclude<Failure, { kind: "line" }>;
   readonly onOpen: (plugin: string) => void;
+  readonly onRetry: () => void;
 }) {
   const callout = useRef<CalloutHandle>(null);
   // A new failure takes focus, so a screen reader reads why nothing was installed.
@@ -213,7 +216,12 @@ function FailureCallout({
     );
   }
   return (
-    <Callout tone="danger" announce="focus" ref={callout}>
+    <Callout
+      tone="danger"
+      announce="focus"
+      ref={callout}
+      action={{ label: TRY_AGAIN, onClick: onRetry }}
+    >
       {failure.text}
       <ProblemList problems={failure.problems} />
     </Callout>
