@@ -20,7 +20,8 @@ export interface ResultDocument extends Readonly<Record<string, unknown>> {
  */
 export function resultDocument(result: CommandResult | StoppedResult): ResultDocument {
   const ok = !("stopped" in result) && result.exitCode === exitCode.ok;
-  return { outputVersion, ok, ...result.json };
+  const failure = "failure" in result ? result.failure : undefined;
+  return { outputVersion, ok, ...result.json, ...(failure === undefined ? {} : { error: failure }) };
 }
 
 /**

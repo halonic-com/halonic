@@ -12,6 +12,7 @@ import {
 } from "@halonicjs/app/listed-tools";
 import type {
   CommandContext,
+  CommandFailure,
   CommandInput,
   CommandResult,
   JsonFields,
@@ -19,7 +20,7 @@ import type {
 } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
 import { columns } from "../../messages/columns.ts";
-import { dimmed, markPart, type Phrase, phrase } from "../../messages/phrase.ts";
+import { dimmed, markPart, type Phrase, phrase, plainText } from "../../messages/phrase.ts";
 import { toolsMessages } from "../../messages/tools.ts";
 import { printable } from "../../output/printable.ts";
 import { toolBlock } from "./blocks.ts";
@@ -78,6 +79,7 @@ export async function reviewTools(
       lines: shown.lines,
       json,
       warnings: noTerminalLines(review.toReview.length, source),
+      failure: noTerminalFailure(review.toReview.length, source),
     };
   }
   return done([...shown.lines, [], lastLine(review, source, asked.approved)], json);
@@ -111,7 +113,7 @@ interface Asking {
 
 /** What the person answered. */
 interface Asked {
-  /** The tools approved, by their printable names, in the order asked. */
+  /** The tools approved, by the names their server gave, in the order asked. */
   readonly approved: string[];
   /** `false` when nobody could be asked: the blocks were shown without questions. */
   readonly couldAsk: boolean;
@@ -141,7 +143,7 @@ async function askEachTool(toReview: readonly ReviewedTool[], asking: Asking): P
       couldAsk = false;
     } else if (answer) {
       await approveWaitingTool(check, reviewed.waiting, machine.approvals, machine.clock);
-      approved.push(printable(reviewed.waiting.listedName));
+      approved.push(reviewed.waiting.listedName);
     }
   }
   return { approved, couldAsk, stopped: false };
@@ -225,8 +227,9 @@ function outcomeLine(
     return phrase`${markPart("done")} ${toolsMessages.nothingWaiting(source.shown).phrase}`;
   }
   const off = review.toReview
-    .map((reviewed) => printable(reviewed.waiting.listedName))
-    .filter((name) => !approved.includes(name));
+    .map((reviewed) => reviewed.waiting.listedName)
+    .filter((name) => !approved.includes(name))
+    .map(printable);
   if (approved.length === 0) {
     return phrase`${markPart("needsYou")} ${toolsMessages.approvedNothing(source.shown, off).phrase}`;
   }
@@ -246,6 +249,16 @@ function noTerminalLines(waiting: number, source: ToolSource): Phrase[] {
   ];
 }
 
+/** The same two sentences as the `error` of `--json`, which a script reads in place of the warning. */
+function noTerminalFailure(waiting: number, source: ToolSource): CommandFailure {
+  const command = toolsCommand("approve", source, "<tool> --fingerprint <fingerprint>");
+  return {
+    kind: "conflict",
+    message: plainText(toolsMessages.noTerminal(waiting, source.shown).phrase),
+    fix: plainText(toolsMessages.noTerminalFix(command).phrase),
+  };
+}
+
 /** Ctrl C during a question (N8): the tools answered yes before it stay approved, and that's said. */
 function stoppedAfter(
   source: ToolSource,
@@ -257,7 +270,7 @@ function stoppedAfter(
   }
   return {
     stopped: true,
-    meaning: toolsMessages.stoppedAfter(source.shown, approved).phrase,
+    meaning: toolsMessages.stoppedAfter(source.shown, approved.map(printable)).phrase,
     json: { ...json, approved },
   };
 }

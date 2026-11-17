@@ -21,6 +21,19 @@ verifies("cli.commands.tools.review", () => {
     expect(kit.notes().servers.running).toBe(0);
   });
 
+  it("gives --json an error of kind conflict with the sentence and the command when tools stay off", async () => {
+    const { code, stdout } = await kit.tools(["review", "notes-mcp", "--json"]);
+
+    expect(code).toBe(exitCode.failed);
+    const document = JSON.parse(stdout.join("\n"));
+    expect(document.ok).toBe(false);
+    expect(document.error).toEqual({
+      kind: "conflict",
+      message: "2 tools from notes-mcp stay off: there's no terminal to ask you.",
+      fix: expect.stringContaining("approve notes-mcp <tool> --fingerprint <fingerprint>"),
+    });
+  });
+
   it("asks about each waiting tool and approves the fingerprint shown above the question", async () => {
     const before = await kit.reviewJson();
     const { terminal, written } = terminalTyping("n", "y");

@@ -115,6 +115,11 @@ stdout:
         "refused": "tool",
         "reason": "its name breaks the name rule"
       }
-    ]
+    ],
+    "error": {
+      "kind": "conflict",
+      "message": "2 tools from notes-mcp stay off: there's no terminal to ask you.",
+      "fix": "Approve the ones you've read: halonic tools approve notes-mcp <tool> --fingerprint <fingerprint>"
+    }
   }
 stderr:

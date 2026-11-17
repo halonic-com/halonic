@@ -46,6 +46,11 @@ stdout:
         "changes": []
       }
     ],
-    "refused": []
+    "refused": [],
+    "error": {
+      "kind": "conflict",
+      "message": "1 tool from notes-mcp stays off: there's no terminal to ask you.",
+      "fix": "Approve the ones you've read: halonic tools approve notes-mcp <tool> --fingerprint <fingerprint>"
+    }
   }
 stderr:
