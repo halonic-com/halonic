@@ -10,6 +10,7 @@ import {
   compareTexts,
 } from "./workspace-compare.ts";
 import { planRename } from "./workspace-rename.ts";
+import { saveOrder } from "./workspace-save-order.ts";
 import { ChangedOnDiskError, type HeldFile, rebase, type SavedFile } from "./workspace-saved.ts";
 import type { AppEvents } from "./workspace-scope.ts";
 
@@ -20,23 +21,6 @@ export { ChangedOnDiskError, type HeldFile } from "./workspace-saved.ts";
  * file to delete. Never changed in place, so an undo step can keep one.
  */
 export type PendingChanges = Readonly<Record<string, string | null>>;
-
-/**
- * Puts a delete before the write of a path that differs from it only in case.
- * On a disk that ignores case both are one file, so writing first and
- * deleting after would delete the new text.
- */
-function deletesFirstOnSameName(entries: [string, string | null][]): [string, string | null][] {
-  const written = new Set(
-    entries.filter(([, text]) => text !== null).map(([p]) => p.toLowerCase()),
-  );
-  const first = (path: string, text: string | null) =>
-    text === null && written.has(path.toLowerCase());
-  return [
-    ...entries.filter(([path, text]) => first(path, text)),
-    ...entries.filter(([path, text]) => !first(path, text)),
-  ];
-}
 
 /** Options for {@link WorkspaceFiles.change}. */
 export interface ChangeOptions {
@@ -168,7 +152,9 @@ export class WorkspaceFiles {
    * Renames a file as one undo step: its text moves to the new path, the old
    * path is deleted when saved and `rewrites` change the files that name it.
    * The old file does not go to the trash, because its text lives on at the
-   * new path; Git sees the rename from the identical text.
+   * new path; Git sees the rename from the identical text. When the new file's
+   * write is held, because it changed outside Halonic, the old file does go to
+   * the trash, as the save writes the new file first.
    *
    * @param rewrites - new text by path for other files that name the old path; one for `from` is the text the new file gets
    * A rename that only changes the case of the name, such as `a.yaml` to `A.yaml`, is allowed on a disk that
@@ -273,7 +259,7 @@ export class WorkspaceFiles {
   }
 
   private async saveOnce(): Promise<number> {
-    const saving = deletesFirstOnSameName(Object.entries(this.changes));
+    const saving = saveOrder(Object.entries(this.changes), this.moves);
     if (saving.length === 0) {
       return 0;
     }
@@ -286,7 +272,7 @@ export class WorkspaceFiles {
         const expected = await this.expectedFor(path, before);
         const result =
           text === null
-            ? await this.delete(path, before, expected, this.isMoved(path, saving))
+            ? await this.delete(path, before, expected, this.isMoved(path, saving, held))
             : await this.store.write(path, text, { expected });
         if (result.status === "changed-on-disk") {
           // `known` stays: another save must not overwrite the outside text. Only a fresh read moves it.
@@ -450,11 +436,21 @@ export class WorkspaceFiles {
     }
   }
 
-  /** Whether the delete of this path is half of a rename whose new file is saved in the same go with the text the rename gave it. */
-  private isMoved(path: string, saving: readonly [string, string | null][]): boolean {
+  /**
+   * Whether the delete of this path is half of a rename whose new file is saved in the same go with the
+   * text the rename gave it. A new file that was held is not saved, so the old file goes to the trash:
+   * its text would otherwise live only as an unsaved change.
+   */
+  private isMoved(
+    path: string,
+    saving: readonly [string, string | null][],
+    held: readonly HeldFile[],
+  ): boolean {
     const move = this.moves.get(path);
     return (
-      move !== undefined && saving.some(([each, text]) => each === move.to && text === move.text)
+      move !== undefined &&
+      !held.some((file) => file.path === move.to) &&
+      saving.some(([each, text]) => each === move.to && text === move.text)
     );
   }
 
