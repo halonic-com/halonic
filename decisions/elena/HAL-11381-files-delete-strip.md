@@ -3,6 +3,7 @@
 - Task: HAL-11381
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11370 (design check item F1 against the approved files flow 8.8 and microcopy 7; a team decision with no board card, HAL-2282 rule, because it builds on the approved screens)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:G+WRWxEzyaqMECSWGGhA1ShJpywo+KKYtcYfTQFBO5Xb5fS4EmgTyTiB8SgVDrNlEba1mnzpWOKDgTrTw0nIDQ==
 
 ## What changes
 
