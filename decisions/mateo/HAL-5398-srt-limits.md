@@ -2,6 +2,7 @@
 
 - Approval: HAL-5398 (https://paperclip.halonic.com/HAL/issues/HAL-5398), approved by the board; the package owner (Liam) signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0Lu9SRWp0HAozDjIaVUGnErFPBzBMPWKd4mIuNOPO3sPDxdR99egTDXSTfGLwXJf1KRtRTt89cpj4P9BiRcLCw==
 - Task: HAL-5398
 
 ## What changes
