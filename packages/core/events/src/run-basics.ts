@@ -204,7 +204,7 @@ export type ToolVerb = "sent" | "saved" | "created" | "updated" | "moved" | "dra
  * - `disk-full`: there was no disk space left to write what the run needed.
  * - `interrupted`: the engine stopped while the run was going, and found it on its next start.
  * - `sandbox-not-ready`: the sandbox check failed, so the step that needs the sandbox didn't
- *   start; `run.failed` gives the check's reason code in `sandboxReason`.
+ *   start; `run.failed` gives the check's reason code in `sandboxReason` and the refused agent in `agent`.
  * - `sandbox-start-failed`: the sandbox check had passed, but the sandbox didn't start for this run.
  * - `harness-start-failed`: the harness program failed to start for this run, or didn't send its
  *   first event within its time limit (60 s by default).

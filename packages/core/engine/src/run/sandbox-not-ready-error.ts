@@ -13,6 +13,8 @@ export class SandboxNotReadyError extends Error {
   override readonly name = "SandboxNotReadyError";
   /** The `Sandbox` port's reason code, such as `bubblewrap-missing`. */
   readonly sandboxReason: string;
+  /** The id of the agent that didn't start, so `run.failed` names it even when several agents start in parallel. */
+  readonly agent: string;
 
   /**
    * @param sandboxReason - why the sandbox can't start, as `SandboxCheck.reason` gave it
@@ -23,5 +25,6 @@ export class SandboxNotReadyError extends Error {
       `The sandbox can't start on this computer (${sandboxReason}), so agent "${agent}" didn't start. Halonic never runs it without one.`,
     );
     this.sandboxReason = sandboxReason;
+    this.agent = agent;
   }
 }

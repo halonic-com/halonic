@@ -96,6 +96,7 @@ verifies("engine.run-failure-reason-of", () => {
     expect(runFailureReasonOf(new SandboxNotReadyError("bubblewrap-missing", "writer"))).toEqual({
       reason: "sandbox-not-ready",
       sandboxReason: "bubblewrap-missing",
+      agent: "writer",
     });
   });
 
