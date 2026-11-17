@@ -3,6 +3,7 @@
 - Task: HAL-11881
 - Approval: Liam approves this note in review of PR #3403
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xbSu6cMPxb1jaSYAb364ON7sgN1ZaOcnmVqPmXomsVw8wEPRkWdpHoCf+NP04LfF9R9D8kRog2TCvHJUCUpfBg==
 
 ## What changes
 
