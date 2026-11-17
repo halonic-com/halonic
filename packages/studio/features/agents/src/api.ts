@@ -21,6 +21,20 @@ export interface AgentListing extends AgentRef {
   readonly model?: string | undefined;
 }
 
+/** What the Configuration pages show of an agent. */
+export interface AgentSettings extends AgentListing {
+  /** What the agent is told to do; empty before anyone writes it. */
+  readonly instructions: string;
+}
+
+/** A change to an agent's settings; a field left out stays as it is. */
+export interface AgentChange {
+  /** The new display name. The id stays, and no other file changes. */
+  readonly name?: string | undefined;
+  readonly description?: string | undefined;
+  readonly instructions?: string | undefined;
+}
+
 /** A hub a new agent can go in. */
 export interface AgentHub {
   readonly id: string;
@@ -53,6 +67,14 @@ export interface AgentsHost {
   list(): Promise<readonly AgentListing[]>;
   /** One agent's row. Rejects with the reason it couldn't be read, or with `not_found` when it isn't there. */
   read(ref: AgentRef): Promise<AgentListing>;
+  /** One agent's settings. Rejects like {@link AgentsHost.read}. */
+  settings(ref: AgentRef): Promise<AgentSettings>;
+  /**
+   * Saves a change to an agent's file and keeps every comment and line of it that the change
+   * doesn't touch. Typing in one field is one undo step. Rejects with `not_found` when the agent
+   * isn't there, with `invalid_input` when the name is empty, and with the reason it couldn't write.
+   */
+  update(ref: AgentRef, change: AgentChange): Promise<void>;
   /**
    * The name of an agent the host has read or made, for a tab or a page title, or `undefined`
    * before it has read it. Sync, because a tab is named the moment it opens.

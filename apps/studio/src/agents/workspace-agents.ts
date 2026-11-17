@@ -1,14 +1,17 @@
 import type { DefinitionSource } from "@halonicjs/ports";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import type {
+  AgentChange,
   AgentHub,
   AgentListing,
   AgentRef,
+  AgentSettings,
   AgentsHost,
   AgentUser,
   NewAgent,
 } from "@halonicjs/studio-feature-agents/api";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
+import { editYaml, type YamlEdit } from "@halonicjs/yaml";
 
 /** What {@link WorkspaceAgents} needs of the workspace's files. */
 export interface WorkspaceAgentsParts {
@@ -16,7 +19,11 @@ export interface WorkspaceAgentsParts {
   readonly files: {
     read(path: string): Promise<string | null>;
     list(dir: string): Promise<string[]>;
-    change(label: string, changes: Record<string, string | null>): void;
+    change(
+      label: string,
+      changes: Record<string, string | null>,
+      options?: { coalesceKey?: string },
+    ): void;
   };
   /** Calls `listener` after every change of the workspace's files; returns the way to stop. */
   readonly onChange: (listener: () => void) => () => void;
@@ -83,6 +90,53 @@ export class WorkspaceAgents implements AgentsHost {
     const listing = listingOf(hubId, file.value);
     this.#names.set(`${hubId}/${id}`, listing.name);
     return listing;
+  }
+
+  /** One agent's settings, from its file with unsaved changes applied; throws `not_found` when it isn't there. */
+  async settings(ref: AgentRef): Promise<AgentSettings> {
+    const { agent } = await this.#find(ref);
+    return { ...listingOf(ref.hubId, agent), instructions: agent.instructions };
+  }
+
+  /**
+   * Edits the agent's file in place, so comments and the order of its keys stay, as one undoable
+   * change. Typing in one field coalesces into one step.
+   */
+  async update(ref: AgentRef, change: AgentChange): Promise<void> {
+    if (change.name !== undefined && change.name.trim() === "") {
+      throw new KindedError("invalid_input", "An agent needs a name.");
+    }
+    const { path } = await this.#find(ref);
+    const text = await this.#parts.files.read(path);
+    if (text === null) throw agentGone();
+    const edits: YamlEdit[] = [];
+    for (const field of ["name", "description", "instructions"] as const) {
+      const value = change[field];
+      if (value !== undefined) edits.push({ kind: "set", path: [field], value });
+    }
+    const edited = editYaml(text, edits);
+    if (!edited.ok) {
+      throw new KindedError(
+        "invalid_input",
+        "This agent's file couldn't be changed as it is written.",
+      );
+    }
+    const fields = edits.map((edit) => edit.path[0]).join(",");
+    this.#parts.files.change(
+      `Changed agent ${change.name ?? ref.id}`,
+      { [path]: edited.value.text },
+      { coalesceKey: `agent:${path}:${fields}` },
+    );
+    if (change.name !== undefined) this.#names.set(`${ref.hubId}/${ref.id}`, change.name);
+  }
+
+  async #find({ hubId, id }: AgentRef) {
+    const workspace = await this.#load();
+    const file = filesOf(workspace, "agent").find(
+      (one) => one.hub === hubId && one.value.id === id,
+    );
+    if (file === undefined) throw agentGone();
+    return { agent: file.value, path: file.path };
   }
 
   /** The workflows of the agent's hub that run it in a step; throws `not_found` when the agent isn't there. */

@@ -105,5 +105,35 @@ verifies("studio.workspace-agents", () => {
       await host.create({ name: "Two", hubId: "acme" });
       expect(heard).toBe(1);
     });
+
+    it("edits an agent's file in place as one coalescing change and keeps its comments", async () => {
+      const { host, store, changes } = setup();
+      store["hubs/acme/agents/writer.agent.yaml"] =
+        "# The reply writer\nid: writer\nname: Writer # shown in lists\nmodel: fast\n";
+      const ref = { hubId: "acme", id: "writer" };
+      await host.update(ref, { instructions: "Be brief.", name: "Reply writer" });
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toContain("# The reply writer");
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toContain("# shown in lists");
+      expect(await host.settings(ref)).toMatchObject({
+        name: "Reply writer",
+        instructions: "Be brief.",
+        model: "fast",
+      });
+      expect(changes).toHaveLength(1);
+      expect(host.nameOf(ref)).toBe("Reply writer");
+    });
+
+    it("refuses an empty name and an agent that isn't there, and writes nothing", async () => {
+      const { host, changes } = setup();
+      await expect(
+        host.update({ hubId: "acme", id: "writer" }, { name: "" }),
+      ).rejects.toMatchObject({ kind: "invalid_input" });
+      await expect(host.update({ hubId: "acme", id: "gone" }, { name: "X" })).rejects.toMatchObject(
+        {
+          kind: "not_found",
+        },
+      );
+      expect(changes).toEqual([]);
+    });
   });
 });
