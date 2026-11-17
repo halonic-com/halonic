@@ -46,6 +46,14 @@ export const pluginsFeature = defineFeature({
         return pluginPanelCommandSource(feed, (item) => context.openItem?.(item)).commands();
       },
     });
+    studio.settings.add({
+      id: "plugins",
+      title: "Plugins",
+      scope: "host",
+      order: 60,
+      view: "PluginsSettingsSection",
+      load: () => import("./list/plugins-settings-section.tsx"),
+    });
     studio.dialogs.add({
       id: "plugins.command-dialog",
       order: 10,

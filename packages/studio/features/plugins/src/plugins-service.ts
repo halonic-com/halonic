@@ -1,7 +1,9 @@
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import type { PluginInstaller } from "./add/plugin-installer.ts";
 import type { PluginToolCaller } from "./commands/plugin-command-dialog.tsx";
 import { PluginCommandOpener } from "./commands/plugin-command-source.ts";
 import { timedToolCaller } from "./commands/tool-call-timeout.ts";
+import type { BuiltInPlugin } from "./list/plugins-list.tsx";
 import type { PluginActions } from "./page/plugin-actions.ts";
 import {
   type InstalledPluginFeed,
@@ -30,6 +32,10 @@ export interface PluginsHost {
   readonly actions: PluginActions;
   /** `served` when the app is open in a browser the Studio serves; the page is then view only. */
   readonly place?: "app" | "served";
+  /** Adds a plugin from a folder or a git repository; without it, Settings has no Add plugin. */
+  readonly installer?: PluginInstaller;
+  /** The plugins that come with Halonic, listed under "Built in". */
+  readonly builtIn?: readonly BuiltInPlugin[];
 }
 
 /**
@@ -44,6 +50,8 @@ export interface StudioPlugins {
   readonly secrets: PluginSecretStore;
   readonly actions: PluginActions;
   readonly place?: "app" | "served";
+  readonly installer?: PluginInstaller;
+  readonly builtIn?: readonly BuiltInPlugin[];
 }
 
 /** The plugins of a workspace, built from what the app gives. */
@@ -56,6 +64,8 @@ export function studioPlugins(host: PluginsHost): StudioPlugins {
     secrets: host.secrets,
     actions: host.actions,
     ...(host.place === undefined ? {} : { place: host.place }),
+    ...(host.installer === undefined ? {} : { installer: host.installer }),
+    ...(host.builtIn === undefined ? {} : { builtIn: host.builtIn }),
   };
 }
 
