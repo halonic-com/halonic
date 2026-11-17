@@ -277,6 +277,15 @@ jobs:
               --allowed-phrases "$guard/tooling/check/terms-allowed-phrases.txt" \
               --allow-file "$guard/tooling/check/leak-allow.txt" \
               --range "$BASE..$HEAD"
+            # The merge queue also scans the whole tree that would land, as the
+            # push to main does. A range scan sees only the lines a change adds,
+            # so a term already in the tree (from before the terms were
+            # checked, or after the list grew) would first fail on main.
+            if [ "$EVENT" = "merge_group" ]; then
+              node "$guard/tooling/check/src/cli/leaks.ts" \
+                --allowed-phrases "$guard/tooling/check/terms-allowed-phrases.txt" \
+                --allow-file "$guard/tooling/check/leak-allow.txt"
+            fi
           fi
 
   coverage-floors:

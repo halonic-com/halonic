@@ -3923,7 +3923,6 @@ raholt.no
 xn--rholt-mra.no
 sandnessjoen.no
 xn--sandnessjen-ogb.no
-skedsmokorset.no
 slattum.no
 spjelkavik.no
 stathelle.no
