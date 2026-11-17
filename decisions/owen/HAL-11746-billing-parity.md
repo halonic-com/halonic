@@ -3,6 +3,7 @@
 - Task: HAL-11746, found on halonic#3315 (HAL-11621)
 - Approval: HAL-11746 asks for each difference to be fixed or allowed; Liam reviews the change and signs this note on HAL-11746
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ht/ZYnMskjZ7LyefgAPzX//NSBlRWrdO2Kb1akfejSmYPusvx6gysDy8tK6AZWRoPd2uoYHe6MqqCuabMpSRDw==
 
 ## What changes
 
