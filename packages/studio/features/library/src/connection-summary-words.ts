@@ -1,4 +1,5 @@
 import type { ConnectorConnection } from "./connector-status-host.ts";
+import { newConnectorWords } from "./new-connector-words.ts";
 
 /** The words of the connector page's "How it connects" section: flow-library 5.4 and microcopy 11.2. */
 export const connectionSummaryWords = {
@@ -6,9 +7,9 @@ export const connectionSummaryWords = {
   transport: "Transport",
   /** The transport's name, as the New connector dialog words its ways. */
   transports: {
-    google: "Gmail and Google Drive (built in)",
-    http: "MCP over HTTP",
-    stdio: "Local program (stdio)",
+    google: newConnectorWords.ways.google,
+    http: newConnectorWords.ways.http,
+    stdio: newConnectorWords.ways.stdio,
     integration: "Local integration",
     plugin: "Plugin",
   } satisfies Record<ConnectorConnection["kind"], string>,
@@ -18,8 +19,10 @@ export const connectionSummaryWords = {
     http: "URL",
     stdio: "Command",
     integration: "Folder",
-    plugin: "Plugin",
-  } satisfies Record<ConnectorConnection["kind"], string>,
+    /** A plugin's row: its display name, or its id when it has no name. */
+    pluginName: "Name",
+    pluginId: "ID",
+  },
   secrets: "Secrets",
   noSecrets: "none",
 } as const;

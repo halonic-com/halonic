@@ -134,6 +134,34 @@ verifies("inbox.secret-hold", () => {
       expect(buttonNamed("Go to the secret field")).toBeDefined();
     });
 
+    it("offers Open New connector, with the Library line, when no account waits", async () => {
+      const gone: string[] = [];
+      function Host() {
+        const [note, setNote] = useState("");
+        return (
+          <AskForChangesDialog
+            note={note}
+            onNoteChange={setNote}
+            busy={false}
+            error={undefined}
+            onSend={() => {}}
+            onGoToSecret={(text) => gone.push(text)}
+            secretPlace="connectors"
+            onCancel={() => {}}
+          />
+        );
+      }
+      render(<Host />);
+      await type(googleSecret);
+      await click("Send note");
+      expect(document.querySelector("dialog")?.textContent).toContain(
+        "Add the secret to a connector in the Library instead.",
+      );
+      expect(buttonNamed("Go to the secret field")).toBeUndefined();
+      await click("Open New connector");
+      expect(gone).toEqual([googleSecret]);
+    });
+
     it("has no Go to the secret field without a place to go to", async () => {
       openDialog();
       await type(googleSecret);

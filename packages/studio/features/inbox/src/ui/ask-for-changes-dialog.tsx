@@ -29,6 +29,8 @@ export interface AskForChangesDialogProps {
    * the line still says where the secret belongs.
    */
   readonly onGoToSecret?: (note: string) => void;
+  /** Where **Go to the secret field** goes: an account's setup (the default), or **Open New connector** in the Library when no account waits. */
+  readonly secretPlace?: "setup" | "connectors";
   /** Sends the note; only called with text in it. */
   readonly onSend: (note: string) => void;
   /** Cancel, the ✕ and Escape. Focus goes back to **Ask for changes**. */
@@ -44,10 +46,11 @@ export interface AskForChangesDialogProps {
  * A note that looks like a secret is held, because the run log keeps it: the field shows why and
  * keeps its text and focus, and **Send anyway** sends it as typed. The line never repeats the text.
  * For a Google client secret, **Go to the secret field** takes you to the setup's field with the
- * note kept in memory, so the secret can be cut from it (UX checklist U13, U14).
+ * note kept in memory, so the secret can be cut from it (UX checklist U13, U14); with no account
+ * waiting, **Open New connector** does the same for the Library's dialog.
  */
 export function AskForChangesDialog(props: AskForChangesDialogProps) {
-  const { note, busy } = props;
+  const { note, busy, secretPlace = "setup" } = props;
   const field = useRef<HTMLTextAreaElement>(null);
   const [empty, setEmpty] = useState(false);
   const [held, setHeld] = useState<{ readonly line: string; readonly shape: SecretShape } | null>(
@@ -62,7 +65,7 @@ export function AskForChangesDialog(props: AskForChangesDialogProps) {
       field.current?.focus();
       return;
     }
-    const hold = secretHold(note, { phone });
+    const hold = secretHold(note, { phone, place: secretPlace });
     if (hold !== undefined) {
       setHeld(hold);
       field.current?.focus();
@@ -102,7 +105,7 @@ export function AskForChangesDialog(props: AskForChangesDialogProps) {
         <div className="mt-3 flex flex-wrap gap-2">
           {held.shape === "google-client-secret" && !phone && props.onGoToSecret !== undefined ? (
             <Button variant="primary" onClick={() => props.onGoToSecret?.(note)}>
-              Go to the secret field
+              {secretPlace === "connectors" ? "Open New connector" : "Go to the secret field"}
             </Button>
           ) : null}
           <Button variant="secondary" onClick={() => props.onSend(note)}>

@@ -20,7 +20,7 @@ verifies("library.connection-summary", () => {
     expect(
       rowsOf({ kind: "http", url: "https://search.acme.example/mcp", secrets: ["search-token"] }),
     ).toEqual([
-      "Transport: MCP over HTTP",
+      "Transport: MCP server over HTTP",
       "URL: https://search.acme.example/mcp",
       "Secrets: search-token",
     ]);
@@ -55,7 +55,11 @@ verifies("library.connection-summary", () => {
     ]);
     expect(rowsOf({ kind: "plugin", id: "acme-notes" })).toEqual([
       "Transport: Plugin",
-      "Plugin: acme-notes",
+      "ID: acme-notes",
+    ]);
+    expect(rowsOf({ kind: "plugin", id: "acme-notes", name: "Acme Notes" })).toEqual([
+      "Transport: Plugin",
+      "Name: Acme Notes",
     ]);
   });
 

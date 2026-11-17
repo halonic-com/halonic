@@ -7,6 +7,15 @@ const googleSecret = `GOCSPX-${"aB3".repeat(8)}`;
 const providerKey = `sk-proj-${"Xy7".repeat(8)}`;
 
 verifies("inbox.secret-hold", () => {
+  it("sends a Google client secret to a connector in the Library when no account waits", () => {
+    expect(secretHold(googleSecret, { place: "connectors" })?.line).toBe(
+      "This looks like a Google client secret. Messages are kept in the run log. Add the secret to a connector in the Library instead.",
+    );
+    expect(secretHold(googleSecret, { place: "connectors", phone: true })?.line).toBe(
+      "This looks like a Google client secret. Messages are kept in the run log. Add the secret to a connector in the Library on your computer instead.",
+    );
+  });
+
   it("names a Google client secret and points to the secret field of the Google setup", () => {
     const hold = secretHold(`here it is: ${googleSecret}`);
     expect(hold?.shape).toBe("google-client-secret");

@@ -128,7 +128,8 @@ verifies("inbox.secret-hold", () => {
     const openNewConnector = vi.fn();
     const root = await openInbox({ accounts: false, openNewConnector });
     const dialog = await holdSecret(root);
-    await press(buttonNamed(dialog, "Go to the secret field"));
+    expect(dialog.textContent).toContain("Add the secret to a connector in the Library instead.");
+    await press(buttonNamed(dialog, "Open New connector"));
     expect(openNewConnector).toHaveBeenCalledOnce();
   });
 

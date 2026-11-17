@@ -42,6 +42,8 @@ export interface ApprovalCardProps {
   readonly initialNote?: string | undefined;
   /** **Go to the secret field** in the note dialog: given the note to keep; without it the button isn't offered. */
   readonly onGoToSecret?: ((note: string) => void) | undefined;
+  /** Where that button goes; with no account waiting it is the Library's New connector. */
+  readonly secretPlace?: "setup" | "connectors" | undefined;
 }
 
 type Decision = "approve" | "reject";
@@ -191,6 +193,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
           command={form.manual?.command}
           onSend={sendNote}
           {...(props.onGoToSecret === undefined ? {} : { onGoToSecret: props.onGoToSecret })}
+          {...(props.secretPlace === undefined ? {} : { secretPlace: props.secretPlace })}
           onCancel={() => setForm({ open: false, busy: false, failed: false, manual: null })}
         />
       ) : null}

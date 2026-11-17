@@ -101,18 +101,25 @@ verifies("library.status-section", () => {
       ]);
     });
 
-    it("leaves the tools that wait for approval to the page's count line", async () => {
+    it("shows the tools that wait for approval as plain lines under Refused, and no group when none waits", async () => {
       const waiting = [
         { source: "notes", name: "lookup" },
-        { source: "notes", name: "send" },
+        { source: "notes", name: "<b>send</b>" },
       ];
       const { host } = fakeHost({ connectors: [notes], refusals: [refusal(1)], waiting });
       const { root } = await openSection(host);
       const headings = [...root.querySelectorAll("h2")].map((heading) => heading.textContent);
-      expect(headings).toEqual(["Recent refusals"]);
-      expect(root.textContent).not.toContain("waits for your approval");
-      expect(root.textContent).not.toContain("Waiting for approval");
-      expect(root.querySelectorAll("ul")).toHaveLength(1);
+      expect(headings).toEqual(["Recent refusals", "Waiting for approval"]);
+      const group = root.querySelectorAll("ul")[1];
+      expect([...(group?.querySelectorAll("li") ?? [])].map((item) => item.textContent)).toEqual([
+        '"lookup" stays off until you approve it.',
+        '"<b>send</b>" stays off until you approve it.',
+      ]);
+      expect(group?.querySelector("b")).toBeNull();
+
+      const none = fakeHost({ connectors: [notes], refusals: [refusal(1)] });
+      const quiet = await openSection(none.host);
+      expect(quiet.root.textContent).not.toContain("Waiting for approval");
     });
 
     it("shows the time of each refusal", async () => {
