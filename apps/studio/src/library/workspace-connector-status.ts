@@ -6,6 +6,7 @@ import {
   type GoogleSetupAccounts,
 } from "@halonicjs/studio-feature-google-setup/api";
 import type {
+  ConnectorAsks,
   ConnectorConnection,
   ConnectorStatus,
   ConnectorStatusHost,
@@ -14,6 +15,7 @@ import type {
 } from "@halonicjs/studio-feature-library/api";
 import { type ConnectionState, connectionStateOf } from "@halonicjs/studio-feature-library/api";
 import { filesOf, loadWorkspace, placeOf } from "@halonicjs/workspace";
+import { googleAskFirst } from "./workspace-new-connector.ts";
 
 /** What {@link WorkspaceConnectorStatus} reads. */
 export interface WorkspaceConnectorStatusOptions {
@@ -63,6 +65,23 @@ function connectionOf({ transport, secret }: Connector): ConnectorConnection {
   return { kind: "plugin", id: transport.plugin.id };
 }
 
+/** Whether the list names exactly the tools a new Google connector asks first about, in any order. */
+function isGoogleAskFirst(approve: readonly string[]): boolean {
+  const listed = new Set(approve);
+  return listed.size === googleAskFirst.length && googleAskFirst.every((tool) => listed.has(tool));
+}
+
+/**
+ * What the file says about asking first, in the two ways the New connector dialog writes it. A
+ * list that differs from the dialog's, even by one tool, says nothing: the page never says more
+ * than the file does.
+ */
+function asksOf({ transport, tools }: Connector): ConnectorAsks | undefined {
+  if (tools.approve === "all") return "every-tool";
+  if ("google" in transport && isGoogleAskFirst(tools.approve)) return "changes";
+  return undefined;
+}
+
 /**
  * The connectors of one open workspace as the Library's status view reads them
  * (requirement `studio.workspace-connector-status`).
@@ -98,14 +117,16 @@ export class WorkspaceConnectorStatus implements ConnectorStatusHost {
     const accounts = connectors.some(({ transport }) => "google" in transport)
       ? await this.#options.google.list()
       : [];
-    const listed = connectors.map(
-      (connector): ConnectorStatus => ({
+    const listed = connectors.map((connector): ConnectorStatus => {
+      const asks = asksOf(connector);
+      return {
         id: connector.id,
         name: connector.name ?? connector.id,
         state: this.#stateOf(connector, accounts),
         connection: connectionOf(connector),
-      }),
-    );
+        ...(asks === undefined ? {} : { asks }),
+      };
+    });
     // A file that parsed is not an unreadable one.
     const known = new Set(connectors.map(({ id }) => id));
     const unreadable = new Set<string>();

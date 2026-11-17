@@ -17,7 +17,7 @@ const ways: readonly NewConnectorWay[] = ["google", "http", "stdio"];
  * The Gmail and Google Drive tools that change or send something. A new Google connector asks a
  * person before each of them; reading and searching don't ask.
  */
-const googleAskFirst: readonly string[] = [
+export const googleAskFirst: readonly string[] = [
   "gmail_modify_labels",
   "gmail_create_draft",
   "gmail_send",
