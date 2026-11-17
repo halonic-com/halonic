@@ -2,6 +2,7 @@ import { StatusChip } from "@halonicjs/studio-kit";
 import { useEffect, useRef } from "react";
 import type { WorkflowStep } from "../api.ts";
 import type { Box } from "../canvas/geometry.ts";
+import type { StepMark } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import { pageWords } from "./page-words.ts";
 
@@ -14,6 +15,8 @@ export interface StepCardProps {
   readonly selected: boolean;
   /** The step the shown run failed in: ringed in danger with its **Failed** chip (D8). */
   readonly failed?: boolean;
+  /** How the step stands in the shown run: draws its status dot; absent when it was not reached. */
+  readonly mark?: StepMark | undefined;
   /** Take focus on mount, for the card a problem's link opened. */
   readonly focusOnMount?: boolean;
   readonly onSelect: () => void;
@@ -30,6 +33,7 @@ export function StepCard({
   first,
   selected,
   failed,
+  mark,
   focusOnMount,
   onSelect,
 }: StepCardProps) {
@@ -56,12 +60,53 @@ export function StepCard({
         </span>
       )}
       <span className="text-small-strong text-fg">{step.title ?? step.id}</span>
+      {mark !== undefined && (
+        <span
+          data-testid="status-dot"
+          data-mark={mark}
+          style={{
+            left: box.width - DOT_INSET - DOT / 2,
+            top: DOT_INSET - DOT / 2,
+            width: DOT,
+            height: DOT,
+          }}
+          className={`absolute rounded-full ${DOT_COLOUR[mark]}`}
+        >
+          <span className="sr-only">{startWords.mark[mark]}</span>
+        </span>
+      )}
       {failed && <StatusChip tone="danger">{startWords.failedChip}</StatusChip>}
       {step.type === "task" && (
         <span className="text-small text-fg-muted">{step.agent ?? pageWords.noAgent}</span>
       )}
     </button>
   );
+}
+
+/** The status dot's size and its centre's distance from the card's top-right corner, in px. */
+const DOT = 10;
+const DOT_INSET = 14;
+
+const DOT_COLOUR: Record<StepMark, string> = {
+  done: "bg-success",
+  running: "bg-accent",
+  waiting: "bg-warning",
+  failed: "bg-danger",
+  stopped: "bg-fg-muted",
+};
+
+/** The colour the point of light takes on a step's dot: the dot's own. */
+export const DOT_VAR: Record<StepMark, string> = {
+  done: "var(--color-success)",
+  running: "var(--color-accent)",
+  waiting: "var(--color-warning)",
+  failed: "var(--color-danger)",
+  stopped: "var(--color-fg-muted)",
+};
+
+/** Where a step's status dot is centred, in the canvas surface's coordinates. */
+export function dotCentre(box: Box) {
+  return { x: box.x + box.width - DOT_INSET, y: box.y + DOT_INSET };
 }
 
 /** A failed step shows the danger ring over the selection's: the run's outcome is the news (D8). */
