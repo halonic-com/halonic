@@ -236,13 +236,15 @@ async function requireKeyMayGo(
       modelTexts.untrustedAddressFix(destination.provider),
     );
   }
-  const allowed =
-    file.secret === undefined ? undefined : await context.keyOrigins.allowedOrigins(file.secret);
+  if (file.secret === undefined) {
+    return;
+  }
+  const allowed = await context.keyOrigins.allowedOrigins(file.secret);
   if (allowed !== undefined && !allowed.includes(destination.origin)) {
     throw new WorkspaceModelError(
       "key-origin-not-allowed",
-      modelTexts.originNotAllowed(destination.provider, destination.origin),
-      modelTexts.originNotAllowedFix(destination.provider),
+      modelTexts.originNotAllowed(destination.provider, file.secret, destination.origin),
+      modelTexts.originNotAllowedFix(file.secret, destination.origin),
     );
   }
 }

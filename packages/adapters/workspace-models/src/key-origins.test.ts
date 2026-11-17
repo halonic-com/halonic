@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import type { ChatTurnRequest, HttpClient, KeyOrigins, Secrets } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -18,7 +19,7 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-const secrets: Secrets = { get: async () => "fake-key" };
+const secrets: Secrets = { get: async () => "fake-key-value" };
 const http: HttpClient = {
   fetch: async () => {
     throw new TypeError("fetch failed");
@@ -151,9 +152,8 @@ verifies("cli.workspace-provider-key-trust", () => {
 
       await expect(resolve(call)).rejects.toMatchObject({
         code: "key-origin-not-allowed",
-        message:
-          "provider main would send its key to https://api.openai.com, which isn't an address that key is allowed for.",
-        fix: "Point providers/main.yaml at an address the key is allowed for, or allow the address for that key.",
+        message: `Provider "main" can't send key "${keyName}" to https://api.openai.com. That address isn't allowed for this key. Only allow an address you recognise.`,
+        fix: `To allow it, open Models in Halonic Studio, or run: halonic models allow-address "${keyName}" https://api.openai.com`,
       });
     });
 
@@ -177,10 +177,42 @@ verifies("cli.workspace-provider-key-trust", () => {
       );
 
       expect(error.message).toContain(
-        "provider main would send its key to https://other.example.com",
+        `Provider "main" can't send key "${keyName}" to https://other.example.com.`,
       );
-      expect(error.message).not.toContain("fake-key");
+      expect(error.message).not.toContain("fake-key-value");
       expect(error.message).not.toContain("secret-path");
+    });
+
+    it("words the error with the key's name and a command that is right to paste", async () => {
+      const resolveFor = async (baseUrl: string) => {
+        const workspace = await workspaceOf({
+          type: "openai-compatible",
+          baseUrl,
+          secret: keyName,
+        });
+        const resolve = workspaceModelResolver({
+          workspace,
+          secrets,
+          http,
+          isTrusted: () => true,
+          keyOrigins: originsOf({ [keyName]: [gateway] }),
+        });
+        return await resolve(call).then(
+          () => new KindedError("internal", "resolved"),
+          (e: unknown) => e as KindedError,
+        );
+      };
+
+      const plain = await resolveFor("https://other.example.com/v1");
+      expect(plain.fix).toBe(
+        `To allow it, open Models in Halonic Studio, or run: halonic models allow-address "${keyName}" https://other.example.com`,
+      );
+      const bracketed = await resolveFor("https://[2001:db8::1]:8443/v1");
+      expect(bracketed.fix).toContain(`"${keyName}" "https://[2001:db8::1]:8443"`);
+      for (const text of [plain.message, plain.fix ?? ""]) {
+        expect(text).not.toContain("fake-key-value");
+        expect(text).not.toMatch(/\b(origin|host|url)\b/iu);
+      }
     });
 
     it("is checked for a fallback model too", async () => {
@@ -204,7 +236,7 @@ verifies("cli.workspace-provider-key-trust", () => {
 
       await expect(resolve({ ...call, alias: "smart" })).rejects.toMatchObject({
         code: "key-origin-not-allowed",
-        message: expect.stringContaining("provider backup"),
+        message: expect.stringContaining('Provider "backup"'),
       });
     });
 
