@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -40,24 +40,21 @@ verifies("sandbox-srt.windows-tool-folders", () => {
       expect(await readdir(join(work, ".vscode"))).toEqual(["settings.json"]);
     });
 
-    it("denies .idea, .git/hooks and .git/config only when they exist", async () => {
+    it("denies .idea only when it exists", async () => {
       await mkdir(join(work, ".idea"));
-      await mkdir(join(work, ".git", "hooks"), { recursive: true });
-      await writeFile(join(work, ".git", "config"), "");
-      const folders = await prepareToolFolders(work);
-      expect(folders).toEqual([
-        ...toolFoldersToCreate,
-        ".idea",
-        join(".git", "hooks"),
-        join(".git", "config"),
-      ]);
+      expect(await prepareToolFolders(work)).toEqual([...toolFoldersToCreate, ".idea"]);
     });
 
-    it("leaves a .git without hooks alone", async () => {
+    it("leaves a .git alone", async () => {
       await mkdir(join(work, ".git"));
-      const folders = await prepareToolFolders(work);
-      expect(folders).toEqual([...toolFoldersToCreate]);
+      expect(await prepareToolFolders(work)).toEqual([...toolFoldersToCreate]);
       expect(await readdir(join(work, ".git"))).toEqual([]);
+    });
+
+    it("denies a file that has the name of a tool folder as it is, and still opens", async () => {
+      await writeFile(join(work, ".config"), "kept");
+      expect(await prepareToolFolders(work)).toEqual([...toolFoldersToCreate]);
+      expect(await readFile(join(work, ".config"), "utf8")).toBe("kept");
     });
   });
 });

@@ -125,7 +125,7 @@ const unquotableOnWindows = /["%!\r\n\0]/;
 function quoteForCmd(value: string): string {
   if (unquotableOnWindows.test(value)) {
     throw new Error(
-      "on Windows, a program, argument or variable can't contain a double quote, a percent sign, an exclamation mark or a line break",
+      "on Windows, a program, argument or variable can't contain a double quote, a percent sign, an exclamation mark, a line break or a NUL character",
     );
   }
   return `"${value.replace(/\\+$/, (slashes) => slashes + slashes)}"`;

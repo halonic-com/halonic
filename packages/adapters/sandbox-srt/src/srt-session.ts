@@ -161,7 +161,7 @@ export class SrtSession implements SandboxSession {
         journalFolder === null ? [folder] : [folder, journalFolder],
         [
           ...(await gitPathsToDeny(profile.workingFolder)),
-          // srt on Windows can't deny a file that doesn't exist, but a folder deny covers what is made later.
+          // A folder deny on Windows covers what is made inside it later, whatever srt does with a missing path.
           ...(process.platform === "win32" ? await prepareToolFolders(profile.workingFolder) : []),
         ],
         process.platform,

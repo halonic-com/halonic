@@ -151,13 +151,15 @@ console.log(JSON.stringify(result));
    * folder), either by writing it or by writing it elsewhere and moving it into place, and reports
    * for each how much content is on disk afterwards. Windows lets a program create a file in a
    * denied folder but refuses to write to it, so an empty file may be left behind: that is no
-   * content. A file that is not there counts as empty too.
+   * content. A file that is not there counts as empty too. Also reports whether each file was
+   * there before the attempt, which says whether the empty file is the program's create or
+   * something the session made at its start.
    */
   async function contentLeftBy(
     how: "writing" | "moving",
     name: string,
     attempts: Record<string, string[]>,
-  ): Promise<Record<string, number>> {
+  ): Promise<Record<string, { existedBefore: boolean; size: number }>> {
     const out = await runScript(
       name,
       `const fs = require("node:fs");
@@ -168,6 +170,7 @@ const attempts = ${JSON.stringify(attempts)};
 const result = {};
 for (const [label, segments] of Object.entries(attempts)) {
   const target = path.join(work, ...segments);
+  const existedBefore = fs.existsSync(target);
   try {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     if (how === "writing") {
@@ -180,12 +183,16 @@ for (const [label, segments] of Object.entries(attempts)) {
   } catch {
     // Refused: what is left on disk says how far it got.
   }
-  result[label] = fs.existsSync(target) ? fs.statSync(target).size : 0;
+  result[label] = { existedBefore, size: fs.existsSync(target) ? fs.statSync(target).size : 0 };
 }
 console.log(JSON.stringify(result));
 `,
     );
     return JSON.parse(out.split(/\r?\n/).pop() ?? "");
+  }
+
+  function sizes(left: Record<string, { size: number }>): Record<string, number> {
+    return Object.fromEntries(Object.entries(left).map(([label, file]) => [label, file.size]));
   }
 
   for (const how of ["writing", "moving"] as const) {
@@ -196,17 +203,26 @@ console.log(JSON.stringify(result));
         claudeSettings: [".claude", "settings.json"],
         vscodeTasks: [".vscode", "tasks.json"],
       });
-      expect(left).toEqual({ claudeSettings: 0, vscodeTasks: 0 });
+      expect(sizes(left)).toEqual({ claudeSettings: 0, vscodeTasks: 0 });
     });
 
     it(`can't put content into the tool settings in the root of the working folder, by ${how} it`, async () => {
-      // No placeholder is made for these (HAL-11305), yet srt refuses the write to a new file.
+      // No placeholder is made for these, yet srt refuses content in a new file here.
       const left = await contentLeftBy(how, `root-${how}.cjs`, {
         npmrc: [".npmrc"],
         mcp: [".mcp.json"],
         hookManager: [".pre-commit-config.yaml"],
       });
-      expect(left).toEqual({ npmrc: 0, mcp: 0, hookManager: 0 });
+      expect(sizes(left)).toEqual({ npmrc: 0, mcp: 0, hookManager: 0 });
+      if (how === "writing") {
+        // The first attempt on these files: the session didn't make them, so an empty file left
+        // behind is the program's own create, which srt allows.
+        expect(Object.values(left).map((file) => file.existedBefore)).toEqual([
+          false,
+          false,
+          false,
+        ]);
+      }
     });
   }
 
