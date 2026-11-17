@@ -214,6 +214,8 @@ export type ChildRunNow =
       readonly error: string;
       /** Why the child failed, from its `run.failed`; absent when it gave none. */
       readonly reason?: RunFailureReason;
+      /** The child's typed cause, from its `run.failed`, kept for a budget stop that goes up. */
+      readonly cause?: RunFailureCause;
     }
   | {
       readonly status: "cant-try";

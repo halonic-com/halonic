@@ -8,7 +8,7 @@ import { tellParent } from "../kernel/decide.ts";
 import type { DecidedEvent, Decision, Effect } from "../kernel/decide-types.ts";
 import { foldRun, type RunState } from "../kernel/run-state.ts";
 import { foldableEvent } from "../kernel/saved-artifacts.ts";
-import { type Budget, budgetStopOf, type Spend } from "./budget.ts";
+import { type Budget, type BudgetStop, budgetStopOf, type Spend } from "./budget.ts";
 
 /** What `step` reads to keep a run to its budget. */
 export interface BudgetCheck {
@@ -51,13 +51,19 @@ export async function keepToBudget(
     return decision;
   }
   const after = foldDecided(runId, run, decision.events, at);
-  const error = budgetStopOf(budget, await check.spend(after, at));
-  return error === null ? decision : stoppedByBudget(decision, after, error);
+  const stop = budgetStopOf(budget, await check.spend(after, at));
+  return stop === null ? decision : stoppedByBudget(decision, after, stop);
 }
 
 /** The decision's events and the stop after them, with no effect but telling the parent. */
-function stoppedByBudget(decision: Decision, after: RunState, error: string): Decision {
-  const failed: DecidedEvent = { type: "run.failed", state: after.state, error, reason: "budget" };
+function stoppedByBudget(decision: Decision, after: RunState, stop: BudgetStop): Decision {
+  const failed: DecidedEvent = {
+    type: "run.failed",
+    state: after.state,
+    error: stop.error,
+    reason: "budget",
+    cause: stop.cause,
+  };
   return {
     events: [...decision.events, failed],
     effects: tellParent({ ...after, status: "failed" }),
