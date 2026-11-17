@@ -3,6 +3,7 @@
 - Task: HAL-11642
 - Approval: the states audit on HAL-11635 (https://paperclip.halonic.com/HAL/issues/HAL-11635#document-states-audit), "Home sections, failed", sent to Liam as HAL-11642 (https://paperclip.halonic.com/HAL/issues/HAL-11642). Microcopy 22 F13 is board-approved; this applies it. A team decision with no board card.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3TPHraE5V0ti9LQXf0eKBUKExUYdRpckVtwVQdxoOI2uwSAIDzKjem0z1YnIfR2hbFBdcG4h+3rJyD1YYVUJBA==
 
 ## What changes
 
