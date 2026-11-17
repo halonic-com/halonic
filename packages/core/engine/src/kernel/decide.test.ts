@@ -317,6 +317,35 @@ verifies("engine.provider-text", () => {
   });
 });
 
+verifies("engine.run-failure-cause-of", () => {
+  it("puts the typed cause of the failed call on run.failed and the summary", () => {
+    const cause = {
+      kind: "denied",
+      code: "google.api-disabled",
+      detail: { api: "drive.googleapis.com" },
+    } as const;
+    const failed: DecideInput = {
+      type: "effect-failed",
+      at: "2026-11-09T09:00:05.000Z",
+      callId: "call-1",
+      error: "The Drive API is switched off.",
+      reason: "error",
+      cause,
+    };
+    const { decisions, log } = play(reply, [startInput, failed]);
+    expect(decisions[1]?.events).toEqual([
+      {
+        type: "run.failed",
+        state: "draft",
+        error: "The Drive API is switched off.",
+        reason: "error",
+        cause,
+      },
+    ]);
+    expect(summarize(log)?.cause).toEqual(cause);
+  });
+});
+
 verifies("engine.final-state", () => {
   it("completes the run with the initial context and what the run wrote", () => {
     const { log, run } = play(reply, [startInput, answer("call-1", "On its way")]);
