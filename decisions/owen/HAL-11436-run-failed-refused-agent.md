@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-11436 (follow-up from the review of #3269 on HAL-11431); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QMVedB7cbmAUYOz+GZP24xnMt7TuuJiqVEt/UqM9/QGU7+c7ba4GUXNCM8QI5sIkUV9ivhqhy1xFkCEVt38bCw==
 
 When the sandbox was not ready, `run.failed` did not say which agent was refused, so the run page guessed from the last top-level `agent.started`. In a parallel state that can name the wrong agent. `run.failed` now carries the refused agent for `sandbox-not-ready`, the same way it does for `instructions-not-trusted`.
 
