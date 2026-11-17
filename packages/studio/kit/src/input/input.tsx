@@ -1,5 +1,6 @@
 import type { InputHTMLAttributes, KeyboardEvent, ReactNode, Ref } from "react";
 import { InFieldBoxContext } from "../button/button.tsx";
+import { describedBy } from "../field/control.ts";
 import { useFieldControl } from "../field/field.tsx";
 import { isComposing } from "../keyboard/is-composing.ts";
 import {
@@ -29,6 +30,8 @@ interface InputBase extends Omit<InputHTMLAttributes<HTMLInputElement>, OwnedAtt
    * a phone, with a 48px hit area, so the box stays 48px.
    */
   readonly trailing?: ReactNode;
+  /** The `id` of a line outside the Field that also describes the control, read after the Field's own. */
+  readonly describedBy?: string;
   /** Mono text, for a value that is code: a model id, a secret name, a URL. */
   readonly mono?: boolean;
   readonly ref?: Ref<HTMLInputElement>;
@@ -68,6 +71,7 @@ export function Input({
   leadingButton,
   trailing,
   mono = false,
+  describedBy: extraDescription,
   ref,
   onKeyDown,
   ...native
@@ -110,7 +114,7 @@ export function Input({
         data-text-entry=""
         // As tall as the box, so a press above or below the line of text lands on it.
         className={`${fieldTextClasses} self-stretch${mono ? " font-mono" : ""}`}
-        aria-describedby={field?.describedBy}
+        aria-describedby={describedBy(field?.describedBy, extraDescription)}
         aria-invalid={invalid || undefined}
         aria-required={field?.required || undefined}
         onKeyDown={handleKeyDown}

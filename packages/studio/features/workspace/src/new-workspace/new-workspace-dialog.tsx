@@ -1,7 +1,7 @@
 import { type ErrorKind, KindedError } from "@halonicjs/std";
 import { Button, Dialog, Field, Input } from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   ALREADY_WORKSPACE_NOTE,
   CHANGE_FOLDER,
@@ -94,6 +94,8 @@ export interface NewWorkspaceDialogProps {
   /** **Open it**, when the folder is a workspace already. */
   readonly onOpen: (folder: string) => void;
   readonly onCancel: () => void;
+  /** Says a line to screen readers: the new mode when the folder holds files or a workspace. */
+  readonly announce?: (line: string) => void;
 }
 
 /**
@@ -105,7 +107,13 @@ export interface NewWorkspaceDialogProps {
  * @example
  * <NewWorkspaceDialog host={host} onCreated={openBeside} onOpen={open} onCancel={close} />
  */
-export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWorkspaceDialogProps) {
+export function NewWorkspaceDialog({
+  host,
+  onCreated,
+  onOpen,
+  onCancel,
+  announce,
+}: NewWorkspaceDialogProps) {
   const [name, setName] = useState("");
   const [parent, setParent] = useState<string | undefined>(undefined);
   const [state, setState] = useState<FolderState>("new");
@@ -116,8 +124,11 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
   const [busy, setBusy] = useState(false);
   const nameField = useRef<HTMLInputElement>(null);
   const changeButton = useRef<HTMLButtonElement>(null);
+  const folderLineId = useId();
   const trimmed = name.trim();
   const folder = parent === undefined ? undefined : host.folderOf(parent, trimmed);
+
+  const shownFolder = trimmed === "" ? parent : folder;
 
   useEffect(() => {
     let current = true;
@@ -145,6 +156,15 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
       current = false;
     };
   }, [host, folder, trimmed]);
+
+  // A folder that holds files or a workspace changes the note and the button; say so once, with
+  // the button's new name. Back to a new folder says nothing.
+  const announcedState = useRef<FolderState>("new");
+  useEffect(() => {
+    if (state === announcedState.current) return;
+    announcedState.current = state;
+    if (state !== "new") announce?.(`${NOTE[state]} ${BUTTON[state]}.`);
+  }, [state, announce]);
 
   /** Puts a refusal where it belongs: a name problem under Name, the rest under Folder. */
   function refused(error: unknown, line: (reason: string) => string) {
@@ -229,7 +249,8 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
           <Input
             ref={nameField}
             autoFocus
-            disabled={busy}
+            readOnly={busy}
+            describedBy={folderLineId}
             value={name}
             onChange={(event) => {
               setNameError(undefined);
@@ -240,7 +261,9 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
         </Field>
         <Field label={FOLDER_FIELD} error={writeError ?? parentError ?? null}>
           <div className="flex items-center gap-2">
-            <span className="min-w-0 flex-1 truncate">{trimmed === "" ? parent : folder}</span>
+            <span className="min-w-0 flex-1 truncate">{shownFolder}</span>
+            {/* Name's description, read when Name is focused: "Folder: ~/Documents/Acme". */}
+            <span id={folderLineId} hidden>{`${FOLDER_FIELD}: ${shownFolder ?? ""}`}</span>
             {host.pickParent === undefined ? null : (
               <Button ref={changeButton} variant="secondary" onClick={() => void change()}>
                 {CHANGE_FOLDER}
