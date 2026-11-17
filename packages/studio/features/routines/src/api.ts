@@ -247,6 +247,12 @@ export interface RoutinesHost {
   /** Calls `listener` each time the list may have changed; returns the way to stop. */
   subscribe(listener: () => void): () => void;
   /**
+   * What {@link RoutinesHost.create} would make a routine in the hub run: the hub's first
+   * workflow, else its first agent; `undefined` when the hub has neither. The New routine dialog
+   * names it before the routine is made.
+   */
+  starterTarget(hubId: string): Promise<RoutineTargetChoice | undefined>;
+  /**
    * Makes a manual routine in the hub that runs the hub's first workflow with input `{}`, or with
    * no workflow its first agent with the prompt "Describe what to do.", and returns where it is.
    * Rejects with {@link NothingToRun} when the hub has neither.

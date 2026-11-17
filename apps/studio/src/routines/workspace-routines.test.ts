@@ -264,6 +264,14 @@ verifies("studio.workspace-routines", () => {
     expect(view.target).toMatchObject({ kind: "agent", prompt: "Describe what to do." });
   });
 
+  it("names what a new routine would run: the first workflow, else the first agent, else nothing", async () => {
+    const { host, store } = setup();
+    expect(await host.starterTarget("acme")).toMatchObject({ kind: "workflow", id: "reply" });
+    delete store["hubs/acme/workflows/reply.workflow.yaml"];
+    expect(await host.starterTarget("acme")).toMatchObject({ kind: "agent" });
+    expect(await host.starterTarget("beta")).toBeUndefined();
+  });
+
   it("refuses a hub with nothing to run, or a hub the workspace doesn't have, and writes nothing", async () => {
     const { host, changes } = setup();
     await expect(host.create({ name: "Check", hubId: "beta" })).rejects.toThrow(NothingToRun);

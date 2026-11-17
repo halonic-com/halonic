@@ -12,7 +12,9 @@ import {
   type RoutinesHost,
   RoutinesHostService,
 } from "../api.ts";
+import { NewRoutineDialog } from "../new/new-routine-dialog.tsx";
 import { listWords } from "./list-words.ts";
+import { dropNewRoutineRequest, takeNewRoutineRequests } from "./new-request.ts";
 import { routineHubs, rowId } from "./routine-rows.tsx";
 
 /**
@@ -32,7 +34,7 @@ type Load =
 
 /** The Routines place's page: the open workspace's routines, from `RoutinesHostService`. */
 export function RoutinesPage({ context }: PlaceViewProps) {
-  const { openItem, openItemInNewTab } = context;
+  const { openItem, openItemInNewTab, runCommand } = context;
   // Only a routine in a hub is listed, so a row's hub is always there; a root routine has no tab.
   const itemOf = (ref: RoutineRef) =>
     ref.hubId === null ? undefined : { kind: "routine", hub: ref.hubId, id: ref.id };
@@ -54,6 +56,7 @@ export function RoutinesPage({ context }: PlaceViewProps) {
     <RoutinesView
       host={context.services.get(RoutinesHostService)}
       engine={engineWordsOf(context)}
+      {...(runCommand ? { newWorkflow: () => void runCommand("workflows.new") } : {})}
       {...(open ? { open } : {})}
       {...(openInNewTab ? { openInNewTab } : {})}
     />
@@ -69,6 +72,8 @@ export interface RoutinesViewProps {
   readonly openInNewTab?: (ref: RoutineRef) => void;
   /** What the page calls the engine when it can't read, for this window's host; the desktop app's by default. */
   readonly engine?: EngineWords;
+  /** Opens the New workflow dialog, for a hub with nothing to run; absent where the app can't, so the dialog has no such link. */
+  readonly newWorkflow?: () => void;
 }
 
 /**
@@ -80,11 +85,12 @@ export interface RoutinesViewProps {
  * @example
  * <RoutinesView host={host} open={openRoutineTab} />
  */
-export function RoutinesView({ host, open, openInNewTab, engine }: RoutinesViewProps) {
+export function RoutinesView({ host, open, openInNewTab, engine, newWorkflow }: RoutinesViewProps) {
   const words = engine ?? engineWordsOf({});
   const phone = usePresentation() === "phone";
   const [load, setLoad] = useState<Load>({ kind: "loading" });
   const title = useRef<HTMLHeadingElement>(null);
+  const [creating, setCreating] = useState(false);
 
   // Each read takes a number; only the newest read's result is shown, so a slow older read never
   // overwrites a newer one, and nothing is set after unmount.
@@ -141,6 +147,16 @@ export function RoutinesView({ host, open, openInNewTab, engine }: RoutinesViewP
     if (listing !== undefined) (openInNewTab ?? open)?.(listing);
   };
 
+  const startCreating = () => setCreating(true);
+  // A routine needs a hub to live in, and the hubs are known only once the first read is done.
+  const canCreate = load.kind === "ready" && host.hubs().length > 0;
+  // Ctrl K's New routine waits until the dialog can open; with no hub to put one in, it is dropped.
+  const noHubs = load.kind === "ready" && host.hubs().length === 0;
+  useEffect(() => {
+    if (noHubs) dropNewRoutineRequest();
+    return canCreate ? takeNewRoutineRequests(() => setCreating(true)) : undefined;
+  }, [canCreate, noHubs]);
+
   return (
     <div className="flex w-full flex-col gap-4 px-6 py-5">
       <header className={phone ? "sr-only" : "flex flex-col gap-1"}>
@@ -184,12 +200,45 @@ export function RoutinesView({ host, open, openInNewTab, engine }: RoutinesViewP
             sharedSection: (workspace) => workspace,
             emptySection: (hubName) => listWords.emptyHub(hubName),
             noMatch: listWords.noMatch,
-            nothingYet: { title: listWords.nothingYetTitle, description: listWords.emptySentence },
+            nothingYet: {
+              title: listWords.nothingYetTitle,
+              description: listWords.emptySentence,
+              ...(canCreate
+                ? { action: { label: listWords.newRoutine, onClick: startCreating } }
+                : {}),
+            },
           }}
           loading={load.kind === "loading"}
           quietWhenEmpty
+          {...(canCreate
+            ? { newButton: { label: listWords.newRoutine, onClick: startCreating } }
+            : {})}
           onOpen={openRow}
           onOpenInNewTab={openRowInNewTab}
+        />
+      )}
+      {creating && (
+        <NewRoutineDialog
+          hubs={host.hubs()}
+          takenIds={(hubId) =>
+            listings.filter((listing) => listing.hubId === hubId).map((listing) => listing.id)
+          }
+          starterTarget={(hubId) => host.starterTarget(hubId)}
+          create={(newRoutine) => host.create(newRoutine)}
+          onCreated={(ref) => {
+            setCreating(false);
+            read();
+            open?.(ref);
+          }}
+          onCancel={() => setCreating(false)}
+          onNewWorkflow={
+            newWorkflow &&
+            (() => {
+              setCreating(false);
+              newWorkflow();
+            })
+          }
+          returnFocus={() => null}
         />
       )}
     </div>

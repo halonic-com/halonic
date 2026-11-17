@@ -1,6 +1,12 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { RoutineHub, RoutineListing, RoutinesHost } from "./api.ts";
+import type {
+  RoutineHub,
+  RoutineListing,
+  RoutineRef,
+  RoutinesHost,
+  RoutineTargetChoice,
+} from "./api.ts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -43,12 +49,22 @@ export function listing(
 }
 
 /** The parts of a host the list reads, in memory, telling its listeners about each change. */
-export function memoryHost(hubs: readonly RoutineHub[], initial: readonly RoutineListing[]) {
+export function memoryHost(
+  hubs: readonly RoutineHub[],
+  initial: readonly RoutineListing[],
+  starter: (hubId: string) => RoutineTargetChoice | undefined = () => undefined,
+) {
   let listings = initial;
   const listeners = new Set<() => void>();
   const host = {
     hubs: () => hubs,
     list: async () => listings,
+    starterTarget: async (hubId: string) => starter(hubId),
+    create: async ({ name, hubId }: { name: string; hubId: string }): Promise<RoutineRef> => {
+      const made = listing(hubId, name.toLowerCase().replaceAll(" ", "-"), name);
+      listings = [...listings, made];
+      return { hubId, id: made.id };
+    },
     subscribe: (listener: () => void) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -76,4 +92,17 @@ export async function typeInto(input: HTMLInputElement, value: string): Promise<
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
+}
+
+/** jsdom has `<dialog>` but no `showModal()`; opening it is all the dialog tests need. */
+export function openDialogsInJsdom(): void {
+  Object.assign(HTMLDialogElement.prototype, {
+    showModal(this: HTMLDialogElement) {
+      this.setAttribute("open", "");
+    },
+    close(this: HTMLDialogElement) {
+      this.removeAttribute("open");
+    },
+  });
+  Element.prototype.scrollIntoView = () => {};
 }
