@@ -11,6 +11,9 @@
     "lint": "biome check .",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@halonicjs/std": "workspace:*"
+  },
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",

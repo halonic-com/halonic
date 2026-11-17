@@ -1,3 +1,5 @@
+import type { ErrorKind } from "@halonicjs/std";
+
 /** Whether a run is a real run or part of a workflow test. */
 export type RunKind = "run" | "test";
 
@@ -275,6 +277,23 @@ export interface InstructionsRefusal {
  * the agent. A reader that doesn't know a cause reads it as absent.
  */
 export type HarnessStartCause = "not-installed" | "signed-out";
+
+/**
+ * The typed cause of a failed run, for a screen that has to tell one failure
+ * from another without reading the free-text `error` (requirement
+ * `events.run-failed-cause`), such as Studio's "API off" banner.
+ *
+ * `kind` is the error kind the failing error carried. `code` is a stable
+ * string for a cause a screen knows by name, such as `google.api-disabled`;
+ * a reader that doesn't know a code still has `kind`. `detail` holds a few
+ * short strings that cause names, such as the API, the project and a link
+ * that fixes it. It never holds a credential or a provider's own text.
+ */
+export interface RunFailureCause {
+  readonly kind: ErrorKind;
+  readonly code?: string;
+  readonly detail?: Readonly<Record<string, string>>;
+}
 
 /**
  * The model provider's own error text, kept in the run log for `--debug` and

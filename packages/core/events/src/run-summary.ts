@@ -1,5 +1,6 @@
 import type {
   CantTryStep,
+  RunFailureCause,
   RunFailureReason,
   RunKind,
   RunStatus,
@@ -66,6 +67,13 @@ export interface RunSummary {
    * failed, and for older logs whose `run.failed` gives no reason.
    */
   reason: RunFailureReason | null;
+  /**
+   * The typed cause of the failure, from its `run.failed` event (requirement
+   * `events.run-failed-cause`). Absent while the run hasn't failed, for older
+   * logs and when the failing error had no kind. Read it, not `error`, to
+   * tell one failure from another on a screen.
+   */
+  cause?: RunFailureCause;
   definitionsVersion: string;
   trigger: RunTrigger | null;
   /** The run that started this one (subflows). */
