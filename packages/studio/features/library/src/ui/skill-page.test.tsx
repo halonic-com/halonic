@@ -51,6 +51,12 @@ async function settled(): Promise<void> {
   });
 }
 
+function button(root: HTMLElement, label: string): HTMLButtonElement {
+  const found = [...root.querySelectorAll("button")].find((each) => each.textContent === label);
+  if (found === undefined) throw new Error(`No button ${label}`);
+  return found;
+}
+
 function field(root: HTMLElement, label: string): HTMLInputElement | HTMLTextAreaElement {
   const found = [...root.querySelectorAll("label")].find((each) =>
     each.textContent?.startsWith(label),
@@ -134,6 +140,26 @@ verifies("library.skill-page", () => {
       type(name, "Acme refunds");
       await leave(name);
       expect(write).toHaveBeenCalledOnce();
+    });
+
+    it("says a save failed, keeps the draft, and clears the line when Try again saves it", async () => {
+      const { props, write } = setup();
+      const failure = Object.assign(new Error("The disk is full."), { kind: "unavailable" });
+      write.mockRejectedValueOnce(failure);
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const root = render(<SkillPage {...props} />);
+      await settled();
+      const instructions = field(root, "Instructions");
+      type(instructions, "Be very kind.");
+      await leave(instructions);
+      expect(root.textContent).toContain("Couldn't save the skill");
+      expect(root.textContent).toContain("The disk is full.");
+      expect(console.error).toHaveBeenCalled();
+      expect(field(root, "Instructions").value).toBe("Be very kind.");
+      await act(async () => button(root, "Try again").click());
+      await settled();
+      expect(write).toHaveBeenCalledTimes(2);
+      expect(root.textContent).not.toContain("Couldn't save the skill");
     });
 
     it("keeps the old name with its hint when the name is emptied, and drops the hint on the next edit", async () => {

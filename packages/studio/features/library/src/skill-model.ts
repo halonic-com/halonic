@@ -6,6 +6,7 @@ import {
   type SkillParts,
   type SkillTextError,
 } from "@halonicjs/app";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import { readFailureReason } from "./read-failure.ts";
 import type { SkillFile, SkillHost, SkillRef } from "./skill-host.ts";
 import { skillWords } from "./skill-words.ts";
@@ -29,6 +30,8 @@ export interface SkillState {
   readonly usage?: ItemUsage;
   /** The fields whose last edit was emptied and refused; each hint stays until that field's next edit. */
   readonly kept: readonly SkillField[];
+  /** A save failed and its draft is still unsaved; the next successful save of that part clears it. */
+  readonly saveFailure: { readonly reason: string } | undefined;
 }
 
 /** The field a refused edit emptied; `undefined` for a file that can't be edited at all. */
@@ -52,7 +55,9 @@ export class SkillModel {
     unreadable: false,
     files: [],
     kept: [],
+    saveFailure: undefined,
   };
+  private failedParts = new Set<keyof SkillChange>();
   private text = "";
   private readonly listeners = new Set<() => void>();
   private stopHost: (() => void) | undefined;
@@ -112,6 +117,7 @@ export class SkillModel {
         files: source.files,
         usage,
         kept: this.state.kept,
+        saveFailure: this.state.saveFailure,
         ...(read.ok ? { parts: read.value } : {}),
       });
     } catch (error) {
@@ -143,12 +149,23 @@ export class SkillModel {
       }
       return refused !== undefined;
     }
-    if (edited.value === this.text) return true;
+    const part = Object.keys(change)[0] as keyof SkillChange;
+    if (edited.value === this.text) {
+      // Back to what is saved: that part has nothing left to lose.
+      if (this.failedParts.delete(part) && this.failedParts.size === 0) {
+        this.set({ ...this.state, saveFailure: undefined });
+      }
+      return true;
+    }
     try {
       await this.host.write(this.skill, edited.value);
-    } catch {
+    } catch (error) {
+      console.error("Couldn't save the skill.", error);
+      this.failedParts.add(part);
+      this.set({ ...this.state, saveFailure: { reason: errorReasonFor(error) } });
       return false;
     }
+    this.failedParts.delete(part);
     // What was written is the text now, even if the refresh below fails or is late: the next
     // leave edits on top of it. An older read still in flight no longer counts.
     this.latest++;
@@ -157,6 +174,7 @@ export class SkillModel {
     this.set({
       ...this.state,
       unreadable: !read.ok,
+      saveFailure: this.failedParts.size === 0 ? undefined : this.state.saveFailure,
       ...(read.ok ? { parts: read.value } : {}),
     });
     await this.refresh();

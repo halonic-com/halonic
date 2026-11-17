@@ -1,5 +1,5 @@
 import type { KnowledgeLookupMode } from "@halonicjs/app";
-import { EmptyState, Field, FormRows, RadioGroup } from "@halonicjs/studio-kit";
+import { Callout, EmptyState, Field, FormRows, RadioGroup } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { KnowledgeHostService, type KnowledgeRef } from "../knowledge-host.ts";
@@ -58,8 +58,18 @@ function LoadedKnowledgePage({
   model,
 }: Pick<ItemViewProps, "item" | "context"> & { readonly model: KnowledgeModel }) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
-  const { loaded, failed, failureReason, gone, unreadable, parts, source, usage, summarize } =
-    useSyncExternalStore(subscribe, () => model.state);
+  const {
+    loaded,
+    failed,
+    failureReason,
+    gone,
+    unreadable,
+    parts,
+    source,
+    usage,
+    summarize,
+    saveFailure,
+  } = useSyncExternalStore(subscribe, () => model.state);
 
   const trash = useItemTrash(context, {
     kind: "knowledge",
@@ -106,6 +116,15 @@ function LoadedKnowledgePage({
         </h1>
         {trash.menu}
       </div>
+      {saveFailure === undefined ? null : (
+        <Callout
+          tone="danger"
+          title={knowledgeWords.saveFailed}
+          action={{ label: knowledgeWords.tryAgain, onClick: () => void model.retrySave() }}
+        >
+          {saveFailure.reason}
+        </Callout>
+      )}
       <FormRows>
         <Field
           label={knowledgeWords.source}

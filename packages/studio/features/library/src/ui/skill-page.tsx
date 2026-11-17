@@ -69,14 +69,43 @@ function Gone({ context }: Pick<ItemViewProps, "context">) {
   );
 }
 
+function SaveFailureLine({
+  failure,
+  onRetry,
+}: {
+  readonly failure: { readonly reason: string } | undefined;
+  readonly onRetry: () => void;
+}) {
+  if (failure === undefined) return null;
+  return (
+    <Callout
+      tone="danger"
+      title={skillWords.saveFailed}
+      action={{ label: skillWords.tryAgain, onClick: onRetry }}
+    >
+      {failure.reason}
+    </Callout>
+  );
+}
+
 function LoadedSkillPage({
   item,
   context,
   model,
 }: Pick<ItemViewProps, "item" | "context"> & { readonly model: SkillModel }) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
-  const { loaded, failed, failureReason, gone, unreadable, parts, files, usage, kept } =
-    useSyncExternalStore(subscribe, () => model.state);
+  const {
+    loaded,
+    failed,
+    failureReason,
+    gone,
+    unreadable,
+    parts,
+    files,
+    usage,
+    kept,
+    saveFailure,
+  } = useSyncExternalStore(subscribe, () => model.state);
   const trash = useItemTrash(context, {
     kind: "skill",
     hub: item.hub === sharedHubKey ? null : item.hub,
@@ -132,6 +161,9 @@ function LoadedSkillPage({
       setDrafts(without(field));
     }
   };
+  const retrySave = async () => {
+    for (const field of Object.keys(drafts) as Edited[]) await leave(field);
+  };
   const keptHint = (field: SkillField, text: string) => (kept.includes(field) ? text : undefined);
 
   return (
@@ -143,6 +175,7 @@ function LoadedSkillPage({
         </h1>
         {trash.menu}
       </div>
+      <SaveFailureLine failure={saveFailure} onRetry={() => void retrySave()} />
       <FormRows>
         <Field label={skillWords.name} hint={keptHint("name", skillWords.nameKept)}>
           <Input
