@@ -70,7 +70,7 @@ impl GitRunner {
             command.arg(argument);
         }
         if let Some(index) = place.index {
-            command.env("GIT_INDEX_FILE", index);
+            command.env("GIT_INDEX_FILE", plain_path(index));
         }
         command
     }
