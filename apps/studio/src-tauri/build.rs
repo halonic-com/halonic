@@ -64,6 +64,8 @@ fn main() {
         "plugin_source_pick",
         "plugin_source_entries",
         "plugin_source_read",
+        "plugin_git_export",
+        "plugin_git_export_end",
         "blob_put",
         "blob_get",
         "record_append",

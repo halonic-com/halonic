@@ -66,6 +66,19 @@ pub(crate) fn run_limited(
     deadline: Instant,
     max_output_bytes: usize,
 ) -> Result<GitOutput, GitError> {
+    run_watched(command, deadline, max_output_bytes, &mut || None)
+}
+
+/// [`run_limited`] with a `watch` that is asked on every turn of the wait
+/// loop. When it answers an error, git is stopped with every program it
+/// started and the call fails with that error: the export uses it to stop
+/// on the caller's say and when its folder grows past a limit.
+pub(crate) fn run_watched(
+    command: &mut Command,
+    deadline: Instant,
+    max_output_bytes: usize,
+    watch: &mut dyn FnMut() -> Option<GitError>,
+) -> Result<GitOutput, GitError> {
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
     own_process_group(command);
     let mut child = command.spawn().map_err(io_error)?;
@@ -79,6 +92,10 @@ pub(crate) fn run_limited(
         }
         if let Some(status) = child.try_wait().map_err(io_error)? {
             break status.code();
+        }
+        if let Some(error) = watch() {
+            stop(&mut child);
+            return Err(error);
         }
         if Instant::now() >= deadline {
             stop(&mut child);

@@ -12,7 +12,7 @@
 //! (capabilities/desktop-runs.json) and the `engine_lock_*` commands
 //! (capabilities/desktop-engine-lock.json) and the `agent_host_*` commands
 //! (capabilities/desktop-agent-host.json) and the `fs_*` commands
-//! (capabilities/desktop-files.json, with the read-only `folder_*` commands) and the plugin install commands `plugin_source_*` (capabilities/desktop-plugin-source.json) and `plugin_folder_place` (capabilities/desktop-plugin-folder-place.json) and the `blob_*` commands
+//! (capabilities/desktop-files.json, with the read-only `folder_*` commands) and the plugin install commands `plugin_source_*` (capabilities/desktop-plugin-source.json) and `plugin_folder_place` (capabilities/desktop-plugin-folder-place.json) and the git export `plugin_git_export*` (capabilities/desktop-plugin-git-export.json) and the `blob_*` commands
 //! (capabilities/desktop-blobs.json) and the `record_*` commands
 //! (capabilities/desktop-records.json) and the read-only `google_setup_read`
 //! command (capabilities/desktop-google-setups.json) and the read-only `workspace_key`
@@ -40,6 +40,7 @@ mod navigation;
 mod plugin_folder;
 mod plugin_folder_place;
 mod plugin_folder_remove;
+mod plugin_git;
 mod plugin_source;
 mod profile;
 mod records;
@@ -91,7 +92,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(agent_host::AgentHostState::default())
         .manage(http_fetch::HttpFetchState::default())
         .manage(files::FileState::default())
-        .manage(plugin_source::PluginSources::default());
+        .manage(plugin_source::PluginSources::default())
+        .manage(plugin_git::PluginGitExports::default());
     #[cfg(desktop)]
     let builder = builder
         .manage(updates::Updates::default())
@@ -198,6 +200,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             plugin_source::plugin_source_pick,
             plugin_source::plugin_source_entries,
             plugin_source::plugin_source_read,
+            plugin_git::plugin_git_export,
+            plugin_git::plugin_git_export_end,
             blobs::blob_put,
             blobs::blob_get,
             records::record_append,

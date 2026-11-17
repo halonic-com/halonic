@@ -357,7 +357,7 @@ impl GitRunner {
     /// git with no shell, a clean `GIT_*` environment, the hardening config
     /// and `overrides`, and, in a checked repository, its checked folders,
     /// so a link swapped in after the checks can't move the call.
-    fn base_command(
+    pub(crate) fn base_command(
         &self,
         root: &Path,
         repository: Option<&Repository>,
@@ -389,6 +389,16 @@ impl GitRunner {
             command.arg(git_dir).arg(work_tree);
         }
         command
+    }
+
+    /// The limits this runner works within.
+    pub(crate) fn limits(&self) -> Limits {
+        self.limits
+    }
+
+    /// Checks that the empty hooks folder is still empty, before an export.
+    pub(crate) fn check_hooks_for_export(&self) -> Result<(), GitError> {
+        self.check_hooks_folder_is_empty()
     }
 
     /// Checks once that the hardening config reaches git (HAL-4399). git
