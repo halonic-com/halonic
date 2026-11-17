@@ -147,9 +147,13 @@ verifies("runs.run-view.slow-step-line", () => {
     let clock = mondayMorning.getTime() + 9_950;
     const root = render(<RunView list={list} runId={run.id} now={() => new Date(clock)} />);
     await settled();
-    expect(root.textContent).not.toContain("Waiting for Ollama to answer.");
+    expect(root.textContent).not.toContain(
+      "Waiting for Ollama. The first answer can take a minute while it loads the model.",
+    );
     clock = mondayMorning.getTime() + 10_000;
     await settled(120);
-    expect(root.textContent).toContain("Waiting for Ollama to answer.");
+    expect(root.textContent).toContain(
+      "Waiting for Ollama. The first answer can take a minute while it loads the model.",
+    );
   });
 });

@@ -22,6 +22,7 @@ async function open(
   summary: ReturnType<typeof summaryWith>,
   runStart: RunStartHost | undefined,
   openRun = vi.fn(),
+  announce?: (line: string) => void,
 ) {
   const log = logOf(summary.id, [[0, entered("draft")]]).map((event) =>
     event.type === "run.started" ? { ...event, input: { message: "Hi" } } : event,
@@ -33,6 +34,7 @@ async function open(
       runId={summary.id}
       now={() => mondayMorning}
       openRun={openRun}
+      {...(announce === undefined ? {} : { announce })}
       {...(runStart === undefined ? {} : { runStart })}
     />,
   );
@@ -74,11 +76,26 @@ verifies("runs.run-view.run-again", () => {
     const startRun = vi.fn(async () => {
       throw Object.assign(new Error("The workflow changed."), { kind: "invalid_input" });
     });
-    const root = await open(failed, { startRun }, openRun);
+    const announce = vi.fn();
+    const root = await open(failed, { startRun }, openRun, announce);
     await act(async () => button(root, "Run again")?.click());
-    expect(root.textContent).toContain("Couldn't start the run.");
-    expect(root.textContent).toContain("The workflow changed.");
+    expect(root.textContent).toContain("Couldn't start the run: The workflow changed.");
+    expect(announce).toHaveBeenCalledExactlyOnceWith(
+      "Couldn't start the run: The workflow changed.",
+    );
     expect(openRun).not.toHaveBeenCalled();
+  });
+
+  it("says each failed start once", async () => {
+    const startRun = vi.fn(async () => {
+      throw new Error("The engine isn't answering.");
+    });
+    const announce = vi.fn();
+    const root = await open(failed, { startRun }, vi.fn(), (line) => announce(line));
+    await act(async () => button(root, "Run again")?.click());
+    expect(announce).toHaveBeenCalledTimes(1);
+    await act(async () => button(root, "Run again")?.click());
+    expect(announce).toHaveBeenCalledTimes(2);
   });
 
   it("starts one run however often the buttons are clicked while it starts", async () => {

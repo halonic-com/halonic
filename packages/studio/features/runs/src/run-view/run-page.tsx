@@ -145,7 +145,7 @@ export function RunView({
   useEffect(() => list.noteOpened(runId), [list, runId]);
   const title = runPageWords.title(shortRunId(runId));
   const retry = () => void list.refresh();
-  const runAgain = useRunAgain(runStart, run, log, openRun);
+  const runAgain = useRunAgain(runStart, run, log, openRun, announce);
 
   if (run !== undefined) {
     const context = pageContext(list, state.runs, run, now());

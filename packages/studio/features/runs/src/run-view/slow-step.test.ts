@@ -26,6 +26,10 @@ verifies("runs.run-view.slow-step-line", () => {
     const waits: [string, RunEvent][] = [
       ["Waiting for Claude to answer.", call],
       [
+        "Waiting for Ollama. The first answer can take a minute while it loads the model.",
+        { ...call, provider: "ollama", model: "llama3.2" } as RunEvent,
+      ],
+      [
         "Waiting for the tool search_pages.",
         event({ type: "tool.called", agent: "reporter", tool: "search_pages", args: {} }),
       ],

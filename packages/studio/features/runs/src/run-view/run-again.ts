@@ -2,6 +2,7 @@ import type { RunEvent } from "@halonicjs/events";
 import { useRef, useState } from "react";
 import type { RunStartHost, SourcedRun } from "../api.ts";
 import { loadFailureReason } from "../load-failure.ts";
+import { runPageWords } from "../run-words.ts";
 
 /**
  * The input a **Run again** starts with: the one `run.started` logged. `undefined` where the run
@@ -34,13 +35,14 @@ export interface RunAgain {
 /**
  * **Run again** for `run`: a new run of the same workflow with the same input, opened when it has
  * started. `undefined` when the page can't do it ({@link inputToRunAgain}, or no host or no way to
- * open a run).
+ * open a run). A failed start is said through `announce` once, when it happens.
  */
 export function useRunAgain(
   host: RunStartHost | undefined,
   run: SourcedRun | undefined,
   log: readonly RunEvent[] | undefined,
   openRun: ((runId: string) => void) | undefined,
+  announce?: (line: string) => void,
 ): RunAgain | undefined {
   const [problem, setProblem] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -60,7 +62,9 @@ export function useRunAgain(
       const started = await host.startRun({ hubId, workflowId }, input);
       openRun(started.runId);
     } catch (error) {
-      setProblem(loadFailureReason(error));
+      const reason = loadFailureReason(error);
+      setProblem(reason);
+      announce?.(runPageWords.runAgainFailed(reason));
     } finally {
       pending.current = false;
       setBusy(false);
