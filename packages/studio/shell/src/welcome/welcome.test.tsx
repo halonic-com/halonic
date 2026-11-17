@@ -253,6 +253,31 @@ verifies("shell.welcome-recent", () => {
     expect(recentRow(root, "beta")?.hasAttribute("aria-busy")).toBe(false);
   });
 
+  it("a busy Recent row exposes a polite Opening… status, and clears it when done", async () => {
+    let finish: () => void = () => {};
+    const onOpen = vi.fn(
+      () =>
+        new Promise<undefined>((resolve) => {
+          finish = () => resolve(undefined);
+        }),
+    );
+    const root = render(
+      <Welcome
+        onOpenFolder={async () => undefined}
+        recent={{ workspaces, onOpen, onRemove: () => {} }}
+      />,
+    );
+    const status = () => root.querySelector<HTMLElement>('section [role="status"]');
+    expect(status()?.textContent).toBe("");
+
+    await act(async () => recentRow(root, "beta")?.click());
+    expect(status()?.getAttribute("aria-live")).toBe("polite");
+    expect(status()?.textContent).toBe("Opening…");
+
+    await act(async () => finish());
+    expect(status()?.textContent).toBe("");
+  });
+
   it("a Recent row stays busy and tries again for 10 seconds, then says the engine isn't answering", async () => {
     vi.useFakeTimers();
     try {
