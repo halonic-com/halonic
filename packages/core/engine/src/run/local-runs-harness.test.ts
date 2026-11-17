@@ -128,7 +128,6 @@ verifies("engine.run-harness-failures", () => {
 
     await executor.start(replyStart);
     await scheduler.runDue();
-
     expect(await runs.get("run_1")).toMatchObject({
       status: "failed",
       reason: "sandbox-not-ready",
