@@ -211,6 +211,9 @@ verifies("first-run.sample-card", () => {
     const { context, inbox, openPlace } = contextWith(false);
     stepOpeners(context, progressWith([])).start();
     expect(inbox.requestNewRequest).toHaveBeenCalledOnce();
+    expect(inbox.requestNewRequest).toHaveBeenCalledWith(
+      "Hi, my order #1042 arrived damaged. Can I get a refund?",
+    );
     expect(openPlace).toHaveBeenCalledWith("inbox");
   });
 
