@@ -43,6 +43,12 @@ const host: AgentsHost = {
     if (found === undefined) throw new Error("not found");
     return found;
   },
+  settings: async (ref) => {
+    const found = agents.find((agent) => agent.hubId === ref.hubId && agent.id === ref.id);
+    if (found === undefined) throw new Error("not found");
+    return { instructions: "", ...found };
+  },
+  update: async () => undefined,
   nameOf: (ref) => agents.find((agent) => agent.hubId === ref.hubId && agent.id === ref.id)?.name,
   referencesTo: async () => [],
   subscribe: () => () => undefined,
