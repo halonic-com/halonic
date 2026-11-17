@@ -158,6 +158,31 @@ verifies("settings.sandbox-setup-flow", () => {
     ]);
   });
 
+  it("moves focus to the new title when two screens use the same layout", () => {
+    const calls = handlers();
+    const container = render(
+      <SandboxSetupFlow state={{ kind: "test-failed", failedCheck: "A check" }} {...calls} />,
+    );
+    const root = mounted[mounted.length - 1]?.root;
+    const again = (state: SandboxSetupState) =>
+      act(() => root?.render(<SandboxSetupFlow state={state} {...calls} />));
+    const focused = () => document.activeElement?.textContent;
+    const next = (state: SandboxSetupState, title: string) => {
+      container.querySelector("button")?.focus();
+      again(state);
+      expect(document.activeElement?.tagName).toBe("H2");
+      expect(focused()).toBe(title);
+    };
+    next({ kind: "testing", checks: [] }, "Testing your sandbox");
+    next({ kind: "test-failed", failedCheck: "A check" }, "The test didn't pass");
+    next({ kind: "done", name: "Sandbox" }, "Sandbox is on");
+    next({ kind: "done-none", promise: false }, "You're all set");
+    next({ kind: "setting-up", path: "native", stepsDone: 1 }, "Setting up your sandbox");
+    container.querySelector("button")?.focus();
+    again({ kind: "setting-up", path: "native", stepsDone: 1, offline: true });
+    expect(document.activeElement?.tagName).toBe("H2");
+  });
+
   it("names the failed check and offers three ways on", () => {
     const { root, calls, text } = show({
       kind: "test-failed",

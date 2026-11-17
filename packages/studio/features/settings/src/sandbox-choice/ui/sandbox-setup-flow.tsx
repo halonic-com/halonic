@@ -69,6 +69,14 @@ export interface SandboxSetupFlowProps {
  * (`settings.sandbox-setup-flow`).
  */
 export function SandboxSetupFlow(props: SandboxSetupFlowProps) {
+  const { state } = props;
+  // A key per screen: two screens can render the same component, and focus only moves to the
+  // new title when the modal mounts again.
+  const key = state.kind === "setting-up" && state.offline === true ? "offline" : state.kind;
+  return <SetupScreen key={key} {...props} />;
+}
+
+function SetupScreen(props: SandboxSetupFlowProps) {
   const { state, step } = props;
   switch (state.kind) {
     case "setting-up":
