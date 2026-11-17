@@ -3,6 +3,7 @@
 - Task: HAL-11329
 - Approval: Liam approves this change on HAL-11329 (https://paperclip.halonic.com/HAL/issues/HAL-11329#comment-24d2637d-fb6a-454c-b274-058fb7965b56). A team decision with no board card (HAL-2282 rule); it uses only words already in the code.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:RIIacEZ24hmdeNF6U1tbKWH2UsQst2JyX1nn9krql7GkHE4xSQV+Wf4J3PffsiLrs4S18Glww+L2yzq6Pnu8Cg==
 
 ## What changes
 
