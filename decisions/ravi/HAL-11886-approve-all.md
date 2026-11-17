@@ -2,6 +2,7 @@
 
 - Approval: Liam assigned HAL-11886 and left the choice to Ravi; Liam signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TuaGNr2yHHwG0+Kc7U1Hljha+BAFvfvdMEeTp0E32ouH9QyYZjsR1qMQbmxqwkdgPBVUC7HpRyryY6jRDXamDQ==
 - Task: HAL-11886
 
 ## What changes
