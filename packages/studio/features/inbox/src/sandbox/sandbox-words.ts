@@ -9,8 +9,12 @@ export const sandboxInboxWords = {
     routines === 1 ? "1 routine didn't run" : `${routines} routines didn't run`,
   /** `sandbox-inbox.fixed-title`: the title once a check passed. */
   fixedTitle: "The sandbox is ready",
-  /** `sandbox-inbox.fixed-line`: the line under it. Nothing runs again by itself. */
-  fixedLine: "Nothing ran again by itself. Run each one again from its page.",
+  /**
+   * `sandbox-inbox.footer` (mc 23.3): the card's last line, and the fixed card's only line. True
+   * for a scheduled routine too, unlike "Nothing ran again by itself".
+   */
+  footer:
+    "Routines start again at their next time once the sandbox works. To let one agent run without the sandbox, change it in that agent's settings.",
   /** `sandbox-inbox.check-again` */
   checkAgain: "Check again",
   /** `sandbox-inbox.fixed-notice`: the Notices row after the row was seen as Fixed. */

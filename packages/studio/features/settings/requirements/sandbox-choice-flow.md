@@ -8,7 +8,7 @@ The Studio shall show the first-start sandbox choice as one card centred on the 
 
 ## Examples
 
-- Given Windows and WSL can't run because virtualisation is off,
+- Given Windows and WSL can't run because virtualization is off,
   when the first screen shows,
   then it shows no recommended card, and Other options lists Sandbox in WSL unavailable with its reason.
 

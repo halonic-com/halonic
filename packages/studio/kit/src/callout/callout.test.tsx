@@ -206,6 +206,25 @@ verifies("kit.callout", () => {
     expect(button.hasAttribute("aria-busy")).toBe(false);
   });
 
+  it("shows the action's busy label while the promise runs", async () => {
+    let finish = () => {};
+    const onClick = () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+    const { container } = render(
+      <Callout tone="danger" action={{ label: "Check again", busyLabel: "Checking…", onClick }}>
+        The sandbox isn't ready.
+      </Callout>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    await click(button);
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    expect(button.textContent).toContain("Checking…");
+    await act(async () => finish());
+    expect(button.hasAttribute("aria-busy")).toBe(false);
+  });
+
   it("has no close button", () => {
     const { container } = render(<Callout tone="info">Keys stay on this computer.</Callout>);
     expect(container.querySelector("button")).toBeNull();

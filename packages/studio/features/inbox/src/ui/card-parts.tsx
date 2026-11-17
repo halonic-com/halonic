@@ -6,6 +6,26 @@ import { PlainValue } from "./plain-value.tsx";
 /** The line above the bar when an answer wasn't recorded (mc 10.2). */
 export const failedText = "Couldn't record your decision.";
 
+/** The line when the engine refused an answer because the run isn't waiting for it any more (mc 10.2). */
+export const decidedElsewhereText =
+  "This is no longer waiting for you. It was answered somewhere else or the run moved on.";
+
+/** The engine's refusals that mean "not waiting for this answer any more", so trying again can't work. */
+const staleAnswerCodes: ReadonlySet<string> = new Set([
+  "engine.decision-callid-must-match",
+  "engine.decision-wait-must-match",
+]);
+
+/**
+ * Whether an answer was refused because its tool call or wait step isn't the run's current one.
+ * The refusal's `code` is read, and its message too: it may reach Studio as a plain `Error`.
+ */
+export function wasDecidedElsewhere(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const { code, message } = error as { code?: unknown; message?: unknown };
+  return [code, message].some((each) => typeof each === "string" && staleAnswerCodes.has(each));
+}
+
 /** The item after this one, for the decided card's **Next** (flow-inbox 5.3). */
 export interface NextItem {
   readonly title: string;
@@ -147,15 +167,22 @@ export function manualAnswerOf(error: unknown): ManualAnswer | null {
   return typeof fix === "string" && fix !== "" ? { message, command: fix } : null;
 }
 
+/** What the bar shows for an answer that came too late: its sentence, and **Open run** when it can. */
+export interface DecidedElsewhere {
+  readonly openRun: (() => void) | undefined;
+}
+
 interface FailedLineProps {
   /** Shows "Couldn't record your decision." with **Try again** when set. */
   readonly onRetry: (() => void) | null;
   /** Shows the executor's sentence and the command to copy, with no **Try again**, when set. */
   readonly manual?: ManualAnswer | null;
+  /** Shows "This is no longer waiting for you." with **Open run**, in place of **Try again**, when set. */
+  readonly elsewhere?: DecidedElsewhere | null;
 }
 
 /** The bar's always-mounted alert slot, above its buttons (a11y 8.3). */
-export function FailedLine({ onRetry, manual = null }: FailedLineProps) {
+export function FailedLine({ onRetry, manual = null, elsewhere = null }: FailedLineProps) {
   return (
     <div role="alert" className="text-small text-fg">
       {manual === null ? null : (
@@ -164,7 +191,17 @@ export function FailedLine({ onRetry, manual = null }: FailedLineProps) {
           <CommandBox command={manual.command} />
         </span>
       )}
-      {manual !== null || onRetry === null ? null : (
+      {elsewhere === null ? null : (
+        <Callout
+          tone="info"
+          {...(elsewhere.openRun === undefined
+            ? {}
+            : { action: { label: "Open run", onClick: elsewhere.openRun } })}
+        >
+          {decidedElsewhereText}
+        </Callout>
+      )}
+      {manual !== null || elsewhere !== null || onRetry === null ? null : (
         <span className="flex flex-wrap items-center gap-2">
           {failedText}
           <Button variant="ghost" size="sm" onClick={onRetry}>

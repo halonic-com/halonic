@@ -66,7 +66,7 @@ verifies("settings.wsl-remove-dialog", () => {
     const removeWslSetup = vi.fn(async () => ({ outcome: "kept" }) as WslRemoveResult);
     await open(fakeHost({ removeWslSetup }));
     await press("Remove sandbox setup");
-    expect(document.body.textContent).toContain("Your workspaces on Windows are not touched.");
+    expect(document.body.textContent).toContain("Your workspace files on Windows aren't touched.");
     await press("Cancel");
     expect(removeWslSetup).not.toHaveBeenCalled();
     expect(document.body.textContent).not.toContain("Your workspaces on Windows");
@@ -95,12 +95,32 @@ verifies("settings.wsl-remove-dialog", () => {
     expect(document.body.textContent).toContain("Halonic's sandbox is gone from this computer.");
   });
 
-  it("closes on the Cancel choice without asking the host", async () => {
+  it("has no Cancel choice, and says why Remove sandbox can't be used before one is picked", async () => {
     const removeWslSetup = vi.fn(async () => ({ outcome: "kept" }) as WslRemoveResult);
     await toChoice(fakeHost({ removeWslSetup }));
-    await click(radio("Cancel") as HTMLElement);
-    expect(document.body.textContent).not.toContain("What should happen");
+    expect(radio("Cancel")).toBeUndefined();
+    const remove = button("Remove sandbox") as HTMLElement;
+    expect(
+      document.getElementById(remove.getAttribute("aria-describedby") ?? "")?.textContent,
+    ).toBe("Choose what happens to the contents first.");
+    await click(remove);
     expect(removeWslSetup).not.toHaveBeenCalled();
+    await click(radio("Remove without a backup") as HTMLElement);
+    expect(document.body.textContent).not.toContain("Choose what happens");
+  });
+
+  it("announces Sandbox removed once, when the sandbox is gone", async () => {
+    const announced: string[] = [];
+    const host = fakeHost({ removeWslSetup: async () => ({ outcome: "removed" }) });
+    render(
+      <AgentSandboxHostView host={host} place="app" announce={(line) => announced.push(line)} />,
+    );
+    await act(async () => {});
+    await press("Remove sandbox setup");
+    await press("Continue");
+    await click(radio("Remove without a backup") as HTMLElement);
+    await press("Remove sandbox without a backup");
+    expect(announced).toEqual(["Sandbox removed"]);
   });
 
   it("saves a backup to the chosen file, then shows where it is", async () => {
@@ -158,7 +178,7 @@ verifies("settings.wsl-remove-dialog", () => {
     await click(radio("Save a backup") as HTMLElement);
     await press("Choose location…");
     await press("Save backup and remove sandbox");
-    expect(document.body.textContent).toContain("The sandbox could not be removed");
+    expect(document.body.textContent).toContain("The sandbox couldn't be removed");
     expect(document.body.textContent).toContain("Your backup is saved at b.tar.");
     expect(document.body.textContent).toContain("Something went wrong.");
   });
@@ -196,7 +216,7 @@ verifies("settings.wsl-remove-dialog", () => {
     await click(radio("Save a backup") as HTMLElement);
     await press("Choose location…");
     await press("Save backup and remove sandbox");
-    expect(document.body.textContent).toContain("The sandbox could not be removed");
+    expect(document.body.textContent).toContain("The sandbox couldn't be removed");
     expect(document.body.textContent).not.toContain("Your backup is saved");
     expect(document.body.textContent).toContain("busy");
     await press("Try again");
@@ -214,7 +234,7 @@ verifies("settings.wsl-remove-dialog", () => {
     await toChoice(host);
     await click(radio("Remove without a backup") as HTMLElement);
     await press("Remove sandbox without a backup");
-    expect(document.body.textContent).toContain("The sandbox was not removed");
+    expect(document.body.textContent).toContain("The sandbox wasn't removed");
     expect(button("Choose another location")).toBeUndefined();
     expect(button("Try again")).toBeUndefined();
     unmountAll();

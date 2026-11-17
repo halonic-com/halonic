@@ -13,6 +13,7 @@ import {
   manualAnswerOf,
   type NextItem,
   useEveryMinute,
+  wasDecidedElsewhere,
 } from "./card-parts.tsx";
 import { type DecisionGuard, useDecisionGuard } from "./decision-guard.ts";
 import { PlainValue } from "./plain-value.tsx";
@@ -34,6 +35,8 @@ type CardState =
   | {
       readonly kind: "open";
       readonly failed: string | null;
+      /** The answer was refused because the run isn't waiting at this step any more. */
+      readonly elsewhere: boolean;
       readonly manual: ManualAnswer | null;
     }
   | { readonly kind: "answering"; readonly event: string }
@@ -106,7 +109,12 @@ export function WaitCard(props: WaitCardProps) {
   const titleId = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   const answered = useRef<CalloutHandle>(null);
-  const [state, setState] = useState<CardState>({ kind: "open", failed: null, manual: null });
+  const [state, setState] = useState<CardState>({
+    kind: "open",
+    failed: null,
+    elsewhere: false,
+    manual: null,
+  });
   const [usableAt] = useState(() => now().getTime());
   const guard = useDecisionGuard(usableAt, () => now().getTime());
   useEveryMinute();
@@ -123,7 +131,12 @@ export function WaitCard(props: WaitCardProps) {
       await decisions.answer(item, event);
       setState({ kind: "answered", event, at: now() });
     } catch (error) {
-      setState({ kind: "open", failed: event, manual: manualAnswerOf(error) });
+      setState({
+        kind: "open",
+        failed: event,
+        elsewhere: wasDecidedElsewhere(error),
+        manual: manualAnswerOf(error),
+      });
     }
   }
 
@@ -169,6 +182,9 @@ export function WaitCard(props: WaitCardProps) {
           state={state}
           guard={guard}
           onAnswer={answer}
+          onOpenRun={
+            props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId)
+          }
         />
       )}
     </section>
@@ -181,6 +197,7 @@ interface AnswerBarProps {
   readonly state: Exclude<CardState, { kind: "answered" }>;
   readonly guard: DecisionGuard;
   readonly onAnswer: (event: string) => void;
+  readonly onOpenRun: (() => void) | undefined;
 }
 
 /**
@@ -193,7 +210,7 @@ interface AnswerBarProps {
  * sits in a `@container` as wide as the button, so the label can be capped at that width less
  * the button's widest padding and edges.
  */
-function AnswerBar({ accepts, labels, state, guard, onAnswer }: AnswerBarProps) {
+function AnswerBar({ accepts, labels, state, guard, onAnswer, onOpenRun }: AnswerBarProps) {
   const [first, ...others] = accepts;
   const failed = state.kind === "open" ? state.failed : null;
   const answerButton = (event: string, primary: boolean) => {
@@ -227,6 +244,7 @@ function AnswerBar({ accepts, labels, state, guard, onAnswer }: AnswerBarProps) 
       <FailedLine
         onRetry={failed === null ? null : () => onAnswer(failed)}
         manual={state.kind === "open" ? state.manual : null}
+        elsewhere={state.kind === "open" && state.elsewhere ? { openRun: onOpenRun } : null}
       />
       {first === undefined ? null : answerButton(first, true)}
       {others.length === 0 ? null : (

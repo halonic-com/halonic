@@ -117,7 +117,7 @@ verifies("settings.sandbox-choice-flow", () => {
   it("shows a backend that can't run with its reason and doesn't let it be set up", () => {
     const onSetUp = vi.fn();
     const root = render(flow({ onSetUp, initialScreen: "options" }));
-    expect(root.textContent).toContain("Virtualisation is turned off on this computer.");
+    expect(root.textContent).toContain("Virtualization is turned off on this computer.");
     const docker = root.querySelector<HTMLInputElement>('input[type="radio"][value="docker-sbx"]');
     act(() => docker?.click());
     press(root, "Set up Sandbox in WSL");
@@ -173,7 +173,7 @@ verifies("settings.sandbox-choice-flow", () => {
     expect(root.textContent).not.toContain("Recommended");
     expect(root.querySelector("h3")).toBeNull();
     press(root, "Other options");
-    expect(root.textContent).toContain("Virtualisation is turned off on this computer.");
+    expect(root.textContent).toContain("Virtualization is turned off on this computer.");
     press(root, "Back");
     press(root, "Continue without sandbox");
     press(root, "Set up a sandbox");

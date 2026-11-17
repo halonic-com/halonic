@@ -73,7 +73,7 @@ verifies("settings.sandbox-choice-view", () => {
     );
     expect(view.options[1]).toMatchObject({
       use: "disabled",
-      disabledReason: "Virtualisation is turned off on this computer.",
+      disabledReason: "Virtualization is turned off on this computer.",
       badge: "Needs Docker",
     });
   });
