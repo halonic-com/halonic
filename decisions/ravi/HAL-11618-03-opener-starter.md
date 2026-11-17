@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11618
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WtowpiZQQgzfZ2/R1l1n/tNeeu2radsEFldYYZVMcZuF28RTJ8O+EDB44JJe+v4v3U6ERcOjpkPjmUsCH2RjCg==
 
 Signing in to a provider from a local integration needs the user's browser to open at the provider's
 page. The only way to do that from Node is to start the system's own opener, so
