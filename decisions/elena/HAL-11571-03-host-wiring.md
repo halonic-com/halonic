@@ -3,6 +3,7 @@
 - Task: HAL-11571
 - Approval: Liam decided on HAL-11571 (https://paperclip.halonic.com/HAL/issues/HAL-11571) that the desktop installer is built for v0.1, in three pull requests. A team decision with no board card; the install flow is already in the approved v0.1 scope (ADR `docs/adr/2026-11-09-plugins.md`, P6 and P7).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:O9McZ7lC6MunW1pQWKCNV5HV05C9oKcBmrjsRDLZsT5jiNe4SeO+crRn/qxSVCsoUp9Tn1VXoTRM++MqsZ+WCQ==
 
 ## What changes
 
