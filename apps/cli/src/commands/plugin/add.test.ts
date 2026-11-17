@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { withHomeAsTilde } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
@@ -9,6 +10,7 @@ import { openPluginService, type PluginSetup } from "../../plugin-host.ts";
 import { runCli, type Terminal } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
 import { removeTestFolder } from "../../test/remove-folder.ts";
+import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { pluginCommandWith } from "./command.ts";
 
 const fullFingerprint = /^hpf1:[0-9a-f]{64}$/u;
@@ -89,6 +91,12 @@ async function add(args: readonly string[], terminal?: Terminal) {
   return { code, io };
 }
 
+/** The folder as the check shows it: the real home folder is `~`, even when the test folder sits in it. */
+function shownFolder(location: string): string {
+  const { platform, homeFolder } = nodeProfileEnvironment();
+  return withHomeAsTilde(platform, homeFolder, location);
+}
+
 const plugins = async () => (await openPluginService(setup).load()).map((entry) => entry.status);
 const pluginsFolder = () => join(folder, "profile", "plugins");
 
@@ -119,7 +127,7 @@ verifies("cli.commands.plugin.add", () => {
         "  api.weather.example",
         "",
         "Folder",
-        `  ${entry?.status === "trusted" ? entry.location : ""}`,
+        `  ${entry?.status === "trusted" ? shownFolder(entry.location) : ""}`,
         "",
         "Backend files",
         "  backend/index.js",
