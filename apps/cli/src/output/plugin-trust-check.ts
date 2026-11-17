@@ -11,6 +11,7 @@
 import {
   type PluginTrustContent,
   type PluginTrustSection,
+  pluginTrustFiles,
   pluginTrustSections,
 } from "@halonicjs/app";
 import type { Message } from "../messages/define.ts";
@@ -33,14 +34,15 @@ const riskGroups: readonly { readonly risk: string; readonly heading: () => Mess
  * itself, with `[y/N]`, is asked after these lines.
  *
  * @example
- * pluginTrustCheckLines(entry.content);
+ * pluginTrustCheckLines(entry.content, entry.location);
  * // ["Trust Weather and turn it on?", "", "Tools for agents",
  * //  "  Reads         get_forecast", …, "", "Plugin code runs apart from the rest of Halonic. …"]
  */
-export function pluginTrustCheckLines(content: PluginTrustContent): Phrase[] {
+export function pluginTrustCheckLines(content: PluginTrustContent, folder: string): Phrase[] {
   return [
     pluginMessages.trustQuestion(printable(content.plugin.name)).phrase,
     ...pluginTrustSections(content).flatMap((name) => sectionLines(content, name)),
+    ...locationLines(content, folder),
     phrase``,
     pluginMessages.notChecked().phrase,
   ];
@@ -89,6 +91,22 @@ function sectionLines(content: PluginTrustContent, name: PluginTrustSection): Ph
   if (name === "in-studio") return [];
   const { heading, rows } = cliSections[name];
   return [phrase``, heading().phrase, ...rows(content)];
+}
+
+/**
+ * Where the plugin sits on disk, then the files its fingerprint covers: the
+ * first ones and "and N more". Both come from the workspace, so each is escaped.
+ */
+function locationLines(content: PluginTrustContent, folder: string): Phrase[] {
+  const { shown, more } = pluginTrustFiles(content);
+  const files = shown.map((path) => phrase`${rowIndent}${printable(path)}`);
+  if (more > 0) files.push(phrase`${rowIndent}${pluginMessages.moreFiles(more).phrase}`);
+  return [
+    phrase``,
+    pluginMessages.folderHeading().phrase,
+    phrase`${rowIndent}${printable(folder)}`,
+    ...(files.length === 0 ? [] : [phrase``, pluginMessages.filesHeading().phrase, ...files]),
+  ];
 }
 
 /** Tools grouped by what they do; a tool that changes or sends something asks a person first. */

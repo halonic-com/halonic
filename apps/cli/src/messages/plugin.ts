@@ -1,3 +1,4 @@
+import { pluginTrustLocationHeadings } from "@halonicjs/app";
 import { defineMessages } from "./define.ts";
 import { markPart, phrase } from "./phrase.ts";
 
@@ -53,6 +54,12 @@ export const pluginMessages = defineMessages("plugin", {
   /** After a secret's name: "goes only to api.weather.example". */
   secretGoesTo: (host: string) => phrase`goes only to ${host}`,
   addressesHeading: () => phrase`Addresses`,
+  /** The heading of the plugin's folder line, as the shared model words it. */
+  folderHeading: () => phrase`${pluginTrustLocationHeadings.folder}`,
+  /** The heading of the list of files the fingerprint covers. */
+  filesHeading: () => phrase`${pluginTrustLocationHeadings.files}`,
+  /** The last line of the file list when more files follow the ones shown. */
+  moreFiles: (count: number) => phrase`and ${count} more`,
   /** T9's last line, under every plugin trust check. */
   notChecked: () =>
     phrase`Plugin code runs apart from the rest of Halonic. Halonic doesn't check what the plugin does with what it's given.`,

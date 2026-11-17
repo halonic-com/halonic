@@ -38,12 +38,14 @@ ui:
     - { id: forecast, title: Show the forecast, tool: forecast }
 `;
 
-function weatherContent() {
+const folder = "/profile/plugins/weather";
+
+function weatherContent(paths: readonly string[] = []) {
   const parsed = parseFile("plugin", weatherManifest);
   if (!parsed.ok) throw new Error(parsed.error.map((problem) => problem.message).join("; "));
   return pluginTrustContent({
     plugin: parsed.value.value,
-    files: [{ path: "plugin.yaml", sha256: "a".repeat(64) }],
+    files: ["plugin.yaml", ...paths].map((path) => ({ path, sha256: "a".repeat(64) })),
   });
 }
 
@@ -65,7 +67,7 @@ verifies("app.plugin-trust-sections", () => {
   it("shows the plugin's sections in the shared model's order, each under its heading", () => {
     const content = weatherContent();
     const known = new Set(Object.values(pluginTrustSectionHeadings));
-    const lines = pluginTrustCheckLines(content).map(plainText);
+    const lines = pluginTrustCheckLines(content, folder).map(plainText);
     const shownHeadings = lines.filter((line) => known.has(line));
     expect(shownHeadings).toEqual(
       shownByCli(pluginTrustSections(content)).map(
@@ -73,5 +75,50 @@ verifies("app.plugin-trust-sections", () => {
       ),
     );
     expect(shownHeadings).toEqual(["Tools for agents", "Programs", "Secrets", "Addresses"]);
+  });
+});
+
+verifies("app.plugin-trust-sections", () => {
+  const linesOf = (paths: readonly string[]) =>
+    pluginTrustCheckLines(weatherContent(paths), folder).map(plainText);
+
+  it("shows the plugin's folder and the files its fingerprint covers", () => {
+    const lines = linesOf(["backend/index.js"]);
+    const start = lines.indexOf("Folder");
+    expect(lines.slice(start, start + 6)).toEqual([
+      "Folder",
+      `  ${folder}`,
+      "",
+      "Files the fingerprint covers",
+      "  backend/index.js",
+      "",
+    ]);
+  });
+
+  it("names the first ten files and says how many more", () => {
+    const paths = Array.from(
+      { length: 13 },
+      (_, index) => `backend/file-${String(index).padStart(2, "0")}.js`,
+    );
+    const lines = linesOf(paths);
+    const start = lines.indexOf("Files the fingerprint covers");
+    expect(lines.slice(start + 1, start + 12)).toEqual([
+      ...paths.slice(0, 10).map((path) => `  ${path}`),
+      "  and 3 more",
+    ]);
+  });
+
+  it("leaves out the file list for a plugin with only its manifest", () => {
+    expect(linesOf([])).not.toContain("Files the fingerprint covers");
+  });
+
+  it("escapes control characters in the folder and in a file name", () => {
+    const lines = pluginTrustCheckLines(
+      weatherContent(["backend/\u001b[31mred.js"]),
+      "/x/\u001b[2Jplugin",
+    ).map(plainText);
+    expect(lines).toContain("  /x/\\u001b[2Jplugin");
+    expect(lines).toContain("  backend/\\u001b[31mred.js");
+    expect(lines.join("\n")).not.toContain("\u001b");
   });
 });
