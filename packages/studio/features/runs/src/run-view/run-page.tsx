@@ -472,6 +472,7 @@ function pageContext(
       return source.workflow(other.hubId, other.workflowId)?.name ?? other.workflowId;
     },
     providerKind: source.providerKind,
+    ...(source.agentName === undefined ? {} : { agentName: source.agentName }),
     currency: source.currency(),
     now,
   };

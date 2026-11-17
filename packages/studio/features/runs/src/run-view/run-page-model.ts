@@ -66,6 +66,8 @@ export interface RunPageContext {
   readonly workflowOfRun: (runId: string) => string | undefined;
   /** Whether a model provider runs on this computer or elsewhere; `undefined` when it isn't in the workspace. */
   readonly providerKind: (providerId: string) => ProviderKind | undefined;
+  /** An agent's name as its file says; `undefined` when the workspace has no such agent. */
+  readonly agentName?: (agentId: string) => string | undefined;
   readonly currency: string;
   readonly now: Date;
 }
@@ -138,7 +140,7 @@ export function runBanner(run: SourcedRun, context: RunPageContext): RunBanner |
   const wait = runWait(summary);
   switch (wait.kind) {
     case "approvals":
-      return needsYou(approvalText(wait.oldest, wait.count));
+      return needsYou(approvalText(wait.oldest, wait.count, context));
     case "step":
       return needsYou(
         wait.title === null
@@ -155,8 +157,9 @@ export function runBanner(run: SourcedRun, context: RunPageContext): RunBanner |
 }
 
 /** The approval banner's sentence, built from the oldest approval (mc 15.2); the Inbox card has the rest. */
-function approvalText(oldest: PendingApproval, count: number): string {
-  const what = runPageWords.approvalAsk(oldest.subagent ?? oldest.agent, oldest.tool);
+function approvalText(oldest: PendingApproval, count: number, context: RunPageContext): string {
+  const asker = oldest.subagent ?? oldest.agent;
+  const what = runPageWords.approvalAsk(context.agentName?.(asker) ?? asker, oldest.tool);
   return count === 1
     ? runPageWords.approval(what, oldest.tool === "gmail_send")
     : runPageWords.approvals(count, what);

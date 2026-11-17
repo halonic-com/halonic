@@ -26,6 +26,11 @@ export interface InboxRuns {
    * here or on another device. Returns a function that stops the calls.
    */
   subscribe(listener: () => void): () => void;
+  /**
+   * An agent's name as its file says; `undefined` when the workspace has no such agent or can't
+   * be read, and the Inbox then shows the id.
+   */
+  agentName?(agentId: string): string | undefined;
   /** Sends an answer to a run; see `RunExecutor.send`. */
   send: RunExecutor["send"];
 }
@@ -232,7 +237,7 @@ export class Inbox {
       error ??= list?.reason;
       return this.#setupItems.get(source) ?? [];
     });
-    const items = inboxItems(runs.value);
+    const items = inboxItems(runs.value, (id) => this.#runs.agentName?.(id) ?? id);
     const listed = new Set(items.map(answerId));
     for (const id of this.#answered) if (!listed.has(id)) this.#answered.delete(id);
     this.#set({

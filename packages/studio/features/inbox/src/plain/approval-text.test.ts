@@ -39,8 +39,25 @@ verifies("inbox.approval-title", () => {
     expect(approvalTitle(item)).toBe(`${item.agent} wants to use publish`);
   });
 
+  it("names the agent by the name its file gives, not its id", () => {
+    const [item] = inboxItems(
+      [
+        waitingRun("r1", {
+          approvals: [pendingApproval("call-1", "publish", "2026-11-08T10:42:00.000Z")],
+        }),
+      ],
+      (id) => (id === "sorter" ? "Mail sorter" : id),
+    );
+    if (item?.kind !== "approval") throw new Error("expected an approval item");
+    expect(approvalTitle(item)).toBe("Mail sorter wants to use publish");
+  });
+
   it("names the subagent that asked, then the agent it asked for", () => {
-    const item = { ...approvalFor("notes-mcp__create_note"), subagent: "checker" };
+    const item = {
+      ...approvalFor("notes-mcp__create_note"),
+      subagent: "checker",
+      subagentName: "checker",
+    };
     expect(approvalTitle(item, "Sorter", "Checker")).toBe(
       "Checker, for Sorter, wants to use create_note (notes-mcp)",
     );
@@ -50,7 +67,11 @@ verifies("inbox.approval-title", () => {
   });
 
   it("marks hidden characters in a subagent's id when its file is gone", () => {
-    const item = { ...approvalFor("publish"), subagent: `chec${String.fromCodePoint(0x202e)}ker` };
+    const item = {
+      ...approvalFor("publish"),
+      subagent: `chec${String.fromCodePoint(0x202e)}ker`,
+      subagentName: `chec${String.fromCodePoint(0x202e)}ker`,
+    };
     expect(approvalTitle(item, "Sorter")).toBe("chec⟦U+202E⟧ker, for Sorter, wants to use publish");
   });
 });

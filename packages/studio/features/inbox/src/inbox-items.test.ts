@@ -23,6 +23,8 @@ verifies("inbox.items", () => {
       callId: "call-1",
       agent: "sorter",
       subagent: null,
+      agentName: "sorter",
+      subagentName: null,
       tool: "create_note",
       connector: "notes-mcp",
       rawTool: "notes-mcp__create_note",
