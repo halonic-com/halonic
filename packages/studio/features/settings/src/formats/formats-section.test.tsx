@@ -38,9 +38,7 @@ verifies("settings.formats-section", () => {
     const { prefs, view } = setup();
     const select = control<HTMLSelectElement>(view, "select");
     expect(select.value).toBe("follow");
-    expect(select.selectedOptions[0]?.textContent).toBe(
-      "Follow this browser: English (United Kingdom)",
-    );
+    expect(select.selectedOptions[0]?.textContent).toBe("Follow this browser: English (UK)");
     expect(view.textContent).toContain("Example: 12,345.60 · Tue 17 Nov, 08:00");
     expect(prefs.stored.size).toBe(0);
   });
@@ -68,7 +66,7 @@ verifies("settings.formats-section", () => {
       expect(control<HTMLSelectElement>(view, "select").value).toBe("follow");
       expect(view.textContent).toContain("Couldn't save the format on this computer.");
       expect(announce).toHaveBeenCalledWith(
-        "Couldn't save the format on this computer. Format is back to Follow this browser: English (United Kingdom).",
+        "Couldn't save the format on this computer. Format is back to Follow this browser: English (UK).",
       );
     });
 
@@ -113,9 +111,7 @@ describe("on the phone's Settings page", () => {
       const sheet = document.body;
       expect(sheet.querySelector('input[type="search"]')).not.toBeNull();
       const first = sheet.querySelector('[role="radiogroup"] input[type="radio"]');
-      expect(first?.nextElementSibling?.textContent).toBe(
-        "Follow this phone: English (United Kingdom)",
-      );
+      expect(first?.nextElementSibling?.textContent).toBe("Follow this phone: English (UK)");
     });
 
     it("says a failed save in a toast on this phone, not under the choice", async () => {
@@ -131,7 +127,7 @@ describe("on the phone's Settings page", () => {
       expect(toasts.list().map((toast) => [toast.title, toast.text])).toEqual([
         [
           "Couldn't save the format on this phone.",
-          "Format is back to Follow this phone: English (United Kingdom).",
+          "Format is back to Follow this phone: English (UK).",
         ],
       ]);
     });

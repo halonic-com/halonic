@@ -28,7 +28,7 @@ verifies("settings.formats-format", () => {
     const [first] = formatOptions({ followTag: "en-GB", place: "app" });
     expect(first).toEqual({
       value: "follow",
-      label: "Follow this computer: English (United Kingdom)",
+      label: "Follow this computer: English (UK)",
     });
   });
 
@@ -73,7 +73,7 @@ verifies("settings.formats-format", () => {
     expect(usableTag("en_GB")).toBe("en-GB");
     expect(usableTag("en-GB-u-ca-buddhist")).toBe("en-GB");
     expect(formatOptions({ followTag: "en_GB", place: "app" })[0]?.label).toBe(
-      "Follow this computer: English (United Kingdom)",
+      "Follow this computer: English (UK)",
     );
     expect(formatExample("en-GB-u-ca-buddhist", NOW)).toBe("12,345.60 · Tue 17 Nov, 08:00");
     expect(formatLocale("follow", "nl_NL.UTF-8")).toBe("nl-NL");
@@ -87,7 +87,7 @@ verifies("settings.formats-format", () => {
     expect(usableTag("")).toBe("en-GB");
     expect(usableTag("C")).toBe("en-GB");
     expect(formatOptions({ followTag: "", place: "app" })[0]?.label).toBe(
-      "Follow this computer: English (United Kingdom)",
+      "Follow this computer: English (UK)",
     );
     expect(formatExample("", NOW)).toBe("12,345.60 · Tue 17 Nov, 08:00");
   });

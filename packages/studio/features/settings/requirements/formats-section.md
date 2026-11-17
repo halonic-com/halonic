@@ -12,7 +12,7 @@ On the phone's own Settings page (served Studio, flow-settings 13 and mc 13.2), 
 
 - Given the stored format is "follow" and the browser's language is `en-GB`,
   when Formats shows,
-  then the choice reads "Follow this browser: English (United Kingdom)" in a browser
+  then the choice reads "Follow this browser: English (UK)" in a browser
   and the example reads "Example: 12,345.60 · Tue 17 Nov, 08:00" (today).
 - Given Formats shows,
   when "Dutch (Netherlands)" is picked,
@@ -22,7 +22,7 @@ On the phone's own Settings page (served Studio, flow-settings 13 and mc 13.2), 
   then the dialog says "Couldn't save the format on this computer. Format is back to …".
 - Given Formats shows on the phone's Settings page,
   when the user taps Format,
-  then a picker sheet opens with a search field, and its first option reads "Follow this phone: English (United Kingdom)".
+  then a picker sheet opens with a search field, and its first option reads "Follow this phone: English (UK)".
 - Given saving fails on the phone's Settings page,
   when a format is picked,
   then a toast says "Couldn't save the format on this phone." with "Format is back to …", and nothing shows under the choice.

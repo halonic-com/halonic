@@ -95,12 +95,13 @@ export function usableTag(tag: string): string {
 }
 
 /**
- * The Format select's options: first "Follow this computer: English (United Kingdom)" ("Follow
+ * The Format select's options: first "Follow this computer: English (UK)" ("Follow
  * this browser: …" when served, "Follow this phone: …" on the phone's page), then each tag this window can format, by name, sorted by name.
+ * The followed name is the short one, so the line fits the select in Settings' 360px column.
  *
  * @example
  * formatOptions({ followTag: "en-GB", place: "app" })[0];
- * // { value: "follow", label: "Follow this computer: English (United Kingdom)" }
+ * // { value: "follow", label: "Follow this computer: English (UK)" }
  */
 export function formatOptions(where: FormatPlace): FormatOption[] {
   const names = new Intl.DisplayNames([studioLanguage], {
@@ -115,7 +116,13 @@ export function formatOptions(where: FormatPlace): FormatOption[] {
     .map((tag) => ({ value: tag, label: nameOf(tag) }))
     .sort((left, right) => collator.compare(left.label, right.label));
   const follows = `this ${settingsWhere(where.place, where.surface ?? "window")}`;
-  const followed = nameOf(usableTag(where.followTag));
+  const shortNames = new Intl.DisplayNames([studioLanguage], {
+    type: "language",
+    languageDisplay: "standard",
+    style: "short",
+  });
+  const followTag = usableTag(where.followTag);
+  const followed = shortNames.of(followTag) ?? followTag;
   return [{ value: "follow", label: `Follow ${follows}: ${followed}` }, ...tags];
 }
 

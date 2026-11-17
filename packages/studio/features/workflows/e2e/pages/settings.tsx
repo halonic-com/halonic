@@ -38,8 +38,6 @@ import { createRoot } from "react-dom/client";
  * order are the app's; the lines under the names are copied here.
  */
 const workspaceName = "Acme";
-const load = <Name extends string>(view: Name, loader: () => Promise<unknown>) =>
-  ({ view, load: loader as never }) as { view: Name; load: never };
 
 const sections: Registered<SettingsSectionContribution>[] = [
   {
@@ -49,7 +47,8 @@ const sections: Registered<SettingsSectionContribution>[] = [
     scope: "workspace",
     order: 10,
     description: "3 model names, 2 providers",
-    ...load("ModelsSettingsSection", loadModelsSettingsSection),
+    view: "ModelsSettingsSection",
+    load: loadModelsSettingsSection,
     featureId: "models",
   },
   {
@@ -58,7 +57,8 @@ const sections: Registered<SettingsSectionContribution>[] = [
     icon: "formats",
     scope: "display",
     order: 20,
-    ...load("FormatsSection", loadFormatsSection),
+    view: "FormatsSection",
+    load: loadFormatsSection,
     featureId: "settings",
   },
   {
@@ -68,7 +68,8 @@ const sections: Registered<SettingsSectionContribution>[] = [
     scope: "host",
     order: 30,
     description: "Agents run inside a sandbox, so a mistake can't reach the rest of your computer.",
-    ...load("AgentSandboxSection", loadAgentSandboxSection),
+    view: "AgentSandboxSection",
+    load: loadAgentSandboxSection,
     featureId: "settings",
   },
   {
@@ -78,7 +79,8 @@ const sections: Registered<SettingsSectionContribution>[] = [
     scope: "host",
     order: 40,
     description: "Workspaces, hubs and skills you've trusted on this computer.",
-    ...load("TrustedSourcesSection", loadTrustedSourcesSection),
+    view: "TrustedSourcesSection",
+    load: loadTrustedSourcesSection,
     featureId: "workspace",
   },
   {
@@ -89,7 +91,8 @@ const sections: Registered<SettingsSectionContribution>[] = [
     order: 60,
     description:
       "Plugins add services, tools and cards to Halonic. They're installed on this computer, for every workspace.",
-    ...load("PluginsSettingsSection", loadPluginsSettingsSection),
+    view: "PluginsSettingsSection",
+    load: loadPluginsSettingsSection,
     featureId: "plugins",
   },
 ];
@@ -111,7 +114,10 @@ const sources: TrustedSource[] = [
 ];
 
 const providerFiles = [
-  { path: "providers/anthropic.yaml", text: "type: anthropic\nsecret: anthropic-key\n" },
+  {
+    path: "providers/anthropic.yaml",
+    text: "type: anthropic\nsecret: anthropic-key\nname: Anthropic\n",
+  },
   { path: "providers/ollama.yaml", text: "type: ollama\nlocal: true\nname: Ollama\n" },
 ];
 
@@ -158,7 +164,7 @@ const services = new Map<string, unknown>([
     AgentSandboxService.name,
     {
       available: true,
-      check: async () => ({ state: "ready", checkedAt: new Date().toISOString() }),
+      check: async () => ({ state: "ready", checkedAt: "2026-11-17T08:00:00.000Z" }),
       running: async () => null,
       setUp: async () => null,
       remove: async () => null,
