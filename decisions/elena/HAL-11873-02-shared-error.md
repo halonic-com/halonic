@@ -2,6 +2,7 @@
 
 - Approval: the UX checklist on HAL-11873 (Paperclip task) and Liam's decision on HAL-11931; Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gIGCqPy/5XRhETBNfchKqXOxOzcuGPE6h2CqO7JgVdgynKY6zAuD1/+Wa+ZJ3eGc6Nq0YT8Y1RPsgH2zcmx2DQ==
 - Task: HAL-11873
 
 ## What changes
