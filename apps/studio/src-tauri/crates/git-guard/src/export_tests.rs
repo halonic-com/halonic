@@ -6,7 +6,10 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
+#[cfg(unix)]
+use std::sync::atomic::Ordering;
+#[cfg(unix)]
 use std::time::{Duration, Instant};
 
 use super::ExportLimits;
@@ -153,6 +156,7 @@ fn runner(root: &Path) -> GitRunner {
 }
 
 /// Runs git with no hardening, to set a test up.
+#[cfg(unix)]
 fn plain_git(folder: &Path, args: &[&str]) -> String {
     let mut command = Command::new(git_program());
     for (name, _) in std::env::vars_os() {
@@ -181,12 +185,14 @@ fn plain_git(folder: &Path, args: &[&str]) -> String {
 }
 
 /// The address of the server repository `folder`, as the stand-in ssh reaches it.
+#[cfg(unix)]
 fn address_of(folder: &Path) -> String {
     format!("ssh://git.acme.invalid{}", folder.display())
 }
 
 /// A server repository with a plugin in it, tagged `v1`, and a second
 /// commit after the tag.
+#[cfg(unix)]
 fn server(root: &Path) -> PathBuf {
     let server = root.join("server");
     std::fs::create_dir_all(server.join("src")).expect("the folder is created");
