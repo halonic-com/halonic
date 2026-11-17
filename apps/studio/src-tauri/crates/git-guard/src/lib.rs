@@ -19,6 +19,9 @@
 mod allow_list;
 mod check_args;
 mod error;
+mod export;
+mod export_check;
+mod export_command;
 mod find_git;
 mod git_folder_links;
 mod limited_run;
@@ -29,6 +32,7 @@ mod runner;
 
 pub use check_args::{CheckedCall, check_args};
 pub use error::GitError;
+pub use export::{ExportLimits, ExportedCommit};
 pub use find_git::find_git;
 pub use limited_run::{GitOutput, Limits};
 pub use opened_folders::{OpenedFolders, plain_path};

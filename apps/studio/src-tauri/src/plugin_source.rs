@@ -87,13 +87,20 @@ pub struct PluginSources {
 
 impl PluginSources {
     /// Remembers `folder`, which `check_source` accepted.
-    fn remember(&self, location: String, folder: PathBuf) {
+    pub(crate) fn remember(&self, location: String, folder: PathBuf) {
         let mut picked = self.picked.lock().unwrap_or_else(PoisonError::into_inner);
         picked.retain(|(known, _)| *known != location);
         picked.push((location, folder));
         if picked.len() > MAX_PICKED {
             picked.remove(0);
         }
+    }
+
+    /// Forgets the folder the page calls `location`, such as an export that
+    /// has been removed.
+    pub(crate) fn forget(&self, location: &str) {
+        let mut picked = self.picked.lock().unwrap_or_else(PoisonError::into_inner);
+        picked.retain(|(known, _)| known != location);
     }
 
     /// The real path of the folder the page calls `location`: only one the
