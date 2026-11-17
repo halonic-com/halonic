@@ -27,7 +27,13 @@ export interface WhatChangedPageProps {
  * the item's name as the `h1`, **Undo these changes** and Open workflow, then the changes of each
  * of its files. Focus starts on the heading, so a screen reader says where it is.
  */
-export function WhatChangedPage({ list, item, developer, openItem, onBack }: WhatChangedPageProps) {
+export function WhatChangedPage({
+  list,
+  item,
+  developer,
+  openItem,
+  onBack,
+}: WhatChangedPageProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
   const [busy, setBusy] = useState(false);
@@ -48,7 +54,9 @@ export function WhatChangedPage({ list, item, developer, openItem, onBack }: Wha
   }
 
   const canOpen =
-    openItem !== undefined && item.kind !== undefined && openableKinds.includes(item.kind);
+    openItem !== undefined &&
+    item.kind !== undefined &&
+    openableKinds.includes(item.kind);
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
       <span className="self-start">
@@ -57,14 +65,25 @@ export function WhatChangedPage({ list, item, developer, openItem, onBack }: Wha
         </Button>
       </span>
       <header className="flex items-center gap-3">
-        <h1 id={headingId} ref={heading} tabIndex={-1} className="text-title flex-1 outline-none">
+        <h1
+          id={headingId}
+          ref={heading}
+          tabIndex={-1}
+          className="text-title flex-1 outline-none"
+        >
           {item.name}
         </h1>
         {canOpen ? (
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => openItem({ kind: item.kind ?? "", hub: item.hub, id: item.name })}
+            onClick={() =>
+              openItem({
+                kind: item.kind ?? "",
+                hub: item.hub,
+                id: item.itemId,
+              })
+            }
           >
             {pageWords.openItem(item.kind ?? "")}
           </Button>

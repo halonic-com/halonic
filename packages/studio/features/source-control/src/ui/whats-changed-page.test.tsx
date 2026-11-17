@@ -50,24 +50,24 @@ verifies("source-control.whats-changed-page", () => {
   describe("What changed page", () => {
     it("opens in place of the list with the item's name as the only h1, and focus on it", async () => {
       const { root } = await openPage();
-      openItem(root, "triage");
+      openItem(root, "Triage");
       expect(root.textContent).not.toContain("Since your last version");
       expect(document.activeElement?.tagName).toBe("H1");
-      expect(document.activeElement?.textContent).toBe("triage");
+      expect(document.activeElement?.textContent).toBe("Triage");
       expect(root.querySelectorAll("h1")).toHaveLength(1);
     });
 
     it("puts focus on the row it came from when the person presses Back to Changes", async () => {
       const { root } = await openPage();
-      openItem(root, "triage");
+      openItem(root, "Triage");
       await act(async () => buttons(root, "Back to Changes")[0]?.click());
       expect(root.textContent).toContain("Since your last version");
-      expect(document.activeElement?.textContent).toContain("triage");
+      expect(document.activeElement?.textContent).toContain("Triage");
     });
 
     it("keeps the headings in order: one h1, then h2s, with no level skipped", async () => {
       const { root } = await openPage();
-      const page = openItem(root, "triage");
+      const page = openItem(root, "Triage");
       const levels = (heading: ParentNode) =>
         [...heading.querySelectorAll("h1, h2, h3, h4, h5")].map((element) =>
           Number(element.tagName.slice(1)),
@@ -83,14 +83,14 @@ verifies("source-control.whats-changed-page", () => {
     it("opens the item itself with Open agent, from its hub", async () => {
       const opened = vi.fn();
       const { root } = await openPage(opened);
-      openItem(root, "triage");
+      openItem(root, "Triage");
       await act(async () => buttons(root, "Open agent")[0]?.click());
       expect(opened).toHaveBeenCalledWith({ kind: "agent", hub: "", id: "triage" });
     });
 
     it("has no Open button when the window can't open items, or for a skill", async () => {
       const { root } = await openPage();
-      openItem(root, "triage");
+      openItem(root, "Triage");
       expect(buttons(root, "Open agent")).toHaveLength(0);
       const withOpener = await openPage(vi.fn());
       openItem(withOpener.root, "tone");
