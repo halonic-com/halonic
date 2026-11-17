@@ -6,6 +6,7 @@ import {
   type PluginCommands,
   pluginCommandSource,
 } from "./commands/plugin-command-source.ts";
+import { PLUGINS_SENTENCE } from "./list/list-text.ts";
 import { pluginPageKind } from "./page/plugin-pages.ts";
 import {
   PLUGIN_PANELS_SOURCE,
@@ -52,6 +53,7 @@ export const pluginsFeature = defineFeature({
       icon: "plugins",
       scope: "host",
       order: 60,
+      description: PLUGINS_SENTENCE,
       view: "PluginsSettingsSection",
       load: () => import("./list/plugins-settings-section.tsx"),
     });

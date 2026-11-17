@@ -115,7 +115,7 @@ export function sandboxView(facts: SandboxFacts, now: Date = new Date()): Sandbo
     return {
       ...none,
       lead: text.NOT_AVAILABLE,
-      chip: { label: "Not available", tone: "warning" },
+      chip: { label: "Not available", tone: "attention" },
     };
   const { check, running, outcome } = facts;
   const callout = outcome ? calloutFor(outcome) : null;

@@ -85,7 +85,7 @@ verifies("settings.agent-sandbox-state", () => {
 
   it("shows Not available and no button when the build has no sandbox", () => {
     const v = view({ available: false });
-    expect(v.chip).toEqual({ label: "Not available", tone: "warning" });
+    expect(v.chip).toEqual({ label: "Not available", tone: "attention" });
     expect(v.primary).toBeNull();
     expect(v.secondary).toEqual([]);
   });

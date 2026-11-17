@@ -266,7 +266,43 @@ export interface SectionViewProps extends SettingsSectionProps {
   readonly workspaceName?: string | undefined;
 }
 
-/** A section's name, its saved line where it has one, and its view, as the dialog and the phone show it. */
+/**
+ * A section's `description` as the container draws it: a string at once, a function once it
+ * answers. A function that fails, or answers `undefined`, leaves the line out.
+ */
+function useDescription(
+  section: Registered<SettingsSectionContribution>,
+  context: WorkspaceContext,
+  place: SettingsPlace,
+): string | undefined {
+  const { description } = section;
+  const [answer, setAnswer] = useState<string | undefined>(undefined);
+  // `contextFor` builds a new context on every call; only the description and the place should
+  // ask again, as in `useAttention`.
+  const latest = useRef(context);
+  latest.current = context;
+  useEffect(() => {
+    if (typeof description !== "function") return;
+    let live = true;
+    void Promise.resolve()
+      .then(() => description(latest.current, place))
+      .then(
+        (line) => live && setAnswer(line),
+        () => undefined,
+      );
+    return () => {
+      live = false;
+    };
+  }, [description, place]);
+  return typeof description === "function" ? answer : description;
+}
+
+/**
+ * A section's name, its saved line where it has one, its description and its view, as the dialog
+ * and the phone show it. The container owns the spacing (settings rhythm, HAL-11844): 8px under
+ * the name and under each line, then 20px before the view, so no section puts a margin of its own
+ * on its root.
+ */
 export function SectionView({
   section,
   context,
@@ -277,6 +313,7 @@ export function SectionView({
   regionFormat,
   workspaceName,
 }: SectionViewProps) {
+  const description = useDescription(section, context, place);
   return (
     <section aria-labelledby={`settings-section-${section.id}`}>
       {page === true ? (
@@ -293,21 +330,26 @@ export function SectionView({
         </h3>
       )}
       {section.scope === "display" ? (
-        <p className="mt-1 text-small text-fg-muted">
+        <p className="mt-2 text-small text-fg-muted">
           {place === "served" && surface === "phone" ? phoneSavedLine : displaySavedLines[place]}
         </p>
       ) : null}
       {section.scope === "workspace" && workspaceName !== undefined ? (
-        <p className="mt-1 text-small text-fg-muted">{workspaceSectionLine(workspaceName)}</p>
+        <p className="mt-2 text-small text-fg-muted">{workspaceSectionLine(workspaceName)}</p>
       ) : null}
+      {description === undefined ? null : (
+        <p className="mt-2 max-w-120 text-small text-fg-muted">{description}</p>
+      )}
       {/* A view that fails to load or draw shows nothing; the list and the other sections keep working. */}
-      <ViewErrorBoundary>
-        <LoadedView<SettingsSectionProps>
-          view={section}
-          name={section.title}
-          props={{ context, closeSettings, place, surface, regionFormat }}
-        />
-      </ViewErrorBoundary>
+      <div className="mt-5">
+        <ViewErrorBoundary>
+          <LoadedView<SettingsSectionProps>
+            view={section}
+            name={section.title}
+            props={{ context, closeSettings, place, surface, regionFormat }}
+          />
+        </ViewErrorBoundary>
+      </div>
     </section>
   );
 }

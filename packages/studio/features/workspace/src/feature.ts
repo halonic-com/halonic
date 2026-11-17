@@ -6,6 +6,7 @@ import {
   WORKSPACE_PAGE_TAB,
   WORKSPACE_PAGE_TITLE,
 } from "./page/workspace-page-text.ts";
+import * as trustedSourcesText from "./trusted-sources/trusted-sources-text.ts";
 
 /** The command that opens the workspace page; the menu's **Workspace settings…** runs it. */
 export const openWorkspaceCommand = "workspace.open";
@@ -31,6 +32,8 @@ export const workspaceFeature = defineFeature({
       title: "Trusted sources",
       scope: "host",
       order: 40,
+      description: (_context, place) =>
+        place === "served" ? trustedSourcesText.LEAD_SERVED : trustedSourcesText.LEAD,
       view: "TrustedSourcesSection",
       load: () => import("./trusted-sources/trusted-sources-section.tsx"),
     });

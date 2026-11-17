@@ -138,9 +138,8 @@ verifies("plugins.plugin-list", () => {
 
   it("shows the sentence, the sections and a row with what it adds, its version and trust date", () => {
     show([described(weather())]);
-    expect(text()).toContain(
-      "Plugins add services, tools and cards to Halonic. They're installed on this computer, for every workspace.",
-    );
+    // The sentence is the section's registered description, which the container draws.
+    expect(text()).not.toContain("Plugins add services");
     expect(text()).toContain("Installed on this computer");
     expect(text()).toContain("Built in");
     expect(text()).toContain("Weather");

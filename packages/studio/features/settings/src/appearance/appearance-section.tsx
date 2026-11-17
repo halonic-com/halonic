@@ -110,7 +110,7 @@ export function AppearanceView({
     value.failed && !phone ? text.line : null;
 
   return (
-    <div className="mt-5 flex max-w-90 flex-col gap-4">
+    <div className="flex max-w-90 flex-col gap-4">
       <Field label={THEME} error={failed(theme, THEME_NOT_SAVED)}>
         <Select
           options={themeOptions}

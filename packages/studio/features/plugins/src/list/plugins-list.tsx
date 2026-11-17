@@ -42,7 +42,6 @@ import {
   OPEN,
   OPEN_IN_NEW_TAB,
   PLUGINS,
-  PLUGINS_SENTENCE,
   rowMeta,
   TRY_AGAIN,
   viewOnlyLine,
@@ -208,44 +207,40 @@ export function PluginsList({
 
   return (
     <div className="flex flex-col gap-4">
-      <header className="flex items-start gap-4">
-        <p className="min-w-0 flex-1 text-body text-fg-muted">{PLUGINS_SENTENCE}</p>
-        {add === undefined || emptyInstalled ? null : (
+      {add === undefined || emptyInstalled ? null : (
+        <div className="flex justify-end">
           <Button variant="primary" size="sm" onClick={add}>
             {ADD_PLUGIN}
           </Button>
+        </div>
+      )}
+      <div className="flex flex-col gap-2">
+        {load.kind === "failed" ? (
+          <EmptyState
+            tone="error"
+            title={LOAD_FAILED_TITLE}
+            description={load.reason}
+            action={{ label: TRY_AGAIN, onClick: onRetry }}
+          />
+        ) : (
+          <InstalledList
+            load={load}
+            rows={installedRows}
+            onAdd={add}
+            onOpen={onOpen}
+            onOpenInNewTab={onOpenInNewTab}
+            onRetry={onRetry}
+          />
         )}
-      </header>
-      {load.kind === "failed" ? (
-        <EmptyState
-          tone="error"
-          title={LOAD_FAILED_TITLE}
-          description={load.reason}
-          action={{ label: TRY_AGAIN, onClick: onRetry }}
-        />
-      ) : (
-        <List
-          heading={{ name: INSTALLED_HEADING }}
-          rows={installedRows}
-          loading={load.kind === "loading"}
-          loadingLabel={LOADING_LABEL}
-          onOpen={onOpen}
-          onOpenInNewTab={onOpenInNewTab}
-          onRetry={onRetry}
-          empty={{
-            title: EMPTY_TITLE,
-            description: EMPTY_LINE,
-            ...(add === undefined ? {} : { action: { label: ADD_PLUGIN, onClick: add } }),
-          }}
-        />
-      )}
-      {builtInRows.length === 0 || load.kind === "loading" ? null : (
-        <List
-          heading={{ name: BUILT_IN_HEADING }}
-          rows={builtInRows}
-          {...builtInOpener(onOpenBuiltIn)}
-        />
-      )}
+        {builtInRows.length === 0 || load.kind === "loading" ? null : (
+          <List
+            label={BUILT_IN_HEADING}
+            groups={[{ id: "built-in", heading: { name: BUILT_IN_HEADING }, rows: builtInRows }]}
+            groupHeadingLevel={2}
+            {...builtInOpener(onOpenBuiltIn)}
+          />
+        )}
+      </div>
       <AddOnCommandLine line={commandLine(viewOnly, phone, add !== undefined)} />
       <ContextMenu
         label={installed?.name ?? builtInMenu?.name ?? PLUGINS}
@@ -266,6 +261,49 @@ export function PluginsList({
         />
       )}
     </div>
+  );
+}
+
+interface InstalledListProps {
+  readonly load: PluginsLoad;
+  readonly rows: ListRow[];
+  readonly onAdd: (() => void) | undefined;
+  readonly onOpen: (plugin: string) => void;
+  readonly onOpenInNewTab: (plugin: string) => void;
+  readonly onRetry: () => void;
+}
+
+/**
+ * The "Installed on this computer" list. With rows it is its own box with its ListHeading above
+ * it, as Home draws its sections; while loading or with none, the heading stays the List's own.
+ */
+function InstalledList({ load, rows, onAdd, onOpen, onOpenInNewTab, onRetry }: InstalledListProps) {
+  if (rows.length > 0 && load.kind === "ready") {
+    return (
+      <List
+        label={INSTALLED_HEADING}
+        groups={[{ id: "installed", heading: { name: INSTALLED_HEADING }, rows }]}
+        groupHeadingLevel={2}
+        onOpen={onOpen}
+        onOpenInNewTab={onOpenInNewTab}
+      />
+    );
+  }
+  return (
+    <List
+      heading={{ name: INSTALLED_HEADING }}
+      rows={rows}
+      loading={load.kind === "loading"}
+      loadingLabel={LOADING_LABEL}
+      onOpen={onOpen}
+      onOpenInNewTab={onOpenInNewTab}
+      onRetry={onRetry}
+      empty={{
+        title: EMPTY_TITLE,
+        description: EMPTY_LINE,
+        ...(onAdd === undefined ? {} : { action: { label: ADD_PLUGIN, onClick: onAdd } }),
+      }}
+    />
   );
 }
 
