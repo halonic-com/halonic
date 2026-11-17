@@ -5,7 +5,7 @@ import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { AgentScreen } from "../page/agent-page.tsx";
-import { buttonNamed, show, typeInto, unmount } from "../test-support.tsx";
+import { buttonNamed, show, typeInto, typeIntoArea, unmount } from "../test-support.tsx";
 import { SAVE_PAUSE_MS } from "./use-auto-saved.ts";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -27,12 +27,6 @@ async function openConfiguration(agents = host()) {
 }
 
 const textarea = (page: HTMLElement) => page.querySelector("textarea") as HTMLTextAreaElement;
-async function typeInstructions(area: HTMLTextAreaElement, text: string) {
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(area, text);
-    area.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-}
 
 verifies("agents.configuration.behaviour", () => {
   it("lists Behaviour only, with no Save button, and hints while Instructions is empty", async () => {
@@ -46,7 +40,7 @@ verifies("agents.configuration.behaviour", () => {
 
   it("saves Instructions after a pause in typing", async () => {
     const { page, agents } = await openConfiguration();
-    await typeInstructions(textarea(page), "Sort the mail.");
+    await typeIntoArea(textarea(page), "Sort the mail.");
     expect((await agents.settings({ hubId: "acme", id: "sorter" })).instructions).toBe("");
 
     await act(async () => vi.advanceTimersByTime(SAVE_PAUSE_MS));
@@ -65,7 +59,7 @@ verifies("agents.configuration.behaviour", () => {
 
   it("doesn't save a key, and says why", async () => {
     const { page, agents } = await openConfiguration();
-    await typeInstructions(textarea(page), `use sk-${"a1B2".repeat(6)}`);
+    await typeIntoArea(textarea(page), `use sk-${"a1B2".repeat(6)}`);
     await act(async () => vi.advanceTimersByTime(SAVE_PAUSE_MS));
 
     expect(page.textContent).toContain("This looks like a key. Keep it as a secret instead?");

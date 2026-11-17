@@ -1,4 +1,13 @@
-import { Dialog, Field, InfoIcon, Input, Select, usePresentation } from "@halonicjs/studio-kit";
+import { findSecretShape } from "@halonicjs/std";
+import {
+  Dialog,
+  Field,
+  InfoIcon,
+  Input,
+  Select,
+  TextArea,
+  usePresentation,
+} from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useRef, useState } from "react";
 import type { AgentHub, AgentRef, NewAgent } from "../api.ts";
@@ -23,7 +32,7 @@ export interface NewAgentDialogProps {
 /**
  * "New agent" (`agents.new.create`): a name, a hub when there is more than one, and the file the
  * agent will be written to. **Create** stays pressable while the name is empty and says what is
- * wrong under the field. The agent's page is where the user writes its instructions.
+ * wrong under the field. A short **What should it do?** box becomes its instructions; it can stay empty and be written on the agent's page.
  *
  * @example
  * <NewAgentDialog hubs={hubs} takenIds={ids} create={host.create} onCreated={open} onCancel={close} />
@@ -42,9 +51,12 @@ export function NewAgentDialog({
   // The hubs can arrive or change while the dialog is open; a hub that's gone falls back to the first.
   const hubId = hubs.some((hub) => hub.id === chosenHub) ? chosenHub : (hubs[0]?.id ?? "");
   const phone = usePresentation() === "phone";
+  const [instructions, setInstructions] = useState("");
+  const [instructionsProblem, setInstructionsProblem] = useState<string>();
   const [problem, setProblem] = useState<string>();
   const [failure, setFailure] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const instructionsField = useRef<HTMLTextAreaElement>(null);
   const nameField = useRef<HTMLInputElement>(null);
 
   const file = agentFilePath(hubId, name, takenIds(hubId));
@@ -61,9 +73,16 @@ export function NewAgentDialog({
       nameField.current?.focus();
       return;
     }
+    // A key typed here would be saved into the agent's file, so it is caught first (save model 8.4).
+    if (findSecretShape(instructions) !== undefined) {
+      setInstructionsProblem(words.looksLikeKey);
+      instructionsField.current?.focus();
+      return;
+    }
     setBusy(true);
     try {
-      onCreated(await create({ name: name.trim(), hubId }));
+      const written = instructions.trim();
+      onCreated(await create({ name: name.trim(), hubId, instructions: written }));
     } catch (error) {
       const reason = errorReasonFor(error);
       setFailure(words.createFailed(reason.replace(/\.$/, "")));
@@ -112,6 +131,23 @@ export function NewAgentDialog({
             </Field>
           )}
         </div>
+        <Field
+          label={words.instructionsField}
+          hint={words.instructionsHint}
+          error={instructionsProblem ?? null}
+        >
+          <TextArea
+            ref={instructionsField}
+            minRows={3}
+            maxRows={6}
+            readOnly={busy}
+            value={instructions}
+            onChange={(event) => {
+              setInstructionsProblem(undefined);
+              setInstructions(event.target.value);
+            }}
+          />
+        </Field>
         {note !== undefined && (
           <p className="flex items-center gap-2 text-small text-fg-muted">
             <span className="text-fg-subtle" aria-hidden>

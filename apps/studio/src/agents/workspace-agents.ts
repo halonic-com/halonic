@@ -34,12 +34,13 @@ const agentFolder = (hubId: string): string => `hubs/${hubId}/agents`;
 
 const agentSuffix = ".agent.yaml";
 
-/** The text of a new agent: its id, its name and no instructions yet. */
-function newAgentText(id: string, name: string): string {
+/** The text of a new agent: its id, its name and, when the person wrote any, its instructions. */
+function newAgentText(id: string, name: string, instructions: string): string {
   return [
     `id: ${id}`,
-    // A JSON string is a YAML double-quoted one, so any name a person types is safe.
+    // A JSON string is a YAML double-quoted one, so any text a person types is safe.
     `name: ${JSON.stringify(name)}`,
+    ...(instructions === "" ? [] : [`instructions: ${JSON.stringify(instructions)}`]),
     "",
   ].join("\n");
 }
@@ -159,7 +160,7 @@ export class WorkspaceAgents implements AgentsHost {
   }
 
   /** Creates the agent in `hubId`; throws `not_found` when the workspace has no such hub, so no stray folder is made. */
-  async create({ name, hubId }: NewAgent): Promise<AgentRef> {
+  async create({ name, hubId, instructions = "" }: NewAgent): Promise<AgentRef> {
     await this.#load();
     if (!this.#hubs.some((hub) => hub.id === hubId)) {
       throw new KindedError("not_found", `The workspace has no hub "${hubId}".`);
@@ -171,7 +172,7 @@ export class WorkspaceAgents implements AgentsHost {
       .filter((id) => !id.includes("/"));
     const id = uniqueName(slugify(name), taken);
     this.#parts.files.change(`Created agent ${name}`, {
-      [`${folder}/${id}${agentSuffix}`]: newAgentText(id, name),
+      [`${folder}/${id}${agentSuffix}`]: newAgentText(id, name, instructions),
     });
     this.#names.set(`${hubId}/${id}`, name);
     return { hubId, id };

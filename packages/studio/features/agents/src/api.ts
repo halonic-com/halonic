@@ -45,6 +45,8 @@ export interface AgentHub {
 export interface NewAgent {
   readonly name: string;
   readonly hubId: string;
+  /** What it should do, written in the dialog; it becomes the agent's instructions. Absent or empty: none yet. */
+  readonly instructions?: string | undefined;
 }
 
 /** A workflow that runs an agent in one of its task steps. */
