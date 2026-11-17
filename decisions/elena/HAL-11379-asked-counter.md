@@ -17,3 +17,4 @@ test was weakened.
 ## Covers
 
 - shell.tab-set
+- packages/studio/features/workflows/src/page/workflow-page.test.tsx

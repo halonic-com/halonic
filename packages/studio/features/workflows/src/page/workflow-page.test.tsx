@@ -7,7 +7,7 @@ import { limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { WorkflowsHostService } from "../api.ts";
+import { WorkflowsHostService, type WorkflowView } from "../api.ts";
 import { workflowsFeature } from "../feature.ts";
 import {
   buttonNamed,
