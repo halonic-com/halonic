@@ -138,6 +138,7 @@ verifies("engine.run-harness-failures", () => {
       type: "run.failed",
       reason: "sandbox-not-ready",
       sandboxReason: "user-namespaces-restricted",
+      agent: "writer",
     });
     expect(JSON.stringify(failed)).not.toContain("AppArmor");
     expect(ports.steps).toEqual([]);

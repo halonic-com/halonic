@@ -98,6 +98,17 @@ verifies("events.run-failed-sandbox-not-ready", () => {
       sandboxReason: string;
     }>().toExtend<EventOf<"run.failed">>();
   });
+
+  typeTest("names the agent that didn't start", () => {
+    expectTypeOf<{
+      type: "run.failed";
+      state: string;
+      error: string;
+      reason: "sandbox-not-ready";
+      sandboxReason: string;
+      agent: string;
+    }>().toExtend<EventOf<"run.failed">>();
+  });
 });
 
 verifies("events.run-failed-interrupted", () => {

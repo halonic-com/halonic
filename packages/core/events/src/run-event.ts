@@ -412,7 +412,8 @@ export type RunEventBody =
    * A reader that doesn't know the code reads it as `other`.
    * `harnessCause`: with `harness-start-failed` only, why the program didn't start when the engine
    * knows, `not-installed` or `signed-out` (requirement `events.run-failed-harness-cause`).
-   * `agent`, `pin` and `changed`: with `instructions-not-trusted` only, the agent that didn't start,
+   * `agent`: with `sandbox-not-ready`, the agent that didn't start (requirement `events.run-failed-sandbox-not-ready`).
+   * `agent`, `pin` and `changed`: with `instructions-not-trusted`, the agent that didn't start,
    * the digests of the instructions the check saw (never their text) and whether a person had
    * trusted instructions for it before (requirement `events.run-failed-instructions-not-trusted`);
    * absent in older logs. A reader that doesn't know the reason still shows `error`.
