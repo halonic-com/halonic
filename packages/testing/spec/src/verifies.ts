@@ -70,6 +70,11 @@ function recordAssertions(context: TestContext): void {
   context.task.meta.assertions = local + global;
 }
 
+// Vitest's own `vi.waitFor`, taken once when the file loads. Each test
+// wraps and restores this one, so a test never mistakes another test's
+// wrapper for the original (as it could in `describe.concurrent`).
+const realWaitFor = vi.waitFor;
+
 /** The `expect` counts of the global `expect` and the test's own. */
 interface Counts {
   readonly local: number;
@@ -82,6 +87,13 @@ interface Counts {
  * run, `vi.waitFor` counts only the calls of the attempt that passed, as
  * if the callback ran once. (`expect.poll` already counts once.) The
  * cleanup puts the original back after the test.
+ *
+ * It covers every `vi.waitFor(...)` call made during the test, also from
+ * helpers in other files, because they share one `vi` object. Not covered:
+ * a `waitFor` taken off `vi` before the test (`const { waitFor } = vi`),
+ * `waitFor` from `@testing-library/*`, two `vi.waitFor` running at once in
+ * one test (`Promise.all`), and tests in `describe.concurrent`, which
+ * share the global count anyway.
  */
 function countLastAttempt(context: TestContext): () => void {
   // Vitest creates the test's own `expect` on first use, and from then on
@@ -93,7 +105,6 @@ function countLastAttempt(context: TestContext): () => void {
     local: ownExpect()?.getState().assertionCalls ?? 0,
     global: expect.getState().assertionCalls,
   });
-  const original = vi.waitFor;
   vi.waitFor = async (callback, options) => {
     const start = counts();
     let passed: Counts = { local: 0, global: 0 };
@@ -113,13 +124,13 @@ function countLastAttempt(context: TestContext): () => void {
       passed = since();
       return result;
     };
-    const value = await original(attempt, options);
+    const value = await realWaitFor(attempt, options);
     ownExpect()?.setState({ assertionCalls: start.local + passed.local });
     expect.setState({ assertionCalls: start.global + passed.global });
     return value;
   };
   return () => {
-    vi.waitFor = original;
+    vi.waitFor = realWaitFor;
   };
 }
 

@@ -115,6 +115,28 @@ verifies("spec.verifies-counts-retries-once", () => {
       await expect.poll(ready, { interval: 1 }).toBe(true);
     });
 
+    test("a vi.waitFor that times out keeps every attempt's count", async () => {
+      let attempts = 0;
+      let failure: unknown;
+      try {
+        await vi.waitFor(
+          () => {
+            attempts += 1;
+            expect(attempts).toBe(0);
+          },
+          { interval: 1, timeout: 20 },
+        );
+      } catch (error) {
+        failure = error;
+      }
+      // Read before any other expect call: one call per failed attempt.
+      const calls = expect.getState().assertionCalls;
+      expect(calls).toBe(attempts);
+      expect(attempts).toBeGreaterThan(1);
+      // The callback's own failure comes through, not an error of the wrapper.
+      expect((failure as Error).name).toBe("AssertionError");
+    });
+
     test("records the passing attempt's expect count", ({ task }) => {
       const countOf = (name: string): number | undefined =>
         task.suite?.tasks.find((sibling) => sibling.name === name)?.meta.assertions;
