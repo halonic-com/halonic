@@ -231,8 +231,8 @@ verifies("source-control.change-list", () => {
           await settle();
         });
         expect(fake.replaced[0]).toEqual({ path: agentPath, text: before, expected: after });
-        expect(toasts.list()[0]?.title).toBe("Discarded Triage");
-        expect(toasts.list()[0]?.action?.label).toBe("Put it back");
+        expect(toasts.list()[0]?.title).toBe("Undid changes to Triage.");
+        expect(toasts.list()[0]?.action?.label).toBe("Undo");
       });
     });
 

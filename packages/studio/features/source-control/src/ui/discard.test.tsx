@@ -1,16 +1,25 @@
 // @vitest-environment jsdom
-import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
+import {
+  createToastStore,
+  TOAST_WITH_ACTION_CLOSES_AFTER_MS,
+  ToastStoreProvider,
+} from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { DeveloperView } from "../api.ts";
 import { ChangesList } from "../changes-list.ts";
 import { fakeSource, settle } from "../source.test-helper.ts";
+import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { openItem } from "../test-support/open-item.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ChangesView } from "./changes-page.tsx";
 
-afterEach(unmountAll);
+beforeEach(fakeModal);
+afterEach(() => {
+  unmountAll();
+  restoreModal();
+});
 
 const lines = (...all: string[]) => `${all.join("\n")}\n`;
 const hub = "hubs/sales/hub.yaml";
@@ -102,9 +111,9 @@ verifies("source-control.discard", () => {
       expect(fake.kept).toEqual([[{ path: hub, text: after }]]);
       expect(fake.replaced[0]).toEqual({ path: hub, text: before, expected: after });
       const toast = toasts.list()[0];
-      expect(toast?.title).toBe("Discarded sales");
+      expect(toast?.title).toBe("Undid changes to sales.");
       expect(toast?.text).toBeUndefined();
-      expect(toast?.action?.label).toBe("Put it back");
+      expect(toast?.action?.label).toBe("Undo");
       await act(async () => {
         toast?.action?.onClick();
         await settle();
@@ -148,14 +157,39 @@ verifies("source-control.discard", () => {
       expect(fake.removed).toEqual([{ path: "old/gone.md", expected: "bye\n" }]);
     });
 
-    it("discards nothing and says why when the copy can't be kept", async () => {
+    it("asks first, with Cancel focused, when the copy can't be kept, and changes nothing", async () => {
       const { fake, root } = await openPage();
       fake.failKeep(new Error("disk full"));
       await press(buttons(section(root, hub), "Undo these changes")[0]);
-      expect(fake.replaced).toHaveLength(0);
-      expect(section(root, hub).querySelector('[role="alert"]')?.textContent).toContain(
-        "Halonic couldn't keep a copy, so nothing was discarded.",
+      const dialog = document.querySelector("dialog");
+      expect(dialog?.textContent).toContain("Undo changes to sales?");
+      expect(dialog?.textContent).toContain(
+        "Halonic couldn't keep a copy, so this can't be undone.",
       );
+      expect(fake.replaced).toHaveLength(0);
+      expect(document.activeElement?.textContent?.trim()).toBe("Cancel");
+      await press(buttons(dialog as HTMLElement, "Cancel")[0]);
+      expect(document.querySelector("dialog")).toBeNull();
+      expect(fake.replaced).toHaveLength(0);
+    });
+
+    it("goes on without a copy when asked, with a toast that has no Undo", async () => {
+      const { fake, root, toasts } = await openPage();
+      fake.failKeep(new Error("disk full"));
+      await press(buttons(section(root, hub), "Undo these changes")[0]);
+      const dialog = document.querySelector("dialog") as HTMLElement;
+      // The kit keeps the busy label in the button too, so its text is both.
+      await press(buttons(dialog, "Undo changesUndoing…")[0]);
+      expect(fake.replaced[0]).toEqual({ path: hub, text: before, expected: after });
+      expect(toasts.list()[0]?.title).toBe("Undid changes to sales.");
+      expect(toasts.list()[0]?.action).toBeUndefined();
+    });
+
+    it("keeps the toast open for 10 seconds, with its Undo", async () => {
+      const { root, toasts } = await openPage();
+      await press(buttons(section(root, hub), "Undo these changes")[0]);
+      expect(toasts.list()[0]?.action?.label).toBe("Undo");
+      expect(TOAST_WITH_ACTION_CLOSES_AFTER_MS).toBe(10_000);
     });
 
     it("writes nothing when the file changed since the page read it", async () => {

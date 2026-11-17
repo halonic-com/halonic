@@ -216,9 +216,13 @@ export class ChangesList {
   /**
    * Puts a whole file back as the last version has it: a changed or deleted file gets its text
    * back, a new file is deleted. A copy of what is thrown away is kept first, and the outcome's
-   * `undo` brings it all back.
+   * `undo` brings it all back. When the copy can't be kept nothing is discarded and the outcome is
+   * `noCopy`, unless `withoutCopy` says to go on without it.
    */
-  async discardFile(file: ChangedFile): Promise<DiscardOutcome> {
+  async discardFile(
+    file: ChangedFile,
+    options: { readonly withoutCopy?: boolean } = {},
+  ): Promise<DiscardOutcome> {
     const status = this.#discardStatus(file);
     if (typeof status !== "string") return { kind: "failed", reason: status.reason };
     const { texts } = file;
@@ -230,6 +234,7 @@ export class ChangesList {
         [{ path, text: after }],
         () => this.#remove(path, after),
         () => this.#replace(path, after, null),
+        options,
       );
     }
     if (status === "modified" && before !== null && after !== null) {
@@ -237,6 +242,7 @@ export class ChangesList {
         [{ path, text: after }],
         () => this.#replace(path, before, after),
         () => this.#replace(path, after, before),
+        options,
       );
     }
     if (status === "deleted" && before !== null && after === null) {
@@ -244,6 +250,7 @@ export class ChangesList {
         [],
         () => this.#replace(path, before, null),
         () => this.#remove(path, before),
+        options,
       );
     }
     return { kind: "failed", reason: discardWords.cantDiscard };
@@ -384,16 +391,20 @@ export class ChangesList {
     thrown: readonly KeptFile[],
     run: () => Promise<string | undefined>,
     undo: () => Promise<string | undefined>,
+    options: { readonly withoutCopy?: boolean } = {},
   ): Promise<DiscardOutcome> {
+    let kept = true;
     if (thrown.length > 0) {
       try {
         await this.source.keepCopy(thrown);
       } catch {
-        return { kind: "failed", reason: discardWords.noCopy };
+        if (options.withoutCopy !== true) return { kind: "noCopy" };
+        kept = false;
       }
     }
     const reason = await run();
-    return reason === undefined ? { kind: "undone", undo } : { kind: "failed", reason };
+    if (reason !== undefined) return { kind: "failed", reason };
+    return kept ? { kind: "undone", undo } : { kind: "discarded" };
   }
 
   /**

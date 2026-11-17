@@ -40,8 +40,15 @@ export type UndoOutcome =
   | { readonly kind: "undone"; readonly undo: () => Promise<string | undefined> }
   | { readonly kind: "failed"; readonly reason: string };
 
-/** What {@link ChangesList.discardFile} did; the toast's Undo is `undo`, as for an undone change. */
-export type DiscardOutcome = UndoOutcome;
+/**
+ * What {@link ChangesList.discardFile} did; the toast's Undo is `undo`, as for an undone change.
+ * `noCopy` is a refusal: the copy couldn't be kept, so nothing was changed and the person is asked
+ * first. `discarded` is a discard they went on with anyway, which has no Undo.
+ */
+export type DiscardOutcome =
+  | UndoOutcome
+  | { readonly kind: "noCopy" }
+  | { readonly kind: "discarded" };
 
 /** What {@link ChangesList.getUpdates} did. */
 export type UpdatesOutcome =
