@@ -81,6 +81,12 @@ export const routinesMessages = defineMessages("routines", {
    */
   noAgentFileInVersion: (hubId: string, agentId: string) =>
     phrase`The version this run reads has no agent ${agentId} in hub ${hubId}.`,
+  /**
+   * The fix when a routine's agent is in a harness: `watch` has no `--harness`
+   * to move it, as `run` does, so the agent or the routine changes (HAL-11908).
+   */
+  harnessNotAvailableFix: () =>
+    phrase`Set the agent to Halonic's own harness, or turn the routine off.`,
   /** A skill an agent selected that the version a run reads doesn't have: the harness run doesn't start. */
   noSkillInVersion: (hubId: string, skillId: string) =>
     phrase`The version this run reads has no skill ${skillId} for hub ${hubId}.`,
