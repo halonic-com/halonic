@@ -6,21 +6,20 @@
 
 When a run failed with the reason `sandbox-not-ready`, the run page shall show, in the danger tone, a banner named "Run failed" with these lines, in this order:
 
-- "*Support reply* didn't start: the sandbox on this computer isn't ready.";
+- "*Reporter* didn't start: the sandbox can't start on this computer.", with the name of the agent that was about to start (the workflow's when the log names none);
 - the reason and the fix from `sandboxStartWords` for `run.failed`'s `sandboxReason` (a missing or unknown code reads as `other`); on a phone the fix is the phone fix, which says to do it on the computer;
-- "Nothing ran.".
+- "Nothing ran."; and a link, "Read the guide", to the docs section for the reason.
 
 Until the log is read the page keeps its general banner. The check's own sentence never shows.
 
 Where the open workspace provides `sandboxStartCheckKey`, the banner shall have one button, **Check again**, which asks the check now and never runs anything:
 
-- when the check passes, the banner turns calm and adds "The sandbox is ready. The next run can start.", and the button goes;
+- when the check passes, the banner turns calm, adds and announces "The sandbox works now. You can run *Reporter*.", and **Check again** becomes **Run again** (none where the page can't run again);
 - when it is still refused, the lines change to the reason and fix of the new code, and the button stays;
 - when the check itself fails, the banner adds "Halonic couldn't check the sandbox. Try again.", and the button stays.
 
 Where nothing provides it, there is no button. The banner has no way to run anyway.
 
-Limits, for the docs: **Run again** comes with the page's Run again (T7); until then a passed check names no button, because no run page has one yet (HAL-11190).
 
 ## Examples
 
@@ -29,4 +28,4 @@ Limits, for the docs: **Run again** comes with the page's Run again (T7); until 
   then the banner gives the words for `sandbox-start.bubblewrap-missing`, then "Nothing ran.", and has Check again.
 - Given the same banner and a check that now passes,
   when the person presses Check again,
-  then it reads "The sandbox is ready. The next run can start." and has no button.
+  then it reads "The sandbox works now. You can run Support reply." and has Run again in place of Check again.

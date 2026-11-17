@@ -56,13 +56,13 @@ export function causeBanner(
           : failureWords.engineStopped(workflow, step),
       ]);
     case "model-unreachable":
-      return modelUnreachable(facts, context);
+      return modelUnreachable(facts, context, phone);
     case "model-out-of-memory":
       return modelOutOfMemory(facts, context, phone);
     case "model-missing":
       return modelMissing(facts, context, phone);
     case "model-timeout":
-      return modelTimeout(facts, context, step);
+      return modelTimeout(facts, context, step, phone);
     case "model-no-tools":
       return modelNoTools(facts, step, phone);
     case "harness-start-failed":
@@ -72,19 +72,31 @@ export function causeBanner(
   }
 }
 
-/** F7: the cloud sentence names the internet, the local one the program that isn't running. */
-function modelUnreachable(facts: FailureFacts, context: RunPageContext): RunBanner | undefined {
-  const { provider, model, host } = facts;
+/**
+ * F7: the cloud sentence names the internet, the local one the program that isn't running and
+ * offers Open Models. A phone says the program is on the computer and says to fix it there.
+ */
+function modelUnreachable(
+  facts: FailureFacts,
+  context: RunPageContext,
+  phone: boolean,
+): RunBanner | undefined {
+  const { provider, model, alias, host } = facts;
   if (provider === undefined || model === undefined) {
     return undefined;
   }
   // A provider that is no longer in the workspace gets the cloud sentence: the internet is the
   // likelier cause, and the local one tells a person to start a program that may not exist.
-  const words =
-    context.providerKind(provider) === "local"
-      ? failureWords.localModelUnreachable
-      : failureWords.cloudModelUnreachable;
-  return danger([words(provider, host, model)]);
+  if (context.providerKind(provider) !== "local") {
+    return danger([failureWords.cloudModelUnreachable(provider, host, model, alias)]);
+  }
+  if (phone) {
+    return danger([
+      failureWords.localModelUnreachableOnPhone(provider, host, model, alias),
+      failureWords.fixOnComputer(failureWords.modelsPlace),
+    ]);
+  }
+  return danger([failureWords.localModelUnreachable(provider, host, model, alias)], [openModels]);
 }
 
 /**
@@ -100,15 +112,18 @@ function modelOutOfMemory(
   if (provider === undefined || model === undefined || context.providerKind(provider) === "cloud") {
     return undefined;
   }
-  return danger([
-    failureWords.modelOutOfMemory(provider, model),
-    ...(phone
-      ? [
-          failureWords.modelOutOfMemoryFixOnPhone,
-          failureWords.fixOnComputer(failureWords.modelsPlace),
-        ]
-      : [failureWords.modelOutOfMemoryFix]),
-  ]);
+  return danger(
+    [
+      failureWords.modelOutOfMemory(provider, model),
+      ...(phone
+        ? [
+            failureWords.modelOutOfMemoryFixOnPhone,
+            failureWords.fixOnComputer(failureWords.modelsPlace),
+          ]
+        : [failureWords.modelOutOfMemoryFix]),
+    ],
+    phone ? undefined : [openModels],
+  );
 }
 
 /**
@@ -126,12 +141,15 @@ function modelMissing(
     return undefined;
   }
   const ollama = provider === "ollama";
+  if (phone) {
+    const line = ollama
+      ? failureWords.modelMissingOllamaOnPhone(model)
+      : failureWords.modelMissingOtherOnPhone(provider, model);
+    return danger([line, failureWords.fixOnComputer(failureWords.modelsPlace)]);
+  }
   const line = ollama
     ? failureWords.modelMissingOllama(model)
     : failureWords.modelMissingOther(provider, model);
-  if (phone) {
-    return danger([line, failureWords.fixOnComputer(failureWords.modelsPlace)]);
-  }
   const copy: BannerFix = { kind: "copy-command", command: failureWords.ollamaPullCommand(model) };
   return danger([line], ollama ? [copy, openModels] : [openModels]);
 }
@@ -141,15 +159,19 @@ function modelTimeout(
   facts: FailureFacts,
   context: RunPageContext,
   step: string,
+  phone: boolean,
 ): RunBanner | undefined {
   const { provider, host } = facts;
   if (provider === undefined) {
     return undefined;
   }
+  if (context.providerKind(provider) !== "local") {
+    return danger([failureWords.cloudModelTimeout(provider, step)]);
+  }
   return danger([
-    context.providerKind(provider) === "local"
-      ? failureWords.localModelTimeout(provider, host)
-      : failureWords.cloudModelTimeout(provider, step),
+    phone
+      ? failureWords.localModelTimeoutOnPhone(provider)
+      : failureWords.localModelTimeout(provider, host),
   ]);
 }
 

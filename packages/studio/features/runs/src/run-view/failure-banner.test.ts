@@ -64,6 +64,40 @@ verifies("runs.run-view.failure-banners", () => {
       ]);
     });
 
+    it("names the model alias when the log gives it, and offers Open Models for a local model", () => {
+      const log = [
+        event(
+          {
+            type: "llm.request",
+            agent: "reporter",
+            provider: "ollama",
+            model: "llama3.2",
+            alias: "fast",
+            messages: 1,
+          },
+          2,
+        ),
+        failedEvent("localhost:11434"),
+      ];
+      const banner = causeBanner(failed("model-unreachable"), log, context, false);
+      expect(lines(banner)).toEqual([
+        "Halonic couldn't reach Ollama at localhost:11434 for the model alias fast. Ollama may not be running on this computer. Start Ollama, then run again.",
+      ]);
+      expect(banner?.kind === "callout" ? banner.fixes : undefined).toEqual([
+        { kind: "open-models" },
+      ]);
+    });
+
+    it("says the program is on the computer, and where to fix it, on a phone", () => {
+      const log = [call("ollama", "llama3.2"), failedEvent("localhost:11434")];
+      const banner = causeBanner(failed("model-unreachable"), log, context, true);
+      expect(lines(banner)).toEqual([
+        "Halonic couldn't reach Ollama on your computer (localhost:11434) for the model llama3.2. Start Ollama there, then run again.",
+        "Fix this on your computer: Models",
+      ]);
+      expect(banner?.kind === "callout" ? banner.fixes : undefined).toBeUndefined();
+    });
+
     it("waits for the log, and for a model call in it", () => {
       expect(causeBanner(failed("model-unreachable"), undefined, context, false)).toBeUndefined();
       expect(
@@ -129,7 +163,10 @@ verifies("runs.run-view.failure-banners", () => {
         context,
         true,
       );
-      expect(lines(banner)?.at(-1)).toBe("Fix this on your computer: Models");
+      expect(lines(banner)).toEqual([
+        "Ollama on your computer doesn't have llama3.2 yet. Run ollama pull llama3.2 in a terminal there, or pick another model in Models.",
+        "Fix this on your computer: Models",
+      ]);
       expect(fixes(banner)).toBeUndefined();
     });
 
@@ -143,6 +180,13 @@ verifies("runs.run-view.failure-banners", () => {
         "Claude didn't start answering within 5 minutes, so the step Draft stopped. Nothing you set caused this.",
       ]);
       expect(fixes(causeBanner(failed("model-timeout"), local, context, false))).toBeUndefined();
+    });
+
+    it("says the local provider is on the computer, on a phone", () => {
+      const local = [call("ollama", "llama3.2"), failedEvent("localhost:11434")];
+      expect(lines(causeBanner(failed("model-timeout"), local, context, true))).toEqual([
+        "Ollama on your computer didn't start answering within 5 minutes. It may still be loading the model.",
+      ]);
     });
 
     it("names the alias for a model that can't use tools, and offers Open Models", () => {
@@ -177,6 +221,15 @@ verifies("runs.run-view.failure-banners", () => {
         "Ollama couldn't load llama3.1:70b: this computer doesn't have enough free memory for it.",
         "Close other programs, or pick a smaller model in Models.",
       ]);
+    });
+
+    it("offers Open Models on a computer, and not on a phone", () => {
+      const open = (phone: boolean) => {
+        const banner = causeBanner(failed("model-out-of-memory"), log, context, phone);
+        return banner?.kind === "callout" ? banner.fixes : undefined;
+      };
+      expect(open(false)).toEqual([{ kind: "open-models" }]);
+      expect(open(true)).toBeUndefined();
     });
 
     it("says to fix it on the computer, on a phone", () => {

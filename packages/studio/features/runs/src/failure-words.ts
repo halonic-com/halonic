@@ -4,24 +4,54 @@ import { capitalised } from "./run-words.ts";
  * The failed banners by cause (microcopy 22 F6, F7, F8, F10, F15, F20, F21). The reason the engine
  * gives never shows: it goes into Copy details, which the banner doesn't have yet.
  */
+/** F7's "the model alias `smart`", or "the model gpt-4o" when the log doesn't give the alias. */
+function modelOrAlias(model: string, alias: string | undefined): string {
+  return alias === undefined ? `the model ${model}` : `the model alias ${alias}`;
+}
+
 export const failureWords = {
   /** For a failed sandbox start that names no agent. */
   theAgent: "The agent",
   sandboxStartFailed: (agent: string) =>
     `${capitalised(agent)} didn't start: the sandbox on this computer didn't start. Nothing ran.`,
-  cloudModelUnreachable: (provider: string, host: string | undefined, model: string) =>
-    `Halonic couldn't reach ${capitalised(provider)}${host === undefined ? "" : ` at ${host}`} for the model ${model}. This computer may be offline. Check your internet connection, then run again.`,
-  localModelUnreachable: (provider: string, host: string | undefined, model: string) =>
-    `Halonic couldn't reach ${capitalised(provider)}${host === undefined ? "" : ` at ${host}`} for the model ${model}. ${capitalised(provider)} may not be running on this computer. Start ${capitalised(provider)}, then run again.`,
+  /** F7: names the model alias the call went to, or the model when an older log doesn't give it. */
+  cloudModelUnreachable: (
+    provider: string,
+    host: string | undefined,
+    model: string,
+    alias: string | undefined,
+  ) =>
+    `Halonic couldn't reach ${capitalised(provider)}${host === undefined ? "" : ` at ${host}`} for ${modelOrAlias(model, alias)}. This computer may be offline. Check your internet connection, then run again.`,
+  localModelUnreachable: (
+    provider: string,
+    host: string | undefined,
+    model: string,
+    alias: string | undefined,
+  ) =>
+    `Halonic couldn't reach ${capitalised(provider)}${host === undefined ? "" : ` at ${host}`} for ${modelOrAlias(model, alias)}. ${capitalised(provider)} may not be running on this computer. Start ${capitalised(provider)}, then run again.`,
+  /** On a phone, "localhost" is the computer: the sentence says so (microcopy 15.3, revision 96). */
+  localModelUnreachableOnPhone: (
+    provider: string,
+    host: string | undefined,
+    model: string,
+    alias: string | undefined,
+  ) =>
+    `Halonic couldn't reach ${capitalised(provider)} on your computer${host === undefined ? "" : ` (${host})`} for ${modelOrAlias(model, alias)}. Start ${capitalised(provider)} there, then run again.`,
   /** F6 (microcopy 15.3, `model-missing`): the server answers, but the model isn't in its list. */
   modelMissingOllama: (model: string) =>
     `Ollama is answering, but it doesn't have ${model} yet. Run ollama pull ${model} in a terminal, or pick another model in Models.`,
   modelMissingOther: (provider: string, model: string) =>
     `${capitalised(provider)} is answering, but it doesn't have ${model} yet. Download it in ${capitalised(provider)}, or pick another model in Models.`,
+  modelMissingOllamaOnPhone: (model: string) =>
+    `Ollama on your computer doesn't have ${model} yet. Run ollama pull ${model} in a terminal there, or pick another model in Models.`,
+  modelMissingOtherOnPhone: (provider: string, model: string) =>
+    `${capitalised(provider)} on your computer doesn't have ${model} yet. Download it there, or pick another model in Models.`,
   ollamaPullCommand: (model: string) => `ollama pull ${model}`,
   /** `model-timeout`: a local provider names its address, a cloud one the step it stopped. */
   localModelTimeout: (provider: string, host: string | undefined) =>
     `${capitalised(provider)} didn't start answering${host === undefined ? "" : ` at ${host}`} within 5 minutes. It may still be loading the model.`,
+  localModelTimeoutOnPhone: (provider: string) =>
+    `${capitalised(provider)} on your computer didn't start answering within 5 minutes. It may still be loading the model.`,
   cloudModelTimeout: (provider: string, step: string) =>
     `${capitalised(provider)} didn't start answering within 5 minutes, so the step ${step} stopped. Nothing you set caused this.`,
   /** `model-no-tools`: cli-output 3.4's lines 1 and 2; without the alias the log didn't give. */

@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
+
 import { type SandboxStartResult, sandboxStartWords } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
 import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import type { RunStartHost } from "../api.ts";
 import { RunsList } from "../runs-list.ts";
 import { fakeSource } from "../source.test-helper.ts";
 import { mondayMorning, summaryWith } from "../summary.test-helper.ts";
@@ -39,6 +41,7 @@ async function open(
   check?: () => Promise<SandboxStartResult>,
   phone = false,
   announce?: (line: string) => void,
+  runStart?: RunStartHost,
 ) {
   const list = new RunsList(
     fakeSource([failedRun], events ? { [failedRun.id]: events } : {}).source,
@@ -51,6 +54,7 @@ async function open(
         now={() => mondayMorning}
         {...(announce === undefined ? {} : { announce })}
         {...(check === undefined ? {} : { sandboxStartCheck: { check } })}
+        {...(runStart === undefined ? {} : { runStart, openRun: () => {} })}
       />
     </PresentationProvider>,
   );
@@ -69,8 +73,8 @@ verifies("runs.run-view.sandbox-not-ready", () => {
     const words = sandboxStartWords("bubblewrap-missing");
     const root = await open(log("bubblewrap-missing"), async () => ({ ok: true }));
 
-    expect(banner(root)?.textContent).toBe(
-      `Support reply didn't start: the sandbox on this computer isn't ready.${words.reason}${words.calloutFix}Nothing ran.Check again`,
+    expect(banner(root)?.textContent).toContain(
+      `Support reply didn't start: the sandbox can't start on this computer.${words.reason}${words.calloutFix}Nothing ran.Read the guide`,
     );
   });
 
@@ -95,8 +99,43 @@ verifies("runs.run-view.sandbox-not-ready", () => {
     await act(async () => button(root)?.click());
 
     expect(check).toHaveBeenCalledTimes(1);
-    expect(banner(root)?.textContent).toContain("The sandbox is ready. The next run can start.");
+    expect(banner(root)?.textContent).toContain(
+      "The sandbox works now. You can run Support reply.",
+    );
     expect(button(root)).toBeUndefined();
+  });
+
+  it("turns Check again into Run again when the check passes, where the page can run again", async () => {
+    const events = [
+      {
+        runId: failedRun.id,
+        seq: 0,
+        at: "2026-11-16T08:00:00Z",
+        type: "run.started",
+        hubId: "acme",
+        workflowId: "support-reply",
+        input: {},
+        kind: "run",
+        definitionsVersion: "v1",
+      } as RunEvent,
+      ...log("bubblewrap-missing"),
+    ];
+    const root = await open(events, async () => ({ ok: true }), false, undefined, {
+      startRun: vi.fn(),
+    });
+    const inBanner = () => [...(banner(root)?.querySelectorAll("button") ?? [])];
+    expect(inBanner().map((one) => one.textContent)).toEqual(["Check again"]);
+    await act(async () => button(root)?.click());
+    expect(inBanner().map((one) => one.textContent)).toEqual(["Run again"]);
+  });
+
+  it("links the guide for the reason", async () => {
+    const root = await open(log("bubblewrap-missing"));
+    const link = banner(root)?.querySelector("a");
+    expect(link?.textContent).toContain("Read the guide");
+    expect(link?.getAttribute("href")).toBe(
+      `https://docs.halonic.dev/${sandboxStartWords("bubblewrap-missing").docsKey}`,
+    );
   });
 
   it("shows the new reason when the sandbox still can't start, and keeps the button", async () => {
@@ -176,7 +215,9 @@ verifies("runs.run-view.sandbox-not-ready", () => {
     act(() => button(root)?.focus());
     await act(async () => button(root)?.click());
 
-    expect(announce).toHaveBeenCalledExactlyOnceWith("Sandbox checked: ready.");
+    expect(announce).toHaveBeenCalledExactlyOnceWith(
+      "The sandbox works now. You can run Support reply.",
+    );
     expect(document.activeElement).toBe(banner(root)?.firstElementChild);
   });
 

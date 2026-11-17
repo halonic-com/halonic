@@ -23,7 +23,7 @@ export function slowStepLine(log: readonly RunEvent[], now: Date): string | unde
   }
   switch (last.type) {
     case "llm.request":
-      return slowStepWords.model(last.provider);
+      return last.provider === "ollama" ? slowStepWords.ollama : slowStepWords.model(last.provider);
     case "tool.called":
       return slowStepWords.tool(last.tool);
     case "connector.started":

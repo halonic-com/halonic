@@ -25,7 +25,11 @@ import {
   type RunPageContext,
   runBanner,
 } from "./run-page-model.ts";
-import { SandboxNotReadyBanner, sandboxNotReadyReason } from "./sandbox-not-ready-banner.tsx";
+import {
+  SandboxNotReadyBanner,
+  sandboxNotReadyAgent,
+  sandboxNotReadyReason,
+} from "./sandbox-not-ready-banner.tsx";
 
 /** The page's one banner: the failed banner for the run's cause, the sandbox's for a run it stopped, else the usual one. */
 export function PageBanner({
@@ -87,11 +91,12 @@ export function PageBanner({
     return (
       <SandboxNotReadyBanner
         key={run.summary.id}
-        workflow={context.workflow?.name ?? run.summary.workflowId}
+        name={sandboxNotReadyAgent(log) ?? context.workflow?.name ?? run.summary.workflowId}
         reason={sandboxReason}
         check={sandboxStartCheck}
         announce={announce}
         phone={phone}
+        runAgain={runAgain}
       />
     );
   }

@@ -219,7 +219,7 @@ export const runPageWords = {
   reviewInInbox: "Review in Inbox",
   runAgain: "Run again",
   runAgainFailedName: "Run didn't start",
-  runAgainFailed: (reason: string) => `Couldn't start the run. ${reason}`,
+  runAgainFailed: (reason: string) => `Couldn't start the run: ${reason}`,
   openRun: (shortId: string) => `Open run ${shortId}`,
   waitingForYouName: "Waiting for you",
   waitingName: "Waiting",
@@ -239,17 +239,18 @@ export const runPageWords = {
   instructionsBusy: "A question about instructions is already open. Answer it first.",
   instructionsUnavailable: "Nothing was trusted. Try again.",
   instructionsTrusted: "Trusted. Run again to start it.",
-  /** The failed banner of a run the sandbox check refused (checklist 3.6); placeholder words until HAL-1784. */
-  sandboxNotReady: (workflow: string) =>
-    `${workflow} didn't start: the sandbox on this computer isn't ready.`,
+  /** The failed banner of a run the sandbox check refused (microcopy 23.3): the agent's name, or the workflow's. */
+  sandboxNotReady: (name: string) =>
+    `${capitalised(name)} didn't start: the sandbox can't start on this computer.`,
+  sandboxDocs: "Read the guide",
+  /** Where the guide lives; the catalogue's docs key follows it. */
+  sandboxDocsBase: "https://docs.halonic.dev",
   sandboxNothingRan: "Nothing ran.",
   sandboxCheckAgain: "Check again",
-  /** Said once when a press of **Check again** finds the sandbox ready. */
-  sandboxCheckedReady: "Sandbox checked: ready.",
   /** Said once when a press finds it still refuses; the reason follows. */
   sandboxCheckedRefused: (reason: string) => `Sandbox checked: not ready. ${reason}`,
-  /** The page has no Run again yet (T7), so this names none (HAL-11190). */
-  sandboxReady: "The sandbox is ready. The next run can start.",
+  /** Said, and shown, when a press of **Check again** finds the sandbox ready; **Run again** replaces the button. */
+  sandboxReady: (name: string) => `The sandbox works now. You can run ${name}.`,
   sandboxCheckFailed: "Halonic couldn't check the sandbox. Try again.",
   budgetName: "Stopped at its budget",
   /** One tool approval (mc 15.2): who asks and what for, in the words of the Inbox card's title. */

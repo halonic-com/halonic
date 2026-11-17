@@ -1,8 +1,9 @@
 import { type SandboxStartCheck, sandboxStartWords } from "@halonicjs/app";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
-import { Callout, type CalloutHandle } from "@halonicjs/studio-kit";
+import { Callout, type CalloutHandle, ExternalLink } from "@halonicjs/studio-kit";
 import { useEffect, useRef, useState } from "react";
 import { runPageWords } from "../run-words.ts";
+import type { RunAgain } from "./run-again.ts";
 
 /**
  * The reason code of a run the sandbox check refused, from `run.failed`; `undefined` for any other
@@ -26,26 +27,38 @@ type Checked =
   | { readonly kind: "refused"; readonly reason: string }
   | { readonly kind: "failed" };
 
+/** The agent that was about to start, from the last `agent.started`; `undefined` when none did. */
+export function sandboxNotReadyAgent(log: readonly RunEvent[] | undefined): string | undefined {
+  return log?.findLast(
+    (event): event is Extract<RunEvent, { type: "agent.started" }> =>
+      event.type === "agent.started" && event.parent === undefined,
+  )?.agent;
+}
+
 /**
  * The failed banner of a run the sandbox check refused (requirement
  * `runs.run-view.sandbox-not-ready`): what is wrong and the fix, from the one catalogue, then
- * "Nothing ran." and **Check again**. A passing check says to run again and drops the button;
- * nothing runs by itself and there is no way to run anyway. Without a `check` (a served page)
- * there is no button. The button stays, busy, while a check runs, so it keeps focus; the answer is
- * said through `announce`, and a passing check, which drops the button, moves focus to the banner.
+ * "Nothing ran.", **Check again** and a link to the guide. A passing check says the sandbox works
+ * and turns the button into **Run again**; nothing runs by itself. Without a `check` (a served
+ * page) there is no button. The button stays, busy, while a check runs, so it keeps focus; the
+ * answer is said through `announce`, and a passing check moves focus to the banner.
  */
 export function SandboxNotReadyBanner({
-  workflow,
+  name,
   reason,
   check,
   announce,
   phone,
+  runAgain,
 }: {
-  readonly workflow: string;
+  /** The agent that didn't start, or the workflow when the log names no agent. */
+  readonly name: string;
   readonly reason: string;
   readonly check: SandboxStartCheck | undefined;
   readonly announce?: ((line: string) => void) | undefined;
   readonly phone: boolean;
+  /** The page's Run again, offered once a check passes; absent when the page can't run again. */
+  readonly runAgain?: RunAgain | undefined;
 }) {
   const [checked, setChecked] = useState<Checked>();
   // The newest code a check gave. A check that can't run keeps it rather than going back to the run's.
@@ -60,7 +73,7 @@ export function SandboxNotReadyBanner({
       setChecked(result.ok ? { kind: "ready" } : { kind: "refused", reason: result.reason });
       announce?.(
         result.ok
-          ? runPageWords.sandboxCheckedReady
+          ? runPageWords.sandboxReady(name)
           : runPageWords.sandboxCheckedRefused(sandboxStartWords(result.reason).reason),
       );
     } catch {
@@ -75,10 +88,9 @@ export function SandboxNotReadyBanner({
   useEffect(() => {
     if (ready) banner.current?.focus();
   }, [ready]);
-  const action =
-    check === undefined || ready
-      ? undefined
-      : { label: runPageWords.sandboxCheckAgain, onClick: again };
+  const action = ready
+    ? runAgain && { label: runPageWords.runAgain, onClick: runAgain.start }
+    : check && { label: runPageWords.sandboxCheckAgain, onClick: again };
   return (
     <section aria-label={runPageWords.failedName}>
       <Callout
@@ -86,14 +98,19 @@ export function SandboxNotReadyBanner({
         {...(action === undefined ? {} : { action })}
         {...(ready ? { announce: "focus" as const, ref: banner } : {})}
       >
-        <span className="block">{runPageWords.sandboxNotReady(workflow)}</span>
+        <span className="block">{runPageWords.sandboxNotReady(name)}</span>
         <span className="block">{words.reason}</span>
         <span className="block">{phone ? words.phoneFix : words.calloutFix}</span>
         <span className="block">{runPageWords.sandboxNothingRan}</span>
-        {ready ? <span className="block">{runPageWords.sandboxReady}</span> : null}
+        {ready ? <span className="block">{runPageWords.sandboxReady(name)}</span> : null}
         {checked?.kind === "failed" ? (
           <span className="block">{runPageWords.sandboxCheckFailed}</span>
         ) : null}
+        <span className="block">
+          <ExternalLink href={`${runPageWords.sandboxDocsBase}/${words.docsKey}`}>
+            {runPageWords.sandboxDocs}
+          </ExternalLink>
+        </span>
       </Callout>
     </section>
   );
