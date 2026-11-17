@@ -70,6 +70,7 @@ function hostOf(read: FilesHost["read"], edit: FilesHost["edit"] = () => {}): Fi
     read,
     edit,
     problems: async () => [],
+    yamlSyntaxLine: async () => null,
     outside: () => new Map(),
     noteHeld: () => undefined,
     onReloaded: () => () => undefined,

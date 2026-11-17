@@ -19,7 +19,7 @@ import {
   type RenameImpact,
 } from "@halonicjs/studio-feature-files/api";
 import { loadWorkspace, placeOf } from "@halonicjs/workspace";
-import { editYaml, readYaml } from "@halonicjs/yaml";
+import { defaultYamlLimits, editYaml, readYaml } from "@halonicjs/yaml";
 import { unsavedSource } from "../library/workspace-library-items.ts";
 
 /** What {@link WorkspaceFilesHost} needs of the workspace's files and events. */
@@ -200,6 +200,18 @@ export class WorkspaceFilesHost implements FilesHost {
     } catch {
       return [];
     }
+  }
+
+  async yamlSyntaxLine(path: string): Promise<number | null> {
+    if (!/\.ya?ml$/i.test(path)) return null;
+    // While saving is paused the folder holds another text than the editor shows, so the line
+    // would describe text the user can't see.
+    if (this.#outside.has(path)) return null;
+    const text = await this.#parts.files.read(path);
+    // A file over the YAML limit isn't read, so it has no syntax line, whatever it holds.
+    if (text === null || text.length > defaultYamlLimits.maxLength) return null;
+    const read = readYaml(text);
+    return !read.ok && read.error.kind === "syntax" ? read.error.line : null;
   }
 
   read(path: string): Promise<string | null> {

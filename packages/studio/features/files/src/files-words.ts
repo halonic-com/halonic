@@ -32,6 +32,9 @@ export const filesWords = {
   /** What a file that isn't text says in place of the editor, with its size as the description. */
   notTextTitle: "This file can't be shown here.",
   notTextDescription: (size: string): string => `It is ${size}.`,
+  /** The strip above the editor of a YAML file that stopped being valid YAML. */
+  cantBeRead: (name: string, line: number): string =>
+    `${name} can't be read: line ${line} isn't valid YAML.`,
   /** The strip above the editor of a file with unsaved changes that changed outside Halonic. */
   changedOutside: " changed outside Halonic",
   deletedOutside: " was deleted outside Halonic.",

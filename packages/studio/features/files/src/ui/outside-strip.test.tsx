@@ -50,6 +50,7 @@ function fixture(change: OutsideChange | undefined, compare: Partial<FileCompare
       text = next;
     },
     problems: async () => [],
+    yamlSyntaxLine: async () => null,
     create: async () => {},
     renameImpact: async () => ({ places: 0, owners: [] }),
     rename: async () => ({ places: 0, owners: [], undo: async () => {} }),

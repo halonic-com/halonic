@@ -132,6 +132,8 @@ export function FileView({ item, context }: ItemViewProps) {
   const [problems, setProblems] = useState<readonly FileIssue[]>([]);
   const problemsRef = useRef<readonly FileIssue[]>([]);
   const [elsewhere, setElsewhere] = useState<Elsewhere>(noElsewhere);
+  // The line where a YAML file stopped being valid YAML, from the same check as the problems.
+  const [syntaxLine, setSyntaxLine] = useState<number | null>(null);
   // Counts the changes this tab's editor makes. A check compares the count at its start with the
   // count at the last check that was used: a problem that shows up in another file without an edit
   // in between did not come from this tab.
@@ -141,7 +143,8 @@ export function FileView({ item, context }: ItemViewProps) {
   // The problems are checked when the tab opens and again a moment after the files change, so
   // typing never waits for the check. The first check is what other files looked like before
   // this tab's changes; later ones are compared with it. A check that follows no edit here moves
-  // that baseline on, so another file's change is never blamed on this tab.
+  // that baseline on, so another file's change is never blamed on this tab. The same check
+  // finds out whether a YAML file can still be read.
   useEffect(() => {
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -152,13 +155,15 @@ export function FileView({ item, context }: ItemViewProps) {
     problemsRef.current = [];
     setProblems([]);
     setElsewhere(noElsewhere);
+    setSyntaxLine(null);
     const check = () => {
       const turn = ++newest;
       // Read at the start: an edit made while the check runs belongs to the next check.
       const editsAtStart = edits.current;
-      host.problems().then(
-        (all) => {
+      Promise.all([host.problems(), host.yamlSyntaxLine(path).catch(() => null)]).then(
+        ([all, line]) => {
           if (stopped || turn !== newest) return;
+          setSyntaxLine(line);
           const now = problemsElsewhere(path, all);
           if (before === undefined) before = now;
           else if (editsAtStart === editsAtLast) before = withNewSince(before, last, now);
@@ -323,6 +328,11 @@ export function FileView({ item, context }: ItemViewProps) {
       )}
       {settled !== undefined && outside === undefined && !comparing && !trashedHere && (
         <p className="px-4 pb-1 text-small text-fg-muted">{filesWords.settled[settled]}</p>
+      )}
+      {editing && syntaxLine !== null && (
+        <div className="border-b border-border bg-danger-soft px-4 py-1 text-small text-fg">
+          {filesWords.cantBeRead(fileName(path), syntaxLine)}
+        </div>
       )}
       {outside !== undefined && !comparing && !trashedHere && (
         <OutsideStrip

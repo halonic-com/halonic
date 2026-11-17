@@ -16,6 +16,7 @@ const host: FilesHost = {
   read: async () => null,
   edit: () => {},
   problems: async () => [],
+  yamlSyntaxLine: async () => null,
   outside: () => new Map(),
   noteHeld: () => undefined,
   onReloaded: () => () => undefined,
