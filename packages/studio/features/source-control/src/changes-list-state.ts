@@ -19,6 +19,8 @@ export interface HistoryState {
 /** One changed file: what changed in it, and the texts the changes can be undone from. */
 export interface ChangedFile {
   readonly path: string;
+  /** The old path, for a file that was renamed. */
+  readonly from?: string;
   readonly description: FileChange;
   /** `undefined` when the file couldn't be read as text; its lines then have no parts to undo. */
   readonly texts: FileTexts | undefined;
