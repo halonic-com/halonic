@@ -125,7 +125,7 @@ verifies("files.ui.rename-file", () => {
     expect(rowNamed(page, "models.yaml").getAttribute("aria-description")).toBeNull();
   });
 
-  it("closes the field when the row was left while Enter's rename ran and the host refuses", async () => {
+  it("keeps the typed name in its row, with a toast that has Try again, when the row was left while Enter's rename ran and the host refuses", async () => {
     let refuse: (error: Error) => void = () => {};
     const rename = () =>
       new Promise<never>((_, reject) => {
@@ -142,10 +142,15 @@ verifies("files.ui.rename-file", () => {
       refuse(kinded("conflict", "providers.yaml already exists."));
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(page.querySelector("input")).toBeNull();
+    expect(page.querySelector("input")?.value).toBe("providers.yaml");
     expect(document.activeElement).toBe(elsewhere);
     expect(show).toHaveBeenCalledWith(
-      expect.objectContaining({ tone: "danger", title: "providers.yaml already exists." }),
+      expect.objectContaining({
+        tone: "danger",
+        title: "Couldn't rename models.yaml: providers.yaml already exists.",
+        sticky: true,
+        action: expect.objectContaining({ label: "Try again" }),
+      }),
     );
     elsewhere.remove();
   });
@@ -227,7 +232,7 @@ verifies("files.ui.rename-file", () => {
     elsewhere.remove();
   });
 
-  it("leaves the focus where the user put it when the row is left after a refusal", async () => {
+  it("keeps the typed name and leaves the focus where the user put it when the row is left after a refusal", async () => {
     const rename = async () => {
       throw kinded("conflict", "providers.yaml already exists.");
     };
@@ -235,9 +240,8 @@ verifies("files.ui.rename-file", () => {
     const input = rowNamed(page, "models.yaml").querySelector("input");
     await typeInto(input, "providers.yaml");
     const elsewhere = await leaveRow(input);
-    expect(page.querySelector("input")).toBeNull();
+    expect(page.querySelector("input")?.value).toBe("providers.yaml");
     expect(document.activeElement).toBe(elsewhere);
-    expect(rowNamed(page, "models.yaml").tabIndex).toBe(0);
     elsewhere.remove();
   });
 

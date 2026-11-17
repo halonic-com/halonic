@@ -1,12 +1,12 @@
 import { Button, EmptyState, PlusIcon, SkeletonBar, useToastStore } from "@halonicjs/studio-kit";
 import { errorReasonFor, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { FILE_KIND, fileItem } from "../file-item.ts";
+import { FILE_KIND, fileItem, fileName } from "../file-item.ts";
 import { FilesHostService, type FilesListing } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
 import { startingPath } from "../new-file.ts";
 import { removeFile } from "../remove-file.ts";
-import { renamedPath, renameFile } from "../rename-file.ts";
+import { renamedPath, renameFile, typedNameProblem } from "../rename-file.ts";
 import { emptyTreeState, type TreeIntent, type TreeState } from "../tree/tree-keyboard.ts";
 import { buildTree } from "../tree/tree-model.ts";
 import { visibleRows } from "../tree/visible-rows.ts";
@@ -123,7 +123,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   const clearReveal = useCallback(() => setReveal(undefined), []);
 
   const applyRename = useCallback(
-    async (from: string, name: string, left: () => boolean) => {
+    async (from: string, name: string, left: () => boolean): Promise<string | undefined> => {
       const refused = await renameFile(host, toasts, from, name, {
         // A file that was open stays open under its new name; a closed one is not opened.
         moved: (to) => {
@@ -137,9 +137,14 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
         },
       });
       if (refused !== undefined && left()) {
-        toasts?.show({ tone: "danger", title: refused });
-        setRenaming(undefined);
-        setReveal({ path: from, focus: false });
+        // The focus can't reach the field's sentence, so a toast that stays says it, and the row
+        // keeps the typed name for Try again.
+        toasts?.show({
+          tone: "danger",
+          title: filesWords.couldntRenameToast(fileName(from), refused),
+          sticky: true,
+          action: { label: filesWords.tryAgain, onClick: () => void applyRename(from, name, left) },
+        });
       }
       return refused;
     },
@@ -197,38 +202,44 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   const files = loaded.listing.paths;
   const focused = state.focus;
   const folder = focused !== undefined && !files.includes(focused) ? focused : undefined;
-  const body =
-    roots.length === 0 ? (
-      <EmptyState
-        plain
-        title={filesWords.emptyTitle}
-        description={filesWords.emptyDescription}
-        action={{ label: filesWords.newFile, onClick: startAdding }}
-      />
-    ) : (
-      <FilesTree
-        roots={roots}
-        state={state}
-        onStateChange={setState}
-        onIntent={onIntent}
-        {...(renaming === undefined
-          ? {}
-          : {
-              renaming: {
-                path: renaming,
-                onApply: (name: string, left: () => boolean) => applyRename(renaming, name, left),
-                onCancel: (blur: boolean) => {
-                  setRenaming(undefined);
-                  setReveal({ path: renaming, focus: !blur });
-                },
+  const tree = (
+    <FilesTree
+      roots={roots}
+      state={state}
+      onStateChange={setState}
+      onIntent={onIntent}
+      {...(renaming === undefined
+        ? {}
+        : {
+            renaming: {
+              path: renaming,
+              onApply: (name: string, left: () => boolean) => applyRename(renaming, name, left),
+              check: (name: string) => typedNameProblem(renaming, name, files),
+              impact: (name: string) => host.renameImpact(renaming, renamedPath(renaming, name)),
+              onCancel: (blur: boolean) => {
+                setRenaming(undefined);
+                setReveal({ path: renaming, focus: !blur });
               },
-            })}
-        {...(reveal === undefined
-          ? {}
-          : { revealPath: reveal.path, revealFocus: reveal.focus, onRevealed: clearReveal })}
-        {...(activePath === undefined ? {} : { activePath })}
-      />
-    );
+            },
+          })}
+      {...(reveal === undefined
+        ? {}
+        : { revealPath: reveal.path, revealFocus: reveal.focus, onRevealed: clearReveal })}
+      {...(activePath === undefined ? {} : { activePath })}
+    />
+  );
+  // `workspace.yaml` alone stays a row, with a quiet line under it and no button: the + is the way in.
+  const onlyWorkspaceFile = files.every((path) => path === "workspace.yaml");
+  const body = (
+    <>
+      {tree}
+      {onlyWorkspaceFile && (
+        <p className="px-3 py-2 text-small text-fg-muted">
+          {filesWords.emptyTitle} {filesWords.emptyDescription}
+        </p>
+      )}
+    </>
+  );
   return (
     <div className="flex min-h-0 flex-col">
       <div className="flex items-center justify-end px-2 pt-1">

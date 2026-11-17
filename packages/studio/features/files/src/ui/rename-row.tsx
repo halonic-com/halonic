@@ -1,5 +1,6 @@
 import { Field, Input } from "@halonicjs/studio-kit";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { RenameImpact } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
 
 /** The props of {@link RenameRow}. */
@@ -12,6 +13,10 @@ export interface RenameRowProps {
    * while the host works, so read it when the answer comes.
    */
   readonly onApply: (name: string, left: () => boolean) => Promise<string | undefined>;
+  /** What is wrong with the name typed so far, said under the field as the user types. */
+  readonly check: (name: string) => string | undefined;
+  /** The places in other files a rename to the typed name would also update. */
+  readonly impact: (name: string) => Promise<RenameImpact>;
   /** Escape, or a name left as it was: the row shows the name again. */
   readonly onCancel: (blur: boolean) => void;
 }
@@ -22,14 +27,44 @@ function stemEnd(name: string): number {
   return dot > 0 ? dot : name.length;
 }
 
+/** Reads the typed name's effect on other files, and says it only for the newest name. */
+function useImpact(
+  name: string,
+  value: string,
+  impact: RenameRowProps["impact"],
+  blocked: boolean,
+): string | undefined {
+  const [line, setLine] = useState<string>();
+  useEffect(() => {
+    setLine(undefined);
+    if (blocked || value === name) return;
+    let stopped = false;
+    impact(value).then(
+      ({ places, owners }) => {
+        if (!stopped && places > 0) setLine(filesWords.alsoUpdates(places, owners));
+      },
+      // The line is a help: a rename that can't be looked at ahead is still tried on Enter.
+      () => {},
+    );
+    return () => {
+      stopped = true;
+    };
+  }, [name, value, impact, blocked]);
+  return line;
+}
+
 /**
  * The name of a file edited in its tree row (`files.ui.rename-file`): Enter or leaving the row
- * applies it, Escape puts the old name back. A name the host refuses is said under the row, and
- * the field stays.
+ * applies it, Escape puts the old name back. The name is checked as it is typed, and a name the host refuses is
+ * said under the row; the field stays, with the typed name, also after the focus left it.
  */
-export function RenameRow({ name, onApply, onCancel }: RenameRowProps) {
+export function RenameRow({ name, onApply, check, impact, onCancel }: RenameRowProps) {
   const [value, setValue] = useState(name);
-  const [problem, setProblem] = useState<string>();
+  // A sentence from the host's refusal; the typed name's own problem is read from `check`.
+  const [refused, setRefused] = useState<string>();
+  const typed = check(value);
+  const problem = typed ?? refused;
+  const alsoUpdates = useImpact(name, value, impact, problem !== undefined);
   const [busy, setBusy] = useState(false);
   const settled = useRef(false);
   // The focus left while Enter's rename was still running: a refusal then closes the field.
@@ -46,14 +81,15 @@ export function RenameRow({ name, onApply, onCancel }: RenameRowProps) {
       return onCancel(blur);
     }
     setBusy(true);
-    const refused = await onApply(value, () => blur || left.current);
+    const answer = await onApply(value, () => blur || left.current);
     setBusy(false);
-    if (refused === undefined || blur || left.current) {
+    if (answer === undefined) {
       settled.current = true;
-      if (refused !== undefined) onCancel(true);
       return;
     }
-    setProblem(refused);
+    // Also when the focus left: the row keeps the typed name, and the toast offers Try again.
+    left.current = false;
+    setRefused(answer);
   }
 
   return (
@@ -75,9 +111,14 @@ export function RenameRow({ name, onApply, onCancel }: RenameRowProps) {
       }}
     >
       {/* The Field links the sentence to the field (aria-invalid, aria-describedby); the live
-          region says it once when it appears. */}
-      <div aria-live="assertive" aria-atomic="false">
-        <Field label={filesWords.renameLabel(name)} hideLabel error={problem ?? null}>
+          region says it once when it appears, politely: focus is on the field, so it can reach it. */}
+      <div aria-live="polite" aria-atomic="false">
+        <Field
+          label={filesWords.renameLabel(name)}
+          hideLabel
+          error={problem ?? null}
+          {...(alsoUpdates === undefined ? {} : { hint: alsoUpdates })}
+        >
           <Input
             size="sm"
             autoFocus
@@ -85,7 +126,7 @@ export function RenameRow({ name, onApply, onCancel }: RenameRowProps) {
             value={value}
             onChange={(event) => {
               setValue(event.target.value);
-              setProblem(undefined);
+              setRefused(undefined);
             }}
             onFocus={(event) => event.target.setSelectionRange(0, stemEnd(event.target.value))}
             onBlur={() => void apply(true)}

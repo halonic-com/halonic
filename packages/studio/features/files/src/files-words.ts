@@ -77,20 +77,31 @@ export const filesWords = {
       : `Couldn't create ${path}: ${reason.replace(/\.$/, "")}.`,
   pathPrivate: (path: string): string => `"${path}" is not part of the workspace definitions`,
   /** The name of the field that edits a file's name in its row, for a screen reader. */
-  renameLabel: (name: string): string => `Name of ${name}`,
+  renameLabel: (name: string): string => `Rename ${name}`,
   /** Under the name being edited in its row when it holds a `/`. */
   renameSlash: "A name can't contain a slash.",
   /** When the host gave no sentence for a refused rename. */
   couldntRename: (path: string): string => `Couldn't rename to ${path}.`,
-  /** The second line of the rename toast: how many places in other files change, and whose they are. */
-  alsoUpdated: (count: number, owners: readonly string[]): string => {
-    const shown = owners.slice(0, 3).join(", ");
-    const more = owners.length - 3;
-    const names = more > 0 ? `${shown} and ${more} more` : shown;
-    return `Also updated ${count} ${count === 1 ? "place" : "places"}${owners.length > 0 ? `: ${names}` : ""}.`;
+  /**
+   * The line under the rename field while the name is typed: how many places in other files change,
+   * and whose they are. Up to 5 names in full; more are 4 names and "and *n* more", never "and 1 more".
+   */
+  alsoUpdates: (count: number, owners: readonly string[]): string => {
+    const names =
+      owners.length > 5
+        ? `${owners.slice(0, 4).join(", ")} and ${owners.length - 4} more`
+        : owners.join(", ");
+    return `Also updates ${count} ${count === 1 ? "place" : "places"}${owners.length > 0 ? `: ${names}` : ""}`;
   },
-  /** The toast after a rename, with the new path: with a second line it is a sentence and ends with a full stop. */
-  renamed: (path: string, withLine: boolean): string => `Renamed to ${path}${withLine ? "." : ""}`,
+  /** How an owner shows in that line: a routine says so. */
+  ownerRoutine: (name: string): string => `${name} (routine)`,
+  /** The toast after a rename, with the new path; Undo follows. */
+  renamed: (path: string): string => `Renamed to ${path}`,
+  /** The toast when a rename the focus left was refused; the typed name stays in its row. Try again follows. */
+  couldntRenameToast: (name: string, reason: string | undefined): string =>
+    reason === undefined
+      ? `Couldn't rename ${name}.`
+      : `Couldn't rename ${name}: ${reason.replace(/\.$/, "")}.`,
   /** The toast when Undo can't move a renamed file back. */
   couldntMoveBack: (path: string): string => `Couldn't move ${path} back`,
   /** The toast after a delete: with a second line it is a sentence and ends with a full stop. */

@@ -1,5 +1,5 @@
 import { type CodeEditor, languageFor, openCodeEditor } from "@halonicjs/studio-code-editor";
-import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
+import { Callout, EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
 import { errorReasonFor, type ItemViewProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { fileItem, fileName } from "../file-item.ts";
@@ -52,6 +52,17 @@ function goToFiles(): void {
   document
     .querySelector<HTMLElement>('[role="tree"][aria-label="Files"] [data-path][tabindex="0"]')
     ?.focus();
+}
+
+/** The strip that shows above the editor: only the first of those that apply. */
+function stripShown(applies: {
+  readonly unreadable: boolean;
+  readonly trashed: boolean;
+  readonly outside: boolean;
+}): "unreadable" | "trash" | "outside" | undefined {
+  if (applies.unreadable) return "unreadable";
+  if (applies.trashed) return "trash";
+  return applies.outside ? "outside" : undefined;
 }
 
 /**
@@ -238,6 +249,13 @@ export function FileView({ item, context }: ItemViewProps) {
   const trashedHere = ready && trash !== undefined;
   const missing = loaded.kind === "missing" || (ready && gone && trash === undefined);
   const editing = ready && !comparing && !missing;
+  // One strip at a time above the editor, by what the user can still do: can't be read, trash,
+  // changed or deleted outside (design-ahead states DA6).
+  const strip = stripShown({
+    unreadable: editing && syntaxLine !== null,
+    trashed: trashedHere,
+    outside: outside !== undefined && !comparing,
+  });
   useEffect(() => {
     const container = parent.current;
     if (!editing || container === null) return;
@@ -330,7 +348,7 @@ export function FileView({ item, context }: ItemViewProps) {
         {fileName(path)}
       </h1>
       <LoadNotice loaded={loaded} missing={missing} onRetry={reload} />
-      {trashedHere && trash !== undefined && (
+      {strip === "trash" && trash !== undefined && (
         <TrashedStrip
           announce={(text) => announcer.current.announce(text)}
           onUndo={() => void trash.undo()}
@@ -339,12 +357,12 @@ export function FileView({ item, context }: ItemViewProps) {
       {settled !== undefined && outside === undefined && !comparing && !trashedHere && (
         <p className="px-4 pb-1 text-small text-fg-muted">{filesWords.settled[settled]}</p>
       )}
-      {editing && syntaxLine !== null && (
-        <div className="border-b border-border bg-danger-soft px-4 py-1 text-small text-fg">
-          {filesWords.cantBeRead(fileName(path), syntaxLine)}
+      {strip === "unreadable" && syntaxLine !== null && (
+        <div className="px-4 pb-2">
+          <Callout tone="warning">{filesWords.cantBeRead(fileName(path), syntaxLine)}</Callout>
         </div>
       )}
-      {outside !== undefined && !comparing && !trashedHere && (
+      {strip === "outside" && outside !== undefined && (
         <OutsideStrip
           path={path}
           change={outside}

@@ -50,6 +50,7 @@ export function NewFileDialog({
   const [writeFailure, setWriteFailure] = useState<string>();
   const [busy, setBusy] = useState(false);
   const field = useRef<HTMLInputElement>(null);
+  const body = useRef<HTMLDivElement>(null);
 
   function refuse(message: string) {
     setProblem(message);
@@ -76,9 +77,13 @@ export function NewFileDialog({
     onCreated(wanted);
   }
 
-  /** The Callout goes with the press, so focus returns to the field first and stays inside the form. */
+  /** The Callout goes with the press, so focus goes to Create (as after the first failure) and stays inside the form. */
   function retry(): void {
-    field.current?.focus();
+    const buttons = body.current?.closest("dialog, [role='dialog']")?.querySelectorAll("button");
+    const createButton = [...(buttons ?? [])].find((each) =>
+      each.textContent?.startsWith(filesWords.create),
+    );
+    (createButton ?? field.current)?.focus();
     void create();
   }
 
@@ -93,31 +98,33 @@ export function NewFileDialog({
       onCancel={onCancel}
       {...(returnFocus === undefined ? {} : { returnFocus })}
     >
-      {writeFailure !== undefined && (
-        <div className="mb-3">
-          <Callout tone="danger" action={{ label: filesWords.tryAgain, onClick: retry }}>
-            {writeFailure}
-          </Callout>
-        </div>
-      )}
-      <Field label={filesWords.path} hint={filesWords.pathHint} error={problem ?? null}>
-        <Input
-          ref={field}
-          autoFocus
-          disabled={busy}
-          value={path}
-          onChange={(event) => {
-            setPath(event.target.value);
-            setProblem(undefined);
-            setWriteFailure(undefined);
-          }}
-          onFocus={(event) => {
-            // The cursor starts at the end, after the folder.
-            const end = event.target.value.length;
-            event.target.setSelectionRange(end, end);
-          }}
-        />
-      </Field>
+      <div ref={body}>
+        <Field label={filesWords.path} hint={filesWords.pathHint} error={problem ?? null}>
+          <Input
+            ref={field}
+            autoFocus
+            disabled={busy}
+            value={path}
+            onChange={(event) => {
+              setPath(event.target.value);
+              setProblem(undefined);
+              setWriteFailure(undefined);
+            }}
+            onFocus={(event) => {
+              // The cursor starts at the end, after the folder.
+              const end = event.target.value.length;
+              event.target.setSelectionRange(end, end);
+            }}
+          />
+        </Field>
+        {writeFailure !== undefined && (
+          <div className="mt-3">
+            <Callout tone="danger" action={{ label: filesWords.tryAgain, onClick: retry }}>
+              {writeFailure}
+            </Callout>
+          </div>
+        )}
+      </div>
     </Dialog>
   );
 }
