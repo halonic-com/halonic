@@ -121,3 +121,7 @@ pub(crate) fn redact(message: &str, address: &str) -> String {
     }
     message
 }
+
+#[cfg(test)]
+#[path = "export_check_tests.rs"]
+mod tests;
