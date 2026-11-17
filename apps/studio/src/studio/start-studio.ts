@@ -96,7 +96,7 @@ export interface StudioPage {
   /** Where the desktop app keeps Recent on this device: the page's `localStorage`. */
   readonly storage?: RecentStorage | undefined;
   /** Asks the page's own address, for the served Studio's `GET /api/workspace`: the page's `fetch`. */
-  readonly fetch?: ((path: string) => Promise<Response>) | undefined;
+  readonly fetch?: ((path: string, init?: RequestInit) => Promise<Response>) | undefined;
 }
 
 /** A started Studio. */

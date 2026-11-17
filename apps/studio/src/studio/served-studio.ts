@@ -1,5 +1,7 @@
 import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import { ServiceRegistry } from "@halonicjs/app";
+import { inboxFeature } from "@halonicjs/studio-feature-inbox";
+import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import { HalonicVersionService } from "@halonicjs/studio-feature-settings/api";
 import {
   type MountedServedWindow,
@@ -13,6 +15,7 @@ import {
   type StudioHost,
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
+import { type PageFetch, ServedInboxRuns } from "../runs/served-inbox-runs.ts";
 import { halonicVersion } from "./open-trusts.ts";
 import { loadServedWorkspace } from "./served-workspace.ts";
 import type { StartedStudio, StudioPage } from "./start-studio.ts";
@@ -33,10 +36,16 @@ export function startServedStudio(
   page: StudioPage,
   { host, platform, language }: ServedStudioOptions,
 ): StartedStudio {
-  const shell = createShell({ features: [], host, platform });
-  const services = servedServices();
+  const pageFetch: PageFetch = page.fetch ?? ((path, init) => fetch(path, init));
+  const shell = createShell({
+    features: [inboxFeature],
+    hostServices: [InboxRunsService],
+    host,
+    platform,
+  });
+  const services = servedServices(pageFetch);
   shell.services.instantiate(services);
-  const load = () => loadServedWorkspace(page.fetch ?? ((path) => fetch(path)));
+  const load = () => loadServedWorkspace(pageFetch);
   let window: MountedServedWindow | undefined;
   let workspace: StudioWorkspace | undefined;
   let stopped = false;
@@ -73,11 +82,21 @@ export function startServedStudio(
  * The served Studio's services. Without the shell it can't reach the profile, so its host
  * settings are kept in memory, as in the browser demo, until `halonic serve` gives it the
  * server's (HAL-6159 design, section 5). They last until the page is closed. It shows the version
- * of Halonic that serves it, for now `halonicVersion`.
+ * of Halonic that serves it, for now `halonicVersion`. The Inbox reads and answers the served
+ * workspace's runs through `fetch`, the page's own (`studio.served-inbox-runs`).
  */
-export function servedServices(): ServiceRegistry {
+export function servedServices(
+  fetch: PageFetch = (path, init) => globalThis.fetch(path, init),
+): ServiceRegistry {
   const services = new ServiceRegistry();
   services.provide(hostSettingsStoreKey, new MemoryHostSettingsStore());
   services.provide(HalonicVersionService, halonicVersion);
+  services.provide(InboxRunsService, new ServedInboxRuns({ fetch, onFocus: windowFocus }));
   return services;
+}
+
+/** Calls `listener` when the page comes to the front, so the Inbox reads again at once. */
+function windowFocus(listener: () => void): () => void {
+  window.addEventListener("focus", listener);
+  return () => window.removeEventListener("focus", listener);
 }
