@@ -3,6 +3,7 @@
 - Task: HAL-11796
 - Approval: Liam approves this change on HAL-11796 (https://paperclip.halonic.com/HAL/issues/HAL-11796), for HAL-11796. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jqfoQjwvDH+RONM74LSu0Ix3Yiu8wBGEmWnl/IrMgQ5Cw2966cvvTRkKmvi3kV4fb0ocHyNlCgTq0PZ9pxJ8Cg==
 
 ## What changes
 
