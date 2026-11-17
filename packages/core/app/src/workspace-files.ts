@@ -455,13 +455,15 @@ export class WorkspaceFiles {
   /**
    * Moves the delete of a renamed file behind the write of its new file, so the
    * delete knows whether that write was held. A rename that only changes the case
-   * keeps its order: both names are one file, so the delete must come first.
+   * keeps its order: both names are one file, so the delete must come first. So does
+   * any delete that {@link deletesFirstOnSameName} put in front of a write in another case.
    */
   private renameDeletesLast(entries: [string, string | null][]): [string, string | null][] {
-    const last = ([path, text]: [string, string | null]) => {
-      const move = this.moves.get(path);
-      return text === null && move !== undefined && move.to.toLowerCase() !== path.toLowerCase();
-    };
+    const written = new Set(
+      entries.filter(([, text]) => text !== null).map(([path]) => path.toLowerCase()),
+    );
+    const last = ([path, text]: [string, string | null]) =>
+      text === null && this.moves.has(path) && !written.has(path.toLowerCase());
     return [...entries.filter((entry) => !last(entry)), ...entries.filter(last)];
   }
 

@@ -182,6 +182,17 @@ verifies("app.workspace-rename", () => {
     expect(trash.entries.size).toBe(0);
   });
 
+  it("saves a rename next to a write in another case of the old name on a disk that ignores case", async () => {
+    const { store, files } = openWithTrash({ "a.yaml": "x: 1\n" }, CaseInsensitiveStore);
+    await files.rename("a.yaml", "b.yaml");
+    files.change("Make A", { "A.yaml": "y: 2\n" });
+    expect(await files.save()).toBe(3);
+    expect([...store.files].sort()).toEqual([
+      ["A.yaml", "y: 2\n"],
+      ["b.yaml", "x: 1\n"],
+    ]);
+  });
+
   it("refuses a name in another case that is a different file on a disk that tells them apart", async () => {
     const { files } = openWithTrash({ "a.yaml": "x: 1\n", "A.yaml": "x: 1\n" });
     await expect(files.rename("a.yaml", "A.yaml")).rejects.toBeInstanceOf(RenameRefusedError);
