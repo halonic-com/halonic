@@ -3,6 +3,7 @@ import type {
   AgentHostRequestRoute,
   AgentHostTransport,
 } from "@halonicjs/adapter-agent-host-client";
+import { sandboxStartWords } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
@@ -51,6 +52,17 @@ verifies("studio.agent-sandbox-host", () => {
       "GET /v1/sandbox/check": failing(reason),
     });
     expect((await new AgentHostSandboxFacts(transport).check()).state).toBe(state);
+  });
+
+  it("words a reason with the catalogue's sentence, as the Inbox and the CLI do", async () => {
+    const { transport } = host({
+      "GET /v1/sandbox/capabilities": capabilities,
+      "GET /v1/sandbox/check": failing("bubblewrap-missing"),
+    });
+    expect(await new AgentHostSandboxFacts(transport).check()).toEqual({
+      state: "unavailable",
+      reason: sandboxStartWords("bubblewrap-missing").reason,
+    });
   });
 
   it("says what a check named when it gave only `other`", async () => {
