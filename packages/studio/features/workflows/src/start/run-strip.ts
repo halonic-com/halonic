@@ -8,6 +8,8 @@ export interface ShownRun {
   readonly line: string;
   /** The step to ring in danger with its **Failed** chip; only a failed run has one. */
   readonly failedStep: string | undefined;
+  /** The steps the run went through, in order: the arrows it went along are blue on the canvas. */
+  readonly route: readonly string[];
 }
 
 /** The step the run is in, or ended in: the id of the last state it reached. */
@@ -51,5 +53,6 @@ export function shownRun(
     runId: row.id,
     line: words.strip(row.shortId, how),
     failedStep: standing === "failed" ? stateId : undefined,
+    route: run.summary.statesVisited,
   };
 }

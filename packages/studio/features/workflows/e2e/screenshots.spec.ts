@@ -270,3 +270,26 @@ for (const size of welcomeSizes) {
     });
   }
 }
+
+/**
+ * The workflow canvas with arrows out of the steps a run went along drawn blue (HAL-11974): no
+ * run, a run that has reached Review, a finished run, and a run that took the "rejected" branch.
+ */
+const canvasRuns = ["none", "mid", "done", "branch"] as const;
+
+for (const shown of canvasRuns) {
+  for (const scheme of schemes) {
+    test(`canvas, ${shown}, ${scheme}`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto(`/canvas.html?run=${shown}`);
+      await expect(page.getByRole("application")).toBeVisible();
+      await expect(page.getByText("Summarise the change")).toBeVisible();
+      const taken = { none: 0, mid: 1, done: 3, branch: 3 }[shown];
+      await expect(page.locator("g[data-taken]")).toHaveCount(taken);
+      await page.screenshot({
+        path: `test-results/screenshots/canvas-${shown}-${scheme}.png`,
+        fullPage: true,
+      });
+    });
+  }
+}
