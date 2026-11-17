@@ -234,14 +234,6 @@ verifies("plugins.plugin-list", () => {
     expect(labels).toHaveLength(1);
   });
 
-  it("shows the command line instead of a missing Add plugin when the app has no installer", () => {
-    show([], { noAdd: true });
-    expect(text()).toContain("No plugins yet");
-    expect(text()).not.toContain("Add plugin");
-    expect(text()).toContain("This app can't add a plugin yet.");
-    expect(text()).toContain("halonic plugin add <folder or git address>");
-  });
-
   it("opens nothing on a built-in row, and gives it no ⋮, when the host can't open one", () => {
     const seen = show([weather()], { openBuiltIn: false });
     expect(text()).toContain("Gmail");
@@ -264,5 +256,15 @@ verifies("plugins.plugin-list", () => {
     show([hostile]);
     expect(text()).toContain("<img src=x onerror=alert(1)>");
     expect(document.querySelector("img")).toBeNull();
+  });
+});
+
+verifies("plugins.plugin-list-no-installer", () => {
+  it("shows the command line instead of a missing Add plugin when the app has no installer", () => {
+    show([], { noAdd: true });
+    expect(text()).toContain("No plugins yet");
+    expect(text()).not.toContain("Add plugin");
+    expect(text()).toContain("This app can't add a plugin yet.");
+    expect(text()).toContain("halonic plugin add <folder or git address>");
   });
 });
