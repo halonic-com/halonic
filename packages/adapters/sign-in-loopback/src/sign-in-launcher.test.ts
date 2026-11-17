@@ -188,4 +188,73 @@ verifies("sign-in-loopback.sign-in-launcher", () => {
       expect(servers).toHaveLength(1);
     });
   });
+
+  describe("a begin that waits for the flow to start", () => {
+    /** A launcher whose flow holds every `start` until the test lets it go, in the order of the calls. */
+    function setUpGated() {
+      const rig = createSignInRig();
+      const servers: LoopbackServer[] = [];
+      const visited: URL[] = [];
+      const gates: (() => void)[] = [];
+      const launcher = track(
+        createSignInLauncher({
+          flow: {
+            start: async (signIn, port) => {
+              await new Promise<void>((release) => gates.push(release));
+              return rig.flow.start(signIn, port);
+            },
+            handleCallback: (request) => rig.flow.handleCallback(request),
+            cancel: (signIn) => rig.flow.cancel(signIn),
+          },
+          browser: {
+            async open(url) {
+              visited.push(rig.server.approve(url));
+              return false;
+            },
+          },
+          startServer: async (handler) => {
+            const server = await startLoopbackServer(handler);
+            servers.push(server);
+            return server;
+          },
+        }),
+      );
+      return { launcher, servers, visited, gates };
+    }
+
+    it("keeps the server when another begin is refused meanwhile", async () => {
+      const { launcher, servers, visited, gates } = setUpGated();
+      const refused = launcher.begin("no-such-sign-in");
+      const wanted = launcher.begin(signInName);
+      await vi.waitFor(() => expect(gates).toHaveLength(2));
+
+      gates[0]?.();
+      expect(await refused).toEqual({ kind: "refused", reason: { kind: "unknown" } });
+      gates[1]?.();
+      expect(await wanted).toMatchObject({ kind: "started" });
+
+      expect(servers).toHaveLength(1);
+      expect(await isListening(servers[0])).toBe(true);
+      expect((await fetch(visited[0] as URL)).status).toBe(200);
+    });
+
+    it("keeps the server when a pending sign-in's callback arrives meanwhile", async () => {
+      const { launcher, servers, visited, gates } = setUpGated();
+      const first = launcher.begin(signInName);
+      await vi.waitFor(() => expect(gates).toHaveLength(1));
+      gates[0]?.();
+      await first;
+      const second = launcher.begin(signInName);
+      await vi.waitFor(() => expect(gates).toHaveLength(2));
+
+      // The browser of the first sign-in comes back while the second one waits for the flow.
+      expect((await fetch(visited[0] as URL)).status).toBe(200);
+      gates[1]?.();
+      expect(await second).toMatchObject({ kind: "started" });
+
+      expect(servers).toHaveLength(1);
+      expect(await isListening(servers[0])).toBe(true);
+      expect((await fetch(visited[1] as URL)).status).toBe(200);
+    });
+  });
 });

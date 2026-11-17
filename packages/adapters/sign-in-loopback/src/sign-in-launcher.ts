@@ -77,6 +77,8 @@ export function createSignInLauncher<Refusal extends { readonly kind: string }>(
   const lifetimeMs = settings.lifetimeMs ?? pendingSignInLifetimeMs;
   const startServer = settings.startServer ?? startLoopbackServer;
   const waiting = new Map<string, Waiting>();
+  /** Begins that wait for the server or for `flow.start`; their port must stay open. */
+  let starting = 0;
   let server: Promise<LoopbackServer> | undefined;
 
   function serverForCallbacks(): Promise<LoopbackServer> {
@@ -106,7 +108,7 @@ export function createSignInLauncher<Refusal extends { readonly kind: string }>(
   }
 
   async function stopServerWhenIdle(): Promise<void> {
-    if (waiting.size > 0 || server === undefined) return;
+    if (waiting.size > 0 || starting > 0 || server === undefined) return;
     const stopping = server;
     server = undefined;
     // Closing waits for open connections; the answer in flight is written first.
@@ -118,22 +120,40 @@ export function createSignInLauncher<Refusal extends { readonly kind: string }>(
   }
 
   async function begin(signIn: string): Promise<BeginResult<Refusal>> {
-    const running = await serverForCallbacks();
-    const started = await flow.start(signIn, running.port);
+    const started = await startSignIn(signIn);
     if (!isStarted(started)) {
-      await stopServerWhenIdle();
       return { kind: "refused", reason: started };
     }
+    const opened = await browser.open(started.authorizeUrl);
+    return { kind: "started", authorizeUrl: started.authorizeUrl, opened };
+  }
+
+  /** Starts the sign-in on the server's port and, when the flow accepts it, waits for its callback. */
+  async function startSignIn(signIn: string): Promise<StartedSignIn | Refusal> {
+    starting += 1;
+    try {
+      const running = await serverForCallbacks();
+      const started = await flow.start(signIn, running.port);
+      if (isStarted(started)) {
+        waitFor(signIn, started.callbackPath);
+      }
+      return started;
+    } finally {
+      starting -= 1;
+      // Does nothing while a sign-in waits or another begin is starting.
+      await stopServerWhenIdle();
+    }
+  }
+
+  function waitFor(signIn: string, callbackPath: string): void {
     // The flow replaced an earlier sign-in of this name, so its path is dead.
     for (const path of pathsOf(signIn)) {
       clearTimeout(waiting.get(path)?.timer);
       waiting.delete(path);
     }
-    const timer = setTimeout(() => void cancelPath(started.callbackPath), lifetimeMs);
+    const timer = setTimeout(() => void cancelPath(callbackPath), lifetimeMs);
     timer.unref();
-    waiting.set(started.callbackPath, { signIn, timer });
-    const opened = await browser.open(started.authorizeUrl);
-    return { kind: "started", authorizeUrl: started.authorizeUrl, opened };
+    waiting.set(callbackPath, { signIn, timer });
   }
 
   async function cancelPath(callbackPath: string): Promise<void> {
