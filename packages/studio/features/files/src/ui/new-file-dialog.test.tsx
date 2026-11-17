@@ -2,6 +2,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { FilePathError } from "../files-host.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { NewFileDialog } from "./new-file-dialog.tsx";
@@ -73,15 +74,36 @@ verifies("files.ui.new-file", () => {
     expect(host.create).not.toHaveBeenCalled();
   });
 
-  it("shows the host's sentence under the field and stays open", async () => {
+  it("shows the host's sentence about the path under the field and stays open", async () => {
     const { page, onCreated } = setup(async () => {
-      throw new Error("workspace.yaml already exists.");
+      throw new FilePathError("workspace.yaml already exists.");
     });
     await type(page, "workspace.yaml");
     await create(page);
     expect(text(page)).toContain("workspace.yaml already exists.");
     expect(onCreated).not.toHaveBeenCalled();
     expect(field(page).disabled).toBe(false);
+  });
+
+  it("shows a failed write as a Callout with Try again, which asks the host again", async () => {
+    let attempts = 0;
+    const { page, host, onCreated } = setup(async () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error("The disk is full.");
+    });
+    await type(page, "hubs/a.yaml");
+    await create(page);
+    expect(text(page)).toContain("Couldn't create hubs/a.yaml: The disk is full.");
+    expect(field(page).disabled).toBe(false);
+    const again = [...page.ownerDocument.querySelectorAll("button")].find((each) =>
+      each.textContent?.startsWith("Try again"),
+    );
+    await act(async () => {
+      again?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(host.create).toHaveBeenCalledTimes(2);
+    expect(onCreated).toHaveBeenCalledWith("hubs/a.yaml");
   });
 
   it("creates the file and tells the caller", async () => {

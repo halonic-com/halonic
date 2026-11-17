@@ -63,6 +63,21 @@ describe("problems list", () => {
       expect(page.textContent).toContain("No problems.");
     });
 
+    it("says a read-only large file is too long to check, not that it has no problems", () => {
+      const page = render(
+        <ProblemsPanel
+          problems={[]}
+          tooLong
+          elsewhere={none}
+          onGo={() => {}}
+          onOpenFile={() => {}}
+        />,
+      );
+
+      expect(page.textContent).toContain("This file is too long to check.");
+      expect(page.textContent).not.toContain("No problems.");
+    });
+
     it("collapses to its header and keeps the count", () => {
       const page = render(
         <ProblemsPanel problems={three} elsewhere={none} onGo={() => {}} onOpenFile={() => {}} />,
@@ -91,7 +106,7 @@ describe("problems list", () => {
         />,
       );
 
-      expect(page.textContent).toContain("Changes in this file cause 2 problems in other files.");
+      expect(page.textContent).toContain("Your edits here cause 2 problems in other files.");
       click(page.querySelector("p button"));
       expect(onOpenFile).toHaveBeenCalledWith("hubs/p/flow.workflow.yaml");
     });
@@ -106,7 +121,7 @@ describe("problems list", () => {
         />,
       );
 
-      expect(page.textContent).toContain("Changes in this file cause 1 problem in another file.");
+      expect(page.textContent).toContain("Your edits here cause 1 problem in another file.");
     });
 
     it("opens the list and focuses the row of a line a gutter icon named", async () => {

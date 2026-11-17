@@ -2,8 +2,8 @@
 export const filesWords = {
   treeLabel: "Files",
   loading: "Loading files",
-  emptyTitle: "No files yet",
-  emptyDescription: "Files you add to this workspace show here.",
+  emptyTitle: "Everything in this workspace is a file.",
+  emptyDescription: "Add one with +.",
   errorTitle: "Couldn't load files",
   retry: "Try again",
   retrying: "Checking…",
@@ -11,12 +11,17 @@ export const filesWords = {
   errors: (count: number): string => `${count} ${count === 1 ? "error" : "errors"}`,
   warnings: (count: number): string => `${count} ${count === 1 ? "warning" : "warnings"}`,
   /** The "not saved" mark on a file, or on a folder with such a file in it. */
-  outside: "Changed outside Halonic",
+  outside: "not saved",
+  /** The name of a folder row that has marks: "*agents*, folder, a file inside not saved, 3 errors". */
+  folderMarks: (name: string, marks: string): string => `${name}, folder, ${marks}`,
+  /** The mark's words on a folder: the file that isn't saved is inside it. */
+  outsideInside: "a file inside not saved",
   /** The kind of a file's tab, as a screen reader reads it after the name. */
   fileKind: "file",
   fileLoading: "Loading the file",
-  /** The editor's name for a screen reader: the file's path. */
-  editorLabel: (path: string): string => `Text of ${path}`,
+  /** The editor's name for a screen reader: "a.agent.yaml, YAML editor". */
+  editorLabel: (name: string, language: "YAML" | "Markdown" | "text"): string =>
+    `${name}, ${language} editor. Press Escape, then Tab, to leave the editor.`,
   missingTitle: "This file isn't in this workspace any more.",
   goToFiles: "Go to Files",
   /** The strip above the greyed editor of a file that was moved to the trash; Undo follows. */
@@ -28,15 +33,22 @@ export const filesWords = {
   notTextTitle: "This file can't be shown here.",
   notTextDescription: (size: string): string => `It is ${size}.`,
   /** The strip above the editor of a file with unsaved changes that changed outside Halonic. */
-  changedOutside: " changed outside Halonic.",
+  changedOutside: " changed outside Halonic",
   deletedOutside: " was deleted outside Halonic.",
-  loadTheirs: "Load theirs",
   compare: "Compare",
   keepMine: "Keep mine",
   useOther: "Use the other one",
   combineBoth: "Combine both",
   close: "Close",
   cancel: "Cancel",
+  /** The name of Compare, read when it opens and when focus lands on it. */
+  compareName: (name: string): string => `Compare ${name}`,
+  /** The line after a choice in the strip or in Compare. */
+  settled: {
+    "keep-mine": "Keeping yours",
+    "use-other": "Using the other one",
+    "combine-both": "Combined",
+  },
   compareMine: "Yours",
   compareTheirs: "In the folder now",
   compareNone: "No file",
@@ -51,6 +63,15 @@ export const filesWords = {
   creating: "Creating…",
   pathMissing: "Give the file a name, like hubs/support/agents/new.agent.yaml.",
   pathOutside: "Files must stay inside the workspace.",
+  /** Under the Path field: the host's sentences about the path itself. */
+  pathFile: (path: string): string => `${path} is a file, not a folder.`,
+  pathFolder: (path: string): string => `${path} is a folder.`,
+  pathTaken: (path: string): string => `${path} already exists.`,
+  /** The Callout of New file when the write itself failed; Try again follows. */
+  couldntCreate: (path: string, reason: string | undefined): string =>
+    reason === undefined
+      ? `Couldn't create ${path}.`
+      : `Couldn't create ${path}: ${reason.replace(/\.$/, "")}.`,
   pathPrivate: (path: string): string => `"${path}" is not part of the workspace definitions`,
   renameTitle: "Rename file",
   renamePath: "New path",
@@ -89,6 +110,8 @@ export const filesWords = {
   problems: (count: number): string => `Problems (${count})`,
   problemsLabel: "Problems",
   noProblems: "No problems.",
+  /** In place of "No problems." for a file too large to be checked. */
+  tooLongToCheck: "This file is too long to check.",
   /** One row of the list. */
   problemLine: (line: number, message: string): string => `Line ${line}: ${message}`,
   /** What a screen reader reads for a row, and after F8 moved to a problem. */
@@ -97,8 +120,8 @@ export const filesWords = {
   /** The line under the list about problems this file's changes cause in other files; the first file follows as a link. */
   problemsElsewhere: (count: number): string =>
     count === 1
-      ? "Changes in this file cause 1 problem in another file."
-      : `Changes in this file cause ${count} problems in other files.`,
+      ? "Your edits here cause 1 problem in another file."
+      : `Your edits here cause ${count} problems in other files.`,
   /** The toast after a new file is made, with its full path. */
   created: (path: string): string => `New file ${path}`,
 } as const;

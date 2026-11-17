@@ -4,7 +4,12 @@ import type { ItemViewProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { fileItem, fileName } from "../file-item.ts";
 import { sizeOf, textKindOf } from "../file-size.ts";
-import { type FileIssue, FilesHostService, type OutsideChange } from "../files-host.ts";
+import {
+  type CompareChoice,
+  type FileIssue,
+  FilesHostService,
+  type OutsideChange,
+} from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
 import {
   causedElsewhere,
@@ -31,6 +36,9 @@ type Loaded =
   | { readonly kind: "not-text"; readonly size: string }
   | { readonly kind: "ready"; readonly text: string; readonly readOnly: boolean };
 
+/** The language's name as the editor's label says it. */
+const languageNames = { yaml: "YAML", markdown: "Markdown", plain: "text" } as const;
+
 /** What a file's text shows as: the editor, the editor read-only, or a note that it isn't text. */
 function loadedOf(text: string | null): Loaded {
   if (text === null) return { kind: "missing" };
@@ -44,6 +52,50 @@ function goToFiles(): void {
   document
     .querySelector<HTMLElement>('[role="tree"][aria-label="Files"] [data-path][tabindex="0"]')
     ?.focus();
+}
+
+/** What stands in for the editor while the file loads, is gone, isn't text, or can't be read. */
+function LoadNotice({ loaded, missing }: { loaded: Loaded; missing: boolean }) {
+  return (
+    <>
+      {loaded.kind === "loading" && (
+        <div role="status" aria-label={filesWords.fileLoading} className="grid gap-3 p-4">
+          <SkeletonBar kind="title" width="2/3" />
+          <SkeletonBar kind="title" width="1/2" />
+        </div>
+      )}
+      {missing && (
+        <EmptyState
+          plain
+          title={filesWords.missingTitle}
+          action={{ label: filesWords.goToFiles, onClick: goToFiles }}
+        />
+      )}
+      {loaded.kind === "not-text" && (
+        <EmptyState
+          plain
+          title={filesWords.notTextTitle}
+          description={filesWords.notTextDescription(loaded.size)}
+        />
+      )}
+      {loaded.kind === "ready" && loaded.readOnly && (
+        <div
+          role="status"
+          className="border-b border-border bg-surface-muted px-4 py-1 text-small text-fg"
+        >
+          {filesWords.largeFile}
+        </div>
+      )}
+      {loaded.kind === "error" && (
+        <EmptyState
+          tone="error"
+          plain
+          title={filesWords.unreadableTitle}
+          description={loaded.reason}
+        />
+      )}
+    </>
+  );
 }
 
 /**
@@ -69,6 +121,8 @@ export function FileView({ item, context }: ItemViewProps) {
   const trash: Trashed | undefined = useSyncExternalStore(subscribeTrashed, () =>
     trashedFile(path),
   );
+  // The choice just made, said in a line above the editor until the next edit.
+  const [settled, setSettled] = useState<CompareChoice | undefined>();
   const [outside, setOutside] = useState<OutsideChange | undefined>(() => host.outside().get(path));
 
   const editorRef = useRef<CodeEditor | undefined>(undefined);
@@ -195,11 +249,12 @@ export function FileView({ item, context }: ItemViewProps) {
       parent: container,
       text,
       language: languageFor(path),
-      label: filesWords.editorLabel(path),
+      label: filesWords.editorLabel(fileName(path), languageNames[languageFor(path)]),
       readOnly,
       onChange: (next) => {
         lastText.current = next;
         edits.current += 1;
+        setSettled(undefined);
         host.edit(path, next);
       },
       onProblemJump: (problem) =>
@@ -234,10 +289,17 @@ export function FileView({ item, context }: ItemViewProps) {
     setRound((n) => n + 1);
   }
 
+  /** Shows and announces the line for a choice that was made. */
+  function said(choice: CompareChoice): void {
+    setSettled(choice);
+    context.announcer.announce(`${filesWords.settled[choice]}.`);
+  }
+
   /** The strip's own choices; a failed one leaves the strip as it was, and Compare shows the reason. */
   async function settleWith(choice: "keep-mine" | "use-other"): Promise<void> {
     try {
       await host.settle(path, choice);
+      said(choice);
       refocus.current = true;
       setOutside(host.outside().get(path));
       reload();
@@ -252,47 +314,15 @@ export function FileView({ item, context }: ItemViewProps) {
       <h1 className="truncate px-4 py-2 text-base font-medium" title={path}>
         {fileName(path)}
       </h1>
-      {loaded.kind === "loading" && (
-        <div role="status" aria-label={filesWords.fileLoading} className="grid gap-3 p-4">
-          <SkeletonBar kind="title" width="2/3" />
-          <SkeletonBar kind="title" width="1/2" />
-        </div>
-      )}
-      {missing && (
-        <EmptyState
-          plain
-          title={filesWords.missingTitle}
-          action={{ label: filesWords.goToFiles, onClick: goToFiles }}
-        />
-      )}
-      {loaded.kind === "not-text" && (
-        <EmptyState
-          plain
-          title={filesWords.notTextTitle}
-          description={filesWords.notTextDescription(loaded.size)}
-        />
-      )}
-      {loaded.kind === "ready" && loaded.readOnly && (
-        <div
-          role="status"
-          className="border-b border-border bg-surface-muted px-4 py-1 text-small text-fg"
-        >
-          {filesWords.largeFile}
-        </div>
-      )}
-      {loaded.kind === "error" && (
-        <EmptyState
-          tone="error"
-          plain
-          title={filesWords.unreadableTitle}
-          description={loaded.reason}
-        />
-      )}
+      <LoadNotice loaded={loaded} missing={missing} />
       {trashedHere && trash !== undefined && (
         <TrashedStrip
           announce={(text) => announcer.current.announce(text)}
           onUndo={() => void trash.undo()}
         />
+      )}
+      {settled !== undefined && outside === undefined && !comparing && !trashedHere && (
+        <p className="px-4 pb-1 text-small text-fg-muted">{filesWords.settled[settled]}</p>
       )}
       {outside !== undefined && !comparing && !trashedHere && (
         <OutsideStrip
@@ -300,7 +330,6 @@ export function FileView({ item, context }: ItemViewProps) {
           change={outside}
           onCompare={() => setComparing(true)}
           onKeepMine={() => settleWith("keep-mine")}
-          onLoadTheirs={() => settleWith("use-other")}
           onClose={() => settleWith("use-other")}
         />
       )}
@@ -312,11 +341,13 @@ export function FileView({ item, context }: ItemViewProps) {
           // The editor was closed while comparing, so it reopens from what the files hold now,
           // which includes what was typed before Compare.
           onCancel={() => {
+            refocus.current = true;
             setComparing(false);
             setFailure(undefined);
             reload();
           }}
-          onDone={() => {
+          onDone={(choice) => {
+            said(choice);
             refocus.current = true;
             setComparing(false);
             setFailure(undefined);
@@ -334,6 +365,7 @@ export function FileView({ item, context }: ItemViewProps) {
       {editing && !trashedHere && (
         <ProblemsPanel
           problems={problems}
+          tooLong={loaded.kind === "ready" && loaded.readOnly}
           elsewhere={elsewhere}
           reveal={reveal}
           onGo={(issue) => editorRef.current?.goTo(issue.line, issue.col)}

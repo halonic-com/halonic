@@ -9,7 +9,6 @@ export interface OutsideStripProps {
   readonly change: OutsideChange;
   readonly onCompare: () => void;
   readonly onKeepMine: () => void | Promise<void>;
-  readonly onLoadTheirs: () => void | Promise<void>;
   readonly onClose: () => void | Promise<void>;
 }
 
@@ -18,14 +17,7 @@ export interface OutsideStripProps {
  * Halonic. It is a status message, never a pop-up, and it sits still while the user keeps typing
  * (requirement `files.ui.outside-strip`).
  */
-export function OutsideStrip({
-  path,
-  change,
-  onCompare,
-  onKeepMine,
-  onLoadTheirs,
-  onClose,
-}: OutsideStripProps) {
+export function OutsideStrip({ path, change, onCompare, onKeepMine, onClose }: OutsideStripProps) {
   const name = fileName(path);
   const keepMine = { label: filesWords.keepMine, onClick: onKeepMine };
   return (
@@ -34,11 +26,7 @@ export function OutsideStrip({
         tone="warning"
         action={
           change === "changed"
-            ? [
-                keepMine,
-                { label: filesWords.loadTheirs, onClick: onLoadTheirs },
-                { label: filesWords.compare, onClick: onCompare },
-              ]
+            ? { label: filesWords.compare, onClick: onCompare }
             : [keepMine, { label: filesWords.close, onClick: onClose }]
         }
       >

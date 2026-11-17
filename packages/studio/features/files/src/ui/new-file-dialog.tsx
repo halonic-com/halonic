@@ -1,6 +1,6 @@
-import { Dialog, Field, Input } from "@halonicjs/studio-kit";
+import { Callout, Dialog, Field, Input } from "@halonicjs/studio-kit";
 import { useRef, useState } from "react";
-import type { FilesHost } from "../files-host.ts";
+import { FilePathError, type FilesHost } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
 import { checkNewPath } from "../new-file.ts";
 
@@ -45,6 +45,8 @@ export function NewFileDialog({
 }: NewFileDialogProps) {
   const [path, setPath] = useState(start);
   const [problem, setProblem] = useState<string>();
+  // The write itself failed, not the path: a Callout with Try again, not a sentence under the field.
+  const [writeFailure, setWriteFailure] = useState<string>();
   const [busy, setBusy] = useState(false);
   const field = useRef<HTMLInputElement>(null);
 
@@ -59,15 +61,24 @@ export function NewFileDialog({
     const own = problemText(wanted);
     if (own !== undefined) return refuse(own);
     setProblem(undefined);
+    setWriteFailure(undefined);
     setBusy(true);
     try {
       await host.create(wanted);
     } catch (error) {
       setBusy(false);
-      // The host's sentences are about the path itself, so they belong under the field.
-      return refuse(error instanceof Error ? error.message : String(error));
+      if (error instanceof FilePathError) return refuse(error.message);
+      const reason = error instanceof Error ? error.message.trim() : "";
+      setWriteFailure(filesWords.couldntCreate(wanted, reason === "" ? undefined : reason));
+      return;
     }
     onCreated(wanted);
+  }
+
+  /** The Callout goes with the press, so focus returns to the field first and stays inside the form. */
+  function retry(): void {
+    field.current?.focus();
+    void create();
   }
 
   return (
@@ -81,6 +92,13 @@ export function NewFileDialog({
       onCancel={onCancel}
       {...(returnFocus === undefined ? {} : { returnFocus })}
     >
+      {writeFailure !== undefined && (
+        <div className="mb-3">
+          <Callout tone="danger" action={{ label: filesWords.tryAgain, onClick: retry }}>
+            {writeFailure}
+          </Callout>
+        </div>
+      )}
       <Field label={filesWords.path} hint={filesWords.pathHint} error={problem ?? null}>
         <Input
           ref={field}
@@ -90,6 +108,7 @@ export function NewFileDialog({
           onChange={(event) => {
             setPath(event.target.value);
             setProblem(undefined);
+            setWriteFailure(undefined);
           }}
           onFocus={(event) => {
             // The cursor starts at the end, after the folder.
