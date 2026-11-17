@@ -10,7 +10,7 @@ import {
 } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { RunsList } from "../runs-list.ts";
 import { fakeSource } from "../source.test-helper.ts";
 import { mondayMorning, summaryWith } from "../summary.test-helper.ts";
@@ -151,9 +151,15 @@ verifies("runs.run-view.slow-step-line", () => {
       "Waiting for Ollama. The first answer can take a minute while it loads the model.",
     );
     clock = mondayMorning.getTime() + 10_000;
-    await settled(120);
-    expect(root.textContent).toContain(
-      "Waiting for Ollama. The first answer can take a minute while it loads the model.",
+    // The page redraws on its own timer; wait for it instead of guessing how long a loaded runner takes.
+    await vi.waitFor(
+      async () => {
+        await settled(20);
+        expect(root.textContent).toContain(
+          "Waiting for Ollama. The first answer can take a minute while it loads the model.",
+        );
+      },
+      { timeout: 5_000 },
     );
   });
 });
