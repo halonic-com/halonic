@@ -3,6 +3,7 @@
 - Task: HAL-12035
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12035 (Liam's decision on the task; reuses wording already approved in HAL-12016, a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6daGRUH2qlIrYxoot8IhGaojKN2+/1PauBbx1gEAgdtsJhOcREYI0zqG+IpPSANPUIT05s+80tly43YcRyY1CA==
 
 ## What changes
 
