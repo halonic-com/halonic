@@ -1,4 +1,6 @@
+import { type ErrorKind, KindedError } from "@halonicjs/std";
 import { Button, Dialog, Field, Input } from "@halonicjs/studio-kit";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
 import {
   ALREADY_WORKSPACE_NOTE,
@@ -22,14 +24,19 @@ import {
 
 /**
  * A refusal the host puts on the field it is about: `name` shows under **Name**, anything else
- * under **Folder**. The message is the reason, as the host gives it.
+ * under **Folder**. It is kinded, so its message is the reason the dialog shows; a name refusal is
+ * `invalid_input` and a folder one `denied` unless the host says otherwise. Any other error shows
+ * the generic sentence, never its own text (microcopy 1.4, F13).
  */
-export class NewWorkspaceRefusal extends Error {
+export class NewWorkspaceRefusal extends KindedError {
   readonly field: "name" | "folder";
 
-  constructor(message: string, field: "name" | "folder" = "folder") {
-    super(message);
-    this.name = "NewWorkspaceRefusal";
+  constructor(
+    message: string,
+    field: "name" | "folder" = "folder",
+    kind: ErrorKind = field === "name" ? "invalid_input" : "denied",
+  ) {
+    super(kind, message);
     this.field = field;
   }
 }
@@ -248,5 +255,5 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
 }
 
 function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return errorReasonFor(error);
 }

@@ -1,4 +1,5 @@
 import { Dialog, Field, Input } from "@halonicjs/studio-kit";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useRef, useState } from "react";
 import type { CollectionRef } from "../collection-host.ts";
 import type { NewCollectionHost } from "../new-collection-host.ts";
@@ -13,10 +14,12 @@ export interface NewCollectionDialogProps {
   readonly returnFocus?: () => HTMLElement | null;
 }
 
-/** The reason without its closing full stop, so the sentence around it has one. */
+/**
+ * The reason without its closing full stop, so the sentence around it has one. Only a kinded
+ * refusal's own words show; anything else gives the generic sentence (microcopy 1.4, F13).
+ */
 function reasonOf(error: unknown): string {
-  const reason = error instanceof Error ? error.message : String(error);
-  return reason.trim().replace(/\.$/, "");
+  return errorReasonFor(error).replace(/\.$/, "");
 }
 
 /**

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -158,7 +159,7 @@ verifies("workspace.new-workspace-dialog", () => {
   it("shows why a write failed under the folder and stays open", async () => {
     const seen = await show({
       create: async () => {
-        throw new Error("you don't have permission");
+        throw new NewWorkspaceRefusal("you don't have permission");
       },
     });
     await type("Acme");
@@ -169,11 +170,25 @@ verifies("workspace.new-workspace-dialog", () => {
     expect(seen.created).toEqual([]);
   });
 
+  it("shows the generic sentence, not the system's text, for an error without a kind", async () => {
+    await show({
+      create: async () => {
+        throw new Error("EACCES: permission denied, mkdir '/x'");
+      },
+    });
+    await type("Acme");
+    await click("Create");
+    expect(document.body.textContent).toContain(
+      "Can't write to this folder: Halonic ran into a problem it can't explain yet.",
+    );
+    expect(document.body.textContent).not.toContain("EACCES");
+  });
+
   it("words a failed Open as Can't open, not as a write error", async () => {
     await show({
       state: "workspace",
       open: async () => {
-        throw new Error("the folder isn't there any more");
+        throw new NewWorkspaceRefusal("the folder isn't there any more", "folder", "not_found");
       },
     });
     await type("Acme");
@@ -199,7 +214,10 @@ verifies("workspace.new-workspace-dialog", () => {
   it("shows why there is no folder, and asks to choose one with Change… focused", async () => {
     const seen = await show({
       defaultParent: async () => {
-        throw new Error("This computer has no Documents folder; choose a folder.");
+        throw new KindedError(
+          "not_found",
+          "This computer has no Documents folder; choose a folder.",
+        );
       },
     });
     expect(document.body.textContent).toContain("This computer has no Documents folder");
