@@ -132,6 +132,8 @@ export function FileView({ item, context }: ItemViewProps) {
   const [problems, setProblems] = useState<readonly FileIssue[]>([]);
   const problemsRef = useRef<readonly FileIssue[]>([]);
   const [elsewhere, setElsewhere] = useState<Elsewhere>(noElsewhere);
+  // The line where a YAML file stops being valid YAML, for the "can't be read" strip.
+  const [syntaxLine, setSyntaxLine] = useState<number | null>(null);
   // Counts the changes this tab's editor makes. A check compares the count at its start with the
   // count at the last check that was used: a problem that shows up in another file without an edit
   // in between did not come from this tab.
@@ -152,10 +154,17 @@ export function FileView({ item, context }: ItemViewProps) {
     problemsRef.current = [];
     setProblems([]);
     setElsewhere(noElsewhere);
+    setSyntaxLine(null);
     const check = () => {
       const turn = ++newest;
       // Read at the start: an edit made while the check runs belongs to the next check.
       const editsAtStart = edits.current;
+      host.yamlSyntaxLine(path).then(
+        (line) => {
+          if (!stopped && turn === newest) setSyntaxLine(line);
+        },
+        () => {},
+      );
       host.problems().then(
         (all) => {
           if (stopped || turn !== newest) return;
@@ -320,6 +329,14 @@ export function FileView({ item, context }: ItemViewProps) {
           announce={(text) => announcer.current.announce(text)}
           onUndo={() => void trash.undo()}
         />
+      )}
+      {ready && syntaxLine !== null && outside === undefined && !trashedHere && (
+        <div
+          role="status"
+          className="border-b border-border bg-danger-soft px-4 py-1 text-small text-fg"
+        >
+          {filesWords.cantBeRead(fileName(path), syntaxLine)}
+        </div>
       )}
       {settled !== undefined && outside === undefined && !comparing && !trashedHere && (
         <p className="px-4 pb-1 text-small text-fg-muted">{filesWords.settled[settled]}</p>

@@ -71,6 +71,7 @@ function hostOf(read: FilesHost["read"], edit: FilesHost["edit"] = () => {}): Fi
     edit,
     problems: async () => [],
     outside: () => new Map(),
+    yamlSyntaxLine: async () => null,
     noteHeld: () => undefined,
     onReloaded: () => () => undefined,
     compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
@@ -470,5 +471,64 @@ verifies("files.ui.problems-list", () => {
     await settle();
 
     expect(page.textContent).toContain("Problems (0)");
+  });
+});
+
+verifies("files.ui.unreadable-strip", () => {
+  const strip = (page: HTMLElement) =>
+    [...page.querySelectorAll("[role=status]")].find((node) =>
+      node.textContent?.includes("can't be read"),
+    );
+
+  it("says the file can't be read, keeps the text in the editor, and drops the strip once it reads", async () => {
+    let line: number | null = 1;
+    const listeners = new Set<() => void>();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const page = show(
+      {
+        ...hostOf(async () => "name: [unclosed"),
+        yamlSyntaxLine: async () => line,
+        subscribe: (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+      },
+      "a.agent.yaml",
+    );
+    await act(async () => {});
+
+    expect(strip(page)?.textContent).toBe("a.agent.yaml can't be read: line 1 isn't valid YAML.");
+    expect(opened[0]?.text).toBe("name: [unclosed");
+
+    line = null;
+    for (const listener of listeners) listener();
+    await act(async () => vi.advanceTimersByTime(300));
+
+    expect(strip(page)).toBeUndefined();
+  });
+
+  it("shows no strip for a file the host finds readable", async () => {
+    const page = show(
+      hostOf(async () => "name: a\n"),
+      "a.md",
+    );
+    await settle();
+
+    expect(strip(page)).toBeUndefined();
+  });
+
+  it("leaves the strip to the outside strip while saving is paused", async () => {
+    const page = show(
+      {
+        ...hostOf(async () => "name: [unclosed"),
+        yamlSyntaxLine: async () => 1,
+        outside: () => new Map([["a.agent.yaml", "changed" as const]]),
+      },
+      "a.agent.yaml",
+    );
+    await settle();
+
+    expect(strip(page)).toBeUndefined();
+    expect(page.textContent).toContain("changed outside Halonic");
   });
 });

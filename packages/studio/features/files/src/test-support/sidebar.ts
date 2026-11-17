@@ -39,6 +39,7 @@ export function contextHost(): FilesHost {
     rename: async () => ({ places: 0, owners: [], undo: async () => {} }),
     remove: async () => ({ places: 0, undo: async () => {} }),
     problems: async () => [],
+    yamlSyntaxLine: async () => null,
     outside: () => new Map(),
     noteHeld: () => undefined,
     onReloaded: () => () => undefined,

@@ -55,6 +55,7 @@ function fixture(change: OutsideChange | undefined, compare: Partial<FileCompare
     rename: async () => ({ places: 0, owners: [], undo: async () => {} }),
     remove: async () => ({ places: 0, undo: async () => {} }),
     outside: () => outside,
+    yamlSyntaxLine: async () => null,
     noteHeld: () => undefined,
     onReloaded: () => () => undefined,
     compare: async (path) => ({
