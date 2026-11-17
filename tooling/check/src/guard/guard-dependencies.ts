@@ -91,7 +91,9 @@ function lockfileFacts(text: string | undefined): string | undefined {
     .filter((line) => /^ {6}\S/.test(line))
     .flatMap((line) => {
       const [name, spec] = [keyOf(line), line.slice(line.indexOf(":") + 1).trim()];
-      return blocksOf(spec.includes("@") ? spec : `${name}@${spec}`);
+      // A peer suffix such as `1.2.3(bar@2.0.0)` is part of the id, not an alias.
+      const isAlias = spec.split("(")[0]?.includes("@") ?? false;
+      return blocksOf(isAlias ? spec : `${name}@${spec}`);
     });
   return [...entry, ...resolved, ...below].filter((line) => line.trim() !== "").join("\n");
 }

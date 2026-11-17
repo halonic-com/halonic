@@ -85,6 +85,14 @@ verifies("check.guard-dependency", () => {
     expect(guardDependencyChanged(file, before, lock("6.0.2", "6.0.3", "5.1.0", "bbb"))).toBe(true);
   });
 
+  test("follows a dependency whose version has a peer suffix", () => {
+    const file = "pnpm-lock.yaml";
+    const withPeer = (extra: string): string =>
+      `${lock("6.0.3").replace("'@typescript/old': typescript@6.0.3", "peered: 1.2.3(bar@2.0.0)")}\n  peered@1.2.3(bar@2.0.0):\n    dependencies:\n      extra: ${extra}\n`;
+    expect(guardDependencyChanged(file, withPeer("1.0.0"), withPeer("1.0.1"))).toBe(true);
+    expect(guardDependencyChanged(file, withPeer("1.0.0"), withPeer("1.0.0"))).toBe(false);
+  });
+
   test("ignores other lockfile changes, such as another dev dependency", () => {
     const file = "pnpm-lock.yaml";
     expect(guardDependencyChanged(file, lock("6.0.2"), lock("6.0.2", "6.0.3", "5.2.0"))).toBe(
