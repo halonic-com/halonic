@@ -4,6 +4,9 @@ import type {
   FileTexts,
   Identity,
   KeptFile,
+  MergeStart,
+  UpdateChoice,
+  UpdateMerge,
   UpdatesResult,
   Version,
   VersionInput,
@@ -33,6 +36,10 @@ export function fakeSource(initial: ChangesRead) {
   let remoteFailure: unknown;
   const remotes: string[] = [];
   let updatesAsked = 0;
+  let merge: UpdateMerge | null = null;
+  let mergeStart: MergeStart = { kind: "not-needed" };
+  let mergeFailure: unknown;
+  const mergeCalls: string[] = [];
   const texts = new Map<string, FileTexts>();
   const replaced: { path: string; text: string; expected: string | null }[] = [];
   const removed: { path: string; expected: string }[] = [];
@@ -105,6 +112,43 @@ export function fakeSource(initial: ChangesRead) {
       updatesAsked += 1;
       if (updatesFailure !== undefined) throw updatesFailure;
       return updates;
+    },
+    startMerge: async () => {
+      mergeCalls.push("start");
+      if (mergeFailure !== undefined) throw mergeFailure;
+      if (mergeStart.kind === "started") merge = mergeStart.merge;
+      return mergeStart;
+    },
+    readMerge: async () => merge,
+    chooseUpdate: async (path, choice: UpdateChoice, label) => {
+      mergeCalls.push(`choose ${path} ${choice} ${label}`);
+      if (mergeFailure !== undefined) throw mergeFailure;
+      if (merge === null) throw new Error("no merge");
+      merge = {
+        ...merge,
+        items: merge.items.map((item) => (item.path === path ? { ...item, choice } : item)),
+      };
+    },
+    undoUpdateChoice: async (path) => {
+      mergeCalls.push(`undo ${path}`);
+      if (mergeFailure !== undefined) throw mergeFailure;
+      if (merge === null) throw new Error("no merge");
+      merge = {
+        ...merge,
+        items: merge.items.map((item) =>
+          item.path === path ? { ...item, choice: undefined, copy: undefined } : item,
+        ),
+      };
+    },
+    finishMerge: async (message) => {
+      mergeCalls.push(`finish ${message}`);
+      if (mergeFailure !== undefined) throw mergeFailure;
+      merge = null;
+    },
+    cancelMerge: async () => {
+      mergeCalls.push("cancel");
+      if (mergeFailure !== undefined) throw mergeFailure;
+      merge = null;
     },
     subscribe: (listener) => {
       listeners.add(listener);
@@ -187,6 +231,20 @@ export function fakeSource(initial: ChangesRead) {
     },
     /** How many times Get updates reached the source. */
     updatesAsked: () => updatesAsked,
+    /** What starting a merge finds; a started one stays open until it is finished or cancelled. */
+    setMergeStart: (next: MergeStart) => {
+      mergeStart = next;
+    },
+    /** Leaves a merge open, as a window closed half way through one would. */
+    setMerge: (next: UpdateMerge | null) => {
+      merge = next;
+    },
+    /** Makes every merge call fail with `error`; `undefined` makes them work again. */
+    failMerge: (error: unknown) => {
+      mergeFailure = error;
+    },
+    /** Every merge call, in order, as text such as "choose a.md mine Sam's". */
+    mergeCalls,
     /** The window came to the front, or a save may have changed a file. */
     wake: () => {
       for (const listener of [...listeners]) listener();

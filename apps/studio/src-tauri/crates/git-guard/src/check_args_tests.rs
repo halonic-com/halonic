@@ -55,6 +55,14 @@ fn git_allow_list_allows_the_calls_the_adapter_makes() {
         "merge --no-ff --no-commit -s ours origin/main",
         "merge --no-ff --no-commit --strategy=ours --no-edit origin/main",
         "merge --abort",
+        // What Get updates item by item runs (HAL-10718).
+        "rev-parse --abbrev-ref --symbolic-full-name @{upstream}",
+        "rev-parse --verify --quiet @{upstream}",
+        "rev-parse --verify --quiet MERGE_HEAD",
+        "diff --name-status -z 0123abc HEAD",
+        "show 0123abc:notes/plan.md",
+        "log --format=%an HEAD..0123abc",
+        "reset -q -- notes/plan.md",
     ];
     for call in calls {
         assert_eq!(check(call), Ok(()), "{call}");

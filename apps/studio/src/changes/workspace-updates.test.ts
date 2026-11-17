@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { type GitAnswer, WorkspaceChanges } from "./workspace-changes.ts";
+import { choicesMemory } from "./workspace-merge.ts";
 
 const answer = (stdout: string, code = 0, stderr = ""): GitAnswer => ({ code, stdout, stderr });
 
@@ -20,6 +21,7 @@ function history(git: (args: readonly string[]) => Promise<GitAnswer>) {
     git,
     files,
     copies: files,
+    choices: choicesMemory(undefined, "test"),
     digest: { sha256: async () => new Uint8Array(32) },
     onFocus: never,
     onFilesChanged: never,
