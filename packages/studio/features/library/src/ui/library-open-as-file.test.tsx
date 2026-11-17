@@ -3,7 +3,7 @@ import type { ItemUsage } from "@halonicjs/app";
 import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { type ItemViewProps, limitedLookup, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { libraryFeature } from "../feature.ts";
 import {
@@ -17,6 +17,7 @@ import { installFakePopover } from "../test-support/popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { LibraryPage } from "./library-page.tsx";
 import { LibraryPlace } from "./library-place.tsx";
+import { OpenAsFileSheet } from "./open-as-file-sheet.tsx";
 import { SkillPage } from "./skill-page.tsx";
 
 let restorePopover: () => void;
@@ -205,6 +206,37 @@ verifies("library.library-open-as-file", () => {
     );
     await act(async () => retry?.click());
     await settled();
+    expect(document.querySelector("pre")?.textContent).toBe("name: Tone\n");
+  });
+
+  it("reads the file once when the page re-renders with a new place object", async () => {
+    const readFile = vi.fn<LibraryItemsHost["readFile"]>().mockResolvedValue("name: Tone\n");
+    const host: LibraryItemsHost = { ...itemsHost(nobody).host, readFile };
+    const context = skillPageProps(vi.fn()).context;
+    let rerender = () => {};
+    function Page() {
+      const [, setCount] = useState(0);
+      rerender = () => setCount((count) => count + 1);
+      // A new place object on every render, as an item page passes it.
+      return (
+        <OpenAsFileSheet
+          host={host}
+          context={context}
+          kind="skill"
+          place={{ hub: "~workspace", id: "tone" }}
+          onClose={() => undefined}
+        />
+      );
+    }
+    render(
+      <PresentationProvider presentation="phone">
+        <Page />
+      </PresentationProvider>,
+    );
+    await settled();
+    act(() => rerender());
+    await settled();
+    expect(readFile).toHaveBeenCalledTimes(1);
     expect(document.querySelector("pre")?.textContent).toBe("name: Tone\n");
   });
 

@@ -34,11 +34,13 @@ type Read =
 export function OpenAsFileSheet({ host, context, kind, place, onClose }: OpenAsFileSheetProps) {
   const name = itemFileName(kind, place);
   const [read, setRead] = useState<Read>({ state: "loading" });
+  // Callers often pass a new `place` object each render, so the read depends on its fields.
+  const { hub, id } = place;
   const attempt = useRef(0);
   const load = useCallback(() => {
     const mine = ++attempt.current;
     setRead({ state: "loading" });
-    host.readFile(kind, place).then(
+    host.readFile(kind, { hub, id }).then(
       (text) => mine === attempt.current && setRead({ state: "loaded", text }),
       (error: unknown) =>
         mine === attempt.current &&
@@ -47,7 +49,7 @@ export function OpenAsFileSheet({ host, context, kind, place, onClose }: OpenAsF
           reason: readFailureReason(error, openAsFileWords.couldntLoad(kind)),
         }),
     );
-  }, [host, kind, place]);
+  }, [host, kind, hub, id]);
   useEffect(() => {
     load();
     return () => {
