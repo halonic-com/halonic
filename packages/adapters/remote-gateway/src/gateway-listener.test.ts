@@ -61,6 +61,11 @@ verifies("remote-gateway.listener", () => {
       expect(await statusOf({ host: "127.0.0.1" })).toContain("421");
     });
 
+    it("refuses a request with two Host lines with 421, whichever line is ours", async () => {
+      expect(await statusOf({ secondHost: "evil.example" })).toContain("421");
+      expect(await statusOf({ host: "evil.example", secondHost: "127.0.0.1:1" })).toContain("421");
+    });
+
     it("accepts the name a tunnel gives this computer only when it is listed", async () => {
       expect(await statusOf({ host: "host.example.ts.net" })).toContain("421");
       expect(await statusOf({ host: "Host.Example.TS.net" }, ["host.example.ts.net"])).toContain(

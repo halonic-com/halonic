@@ -34,6 +34,8 @@ export function clientFrame(
 
 export interface HandshakeOptions {
   host?: string;
+  /** A second `Host` line, sent after the first. */
+  secondHost?: string;
   origin?: string;
   path?: string;
   method?: string;
@@ -51,6 +53,7 @@ export function handshakeRequest(
   const lines = [
     `${options.method ?? "GET"} ${options.path ?? gatewayPath} HTTP/1.1`,
     `Host: ${options.host ?? `127.0.0.1:${port}`}`,
+    ...(options.secondHost === undefined ? [] : [`Host: ${options.secondHost}`]),
     ...(options.upgrade === false ? [] : ["Upgrade: websocket", "Connection: Upgrade"]),
     `Sec-WebSocket-Key: ${key}`,
     `Sec-WebSocket-Version: ${options.version ?? "13"}`,
