@@ -1,0 +1,18 @@
+{
+  "identifier": "desktop-plugin-source",
+  "description": "On desktop, the app's own page may show the folder picker for a plugin to add and read the folder the person picked, through the plugin_source_* commands (src/plugin_source.rs). It writes nothing. The page never names a path: the shell keeps the folder the person picked in this session and refuses any other, the profile and the plugins folder, follows no link, opens no special file and leaves out the .git folder. It is its own capability, apart from the one that writes the plugin, and local only, so the Studio the computer serves cannot read a folder this way.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-plugin-source-pick",
+    "allow-plugin-source-entries",
+    "allow-plugin-source-read"
+  ]
+}
