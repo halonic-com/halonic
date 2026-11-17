@@ -79,7 +79,7 @@ verifies("library.new-collection", () => {
 
     it("says why it couldn't create the collection and keeps what was typed", async () => {
       const { root, onCreated } = setup(async () => {
-        throw new Error("The disk is full.");
+        throw Object.assign(new Error("The disk is full."), { kind: "unavailable" });
       });
       await type(root, "Name", "Claims");
       await press(root, "Create");
@@ -87,6 +87,19 @@ verifies("library.new-collection", () => {
       await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
       expect(page(root)).toContain("Couldn't create the collection: The disk is full.");
       expect(onCreated).not.toHaveBeenCalled();
+    });
+
+    it("shows the generic sentence, not the system's text, for an error without a kind", async () => {
+      const { root } = setup(async () => {
+        throw new Error("EACCES: permission denied, open '/x'");
+      });
+      await type(root, "Name", "Claims");
+      await press(root, "Create");
+      await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+      expect(page(root)).toContain(
+        "Couldn't create the collection: Halonic ran into a problem it can't explain yet.",
+      );
+      expect(page(root)).not.toContain("EACCES");
     });
   });
 });

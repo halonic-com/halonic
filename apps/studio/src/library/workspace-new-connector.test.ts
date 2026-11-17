@@ -76,6 +76,9 @@ verifies("library.new-connector", () => {
   it("refuses with a sentence and writes nothing", async () => {
     const { host, changes } = setup();
     await expect(host.create({ ...blank, name: " " })).rejects.toThrow("Give it a name.");
+    await expect(host.create({ ...blank, name: " " })).rejects.toMatchObject({
+      kind: "invalid_input",
+    });
     expect(changes).toEqual([]);
   });
 });

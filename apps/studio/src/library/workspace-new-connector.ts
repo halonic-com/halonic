@@ -1,4 +1,5 @@
 import { type NewConnectorTransport, newLibraryFile } from "@halonicjs/app";
+import { KindedError } from "@halonicjs/std";
 import type {
   ConnectorRef,
   NewConnectorDraft,
@@ -104,7 +105,7 @@ export class WorkspaceNewConnector implements NewConnectorHost {
       transport: transportOf(draft),
       ...(draft.secret === "" || draft.way === "google" ? {} : { secret: draft.secret }),
     });
-    if (!made.ok) throw new Error(refusals[made.error]);
+    if (!made.ok) throw new KindedError("invalid_input", refusals[made.error]);
     const { id, path, text } = made.value;
     this.#parts.files.change(`Added connector ${id}`, { [path]: text });
     return { hub: draft.hub, id };

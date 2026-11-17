@@ -1,4 +1,5 @@
 import { newLibraryFile } from "@halonicjs/app";
+import { KindedError } from "@halonicjs/std";
 import type {
   NewSkillDraft,
   NewSkillHost,
@@ -58,7 +59,7 @@ export class WorkspaceNewSkill implements NewSkillHost {
 
   async create(draft: NewSkillDraft): Promise<SkillRef> {
     const made = newLibraryFile(await this.#load(), { kind: "skill", ...draft });
-    if (!made.ok) throw new Error(refusals[made.error]);
+    if (!made.ok) throw new KindedError("invalid_input", refusals[made.error]);
     const { id, path, text } = made.value;
     this.#parts.files.change(`Added skill ${id}`, { [path]: text });
     return { hub: draft.hub, id };

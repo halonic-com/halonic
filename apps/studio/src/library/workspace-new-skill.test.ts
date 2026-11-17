@@ -51,6 +51,9 @@ verifies("library.new-skill", () => {
     await expect(host.create({ name: "Tone", description: " ", hub: null })).rejects.toThrow(
       "Say when an agent should use this skill.",
     );
+    await expect(host.create({ name: "Tone", description: " ", hub: null })).rejects.toMatchObject({
+      kind: "invalid_input",
+    });
     expect(changes).toEqual([]);
   });
 });
