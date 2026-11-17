@@ -112,6 +112,7 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
         <CreateVersionDialog
           list={list}
           files={list.versionFiles}
+          first={state.history.loaded && state.history.versions.length === 0}
           returnFocus={() => heading.current}
         />
       )}

@@ -31,6 +31,7 @@ export interface ChangeItem {
 const friendlyNames: Readonly<Record<string, string>> = {
   [settingsPath]: itemWords.workspaceSettings,
   "models.yaml": itemWords.models,
+  ".gitignore": itemWords.historyLeavesOut,
 };
 
 /** A file inside a skill's folder, other than SKILL.md, still belongs to that skill. */

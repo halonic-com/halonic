@@ -1,5 +1,6 @@
 import { Dialog, Field, Input, TextArea, useToastStore } from "@halonicjs/studio-kit";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { groupIntoItems } from "../change-items.ts";
 import type { ChangedFile, ChangesList } from "../changes-list.ts";
 import { versionWords } from "../changes-words.ts";
 import { suggestedVersionName } from "../version-name.ts";
@@ -10,6 +11,8 @@ export interface CreateVersionDialogProps {
   readonly list: ChangesList;
   /** What's in the version: the files Create version was opened for. */
   readonly files: readonly ChangedFile[];
+  /** Whether this is the first version of the workspace. */
+  readonly first?: boolean;
   /** Where focus goes when the dialog closes and the button that opened it has gone. */
   readonly returnFocus: () => HTMLElement | null;
 }
@@ -22,13 +25,19 @@ export interface CreateVersionDialogProps {
  *
  * Not here yet: the tests line, "Share with your team right away" and "Ask for review".
  */
-export function CreateVersionDialog({ list, files, returnFocus }: CreateVersionDialogProps) {
+export function CreateVersionDialog({
+  list,
+  files,
+  first = false,
+  returnFocus,
+}: CreateVersionDialogProps) {
   const toasts = useToastStore();
   const nameField = useRef<HTMLInputElement>(null);
+  const items = groupIntoItems(files);
   const [ticked, setTicked] = useState<ReadonlySet<string>>(
-    () => new Set(files.map((file) => file.path)),
+    () => new Set(items.map((item) => item.id)),
   );
-  const [name, setName] = useState(() => suggestedVersionName(files.map((file) => file.path)));
+  const [name, setName] = useState(() => suggestedVersionName(files, { first }));
   const [nameEdited, setNameEdited] = useState(false);
   const [notes, setNotes] = useState("");
   const [nameEmpty, setNameEmpty] = useState(false);
@@ -38,15 +47,17 @@ export function CreateVersionDialog({ list, files, returnFocus }: CreateVersionD
   // The offered name is selected, so typing replaces it.
   useEffect(() => nameField.current?.select(), []);
 
-  function tick(path: string, on: boolean) {
+  /** The files of the ticked items. */
+  const filesOf = (ids: ReadonlySet<string>) =>
+    items.filter((item) => ids.has(item.id)).flatMap((item) => item.files);
+
+  function tick(id: string, on: boolean) {
     const next = new Set(ticked);
-    if (on) next.add(path);
-    else next.delete(path);
+    if (on) next.add(id);
+    else next.delete(id);
     setTicked(next);
     // The offered name follows the ticked items until the person writes their own.
-    if (!nameEdited) {
-      setName(suggestedVersionName(files.filter((file) => next.has(file.path)).map((f) => f.path)));
-    }
+    if (!nameEdited) setName(suggestedVersionName(filesOf(next), { first }));
   }
 
   async function create() {
@@ -58,7 +69,11 @@ export function CreateVersionDialog({ list, files, returnFocus }: CreateVersionD
     }
     setBusy(true);
     setError(undefined);
-    const reason = await list.createVersion(name, notes, [...ticked]);
+    const reason = await list.createVersion(
+      name,
+      notes,
+      filesOf(ticked).map((file) => file.path),
+    );
     if (reason === undefined) {
       // The dialog is gone with the version, and so is the button that opened it.
       toasts?.show({ tone: "success", title: versionWords.created(name.trim()) });
@@ -107,7 +122,7 @@ export function CreateVersionDialog({ list, files, returnFocus }: CreateVersionD
             onChange={(event) => setNotes(event.target.value)}
           />
         </Field>
-        <WhatsInIt files={files} ticked={ticked} onTick={tick} />
+        <WhatsInIt items={items} first={first} ticked={ticked} onTick={tick} />
       </div>
     </Dialog>
   );
