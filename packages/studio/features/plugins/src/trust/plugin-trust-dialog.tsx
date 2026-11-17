@@ -1,4 +1,9 @@
-import { type PluginTrustSection, pluginTrustContent, pluginTrustSections } from "@halonicjs/app";
+import {
+  type PluginTrustFiles,
+  type PluginTrustSection,
+  pluginTrustContent,
+  pluginTrustSections,
+} from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
 import { Dialog, Disclosure, StatusChip } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
@@ -12,6 +17,8 @@ import {
   CAN_REACH,
   CHANGED_INTRO,
   CHANGED_UNREADABLE,
+  FILES_HEADING,
+  FOLDER_HEADING,
   FROM,
   GOES_ONLY_TO,
   HOW,
@@ -19,6 +26,7 @@ import {
   IN_STUDIO_SECTION,
   inStudioRow,
   keepButton,
+  moreFilesRow,
   NOT_NOW,
   OUTSIDE_TEXT,
   PROGRAMS_SECTION,
@@ -51,6 +59,10 @@ export interface PluginTrustDialogProps {
   /** Where it was added from; a plugin put in the folder by hand has none. */
   readonly origin: PluginOrigin | undefined;
   readonly reason: TrustCheckReason;
+  /** The plugin folder's real path, shown under Folder; the line is left out when unsaid. */
+  readonly folder?: string | undefined;
+  /** The backend files the fingerprint covers, shown under Backend files. */
+  readonly files?: PluginTrustFiles | undefined;
   /** For `reason="changed"`: what changed, and the day the person trusted the plugin before. */
   readonly changes?: PluginChangeSummary | undefined;
   readonly trustedOn?: string | undefined;
@@ -127,6 +139,7 @@ export function PluginTrustDialog(props: PluginTrustDialogProps) {
               name={manifest.name}
               programsRun={props.programsRun}
             />
+            <Location folder={props.folder} files={props.files} />
           </>
         )}
       </div>
@@ -169,6 +182,44 @@ function SourceLine({
         </>
       )}
     </p>
+  );
+}
+
+/**
+ * Where the plugin sits and which files its fingerprint covers, as `halonic plugin add` shows
+ * them. Both come from the workspace, so they are plain text in monospace that wraps at any
+ * character, never cut short: a person deciding to trust it should see exactly where it sits.
+ */
+function Location({
+  folder,
+  files,
+}: {
+  readonly folder: string | undefined;
+  readonly files: PluginTrustFiles | undefined;
+}) {
+  const shown = files?.shown ?? [];
+  return (
+    <div className="flex flex-col gap-3">
+      {folder === undefined ? null : (
+        <Labelled label={FOLDER_HEADING} stacked>
+          <code className="font-mono text-small wrap-anywhere">{folder}</code>
+        </Labelled>
+      )}
+      {shown.length === 0 ? null : (
+        <Labelled label={FILES_HEADING} stacked>
+          <ul className="flex list-none flex-col gap-0.5">
+            {shown.map((path) => (
+              <li key={path}>
+                <code className="font-mono text-small wrap-anywhere">{path}</code>
+              </li>
+            ))}
+            {files === undefined || files.more === 0 ? null : (
+              <li className="text-small text-fg-muted">{moreFilesRow(files.more)}</li>
+            )}
+          </ul>
+        </Labelled>
+      )}
+    </div>
   );
 }
 
@@ -384,7 +435,24 @@ function secretKinds(secrets: readonly TrustSecret[]): SecretKind[] {
 }
 
 /** A label over its value, as the design's open rows show them. */
-function Labelled({ label, children }: { readonly label: string; readonly children: ReactNode }) {
+function Labelled({
+  label,
+  children,
+  stacked = false,
+}: {
+  readonly label: string;
+  readonly children: ReactNode;
+  /** The value sits on lines under the label, as a list does. */
+  readonly stacked?: boolean;
+}) {
+  if (stacked) {
+    return (
+      <div className="flex flex-col gap-1">
+        <span className="text-small text-fg-muted">{label}</span>
+        {children}
+      </div>
+    );
+  }
   return (
     <p className="text-small wrap-anywhere">
       <span className="text-fg-muted">{label} </span>

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {
+  type PluginTrustFiles,
   pluginTrustContent,
   pluginTrustSectionHeadings,
   pluginTrustSectionOrder,
@@ -89,6 +90,8 @@ function open(
     readonly origin?: PluginOrigin;
     readonly failure?: string;
     readonly programsRun?: ProgramsRun;
+    readonly folder?: string;
+    readonly files?: PluginTrustFiles;
   } = {},
 ) {
   const pressed: string[] = [];
@@ -97,6 +100,8 @@ function open(
       manifest={manifest}
       origin={options.origin}
       reason={options.reason ?? "add"}
+      folder={options.folder}
+      files={options.files}
       failure={options.failure}
       programsRun={options.programsRun}
       onTrust={() => pressed.push("trust")}
@@ -339,5 +344,37 @@ verifies("app.plugin-trust-sections", () => {
       pluginTrustSections(content).map((section) => pluginTrustSectionHeadings[section]),
     );
     expect(headings()).toEqual(["Tools for agents"]);
+  });
+
+  it("shows the folder in full and the first files, then how many more, as plain text", () => {
+    const folder = "/plugins/weather";
+    const files = { shown: ["backend/index.js", "backend/<b>x</b>\u001b[31m.js"], more: 4 };
+    open(weather, { folder, files });
+
+    const text = dialog().textContent ?? "";
+    expect(text).toContain(`Folder${folder}`);
+    expect(text).toContain("Backend files");
+    expect(text).toContain("backend/index.js");
+    expect(text).toContain("backend/<b>x</b>\u001b[31m.js");
+    expect(dialog().querySelector("b")).toBeNull();
+    expect(text).toContain("and 4 more");
+  });
+
+  it("leaves out the folder and the files when the host gives none", () => {
+    open(weather);
+
+    const text = dialog().textContent ?? "";
+    expect(text).not.toContain("Folder");
+    expect(text).not.toContain("Backend files");
+  });
+
+  it("leaves out Backend files for a plugin with only its manifest, and 'and N more' when nothing is hidden", () => {
+    open(weather, { folder: "/plugins/weather", files: { shown: [], more: 0 } });
+    expect(dialog().textContent).toContain("Folder");
+    expect(dialog().textContent).not.toContain("Backend files");
+
+    unmountAll();
+    open(weather, { folder: "/plugins/weather", files: { shown: ["a.js"], more: 0 } });
+    expect(dialog().textContent).not.toContain("more");
   });
 });

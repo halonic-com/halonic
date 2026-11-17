@@ -1,4 +1,4 @@
-import type { PluginEntry, PluginInstall } from "@halonicjs/app";
+import { type PluginEntry, type PluginInstall, pluginTrustFiles } from "@halonicjs/app";
 import type { InstalledPlugin } from "@halonicjs/studio-feature-plugins";
 
 /**
@@ -37,6 +37,8 @@ export function installedPluginOf(
       entry.status === "trusted" || entry.status === "changed" ? entry.trustedAt : undefined,
     origin: install?.source,
     changes: entry.status === "changed" ? entry.changes : undefined,
+    location: entry.location,
+    backendFiles: pluginTrustFiles(entry.content),
     problems: [],
   };
 }
