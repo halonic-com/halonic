@@ -2,6 +2,7 @@
 
 - Approval: plan (a) of step B was approved on HAL-11874 (Paperclip task); Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QBTCoen6Bt/WwogqjKX/UCL8wOhPv3iDyIb+N6fyGo9CrqoFVevNaLXfQ1KJXvcWT4GqS2WiEe9I71lwJlTuCw==
 - Task: HAL-11871
 
 ## What changes
