@@ -2,7 +2,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
-import type { ChatTurnRequest, HttpClient, Secrets } from "@halonicjs/ports";
+import {
+  type ChatTurnRequest,
+  type HttpClient,
+  noKeyOrigins,
+  type Secrets,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -71,6 +76,7 @@ async function resolverFor(files: Record<string, string> = acmeFiles) {
     secrets,
     http,
     isTrusted: () => true,
+    keyOrigins: noKeyOrigins,
   });
 }
 
@@ -298,7 +304,13 @@ verifies("cli.workspace-models", () => {
     it("gives the Acme sample's sorter the same answer in every run", async () => {
       const acme = resolvePath(import.meta.dirname, "../../../../examples/acme");
       const workspace = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
-      const resolve = workspaceModelResolver({ workspace, secrets, http, isTrusted: () => true });
+      const resolve = workspaceModelResolver({
+        workspace,
+        secrets,
+        http,
+        isTrusted: () => true,
+        keyOrigins: noKeyOrigins,
+      });
       const sorterAnswer = async (runId: string): Promise<string> => {
         const model = await resolve(callOf({ hubId: "support", agentId: "sorter" }), { runId });
         const answer = await model.provider.chat({

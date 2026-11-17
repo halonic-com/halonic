@@ -23,6 +23,7 @@ import { approveAllShown, checkConnectorTools } from "@halonicjs/app/listed-tool
 import {
   type ConnectorClient,
   type HttpClient,
+  noKeyOrigins,
   runLockFormat,
   type Secrets,
 } from "@halonicjs/ports";
@@ -31,7 +32,12 @@ import { KindedError, systemClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { engineLockFile, type LocalEngine, openLocalEngine } from "./local-engine-host.ts";
+import {
+  engineLockFile,
+  type LocalEngine,
+  type LocalEngineInput,
+  openLocalEngine,
+} from "./local-engine-host.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
 import { nodeProfileEnvironment, openWorkspaceRuns, webCryptoDigest } from "./workspace-runs.ts";
 
@@ -67,16 +73,23 @@ afterEach(async () => {
   await removeTestFolder(folder);
 });
 
-async function openEngine(): Promise<LocalEngine> {
-  const engine = await openLocalEngine({
+/** The input every test engine takes, with what a test sets itself laid over it. */
+function engineInput(overrides: Partial<LocalEngineInput> = {}): LocalEngineInput {
+  return {
     workspace,
     workspaceRoot: acme,
     trusted: true,
     secrets,
+    keyOrigins: noKeyOrigins,
     http,
     environment: profile,
     reportError: (error) => schedulerErrors.push(error),
-  });
+    ...overrides,
+  };
+}
+
+async function openEngine(overrides: Partial<LocalEngineInput> = {}): Promise<LocalEngine> {
+  const engine = await openLocalEngine(engineInput(overrides));
   opened.push(engine);
   return engine;
 }
@@ -265,15 +278,12 @@ verifies("cli.local-engine-lock", () => {
 describe("openLocalEngine", () => {
   it("refuses a workspace folder that doesn't exist", async () => {
     await expect(
-      openLocalEngine({
-        workspace,
-        workspaceRoot: join(folder, "gone"),
-        trusted: true,
-        secrets,
-        http,
-        environment: profile,
-        reportError: () => {},
-      }),
+      openLocalEngine(
+        engineInput({
+          workspaceRoot: join(folder, "gone"),
+          reportError: () => {},
+        }),
+      ),
     ).rejects.toThrow(/ENOENT/);
   });
   it("opens anyway when a leftover program copy can't be swept, and empties the copies folder", async () => {
@@ -287,16 +297,9 @@ describe("openLocalEngine", () => {
     await writeFile(join(copies, "leftover", "server.js"), "old");
     const reported: unknown[] = [];
 
-    const engine = await openLocalEngine({
-      workspace,
-      workspaceRoot: acme,
-      trusted: true,
-      secrets,
-      http,
-      environment: profile,
+    const engine = await openEngine({
       reportError: (_error, source) => reported.push(source),
     });
-    opened.push(engine);
 
     expect(await readdir(copies)).toEqual([]);
     expect(reported).toEqual(["program-copies"]);
@@ -315,15 +318,7 @@ describe("the engine lock under attack", () => {
     const linked = join(folder, "acme-link");
     await symlink(acme, linked, "dir");
 
-    const second = openLocalEngine({
-      workspace,
-      workspaceRoot: linked,
-      trusted: true,
-      secrets,
-      http,
-      environment: profile,
-      reportError: () => {},
-    });
+    const second = openLocalEngine(engineInput({ workspaceRoot: linked, reportError: () => {} }));
 
     await expect(second).rejects.toMatchObject({ kind: "conflict" });
   });
@@ -331,15 +326,9 @@ describe("the engine lock under attack", () => {
   it("reports a lock another process took over, and closes without removing that lock", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const reported: [unknown, unknown][] = [];
-    const engine = await openLocalEngine({
-      workspace,
-      workspaceRoot: acme,
-      trusted: true,
-      secrets,
-      http,
-      environment: profile,
-      reportError: (error, source) => reported.push([error, source]),
-    });
+    const engine = await openLocalEngine(
+      engineInput({ reportError: (error, source) => reported.push([error, source]) }),
+    );
     const taker = JSON.stringify({
       version: runLockFormat,
       pid: process.pid,
@@ -441,17 +430,10 @@ describe("the engine lock under attack", () => {
       const calls: string[] = [];
       const mail = mailConnector(calls);
       await approveMailTools(mail);
-      const engine = await openLocalEngine({
-        workspace,
-        workspaceRoot: acme,
-        trusted: true,
-        secrets,
-        http,
-        environment: profile,
+      const engine = await openEngine({
         connectors: [mail],
         reportError: (error) => schedulerErrors.push(error),
       });
-      opened.push(engine);
 
       const response = await engine.executor.chatTurn({
         hubId: "support",
@@ -470,19 +452,12 @@ describe("the engine lock under attack", () => {
       await mailWorkspace();
       const calls: string[] = [];
       const heard: string[] = [];
-      const engine = await openLocalEngine({
-        workspace,
-        workspaceRoot: acme,
-        trusted: true,
-        secrets,
-        http,
-        environment: profile,
+      const engine = await openEngine({
         connectors: [mailConnector(calls)],
         reportWaiting: (connector, waiting) =>
           heard.push(`${connector}: ${waiting.map((tool) => tool.name).join(",")}`),
         reportError: (error) => schedulerErrors.push(error),
       });
-      opened.push(engine);
 
       const response = await engine.executor.chatTurn({
         hubId: "support",
