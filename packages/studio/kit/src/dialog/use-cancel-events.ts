@@ -3,11 +3,11 @@ import { type MouseEvent, type PointerEvent, type SyntheticEvent, useRef } from 
 /**
  * The `<dialog>`'s own events, all of which cancel through `cancel` (which does nothing while
  * busy). Escape is Cancel: whatever Cancel puts back, Escape puts back too. The Dialog never
- * closes itself, the screen unmounts it, so Escape's own close is always stopped. React passes `cancel`
- * up the tree, so a Dialog inside another stops it there: one Escape closes only the top one. A click on the
- * overlay cancels only when the press started there too, and, with `keepTyping`, only before
- * anything was typed, so a stray click doesn't throw away what the form holds. A footerless Dialog
- * saves as it goes, so it has nothing to lose and passes `false`.
+ * closes itself, the screen unmounts it, so Escape's own close is always stopped. React passes
+ * `cancel` up the tree, so a Dialog inside another stops it there: one Escape closes only the top
+ * one. A click on the overlay cancels only when the press started there too, and, with
+ * `keepTyping`, only before anything was typed, so a stray click doesn't throw away what the form
+ * holds. A footerless Dialog saves as it goes, so it has nothing to lose and passes `false`.
  */
 export function useCancelEvents(cancel: () => void, onCancel: () => void, keepTyping: boolean) {
   const typed = useRef(false);
