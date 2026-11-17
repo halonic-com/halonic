@@ -54,6 +54,7 @@ function hostOf(state: { text: string | null }): { host: FilesHost; notify: () =
     read: async () => state.text,
     edit: () => {},
     problems: async () => [],
+    yamlSyntaxLine: async () => null,
     outside: () => new Map(),
     noteHeld: () => undefined,
     onReloaded: () => () => undefined,
