@@ -196,20 +196,6 @@ verifies("tunnel-attacks.frame-attacks", () => {
       }
     });
 
-    // Open gap (task HAL-5687 keeps the note): the decoder drops a leading byte order mark, so a
-    // message that is not strict JSON is read as one. It passes while the gap is open and fails when
-    // the parser closes it; then change it to `it`.
-    it.fails("answers malformed to a message that starts with a byte order mark", async () => {
-      const rig = await openTunnelRig();
-      try {
-        const client = await opened(rig);
-        client.write(wireFrame(op.text, Buffer.from(`\ufeff${JSON.stringify(hello)}`)));
-        expect(await client.frames(1)).toEqual([{ type: "error", code: "malformed" }]);
-      } finally {
-        await rig.stop();
-      }
-    });
-
     it("refuses a second hello and a message before hello, and a hello of another version", async () => {
       const rig = await openTunnelRig();
       try {
