@@ -285,6 +285,7 @@ export {
   pluginTrustFileCap,
   pluginTrustFiles,
   pluginTrustLocationHeadings,
+  pluginTrustMoreFilesText,
   pluginTrustSectionHeadings,
   pluginTrustSectionOrder,
   pluginTrustSections,
