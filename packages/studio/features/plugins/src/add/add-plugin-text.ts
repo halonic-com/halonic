@@ -4,7 +4,8 @@
 
 import type { PluginLoadProblem } from "../page/plugin-pages.ts";
 
-export const ADD_PLUGIN = "Add plugin";
+export const ADD_TITLE = "Add a plugin";
+export const ADD = "Add";
 export const ADDING = "Getting the plugin…";
 export const TRY_AGAIN = "Try again";
 
