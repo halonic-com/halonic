@@ -70,7 +70,7 @@ verifies("source-control.change-list", () => {
   describe("ChangeList", () => {
     it("lists each changed file with its Important changes first and Undo this change on the ones with parts", async () => {
       const { root } = await openPage();
-      const section = openItem(root, "triage");
+      const section = openItem(root, "Triage");
       expect(section.querySelector("h2")?.textContent).toBe("Important");
       const rows = [...section.querySelectorAll("li")].map((row) => row.textContent);
       expect(rows[0]).toContain("Instructions");
@@ -82,7 +82,8 @@ verifies("source-control.change-list", () => {
       const { root } = await openPage();
       const rows = [...root.querySelectorAll("tr[data-row-id]")].map((row) => row.textContent);
       expect(rows).toHaveLength(3);
-      expect(rows[0]).toContain("triage");
+      expect(rows[0]).toContain("Triage");
+      expect(rows[0]).toContain("Agent · Instructions");
       expect(rows[0]).toContain("Instructions");
       expect(root.textContent).toContain("Other files");
       expect(root.textContent).not.toContain(agentPath);
@@ -108,13 +109,13 @@ verifies("source-control.change-list", () => {
         first?.focus();
         first?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
       });
-      expect(root.querySelector("h1")?.textContent).toBe("triage");
-      expect(document.activeElement?.textContent).toBe("triage");
+      expect(root.querySelector("h1")?.textContent).toBe("Triage");
+      expect(document.activeElement?.textContent).toBe("Triage");
     });
 
     it("moves focus to the row that took its place after Undo these changes, never to the page", async () => {
       const { fake, root } = await openPage();
-      const section = openItem(root, "triage");
+      const section = openItem(root, "Triage");
       fake.answer({
         kind: "ready",
         changes: [
@@ -141,7 +142,7 @@ verifies("source-control.change-list", () => {
       const list = new ChangesList(fake.source);
       const root = render(<ChangesView list={list} />);
       await act(settle);
-      const section = openItem(root, "triage");
+      const section = openItem(root, "Triage");
       fake.answer({ kind: "ready", changes: [] });
       await act(async () => {
         buttons(section, "Undo these changes")[0]?.click();
@@ -166,7 +167,7 @@ verifies("source-control.change-list", () => {
 
     it("leaves focus alone on a re-render while an item is open", async () => {
       const { root } = await openPage();
-      openItem(root, "triage");
+      openItem(root, "Triage");
       await act(async () => {
         (document.activeElement as HTMLElement | null)?.blur();
       });
@@ -190,7 +191,7 @@ verifies("source-control.change-list", () => {
 
     it("undoes one change at once, keeps the other, and offers Undo in a toast", async () => {
       const { fake, root, toasts } = await openPage();
-      openItem(root, "triage");
+      openItem(root, "Triage");
       const [undoInstructions] = buttons(root, "Undo this change");
       await act(async () => {
         undoInstructions?.click();
@@ -213,7 +214,7 @@ verifies("source-control.change-list", () => {
 
     it("writes nothing and says why when the file changed since the page read it", async () => {
       const { fake, root } = await openPage();
-      openItem(root, "triage");
+      openItem(root, "Triage");
       const [undoInstructions] = buttons(root, "Undo this change");
       fake.setTexts(agentPath, { before, after: `${after}# edited elsewhere\n` });
       await act(async () => {
@@ -228,7 +229,7 @@ verifies("source-control.change-list", () => {
 
     it("shows why the toast's Undo didn't work when the file changed in the meantime", async () => {
       const { fake, root, toasts } = await openPage();
-      openItem(root, "triage");
+      openItem(root, "Triage");
       const [undoInstructions] = buttons(root, "Undo this change");
       await act(async () => {
         undoInstructions?.click();

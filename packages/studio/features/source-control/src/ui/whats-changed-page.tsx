@@ -63,7 +63,13 @@ export function WhatChangedPage({ list, item, developer, openItem, onBack }: Wha
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => openItem({ kind: item.kind ?? "", hub: item.hub, id: item.name })}
+            onClick={() =>
+              openItem({
+                kind: item.kind ?? "",
+                hub: item.hub,
+                id: item.itemId,
+              })
+            }
           >
             {pageWords.openItem(item.kind ?? "")}
           </Button>

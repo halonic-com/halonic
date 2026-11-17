@@ -15,6 +15,8 @@ export interface ChangeItem {
   readonly id: string;
   /** What the row is called: the item's name, or a friendly name for an other file. */
   readonly name: string;
+  /** The item's id in its kind (what the Open button needs); the same as `name` for an other file. */
+  readonly itemId: string;
   /** The item's kind, or `undefined` for an other file. */
   readonly kind: KindName | undefined;
   /** The hub the item is in; empty for an item that sits in the workspace itself. */
@@ -40,10 +42,13 @@ function baseName(path: string): string {
 }
 
 /** Which item a path belongs to: its kind, hub and name; `undefined` for a file that is no item. */
-function itemOf(
-  path: string,
-):
-  | { readonly kind: KindName; readonly name: string; readonly hub: string; readonly key: string }
+function itemOf(path: string):
+  | {
+      readonly kind: KindName;
+      readonly name: string;
+      readonly hub: string;
+      readonly key: string;
+    }
   | undefined {
   const place = placeOf(path);
   if (place?.placeId !== undefined) {
@@ -81,18 +86,38 @@ function sentenceOf(files: readonly ChangedFile[]): string {
 export function groupIntoItems(files: readonly ChangedFile[]): ChangeItem[] {
   const byId = new Map<
     string,
-    { name: string; kind: KindName | undefined; hub: string; files: ChangedFile[] }
+    {
+      name: string;
+      itemId: string;
+      kind: KindName | undefined;
+      hub: string;
+      files: ChangedFile[];
+    }
   >();
   for (const file of files) {
     const item = itemOf(file.path);
     const id = item?.key ?? `file:${file.path}`;
     const found = byId.get(id);
     if (found === undefined) {
-      const name = item?.name ?? friendlyNames[file.path] ?? baseName(file.path);
-      byId.set(id, { name, kind: item?.kind, hub: item?.hub ?? "", files: [file] });
+      const name =
+        file.description.name ?? item?.name ?? friendlyNames[file.path] ?? baseName(file.path);
+      byId.set(id, {
+        name,
+        itemId: item?.name ?? name,
+        kind: item?.kind,
+        hub: item?.hub ?? "",
+        files: [file],
+      });
     } else {
+      // A skill's name is in its SKILL.md; the other files of its folder carry none.
+      if (file.description.name !== undefined && item !== undefined)
+        found.name = file.description.name;
       found.files.push(file);
     }
   }
-  return [...byId].map(([id, item]) => ({ id, ...item, sentence: sentenceOf(item.files) }));
+  return [...byId].map(([id, item]) => ({
+    id,
+    ...item,
+    sentence: sentenceOf(item.files),
+  }));
 }

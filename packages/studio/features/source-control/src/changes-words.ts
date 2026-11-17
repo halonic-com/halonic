@@ -62,6 +62,28 @@ export const itemWords = {
   otherFiles: "Other files",
   workspaceSettings: "Workspace settings",
   models: "Models",
+  /** The small word before a row's sentence: "Workflow · New". */
+  kind: {
+    agent: "Agent",
+    workflow: "Workflow",
+    workflowTest: "Workflow test",
+    routine: "Routine",
+    skill: "Skill",
+    hub: "Hub",
+    provider: "Provider",
+    runtime: "Runtime",
+    knowledge: "Knowledge",
+    collection: "Collection",
+    connector: "Connector",
+    integration: "Integration",
+    plugin: "Plugin",
+    workspace: "Workspace settings",
+    deployments: "Deployments",
+    models: "Models",
+  } as const,
+  /** A row's second line: its kind word, then what changed. */
+  kindAndSentence: (kind: string, sentence: string) =>
+    sentence === "" ? kind : `${kind} · ${sentence}`,
   /** The sentence of an item that moved: "Renamed from Support". */
   renamedFrom: (name: string) => `Renamed from ${name}`,
 };
