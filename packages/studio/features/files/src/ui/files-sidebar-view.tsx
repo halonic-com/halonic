@@ -6,12 +6,12 @@ import { FilesHostService, type FilesListing } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
 import { startingPath } from "../new-file.ts";
 import { removeFile } from "../remove-file.ts";
+import { renamedPath, renameFile } from "../rename-file.ts";
 import { emptyTreeState, type TreeIntent, type TreeState } from "../tree/tree-keyboard.ts";
 import { buildTree } from "../tree/tree-model.ts";
 import { visibleRows } from "../tree/visible-rows.ts";
 import { FilesTree } from "./files-tree.tsx";
 import { NewFileDialog } from "./new-file-dialog.tsx";
-import { RenameFileDialog } from "./rename-file-dialog.tsx";
 
 /** What the sidebar's Files view gets: the context of the feature that added it. */
 export interface FilesSidebarViewProps {
@@ -37,6 +37,8 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   const [retrying, setRetrying] = useState(false);
   const [adding, setAdding] = useState(false);
   const [renaming, setRenaming] = useState<string>();
+  // The row that takes the focus once it is in the tree: the renamed file at its new place.
+  const [reveal, setReveal] = useState<string>();
   const toasts = useToastStore();
   const addButton = useRef<HTMLButtonElement>(null);
   // The New file button that opened the dialog, the top one or the empty state's, gets focus back.
@@ -115,6 +117,36 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
     row.focus();
   }, [loaded, state.focus, roots]);
 
+
+  // The file in the active tab, read when a rename finishes or is undone, which may be later.
+  const activeNow = useRef(activePath);
+  activeNow.current = activePath;
+  const clearReveal = useCallback(() => setReveal(undefined), []);
+
+  const applyRename = useCallback(
+    async (from: string, name: string, blur: boolean) => {
+      const refused = await renameFile(host, toasts, from, name, {
+        // A file that was open stays open under its new name; a closed one is not opened.
+        moved: (to) => {
+          setRenaming(undefined);
+          setReveal(to);
+          if (activeNow.current === from) context.openItem?.(fileItem(to));
+        },
+        movedBack: (back) => {
+          setReveal(back);
+          if (activeNow.current === renamedPath(from, name)) context.openItem?.(fileItem(back));
+        },
+      });
+      if (refused !== undefined && blur) {
+        toasts?.show({ tone: "danger", title: refused });
+        setRenaming(undefined);
+        setReveal(from);
+      }
+      return refused;
+    },
+    [context, host, toasts],
+  );
+
   const onIntent = useCallback(
     (intent: TreeIntent) => {
       if (intent.kind === "open") context.openItem?.(fileItem(intent.path));
@@ -180,6 +212,19 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
         state={state}
         onStateChange={setState}
         onIntent={onIntent}
+        {...(renaming === undefined
+          ? {}
+          : {
+              renaming: {
+                path: renaming,
+                onApply: (name: string, blur: boolean) => applyRename(renaming, name, blur),
+                onCancel: () => {
+                  setRenaming(undefined);
+                  setReveal(renaming);
+                },
+              },
+            })}
+        {...(reveal === undefined ? {} : { revealPath: reveal, onRevealed: clearReveal })}
         {...(activePath === undefined ? {} : { activePath })}
       />
     );
@@ -205,19 +250,6 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
           onCreated={(path) => {
             setAdding(false);
             toasts?.show({ tone: "success", title: filesWords.created(path) });
-            context.openItem?.(fileItem(path));
-          }}
-        />
-      )}
-      {renaming !== undefined && (
-        <RenameFileDialog
-          host={host}
-          path={renaming}
-          returnFocus={() => document.querySelector<HTMLElement>("[data-path][tabindex='0']")}
-          onCancel={() => setRenaming(undefined)}
-          onRenamed={(path) => {
-            setRenaming(undefined);
-            toasts?.show({ tone: "success", title: filesWords.renamed(path) });
             context.openItem?.(fileItem(path));
           }}
         />

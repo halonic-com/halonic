@@ -60,8 +60,8 @@ verifies("files.ui.tree-view", () => {
     compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
     settle: async () => {},
     create: async () => {},
-    renameImpact: async () => 0,
-    rename: async () => {},
+    renameImpact: async () => ({ places: 0, owners: [] }),
+    rename: async () => ({ places: 0, owners: [], undo: async () => {} }),
     remove: async () => ({ places: 0, undo: async () => {} }),
   });
 
@@ -236,8 +236,8 @@ verifies("files.ui.new-file", () => {
     read: async () => null,
     edit: () => {},
     create,
-    renameImpact: async () => 0,
-    rename: async () => {},
+    renameImpact: async () => ({ places: 0, owners: [] }),
+    rename: async () => ({ places: 0, owners: [], undo: async () => {} }),
     remove: async () => ({ places: 0, undo: async () => {} }),
     problems: async () => [],
     outside: () => new Map(),
@@ -302,44 +302,105 @@ verifies("files.ui.new-file", () => {
 });
 
 verifies("files.ui.rename-file", () => {
-  afterEach(() => {
-    unmountAll();
-    restoreModal();
-  });
+  const typeInto = async (input: HTMLInputElement | null, value: string) => {
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    await act(async () => {
+      set?.call(input, value);
+      input?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  };
+  const key = async (target: Element | null, name: string) => {
+    await act(async () => {
+      target?.dispatchEvent(new KeyboardEvent("keydown", { key: name, bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  };
 
-  it("opens Rename on F2 for the focused file and opens the new path after it", async () => {
-    fakeModal();
-    const rename = vi.fn(async () => {});
-    const host: FilesHost = {
-      ...contextHost(),
-      rename,
+  async function startRename(host: FilesHost, openItem = vi.fn(), active = "") {
+    const activeItem = {
+      get: () => (active === "" ? null : { kind: "file", hub: "workspace", id: active }),
+      subscribe: () => () => {},
     };
-    const openItem = vi.fn();
-    const context = { ...contextOf(host), openItem } as unknown as WorkspaceContext;
+    const context = { ...contextOf(host), openItem, activeItem } as unknown as WorkspaceContext;
     const page = render(<FilesSidebarView context={context} />);
     await settled();
     const row = rowNamed(page, "models.yaml");
     act(() => row.click());
-    await act(async () => {
-      row.dispatchEvent(new KeyboardEvent("keydown", { key: "F2", bubbles: true }));
-    });
-    const input = document.querySelector<HTMLInputElement>("input");
+    openItem.mockClear();
+    await key(row, "F2");
+    return { page, openItem };
+  }
+
+  it("edits the name in its row on F2, with no dialog", async () => {
+    fakeModal();
+    const { page } = await startRename(contextHost());
+    const input = rowNamed(page, "models.yaml").querySelector("input");
     expect(input?.value).toBe("models.yaml");
-    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-    await act(async () => {
-      set?.call(input, "providers.yaml");
-      input?.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(document.querySelector("dialog, [role='dialog']")).toBeNull();
+    restoreModal();
+  });
+
+  it("renames on Enter, leaves a closed file closed and focuses the renamed row", async () => {
+    let paths = ["agents/a.agent.yaml", "models.yaml"];
+    const rename = vi.fn(async () => {
+      paths = ["agents/a.agent.yaml", "providers.yaml"];
+      return { places: 0, owners: [], undo: async () => {} };
     });
-    const button = [...document.querySelectorAll("button")].find((each) =>
-      each.textContent?.startsWith("Rename"),
-    );
+    const subscribers: (() => void)[] = [];
+    const host: FilesHost = {
+      ...contextHost(),
+      list: async () => listing(paths),
+      subscribe: (listener) => {
+        subscribers.push(listener);
+        return () => {};
+      },
+      rename,
+    };
+    const { page, openItem } = await startRename(host);
+    const input = rowNamed(page, "models.yaml").querySelector("input");
+    await typeInto(input, "providers.yaml");
+    await key(input, "Enter");
+    expect(rename).toHaveBeenCalledWith("models.yaml", "providers.yaml");
+    expect(openItem).not.toHaveBeenCalled();
     await act(async () => {
-      button?.click();
+      for (const listener of subscribers) listener();
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(rename).toHaveBeenCalledWith("models.yaml", "providers.yaml");
+    expect(document.activeElement).toBe(rowNamed(page, "providers.yaml"));
+    expect(page.querySelector("input")).toBeNull();
+  });
+
+  it("opens the new path when the renamed file was the open one", async () => {
+    const { page, openItem } = await startRename(contextHost(), vi.fn(), "models.yaml");
+    const input = rowNamed(page, "models.yaml").querySelector("input");
+    await typeInto(input, "providers.yaml");
+    await key(input, "Enter");
     expect(openItem).toHaveBeenCalledWith({ kind: "file", hub: "workspace", id: "providers.yaml" });
-    expect(document.querySelector("input")).toBeNull();
+  });
+
+  it("puts the old name back on Escape without asking the host", async () => {
+    const rename = vi.fn(contextHost().rename);
+    const { page } = await startRename({ ...contextHost(), rename });
+    const input = rowNamed(page, "models.yaml").querySelector("input");
+    await typeInto(input, "other.yaml");
+    await key(input, "Escape");
+    expect(rename).not.toHaveBeenCalled();
+    expect(page.querySelector("input")).toBeNull();
+    expect(document.activeElement).toBe(rowNamed(page, "models.yaml"));
+  });
+
+  it("says why under the row and keeps the field when the host refuses", async () => {
+    const rename = async () => {
+      throw new Error("providers.yaml already exists.");
+    };
+    const { page } = await startRename({ ...contextHost(), rename });
+    const input = rowNamed(page, "models.yaml").querySelector("input");
+    await typeInto(input, "providers.yaml");
+    await key(input, "Enter");
+    expect(page.querySelector('[role="alert"]')?.textContent).toBe(
+      "providers.yaml already exists.",
+    );
+    expect(page.querySelector("input")).not.toBeNull();
   });
 });
 
@@ -407,8 +468,8 @@ function contextHost(): FilesHost {
     read: async () => null,
     edit: () => {},
     create: async () => {},
-    renameImpact: async () => 0,
-    rename: async () => {},
+    renameImpact: async () => ({ places: 0, owners: [] }),
+    rename: async () => ({ places: 0, owners: [], undo: async () => {} }),
     remove: async () => ({ places: 0, undo: async () => {} }),
     problems: async () => [],
     outside: () => new Map(),

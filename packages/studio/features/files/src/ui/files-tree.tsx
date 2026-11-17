@@ -1,10 +1,11 @@
 import { ChevronDownIcon, ChevronRightIcon } from "@halonicjs/studio-kit";
-import { type KeyboardEvent, useEffect, useMemo, useRef } from "react";
+import { Fragment, type KeyboardEvent, useEffect, useMemo, useRef } from "react";
 import { filesWords } from "../files-words.ts";
 import { cutInMiddle } from "../tree/cut-name.ts";
 import { pressKey, type TreeIntent, type TreeState } from "../tree/tree-keyboard.ts";
 import type { TreeNode } from "../tree/tree-model.ts";
 import { type TreeRow, visibleRows } from "../tree/visible-rows.ts";
+import { RenameRow, type RenameRowProps } from "./rename-row.tsx";
 
 /** The most characters of a name a row shows before it cuts the middle. */
 const nameLimit = 32;
@@ -20,6 +21,12 @@ export interface FilesTreeProps {
   readonly activePath?: string;
   /** Called when a key or a click asks the rest of the Studio for something: open, rename, trash. */
   readonly onIntent?: (intent: TreeIntent) => void;
+  /** The file whose name is edited in its row, with what the edit does. */
+  readonly renaming?: { readonly path: string } & Pick<RenameRowProps, "onApply" | "onCancel">;
+  /** A row to give focus to as soon as it is in the tree, such as the renamed file at its new place. */
+  readonly revealPath?: string;
+  /** Called once `revealPath` has focus. */
+  readonly onRevealed?: () => void;
   /** The time in milliseconds; tests pass their own. */
   readonly now?: () => number;
 }
@@ -64,6 +71,9 @@ export function FilesTree({
   onStateChange,
   activePath,
   onIntent,
+  renaming,
+  revealPath,
+  onRevealed,
   now = Date.now,
 }: FilesTreeProps) {
   const rows = useMemo(() => visibleRows(roots, state.expanded), [roots, state.expanded]);
@@ -79,6 +89,18 @@ export function FilesTree({
       if (item.dataset["path"] === state.focus) item.focus();
     }
   }, [state.focus]);
+
+  // The row asked for takes the focus once it is drawn: the renamed file may come a moment after the rename.
+  useEffect(() => {
+    if (revealPath === undefined) return;
+    for (const item of tree.current?.querySelectorAll<HTMLElement>("[data-path]") ?? []) {
+      if (item.dataset["path"] !== revealPath) continue;
+      item.focus();
+      onStateChange({ ...state, focus: revealPath });
+      onRevealed?.();
+      return;
+    }
+  }, [revealPath, rows, onRevealed, onStateChange, state]);
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const result = pressKey(rows, { ...state, focus: state.focus ?? stop }, event, now());
@@ -116,40 +138,49 @@ export function FilesTree({
         const open = node.kind === "folder" && state.expanded.has(node.path);
         const label = marksLabel(node);
         return (
-          // biome-ignore lint/a11y/useKeyWithClickEvents: keys are handled by the tree
-          <div
-            key={node.path}
-            role="treeitem"
-            data-path={node.path}
-            tabIndex={node.path === stop ? 0 : -1}
-            aria-level={row.depth + 1}
-            aria-posinset={row.position}
-            aria-setsize={row.siblings}
-            aria-expanded={node.kind === "folder" ? open : undefined}
-            aria-selected={node.path === activePath}
-            aria-label={
-              label !== undefined && node.kind === "folder"
-                ? filesWords.folderMarks(node.name, label)
-                : undefined
-            }
-            aria-description={node.kind === "folder" ? undefined : label}
-            title={node.name.length > nameLimit ? node.name : undefined}
-            className={`flex h-8 cursor-pointer items-center gap-1 rounded-sm pr-2 text-sm text-fg outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-accent aria-selected:bg-accent-soft`}
-            style={{ paddingLeft: `${row.depth * 16 + 4}px` }}
-            onClick={(event) => {
-              event.stopPropagation();
-              activate(row);
-            }}
-          >
-            <span
-              className="inline-grid size-icon-md shrink-0 place-items-center *:size-full"
-              aria-hidden="true"
+          <Fragment key={node.path}>
+            {/* biome-ignore lint/a11y/useKeyWithClickEvents: keys are handled by the tree */}
+            <div
+              role="treeitem"
+              data-path={node.path}
+              tabIndex={node.path === stop ? 0 : -1}
+              aria-level={row.depth + 1}
+              aria-posinset={row.position}
+              aria-setsize={row.siblings}
+              aria-expanded={node.kind === "folder" ? open : undefined}
+              aria-selected={node.path === activePath}
+              aria-label={
+                label !== undefined && node.kind === "folder"
+                  ? filesWords.folderMarks(node.name, label)
+                  : undefined
+              }
+              aria-description={node.kind === "folder" ? undefined : label}
+              title={node.name.length > nameLimit ? node.name : undefined}
+              className={`flex min-h-8 cursor-pointer items-center gap-1 rounded-sm pr-2 text-sm text-fg outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-accent aria-selected:bg-accent-soft`}
+              style={{ paddingLeft: `${row.depth * 16 + 4}px` }}
+              onClick={(event) => {
+                event.stopPropagation();
+                activate(row);
+              }}
             >
-              {node.kind === "folder" && (open ? <ChevronDownIcon /> : <ChevronRightIcon />)}
-            </span>
-            <span className="min-w-0 truncate">{cutInMiddle(node.name, nameLimit)}</span>
-            <RowMarks node={node} />
-          </div>
+              <span
+                className="inline-grid size-icon-md shrink-0 place-items-center *:size-full"
+                aria-hidden="true"
+              >
+                {node.kind === "folder" && (open ? <ChevronDownIcon /> : <ChevronRightIcon />)}
+              </span>
+              {renaming?.path === node.path ? (
+                <RenameRow
+                  name={node.name}
+                  onApply={renaming.onApply}
+                  onCancel={renaming.onCancel}
+                />
+              ) : (
+                <span className="min-w-0 truncate">{cutInMiddle(node.name, nameLimit)}</span>
+              )}
+              <RowMarks node={node} />
+            </div>
+          </Fragment>
         );
       })}
     </div>

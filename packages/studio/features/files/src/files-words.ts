@@ -73,19 +73,19 @@ export const filesWords = {
       ? `Couldn't create ${path}.`
       : `Couldn't create ${path}: ${reason.replace(/\.$/, "")}.`,
   pathPrivate: (path: string): string => `"${path}" is not part of the workspace definitions`,
-  renameTitle: "Rename file",
-  renamePath: "New path",
-  renameConfirm: "Rename",
-  renaming: "Renaming…",
-  /** Under the Rename field when the path is the file's own. */
-  renameSame: "That is the file's own path.",
-  /** Under the Rename field when another file has the path. */
-  renameTaken: (path: string): string => `${path} already exists.`,
-  /** The line of the Rename dialog about files that name this one. */
-  alsoUpdates: (count: number): string =>
-    `Also updates ${count} ${count === 1 ? "place" : "places"}`,
+  /** The name of the field that edits a file's name in its row, for a screen reader. */
+  renameLabel: (name: string): string => `Name of ${name}`,
+  /** Under the name being edited in its row when it holds a `/`. */
+  renameSlash: "A name can't contain /.",
+  /** When the host gave no sentence for a refused rename. */
+  couldntRename: (path: string): string => `Couldn't rename to ${path}.`,
+  /** The second line of the rename toast: how many places in other files change, and whose they are. */
+  alsoUpdated: (count: number, owners: readonly string[]): string =>
+    `Also updated ${count} ${count === 1 ? "place" : "places"}${owners.length > 0 ? `: ${owners.join(", ")}` : ""}.`,
   /** The toast after a rename, with the new path. */
   renamed: (path: string): string => `Renamed to ${path}`,
+  /** The toast when Undo can't move a renamed file back. */
+  couldntMoveBack: (path: string): string => `Couldn't move ${path} back`,
   /** The toast after a delete: with a second line it is a sentence and ends with a full stop. */
   deleted: (path: string, withLine: boolean): string =>
     `Moved ${path} to the trash${withLine ? "." : ""}`,

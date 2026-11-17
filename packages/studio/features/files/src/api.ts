@@ -14,6 +14,8 @@ export {
   type FilesListing,
   type OutsideChange,
   type RemovedFile,
+  type RenamedFile,
+  type RenameImpact,
 } from "./files-host.ts";
 export { filesWords } from "./files-words.ts";
 export { type FollowFilesParts, followFilesHost } from "./follow-host.ts";
