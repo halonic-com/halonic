@@ -13,6 +13,7 @@ import {
   NAME_HINT,
   NEW_ALIAS_TITLE,
   PROVIDER_FIELD,
+  TRY_AGAIN,
 } from "./alias-text.ts";
 
 /** The text a workspace without a `models.yaml` starts from. */
@@ -90,6 +91,7 @@ export function NewAliasDialog({
       form
       confirm={{ label: CREATE, busyLabel: CREATING }}
       busy={busy}
+      retryLabel={TRY_AGAIN}
       {...(failure === undefined ? {} : { error: failure })}
       onConfirm={() => void create()}
       onCancel={onCancel}
@@ -100,7 +102,7 @@ export function NewAliasDialog({
           <Input
             ref={nameField}
             autoFocus
-            disabled={busy}
+            readOnly={busy}
             value={name}
             onChange={(event) => {
               setProblem(undefined);
@@ -112,7 +114,7 @@ export function NewAliasDialog({
           {providers.length === 0 ? (
             <Input
               ref={providerField}
-              disabled={busy}
+              readOnly={busy}
               value={provider}
               onChange={(event) => {
                 setProblem(undefined);
@@ -123,6 +125,7 @@ export function NewAliasDialog({
             <Select
               options={providers.map((id) => ({ value: id, label: labels?.get(id) ?? id }))}
               value={provider}
+              disabled={busy}
               onChange={setProvider}
             />
           )}
@@ -130,7 +133,7 @@ export function NewAliasDialog({
         <Field label={MODEL_FIELD} error={problemFor("model")}>
           <Input
             ref={modelField}
-            disabled={busy}
+            readOnly={busy}
             value={model}
             onChange={(event) => {
               setProblem(undefined);

@@ -217,6 +217,7 @@ verifies("plugins.plugin-commands", () => {
       "Couldn't run Show the forecast: the service didn't answer.",
     );
     expect(fieldNamed("Place").value).toBe("Ghent");
+    expect(buttonWords()).toContain("Run command");
     await press("Try again");
     expect(calls).toHaveLength(2);
     expect(dialog().textContent).not.toContain("Couldn't run");

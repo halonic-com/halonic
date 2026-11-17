@@ -353,6 +353,9 @@ verifies("models.aliases.create", () => {
       "Couldn't create the model alias:",
     );
     expect(document.querySelector("dialog")?.textContent).toContain("Nothing was changed.");
+    const buttons = [...document.querySelectorAll("dialog button")].map((b) => b.textContent);
+    expect(buttons).toContain("Try again");
+    expect(buttons.some((b) => b?.startsWith("Create"))).toBe(true);
     expect(changes).toEqual([]);
   });
 });

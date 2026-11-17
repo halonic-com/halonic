@@ -129,6 +129,7 @@ export function PluginCommandDialog({
       form={fields.length > 0}
       confirm={{ label: confirmLabels[run.kind], busyLabel: RUNNING }}
       busy={run.kind === "running"}
+      retryLabel={TRY_AGAIN}
       {...(run.kind === "failed" ? { error: commandFailedLine(command.title, run.reason) } : {})}
       onConfirm={submit}
       cancelLabel={run.kind === "done" ? CLOSE : CANCEL}
@@ -183,7 +184,7 @@ const confirmLabels: Readonly<Record<Run["kind"], string>> = {
   idle: RUN_COMMAND,
   running: RUN_COMMAND,
   done: RUN_AGAIN,
-  failed: TRY_AGAIN,
+  failed: RUN_COMMAND,
 };
 
 /** What's in a field now: text for an Input or a Select, a tick for a Checkbox. */
