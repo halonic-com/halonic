@@ -86,7 +86,7 @@ async function showAdding(trust: (plugin: string) => Promise<void>) {
     input?.dispatchEvent(new Event("input", { bubbles: true }));
   });
   const dialog = document.querySelector("dialog") ?? document;
-  await press("Add plugin", dialog);
+  await press("Add", dialog);
   await act(async () => {});
   return { opened, events, press };
 }
