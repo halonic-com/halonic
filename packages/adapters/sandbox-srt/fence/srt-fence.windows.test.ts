@@ -203,7 +203,7 @@ console.log(JSON.stringify(result));
     expect(sizesAtOpen).toEqual({ ".npmrc": 0, ".mcp.json": 0, ".pre-commit-config.yaml": 0 });
   });
 
-  it("reports whether those empty files stay after the session closes (HAL-11246)", async () => {
+  it("leaves the empty root files in the working folder after the session closes (HAL-11246)", async () => {
     const closing = join(base, "closing");
     await mkdir(closing, { recursive: true });
     const closed = await sandbox.open({ ...profile(), workingFolder: closing });
@@ -215,8 +215,9 @@ console.log(JSON.stringify(result));
         () => false,
       );
     }
-    // Not asserted: this records what srt does, for the threat model (4.6).
-    console.log(`placeholders left after close: ${JSON.stringify(left)}`);
+    // Records what srt does today (threat model 4.6). If srt starts removing them, this fails
+    // and the docs change with it.
+    expect(left).toEqual({ ".npmrc": true, ".mcp.json": true, ".pre-commit-config.yaml": true });
   });
 
   for (const how of ["writing", "moving"] as const) {
