@@ -14,7 +14,7 @@ export interface WhenCardProps {
 }
 
 /**
- * The When card (`routines.page.when-card`): the trigger in words, the On/Off switch that applies
+ * The When card (`routines.when.when-card`): the trigger in words, the On/Off switch that applies
  * at once, and the next start times from the live version. A routine that has never been live
  * can't be turned on here yet, and says so; a change that can't be saved is shown in the card and
  * the switch goes back to what is saved.

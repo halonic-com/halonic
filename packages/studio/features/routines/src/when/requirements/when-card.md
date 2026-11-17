@@ -1,4 +1,4 @@
-# routines.page.when-card
+# routines.when.when-card
 
 - Status: draft
 - Since: unreleased

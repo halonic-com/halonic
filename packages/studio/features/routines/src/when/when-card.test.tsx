@@ -53,7 +53,7 @@ function hostWith(
 const toggle = (page: HTMLElement) =>
   page.querySelector<HTMLInputElement>("input[role=switch]") as HTMLInputElement;
 
-verifies("routines.page.when-card", () => {
+verifies("routines.when.when-card", () => {
   it("shows the trigger in words and the next start times", async () => {
     const { host } = hostWith(
       times("2026-11-06T06:30:00Z", "2026-11-09T06:30:00Z", "2026-11-10T06:30:00Z"),
