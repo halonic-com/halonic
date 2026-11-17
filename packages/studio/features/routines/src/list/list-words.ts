@@ -12,6 +12,7 @@ export const listWords = {
   loadFailedTitle: "Couldn't load routines",
   tryAgain: "Try again",
   tryingAgain: "Trying again…",
+  newRoutine: "New routine",
   nothingYetTitle: "No routines yet",
   emptyHub: (hubName: string) => `No routines in ${hubName} yet.`,
   noMatch: (query: string) => `No routines match "${query}".`,

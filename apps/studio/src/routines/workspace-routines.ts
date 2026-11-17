@@ -276,14 +276,19 @@ export class WorkspaceRoutines implements RoutinesHost {
     this.#parts.files.change(`Deleted routine ${value.name}`, { [routinePath(ref)]: null });
   }
 
+  async starterTarget(hubId: string): Promise<RoutineTargetChoice | undefined> {
+    const choices = targetsOf(await this.#load(), hubId);
+    // Workflows first, as the hub lists them; the hub's first agent when it has none.
+    return choices.find((one) => one.kind === "workflow") ?? choices[0];
+  }
+
   async create({ name, hubId }: NewRoutine): Promise<RoutineRef> {
-    const workspace = await this.#load();
+    // The hubs are known once the workspace has loaded.
+    await this.#load();
     if (!this.#hubs.some((hub) => hub.id === hubId)) {
       throw new Error(`The workspace has no hub "${hubId}".`);
     }
-    const choices = targetsOf(workspace, hubId);
-    // Workflows first, as the hub lists them; the hub's first agent when it has none.
-    const choice = choices.find((one) => one.kind === "workflow") ?? choices[0];
+    const choice = await this.starterTarget(hubId);
     if (choice === undefined) throw new NothingToRun();
     return this.#write(name, hubId, targetFor(choice));
   }
