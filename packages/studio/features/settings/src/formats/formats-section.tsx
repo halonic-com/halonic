@@ -79,7 +79,7 @@ export function FormatsView({
     options.find((option) => option.value === choice)?.label ?? choice;
 
   return (
-    <div className="mt-5 flex max-w-90 flex-col gap-4">
+    <div className="flex max-w-90 flex-col gap-4">
       <Field
         label={FORMAT}
         hint={formatExample(formatLocale(format.value, followTag))}

@@ -5,6 +5,7 @@ import {
   errorReasonFor,
   focusSectionHeading,
   type SettingsSectionProps,
+  sectionHeading,
 } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type TrustedSource, type TrustedSourcesHost, TrustedSourcesService } from "../api.ts";
@@ -57,7 +58,7 @@ export function TrustedSourcesView({ host, readOnly, announce, engine }: Trusted
   // Try again keeps the error on screen with its button busy, and swaps in the list only once it reads.
   const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState<string | undefined>();
-  const lead = useRef<HTMLParagraphElement | null>(null);
+  const root = useRef<HTMLDivElement | null>(null);
   const alive = useRef(true);
   const removeButtons = useRef(new Map<string, HTMLButtonElement>());
   // Where focus goes when the dialog closes after a Remove: the next row's button, else the previous.
@@ -93,7 +94,7 @@ export function TrustedSourcesView({ host, readOnly, announce, engine }: Trusted
   useEffect(() => {
     if (loaded.state !== "ready" || !focusHeading.current) return;
     focusHeading.current = false;
-    focusSectionHeading(lead.current);
+    focusSectionHeading(root.current);
   }, [loaded.state]);
 
   const tryAgain = () => {
@@ -193,11 +194,8 @@ export function TrustedSourcesView({ host, readOnly, announce, engine }: Trusted
   };
   const content = renderContent();
   return (
-    <div className="mt-5 flex flex-col gap-4">
+    <div ref={root} className="flex flex-col gap-4">
       {readOnly ? <ViewOnlyLine>{text.VIEW_ONLY}</ViewOnlyLine> : null}
-      <p ref={lead} tabIndex={-1} className="text-small text-fg-muted">
-        {readOnly ? text.LEAD_SERVED : text.LEAD}
-      </p>
       {content}
       {readOnly ? null : (
         <p className="text-small text-fg-muted">
@@ -215,7 +213,7 @@ export function TrustedSourcesView({ host, readOnly, announce, engine }: Trusted
           returnFocus={() => {
             const next = focusAfter.current;
             focusAfter.current = undefined;
-            return (next && removeButtons.current.get(next)) || lead.current;
+            return (next && removeButtons.current.get(next)) || sectionHeading(root.current);
           }}
           onConfirm={() => void confirmRemove(removing)}
           onCancel={() => setRemoving(undefined)}

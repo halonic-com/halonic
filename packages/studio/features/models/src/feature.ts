@@ -1,5 +1,5 @@
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
-import { defineFeature } from "@halonicjs/studio-shell";
+import { defineFeature, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { ALIAS_KIND, ALIAS_KIND_LABEL, aliasTitle } from "./aliases/alias-text.ts";
 import { readModels } from "./aliases/read-models.ts";
 import {
@@ -22,6 +22,10 @@ import { hasProblems } from "./settings/use-problems.ts";
  * spend in the status bar (`models.spend.month-line`), and the **Models** section of Settings
  * (`models.settings.settings-summary`).
  */
+async function modelsLine(context: WorkspaceContext) {
+  return modelsSummary(await readModels(context.services.get(ModelsFilesService)));
+}
+
 export const modelsFeature = defineFeature({
   id: "models",
   title: "Models",
@@ -34,9 +38,9 @@ export const modelsFeature = defineFeature({
       title: "Models",
       scope: "workspace",
       order: 10,
-      async summary(context) {
-        return modelsSummary(await readModels(context.services.get(ModelsFilesService)));
-      },
+      // The line under the name is the summary the phone's list shows too.
+      description: modelsLine,
+      summary: modelsLine,
       attention: hasProblems,
       view: "ModelsSettingsSection",
       load: () => import("./settings/models-settings-section.tsx"),

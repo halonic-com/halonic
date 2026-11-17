@@ -237,3 +237,39 @@ verifies("shell.settings-attention-mark", () => {
     expect(marked(container, "Appearance")).toBe(false);
   });
 });
+
+verifies("shell.settings-section-rhythm", () => {
+  it("draws the description 8px under the name and owns the 20px before the view", async () => {
+    const described = { ...assistant, description: "One line about it." };
+    const { container } = await open({ sections: [described], requested: "assistant" });
+    const heading = container.querySelector("section h3");
+    const line = heading?.nextElementSibling;
+    expect(line?.textContent).toBe("One line about it.");
+    expect(line?.className).toContain("mt-2");
+    expect(line?.className).toContain("text-fg-muted");
+    const body = line?.nextElementSibling;
+    expect(body?.className).toContain("mt-5");
+    expect(body?.textContent).toContain("Assistant view");
+  });
+
+  it("waits for a description that answers later, and leaves it out when it fails", async () => {
+    const later = { ...assistant, description: async () => "Answered later." };
+    const shown = await open({ sections: [later], requested: "assistant" });
+    expect(shown.container.querySelector("section h3 + p")?.textContent).toBe("Answered later.");
+    unmountAll();
+    const failing = {
+      ...assistant,
+      description: async () => {
+        throw new Error("no answer");
+      },
+    };
+    const failed = await open({ sections: [failing], requested: "assistant" });
+    expect(failed.container.querySelector("section h3 + p")).toBeNull();
+    expect(failed.container.querySelector("section h3 + div")?.className).toContain("mt-5");
+  });
+
+  it("keeps the same 8px under the saved and workspace lines", async () => {
+    const { container } = await open({ requested: "models" });
+    expect(container.querySelector("section h3 + p")?.className).toContain("mt-2");
+  });
+});

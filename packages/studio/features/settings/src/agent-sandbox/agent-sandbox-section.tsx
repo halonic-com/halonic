@@ -168,10 +168,12 @@ export function AgentSandboxView({
     remove: { label: text.REMOVE, onClick: onRemove },
   } as const;
   return (
-    <div className="mt-5 flex max-w-120 flex-col gap-4">
-      <p className="text-small text-fg-muted">{text.FIRST_LINE}</p>
+    <div className="flex max-w-120 flex-col gap-4">
       {view.chip ? (
-        <StatusChip tone={chipTones[view.chip.tone]}>{view.chip.label}</StatusChip>
+        // `self-start`: the column stretches its children, and a chip is as wide as its word.
+        <span className="self-start">
+          <StatusChip tone={chipTones[view.chip.tone]}>{view.chip.label}</StatusChip>
+        </span>
       ) : null}
       {view.lead === "" ? null : <p className="text-small">{view.lead}</p>}
       {facts.securityUpdatesOverdue && facts.available ? (

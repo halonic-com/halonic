@@ -1,11 +1,15 @@
 // @vitest-environment jsdom
 import { HostSettings } from "@halonicjs/app";
-import { limitedLookup, type SettingsSectionProps } from "@halonicjs/studio-shell";
+import {
+  limitedLookup,
+  type SettingsSectionProps,
+  type WorkspaceContext,
+} from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HostSettingsService } from "../api.ts";
-import { settingsFeature } from "../feature.ts";
+import { settingsFeature, settingsSections } from "../feature.ts";
 import { change, control, typeAndLeave } from "../test-support/controls.ts";
 import { MemoryHostSettingsStore } from "../test-support/memory-host-settings-store.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -40,9 +44,6 @@ async function typeInTextArea(area: HTMLTextAreaElement, typed: string) {
 verifies("settings.ai-agent-section", () => {
   it("opens Not set up, with the turn limit empty and connector tools on", async () => {
     const { view, store } = await setup();
-    expect(view.textContent).toContain(
-      "Used for new assistant chats in every workspace on this computer. Never saved in a workspace.",
-    );
     expect(view.textContent).toContain("Assistant model");
     expect(view.textContent).toContain("Answers");
     expect(control<HTMLSelectElement>(view, "select").value).toBe("not-set-up");
@@ -57,9 +58,22 @@ verifies("settings.ai-agent-section", () => {
     expect(store.stored.size).toBe(0);
   });
 
-  it("says the computer running Halonic when served", async () => {
-    const { view } = await setup("served");
-    expect(view.textContent).toContain("every workspace on the computer running Halonic");
+  it("registers its first line as the description the container draws, by place", async () => {
+    const section = settingsSections.find(({ id }) => id === "assistant");
+    const describe = section?.description;
+    if (typeof describe !== "function") throw new Error("no description function");
+    const context = {} as WorkspaceContext;
+    expect(await describe(context, "app")).toBe(
+      "Used for new assistant chats in every workspace on this computer. Never saved in a workspace.",
+    );
+    expect(await describe(context, "served")).toContain(
+      "every workspace on the computer running Halonic",
+    );
+  });
+
+  it("does not repeat the first line in its body", async () => {
+    const { view } = await setup();
+    expect(view.textContent).not.toContain("Used for new assistant chats");
   });
 
   it("saves a picked provider with its address, secret name and Local", async () => {

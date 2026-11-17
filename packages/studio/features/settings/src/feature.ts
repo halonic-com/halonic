@@ -1,6 +1,7 @@
 import { defineFeature, type SettingsSectionContribution } from "@halonicjs/studio-shell";
 import { sandboxCommands } from "./agent-sandbox/sandbox-commands.ts";
 import { createSandboxFlow, SandboxFlowService } from "./agent-sandbox/sandbox-flow.ts";
+import * as sandboxText from "./agent-sandbox/sandbox-text.ts";
 import {
   AgentSandboxService,
   AssistantWorkspaceService,
@@ -12,6 +13,7 @@ import {
 } from "./api.ts";
 import { agentCharactersPref, themePref } from "./appearance/appearance-prefs.ts";
 import { onOrOff, themeNames } from "./appearance/appearance-text.ts";
+import * as assistantText from "./assistant/assistant-text.ts";
 import { agentSandboxSummary, assistantSummary } from "./section-summaries.ts";
 import { createRestartFlow, RestartFlowService } from "./updater/restart-flow.ts";
 import { updateCommands } from "./updater/update-commands.ts";
@@ -58,6 +60,7 @@ export const settingsSections: readonly SettingsSectionContribution[] = [
     title: "Assistant",
     scope: "host",
     order: 10,
+    description: (_context, place) => assistantText.FIRST_LINE[place],
     summary: assistantSummary,
     view: "AssistantSection",
     load: () => import("./assistant/assistant-section.tsx"),
@@ -68,6 +71,7 @@ export const settingsSections: readonly SettingsSectionContribution[] = [
     title: "Agent sandbox",
     scope: "host",
     order: 30,
+    description: sandboxText.FIRST_LINE,
     summary: agentSandboxSummary,
     view: "AgentSandboxSection",
     load: () => import("./agent-sandbox/agent-sandbox-section.tsx"),

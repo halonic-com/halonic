@@ -59,6 +59,34 @@ function contextOf(files: ModelsFiles, runCommand = vi.fn(() => true)) {
   return { context: { services, runCommand } as unknown as WorkspaceContext, runCommand };
 }
 
+/** The line the container draws under the name: the section's registered `description`. */
+async function lineOf(files: ModelsFiles) {
+  const section = registered();
+  const { context } = contextOf(files);
+  return typeof section?.description === "function"
+    ? await section.description(context, "app")
+    : undefined;
+}
+
+type Added = {
+  id: string;
+  scope: string;
+  summary?: (c: WorkspaceContext) => unknown;
+  description?: (c: WorkspaceContext, place: "app" | "served") => unknown;
+};
+
+function registered() {
+  const added: Added[] = [];
+  // Every other contribution point accepts a call and ignores it.
+  const ignore: unknown = new Proxy(() => undefined, { get: () => ignore });
+  const studio = new Proxy(
+    { settings: { add: (section: Added) => added.push(section) } },
+    { get: (target, key) => (key in target ? target[key as "settings"] : ignore) },
+  );
+  modelsFeature.register(studio as never);
+  return added.find(({ id }) => id === "models");
+}
+
 async function show(files: ModelsFiles) {
   const { context, runCommand } = contextOf(files);
   const closeSettings = vi.fn();
@@ -72,42 +100,40 @@ async function show(files: ModelsFiles) {
 
 verifies("models.settings.settings-summary", () => {
   it("says the aliases, providers and the monthly budget", async () => {
-    const { view } = await show(
+    const line = await lineOf(
       filesWith({
         aliases: 3,
         providers: ["a", "b"],
         workspace: "version: 1\nid: acme\nname: Acme\nbudget: { currency: EUR, monthly: 50 }\n",
       }),
     );
-    expect(view.querySelector("p")?.textContent).toBe(
-      "3 aliases · 2 providers · budget €50.00 a month",
-    );
+    expect(line).toBe("3 aliases · 2 providers · budget €50.00 a month");
   });
 
   it("uses the singular and leaves out a budget that isn't set", async () => {
-    const { view } = await show(filesWith({ aliases: 1, providers: ["a"] }));
-    expect(view.querySelector("p")?.textContent).toBe("1 alias · 1 provider");
+    const line = await lineOf(filesWith({ aliases: 1, providers: ["a"] }));
+    expect(line).toBe("1 alias · 1 provider");
   });
 
   it("says no providers yet when there are none", async () => {
-    const { view } = await show(filesWith({ aliases: 2, providers: [] }));
-    expect(view.querySelector("p")?.textContent).toBe("No providers yet");
+    const line = await lineOf(filesWith({ aliases: 2, providers: [] }));
+    expect(line).toBe("No providers yet");
   });
 
   it("leaves the aliases out while models.yaml can't be read", async () => {
-    const { view } = await show(
+    const line = await lineOf(
       filesWith({
         aliases: "unreadable",
         providers: ["a", "b"],
         workspace: "version: 1\nid: acme\nname: Acme\nbudget: { currency: USD, monthly: 50 }\n",
       }),
     );
-    expect(view.querySelector("p")?.textContent).toBe("2 providers · budget $50.00 a month");
+    expect(line).toBe("2 providers · budget $50.00 a month");
   });
 
   it("leaves the providers out, not 'no providers yet', while the providers folder can't be read", async () => {
-    const { view } = await show(filesWith({ aliases: 2, providers: "unreadable" }));
-    expect(view.querySelector("p")?.textContent).toBe("2 aliases");
+    const line = await lineOf(filesWith({ aliases: 2, providers: "unreadable" }));
+    expect(line).toBe("2 aliases");
   });
 
   it("closes Settings, then opens Models", async () => {
@@ -122,17 +148,10 @@ verifies("models.settings.settings-summary", () => {
   });
 
   it("registers the section as `models` in the workspace group, with the same line as summary", async () => {
-    const added: { id: string; scope: string; summary?: (c: WorkspaceContext) => unknown }[] = [];
-    // Every other contribution point accepts a call and ignores it.
-    const ignore: unknown = new Proxy(() => undefined, { get: () => ignore });
-    const studio = new Proxy(
-      { settings: { add: (section: (typeof added)[number]) => added.push(section) } },
-      { get: (target, key) => (key in target ? target[key as "settings"] : ignore) },
-    );
-    modelsFeature.register(studio as never);
-    const section = added.find(({ id }) => id === "models");
+    const section = registered();
     expect(section?.scope).toBe("workspace");
     const { context } = contextOf(filesWith({ aliases: 1, providers: ["a"] }));
     expect(await section?.summary?.(context)).toBe("1 alias · 1 provider");
+    expect(await section?.description?.(context, "app")).toBe("1 alias · 1 provider");
   });
 });

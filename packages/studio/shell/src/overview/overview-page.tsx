@@ -309,18 +309,33 @@ function OverviewBody({
       />
     );
   }
+  // Each section is its own box with its heading above it, as Home draws its sections. 8px between
+  // them, and the heading's own 16px top padding makes 24px from one box to the next heading.
   return (
-    <>
-      {sections.map((section) => (
-        <List
-          key={section.id}
-          heading={{ name: headingOf(section) }}
-          rows={rowsOf(section, words, itemMenu, openMenu)}
-          empty={{ plain: true, title: words.emptySection(headingOf(section)) }}
-          onOpen={onOpen}
-          onOpenInNewTab={onOpenInNewTab}
-        />
-      ))}
-    </>
+    <div className="flex flex-col gap-2">
+      {sections.map((section) => {
+        const rows = rowsOf(section, words, itemMenu, openMenu);
+        const name = headingOf(section);
+        return rows.length === 0 ? (
+          <List
+            key={section.id}
+            heading={{ name }}
+            rows={rows}
+            empty={{ plain: true, title: words.emptySection(name) }}
+            onOpen={onOpen}
+            onOpenInNewTab={onOpenInNewTab}
+          />
+        ) : (
+          <List
+            key={section.id}
+            label={name}
+            groups={[{ id: section.id, heading: { name }, rows }]}
+            groupHeadingLevel={2}
+            onOpen={onOpen}
+            onOpenInNewTab={onOpenInNewTab}
+          />
+        );
+      })}
+    </div>
   );
 }
