@@ -4,6 +4,7 @@
 - Approval: Liam asked for this change on HAL-11580 (https://paperclip.halonic.com/HAL/issues/HAL-11580). A team decision with no board card.
 - Kind: user-visible
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:XxQmRG3Mhx9FiKLHXkEJueoDp1PGSo+lXYyKKG7wRwjt8OaKg8Yf/G9y1i1cKGud7z0zdlisu8JLtsnBgxQjDQ==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:TJwqeDVhO59nGVGvUoE7MLIPPRuWqh2Ow/435Pp/wzu+AY7vVscqaKOMWA8opkoXMWA5Zj6E3ahAiyJ6zzxLBA==
 
 ## What changes
 
