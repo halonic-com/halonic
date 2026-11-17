@@ -25,4 +25,3 @@ Workflow triggers only: no unit test applies. The first pull request into a `rel
 ## Covers
 
 - .github/
-- leak-guard
