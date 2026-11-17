@@ -13,3 +13,4 @@ export {
   type SignInLauncherSettings,
   type StartedSignIn,
 } from "./sign-in-launcher.ts";
+export { createSystemBrowserOpener } from "./system-browser-opener.ts";
