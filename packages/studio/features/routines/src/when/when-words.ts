@@ -41,6 +41,7 @@ export const whenWords = {
   searchNeeded: "Give the search something to look for.",
   checkEvery: "Check every",
   addGoogleConnector: "Add a Google connector first: a mail trigger watches its Gmail inbox.",
+  readingMailboxes: "Still reading the Google connectors. Try again in a moment.",
   signalName: "Signal name",
   signalNameNeeded: "Give the signal a name.",
   onlyWhen: "Only when",

@@ -25,8 +25,8 @@ export interface TriggerFieldsProps {
   readonly trigger: RoutineTrigger;
   /** Whether the routine starts on its own. */
   readonly enabled: boolean;
-  /** The Google connectors a mail trigger can watch; empty until they are read, or when there are none. */
-  readonly mailboxes: readonly RoutineMailbox[];
+  /** The Google connectors a mail trigger can watch; `undefined` while they are read, empty when there are none. */
+  readonly mailboxes: readonly RoutineMailbox[] | undefined;
   /** Called with the whole new trigger as soon as a field changes to a value that can be written. */
   readonly onChange: (trigger: RoutineTrigger) => void;
 }
@@ -38,7 +38,9 @@ export interface TriggerFieldsProps {
  * nothing and says to add one.
  */
 export function TriggerFields({ trigger, enabled, mailboxes, onChange }: TriggerFieldsProps) {
-  const [noMailbox, setNoMailbox] = useState(false);
+  const [triedMail, setTriedMail] = useState(false);
+  // The error belongs to the list it was shown for: connectors that arrive take it away.
+  const triggerError = triedMail ? mailboxProblem(mailboxes) : null;
   const kinds: readonly RoutineTrigger["kind"][] = (PICKABLE_KINDS as readonly string[]).includes(
     trigger.kind,
   )
@@ -47,17 +49,17 @@ export function TriggerFields({ trigger, enabled, mailboxes, onChange }: Trigger
   const pick = (kind: string) => {
     if (kind === trigger.kind) return;
     if (kind === "mail") {
-      const first = mailboxes[0];
-      setNoMailbox(first === undefined);
+      setTriedMail(true);
+      const first = mailboxes?.[0];
       if (first !== undefined) onChange(defaultMailTrigger(first.connector));
       return;
     }
-    setNoMailbox(false);
+    setTriedMail(false);
     onChange(defaultTrigger(kind as Exclude<PickableKind, "mail">, deviceTimeZone()));
   };
   return (
     <div className="flex flex-col gap-3">
-      <Field label={words.trigger} error={noMailbox ? words.addGoogleConnector : null}>
+      <Field label={words.trigger} error={triggerError}>
         <Select
           options={kinds.map((kind) => ({ value: kind, label: words.kinds[kind] }))}
           value={trigger.kind}
@@ -69,7 +71,7 @@ export function TriggerFields({ trigger, enabled, mailboxes, onChange }: Trigger
       )}
       {trigger.kind === "signal" && <SignalFields trigger={trigger} onChange={onChange} />}
       {trigger.kind === "mail" && (
-        <MailFields trigger={trigger} mailboxes={mailboxes} onChange={onChange} />
+        <MailFields trigger={trigger} mailboxes={mailboxes ?? []} onChange={onChange} />
       )}
       {trigger.kind === "every" && (
         <EveryFields
@@ -277,4 +279,10 @@ function EveryFields({
       </Field>
     </div>
   );
+}
+
+/** What a New mail pick runs into: nothing to watch yet, or the list still being read. */
+function mailboxProblem(mailboxes: readonly RoutineMailbox[] | undefined): string | null {
+  if (mailboxes === undefined) return words.readingMailboxes;
+  return mailboxes.length === 0 ? words.addGoogleConnector : null;
 }
