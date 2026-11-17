@@ -24,11 +24,11 @@ when something fails.
 Studio is the desktop app, for Windows. Its installer comes with the 0.1.0
 release. To build it yourself, see [apps/studio](apps/studio/README.md).
 
-Studio's Welcome screen has **Open folder** and **New workspace**, and no
-sample yet; a new workspace starts empty. To try Halonic with a sample, run
-`halonic init --example acme` in a terminal (see
-[Try it in 5 minutes](#try-it-in-5-minutes)), then **Open folder** and pick the
-`acme` folder.
+Studio's Welcome screen has **Open folder**, **New workspace** and **Try the
+Acme sample**. The sample opens a copy of Acme, an invented company's support
+workspace. You can also make the same copy in a terminal with
+`halonic init --example acme` (see [Try it in 5 minutes](#try-it-in-5-minutes)),
+then **Open folder** and pick the `acme` folder.
 
 ## Status: what is not in 0.1.0 yet
 
