@@ -126,7 +126,19 @@ fn plugin_git_export_ending_an_unknown_token_does_nothing() {
 fn aged(scratch: &Scratch, name: &str, age: std::time::Duration) -> PathBuf {
     let folder = scratch.work(name).work;
     let changed = std::time::SystemTime::now() - age;
-    std::fs::File::open(&folder)
+    // Windows only opens a folder with the backup-semantics flag, and only for writing.
+    #[cfg(windows)]
+    let handle = {
+        use std::os::windows::fs::OpenOptionsExt;
+        const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+        std::fs::OpenOptions::new()
+            .write(true)
+            .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+            .open(&folder)
+    };
+    #[cfg(not(windows))]
+    let handle = std::fs::File::open(&folder);
+    handle
         .and_then(|file| file.set_modified(changed))
         .expect("the time is set");
     folder
