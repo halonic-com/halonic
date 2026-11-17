@@ -274,6 +274,8 @@ verifies("events.run-log-contract", () => {
       resume: AgentResume;
       // Added after the reference by events.agent-resume-inner (HAL-3361).
       subagent?: string;
+      // Added after the reference by events.approval-requested-connector (HAL-11701).
+      connector?: string;
     }>();
     expectTypeOf<EventOf<"approval.resolved">>().toEqualTypeOf<{
       type: "approval.resolved";
