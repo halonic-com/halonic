@@ -2,6 +2,7 @@
 
 - Approval: HAL-11370 (design check R1, words from microcopy revision 104, decided by the team under HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mWWVEMd/aMR3s8Fii0LwueSZwWZTWAhvQEknH9Kejt6zykTDaLNtBhjvEqQ+OoudtZVV7VlU8Ro+AedlJw4OBQ==
 
 ## What changes
 
