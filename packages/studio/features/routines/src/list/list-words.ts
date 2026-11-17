@@ -23,6 +23,12 @@ export const listWords = {
   pausedUntilTrusted: "Paused until trusted",
 } as const;
 
+/** The search and command words (microcopy 12.1). */
+export const searchWords = {
+  title: "Routines",
+  detail: (hubName: string) => `Routine · ${hubName}`,
+} as const;
+
 const shortDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const shortMonths = [
   "Jan",
