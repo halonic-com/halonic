@@ -86,7 +86,7 @@ server grants trust: you do that on the computer, with `halonic trust`.
 A provider file with a `secret` makes Halonic send that key to the provider's
 `baseUrl`. Every call that resolves a provider checks where the key would go,
 in the CLI, in Studio and for the agent editor's unsaved settings
-(requirement `cli.workspace-models`). The key may go to a non-default address
+(requirement `cli.workspace-provider-key-trust`). The key may go to a non-default address
 only when the workspace is trusted on this computer. Otherwise the call is
 refused with the error `untrusted-provider-address`, which names the provider
 and the origin (scheme, host and port), never the key or the path, and says

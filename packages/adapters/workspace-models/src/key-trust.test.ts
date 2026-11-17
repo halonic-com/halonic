@@ -215,7 +215,7 @@ const entryPoints = {
     }).resolveModel,
 };
 
-verifies("cli.workspace-models", () => {
+verifies("cli.workspace-provider-key-trust", () => {
   describe("where a provider's stored key goes", () => {
     it.each(cases)("$name", (each) => {
       expect(keyDestination(file(each))).toEqual({
