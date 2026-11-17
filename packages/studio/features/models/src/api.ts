@@ -117,3 +117,28 @@ export interface NoLimitMemory {
 /** The "No limit" answers of this device, provided by the app for each open folder. It is optional. */
 export const NoLimitMemoryService: ServiceKey<NoLimitMemory> =
   serviceKey<NoLimitMemory>("models.no-limit");
+
+/**
+ * Asks a provider that runs on this computer or your own network whether it is answering now. The
+ * app provides it for each open folder, from the computer Studio runs on (a phone asks the
+ * computer). A Studio without it shows no Check button.
+ */
+export interface ProviderCheck {
+  /**
+   * Where the provider is reached, such as `localhost:11434`: its `baseUrl`, or its type's usual
+   * address. `undefined` when it has neither, so there is nothing to check.
+   */
+  addressOf(provider: {
+    readonly type: string;
+    readonly baseUrl?: string | undefined;
+  }): string | undefined;
+  /** Whether the provider answers now. It resolves `false` for any failure and never rejects. */
+  isAnswering(provider: {
+    readonly type: string;
+    readonly baseUrl?: string | undefined;
+  }): Promise<boolean>;
+}
+
+/** The provider check of the open folder. It is optional. */
+export const ProviderCheckService: ServiceKey<ProviderCheck> =
+  serviceKey<ProviderCheck>("models.provider-check");
