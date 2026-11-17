@@ -3,6 +3,7 @@ export { defaultLocalAddress, defaultLocalBaseUrl } from "./default-addresses.ts
 export { engineLockFile, routineStateCollection, runTimerCollection } from "./engine-names.ts";
 export type { ModelText } from "./model-texts.ts";
 export { startsAProgram, type WorkflowRef, workflowAgentsOf } from "./workflow-agents.ts";
+export { type WorkspaceBudget, workspaceBudget } from "./workspace-budget.ts";
 export {
   type WorkspaceExecutorInput,
   type WorkspaceExecutorOptions,
