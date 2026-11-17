@@ -95,6 +95,9 @@ export function useRequestPane(options: {
   useEffect(() => {
     const take = () => {
       if (!inbox.takeNewRequest()) return;
+      const text = inbox.takeNewRequestText();
+      if (text !== undefined)
+        setDraft((d) => (d.message.trim() === "" ? { ...d, message: text } : d));
       formAsked.current = true;
       closeLatest.current();
       setSheetOpen(true);

@@ -409,6 +409,24 @@ verifies("inbox.request", () => {
       expect(inbox.takeNewRequest()).toBe(false);
     });
 
+    it("opens the form with the message another page asks for, and keeps what is already typed", async () => {
+      const inbox = new Inbox(fakeRuns([waitingRun("r1", {})]).runs);
+      inbox.requestNewRequest("Hi, a sample email");
+      const root = render(
+        <ToastStoreProvider store={createToastStore()}>
+          <InboxView inbox={inbox} requests={fakeRequests([support]).requests} />
+        </ToastStoreProvider>,
+      );
+      await settled();
+      expect(message(root).value).toBe("Hi, a sample email");
+      expect(document.activeElement).toBe(message(root));
+      expect(inbox.takeNewRequestText()).toBeUndefined();
+      await act(async () => {
+        inbox.requestNewRequest("Another email");
+      });
+      expect(message(root).value).toBe("Hi, a sample email");
+    });
+
     it("goes back to the list on Esc and keeps the text", async () => {
       const { root } = await open(fakeRequests([support]).requests);
       await type(message(root), "Keep me");

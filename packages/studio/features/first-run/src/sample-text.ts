@@ -29,3 +29,6 @@ export const sampleStepWords: Readonly<Record<SampleStepId, { title: string; hin
     hint: "Every step, from the run log.",
   },
 };
+
+/** The invented customer's email that step 1 puts in the request form, as the sample's `refund-question` example has it. */
+export const sampleRefundEmail = "Hi, my order #1042 arrived damaged. Can I get a refund?";
