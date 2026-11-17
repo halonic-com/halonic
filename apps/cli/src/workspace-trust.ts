@@ -4,11 +4,13 @@
 
 import { realpath } from "node:fs/promises";
 import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
+import { startsAProgram } from "@halonicjs/adapter-workspace-models";
 import {
   readLocalIntegrations,
   type TrustCheck,
   TrustService,
   type TrustSubject,
+  trustContentInputOf,
   trustSubjectOf,
 } from "@halonicjs/app";
 import type { Clock, TrustGrant, TrustStore } from "@halonicjs/ports";
@@ -19,6 +21,7 @@ import {
   type LocalIntegrationInput,
   loadWorkspace,
   type RefusedKind,
+  reachesOnlyTheTestModel,
 } from "@halonicjs/workspace";
 import { type CommandSearch, commandPaths } from "./command-paths.ts";
 import type { Message } from "./messages/define.ts";
@@ -46,6 +49,29 @@ export async function workspaceIntegrations(
   shown: string,
 ): Promise<LocalIntegrationInput[]> {
   return await readLocalIntegrations(new FileSystemFolderReader(root, shown), webCryptoDigest);
+}
+
+/**
+ * Whether starting things in the workspace needs no trust, because it can
+ * only reach the built-in test model (Liam, HAL-1984): nothing outside
+ * Halonic starts. `run`, `routines watch`, `runs send`, `serve` and the
+ * serve trust gate all ask this one rule (HAL-12011), so they never
+ * disagree about the same folder. It reads the files and local integrations
+ * as they are now, so an edit that adds a connector or a real provider
+ * turns the answer to `false` at once.
+ *
+ * @param workspace - the workspace as it will be used
+ * @param harness - the harness a run names for all its agents, such as
+ *   `--harness codex`; it starts a program, so it always needs trust
+ */
+export async function needsNoTrust(
+  dir: OpenWorkspaceDir,
+  workspace: LoadedWorkspace,
+  harness?: string,
+): Promise<boolean> {
+  if (startsAProgram(harness)) return false;
+  const integrations = await workspaceIntegrations(dir.root, dir.shown);
+  return reachesOnlyTheTestModel(trustContentInputOf(workspace, integrations));
 }
 
 /**

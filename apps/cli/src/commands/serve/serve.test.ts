@@ -1,3 +1,4 @@
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -26,6 +27,9 @@ let running: { signals: ReturnType<typeof fakeSignals>; serving: Promise<number>
 
 beforeEach(async () => {
   acmeRuns = await makeAcmeRuns("serve");
+  // This Acme reaches only the test model and needs no trust, so most tests give it
+  // a connector that starts a program, which does (HAL-12011).
+  await writeConnector("server.js");
 });
 
 afterEach(async () => {
@@ -36,6 +40,15 @@ afterEach(async () => {
   }
   await removeAcmeRuns(acmeRuns);
 });
+
+/** The edit trust must notice: a connector that starts a program. */
+async function writeConnector(script: string): Promise<void> {
+  await writeFiles(acmeRuns.acme, {
+    "library/connectors/files.connector.yaml": JSON.stringify({
+      transport: { stdio: { command: "node", args: [script] } },
+    }),
+  });
+}
 
 /** Trusts Acme as `halonic trust` does. */
 async function trustAcme(): Promise<void> {
@@ -151,12 +164,7 @@ verifies("cli.commands.serve.serve", () => {
     const address = addressOf(io.stdout[0]);
     expect(await (await fetch(`${address}/api/trust`)).json()).toMatchObject({ state: "trusted" });
 
-    // The edit trust must notice: a connector that starts a program.
-    await writeFiles(acmeRuns.acme, {
-      "library/connectors/files.connector.yaml": JSON.stringify({
-        transport: { stdio: { command: "node", args: ["server.js"] } },
-      }),
-    });
+    await writeConnector("other.js");
     const trustCard = (await (await fetch(`${address}/api/trust`)).json()) as { state: string };
     expect(trustCard.state).not.toBe("trusted");
     const started = await fetch(`${address}/api/runs`, {
@@ -166,6 +174,30 @@ verifies("cli.commands.serve.serve", () => {
     });
     expect(started.status).toBe(403);
     expect(await started.json()).toMatchObject({ code: "workspace_not_trusted" });
+  });
+
+  it("serves a workspace that reaches only the test model without any trust, and its gate says so", async () => {
+    await rm(join(acmeRuns.acme, "library"), { recursive: true });
+    const { io } = startServe("--port", "0");
+    await waitUntil("the server to print its address", () => io.stdout.length >= 1, slowStart);
+    const address = addressOf(io.stdout[0]);
+
+    expect(await (await fetch(`${address}/api/trust`)).json()).toMatchObject({
+      state: "trusted",
+      message: "This workspace needs no trust: it reaches only the test model.",
+    });
+  });
+
+  it("still refuses an untrusted workspace with a real provider and listens on nothing", async () => {
+    await rm(join(acmeRuns.acme, "library"), { recursive: true });
+    await writeFiles(acmeRuns.acme, {
+      "providers/claude.yaml": "id: claude\nname: Claude\ntype: anthropic\n",
+    });
+    const { io, serving } = startServe("--port", "0");
+
+    expect(await serving).toBe(3);
+    running = undefined;
+    expect(io.stdout.join("\n")).not.toContain("Serving");
   });
 
   it("refuses a workspace that isn't trusted here and listens on nothing", async () => {
