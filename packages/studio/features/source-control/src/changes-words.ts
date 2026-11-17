@@ -15,8 +15,7 @@ export const pageWords = {
 /** What the page says when there is nothing to list. */
 export const stateWords = {
   notARepositoryTitle: "Keep a history of your work",
-  notARepositoryBody:
-    "Halonic saves versions of this workspace so you can see what changed and go back.",
+  notARepositoryBody: "Halonic saves versions of this workspace so you can see what changed.",
   turnOnHistory: "Turn on history",
   /** Under "Keep a history of your work": what a folder without history means for saving (save model 2.8). */
   historyIsOff: "History is off. Everything you save is used right away.",
