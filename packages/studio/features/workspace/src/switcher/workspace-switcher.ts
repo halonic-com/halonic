@@ -81,6 +81,8 @@ export class WorkspaceSwitcher {
   #closeRequest: CloseRequest | undefined;
   /** The folder whose save {@link saveAllForWindowClose} is waiting for. */
   #savingForClose: string | undefined;
+  /** The "Opened Acme" or "Created Acme" toast of each open workspace, closed with it. */
+  readonly #openedToasts = new Map<string, string>();
 
   constructor(options: WorkspaceSwitcherOptions) {
     this.#options = options;
@@ -290,6 +292,11 @@ export class WorkspaceSwitcher {
     if (closed === undefined) {
       return;
     }
+    const toast = this.#openedToasts.get(location);
+    if (toast !== undefined) {
+      this.#openedToasts.delete(location);
+      this.#options.toasts.close(toast);
+    }
     closed.value.saving?.dispose();
     closed.value.workspace.dispose();
     await closed.value.dispose();
@@ -406,7 +413,10 @@ export class WorkspaceSwitcher {
     if (asSample) this.recent.remember({ location, name: opened.name, sample: true });
     this.open.add(location, opened);
     this.#remember();
-    this.#options.toasts.show({ tone: "success", title: toast ?? `Opened ${opened.name}` });
+    this.#openedToasts.set(
+      location,
+      this.#options.toasts.show({ tone: "success", title: toast ?? `Opened ${opened.name}` }),
+    );
     return undefined;
   }
 
