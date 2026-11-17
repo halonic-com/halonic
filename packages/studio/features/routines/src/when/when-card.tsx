@@ -1,7 +1,8 @@
 import { Callout, Card, Switch } from "@halonicjs/studio-kit";
 import { useId, useState } from "react";
-import type { RoutinesHost, RoutineView } from "../api.ts";
+import type { RoutinesHost, RoutineTrigger, RoutineView } from "../api.ts";
 import { failureReason } from "../page/page-words.ts";
+import { TriggerFields } from "./trigger-fields.tsx";
 import { useNextTimes } from "./use-next-times.ts";
 import { deviceTimeZone, nextTime, whenWords as words } from "./when-words.ts";
 
@@ -49,6 +50,15 @@ export function WhenCard({ host, routine, announce }: WhenCardProps) {
     }
   };
 
+  const changeTrigger = async (trigger: RoutineTrigger) => {
+    setFailure(undefined);
+    try {
+      await host.save(routine, { trigger });
+    } catch (error) {
+      setFailure(words.couldntSave(failureReason(error)));
+    }
+  };
+
   // Turning a routine that was never live on needs a version first; until that step exists, the
   // switch says so rather than doing nothing.
   const blocked = neverLive && !routine.enabled;
@@ -71,6 +81,10 @@ export function WhenCard({ host, routine, announce }: WhenCardProps) {
     >
       <div className="flex flex-col gap-3">
         <p className="text-body">{routine.triggerSentence}</p>
+        <TriggerFields
+          trigger={routine.trigger}
+          onChange={(trigger) => void changeTrigger(trigger)}
+        />
         {blocked && (
           <p id={reasonId} className="text-small text-fg-muted">
             {words.makeLiveFirst}

@@ -12,6 +12,23 @@ export const whenWords = {
   isOff: (name: string) => `${name} is off. It only runs with Run now.`,
   isOn: (name: string, next: string | undefined) =>
     next === undefined ? `${name} is on.` : `${name} is on. Next: ${next}.`,
+  trigger: "Trigger",
+  kinds: {
+    manual: "Manual only",
+    schedule: "On a schedule",
+    every: "Every …",
+    mail: "New mail",
+    signal: "On a signal",
+    webhook: "From a web request",
+  },
+  days: "Days",
+  atLeastOneDay: "Pick at least one day.",
+  at: "At",
+  moreDetailed: "This schedule is more detailed than the day picker.",
+  every: "Every",
+  everyCount: "Count",
+  everyUnit: "Unit",
+  units: { m: "minutes", h: "hours", d: "days" },
   couldntSave: (reason: string) => `Couldn't save the change. ${reason}`,
 } as const;
 
