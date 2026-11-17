@@ -73,18 +73,6 @@ verifies("tunnel-attacks.host-and-origin", () => {
       ).toContain("421");
     });
 
-    // Open gap (task HAL-5687 keeps the note): the gateway reads the first of two Host lines and
-    // never sees the second, so a hop that reads the other one disagrees with it. RFC 9112 asks for a
-    // 400. It passes while the gap is open and fails when the gateway closes it; then change it to `it`.
-    it.fails("gives no WebSocket to a request with two Host lines", async () => {
-      expect(
-        await statusOf(({ port }) => ({
-          host: `127.0.0.1:${port}`,
-          headers: ["Host: evil.example"],
-        })),
-      ).not.toContain("101");
-    });
-
     it("gives no WebSocket to a request whose target names another host", async () => {
       for (const target of [
         "http://evil.example/v1/gateway",

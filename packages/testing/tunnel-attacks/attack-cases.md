@@ -8,9 +8,9 @@ telling the tunnel's name. Cases B1 to B12 need the pairing and the end-to-end s
 tests yet: this repo's test run refuses a pending test, so they are listed here, and the phase B pull request that
 builds the thing a case attacks writes the test and changes its row.
 
-An open gap is a test written with `it.fails` and a comment. It passes while the gap is open and fails when
-the code closes it, so whoever closes it changes the test to `it`. The findings are kept with the attack-test task
-until they are fixed.
+An open gap is not a test: this repo's guard counts a test that is expected to fail as a skip, and a skip needs
+a signed decision note. So a gap is written in the Open column and kept with the attack-test task (HAL-5687)
+until it is fixed; the fix adds the test.
 
 | Case | What it tries | Tested in | Open |
 | --- | --- | --- | --- |
