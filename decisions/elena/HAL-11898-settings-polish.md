@@ -3,7 +3,6 @@
 - Task: HAL-11898 (item 1)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11898 (Noah's look review and Liam's code review of #3401; a small detail of an approved screen, team decision, HAL-2282 rule)
 - Kind: user-visible
-- Signature: 
 
 ## What changes
 
