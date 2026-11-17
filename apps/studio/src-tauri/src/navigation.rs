@@ -14,14 +14,17 @@ use tauri::plugin::{Builder, TauriPlugin};
 use tauri::{Manager, Runtime, Url, Webview};
 use tauri_plugin_opener::OpenerExt;
 
-/// The connect page, as the Android window loads it
-/// (tauri.android.conf.json). `#change-address` tells the page to show the
-/// connect screen with the remembered address filled in, instead of
-/// connecting straight away.
-const CHANGE_ADDRESS_PAGE: &str = if cfg!(any(windows, target_os = "android")) {
+/// The page `back_to_connect` loads: the app's own page, which is the connect
+/// page on Android (tauri.android.conf.json) and the Studio on desktop
+/// (tauri.conf.json), the only page the guard keeps. On Android,
+/// `#change-address` tells the connect page to show the connect screen with
+/// the remembered address filled in, instead of connecting straight away.
+const CHANGE_ADDRESS_PAGE: &str = if cfg!(target_os = "android") {
     "http://tauri.localhost/connect.html#change-address"
+} else if cfg!(windows) {
+    "http://tauri.localhost/studio.html"
 } else {
-    "tauri://localhost/connect.html#change-address"
+    "tauri://localhost/studio.html"
 };
 
 /// The address the last Connect confirmed: the only one, besides the
@@ -81,6 +84,9 @@ fn target(url: &Url) -> NavigationTarget<'_> {
         scheme: url.scheme(),
         host: url.host_str(),
         port: url.port_or_known_default(),
+        path: url.path(),
+        query: url.query(),
+        fragment: url.fragment(),
     }
 }
 
