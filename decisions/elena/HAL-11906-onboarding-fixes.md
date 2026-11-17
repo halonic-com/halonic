@@ -2,6 +2,7 @@
 
 - Approval: decided by the team in the design check of HAL-5405 (HAL-11903, section 4); Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:YvV9M2+ZxryRJUwb5NeLi94v5PeZlts7qJtHTETTeMm0sEj7XVAg7ZZ4GbIErchnXNrx2QIsHanprMLWT05/BA==
 - Task: HAL-11906
 
 ## What changes
