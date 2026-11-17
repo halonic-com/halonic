@@ -3,6 +3,7 @@
 - Task: HAL-6453 (step 2 of HAL-6369)
 - Approval: Liam wrote this pull request, so Julian approves the note in review on HAL-11623
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KWsbFOaJdS8urhLsDrcSpQTaCHPc4pm6Fdz/KElKSXtT/htWXLpAB9w29GSlXkb3BRnRHLDZopb7FJ3BTCv7Cw==
 
 ## What changes
 
