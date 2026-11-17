@@ -1,7 +1,7 @@
 # spec.wait-until-checks-once
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9816
 
 When a test calls `waitUntil(waitingFor, ready)`, the spec package shall keep calling `ready` every 10 milliseconds until it returns true, and shall make no `expect` call itself. If `ready` is still false after the timeout (4 000 milliseconds unless the test sets one), then the spec package shall throw an error that gives the timeout and says what the test waited for.

@@ -1,7 +1,7 @@
 # engine.listed-tool-approval
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-850 section 3 (signed off on 2026-11-09), HAL-2212 step 4, and Liam's answers on HAL-2212 (the approval is required, so every caller chooses; `call-tool` effects go through the same step)
 
 When the engine builds the tools of a model turn, for a chat turn, a run's model call, a subagent's turn and a `call-tool` effect alike, it shall, for each connector that lists its tools, read the listing (`readToolListing`), check it against the approvals a person gave (`approveListedTools`), and pass only the approved tools on to the fence (`ports.untrusted-tool-listings`). It shall do this at the start of every turn, so an approval revoked since the last turn, and a tool whose name, description or parameters changed, take effect on the next turn, and a changed tool's old version is not offered either. Every other listed tool waits: the engine shall leave it out and return it in `waiting` (`ports.chat-turn-waiting`), apart from the refusals, with its name cut to 64 characters and escaped. The engine shall never put a waiting tool, its name or its text in anything the model gets. A call, or a `call-tool` effect, that names a waiting tool shall be refused like a call to a tool nobody offered. When a connector's approvals can't be read, or its server has no address to approve at, none of its listed tools shall be offered and the listing shall be refused.

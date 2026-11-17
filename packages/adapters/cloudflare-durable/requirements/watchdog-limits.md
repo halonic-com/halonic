@@ -1,7 +1,7 @@
 # cloudflare-durable.watchdog-limits
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6802; part 7 review (HAL-6797, Liam, HAL-8315); build plan part 7 (HAL-197)
 
 The watchdog sweep shall check at most a fixed number of runs (20 by default) and report how many it left for later. It shall take the runs in the order of their ids, in groups of that size, and pick the group by the minute, so every run is checked within a few minutes. It shall not wake a run whose own log says it has ended, even while the run list, which may lag, still shows it as running.

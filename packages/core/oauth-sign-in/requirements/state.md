@@ -1,7 +1,7 @@
 # oauth-sign-in.state
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-699 (plan approved by Liam; security points agreed in HAL-718); the generic form of `google-sign-in.state` (HAL-8323)
 
 The sign-in shall make each OAuth `state` from 32 bytes of cryptographically secure randomness, written as 43 base64url characters, shall compare a returned `state` with the expected one in time that doesn't depend on where they differ, and shall treat a missing or empty `state` as no match.

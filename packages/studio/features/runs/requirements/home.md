@@ -1,7 +1,7 @@
 # runs.home
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1301 (T8), HAL-8395; ux-checklists-t8-t9 (HAL-1360) revision 10, 1.1; ux-checklists-t2-t6-t7 (HAL-1323) 1.9 and 1.15; microcopy revision 94, 3.3 and 3.4 (HAL-751); HAL-11115
 
 The Home screen shall show a Recent runs section with the latest five runs, running and needs-you runs above finished ones even when older, each with its workflow's name, the line the Runs list shows under What ran, and its status chip. A finished test run shall be left out. While a run is running, the heading shall read "*N* running". Without runs the section shall say "No runs yet. When an agent or workflow runs, you'll see it here." and, under it in muted text, "Studio shows what your agents are doing and lets you read each run. To start one, use the command line: `halonic run *name*`." with the command in code style and *name* the first workflow in the Workflows list's order, as the name `halonic run` takes, so Home never ends on nothing. In the Acme sample, where a run starts from the Inbox, the section shall say only "No runs yet. Start one from the Inbox, and it shows up here.", with no command line note. A workspace with no workflow shall say "This workspace has no workflows yet. Add one in Workflows, then start it from the command line." instead, and while the workflow names are loading or can't be read, the sentence shall have no name (HAL-10128); before the first list loads it shall show its skeleton, and when that load fails the section's error with Try again. A row shall open its run in the active tab. On a phone, **See all runs** shall follow the rows.

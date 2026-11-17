@@ -1,7 +1,7 @@
 # shell.sidebar-views
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1293 (T5, Files tree); plan HAL-10534, review HAL-10535; flow-files 3.1
 
 The shell shall let a feature add a view to the sidebar through the point `sidebarViews.add`, so the sidebar can switch between the Studio's places and that view without the shell knowing what the view shows. The shell shall list the views by `order`, lowest first, then by `id`, record which feature added each one, and list none while no feature adds one. If two views share an id, an id isn't a valid name, a view isn't a plain object or has no label, or a feature adds one after its `register` returned, then the shell shall throw a `ShellError` that names the feature.

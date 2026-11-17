@@ -1,7 +1,7 @@
 # app.doctor-no-sandbox
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5397; HAL-3779 design (section 7)
 
 While the person's choice is no sandbox and the sandbox choice runs it, `halonic doctor` shall have a No sandbox line marked as a warning, with the time and app version of the choice and the limit codes `no-file-fence` and `no-network-fence`. With any other choice, or none, there shall be no such line.

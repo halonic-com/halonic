@@ -1,7 +1,7 @@
 # format.deployments-cloudflare
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6699 (HAL-198 build plan, step 1a; multi-cloud ADR on HAL-35, 5.7)
 
 When `parseFile` reads a `deployments.yaml`, the format shall accept on each deployment an optional `cloudflare` block with a required `worker` and an optional `domain` and `location`, and an optional `limits` block with an optional `dailyRequests`, and shall refuse any other key in either block. `worker` shall be 1 to 63 lowercase letters, digits or `-`, not starting or ending with `-`; `domain` shall be a lowercase host name with at least two labels and no scheme, port or path; `location` shall be `eu`; `dailyRequests` shall be a whole number above zero. When a deployment has a `cloudflare` block and a `host` other than `cloudflare`, the format shall warn with `cloudflare-settings-unused` at that block, without failing the file.

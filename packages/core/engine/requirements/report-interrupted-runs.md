@@ -1,7 +1,7 @@
 # engine.report-interrupted-runs
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1845 (the Studio's "started again" notice, F15b); Liam's decision on HAL-10694
 
 When the engine is asked to get ready, it shall end the runs it lost when it last stopped (`engine.end-interrupted-runs`, `engine.end-orphaned-child-runs`) if that hasn't happened yet, and then tell how many of them it ended with `reason: "interrupted"`. A child run it cancelled because its parent had ended (`reason: "cancelled"`) shall not be counted. It shall tell the same number on every call, and end no run twice. A failure to end them is raised, and tried again on the next call.

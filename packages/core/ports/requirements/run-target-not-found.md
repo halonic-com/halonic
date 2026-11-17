@@ -1,7 +1,7 @@
 # ports.run-target-not-found
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8281, from the #2396 review (HAL-8252, item 3); reviewed by Liam
 
 The ports package shall give `RunExecutor` one error, `RunTargetNotFound`, for a `start` or `startAgent` whose hub, workflow or agent doesn't exist, with `kind` (`hub`, `workflow` or `agent`) and the `id` the request named, and an `isRunTargetNotFound(value)` check that tells it apart by its `name`, `kind` and `id`, without `instanceof`, so it works when an executor has its own copy of the package. It is a `RangeError`, as the lookups threw before, so a caller that caught that still does. Any other failure of a start stays a plain error.

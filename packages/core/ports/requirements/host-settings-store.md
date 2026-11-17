@@ -1,7 +1,7 @@
 # ports.host-settings-store
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6159 (the settings host API, T11 PR 7; design on HAL-6159, reviewed on HAL-6216); the T11 spec on HAL-1294, section 6 (`settings.ai-agent.device-wide`: saved where Halonic runs, never written to any workspace file)
 
 The ports package shall have a `HostSettingsStore` port that reads every saved host setting by key, saves one key's JSON value (`null` included), removes one key, and watches for changes made by anything, with a function that stops the watch. The port shall only store values: it shall have no method that knows a setting's meaning or default. It shall export `isHostSettingKey`, which allows only two or more words of lowercase letters and digits, each word starting with a letter and joined inside by single `-`, joined by `.`, at most 64 characters, and `hostSettingsMaxBytes`, 256 KiB of the values as compact JSON in UTF-8.

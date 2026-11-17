@@ -1,7 +1,7 @@
 # server.google-setup-write
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9409; Liam's plan approval on HAL-10009
 
 The server shall start a Google setup record on `POST /api/google/setups` with `{ accountType, connector: { workspace, id } }`, answer 201 with its `accountRef`, and keep the connector link on the record, so that the record is the one `forConnector` finds for that workspace and connector. A connector that already has a record shall keep it: the answer is 200 with that record's `accountRef` and nothing is written, so two quick starts make one record. It shall change a record on `PATCH /api/google/setups/<accountRef>` for the edits a person makes only (account type, project ID, a step done or open again, "In production", client ID, and that the connector's address changed, which clears the wrong-account note), and refuse the edits the server records itself (sign-in, client secret, service checks). It shall remove a record, its refresh token and its client secret, not while another account uses the client, on `POST /api/google/setups/<accountRef>/start-over`, without asking Google, and in the same step start a fresh record for the same connector and account type, answering the secret's outcome and the fresh `accountRef`. A body that isn't what the route expects, or a connector link that breaks the name rules, shall answer 400 `bad_request` and write nothing. A ref with no record shall answer 404 `google_setup_not_found`. A request a browser says comes from another site shall be refused. No answer shall hold a secret, a token or a client ref.

@@ -1,7 +1,7 @@
 # studio.src-tauri.crates.sandbox-elevate.sandbox-elevate
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1451, HAL-1415, HAL-7385, HAL-7386
 
 When the agent sandbox is set up or removed on Windows, the only program that runs with administrator rights shall be the helper, given one fixed verb (`setup` or `remove`) and no options. The helper shall run srt-win only from a copy in an admin-only folder under Program Files whose SHA-256 matches the one built into the helper, with fixed arguments, from System32. It shall write nothing into that folder that Users can read before it is checked. It shall not ask for administrator rights a second time. For a removal it shall run only srt-win's machine-wide step (`uninstall --elevated-step`), and it shall give srt-win an admin-only folder as `LOCALAPPDATA`, so that nothing it runs opens or changes the user's own session folder. After a setup that passes it shall list "Halonic agent sandbox" in Installed apps, and a removal that passes shall take that entry and its folder away. A signed release shall list it only when the helper's copy in that folder is signed by the same publisher as the helper itself.

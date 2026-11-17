@@ -1,7 +1,7 @@
 # runtime.scheduled
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6802, HAL-8635; build plan parts 7 and 9 (HAL-197)
 
 The Worker's `scheduled()` shall run on a cron trigger every minute. Each run shall hand the cron's scheduled time to the routines object's tick and then sweep the watchdog, and shall run both even when the other fails. When the tick failed or the watchdog could not check a run, `scheduled()` shall reject with an error that names what failed and the ids of the runs, never a value, after both have run. When the deployment lacks a binding or a secret, it shall fail with the configuration error before either runs.

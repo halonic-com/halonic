@@ -1,7 +1,7 @@
 # google-setup.connector-block
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-713 (C3); google-setup-flow (HAL-621) section 4.4; ux-checklists (HAL-1019) sections 3.4 and 3.5, CHECK U8; security review (HAL-705) A7
 
 The Google setup feature shall give the connector page a Google block for one account. Before the setup has a sign-in or a saved client secret it shall say the account isn't signed in yet and offer **Set up**, which opens the account's setup item. After it, the block shall show the state chip the connector status view shows, the section "How it connects", and the rows Signed in as (address and date, with **Sign in again**), Route (naming the computer that keeps the secret, the same one the secret row names), Account type, Google project (with a link to the client's page in Google Cloud), Client ID in full with **Copy**, Client secret ("Saved · date", with **Replace secret** and where it is kept) and Allowed, one chip for each ticked service. **Sign in again** and **Replace secret** shall open the setup item. When another account uses the client, the secret row shall say "Used by *x@example.com* and *y@example.com*". At the bottom the block shall offer **Disconnect Google…**, unavailable with its reason as visible text while the engine isn't answering. On a phone the block shall be text only, with "View only on a phone. Change connectors and sending on your computer.". The block shall never show the client secret, and never say it is removed from this computer.

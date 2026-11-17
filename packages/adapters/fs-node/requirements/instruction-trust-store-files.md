@@ -1,7 +1,7 @@
 # fs-node.instruction-trust-store-files
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-3106 slice 3b; `InstructionTrustStore` port v1
 
 The file instruction trust store shall keep the instructions a person trusted for each agent as one JSON file in the folder it is given, named by the lower-case hex SHA-256 of the JSON of `[location, agent]` as UTF-16 code units (little-endian) and `.json`, with the location and the agent as the file's first keys. It shall create the folder with mode `700` and each file with mode `600`, and write a record through a temporary file and a rename. A folder that doesn't exist yet shall hold no records. When a record can't be read, holds another agent's key, or is a link, `get` shall throw naming the agent and its workspace, never return `null`. `remove` shall delete the file without reading it. The adapter shall pass the `contracts.instruction-trust-store` suite.

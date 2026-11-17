@@ -1,7 +1,7 @@
 # shell.phone-search-button
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1290 (T2), plan PR 15c; component specs 15.1 and 24.3 "On a phone" (HAL-175); UX checklist part 1, 1.14 (HAL-1323); visual review kit T2-F11 (HAL-1115)
 
 The phone top bar's Search, `PhoneSearchButton`, shall be a 48px icon button named "Search". When the user presses it, the button shall take the focus, even where a tap doesn't focus a button, and the shell shall open the phone's Search sheet (`shell.phone-search`). When the sheet closes, by Close, Android back or a pick, the shell shall remove the sheet and put the focus back on the button, before a picked place or item opens.

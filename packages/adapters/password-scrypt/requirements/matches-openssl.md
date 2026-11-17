@@ -1,7 +1,7 @@
 # password-scrypt.matches-openssl
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-195 (phase 4); `ports.password-hash-format` (vectors checked against an independent implementation)
 
 The scrypt hasher shall accept exactly the keys Node's scrypt (OpenSSL) computes for the same password, salt and settings, so a hash made by one verifies in the other.

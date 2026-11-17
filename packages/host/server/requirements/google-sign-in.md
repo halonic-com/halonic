@@ -1,7 +1,7 @@
 # server.google-sign-in
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-710 (build plan B5, D6); google setup flow 3.5 (step 7) and the routes doc, section 5.1
 
 The server shall, behind the sign-in and the same-site check, answer `POST /api/google/setups/<accountRef>/sign-in` by starting a sign-in for the account and answering `{ authUrl }`, the address to open in the browser, and by saving on the record that a sign-in started. It shall send Google back to this server's own port, at `GET /api/google/callback`. It shall refuse with 409 `sign_in_needs_this_computer` a request that is not addressed to a loopback name, and with 409 `google_setup_incomplete` a setup without a client ID and secret. It shall, behind the same sign-in and same-site check, answer `DELETE /api/google/setups/<accountRef>/sign-in` (Cancel) by dropping the account's pending sign-in through the `dropSignIn` port, so a callback that still arrives is refused, by saving on the record that the sign-in is over, and by answering 204 whether or not a sign-in was pending. A ref that has no record shall answer 404 `google_setup_not_found`. The callback shall not need a session, because the browser Google sends back may hold none: the sign-in's own `state` is the proof, and the sign-in package refuses a `state` it didn't make. The callback shall finish the sign-in, save on the record how it ended (the sign-in and each service's result, or that the sign-in is over), tell the open setup item through the `signInEvents` port, and answer a page of fixed text for the outcome. The page, the request log and every thrown error shall hold no authorisation code, no `state`, no token and no secret, and the request log shall record the callback by path without its query string.

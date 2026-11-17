@@ -1,7 +1,7 @@
 # deploy.admin-key
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6706; build plan 3d (HAL-198); multi-cloud ADR 5.6
 
 The `withAdminKey` function shall wrap any job that talks to the Worker's `/admin/...` routes. It shall hold the deploy lock from before it sets the secret until after it removes it, so no deploy or rollback runs meanwhile, and set nothing when the lock is taken. It shall make a key of 32 random bytes (base64url) for that one job, set the Workers secret `HALONIC_SECRET_ADMIN_KEY_HASH` to the key's SHA-256 in hex, never the key, run the job with the key, and remove the secret when the job ends, whether it succeeded, failed or was interrupted (Ctrl C), even when the job doesn't stop. It shall try the removal up to three times. The key shall exist only inside the job. When the secret still can't be removed, it shall fail with `admin-key-left`, naming the secret and saying to remove it, whatever the job's result was. The deployments Cloudflare makes when the secret is set and removed shall be marked so that `rollback` never switches to them. No error that leaves it shall hold the key or its hash, in its message, stack or cause chain.

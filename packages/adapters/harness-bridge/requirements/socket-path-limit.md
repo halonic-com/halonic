@@ -1,7 +1,7 @@
 # harness-bridge.socket-path-limit
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6316 (the socket bridge on macOS, after the fence tests in HAL-6348)
 
 When the Node bridge server makes a run's socket folder, it shall first check the socket's path against the limit of the system it runs on, 107 bytes on Linux and 103 on macOS, and for a longer path fail with a message that names the length, the system and its limit, and create nothing.

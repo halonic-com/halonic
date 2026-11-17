@@ -1,7 +1,7 @@
 # fs-node.tool-approval-files
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-2210 step 3; `ToolApprovalStore` port v1; store rows I2, I5–I10, I12 and I13 of the HAL-2579 test cases. It becomes active with `ports.listed-tool-approval`.
 
 The file tool approval store shall keep each source of each workspace in a folder of its own, named by the lower-case hex SHA-256 of `[location, source]` as JSON, as UTF-16 code units (little-endian). In it, each approval shall be one JSON file named by the SHA-256 of the tool's name and `.json`, starting with `"format": 1` and the key, and `waiting.json` shall hold the source's waiting versions. It shall create its folders with mode `700` and its files with mode `600`, and write every file through a temporary file and a rename while holding the source's lock, so waiting versions noted at once are all kept. Holding that lock, it shall first remove the temporary files an earlier write left in the source's folder when its process ended before the rename, and no other file.

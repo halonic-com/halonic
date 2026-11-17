@@ -1,7 +1,7 @@
 # agent-host-client.shell-routes
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5224; `apps/studio/src-tauri/requirements/agent-host-commands.md`, `apps/studio/src-tauri/crates/agent-host/src/routes.rs`
 
 The stand-ins' JSON routes (`agentHostRequestRoutes`) and stream routes (`agentHostStreamRoutes`) shall be exactly the routes the shell's table `ROUTES` lets a page call, with the same answer kind, so a route the stand-ins call is never refused by the shell as `unknown_route` and the shell lets through no route the stand-ins don't call.

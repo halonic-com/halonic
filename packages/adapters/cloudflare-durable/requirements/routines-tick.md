@@ -1,7 +1,7 @@
 # cloudflare-durable.routines-tick
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6797; build plan part 7 (HAL-197); multi-cloud ADR 5.3; design review HAL-6790 (Elena, 12 Nov); `Scheduler` port v1
 
 The Cloudflare routines object shall be the one owner of the routine tick: it passes each tick to the listener one at a time, and a tick that arrives while another runs shall share that tick and start no second one. A tick that rejects shall reject to its caller and not be retried. After every tick, whether it worked or not, the object shall set a backup alarm a few minutes ahead, which each later tick moves on. When that alarm fires because the cron has stopped, the object shall tick at the clock's time and set the alarm again, and a failed backup tick shall not be thrown, so the platform never retries it.

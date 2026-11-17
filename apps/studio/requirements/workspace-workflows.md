@@ -1,7 +1,7 @@
 # studio.workspace-workflows
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9758 (T7 PR 3); flow-workflows 2.2; states K2 (files are changed through the workspace's files, never the engine)
 
 When the desktop app opens a folder, it shall give the Workflows feature the folder's hub workflows, each with the errors and warnings the workspace's checks found in its file and the number of its real runs that wait or run, read from the workspace's files with their unsaved changes. It shall create a new workflow as one undoable change of the workspace's files, with an id taken from its name (`-2` when the hub has it), the step `start` leading to the final step `done`, without the engine, and refuse a hub the workspace doesn't have. It shall tell its listeners when a file changed or a run started, moved on or ended.

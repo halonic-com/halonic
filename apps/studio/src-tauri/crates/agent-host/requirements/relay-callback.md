@@ -1,7 +1,7 @@
 # studio.src-tauri.crates.agent-host.relay-callback
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10028 (plan: HAL-10017, Revision 2); security read HAL-10026
 
 When a connection's first request has no valid token and is `GET /v1/google/callback`, with or without a `?query` of at most 2 KiB, the relay shall hold the request back until its head is whole, pass the host exactly the bytes up to and including the first blank line, and then stop reading that client, so Google's browser redirect reaches the host without the token and nothing else does.

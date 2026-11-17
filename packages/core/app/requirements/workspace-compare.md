@@ -1,7 +1,7 @@
 # app.workspace-compare
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1293, save model 6.3
 
 When a file changed outside Halonic and the user has unsaved changes to it, the kernel shall give Compare both texts and the text Halonic last read. It shall offer a combined text only when a three-way line merge of the two texts over the text Halonic last read has no conflict, and both sides still have the file. When the user keeps their own text, then the unsaved changes shall stay and the next save shall overwrite the outside text. When the user uses the other text, then the unsaved changes to the file shall be dropped. When the user combines both, then the file shall get the combined text, and if the two texts can't be combined, then the kernel shall refuse with a `CannotCombineError` and change nothing. After any choice, the next save of the file shall be written. Using the other text or combining both shall be one undo step.

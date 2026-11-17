@@ -1,7 +1,7 @@
 # google-setup.connector-token
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9410 (follow-up of HAL-9378); Liam's decision of 14 Nov: the run finds the token through the record
 
 When a run needs the sign-in of a Google connector, `googleTokenFor` shall look up the setup record by the connector's workspace key and id, and give the record's account ref and the refresh token's name for it. It shall give `null` when the connector has no setup, and shall not fall back to the connector file's account address or to a record of another workspace.

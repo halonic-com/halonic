@@ -1,7 +1,7 @@
 # server.google-setup
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-710 (build plan B5, D6); Google setup flow design on HAL-621
 
 The server shall answer `GET /api/google/setups/<accountRef>` with the saved progress of that account's Google setup and the steps generated for it (`setupSteps`, from the record's route, account type and project ID, the account's address and the ticked services that the `GoogleSetupSource` port gives), only behind the sign-in. The answer shall hold no client secret, no ref of one, no token and no authorisation code: it shows only that a secret is saved, and when. It shall carry the saved problem (`savedConnectorState`) of the account, if there is one. A ref that has no record, that isn't a setup ref, or whose account no connector uses any more shall answer 404 with the code `google_setup_not_found`. A server whose host passed no `google` ports shall answer 404 `not_found` on every path under `/api/google/`.

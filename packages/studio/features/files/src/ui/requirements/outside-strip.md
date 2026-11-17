@@ -1,7 +1,7 @@
 # files.ui.outside-strip
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-329 files flow 4.6; microcopy rev 78 section 7; HAL-10534; HAL-11117; HAL-11383 (microcopy mc 16, design check HAL-11370 F3)
 
 The file tab shall show, above the editor, a strip when the file has unsaved changes and changed or was deleted outside Halonic, with **Compare** only; when the file can't be read or is in the trash, that strip shows first and this one waits (HAL-11624). Compare shows both texts and offers Keep mine, Use the other one and, when the two don't change the same lines, Combine both. Each choice is saved at once as one undo step, so Undo brings the other text back. Compare takes focus when it opens, and the editor takes focus again after a choice or when Compare is cancelled. After a choice a line above the editor says "Keeping yours", "Using the other one" or "Combined" and the same words are announced; the line goes at the next edit. A file without unsaved changes that changed outside Halonic reloads quietly and shows the toast "Reloaded a.agent.yaml: changed outside Halonic".

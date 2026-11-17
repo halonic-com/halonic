@@ -1,7 +1,7 @@
 # check.tracker-links
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-7143, agreed by Liam on HAL-7136
 
 If a Markdown file has a link whose target starts with `/HAL/issues/`, as an inline link or a reference definition, then the `tracker-links` check shall fail, name the file and line, and say to write the task id as plain text and link the requirement or ADR instead.

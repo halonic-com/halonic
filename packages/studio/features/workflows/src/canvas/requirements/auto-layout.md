@@ -1,7 +1,7 @@
 # workflows.canvas.auto-layout
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9865 (T7 PR 3); flow-workflows 4.2; states C2, C3
 
 When a workflow's steps have no saved place, the workflows feature shall put the first step on top and each step below the step that leads to it, side by side when several steps share a row, and keep the place of any step the person has already moved.

@@ -1,7 +1,7 @@
 # studio.workspace-files-create
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-329 files flow 5; HAL-1293
 
 The app's files host shall create a new file as an empty file added to the workspace's unsaved changes as one undo step, and refuse a path that already has a file, is a folder, has a file on the way, or that the workspace doesn't serve.

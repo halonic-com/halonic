@@ -1,7 +1,7 @@
 # workspace.provider-cost
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-63 requirements (B3 and B4), for the Models budget block and the Prices and budget step (HAL-1292)
 
 The workspace package shall say whether a model provider is on this machine, whether a model on it is also free, and whether a provider may bill per use. A provider's address is its `baseUrl`, or else the default of its type from the ports package (`ollama` and `lmstudio` call localhost, as the adapter does). A provider is on this machine, failing closed, only when its type is `mock` or the host of its address, read by `urlHost`, is `localhost`, in `127.0.0.0/8` or `::1`; an address that can't be read, and an unknown type with no `baseUrl`, are not this machine. `Provider.local` is ignored on purpose: this is decided by type and address, never by a setting. A model on this machine is free only when the provider has no secret and no auth-like header in `options.headers`, the model's name doesn't end in `cloud`, and the alias sets no price. A provider may bill per use unless it is `mock` or has none of these: a secret, an auth-like header, a query string in its `baseUrl`, or a public host of its address (not `10/8`, `172.16/12`, `192.168/16`, `fc00::/7`, `fe80::/10`, a single-label name or this machine); a host that can't be read, or an unknown type with no `baseUrl`, is public. Only the presence of a key is checked, never its value.

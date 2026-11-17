@@ -1,7 +1,7 @@
 # ports.tunnel-resolver
 
 - Status: active
-- Since: 0.2.0
+- Since: unreleased
 - Source: tunnel phase A of the plan "phone reaches a runtime host through pluggable tunnels", approved by the board on 11 Nov; task HAL-5684
 
 The `TunnelResolver` port (version 1) shall turn an endpoint into a `TunnelTransport` on the phone. A transport shall reconnect by itself while the app is in the foreground, without a limit on tries, waiting `tunnelReconnectDelayMs` before each try: 500 ms for the first, doubling to a base of at most 30 s, each moved by up to 20 % either way, so a delay is at most 36 s. A random number outside 0 up to (not including) 1 shall throw a `RangeError`, so a bad source of randomness can't give a delay of 0. A connection open for 30 s shall start the backoff again from the first try. In the background a transport shall be paused: its connection closed and no timer left. Resuming shall connect at once. A transport shall never queue or resend a frame across a reconnect.

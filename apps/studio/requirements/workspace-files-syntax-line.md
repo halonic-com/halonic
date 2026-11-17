@@ -1,7 +1,7 @@
 # studio.workspace-files-syntax-line
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-329 files flow 4.5 ("can't be read" strip); HAL-10534, HAL-11196
 
 The Files host shall say on which line a YAML file stops being valid YAML, so the file tab can say the file can't be read, and shall say nothing for a file that reads as YAML, for a file that isn't YAML, for a file that isn't there, and for a file whose saving is paused because it changed outside Halonic, since the folder then holds another text than the editor.

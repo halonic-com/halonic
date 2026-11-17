@@ -1,7 +1,7 @@
 # password-scrypt.no-work-before-refusal
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-195 (phase 4); `ports.password-hash-format` ("a `RangeError` is thrown before any scrypt work starts")
 
 When `verify` is given a hash that is malformed, in another format or out of range, the hasher shall reject with a `RangeError` before it starts any scrypt work, and the error shall not repeat the hash.

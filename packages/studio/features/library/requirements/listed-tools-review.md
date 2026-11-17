@@ -1,7 +1,7 @@
 # library.listed-tools-review
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-850 (proposal, step 6); HAL-2213; Sofia's microcopy 27 (HAL-751) and checklist parts A and C (HAL-2883)
 
 The Library feature shall keep the review of one connector's listed tools: the tools to approve, the tools their server keeps changing, the tools Halonic refused, and the tools that are approved. Nothing shall be ticked at the start. **Approve selected** shall approve only the ticked tools that the search shows. **Approve all** shall approve only the tools to approve that the search shows. Each shall be approved at the version shown, and a tool that has waited at another version since shall not be approved but shall be reported as changed again. A tool its server keeps changing shall be approved only by its own **Turn it on anyway** button. Its line saying the server keeps changing it shall sit directly above that button. A refused tool shall never be approved, and its reason shall show in full, wrapped. **Approve none** shall close the review, approve nothing and say how many tools stay off.

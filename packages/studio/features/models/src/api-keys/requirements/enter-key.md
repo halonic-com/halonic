@@ -1,7 +1,7 @@
 # models.api-keys.enter-key
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10 migration checklist U31, P7 (Now, decided; new: the old app has no key entry); changed by the save-model decision, HAL-1102 (req-models, HAL-110; flow-models, HAL-177)
 
 When the user enters an API key on a provider's page, the models feature shall store it under the provider's secret name in the OS keychain (of this computer on desktop, of the host when served) and never in a workspace file; in a served page opened on another device over plain http it shall offer no field and show the host command, and over https it shall warn and offer the host command too.

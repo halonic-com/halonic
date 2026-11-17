@@ -1,7 +1,7 @@
 # check.notes-signed
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-11244
 
 If a decision note under `decisions/` has no signature line, a signature line in the wrong form, a signature from a key that `tooling/check/approvers.json` doesn't pin, or a header the note format doesn't accept, then the `notes-signed` check shall fail and name the note, unless the note is listed under "Notes without a signature" in `decisions/liam/HAL-11244-note-record.md` or is the note of the pull request's own branch. The note check verifies a signature against its pull request when it merges; this check keeps a note on `main` from going without one.

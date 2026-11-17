@@ -1,7 +1,7 @@
 # std.amount
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: new in the core std package, for the price fields of the Models feature (HAL-1292)
 
 The amount reader shall read text as a non-negative number written with digits and at most one `.` or `,` as the decimal separator, ignoring surrounding spaces, and shall give nothing for any other text.

@@ -1,7 +1,7 @@
 # studio.src-tauri.engine-lock-commands
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8792, decided on HAL-6602; `holdLock` in `fs-node`; `cli.local-engine-lock`
 
 When the page calls `engine_lock_hold` for a workspace, the shell shall hold `engine.lock` in the workspace's folder in the profile, the file the CLI's engine holds, in the same format and with the same stale takeover, so the CLI and the Studio never both run an engine on one workspace. If another engine holds it, the shell shall refuse the call as `conflict` with the other process's id. The shell, not the page, shall hold the lock, for as long as the app runs, keyed by the window that asked, and shall renew it so it never counts as stale: a call from the window that holds it already, as a reloaded page makes, shall succeed and keep the lock, and a lock the window lost to another process shall be taken again. The shell shall release the lock when the page calls `engine_lock_release`, when the window closes and when the app quits. The page shall name a workspace it opened and never a path; any other workspace shall be refused as `folder_not_open`, before the shell makes a folder or a lock.

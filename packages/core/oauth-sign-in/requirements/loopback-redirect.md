@@ -1,7 +1,7 @@
 # oauth-sign-in.loopback-redirect
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8323 (HAL-984 design, section 4); the generic form of `google-setup.sign-in-loopback-redirect`
 
 The sign-in shall build its redirect URI as `http://127.0.0.1:<port><path>` only, and shall refuse a port outside 1 to 65535 and a path that doesn't start with `/`, holds `//` or `..`, or has any character other than letters, digits and `-._~/`, so it can never carry a query string or fragment.

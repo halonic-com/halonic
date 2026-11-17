@@ -1,7 +1,7 @@
 # ports.tunnel-provider
 
 - Status: active
-- Since: 0.2.0
+- Since: unreleased
 - Source: tunnel phase A of the plan "phone reaches a runtime host through pluggable tunnels", approved by the board on 11 Nov; task HAL-5684
 
 The `TunnelProvider` port (version 1) shall make only the remote gateway reachable from a phone. Its config shall name the gateway by a loopback address and a port, and nothing else. `start` shall reject with a `RangeError` a config that fails `assertTunnelConfig` at runtime: fields other than `gateway`, a host other than `127.0.0.1` or `::1`, or a port that is not a whole number from 1 to 65535. The host shall call `assertGatewayTunnelConfig` with the port its own remote gateway listener is bound to before it calls `start`, so a config aimed at any other port (the bridge's, say) is refused with a `RangeError` and no provider is called. It shall report its capabilities (whether the endpoint is public, whether the path is encrypted), give an endpoint whose URL uses `https:`, `wss:` or `tcp:` and whose `public` equals `capabilities().public`, stream its state as `starting`, `ready`, `degraded` or `down`, with a listed reason exactly when the state is `degraded` or `down`, and stop. Every adapter shall pass the `contracts.tunnel-provider` suite once the fake provider exists.

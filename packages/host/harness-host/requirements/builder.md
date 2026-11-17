@@ -1,7 +1,7 @@
 # harness-host.builder
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6277 (plan approved by Liam in HAL-6487); the instruction trust check from HAL-3106 slice 3d (HAL-10512)
 
 The builder `harnessHostOf` shall build the engine's `HarnessRunsOptions` and the proposal folders of its top-level runs from the host's ports only: it shall pass the host's sandboxes, harnesses, profile builder, home folder, start time limits and instruction trust check to the engine as they are, giving the engine no trust check when the host has none, answer where each agent runs from the person's choices, open each run's bridge on the host's bridge server, make the proposal folders on the run proposal service, and give a `start` that clears what ended runs left before the engine starts any run.

@@ -1,7 +1,7 @@
 # app.connector-inherited-env
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6266 (a local connector program gets the base of the app's environment plus the variables its connector names in `inheritEnv`; design on HAL-6266)
 
 The app shall tell a launcher which of the app's own environment variables a local connector program gets: the base (`app.connector-base-env`) and each variable its connector names in `inheritEnv` that is set, matched in any letter case on Windows and kept as written. It shall leave out a named variable that is not set, a value that starts with `()`, and a name that says it holds a secret (`std.secret-variable-name`), even when the workspace's format check did not run.

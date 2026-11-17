@@ -1,7 +1,7 @@
 # integration-sign-in.sign-out
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8588 (HAL-984 design, section 4, "Revoking and signing out")
 
 The host shall wait for a refresh in flight before it revokes and removes the grant, so a refresh that ends late can't save its rotated refresh token and sign the user in again. While a sign-out runs, the kit's tokens shall give nothing for that sign-in, so no new refresh starts. Then it shall drop the access token in use, so the next request asks the user to sign in.

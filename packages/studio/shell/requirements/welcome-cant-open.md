@@ -1,7 +1,7 @@
 # shell.welcome-cant-open
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: req-shell `shell.welcome.cant-open` (HAL-110), microcopy 2, 3.2 and 22 F13; states-flow-map W4 to W6 and D7 (HAL-5878); HAL-1291
 
 If a folder fails to open from the welcome screen, then the shell shall show "Can't open *folder*: *reason*" under the text in the danger colour, read it to screen readers, and make **Open folder** usable again so the user can pick another folder. The next press of **Open folder** shall clear the message.

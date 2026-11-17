@@ -1,7 +1,7 @@
 # app.money-amount
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1301 (T8); microcopy revision 94, 15.2 "Cost under one cent" (HAL-751); cli-output 3.4
 
 The app shall write an amount of money in the workspace's currency, EUR when none is named, with two decimals, or three below one cent. An amount above zero that would read as zero with three decimals shall read "under" the smallest amount, 0.001. A negative or non-finite amount shall be refused.

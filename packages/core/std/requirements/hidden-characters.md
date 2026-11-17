@@ -1,7 +1,7 @@
 # std.hidden-characters
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: moved from the Inbox's plain values (`inbox.plain-values`, INBOX-CARD-28) so the run page's run log view escapes the same characters (HAL-1301)
 
 The std package shall tell which characters a text can carry without anyone seeing them: control characters other than tab and newline (U+0000–0008, U+000B–001F, U+007F–009F), the soft hyphen (U+00AD), the Arabic letter mark (U+061C), zero-width characters and direction marks (U+200B–200F), direction overrides and isolates (U+202A–202E, U+2066–2069), the word joiner and invisible operators (U+2060–2064), the byte order mark (U+FEFF) and tag characters (U+E0000–E007F). When it escapes JSON text, it shall write each of them as `\uXXXX` escapes, two for a character above U+FFFF, so the text stays the same JSON.

@@ -1,7 +1,7 @@
 # harness-kit.profile-host
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6209; HAL-6169
 
 When the harness profile builder asks the host about an agent, the harness kit shall answer from what the engine asks with and from Halonic's data folder:

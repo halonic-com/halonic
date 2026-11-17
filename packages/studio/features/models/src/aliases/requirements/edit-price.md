@@ -1,7 +1,7 @@
 # models.aliases.edit-price
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-207 M1, agreed in flow-models 2.3 and 8 (HAL-177); HAL-63 (budgets)
 
 When the user enters an input and output price per million tokens on an alias's tab, the models feature shall write them to that alias's `price` in `models.yaml`, saved at once and undoable as one step (Ctrl Z), read in the workspace's budget currency, and when both fields are empty write no `price`.

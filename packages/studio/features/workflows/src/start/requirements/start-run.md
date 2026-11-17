@@ -1,7 +1,7 @@
 # workflows.start.start-run
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10208 (T7 PR 5b); states C18, C19, C25, C26, D7, D8
 
 When the host can start runs, the workflows feature shall show **Run** at the right of the page's header on every tab, which opens a card docked at the right with the run's input as JSON (`{}` at first) and **Start run**; **Start run** shall ask the host to start the workflow's run with that input and, once it has, dock the run's simple card and show a strip above the canvas that names how the run stands in the Runs row's words ("Showing run 01jd8q · failed in Draft reply", "· done", "· budget reached in …", "· cancelled in …", "· running in …", "· waiting in …"), with a button that clears it; until the runs list the new run, the dock shall say "Run started. Waiting for it to appear…" with a button that closes it; a failed run's step shall be ringed in danger with a **Failed** chip. An input that isn't a JSON object shall say so under the field and start nothing. When the start fails the card shall stay open with the input kept and say, in a danger Callout that takes focus, "Couldn't start the run: *reason*." with **Try again**, the reason being "the engine isn't answering. It may still be starting." when the host says the engine can't be reached (the words for where Studio runs). When the host can't start runs, the page shall show no **Run**.

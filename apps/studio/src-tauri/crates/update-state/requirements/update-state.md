@@ -1,7 +1,7 @@
 # studio.src-tauri.crates.update-state.update-state
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1206; flow-install-update 4.1, 4.3 and 4.6 (HAL-1114), U1, U3 and U7; failure path 2 (HAL-1668)
 
 The shell's updater shall check for an update 10 seconds after the window is ready and then whenever 24 hours have passed since the last check by the wall clock, and never by itself while automatic updates are off. Just before it runs the installer, it shall write down the version it installs; at the next start, that version shall be reported once as updated, an older version shall count one failed install for that try, and a newer version shall clear the record. After two downloads of one version whose signature doesn't match, it shall not download that version again until a newer version appears. It shall never write over an updater record whose format is newer than its own, and shall keep the fields of its own format that it doesn't know.

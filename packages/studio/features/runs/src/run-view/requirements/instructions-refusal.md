@@ -1,7 +1,7 @@
 # runs.run-view.instructions-refusal
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10524 (G1); instruction trust UX checklist (HAL-10517) S1, S2, S5, S7 and section 6; `events.run-failed-instructions-not-trusted`; `studio.workspace-instruction-trust`
 
 When a run failed with the reason `instructions-not-trusted`, the run page shall show, in place of its usual failed banner, a banner named "Instructions not trusted" that says the agent didn't start, and why:

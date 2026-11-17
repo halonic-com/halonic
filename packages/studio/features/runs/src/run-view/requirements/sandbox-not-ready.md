@@ -1,7 +1,7 @@
 # runs.run-view.sandbox-not-ready
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-4293 (checklist 3.6, 3.9, 3.10); `events.run-failed-sandbox-not-ready`; `app.sandbox-start-words`; `app.sandbox-start-check`. The words are placeholders until HAL-1784 is approved: reviewers check the keys.
 
 When a run failed with the reason `sandbox-not-ready`, the run page shall show, in the danger tone, a banner named "Run failed" with these lines, in this order:

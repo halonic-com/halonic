@@ -1,7 +1,7 @@
 # integration-runner.sign-in-attacks
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8618 (HAL-984 design, section 8: attack cases T2, T3, T4, T5 and T14)
 
 The bridge shall show the runner nothing of a sign-in's tokens: it shall remove the access token, the refresh token and the client secret from every head, body piece and error it sends, it shall refuse a request of the runner's that carries any of them as `secret-in-request` and record a leak attempt, and it shall refuse a client secret or a token placed other than the sheet says as a leak attempt, before anything is sent.

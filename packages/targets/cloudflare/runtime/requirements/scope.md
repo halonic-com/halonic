@@ -1,7 +1,7 @@
 # runtime.scope
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6803; build plan part 10 (HAL-197)
 
 When a runtime is built with a scope, the blobs, the definition snapshot and every Durable Object it names shall live under that scope, so two runtimes with different scopes on the same bindings share nothing, and a runtime built without a scope shall use the names a deployment has. Only a test sets a scope.

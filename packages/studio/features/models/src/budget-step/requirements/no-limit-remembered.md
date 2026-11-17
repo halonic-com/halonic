@@ -1,7 +1,7 @@
 # models.budget-step.no-limit-remembered
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: flow-models 4.2 and 4.4 (HAL-177), HAL-63 (B5), HAL-577
 
 The models feature shall not offer the Prices and budget step for a provider when "No limit" is remembered for this workspace and that provider's host. The host is the address the provider calls, such as `api.openai.com`, never the computer running Halonic, so a new host asks again.

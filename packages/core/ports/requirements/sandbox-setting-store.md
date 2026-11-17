@@ -1,7 +1,7 @@
 # ports.sandbox-setting-store
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: [pluggable sandbox layer](../../../../docs/adr/2026-11-11-pluggable-sandbox-layer.md), "The setting"; HAL-3779 design section 2.3; HAL-5392
 
 The ports package shall have a `SandboxSettingStore` port (version 1) that gets, saves and removes the person's sandbox choice for this computer and operating system user. A choice shall be either a backend from `sandboxBackendIds` with the time the person chose, or `backend: "none"` with that time and the app version. No record means the person hasn't chosen yet. The port shall only store the choice: it shall have no method that decides which sandbox runs. Every adapter shall pass the `contracts.sandbox-setting-store` suite.

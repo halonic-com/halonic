@@ -1,7 +1,7 @@
 # integration-kit.sign-in-rejected
 
 - Status: active
-- Since: 0.2.0
+- Since: unreleased
 - Source: HAL-8279 (pull request 2 of HAL-984, design section 4, "When the server says no", and attack cases T13 and T15)
 
 The kit shall return a 401 to the integration unchanged and shall not resend the request, because a write might not be safe to send twice. When a hop's answer is a 401, the kit shall call `SignInTokens.rejected` with the sign-in and the value for each token it placed on that exact hop, and for no other: a token left out of the hop, a secret, or a 401 from a hop that placed nothing says nothing about a token. Whether the value is still the current token, and when a refresh is forced, is for `SignInTokens` (it counts only the current token, at most one forced refresh per sign-in per 30 seconds, none for a freshly refreshed token). Any other status leaves `rejected` uncalled.

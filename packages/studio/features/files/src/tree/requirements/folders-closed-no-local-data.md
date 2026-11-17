@@ -1,7 +1,7 @@
 # files.tree.folders-closed-no-local-data
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10 migration checklist U4, U32 (Now); changed by the save-model decision, HAL-1102; req-files (HAL-110); HAL-1293
 
 The file tree shall show the workspace folder as it is on disk, folders first and then files, each sorted by name, folders closed until opened, and never the `.studio`, `.git` or `node_modules` folders.

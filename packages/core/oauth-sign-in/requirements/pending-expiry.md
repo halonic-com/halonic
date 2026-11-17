@@ -1,7 +1,7 @@
 # oauth-sign-in.pending-expiry
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8323 (HAL-984 design, section 4); the generic form of `google-setup.sign-in-expiry`
 
 The package shall count a pending sign-in as expired, so that the callback can't finish it, from 10 minutes after its start by the `Clock`.

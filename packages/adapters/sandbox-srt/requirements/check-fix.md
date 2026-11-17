@@ -1,7 +1,7 @@
 # sandbox-srt.check-fix
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5393; design section 2.6 on HAL-3779; `ports.sandbox-check-fix` (docs/adr/2026-11-12-sandbox-check-fix-data.md); the AppArmor profile CI loads on Ubuntu 24.04 (HAL-6030)
 
 When the sandbox-srt adapter refuses with `bubblewrap-missing`, `linux-tools-missing` or `ripgrep-missing`, it shall name the fix as one install of every package that is missing (`bubblewrap`, `socat`, `ripgrep`) with the package manager it finds on this machine (`apt`, `dnf`, `pacman` or `zypper` on Linux, the first found on `PATH`; `brew` on macOS), or `null` when it finds none. When it refuses with `user-namespaces-restricted`, it shall name the AppArmor profile for `/usr/bin/bwrap` alone, at `/etc/apparmor.d/bwrap`, with the text CI loads on Ubuntu 24.04, and never the machine-wide setting. Only the package manager shall come from the machine; the packages, the program, the path and the profile are the adapter's own. Finding the package manager shall start no program.

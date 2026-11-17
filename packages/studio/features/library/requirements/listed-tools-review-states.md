@@ -1,7 +1,7 @@
 # library.listed-tools-review-states
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-850 (proposal, step 6); HAL-2213; Sofia's checklist part A.8 (HAL-2883); Noah's fallback frames T10-F49 to F54 (HAL-2908)
 
 The Library feature shall show the review of a connector's listed tools without its buttons whenever there is no tool to decide on: while the tools are being read, when they couldn't be read, when Halonic refused the whole listing, when an approval can't be read, and when nothing is waiting. Each shall say so in the words of the catalogue and never show the store's own error. A tool its server keeps changing shall be approved by its own **Turn it on anyway** button, at the version shown. The review shall stay open while other tools wait for a decision, with the approved tool moved to Approved, and close with the toast once nothing is left to decide.

@@ -1,7 +1,7 @@
 # cli.version
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6000, decided by Liam (CLI owner) for the 0.1.0 source install; found on HAL-5994
 
 The `halonic` command shall take `--version` anywhere before a `--`, as an option every command takes. With it, the CLI shall print "Halonic" and Halonic's version from `src/version.ts` on one line on stdout, run no command, and exit with 0. With `--json`, stdout shall instead be one JSON document with `outputVersion` 1, `ok` true and `version`. After a `--`, `--version` shall be an argument like any other.

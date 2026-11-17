@@ -1,7 +1,7 @@
 # app.sandbox-start-words
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-4293 (plan approved on HAL-10918); sandbox-screens 3.1 and 3.10; microcopy 23.3; HAL-1784 (words are placeholders by key)
 
 The sandbox-start words shall give, for every reason code of the `Sandbox` port, one reason, one fix, the fix as a Callout sentence, the fix for a phone and a docs key, under one catalogue key per reason, so every Studio screen reads the same sentence. A code Halonic doesn't know shall read as `other`. The words shall never contain the check's own sentence. A fix that the command line words as "use Halonic inside WSL 2" shall point to Settings.

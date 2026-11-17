@@ -1,7 +1,7 @@
 # test-runner.test-model
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: the old test runner (`packages/testing/test-runner`) at 784f78d, its recorded run logs (`packages/testing/parity/fixtures/base/run-logs.json`), and HAL-7398
 
 When a case's run calls a model, the test runner shall name the model as a real run does: the call's alias, else the `model` of the call's agent, else the hub's default model, else the workspace's, resolved from `models.yaml` and the hub's own aliases. The call shall log that model, and shall be priced from the alias's `price`, as a call to a model on this computer. The case's scripted model shall still answer every call, so the alias's provider and fallbacks are never reached.

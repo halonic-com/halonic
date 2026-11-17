@@ -1,7 +1,7 @@
 # server.google-account-actions
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-710 (build plan B5, D6); google setup flow 3.5 (Check again) and 4.4 (Disconnect)
 
 The server shall, behind the sign-in and the same-site check, answer `POST /api/google/setups/<accountRef>/check` by checking the ticked services again, saving each result on the record and answering with the results. A refused refresh shall be saved on the record as `signInRefused` or `clientRefused`, so no later check asks Google again while it is saved. `POST …/disconnect` shall ask Google to revoke the refresh token, then remove the refresh token, the setup record and the client secret, except that the secret shall stay while another account uses the client. It shall remove them whether or not Google answers, and answer whether Google confirmed. A setup without a client ID and secret shall be refused with 409 `google_setup_incomplete` for a check. No answer shall hold a token, a secret or text from Google beyond its error code.

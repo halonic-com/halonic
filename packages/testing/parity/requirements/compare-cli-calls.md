@@ -1,7 +1,7 @@
 # parity.compare-cli-calls
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5228 (HAL-187 item 9)
 
 When the compare is given the base's golden CLI calls (`cli.json`) and the new CLI's results for the same calls, it shall pair the calls by name and compare each pair exactly: the exit code, stdout, stderr, and every run the call stored with all its events in order, the runs in the order they started. It shall first apply, on the side each names, every CLI rule that an entry of `allowed-differences.json` lists in `cliRules`, in the compare's own order; the CLI rules are the CLI's own and every run-log rule, applied to a call's runs. A call equal as it is shall be `same`, equal after the rules `allowed`, still different and named in a known gap's `calls` `gap`, and otherwise `different`. A call only one side made shall differ.

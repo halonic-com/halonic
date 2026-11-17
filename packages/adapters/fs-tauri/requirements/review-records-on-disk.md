@@ -1,7 +1,7 @@
 # fs-tauri.review-records-on-disk
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1291 (T3 part 4a); where the records go: HAL-3277 and HAL-3417 (kept in the profile like trust, never in the workspace); `reviewFolder` in `@halonicjs/profile`; `openWorkspace`'s `reviewRecords`; `DefinitionStore` port v2
 
 The desktop app shall keep a workspace's review records (the assistant's changes to review, one record per file) where the CLI keeps them: in `<profile>/workspaces/<key>/review`, the folder `reviewFolder` in `@halonicjs/profile` names.

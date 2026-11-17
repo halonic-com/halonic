@@ -1,7 +1,7 @@
 # plugins.plugin-commands
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1740; plugin screens design section 8.1 (HAL-1739); microcopy 24 T14 (HAL-751); UX acceptance checklist 7 and G5 (HAL-1952, HAL-1959)
 
 The Studio shall show a plugin command in a dialog with the command's title, the line "From the *name* plugin · uses the tool *tool*, which reads", the command's form with the kit part for each type, and the buttons Cancel and Run command, whatever the command is called. When the person presses Run command with a required field empty or a value of the wrong kind, the Studio shall say what to do under each such field, focus the first and call nothing. When the tool answers, the Studio shall show its answer as plain text, sanitised Markdown or a table in a Result box with Copy, and the buttons shall become Run again and Close. If the call fails, then the Studio shall say "Couldn't run *title*: *reason*." with Try again and keep what was typed. A command without a form shall run as soon as its dialog opens.

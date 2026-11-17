@@ -1,7 +1,7 @@
 # runtime.durable-object-migrations
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6802; design review HAL-6790 (Elena, 12 Nov)
 
 The Worker shall export every class in `durableObjectClassNames` under its own name, and its configuration (`wrangler.toml`) shall declare exactly those classes as SQLite-backed Durable Objects in its migrations, each with a binding. Its compatibility date shall be the one the test harness runs workerd with.

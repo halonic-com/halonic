@@ -1,7 +1,7 @@
 # connector-stdio-sandbox.workspace-connector-session
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-2310 (D45, board yes on HAL-2257 Q3); Liam's decision on HAL-8403
 
 The `stdio` factory of a host that opens its workspace connectors' sessions itself (`SessionWorkspaceFactory`) shall, on a connector's first call, check the sandbox. When it works, the factory shall build the session's profile itself, with `workspaceConnectorPlace` and `localToolLaunch`, from the connector file, its own new folders and the context's workspace and agent working folders, open the session with that profile and start the connector in it. When it doesn't, the connector shall start as before, without a sandbox. A session that has ended shall be closed and the next call shall open a new one with new folders. Closing the connector shall close its session and remove its folders.

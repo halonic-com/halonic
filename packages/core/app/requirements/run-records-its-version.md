@@ -1,7 +1,7 @@
 # app.run-records-its-version
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5173, step 6a of HAL-3246 (save model 2.2–2.3; `runs.run-view.live-or-saved` in req-runs; Liam's note on the plan: name the date for what it is)
 
 When the app starts a run, it shall pass the executor the version of the workspace the run reads, so the run's `run.started` records it: for a run that reads the live version, its commit and that version's date, the date the version was made; for a run that reads the saved files, such as Try it, Test, or any run while history is off, the saved files. The routine scheduler shall ask for the version as each workflow run starts, from the live version it reads at that moment.

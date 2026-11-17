@@ -1,7 +1,7 @@
 # ports.plugin-secrets
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1737 (P4); the plugins ADR (`docs/adr/2026-11-09-plugins.md`), section 3; the counterpart of `ports.workspace-secrets`
 
 The ports package shall export `pluginSecrets`, a view of a `Secrets` store for one plugin's backend. When the name, compared in `secretKey` form, starts with `plugin__<id>__` for that plugin's id, its `get` shall give what the store gives. For any other name, a workspace's secret, one of Halonic's own, a token or another plugin's, its `get` shall throw a `RangeError` with a fixed message that doesn't repeat the name, and shall not ask the store. The integration kit shall read the secrets of a plugin's backend only through it, and a workspace's picks only through `workspaceSecrets`.

@@ -1,7 +1,7 @@
 # google-sign-in.callback-route
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: code review of 11 Nov (HAL-5219), threat model 4.5; the route is HAL-699
 
 The callback route for Google sign-in shall be a one-shot server bound only to `127.0.0.1` that closes after the first valid callback or after a time limit, refuse a request whose `Host` header isn't the host and port it was started with, escape everything it takes from the query when it answers with a page, and keep the callback URL, with its code and `state`, out of every log. The library already does the rest: it checks `state` first, takes the pending sign-in once, and exchanges the code.

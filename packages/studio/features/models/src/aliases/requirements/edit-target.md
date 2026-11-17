@@ -1,7 +1,7 @@
 # models.aliases.edit-target
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10 migration checklist U29 (Now); changed by the save-model decision, HAL-1102 (req-models, HAL-110; flow-models, HAL-177)
 
 When the user changes an alias's provider or model in the alias editor, the models feature shall write it to `models.yaml`, saved at once and undoable as one step (Ctrl Z), and, while the model name is empty, not write the file and show a field error.

@@ -1,7 +1,7 @@
 # shell.engine-restarted-toast
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1845 (F15b)
 
 When the shell's engine answers again after the shell restarted it, the shell shall show an info toast "The engine stopped and has started again". If the engine ended runs as `interrupted` on the way, then the toast also says how many stopped, and its **Open Runs** button opens the Runs list. The first start, and a start the user asked for with Try again, show no toast.

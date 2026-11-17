@@ -1,7 +1,7 @@
 # server.google-sign-in-orphan-token
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9401 (follow-up of HAL-9394); builds on `server.google-sign-in`
 
 When the sign-in callback finishes a sign-in but the setup's record is gone, because it was deleted between the start and the callback, the server shall remove the refresh token that finishing stored, answer the page for a link that is no longer valid, and raise no error. When the record can't be updated for any other reason, the server shall keep the token and fail the request as before.

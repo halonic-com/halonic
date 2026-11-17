@@ -1,7 +1,7 @@
 # workflows.canvas.arrows
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9865 (T7 PR 3); flow-workflows 4.1, 4.3
 
 When the canvas draws an arrow between two steps, the workflows feature shall draw it from the bottom edge of the first card to the top edge of the second when the second is below, side to side when the two share a row, and otherwise round the right side of both cards, so no arrow runs through either card it joins.

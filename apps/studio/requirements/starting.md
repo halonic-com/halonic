@@ -1,7 +1,7 @@
 # studio.starting
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1290 (T2), plan PR 16d; Sofia's UX check of #1713 (HAL-5329)
 
 While the Studio page loads and the window hasn't drawn yet, the page shall show "Starting Halonic…". When the window draws, it shall replace that text.
