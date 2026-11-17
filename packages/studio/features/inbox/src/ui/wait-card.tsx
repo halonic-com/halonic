@@ -26,6 +26,8 @@ export interface WaitCardProps extends EngineState {
   readonly decisions: Pick<InboxDecisions, "answer">;
   /** Opens the run; without it the card has no **Open run**. */
   readonly onOpenRun?: ((runId: string) => void) | undefined;
+  /** What started the run, after "Started by" in the header; without it the card has no such line. */
+  readonly startedBy?: string | undefined;
   /** The next item, or `null` when nothing else is waiting. */
   readonly next: NextItem | null;
   /** Where you came from, for **Back to run** or **Back to the chat**; `null` from the Inbox itself. */
@@ -152,6 +154,7 @@ export function WaitCard(props: WaitCardProps) {
           title={markHiddenName(item.title)}
           heading={heading}
           since={state.kind === "answered" ? null : waitingSince(new Date(item.since), now())}
+          startedBy={props.startedBy}
           onOpenRun={
             props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId)
           }

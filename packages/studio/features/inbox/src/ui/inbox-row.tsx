@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import type { InboxItem, SetupItem } from "../inbox-items.ts";
 import { approvalTitle } from "../plain/approval-text.ts";
 import { isLate, movesOnMeta, waitingFor } from "../plain/waiting-time.ts";
+import type { RunFacts } from "./run-facts.ts";
 
 /** An item's title, as its row and its card show it. */
 export function itemTitle(item: InboxItem): string {
@@ -13,16 +14,21 @@ export function itemTitle(item: InboxItem): string {
 /**
  * A row (flow-inbox 3.2), the same in the Inbox and on Home's Needs you: the card's title, then
  * since when it waits and, for a wait step with a timer, when it moves on: "Waiting 6 h · moves on
- * Mon 14:00". A setup item has its own row.
+ * Mon 14:00". With the run's facts the line starts with its workflow, and a wait step says it is a
+ * person's: "Support reply · a person step · Waiting 6 h". A setup item has its own row.
  */
-export function rowFor(item: InboxItem, now: Date): ListRow {
+export function rowFor(item: InboxItem, now: Date, facts?: RunFacts): ListRow {
   if (item.kind === "setup") return setupRow(item);
   const waiting = waitingFor(new Date(item.since), now);
   const movesOn =
     item.kind === "wait" && item.movesOnAt !== null
       ? ` · ${movesOnMeta(new Date(item.movesOnAt))}`
       : "";
-  const row = { id: item.key, title: itemTitle(item), meta: `${waiting}${movesOn}` };
+  const what =
+    facts === undefined
+      ? ""
+      : `${facts.workflow}${item.kind === "wait" ? " · a person step" : ""} · `;
+  const row = { id: item.key, title: itemTitle(item), meta: `${what}${waiting}${movesOn}` };
   // Amber says "have a look": a day or more of waiting (the waiting time stays muted).
   return isLate(new Date(item.since), now)
     ? { ...row, trailing: <StatusChip tone="attention">Late</StatusChip> }

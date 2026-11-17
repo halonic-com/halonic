@@ -36,6 +36,8 @@ export interface ApprovalCardProps extends EngineState {
   readonly decisions: Pick<InboxDecisions, "approve" | "reject" | "askForChanges">;
   /** Opens the run; without it the card has no **Open run**. */
   readonly onOpenRun?: ((runId: string) => void) | undefined;
+  /** What started the run, after "Started by" in the header; without it the card has no such line. */
+  readonly startedBy?: string | undefined;
   /** The next item, or `null` when nothing else is waiting. */
   readonly next: NextItem | null;
   /** Where you came from, for **Back to run** or **Back to the chat**; `null` from the Inbox itself. */
@@ -176,6 +178,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
           title={title}
           heading={heading}
           since={state.kind === "decided" ? null : waitingSince(new Date(item.since), now())}
+          startedBy={props.startedBy}
           onOpenRun={
             props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId)
           }
