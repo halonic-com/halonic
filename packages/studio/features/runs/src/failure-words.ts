@@ -1,14 +1,14 @@
 import { capitalised } from "./run-words.ts";
 
-/**
- * The failed banners by cause (microcopy 22 F6, F7, F8, F10, F15, F20, F21). The reason the engine
- * gives never shows: it goes into Copy details, which the banner doesn't have yet.
- */
 /** F7's "the model alias `smart`", or "the model gpt-4o" when the log doesn't give the alias. */
 function modelOrAlias(model: string, alias: string | undefined): string {
   return alias === undefined ? `the model ${model}` : `the model alias ${alias}`;
 }
 
+/**
+ * The failed banners by cause (microcopy 22 F6, F7, F8, F10, F15, F20, F21). The reason the engine
+ * gives never shows: it goes into Copy details, which the banner doesn't have yet.
+ */
 export const failureWords = {
   /** For a failed sandbox start that names no agent. */
   theAgent: "The agent",

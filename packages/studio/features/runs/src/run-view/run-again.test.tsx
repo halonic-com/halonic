@@ -86,6 +86,18 @@ verifies("runs.run-view.run-again", () => {
     expect(openRun).not.toHaveBeenCalled();
   });
 
+  it("says each failed start once", async () => {
+    const startRun = vi.fn(async () => {
+      throw new Error("The engine isn't answering.");
+    });
+    const announce = vi.fn();
+    const root = await open(failed, { startRun }, vi.fn(), (line) => announce(line));
+    await act(async () => button(root, "Run again")?.click());
+    expect(announce).toHaveBeenCalledTimes(1);
+    await act(async () => button(root, "Run again")?.click());
+    expect(announce).toHaveBeenCalledTimes(2);
+  });
+
   it("starts one run however often the buttons are clicked while it starts", async () => {
     let started: (value: { runId: string }) => void = () => {};
     const startRun = vi.fn(() => new Promise<{ runId: string }>((resolve) => (started = resolve)));

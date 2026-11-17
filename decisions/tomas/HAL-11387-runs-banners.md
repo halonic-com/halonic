@@ -14,6 +14,15 @@ run can start." Examples are changed to the new words and two are added; none is
 `runs.run-view.run-again`: a run that doesn't start reads "Couldn't start the run: *reason*" (a
 colon, was a full stop) and is announced. Two examples are changed to the new words.
 
+`runs.run-view.failure-banners`: a model call names the model alias, and the local-model banners
+read as the approved words: **Open Models** on a local provider that can't be reached and on out
+of memory, and the phone sentences ("on your computer", "Fix this on your computer: Models").
+Examples keep their words; none is removed.
+
+`runs.run-view.slow-step-line`: an Ollama model call reads "Waiting for Ollama. The first answer
+can take a minute while it loads the model." The Limits line now says the phone variant is not
+there yet.
+
 ## Why
 
 Microcopy 23.3 and 9.6 gave these words, and the design check found the build used older ones.
@@ -22,3 +31,5 @@ Microcopy 23.3 and 9.6 gave these words, and the design check found the build us
 
 - runs.run-view.run-again
 - runs.run-view.sandbox-not-ready
+- runs.run-view.failure-banners
+- runs.run-view.slow-step-line

@@ -145,7 +145,7 @@ export function RunView({
   useEffect(() => list.noteOpened(runId), [list, runId]);
   const title = runPageWords.title(shortRunId(runId));
   const retry = () => void list.refresh();
-  const runAgain = useRunAgain(runStart, run, log, openRun);
+  const runAgain = useRunAgain(runStart, run, log, openRun, announce);
 
   if (run !== undefined) {
     const context = pageContext(list, state.runs, run, now());
@@ -163,7 +163,6 @@ export function RunView({
           showingLast={state.error !== undefined}
           phone={phone}
           runAgain={runAgain}
-          announce={announce}
         >
           <PageBanner
             run={run}
@@ -384,7 +383,6 @@ function RunLayout({
   showingLast,
   phone,
   runAgain,
-  announce,
   children,
 }: {
   readonly run: SourcedRun;
@@ -392,15 +390,9 @@ function RunLayout({
   readonly showingLast: boolean;
   readonly phone: boolean;
   readonly runAgain: RunAgain | undefined;
-  /** Says a line to a screen reader: why Run again didn't start. */
-  readonly announce?: ((line: string) => void) | undefined;
   readonly children: ReactNode;
 }) {
   const header = runHeader(run, context);
-  const problem = runAgain?.problem;
-  useEffect(() => {
-    if (problem !== undefined) announce?.(runPageWords.runAgainFailed(problem));
-  }, [problem, announce]);
   return (
     <div className={`flex w-full min-w-0 flex-col gap-4 ${phone ? "px-4 py-4" : "px-6 py-5"}`}>
       <PageBackLinkSlot />

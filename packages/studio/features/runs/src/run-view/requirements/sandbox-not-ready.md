@@ -20,7 +20,6 @@ Where the open workspace provides `sandboxStartCheckKey`, the banner shall have 
 
 Where nothing provides it, there is no button. The banner has no way to run anyway.
 
-
 ## Examples
 
 - Given a run that failed with `sandbox-not-ready` and `sandboxReason` `bubblewrap-missing`,

@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-
 import { type SandboxStartResult, sandboxStartWords } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
 import { PresentationProvider } from "@halonicjs/studio-kit";
@@ -73,8 +72,8 @@ verifies("runs.run-view.sandbox-not-ready", () => {
     const words = sandboxStartWords("bubblewrap-missing");
     const root = await open(log("bubblewrap-missing"), async () => ({ ok: true }));
 
-    expect(banner(root)?.textContent).toContain(
-      `Support reply didn't start: the sandbox can't start on this computer.${words.reason}${words.calloutFix}Nothing ran.Read the guide`,
+    expect(banner(root)?.textContent).toBe(
+      `Support reply didn't start: the sandbox can't start on this computer.${words.reason}${words.calloutFix}Nothing ran.Read the guide ↗ (opens in your browser)Check again`,
     );
   });
 
