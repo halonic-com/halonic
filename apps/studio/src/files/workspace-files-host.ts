@@ -15,6 +15,8 @@ import {
   filesWords,
   type OutsideChange,
   type RemovedFile,
+  type RenamedFile,
+  type RenameImpact,
 } from "@halonicjs/studio-feature-files/api";
 import { loadWorkspace, placeOf } from "@halonicjs/workspace";
 import { editYaml, readYaml } from "@halonicjs/yaml";
@@ -229,16 +231,30 @@ export class WorkspaceFilesHost implements FilesHost {
     if ((await files.read(path)) !== null) throw new FilePathError(filesWords.pathTaken(path));
   }
 
-  async renameImpact(from: string, to: string): Promise<number> {
-    return (await this.#renamePlan(from, to)).places;
+  async renameImpact(from: string, to: string): Promise<RenameImpact> {
+    const { places, owners } = await this.#renamePlan(from, to);
+    return { places, owners };
   }
 
-  async rename(from: string, to: string): Promise<void> {
+  async rename(from: string, to: string): Promise<RenamedFile> {
     if (from === to) throw new Error(`${to} already has that name.`);
     await this.#checkFreePath(to);
     await this.#refuseSkillSplit(from, to);
-    const { rewrites } = await this.#renamePlan(from, to);
-    await this.#parts.files.rename(from, to, rewrites);
+    const { rewrites, places, owners } = await this.#renamePlan(from, to);
+    const files = this.#parts.files;
+    await files.rename(from, to, rewrites);
+    const afterRename = files.step;
+    return {
+      places,
+      owners,
+      undo: async () => {
+        if (files.step !== afterRename || !files.undo()) {
+          throw new Error(
+            `${to} can't be moved back, because the workspace changed after it was renamed.`,
+          );
+        }
+      },
+    };
   }
 
   async remove(path: string): Promise<RemovedFile> {
@@ -291,8 +307,8 @@ export class WorkspaceFilesHost implements FilesHost {
   async #renamePlan(
     from: string,
     to: string,
-  ): Promise<{ rewrites: Record<string, string>; places: number }> {
-    const none = { rewrites: {}, places: 0 };
+  ): Promise<{ rewrites: Record<string, string>; places: number; owners: string[] }> {
+    const none = { rewrites: {}, places: 0, owners: [] };
     const old = placeOf(from);
     const next = placeOf(to);
     if (old?.placeId === undefined || next?.placeId === undefined) return none;
@@ -311,7 +327,7 @@ export class WorkspaceFilesHost implements FilesHost {
       if (!edited.ok) throw new Error(`Couldn't update ${place.file}.`);
       rewrites[place.file] = edited.value.text;
     }
-    return { rewrites, places: places.length };
+    return { rewrites, places: places.length, owners: [...new Set(places.map((p) => p.owner))] };
   }
 
   /** The places that name the item in `from` by its id, or `undefined` when the rename gives it no new id. */

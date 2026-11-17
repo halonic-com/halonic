@@ -30,6 +30,20 @@ export interface RemovedFile {
   undo(): Promise<void>;
 }
 
+/** The places in other files a rename changes. */
+export interface RenameImpact {
+  /** How many places name the file by its id. */
+  readonly places: number;
+  /** The names of the agents, hubs, routines and collections those places belong to, each once, in order. */
+  readonly owners: readonly string[];
+}
+
+/** A file that was renamed, and the way to move it back. */
+export interface RenamedFile extends RenameImpact {
+  /** Moves the file back while the rename is still the newest step; rejects with an `Error` whose message is one sentence when it can't. */
+  undo(): Promise<void>;
+}
+
 /** How a file differs outside Halonic while its unsaved changes wait for Compare. */
 export type OutsideChange = "changed" | "deleted";
 
@@ -72,15 +86,15 @@ export interface FilesHost {
    */
   create(path: string): Promise<void>;
   /**
-   * How many places in other files name the file by its id and would change if it were renamed to
-   * `to`: the "Also updates 3 places" of the Rename dialog. Zero for a file nothing names.
+   * The places in other files that name the file by its id and would change if it were renamed to
+   * `to`. None for a file nothing names.
    */
-  renameImpact(from: string, to: string): Promise<number>;
+  renameImpact(from: string, to: string): Promise<RenameImpact>;
   /**
    * Moves a file to `to`, and the places that name it, as one undo step. Rejects with an `Error`
    * whose message is one sentence, such as "workspace.yaml already exists.", when it can't.
    */
-  rename(from: string, to: string): Promise<void>;
+  rename(from: string, to: string): Promise<RenamedFile>;
   /**
    * Deletes a file as one change that goes to the trash when saved. Rejects with an `Error` whose
    * message is one sentence when it can't.

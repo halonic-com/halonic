@@ -1,43 +1,21 @@
 // @vitest-environment jsdom
 import { type ToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
-import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
+import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { filesFeature } from "../feature.ts";
 import type { FilesHost, FilesListing } from "../files-host.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
+import { contextHost, contextOf, listing, rowNamed, settled } from "../test-support/sidebar.ts";
 import { FilesSidebarView } from "./files-sidebar-view.tsx";
 
 afterEach(unmountAll);
-
-const listing = (paths: string[], marks: FilesListing["marks"] = new Map()): FilesListing => ({
-  paths,
-  marks,
-});
-
-function contextOf(host: FilesHost): WorkspaceContext {
-  const services = limitedLookup(filesFeature, { get: () => host, find: () => host });
-  return { services } as unknown as WorkspaceContext;
-}
-
-async function settled(): Promise<void> {
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
-}
 
 async function show(host: FilesHost): Promise<HTMLElement> {
   const page = render(<FilesSidebarView context={contextOf(host)} />);
   await settled();
   return page;
-}
-
-function rowNamed(page: HTMLElement, path: string): HTMLElement {
-  const row = page.querySelector<HTMLElement>(`[data-path="${path}"]`);
-  if (row === null) throw new Error(`no row ${path}`);
-  return row;
 }
 
 function press(row: HTMLElement, key: string): void {
@@ -60,8 +38,8 @@ verifies("files.ui.tree-view", () => {
     compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
     settle: async () => {},
     create: async () => {},
-    renameImpact: async () => 0,
-    rename: async () => {},
+    renameImpact: async () => ({ places: 0, owners: [] }),
+    rename: async () => ({ places: 0, owners: [], undo: async () => {} }),
     remove: async () => ({ places: 0, undo: async () => {} }),
   });
 
@@ -236,8 +214,8 @@ verifies("files.ui.new-file", () => {
     read: async () => null,
     edit: () => {},
     create,
-    renameImpact: async () => 0,
-    rename: async () => {},
+    renameImpact: async () => ({ places: 0, owners: [] }),
+    rename: async () => ({ places: 0, owners: [], undo: async () => {} }),
     remove: async () => ({ places: 0, undo: async () => {} }),
     problems: async () => [],
     outside: () => new Map(),
@@ -301,48 +279,6 @@ verifies("files.ui.new-file", () => {
   });
 });
 
-verifies("files.ui.rename-file", () => {
-  afterEach(() => {
-    unmountAll();
-    restoreModal();
-  });
-
-  it("opens Rename on F2 for the focused file and opens the new path after it", async () => {
-    fakeModal();
-    const rename = vi.fn(async () => {});
-    const host: FilesHost = {
-      ...contextHost(),
-      rename,
-    };
-    const openItem = vi.fn();
-    const context = { ...contextOf(host), openItem } as unknown as WorkspaceContext;
-    const page = render(<FilesSidebarView context={context} />);
-    await settled();
-    const row = rowNamed(page, "models.yaml");
-    act(() => row.click());
-    await act(async () => {
-      row.dispatchEvent(new KeyboardEvent("keydown", { key: "F2", bubbles: true }));
-    });
-    const input = document.querySelector<HTMLInputElement>("input");
-    expect(input?.value).toBe("models.yaml");
-    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-    await act(async () => {
-      set?.call(input, "providers.yaml");
-      input?.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    const button = [...document.querySelectorAll("button")].find((each) =>
-      each.textContent?.startsWith("Rename"),
-    );
-    await act(async () => {
-      button?.click();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-    expect(rename).toHaveBeenCalledWith("models.yaml", "providers.yaml");
-    expect(openItem).toHaveBeenCalledWith({ kind: "file", hub: "workspace", id: "providers.yaml" });
-    expect(document.querySelector("input")).toBeNull();
-  });
-});
-
 verifies("files.ui.delete-file", () => {
   it("deletes the focused file on Delete without a dialog", async () => {
     const remove = vi.fn(async () => ({ places: 0, undo: async () => {} }));
@@ -399,22 +335,3 @@ verifies("files.ui.delete-file", () => {
     expect(document.activeElement).toBe(rowNamed(page, "b.md"));
   });
 });
-
-function contextHost(): FilesHost {
-  return {
-    list: async () => listing(["agents/a.agent.yaml", "models.yaml"]),
-    subscribe: () => () => {},
-    read: async () => null,
-    edit: () => {},
-    create: async () => {},
-    renameImpact: async () => 0,
-    rename: async () => {},
-    remove: async () => ({ places: 0, undo: async () => {} }),
-    problems: async () => [],
-    outside: () => new Map(),
-    noteHeld: () => undefined,
-    onReloaded: () => () => undefined,
-    compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
-    settle: async () => {},
-  };
-}

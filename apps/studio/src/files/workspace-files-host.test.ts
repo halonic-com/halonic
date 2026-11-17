@@ -256,7 +256,7 @@ verifies("studio.workspace-files-rename", () => {
     const { host, renames } = setup([], {}, workspace);
     const to = "hubs/support/library/skills/returns/SKILL.md";
 
-    expect(await host.renameImpact(skill, to)).toBe(1);
+    expect((await host.renameImpact(skill, to)).places).toBe(1);
     await host.rename(skill, to);
 
     expect(renames).toEqual([
@@ -273,8 +273,10 @@ verifies("studio.workspace-files-rename", () => {
   it("changes no other file for a file that is not a Library item or a move that keeps the id", async () => {
     const { host, renames } = setup([], {}, { ...workspace, "notes.md": "hi" });
 
-    expect(await host.renameImpact("notes.md", "todo.md")).toBe(0);
-    expect(await host.renameImpact(skill, "hubs/support/library/skills/refunds/other.md")).toBe(0);
+    expect((await host.renameImpact("notes.md", "todo.md")).places).toBe(0);
+    expect(
+      (await host.renameImpact(skill, "hubs/support/library/skills/refunds/other.md")).places,
+    ).toBe(0);
     await host.rename("notes.md", "todo.md");
 
     expect(renames).toEqual([{ from: "notes.md", to: "todo.md", rewrites: {} }]);
@@ -314,7 +316,7 @@ verifies("studio.workspace-files-rename", () => {
       "id: cases\nname: Claims\nfields:\n  title: { type: text }\n",
     );
     expect(renames[0]?.rewrites?.[lister]).toContain("collections: [cases]");
-    expect(await host.renameImpact(collection, to)).toBe(1);
+    expect((await host.renameImpact(collection, to)).places).toBe(1);
   });
 
   it("keeps the id of a file whose own id isn't its name, and changes no other file", async () => {
@@ -330,7 +332,7 @@ verifies("studio.workspace-files-rename", () => {
     );
     const to = "library/collections/new-name.collection.yaml";
 
-    expect(await host.renameImpact(old, to)).toBe(0);
+    expect((await host.renameImpact(old, to)).places).toBe(0);
     await host.rename(old, to);
 
     expect(renames).toEqual([{ from: old, to, rewrites: {} }]);

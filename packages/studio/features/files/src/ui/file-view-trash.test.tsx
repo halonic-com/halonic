@@ -60,8 +60,8 @@ function hostOf(state: { text: string | null }): { host: FilesHost; notify: () =
     compare: async (path) => ({ path, mine: null, theirs: null, combined: null }),
     settle: async () => {},
     create: async () => {},
-    renameImpact: async () => 0,
-    rename: async () => {},
+    renameImpact: async () => ({ places: 0, owners: [] }),
+    rename: async () => ({ places: 0, owners: [], undo: async () => {} }),
     remove: async () => ({ places: 0, undo: async () => {} }),
   };
   return {
