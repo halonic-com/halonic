@@ -3,7 +3,6 @@
 - Task: HAL-11888
 - Approval: the task asks for this change; Liam reviews it and signs this note as the CTO
 - Kind: internal
-- Signature: pending
 
 ## What changes
 
