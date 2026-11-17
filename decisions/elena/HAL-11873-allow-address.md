@@ -2,6 +2,7 @@
 
 - Approval: the UX checklist on HAL-11873 (Paperclip task) and Liam's decision on HAL-11931
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2GbtXHWUhAiA7vH8I0ROu5Zfn76Ub2/zWSmyg5aejrUo3sln25nHGrDKP5zw0Yjt+OsFU/od84b4LyEroNjlCw==
 
 ## What changes
 
