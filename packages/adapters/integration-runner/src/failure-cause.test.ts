@@ -115,5 +115,15 @@ verifies("integration-runner.failure-cause", () => {
       });
       expect(JSON.stringify(error)).not.toContain(fakeSecret);
     });
+
+    it("a detail entry whose key the secret filter changes is dropped", async () => {
+      const error = await resultFrom({
+        error: "No.",
+        kind: "denied",
+        failureCause: { code: "x.y", detail: { api: "drive", [fakeSecret]: "value" } },
+      });
+      expect(error).toMatchObject({ failureCause: { code: "x.y", detail: { api: "drive" } } });
+      expect(JSON.stringify(error)).not.toContain(fakeSecret);
+    });
   });
 });

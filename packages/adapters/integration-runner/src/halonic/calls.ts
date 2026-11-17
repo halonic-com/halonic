@@ -121,8 +121,8 @@ export class CallTable {
 
   /**
    * What the runner said about why a call failed. A `kind` that is not an
-   * error kind is dropped. A `code` or `detail` value the secret filter
-   * changes is dropped, never kept in its filtered form: a changed value is
+   * error kind is dropped. A `code`, a `detail` key or a `detail` value the
+   * secret filter changes is dropped, never kept in its filtered form: a changed value is
    * not what the integration meant, and may hold part of a secret.
    */
   #failureOf(outcome: ResultOutcome): RunnerToolFailure {
@@ -132,7 +132,7 @@ export class CallTable {
     if (named === undefined) return failure;
     const cause: NonNullable<RunnerToolFailure["failureCause"]> = {};
     if (named.code !== undefined && this.#isUnchanged(named.code)) cause.code = named.code;
-    const kept = Object.entries(named.detail ?? {}).filter(([, value]) => this.#isUnchanged(value));
+    const kept = Object.entries(named.detail ?? {}).filter(([key, value]) => this.#isUnchanged(key) && this.#isUnchanged(value));
     if (kept.length > 0) cause.detail = Object.fromEntries(kept);
     if (cause.code !== undefined || cause.detail !== undefined) failure.failureCause = cause;
     return failure;
