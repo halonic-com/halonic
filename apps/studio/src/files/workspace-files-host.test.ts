@@ -1,89 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { WorkspaceFilesHost } from "./workspace-files-host.ts";
-
-function setup(
-  saved: string[] | Error,
-  pending: Record<string, string | null> = {},
-  more: Record<string, string> = {},
-  outside: { held?: string[]; reloaded?: { path: string }[]; theirs?: string | null } = {},
-) {
-  const watching: {
-    changed?: (changes: { path: string; kind: "changed" | "removed" }[]) => void;
-    closed: number;
-  } = { closed: 0 };
-  const settled: string[] = [];
-  const renames: { from: string; to: string; rewrites?: Record<string, string> }[] = [];
-  const texts: Record<string, string> = { "workspace.yaml": "id: acme\nname: Acme\n", ...more };
-  const listeners = new Set<() => void>();
-  const changes: { label: string; changes: Record<string, string | null>; key?: string }[] = [];
-  let current = pending;
-  let step = 0;
-  const undone: number[] = [];
-  const host = new WorkspaceFilesHost({
-    store: {
-      list: async () => {
-        if (saved instanceof Error) throw saved;
-        return saved;
-      },
-      watch: async (listener) => {
-        watching.changed = listener.changed;
-        return {
-          close: async () => {
-            watching.closed++;
-          },
-        };
-      },
-    },
-    files: {
-      get pending() {
-        return current;
-      },
-      get step() {
-        return step;
-      },
-      undo: () => {
-        undone.push(1);
-        return true;
-      },
-      reloadFromOutside: async () => ({
-        reloaded: outside.reloaded ?? [],
-        held: outside.held ?? [],
-      }),
-      compare: async (path) => ({
-        path,
-        mine: "mine",
-        theirs: outside.theirs === undefined ? "theirs" : outside.theirs,
-        combined: null,
-      }),
-      rename: async (from, to, rewrites) => {
-        renames.push({ from, to, ...(rewrites ? { rewrites } : {}) });
-      },
-      settle: async (path) => {
-        settled.push(path);
-      },
-      read: async (path) => (path in pending ? (pending[path] ?? null) : (texts[path] ?? null)),
-      list: async (dir) => Object.keys(texts).filter((path) => path.startsWith(`${dir}/`)),
-      change: (label, made, options) => {
-        current = { ...current };
-        step++;
-        changes.push({
-          label,
-          changes: made,
-          ...(options?.coalesceKey ? { key: options.coalesceKey } : {}),
-        });
-      },
-    },
-    onChange: (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-  });
-  const save = () => {
-    current = { ...current };
-  };
-  return { host, listeners, changes, watching, settled, renames, undone, save };
-}
+import { setup } from "./workspace-files-host-fixture.ts";
 
 verifies("studio.workspace-files-host", () => {
   it("lists saved files and an unsaved new file together", async () => {
@@ -479,37 +396,5 @@ verifies("studio.workspace-files-outside", () => {
     expect(host.outside().get("a.md")).toBe("changed");
     expect(host.outside().get("b.md")).toBe("deleted");
     expect(told).toBe(1);
-  });
-});
-
-verifies("studio.workspace-files-syntax-line", () => {
-  it("gives the line where a YAML file stops being valid YAML", async () => {
-    const { host } = setup([], {}, { "hubs/p/hub.yaml": "id: p\nname: [unclosed\n" });
-
-    expect(await host.yamlSyntaxLine("hubs/p/hub.yaml")).toBeGreaterThan(0);
-  });
-
-  it("says nothing for YAML that reads, a file that isn't YAML, a missing file or a file that is too long", async () => {
-    const { host } = setup(
-      [],
-      {},
-      {
-        "hubs/p/hub.yaml": "id: p\n",
-        "notes.md": "id: [unclosed\n",
-        "big.yaml": `a: ${"x".repeat(1_000_001)}`,
-      },
-    );
-
-    expect(await host.yamlSyntaxLine("hubs/p/hub.yaml")).toBeNull();
-    expect(await host.yamlSyntaxLine("notes.md")).toBeNull();
-    expect(await host.yamlSyntaxLine("gone.yaml")).toBeNull();
-    expect(await host.yamlSyntaxLine("big.yaml")).toBeNull();
-  });
-
-  it("says nothing for a file whose saving is paused, as its text on disk isn't the editor's", async () => {
-    const { host } = setup(["a.yaml"], {}, { "a.yaml": "a: [unclosed\n" });
-    host.noteHeld([{ path: "a.yaml", current: "theirs" }]);
-
-    expect(await host.yamlSyntaxLine("a.yaml")).toBeNull();
   });
 });
