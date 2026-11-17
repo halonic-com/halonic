@@ -6,7 +6,7 @@ import { StartFailedError } from "./start-failed-error.ts";
 
 /**
  * Why a run failed, as `run.failed` records it: the reason, the host for
- * `model-unreachable` and `model-timeout`, the sandbox's reason code and the agent that didn't start for `sandbox-not-ready`, the sandbox's reason code for
+ * `model-unreachable` and `model-timeout`, the sandbox's reason code and the agent that didn't start for `sandbox-not-ready`, the sandbox's reason code
  * for a `sandbox-start-failed` that has one, the harness cause for a
  * `harness-start-failed` that has one, and the agent and what the check saw for `instructions-not-trusted`.
  */

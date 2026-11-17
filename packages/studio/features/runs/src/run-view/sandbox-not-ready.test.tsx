@@ -241,4 +241,37 @@ verifies("runs.run-view.sandbox-not-ready", () => {
     const root = await open(log("bubblewrap-missing"), undefined, true);
     expect(banner(root)?.textContent).toContain(sandboxStartWords("bubblewrap-missing").phoneFix);
   });
+
+  it("names the agent run.failed records, not the last one that started in a parallel state", async () => {
+    const started = (seq: number, agent: string): RunEvent =>
+      ({
+        runId: failedRun.id,
+        seq,
+        at: "2026-11-16T08:00:00Z",
+        type: "agent.started",
+        state: "fan",
+        agent,
+        prompt: "Go",
+      }) as RunEvent;
+    const failed = { ...log("bubblewrap-missing")[0], seq: 3, agent: "writer" } as RunEvent;
+    const root = await open([started(1, "writer"), started(2, "reviewer"), failed]);
+
+    expect(banner(root)?.textContent).toContain("Writer didn't start");
+  });
+
+  it("falls back to the last agent that started for a run logged without the agent", async () => {
+    const started = {
+      runId: failedRun.id,
+      seq: 1,
+      at: "2026-11-16T08:00:00Z",
+      type: "agent.started",
+      state: "draft",
+      agent: "reviewer",
+      prompt: "Go",
+    } as RunEvent;
+    const failed = { ...log("bubblewrap-missing")[0], seq: 2 } as RunEvent;
+    const root = await open([started, failed]);
+
+    expect(banner(root)?.textContent).toContain("Reviewer didn't start");
+  });
 });
