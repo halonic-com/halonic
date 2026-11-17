@@ -194,7 +194,7 @@ impl Steps<'_> {
     }
 
     /// Runs one git step. The step stops when the caller cancels, when the
-    /// deadline passes, and when the work folder passes the fetch limit.
+    /// deadline passes, and when the repository passes the fetch limit.
     fn git(
         &self,
         place: &ExportPlace<'_>,
@@ -213,7 +213,7 @@ impl Steps<'_> {
             }
             if last_check.elapsed() >= SIZE_CHECK_EVERY {
                 last_check = Instant::now();
-                if folder_size_over(self.work, self.limits.max_fetch_bytes) {
+                if folder_size_over(&self.repository(), self.limits.max_fetch_bytes) {
                     return Some(GitError::ExportTooLarge);
                 }
             }
@@ -283,6 +283,8 @@ impl Steps<'_> {
             &["rev-parse", "--verify", "--quiet", "FETCH_HEAD^{commit}"],
             "find the commit",
         )?;
+        // Nothing reads it again, and it holds the address.
+        let _ = fs::remove_file(repository.join("FETCH_HEAD"));
         let commit = String::from_utf8_lossy(&resolved.stdout).trim().to_owned();
         if !is_full_commit_id(&commit) {
             return Err(GitError::ExportFailed {
@@ -323,11 +325,17 @@ impl Steps<'_> {
             work_tree: Some(self.work),
             index: None,
         };
-        let listed = self.git(
-            &place,
-            &["ls-tree", "-r", "-l", "-z", commit],
-            "list the files",
-        )?;
+        let listed = self
+            .git(
+                &place,
+                &["ls-tree", "-r", "-l", "-z", commit],
+                "list the files",
+            )
+            // A listing past the output limit is a commit with too many files.
+            .map_err(|error| match error {
+                GitError::OutputTooLarge => GitError::ExportTooLarge,
+                other => other,
+            })?;
         let mut entries = 0usize;
         let mut bytes = 0u64;
         for entry in listed
@@ -415,7 +423,8 @@ fn check_no_git_folder(files: &Path) -> Result<(), GitError> {
     Ok(())
 }
 
-/// Whether the files under `folder` add up to more than `limit` bytes.
+/// Whether the files under `folder` (the export's `repository/`, so the
+/// files written at check-out don't count as fetched) add up to more than `limit` bytes.
 /// Links are counted as themselves and never followed.
 fn folder_size_over(folder: &Path, limit: u64) -> bool {
     let mut total = 0u64;
