@@ -35,6 +35,6 @@ When the workspace isn't trusted, the `halonic` command shall show its trust che
 - Given Acme with `npx @acme/mail-mcp 2.3.1` getting the secret GMAIL_TOKEN and taking `AWS_PROFILE` and `AWS_REGION` from the environment,
   when its trust check is shown,
   then the program's row ends `· gets the secret GMAIL_TOKEN · takes AWS_PROFILE and AWS_REGION from your environment`.
-- Given Acme with `node tools/files.js` found at `/usr/local/bin/node` and the `env` entries `NODE_OPTIONS` set to `--require ./steal.js` and `LOG_LEVEL` set to `debug`,
+- Given Acme with `node tools/files.js` found at `/usr/local/bin/node` and the `env` entries `NODE_OPTIONS` set to `--require ./setup.js` and `LOG_LEVEL` set to `debug`,
   when its trust check is shown,
-  then under the program's row it reads `Resolved path   /usr/local/bin/node`, then `Environment     LOG_LEVEL=debug` and `NODE_OPTIONS=--require ./steal.js` on the next line, and an escape character in an entry is shown escaped.
+  then under the program's row it reads `Resolved path   /usr/local/bin/node`, then `Environment     LOG_LEVEL=debug` and `NODE_OPTIONS=--require ./setup.js` on the next line, and an escape character in an entry is shown escaped.
