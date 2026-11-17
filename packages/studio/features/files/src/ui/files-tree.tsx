@@ -24,7 +24,7 @@ export interface FilesTreeProps {
   /** The file whose name is edited in its row, with what the edit does. */
   readonly renaming?: { readonly path: string } & Pick<
     RenameRowProps,
-    "onApply" | "check" | "impact" | "onCancel"
+    "onApply" | "check" | "impact" | "onStranded" | "onCancel"
   >;
   /** A row to give focus to as soon as it is in the tree, such as the renamed file at its new place. */
   readonly revealPath?: string;
@@ -189,6 +189,7 @@ export function FilesTree({
                   onApply={renaming.onApply}
                   check={renaming.check}
                   impact={renaming.impact}
+                  onStranded={renaming.onStranded}
                   onCancel={renaming.onCancel}
                 />
               ) : (

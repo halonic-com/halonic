@@ -1,4 +1,4 @@
-import { Callout, Dialog, Field, Input } from "@halonicjs/studio-kit";
+import { Dialog, Field, Input } from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useRef, useState } from "react";
 import { FilePathError, type FilesHost } from "../files-host.ts";
@@ -46,11 +46,10 @@ export function NewFileDialog({
 }: NewFileDialogProps) {
   const [path, setPath] = useState(start);
   const [problem, setProblem] = useState<string>();
-  // The write itself failed, not the path: a Callout with Try again, not a sentence under the field.
+  // The write itself failed, not the path: the Dialog's last line with Try again, not a sentence under the field.
   const [writeFailure, setWriteFailure] = useState<string>();
   const [busy, setBusy] = useState(false);
   const field = useRef<HTMLInputElement>(null);
-  const body = useRef<HTMLDivElement>(null);
 
   function refuse(message: string) {
     setProblem(message);
@@ -77,16 +76,6 @@ export function NewFileDialog({
     onCreated(wanted);
   }
 
-  /** The Callout goes with the press, so focus goes to Create (as after the first failure) and stays inside the form. */
-  function retry(): void {
-    const buttons = body.current?.closest("dialog, [role='dialog']")?.querySelectorAll("button");
-    const createButton = [...(buttons ?? [])].find((each) =>
-      each.textContent?.startsWith(filesWords.create),
-    );
-    (createButton ?? field.current)?.focus();
-    void create();
-  }
-
   return (
     <Dialog
       title={filesWords.newFileTitle}
@@ -94,37 +83,31 @@ export function NewFileDialog({
       form
       confirm={{ label: filesWords.create, busyLabel: filesWords.creating }}
       busy={busy}
+      {...(writeFailure === undefined
+        ? {}
+        : { error: writeFailure, retryLabel: filesWords.tryAgain })}
       onConfirm={() => void create()}
       onCancel={onCancel}
       {...(returnFocus === undefined ? {} : { returnFocus })}
     >
-      <div ref={body}>
-        <Field label={filesWords.path} hint={filesWords.pathHint} error={problem ?? null}>
-          <Input
-            ref={field}
-            autoFocus
-            disabled={busy}
-            value={path}
-            onChange={(event) => {
-              setPath(event.target.value);
-              setProblem(undefined);
-              setWriteFailure(undefined);
-            }}
-            onFocus={(event) => {
-              // The cursor starts at the end, after the folder.
-              const end = event.target.value.length;
-              event.target.setSelectionRange(end, end);
-            }}
-          />
-        </Field>
-        {writeFailure !== undefined && (
-          <div className="mt-3">
-            <Callout tone="danger" action={{ label: filesWords.tryAgain, onClick: retry }}>
-              {writeFailure}
-            </Callout>
-          </div>
-        )}
-      </div>
+      <Field label={filesWords.path} hint={filesWords.pathHint} error={problem ?? null}>
+        <Input
+          ref={field}
+          autoFocus
+          disabled={busy}
+          value={path}
+          onChange={(event) => {
+            setPath(event.target.value);
+            setProblem(undefined);
+            setWriteFailure(undefined);
+          }}
+          onFocus={(event) => {
+            // The cursor starts at the end, after the folder.
+            const end = event.target.value.length;
+            event.target.setSelectionRange(end, end);
+          }}
+        />
+      </Field>
     </Dialog>
   );
 }

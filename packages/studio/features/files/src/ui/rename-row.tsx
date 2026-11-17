@@ -1,5 +1,5 @@
 import { Field, Input } from "@halonicjs/studio-kit";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { RenameImpact } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
 
@@ -17,6 +17,11 @@ export interface RenameRowProps {
   readonly check: (name: string) => string | undefined;
   /** The places in other files a rename to the typed name would also update. */
   readonly impact: (name: string) => Promise<RenameImpact>;
+  /**
+   * Says a refusal that the focus can't reach, because it left the field: shows it with a way to try
+   * again, and returns what takes it away. The row takes it away when it closes or settles.
+   */
+  readonly onStranded: (sentence: string, tryAgain: () => void) => () => void;
   /** Escape, or a name left as it was: the row shows the name again. */
   readonly onCancel: (blur: boolean) => void;
 }
@@ -27,7 +32,13 @@ function stemEnd(name: string): number {
   return dot > 0 ? dot : name.length;
 }
 
-/** Reads the typed name's effect on other files, and says it only for the newest name. */
+/** How long a typed name rests before its effect on other files is looked up. */
+const impactDelayMs = 200;
+
+/**
+ * Reads the typed name's effect on other files, and says it only for the newest name. The line
+ * stays while the next answer is on its way, so it doesn't flicker as the name is typed.
+ */
 function useImpact(
   name: string,
   value: string,
@@ -35,21 +46,29 @@ function useImpact(
   blocked: boolean,
 ): string | undefined {
   const [line, setLine] = useState<string>();
+  // Read when the timer fires, so a parent that passes a fresh function each render doesn't restart it.
+  const lookup = useRef(impact);
+  lookup.current = impact;
   useEffect(() => {
-    setLine(undefined);
-    if (blocked || value === name) return;
+    if (blocked || value === name) {
+      setLine(undefined);
+      return;
+    }
     let stopped = false;
-    impact(value).then(
-      ({ places, owners }) => {
-        if (!stopped && places > 0) setLine(filesWords.alsoUpdates(places, owners));
-      },
-      // The line is a help: a rename that can't be looked at ahead is still tried on Enter.
-      () => {},
-    );
+    const timer = setTimeout(() => {
+      lookup.current(value).then(
+        ({ places, owners }) => {
+          if (!stopped) setLine(places > 0 ? filesWords.alsoUpdates(places, owners) : undefined);
+        },
+        // The line is a help: a rename that can't be looked at ahead is still tried on Enter.
+        () => {},
+      );
+    }, impactDelayMs);
     return () => {
       stopped = true;
+      clearTimeout(timer);
     };
-  }, [name, value, impact, blocked]);
+  }, [name, value, blocked]);
   return line;
 }
 
@@ -58,7 +77,7 @@ function useImpact(
  * applies it, Escape puts the old name back. The name is checked as it is typed, and a name the host refuses is
  * said under the row; the field stays, with the typed name, also after the focus left it.
  */
-export function RenameRow({ name, onApply, check, impact, onCancel }: RenameRowProps) {
+export function RenameRow({ name, onApply, check, impact, onStranded, onCancel }: RenameRowProps) {
   const [value, setValue] = useState(name);
   // A sentence from the host's refusal; the typed name's own problem is read from `check`.
   const [refused, setRefused] = useState<string>();
@@ -67,12 +86,23 @@ export function RenameRow({ name, onApply, check, impact, onCancel }: RenameRowP
   const alsoUpdates = useImpact(name, value, impact, problem !== undefined);
   const [busy, setBusy] = useState(false);
   const settled = useRef(false);
-  // The focus left while Enter's rename was still running: a refusal then closes the field.
+  // Read at once, where `busy` is only what the last render saw: two events can come in one tick.
+  const running = useRef(false);
+  // The focus left while Enter's rename was still running.
   const left = useRef(false);
+  // Takes away the toast of a refusal the focus couldn't reach.
+  const dropToast = useRef<(() => void) | undefined>(undefined);
+  const closeToast = useCallback(() => {
+    dropToast.current?.();
+    dropToast.current = undefined;
+  }, []);
+  useEffect(() => closeToast, [closeToast]);
+  // Try again runs what the row holds now, not the name of the refusal it was shown for.
+  const again = useRef<() => void>(() => {});
 
   async function apply(blur: boolean) {
     if (settled.current) return;
-    if (busy) {
+    if (running.current) {
       if (blur) left.current = true;
       return;
     }
@@ -80,17 +110,23 @@ export function RenameRow({ name, onApply, check, impact, onCancel }: RenameRowP
       settled.current = true;
       return onCancel(blur);
     }
+    running.current = true;
     setBusy(true);
     const answer = await onApply(value, () => blur || left.current);
+    running.current = false;
     setBusy(false);
+    closeToast();
     if (answer === undefined) {
       settled.current = true;
       return;
     }
-    // Also when the focus left: the row keeps the typed name, and the toast offers Try again.
+    // Also when the focus left: the row keeps the typed name, and a toast offers Try again.
+    const gone = blur || left.current;
     left.current = false;
     setRefused(answer);
+    if (gone) dropToast.current = onStranded(answer, () => again.current());
   }
+  again.current = () => void apply(true);
 
   return (
     // The tree's keys and clicks stay out of the field.
@@ -103,6 +139,7 @@ export function RenameRow({ name, onApply, check, impact, onCancel }: RenameRowP
         if (event.key === "Escape") {
           event.preventDefault();
           settled.current = true;
+          closeToast();
           onCancel(false);
         } else if (event.key === "Enter" && !event.nativeEvent.isComposing) {
           event.preventDefault();
@@ -110,29 +147,31 @@ export function RenameRow({ name, onApply, check, impact, onCancel }: RenameRowP
         }
       }}
     >
-      {/* The Field links the sentence to the field (aria-invalid, aria-describedby); the live
-          region says it once when it appears, politely: focus is on the field, so it can reach it. */}
-      <div aria-live="polite" aria-atomic="false">
-        <Field
-          label={filesWords.renameLabel(name)}
-          hideLabel
-          error={problem ?? null}
-          {...(alsoUpdates === undefined ? {} : { hint: alsoUpdates })}
-        >
-          <Input
-            size="sm"
-            autoFocus
-            readOnly={busy}
-            value={value}
-            onChange={(event) => {
-              setValue(event.target.value);
-              setRefused(undefined);
-            }}
-            onFocus={(event) => event.target.setSelectionRange(0, stemEnd(event.target.value))}
-            onBlur={() => void apply(true)}
-          />
-        </Field>
-      </div>
+      {/* The Field links the sentence and the hint to the field (aria-invalid, aria-describedby).
+          Only the refusal is announced, politely and once when it appears: the hint changes as the
+          name is typed and stays out of the live region. */}
+      <span className="sr-only" aria-live="polite">
+        {problem}
+      </span>
+      <Field
+        label={filesWords.renameLabel(name)}
+        hideLabel
+        error={problem ?? null}
+        {...(alsoUpdates === undefined ? {} : { hint: alsoUpdates })}
+      >
+        <Input
+          size="sm"
+          autoFocus
+          readOnly={busy}
+          value={value}
+          onChange={(event) => {
+            setValue(event.target.value);
+            setRefused(undefined);
+          }}
+          onFocus={(event) => event.target.setSelectionRange(0, stemEnd(event.target.value))}
+          onBlur={() => void apply(true)}
+        />
+      </Field>
     </span>
   );
 }

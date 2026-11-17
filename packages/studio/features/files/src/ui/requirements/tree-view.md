@@ -15,5 +15,5 @@ The Files view shall show the file tree as an ARIA tree with one Tab stop, show 
 - Given the folder `agents` holds a file that isn't saved and has 3 errors, then its row is named "agents, folder, a file inside not saved, 3 errors" for a screen reader.
 - Given the file list is still loading, then three or more grey bars show and nothing else.
 - Given the folder can't be read, then the view reads "Couldn't load files" with the reason and "Try again"; after "Try again" works, the tree shows.
-- Given the workspace has no files, then the view reads "Everything in this workspace is a file." with "Add one with +." and a **New file** button, which opens the same dialog as the **+** button (HAL-11190).
+- Given the workspace has no files, then the view reads "Everything in this workspace is a file." with "Add one with +." and no button: the **+** button is the way in (HAL-11190, HAL-11624). A workspace with `workspace.yaml` as its only file keeps that row and shows the same two sentences as a quiet line under it.
 - Given a file changes while the view shows, then the tree shows the new list and keeps the opened folders.

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { type ToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
+import { createToastStore, type ToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -131,8 +131,8 @@ verifies("files.ui.rename-file", () => {
       new Promise<never>((_, reject) => {
         refuse = reject;
       });
-    const show = vi.fn();
-    const toasts = { show } as unknown as ToastStore;
+    const show = vi.fn(() => "toast-1");
+    const toasts = { show, close: vi.fn() } as unknown as ToastStore;
     const { page } = await startRename({ ...contextHost(), rename }, vi.fn(), "", toasts);
     const input = rowNamed(page, "models.yaml").querySelector("input");
     await typeInto(input, "providers.yaml");
@@ -148,10 +148,49 @@ verifies("files.ui.rename-file", () => {
       expect.objectContaining({
         tone: "danger",
         title: "Couldn't rename models.yaml: providers.yaml already exists.",
-        sticky: true,
         action: expect.objectContaining({ label: "Try again" }),
       }),
     );
+    elsewhere.remove();
+  });
+
+  /** A refusal after the focus left: the row holds `providers.yaml`, and a toast has Try again. */
+  async function refusedAway(names: string[]) {
+    const rename = vi.fn(async (_from: string, to: string) => {
+      names.push(to);
+      throw new Error("The disk is busy.");
+    });
+    const toasts = createToastStore();
+    const { page } = await startRename({ ...contextHost(), rename }, vi.fn(), "", toasts);
+    const input = rowNamed(page, "models.yaml").querySelector("input");
+    await typeInto(input, "providers.yaml");
+    const elsewhere = await leaveRow(input);
+    return { page, toasts, rename, elsewhere, input };
+  }
+  const tryAgain = (toasts: ToastStore) => toasts.list().find((t) => t.action !== undefined);
+
+  it("takes the Try again toast away when Escape closes the row, so it can't rename later", async () => {
+    const { page, toasts, rename, elsewhere } = await refusedAway([]);
+    expect(tryAgain(toasts)).toBeDefined();
+    await act(async () => {
+      page.querySelector("input")?.focus();
+    });
+    await key(page.querySelector("input"), "Escape");
+    expect(tryAgain(toasts)).toBeUndefined();
+    expect(rename).toHaveBeenCalledTimes(1);
+    elsewhere.remove();
+  });
+
+  it("tries again with the name now in the row, and shows one toast at a time", async () => {
+    const names: string[] = [];
+    const { page, toasts, elsewhere } = await refusedAway(names);
+    await typeInto(page.querySelector("input"), "rates.yaml");
+    await act(async () => {
+      tryAgain(toasts)?.action?.onClick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(names).toEqual(["providers.yaml", "rates.yaml"]);
+    expect(toasts.list().filter((t) => t.action !== undefined)).toHaveLength(1);
     elsewhere.remove();
   });
 

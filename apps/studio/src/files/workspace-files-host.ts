@@ -352,7 +352,7 @@ export class WorkspaceFilesHost implements FilesHost {
       owners: [
         ...new Set(
           places.map((p) =>
-            p.file.endsWith(".routine.yaml") ? filesWords.ownerRoutine(p.owner) : p.owner,
+            placeOf(p.file)?.kind === "routine" ? filesWords.ownerRoutine(p.owner) : p.owner,
           ),
         ),
       ],

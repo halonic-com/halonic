@@ -136,19 +136,41 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
           if (activeNow.current === renamedPath(from, name)) context.openItem?.(fileItem(back));
         },
       });
-      if (refused !== undefined && left()) {
-        // The focus can't reach the field's sentence, so a toast that stays says it, and the row
-        // keeps the typed name for Try again.
-        toasts?.show({
-          tone: "danger",
-          title: filesWords.couldntRenameToast(fileName(from), refused),
-          sticky: true,
-          action: { label: filesWords.tryAgain, onClick: () => void applyRename(from, name, left) },
-        });
-      }
       return refused;
     },
     [context, host, toasts],
+  );
+
+  // The refusal a row's focus can't reach: a toast that stays says it, and the row says what to try.
+  const onStranded = useCallback(
+    (sentence: string, tryAgain: () => void) => {
+      const id = toasts?.show({
+        tone: "danger",
+        title: filesWords.couldntRenameToast(fileName(renaming ?? ""), sentence),
+        action: { label: filesWords.tryAgain, onClick: tryAgain },
+      });
+      return () => {
+        if (id !== undefined) toasts?.close(id);
+      };
+    },
+    [toasts, renaming],
+  );
+
+  // Stable between renders, so the row's lookups aren't started again by every listing or mark update.
+  const listed = loaded.kind === "ready" ? loaded.listing.paths : undefined;
+  const check = useCallback(
+    (name: string) =>
+      renaming === undefined || listed === undefined
+        ? undefined
+        : typedNameProblem(renaming, name, listed),
+    [renaming, listed],
+  );
+  const impact = useCallback(
+    (name: string) =>
+      renaming === undefined
+        ? Promise.resolve({ places: 0, owners: [] })
+        : host.renameImpact(renaming, renamedPath(renaming, name)),
+    [host, renaming],
   );
 
   const onIntent = useCallback(
@@ -214,8 +236,9 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
             renaming: {
               path: renaming,
               onApply: (name: string, left: () => boolean) => applyRename(renaming, name, left),
-              check: (name: string) => typedNameProblem(renaming, name, files),
-              impact: (name: string) => host.renameImpact(renaming, renamedPath(renaming, name)),
+              check,
+              impact,
+              onStranded,
               onCancel: (blur: boolean) => {
                 setRenaming(undefined);
                 setReveal({ path: renaming, focus: !blur });

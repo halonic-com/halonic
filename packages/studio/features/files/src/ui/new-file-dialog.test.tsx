@@ -94,6 +94,10 @@ verifies("files.ui.new-file", () => {
     });
     await type(page, "hubs/a.yaml");
     await create(page);
+    // The Dialog's alert slot fills a frame after the request ends.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
     expect(text(page)).toContain("Couldn't create hubs/a.yaml: The disk is full.");
     expect(field(page).disabled).toBe(false);
     const again = [...page.ownerDocument.querySelectorAll("button")].find((each) =>
