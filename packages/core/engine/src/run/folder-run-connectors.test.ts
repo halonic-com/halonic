@@ -1,6 +1,4 @@
-import { MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { ConnectorFactories } from "@halonicjs/app";
-import type { ConnectorsRun } from "@halonicjs/engine";
 import type { RunVersion } from "@halonicjs/events";
 import type { Connector } from "@halonicjs/format";
 import type {
@@ -11,7 +9,8 @@ import type {
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { FolderRunConnectors } from "./run-connectors.ts";
+import { FolderRunConnectors } from "./folder-run-connectors.ts";
+import type { ConnectorsRun } from "./run-connectors.ts";
 
 const live: RunVersion = {
   reads: "live-version",
@@ -72,7 +71,7 @@ function fixture(options: { closeFails?: boolean; files?: readonly Connector[] }
     },
     context: {
       secrets: { get: async () => null },
-      tokens: new MemoryTokenStore(),
+      tokens: { get: async () => null, set: async () => undefined, remove: async () => undefined },
       http: { fetch: async () => new Response("unused") },
     },
     versionOf: async () => ({
@@ -86,7 +85,7 @@ function fixture(options: { closeFails?: boolean; files?: readonly Connector[] }
   return { connectors, log, reported, contexts };
 }
 
-verifies("cli.local-engine", () => {
+verifies("engine.run-connectors", () => {
   it("starts a run's connectors once, in a copy at the run's commit, with its working folders", async () => {
     const { connectors, log, contexts } = fixture();
 

@@ -123,6 +123,13 @@ export {
   endLostRuns,
   interruptedError,
 } from "./run/end-interrupted-runs.ts";
+export {
+  FolderRunConnectors,
+  type FolderRunConnectorsInput,
+  type RunConnectorsVersion,
+  type RunProgramFolders,
+  type VersionedRun,
+} from "./run/folder-run-connectors.ts";
 export type { ProposalRun, RunProposalFolders } from "./run/proposal-folders.ts";
 export type { ConnectorsRun, RunConnectors } from "./run/run-connectors.ts";
 export { type RunFailure, runFailureReasonOf } from "./run/run-failure-reason-of.ts";

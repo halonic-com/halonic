@@ -5,6 +5,7 @@
 // boundary.
 
 import type { ConnectorFactories, SendingSettings } from "@halonicjs/app";
+import { FolderRunConnectors, type VersionedRun } from "@halonicjs/engine";
 import {
   type ConnectorFactoryContext,
   type Secrets,
@@ -13,7 +14,6 @@ import {
 } from "@halonicjs/ports";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import type { ProgramFolders } from "./program-folders.ts";
-import { FolderRunConnectors, type VersionedRun } from "./run-connectors.ts";
 import { programWorkingFolders } from "./working-folders.ts";
 
 /** What the engine's runs start their connectors with, as the command gives it. */
