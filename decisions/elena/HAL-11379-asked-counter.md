@@ -3,6 +3,7 @@
 - Task: HAL-11379
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11379 (Liam approved the shape in his comment of 17 Nov: an optional `asked` on `TabLocation`, as a separate small PR)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:p5w/tkAA1tYJAPv4X1HEth9/PzvcRQV+Rw4+fcXbBps/Sgdzs11mRNlLAwaZiQ9+fDeWgClT0x8LPTS3wQLNBw==
 
 `TabLocation` (public in `studio-shell`) gets an optional `asked` count. `TabSet.openHere` bumps it every
 time a step is asked for on the place a tab shows, also when the tab is on that step already, and
