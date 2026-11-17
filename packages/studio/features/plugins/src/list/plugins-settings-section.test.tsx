@@ -93,7 +93,8 @@ async function showAdding(trust: (plugin: string) => Promise<void>) {
       const found =
         buttons.find((candidate) => candidate.textContent?.trim() === name) ??
         buttons.find((candidate) => candidate.textContent?.startsWith(name) === true);
-      found?.click();
+      if (found === undefined) throw new Error(`No button ${name}`);
+      found.click();
     });
   await press("Add plugin");
   const input = document.querySelector<HTMLInputElement>("dialog input:not([type=radio])");
