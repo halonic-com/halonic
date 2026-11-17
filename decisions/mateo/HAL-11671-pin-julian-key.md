@@ -2,13 +2,13 @@
 
 - Task: HAL-11671
 - Approval: HAL-11668, option 1 extended to `internal`; carries out AGENTS.md "Requirements and tests" (neither Liam nor Julian signs a pull request they wrote, the other one signs)
-- Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4Ldnq0Il6ggmy8u26/rnNx73VevO+WzMW1kULkaVbxrzgJXx7WoWGCQ0M8aAUElIvuuiqaa0bqyubYyOUuiXAQ==
-- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:OeIrYVCAf7UN4/diIp+9xZqMBsUnprg00sdPi0RjJn/OcuLzG6NJNUab6D7Hwmk5ICXKIviry4qtOJrUYGTWAw==
+- Kind: user-visible
 
 ## What changes
 
 `tooling/check/approvers.json` lists the security reviewer's key under both `"internal"` and `"user-visible"`, copied exactly from the `"guardians"` entry (same `id`, `holder` and `publicKey`). Nothing else in the file changes. `docs/guides/checks.md` now says both keys approve those kinds.
+
+Kind is `user-visible` because the guard requires it for any change under `tooling/check/`; the note covers `tooling/check/`.
 
 ## Why
 
@@ -24,4 +24,5 @@ No test was changed, weakened or skipped.
 
 ## Covers
 
+- tooling/check/
 - tooling/check/approvers.json
