@@ -68,6 +68,15 @@ function addsToStudio(content: PluginTrustContent): boolean {
   );
 }
 
+/**
+ * The headings of the two lines under the sections: where the plugin sits
+ * on disk and the files its fingerprint covers. Studio adds nothing after them.
+ */
+export const pluginTrustLocationHeadings = {
+  folder: "Folder",
+  files: "Files the fingerprint covers",
+} as const;
+
 /** How many files the trust check names before it says how many more there are. */
 export const pluginTrustFileCap = 10;
 

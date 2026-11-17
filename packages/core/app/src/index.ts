@@ -283,6 +283,7 @@ export {
   type PluginTrustSection,
   pluginTrustFileCap,
   pluginTrustFiles,
+  pluginTrustLocationHeadings,
   pluginTrustSectionHeadings,
   pluginTrustSectionOrder,
   pluginTrustSections,
