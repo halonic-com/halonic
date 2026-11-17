@@ -262,7 +262,10 @@ verifies("shell.welcome-recent", () => {
         }),
     );
     const root = render(
-      <Welcome onOpenFolder={async () => undefined} recent={{ workspaces, onOpen, onRemove: () => {} }} />,
+      <Welcome
+        onOpenFolder={async () => undefined}
+        recent={{ workspaces, onOpen, onRemove: () => {} }}
+      />,
     );
     const status = () => root.querySelector<HTMLElement>('section [role="status"]');
     expect(status()?.textContent).toBe("");

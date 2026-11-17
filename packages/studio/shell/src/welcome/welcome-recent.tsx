@@ -110,7 +110,9 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef, failed }: W
         })}
       </ul>
       <span role="status" aria-live="polite" className="sr-only">
-        {opening !== undefined && shown.some((workspace) => workspace.location === opening) ? openingStatus : ""}
+        {opening !== undefined && shown.some((workspace) => workspace.location === opening)
+          ? openingStatus
+          : ""}
       </span>
     </section>
   );
