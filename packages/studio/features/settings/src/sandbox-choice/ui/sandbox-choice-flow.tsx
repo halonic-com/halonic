@@ -17,6 +17,8 @@ export interface SandboxChoiceFlowProps {
   readonly onSetUp: (backend: SandboxBackendId) => void;
   /** The person confirmed "Continue without sandbox" on S6. */
   readonly onContinueWithout: () => void;
+  /** Whether the harness really asks before it runs a command without a sandbox (O4); S6 says so only then. */
+  readonly promise: boolean;
   /** The screen to start on; for tests and screenshots. */
   readonly initialScreen?: SandboxChoiceScreen;
 }
@@ -31,6 +33,7 @@ export function SandboxChoiceFlow({
   platform,
   onSetUp,
   onContinueWithout,
+  promise,
   initialScreen = "choose",
 }: SandboxChoiceFlowProps) {
   const [screen, setScreenNow] = useState<SandboxChoiceScreen>(initialScreen);
@@ -65,6 +68,7 @@ export function SandboxChoiceFlow({
     return (
       <ConfirmNone
         focusTitle={moved}
+        promise={promise}
         onSetUp={() =>
           setScreen(cards !== null && cards.recommended !== null ? "choose" : "options")
         }
@@ -180,7 +184,7 @@ function RecommendedCard({ card, onMore }: RecommendedProps) {
       )}
       {card.caveat === null ? null : (
         <p className="flex items-center gap-1 text-small">
-          {card.caveat}
+          {text.caveatSentence(card.caveat)}
           <Button variant="ghost" size="sm" onClick={onMore} icon={<InfoIcon />}>
             {text.WHY}
           </Button>
@@ -330,7 +334,7 @@ function Options({ cards, focusTitle, onSetUp, onBack }: OptionsProps) {
       )}
       {card?.caveat == null ? null : (
         <p className="text-small" role="note">
-          {card.caveat}
+          {text.caveatSentence(card.caveat)}
         </p>
       )}
     </SandboxModal>
@@ -339,10 +343,12 @@ function Options({ cards, focusTitle, onSetUp, onBack }: OptionsProps) {
 
 function ConfirmNone({
   focusTitle,
+  promise,
   onSetUp,
   onContinue,
 }: {
   readonly focusTitle: boolean;
+  readonly promise: boolean;
   readonly onSetUp: () => void;
   readonly onContinue: () => void;
 }) {
@@ -361,9 +367,9 @@ function ConfirmNone({
         </div>
       }
     >
-      {text.CONFIRM_BODY.map((paragraph) => (
-        <p key={paragraph}>{paragraph}</p>
-      ))}
+      <p>{text.CONFIRM_BODY[0]}</p>
+      {promise ? <p>{text.CONFIRM_ASKS}</p> : null}
+      <p>{text.CONFIRM_BODY[1]}</p>
     </SandboxModal>
   );
 }
