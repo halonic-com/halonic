@@ -51,7 +51,7 @@ verifies("agents.configuration.behaviour", () => {
 
   it("saves Description when the person leaves the field", async () => {
     const { page, agents } = await openConfiguration();
-    const input = page.querySelector("input") as HTMLInputElement;
+    const input = page.querySelector("[role=tabpanel] input") as HTMLInputElement;
     await typeInto(input, "Sorts mail");
     await act(async () => input.dispatchEvent(new FocusEvent("focusout", { bubbles: true })));
     expect((await agents.settings({ hubId: "acme", id: "sorter" })).description).toBe("Sorts mail");
