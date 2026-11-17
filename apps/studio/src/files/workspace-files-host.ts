@@ -346,7 +346,17 @@ export class WorkspaceFilesHost implements FilesHost {
       if (!edited.ok) throw new Error(`Couldn't update ${place.file}.`);
       rewrites[place.file] = edited.value.text;
     }
-    return { rewrites, places: places.length, owners: [...new Set(places.map((p) => p.owner))] };
+    return {
+      rewrites,
+      places: places.length,
+      owners: [
+        ...new Set(
+          places.map((p) =>
+            placeOf(p.file)?.kind === "routine" ? filesWords.ownerRoutine(p.owner) : p.owner,
+          ),
+        ),
+      ],
+    };
   }
 
   /** The places that name the item in `from` by its id, or `undefined` when the rename gives it no new id. */

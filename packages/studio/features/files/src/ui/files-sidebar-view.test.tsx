@@ -136,13 +136,19 @@ verifies("files.ui.tree-view", () => {
     expect(page.textContent).toContain("Add one with +.");
   });
 
-  it("offers New file in the empty state, which opens the dialog and gets focus back", async () => {
+  it("keeps workspace.yaml as a row with a quiet line and no button when it is the only file", async () => {
+    const page = await show(hostOf(listing(["workspace.yaml"])));
+    expect(rowNamed(page, "workspace.yaml")).toBeDefined();
+    expect(page.textContent).toContain("Everything in this workspace is a file. Add one with +.");
+    const buttons = [...page.querySelectorAll("button")].map((button) => button.textContent);
+    expect(buttons).not.toContain("New file");
+  });
+
+  it("opens the New file dialog from the + button and gets focus back", async () => {
     fakeModal();
     try {
       const page = await show(hostOf(listing([])));
-      const inEmpty = [...page.querySelectorAll("button")].find(
-        (button) => button.textContent === "New file",
-      );
+      const inEmpty = page.querySelector<HTMLElement>('button[aria-label="New file"]');
       expect(inEmpty).toBeDefined();
       await act(async () => {
         inEmpty?.focus();

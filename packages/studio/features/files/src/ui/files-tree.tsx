@@ -22,7 +22,10 @@ export interface FilesTreeProps {
   /** Called when a key or a click asks the rest of the Studio for something: open, rename, trash. */
   readonly onIntent?: (intent: TreeIntent) => void;
   /** The file whose name is edited in its row, with what the edit does. */
-  readonly renaming?: { readonly path: string } & Pick<RenameRowProps, "onApply" | "onCancel">;
+  readonly renaming?: { readonly path: string } & Pick<
+    RenameRowProps,
+    "onApply" | "check" | "impact" | "onStranded" | "onCancel"
+  >;
   /** A row to give focus to as soon as it is in the tree, such as the renamed file at its new place. */
   readonly revealPath?: string;
   /** Whether `revealPath` also takes the focus; false keeps it where the user put it and moves only the Tab stop. */
@@ -184,6 +187,9 @@ export function FilesTree({
                 <RenameRow
                   name={node.name}
                   onApply={renaming.onApply}
+                  check={renaming.check}
+                  impact={renaming.impact}
+                  onStranded={renaming.onStranded}
                   onCancel={renaming.onCancel}
                 />
               ) : (
