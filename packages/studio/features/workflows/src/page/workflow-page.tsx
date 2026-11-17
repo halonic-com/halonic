@@ -33,6 +33,7 @@ import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
 import { pageWords } from "./page-words.ts";
 import { type Dock, RunDock, useShownRun } from "./run-dock.tsx";
+import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
 import { WorkflowCanvas } from "./workflow-canvas.tsx";
 import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
@@ -124,6 +125,14 @@ export function WorkflowScreen({
     { readonly name: string | undefined; readonly n: number } | undefined
   >(firstTestsPick(startOnTests));
   const testsMade = useRef(0);
+  // A page that is already open and is asked for its Tests (`startOnTests` turns true) goes to
+  // Configuration on Tests, as if it had opened there. It is counted like a made test, so
+  // Configuration remounts even if it is already open.
+  useAskedForTests(startOnTests, () => {
+    setView("configuration");
+    testsMade.current += 1;
+    setMadeTest({ name: undefined, n: testsMade.current });
+  });
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
   const errors =

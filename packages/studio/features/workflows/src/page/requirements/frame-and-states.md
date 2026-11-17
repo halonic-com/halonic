@@ -15,3 +15,5 @@ When a workflow's tab opens, the workflows feature shall show a full-width page 
 - Given the host says the workflow changed, then the canvas shows the new step and the person's zoom stays.
 - Given the workflow is opened on its Tests,
   then Configuration shows with Tests picked, and coming back to it from another tab opens General.
+- Given the workflow's page is open on Flow and is then asked for its Tests,
+  then Configuration shows with Tests picked.
