@@ -32,6 +32,10 @@ export const modelTexts = {
     `provider ${provider} would send its key to ${origin}, and this workspace isn't trusted on this computer.`,
   untrustedAddressFix: (provider: string): ModelText =>
     `Check providers/${provider}.yaml, then trust the workspace, or point it at the type's own address.`,
+  originNotAllowed: (provider: string, origin: string): ModelText =>
+    `provider ${provider} would send its key to ${origin}, which isn't an address that key is allowed for.`,
+  originNotAllowedFix: (provider: string): ModelText =>
+    `Point providers/${provider}.yaml at an address the key is allowed for, or allow the address for that key.`,
   unknownAlias: (alias: string, hubId: string): ModelText =>
     `hub ${hubId} has no model alias ${alias}.`,
   unknownAliasFix: (): ModelText => "Add the alias to models.yaml, or pick one it has.",

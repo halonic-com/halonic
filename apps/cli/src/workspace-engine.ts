@@ -40,6 +40,7 @@ import {
   sandboxGateMachine,
 } from "./sandbox-gate-machine.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
+import { profileKeyOrigins } from "./secret-host.ts";
 import {
   type GaveUpRun,
   retriedLine,
@@ -189,6 +190,7 @@ export async function openWorkspaceEngine(
       setup.runConnectors ?? ((trust) => computerRunConnectors(trust, target, setup.profile))
     )(target.trust, target),
     secrets: context.secrets,
+    keyOrigins: profileKeyOrigins(() => setup.profile ?? nodeProfileEnvironment()),
     http: setup.http,
     trusted: target.trust !== null,
     // The scheduler retries a failed step; one that keeps failing stops the command with its

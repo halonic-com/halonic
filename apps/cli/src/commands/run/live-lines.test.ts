@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { type RunDetail, RunEvents, shortRunId, WorkflowRuns } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
+import { noKeyOrigins } from "@halonicjs/ports";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
@@ -41,6 +42,7 @@ beforeAll(async () => {
   await cp(acmeExample, acme, { recursive: true });
   const ranIn = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
   const engine = await openLocalEngine({
+    keyOrigins: noKeyOrigins,
     workspace: ranIn,
     workspaceRoot: acme,
     trusted: true,

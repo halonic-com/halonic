@@ -11,6 +11,7 @@ import type {
   Clock,
   ConnectorClient,
   HttpClient,
+  KeyOrigins,
   Secrets,
 } from "@halonicjs/ports";
 import {
@@ -43,6 +44,8 @@ export interface WorkspaceExecutorInput {
    * is (see {@link WorkspaceModelResolverInput.isTrusted}).
    */
   readonly isTrusted: () => boolean | Promise<boolean>;
+  /** The origins each stored key may be sent to (see {@link WorkspaceModelResolverInput.keyOrigins}). */
+  readonly keyOrigins: KeyOrigins;
   /** Which tools a server lists a person approved; the host chooses, so none is offered by default. */
   readonly listedToolApproval: ListedToolApproval;
   /** The connected servers a chat turn calls; none by default. */
@@ -63,7 +66,12 @@ export function workspaceExecutorOptions(input: WorkspaceExecutorInput): Workspa
   const latest = input.latest ?? (() => input.workspace);
   return {
     resolveModel: latestModelResolver(
-      { secrets: input.secrets, http: input.http, isTrusted: input.isTrusted },
+      {
+        secrets: input.secrets,
+        http: input.http,
+        isTrusted: input.isTrusted,
+        keyOrigins: input.keyOrigins,
+      },
       latest,
     ),
     halonicTools: [],

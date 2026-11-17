@@ -11,6 +11,7 @@ import type {
   ChatAgentSettings,
   ChatTurnRequest,
   HttpClient,
+  KeyOrigins,
   LlmProvider,
   Secrets,
 } from "@halonicjs/ports";
@@ -50,6 +51,13 @@ export interface WorkspaceModelResolverInput {
    * that throws fails the call, as a no does.
    */
   readonly isTrusted: () => boolean | Promise<boolean>;
+  /**
+   * The origins each stored key may be sent to, asked on every model call. A
+   * key with a list goes only to an origin on it; a key with none recorded
+   * (saved before origins existed) keeps the trust rule above (HAL-11871).
+   * Required, so a host that can't hold the list says so with `noKeyOrigins`.
+   */
+  readonly keyOrigins: KeyOrigins;
 }
 
 /**
@@ -117,12 +125,12 @@ export function workspaceModelResolver(
     return mock;
   };
 
-  const modelAt = (
+  const modelAt = async (
     definitions: HubDefinitions,
     target: ModelTarget,
     scope: ModelScope | undefined,
     trusted: boolean,
-  ): ResolvedModel => {
+  ): Promise<ResolvedModel> => {
     const file: Provider | undefined = definitions.providers[target.provider];
     if (file === undefined) {
       throw new WorkspaceModelError(
@@ -131,7 +139,7 @@ export function workspaceModelResolver(
         modelTexts.noProviderFix(target.provider),
       );
     }
-    requireTrustForKey(file, trusted);
+    await requireKeyMayGo(file, { trusted, keyOrigins: input.keyOrigins });
     let provider: LlmProvider | undefined;
     if (file.type === "mock") {
       provider = mockFor(file, scope);
@@ -148,7 +156,12 @@ export function workspaceModelResolver(
   return async (request, scope) => {
     const trusted = await input.isTrusted();
     if (request.agent !== undefined) {
-      return unsavedModel(request.agent, { ...context, localOnly, trusted });
+      return await unsavedModel(request.agent, {
+        ...context,
+        localOnly,
+        trusted,
+        keyOrigins: input.keyOrigins,
+      });
     }
     const definitions = definitionsFor(request.hubId);
     const name = callModelName(definitions, request);
@@ -160,8 +173,11 @@ export function workspaceModelResolver(
         modelTexts.unknownAliasFix(),
       );
     }
-    const fallback = target.fallback.map((next) => modelAt(definitions, next, scope, trusted));
-    return { ...modelAt(definitions, target, scope, trusted), fallback };
+    const fallback: ResolvedModel[] = [];
+    for (const next of target.fallback) {
+      fallback.push(await modelAt(definitions, next, scope, trusted));
+    }
+    return { ...(await modelAt(definitions, target, scope, trusted)), fallback };
   };
 }
 
@@ -190,22 +206,45 @@ export function latestModelResolver(
 }
 
 /**
- * Refuses a provider whose stored key would go to an address other than its
- * type's own, unless the workspace is trusted on this computer. The message
- * names the provider and the origin, never the key or the path.
+ * The one check before a stored key is used for a call. A list of allowed
+ * origins adds to step A's trust rule (HAL-11342) and never replaces it, so
+ * the key may go to its provider's address only when both hold:
  *
- * @throws {WorkspaceModelError} `untrusted-provider-address`
+ * - the address is its type's own or the workspace is trusted on this
+ *   computer, and
+ * - the key has no list recorded (saved before origins existed), or the
+ *   address is on it.
+ *
+ * An address that can't be read is on no list. The message names the
+ * provider and the origin, never the key or the path.
+ *
+ * @throws {WorkspaceModelError} `untrusted-provider-address` for the trust
+ *   rule, `key-origin-not-allowed` for a key with a list
  */
-function requireTrustForKey(file: ProviderFile, trusted: boolean): void {
+async function requireKeyMayGo(
+  file: ProviderFile,
+  context: { trusted: boolean; keyOrigins: KeyOrigins },
+): Promise<void> {
   const destination = keyDestination(file);
-  if (destination === undefined || destination.isDefault || trusted) {
+  if (destination === undefined) {
     return;
   }
-  throw new WorkspaceModelError(
-    "untrusted-provider-address",
-    modelTexts.untrustedAddress(destination.provider, destination.origin),
-    modelTexts.untrustedAddressFix(destination.provider),
-  );
+  if (!destination.isDefault && !context.trusted) {
+    throw new WorkspaceModelError(
+      "untrusted-provider-address",
+      modelTexts.untrustedAddress(destination.provider, destination.origin),
+      modelTexts.untrustedAddressFix(destination.provider),
+    );
+  }
+  const allowed =
+    file.secret === undefined ? undefined : await context.keyOrigins.allowedOrigins(file.secret);
+  if (allowed !== undefined && !allowed.includes(destination.origin)) {
+    throw new WorkspaceModelError(
+      "key-origin-not-allowed",
+      modelTexts.originNotAllowed(destination.provider, destination.origin),
+      modelTexts.originNotAllowedFix(destination.provider),
+    );
+  }
 }
 
 /**
@@ -235,10 +274,16 @@ function resolvedModel(
  * workspace their `local` flag is not trusted: the address decides, as it
  * does for the agent host's model route.
  */
-function unsavedModel(
+async function unsavedModel(
   settings: ChatAgentSettings,
-  context: { secrets: Secrets; http: HttpClient; localOnly: boolean; trusted: boolean },
-): ResolvedModel {
+  context: {
+    secrets: Secrets;
+    http: HttpClient;
+    localOnly: boolean;
+    trusted: boolean;
+    keyOrigins: KeyOrigins;
+  },
+): Promise<ResolvedModel> {
   if (context.localOnly && !isOnThisMachine({ ...settings, options: {} })) {
     throw new WorkspaceModelError(
       "not-on-this-machine",
@@ -254,7 +299,7 @@ function unsavedModel(
     ...(settings.baseUrl === undefined ? {} : { baseUrl: settings.baseUrl }),
     ...(settings.secret === undefined ? {} : { secret: settings.secret }),
   };
-  requireTrustForKey(file, context.trusted);
+  await requireKeyMayGo(file, context);
   return resolvedModel(workspaceProvider(file, context), file, {
     provider: file.id,
     model: settings.model,

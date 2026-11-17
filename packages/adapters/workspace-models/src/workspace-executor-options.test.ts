@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { noListedToolApproval } from "@halonicjs/engine";
-import type { Clock, Secrets } from "@halonicjs/ports";
+import { type Clock, noKeyOrigins, type Secrets } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -35,6 +35,7 @@ async function optionsOf(files: Record<string, string>) {
     http: { fetch },
     clock,
     isTrusted: () => true,
+    keyOrigins: noKeyOrigins,
     listedToolApproval: noListedToolApproval,
   });
 }

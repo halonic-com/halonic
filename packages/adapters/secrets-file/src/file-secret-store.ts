@@ -7,9 +7,20 @@ import {
   renameOver,
   writeFlushedFile,
 } from "@halonicjs/adapter-fs-node";
-import { checkSecretValue, type SecretStore, secretKey } from "@halonicjs/ports";
+import {
+  checkSecretValue,
+  type KeyOrigins,
+  maxAllowedOrigins,
+  type SecretStore,
+  secretKey,
+} from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
-import { parseSecretsFile, type SecretEntry, secretsFileText } from "./secrets-file-format.ts";
+import {
+  originOf,
+  parseSecretsFile,
+  type SecretEntry,
+  secretsFileText,
+} from "./secrets-file-format.ts";
 
 /**
  * The secrets a person sets with `halonic secret`, in one JSON file in their
@@ -33,7 +44,7 @@ import { parseSecretsFile, type SecretEntry, secretsFileText } from "./secrets-f
  * A value never appears in an error: a damaged file is reported by its
  * location and fix, never by its content.
  */
-export class FileSecretStore implements SecretStore {
+export class FileSecretStore implements SecretStore, KeyOrigins {
   readonly #file: string;
   #queue: Promise<unknown> = Promise.resolve();
 
@@ -52,7 +63,40 @@ export class FileSecretStore implements SecretStore {
     checkSecretValue(value);
     await this.#exclusively(async () => {
       const entries = await this.#load();
-      entries.set(key, { name, value });
+      // A new value keeps the key's allowed origins: changing a key must not unbind it.
+      entries.set(key, { ...entries.get(key), name, value });
+      await this.#save(entries);
+    });
+  }
+
+  async allowedOrigins(name: string): Promise<readonly string[] | undefined> {
+    const key = secretKey(name);
+    return (await this.#load()).get(key)?.allowedOrigins;
+  }
+
+  /**
+   * Records the origins a stored key may be sent to, replacing the ones it
+   * had. Each is reduced to its scheme, host and port, so a path is dropped
+   * and two spellings of one origin are one; repeats are dropped.
+   *
+   * @throws RangeError when the name breaks the rule, no secret is stored
+   *   under it, the list is empty or longer than {@link maxAllowedOrigins}, or
+   *   an address isn't an `http` or `https` address without user info; the
+   *   message never repeats an address
+   */
+  async setAllowedOrigins(name: string, addresses: readonly string[]): Promise<void> {
+    const key = secretKey(name);
+    const origins = [...new Set(addresses.map(originOfAddress))];
+    if (origins.length === 0 || origins.length > maxAllowedOrigins) {
+      throw new RangeError(`A key may be allowed 1 to ${maxAllowedOrigins} origins.`);
+    }
+    await this.#exclusively(async () => {
+      const entries = await this.#load();
+      const entry = entries.get(key);
+      if (entry === undefined) {
+        throw new RangeError("There is no stored secret with that name to allow an origin for.");
+      }
+      entries.set(key, { ...entry, allowedOrigins: origins });
       await this.#save(entries);
     });
   }
@@ -113,6 +157,14 @@ export class FileSecretStore implements SecretStore {
       throw error;
     }
   }
+}
+
+function originOfAddress(address: string): string {
+  const origin = originOf(address);
+  if (origin === undefined) {
+    throw new RangeError("An allowed origin must be an http or https address without user info.");
+  }
+  return origin;
 }
 
 function isMissing(error: unknown): boolean {

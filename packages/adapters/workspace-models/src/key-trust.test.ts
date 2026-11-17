@@ -3,7 +3,13 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { noListedToolApproval } from "@halonicjs/engine";
-import type { ChatTurnRequest, Clock, HttpClient, Secrets } from "@halonicjs/ports";
+import {
+  type ChatTurnRequest,
+  type Clock,
+  type HttpClient,
+  noKeyOrigins,
+  type Secrets,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -203,7 +209,7 @@ const call: ChatTurnRequest = {
 /** The entry points that resolve a model: the resolver itself, and the executor options the CLI's and Studio's engines both build. */
 const entryPoints = {
   resolver: (workspace: LoadedWorkspace, isTrusted: () => boolean | Promise<boolean>) =>
-    workspaceModelResolver({ workspace, secrets, http, isTrusted }),
+    workspaceModelResolver({ workspace, secrets, http, isTrusted, keyOrigins: noKeyOrigins }),
   "executor options": (workspace: LoadedWorkspace, isTrusted: () => boolean | Promise<boolean>) =>
     workspaceExecutorOptions({
       workspace,
@@ -211,6 +217,7 @@ const entryPoints = {
       http,
       clock,
       isTrusted,
+      keyOrigins: noKeyOrigins,
       listedToolApproval: noListedToolApproval,
     }).resolveModel,
 };
