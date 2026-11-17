@@ -260,8 +260,8 @@ export function NewWorkspaceDialog({
           />
         </Field>
         <Field label={FOLDER_FIELD} error={writeError ?? parentError ?? null}>
-          <div className="flex items-center gap-2">
-            <span className="min-w-0 flex-1 truncate">{shownFolder}</span>
+          <div className="flex items-start gap-2">
+            <span className="min-w-0 flex-1 break-all">{shownFolder}</span>
             {/* Name's description, read when Name is focused: "Folder: ~/Documents/Acme". */}
             <span id={folderLineId} hidden>{`${FOLDER_FIELD}: ${shownFolder ?? ""}`}</span>
             {host.pickParent === undefined ? null : (
@@ -271,7 +271,8 @@ export function NewWorkspaceDialog({
             )}
           </div>
         </Field>
-        <p className="text-small text-fg-muted">{NOTE[state]}</p>
+        {/* Room for the longest note (3 lines of 20px), so the dialog does not move as the note changes. */}
+        <p className="min-h-15 text-small text-fg-muted">{NOTE[state]}</p>
       </div>
     </Dialog>
   );
