@@ -71,8 +71,8 @@ export interface PluginsListProps {
   readonly onOpenInNewTab: (plugin: string) => void;
   /** Open on a built-in plugin. */
   readonly onOpenBuiltIn: (id: string) => void;
-  /** **Add plugin**: opens the Add plugin dialog. */
-  readonly onAdd: () => void;
+  /** **Add plugin**: opens the Add plugin dialog. Without it, **Add plugin** is not shown. */
+  readonly onAdd?: () => void;
   /** **Try again** after the list couldn't load. */
   readonly onRetry: () => void;
   /**
@@ -154,6 +154,7 @@ export function PluginsList({
       more: { label: moreFor(plugin.name), onClick: openMore(`${BUILT_IN_PREFIX}${plugin.id}`) },
     }),
   );
+  const add = viewOnly ? undefined : onAdd;
   const openRow = (id: string) =>
     id.startsWith(BUILT_IN_PREFIX) ? onOpenBuiltIn(id.slice(BUILT_IN_PREFIX.length)) : onOpen(id);
 
@@ -161,8 +162,8 @@ export function PluginsList({
     <div className="flex flex-col gap-4 p-4">
       <header className="flex items-start gap-4">
         <p className="min-w-0 flex-1 text-body text-fg-muted">{PLUGINS_SENTENCE}</p>
-        {viewOnly ? null : (
-          <Button variant="primary" size="sm" onClick={onAdd}>
+        {add === undefined ? null : (
+          <Button variant="primary" size="sm" onClick={add}>
             {ADD_PLUGIN}
           </Button>
         )}
@@ -186,7 +187,7 @@ export function PluginsList({
           empty={{
             title: EMPTY_TITLE,
             description: EMPTY_LINE,
-            ...(viewOnly ? {} : { action: { label: ADD_PLUGIN, onClick: onAdd } }),
+            ...(add === undefined ? {} : { action: { label: ADD_PLUGIN, onClick: add } }),
           }}
         />
       )}

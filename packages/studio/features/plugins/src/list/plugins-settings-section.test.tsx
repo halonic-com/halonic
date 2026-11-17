@@ -79,4 +79,29 @@ verifies("plugins.plugin-settings-list", () => {
     expect(closed).toBe(1);
     expect(opened).toEqual([{ kind: "plugin", hub: "this-computer", id: "weather" }]);
   });
+
+  it("hides Add plugin when the host gives no installer", async () => {
+    const { feed } = feedOf([]);
+    const shell = createShell({ features: [pluginsFeature], hostServices: [PluginsHostService] });
+    const workspace = new WorkspaceServices();
+    workspace.provide(PluginsHostService, {
+      feed,
+      caller: { call: async () => "" },
+      ...noSettings(),
+      ...noActions(),
+    });
+    shell.services.instantiate(workspace);
+    const section = shell.contributions.settings.list().find(({ id }) => id === "plugins");
+    if (section === undefined) throw new Error("No Plugins section");
+    const View = await loadView<ComponentType<SettingsSectionProps>>(section);
+    const view = render(
+      <View
+        context={shell.services.contextFor("plugins", workspace)}
+        closeSettings={() => {}}
+        place="app"
+        surface="window"
+      />,
+    );
+    expect(view.textContent).not.toContain("Add plugin");
+  });
 });

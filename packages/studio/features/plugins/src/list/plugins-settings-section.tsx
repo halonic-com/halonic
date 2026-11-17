@@ -30,7 +30,7 @@ export function PluginsSettingsSection({ context, closeSettings }: SettingsSecti
         onOpen={(plugin) => open(plugin, false)}
         onOpenInNewTab={(plugin) => open(plugin, true)}
         onOpenBuiltIn={closeSettings}
-        onAdd={() => setAdding(true)}
+        {...(plugins.installer === undefined ? {} : { onAdd: () => setAdding(true) })}
         onRetry={() => {}}
         {...(plugins.place === undefined ? {} : { place: plugins.place })}
       />
