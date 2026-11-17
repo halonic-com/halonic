@@ -34,7 +34,8 @@ verifies("harness-kit.instruction-snapshot", () => {
         null,
         writerFile({ instructions: "Be brief.\n", skills: ["review"] }),
       );
-      const pin = await sourceOf({ review: "Review small.\n" }).pinOf(agent);
+      const open = await sourceOf({ review: "Review small.\n" }).open(agent);
+      const pin = open?.pin;
       const expected = await pinInstructions([
         { name: "AGENTS.md", text: "Be brief.\n" },
         { name: "skills/review/SKILL.md", text: "Review small.\n" },
@@ -45,20 +46,28 @@ verifies("harness-kit.instruction-snapshot", () => {
 
     it("writes the files read-only in a folder of the run's own", async () => {
       const agent = writerAgent(null, writerFile({ instructions: "Be brief.\n" }));
-      await sourceOf().pinOf(agent);
-      const [folder] = await readdir(join(base, "instructions"));
-      const file = join(base, "instructions", folder as string, "AGENTS.md");
+      const open = await sourceOf().open(agent);
+      const file = join(open?.folder as string, "AGENTS.md");
       expect(await readFile(file, "utf8")).toBe("Be brief.\n");
       if (process.platform !== "win32") expect((await stat(file)).mode & 0o222).toBe(0);
     });
 
-    it("gives no pin when the agent has no instructions and no skills", async () => {
-      expect(await sourceOf().pinOf(writerAgent(null))).toBeNull();
+    it("gives nothing when the agent has no instructions and no skills", async () => {
+      expect(await sourceOf().open(writerAgent(null))).toBeNull();
+    });
+
+    it("removes the run's folder when it is released, and again without failing", async () => {
+      const agent = writerAgent(null, writerFile({ instructions: "Be brief.\n" }));
+      const open = await sourceOf().open(agent);
+      expect(await readdir(join(base, "instructions"))).toHaveLength(1);
+      await open?.release();
+      expect(await readdir(join(base, "instructions"))).toEqual([]);
+      await expect(open?.release()).resolves.toBeUndefined();
     });
 
     it("fails, writing nothing, when a skill has no text", async () => {
       const agent = writerAgent(null, writerFile({ skills: ["missing"] }));
-      await expect(sourceOf().pinOf(agent)).rejects.toThrow('No skill "missing".');
+      await expect(sourceOf().open(agent)).rejects.toThrow('No skill "missing".');
       expect(await readdir(base)).toEqual([]);
     });
   });

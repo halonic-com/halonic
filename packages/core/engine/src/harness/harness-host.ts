@@ -104,10 +104,15 @@ export interface HarnessProfile {
 export interface HarnessProfileBuilder {
   /**
    * @param bridge - the run's open bridge, whose loopback address the profile's network allows
+   * @param instructionsFolder - the run's instruction folder, which the profile opens read-only; `null` when the run has none
    * @throws when the agent's working folder resolves outside the workspace, or the
    *   `filesFolder` when there is one, or into a protected folder
    */
-  profileOf(agent: HarnessAgent, bridge: HarnessBridge): Promise<HarnessProfile>;
+  profileOf(
+    agent: HarnessAgent,
+    bridge: HarnessBridge,
+    instructionsFolder: string | null,
+  ): Promise<HarnessProfile>;
 }
 
 /** The instructions a harness run starts with, pinned by hash: no contents, no absolute paths. */
@@ -118,17 +123,30 @@ export interface HarnessInstructionsPin {
   readonly sha256: string;
 }
 
+/** The instructions of one harness run, copied and open until the call ends. */
+export interface OpenInstructions {
+  readonly pin: HarnessInstructionsPin;
+  /**
+   * The run's own folder: `AGENTS.md` in it, and each skill as
+   * `skills/<id>/SKILL.md`. The sandbox opens it read-only.
+   */
+  readonly folder: string;
+  /** Removes the folder. The engine calls it once the call has ended, whatever the outcome; it doesn't throw. */
+  release(): Promise<void>;
+}
+
 /**
  * Where the instructions of a harness run come from. The host copies the
  * agent's `AGENTS.md` and selected skills into the run's folder, read-only,
- * and pins them; the engine records the pin and never reads the files.
+ * and pins them; the engine records the pin, hands the folder to the sandbox
+ * and the harness, and never reads the files.
  */
 export interface HarnessInstructionSource {
   /**
-   * @returns the pin of what the run starts with, or `null` when the agent has no instruction files
+   * @returns the run's instructions, or `null` when the agent has no instruction files
    * @throws when the files can't be copied; the call fails before the harness starts
    */
-  pinOf(agent: HarnessAgent): Promise<HarnessInstructionsPin | null>;
+  open(agent: HarnessAgent): Promise<OpenInstructions | null>;
 }
 
 /**

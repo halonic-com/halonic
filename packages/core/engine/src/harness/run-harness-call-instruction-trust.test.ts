@@ -18,9 +18,13 @@ function runWith(
   ports.options = {
     ...ports.options,
     instructions: {
-      pinOf: async () => ({
-        files: files.map((path) => ({ path, sha256: digest("a") })),
-        sha256: digest("b"),
+      open: async () => ({
+        pin: {
+          files: files.map((path) => ({ path, sha256: digest("a") })),
+          sha256: digest("b"),
+        },
+        folder: "<data>/instructions/instructions-1",
+        release: async () => {},
       }),
     },
     instructionTrust: {
@@ -176,7 +180,7 @@ verifies("engine.harness-instructions-trust", () => {
 
     it("asks nothing when the agent has no instruction files", async () => {
       const { ports, asked } = runWith(ask({ added: ["AGENTS.md"] }));
-      ports.options = { ...ports.options, instructions: { pinOf: async () => null } };
+      ports.options = { ...ports.options, instructions: { open: async () => null } };
 
       const { error } = await runCallOn(ports);
 

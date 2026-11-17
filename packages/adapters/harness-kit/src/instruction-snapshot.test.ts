@@ -126,6 +126,20 @@ verifies("harness-kit.instruction-snapshot", () => {
       expect(await readdir(folder)).toEqual([]);
     });
 
+    it.each([
+      "hooks/hooks.json",
+      "commands/run.md",
+      "agents/helper.md",
+      "skills/review/hooks.json",
+      "skills/SKILL.md",
+      "notes.md",
+    ])("refuses the file %j and writes nothing", async (name) => {
+      await expect(snapshotInstructions(folder, [agents, { name, text: "x" }])).rejects.toThrow(
+        /AGENTS\.md or skills/u,
+      );
+      expect(await readdir(folder)).toEqual([]);
+    });
+
     it("removes the folder, read-only files and all, when a file can't be written", async () => {
       let writes = 0;
       const disk: InstructionDisk = {
