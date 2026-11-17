@@ -1,13 +1,6 @@
 import { type SandboxStartCheck, sandboxStartCheckKey, shortRunId } from "@halonicjs/app";
 import { type RunEvent, type RunSummary, type RunVersion, summarize } from "@halonicjs/events";
-import {
-  Button,
-  Callout,
-  EmptyState,
-  List,
-  StatusChip,
-  usePresentation,
-} from "@halonicjs/studio-kit";
+import { Callout, EmptyState, List, usePresentation } from "@halonicjs/studio-kit";
 import {
   type EngineWords,
   engineWordsOf,
@@ -15,7 +8,7 @@ import {
   type ItemViewProps,
   PageBackLinkSlot,
 } from "@halonicjs/studio-shell";
-import { type ReactNode, useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import {
   type InstructionTrustHost,
   InstructionTrustHostService,
@@ -23,7 +16,7 @@ import {
   RunStartHostService,
   type SourcedRun,
 } from "../api.ts";
-import { FailureReason, RefreshFailedLine } from "../load-failure.tsx";
+import { FailureReason } from "../load-failure.tsx";
 import { runPageWords } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
 import { Details, type DetailsProps, DetailsRow } from "./details.tsx";
@@ -39,8 +32,9 @@ import {
   readLines,
   summaryLine,
 } from "./receipt-model.ts";
-import { type RunAgain, useRunAgain } from "./run-again.ts";
-import { type RunPageContext, runHeader } from "./run-page-model.ts";
+import { useRunAgain } from "./run-again.ts";
+import { LogUnread, RunLayout } from "./run-layout.tsx";
+import type { RunPageContext } from "./run-page-model.ts";
 import { slowStepDueAt } from "./slow-step.ts";
 import { StepPanel } from "./step-panel.tsx";
 
@@ -378,102 +372,6 @@ export function DamagedLogBanner({ line }: { readonly line: number | undefined }
     <section aria-label={runPageWords.damagedLogName}>
       <Callout tone="danger">{runPageWords.damagedLog(line)}</Callout>
     </section>
-  );
-}
-
-/** What stands where the receipt and Every step go while the log isn't read: a skeleton, or why not. */
-function LogUnread({
-  failure,
-  retry,
-  engine,
-}: {
-  readonly failure: unknown;
-  readonly retry: () => void;
-  readonly engine: EngineWords;
-}) {
-  if (failure === undefined) {
-    return (
-      <List
-        label={runPageWords.loadingLog}
-        rows={[]}
-        loading
-        loadingLabel={runPageWords.loadingLog}
-      />
-    );
-  }
-  return (
-    <EmptyState
-      tone="error"
-      align="start"
-      title={runPageWords.logFailed}
-      description={<FailureReason what={runPageWords.logFailed} error={failure} engine={engine} />}
-      action={{ label: "Try again", onClick: retry }}
-    />
-  );
-}
-
-/** The header, the line when a later read failed, then what goes under them. */
-function RunLayout({
-  run,
-  context,
-  refreshError,
-  engine,
-  phone,
-  runAgain,
-  children,
-}: {
-  readonly run: SourcedRun;
-  readonly context: RunPageContext;
-  /** Why the latest read of the runs failed; the page keeps what it showed. */
-  readonly refreshError: unknown;
-  readonly engine: EngineWords;
-  readonly phone: boolean;
-  readonly runAgain: RunAgain | undefined;
-  readonly children: ReactNode;
-}) {
-  const header = runHeader(run, context);
-  return (
-    <div className={`flex w-full min-w-0 flex-col gap-4 ${phone ? "px-4 py-4" : "px-6 py-5"}`}>
-      <PageBackLinkSlot />
-      <header className="flex flex-col gap-1">
-        <p className="text-small text-fg-muted">{header.kindLabel}</p>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className={phone ? "sr-only" : "text-title"}>{header.title}</h1>
-          <StatusChip tone={header.chip.tone} dot={header.chip.dot}>
-            {header.chip.word}
-          </StatusChip>
-          {runAgain === undefined ? null : (
-            <Button variant="secondary" size="sm" busy={runAgain.busy} onClick={runAgain.start}>
-              {runPageWords.runAgain}
-            </Button>
-          )}
-        </div>
-        <p className="text-small text-fg-muted">{header.line}</p>
-        {header.catchUpLine === undefined ? null : (
-          <p className="text-small text-fg-muted">{header.catchUpLine}</p>
-        )}
-      </header>
-      {runAgain?.problem === undefined ? null : (
-        <section aria-label={runPageWords.runAgainFailedName}>
-          <Callout tone="danger">
-            {runPageWords.runAgainFailedTitle}:{" "}
-            <FailureReason
-              what={runPageWords.runAgainFailedTitle}
-              error={runAgain.problem.error}
-              engine={engine}
-            />
-          </Callout>
-        </section>
-      )}
-      {refreshError === undefined ? null : (
-        <RefreshFailedLine
-          what={runPageWords.refreshFailed(shortRunId(run.summary.id))}
-          error={refreshError}
-          engine={engine}
-        />
-      )}
-      {children}
-    </div>
   );
 }
 
