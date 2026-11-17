@@ -3,6 +3,7 @@
 - Task: HAL-1302 (T9, per-item undo)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-1360 (the T9 UX checklist, part 2, 2.5: the toast words, 10 s with Undo, and the dialog when the copy can't be written; a team decision on top of the approved screen, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:XpzEHkEsSLhJGCQbTpVCI8P9178GqeimJzo9K7lBdq+QMoRbCvuIosCDFvtumV+1l/IOgp2q/rGZoxbUlu+4BA==
 
 ## What changes
 
