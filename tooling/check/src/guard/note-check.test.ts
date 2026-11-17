@@ -275,6 +275,51 @@ verifies("check.guard-extra-exports", () => {
   });
 });
 
+/** Runs the check on a pull request that changes `pnpm-workspace.yaml` to `after`, with `text` as its note. */
+async function dependencyErrorsOf(
+  after: string,
+  text: string | undefined,
+  signer: string,
+): Promise<string[]> {
+  const workspace = (typescript: string, vitest: string): string =>
+    `catalog:\n  "@typescript/typescript6": ${typescript}\n  vitest: ${vitest}\n`;
+  const before = { ...baseFiles, "pnpm-workspace.yaml": workspace("^6.0.2", "^5.1.0") };
+  const headFiles = { ...before, "pnpm-workspace.yaml": after };
+  const files =
+    text === undefined ? headFiles : { ...headFiles, [noteFile]: signed(text, headFiles, signer) };
+  const report = await checkNotes({
+    pull,
+    branch,
+    changed: ["pnpm-workspace.yaml"],
+    mergeBase: base,
+    git: fakeGit({ [base]: before, [head]: files }),
+  });
+  return report.problems.map((problem) => `${problem.file}: ${problem.message}`);
+}
+
+verifies("check.guard-dependency", () => {
+  const bumped = 'catalog:\n  "@typescript/typescript6": ^6.1.0\n  vitest: ^5.1.0\n';
+  const other = 'catalog:\n  "@typescript/typescript6": ^6.0.2\n  vitest: ^5.2.0\n';
+
+  test("passes a change to the guard's package with an internal note the CTO signed", async () => {
+    const covering = note("internal", "pnpm-workspace.yaml");
+    expect(await dependencyErrorsOf(bumped, covering, cto.privatePem)).toEqual([]);
+  });
+
+  test("fails it without a note, or with a note that doesn't list the file", async () => {
+    expect(await dependencyErrorsOf(bumped, undefined, cto.privatePem)).toEqual([
+      `pnpm-workspace.yaml: Changes the entries for the npm package the guard runs in pnpm-workspace.yaml. That needs a signed note (internal is enough): add ${noteFile} and list "pnpm-workspace.yaml" under Covers.`,
+    ]);
+    expect(
+      await dependencyErrorsOf(bumped, note("internal", "turbo.json"), cto.privatePem),
+    ).toEqual([expect.stringContaining(`doesn't list "pnpm-workspace.yaml" under Covers`)]);
+  });
+
+  test("needs nothing for another change to the same file", async () => {
+    expect(await dependencyErrorsOf(other, undefined, cto.privatePem)).toEqual([]);
+  });
+});
+
 verifies("check.guard-two-guardians", () => {
   test("lists every file the guard commands import as a trust root", () => {
     const covered = (file: string) =>
