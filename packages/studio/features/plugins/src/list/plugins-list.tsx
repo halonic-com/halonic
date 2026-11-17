@@ -69,8 +69,8 @@ export interface PluginsListProps {
   readonly onOpen: (plugin: string) => void;
   /** Ctrl Enter, a Ctrl-click, a middle click or **Open in new tab**. */
   readonly onOpenInNewTab: (plugin: string) => void;
-  /** Open on a built-in plugin. */
-  readonly onOpenBuiltIn: (id: string) => void;
+  /** Open on a built-in plugin. Without it, a built-in row opens nothing and has no ⋮. */
+  readonly onOpenBuiltIn?: (id: string) => void;
   /** **Add plugin**: opens the Add plugin dialog. Without it, **Add plugin** is not shown. */
   readonly onAdd?: () => void;
   /** **Try again** after the list couldn't load. */
@@ -84,6 +84,47 @@ export interface PluginsListProps {
 }
 
 const BUILT_IN_PREFIX = "built-in:";
+
+/** An installed plugin's ⋮: only the two ways to open it when view only. */
+function installedMenu(
+  plugin: InstalledPlugin,
+  viewOnly: boolean,
+  handlers: Parameters<typeof installedEntries>[1],
+): MenuEntry[] {
+  if (!viewOnly) return installedEntries(plugin, handlers);
+  return [
+    { id: "open", label: OPEN, onSelect: handlers.open },
+    { id: "tab", label: OPEN_IN_NEW_TAB, onSelect: handlers.openInNewTab },
+  ];
+}
+
+/** A built-in plugin's ⋮: only Open, and nothing when the host can't open one. */
+function builtInEntries(
+  id: string | undefined,
+  open: ((id: string) => void) | undefined,
+): MenuEntry[] {
+  if (id === undefined || open === undefined) return [];
+  return [{ id: "open", label: OPEN, onSelect: () => open(id) }];
+}
+
+/** The built-in rows. Without a way to open one, a row has no ⋮. */
+function builtInRowsOf(
+  builtIn: readonly BuiltInPlugin[],
+  canOpen: boolean,
+  openMore: (id: string) => (event: { readonly currentTarget: HTMLElement }) => void,
+): ListRow[] {
+  return builtIn.map((plugin): ListRow => {
+    const id = `${BUILT_IN_PREFIX}${plugin.id}`;
+    return {
+      id,
+      title: plugin.name,
+      avatar: <Letter name={plugin.name} />,
+      meta: COMES_WITH_HALONIC,
+      trailing: <StatusChip tone="neutral">{BUILT_IN_CHIP}</StatusChip>,
+      ...(canOpen ? { more: { label: moreFor(plugin.name), onClick: openMore(id) } } : {}),
+    };
+  });
+}
 
 /**
  * Library › Plugins (design section 3, checklist 2): the sentence, **Add plugin**, then the
@@ -121,48 +162,36 @@ export function PluginsList({
   const installed = plugins.find((plugin) => plugin.plugin === menu?.id);
   const builtInMenu = builtIn.find((plugin) => `${BUILT_IN_PREFIX}${plugin.id}` === menu?.id);
 
-  let entries: MenuEntry[] = [];
-  if (installed !== undefined && viewOnly) {
-    entries = [
-      { id: "open", label: OPEN, onSelect: () => onOpen(installed.plugin) },
-      { id: "tab", label: OPEN_IN_NEW_TAB, onSelect: () => onOpenInNewTab(installed.plugin) },
-    ];
-  } else if (installed !== undefined) {
-    entries = installedEntries(installed, {
-      open: () => onOpen(installed.plugin),
-      openInNewTab: () => onOpenInNewTab(installed.plugin),
-      openFolder: () => void run("openFolder", () => actions.openFolder(installed.plugin)),
-      revoke: () => void run("revoke", () => actions.revoke(installed.plugin)),
-      remove: () => setRemoving(installed),
-    });
-  } else if (builtInMenu !== undefined) {
-    entries = [{ id: "open", label: OPEN, onSelect: () => onOpenBuiltIn(builtInMenu.id) }];
-  }
+  const entries =
+    installed === undefined
+      ? builtInEntries(builtInMenu?.id, onOpenBuiltIn)
+      : installedMenu(installed, viewOnly, {
+          open: () => onOpen(installed.plugin),
+          openInNewTab: () => onOpenInNewTab(installed.plugin),
+          openFolder: () => void run("openFolder", () => actions.openFolder(installed.plugin)),
+          revoke: () => void run("revoke", () => actions.revoke(installed.plugin)),
+          remove: () => setRemoving(installed),
+        });
 
   const openMore = (id: string) => (event: { readonly currentTarget: HTMLElement }) =>
     setMenu({ id, target: { element: event.currentTarget } });
   const installedRows = plugins.map((plugin) =>
     installedRow(plugin, now(), openMore(plugin.plugin)),
   );
-  const builtInRows = builtIn.map(
-    (plugin): ListRow => ({
-      id: `${BUILT_IN_PREFIX}${plugin.id}`,
-      title: plugin.name,
-      avatar: <Letter name={plugin.name} />,
-      meta: COMES_WITH_HALONIC,
-      trailing: <StatusChip tone="neutral">{BUILT_IN_CHIP}</StatusChip>,
-      more: { label: moreFor(plugin.name), onClick: openMore(`${BUILT_IN_PREFIX}${plugin.id}`) },
-    }),
-  );
+  const builtInRows = builtInRowsOf(builtIn, onOpenBuiltIn !== undefined, openMore);
   const add = viewOnly ? undefined : onAdd;
-  const openRow = (id: string) =>
-    id.startsWith(BUILT_IN_PREFIX) ? onOpenBuiltIn(id.slice(BUILT_IN_PREFIX.length)) : onOpen(id);
+  const openRow = (id: string) => {
+    if (!id.startsWith(BUILT_IN_PREFIX)) onOpen(id);
+    else onOpenBuiltIn?.(id.slice(BUILT_IN_PREFIX.length));
+  };
+  // With nothing installed the empty state's own action is the one **Add plugin**.
+  const emptyInstalled = load.kind === "ready" && plugins.length === 0;
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4">
       <header className="flex items-start gap-4">
         <p className="min-w-0 flex-1 text-body text-fg-muted">{PLUGINS_SENTENCE}</p>
-        {add === undefined ? null : (
+        {add === undefined || emptyInstalled ? null : (
           <Button variant="primary" size="sm" onClick={add}>
             {ADD_PLUGIN}
           </Button>

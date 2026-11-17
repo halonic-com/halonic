@@ -46,6 +46,7 @@ function show(
     load?: PluginsLoad;
     actions?: PluginActions;
     builtIn?: boolean;
+    openBuiltIn?: boolean;
     phone?: boolean;
     place?: "app" | "served";
   } = {},
@@ -61,7 +62,9 @@ function show(
         actions={options.actions ?? noActions().actions}
         onOpen={(id) => seen.opened.push(id)}
         onOpenInNewTab={(id) => seen.tabs.push(id)}
-        onOpenBuiltIn={(id) => seen.builtIns.push(id)}
+        {...(options.openBuiltIn === false
+          ? {}
+          : { onOpenBuiltIn: (id: string) => seen.builtIns.push(id) })}
         onAdd={() => seen.calls.push("add")}
         onRetry={() => seen.calls.push("retry")}
         now={now}
@@ -223,7 +226,18 @@ verifies("plugins.plugin-list", () => {
         if (candidate.textContent === "Add plugin") candidate.click();
       }
     });
-    expect(seen.calls).toEqual(["add", "add"]);
+    expect(seen.calls).toEqual(["add"]);
+    const labels = [...document.querySelectorAll("button")].filter(
+      (candidate) => candidate.textContent === "Add plugin",
+    );
+    expect(labels).toHaveLength(1);
+  });
+
+  it("opens nothing on a built-in row, and gives it no ⋮, when the host can't open one", () => {
+    const seen = show([weather()], { openBuiltIn: false });
+    expect(text()).toContain("Gmail");
+    expect(document.querySelector('button[aria-label*="Gmail"]')).toBeNull();
+    expect(seen.builtIns).toEqual([]);
   });
 
   it("says why it couldn't load, with Try again", async () => {
