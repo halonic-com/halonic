@@ -185,6 +185,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
       steps: Object.entries(value.states).map(([stepId, state]) => ({
         id: stepId,
         type: state.type,
+        title: stepTitle(state.description),
         agent: state.agent,
       })),
       arrows: Object.entries(value.states).flatMap(([from, state]) =>
@@ -351,4 +352,14 @@ export class WorkspaceWorkflows implements WorkflowsHost {
 /** What a read of a workflow the workspace doesn't have rejects with: Studio shows the item-gone state for it. */
 function workflowGone(): KindedError {
   return new KindedError("not_found", "This workflow isn't in this workspace any more.");
+}
+
+/**
+ * A step's own words for it: the first line of its description, as the run page and the CLI name
+ * it. `undefined` when there is none, or when the line still holds a `{{ }}` placeholder that only
+ * a run can fill in.
+ */
+function stepTitle(description: string | undefined): string | undefined {
+  const line = description?.split("\n")[0]?.trim();
+  return line === undefined || line === "" || line.includes("{{") ? undefined : line;
 }

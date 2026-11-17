@@ -6,8 +6,14 @@ export interface ArrowShape {
   readonly head: Point;
   /** The direction the head points, in degrees (0 is right, 90 is down). */
   readonly headAngle: number;
+  /** Where the label's chip sits, beside the line and never on it: its centre line, and `labelAnchor` says which edge is at `x`. */
   readonly label: Point;
+  readonly labelAnchor: "start" | "middle" | "end";
 }
+
+/** Space between a line and its label's chip, and half the chip's height, in canvas units. */
+const LABEL_GAP = 10;
+const LABEL_HALF_HEIGHT = 9;
 
 const LOOP_OUT = 48;
 
@@ -29,7 +35,12 @@ export function arrowShape(from: Box, to: Box): ArrowShape {
       path: `M ${at(start)} C ${at({ x: start.x, y: start.y + bend })} ${at({ x: end.x, y: end.y - bend })} ${at(end)}`,
       head: end,
       headAngle: 90,
-      label: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 },
+      // The curve slants by 2·dx/dy at its middle, so a chip clears it by that much over its half height.
+      ...labelBeside(
+        { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 },
+        end.x >= start.x,
+        LABEL_GAP + (Math.abs(end.x - start.x) * LABEL_HALF_HEIGHT * 2) / (end.y - start.y),
+      ),
     };
   }
   const sameRow = to.y < from.y + from.height && from.y < to.y + to.height;
@@ -42,7 +53,8 @@ export function arrowShape(from: Box, to: Box): ArrowShape {
       path: `M ${at(start)} C ${at({ x: start.x + bend, y: start.y })} ${at({ x: end.x - bend, y: end.y })} ${at(end)}`,
       head: end,
       headAngle: rightwards ? 0 : 180,
-      label: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 },
+      label: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 - LABEL_GAP - LABEL_HALF_HEIGHT },
+      labelAnchor: "middle",
     };
   }
   const start = { x: from.x + from.width, y: from.y + from.height * 0.35 };
@@ -52,7 +64,18 @@ export function arrowShape(from: Box, to: Box): ArrowShape {
     path: `M ${at(start)} C ${at({ x: out, y: start.y })} ${at({ x: out, y: end.y })} ${at(end)}`,
     head: end,
     headAngle: 180,
-    // The curve's halfway point: the cubic at t = 1/2 with both control points at `out`.
-    label: { x: (start.x + end.x + 6 * out) / 8, y: (start.y + end.y) / 2 },
+    // Right of the curve's outermost point: the cubic at t = 1/2 with both control points at `out`.
+    ...labelBeside(
+      { x: (start.x + end.x + 6 * out) / 8, y: (start.y + end.y) / 2 },
+      true,
+      LABEL_GAP,
+    ),
   };
+}
+
+/** A chip to one side of `onLine`, `gap` away: to its right (anchored at its left edge) or to its left. */
+function labelBeside(onLine: Point, right: boolean, gap: number) {
+  return right
+    ? { label: { x: onLine.x + gap, y: onLine.y }, labelAnchor: "start" as const }
+    : { label: { x: onLine.x - gap, y: onLine.y }, labelAnchor: "end" as const };
 }

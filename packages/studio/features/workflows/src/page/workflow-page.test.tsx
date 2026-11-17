@@ -260,9 +260,25 @@ verifies("workflows.page.step-cards", () => {
       card.textContent?.replace(/\s+/g, " "),
     );
 
-    expect(cards).toEqual(["AGENT STEPstartStartNo agent", "AGENT STEPwritewriter", "ENDdone"]);
+    expect(cards).toEqual(["AGENT STEPStartstartNo agent", "AGENT STEPwritewriter", "ENDdone"]);
     expect(page.querySelectorAll("svg path")).toHaveLength(2);
     expect(page.querySelector("svg text")?.textContent).toBe("ok");
+  });
+
+  it("names a card by its title, and by its id only when it has none", async () => {
+    const titled = {
+      ...reply,
+      steps: [{ id: "start", type: "task", title: "Read the email" }, ...reply.steps.slice(1)],
+    } satisfies WorkflowView;
+    const { host } = memoryHost([], [], [titled]);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
+    const cards = [...page.querySelectorAll("button[aria-pressed]")].map((card) => card.textContent);
+
+    expect(cards[0]).toContain("Read the email");
+    expect(cards[0]).not.toContain("start");
+    expect(cards[1]).toContain("write");
   });
 
   it("selects the pressed card and moves the selection to the next", async () => {
