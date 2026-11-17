@@ -6,6 +6,7 @@ import {
   COMMAND_COPIED,
   COMMAND_NOT_COPIED,
   type ToastStore,
+  useOpenExternal,
   useToastStore,
   useWriteClipboard,
 } from "@halonicjs/studio-kit";
@@ -146,6 +147,7 @@ function Banner({
 }) {
   const writeClipboard = useWriteClipboard();
   const toasts = useToastStore();
+  const openExternal = useOpenExternal();
   const copyDetails = useCopyDetails();
   if (banner === undefined) {
     return null;
@@ -155,7 +157,7 @@ function Banner({
   }
   const own = bannerAction(banner.action, reviewInInbox, openRun);
   const fixes = (banner.fixes ?? []).flatMap((fix) =>
-    fixAction(fix, writeClipboard, toasts, openModels),
+    fixAction(fix, writeClipboard, toasts, openModels, openExternal),
   );
   const again =
     own === undefined && banner.tone === "danger" && runAgain !== undefined
@@ -200,13 +202,26 @@ function bannerAction(
   return undefined;
 }
 
-/** A fix's button, or nothing when the page can't do it: Models can't be opened on every page. */
+/** A fix's button, or nothing when the page can't do it: Models can't be opened on every page. A page outside Studio opens through the host. */
 function fixAction(
   fix: BannerFix,
   writeClipboard: (text: string) => Promise<boolean>,
   toasts: ToastStore | null,
   openModels: (() => void) | undefined,
+  openExternal: (address: string) => Promise<void>,
 ): CalloutAction[] {
+  if (fix.kind === "open-external") {
+    const { address } = fix;
+    return [
+      {
+        label: fix.label,
+        opens: fix.opens,
+        onClick: () => {
+          void openExternal(address);
+        },
+      },
+    ];
+  }
   if (fix.kind === "copy-command") {
     const { command } = fix;
     // Confirmed like the CommandBox; the promise keeps the button busy until the copy settles.

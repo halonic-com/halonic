@@ -54,10 +54,19 @@ export type BannerAction =
   | { readonly kind: "review-in-inbox" }
   | { readonly kind: "open-run"; readonly runId: string; readonly label: string };
 
-/** A button that mends a failed run's cause: copy the command that does it, or go to Models. */
+/**
+ * A button that mends a failed run's cause: copy the command that does it, go to Models, or open
+ * a page outside Studio (`address` is already checked: see `googleConsoleAddress`).
+ */
 export type BannerFix =
   | { readonly kind: "copy-command"; readonly command: string }
-  | { readonly kind: "open-models" };
+  | { readonly kind: "open-models" }
+  | {
+      readonly kind: "open-external";
+      readonly label: string;
+      readonly address: string;
+      readonly opens: string;
+    };
 
 /** What the page needs besides the run. */
 export interface RunPageContext {

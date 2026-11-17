@@ -1,5 +1,10 @@
 import type { LookupFunction } from "node:net";
-import { addressAllowedFor, type HostClass, parseIpAddress } from "@halonicjs/adapter-http-kit";
+import {
+  addressAllowedFor,
+  classifyAddress,
+  type HostClass,
+  parseIpAddress,
+} from "@halonicjs/adapter-http-kit";
 import { AddressRefusedError } from "./address-refused.ts";
 
 /** Looks up every address of a host name, as `dns.lookup` with `all: true` does. */
@@ -41,6 +46,32 @@ export async function checkedAddresses(
     );
   }
   return allowed;
+}
+
+/**
+ * The addresses to connect to for the user's own proxy. The proxy may be on
+ * this computer or the home network, so no class is required of it. Only
+ * one rule stays: it may not be one of Halonic's own ports on this computer.
+ *
+ * @throws AddressRefusedError for an own port or an answer that isn't IP text
+ */
+export async function proxyAddresses(
+  host: string,
+  port: number,
+  resolve: Resolve,
+  ownPorts: ReadonlySet<number>,
+): Promise<string[]> {
+  const answer = parseIpAddress(host) !== undefined ? [host] : await resolve(host);
+  if (answer.length === 0 || !answer.every((address) => parseIpAddress(address) !== undefined)) {
+    throw new AddressRefusedError(`${host} has no address Halonic can connect to`);
+  }
+  const onThisComputer = answer.some((address) =>
+    ["loopback", "unspecified"].includes(classifyAddress(address)),
+  );
+  if (onThisComputer && ownPorts.has(port)) {
+    throw new AddressRefusedError(`${host}:${port} is one of Halonic's own ports on this computer`);
+  }
+  return [...answer];
 }
 
 /**

@@ -3,6 +3,8 @@ import { ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useRef } from "react";
 import { type RoutinesHost, RoutinesHostService, type RoutineView } from "../api.ts";
 import { Avatar } from "../list/routine-rows.tsx";
+import { RulesSection } from "../rules/rules-section.tsx";
+import { StartsCard } from "../starts/starts-card.tsx";
 import { WhenCard } from "../when/when-card.tsx";
 import { pageWords } from "./page-words.ts";
 import { useRoutine } from "./use-routine.ts";
@@ -35,7 +37,7 @@ export interface RoutineScreenProps {
 /**
  * The routine page's frame (`routines.page.frame-and-states`): the header with the letter avatar,
  * "ROUTINE" and the name, the summary line, the quiet "Changes not live yet" line and the
- * "isn't live yet" notice, then the When card. While the file is read a skeleton shows after 300 ms; a routine that
+ * "isn't live yet" notice, then the When card, the Starts card and the Rules. While the file is read a skeleton shows after 300 ms; a routine that
  * can't be read says why, and one that is gone says so with a way back to Routines.
  */
 export function RoutineScreen({ host, hubId, id, announce, goToRoutines }: RoutineScreenProps) {
@@ -73,6 +75,8 @@ export function RoutineScreen({ host, hubId, id, announce, goToRoutines }: Routi
         {load.kind === "ready" && (
           <WhenCard host={host} routine={load.routine} announce={announce} />
         )}
+        {load.kind === "ready" && <StartsCard host={host} routine={load.routine} />}
+        {load.kind === "ready" && <RulesSection host={host} routine={load.routine} />}
         {load.kind === "failed" && (
           <EmptyState
             tone="error"

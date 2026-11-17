@@ -1,15 +1,11 @@
 import { Button } from "@halonicjs/studio-kit";
 import type { ItemRef } from "@halonicjs/studio-shell";
-import { useEffect, useId, useRef, useState } from "react";
-import type { ChangeItem } from "../change-items.ts";
+import { useEffect, useId, useRef } from "react";
+import { type ChangeItem, isOpenable } from "../change-items.ts";
 import type { ChangesList } from "../changes-list.ts";
 import { discardWords, pageWords } from "../changes-words.ts";
-import { discardItem } from "../discard-item.ts";
 import { ItemChanges, WaitingNote } from "./item-changes.tsx";
-import { useDiscardToasts } from "./use-discard-toasts.ts";
-
-/** The kinds a page can open from here: the ones the Changes list shows with a place icon. */
-const openableKinds: readonly string[] = ["agent", "workflow", "routine"];
+import { useUndoItem } from "./use-undo-item.ts";
 
 /** Props for {@link WhatChangedPage}. */
 export interface WhatChangedPageProps {
@@ -30,24 +26,11 @@ export interface WhatChangedPageProps {
 export function WhatChangedPage({ list, item, developer, openItem, onBack }: WhatChangedPageProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
-  const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<string>();
-  const discarding = useDiscardToasts();
+  const { busy, failure, undo } = useUndoItem(list);
   const waitingId = useId();
   const headingId = useId();
 
-  async function undoTheseChanges() {
-    setBusy(true);
-    setFailure(undefined);
-    const reason = await discarding.run(await discardItem(list, item.files), {
-      title: discardWords.discarded(item.name),
-    });
-    setBusy(false);
-    setFailure(reason);
-  }
-
-  const canOpen =
-    openItem !== undefined && item.kind !== undefined && openableKinds.includes(item.kind);
+  const canOpen = openItem !== undefined && isOpenable(item);
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
       <span className="self-start">
@@ -79,7 +62,7 @@ export function WhatChangedPage({ list, item, developer, openItem, onBack }: Wha
           size="sm"
           busy={busy}
           unavailable={list.merging ? { reason: waitingId } : undefined}
-          onClick={() => void undoTheseChanges()}
+          onClick={() => void undo(item)}
         >
           {discardWords.undoTheseChanges}
         </Button>

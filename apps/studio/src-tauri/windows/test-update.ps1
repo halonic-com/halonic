@@ -129,6 +129,27 @@ function Write-ReopenReport([datetime]$Since, [hashtable]$Seen) {
   Get-ChildItem $dir -ErrorAction SilentlyContinue | ForEach-Object { "$($_.Name)  $($_.LastWriteTime.ToString('HH:mm:ss'))" } | Write-Output
 }
 
+# HAL-11982: the 0.1.2 installer sometimes doesn't finish within 120 s. Says
+# whether it never started, sits in a window nobody sees (title, children of
+# setup) or waits on a file: lists the installer and helper processes with
+# their window titles, every file in the install folder another process still
+# holds open, and what Halonic itself logged.
+function Write-InstallReport([string]$Title) {
+  Write-Output "--- install report: $Title ($((Get-Date).ToString('HH:mm:ss')) local) ---"
+  $updates = Join-Path $profileFolder 'updates'
+  Write-Output "installed: $(Get-InstalledVersion)"
+  Get-Process | Where-Object { $_.Name -match 'Halonic|setup|installer|agent|srt|sandbox|whoami|uninstall|msedgewebview2' } | Sort-Object Name | Format-Table Id, Name, SessionId, StartTime, MainWindowTitle, Path -AutoSize | Out-String -Width 250 | Write-Output
+  Get-CimInstance Win32_Process -Filter "Name like '%setup%' or Name like '%installer%' or Name like 'Halonic%' or Name like 'halonic%'" -ErrorAction SilentlyContinue | ForEach-Object { "$($_.ProcessId) parent $($_.ParentProcessId): $($_.CommandLine)" } | Write-Output
+  Get-ChildItem $dir -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object {
+    $locked = $false
+    try { [IO.File]::Open($_.FullName, 'Open', 'ReadWrite', 'None').Close() } catch { $locked = $true }
+    "$($_.FullName.Substring($dir.Length))  $($_.Length)  $($_.LastWriteTime.ToString('HH:mm:ss'))$(if ($locked) { '  IN USE' })"
+  } | Write-Output
+  Get-ChildItem $updates -Recurse -ErrorAction SilentlyContinue | ForEach-Object { "$($_.FullName)  $($_.Length)  $($_.LastWriteTime.ToString('HH:mm:ss'))" } | Write-Output
+  Get-Content (Join-Path $updates 'updates.log') -ErrorAction SilentlyContinue | Write-Output
+  Get-Content (Join-Path $updates 'updater.json') -ErrorAction SilentlyContinue | Write-Output
+}
+
 New-Item -ItemType Directory -Force $Serve | Out-Null
 $server = Start-Process python -ArgumentList '-m', 'http.server', "$port", '--bind', '127.0.0.1', '--directory', $Serve -PassThru -WindowStyle Hidden
 try {
@@ -208,7 +229,12 @@ try {
   Start-Halonic
   Invoke-Driver wait ready 300
   Invoke-Driver call update_restart
-  Wait-Until { (Get-InstalledVersion) -eq '0.1.2' } 120 '0.1.2 installing'
+  try {
+    Wait-Until { (Get-InstalledVersion) -eq '0.1.2' } 120 '0.1.2 installing'
+  } catch {
+    Write-InstallReport 'no 0.1.2 within 120 s of update_restart'
+    throw
+  }
   try {
     Wait-Until { (Get-InstalledVersion) -eq '0.1.1' -and (Get-Process Halonic -ErrorAction SilentlyContinue) } 420 'going back to 0.1.1'
   } catch {

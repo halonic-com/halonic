@@ -88,6 +88,12 @@ export const itemWords = {
   historyLeavesOut: "Files history leaves out",
   /** The sentence of an item that moved: "Renamed from Support". */
   renamedFrom: (name: string) => `Renamed from ${name}`,
+  /** The row's ⋮, named by its item so a screen reader says which row it is on. */
+  moreActionsFor: (name: string) => `More actions for ${name}`,
+  /** The ⋮'s first entry. */
+  openNamed: (name: string) => `Open ${name}`,
+  /** Under the last row when more items changed than the list draws. */
+  andMore: (count: number) => `and ${count} more`,
 };
 
 /** A change's parts in words (checklist part 2, 2.4): a neutral label, then the value before and after. */
