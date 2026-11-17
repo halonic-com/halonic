@@ -209,9 +209,9 @@ verifies("settings.sandbox-setup-flow", () => {
     const caveat = show({
       kind: "done",
       name: "Sandbox for Windows",
-      caveat: "Network limits are weaker on Windows.",
+      caveat: "network limits are weaker on Windows.",
     });
-    expect(caveat.text).toContain("Good to know: Network limits are weaker on Windows.");
+    expect(caveat.text).toContain("Good to know: network limits are weaker on Windows.");
     press(caveat.root, "Open Halonic");
     expect(caveat.calls.onOpenHalonic).toHaveBeenCalledOnce();
   });

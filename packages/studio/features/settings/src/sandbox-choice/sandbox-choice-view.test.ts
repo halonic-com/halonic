@@ -39,7 +39,7 @@ verifies("settings.sandbox-choice-view", () => {
     });
     expect(view.recommended?.name).toBe("Sandbox in WSL");
     expect(view.recommended?.whatHappens[1]).toBe("One restart");
-    expect(view.options[1]?.caveat).toBe("Network limits are weaker on Windows.");
+    expect(view.options[1]?.caveat).toBe("network limits are weaker on Windows.");
   });
 
   it("recommends srt on macOS and on Linux, each with its own line", () => {
@@ -73,7 +73,7 @@ verifies("settings.sandbox-choice-view", () => {
     );
     expect(view.options[1]).toMatchObject({
       use: "disabled",
-      disabledReason: "Virtualization is turned off on this computer.",
+      disabledReason: "Virtualisation is turned off on this computer.",
       badge: "Needs Docker",
     });
   });

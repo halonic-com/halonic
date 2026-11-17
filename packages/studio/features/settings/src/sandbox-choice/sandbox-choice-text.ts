@@ -34,7 +34,7 @@ export const SANDBOX_SUBTITLE = "Limits files and network access.";
 export const WSL_RECOMMENDED_SUBTITLE =
   "Limits files and network access. Runs in WSL, a Microsoft part of Windows that runs Linux next to it.";
 export const WSL_SUBTITLE =
-  "Stronger network limits. Needs admin rights, one restart and virtualization. Files on your Windows drive are slower.";
+  "Stronger network limits. Needs admin rights, one restart and virtualisation. Files on your Windows drive are slower.";
 export const WINDOWS_SUBTITLE = "Limits files, and network access only in part. Quick to set up.";
 export const MXC_SUBTITLE = "Microsoft's sandbox. Needs Windows 11.";
 export const DOCKER_SUBTITLE = "Runs agents in containers. Needs Docker installed.";
@@ -52,7 +52,7 @@ export const RESTART_YES = "One restart";
 export const SPEED_NATIVE = "Files stay fast on your drive";
 export const SPEED_WSL = "Files on your Windows drive are slower";
 
-export const WINDOWS_NETWORK_CAVEAT = "Network limits are weaker on Windows.";
+export const WINDOWS_NETWORK_CAVEAT = "network limits are weaker on Windows.";
 
 export const STATE_FAILED = "Its safety test didn't pass, so it's off until Halonic starts again.";
 
@@ -61,7 +61,7 @@ const reasonSentences: Record<SandboxUnavailableReason, string> = {
   container: "Not available when Halonic runs inside a container.",
   "not-supported": "This version of your operating system doesn't support it.",
   "blocked-by-policy": "Your organisation doesn't allow this.",
-  "virtualisation-off": "Virtualization is turned off on this computer.",
+  "virtualisation-off": "Virtualisation is turned off on this computer.",
   "wsl-missing": "WSL isn't installed yet.",
   "restart-needed": "Windows needs to restart to finish setup.",
   "distro-missing": "The Linux part of this sandbox isn't installed yet.",
@@ -122,9 +122,11 @@ export const MORE_OTHERS = [
 export const CONFIRM_TITLE = "Continue without a sandbox?";
 export const CONFIRM_BODY = [
   "Without a sandbox, agents run commands as you. That means an agent, or instructions hidden in a file or web page it reads, could look at things outside your project. For example, your SSH keys.",
-  "Halonic still asks before an agent runs a command or touches files outside the project.",
   "A sandbox makes that a hard limit instead of a question. You can set one up any time in Settings.",
 ];
+/** Shown between the two paragraphs of {@link CONFIRM_BODY} only once the harness really asks (O4). */
+export const CONFIRM_ASKS =
+  "Halonic still asks before an agent runs a command or touches files outside the project.";
 export const SET_UP_A_SANDBOX = "Set up a sandbox";
 
 /** S3: setting up, with the steps of each path (HAL-3777 wording). */
@@ -196,8 +198,10 @@ export const CHECK_PENDING = "waiting";
 /** S5: done, with a sandbox and without. */
 export const DONE_TITLE = "Sandbox is on";
 export const doneBody = (name: string) => `${name} is active. Agents work inside your project.`;
-/** The caveat keeps its casing as written, so names like "WSL" and "macOS" stay right. */
+/** The caveat is stored with a lower-case first letter (names like "WSL" stay as written), because it follows a lead here. */
 export const doneCaveat = (caveat: string) => `Good to know: ${caveat}`;
+/** A caveat on its own line, such as on a card: the stored one starts lower case. */
+export const caveatSentence = (caveat: string) => caveat.charAt(0).toUpperCase() + caveat.slice(1);
 export const DONE_FOOTER = "You can change this any time in Settings → Sandbox.";
 export const NONE_TITLE = "You're all set";
 export const NONE_BODY =
