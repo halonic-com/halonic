@@ -2,6 +2,7 @@
 
 - Approval: HAL-7719 (Liam, CTO)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:EzQXkE7H4p+6f8NTsh2bXyGl5q8CA3H4eVKp7SNFfbnVijHmj19swXLwLQBoTFNBtmzig8k5RAUwoF+sn8+QCA==
 - Task: HAL-7719
 
 A dependency of the guard's parser whose lockfile version carries a peer suffix, such as
