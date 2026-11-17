@@ -1,4 +1,5 @@
 import type { ToastStore } from "@halonicjs/studio-kit";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import type { FilesHost } from "./files-host.ts";
 import { filesWords } from "./files-words.ts";
 
@@ -58,7 +59,7 @@ export async function renameFile(
     });
     return undefined;
   } catch (error) {
-    const reason = error instanceof Error ? error.message.trim() : "";
+    const reason = errorReasonFor(error, "");
     return reason === "" ? filesWords.couldntRename(to) : reason;
   }
 }
@@ -74,7 +75,7 @@ async function moveBack(
     await undo();
     effects.movedBack(from);
   } catch (error) {
-    const reason = error instanceof Error ? error.message.trim() : "";
+    const reason = errorReasonFor(error, "");
     toasts?.show({
       tone: "danger",
       title: filesWords.couldntMoveBack(to),

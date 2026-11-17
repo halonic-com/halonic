@@ -1,6 +1,6 @@
 import { type CodeEditor, languageFor, openCodeEditor } from "@halonicjs/studio-code-editor";
 import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
-import type { ItemViewProps } from "@halonicjs/studio-shell";
+import { errorReasonFor, type ItemViewProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { fileItem, fileName } from "../file-item.ts";
 import { sizeOf, textKindOf } from "../file-size.ts";
@@ -54,8 +54,19 @@ function goToFiles(): void {
     ?.focus();
 }
 
-/** What stands in for the editor while the file loads, is gone, isn't text, or can't be read. */
-function LoadNotice({ loaded, missing }: { loaded: Loaded; missing: boolean }) {
+/**
+ * What stands in for the editor while the file loads, is gone, isn't text, or can't be read. A
+ * file that can't be read offers **Try again**, which reads it again in the same tab.
+ */
+function LoadNotice({
+  loaded,
+  missing,
+  onRetry,
+}: {
+  loaded: Loaded;
+  missing: boolean;
+  onRetry: () => void;
+}) {
   return (
     <>
       {loaded.kind === "loading" && (
@@ -92,6 +103,7 @@ function LoadNotice({ loaded, missing }: { loaded: Loaded; missing: boolean }) {
           plain
           title={filesWords.unreadableTitle}
           description={loaded.reason}
+          action={{ label: filesWords.tryAgain, onClick: onRetry }}
         />
       )}
     </>
@@ -206,10 +218,8 @@ export function FileView({ item, context }: ItemViewProps) {
       },
       (error: unknown) => {
         if (stopped) return;
-        setLoaded({
-          kind: "error",
-          reason: error instanceof Error ? error.message : String(error),
-        });
+        // Only a kinded error's own sentence shows; anything else says Halonic can't explain it (F13).
+        setLoaded({ kind: "error", reason: errorReasonFor(error) });
       },
     );
     return () => {
@@ -309,7 +319,7 @@ export function FileView({ item, context }: ItemViewProps) {
       setOutside(host.outside().get(path));
       reload();
     } catch (error) {
-      setFailure(error instanceof Error ? error.message : String(error));
+      setFailure(errorReasonFor(error));
       setComparing(true);
     }
   }
@@ -319,7 +329,7 @@ export function FileView({ item, context }: ItemViewProps) {
       <h1 className="truncate px-4 py-2 text-base font-medium" title={path}>
         {fileName(path)}
       </h1>
-      <LoadNotice loaded={loaded} missing={missing} />
+      <LoadNotice loaded={loaded} missing={missing} onRetry={reload} />
       {trashedHere && trash !== undefined && (
         <TrashedStrip
           announce={(text) => announcer.current.announce(text)}
