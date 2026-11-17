@@ -31,3 +31,6 @@ The app shall also give the files of the plugin's folder that its fingerprint co
 - Given a plugin folder with `plugin.yaml` and twelve other files,
   when its files are read,
   then the first ten by path are shown and two more.
+- Given a plugin folder whose path and a file name hold a direction override (U+202E) or an escape character (U+001B),
+  when Studio shows the folder and the files,
+  then each hidden character reads as a marker such as `⟦U+202E⟧` and none acts on the text around it.

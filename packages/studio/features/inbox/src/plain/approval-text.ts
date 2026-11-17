@@ -1,5 +1,5 @@
+import { markHiddenName } from "@halonicjs/std";
 import type { ApprovalItem } from "../inbox-items.ts";
-import { markedName } from "./hidden-characters.ts";
 
 /**
  * The row and card title of a tool call waiting for an OK (INBOX-CARD-24):
@@ -20,18 +20,18 @@ export function approvalTitle(
 ): string {
   const tool =
     item.connector === null
-      ? markedName(item.tool)
-      : `${markedName(item.tool)} (${markedName(item.connector)})`;
+      ? markHiddenName(item.tool)
+      : `${markHiddenName(item.tool)} (${markHiddenName(item.connector)})`;
   const asker =
     subagentName === null
-      ? markedName(agentName)
-      : `${markedName(subagentName)}, for ${markedName(agentName)},`;
+      ? markHiddenName(agentName)
+      : `${markHiddenName(subagentName)}, for ${markHiddenName(agentName)},`;
   return `${asker} wants to use ${tool}`;
 }
 
 /** The action's one-line summary (INBOX-CARD-23): "create_note · notes-mcp", or "publish". */
 export function actionSummary(item: ApprovalItem): string {
   return item.connector === null
-    ? markedName(item.tool)
-    : `${markedName(item.tool)} · ${markedName(item.connector)}`;
+    ? markHiddenName(item.tool)
+    : `${markHiddenName(item.tool)} · ${markHiddenName(item.connector)}`;
 }

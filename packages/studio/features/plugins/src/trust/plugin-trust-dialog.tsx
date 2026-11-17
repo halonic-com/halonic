@@ -5,6 +5,7 @@ import {
   pluginTrustSections,
 } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
+import { markHiddenName } from "@halonicjs/std";
 import { Dialog, Disclosure, StatusChip } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import { originText, type PluginOrigin, quoted, RISK_WORDS } from "../page/page-text.ts";
@@ -188,7 +189,8 @@ function SourceLine({
 /**
  * Where the plugin sits and which files its fingerprint covers, as `halonic plugin add` shows
  * them. Both come from the workspace, so they are plain text in monospace that wraps at any
- * character, never cut short: a person deciding to trust it should see exactly where it sits.
+ * character, never cut short, with each hidden or direction-changing character written out as a
+ * marker (`⟦U+202E⟧`): a person deciding to trust it should see exactly where it sits.
  */
 function Location({
   folder,
@@ -202,7 +204,7 @@ function Location({
     <div className="flex flex-col gap-3">
       {folder === undefined ? null : (
         <Labelled label={FOLDER_HEADING} stacked>
-          <code className="font-mono text-small wrap-anywhere">{folder}</code>
+          <code className="font-mono text-small wrap-anywhere">{markHiddenName(folder)}</code>
         </Labelled>
       )}
       {shown.length === 0 ? null : (
@@ -210,7 +212,7 @@ function Location({
           <ul className="flex list-none flex-col gap-0.5">
             {shown.map((path) => (
               <li key={path}>
-                <code className="font-mono text-small wrap-anywhere">{path}</code>
+                <code className="font-mono text-small wrap-anywhere">{markHiddenName(path)}</code>
               </li>
             ))}
             {files === undefined || files.more === 0 ? null : (

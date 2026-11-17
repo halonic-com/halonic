@@ -1,9 +1,9 @@
+import { markHiddenName } from "@halonicjs/std";
 import { Button, CloseIcon, EmptyState, ListHeading } from "@halonicjs/studio-kit";
 import { type EngineWords, errorMessageFor } from "@halonicjs/studio-shell";
 import { useId, useRef } from "react";
 import type { InboxNotice, InboxNotices } from "../notices/inbox-notices.ts";
 import { type NoticesState, useNotices } from "../notices/use-notices.ts";
-import { markedName } from "../plain/hidden-characters.ts";
 
 const loadFailed = "Couldn't load notices";
 
@@ -78,7 +78,7 @@ function NoticeRow({
   readonly openBudget: (() => void) | undefined;
   readonly dismiss: () => void;
 }) {
-  const title = markedName(notice.title);
+  const title = markHiddenName(notice.title);
   const titleId = useId();
   const failed = notice.kind === "failed-run" ? notice : undefined;
   const run = notice.kind === "failed-run" || notice.kind === "budget-run" ? notice : undefined;

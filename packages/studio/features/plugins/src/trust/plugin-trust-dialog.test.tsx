@@ -348,16 +348,29 @@ verifies("app.plugin-trust-sections", () => {
 
   it("shows the folder in full and the first files, then how many more, as plain text", () => {
     const folder = "/plugins/weather";
-    const files = { shown: ["backend/index.js", "backend/<b>x</b>\u001b[31m.js"], more: 4 };
+    const files = { shown: ["backend/index.js", "backend/<b>x</b>.js"], more: 4 };
     open(weather, { folder, files });
 
     const text = dialog().textContent ?? "";
     expect(text).toContain(`Folder${folder}`);
     expect(text).toContain("Backend files");
     expect(text).toContain("backend/index.js");
-    expect(text).toContain("backend/<b>x</b>\u001b[31m.js");
+    expect(text).toContain("backend/<b>x</b>.js");
     expect(dialog().querySelector("b")).toBeNull();
     expect(text).toContain("and 4 more");
+  });
+
+  it("writes hidden characters in the folder and the file names out as markers", () => {
+    const folder = "/plugins/we\u202Eather";
+    const files = { shown: ["backend/x\u202Esj.exe", "backend/y\u001b[31m.js"], more: 0 };
+    open(weather, { folder, files });
+
+    const text = dialog().textContent ?? "";
+    expect(text).toContain("/plugins/we⟦U+202E⟧ather");
+    expect(text).toContain("backend/x⟦U+202E⟧sj.exe");
+    expect(text).toContain("backend/y⟦U+001B⟧[31m.js");
+    expect(text).not.toContain("\u202E");
+    expect(text).not.toContain("\u001b");
   });
 
   it("leaves out the folder and the files when the host gives none", () => {

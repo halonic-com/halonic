@@ -47,20 +47,6 @@ export function markerText(code: string): string {
   return `⟦${code}⟧`;
 }
 
-/**
- * A short name from the run, such as an argument, tool or connector name, as one
- * string with every hidden character written out as its marker. The agent and
- * the MCP server choose these names, so they get markers like a value.
- *
- * @example
- * markedName(`create${String.fromCodePoint(0x200b)}note`); // "create⟦U+200B⟧note"
- */
-export function markedName(value: string): string {
-  return markHidden(value)
-    .segments.map((segment) => (segment.kind === "text" ? segment.text : markerText(segment.code)))
-    .join("");
-}
-
 function codeOf(point: number): string {
   return `U+${point.toString(16).toUpperCase().padStart(4, "0")}`;
 }

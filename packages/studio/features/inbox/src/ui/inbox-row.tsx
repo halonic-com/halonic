@@ -1,13 +1,13 @@
+import { markHiddenName } from "@halonicjs/std";
 import { type ListRow, StatusChip } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import type { InboxItem, SetupItem } from "../inbox-items.ts";
 import { approvalTitle } from "../plain/approval-text.ts";
-import { markedName } from "../plain/hidden-characters.ts";
 import { isLate, movesOnMeta, waitingFor } from "../plain/waiting-time.ts";
 
 /** An item's title, as its row and its card show it. */
 export function itemTitle(item: InboxItem): string {
-  return item.kind === "approval" ? approvalTitle(item) : markedName(item.title);
+  return item.kind === "approval" ? approvalTitle(item) : markHiddenName(item.title);
 }
 
 /**
@@ -37,7 +37,7 @@ function setupRow(item: SetupItem): ListRow {
   return {
     id: item.key,
     title: itemTitle(item),
-    meta: markedName(item.progress),
+    meta: markHiddenName(item.progress),
     trailing:
       item.fixed === true ? (
         <StatusChip tone="success">Fixed</StatusChip>

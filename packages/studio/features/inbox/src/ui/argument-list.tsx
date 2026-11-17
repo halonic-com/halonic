@@ -1,7 +1,7 @@
+import { markHiddenName } from "@halonicjs/std";
 import { Button } from "@halonicjs/studio-kit";
 import { useState } from "react";
 import { type ArgumentField, argumentFields, rawJson } from "../plain/argument-fields.ts";
-import { markedName } from "../plain/hidden-characters.ts";
 import { PlainValue } from "./plain-value.tsx";
 
 export interface ArgumentListProps {
@@ -29,7 +29,7 @@ export function ArgumentList({ args, tool }: ArgumentListProps) {
       </dl>
       <div className="-ml-2.5">
         <Button variant="ghost" size="sm" aria-expanded={raw} onClick={() => setRaw(!raw)}>
-          Show raw JSON<span className="sr-only">{` for ${markedName(tool)}`}</span>
+          Show raw JSON<span className="sr-only">{` for ${markHiddenName(tool)}`}</span>
         </Button>
       </div>
       {raw ? (
@@ -71,5 +71,5 @@ function Field({ field }: { readonly field: ArgumentField }) {
 
 /** An argument's name is the agent's too, so it gets markers like a value. */
 function FieldName({ name }: { readonly name: string }) {
-  return <bdi>{markedName(name)}</bdi>;
+  return <bdi>{markHiddenName(name)}</bdi>;
 }

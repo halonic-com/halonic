@@ -1,10 +1,11 @@
+import { markHiddenName } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { foldLabel, foldText, isFolded } from "./fold.ts";
-import { markedName, markHidden } from "./hidden-characters.ts";
+import { markHidden } from "./hidden-characters.ts";
 
 /** What the card shows for a value: its text with every marker written out. */
-const shownText = markedName;
+const shownText = markHiddenName;
 
 verifies("inbox.plain-values", () => {
   describe("hidden characters", () => {
@@ -52,11 +53,6 @@ verifies("inbox.plain-values", () => {
         segments: [{ kind: "text", text: reply }],
         hasHidden: false,
       });
-    });
-
-    it("writes a name's hidden characters out as markers", () => {
-      expect(markedName(`create${String.fromCodePoint(0x200b)}note`)).toBe("create⟦U+200B⟧note");
-      expect(markedName("create_note")).toBe("create_note");
     });
   });
 
