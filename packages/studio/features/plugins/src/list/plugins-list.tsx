@@ -133,7 +133,7 @@ function builtInRowsOf(
 }
 
 /**
- * Library › Plugins (design section 3, checklist 2): the sentence, **Add plugin**, then the
+ * The Plugins list (design section 3, checklist 2), shown in Settings → Plugins: the sentence, **Add plugin**, then the
  * plugins "Installed on this computer" and the ones "Built in". A row has a letter avatar, the
  * name, the description and what it adds, and on the right its chips, version and trust date. The
  * chips are neutral unless broken: "Not trusted yet" and "Changed since you trusted it" with the
