@@ -22,7 +22,7 @@ export function WorkflowCanvas({
   workflow,
   selectedStep,
   failedStep,
-  finishedSteps,
+  route,
   saved,
   onView,
   onSelectStep,
@@ -36,8 +36,8 @@ export function WorkflowCanvas({
   readonly selectedStep?: string | undefined;
   /** The step the shown run failed in, ringed with its Failed chip. */
   readonly failedStep?: string | undefined;
-  /** The steps the shown run has finished; the arrows out of them are drawn blue. */
-  readonly finishedSteps?: ReadonlySet<string> | undefined;
+  /** The steps the shown run went through, in order; the arrows it went along are drawn blue. */
+  readonly route?: readonly string[] | undefined;
   /** Told when a card is picked, so the page can dock what it has to say about the step. */
   readonly onSelectStep?: ((stepId: string) => void) | undefined;
 }) {
@@ -108,7 +108,7 @@ export function WorkflowCanvas({
         }}
         className="absolute left-0 top-0"
       >
-        <Arrows arrows={workflow.arrows} boxes={boxes} finishedSteps={finishedSteps} />
+        <Arrows arrows={workflow.arrows} boxes={boxes} route={route} />
         {workflow.steps.map((step) => {
           const box = boxes.get(step.id);
           return box === undefined ? null : (

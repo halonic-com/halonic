@@ -6,12 +6,12 @@ import type { Box } from "../canvas/geometry.ts";
 export interface ArrowsProps {
   readonly arrows: readonly WorkflowArrow[];
   readonly boxes: ReadonlyMap<string, Box>;
-  /** The steps a shown run has finished; an arrow out of one is blue, the path the run took. */
-  readonly finishedSteps?: ReadonlySet<string> | undefined;
+  /** The steps a shown run went through, in order; an arrow it went along is blue. */
+  readonly route?: readonly string[] | undefined;
 }
 
 /** The arrows between the step cards as one SVG layer; an arrow to a step that isn't there is left out. */
-export function Arrows({ arrows, boxes, finishedSteps }: ArrowsProps) {
+export function Arrows({ arrows, boxes, route }: ArrowsProps) {
   return (
     <svg
       aria-hidden="true"
@@ -22,7 +22,7 @@ export function Arrows({ arrows, boxes, finishedSteps }: ArrowsProps) {
         const to = boxes.get(arrow.to);
         if (from === undefined || to === undefined) return null;
         const shape = arrowShape(from, to);
-        const taken = finishedSteps?.has(arrow.from) === true;
+        const taken = wentAlong(route, arrow);
         return (
           // The same two steps can have several arrows, so the position is part of the key.
           <g
@@ -79,4 +79,9 @@ function ArrowLabel({ shape, label }: { readonly shape: ArrowShape; readonly lab
       </text>
     </g>
   );
+}
+
+/** Whether the run went straight from the arrow's first step to its second. */
+function wentAlong(route: readonly string[] | undefined, arrow: WorkflowArrow): boolean {
+  return route?.some((id, at) => id === arrow.from && route[at + 1] === arrow.to) === true;
 }
