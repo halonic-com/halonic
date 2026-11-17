@@ -192,6 +192,7 @@ export class WorkspaceRoutines implements RoutinesHost {
       trigger: triggerOfFile(value.trigger),
       triggerSentence: describeTrigger(value.trigger),
       summary: summaryOf(workspace, file),
+      targetName: targetName(workspace, file),
       target,
       targetState: targetFound(workspace, target) ? "ready" : "not-found",
       overlap: value.overlap,

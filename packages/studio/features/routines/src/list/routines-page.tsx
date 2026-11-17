@@ -17,7 +17,7 @@ import {
   RoutinesHostService,
 } from "../api.ts";
 import { NewRoutineDialog } from "../new/new-routine-dialog.tsx";
-import { deleteWords, listWords } from "./list-words.ts";
+import { listWords, rowMenuWords } from "./list-words.ts";
 import { dropNewRoutineRequest, takeNewRoutineRequests } from "./new-request.ts";
 import { routineHubs, rowId } from "./routine-rows.tsx";
 import { trashRoutine } from "./trash-routine.ts";
@@ -250,15 +250,15 @@ export function RoutinesView({ host, open, openInNewTab, engine, newWorkflow }: 
             ? { newButton: { label: listWords.newRoutine, onClick: startCreating } }
             : {})}
           itemMenu={(row) => [
-            { id: "open", label: deleteWords.open, onSelect: () => openRow(row.id) },
+            { id: "open", label: rowMenuWords.open, onSelect: () => openRow(row.id) },
             {
               id: "open-in-new-tab",
-              label: deleteWords.openInNewTab,
+              label: rowMenuWords.openInNewTab,
               onSelect: () => openRowInNewTab(row.id),
             },
             {
               id: "delete",
-              label: deleteWords.delete,
+              label: rowMenuWords.delete,
               danger: true,
               onSelect: () => trashRow(row.id),
             },

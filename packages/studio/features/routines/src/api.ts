@@ -95,6 +95,8 @@ export interface RoutineView extends RoutineRef {
   readonly triggerSentence: string;
   /** The routine as one line, as {@link RoutineListing.summary} has it: "Weekdays at 07:30 → Briefing". */
   readonly summary: string;
+  /** The name of the workflow or agent it starts, for the line that says what deleting it stops. */
+  readonly targetName: string;
   readonly target: RoutineTarget;
   readonly targetState: RoutineTargetState;
   readonly overlap: RoutineOverlap;

@@ -1,12 +1,22 @@
-import { Button, Callout, EmptyState, SkeletonBar, usePresentation } from "@halonicjs/studio-kit";
-import { ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
-import { useCallback, useRef } from "react";
+import {
+  Button,
+  Callout,
+  EmptyState,
+  Menu,
+  MoreIcon,
+  SkeletonBar,
+  usePresentation,
+  useToastStore,
+} from "@halonicjs/studio-kit";
+import { ItemGone, type ItemViewProps, NameField } from "@halonicjs/studio-shell";
+import { type RefObject, useCallback, useRef } from "react";
 import { type RoutinesHost, RoutinesHostService, type RoutineView } from "../api.ts";
 import { Avatar } from "../list/routine-rows.tsx";
+import { trashRoutine } from "../list/trash-routine.ts";
 import { RulesSection } from "../rules/rules-section.tsx";
 import { StartsCard } from "../starts/starts-card.tsx";
 import { WhenCard } from "../when/when-card.tsx";
-import { pageWords } from "./page-words.ts";
+import { failureReason, pageWords } from "./page-words.ts";
 import { useRoutine } from "./use-routine.ts";
 
 /** The routine's page in its tab: `item` names the routine, the host gives its fields. */
@@ -45,31 +55,18 @@ export function RoutineScreen({ host, hubId, id, announce, goToRoutines }: Routi
   const title = useRef<HTMLHeadingElement>(null);
   const focusTitle = useCallback(() => title.current?.focus(), []);
   const { load, retry } = useRoutine(host, { hubId, id }, focusTitle);
-  const phone = usePresentation() === "phone";
   if (load.kind === "failed" && load.gone && goToRoutines !== undefined) {
     return <ItemGone kindName="routine" place="Routines" onGoTo={goToRoutines} />;
   }
   const name = load.kind === "ready" ? load.routine.name : id;
   return (
     <div className="flex size-full min-h-0 flex-col">
-      <header
-        className={
-          phone
-            ? "flex flex-col gap-3 border-b border-border px-4 py-3"
-            : "flex items-center gap-3 border-b border-border px-6 py-3"
-        }
-      >
-        {/* On a phone the top bar already names the routine, so the page keeps only its type. */}
-        <div className="flex items-center gap-3">
-          <Avatar name={name} />
-          <div className="flex flex-col">
-            <p className="text-caption text-fg-muted">{pageWords.kind}</p>
-            <h1 ref={title} tabIndex={-1} className={phone ? "sr-only" : "text-title outline-none"}>
-              {name}
-            </h1>
-          </div>
-        </div>
-      </header>
+      <RoutineHeader
+        host={host}
+        routine={load.kind === "ready" ? load.routine : undefined}
+        name={name}
+        title={title}
+      />
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-6 py-4">
         {load.kind === "ready" && <Summary routine={load.routine} />}
         {load.kind === "ready" && (
@@ -122,5 +119,85 @@ function Summary({ routine }: { readonly routine: RoutineView }) {
         <p className="text-small text-fg-muted">{pageWords.changesNotLive}</p>
       )}
     </>
+  );
+}
+
+/**
+ * The page's header: the avatar, "ROUTINE" and the name, which is a rename field once the routine
+ * is read, then its ⋮ menu with Delete. On a phone the top bar already names the routine, so the
+ * page keeps only its type.
+ */
+function RoutineHeader({
+  host,
+  routine,
+  name,
+  title,
+}: {
+  readonly host: RoutinesHost;
+  /** The routine, once it is read; before that the header shows the id and has no menu. */
+  readonly routine: RoutineView | undefined;
+  readonly name: string;
+  readonly title: RefObject<HTMLHeadingElement | null>;
+}) {
+  const phone = usePresentation() === "phone";
+  const toasts = useToastStore();
+  const rename = ({ hubId, id }: RoutineView, next: string) => {
+    host.save({ hubId, id }, { name: next }).catch((error: unknown) => {
+      toasts?.show({
+        tone: "danger",
+        title: pageWords.couldntRename(name, undefined),
+        text: failureReason(error),
+      });
+    });
+  };
+  const heading =
+    routine !== undefined && !phone ? (
+      <NameField
+        name={name}
+        label={pageWords.nameLabel}
+        onRename={(next) => rename(routine, next)}
+      />
+    ) : (
+      name
+    );
+  return (
+    <header
+      className={
+        phone
+          ? "flex flex-col gap-3 border-b border-border px-4 py-3"
+          : "flex items-center gap-3 border-b border-border px-6 py-3"
+      }
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <Avatar name={name} />
+        <div className="flex min-w-0 flex-col">
+          <p className="text-caption text-fg-muted">{pageWords.kind}</p>
+          <h1 ref={title} tabIndex={-1} className={phone ? "sr-only" : "text-title outline-none"}>
+            {heading}
+          </h1>
+        </div>
+        {routine !== undefined && (
+          <Menu
+            entries={[
+              {
+                id: "delete",
+                label: pageWords.delete,
+                danger: true,
+                onSelect: () => void trashRoutine(host, toasts, routine),
+              },
+            ]}
+            trigger={(trigger) => (
+              <Button
+                {...trigger}
+                variant="ghost"
+                size="sm"
+                icon={<MoreIcon />}
+                label={pageWords.more(name)}
+              />
+            )}
+          />
+        )}
+      </div>
+    </header>
   );
 }

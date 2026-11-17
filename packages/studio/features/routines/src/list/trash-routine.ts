@@ -1,7 +1,11 @@
 import type { ToastStore } from "@halonicjs/studio-kit";
 import { errorMessageFor } from "@halonicjs/studio-shell";
 import type { RoutineListing, RoutinesHost, TrashedRoutine } from "../api.ts";
-import { deleteWords } from "./list-words.ts";
+
+/** What {@link trashRoutine} needs to know of a routine: where it is, its name and what it starts. */
+export type TrashedListing = Pick<RoutineListing, "hubId" | "id" | "name" | "targetName">;
+
+import { rowMenuWords } from "./list-words.ts";
 
 /** The sentence a failure gives the person: a system message never reaches them. */
 function reasonOf(error: unknown, title: string): string | undefined {
@@ -12,7 +16,7 @@ function reasonOf(error: unknown, title: string): string | undefined {
 
 /** What {@link trashRoutine} can tell its caller. */
 export interface TrashOptions {
-  /** Called with the way back once the routine is in the trash, also after a Try again. */
+  /** Called once the routine is in the trash, also after a Try again. */
   readonly onTrashed?: () => void;
   /** Called once the toast's Undo has put the routine back. */
   readonly onRestored?: () => void;
@@ -26,7 +30,7 @@ export interface TrashOptions {
 export async function trashRoutine(
   host: RoutinesHost,
   toasts: ToastStore | null,
-  listing: RoutineListing,
+  listing: TrashedListing,
   options: TrashOptions = {},
 ): Promise<void> {
   const { name } = listing;
@@ -36,10 +40,10 @@ export async function trashRoutine(
   } catch (error) {
     toasts?.show({
       tone: "danger",
-      title: deleteWords.couldntMove(name, reasonOf(error, name)),
+      title: rowMenuWords.couldntMove(name, reasonOf(error, name)),
       sticky: true,
       action: {
-        label: deleteWords.tryAgain,
+        label: rowMenuWords.tryAgain,
         onClick: () => void trashRoutine(host, toasts, listing, options),
       },
     });
@@ -48,10 +52,10 @@ export async function trashRoutine(
   options.onTrashed?.();
   toasts?.show({
     tone: "success",
-    title: deleteWords.moved(name),
-    text: deleteWords.movedLine(listing.targetName),
+    title: rowMenuWords.moved(name),
+    text: rowMenuWords.movedLine(listing.targetName),
     action: {
-      label: deleteWords.undo,
+      label: rowMenuWords.undo,
       onClick: () => void putBack(trashed, name, toasts, options),
     },
   });
@@ -66,7 +70,7 @@ async function putBack(
   try {
     await trashed.undo();
   } catch (error) {
-    const title = deleteWords.couldntUndo(name);
+    const title = rowMenuWords.couldntUndo(name);
     const reason = reasonOf(error, title);
     toasts?.show({ tone: "danger", title, ...(reason === undefined ? {} : { text: reason }) });
     return;

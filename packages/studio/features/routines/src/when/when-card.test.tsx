@@ -23,6 +23,7 @@ const daily: RoutineView = {
   trigger: { kind: "schedule", cron: "30 7 * * 1-5" },
   triggerSentence: "Weekdays at 07:30",
   summary: "Weekdays at 07:30 → Briefing",
+  targetName: "Briefing",
   target: { kind: "workflow", hubId: "acme", id: "briefing", input: "{}" },
   targetState: "ready",
   overlap: "skip",

@@ -18,6 +18,7 @@ function routineOn(trigger: RoutineTrigger): RoutineView {
     trigger,
     triggerSentence: "",
     summary: "",
+    targetName: "",
     target: { kind: "workflow", hubId: "acme", id: "briefing", input: "{}" },
     targetState: "ready",
     overlap: "skip",

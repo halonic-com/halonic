@@ -9,6 +9,13 @@ export const pageWords = {
   tryAgain: "Try again",
   off: "Off",
   changesNotLive: "Changes not live yet",
+  nameLabel: "Routine name",
+  more: (name: string) => `More actions for ${name}`,
+  delete: "Delete",
+  couldntRename: (name: string, reason: string | undefined) =>
+    reason === undefined
+      ? `Couldn't rename ${name}.`
+      : `Couldn't rename ${name}: ${reason.replace(/\.$/, "")}.`,
   neverLive: "This routine isn't live yet, so it doesn't run.",
 } as const;
 

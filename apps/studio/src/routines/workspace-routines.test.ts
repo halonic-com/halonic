@@ -138,6 +138,7 @@ verifies("studio.workspace-routines", () => {
     const view = await host.read(weekly);
     expect(view).toMatchObject({
       summary: "Mondays at 09:00 (Europe/Amsterdam) → Analyst",
+      targetName: "Analyst",
       trigger: { kind: "schedule", cron: "0 9 * * 1", timeZone: "Europe/Amsterdam" },
       target: { kind: "agent", hubId: "acme", id: "analyst", prompt: "Write the report." },
       targetState: "ready",
