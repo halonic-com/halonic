@@ -62,14 +62,12 @@ export class FakeRunStore implements RunStore {
   }
 }
 
-/** Blobs in memory, under a made-up but stable hash per content. */
+/** Blobs in memory, under the SHA-256 of their content, as the real stores name them. */
 export class FakeBlobStore implements BlobStore {
   readonly #blobs = new Map<string, Uint8Array>();
 
   async put(data: Uint8Array, mediaType: string): Promise<BlobRef> {
-    const key = [...data].join(",");
-    const known = [...this.#blobs].find(([, stored]) => [...stored].join(",") === key);
-    const hash = known?.[0] ?? String(this.#blobs.size + 1).padStart(64, "0");
+    const hash = await sha256Hex(data);
     this.#blobs.set(hash, data);
     return { hash, size: data.length, mediaType };
   }
@@ -77,6 +75,11 @@ export class FakeBlobStore implements BlobStore {
   async get(hash: string): Promise<Uint8Array | null> {
     return this.#blobs.get(hash) ?? null;
   }
+}
+
+async function sha256Hex(data: Uint8Array): Promise<string> {
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
+  return [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /**

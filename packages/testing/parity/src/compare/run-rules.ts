@@ -124,6 +124,72 @@ function branchesByName(events: readonly LogEvent[]): LogEvent[] {
   return sortStretches(byBranch, branchResult, (event) => String(event["key"]));
 }
 
+/** The line of a method's prompt that names the fields of its JSON answer. */
+const methodFieldsLine = /^Answer with JSON with these fields: (.*)\.$/m;
+
+/** One field of that line: its name, then its type in brackets. */
+const methodField = /[^\s,(]+ \([^)]*\)/g;
+
+/** The prompt with the fields of its method's fields line in name order; any other text as it is. */
+function methodFieldsByName(prompt: unknown): unknown {
+  if (typeof prompt !== "string") return prompt;
+  return prompt.replace(methodFieldsLine, (_line, fields: string) => {
+    const sorted = (fields.match(methodField) ?? []).sort((a, b) => (a < b ? -1 : 1));
+    return `Answer with JSON with these fields: ${sorted.join(", ")}.`;
+  });
+}
+
+/** The method prompts of `agent.started` and the knowledge searches made with them, fields by name. */
+const methodPromptsByName = (test: ComparedTest): ComparedTest =>
+  eachEvent(
+    eachEvent(test, "agent.started", (event) => ({
+      ...event,
+      prompt: methodFieldsByName(event["prompt"]),
+    })),
+    "knowledge.searched",
+    (event) => ({ ...event, query: methodFieldsByName(event["query"]) }),
+  );
+
+/**
+ * The agents of the base fixture whose system message the engine builds
+ * differently from the old runner's `systemPrompt`: the clerk has skills and
+ * knowledge sources (the old one described the sources in the message, the
+ * engine leaves them to its knowledge tools) and the notifier has connectors
+ * (the engine's line on connector tools is longer). Their calls' input
+ * tokens, and so their cost, can't match.
+ */
+const systemMessageAgents: readonly string[] = ["clerk", "notifier"];
+
+const isSystemMessageCall = (event: LogEvent): boolean =>
+  event["type"] === "llm.response" && systemMessageAgents.includes(String(event["agent"]));
+
+/**
+ * Takes the input tokens and the cost out of the model calls of
+ * {@link systemMessageAgents}, and the figures made of them (input tokens,
+ * cost and the unpriced calls) out of the summary of a run that has one.
+ * The output tokens and every other call stay.
+ */
+function withoutSystemMessageFigures(test: ComparedTest): ComparedTest {
+  return eachRun(test, (run) => {
+    if (!run.events.some(isSystemMessageCall)) return run;
+    const usage = run.summary["usage"] as Json;
+    return {
+      summary: {
+        ...omit(run.summary, ["cost", "unpricedCalls"]),
+        usage: omit(usage, ["inputTokens"]),
+      },
+      events: run.events.map((event) =>
+        isSystemMessageCall(event)
+          ? {
+              ...omit(event, ["cost"]),
+              usage: omit(event["usage"] as Json, ["inputTokens"]),
+            }
+          : event,
+      ),
+    };
+  });
+}
+
 /** Every run-log rule, in the order the compare applies them. */
 export const runRules: readonly RunRule[] = [
   {
@@ -168,8 +234,20 @@ export const runRules: readonly RunRule[] = [
   },
   {
     id: "parallel-branches-by-name",
-    does: "sorts each stretch of the old parallel branch events, and the context they wrote, by branch name",
+    does: "sorts each stretch of the parallel branch events, and the context they wrote, by branch name, on both sides",
     old: (test) => eachLog(test, branchesByName),
+    new: (test) => eachLog(test, branchesByName),
+  },
+  {
+    id: "method-fields-by-name",
+    does: "sorts the fields of the old method prompts' 'Answer with JSON with these fields' line by name, in agent.started and knowledge.searched",
+    old: methodPromptsByName,
+  },
+  {
+    id: "system-message-figures",
+    does: "takes the input tokens and cost out of the model calls of agents whose system message differs (the base's clerk and notifier), and the input tokens, cost and unpriced calls out of the summary of a run that has one, on both sides",
+    old: withoutSystemMessageFigures,
+    new: withoutSystemMessageFigures,
   },
 ];
 

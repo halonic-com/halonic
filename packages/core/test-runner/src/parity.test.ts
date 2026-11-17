@@ -95,14 +95,9 @@ verifies("test-runner.parity-run-logs", () => {
     expect(report.stale).toEqual([]);
   });
 
-  it("still differs only by the known gaps, each with its task", () => {
-    // The approval and batch tests are compared strictly. The invoice tests
-    // stay gaps until their extract step uses the clerk's method (HAL-4757).
+  it("matches every test, with the allowed differences and no known gap", () => {
     expect(report.results.map((result) => [result.test, result.verdict])).toEqual(
-      golden.tests.map((test) => [
-        `${test.hub}/${test.workflow}/${test.name}`,
-        test.workflow === "invoice" ? "gap" : "allowed",
-      ]),
+      golden.tests.map((test) => [`${test.hub}/${test.workflow}/${test.name}`, "allowed"]),
     );
   });
 
