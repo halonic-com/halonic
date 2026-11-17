@@ -165,6 +165,32 @@ verifies("library.skill-page", () => {
       expect(write).toHaveBeenCalledOnce();
     });
 
+    it("saves Instructions after a pause in typing, and when the page closes with the cursor still in them", async () => {
+      vi.useFakeTimers();
+      try {
+        const { props, write } = setup();
+        const root = render(<SkillPage {...props} />);
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(0);
+        });
+        type(field(root, "Instructions"), "Be very kind.");
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(500);
+        });
+        expect(write).not.toHaveBeenCalled();
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(500);
+        });
+        expect(write).toHaveBeenCalledOnce();
+        type(field(root, "Instructions"), "Be very kind. Say sorry.");
+        unmountAll();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(write).toHaveBeenCalledTimes(2);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("saves through the window's save state, and a failed save keeps the draft with no box on the page", async () => {
       const { props, write, saving } = setup();
       const failure = Object.assign(new Error("The disk is full."), { kind: "unavailable" });

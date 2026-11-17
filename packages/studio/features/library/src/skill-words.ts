@@ -8,6 +8,8 @@ export const skillWords = {
   descriptionHint: "Agents read this to decide when to use the skill.",
   descriptionKept: "A skill needs “When to use it”, so the old text is kept.",
   instructions: "Instructions (Markdown)",
+  instructionsPlaceholder:
+    "Write what an agent should do, step by step. For example: how to answer a refund request, what to check first, when to hand over to a person.",
   otherHeader: "Also in the header",
   otherHeaderHint: "Kept as they are. Edit them in the file.",
   files: "Files in this skill",

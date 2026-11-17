@@ -26,6 +26,8 @@ export interface TextAreaProps
   extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, OwnedAttributes> {
   /** It grows with its text up to this many lines, then scrolls inside. Default 5. */
   readonly maxRows?: number;
+  /** It is at least this many lines tall, even when empty. Default 1. */
+  readonly minRows?: number;
   /**
    * Ctrl Enter (⌘ Enter on macOS) submits its form. Off by default: only the forms component
    * specs 23 A8 names turn it on (Create version, Start a run, Ask for changes, a request's
@@ -54,6 +56,7 @@ const DEFAULT_MAX_ROWS = 5;
  */
 export function TextArea({
   maxRows = DEFAULT_MAX_ROWS,
+  minRows = 1,
   submitOnCtrlEnter = false,
   ref,
   onKeyDown,
@@ -117,7 +120,7 @@ export function TextArea({
         {...native}
         ref={element}
         id={field?.id}
-        rows={1}
+        rows={minRows}
         data-field-text=""
         data-text-entry=""
         className={`${fieldTextClasses} max-h-rows resize-none overflow-y-auto`}
