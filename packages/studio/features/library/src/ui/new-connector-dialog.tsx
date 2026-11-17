@@ -88,7 +88,7 @@ export function NewConnectorDialog({
           <Field label={newConnectorWords.account} error={shown(errors.account)}>
             <Input
               ref={wayField}
-              disabled={busy}
+              readOnly={busy}
               value={account}
               onChange={(event) => setAccount(event.target.value)}
             />
@@ -99,7 +99,7 @@ export function NewConnectorDialog({
           <Field label={newConnectorWords.url} error={shown(errors.url)}>
             <Input
               ref={wayField}
-              disabled={busy}
+              readOnly={busy}
               value={url}
               onChange={(event) => setUrl(event.target.value)}
             />
@@ -110,7 +110,7 @@ export function NewConnectorDialog({
           <Field label={newConnectorWords.command} error={shown(errors.command)}>
             <Input
               ref={wayField}
-              disabled={busy}
+              readOnly={busy}
               value={command}
               onChange={(event) => setCommand(event.target.value)}
             />
@@ -148,7 +148,7 @@ export function NewConnectorDialog({
           <Input
             ref={nameField}
             autoFocus={startName === ""}
-            disabled={busy}
+            readOnly={busy}
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
@@ -158,7 +158,9 @@ export function NewConnectorDialog({
             <Select
               options={hubs.map((each) => ({ value: each.id, label: each.name }))}
               value={hub ?? ""}
-              onChange={setHub}
+              onChange={(picked) => {
+                if (!busy) setHub(picked);
+              }}
             />
           </Field>
         )}
@@ -169,7 +171,9 @@ export function NewConnectorDialog({
           <div ref={wayChoice}>
             <RadioGroup
               value={way}
-              onChange={setWay}
+              onChange={(picked) => {
+                if (!busy) setWay(picked);
+              }}
               options={ways.map((each) => ({
                 value: each,
                 label: newConnectorWords.ways[each],
@@ -182,7 +186,7 @@ export function NewConnectorDialog({
           <Field label={newConnectorWords.secret} hint={secretHint} error={shown(errors.secret)}>
             <Input
               ref={secretField}
-              disabled={busy}
+              readOnly={busy}
               value={secret}
               onChange={(event) => setSecret(event.target.value)}
             />

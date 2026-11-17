@@ -131,7 +131,7 @@ export class CollectionModel {
         this.set({
           ...this.state,
           failed: true,
-          failureReason: readFailureReason(error, collectionWords.couldntLoad("collection")),
+          failureReason: readFailureReason(error, collectionWords.couldntLoad),
         });
       }
     }

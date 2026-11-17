@@ -2,19 +2,22 @@ import { useId } from "react";
 import { connectionSummaryWords } from "../connection-summary-words.ts";
 import type { ConnectorConnection } from "../connector-status-host.ts";
 
-/** The one value that says where a connection goes: the account, the address, the command or the folder. */
-function detailOf(connection: ConnectorConnection): string {
+/** The one row that says where a connection goes: the account, the address, the command, the folder or the plugin. */
+function detailRowOf(connection: ConnectorConnection): { label: string; value: string } {
+  const labels = connectionSummaryWords.detail;
   switch (connection.kind) {
     case "google":
-      return connection.account;
+      return { label: labels.google, value: connection.account };
     case "http":
-      return connection.url;
+      return { label: labels.http, value: connection.url };
     case "stdio":
-      return connection.command;
+      return { label: labels.stdio, value: connection.command };
     case "integration":
-      return connection.folder;
+      return { label: labels.integration, value: connection.folder };
     case "plugin":
-      return connection.id;
+      return connection.name === undefined
+        ? { label: labels.pluginId, value: connection.id }
+        : { label: labels.pluginName, value: connection.name };
   }
 }
 
@@ -50,6 +53,7 @@ export function ConnectorConnectionSummary({
   const headingId = useId();
   const secrets = secretsOf(connection);
   const words = connectionSummaryWords;
+  const detail = detailRowOf(connection);
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <h2 id={headingId} className="text-heading [overflow-wrap:anywhere]">
@@ -57,7 +61,7 @@ export function ConnectorConnectionSummary({
       </h2>
       <dl aria-labelledby={headingId} className="m-0 flex min-w-0 flex-col gap-1">
         <Row label={words.transport} value={words.transports[connection.kind]} />
-        <Row label={words.detail[connection.kind]} value={detailOf(connection)} />
+        <Row label={detail.label} value={detail.value} />
         {secrets === null ? null : (
           <Row
             label={words.secrets}

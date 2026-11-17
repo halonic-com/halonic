@@ -8,7 +8,8 @@ export type ConnectorConnection =
   | { readonly kind: "http"; readonly url: string; readonly secrets: readonly string[] }
   | { readonly kind: "stdio"; readonly command: string; readonly secrets: readonly string[] }
   | { readonly kind: "integration"; readonly folder: string }
-  | { readonly kind: "plugin"; readonly id: string };
+  /** `name` is the plugin's display name, when its sheet gives one. */
+  | { readonly kind: "plugin"; readonly id: string; readonly name?: string };
 
 /**
  * Which of a connector's tools ask a person first, as its file says, when the New connector dialog

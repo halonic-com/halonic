@@ -112,8 +112,8 @@ verifies("library.status-section", () => {
       expect(headings).toEqual(["Recent refusals", "Waiting for approval"]);
       const group = root.querySelectorAll("ul")[1];
       expect([...(group?.querySelectorAll("li") ?? [])].map((item) => item.textContent)).toEqual([
-        'notes: "lookup" waits for your approval and stays off.',
-        'notes: "<b>send</b>" waits for your approval and stays off.',
+        '"lookup" stays off until you approve it.',
+        '"<b>send</b>" stays off until you approve it.',
       ]);
       expect(group?.querySelector("b")).toBeNull();
 

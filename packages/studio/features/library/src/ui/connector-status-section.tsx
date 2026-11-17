@@ -61,7 +61,7 @@ export function ConnectorStatusSection({
       </div>
       {state.loaded && state.waiting.length > 0 ? (
         <WaitingForApproval
-          lines={state.waiting.map((tool) => statusWords.waitingLine(tool.source, tool.name))}
+          lines={state.waiting.map((tool) => statusWords.waitingLine(tool.name))}
         />
       ) : null}
     </div>

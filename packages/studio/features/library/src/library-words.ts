@@ -98,17 +98,34 @@ export function showingLastList(kind: LibraryItemKind, reason?: string): string 
 export const tryingAgain = "Trying again…";
 
 /**
+ * The phone's empty Knowledge sentence (microcopy 11.1): a phone can't open the hub's folder, so
+ * it says where the documents go on the computer and has no button.
+ */
+const phoneKnowledgeDescription =
+  "A knowledge source is a folder of documents your agents can search. Put documents in the hub's docs folder on your computer, then give it to an agent under Tools.";
+
+/** What {@link overviewWords} needs besides the tab. */
+export interface OverviewWordsOptions {
+  /** A phone's empty Knowledge sentence has no button and says "on your computer". */
+  readonly phone?: boolean;
+  readonly onOpenDocsFolder?: () => void;
+  readonly onNew?: () => void;
+}
+
+/**
  * The words the shell's overview page needs for one tab. The empty state holds the tab's one
  * button: Open the docs folder on Knowledge, the New button on a tab that has one.
  */
 export function overviewWords(
   kind: LibraryItemKind,
-  onOpenDocsFolder?: () => void,
-  onNew?: () => void,
+  { phone = false, onOpenDocsFolder, onNew }: OverviewWordsOptions = {},
 ): OverviewWords {
   const { plural, matches, nothingYet, newLabel: label } = kindWords[kind];
+  const phoneKnowledge = phone && kind === "knowledge";
   let emptyAction: NonNullable<OverviewWords["nothingYet"]["action"]> | undefined;
-  if (kind === "knowledge" && onOpenDocsFolder !== undefined) {
+  if (phoneKnowledge) {
+    emptyAction = undefined;
+  } else if (kind === "knowledge" && onOpenDocsFolder !== undefined) {
     emptyAction = { label: "Open the docs folder", onClick: onOpenDocsFolder };
   } else if (label !== undefined && onNew !== undefined) {
     emptyAction = { label, onClick: onNew };
@@ -124,6 +141,10 @@ export function overviewWords(
     sharedSection: (workspaceName) => `Shared in ${workspaceName}`,
     emptySection: (sectionName) => `No ${plural} in ${sectionName} yet.`,
     noMatch: (query) => `No ${plural} ${matches} “${query}”.`,
-    nothingYet: { ...nothingYet, ...docsAction },
+    nothingYet: {
+      ...nothingYet,
+      ...(phoneKnowledge ? { description: phoneKnowledgeDescription } : {}),
+      ...docsAction,
+    },
   };
 }

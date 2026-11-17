@@ -31,7 +31,7 @@ verifies("library.collection-page", () => {
           return sourceOf([swim]);
         },
       });
-      expect(root.textContent).toContain("Couldn't load claims");
+      expect(root.textContent).toContain("Couldn't load this collection");
       expect(root.textContent).not.toContain("Loading the collection");
       const tryAgain = [...root.querySelectorAll("button")].find(
         (button) => button.textContent === "Try again",

@@ -29,6 +29,6 @@ export const knowledgeWords = {
   notUsed: "No agent uses this source yet.",
   loading: "Loading the knowledge source",
   saveFailed: "Couldn't save the knowledge source",
-  couldntLoad: "Couldn't load the knowledge source",
+  couldntLoad: "Couldn't load this knowledge source",
   unreadable: "This source's file can't be read here. Open it as a file to fix it.",
 } as const;

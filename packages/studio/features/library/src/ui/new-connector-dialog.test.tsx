@@ -197,6 +197,25 @@ verifies("library.new-connector", () => {
       expect(page(setup(["acme", "beta"]).root)).toContain("Hub");
     });
 
+    it("keeps the focused field enabled while it creates, so focus stays and a failure can return to it", async () => {
+      let finish: (value: { hub: string; id: string }) => void = () => {};
+      const { root } = setup(["acme", "beta"], () => new Promise((resolve) => (finish = resolve)), {
+        way: "http",
+      });
+      await type(root, "Name", "Notes");
+      await type(root, "URL", "https://mcp.example.com");
+      await press(root, "Create");
+      const fields = [
+        ...root.ownerDocument.querySelectorAll<HTMLInputElement>("input:not([type])"),
+      ];
+      expect(fields.length).toBeGreaterThan(0);
+      for (const field of fields) {
+        expect(field.disabled).toBe(false);
+        expect(field.readOnly).toBe(true);
+      }
+      await act(async () => finish({ hub: "acme", id: "notes" }));
+    });
+
     it("says why it couldn't create the connector and keeps what was typed", async () => {
       const { root, onCreated } = setup(["acme"], async () => {
         throw new Error("The disk is full.");

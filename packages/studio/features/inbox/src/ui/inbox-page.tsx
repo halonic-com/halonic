@@ -349,6 +349,7 @@ function OpenCard({
         now={now}
         initialNote={aside}
         {...(somewhereToGo ? { onGoToSecret: goToSecret } : {})}
+        secretPlace={target.kind}
       />
     );
   }

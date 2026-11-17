@@ -210,11 +210,11 @@ export function LibraryPage({
       <OverviewPage
         key={kind}
         {...overview}
-        words={overviewWords(
-          kind,
-          onOpenDocsFolder,
-          onNew !== undefined && label !== undefined ? () => onNew(kind) : undefined,
-        )}
+        words={overviewWords(kind, {
+          phone,
+          ...(onOpenDocsFolder === undefined ? {} : { onOpenDocsFolder }),
+          ...(onNew !== undefined && label !== undefined ? { onNew: () => onNew(kind) } : {}),
+        })}
         quietWhenEmpty
         emptyTitleRef={emptyTitle}
         loading={load.state === "loading"}
