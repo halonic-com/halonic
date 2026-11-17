@@ -32,6 +32,8 @@ review** covers the diff between the reviewed commit and the release commit,
 with the same model and settings, over the changed files and what they touch.
 If more has changed, run a new full review.
 
+For a patch release from a `release/<version>` branch, the review covers the commit the branch was cut from and each fix on it (a delta review). See [Release branch](../../tooling/publish/README.md#release-branch).
+
 Run the full review early, about 5 days before the release, on the release
 candidate. That leaves time for fixes. Then run a delta review on the final
 commit if it changed.
