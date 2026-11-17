@@ -42,7 +42,6 @@ export {
   type PrepareIntegrationOptions,
   prepareIntegration,
   providerChoices,
-  type WorkspaceChoices,
 } from "./loader.ts";
 export { pluginLoadProblems } from "./plugin-load.ts";
 export {
@@ -68,3 +67,4 @@ export {
   secretRemoved,
 } from "./secret-filter.ts";
 export { clampWaitMs, integrationWait } from "./wait.ts";
+export { choiceSettings, chosenSecrets, type WorkspaceChoices } from "./workspace-choices.ts";
