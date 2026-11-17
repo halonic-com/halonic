@@ -42,9 +42,9 @@ const MAX_TOKEN: usize = 64;
 /// An export that has finished: where its folders are and the location the
 /// page was given for its files.
 #[derive(Debug)]
-struct Kept {
-    work: PathBuf,
-    location: String,
+pub(crate) struct Kept {
+    pub(crate) work: PathBuf,
+    pub(crate) location: String,
 }
 
 #[derive(Debug)]
