@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11413 (the task) and Liam's review of #3272 on HAL-11427, which asks for these requirement edits. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:naibLwuUkxNfz4GLbLXt+DkDkI+yOYfYWn1EiSR+qPI5vx1ftvajwE1Nbmymo1NV2drBJeHCFUIg1BsCCBL4Dw==
 
 The skill and knowledge pages show "Couldn't save the skill" or "Couldn't save the knowledge source" with the reason and **Try again**
 when a save fails. The draft stays until the next good save. Summarize says "Halonic on your computer isn't answering." when the host
