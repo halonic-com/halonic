@@ -1,4 +1,6 @@
 import type { ItemUsage } from "@halonicjs/app";
+import { createToastStore } from "@halonicjs/studio-kit";
+import { SaveState } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import type { SkillHost, SkillRef, SkillSource } from "./skill-host.ts";
@@ -141,6 +143,57 @@ verifies("library.skill-page", () => {
       await model.refresh();
       expect(model.state).toMatchObject({ loaded: true, failed: false });
       error.mockRestore();
+    });
+
+    it("keeps a failed Name save through a save of Instructions, with the real save state", async () => {
+      const writes: string[] = [];
+      let failing = true;
+      const { host } = hostOf(
+        { text: skillText, files: [] },
+        vi.fn(async (_skill: SkillRef, written: string) => {
+          if (failing) throw new Error("disk full");
+          writes.push(written);
+        }),
+      );
+      const saving = new SaveState(createToastStore());
+      const item = "skill/acme/refunds";
+      const model = new SkillModel(host, { hub: null, id: "refunds" }, (title, write) =>
+        saving.save({ key: item, title }, write),
+      );
+      await model.refresh();
+      expect(await model.leave({ name: "Returns" })).toBe(false);
+      expect(saving.note).toMatchObject({ kind: "failed" });
+      failing = false;
+      expect(await model.leave({ instructions: "Be brief." })).toBe(true);
+      expect(writes).toHaveLength(1);
+      expect(writes[0]).toContain("name: Returns");
+      expect(writes[0]).toContain("Be brief.");
+      expect(saving.note).toEqual({ kind: "saved" });
+    });
+
+    it("writes the whole text when the window's Try again runs a failed save", async () => {
+      const writes: string[] = [];
+      let failing = true;
+      const { host } = hostOf(
+        { text: skillText, files: [] },
+        vi.fn(async (_skill: SkillRef, written: string) => {
+          if (failing) throw new Error("disk full");
+          writes.push(written);
+        }),
+      );
+      const saving = new SaveState(createToastStore());
+      const item = "skill/acme/refunds";
+      const model = new SkillModel(host, { hub: null, id: "refunds" }, (title, write) =>
+        saving.save({ key: item, title }, write),
+      );
+      await model.refresh();
+      await model.leave({ name: "Returns" });
+      await model.leave({ instructions: "Be brief." });
+      failing = false;
+      saving.tryAgain();
+      await vi.waitFor(() => expect(writes).toHaveLength(1));
+      expect(writes[0]).toContain("name: Returns");
+      expect(writes[0]).toContain("Be brief.");
     });
   });
 });

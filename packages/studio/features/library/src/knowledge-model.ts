@@ -60,6 +60,8 @@ export class KnowledgeModel {
   private readonly listeners = new Set<() => void>();
   private stopHost: (() => void) | undefined;
   private latest = 0;
+  /** Changes asked for but not yet written; a failed write leaves them here. */
+  private unsaved: KnowledgeChange = {};
 
   private readonly host: KnowledgeHost;
   private readonly source: KnowledgeRef;
@@ -138,27 +140,41 @@ export class KnowledgeModel {
   }
 
   /**
-   * Saves a change as one write. A change that changes nothing writes nothing. Resolves to
-   * whether it was saved (or needed no save): `false` when the write failed.
+   * Saves a change as one write. A change that changes nothing writes nothing. A change whose
+   * write failed stays in `unsaved` and goes out with the next write, which builds its text from
+   * the saved text and every unsaved change, so a later save (or the window's Try again) never
+   * loses it. Resolves to whether it was saved (or needed no save): `false` when the write failed.
    */
   async save(change: KnowledgeChange): Promise<boolean> {
-    const edited = editKnowledgeText(this.text, change);
+    this.unsaved = { ...this.unsaved, ...change };
+    const edited = editKnowledgeText(this.text, this.unsaved);
     if (!edited.ok) return false;
-    if (edited.value === this.text) return true;
+    if (edited.value === this.text) {
+      this.unsaved = {};
+      return true;
+    }
     const write = async () => {
-      await this.host.write(this.source, edited.value);
+      const sent = this.unsaved;
+      const next = editKnowledgeText(this.text, sent);
+      if (!next.ok) throw new Error(`The knowledge source can't be saved: ${next.error}.`);
+      await this.host.write(this.source, next.value);
       // What was written is the text now, even if the refresh below fails or is late. An older
       // read still in flight no longer counts.
       this.latest++;
-      this.text = edited.value;
-      const parts = readKnowledgeText(edited.value);
+      this.text = next.value;
+      this.unsaved = Object.fromEntries(
+        Object.entries(this.unsaved).filter(
+          ([field, value]) => value !== sent[field as keyof KnowledgeChange],
+        ),
+      );
+      const parts = readKnowledgeText(next.value);
       this.set({
         ...this.state,
         unreadable: !parts.ok,
         ...(parts.ok ? { parts: parts.value } : {}),
       });
       // A summary saved by Try again came from the draft box, so the box is done.
-      if (change.summary !== undefined && this.state.summarize.phase === "draft") {
+      if (sent.summary !== undefined && this.state.summarize.phase === "draft") {
         this.discardDraft();
       }
     };

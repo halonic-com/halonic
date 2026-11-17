@@ -58,6 +58,8 @@ export class SkillModel {
   private readonly listeners = new Set<() => void>();
   private stopHost: (() => void) | undefined;
   private latest = 0;
+  /** Changes typed but not yet written; a failed write leaves them here. */
+  private unsaved: SkillChange = {};
 
   private readonly host: SkillHost;
   private readonly skill: SkillRef;
@@ -135,26 +137,44 @@ export class SkillModel {
   /**
    * Saves what was typed in a field the person left. An emptied name or description writes
    * nothing and keeps the old value with its hint; text that changes nothing writes nothing.
-   * Resolves to whether the field's draft can go: `false` when the write failed, so the draft
-   * stays to be saved again.
+   * A change whose write failed stays in `unsaved` and goes out with the next write, which builds
+   * its text from the saved text and every unsaved change, so a later save of another field
+   * (or the window's Try again) never loses it. Resolves to whether the field's draft can go:
+   * `false` when the write failed, so the draft stays to be saved again.
    */
   async leave(change: SkillChange): Promise<boolean> {
-    const edited = editSkillText(this.text, change);
+    this.unsaved = { ...this.unsaved, ...change };
+    let edited = editSkillText(this.text, this.unsaved);
     if (!edited.ok) {
       const refused = refusedField(edited.error);
-      if (refused !== undefined && !this.state.kept.includes(refused)) {
+      if (refused === undefined) return false;
+      if (!this.state.kept.includes(refused)) {
         this.set({ ...this.state, kept: [...this.state.kept, refused] });
       }
-      return refused !== undefined;
+      const { [refused]: _refused, ...rest } = this.unsaved;
+      this.unsaved = rest;
+      edited = editSkillText(this.text, this.unsaved);
+      if (!edited.ok) return false;
     }
-    if (edited.value === this.text) return true;
+    if (edited.value === this.text) {
+      this.unsaved = {};
+      return true;
+    }
     const write = async () => {
-      await this.host.write(this.skill, edited.value);
+      const sent = this.unsaved;
+      const next = editSkillText(this.text, sent);
+      if (!next.ok) throw new Error(`The skill can't be saved: ${next.error}.`);
+      await this.host.write(this.skill, next.value);
       // What was written is the text now, even if the refresh below fails or is late: the next
       // leave edits on top of it. An older read still in flight no longer counts.
       this.latest++;
-      this.text = edited.value;
-      const read = readSkillText(edited.value);
+      this.text = next.value;
+      this.unsaved = Object.fromEntries(
+        Object.entries(this.unsaved).filter(
+          ([field, value]) => value !== sent[field as keyof SkillChange],
+        ),
+      );
+      const read = readSkillText(next.value);
       this.set({
         ...this.state,
         unreadable: !read.ok,
