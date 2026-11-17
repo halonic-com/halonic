@@ -3,6 +3,7 @@
 - Task: HAL-11580
 - Approval: Liam asked for this change on HAL-11580 (https://paperclip.halonic.com/HAL/issues/HAL-11580). A team decision with no board card.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fOq2Ed41RFWKxEJrx5ci2C6ryk9d60Xa0iRsl6VTB8IlI4hTfHAbdy4p6qqkzyYdediBSn8DV6NRhIAZDDUqCg==
 
 ## What changes
 
