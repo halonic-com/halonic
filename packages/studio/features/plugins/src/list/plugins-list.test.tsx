@@ -246,10 +246,12 @@ verifies("plugins.plugin-list", () => {
       candidate.textContent?.includes("Gmail"),
     );
     expect(row).toBeDefined();
+    const keydown = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
     await act(async () => {
-      row?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      row?.dispatchEvent(keydown);
       (row as HTMLElement | undefined)?.click();
     });
+    expect(keydown.defaultPrevented).toBe(false);
     expect(seen.builtIns).toEqual([]);
     expect(seen.opened).toEqual([]);
   });
