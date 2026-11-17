@@ -143,6 +143,30 @@ verifies("runs.run-view.step-events", () => {
     container.remove();
   });
 
+  it("opens the step again when the open tab is asked for it a second time", async () => {
+    const list = new RunsList(
+      fakeSource([summaryWith({ id: runId, lastSeq: log.length })], { [runId]: log }).source,
+    );
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const view = (asked: number) => (
+      <RunView list={list} runId={runId} step="draft" asked={asked} now={() => mondayMorning} />
+    );
+    const settle = () => act(async () => void (await new Promise((done) => setTimeout(done, 0))));
+    act(() => root.render(view(1)));
+    await settle();
+    act(() => (container.querySelector('[aria-label="Close Draft"]') as HTMLElement).click());
+    act(() => root.render(view(1)));
+    expect(container.querySelector("aside")).toBeNull();
+
+    act(() => root.render(view(2)));
+
+    expect(container.querySelector("aside h2")?.textContent).toBe("Draft");
+    act(() => root.unmount());
+    container.remove();
+  });
+
   it("opens at the top for a step the run didn't reach", async () => {
     const root = await openRun(undefined, "archive");
 
