@@ -83,7 +83,7 @@ const numberParameter = {
  * an event. Every call is a `GET`, so nothing is ever changed on GitHub.
  *
  * @example
- * const tools = new GitHubReadTools({ repository: "halonic-com/halonic", secret: "GITHUB_READ_TOKEN", secrets });
+ * const tools = new GitHubReadTools({ repository: "halonic-com/halonic", secret: "GITHUB_READ_TOKEN", secrets, fetch });
  * await tools.call("github_get_pull_request", { number: 12 }, { signal });
  */
 export class GitHubReadTools implements BridgeTools {

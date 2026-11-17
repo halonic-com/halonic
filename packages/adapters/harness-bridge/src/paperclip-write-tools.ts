@@ -69,7 +69,7 @@ interface ToolSpec {
  * GitHub token does in {@link GitHubWriteTools}.
  *
  * @example
- * const tools = new PaperclipWriteTools({ baseUrl, taskId, secret: "PAPERCLIP_TASK_KEY", secrets });
+ * const tools = new PaperclipWriteTools({ baseUrl, taskId, secret: "PAPERCLIP_TASK_KEY", secrets, fetch });
  * await tools.check("paperclip_post_comment", { body: "Done." }); // { kind: "ask" }
  */
 export class PaperclipWriteTools implements BridgeTools {
