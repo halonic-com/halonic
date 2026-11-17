@@ -77,6 +77,10 @@
       "reason": "Starts sandbox-runtime's srt with Node to run a session's program inside the fence. srtRunner.run itself refuses a program, argument or folder under a skill's scripts/ folder, as written or through a symbolic link, before anything starts, so no caller gets round it.",
       "scriptsTest": "packages/adapters/sandbox-srt/src/srt-runner.starts.test.ts"
     },
+    "packages/adapters/sign-in-loopback/src/system-browser-opener.ts": {
+      "reason": "Opens the provider's sign-in page in the person's browser (HAL-11618). It starts only the system's own opener (open on macOS, rundll32 on Windows, xdg-open elsewhere) with one argument, an http or https address the sign-in flow built, never through a shell. Any other address, such as a file path or a script under a skill's scripts/ folder, is refused before anything starts.",
+      "scriptsTest": "packages/adapters/sign-in-loopback/src/system-browser-opener.starts.test.ts"
+    },
     "packages/adapters/system-node/src/run-program.ts": {
       "reason": "Reads the process table with /bin/ps or Windows PowerShell for halonic doctor's resource report.",
       "scriptsTest": "packages/adapters/system-node/src/run-program.test.ts"
