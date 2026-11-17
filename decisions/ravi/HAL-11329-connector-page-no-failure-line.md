@@ -1,7 +1,7 @@
 # Decision: open an http or Google connector's page with nothing to review, not a failure line
 
 - Task: HAL-11329
-- Approval: Liam approves this change on the review task for HAL-11329. A team decision with no board card (HAL-2282 rule); it uses only words already in the code.
+- Approval: Liam approves this change on HAL-11329 (https://paperclip.halonic.com/HAL/issues/HAL-11329#comment-24d2637d-fb6a-454c-b274-058fb7965b56). A team decision with no board card (HAL-2282 rule); it uses only words already in the code.
 - Kind: user-visible
 
 ## What changes
