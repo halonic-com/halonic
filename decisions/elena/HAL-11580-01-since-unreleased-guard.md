@@ -2,9 +2,7 @@
 
 - Task: HAL-11580
 - Approval: Liam asked for this change on HAL-11580 (https://paperclip.halonic.com/HAL/issues/HAL-11580). A team decision with no board card.
-- Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cnpN1FhZxyFiGliTHYJbhQfPHRAffpumQcpV6mudXNXxOQwXyCJfSNDyNttipAX8kVKmhLXn/LcqDiKaRlFJDQ==
-- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:zIst/vfwSrok2kFBbT8jFnGAPvfinjEeIwSSGwsCdg49cWATErlJf8W7Q6zvbzdof1VcfawJ8YxaU8hMgXK8Aw==
+- Kind: user-visible
 
 ## What changes
 
