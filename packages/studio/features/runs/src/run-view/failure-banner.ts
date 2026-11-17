@@ -8,6 +8,7 @@ import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { failureWords } from "../failure-words.ts";
 import { currentStepName } from "../list/run-row.ts";
 import { capitalised, runPageWords } from "../run-words.ts";
+import { apiOffOf } from "./api-off.ts";
 import type { BannerFix, RunBanner, RunPageContext } from "./run-page-model.ts";
 
 /** What a failure banner may need from the log. */
@@ -43,6 +44,10 @@ export function causeBanner(
   }
   const workflow = context.workflow?.name ?? summary.workflowId;
   const step = currentStepName(summary, context.workflow);
+  const apiOff = apiOffBanner(summary, phone);
+  if (apiOff !== undefined) {
+    return apiOff;
+  }
   const facts = factsFrom(log ?? []);
   switch (summary.reason) {
     case "sandbox-start-failed":
@@ -70,6 +75,38 @@ export function causeBanner(
     default:
       return undefined;
   }
+}
+
+/**
+ * `google.api-disabled` (microcopy 10.4): says which API is off and in which project, with
+ * **Switch it on ↗** to Google's enable page. The button is left out when the cause gave no
+ * Google console address, and on a phone it becomes a line saying to do it on the computer.
+ * It reads the typed cause only, never the reason.
+ */
+function apiOffBanner(summary: RunSummary, phone: boolean): RunBanner | undefined {
+  const off = apiOffOf(summary);
+  if (off === undefined) {
+    return undefined;
+  }
+  const api = failureWords.googleApiNames[off.api];
+  const sentence = failureWords.googleApiOff(api, off.project);
+  if (phone) {
+    return danger([sentence, failureWords.fixOnComputer(failureWords.switchOnInGoogleCloud(api))]);
+  }
+  if (off.enableUrl === undefined) {
+    return danger([sentence]);
+  }
+  return danger(
+    [sentence],
+    [
+      {
+        kind: "open-external",
+        label: failureWords.switchItOn,
+        address: off.enableUrl,
+        opens: failureWords.opensGoogleCloud,
+      },
+    ],
+  );
 }
 
 /**

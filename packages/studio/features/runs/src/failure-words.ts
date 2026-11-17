@@ -65,6 +65,16 @@ export const failureWords = {
     `${capitalised(provider)} couldn't load ${model}: this computer doesn't have enough free memory for it.`,
   modelOutOfMemoryFix: "Close other programs, or pick a smaller model in Models.",
   modelOutOfMemoryFixOnPhone: "Close other programs, or pick a smaller model.",
+  /** The Google APIs by the name a person knows, as "the ___ API" reads (microcopy 10.4). */
+  googleApiNames: { gmail: "Gmail", drive: "Google Drive" } as const,
+  /** `google.api-disabled`: names the project when the cause gives one. Never "probably" or an error code. */
+  googleApiOff: (api: string, project: string | undefined) =>
+    project === undefined
+      ? `The ${api} API is off in your Google project, so this step didn't run.`
+      : `The ${api} API is off in project ${project}, so this step didn't run.`,
+  switchItOn: "Switch it on",
+  opensGoogleCloud: "Opens Google Cloud",
+  switchOnInGoogleCloud: (api: string) => `switch on the ${api} API in Google Cloud.`,
   fixOnComputer: (place: string) => `Fix this on your computer: ${place}`,
   modelsPlace: "Models",
   diskFull: (workflow: string, step: string) =>
