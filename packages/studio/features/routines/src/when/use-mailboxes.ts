@@ -15,6 +15,7 @@ export function useMailboxes(
   const { hubId, id } = ref;
   useEffect(() => {
     let current = true;
+    setMailboxes(undefined);
     host.mailboxes({ hubId, id }).then(
       (found) => current && setMailboxes(found),
       () => current && setMailboxes([]),

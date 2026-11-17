@@ -112,7 +112,11 @@ verifies("routines.starts.starts-card", () => {
     await typeInto(field, '{"a":');
     await leave(field);
     expect(saved).toHaveLength(count);
-    expect(page.textContent).toContain("Not valid JSON.");
+    expect(page.textContent).toContain("The input has to be a JSON object, such as {}.");
+    await typeInto(field, "[]");
+    await leave(field);
+    expect(saved).toHaveLength(count);
+    expect(page.textContent).toContain("The input has to be a JSON object, such as {}.");
   });
 
   it("writes a prompt as it is typed and never an empty one", async () => {
@@ -138,6 +142,13 @@ verifies("routines.starts.starts-card", () => {
     expect(page.textContent).toContain(
       "You can use {{trigger.at}}, {{trigger.lastRun}} and {{trigger.message}}",
     );
+  });
+
+  it("offers a signal routine only the placeholders the engine fills", async () => {
+    const signal = routineStarting(briefing, "ready", { kind: "signal", name: "paid" });
+    const { page } = await card(signal);
+    expect(page.textContent).toContain("You can use {{trigger.at}} and {{trigger.lastRun}}");
+    expect(page.textContent).not.toContain("trigger.signal");
   });
 
   it("says why a target can't be started", async () => {

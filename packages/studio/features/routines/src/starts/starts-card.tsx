@@ -104,7 +104,7 @@ function TargetState({ routine, name }: { readonly routine: RoutineView; readonl
   }
 }
 
-/** The workflow's input: written once it is JSON; text that isn't says so when the field is left. */
+/** The workflow's input: written once it is a JSON object; text that isn't says so when the field is left. */
 function InputField({
   input,
   onChange,
@@ -115,14 +115,18 @@ function InputField({
   const [draft, setDraft] = useState<string | undefined>();
   const [left, setLeft] = useState(false);
   const text = draft ?? input;
-  const valid = isJson(text);
+  const valid = isJsonObject(text);
   const change = (next: string) => {
     setDraft(next);
     setLeft(false);
-    if (isJson(next)) onChange(next.trim());
+    if (isJsonObject(next)) onChange(next.trim());
   };
   return (
-    <Field label={words.input} hint={words.inputHint} error={left && !valid ? words.notJson : null}>
+    <Field
+      label={words.input}
+      hint={words.inputHint}
+      error={left && !valid ? words.notObject : null}
+    >
       <TextArea
         value={text}
         spellCheck={false}
@@ -164,10 +168,11 @@ function PromptField({
   );
 }
 
-function isJson(text: string): boolean {
+/** Whether the text is a JSON object, the only shape a workflow accepts as its input. */
+function isJsonObject(text: string): boolean {
   try {
-    JSON.parse(text);
-    return true;
+    const value: unknown = JSON.parse(text);
+    return typeof value === "object" && value !== null && !Array.isArray(value);
   } catch {
     return false;
   }
@@ -184,10 +189,9 @@ function sameTarget(
   return targetKey(choice) === targetKey(target);
 }
 
-/** The placeholders the text may use: every run has the time and the last run; mail and signals add theirs. */
+/** The placeholders the text may use: every run has the time and the last run; mail adds its message. */
 function placeholdersFor(trigger: RoutineTrigger): readonly string[] {
   const names = ["trigger.at", "trigger.lastRun"];
   if (trigger.kind === "mail") names.push("trigger.message");
-  if (trigger.kind === "signal") names.push("trigger.signal");
   return names;
 }
