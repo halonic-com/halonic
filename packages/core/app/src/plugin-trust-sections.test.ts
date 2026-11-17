@@ -56,7 +56,7 @@ verifies("app.plugin-trust-sections", () => {
     });
   });
 
-  it("lists eleven files in full, because \"and 1 more\" would take the same row", () => {
+  it('lists eleven files in full, because "and 1 more" would take the same row', () => {
     const content = pluginTrustContent({ plugin: pluginFrom(), files: filesNamed(11) });
     expect(pluginTrustFiles(content)).toMatchObject({ more: 0 });
     expect(pluginTrustFiles(content).shown).toHaveLength(11);
