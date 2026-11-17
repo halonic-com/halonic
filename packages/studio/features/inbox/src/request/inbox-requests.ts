@@ -37,3 +37,15 @@ export interface InboxRequests {
    */
   start(key: string, message: string): Promise<StartedRun>;
 }
+
+/**
+ * Why a request wasn't started: the month's estimated spend has reached the budget (microcopy
+ * 10.3). `message` is the sentence, "This month's estimated spend reached its budget of €50.00."
+ * The form says it after "Not started:" and offers **Change budget**.
+ */
+export class BudgetUsedUp extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BudgetUsedUp";
+  }
+}

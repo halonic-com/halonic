@@ -1,4 +1,4 @@
-import { Dialog, Field, Select, TextArea } from "@halonicjs/studio-kit";
+import { Button, Dialog, Field, Select, TextArea } from "@halonicjs/studio-kit";
 import { type Ref, useState } from "react";
 import type { RequestWorkflow } from "../request/inbox-requests.ts";
 import type { RequestDraft } from "./request-form.tsx";
@@ -13,6 +13,8 @@ export interface RequestSheetProps {
   readonly busy: boolean;
   /** The "Not started: …" line, or empty; shown in the sheet's alert slot. */
   readonly notStarted: string;
+  /** With a refusal for the month's budget: **Change budget**, under the fields. */
+  readonly onChangeBudget?: (() => void) | undefined;
   /** Starts the run; clears the message once it has started. Never rejects. */
   readonly onSend: (workflow: RequestWorkflow, message: string) => Promise<void>;
   /** Close: the sheet goes and the text stays. */
@@ -35,6 +37,7 @@ export function RequestSheet({
   onDraft,
   busy,
   notStarted,
+  onChangeBudget,
   onSend,
   onClose,
   messageRef,
@@ -86,6 +89,13 @@ export function RequestSheet({
           }}
         />
       </Field>
+      {notStarted !== "" && onChangeBudget !== undefined ? (
+        <div>
+          <Button variant="ghost" size="sm" onClick={onChangeBudget}>
+            Change budget
+          </Button>
+        </div>
+      ) : null}
     </Dialog>
   );
 }

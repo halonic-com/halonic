@@ -1,8 +1,12 @@
 import type { DefinitionSource } from "@halonicjs/ports";
-import type {
-  InboxRequests,
-  RequestWorkflow,
-  StartedRun,
+import {
+  BudgetUsedUp,
+  type InboxRequests,
+  type MonthBudgetUse,
+  monthBudgetReached,
+  monthBudgetUsedUp,
+  type RequestWorkflow,
+  type StartedRun,
 } from "@halonicjs/studio-feature-inbox/api";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 
@@ -15,6 +19,11 @@ export interface WorkspaceRequestsParts {
   };
   /** Calls `listener` after every change of the workspace's files; returns the way to stop. */
   readonly onChange: (listener: () => void) => () => void;
+  /**
+   * What this month's budget has used, or `undefined` with no monthly budget. A request whose
+   * month is used up isn't started (microcopy 10.3). Without it a request always goes to the engine.
+   */
+  readonly monthBudget?: () => Promise<MonthBudgetUse | undefined>;
   /** The page's engine, which starts a run. Absent where the page has no engine, so nothing is offered. */
   readonly engine?: {
     startRun(
@@ -63,6 +72,9 @@ export class WorkspaceRequests implements InboxRequests {
     // Read now, not from the last offer: the workflow may have been edited since.
     const found = (await this.#requestable()).find((one) => keyOf(one.hubId, one.id) === key);
     if (found === undefined) throw new Error(`"${key}" isn't offered as a request any more.`);
+    const use = await this.#parts.monthBudget?.();
+    // The same rule as the engine's own stop, so a request that would fail at once isn't started.
+    if (monthBudgetUsedUp(use)) throw new BudgetUsedUp(monthBudgetReached(use));
     const { id: runId } = await engine.startRun(
       { hubId: found.hubId, workflowId: found.id },
       { [found.field]: message },

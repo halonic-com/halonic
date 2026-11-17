@@ -18,7 +18,9 @@ const supportReply = [
 const triage = "id: triage\nname: Triage\ninitial: first\nstates:\n  first:\n    type: final\n";
 
 /** The workspace's files and engine as the requests read them; `reads` counts every file read. */
-function setup(options: { engine?: boolean } = {}) {
+function setup(
+  options: { engine?: boolean; monthBudget?: WorkspaceRequestsParts["monthBudget"] } = {},
+) {
   const store: Record<string, string> = {
     "hubs/support/hub.yaml": "id: support\nname: Support\n",
     "hubs/support/workflows/support-reply.workflow.yaml": supportReply,
@@ -40,6 +42,7 @@ function setup(options: { engine?: boolean } = {}) {
       return () => listeners.delete(listener);
     },
     ...(options.engine === false ? {} : { engine: { startRun } }),
+    ...(options.monthBudget === undefined ? {} : { monthBudget: options.monthBudget }),
   };
   return { requests: new WorkspaceRequests(parts), store, startRun, listeners, read };
 }
@@ -70,6 +73,27 @@ verifies("studio.inbox-requests", () => {
       { mail: "Hi, Sam here." },
     );
     expect(run).toEqual({ runId: "r9", hubId: "support" });
+  });
+
+  it("starts nothing when the month's budget is used up, and says so", async () => {
+    const { requests, startRun } = setup({
+      monthBudget: async () => ({ limit: 50, currency: "EUR", spent: 50.02 }),
+    });
+    await expect(requests.start("support/support-reply", "Hi")).rejects.toThrow(
+      "This month's estimated spend reached its budget of €50.00.",
+    );
+    expect(startRun).not.toHaveBeenCalled();
+  });
+
+  it("starts the workflow while the month's budget has room, or there is none", async () => {
+    for (const monthBudget of [
+      async () => ({ limit: 50, currency: "EUR", spent: 49.99 }),
+      async () => undefined,
+    ]) {
+      const { requests, startRun } = setup({ monthBudget });
+      await requests.start("support/support-reply", "Hi");
+      expect(startRun).toHaveBeenCalledOnce();
+    }
   });
 
   it("refuses a workflow that isn't offered any more, or a key it never offered", async () => {

@@ -1,3 +1,4 @@
+import type { MonthBudgetNotice, RunBudgetNotice } from "./budget-notices.ts";
 import type { FailedRunNotice } from "./failed-run-notices.ts";
 
 /**
@@ -16,7 +17,11 @@ export interface SandboxFixedNotice {
 }
 
 /** A row of the Inbox's Notices. */
-export type InboxNotice = FailedRunNotice | SandboxFixedNotice;
+export type InboxNotice =
+  | FailedRunNotice
+  | SandboxFixedNotice
+  | RunBudgetNotice
+  | MonthBudgetNotice;
 
 /**
  * The notices the Inbox shows under Needs you. The app provides them for each open workspace: it

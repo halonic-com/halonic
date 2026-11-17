@@ -44,11 +44,19 @@ function storage(initial: Record<string, string> = {}) {
   };
 }
 
-function setup(location = "/work/acme", shared = storage(), routines = ["acme/daily"]) {
+function setup(
+  location = "/work/acme",
+  shared = storage(),
+  routines = ["acme/daily"],
+  budget: number | undefined = undefined,
+  summaries: RunSummary[] = [failedRun()],
+) {
   const listeners = new Set<() => void>();
   const runs = {
-    list: async () => [{ summary: failedRun() }],
+    list: async () => summaries.map((summary) => ({ summary })),
     routine: (key: string) => (routines.includes(key) ? { name: "Daily summary" } : undefined),
+    monthlyBudget: () => budget,
+    currency: () => "EUR",
     workflow: (hubId: string, id: string) =>
       hubId === "acme" && id === "daily" ? { name: "Daily digest" } : undefined,
     subscribe: (listener: () => void) => {
@@ -66,6 +74,14 @@ verifies("studio.inbox-notices", () => {
     expect((await notices.list()).map((one) => one.title)).toEqual([
       "Daily summary failed at 06:00",
     ]);
+  });
+
+  it("adds the month's budget notice when the month's runs have used up the monthly budget", async () => {
+    const spent = { ...failedRun(), id: "r2", cost: 50.5, trigger: null, reason: "budget" };
+    const { notices } = setup("/work/acme", storage(), [], 50, [spent as RunSummary]);
+    const listed = await notices.list();
+    expect(listed.map((one) => one.kind)).toEqual(["budget-month"]);
+    expect(listed[0]?.title).toContain("reached its budget of €50.00");
   });
 
   it("names the run by its workflow, not the routine's key, when the routine is gone", async () => {

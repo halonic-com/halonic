@@ -30,10 +30,26 @@ export {
   setupKey,
   type WaitItem,
 } from "./inbox-items.ts";
+export {
+  type BudgetNoticeFacts,
+  budgetNotices,
+  type MonthBudgetNotice,
+  type MonthBudgetUse,
+  monthBudgetReached,
+  monthBudgetUse,
+  monthBudgetUsedUp,
+  type RunBudgetNotice,
+} from "./notices/budget-notices.ts";
 export { type FailedRunNotice, failedRunNotices } from "./notices/failed-run-notices.ts";
 export type { InboxNotice, InboxNotices, SandboxFixedNotice } from "./notices/inbox-notices.ts";
+export { newestFirst as newestNoticeFirst } from "./notices/merge-notices.ts";
 export { clockTime } from "./plain/waiting-time.ts";
-export type { InboxRequests, RequestWorkflow, StartedRun } from "./request/inbox-requests.ts";
+export {
+  BudgetUsedUp,
+  type InboxRequests,
+  type RequestWorkflow,
+  type StartedRun,
+} from "./request/inbox-requests.ts";
 export type { SandboxPasses, SandboxRefusals } from "./sandbox/sandbox-setup-source.ts";
 export { WaitCard, type WaitCardProps } from "./ui/wait-card.tsx";
 

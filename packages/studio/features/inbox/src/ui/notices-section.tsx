@@ -13,17 +13,20 @@ const loadFailed = "Couldn't load notices";
  * hidden when there is nothing to show. Returns `null` with no source.
  *
  * @param openRun Opens a run's page; without it a notice has no **Open run**.
+ * @param openBudget Opens the budget in Settings; without it the monthly budget notice has no **Change budget**.
  * @param onEmptied Called as the last notice is dismissed, to move focus somewhere that stays on the
  *   page: the section's heading goes with it.
  */
 export function NoticesSection({
   source,
   openRun,
+  openBudget,
   onEmptied,
   words,
 }: {
   readonly source: InboxNotices | undefined;
   readonly openRun: ((hubId: string, runId: string) => void) | undefined;
+  readonly openBudget?: (() => void) | undefined;
   readonly onEmptied: () => void;
   readonly words: EngineWords;
 }) {
@@ -55,6 +58,7 @@ export function NoticesSection({
             key={notice.key}
             notice={notice}
             openRun={openRun}
+            openBudget={openBudget}
             dismiss={() => dismiss(source, index, notice.key)}
           />
         ))}
@@ -66,24 +70,33 @@ export function NoticesSection({
 function NoticeRow({
   notice,
   openRun,
+  openBudget,
   dismiss,
 }: {
   readonly notice: InboxNotice;
   readonly openRun: ((hubId: string, runId: string) => void) | undefined;
+  readonly openBudget: (() => void) | undefined;
   readonly dismiss: () => void;
 }) {
   const title = markedName(notice.title);
   const titleId = useId();
   const failed = notice.kind === "failed-run" ? notice : undefined;
+  const run = notice.kind === "failed-run" || notice.kind === "budget-run" ? notice : undefined;
   const link =
-    openRun === undefined || failed === undefined ? null : (
+    openRun === undefined || run === undefined ? null : (
       <Button
         variant="ghost"
         size="sm"
         aria-describedby={titleId}
-        onClick={() => openRun(failed.hubId, failed.runId)}
+        onClick={() => openRun(run.hubId, run.runId)}
       >
         Open run
+      </Button>
+    );
+  const changeBudget =
+    openBudget === undefined || notice.kind !== "budget-month" ? null : (
+      <Button variant="ghost" size="sm" aria-describedby={titleId} onClick={openBudget}>
+        Change budget
       </Button>
     );
   return (
@@ -91,10 +104,10 @@ function NoticeRow({
       <p id={titleId} className="min-w-0 flex-1 text-body">
         {title}
       </p>
-      {failed === undefined || failed.fixed ? (
+      {notice.kind === "sandbox-fixed" || failed?.fixed ? (
         <span className="text-small text-success">Fixed</span>
       ) : (
-        link
+        (link ?? changeBudget)
       )}
       <Button
         variant="ghost"
