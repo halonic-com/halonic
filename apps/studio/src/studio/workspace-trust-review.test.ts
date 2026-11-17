@@ -91,7 +91,10 @@ verifies("studio.workspace-trust-review", () => {
   it("asks nothing for a workspace that starts nothing (HAL-10131)", async () => {
     await rm(join(folder, "library"), { recursive: true });
 
-    expect((await viewOf()).review()).toBeUndefined();
+    const view = await viewOf();
+
+    expect(view.review()).toBeUndefined();
+    expect(view.needsNoTrust).toBe(true);
   });
 
   it("trusts exactly the fingerprint shown, then has nothing to review", async () => {
