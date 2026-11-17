@@ -133,6 +133,11 @@ verifies("sandbox-mxc.session", () => {
       const address = bridge.address();
       const bridgePort = typeof address === "object" && address !== null ? address.port : 0;
       const refusedPort = await closedPort();
+      // UDP ports are not TCP ports: a free TCP port number can belong to another UDP socket on
+      // the machine, which may answer (HAL-11361). A socket we hold that never answers can't.
+      const silent = createSocket("udp4");
+      await new Promise<void>((resolve) => silent.bind(0, "127.0.0.1", resolve));
+      const silentPort = silent.address().port;
       try {
         writeFileSync(join(folder, "probe.cjs"), leakProbeScript);
         const settings = {
@@ -141,7 +146,7 @@ verifies("sandbox-mxc.session", () => {
           denied: "x",
           ports: [],
           internet: [{ host: "127.0.0.1", port: refusedPort }],
-          dns: [{ host: "127.0.0.1", port: refusedPort }],
+          dns: [{ host: "127.0.0.1", port: silentPort }],
           bridge: { host: "127.0.0.1", port: bridgePort },
         };
         writeFileSync(join(folder, "probe.json"), JSON.stringify(settings));
@@ -157,12 +162,13 @@ verifies("sandbox-mxc.session", () => {
           code: null,
         });
         expect(report?.internet[0]).toMatchObject({ state: "refused", code: "ECONNREFUSED" });
-        // A UDP packet to a closed port comes back as nothing here, or as a refusal: never as an answer.
-        expect(report?.dns[0]?.state).not.toBe("connected");
+        // A DNS server that never answers is a timeout, not a connection.
+        expect(report?.dns[0]).toMatchObject({ state: "timeout", code: null });
       } finally {
+        await new Promise<void>((resolve) => silent.close(() => resolve()));
         await new Promise<void>((resolve) => bridge.close(() => resolve()));
       }
-    });
+    }, 10_000);
 
     it("reports a DNS answer as connected", async () => {
       const server = createSocket("udp4");
