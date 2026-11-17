@@ -1,8 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import type { WorkflowView } from "../../src/api.ts";
-import { marksOf } from "../../src/start/run-strip.ts";
 import { WorkflowCanvas } from "../../src/page/workflow-canvas.tsx";
+import { marksOf } from "../../src/start/run-strip.ts";
 
 /**
  * The workflow canvas with a made-up Review workflow (HAL-11974): `?run=` is what the shown run
