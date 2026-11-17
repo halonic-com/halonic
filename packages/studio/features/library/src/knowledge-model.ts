@@ -5,6 +5,7 @@ import {
   type KnowledgeParts,
   readKnowledgeText,
 } from "@halonicjs/app";
+import { errorMessageFor, errorReasonFor } from "@halonicjs/studio-shell";
 import type { KnowledgeHost, KnowledgeRef, SummarizeOutcome } from "./knowledge-host.ts";
 import { knowledgeWords } from "./knowledge-words.ts";
 import { readFailureReason } from "./read-failure.ts";
@@ -35,6 +36,8 @@ export interface KnowledgeState {
   readonly source: string;
   readonly usage?: ItemUsage;
   readonly summarize: SummarizeState;
+  /** The last save failed; the next successful save clears it. */
+  readonly saveFailure: { readonly reason: string } | undefined;
 }
 
 const idle: SummarizeState = { phase: "idle" };
@@ -53,7 +56,9 @@ export class KnowledgeModel {
     unreadable: false,
     source: "",
     summarize: idle,
+    saveFailure: undefined,
   };
+  private failedChange: KnowledgeChange | undefined;
   private text = "";
   private readonly listeners = new Set<() => void>();
   private stopHost: (() => void) | undefined;
@@ -113,6 +118,7 @@ export class KnowledgeModel {
         source: read.source,
         usage,
         summarize: this.state.summarize,
+        saveFailure: this.state.saveFailure,
         ...(parts.ok ? { parts: parts.value } : {}),
       });
     } catch (error) {
@@ -139,9 +145,13 @@ export class KnowledgeModel {
     if (edited.value === this.text) return true;
     try {
       await this.host.write(this.source, edited.value);
-    } catch {
+    } catch (error) {
+      console.error("Couldn't save the knowledge source.", error);
+      this.failedChange = change;
+      this.set({ ...this.state, saveFailure: { reason: errorReasonFor(error) } });
       return false;
     }
+    this.failedChange = undefined;
     // What was written is the text now, even if the refresh below fails or is late. An older
     // read still in flight no longer counts.
     this.latest++;
@@ -150,10 +160,16 @@ export class KnowledgeModel {
     this.set({
       ...this.state,
       unreadable: !parts.ok,
+      saveFailure: undefined,
       ...(parts.ok ? { parts: parts.value } : {}),
     });
     await this.refresh();
     return true;
+  }
+
+  /** Saves the change that failed again. */
+  async retrySave(): Promise<boolean> {
+    return this.failedChange === undefined ? true : this.save(this.failedChange);
   }
 
   /** Drafts a summary on request. A draft is only text until `useDraft` saves it; asking twice at once runs once. */
@@ -167,8 +183,11 @@ export class KnowledgeModel {
         outcome.kind === "drafted"
           ? { phase: "draft", text: outcome.text }
           : { phase: "failed", reason: outcome.kind };
-    } catch {
-      summarize = { phase: "failed", reason: "model-failed" };
+    } catch (error) {
+      console.error("Couldn't summarize the knowledge source.", error);
+      // An unreachable host is not a model that didn't answer.
+      const unreachable = errorMessageFor(error, { title: "" }).kind === "unavailable";
+      summarize = { phase: "failed", reason: unreachable ? "host-unreachable" : "model-failed" };
     }
     this.set({ ...this.state, summarize });
   }

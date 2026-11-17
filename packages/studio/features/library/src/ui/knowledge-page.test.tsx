@@ -138,6 +138,40 @@ verifies("library.knowledge-page", () => {
       expect(radio(root, auto).checked).toBe(true);
     });
 
+    it("says a save failed and saves the change again on Try again", async () => {
+      const { props, write } = setup();
+      write.mockRejectedValueOnce(Object.assign(new Error("The disk is full."), { kind: "unavailable" }));
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const root = render(<KnowledgePage {...props} />);
+      await settled();
+      await act(async () => radio(root, auto).click());
+      await settled();
+      expect(root.textContent).toContain("Couldn't save the knowledge source");
+      expect(root.textContent).toContain("The disk is full.");
+      expect(console.error).toHaveBeenCalled();
+      await act(async () => button(root, "Try again").click());
+      await settled();
+      expect(write).toHaveBeenCalledTimes(2);
+      expect(root.textContent).not.toContain("Couldn't save the knowledge source");
+      expect(radio(root, auto).checked).toBe(true);
+    });
+
+    it("blames an unreachable host, not the model, when Summarize throws unavailable", async () => {
+      const { props } = setup(
+        undefined,
+        nobody,
+        Object.assign(new Error("down"), { kind: "unavailable" }),
+      );
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const root = render(<KnowledgePage {...props} />);
+      await settled();
+      await act(async () => button(root, "Summarize").click());
+      await settled();
+      expect(root.textContent).toContain(
+        "Couldn't summarize Handbook: Halonic on your computer isn't answering.",
+      );
+    });
+
     it("removes mode when the first option is picked", async () => {
       const { props, write } = setup({ text: `${text}mode: auto\n`, source: "Folder docs" });
       const root = render(<KnowledgePage {...props} />);
@@ -258,6 +292,7 @@ verifies("library.knowledge-summarize", () => {
       expect(first.textContent).toContain(
         "Handbook has no documents to summarize, or Halonic can't list them.",
       );
+      vi.spyOn(console, "error").mockImplementation(() => {});
       const broken = setup(undefined, nobody, new Error("boom"));
       const second = render(<KnowledgePage {...broken.props} />);
       await settled();

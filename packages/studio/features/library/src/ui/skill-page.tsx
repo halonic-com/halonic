@@ -75,7 +75,7 @@ function LoadedSkillPage({
   model,
 }: Pick<ItemViewProps, "item" | "context"> & { readonly model: SkillModel }) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
-  const { loaded, failed, failureReason, gone, unreadable, parts, files, usage, kept } =
+  const { loaded, failed, failureReason, gone, unreadable, parts, files, usage, kept, saveFailure } =
     useSyncExternalStore(subscribe, () => model.state);
   const trash = useItemTrash(context, {
     kind: "skill",
@@ -132,6 +132,9 @@ function LoadedSkillPage({
       setDrafts(without(field));
     }
   };
+  const retrySave = async () => {
+    for (const field of Object.keys(drafts) as Edited[]) await leave(field);
+  };
   const keptHint = (field: SkillField, text: string) => (kept.includes(field) ? text : undefined);
 
   return (
@@ -143,6 +146,15 @@ function LoadedSkillPage({
         </h1>
         {trash.menu}
       </div>
+      {saveFailure === undefined ? null : (
+        <Callout
+          tone="danger"
+          title={skillWords.saveFailed}
+          action={{ label: skillWords.tryAgain, onClick: () => void retrySave() }}
+        >
+          {saveFailure.reason}
+        </Callout>
+      )}
       <FormRows>
         <Field label={skillWords.name} hint={keptHint("name", skillWords.nameKept)}>
           <Input

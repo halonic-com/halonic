@@ -136,6 +136,27 @@ verifies("library.skill-page", () => {
       expect(write).toHaveBeenCalledOnce();
     });
 
+    it("says a save failed, keeps the draft, and clears the line when Try again saves it", async () => {
+      const { props, write } = setup();
+      const failure = Object.assign(new Error("The disk is full."), { kind: "unavailable" });
+      write.mockRejectedValueOnce(failure);
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const root = render(<SkillPage {...props} />);
+      await settled();
+      const instructions = field(root, "Instructions");
+      type(instructions, "Be very kind.");
+      await leave(instructions);
+      expect(root.textContent).toContain("Couldn't save the skill");
+      expect(root.textContent).toContain("The disk is full.");
+      expect(console.error).toHaveBeenCalled();
+      expect(field(root, "Instructions").value).toBe("Be very kind.");
+      const retry = [...root.querySelectorAll("button")].find((each) => each.textContent === "Try again");
+      await act(async () => retry?.click());
+      await settled();
+      expect(write).toHaveBeenCalledTimes(2);
+      expect(root.textContent).not.toContain("Couldn't save the skill");
+    });
+
     it("keeps the old name with its hint when the name is emptied, and drops the hint on the next edit", async () => {
       const { props, write } = setup();
       const root = render(<SkillPage {...props} />);
