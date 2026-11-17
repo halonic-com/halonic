@@ -221,7 +221,11 @@ export function PluginsList({
         />
       )}
       {builtInRows.length === 0 || load.kind === "loading" ? null : (
-        <List heading={{ name: BUILT_IN_HEADING }} rows={builtInRows} onOpen={openRow} />
+        <List
+          heading={{ name: BUILT_IN_HEADING }}
+          rows={builtInRows}
+          {...builtInOpen(onOpenBuiltIn, openRow)}
+        />
       )}
       {viewOnly ? (
         <div className="flex flex-col gap-2">
@@ -337,4 +341,12 @@ function installedEntries(plugin: InstalledPlugin, act: RowActions): MenuEntry[]
     "divider",
     { id: "remove", label: REMOVE_PLUGIN_ELLIPSIS, danger: true, onSelect: act.remove },
   ];
+}
+
+/** The Built in list's `onOpen`, or nothing when the host can't open a built-in plugin. */
+function builtInOpen(
+  onOpenBuiltIn: ((id: string) => void) | undefined,
+  openRow: (id: string) => void,
+) {
+  return onOpenBuiltIn === undefined ? {} : { onOpen: openRow };
 }

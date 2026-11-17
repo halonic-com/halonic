@@ -184,6 +184,17 @@ verifies("plugins.plugin-list", () => {
     expect(seen.builtIns).toEqual(["gmail"]);
   });
 
+  it("leaves a built-in row inert when the host cannot open it", async () => {
+    const seen = show([weather()], { openBuiltIn: false });
+    const row = document.querySelector<HTMLElement>('[data-row-id="built-in:gmail"]');
+    expect(row).not.toBeNull();
+    expect(row?.querySelector("button")).toBeNull();
+    const cell = row?.querySelector<HTMLElement>('[role="gridcell"]');
+    await act(async () => cell?.click());
+    expect(seen.builtIns).toEqual([]);
+    expect(seen.opened).toEqual([]);
+  });
+
   it("offers the ⋮ items, and Remove trust only while it is trusted", async () => {
     const seen = show([weather(), { ...weather("not-trusted"), plugin: "w2", name: "W2" }]);
     await openMenu("Weather");
