@@ -3,6 +3,7 @@
 - Task: HAL-10718
 - Approval: Liam reviews and signs this on HAL-10718 (https://paperclip.halonic.com/HAL/issues/HAL-10718); his comment there says he signs any decision note on the task. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GmlX5x+Le3UqWzkxc+U1H7bYaSKezhuy+uCISHNEf2zEzYsdRvtihLfLj3ObHUx8IOu0STacegOJmNyA97TbAg==
 
 ## What changes
 
