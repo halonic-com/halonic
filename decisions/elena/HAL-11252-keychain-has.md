@@ -4,6 +4,7 @@
 - Task: HAL-11252
 - Approval: Liam approved adding `has` and the shell's `secret_has` on HAL-11252 (PR #3237, code review at 2f4c63a)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:UNcpDb8+DXze1shk2w38x88Hi/KBHCBT0YuAc1n2QLRM7hhd6Ryeex3nK06XheDq/YWFZrnyGfJAUCFnSsj7Cg==
 
 ## What changes
 
