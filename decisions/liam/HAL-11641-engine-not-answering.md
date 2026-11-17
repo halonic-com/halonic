@@ -2,6 +2,7 @@
 
 - Approval: HAL-11641 (states audit gap 3, from Sofia's audit on HAL-11635). Liam wrote this pull request, so Julian approves the note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:RROFHo7dMkNJjwcsY/jq5WaWKZDcPRnqH3C9x++SFShGAjxPaVvbkuZ5ci3B58anJhjsDVqryWih80v/oQJdAQ==
 
 `runs.list` said that a failed load shows "The engine isn't answering. It may still be starting." and that a later failed load keeps the rows under "The engine isn't answering. Showing what it said last.". The list reads the workspace's files, so most failures have nothing to do with the engine, and a phone or a served Studio doesn't call it "the engine".
 
