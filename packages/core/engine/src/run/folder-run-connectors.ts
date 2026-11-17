@@ -8,19 +8,29 @@
 // The engine opens them at the first step that needs one and ends them when
 // the run ends; the engine's own close ends the rest, before the copies go.
 
-import { type ConnectorFactories, connectorConfigOf } from "@halonicjs/app";
-import type { ConnectorsRun, RunConnectors } from "@halonicjs/engine";
+import { type ConnectorFactories, connectorConfigOf, type ProgramCopyLease } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
 import { type Connector, connectorIsLocal } from "@halonicjs/format";
 import type { ConnectorClient, ConnectorFactoryContext, TrustGrant } from "@halonicjs/ports";
-import type { ProgramFolders } from "./program-folders.ts";
+import type { ConnectorsRun, RunConnectors } from "./run-connectors.ts";
+
+/** Where a run's programs start, as the host makes it: a copy at its commit, or the folder itself. */
+export interface RunProgramFolders {
+  /**
+   * A hold on the folder the programs of a run that read `version` start in.
+   * Released when the run's programs have stopped.
+   *
+   * @throws when the folder can't be made; the run's programs are not started
+   */
+  folderFor(version: RunVersion): Promise<ProgramCopyLease>;
+}
 
 /** What {@link FolderRunConnectors} starts a run's connectors with. */
 export interface FolderRunConnectorsInput {
-  /** The CLI's `stdio` and `http` factories (`cliConnectorFactories`). */
+  /** The factories the host serves, such as the CLI's `stdio` and `http` ones. */
   readonly factories: ConnectorFactories;
   /** Where a run's programs start: a copy at its commit for a live run. */
-  readonly programFolders: Pick<ProgramFolders, "folderFor">;
+  readonly programFolders: RunProgramFolders;
   /**
    * What every connector starts with, but its folder and its grant: the
    * secrets, sign-ins and HTTP client.

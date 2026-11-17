@@ -38,6 +38,7 @@ import {
   loadWorkspace,
 } from "@halonicjs/workspace";
 import type { ToolLister } from "../connect/agent-host-tool-lister.ts";
+import { resolveWorkingFolders } from "../connect/studio-run-connectors.ts";
 import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
 
 type ListedToolPick = Parameters<ListedToolsHost["approve"]>[1][number];
@@ -204,7 +205,11 @@ export class WorkspaceListedTools implements ListedToolsHost {
         tokens: this.#options.tokens,
         http: this.#options.http,
         workspaceRoot: location,
-        workingFolders: await this.#workingFolders(location, harnessWorkingFolders(workspace)),
+        workingFolders: await resolveWorkingFolders(
+          this.#options.folder,
+          location,
+          harnessWorkingFolders(workspace),
+        ),
         trust: grant,
       })
       .catch((error: unknown) => {
@@ -222,18 +227,6 @@ export class WorkspaceListedTools implements ListedToolsHost {
     });
     if (!check.ok) throw new Error(check.error);
     return check.value;
-  }
-
-  /** Each agent's folder as the shell resolves it, or under the real workspace path while it doesn't exist yet. */
-  async #workingFolders(root: string, relative: readonly string[]): Promise<string[]> {
-    const separator = root.includes("\\") && !root.includes("/") ? "\\" : "/";
-    return await Promise.all(
-      relative.map(
-        async (folder) =>
-          (await this.#options.folder.locationOf(folder)) ??
-          [root, ...folder.split("/")].join(separator),
-      ),
-    );
   }
 }
 
