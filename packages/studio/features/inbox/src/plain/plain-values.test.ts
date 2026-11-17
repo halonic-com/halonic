@@ -54,6 +54,13 @@ verifies("inbox.plain-values", () => {
         hasHidden: false,
       });
     });
+
+    it("writes a name's hidden characters out as markers", () => {
+      expect(markHiddenName(`create${String.fromCodePoint(0x200b)}note`)).toBe(
+        "create⟦U+200B⟧note",
+      );
+      expect(markHiddenName("create_note")).toBe("create_note");
+    });
   });
 
   describe("folding", () => {
