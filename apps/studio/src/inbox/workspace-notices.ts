@@ -1,8 +1,10 @@
 import type { RunSummary } from "@halonicjs/events";
 import {
-  type FailedRunNotice,
+  budgetNotices,
   failedRunNotices,
+  type InboxNotice,
   type InboxNotices,
+  newestNoticeFirst,
 } from "@halonicjs/studio-feature-inbox/api";
 import { type RoutineRunNames, routineRunName } from "./routine-run-name.ts";
 
@@ -18,6 +20,10 @@ export interface WorkspaceNoticesRuns extends RoutineRunNames {
   list(): Promise<readonly { readonly summary: RunSummary }[]>;
   /** Calls `listener` whenever a run starts, changes or ends; returns a function that stops it. */
   subscribe(listener: () => void): () => void;
+  /** The workspace's monthly budget as last read, or `undefined` with none. */
+  monthlyBudget(): number | undefined;
+  /** The currency of the workspace's budget, as last read. */
+  currency(): string;
 }
 
 /** What {@link WorkspaceNotices} needs. */
@@ -33,8 +39,8 @@ export interface WorkspaceNoticesParts {
 
 /**
  * The Inbox's Notices for one open workspace (requirement `studio.inbox-notices`): the failed
- * routine runs in its run logs, as {@link failedRunNotices} makes them, without the ones you
- * dismissed. A dismissal is kept on this device as the notice's key and nothing else, so it
+ * routine runs in its run logs, as {@link failedRunNotices} makes them, the budget stops
+ * ({@link budgetNotices}), without the ones you dismissed. A dismissal is kept on this device as the notice's key and nothing else, so it
  * survives a restart and doesn't reach another device. Storage that can't be read or written
  * leaves the dismissals as they are in this session.
  *
@@ -53,11 +59,19 @@ export class WorkspaceNotices implements InboxNotices {
     this.#dismissed = new Set(this.#stored());
   }
 
-  async list(): Promise<readonly FailedRunNotice[]> {
+  async list(): Promise<readonly InboxNotice[]> {
     const { runs, now } = this.#parts;
     const summaries = (await runs.list()).map((run) => run.summary);
     const nameOf = (_routineId: string, run: RunSummary) => routineRunName(runs, run);
-    const notices = failedRunNotices(summaries, nameOf, now());
+    const monthly = runs.monthlyBudget();
+    const notices: InboxNotice[] = [
+      ...failedRunNotices(summaries, nameOf, now()),
+      ...budgetNotices(summaries, {
+        monthly: monthly === undefined ? undefined : { limit: monthly, currency: runs.currency() },
+        workflowName: (run) => routineRunName(runs, run),
+        now: now(),
+      }),
+    ].sort(newestNoticeFirst);
     this.#reload();
     this.#forget(new Set(notices.map((notice) => notice.key)));
     return notices.filter((notice) => !this.#dismissed.has(notice.key));

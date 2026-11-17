@@ -36,6 +36,7 @@ import { WaitCard } from "./wait-card.tsx";
 
 /** The Library's command that opens New connector; the Inbox can't import the Library, so it runs it by id. */
 const newConnectorCommand = "library.new-connector";
+const openModelsCommand = "workspace.open-models";
 
 const loadFailed = "Couldn't load the Inbox";
 
@@ -68,7 +69,10 @@ export function InboxPage({ context }: PlaceViewProps) {
       notices={notices}
       {...(context.runCommand === undefined
         ? {}
-        : { openNewConnector: () => context.runCommand?.(newConnectorCommand) })}
+        : {
+            openNewConnector: () => context.runCommand?.(newConnectorCommand),
+            openBudget: () => context.runCommand?.(openModelsCommand),
+          })}
       {...(openItem && {
         openRun: (hubId: string, runId: string) => openItem({ kind: "run", hub: hubId, id: runId }),
       })}
@@ -92,6 +96,8 @@ export interface InboxViewProps {
   readonly notices?: InboxNotices | undefined;
   /** Opens New connector, for a secret pasted when no account is there to take it. */
   readonly openNewConnector?: () => void;
+  /** Opens Settings › Models, for **Change budget** on the monthly budget notice and the refused request. */
+  readonly openBudget?: (() => void) | undefined;
   /** Opens a run's page, for **Open run** on the toast that says a request started. */
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
   /** Says a line where a screen reader hears it: "New in Needs you: …" for a sent request's card that didn't open. */
@@ -126,6 +132,7 @@ export function InboxView({
   requests,
   notices,
   openNewConnector,
+  openBudget,
   openRun,
   announce,
 }: InboxViewProps) {
@@ -162,6 +169,7 @@ export function InboxView({
     closeItem: () => openItem(null),
     words,
     openRun,
+    openBudget,
     onStarted: sentCard.watch,
     sheetOpen: requestSheetOpen,
     cardOpen: open !== null,
@@ -209,6 +217,7 @@ export function InboxView({
             <NoticesSection
               source={notices}
               openRun={openRun}
+              openBudget={openBudget}
               onEmptied={() => needsYouHeading.current?.focus()}
               words={words}
             />

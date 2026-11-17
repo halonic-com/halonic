@@ -20,6 +20,7 @@ import {
   InboxNoticesService,
   InboxRequestsService,
   InboxRunsService,
+  monthBudgetUse,
   SandboxRefusalsService,
 } from "@halonicjs/studio-feature-inbox/api";
 import {
@@ -192,6 +193,16 @@ export function provideFolderServices(
     new WorkspaceRequests({
       files: services.get(workspaceFilesKey),
       onChange: (listener) => scope.events.on("files.changed", listener),
+      monthBudget: async () => {
+        const runs = services.get(RunsSourceService);
+        const summaries = (await runs.list()).map((run) => run.summary);
+        const limit = runs.monthlyBudget();
+        return monthBudgetUse(
+          summaries,
+          limit === undefined ? undefined : { limit, currency: runs.currency() },
+          new Date(),
+        );
+      },
       engine,
     }),
   );

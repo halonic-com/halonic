@@ -30,7 +30,8 @@ export function mergeNotices(
   };
 }
 
-function newestFirst(a: InboxNotice, b: InboxNotice): number {
+/** Orders notices newest first. */
+export function newestFirst(a: InboxNotice, b: InboxNotice): number {
   if (a.at === b.at) return 0;
   return a.at < b.at ? 1 : -1;
 }

@@ -12,7 +12,11 @@ import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
 import { Inbox } from "../inbox.ts";
-import type { InboxRequests, RequestWorkflow } from "../request/inbox-requests.ts";
+import {
+  BudgetUsedUp,
+  type InboxRequests,
+  type RequestWorkflow,
+} from "../request/inbox-requests.ts";
 import { pendingApproval, waitingRun } from "../test-runs.test-helper.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -54,7 +58,11 @@ function fakeRequests(offered: readonly RequestWorkflow[], start?: InboxRequests
 
 async function open(
   requests: InboxRequests | undefined,
-  options: { phone?: boolean; openRun?: (hubId: string, runId: string) => void } = {},
+  options: {
+    phone?: boolean;
+    openRun?: (hubId: string, runId: string) => void;
+    openBudget?: () => void;
+  } = {},
 ) {
   const toasts: ToastStore = createToastStore();
   const waiting = waitingRun("r1", {
@@ -64,7 +72,12 @@ async function open(
   const inbox = new Inbox(runs.runs);
   const view = (
     <ToastStoreProvider store={toasts}>
-      <InboxView inbox={inbox} requests={requests} openRun={options.openRun} />
+      <InboxView
+        inbox={inbox}
+        requests={requests}
+        openRun={options.openRun}
+        openBudget={options.openBudget}
+      />
     </ToastStoreProvider>
   );
   const root = render(
@@ -304,6 +317,23 @@ verifies("inbox.request", () => {
       expect(alert?.textContent).toBe("Not started: fin@acme.example is signed out.");
       expect(message(root).value).toBe("Hello");
     });
+    it("refuses a request when the month's budget is used up, with Change budget", async () => {
+      const { requests } = fakeRequests([support], async () => {
+        throw new BudgetUsedUp("This month's estimated spend reached its budget of €50.00.");
+      });
+      const openBudget = vi.fn();
+      const { root } = await open(requests, { openBudget });
+      await type(message(root), "Hello");
+      await send(root);
+      const alert = root.querySelector('[role="alert"]');
+      expect(alert?.textContent).toBe(
+        "Not started: this month's estimated spend reached its budget of €50.00. · Change budget",
+      );
+      expect(message(root).value).toBe("Hello");
+      await act(async () => button(root, "Change budget").click());
+      expect(openBudget).toHaveBeenCalledOnce();
+    });
+
     it("keeps a capitalised name in the reason as written", async () => {
       const { requests } = fakeRequests([support], async () => {
         throw new KindedError("denied", "Gmail is signed out.");
