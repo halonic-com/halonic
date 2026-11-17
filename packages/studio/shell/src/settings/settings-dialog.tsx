@@ -277,11 +277,15 @@ function useDescription(
 ): string | undefined {
   const { description } = section;
   const [answer, setAnswer] = useState<string | undefined>(undefined);
+  // `contextFor` builds a new context on every call; only the description and the place should
+  // ask again, as in `useAttention`.
+  const latest = useRef(context);
+  latest.current = context;
   useEffect(() => {
     if (typeof description !== "function") return;
     let live = true;
     void Promise.resolve()
-      .then(() => description(context, place))
+      .then(() => description(latest.current, place))
       .then(
         (line) => live && setAnswer(line),
         () => undefined,
@@ -289,7 +293,7 @@ function useDescription(
     return () => {
       live = false;
     };
-  }, [description, context, place]);
+  }, [description, place]);
   return typeof description === "function" ? answer : description;
 }
 

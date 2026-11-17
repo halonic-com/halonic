@@ -12,6 +12,11 @@ import { PROVIDER_KIND, PROVIDER_KIND_LABEL, providerTabLabel } from "./provider
 import { modelsSummary } from "./settings/settings-text.ts";
 import { hasProblems } from "./settings/use-problems.ts";
 
+/** The one line the Models section shows under its name, here and on the phone. */
+async function modelsLine(context: WorkspaceContext) {
+  return modelsSummary(await readModels(context.services.get(ModelsFilesService)));
+}
+
 /**
  * The Models feature: providers, aliases, API keys, budget, the "Prices and
  * budget" step and the spend line. Each part registers here as it lands; the
@@ -22,10 +27,6 @@ import { hasProblems } from "./settings/use-problems.ts";
  * spend in the status bar (`models.spend.month-line`), and the **Models** section of Settings
  * (`models.settings.settings-summary`).
  */
-async function modelsLine(context: WorkspaceContext) {
-  return modelsSummary(await readModels(context.services.get(ModelsFilesService)));
-}
-
 export const modelsFeature = defineFeature({
   id: "models",
   title: "Models",
