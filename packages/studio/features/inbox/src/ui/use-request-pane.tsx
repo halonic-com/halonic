@@ -1,6 +1,13 @@
 import { Button, PlusIcon, useToastStore } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
+import {
+  type MutableRefObject,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { flushSync } from "react-dom";
 import type { Inbox } from "../inbox.ts";
 import type { InboxRequests, RequestWorkflow } from "../request/inbox-requests.ts";
@@ -8,6 +15,12 @@ import { notStartedLine } from "../request/not-started.ts";
 import { useOffered } from "../request/use-offered.ts";
 import { emptyDraft, RequestForm } from "./request-form.tsx";
 import { RequestSheet } from "./request-sheet.tsx";
+
+/** A phone's **New request** row: 48px, a plus icon, `accent-text`, a `border` line under it. */
+const newRequestRowClasses = [
+  "flex w-full min-h-touch items-center gap-3 border-b border-border px-4 text-left text-body text-accent-text",
+  "transition-colors focus-ring-inset hover:bg-surface-subtle active:bg-surface-subtle",
+].join(" ");
 
 /** What the Inbox page needs from the request form, or nothing when there is none to offer. */
 export interface RequestPane {
@@ -39,8 +52,23 @@ export function useRequestPane(options: {
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
   /** Hears the run a sent request started, so its card can open by itself. */
   readonly onStarted?: ((runId: string) => void) | undefined;
+  /** Kept true while a phone's request sheet is open, so the card that arrives counts it as the form. */
+  readonly sheetOpen?: MutableRefObject<boolean> | undefined;
+  /** A card is open: a phone's request sheet closes, since the card it waited for has arrived. */
+  readonly cardOpen?: boolean | undefined;
 }): RequestPane {
-  const { inbox, requests, phone, list, closeItem, words, openRun, onStarted } = options;
+  const {
+    inbox,
+    requests,
+    phone,
+    list,
+    closeItem,
+    words,
+    openRun,
+    onStarted,
+    sheetOpen: shared,
+    cardOpen,
+  } = options;
   const offered = useOffered(requests);
   const [draft, setDraft] = useState(emptyDraft);
   const [busy, setBusy] = useState(false);
@@ -50,6 +78,10 @@ export function useRequestPane(options: {
   const message = useRef<HTMLTextAreaElement>(null);
   const formAsked = useRef(false);
   const [asks, setAsks] = useState(0);
+  if (shared !== undefined) shared.current = phone && sheetOpen;
+  useEffect(() => {
+    if (cardOpen) setSheetOpen(false);
+  }, [cardOpen]);
   const closeLatest = useRef(closeItem);
   closeLatest.current = closeItem;
   useEffect(() => {
@@ -83,7 +115,6 @@ export function useRequestPane(options: {
     try {
       const started = await requests.start(workflow.key, text);
       setDraft((d) => ({ ...d, message: "" }));
-      setSheetOpen(false);
       onStarted?.(started.runId);
       toasts?.show({
         tone: "success",
@@ -100,6 +131,7 @@ export function useRequestPane(options: {
   };
   const showForm = () => {
     if (phone) {
+      formAsked.current = true;
       setSheetOpen(true);
       return;
     }
@@ -109,13 +141,15 @@ export function useRequestPane(options: {
   };
   const onEscape = () => list.current?.querySelector<HTMLElement>('[role="gridcell"]')?.focus();
   return {
-    newRequest: (
-      <Button
-        variant="secondary"
-        size={phone ? "touch" : "sm"}
-        icon={<PlusIcon />}
-        onClick={showForm}
-      >
+    newRequest: phone ? (
+      <button type="button" className={newRequestRowClasses} onClick={showForm}>
+        <span className="size-icon-md shrink-0 *:size-full" aria-hidden="true">
+          <PlusIcon />
+        </span>
+        New request
+      </button>
+    ) : (
+      <Button variant="secondary" size="sm" icon={<PlusIcon />} onClick={showForm}>
         New request
       </Button>
     ),

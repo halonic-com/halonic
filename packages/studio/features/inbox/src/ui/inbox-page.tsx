@@ -147,7 +147,13 @@ export function InboxView({
   const failedFirst = !state.loaded && state.error !== undefined;
   const phone = usePresentation() === "phone";
   const itemPage = phone && open !== null;
-  const sentCard = useSentRequestCard({ items: state.items, openItem, announce });
+  const requestSheetOpen = useRef(false);
+  const sentCard = useSentRequestCard({
+    items: state.items,
+    openItem,
+    sheetOpen: requestSheetOpen,
+    announce,
+  });
   const request = useRequestPane({
     inbox,
     requests,
@@ -157,6 +163,8 @@ export function InboxView({
     words,
     openRun,
     onStarted: sentCard.watch,
+    sheetOpen: requestSheetOpen,
+    cardOpen: open !== null,
   });
 
   return (
@@ -255,9 +263,7 @@ function ListHeader({ phone, newRequest }: { phone: boolean; newRequest: ReactNo
         <h1 className="text-title">Inbox</h1>
         {phone ? null : newRequest}
       </header>
-      {phone && newRequest !== null ? (
-        <div className="flex flex-col px-4 pt-3">{newRequest}</div>
-      ) : null}
+      {phone ? newRequest : null}
     </>
   );
 }
