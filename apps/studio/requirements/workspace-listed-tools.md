@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-8868 (step 6, part 4b); Liam's decision on HAL-2213 (part 4)
 
-When the Library asks for a connector's listed tools, the desktop app shall read them the way `halonic tools review` does: it shall check that the workspace is trusted as it is now, start the connector through the agent host with the workspace's grant, its own secrets and the agents' working folders, and show what the server lists now against the approvals the CLI keeps. If the workspace is not trusted, it shall start nothing and say so. It shall approve a tool only at the version the person was shown, and name the tools whose version changed in the meantime. It shall start no `http` connector and no Google connector, and say so for `http`.
+When the Library asks for a connector's listed tools, the desktop app shall read them the way `halonic tools review` does: it shall check that the workspace is trusted as it is now, start the connector through the agent host with the workspace's grant, its own secrets and the agents' working folders, and show what the server lists now against the approvals the CLI keeps. If the workspace is not trusted, it shall start nothing and say so. It shall approve a tool only at the version the person was shown, and name the tools whose version changed in the meantime. It shall start no `http` connector and no Google connector, and open their pages with nothing to review rather than a failure line.
 
 ## Examples
 
@@ -16,4 +16,4 @@ When the Library asks for a connector's listed tools, the desktop app shall read
   when the person approves,
   then nothing is approved for it, and it is named as changed.
 - Given an `http` connector,
-  then nothing starts, and the review says Studio can't check it yet.
+  then nothing starts, and the review opens with no tools and no failure line.

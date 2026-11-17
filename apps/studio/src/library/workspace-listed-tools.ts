@@ -19,6 +19,7 @@ import type {
   TokenStore,
   ToolApprovalStore,
 } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import type { ListedToolsHost, ListedToolsSnapshot } from "@halonicjs/studio-feature-library/api";
 import { listedToolsSnapshot } from "@halonicjs/studio-feature-library/api";
 import {
@@ -81,7 +82,9 @@ export class WorkspaceListedTools implements ListedToolsHost {
   async review(connectorId: string): Promise<ListedToolsSnapshot> {
     const source = await this.#open(connectorId);
     const sourceName = source.connector.name ?? source.connector.id;
-    if ("google" in source.connector.transport) {
+    // Neither way has tools Studio can list: Google's are built in, and an http server's can't be
+    // read here yet. The page opens quiet rather than with a failure line.
+    if ("google" in source.connector.transport || "http" in source.connector.transport) {
       return nothingToReview(sourceName);
     }
     return listedToolsSnapshot(sourceName, reviewListedTools(await this.#check(source)), {
@@ -174,11 +177,11 @@ export class WorkspaceListedTools implements ListedToolsHost {
   /** Starts the connector and checks what it lists against the approvals, as a run would. */
   async #check({ workspace, connector, location }: OpenedSource): Promise<ListedToolApprovalCheck> {
     if ("http" in connector.transport) {
-      throw new Error("Studio can't check the tools of an http server yet");
+      throw new KindedError("unavailable", "Studio can't check the tools of an http server yet");
     }
     const trusted = await this.#options.trust.checkLoaded(workspace);
     if (trusted.status !== "trusted") {
-      throw new Error("this workspace isn't trusted yet, so nothing was started");
+      throw new KindedError("denied", "this workspace isn't trusted yet, so nothing was started");
     }
     const grant = trusted.grant;
     const listed = await this.#options.listTools(connectorConfigOf(connector), {
