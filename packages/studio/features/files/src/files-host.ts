@@ -73,7 +73,10 @@ export class FilePathError extends Error {
 
 /** The workspace's files. The app provides it for each open workspace. */
 export interface FilesHost {
-  /** Lists the files. Rejects with an `Error` whose message is one sentence when the folder can't be read. */
+  /**
+   * Lists the files. Rejects with a kinded error, whose one-sentence message the tree shows, when
+   * the folder can't be read; an unkinded error gives only the general reason.
+   */
   list(): Promise<FilesListing>;
   /** A file's text with the unsaved changes applied, or `null` when there is no such file. */
   read(path: string): Promise<string | null>;

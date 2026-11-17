@@ -171,7 +171,7 @@ verifies("runs.run-page", () => {
       const { banner } = page({
         status: "failed",
         reason: "budget",
-        error: "The run's budget of €5.00 is reached",
+        error: "Run budget reached: 5.08 of 5.00 EUR spent.",
       });
       expect(banner).toEqual({
         kind: "callout",
@@ -179,9 +179,12 @@ verifies("runs.run-page", () => {
         name: "Stopped at its budget",
         title: "Stopped at its estimated budget",
         lines: [
-          "Support reply stopped in the step Draft: The run's budget of €5.00 is reached.",
+          "Support reply stopped in the step Draft.",
           "Halonic checks the budget before each model call, so calls already under way can take a run over it.",
         ],
+        details: expect.stringMatching(
+          /^Support reply stopped in the step Draft\.\nRun \S+\nRun budget reached: 5\.08 of 5\.00 EUR spent\.$/,
+        ),
       });
     });
 

@@ -162,7 +162,10 @@ function approvalText(oldest: PendingApproval, count: number): string {
     : runPageWords.approvals(count, what);
 }
 
-/** A failed run: the budget stop, the cancelled note, or R24's general banner. */
+/**
+ * A failed run: the budget stop, the cancelled note, or R24's general banner. The engine's
+ * message goes only into Copy details (F13).
+ */
 function endedBanner(summary: RunSummary, workflow: string, step: string): RunBanner {
   const message = summary.error?.trim() ?? "";
   if (summary.reason === "cancelled") {
@@ -175,12 +178,14 @@ function endedBanner(summary: RunSummary, workflow: string, step: string): RunBa
     };
   }
   if (summary.reason === "budget") {
+    const line = runPageWords.budget(workflow, step);
     return {
       kind: "callout",
       tone: "attention",
       name: runPageWords.budgetName,
       title: runPageWords.budgetTitle,
-      lines: [runPageWords.budget(workflow, step, message), runPageWords.budgetChecks],
+      lines: [line, runPageWords.budgetChecks],
+      details: [line, `Run ${summary.id}`, message].filter((part) => part !== "").join("\n"),
     };
   }
   const line = runPageWords.failed(workflow, step);

@@ -271,10 +271,7 @@ export const runPageWords = {
   failed: (workflow: string, step: string) =>
     `${workflow} failed in the step ${step}. Halonic can't tell the cause yet.`,
   budgetTitle: "Stopped at its estimated budget",
-  budget: (workflow: string, step: string, message: string) =>
-    message === ""
-      ? `${workflow} stopped in the step ${step}.`
-      : `${workflow} stopped in the step ${step}: ${asSentence(message)}`,
+  budget: (workflow: string, step: string) => `${workflow} stopped in the step ${step}.`,
   budgetChecks:
     "Halonic checks the budget before each model call, so calls already under way can take a run over it.",
   cancelledIn: (workflow: string, step: string) =>
@@ -362,11 +359,6 @@ export const stepEventsWords = {
   /** Before the child run's link: "Started Verify → Run 7k2m9p" (checklist 1.10, RUNS 3). */
   startedChild: (workflow: string) => `Started ${workflow}`,
 };
-
-/** The text as a sentence: it keeps its own ".", "?" or "!", and gets a full stop if it has none. */
-function asSentence(text: string): string {
-  return /[.?!]$/.test(text) ? text : `${text}.`;
-}
 
 /**
  * How a step is named (cli-output 3.4): the first line of its description,
