@@ -10,6 +10,7 @@ import { ListedToolsHostService } from "./listed-tools-host.ts";
 import { NewCollectionHostService } from "./new-collection-host.ts";
 import { NewConnectorHostService } from "./new-connector-host.ts";
 import { requestNewConnector } from "./new-connector-request.ts";
+import { newConnectorWords } from "./new-connector-words.ts";
 import { NewSkillHostService } from "./new-skill-host.ts";
 import { SkillHostService } from "./skill-host.ts";
 
@@ -66,7 +67,8 @@ export const libraryFeature = defineFeature({
     // The Inbox's **Go to the secret field** runs this by id, as it can't import the Library.
     studio.commands.add({
       id: "library.new-connector",
-      title: "New connector",
+      title: newConnectorWords.title,
+      phone: false,
       run: (context) => {
         if (context.openPlace === undefined) return;
         requestNewConnector({});

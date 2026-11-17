@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { LibraryItemKind } from "@halonicjs/app";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -213,6 +214,28 @@ verifies("library.library-page", () => {
     expect(button(collections, "Open the docs folder")).toBeUndefined();
     const without = await show(hostWith({}), { kind: "knowledge" });
     expect(button(without, "Open the docs folder")).toBeUndefined();
+  });
+
+  it("tells a phone to put knowledge in the docs folder on the computer, with no button", async () => {
+    const root = render(
+      <PresentationProvider presentation="phone">
+        <LibraryPage
+          host={hostWith({})}
+          kind="knowledge"
+          onKindChange={() => undefined}
+          onOpen={() => undefined}
+          onOpenInNewTab={() => undefined}
+          onOpenDocsFolder={() => undefined}
+        />
+      </PresentationProvider>,
+    );
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(root.textContent).toContain(
+      "docs folder on your computer, then give it to an agent under Tools.",
+    );
+    expect(button(root, "Open the docs folder")).toBeUndefined();
   });
 
   it("shows loading, not the previous tab's rows, while a new tab's items are on their way", async () => {

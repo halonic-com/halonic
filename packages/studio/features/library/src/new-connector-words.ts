@@ -37,6 +37,12 @@ export const newConnectorWords = {
   failed: (reason: string) => `Couldn't create the connector: ${reason}.`,
 } as const;
 
+/** The words of the connector's page: the name of the kind and of the place it lives in. */
+export const connectorPageWords = {
+  kindName: "connector",
+  place: "Library",
+} as const;
+
 /** The sentence that says which tools ask first, the same on the dialog and on the connector's page. */
 export const asksFirstWords: Record<ConnectorAsks, string> = {
   "every-tool": newConnectorWords.asksFirst,

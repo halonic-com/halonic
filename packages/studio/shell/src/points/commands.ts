@@ -12,6 +12,8 @@ export interface CommandContribution {
    * shows it beside the title and reads it after the title, so the title never has to say it.
    */
   readonly source?: string;
+  /** `false` leaves the command out of a phone's Search sheet, as for a dialog only the desktop has. */
+  readonly phone?: false;
   run(context: WorkspaceContext): void | Promise<void>;
 }
 

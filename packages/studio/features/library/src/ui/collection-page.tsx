@@ -81,9 +81,7 @@ function LoadedCollectionPage({
       <div className="px-4 py-5">
         <Callout
           tone="danger"
-          // The name isn't known before the first read, so the title uses the id: for a slug id it
-          // reads "Couldn't load claims" rather than "Claims". Accepted.
-          title={collectionWords.couldntLoad(item.id)}
+          title={collectionWords.couldntLoad}
           action={{ label: collectionWords.tryAgain, onClick: () => model.refresh() }}
         >
           {/* A load that fails without a reason never reached the engine: say that, never nothing. */}

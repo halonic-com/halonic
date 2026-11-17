@@ -6,6 +6,7 @@ import { libraryFeature } from "./feature.ts";
 import { LibraryItemsHostService } from "./library-items-host.ts";
 import { LibraryTabMemoryService } from "./library-tab-memory.ts";
 import { takeNewConnectorRequests } from "./new-connector-request.ts";
+import { newConnectorWords } from "./new-connector-words.ts";
 
 verifies("library.new-connector", () => {
   it("library.new-connector opens the Library and asks it for New connector with nothing filled in", () => {
@@ -22,5 +23,15 @@ verifies("library.new-connector", () => {
     takeNewConnectorRequests((request) => requests.push(request))();
     expect(places).toEqual(["library"]);
     expect(requests).toEqual([{}]);
+  });
+
+  it("takes its title from the dialog's words and stays off a phone's Search sheet", () => {
+    const shell = createShell({
+      features: [libraryFeature],
+      hostServices: [ConnectorStatusHostService, LibraryItemsHostService, LibraryTabMemoryService],
+    });
+    const command = shell.contributions.commands.get("library.new-connector");
+    expect(command?.title).toBe(newConnectorWords.title);
+    expect(command?.phone).toBe(false);
   });
 });

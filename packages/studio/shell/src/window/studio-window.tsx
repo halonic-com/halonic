@@ -300,7 +300,9 @@ export function StudioWindow(props: StudioWindowProps) {
           search={{
             recent: workspace.recent,
             providers: contributions.search.providers(),
-            commands: contributions.commands.list(contextFor),
+            commands: contributions.commands
+              .list(contextFor)
+              .filter((command) => command.phone !== false),
             kinds: contributions.itemKinds,
             contextFor,
             announcer,

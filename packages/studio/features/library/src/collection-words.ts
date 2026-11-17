@@ -3,7 +3,7 @@ export const collectionWords = {
   kindName: "collection",
   place: "Library",
   loading: "Loading the collection",
-  couldntLoad: (name: string) => `Couldn't load ${name}`,
+  couldntLoad: "Couldn't load this collection",
   tryAgain: "Try again",
   renameFailed: "Couldn't rename the collection.",
   allChip: "All",
