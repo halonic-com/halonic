@@ -5,6 +5,7 @@ import { useId, useMemo, useRef, useState } from "react";
 import type { ChangeItem } from "../change-items.ts";
 import type { ChangedFile, ChangesList } from "../changes-list.ts";
 import { discardWords, listWords, mergeWords, undoWords } from "../changes-words.ts";
+import { PartChanges } from "./part-change.tsx";
 import { type DiscardToasts, useDiscardToasts } from "./use-discard-toasts.ts";
 
 /** Props for {@link ItemChanges}. */
@@ -355,29 +356,32 @@ function ChangeRow({
   else if (dependent !== undefined) why = listWords.undoThatFirst(dependent.sentence);
 
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-body flex-1">{line.sentence}</span>
-      {line.parts.length === 0 ? null : (
-        <Button
-          variant="ghost"
-          size="sm"
-          busy={busy}
-          unavailable={why === undefined ? undefined : { reason: reasonId }}
-          onClick={() => void undo()}
-        >
-          {listWords.undoThisChange}
-        </Button>
-      )}
-      {why === undefined ? null : (
-        <span id={reasonId} className="text-small text-fg-muted">
-          {why}
-        </span>
-      )}
-      {failure === undefined ? null : (
-        <span role="alert" className="text-small text-danger">
-          {undoWords.failed}. {failure}
-        </span>
-      )}
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-3">
+        <span className="text-body flex-1">{line.sentence}</span>
+        {line.parts.length === 0 ? null : (
+          <Button
+            variant="ghost"
+            size="sm"
+            busy={busy}
+            unavailable={why === undefined ? undefined : { reason: reasonId }}
+            onClick={() => void undo()}
+          >
+            {listWords.undoThisChange}
+          </Button>
+        )}
+        {why === undefined ? null : (
+          <span id={reasonId} className="text-small text-fg-muted">
+            {why}
+          </span>
+        )}
+        {failure === undefined ? null : (
+          <span role="alert" className="text-small text-danger">
+            {undoWords.failed}. {failure}
+          </span>
+        )}
+      </div>
+      <PartChanges file={file} line={line} />
     </div>
   );
 }

@@ -90,6 +90,16 @@ export const itemWords = {
   renamedFrom: (name: string) => `Renamed from ${name}`,
 };
 
+/** A change's parts in words (checklist part 2, 2.4): a neutral label, then the value before and after. */
+export const partChangeWords = {
+  changed: "CHANGED",
+  added: "ADDED",
+  removed: "REMOVED",
+  /** Read before the old and the new value, since the strike-through is not a word. */
+  before: "Before:",
+  after: "After:",
+};
+
 /** What Undo this change says when it is done or can't be done. */
 export const undoWords = {
   undone: "Change undone",
