@@ -51,6 +51,12 @@ async function settled(): Promise<void> {
   });
 }
 
+function button(root: HTMLElement, label: string): HTMLButtonElement {
+  const found = [...root.querySelectorAll("button")].find((each) => each.textContent === label);
+  if (found === undefined) throw new Error(`No button ${label}`);
+  return found;
+}
+
 function field(root: HTMLElement, label: string): HTMLInputElement | HTMLTextAreaElement {
   const found = [...root.querySelectorAll("label")].find((each) =>
     each.textContent?.startsWith(label),
@@ -150,8 +156,7 @@ verifies("library.skill-page", () => {
       expect(root.textContent).toContain("The disk is full.");
       expect(console.error).toHaveBeenCalled();
       expect(field(root, "Instructions").value).toBe("Be very kind.");
-      const retry = [...root.querySelectorAll("button")].find((each) => each.textContent === "Try again");
-      await act(async () => retry?.click());
+      await act(async () => button(root, "Try again").click());
       await settled();
       expect(write).toHaveBeenCalledTimes(2);
       expect(root.textContent).not.toContain("Couldn't save the skill");

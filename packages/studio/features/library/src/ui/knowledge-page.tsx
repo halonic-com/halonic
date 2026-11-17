@@ -58,8 +58,18 @@ function LoadedKnowledgePage({
   model,
 }: Pick<ItemViewProps, "item" | "context"> & { readonly model: KnowledgeModel }) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
-  const { loaded, failed, failureReason, gone, unreadable, parts, source, usage, summarize, saveFailure } =
-    useSyncExternalStore(subscribe, () => model.state);
+  const {
+    loaded,
+    failed,
+    failureReason,
+    gone,
+    unreadable,
+    parts,
+    source,
+    usage,
+    summarize,
+    saveFailure,
+  } = useSyncExternalStore(subscribe, () => model.state);
 
   const trash = useItemTrash(context, {
     kind: "knowledge",

@@ -169,7 +169,14 @@ export class KnowledgeModel {
 
   /** Saves the change that failed again. */
   async retrySave(): Promise<boolean> {
-    return this.failedChange === undefined ? true : this.save(this.failedChange);
+    const change = this.failedChange;
+    if (change === undefined) return true;
+    const saved = await this.save(change);
+    // A retried summary came from the draft box, so the box is done once it is saved.
+    if (saved && change.summary !== undefined && this.state.summarize.phase === "draft") {
+      this.discardDraft();
+    }
+    return saved;
   }
 
   /** Drafts a summary on request. A draft is only text until `useDraft` saves it; asking twice at once runs once. */

@@ -140,7 +140,9 @@ verifies("library.knowledge-page", () => {
 
     it("says a save failed and saves the change again on Try again", async () => {
       const { props, write } = setup();
-      write.mockRejectedValueOnce(Object.assign(new Error("The disk is full."), { kind: "unavailable" }));
+      write.mockRejectedValueOnce(
+        Object.assign(new Error("The disk is full."), { kind: "unavailable" }),
+      );
       vi.spyOn(console, "error").mockImplementation(() => {});
       const root = render(<KnowledgePage {...props} />);
       await settled();
@@ -268,6 +270,26 @@ verifies("library.knowledge-summarize", () => {
       expect(root.querySelector("textarea")).toBeNull();
       expect(root.textContent).toContain("Refund timing.");
       expect(document.activeElement).toBe(button(root, "Summarize"));
+    });
+
+    it("closes the draft when Try again saves a summary that failed to save", async () => {
+      const { props, write } = setup();
+      write.mockRejectedValueOnce(new Error("The disk is full."));
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const root = render(<KnowledgePage {...props} />);
+      await settled();
+      await act(async () => button(root, "Summarize").click());
+      await settled();
+      await act(async () => button(root, "Use this summary").click());
+      await settled();
+      expect(root.textContent).toContain("Couldn't save the knowledge source");
+      expect(root.querySelector("textarea")).not.toBeNull();
+      await act(async () => button(root, "Try again").click());
+      await settled();
+      expect(write).toHaveBeenCalledTimes(2);
+      expect(root.querySelector("textarea")).toBeNull();
+      expect(root.textContent).not.toContain("Couldn't save the knowledge source");
+      expect(root.textContent).toContain("Draft of the handbook.");
     });
 
     it("says a local model is needed, with a link to Models", async () => {
