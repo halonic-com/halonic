@@ -77,6 +77,11 @@ export const pluginTrustLocationHeadings = {
   files: "Backend files",
 } as const;
 
+/** The last row of the file list: how many files come after the ones shown. */
+export function pluginTrustMoreFilesText(count: number): string {
+  return `and ${count} more`;
+}
+
 /** How many files the trust check names before it says how many more there are. */
 export const pluginTrustFileCap = 10;
 

@@ -1,4 +1,4 @@
-import { pluginTrustLocationHeadings } from "@halonicjs/app";
+import { pluginTrustLocationHeadings, pluginTrustMoreFilesText } from "@halonicjs/app";
 import { defineMessages } from "./define.ts";
 import { markPart, phrase } from "./phrase.ts";
 
@@ -59,7 +59,7 @@ export const pluginMessages = defineMessages("plugin", {
   /** The heading of the list of files the fingerprint covers. */
   filesHeading: () => phrase`${pluginTrustLocationHeadings.files}`,
   /** The last line of the file list when more files follow the ones shown. */
-  moreFiles: (count: number) => phrase`and ${count} more`,
+  moreFiles: (count: number) => phrase`${pluginTrustMoreFilesText(count)}`,
   /** The caption under a plugin's fingerprint: what it covers besides the files listed above it. */
   fingerprintCovers: () => phrase`Covers the manifest and the backend files above.`,
   /** T9's last line, under every plugin trust check. */
