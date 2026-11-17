@@ -240,6 +240,20 @@ verifies("plugins.plugin-list", () => {
     expect(seen.builtIns).toEqual([]);
   });
 
+  it("makes a built-in row with no opener inert: Enter and a click do nothing", async () => {
+    const seen = show([weather()], { openBuiltIn: false });
+    const row = [...document.querySelectorAll('[role="gridcell"]')].find((candidate) =>
+      candidate.textContent?.includes("Gmail"),
+    );
+    expect(row).toBeDefined();
+    await act(async () => {
+      row?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      (row as HTMLElement | undefined)?.click();
+    });
+    expect(seen.builtIns).toEqual([]);
+    expect(seen.opened).toEqual([]);
+  });
+
   it("says why it couldn't load, with Try again", async () => {
     const seen = show([], { load: { kind: "failed", reason: "The folder is locked." } });
     expect(text()).toContain("Couldn't load your plugins");

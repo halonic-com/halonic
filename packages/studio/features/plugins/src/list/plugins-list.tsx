@@ -107,6 +107,12 @@ function builtInEntries(
   return [{ id: "open", label: OPEN, onSelect: () => open(id) }];
 }
 
+/** A built-in row is only openable when the host can open one, so Enter never does nothing. */
+function builtInOpener(onOpenBuiltIn: ((id: string) => void) | undefined) {
+  if (onOpenBuiltIn === undefined) return {};
+  return { onOpen: (id: string) => onOpenBuiltIn(id.slice(BUILT_IN_PREFIX.length)) };
+}
+
 /** The built-in rows. Without a way to open one, a row has no ⋮. */
 function builtInRowsOf(
   builtIn: readonly BuiltInPlugin[],
@@ -180,10 +186,6 @@ export function PluginsList({
   );
   const builtInRows = builtInRowsOf(builtIn, onOpenBuiltIn !== undefined, openMore);
   const add = viewOnly ? undefined : onAdd;
-  const openRow = (id: string) => {
-    if (!id.startsWith(BUILT_IN_PREFIX)) onOpen(id);
-    else onOpenBuiltIn?.(id.slice(BUILT_IN_PREFIX.length));
-  };
   // With nothing installed the empty state's own action is the one **Add plugin**.
   const emptyInstalled = load.kind === "ready" && plugins.length === 0;
 
@@ -210,7 +212,7 @@ export function PluginsList({
           rows={installedRows}
           loading={load.kind === "loading"}
           loadingLabel={LOADING_LABEL}
-          onOpen={openRow}
+          onOpen={onOpen}
           onOpenInNewTab={onOpenInNewTab}
           onRetry={onRetry}
           empty={{
@@ -221,7 +223,11 @@ export function PluginsList({
         />
       )}
       {builtInRows.length === 0 || load.kind === "loading" ? null : (
-        <List heading={{ name: BUILT_IN_HEADING }} rows={builtInRows} onOpen={openRow} />
+        <List
+          heading={{ name: BUILT_IN_HEADING }}
+          rows={builtInRows}
+          {...builtInOpener(onOpenBuiltIn)}
+        />
       )}
       {viewOnly ? (
         <div className="flex flex-col gap-2">
