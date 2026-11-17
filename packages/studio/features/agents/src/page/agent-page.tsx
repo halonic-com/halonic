@@ -1,15 +1,100 @@
-import type { ItemViewProps } from "@halonicjs/studio-shell";
-import { AgentsHostService } from "../api.ts";
+import { Button, EmptyState, SkeletonBar, usePresentation } from "@halonicjs/studio-kit";
+import { ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
+import { useMemo, useRef } from "react";
+import { type AgentRef, type AgentsHost, AgentsHostService } from "../api.ts";
+import { Avatar } from "../list/agent-rows.tsx";
+import { pageWords } from "./page-words.ts";
+import { useLoad } from "./use-load.ts";
+
+/** The agent's page in its tab: `item` names the agent, the host reads its row. */
+export function AgentPage({ item, context }: ItemViewProps) {
+  const { openPlace } = context;
+  return (
+    <AgentScreen
+      host={context.services.get(AgentsHostService)}
+      hubId={item.hub}
+      id={item.id}
+      {...(openPlace && { goToAgents: () => openPlace("agents") })}
+    />
+  );
+}
+
+export interface AgentScreenProps extends AgentRef {
+  readonly host: AgentsHost;
+  /** Leaves an agent that is gone for the Agents list; absent where the shell can't open a place. */
+  readonly goToAgents?: (() => void) | undefined;
+}
 
 /**
- * The agent's tab. It shows the agent's name until the page with its stacked cards and
- * Configuration lands in the next pull request, so a newly created agent opens in a tab.
+ * The agent page's frame (`agents.page.frame`): the letter avatar, "AGENT" and the name, then the
+ * agent's Runs. The page is a skeleton when the read takes over 300 ms, and says why when the
+ * agent can't be read. Flow, Configuration and the Try it chat join it in the next pull requests.
  */
-export function AgentPage({ item, context }: ItemViewProps) {
-  const name = context.services.get(AgentsHostService).nameOf({ hubId: item.hub, id: item.id });
+export function AgentScreen({ host, hubId, id, goToAgents }: AgentScreenProps) {
+  // After a Try again reads, the agent's name takes the focus the button had.
+  const title = useRef<HTMLHeadingElement>(null);
+  const source = useMemo(
+    () => ({
+      fetch: () => host.read({ hubId, id }),
+      subscribe: (onChange: () => void) => host.subscribe(onChange),
+    }),
+    [host, hubId, id],
+  );
+  const phone = usePresentation() === "phone";
+  const { load, retry } = useLoad(source, () => title.current?.focus());
+  if (load.kind === "failed" && load.gone === true && goToAgents !== undefined) {
+    return <ItemGone kindName="agent" place="Agents" onGoTo={goToAgents} />;
+  }
+  const name = load.kind === "ready" ? load.value.name : id;
   return (
-    <div className="flex w-full flex-col gap-4 px-6 py-5">
-      <h1 className="text-title">{name ?? item.id}</h1>
+    <div className="flex size-full min-h-0 flex-col">
+      <header
+        className={
+          phone
+            ? "flex flex-col gap-3 border-b border-border px-4 py-3"
+            : "flex items-center gap-3 border-b border-border px-6 py-3"
+        }
+      >
+        <Avatar name={name} />
+        <div className="flex flex-col">
+          <p className="text-caption text-fg-muted">{pageWords.kind}</p>
+          {/* On a phone the top bar already names the agent, so the page keeps only its type. */}
+          <h1 ref={title} tabIndex={-1} className={phone ? "sr-only" : "text-title outline-none"}>
+            {name}
+          </h1>
+        </div>
+      </header>
+      <div className="min-w-0 flex-1 overflow-auto p-6">
+        {load.kind === "ready" && (
+          <section aria-label={pageWords.runsHeading} className="flex flex-col gap-2">
+            <h2 className="text-caption text-fg-muted">{pageWords.runsHeading}</h2>
+            <p className="text-small text-fg-muted">{pageWords.noRuns}</p>
+          </section>
+        )}
+        {load.kind === "failed" && (
+          <EmptyState
+            tone="error"
+            title={pageWords.loadFailedTitle}
+            description={load.reason}
+            action={{ label: pageWords.tryAgain, onClick: retry, busy: load.retrying }}
+          />
+        )}
+        {load.kind === "loading" && load.skeleton && (
+          <div role="status" className="flex flex-col gap-4">
+            <span className="sr-only">{pageWords.loading(name)}</span>
+            <SkeletonBar kind="value" />
+            <SkeletonBar kind="value" />
+            {load.slow && (
+              <p className="flex items-center gap-3 text-small text-fg-muted">
+                {pageWords.stillLoading}
+                <Button variant="secondary" size="sm" onClick={retry}>
+                  {pageWords.tryAgain}
+                </Button>
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
