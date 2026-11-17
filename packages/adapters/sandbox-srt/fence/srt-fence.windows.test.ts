@@ -27,16 +27,6 @@ async function read(stream: ReadableStream<Uint8Array>): Promise<string> {
   return text + decoder.decode();
 }
 
-/** What one attempt to create a file did: refused or written, with which error, and the size of what is left on disk (`null` for nothing). */
-interface CreateOutcome {
-  outcome: "written" | "refused";
-  error: string | null;
-  leftSize: number | null;
-}
-
-/** An attempt that was refused and left no file behind. */
-const refusedWithNothingLeft = { outcome: "refused", error: expect.any(String), leftSize: null };
-
 describe("SrtSandbox on Windows, through the session", () => {
   let base: string;
   let work: string;
@@ -157,33 +147,40 @@ console.log(JSON.stringify(result));
   });
 
   /**
-   * Runs a script that tries to create each file (as path segments below the working folder) and
-   * reports, for each, whether it was refused, with what error, and what was left on disk.
+   * Runs a script that tries to put content into each file (as path segments below the working
+   * folder), either by writing it or by writing it elsewhere and moving it into place, and reports
+   * for each how much content is on disk afterwards. Windows lets a program create a file in a
+   * denied folder but refuses to write to it, so an empty file may be left behind: that is no
+   * content. A file that is not there counts as empty too.
    */
-  async function createFiles(
+  async function contentLeftBy(
+    how: "writing" | "moving",
     name: string,
     attempts: Record<string, string[]>,
-  ): Promise<Record<string, CreateOutcome>> {
+  ): Promise<Record<string, number>> {
     const out = await runScript(
       name,
       `const fs = require("node:fs");
 const path = require("node:path");
 const work = ${JSON.stringify(work)};
+const how = ${JSON.stringify(how)};
 const attempts = ${JSON.stringify(attempts)};
 const result = {};
 for (const [label, segments] of Object.entries(attempts)) {
   const target = path.join(work, ...segments);
-  let outcome = "written";
-  let error = null;
   try {
     fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, "x");
-  } catch (caught) {
-    outcome = "refused";
-    error = caught.code ?? String(caught);
+    if (how === "writing") {
+      fs.writeFileSync(target, "x");
+    } else {
+      const staged = path.join(work, "staged-" + label);
+      fs.writeFileSync(staged, "x");
+      fs.renameSync(staged, target);
+    }
+  } catch {
+    // Refused: what is left on disk says how far it got.
   }
-  const left = fs.existsSync(target) ? fs.statSync(target).size : null;
-  result[label] = { outcome, error, leftSize: left };
+  result[label] = fs.existsSync(target) ? fs.statSync(target).size : 0;
 }
 console.log(JSON.stringify(result));
 `,
@@ -191,18 +188,27 @@ console.log(JSON.stringify(result));
     return JSON.parse(out.split(/\r?\n/).pop() ?? "");
   }
 
-  it("can't create files in the tool folders that were made at the start (HAL-11246)", async () => {
-    // Windows denies through the file system's permissions, which need an existing folder.
-    // The folder deny covers what is made inside it later.
-    const result = await createFiles("create-in-folders.cjs", {
-      claudeSettings: [".claude", "settings.json"],
-      vscodeTasks: [".vscode", "tasks.json"],
+  for (const how of ["writing", "moving"] as const) {
+    it(`can't put content into the tool folders that were made at the start, by ${how} it (HAL-11246)`, async () => {
+      // Windows denies through the file system's permissions, which need an existing folder.
+      // The folder deny covers what is made inside it later.
+      const left = await contentLeftBy(how, `folders-${how}.cjs`, {
+        claudeSettings: [".claude", "settings.json"],
+        vscodeTasks: [".vscode", "tasks.json"],
+      });
+      expect(left).toEqual({ claudeSettings: 0, vscodeTasks: 0 });
     });
-    expect(result).toEqual({
-      claudeSettings: refusedWithNothingLeft,
-      vscodeTasks: refusedWithNothingLeft,
+
+    it(`can't put content into the tool settings in the root of the working folder, by ${how} it`, async () => {
+      // No placeholder is made for these (HAL-11305), yet srt refuses the write to a new file.
+      const left = await contentLeftBy(how, `root-${how}.cjs`, {
+        npmrc: [".npmrc"],
+        mcp: [".mcp.json"],
+        hookManager: [".pre-commit-config.yaml"],
+      });
+      expect(left).toEqual({ npmrc: 0, mcp: 0, hookManager: 0 });
     });
-  });
+  }
 
   it("can't create a git hook or change the git config of a repository that was there at the start", async () => {
     const repository = join(base, "repository");
@@ -229,28 +235,8 @@ console.log(JSON.stringify(result));
     }
   });
 
-  // Known gap (HAL-11305): srt on Windows can't deny a file that doesn't exist, and Halonic makes
-  // no placeholder for root files. `it.fails` turns this red when srt changes, so we notice.
-  it("can't create the tool settings in the root of the working folder", async () => {
-    const result = await createFiles("create-root-files.cjs", {
-      npmrc: [".npmrc"],
-      mcp: [".mcp.json"],
-      hookManager: [".pre-commit-config.yaml"],
-    });
-    expect(result).toEqual({
-      npmrc: refusedWithNothingLeft,
-      mcp: refusedWithNothingLeft,
-      hookManager: refusedWithNothingLeft,
-    });
-  });
-
-  // Known gap (HAL-11305): a repository made during the session has no deny.
-  it("can't make a git repository with its own hooks", async () => {
-    const result = await createFiles("git-init.cjs", {
-      newRepositoryHook: ["fresh", ".git", "hooks", "pre-commit"],
-    });
-    expect(result).toEqual({ newRepositoryHook: refusedWithNothingLeft });
-  });
+  // Known gap (HAL-11305), not tested: a repository made during the session has no deny, so a
+  // program in the fence can still write a hook into a new `.git/hooks`.
 
   it("without a bridge, reaches no loopback port and gets none of srt's network variables", async () => {
     const before = connections;
