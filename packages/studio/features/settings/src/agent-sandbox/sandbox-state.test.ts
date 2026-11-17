@@ -65,8 +65,8 @@ verifies("settings.agent-sandbox-state", () => {
   });
 
   it("says why the sandbox can't run when the check ran, and offers Check again only", () => {
-    const v = view({ check: { state: "unavailable", reason: "hardware virtualisation is off." } });
-    expect(v.lead).toBe("The sandbox isn't ready: hardware virtualisation is off.");
+    const v = view({ check: { state: "unavailable", reason: "hardware virtualization is off." } });
+    expect(v.lead).toBe("The sandbox isn't ready: hardware virtualization is off.");
     expect(v.secondary).toEqual(["check-again"]);
     expect(v.primary).toBeNull();
   });

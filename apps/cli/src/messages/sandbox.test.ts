@@ -35,7 +35,7 @@ describe("the sandbox sentences", () => {
       "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. halonic validate and halonic test work in a container.",
       "This distro runs on WSL 1, and the sandbox needs WSL 2. Switch it with wsl --set-version <distro> 2 in PowerShell on Windows, then run it again.",
       "A company policy on this computer blocks the sandbox. Ask whoever manages this computer to allow it, then run it again.",
-      "Hardware virtualisation is turned off on this computer. Turn it on in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualisation. Then run it again.",
+      "Hardware virtualization is turned off on this computer. Turn it on in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualization. Then run it again.",
       "WSL isn't installed, and the sandbox needs it. Install it with wsl --install --no-distribution in a terminal run as administrator, restart Windows, then run it again.",
       "Windows needs to restart to finish setting up WSL. Restart Windows, then run it again.",
       "WSL works, but Halonic's own Linux system for the sandbox isn't installed. Use Halonic inside WSL 2 on this computer, then run it again.",
@@ -83,8 +83,8 @@ describe("the sandbox sentences", () => {
         "Fix: ask whoever manages this computer to allow it. Then run halonic doctor again.",
       ],
       [
-        "Hardware virtualisation is turned off on this computer.",
-        "Fix: turn it on in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualisation. Then run halonic doctor again.",
+        "Hardware virtualization is turned off on this computer.",
+        "Fix: turn it on in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualization. Then run halonic doctor again.",
       ],
       [
         "WSL isn't installed, and the sandbox needs it.",

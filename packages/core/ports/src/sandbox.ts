@@ -52,7 +52,7 @@ export interface SandboxCapabilities {
  * - `container`: Halonic itself runs inside a container (such as Docker), which won't nest the fence.
  * - `not-supported`: this edition or build of the operating system can't run the backend, such as Windows older than 10 2004.
  * - `blocked-by-policy`: a company policy blocks the backend, such as a WSL group policy or Docker's admin settings.
- * - `virtualisation-off`: hardware virtualisation is off, or a VM has no nested virtualisation.
+ * - `virtualisation-off`: hardware virtualization is off, or a VM has no nested virtualization.
  * - `wsl-missing`: WSL isn't installed, which needs an administrator.
  * - `restart-needed`: WSL is installed, but Windows must restart first.
  * - `distro-missing`: WSL works, but Halonic's own distro isn't imported (no administrator needed).

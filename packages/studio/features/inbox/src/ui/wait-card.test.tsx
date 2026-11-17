@@ -213,6 +213,28 @@ verifies("inbox.wait-card", () => {
       expect(root.textContent).toContain("Rejected by you at");
     });
 
+    it("says Decided elsewhere with Open run, not Try again, when the engine refuses the answer", async () => {
+      const onOpenRun = vi.fn();
+      const { root, later } = openCard({
+        onOpenRun,
+        decisions: {
+          answer: async () => {
+            throw new Error("engine.decision-wait-must-match");
+          },
+        },
+      });
+      later(2);
+      await press(button(root, "Reject"));
+      const slot = root.querySelector("[role='alert']") as HTMLElement;
+      expect(slot.textContent).toContain(
+        "This is no longer waiting for you. It was answered somewhere else or the run moved on.",
+      );
+      expect(slot.textContent).not.toContain("Try again");
+      expect(slot.textContent).not.toContain("Couldn't record your decision.");
+      await act(async () => button(slot, "Open run").click());
+      expect(onOpenRun).toHaveBeenCalledWith("r43");
+    });
+
     it("shows the command to copy, with no Try again, when only the command line can answer", async () => {
       const { root, later } = openCard({
         decisions: {

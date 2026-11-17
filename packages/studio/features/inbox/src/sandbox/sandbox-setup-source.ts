@@ -224,7 +224,7 @@ export function sandboxSetup(
       return [
         entry({
           title: sandboxInboxWords.fixedTitle,
-          progress: sandboxInboxWords.fixedLine,
+          progress: sandboxInboxWords.footer,
           changedAt: fixed.at,
           fixed: true,
         }),

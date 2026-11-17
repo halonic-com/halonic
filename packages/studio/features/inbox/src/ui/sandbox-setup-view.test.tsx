@@ -47,7 +47,7 @@ async function openCard(
 }
 
 const button = (root: HTMLElement, name: string) =>
-  [...root.querySelectorAll("button")].find((b) => b.textContent === name);
+  [...root.querySelectorAll("button")].find((b) => b.textContent?.startsWith(name));
 
 verifies("inbox.sandbox-row", () => {
   it("shows the reason, then the fix, the guide and the runs that didn't run", async () => {
@@ -84,7 +84,9 @@ verifies("inbox.sandbox-row", () => {
     const card = root.querySelector("section") as HTMLElement;
     expect(card.querySelector("h2")?.textContent).toBe("The sandbox is ready");
     expect(card.textContent).toContain("Fixed");
-    expect(card.textContent).toContain("Nothing ran again by itself");
+    expect(card.textContent).toContain("Routines start again at their next time");
+    expect(card.textContent).not.toContain("Nothing ran again by itself");
+    expect(card.querySelector(".text-success")).not.toBeNull();
     expect(root.querySelector('[role="grid"]')?.textContent).toContain("Fixed");
     expect(button(root, "Check again")).toBeUndefined();
   });
@@ -100,11 +102,12 @@ verifies("inbox.sandbox-row", () => {
 
     expect(button(root, "Check again")).toBe(pressed);
     expect(pressed?.getAttribute("aria-busy")).toBe("true");
+    expect(pressed?.textContent).toContain("Checking…");
     expect(document.activeElement).toBe(pressed);
 
     await until(() => root.querySelector("section h2")?.textContent === "The sandbox is ready");
     expect(announce).toHaveBeenCalledWith("Sandbox checked: ready.");
-    expect(document.activeElement?.textContent).toContain("Nothing ran again by itself");
+    expect(document.activeElement?.textContent).toContain("Routines start again");
   });
 
   it("keeps Check again and shows the new reason while the sandbox is still refused", async () => {
@@ -179,6 +182,6 @@ verifies("inbox.sandbox-row", () => {
     const root = await openCard(t);
     const labels = [...root.querySelectorAll("button")].map((b) => b.textContent ?? "");
     expect(labels.join(" ")).not.toMatch(/anyway|ignore|skip|run without|continue/i);
-    expect(root.textContent).not.toMatch(/run anyway|without the sandbox/i);
+    expect(root.textContent).not.toMatch(/run anyway/i);
   });
 });

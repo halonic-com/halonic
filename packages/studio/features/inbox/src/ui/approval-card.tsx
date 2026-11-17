@@ -17,6 +17,7 @@ import {
   manualAnswerOf,
   type NextItem,
   useEveryMinute,
+  wasDecidedElsewhere,
 } from "./card-parts.tsx";
 import { useDecisionGuard } from "./decision-guard.ts";
 
@@ -55,6 +56,8 @@ type CardState =
   | {
       readonly kind: "open";
       readonly failed: Decision | null;
+      /** The decision was refused because the tool call isn't the one waiting any more. */
+      readonly elsewhere: boolean;
       readonly manual: ManualAnswer | null;
     }
   | { readonly kind: "deciding"; readonly decision: Decision }
@@ -111,7 +114,12 @@ export function ApprovalCard(props: ApprovalCardProps) {
   const title = approvalTitle(item, agentName, subagentName);
   const heading = useRef<HTMLHeadingElement>(null);
   const decided = useRef<CalloutHandle>(null);
-  const [state, setState] = useState<CardState>({ kind: "open", failed: null, manual: null });
+  const [state, setState] = useState<CardState>({
+    kind: "open",
+    failed: null,
+    elsewhere: false,
+    manual: null,
+  });
   const [note, setNote] = useState(props.initialNote ?? "");
   const [form, setForm] = useState<NoteForm>({
     open: false,
@@ -135,7 +143,12 @@ export function ApprovalCard(props: ApprovalCardProps) {
       await (decision === "approve" ? decisions.approve(item) : decisions.reject(item));
       setState({ kind: "decided", decided: { kind: decision }, at: now() });
     } catch (error) {
-      setState({ kind: "open", failed: decision, manual: manualAnswerOf(error) });
+      setState({
+        kind: "open",
+        failed: decision,
+        elsewhere: wasDecidedElsewhere(error),
+        manual: manualAnswerOf(error),
+      });
     }
   }
 
@@ -179,6 +192,9 @@ export function ApprovalCard(props: ApprovalCardProps) {
           state={state}
           guard={guard}
           onDecide={decide}
+          onOpenRun={
+            props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId)
+          }
           onAskForChanges={() => {
             if (guard.allows() && state.kind === "open") setForm({ ...form, open: true });
           }}
@@ -233,6 +249,7 @@ interface DecisionBarProps {
   readonly guard: ReturnType<typeof useDecisionGuard>;
   readonly onDecide: (decision: Decision) => void;
   readonly onAskForChanges: () => void;
+  readonly onOpenRun: (() => void) | undefined;
 }
 
 /**
@@ -240,7 +257,7 @@ interface DecisionBarProps {
  * Approve, right-aligned. While one is sent it is busy and the others ignore presses but keep
  * focus. A failed decision says so in the always-mounted alert slot above the buttons.
  */
-function DecisionBar({ state, guard, onDecide, onAskForChanges }: DecisionBarProps) {
+function DecisionBar({ state, guard, onDecide, onAskForChanges, onOpenRun }: DecisionBarProps) {
   const busy = (decision: Decision) => state.kind === "deciding" && state.decision === decision;
   const failed = state.kind === "open" ? state.failed : null;
   return (
@@ -252,6 +269,7 @@ function DecisionBar({ state, guard, onDecide, onAskForChanges }: DecisionBarPro
       <FailedLine
         onRetry={failed === null ? null : () => onDecide(failed)}
         manual={state.kind === "open" ? state.manual : null}
+        elsewhere={state.kind === "open" && state.elsewhere ? { openRun: onOpenRun } : null}
       />
       <div className="flex flex-wrap justify-end gap-2">
         <Button

@@ -270,6 +270,27 @@ verifies("inbox.approval-card", () => {
       expect(root.textContent).toContain("Rejected by you at");
     });
 
+    it("says Decided elsewhere with Open run, not Try again, when the call isn't the waiting one", async () => {
+      const onOpenRun = vi.fn();
+      const { root, later } = openCard({
+        onOpenRun,
+        decisions: {
+          approve: async () => {
+            throw new Error("engine.decision-callid-must-match");
+          },
+          reject: async () => waitingRun("r47"),
+          askForChanges: async () => waitingRun("r47"),
+        },
+      });
+      later(2);
+      await press(button(root, "Approve"));
+      const slot = root.querySelector("[role='alert']") as HTMLElement;
+      expect(slot.textContent).toContain("This is no longer waiting for you.");
+      expect(slot.textContent).not.toContain("Try again");
+      await act(async () => button(slot, "Open run").click());
+      expect(onOpenRun).toHaveBeenCalledWith("r47");
+    });
+
     it("shows the command to copy, with no Try again, when only the command line can answer", async () => {
       const { root, later } = openCard({
         decisions: {

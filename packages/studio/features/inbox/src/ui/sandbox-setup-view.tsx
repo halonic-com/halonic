@@ -1,12 +1,6 @@
 import { sandboxStartWords } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
-import {
-  Button,
-  Callout,
-  type CalloutHandle,
-  ExternalLink,
-  usePresentation,
-} from "@halonicjs/studio-kit";
+import { Button, Callout, ExternalLink, usePresentation } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import { markedName } from "../plain/hidden-characters.ts";
 import type { SandboxViewProps } from "../sandbox/sandbox-setup-source.ts";
@@ -22,8 +16,9 @@ type Checked =
 /**
  * The sandbox row's card (requirement `inbox.sandbox-row`, checklist 3.5): the reason and then the
  * fix, from the one catalogue, **Check again**, the guide, and the runs that didn't run, each with
- * **Open run**. A passing check makes the card say "Fixed". Nothing runs again by itself, and
- * there is no way to run anyway. **Check again** stays, busy, while a check runs, so it keeps
+ * **Open run**, then the footer (mc 23.3). A passing check makes the card say "Fixed", with the
+ * footer as `success` text in place of the Callout. No failed run runs again by itself (the footer says routines start again at their next time),
+ * and there is no way to run anyway. **Check again** stays, busy ("Checking…"), while a check runs, so it keeps
  * focus; the answer is said through `announce`, and a passing check, which drops the button,
  * moves focus to the "Fixed" line.
  */
@@ -33,7 +28,7 @@ export function SandboxSetupView({ item, control, openRun, announce }: SandboxVi
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   const phone = usePresentation() === "phone";
   const [checked, setChecked] = useState<Checked>();
-  const fixedLine = useRef<CalloutHandle>(null);
+  const fixedLine = useRef<HTMLParagraphElement>(null);
   const focusFixed = useRef(false);
   const [runs, setRuns] = useState<readonly RunSummary[]>([]);
   const fixed = item.fixed === true;
@@ -76,14 +71,15 @@ export function SandboxSetupView({ item, control, openRun, announce }: SandboxVi
         since={fixed ? sandboxInboxWords.fixed : null}
       />
       {fixed ? (
-        <Callout tone="info" announce="focus" ref={fixedLine}>
-          {sandboxInboxWords.fixedLine}
-        </Callout>
+        <p ref={fixedLine} tabIndex={-1} className="focus-ring text-small text-success">
+          {sandboxInboxWords.footer}
+        </p>
       ) : (
         <Callout
           tone="danger"
           action={{
             label: sandboxInboxWords.checkAgain,
+            busyLabel: sandboxInboxWords.checking,
             onClick: checkAgain,
           }}
         >
@@ -111,6 +107,7 @@ export function SandboxSetupView({ item, control, openRun, announce }: SandboxVi
           </ul>
         </div>
       )}
+      {fixed ? null : <p className="text-small text-fg-muted">{sandboxInboxWords.footer}</p>}
     </section>
   );
 }

@@ -15,6 +15,8 @@ export type CalloutTone = "info" | "warning" | "attention" | "danger";
 /** The Callout's one action, drawn as a ghost button: "Try again". */
 export interface CalloutAction {
   readonly label: string;
+  /** The label while the promise runs: "Checking…". Without it the label stays. */
+  readonly busyLabel?: string;
   /** When it returns a promise, the button is busy until the promise settles. */
   readonly onClick: () => void | Promise<void>;
 }
@@ -193,7 +195,7 @@ function CalloutButton({ action }: { readonly action: CalloutAction }) {
 
   return (
     <OnTintContext value={true}>
-      <Button variant="ghost" size="sm" busy={busy} onClick={run}>
+      <Button variant="ghost" size="sm" busy={busy} busyLabel={action.busyLabel} onClick={run}>
         {action.label}
       </Button>
     </OnTintContext>

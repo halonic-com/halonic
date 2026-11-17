@@ -1,9 +1,9 @@
 import { Dialog, RadioGroup } from "@halonicjs/studio-kit";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { AgentSandboxHost, WslRemoveRequest, WslRemoveResult } from "../api.ts";
 import * as text from "./sandbox-text.ts";
 
-type ChoiceValue = "backup" | "no-backup" | "cancel";
+type ChoiceValue = "backup" | "no-backup";
 
 /** Where the dialog is: the three steps, then how the removal ended. */
 type Stage =
@@ -30,6 +30,8 @@ export interface WslRemoveDialogProps {
   readonly host: AgentSandboxHost;
   /** Closes the dialog. `removed` is true when the sandbox is gone, so the section checks again. */
   readonly onClose: (removed: boolean) => void;
+  /** Says a line to screen readers, the shell's announcer. Used once, when the sandbox is gone. */
+  readonly announce?: (line: string) => void;
   /** Today's date as `YYYY-MM-DD`, for the suggested backup name. */
   readonly today?: string;
 }
@@ -49,7 +51,7 @@ interface StepProps {
  * result. Nothing is removed before the confirming button of step 2; once removal starts there is
  * no way out until the host answers.
  */
-export function WslRemoveDialog({ host, onClose, today }: WslRemoveDialogProps) {
+export function WslRemoveDialog({ host, onClose, announce, today }: WslRemoveDialogProps) {
   const [stage, setStage] = useState<Stage>({ at: "explain" });
   const [file, setFile] = useState<string | null>(null);
   const running = useRef(false);
@@ -75,6 +77,7 @@ export function WslRemoveDialog({ host, onClose, today }: WslRemoveDialogProps) 
     } finally {
       running.current = false;
     }
+    if (next.at === "done") announce?.(text.WSL_DONE_TITLE);
     setStage(next);
   };
 
@@ -118,6 +121,7 @@ const confirmLabels = {
 
 function ChooseStep({ host, onClose, go, run, pick, file }: StepProps & { file: string | null }) {
   const [choice, setChoice] = useState<ChoiceValue | null>(null);
+  const whyId = useId();
   const confirmChoice = () => {
     if (choice === "no-backup") void run({ choice: "remove-only" });
     else if (choice === "backup" && file) void run({ choice: "export-then-remove", file });
@@ -132,9 +136,11 @@ function ChooseStep({ host, onClose, go, run, pick, file }: StepProps & { file: 
     <Dialog
       title={text.WSL_CHOICE_TITLE}
       confirm={{
-        label: confirmLabels[choice === null || choice === "cancel" ? "none" : choice],
+        label: confirmLabels[choice ?? "none"],
         variant: choice === "no-backup" ? "danger" : "primary",
         busyLabel: text.WSL_BUSY_REMOVE,
+        // Nothing is picked at first: the button says why it can't be used yet.
+        ...(choice === null ? { unavailable: { reason: whyId } } : {}),
       }}
       alternative={{ label: text.WSL_BACK, onClick: () => go({ at: "explain" }) }}
       cancelLabel={text.REMOVE_CANCEL}
@@ -144,10 +150,7 @@ function ChooseStep({ host, onClose, go, run, pick, file }: StepProps & { file: 
       <RadioGroup<ChoiceValue>
         label={text.WSL_CHOICE_TITLE}
         value={choice}
-        onChange={(value) => {
-          if (value === "cancel") onClose(false);
-          else setChoice(value);
-        }}
+        onChange={setChoice}
         options={[
           host.chooseBackupFile
             ? { ...backup, field: <BackupFile file={file} onChoose={pick} /> }
@@ -157,9 +160,13 @@ function ChooseStep({ host, onClose, go, run, pick, file }: StepProps & { file: 
             label: text.WSL_CHOICE_NO_BACKUP,
             note: text.WSL_CHOICE_NO_BACKUP_HELP,
           },
-          { value: "cancel", label: text.WSL_CHOICE_CANCEL, note: text.WSL_CHOICE_CANCEL_HELP },
         ]}
       />
+      {choice === null ? (
+        <p id={whyId} className="mt-3 text-small text-fg-muted">
+          {text.WSL_CONFIRM_NONE_WHY}
+        </p>
+      ) : null}
     </Dialog>
   );
 }

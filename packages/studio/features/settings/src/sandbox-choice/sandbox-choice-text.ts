@@ -34,7 +34,7 @@ export const SANDBOX_SUBTITLE = "Limits files and network access.";
 export const WSL_RECOMMENDED_SUBTITLE =
   "Limits files and network access. Runs in WSL, a Microsoft part of Windows that runs Linux next to it.";
 export const WSL_SUBTITLE =
-  "Stronger network limits. Needs admin rights, one restart and virtualisation. Files on your Windows drive are slower.";
+  "Stronger network limits. Needs admin rights, one restart and virtualization. Files on your Windows drive are slower.";
 export const WINDOWS_SUBTITLE = "Limits files, and network access only in part. Quick to set up.";
 export const MXC_SUBTITLE = "Microsoft's sandbox. Needs Windows 11.";
 export const DOCKER_SUBTITLE = "Runs agents in containers. Needs Docker installed.";
@@ -61,7 +61,7 @@ const reasonSentences: Record<SandboxUnavailableReason, string> = {
   container: "Not available when Halonic runs inside a container.",
   "not-supported": "This version of your operating system doesn't support it.",
   "blocked-by-policy": "Your organisation doesn't allow this.",
-  "virtualisation-off": "Virtualisation is turned off on this computer.",
+  "virtualisation-off": "Virtualization is turned off on this computer.",
   "wsl-missing": "WSL isn't installed yet.",
   "restart-needed": "Windows needs to restart to finish setup.",
   "distro-missing": "The Linux part of this sandbox isn't installed yet.",

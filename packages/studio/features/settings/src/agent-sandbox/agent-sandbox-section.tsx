@@ -106,6 +106,7 @@ export function AgentSandboxHostView({
       {removingWsl && host ? (
         <WslRemoveDialog
           host={host}
+          announce={announce}
           onClose={(removed) => {
             setRemovingWsl(false);
             if (removed) sandbox.checkAgain();

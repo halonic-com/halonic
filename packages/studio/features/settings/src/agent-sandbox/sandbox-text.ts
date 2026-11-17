@@ -105,9 +105,9 @@ export const WSL_REMOVE_LINE =
 export const WSL_REMOVE_BUTTON = "Remove sandbox setup";
 export const WSL_REMOVE_TITLE = "Remove sandbox setup";
 export const WSL_REMOVE_EXPLAIN =
-  "Halonic will delete its sandbox and everything stored inside it, such as tools and files the agents installed there. Your workspaces on Windows are not touched.";
+  "Halonic will delete its sandbox and everything stored inside it, such as tools and files the agents installed there. Your workspace files on Windows aren't touched.";
 export const WSL_REMOVE_EXPLAIN_AGENTS =
-  "Agents that need the sandbox cannot run until you set it up again.";
+  "Agents that need the sandbox can't run until you set it up again.";
 export const WSL_CONTINUE = "Continue";
 export const WSL_BACK = "Back";
 export const WSL_CHOICE_TITLE = "What should happen to the sandbox contents?";
@@ -115,15 +115,13 @@ export const WSL_CHOICE_BACKUP = "Save a backup, then remove";
 export const WSL_CHOICE_BACKUP_HELP =
   "Halonic saves a copy to a file you choose, then removes the sandbox. If saving fails, nothing is removed.";
 export const WSL_CHOICE_NO_BACKUP = "Remove without a backup";
-export const WSL_CHOICE_NO_BACKUP_HELP =
-  "The contents are gone for good. There is no way to get them back.";
-export const WSL_CHOICE_CANCEL = "Cancel";
-export const WSL_CHOICE_CANCEL_HELP = "Keep the sandbox as it is.";
+export const WSL_CHOICE_NO_BACKUP_HELP = "The contents are gone for good. You can't get them back.";
 export const WSL_CHOOSE_LOCATION = "Choose location…";
 export const WSL_CHOOSE_ANOTHER = "Choose another location";
 export const wslSaveTo = (file: string) => `Save to: ${file}`;
 export const wslBackupName = (date: string) => `halonic-sandbox-backup-${date}.tar`;
 export const WSL_CONFIRM_NONE = "Remove sandbox";
+export const WSL_CONFIRM_NONE_WHY = "Choose what happens to the contents first.";
 export const WSL_CONFIRM_BACKUP = "Save backup and remove sandbox";
 export const WSL_CONFIRM_NO_BACKUP = "Remove sandbox without a backup";
 export const WSL_BUSY_BACKUP = "Saving backup…";
@@ -141,18 +139,17 @@ export const WSL_CLOSE = "Close";
 export const WSL_TRY_AGAIN = "Try again";
 export const WSL_BACKUP_FAILED_TITLE = "The backup didn't work, so nothing was removed";
 export const wslBackupFailed = (file: string, reason: string) =>
-  `Halonic could not save the backup to ${file}. Your sandbox is unchanged. ${reason}`;
-export const WSL_REMOVE_FAILED_TITLE = "The sandbox could not be removed";
+  `Halonic couldn't save the backup to ${file}. Your sandbox is unchanged. ${reason}`;
+export const WSL_REMOVE_FAILED_TITLE = "The sandbox couldn't be removed";
 export const wslRemoveFailedBackup = (file: string, reason: string) =>
-  `Your backup is saved at ${file}. Halonic could not remove the sandbox. ${reason}`;
-export const wslRemoveFailed = (reason: string) =>
-  `Halonic could not remove the sandbox. ${reason}`;
+  `Your backup is saved at ${file}. Halonic couldn't remove the sandbox. ${reason}`;
+export const wslRemoveFailed = (reason: string) => `Halonic couldn't remove the sandbox. ${reason}`;
 export const WSL_SHOW_BACKUP = "Show backup in folder";
 export const WSL_REASON_FALLBACK =
   "Something went wrong. Close other programs that use the sandbox and try again.";
-export const WSL_REFUSED_TITLE = "The sandbox was not removed";
+export const WSL_REFUSED_TITLE = "The sandbox wasn't removed";
 export const WSL_REFUSED_NOT_OURS =
-  "This sandbox was not set up by Halonic, so Halonic leaves it alone. Nothing was removed.";
+  "This sandbox wasn't set up by Halonic, so Halonic leaves it alone. Nothing was removed.";
 export const WSL_REFUSED_MISSING =
   "There is no Halonic sandbox on this computer. Nothing was removed.";
 export const WSL_REFUSED_FILE =
