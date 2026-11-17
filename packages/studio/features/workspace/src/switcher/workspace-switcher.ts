@@ -234,7 +234,7 @@ export class WorkspaceSwitcher {
     return this.#closeRequest;
   }
 
-  /** **Keep open** in "Close Acme?": the workspace stays open. */
+  /** **Cancel** in "Close Acme?": the workspace stays open. */
   cancelClose(): void {
     this.#setCloseRequest(undefined);
   }
