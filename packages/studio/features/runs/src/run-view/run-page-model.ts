@@ -40,6 +40,11 @@ export type RunBanner =
       readonly action?: BannerAction;
       /** The buttons that mend the cause, before **Run again**; the page leaves out one it can't do. */
       readonly fixes?: readonly BannerFix[];
+      /**
+       * What **Copy details** puts on the clipboard, after **Run again**: the engine's own message,
+       * which never shows on screen (microcopy 22 F13). Absent: no Copy details.
+       */
+      readonly details?: string;
     }
   /** A cancelled run's plain note, without a Callout's colour: nothing needs fixing. */
   | { readonly kind: "note"; readonly text: string };
@@ -178,11 +183,13 @@ function endedBanner(summary: RunSummary, workflow: string, step: string): RunBa
       lines: [runPageWords.budget(workflow, step, message), runPageWords.budgetChecks],
     };
   }
+  const line = runPageWords.failed(workflow, step);
   return {
     kind: "callout",
     tone: "danger",
     name: runPageWords.failedName,
-    lines: [runPageWords.failed(workflow, step, message)],
+    lines: [line],
+    details: [line, `Run ${summary.id}`, message].filter((part) => part !== "").join("\n"),
   };
 }
 

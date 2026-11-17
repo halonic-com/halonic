@@ -28,7 +28,7 @@ When the page is shown, the runs list shall note that this run's page has been o
   then the chip reads Stopped and the plain note "Support reply was cancelled in the step Classify. Nothing after it ran.".
 - Given a run that failed in the step Draft with the message "Model refused",
   when its page is shown,
-  then the danger banner reads "Support reply failed in the step Draft. Halonic can't tell the cause yet: Model refused.".
+  then the danger banner reads "Support reply failed in the step Draft. Halonic can't tell the cause yet.", and "Model refused" goes only into Copy details (`runs.run-view.unknown-cause-details`).
 - Given a run id that isn't in the workspace,
   when its page is shown,
   then it reads "This run isn't in this workspace any more." with Go to Runs.

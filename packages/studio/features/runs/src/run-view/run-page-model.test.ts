@@ -148,18 +148,22 @@ verifies("runs.run-page", () => {
       });
     });
 
-    it("gives a failed run R24's general banner, with the engine's message", () => {
+    it("gives a failed run R24's general banner; the engine's message goes to Copy details only", () => {
       const failed = { status: "failed" as const, endedAt: minutesLater(1) };
-      expect(page({ ...failed, error: "Model refused" }).banner).toEqual({
+      const { banner } = page({ ...failed, error: "Model refused" });
+      expect(banner).toEqual({
         kind: "callout",
         tone: "danger",
         name: "Run failed",
-        lines: [
-          "Support reply failed in the step Draft. Halonic can't tell the cause yet: Model refused.",
-        ],
+        lines: ["Support reply failed in the step Draft. Halonic can't tell the cause yet."],
+        details: expect.stringContaining("Model refused"),
       });
+      expect(banner?.kind === "callout" && banner.details).toMatch(
+        /^Support reply failed.*\nRun \S+\nModel refused$/,
+      );
       expect(page({ ...failed, error: null }).banner).toMatchObject({
         lines: ["Support reply failed in the step Draft. Halonic can't tell the cause yet."],
+        details: expect.not.stringContaining("null"),
       });
     });
 

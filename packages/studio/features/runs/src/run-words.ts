@@ -267,11 +267,9 @@ export const runPageWords = {
   childRun: (shortId: string, workflow: string) =>
     `Waiting for child run ${shortId} (${workflow}).`,
   childRunOnly: (shortId: string) => `Waiting for child run ${shortId}.`,
-  /** R24's general banner, until the banners by cause (HAL-1845). */
-  failed: (workflow: string, step: string, message: string) =>
-    message === ""
-      ? `${workflow} failed in the step ${step}. Halonic can't tell the cause yet.`
-      : `${workflow} failed in the step ${step}. Halonic can't tell the cause yet: ${asSentence(message)}`,
+  /** R24's general banner, for a cause Halonic doesn't know: the engine's message goes to Copy details only (F13). */
+  failed: (workflow: string, step: string) =>
+    `${workflow} failed in the step ${step}. Halonic can't tell the cause yet.`,
   budgetTitle: "Stopped at its estimated budget",
   budget: (workflow: string, step: string, message: string) =>
     message === ""
