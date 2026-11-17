@@ -5,6 +5,11 @@ export const sampleChipWords = {
   freshCopy: "Fresh copy of the sample",
 } as const;
 
+/** The sheet the chip opens on a phone, which starts no workspace (flow-first-run 7.2, microcopy 5). */
+export const sampleSheetWords = {
+  ownWorkspace: "To start your own workspace, use Halonic on your computer.",
+} as const;
+
 /** The toast after a fresh copy: the new folder's name, and that the old one is still in Recent. */
 export function freshCopyLine(name: string, trustFailure?: string): string {
   const sentence = `Created ${name}. Your earlier copy is still in Recent.`;

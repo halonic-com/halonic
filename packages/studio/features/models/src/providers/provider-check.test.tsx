@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import type { Provider } from "@halonicjs/format";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -45,11 +46,16 @@ function checkAnswering(...answers: boolean[]): ProviderCheck & { asked: number 
   return check;
 }
 
-async function show(check: ProviderCheck, provider: Provider) {
+async function show(check: ProviderCheck, provider: Provider, phone = false) {
   element = document.createElement("div");
   document.body.append(element);
   root = createRoot(element);
-  await act(async () => root?.render(<CheckProvider check={check} provider={provider} now={at} />));
+  const page = <CheckProvider check={check} provider={provider} now={at} />;
+  await act(async () =>
+    root?.render(
+      phone ? <PresentationProvider presentation="phone">{page}</PresentationProvider> : page,
+    ),
+  );
   return element;
 }
 
@@ -151,5 +157,24 @@ verifies("models.providers.check", () => {
 
     const noAddress = await show(checkAnswering(), { ...ollama, type: "openai-compatible" });
     expect(noAddress.textContent).toBe("");
+  });
+
+  it("on a phone shows a full-width button and the result as a chip with its line, no dot", async () => {
+    const view = await show(checkAnswering(true, false), ollama, true);
+    expect(button(view).className).toContain("w-full");
+
+    await act(async () => button(view).click());
+    await settle();
+    expect(view.textContent).toContain("Answering");
+    expect(view.textContent).toContain("at localhost:11434 · checked 10:42");
+    expect(view.textContent).not.toContain("Answering at");
+    expect(view.querySelector(".rounded-full.size-2")).toBeNull();
+    expect(view.querySelector("[role=status]")?.textContent).toBe(
+      "Ollama is answering at localhost:11434, checked 10:42.",
+    );
+
+    await act(async () => button(view).click());
+    await settle();
+    expect(view.textContent).toContain("Not answering");
   });
 });

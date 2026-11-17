@@ -1,5 +1,5 @@
 import type { Provider } from "@halonicjs/format";
-import { Button } from "@halonicjs/studio-kit";
+import { Button, StatusChip, usePresentation } from "@halonicjs/studio-kit";
 import { useEffect, useRef, useState } from "react";
 import type { ProviderCheck } from "../api.ts";
 import { providerName } from "./provider-rows.ts";
@@ -8,6 +8,8 @@ import {
   CHECK_HINT,
   CHECKING,
   checkAnnouncement,
+  checkChipDetail,
+  checkChipWords,
   checkResultLine,
 } from "./provider-text.ts";
 
@@ -34,12 +36,38 @@ function clockTime(date: Date): string {
   return `${two(date.getHours())}:${two(date.getMinutes())}`;
 }
 
+/** The last result: a status line with a dot on the desktop, a tone chip with its line on a phone. */
+function ResultLine({ result, phone }: { readonly result: Result; readonly phone: boolean }) {
+  if (phone) {
+    return (
+      <div className="flex flex-col items-start gap-1">
+        <StatusChip tone={result.answering ? "success" : "warning"}>
+          {checkChipWords(result.answering)}
+        </StatusChip>
+        <p className="text-small text-fg-muted">
+          {checkChipDetail(result.address, result.checkedAt)}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <p className="flex items-center gap-2">
+      <span
+        aria-hidden="true"
+        className={`size-2 shrink-0 rounded-full ${result.answering ? "bg-success" : "border border-fg-muted"}`}
+      />
+      {checkResultLine(result.answering, result.address, result.checkedAt)}
+    </p>
+  );
+}
+
 /**
  * **Check** on a provider that runs on this computer or your own network
  * (`models.providers.check`): one secondary button, and under it one status line with the last
  * result. The button reads "Checking…" and stays focused while it asks. The result lasts until the
  * page closes; it is not written to a file. Nothing shows for a cloud provider or one with no
- * address.
+ * address. On a phone the button is full width and the result is a tone chip, **Answering** or
+ * **Not answering**, with "at localhost:11434 · checked 10:42" under it and no dot.
  *
  * @example
  * <CheckProvider check={check} provider={provider} />
@@ -47,6 +75,7 @@ function clockTime(date: Date): string {
 export function CheckProvider({ check, provider, now = () => new Date() }: CheckProviderProps) {
   const [result, setResult] = useState<Result>();
   const [busy, setBusy] = useState(false);
+  const phone = usePresentation() === "phone";
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
@@ -73,6 +102,7 @@ export function CheckProvider({ check, provider, now = () => new Date() }: Check
       <div>
         <Button
           variant="secondary"
+          block={phone}
           busy={busy}
           busyLabel={CHECKING}
           onClick={() => void run(check, address)}
@@ -80,15 +110,7 @@ export function CheckProvider({ check, provider, now = () => new Date() }: Check
           {CHECK}
         </Button>
       </div>
-      {current === undefined ? null : (
-        <p className="flex items-center gap-2">
-          <span
-            aria-hidden="true"
-            className={`size-2 shrink-0 rounded-full ${current.answering ? "bg-success" : "border border-fg-muted"}`}
-          />
-          {checkResultLine(current.answering, current.address, current.checkedAt)}
-        </p>
-      )}
+      {current === undefined ? null : <ResultLine result={current} phone={phone} />}
       {/* Mounted from the start, so a screen reader hears its text change; the span inside is new
           for each check, so a result that is the same as before is announced again. */}
       <p role="status" className="sr-only">

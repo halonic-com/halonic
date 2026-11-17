@@ -65,8 +65,8 @@ export const headerBadgeMenuClasses = `${badgeClasses} ${padding.menu}`;
 
 const iconSlot = "inline-grid size-3.5 shrink-0 place-items-center *:size-full";
 
-/** On a phone the badge has its own 48px line in More, under the workspace row (20.1). */
-const phoneLine = "flex min-h-touch items-center border-b border-border px-4 py-1";
+/** On a phone the badge has its own 48px line in More, under the workspace row and level with its name (20.1). */
+const phoneLine = "flex min-h-touch items-center border-b border-border pe-4 ps-15 py-1";
 
 /**
  * The badge in the title bar's header slot: the sample chip (`as="menu"`) or the trust badge

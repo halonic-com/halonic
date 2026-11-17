@@ -1,4 +1,11 @@
-import { Button, List, type ListRow, TickIcon } from "@halonicjs/studio-kit";
+import {
+  Button,
+  ChevronRightIcon,
+  List,
+  type ListRow,
+  TickIcon,
+  usePresentation,
+} from "@halonicjs/studio-kit";
 import { type HomeCardProps, HomeSectionEmpty } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { FirstRunService, type SampleStepId, sampleSteps } from "../api.ts";
@@ -17,6 +24,24 @@ export function SampleCard({ context }: HomeCardProps) {
       openTests={testsOpener(context)}
       announce={(line) => context.announcer.announce(line)}
     />
+  );
+}
+
+/** A phone's finished-card row: 48px, a chevron at the right, a `border` line under it. */
+const linkRowClasses = [
+  "flex w-full min-h-touch items-center gap-3 border-b border-border text-left text-body",
+  "transition-colors focus-ring-inset hover:bg-surface-subtle active:bg-surface-subtle",
+].join(" ");
+
+/** One of the phone's finished-card link rows. */
+function LinkRow({ label, onPress }: { readonly label: string; readonly onPress: () => void }) {
+  return (
+    <button type="button" className={linkRowClasses} onClick={onPress}>
+      <span className="min-w-0 flex-1">{label}</span>
+      <span className="size-icon-md shrink-0 text-fg-subtle *:size-full" aria-hidden="true">
+        <ChevronRightIcon />
+      </span>
+    </button>
   );
 }
 
@@ -49,9 +74,30 @@ export function SampleSteps({ progress, openers, openTests, announce }: SampleSt
     }
     announcedCount.current = done.size;
   }, [done.size, announce]);
+  const phone = usePresentation() === "phone";
   useEffect(() => {
     if (finished) progress.recordFinishedShown();
   }, [finished, progress]);
+  if (finished && phone) {
+    // Two 48px link rows. The second does what the desktop's button does: the app decides what it opens.
+    const startOwnWorkspace = progress.startOwnWorkspace;
+    return (
+      <>
+        <p>
+          <TickIcon /> {sampleCardWords.finished}
+        </p>
+        <p>{sampleCardWords.caption(done.size)}</p>
+        <div className="border-t border-border">
+          {openTests === undefined || finishedRun === undefined ? null : (
+            <LinkRow label={sampleCardWords.runTests} onPress={() => openTests(finishedRun.hub)} />
+          )}
+          {startOwnWorkspace === undefined ? null : (
+            <LinkRow label={sampleCardWords.startOwnWorkspace} onPress={startOwnWorkspace} />
+          )}
+        </div>
+      </>
+    );
+  }
   if (finished) {
     const startOwnWorkspace = progress.startOwnWorkspace;
     return (

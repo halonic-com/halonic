@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ReactNode } from "react";
@@ -273,5 +274,28 @@ verifies("first-run.sample-card", () => {
       <SampleCard context={{ ...context, services } as unknown as WorkspaceContext} />,
     );
     expect(root.querySelector("p")?.textContent).toBe("1 of 3 done");
+  });
+
+  it("on a phone shows the finished card's two buttons as 48px link rows, the second doing what the desktop's button does", () => {
+    const startOwnWorkspace = vi.fn();
+    const root = render(
+      <PresentationProvider presentation="phone">
+        <SampleSteps
+          progress={progressWith(["start", "decide", "see"], { hub: "support" } as never, {
+            startOwnWorkspace,
+          })}
+          openers={noOpeners}
+          openTests={() => {}}
+        />
+      </PresentationProvider>,
+    );
+    const rows = [...root.querySelectorAll("button")];
+    expect(rows.map((row) => row.textContent)).toEqual([
+      "Run its tests",
+      "Start your own workspace",
+    ]);
+    expect(rows.every((row) => row.className.includes("min-h-touch"))).toBe(true);
+    act(() => rows[1]?.click());
+    expect(startOwnWorkspace).toHaveBeenCalledOnce();
   });
 });

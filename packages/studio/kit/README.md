@@ -1480,6 +1480,9 @@ same `description` and `entries`, and `onClose` for Back:
 />;
 ```
 
+`note` is one more sentence in `text-body` after the description, for a badge whose phone sheet only
+says something: the sample chip's sheet passes `entries={[]}` and the note, and no list is drawn.
+
 It's a `SidePanel` panel sheet. The description is its first body line, in the Menu's type; the
 items follow as 48px link rows, edge to edge, a `border` line under each and a chevron at the right,
 danger items last. Dividers fall away. A tap calls the item's `onSelect`; a disabled or unavailable

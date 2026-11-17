@@ -100,4 +100,23 @@ verifies("kit.header-badge-sheet", () => {
     await click(row);
     expect(wait).not.toHaveBeenCalled();
   });
+
+  it("shows a note after the description in body type, and no list when it has no items", () => {
+    const note = "To start your own workspace, use Halonic on your computer.";
+    const { container } = render(
+      <PresentationProvider presentation="phone">
+        <HeaderBadgeSheet
+          title="Sample · test model"
+          description={costLine}
+          note={note}
+          entries={[]}
+          onClose={vi.fn()}
+        />
+      </PresentationProvider>,
+    );
+    const body = container.querySelector("h2")?.closest("aside")?.children[1] as HTMLElement;
+    expect([...body.children].map((child) => child.textContent)).toEqual([costLine, note]);
+    expect(body.children[1]?.className).toContain("text-body");
+    expect(container.querySelector("ul")).toBeNull();
+  });
 });
