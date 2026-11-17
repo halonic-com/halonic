@@ -40,8 +40,7 @@ export function WhatChangedPage({ list, item, developer, openItem, onBack }: Wha
     setBusy(true);
     setFailure(undefined);
     const reason = await discarding.run(await discardItem(list, item.files), {
-      title: discardWords.discarded(item.files.length),
-      text: item.name,
+      title: discardWords.discarded(item.name),
     });
     setBusy(false);
     setFailure(reason);

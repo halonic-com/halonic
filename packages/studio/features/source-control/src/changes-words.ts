@@ -88,9 +88,14 @@ export const discardWords = {
   hideLines: "Hide lines",
   /** The line diff's heading, read by a screen reader. */
   lines: (path: string) => `Changed lines in ${path}`,
-  /** The toast after a discard: "Discarded changes in 1 file". */
-  discarded: (count: number) =>
-    count === 1 ? "Discarded changes in 1 file" : `Discarded changes in ${count} files`,
+  /** The toast after Undo these changes: "Discarded refund-handling". */
+  discarded: (name: string) => `Discarded ${name}`,
+  /** The toast after the developer view's Discard of one file; the path follows. */
+  fileDiscarded: "Discarded this file",
+  /** The toast's link: puts back what the toast says was discarded. */
+  putItBack: "Put it back",
+  /** Over the first lines of a new file, read by a screen reader. */
+  firstLines: (path: string) => `First lines of ${path}`,
   /** A part's heading: "Line 12" or "Lines 12 to 18"; `first` and `last` count from 1. */
   partLines: (first: number, last: number) =>
     first === last ? `Line ${first}` : `Lines ${first} to ${last}`,
