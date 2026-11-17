@@ -162,7 +162,13 @@ function ReadBody({
       {read.changes.length === 0 ? (
         <p className="text-body text-fg-muted">{stateWords.nothingChanged}</p>
       ) : (
-        <ChangeList list={list} files={state.files} developer={developer} phone={phone} />
+        <ChangeList
+          list={list}
+          files={state.files}
+          developer={developer}
+          phone={phone}
+          focusHeading={focusHeading}
+        />
       )}
       <History list={list} history={state.history} phone={phone} />
     </>

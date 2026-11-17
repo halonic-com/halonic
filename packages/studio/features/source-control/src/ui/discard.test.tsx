@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { DeveloperView } from "../api.ts";
 import { ChangesList } from "../changes-list.ts";
 import { fakeSource, settle } from "../source.test-helper.ts";
+import { openItem } from "../test-support/open-item.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ChangesView } from "./changes-page.tsx";
 
@@ -72,8 +73,13 @@ async function press(button: HTMLElement | undefined) {
   });
 }
 
-const section = (root: HTMLElement, path: string) =>
-  root.querySelector<HTMLElement>(`section[aria-label="${path}"]`) as HTMLElement;
+/** What a row is called: an item by its name, a file no kind places by its file name. */
+const rowNames: Readonly<Record<string, string>> = {
+  [hub]: "sales",
+  "skills/tone/SKILL.md": "SKILL.md",
+  "old/gone.md": "gone.md",
+};
+const section = (root: HTMLElement, path: string) => openItem(root, rowNames[path] ?? path);
 
 verifies("source-control.discard", () => {
   describe("Undo these changes", () => {
