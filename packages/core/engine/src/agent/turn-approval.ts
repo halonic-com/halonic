@@ -36,7 +36,11 @@ export type TurnStop = StopAt & {
  * `delegate_*` call whose subagent stopped, it is why the subagent stopped.
  */
 type StopAt =
-  | { readonly type: "approval" }
+  | {
+      readonly type: "approval";
+      /** The connector the tool comes from; absent for a tool that comes from no connector. */
+      readonly connector?: string;
+    }
   | { readonly type: "effect"; readonly connector: string };
 
 /** Where a stopped turn goes on from, and what the person answered. */
