@@ -7,6 +7,7 @@ import type { InboxRequests, RequestWorkflow } from "../request/inbox-requests.t
 import { notStartedLine } from "../request/not-started.ts";
 import { useOffered } from "../request/use-offered.ts";
 import { emptyDraft, RequestForm } from "./request-form.tsx";
+import { RequestSheet } from "./request-sheet.tsx";
 
 /** What the Inbox page needs from the request form, or nothing when there is none to offer. */
 export interface RequestPane {
@@ -14,12 +15,14 @@ export interface RequestPane {
   readonly newRequest: ReactNode;
   /** The form for the right pane while no card is open; `null` with no form. */
   readonly form: ReactNode;
+  /** The phone's request sheet while it is open; `null` otherwise and on a desktop. */
+  readonly sheet: ReactNode;
 }
 
 /**
  * The request form's pieces for the Inbox page: the form, **New request** and the text you have
- * typed, which stays here while a card is open. A phone offers none yet: its request sheet is a
- * later part (HAL-10618).
+ * typed, which stays here while a card is open. A phone has no pane for the form: **New request**
+ * is a row above its list and opens the request sheet (first-run 7.2).
  *
  * @param list The list's column: Esc in the form returns focus to its first row.
  * @param closeItem Closes the open card, so the form shows.
@@ -38,10 +41,11 @@ export function useRequestPane(options: {
   readonly onStarted?: ((runId: string) => void) | undefined;
 }): RequestPane {
   const { inbox, requests, phone, list, closeItem, words, openRun, onStarted } = options;
-  const offered = useOffered(phone ? undefined : requests);
+  const offered = useOffered(requests);
   const [draft, setDraft] = useState(emptyDraft);
   const [busy, setBusy] = useState(false);
   const [notStarted, setNotStarted] = useState("");
+  const [sheetOpen, setSheetOpen] = useState(false);
   const toasts = useToastStore();
   const message = useRef<HTMLTextAreaElement>(null);
   const formAsked = useRef(false);
@@ -53,6 +57,7 @@ export function useRequestPane(options: {
       if (!inbox.takeNewRequest()) return;
       formAsked.current = true;
       closeLatest.current();
+      setSheetOpen(true);
       setAsks((count) => count + 1);
     };
     take();
@@ -67,8 +72,10 @@ export function useRequestPane(options: {
       message.current.focus();
       formAsked.current = false;
     }
-  }, [asks, offered.length, requests]);
-  if (requests === undefined || offered.length === 0) return { newRequest: null, form: null };
+  }, [asks, offered.length, requests, sheetOpen]);
+  if (requests === undefined || offered.length === 0) {
+    return { newRequest: null, form: null, sheet: null };
+  }
   const send = async (workflow: RequestWorkflow, text: string) => {
     if (busy) return;
     setNotStarted("");
@@ -76,6 +83,7 @@ export function useRequestPane(options: {
     try {
       const started = await requests.start(workflow.key, text);
       setDraft((d) => ({ ...d, message: "" }));
+      setSheetOpen(false);
       onStarted?.(started.runId);
       toasts?.show({
         tone: "success",
@@ -91,17 +99,27 @@ export function useRequestPane(options: {
     }
   };
   const showForm = () => {
+    if (phone) {
+      setSheetOpen(true);
+      return;
+    }
     // The form is in the pane once the card has closed, so Message can take focus.
     flushSync(closeItem);
     message.current?.focus();
   };
+  const onEscape = () => list.current?.querySelector<HTMLElement>('[role="gridcell"]')?.focus();
   return {
     newRequest: (
-      <Button variant="secondary" size="sm" icon={<PlusIcon />} onClick={showForm}>
+      <Button
+        variant="secondary"
+        size={phone ? "touch" : "sm"}
+        icon={<PlusIcon />}
+        onClick={showForm}
+      >
         New request
       </Button>
     ),
-    form: (
+    form: phone ? null : (
       <RequestForm
         offered={offered}
         draft={draft}
@@ -109,9 +127,22 @@ export function useRequestPane(options: {
         busy={busy}
         notStarted={notStarted}
         onSend={send}
-        onEscape={() => list.current?.querySelector<HTMLElement>('[role="gridcell"]')?.focus()}
+        onEscape={onEscape}
         messageRef={message}
       />
     ),
+    sheet:
+      phone && sheetOpen ? (
+        <RequestSheet
+          offered={offered}
+          draft={draft}
+          onDraft={setDraft}
+          busy={busy}
+          notStarted={notStarted}
+          onSend={send}
+          onClose={() => setSheetOpen(false)}
+          messageRef={message}
+        />
+      ) : null,
   };
 }
