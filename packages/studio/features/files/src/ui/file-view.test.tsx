@@ -110,7 +110,9 @@ verifies("files.ui.file-tab", () => {
     expect(page.querySelector("h1")?.textContent).toBe("models.yaml");
     expect(opened[0]?.options.text).toBe("name: a\n");
     expect(opened[0]?.options.language).toBe("yaml");
-    expect(opened[0]?.options.label).toBe("Text of models.yaml");
+    expect(opened[0]?.options.label).toBe(
+      "models.yaml, YAML editor. Press Escape, then Tab, to leave the editor.",
+    );
     expect([...page.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
       "▾Problems (0)",
     ]);
@@ -357,7 +359,7 @@ verifies("files.ui.problems-list", () => {
     notify();
     await act(async () => vi.advanceTimersByTime(300));
 
-    expect(page.textContent).toContain("Changes in this file cause 1 problem in another file.");
+    expect(page.textContent).toContain("Your edits here cause 1 problem in another file.");
     act(() => page.querySelector<HTMLElement>("p button")?.click());
     expect(openedItems).toEqual(["flow.yaml"]);
   });
@@ -430,7 +432,7 @@ verifies("files.ui.problems-list", () => {
     now = [issueIn("flow.yaml", 3)];
     await act(async () => vi.advanceTimersByTime(300));
 
-    expect(page.textContent).toContain("Changes in this file cause 1 problem in another file.");
+    expect(page.textContent).toContain("Your edits here cause 1 problem in another file.");
   });
 
   it("announces the problem F8 reached, and opens the list for a gutter icon", async () => {

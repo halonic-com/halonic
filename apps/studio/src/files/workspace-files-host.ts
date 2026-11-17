@@ -5,14 +5,16 @@ import {
   isPrivateWorkspacePath,
   type WorkspaceFileChange,
 } from "@halonicjs/ports";
-import type {
-  CompareChoice,
-  FileCompare,
-  FileIssue,
-  FilesHost,
-  FilesListing,
-  OutsideChange,
-  RemovedFile,
+import {
+  type CompareChoice,
+  type FileCompare,
+  type FileIssue,
+  FilePathError,
+  type FilesHost,
+  type FilesListing,
+  filesWords,
+  type OutsideChange,
+  type RemovedFile,
 } from "@halonicjs/studio-feature-files/api";
 import { loadWorkspace, placeOf } from "@halonicjs/workspace";
 import { editYaml, readYaml } from "@halonicjs/yaml";
@@ -212,20 +214,19 @@ export class WorkspaceFilesHost implements FilesHost {
     try {
       checkWorkspacePath(path);
     } catch {
-      throw new Error("Files must stay inside the workspace.");
+      throw new FilePathError(filesWords.pathOutside);
     }
     if (isPrivateWorkspacePath(path)) {
-      throw new Error(`"${path}" is not part of the workspace definitions`);
+      throw new FilePathError(filesWords.pathPrivate(path));
     }
     const { files } = this.#parts;
     const segments = path.split("/");
     for (let end = 1; end < segments.length; end++) {
       const prefix = segments.slice(0, end).join("/");
-      if ((await files.read(prefix)) !== null)
-        throw new Error(`${prefix} is a file, not a folder.`);
+      if ((await files.read(prefix)) !== null) throw new FilePathError(filesWords.pathFile(prefix));
     }
-    if ((await files.list(path)).length > 0) throw new Error(`${path} is a folder.`);
-    if ((await files.read(path)) !== null) throw new Error(`${path} already exists.`);
+    if ((await files.list(path)).length > 0) throw new FilePathError(filesWords.pathFolder(path));
+    if ((await files.read(path)) !== null) throw new FilePathError(filesWords.pathTaken(path));
   }
 
   async renameImpact(from: string, to: string): Promise<number> {

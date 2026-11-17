@@ -24,22 +24,31 @@ export interface FilesTreeProps {
   readonly now?: () => number;
 }
 
+/** Warnings show only while the row has no errors: the worse mark is the one that counts. */
+function warningsShown(node: TreeNode): number {
+  return node.marks.errors > 0 ? 0 : node.marks.warnings;
+}
+
 function marksLabel(node: TreeNode): string | undefined {
+  const warnings = warningsShown(node);
+  const outside = node.kind === "folder" ? filesWords.outsideInside : filesWords.outside;
   const parts = [
+    node.marks.outside ? outside : undefined,
     node.marks.errors > 0 ? filesWords.errors(node.marks.errors) : undefined,
-    node.marks.warnings > 0 ? filesWords.warnings(node.marks.warnings) : undefined,
-    node.marks.outside ? filesWords.outside : undefined,
+    warnings > 0 ? filesWords.warnings(warnings) : undefined,
   ].filter((part) => part !== undefined);
   return parts.length === 0 ? undefined : parts.join(", ");
 }
 
+/** The marks carry a glyph as well as a colour, so a state never rests on colour alone. */
 function RowMarks({ node }: { node: TreeNode }) {
-  const { errors, warnings, outside } = node.marks;
+  const { errors, outside } = node.marks;
+  const warnings = warningsShown(node);
   return (
     <span className="ml-auto flex shrink-0 items-center gap-1" aria-hidden="true">
-      {outside && <span className="size-1.5 rounded-full bg-fg-muted" />}
-      {warnings > 0 && <span className="text-xs text-warning">{warnings}</span>}
-      {errors > 0 && <span className="text-xs text-danger">{errors}</span>}
+      {outside && <span className="text-xs text-fg-muted">✎</span>}
+      {warnings > 0 && <span className="text-xs text-warning">△ {warnings}</span>}
+      {errors > 0 && <span className="text-xs text-danger">✕ {errors}</span>}
     </span>
   );
 }
@@ -118,7 +127,12 @@ export function FilesTree({
             aria-setsize={row.siblings}
             aria-expanded={node.kind === "folder" ? open : undefined}
             aria-selected={node.path === activePath}
-            aria-description={label}
+            aria-label={
+              label !== undefined && node.kind === "folder"
+                ? filesWords.folderMarks(node.name, label)
+                : undefined
+            }
+            aria-description={node.kind === "folder" ? undefined : label}
             title={node.name.length > nameLimit ? node.name : undefined}
             className={`flex h-8 cursor-pointer items-center gap-1 rounded-sm pr-2 text-sm text-fg outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-accent aria-selected:bg-accent-soft`}
             style={{ paddingLeft: `${row.depth * 16 + 4}px` }}

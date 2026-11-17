@@ -118,8 +118,9 @@ verifies("shell.save-note", () => {
   it("shows items not saved with a warning mark, and Compare opens the item held longest", () => {
     const compare = vi.fn();
     act(() => saving.holdForOutsideChange(sorter, compare));
-    expect(spoken()).toBe("Warning 1 item not saved Compare");
+    expect(spoken()).toBe("Warning 1 item not saved Compare Sorter");
 
+    expect(note.querySelector("button")?.textContent).toBe(`Compare ${sorter.title}`);
     act(() => note.querySelector("button")?.click());
     expect(compare).toHaveBeenCalledOnce();
   });

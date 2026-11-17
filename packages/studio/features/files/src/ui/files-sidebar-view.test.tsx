@@ -101,9 +101,30 @@ verifies("files.ui.tree-view", () => {
     const page = await show(
       hostOf(listing([...files, long], new Map([["hubs/p/hub.yaml", { errors: 2 }]]))),
     );
-    expect(rowNamed(page, "hubs").getAttribute("aria-description")).toBe("2 errors");
+    expect(rowNamed(page, "hubs").getAttribute("aria-label")).toBe("hubs, folder, 2 errors");
     expect(rowNamed(page, long).textContent).toContain("…");
     expect(rowNamed(page, long).title).toBe(long);
+  });
+
+  it("marks rows with glyphs and shows warnings only while a row has no errors", async () => {
+    const page = await show(
+      hostOf(
+        listing(
+          files,
+          new Map([
+            ["hubs/p/hub.yaml", { errors: 2, warnings: 3, outside: true }],
+            ["models.yaml", { warnings: 1 }],
+          ]),
+        ),
+      ),
+    );
+    expect(rowNamed(page, "hubs").getAttribute("aria-label")).toBe(
+      "hubs, folder, a file inside not saved, 2 errors",
+    );
+    expect(rowNamed(page, "hubs").textContent).toContain("✕ 2");
+    expect(rowNamed(page, "hubs").textContent).not.toContain("△");
+    expect(rowNamed(page, "models.yaml").textContent).toContain("△ 1");
+    expect(rowNamed(page, "models.yaml").getAttribute("aria-description")).toBe("1 warning");
   });
 
   it("shows grey bars while the list loads", () => {
@@ -131,7 +152,8 @@ verifies("files.ui.tree-view", () => {
 
   it("says there are no files", async () => {
     const page = await show(hostOf(listing([])));
-    expect(page.textContent).toContain("No files yet");
+    expect(page.textContent).toContain("Everything in this workspace is a file.");
+    expect(page.textContent).toContain("Add one with +.");
   });
 
   it("offers New file in the empty state, which opens the dialog and gets focus back", async () => {

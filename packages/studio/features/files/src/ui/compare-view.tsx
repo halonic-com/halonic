@@ -1,6 +1,7 @@
 import { Button, Callout, SkeletonBar } from "@halonicjs/studio-kit";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { fileName } from "../file-item.ts";
 import { type CompareChoice, type FileCompare, FilesHostService } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
 
@@ -9,25 +10,37 @@ type Loaded =
   | { readonly kind: "ready"; readonly compare: FileCompare }
   | { readonly kind: "error"; readonly reason: string };
 
+interface CompareViewProps {
+  readonly path: string;
+  readonly context: WorkspaceContext;
+  readonly onDone: (choice: CompareChoice) => void;
+  readonly onCancel: () => void;
+  /** Why a choice made in the strip failed, shown until the next choice. */
+  readonly initialFailure?: string | undefined;
+}
+
 /**
  * Yours and the file in the folder side by side, with Keep mine, Use the other one and, when the
  * two don't change the same lines, Combine both. A choice is saved at once and is one undo step
  * (requirement `files.ui.compare`).
  */
-export function CompareView({
-  path,
-  context,
-  onDone,
-  onCancel,
-  initialFailure,
-}: {
-  readonly path: string;
-  readonly context: WorkspaceContext;
-  readonly onDone: () => void;
-  readonly onCancel: () => void;
-  /** Why a choice made in the strip failed, shown until the next choice. */
-  readonly initialFailure?: string | undefined;
-}) {
+export function CompareView(props: CompareViewProps) {
+  const root = useRef<HTMLDivElement>(null);
+  // The strip that opened Compare is gone, so focus moves here and its name is read.
+  useEffect(() => root.current?.focus(), []);
+  return (
+    <section
+      ref={root}
+      tabIndex={-1}
+      aria-label={filesWords.compareName(fileName(props.path))}
+      className="flex min-h-0 flex-1 flex-col outline-none"
+    >
+      <CompareBody {...props} />
+    </section>
+  );
+}
+
+function CompareBody({ path, context, onDone, onCancel, initialFailure }: CompareViewProps) {
   const host = context.services.get(FilesHostService);
   const [loaded, setLoaded] = useState<Loaded>({ kind: "loading" });
   const [failure, setFailure] = useState<string | undefined>(initialFailure);
@@ -53,7 +66,7 @@ export function CompareView({
     setSettling(true);
     try {
       await host.settle(path, choice);
-      onDone();
+      onDone(choice);
     } catch (error) {
       setFailure(reasonOf(error));
       setSettling(false);

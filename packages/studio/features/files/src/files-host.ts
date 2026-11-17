@@ -47,6 +47,14 @@ export interface FileCompare {
 /** What the user chooses in Compare. */
 export type CompareChoice = "keep-mine" | "use-other" | "combine-both";
 
+/**
+ * What `FilesHost.create` and `FilesHost.rename` reject with when the path itself is the problem
+ * ("workspace.yaml already exists."). Any other rejection is a write that failed.
+ */
+export class FilePathError extends Error {
+  override readonly name = "FilePathError";
+}
+
 /** The workspace's files. The app provides it for each open workspace. */
 export interface FilesHost {
   /** Lists the files. Rejects with an `Error` whose message is one sentence when the folder can't be read. */

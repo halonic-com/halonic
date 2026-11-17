@@ -68,6 +68,7 @@ function fixture(change: OutsideChange | undefined, compare: Partial<FileCompare
   };
   const context = {
     services: limitedLookup(filesFeature, { get: () => host }),
+    announcer: { announce: vi.fn() },
   } as unknown as WorkspaceContext;
   const page = render(
     <FileView item={fileItem("a.agent.yaml")} context={context} Sections={() => null} />,
@@ -101,33 +102,36 @@ verifies("files.ui.outside-strip", () => {
     expect(page.querySelector("[role=status]")).toBeNull();
   });
 
-  it("shows the strip with Keep mine, Load theirs and Compare, and keeps the editor", async () => {
+  it("shows the strip with only Compare, and keeps the editor", async () => {
     const { page } = fixture("changed");
     await flush();
-    expect(page.querySelector("[role=status]")?.textContent).toContain(
-      "a.agent.yaml changed outside Halonic.",
+    expect(page.querySelector("[role=status]")?.textContent).toBe(
+      "a.agent.yaml changed outside HalonicCompare",
     );
     expect(page.querySelector("[role=status] em")?.textContent).toBe("a.agent.yaml");
-    expect(button(page, "Keep mine")).toBeDefined();
-    expect(button(page, "Load theirs")).toBeDefined();
+    expect(button(page, "Keep mine")).toBeUndefined();
+    expect(button(page, "Load theirs")).toBeUndefined();
     expect(button(page, "Compare")).toBeDefined();
     expect(opened).toHaveLength(1);
   });
 
-  it("settles with the folder's text on Load theirs, and focuses the editor", async () => {
-    const { page, settle } = fixture("changed");
-    await flush();
-    await press(page, "Load theirs");
-    expect(settle).toHaveBeenCalledWith("a.agent.yaml", "use-other");
-    expect(page.querySelector("[role=status]")).toBeNull();
-    expect(focused).toHaveBeenCalledTimes(1);
-  });
-
-  it("settles with the user's text on Keep mine in the strip, and focuses the editor", async () => {
-    const { page, settle } = fixture("changed");
+  it("settles with the user's text on Keep mine in the strip, focuses the editor and says so", async () => {
+    const { page, settle } = fixture("deleted");
     await flush();
     await press(page, "Keep mine");
     expect(settle).toHaveBeenCalledWith("a.agent.yaml", "keep-mine");
+    expect(focused).toHaveBeenCalledTimes(1);
+    expect(page.textContent).toContain("Keeping yours");
+  });
+
+  it("moves focus into Compare when it opens, and back to the editor when it is cancelled", async () => {
+    const { page } = fixture("changed");
+    await flush();
+    await press(page, "Compare");
+    expect(page.ownerDocument.activeElement?.getAttribute("aria-label")).toBe(
+      "Compare a.agent.yaml",
+    );
+    await press(page, "Cancel");
     expect(focused).toHaveBeenCalledTimes(1);
   });
 
@@ -157,6 +161,7 @@ verifies("files.ui.outside-strip", () => {
     expect(page.querySelector("[role=status]")).toBeNull();
     expect(button(page, "Keep mine")).toBeUndefined();
     expect(opened.at(-1)?.text).toBe("chosen");
+    expect(page.textContent).toContain("Using the other one");
   });
 
   it("reopens the editor with what was typed when Compare is cancelled", async () => {

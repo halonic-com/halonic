@@ -8,6 +8,8 @@ import { sortedForList } from "../problems-elsewhere.ts";
 export interface ProblemsPanelProps {
   /** The problems of the open file. */
   readonly problems: readonly FileIssue[];
+  /** The file is read-only because it is large, so it is not checked. */
+  readonly tooLong?: boolean;
   /** What changes in this file caused in other files. */
   readonly elsewhere: Elsewhere;
   /** Called when a row is chosen, by click or Enter: the editor puts its cursor there. */
@@ -24,6 +26,7 @@ export interface ProblemsPanelProps {
  */
 export function ProblemsPanel({
   problems,
+  tooLong = false,
   elsewhere,
   onGo,
   onOpenFile,
@@ -61,7 +64,9 @@ export function ProblemsPanel({
       </button>
       <div id={id} hidden={!open} className="min-h-0 overflow-y-auto">
         {sorted.length === 0 ? (
-          <p className="px-4 py-1 text-small text-fg-muted">{filesWords.noProblems}</p>
+          <p className="px-4 py-1 text-small text-fg-muted">
+            {tooLong ? filesWords.tooLongToCheck : filesWords.noProblems}
+          </p>
         ) : (
           <ul ref={list} className="grid">
             {sorted.map((issue, index) => (

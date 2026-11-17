@@ -37,6 +37,9 @@ export function StatusBarSaveNote({ saving, timers = systemTimers }: StatusBarSa
   const note = useShownNote(saving, timers);
   const words = saveNoteWords(note);
   const action = words.action;
+  // "Compare" alone doesn't say which item, so its name does: "Compare Support triage" (microcopy 19.2).
+  const heldName =
+    action === "compare" && note.kind === "items-not-saved" ? note.first.title : undefined;
   return (
     <div className="flex items-center gap-1.5 whitespace-nowrap text-small text-fg-muted">
       {marks[words.mark]}
@@ -59,6 +62,7 @@ export function StatusBarSaveNote({ saving, timers = systemTimers }: StatusBarSa
             onClick={() => (action === "try-again" ? saving.tryAgain() : saving.compare())}
           >
             {saveNoteActionLabels[action]}
+            {heldName === undefined ? null : <span className="sr-only"> {heldName}</span>}
           </Button>
         </>
       )}
