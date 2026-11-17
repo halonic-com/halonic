@@ -26,9 +26,15 @@ The removed tests checked only the refusal that no longer exists (or a case that
 - leaves a model the workspace doesn't define to the engine;
 - never calls a model server for a run it refuses (replaced by the new test below).
 
-Nothing else was weakened. A new test covers the replacement behaviour: a workflow whose agent uses an
-`openai-compatible` provider makes its model call through the given `http`, at the provider's address, with
-the key from `secrets`, and never through `globalThis.fetch`.
+Nothing else was weakened. Two tests come in:
+
+- sends an agent's model call through the given `http`, with the key from `secrets`: a workflow whose agent
+  uses an `openai-compatible` provider makes its model call through the given `http`, at the provider's
+  address, with the key from `secrets`, and never through `globalThis.fetch`;
+- still refuses an agent in a harness that also names a provider: the harness refusal stays, and this
+  covers the case where the agent's model names a real provider as well.
+
+Six tests go and two come in: 21 - 6 + 2 = 17.
 
 ## Covers
 
