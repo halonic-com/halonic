@@ -63,7 +63,7 @@ export async function askToTrustPlugin(
   const json = { id, name: plugin.name, version: plugin.version, fingerprint };
   // The manifest's name is outside text (cli-output 5).
   const name = printable(plugin.name);
-  const check = pluginTrustCheckLines(entry.content);
+  const check = pluginTrustCheckLines(entry.content, entry.location);
   const fix = pluginMessages.addNoTerminalFix(id);
   if (answer.fingerprint !== undefined && answer.fingerprint !== fingerprint) {
     throw fingerprintNotCurrent(entry);
@@ -121,7 +121,7 @@ type CheckedPlugin = Exclude<PluginEntry, { status: "broken" }>;
 export function fingerprintNotCurrent(
   entry: CheckedPlugin,
   now: { readonly check: readonly Phrase[]; readonly fingerprint: string } = {
-    check: pluginTrustCheckLines(entry.content),
+    check: pluginTrustCheckLines(entry.content, entry.location),
     fingerprint: entry.fingerprint,
   },
 ): NotTrustedError {
