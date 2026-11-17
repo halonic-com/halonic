@@ -55,7 +55,7 @@ import {
   type StudioHost,
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
-import { AgentHostSandboxFacts, type WslBackupShell } from "./agent-sandbox-host.ts";
+import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import { desktopFeatures } from "./desktop-features.ts";
 import { watchDesktopResources } from "./desktop-resources.ts";
@@ -81,6 +81,7 @@ import {
 } from "./window-close.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
+import { wslBackupOf } from "./wsl-backup-shell.ts";
 
 export { desktopFeatures };
 
@@ -439,24 +440,6 @@ async function provideAgentSandbox(
         ipc === undefined ? undefined : await wslBackupOf(ipc),
       ),
     );
-}
-
-/**
- * The shell's part of removing the WSL setup, when it offers the removal (Windows, host beside the
- * shell); `undefined` otherwise, so the section shows no **Remove sandbox setup**.
- */
-async function wslBackupOf(ipc: TauriIpc): Promise<WslBackupShell | undefined> {
-  const offered = await ipc.invoke("wsl_removal_offered").catch(() => false);
-  if (offered !== true) return undefined;
-  return {
-    choose: async (suggestedName) => {
-      const chosen = await ipc.invoke("wsl_backup_choose", { suggested: suggestedName });
-      return typeof chosen === "string" ? chosen : null;
-    },
-    reveal: async () => {
-      await ipc.invoke("wsl_backup_reveal");
-    },
-  };
 }
 
 /**
