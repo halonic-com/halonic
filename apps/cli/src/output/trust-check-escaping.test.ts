@@ -95,3 +95,4 @@ const escapesWorkspaceText = () => {
 
 verifies("cli.commands.validate.check-workspace", escapesWorkspaceText);
 verifies("cli.commands.tools.blocks", escapesWorkspaceText);
+verifies("cli.commands.trust.review-and-trust", escapesWorkspaceText);
