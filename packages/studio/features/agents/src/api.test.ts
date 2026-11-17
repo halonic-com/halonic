@@ -64,4 +64,23 @@ verifies("agents.host", () => {
     await host.create({ name: "Triage", hubId: "acme" });
     expect(told).toBe(0);
   });
+
+  it("changes the fields it is given, tells listeners, and refuses an empty name", async () => {
+    const host = memoryAgentsHost({ hubs: [acme], agents: [refundChecker] });
+    let heard = 0;
+    host.subscribe(() => (heard += 1));
+    await host.update(refundChecker, { instructions: "Check the refund.", name: "Refunds" });
+    expect(await host.settings(refundChecker)).toMatchObject({
+      name: "Refunds",
+      instructions: "Check the refund.",
+    });
+    expect(host.nameOf(refundChecker)).toBe("Refunds");
+    expect(heard).toBe(1);
+    await expect(host.update(refundChecker, { name: "  " })).rejects.toMatchObject({
+      kind: "invalid_input",
+    });
+    await expect(host.update({ hubId: "acme", id: "ghost" }, {})).rejects.toMatchObject({
+      kind: "not_found",
+    });
+  });
 });
