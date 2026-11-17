@@ -31,7 +31,7 @@ import type { Clock, DefinitionStore, HttpClient, IdGenerator, Secrets } from "@
 import { KindedError } from "@halonicjs/std";
 import type { TauriIpc } from "@halonicjs/studio-services";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
-import { loadWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
+import { type LoadedWorkspace, loadWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
 
 /** The open workspace's engine service, provided by the app. */
 export const engineServiceKey: ServiceKey<EngineService> =
