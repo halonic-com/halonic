@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { type ToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -26,13 +27,21 @@ verifies("files.ui.rename-file", () => {
     });
   };
 
-  async function startRename(host: FilesHost, openItem = vi.fn(), active = "") {
+  async function startRename(
+    host: FilesHost,
+    openItem = vi.fn(),
+    active = "",
+    toasts?: ToastStore,
+  ) {
     const activeItem = {
       get: () => (active === "" ? null : { kind: "file", hub: "workspace", id: active }),
       subscribe: () => () => {},
     };
     const context = { ...contextOf(host), openItem, activeItem } as unknown as WorkspaceContext;
-    const page = render(<FilesSidebarView context={context} />);
+    const view = <FilesSidebarView context={context} />;
+    const page = render(
+      toasts === undefined ? view : <ToastStoreProvider store={toasts}>{view}</ToastStoreProvider>,
+    );
     await settled();
     const row = rowNamed(page, "models.yaml");
     act(() => row.click());
@@ -107,10 +116,73 @@ verifies("files.ui.rename-file", () => {
     const input = rowNamed(page, "models.yaml").querySelector("input");
     await typeInto(input, "providers.yaml");
     await key(input, "Enter");
-    expect(page.querySelector('[role="alert"]')?.textContent).toBe(
-      "providers.yaml already exists.",
-    );
     expect(page.querySelector("input")).not.toBeNull();
+    const alert = page.querySelector(`[id="${input?.getAttribute("aria-describedby")}"]`);
+    expect(alert?.textContent).toBe("providers.yaml already exists.");
+    expect(input?.getAttribute("aria-invalid")).toBe("true");
+    expect(input?.getAttribute("aria-describedby")).toBe(alert?.id);
+    expect(rowNamed(page, "models.yaml").getAttribute("aria-description")).toBeNull();
+  });
+
+  it("closes the field when the row was left while Enter's rename ran and the host refuses", async () => {
+    let refuse: (error: Error) => void = () => {};
+    const rename = () =>
+      new Promise<never>((_, reject) => {
+        refuse = reject;
+      });
+    const show = vi.fn();
+    const toasts = { show } as unknown as ToastStore;
+    const { page } = await startRename({ ...contextHost(), rename }, vi.fn(), "", toasts);
+    const input = rowNamed(page, "models.yaml").querySelector("input");
+    await typeInto(input, "providers.yaml");
+    await key(input, "Enter");
+    const elsewhere = await leaveRow(input);
+    await act(async () => {
+      refuse(new Error("providers.yaml already exists."));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(page.querySelector("input")).toBeNull();
+    expect(document.activeElement).toBe(elsewhere);
+    expect(show).toHaveBeenCalledWith(
+      expect.objectContaining({ tone: "danger", title: "providers.yaml already exists." }),
+    );
+    elsewhere.remove();
+  });
+
+  it("leaves the focus where the user put it when the row was left while Enter's rename ran and it succeeds", async () => {
+    let paths = ["agents/a.agent.yaml", "models.yaml"];
+    let finish: () => void = () => {};
+    const subscribers: (() => void)[] = [];
+    const host: FilesHost = {
+      ...contextHost(),
+      list: async () => listing(paths),
+      subscribe: (listener) => {
+        subscribers.push(listener);
+        return () => {};
+      },
+      rename: () =>
+        new Promise((resolve) => {
+          finish = () => {
+            paths = ["agents/a.agent.yaml", "providers.yaml"];
+            resolve({ places: 0, owners: [], undo: async () => {} });
+          };
+        }),
+    };
+    const { page } = await startRename(host);
+    const input = rowNamed(page, "models.yaml").querySelector("input");
+    await typeInto(input, "providers.yaml");
+    await key(input, "Enter");
+    const elsewhere = await leaveRow(input);
+    await act(async () => {
+      finish();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      for (const listener of subscribers) listener();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(page.querySelector("input")).toBeNull();
+    expect(document.activeElement).toBe(elsewhere);
+    expect(rowNamed(page, "providers.yaml").tabIndex).toBe(0);
+    elsewhere.remove();
   });
 
   // The user clicked or tabbed somewhere else: focus is on `elsewhere` and the field loses it.
