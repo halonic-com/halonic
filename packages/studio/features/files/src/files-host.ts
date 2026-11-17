@@ -63,10 +63,12 @@ export type CompareChoice = "keep-mine" | "use-other" | "combine-both";
 
 /**
  * What `FilesHost.create` rejects with when the path itself is the problem
- * ("workspace.yaml already exists."). Any other rejection is a write that failed.
+ * ("workspace.yaml already exists."). Any other rejection is a write that failed. Its kind
+ * marks its message as safe to show, as rename also rejects with it for a name that's taken.
  */
 export class FilePathError extends Error {
   override readonly name = "FilePathError";
+  readonly kind = "invalid_input";
 }
 
 /** The workspace's files. The app provides it for each open workspace. */

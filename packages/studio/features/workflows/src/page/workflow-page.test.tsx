@@ -97,6 +97,28 @@ verifies("workflows.page.frame-and-states", () => {
     expect(page.querySelector("h1")?.textContent).toBe("Support reply");
   });
 
+  it("says a workflow that isn't there any more is gone, with Go to Workflows", async () => {
+    const { host } = memoryHost([], [], [reply]);
+    const goToWorkflows = vi.fn();
+    const page = await show(
+      <WorkflowScreen
+        host={host}
+        runs={memoryRuns().source}
+        hubId="acme"
+        id="gone"
+        goToWorkflows={goToWorkflows}
+      />,
+    );
+
+    expect(page.textContent).toContain("This workflow isn't in this workspace any more.");
+    expect(page.textContent).not.toContain("Couldn't load this workflow");
+    expect(page.textContent).not.toContain("gone");
+    expect(buttonNamed(page, "Try again")).toBeUndefined();
+
+    await act(async () => buttonNamed(page, "Go to Workflows")?.click());
+    expect(goToWorkflows).toHaveBeenCalledOnce();
+  });
+
   it("keeps the error with a busy button while Try again reads, then focuses the name", async () => {
     let answer: (view: WorkflowView) => void = () => undefined;
     const { host } = memoryHost([], [], [reply]);

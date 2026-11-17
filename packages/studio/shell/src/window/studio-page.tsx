@@ -1,7 +1,5 @@
-import { Suspense } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import { HomePage } from "../home/home-page.tsx";
-import { lazyView } from "../lazy-view.ts";
 import { BackLinkSlotProvider } from "../page/back-link-slot.tsx";
 import { PageBackLink } from "../page/page-back-link.tsx";
 import { type PlaceContribution, placeNames } from "../points/frame.ts";
@@ -10,6 +8,7 @@ import { SearchPage } from "../search/search-page.tsx";
 import { searchPageWords } from "../search/search-page-names.ts";
 import type { Shell } from "../shell.ts";
 import { homeLocation, type TabLocation, type TabSet } from "../tabs/tab-set.ts";
+import { LoadedView } from "../view-loading.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { ItemView, itemOfLocationKey } from "./item-view.tsx";
 
@@ -39,9 +38,10 @@ export interface StudioPageProps {
 /**
  * The page for a tab's place (`shell.studio-window`): Home with the cards features added, a
  * Search page for "Search: <words>", or the view of a place a feature added. The view is imported
- * the first time a tab shows the place, and nothing stands in for it while it loads. A view that
- * fails to load is "This page stopped working", from the `PageErrorBoundary` round every tab's
- * page and round the phone's page.
+ * the first time a tab shows the place, with "Loading _page_" while it loads
+ * (`shell.view-loading-state`). A view that fails to load is "This page stopped working", from the
+ * `PageErrorBoundary` round every tab's page and round the phone's page, whose **Reload page**
+ * imports it again.
  *
  * A tab on an item (`kind/hub/id`) shows the `open` view of the kind a feature added
  * (`shell.item-tabs`), given the item and that feature's context, imported the first time a tab
@@ -86,6 +86,7 @@ export function StudioPage({
     return (
       <PlaceView
         place={place}
+        name={location.title}
         context={contextFor(place.featureId)}
         {...(sub === "" ? {} : { sub })}
       />
@@ -97,6 +98,7 @@ export function StudioPage({
     const view = (
       <ItemView
         kind={kind}
+        name={location.title}
         item={item}
         context={contextFor(kind.featureId)}
         sections={contributions.itemPage.sectionsFor(kind.kind)}
@@ -122,17 +124,20 @@ export function StudioPage({
 
 function PlaceView({
   place,
+  name,
   context,
   sub,
 }: {
   readonly place: Registered<PlaceContribution>;
+  readonly name: string;
   readonly context: WorkspaceContext;
   readonly sub?: string;
 }) {
-  const View = lazyView<PlaceViewProps>(place);
   return (
-    <Suspense fallback={null}>
-      <View context={context} {...(sub === undefined ? {} : { sub })} />
-    </Suspense>
+    <LoadedView<PlaceViewProps>
+      view={place}
+      name={name}
+      props={{ context, ...(sub === undefined ? {} : { sub }) }}
+    />
   );
 }

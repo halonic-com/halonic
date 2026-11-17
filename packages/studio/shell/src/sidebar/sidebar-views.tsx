@@ -1,8 +1,8 @@
 import { TabList, TabPanel, useTabIds } from "@halonicjs/studio-kit";
-import { type ComponentType, Suspense, useMemo, useState } from "react";
-import { lazyView } from "../lazy-view.ts";
+import { useMemo, useState } from "react";
 import type { SidebarViewContribution } from "../points/frame.ts";
 import type { Registered } from "../points/point-store.ts";
+import { LoadedView } from "../view-loading.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 
 const studioTab = "studio";
@@ -69,12 +69,11 @@ function SidebarView({
   readonly view: Registered<SidebarViewContribution>;
   readonly context: WorkspaceContext;
 }) {
-  const View = lazyView<{ readonly context: WorkspaceContext }>(view) as ComponentType<{
-    readonly context: WorkspaceContext;
-  }>;
   return (
-    <Suspense fallback={null}>
-      <View context={context} />
-    </Suspense>
+    <LoadedView<{ readonly context: WorkspaceContext }>
+      view={view}
+      name={view.label}
+      props={{ context }}
+    />
   );
 }

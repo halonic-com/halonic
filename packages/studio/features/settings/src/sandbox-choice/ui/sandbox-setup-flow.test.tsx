@@ -93,6 +93,9 @@ verifies("settings.sandbox-setup-flow", () => {
       offline: true,
     });
     expect(text).toContain("We couldn't download what we need. Check your connection.");
+    expect(text).toContain("Download WSLStopped");
+    expect(text).not.toContain("Working…");
+    expect(root.querySelector("[role=status], svg, .animate-spin")).toBeNull();
     press(root, "Try again");
     press(root, "Other options");
     press(root, "Cancel");
@@ -145,9 +148,9 @@ verifies("settings.sandbox-setup-flow", () => {
     const { root } = show({
       kind: "testing",
       checks: [
-        { label: "Can write inside your project", result: "passed" },
-        { label: "Can't read outside your project", result: "failed" },
-        { label: "Can't reach a blocked website", result: "pending" },
+        { id: "write-inside", label: "Can write inside your project", result: "passed" },
+        { id: "read-outside", label: "Can't read outside your project", result: "failed" },
+        { id: "reach-blocked", label: "Can't reach a blocked website", result: "pending" },
       ],
     });
     const rows = [...root.querySelectorAll("li")].map((li) => li.textContent);
@@ -208,9 +211,23 @@ verifies("settings.sandbox-setup-flow", () => {
       name: "Sandbox for Windows",
       caveat: "Network limits are weaker on Windows.",
     });
-    expect(caveat.text).toContain("Good to know: network limits are weaker on Windows.");
+    expect(caveat.text).toContain("Good to know: Network limits are weaker on Windows.");
     press(caveat.root, "Open Halonic");
     expect(caveat.calls.onOpenHalonic).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the caveat's casing as written", () => {
+    const { text } = show({ kind: "done", name: "Sandbox", caveat: "WSL needs a restart." });
+    expect(text).toContain("Good to know: WSL needs a restart.");
+  });
+
+  it("names no tool when none is missing, and never starts mid-sentence", () => {
+    const { text } = show({
+      kind: "tool-missing",
+      tools: [{ name: "socat", ready: true }],
+      command: "sudo apt install socat",
+    });
+    expect(text).toContain("A tool is needed for the sandbox.");
   });
 
   it("says that agents ask first only when told that they do", () => {

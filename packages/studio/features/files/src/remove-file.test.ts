@@ -3,6 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import type { RemovedFile } from "./files-host.ts";
 import { removeFile } from "./remove-file.ts";
+import { kinded } from "./test-support/kinded.ts";
 import { trashedFile } from "./trash.ts";
 
 function toastsOf() {
@@ -48,7 +49,8 @@ verifies("files.ui.delete-file", () => {
   it("says why Undo can't bring the file back", async () => {
     const { show, store } = toastsOf();
     const undo = async () => {
-      throw new Error(
+      throw kinded(
+        "conflict",
         "a.md can't be put back, because the workspace changed after it was deleted.",
       );
     };
@@ -67,7 +69,7 @@ verifies("files.ui.delete-file", () => {
   it("keeps a toast with the reason and Try again when the host refuses", async () => {
     const remove = vi
       .fn<() => Promise<RemovedFile>>()
-      .mockRejectedValueOnce(new Error("a.md isn't here any more."))
+      .mockRejectedValueOnce(kinded("not_found", "a.md isn't here any more."))
       .mockResolvedValue({ places: 0, undo: async () => {} });
     const { show, store } = toastsOf();
 

@@ -1,6 +1,6 @@
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { DefinitionSource } from "@halonicjs/ports";
-import { slugify, uniqueName } from "@halonicjs/std";
+import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import type {
   NewWorkflow,
   WorkflowConfiguration,
@@ -114,7 +114,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     } catch {
       // The reason of the failure is on the save's own toast; the run says only what didn't happen.
       // The save covers the whole workspace, so any file can be the one that failed.
-      throw new Error("The workspace couldn't be saved.");
+      throw new KindedError("unavailable", "The workspace couldn't be saved.");
     }
   }
 
@@ -174,7 +174,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     const file = filesOf(workspace, "workflow").find(
       (one) => one.hub === hubId && one.value.id === id,
     );
-    if (file === undefined) throw new Error(`The hub "${hubId}" has no workflow "${id}".`);
+    if (file === undefined) throw workflowGone();
     const { value } = file;
     this.#names.set(`${hubId}/${id}`, value.name);
     return {
@@ -200,7 +200,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     const file = filesOf(workspace, "workflow").find(
       (one) => one.hub === hubId && one.value.id === id,
     );
-    if (file === undefined) throw new Error(`The hub "${hubId}" has no workflow "${id}".`);
+    if (file === undefined) throw workflowGone();
     const { value } = file;
     return {
       hubId,
@@ -234,7 +234,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     const exists = filesOf(workspace, "workflow").some(
       (one) => one.hub === hubId && one.value.id === id,
     );
-    if (!exists) throw new Error(`The hub "${hubId}" has no workflow "${id}".`);
+    if (!exists) throw workflowGone();
     return {
       cases: filesOf(workspace, "workflowTest")
         .filter((file) => file.hub === hubId && file.value.workflow === id)
@@ -268,7 +268,10 @@ export class WorkspaceWorkflows implements WorkflowsHost {
       throw new Error(`The run ${runId} is not a run of the workflow "${ref.id}".`);
     }
     if (summary.state === null) {
-      throw new Error(`The run ${runId} ended in no step, so it can't say what to expect.`);
+      throw new KindedError(
+        "invalid_input",
+        `The run ${runId} ended in no step, so it can't say what to expect.`,
+      );
     }
     const testCase = { name, input: started.input, expect: { final: summary.state } };
     const path = testFile(ref);
@@ -343,4 +346,9 @@ export class WorkspaceWorkflows implements WorkflowsHost {
       version: async () => "unsaved",
     };
   }
+}
+
+/** What a read of a workflow the workspace doesn't have rejects with: Studio shows the item-gone state for it. */
+function workflowGone(): KindedError {
+  return new KindedError("not_found", "This workflow isn't in this workspace any more.");
 }

@@ -133,6 +133,7 @@ export const CANCEL = "Cancel";
 export const STEP_DONE = "Done";
 export const STEP_WORKING = "Working…";
 export const STEP_WAITING = "Waiting";
+export const STEP_STOPPED = "Stopped";
 export const PERMISSION_NEXT_WINDOWS = "Windows will ask for permission next. This is expected.";
 export const PERMISSION_NEXT_PASSWORD =
   "Your computer will ask for your password next. This is expected.";
@@ -167,15 +168,18 @@ export const CANT_HINTS = {
   "virtualisation-off": "Turn it on in your computer's BIOS settings.",
   "blocked-by-policy": "Ask your IT admin to allow it.",
 } as const;
+/** Not shown yet: it waits for the Show steps work (HAL-3777 leaves it out on purpose). */
 export const SHOW_STEPS = "Show steps";
 
 /** S3d: a tool is missing (macOS and Linux). */
 export const CHECK_TITLE = "One thing is missing";
-export const checkBody = (tool: string) =>
-  `${tool} is needed for the sandbox. Run this in a terminal, then check again.`;
+/** `tools` are the missing ones; with none named, the line says "A tool" so it never starts mid-sentence. */
+export const checkBody = (tools: readonly string[]) =>
+  `${tools.length === 0 ? "A tool" : tools.join(" and ")} is needed for the sandbox. Run this in a terminal, then check again.`;
 export const UBUNTU_2404 =
   "Ubuntu 24.04 blocks the sandbox by default. This command allows it. It needs admin rights, so Halonic doesn't run it for you.";
 export const CHECK_AGAIN = "Check again";
+export const COPY_COMMAND = "Copy the command";
 export const toolReady = (tool: string) => `${tool}: ready`;
 export const toolMissing = (tool: string) => `${tool}: missing`;
 
@@ -192,8 +196,8 @@ export const CHECK_PENDING = "waiting";
 /** S5: done, with a sandbox and without. */
 export const DONE_TITLE = "Sandbox is on";
 export const doneBody = (name: string) => `${name} is active. Agents work inside your project.`;
-export const doneCaveat = (caveat: string) =>
-  `Good to know: ${caveat.charAt(0).toLowerCase()}${caveat.slice(1)}`;
+/** The caveat keeps its casing as written, so names like "WSL" and "macOS" stay right. */
+export const doneCaveat = (caveat: string) => `Good to know: ${caveat}`;
 export const DONE_FOOTER = "You can change this any time in Settings → Sandbox.";
 export const NONE_TITLE = "You're all set";
 export const NONE_BODY =

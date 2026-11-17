@@ -280,7 +280,11 @@ export {
   pluginTrustFingerprintPrefix,
 } from "./plugin-trust-content.ts";
 export {
+  type PluginTrustFiles,
   type PluginTrustSection,
+  pluginTrustFileCap,
+  pluginTrustFiles,
+  pluginTrustLocationHeadings,
   pluginTrustSectionHeadings,
   pluginTrustSectionOrder,
   pluginTrustSections,

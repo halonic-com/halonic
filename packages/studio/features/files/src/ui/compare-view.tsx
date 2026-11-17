@@ -1,5 +1,5 @@
 import { Button, Callout, SkeletonBar } from "@halonicjs/studio-kit";
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { errorReasonFor, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
 import { fileName } from "../file-item.ts";
 import { type CompareChoice, type FileCompare, FilesHostService } from "../files-host.ts";
@@ -53,7 +53,7 @@ function CompareBody({ path, context, onDone, onCancel, initialFailure }: Compar
         if (!stopped) setLoaded({ kind: "ready", compare });
       },
       (error: unknown) => {
-        if (!stopped) setLoaded({ kind: "error", reason: reasonOf(error) });
+        if (!stopped) setLoaded({ kind: "error", reason: errorReasonFor(error) });
       },
     );
     return () => {
@@ -68,7 +68,7 @@ function CompareBody({ path, context, onDone, onCancel, initialFailure }: Compar
       await host.settle(path, choice);
       onDone(choice);
     } catch (error) {
-      setFailure(reasonOf(error));
+      setFailure(errorReasonFor(error));
       setSettling(false);
     }
   }
@@ -132,8 +132,4 @@ function Side({ heading, text }: { readonly heading: string; readonly text: stri
       </pre>
     </section>
   );
-}
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

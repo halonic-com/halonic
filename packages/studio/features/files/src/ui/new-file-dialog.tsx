@@ -1,4 +1,5 @@
 import { Callout, Dialog, Field, Input } from "@halonicjs/studio-kit";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useRef, useState } from "react";
 import { FilePathError, type FilesHost } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
@@ -68,7 +69,7 @@ export function NewFileDialog({
     } catch (error) {
       setBusy(false);
       if (error instanceof FilePathError) return refuse(error.message);
-      const reason = error instanceof Error ? error.message.trim() : "";
+      const reason = errorReasonFor(error, "");
       setWriteFailure(filesWords.couldntCreate(wanted, reason === "" ? undefined : reason));
       return;
     }

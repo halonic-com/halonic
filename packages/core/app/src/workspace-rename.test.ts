@@ -5,6 +5,7 @@ import { expect, it } from "vitest";
 import { openWorkspace, workspaceFilesKey } from "./open-workspace.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
 import { TestTrash } from "./testing/test-trash.ts";
+import { ChangedOnDiskError } from "./workspace-files.ts";
 import { RenameRefusedError } from "./workspace-rename.ts";
 
 const workflowPath = "hubs/p/workflows/f.workflow.yaml";
@@ -83,6 +84,18 @@ verifies("app.workspace-rename", () => {
     expect(await store.read(workflowPath)).toBeNull();
     expect(await store.read("hubs/p/workflows/h.workflow.yaml")).toBe(workflow);
     expect(trash.entries.size).toBe(0);
+  });
+
+  it("sends the old file to the trash when the new file is held because it changed outside", async () => {
+    const { store, trash, files } = openWithTrash({ [workflowPath]: workflow });
+    const target = "hubs/p/workflows/h.workflow.yaml";
+    await files.read(target);
+    await files.rename(workflowPath, target);
+    await store.write(target, "outside: 1\n");
+    await expect(files.save()).rejects.toBeInstanceOf(ChangedOnDiskError);
+    expect(await store.read(target)).toBe("outside: 1\n");
+    expect(await store.read(workflowPath)).toBeNull();
+    expect([...trash.entries.values()]).toEqual([{ path: workflowPath, content: workflow }]);
   });
 
   it("still sends a plain delete of the same path to the trash after an undone rename", async () => {
@@ -167,6 +180,17 @@ verifies("app.workspace-rename", () => {
     expect(await files.save()).toBe(2);
     expect([...store.files]).toEqual([["A.yaml", "x: 1\n"]]);
     expect(trash.entries.size).toBe(0);
+  });
+
+  it("saves a rename next to a write in another case of the old name on a disk that ignores case", async () => {
+    const { store, files } = openWithTrash({ "a.yaml": "x: 1\n" }, CaseInsensitiveStore);
+    await files.rename("a.yaml", "b.yaml");
+    files.change("Make A", { "A.yaml": "y: 2\n" });
+    expect(await files.save()).toBe(3);
+    expect([...store.files].sort()).toEqual([
+      ["A.yaml", "y: 2\n"],
+      ["b.yaml", "x: 1\n"],
+    ]);
   });
 
   it("refuses a name in another case that is a different file on a disk that tells them apart", async () => {
