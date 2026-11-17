@@ -43,6 +43,9 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       return () => listeners.delete(listener);
     },
     create: async ({ name, hubId }) => {
+      if (!options.hubs.some((hub) => hub.id === hubId)) {
+        throw new KindedError("not_found", "This hub isn't there.");
+      }
       const taken = [...agents.values()]
         .filter((each) => each.hubId === hubId)
         .map((each) => each.id);

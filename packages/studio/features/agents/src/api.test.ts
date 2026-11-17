@@ -49,6 +49,13 @@ verifies("agents.host", () => {
     expect(told).toBe(1);
   });
 
+  it("rejects creating in a hub that isn't there, as the real host does", async () => {
+    const host = memoryAgentsHost({ hubs: [acme] });
+    await expect(host.create({ name: "Triage", hubId: "ghost" })).rejects.toMatchObject({
+      kind: "not_found",
+    });
+  });
+
   it("stops telling a listener that unsubscribed", async () => {
     const host = memoryAgentsHost({ hubs: [acme] });
     let told = 0;
