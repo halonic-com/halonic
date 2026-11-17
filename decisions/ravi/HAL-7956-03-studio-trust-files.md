@@ -2,6 +2,7 @@
 
 - Approval: the task to build this is HAL-7956, assigned by Liam from HAL-11564; Liam asked for this change in his review of the Studio pull request and approves this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+wNIxQASBTX3ZOkX4DiUqoAQWBb795rTJVLYEEBZKcQ4TYBXz2T4bRI6QoVJRicHaqypSe/DDWRnfNFg4Q3JAw==
 - Task: HAL-7956
 
 ## What changes
