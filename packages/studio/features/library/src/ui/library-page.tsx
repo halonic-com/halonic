@@ -8,7 +8,7 @@ import {
   useToastStore,
 } from "@halonicjs/studio-kit";
 import { errorMessageFor, OverviewPage } from "@halonicjs/studio-shell";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { deleteWords, phoneCanDelete } from "../delete-words.ts";
 import type { LibraryEntry, LibraryItemsHost, LibraryListing } from "../library-items-host.ts";
 import { entryOfRow, type LibraryEntryPlace, libraryOverview } from "../library-overview.ts";

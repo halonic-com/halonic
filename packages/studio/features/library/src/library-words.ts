@@ -73,6 +73,17 @@ export function tabLabel(kind: LibraryItemKind): string {
   return plural.charAt(0).toUpperCase() + plural.slice(1);
 }
 
+/** A phone row's detail (flow-library 8.1): how many there are, "3 skills", "1 source". */
+export function countLine(kind: LibraryItemKind, count: number): string {
+  const noun = {
+    skill: "skill",
+    knowledge: "source",
+    collection: "collection",
+    connector: "connector",
+  }[kind];
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
 /** The one sentence under the title for the tab. */
 export function tabSentence(kind: LibraryItemKind): string {
   return kindWords[kind].sentence;
@@ -102,7 +113,7 @@ export const tryingAgain = "Trying again…";
  * it says where the documents go on the computer and has no button.
  */
 const phoneKnowledgeDescription =
-  "A knowledge source is a folder of documents your agents can search. Put documents in the hub's docs folder on your computer, then give it to an agent under Tools.";
+  "Put documents in the hub's docs folder on your computer, then give it to an agent under Tools.";
 
 /** What {@link overviewWords} needs besides the tab. */
 export interface OverviewWordsOptions {

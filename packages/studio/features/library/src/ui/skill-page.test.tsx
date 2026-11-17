@@ -15,6 +15,23 @@ afterEach(unmountAll);
 const text = "---\nname: Refunds\ndescription: Use for refunds\nlicense: MIT\n---\nBe kind.\n";
 const nobody: ItemUsage = { agents: [], hubs: [], routines: [], collections: [] };
 
+/** The window's save state as the page sees it: it runs the write, and a failed one waits for Try again. */
+function savingStub() {
+  const failed: Array<{ title: string; retry: () => Promise<boolean> }> = [];
+  const save = vi.fn(
+    async ({ title }: { key: string; title: string }, write: () => Promise<void>) => {
+      try {
+        await write();
+        return true;
+      } catch {
+        failed.push({ title, retry: () => save({ key: "", title }, write) });
+        return false;
+      }
+    },
+  );
+  return { save, failed };
+}
+
 function setup(
   source: SkillSource | undefined = { text, files: [] },
   usage: ItemUsage = nobody,
@@ -23,6 +40,7 @@ function setup(
   const write = vi.fn(async () => {});
   const openItem = vi.fn();
   const openPlace = vi.fn();
+  const saving = savingStub();
   const host: SkillHost = {
     read: async () => (missing ? undefined : source),
     write,
@@ -39,10 +57,11 @@ function setup(
       announcer: { announceState: vi.fn() },
       openItem,
       openPlace,
+      saving,
     },
     Sections: () => null,
   } as unknown as ItemViewProps;
-  return { props, write, openItem, openPlace };
+  return { props, write, openItem, openPlace, saving };
 }
 
 async function settled(): Promise<void> {
@@ -51,7 +70,7 @@ async function settled(): Promise<void> {
   });
 }
 
-function button(root: HTMLElement, label: string): HTMLButtonElement {
+function _button(root: HTMLElement, label: string): HTMLButtonElement {
   const found = [...root.querySelectorAll("button")].find((each) => each.textContent === label);
   if (found === undefined) throw new Error(`No button ${label}`);
   return found;
@@ -142,24 +161,26 @@ verifies("library.skill-page", () => {
       expect(write).toHaveBeenCalledOnce();
     });
 
-    it("says a save failed, keeps the draft, and clears the line when Try again saves it", async () => {
-      const { props, write } = setup();
+    it("saves through the window's save state, and a failed save keeps the draft with no box on the page", async () => {
+      const { props, write, saving } = setup();
       const failure = Object.assign(new Error("The disk is full."), { kind: "unavailable" });
       write.mockRejectedValueOnce(failure);
-      vi.spyOn(console, "error").mockImplementation(() => {});
       const root = render(<SkillPage {...props} />);
       await settled();
       const instructions = field(root, "Instructions");
       type(instructions, "Be very kind.");
       await leave(instructions);
-      expect(root.textContent).toContain("Couldn't save the skill");
-      expect(root.textContent).toContain("The disk is full.");
-      expect(console.error).toHaveBeenCalled();
+      expect(saving.save).toHaveBeenCalledWith(
+        { key: "skill/~workspace/refunds", title: "Refunds" },
+        expect.any(Function),
+      );
+      expect(root.textContent).not.toContain("Couldn't save");
       expect(field(root, "Instructions").value).toBe("Be very kind.");
-      await act(async () => button(root, "Try again").click());
+      await act(async () => {
+        await saving.failed[0]?.retry();
+      });
       await settled();
       expect(write).toHaveBeenCalledTimes(2);
-      expect(root.textContent).not.toContain("Couldn't save the skill");
     });
 
     it("keeps the old name with its hint when the name is emptied, and drops the hint on the next edit", async () => {

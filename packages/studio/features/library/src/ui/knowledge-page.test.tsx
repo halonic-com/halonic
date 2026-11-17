@@ -19,6 +19,23 @@ afterEach(unmountAll);
 const text = "id: handbook\nname: Handbook\nsummary: Refund timing.\nprovider: files\n";
 const nobody: ItemUsage = { agents: [], hubs: [], routines: [], collections: [] };
 
+/** The window's save state as the page sees it: it runs the write, and a failed one waits for Try again. */
+function savingStub() {
+  const failed: Array<{ title: string; retry: () => Promise<boolean> }> = [];
+  const save = vi.fn(
+    async ({ title }: { key: string; title: string }, write: () => Promise<void>) => {
+      try {
+        await write();
+        return true;
+      } catch {
+        failed.push({ title, retry: () => save({ key: "", title }, write) });
+        return false;
+      }
+    },
+  );
+  return { save, failed };
+}
+
 function setup(
   source: KnowledgeSource | undefined = { text, source: "Folder docs · 14 documents" },
   usage: ItemUsage = nobody,
@@ -42,6 +59,7 @@ function setup(
   };
   const runCommand = vi.fn(() => true);
   const announceState = vi.fn();
+  const saving = savingStub();
   const props = {
     item: { kind: "knowledge", hub: "~workspace", id: "handbook" },
     context: {
@@ -53,10 +71,11 @@ function setup(
       openItem,
       openPlace,
       runCommand,
+      saving,
     },
     Sections: () => null,
   } as unknown as ItemViewProps;
-  return { props, write, openItem, openPlace, runCommand, announceState };
+  return { props, write, openItem, openPlace, runCommand, announceState, saving };
 }
 
 async function settled(): Promise<void> {
@@ -138,23 +157,25 @@ verifies("library.knowledge-page", () => {
       expect(radio(root, auto).checked).toBe(true);
     });
 
-    it("says a save failed and saves the change again on Try again", async () => {
-      const { props, write } = setup();
+    it("saves through the window's save state, and a failed save has no box on the page", async () => {
+      const { props, write, saving } = setup();
       write.mockRejectedValueOnce(
         Object.assign(new Error("The disk is full."), { kind: "unavailable" }),
       );
-      vi.spyOn(console, "error").mockImplementation(() => {});
       const root = render(<KnowledgePage {...props} />);
       await settled();
       await act(async () => radio(root, auto).click());
       await settled();
-      expect(root.textContent).toContain("Couldn't save the knowledge source");
-      expect(root.textContent).toContain("The disk is full.");
-      expect(console.error).toHaveBeenCalled();
-      await act(async () => button(root, "Try again").click());
+      expect(saving.save).toHaveBeenCalledWith(
+        { key: "knowledge/~workspace/handbook", title: "Handbook" },
+        expect.any(Function),
+      );
+      expect(root.textContent).not.toContain("Couldn't save");
+      await act(async () => {
+        await saving.failed[0]?.retry();
+      });
       await settled();
       expect(write).toHaveBeenCalledTimes(2);
-      expect(root.textContent).not.toContain("Couldn't save the knowledge source");
       expect(radio(root, auto).checked).toBe(true);
     });
 
@@ -170,7 +191,7 @@ verifies("library.knowledge-page", () => {
       await act(async () => button(root, "Summarize").click());
       await settled();
       expect(root.textContent).toContain(
-        "Couldn't summarize Handbook: Halonic on your computer isn't answering.",
+        "Couldn't summarize Handbook: the engine isn't answering. It may still be starting.",
       );
     });
 
@@ -273,22 +294,21 @@ verifies("library.knowledge-summarize", () => {
     });
 
     it("closes the draft when Try again saves a summary that failed to save", async () => {
-      const { props, write } = setup();
+      const { props, write, saving } = setup();
       write.mockRejectedValueOnce(new Error("The disk is full."));
-      vi.spyOn(console, "error").mockImplementation(() => {});
       const root = render(<KnowledgePage {...props} />);
       await settled();
       await act(async () => button(root, "Summarize").click());
       await settled();
       await act(async () => button(root, "Use this summary").click());
       await settled();
-      expect(root.textContent).toContain("Couldn't save the knowledge source");
       expect(root.querySelector("textarea")).not.toBeNull();
-      await act(async () => button(root, "Try again").click());
+      await act(async () => {
+        await saving.failed[0]?.retry();
+      });
       await settled();
       expect(write).toHaveBeenCalledTimes(2);
       expect(root.querySelector("textarea")).toBeNull();
-      expect(root.textContent).not.toContain("Couldn't save the knowledge source");
       expect(root.textContent).toContain("Draft of the handbook.");
     });
 
@@ -330,7 +350,7 @@ verifies("library.knowledge-summarize", () => {
     it.each([
       [
         "host-unreachable",
-        "Couldn't summarize Handbook: Halonic on your computer isn't answering.",
+        "Couldn't summarize Handbook: the engine isn't answering. It may still be starting.",
       ],
       ["too-large", "Couldn't summarize Handbook: it has more text than one summary can take."],
     ] as const)("gives a reason when Summarize ends with %s", async (kind, line) => {

@@ -3,6 +3,7 @@ import type { BadgeRegistry } from "./badges/badge-registry.ts";
 import type { EngineWords } from "./engine/engine-words.ts";
 import type { SidebarPlace } from "./points/frame.ts";
 import type { ItemRef, OpenItemOptions } from "./points/item-kinds.ts";
+import type { SaveState } from "./save/save-state.ts";
 import type { ServiceLookup } from "./service-catalog.ts";
 
 /**
@@ -81,6 +82,12 @@ export interface WorkspaceContext {
    * which has no tabs, have none.
    */
   readonly activeItem?: ActiveItemSource;
+  /**
+   * The window's save state, so a page that saves an item itself shows "Saving…" and a failed
+   * write's "Couldn't save · Try again" in the status bar, and its toast, as files do. The window
+   * gives it to the views it draws; a context built without a window has none.
+   */
+  readonly saving?: Pick<SaveState, "save">;
 }
 
 /** The item the active window tab shows, and a way to hear it change. */

@@ -199,8 +199,9 @@ verifies("library.library-open-as-file", () => {
     );
     await settled();
     await pick(page, "More actions for Tone", "Open as file");
-    expect(document.body.textContent).toContain("Couldn't load the skill");
-    expect(document.body.textContent).toContain("The skill tone isn't in this workspace any more.");
+    expect(document.body.textContent).toContain("Couldn't load this skill");
+    expect(document.body.textContent).toContain("This skill isn't in this workspace any more.");
+    expect(document.body.textContent).not.toContain("The skill tone");
     const retry = [...document.querySelectorAll<HTMLElement>("button")].find(
       (each) => each.textContent === "Try again",
     );

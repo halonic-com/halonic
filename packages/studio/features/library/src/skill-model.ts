@@ -6,8 +6,8 @@ import {
   type SkillParts,
   type SkillTextError,
 } from "@halonicjs/app";
-import { errorReasonFor } from "@halonicjs/studio-shell";
 import { readFailureReason } from "./read-failure.ts";
+import { type SaveItem, saveWithoutWindow } from "./saving.ts";
 import type { SkillFile, SkillHost, SkillRef } from "./skill-host.ts";
 import { skillWords } from "./skill-words.ts";
 
@@ -30,8 +30,6 @@ export interface SkillState {
   readonly usage?: ItemUsage;
   /** The fields whose last edit was emptied and refused; each hint stays until that field's next edit. */
   readonly kept: readonly SkillField[];
-  /** A save failed and its draft is still unsaved; the next successful save of that part clears it. */
-  readonly saveFailure: { readonly reason: string } | undefined;
 }
 
 /** The field a refused edit emptied; `undefined` for a file that can't be edited at all. */
@@ -55,9 +53,7 @@ export class SkillModel {
     unreadable: false,
     files: [],
     kept: [],
-    saveFailure: undefined,
   };
-  private failedParts = new Set<keyof SkillChange>();
   private text = "";
   private readonly listeners = new Set<() => void>();
   private stopHost: (() => void) | undefined;
@@ -65,10 +61,13 @@ export class SkillModel {
 
   private readonly host: SkillHost;
   private readonly skill: SkillRef;
+  private readonly saving: SaveItem | undefined;
 
-  constructor(host: SkillHost, skill: SkillRef) {
+  /** `saving` writes through the window's save state, which shows a failed save; without it a failed save only logs. */
+  constructor(host: SkillHost, skill: SkillRef, saving?: SaveItem) {
     this.host = host;
     this.skill = skill;
+    this.saving = saving;
   }
 
   /** Calls `listener` after each change of `state`; returns the way to stop. The first listener starts watching the host. */
@@ -117,7 +116,6 @@ export class SkillModel {
         files: source.files,
         usage,
         kept: this.state.kept,
-        saveFailure: this.state.saveFailure,
         ...(read.ok ? { parts: read.value } : {}),
       });
     } catch (error) {
@@ -149,34 +147,23 @@ export class SkillModel {
       }
       return refused !== undefined;
     }
-    const part = Object.keys(change)[0] as keyof SkillChange;
-    if (edited.value === this.text) {
-      // Back to what is saved: that part has nothing left to lose.
-      if (this.failedParts.delete(part) && this.failedParts.size === 0) {
-        this.set({ ...this.state, saveFailure: undefined });
-      }
-      return true;
-    }
-    try {
+    if (edited.value === this.text) return true;
+    const write = async () => {
       await this.host.write(this.skill, edited.value);
-    } catch (error) {
-      console.error("Couldn't save the skill.", error);
-      this.failedParts.add(part);
-      this.set({ ...this.state, saveFailure: { reason: errorReasonFor(error) } });
-      return false;
-    }
-    this.failedParts.delete(part);
-    // What was written is the text now, even if the refresh below fails or is late: the next
-    // leave edits on top of it. An older read still in flight no longer counts.
-    this.latest++;
-    this.text = edited.value;
-    const read = readSkillText(edited.value);
-    this.set({
-      ...this.state,
-      unreadable: !read.ok,
-      saveFailure: this.failedParts.size === 0 ? undefined : this.state.saveFailure,
-      ...(read.ok ? { parts: read.value } : {}),
-    });
+      // What was written is the text now, even if the refresh below fails or is late: the next
+      // leave edits on top of it. An older read still in flight no longer counts.
+      this.latest++;
+      this.text = edited.value;
+      const read = readSkillText(edited.value);
+      this.set({
+        ...this.state,
+        unreadable: !read.ok,
+        ...(read.ok ? { parts: read.value } : {}),
+      });
+    };
+    const written = await (this.saving?.(this.state.parts?.name || this.skill.id, write) ??
+      saveWithoutWindow(write, "skill"));
+    if (!written) return false;
     await this.refresh();
     return true;
   }

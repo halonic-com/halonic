@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { CollectionRef } from "../collection-host.ts";
 import { requestConnectorTitleFocus } from "../connector-focus-request.ts";
 import { itemFileRef } from "../item-file.ts";
-import { LibraryItemsHostService } from "../library-items-host.ts";
+import { type LibraryItemsHost, LibraryItemsHostService } from "../library-items-host.ts";
 import type { LibraryEntryPlace } from "../library-overview.ts";
 import { LibraryTabMemoryService } from "../library-tab-memory.ts";
 import { takeLibraryTabRequests } from "../library-tab-request.ts";
@@ -54,6 +54,38 @@ function openItemAsFile(
   return { onOpenAsFile: (kind, place) => openItem(itemFileRef(kind, place)) };
 }
 
+/** How many items of each kind the open workspace has, read while the phone's list of kinds shows; a kind that can't be read has no count. */
+function useKindCounts(
+  host: LibraryItemsHost | undefined,
+  active: boolean,
+): Partial<Record<LibraryItemKind, number>> {
+  const [counts, setCounts] = useState<Partial<Record<LibraryItemKind, number>>>({});
+  useEffect(() => {
+    if (host === undefined || !active) return undefined;
+    let current = true;
+    const read = () => {
+      for (const kind of libraryKinds) {
+        host
+          .list(kind)
+          .then((listing) => {
+            const total =
+              listing.hubs.reduce((sum, hub) => sum + hub.entries.length, 0) +
+              (listing.shared?.entries.length ?? 0);
+            if (current) setCounts((before) => ({ ...before, [kind]: total }));
+          })
+          .catch(() => undefined);
+      }
+    };
+    read();
+    const stop = host.subscribe(read);
+    return () => {
+      current = false;
+      stop();
+    };
+  }, [host, active]);
+  return counts;
+}
+
 /**
  * The Library place's page (see {@link LibraryKindView} for the tabs): on a phone, the list of
  * kinds at the place's top and a kind's list as a page pushed above it (flow-library 8).
@@ -71,11 +103,13 @@ export function LibraryPlace(props: PlaceViewProps) {
         : undefined,
     [onList, openPlaceList],
   );
+  const counts = useKindCounts(context.services.find(LibraryItemsHostService), onList);
   if (onList) {
     const plugins = context.settingsSections?.find(({ id }) => id === "plugins");
     const { openSettings } = context;
     return (
       <LibraryKindList
+        counts={counts}
         onOpenKind={(kind) => openPlaceList?.("library", kind, tabLabel(kind))}
         {...(plugins === undefined || openSettings === undefined
           ? {}

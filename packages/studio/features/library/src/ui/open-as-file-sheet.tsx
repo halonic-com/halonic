@@ -46,7 +46,9 @@ export function OpenAsFileSheet({ host, context, kind, place, onClose }: OpenAsF
         mine === attempt.current &&
         setRead({
           state: "failed",
-          reason: readFailureReason(error, openAsFileWords.couldntLoad(kind)),
+          reason: readFailureReason(error, openAsFileWords.couldntLoad(kind, id), {
+            kindName: openAsFileWords.kindName(kind),
+          }),
         }),
     );
   }, [host, kind, hub, id]);
@@ -76,7 +78,7 @@ export function OpenAsFileSheet({ host, context, kind, place, onClose }: OpenAsF
       <SidePanel
         title={name}
         onClose={onClose}
-        {...(read.state === "loading" ? { loading: openAsFileWords.loading(kind) } : {})}
+        {...(read.state === "loading" ? { loading: openAsFileWords.loading(kind, place.id) } : {})}
       >
         {read.state === "loaded" && (
           <pre className="text-code font-mono whitespace-pre-wrap text-fg wrap-anywhere">
@@ -85,7 +87,7 @@ export function OpenAsFileSheet({ host, context, kind, place, onClose }: OpenAsF
         )}
         {read.state === "failed" && (
           <LoadFailed
-            title={openAsFileWords.couldntLoad(kind)}
+            title={openAsFileWords.couldntLoad(kind, place.id)}
             reason={read.reason}
             retryLabel={openAsFileWords.tryAgain}
             context={context}
