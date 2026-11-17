@@ -1,4 +1,4 @@
-import { Input } from "@halonicjs/studio-kit";
+import { Field, Input } from "@halonicjs/studio-kit";
 import { useRef, useState } from "react";
 import { filesWords } from "../files-words.ts";
 
@@ -8,9 +8,10 @@ export interface RenameRowProps {
   readonly name: string;
   /**
    * Applies the typed name. Resolves to the sentence that says why not, which stays under the row
-   * while the name is edited; `blur` says the focus left the row rather than Enter was pressed.
+   * while the name is edited; `left` says whether the focus has left the row, which can happen
+   * while the host works, so read it when the answer comes.
    */
-  readonly onApply: (name: string, blur: boolean) => Promise<string | undefined>;
+  readonly onApply: (name: string, left: () => boolean) => Promise<string | undefined>;
   /** Escape, or a name left as it was: the row shows the name again. */
   readonly onCancel: (blur: boolean) => void;
 }
@@ -31,17 +32,23 @@ export function RenameRow({ name, onApply, onCancel }: RenameRowProps) {
   const [problem, setProblem] = useState<string>();
   const [busy, setBusy] = useState(false);
   const settled = useRef(false);
+  // The focus left while Enter's rename was still running: a refusal then closes the field.
+  const left = useRef(false);
 
   async function apply(blur: boolean) {
-    if (settled.current || busy) return;
+    if (settled.current) return;
+    if (busy) {
+      if (blur) left.current = true;
+      return;
+    }
     if (value === name) {
       settled.current = true;
       return onCancel(blur);
     }
     setBusy(true);
-    const refused = await onApply(value, blur);
+    const refused = await onApply(value, () => blur || left.current);
     setBusy(false);
-    if (refused === undefined || blur) {
+    if (refused === undefined || blur || left.current) {
       settled.current = true;
       if (refused !== undefined) onCancel(true);
       return;
@@ -67,24 +74,24 @@ export function RenameRow({ name, onApply, onCancel }: RenameRowProps) {
         }
       }}
     >
-      <Input
-        size="sm"
-        aria-label={filesWords.renameLabel(name)}
-        autoFocus
-        readOnly={busy}
-        value={value}
-        onChange={(event) => {
-          setValue(event.target.value);
-          setProblem(undefined);
-        }}
-        onFocus={(event) => event.target.setSelectionRange(0, stemEnd(event.target.value))}
-        onBlur={() => void apply(true)}
-      />
-      {problem !== undefined && (
-        <span role="alert" className="block py-0.5 text-xs text-danger">
-          {problem}
-        </span>
-      )}
+      {/* The Field links the sentence to the field (aria-invalid, aria-describedby); the live
+          region says it once when it appears. */}
+      <div aria-live="assertive" aria-atomic="false">
+        <Field label={filesWords.renameLabel(name)} hideLabel error={problem ?? null}>
+          <Input
+            size="sm"
+            autoFocus
+            readOnly={busy}
+            value={value}
+            onChange={(event) => {
+              setValue(event.target.value);
+              setProblem(undefined);
+            }}
+            onFocus={(event) => event.target.setSelectionRange(0, stemEnd(event.target.value))}
+            onBlur={() => void apply(true)}
+          />
+        </Field>
+      </div>
     </span>
   );
 }

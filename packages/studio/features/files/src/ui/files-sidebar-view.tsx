@@ -124,12 +124,12 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   const clearReveal = useCallback(() => setReveal(undefined), []);
 
   const applyRename = useCallback(
-    async (from: string, name: string, blur: boolean) => {
+    async (from: string, name: string, left: () => boolean) => {
       const refused = await renameFile(host, toasts, from, name, {
         // A file that was open stays open under its new name; a closed one is not opened.
         moved: (to) => {
           setRenaming(undefined);
-          setReveal({ path: to, focus: !blur });
+          setReveal({ path: to, focus: !left() });
           if (activeNow.current === from) context.openItem?.(fileItem(to));
         },
         movedBack: (back) => {
@@ -137,7 +137,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
           if (activeNow.current === renamedPath(from, name)) context.openItem?.(fileItem(back));
         },
       });
-      if (refused !== undefined && blur) {
+      if (refused !== undefined && left()) {
         toasts?.show({ tone: "danger", title: refused });
         setRenaming(undefined);
         setReveal({ path: from, focus: false });
@@ -217,7 +217,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
           : {
               renaming: {
                 path: renaming,
-                onApply: (name: string, blur: boolean) => applyRename(renaming, name, blur),
+                onApply: (name: string, left: () => boolean) => applyRename(renaming, name, left),
                 onCancel: (blur: boolean) => {
                   setRenaming(undefined);
                   setReveal({ path: renaming, focus: !blur });
