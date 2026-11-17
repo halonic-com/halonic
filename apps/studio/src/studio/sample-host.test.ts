@@ -61,7 +61,7 @@ verifies("studio.try-sample", () => {
 
     expect(await host.create([])).toEqual({
       kind: "cant",
-      folder: "/docs/Documents",
+      folder: "~/Documents",
       reason: "Halonic keeps its own files there",
     });
     expect(await store.list()).toEqual([]);

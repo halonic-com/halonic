@@ -71,10 +71,37 @@ verifies("first-run.sample-card", () => {
       <SampleSteps progress={progressWith(["start"])} openers={{ ...noOpeners, start }} />,
     );
     expect(root.querySelector("p")?.textContent).toBe("1 of 3 done");
-    expect(root.querySelector(".sr-only")?.textContent).toBe("done");
     const first = root.querySelector<HTMLElement>('[role="gridcell"]');
+    expect(first?.getAttribute("aria-label")).toBe("Step 1 of 3: Start a support request, done");
+    const rows = root.querySelectorAll('[role="gridcell"]');
+    expect(rows[1]?.getAttribute("aria-label")).toBe(
+      "Step 2 of 3: Approve or reject the reply, not done",
+    );
     act(() => first?.click());
     expect(start).toHaveBeenCalledOnce();
+  });
+
+  it("says 'Try the sample: 2 of 3 done.' when a step finishes, and not for the count it opened with", () => {
+    const listeners = new Set<() => void>();
+    let state: SampleProgressState = { done: new Set(["start"]), finishedRun: undefined };
+    const progress = {
+      get state() {
+        return state;
+      },
+      subscribe: (listener: () => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      recordFinishedShown: () => {},
+    } as unknown as SampleProgress;
+    const announce = vi.fn();
+    render(<SampleSteps progress={progress} openers={noOpeners} announce={announce} />);
+    expect(announce).not.toHaveBeenCalled();
+    state = { done: new Set(["start", "decide"]), finishedRun: undefined };
+    act(() => {
+      for (const listener of listeners) listener();
+    });
+    expect(announce).toHaveBeenCalledExactlyOnceWith("Try the sample: 2 of 3 done.");
   });
 
   it("says 'You've seen it work.' once all three are done, with the count", () => {

@@ -212,7 +212,8 @@ verifies("studio.engine-service", () => {
     describe("with a model provider", () => {
       const providers = {
         "providers/mock.yaml": "id: mock\ntype: mock\n",
-        "providers/anthropic.yaml": "id: anthropic\ntype: anthropic\nsecret: anthropic-key\n",
+        "providers/anthropic.yaml":
+          "id: anthropic\nname: Anthropic\ntype: anthropic\nsecret: anthropic-key\n",
         "providers/ollama.yaml": "id: ollama\ntype: ollama\nlocal: true\n",
         "models.yaml": [
           "aliases:",
@@ -224,9 +225,9 @@ verifies("studio.engine-service", () => {
       };
 
       it.each([
-        ["an alias of a real provider", "model: smart\n", "anthropic"],
+        ["an alias of a real provider", "model: smart\n", "Anthropic"],
         ["a provider/model name", "model: ollama/qwen3\n", "ollama"],
-        ["a mock alias that falls back to a real provider", "model: steady\n", "anthropic"],
+        ["a mock alias that falls back to a real provider", "model: steady\n", "Anthropic"],
       ])("refuses %s as `unavailable`, naming the agent and the provider", async (_, model, id) => {
         const service = serviceOn(fakeShell(), acmeFiles({ writer: model }, providers));
 
@@ -245,7 +246,7 @@ verifies("studio.engine-service", () => {
         const refusal = await service.check(reply).catch((error: unknown) => error);
 
         expect(refusal).toMatchObject({ kind: "unavailable" });
-        expect((refusal as Error).message).toContain(`"anthropic"`);
+        expect((refusal as Error).message).toContain(`"Anthropic"`);
       });
 
       it("passes an agent whose methods use the mock model too", async () => {

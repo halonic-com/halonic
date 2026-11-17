@@ -1,5 +1,5 @@
 import {
-  cantCreateSampleLine,
+  focusPageHeading,
   isInWorkspaceContent,
   type KeyboardPlatform,
   type ResourceWatch,
@@ -9,7 +9,7 @@ import {
   WelcomeWindow,
   type WindowActions,
 } from "@halonicjs/studio-shell";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { openWorkspaceCommand } from "../feature.ts";
 import type { NewWorkspaceAsks } from "../new-workspace/new-workspace-asks.ts";
 import {
@@ -19,7 +19,7 @@ import {
 import { createdLine } from "../new-workspace/new-workspace-text.ts";
 import { SampleChip } from "../sample/sample-chip.tsx";
 import type { CreatedSample, SampleHost } from "../sample/sample-host.ts";
-import { freshCopyLine } from "../sample/sample-text.ts";
+import { freshCopyFailedLine, freshCopyLine, freshCopyTryAgain } from "../sample/sample-text.ts";
 import { WorkspaceTrustBadge } from "../trust/workspace-trust-badge.tsx";
 import { CloseWorkspaceDialog } from "./close-workspace-dialog.tsx";
 import { workspaceMenu } from "./workspace-menu.ts";
@@ -90,6 +90,7 @@ export function WorkspaceWindow({
   ): Promise<void> => {
     if (made.kind === "existing") {
       await switcher.fromMenu(() => switcher.openLocation(made.folder));
+      focusPageHeading();
       return;
     }
     const toast = toastOf(
@@ -98,6 +99,8 @@ export function WorkspaceWindow({
     );
     // Marked as the sample while it opens, so Home's first frame already knows it is one.
     await switcher.fromMenu(() => switcher.openLocation(made.folder, toast, true));
+    // The Welcome screen the focus was on is gone; Home's title is where a person starts (A3).
+    focusPageHeading();
   };
   const knownSamples = () =>
     switcher.recent.list().flatMap((each) => (each.sample === true ? [each.location] : []));
@@ -110,16 +113,29 @@ export function WorkspaceWindow({
           await openSample(made, createdLine);
           return undefined;
         };
+  // A second press while a copy is being written would write a second one.
+  const freshCopyRunning = useRef(false);
   const freshCopy =
     sample === undefined
       ? undefined
-      : async (): Promise<void> => {
-          const made = await sample.create([]);
-          if (made.kind === "cant") {
-            shell.toasts.show({ tone: "danger", title: cantCreateSampleLine(made) });
-            return;
+      : async function copyFresh(): Promise<void> {
+          if (freshCopyRunning.current) return;
+          freshCopyRunning.current = true;
+          try {
+            const made = await sample.create([]);
+            if (made.kind === "cant") {
+              shell.toasts.show({
+                tone: "danger",
+                title: freshCopyFailedLine(made.reason),
+                sticky: true,
+                action: { label: freshCopyTryAgain, onClick: () => void copyFresh() },
+              });
+              return;
+            }
+            await openSample(made, freshCopyLine);
+          } finally {
+            freshCopyRunning.current = false;
           }
-          await openSample(made, freshCopyLine);
         };
   const shown = useSyncExternalStore(
     (onChange) => open.subscribe(onChange),

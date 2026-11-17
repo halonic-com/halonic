@@ -1,6 +1,6 @@
 import { Button, List, type ListRow, TickIcon } from "@halonicjs/studio-kit";
 import { type HomeCardProps, HomeSectionEmpty } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { FirstRunService, type SampleStepId, sampleSteps } from "../api.ts";
 import type { SampleProgress } from "../sample-progress.ts";
 import { sampleCardWords, sampleStepWords } from "../sample-text.ts";
@@ -15,6 +15,7 @@ export function SampleCard({ context }: HomeCardProps) {
       progress={progress}
       openers={stepOpeners(context, progress)}
       openTests={testsOpener(context)}
+      announce={(line) => context.announcer.announce(line)}
     />
   );
 }
@@ -26,6 +27,8 @@ export interface SampleStepsProps {
   readonly openers: StepOpeners;
   /** Opens the support workflow's Tests in a hub; without it, or before a run has finished, the finished card has no Run its tests. */
   readonly openTests?: ((hub: string) => void) | undefined;
+  /** Says a line through the shell's announcer; the card says "Try the sample: 2 of 3 done." when a step finishes. */
+  readonly announce?: (line: string) => void;
 }
 
 /**
@@ -34,10 +37,18 @@ export interface SampleStepsProps {
  * and the card is gone from the next visit on. Steps can be done in any order and by
  * any route: the card only shows what happened.
  */
-export function SampleSteps({ progress, openers, openTests }: SampleStepsProps) {
+export function SampleSteps({ progress, openers, openTests, announce }: SampleStepsProps) {
   const subscribe = useCallback((listener: () => void) => progress.subscribe(listener), [progress]);
   const { done, finishedRun } = useSyncExternalStore(subscribe, () => progress.state);
   const finished = done.size === sampleSteps.length;
+  // A step finished while the card is open is said once; the count it opened with is not news.
+  const announcedCount = useRef(done.size);
+  useEffect(() => {
+    if (done.size > announcedCount.current) {
+      announce?.(sampleCardWords.progressAnnouncement(done.size));
+    }
+    announcedCount.current = done.size;
+  }, [done.size, announce]);
   useEffect(() => {
     if (finished) progress.recordFinishedShown();
   }, [finished, progress]);
@@ -65,11 +76,9 @@ export function SampleSteps({ progress, openers, openTests }: SampleStepsProps) 
   const rows: ListRow<SampleStepId>[] = sampleSteps.map((step, index) => ({
     id: step,
     title: sampleStepWords[step].title,
+    label: sampleCardWords.stepLabel(index + 1, sampleStepWords[step].title, done.has(step)),
     meta: sampleStepWords[step].hint,
     icon: done.has(step) ? <TickIcon /> : <span aria-hidden="true">{index + 1}</span>,
-    ...(done.has(step)
-      ? { trailing: <span className="sr-only">{sampleCardWords.doneNote}</span> }
-      : {}),
   }));
   return (
     <>

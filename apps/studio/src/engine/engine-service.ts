@@ -113,7 +113,7 @@ export class EngineService {
       if (agent.connectors.length > 0) {
         throw unavailable(agent.name, "uses a connector");
       }
-      const provider = realProviderOf(workspace, run.hubId, agent.id);
+      const provider = realProviderNameOf(workspace, run.hubId, agent.id);
       if (provider !== undefined) {
         throw unavailable(
           agent.name,
@@ -248,12 +248,12 @@ function refusalOf(refusal: unknown): { kind?: string; message?: string; pid?: n
 }
 
 /**
- * The id of the first provider, other than the mock model, that a call of the agent can reach
+ * The name (or else the id) of the first provider, other than the mock model, that a call of the agent can reach
  * through its model, the model of any of its methods, or the fallbacks of either's alias;
  * `undefined` when it reaches none. A model the workspace doesn't define is left to the engine,
  * which refuses it with its own reason.
  */
-function realProviderOf(
+function realProviderNameOf(
   workspace: LoadedWorkspace,
   hubId: string,
   agentId: string,
@@ -271,7 +271,7 @@ function realProviderOf(
         const file = definitions.providers[provider];
         return file !== undefined && file.type !== "mock";
       });
-    if (id !== undefined) return id;
+    if (id !== undefined) return definitions.providers[id]?.name ?? id;
   }
   return undefined;
 }

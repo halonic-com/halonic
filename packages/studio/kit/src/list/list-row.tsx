@@ -232,6 +232,7 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
         // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a cell of the grid above
         role="gridcell"
         {...grid.cell(row.id, mainColumn)}
+        aria-label={shared.columns === undefined ? row.label : undefined}
         aria-describedby={isUnavailable ? reasonId : undefined}
         className={`p-0 ${cells.main} ${isUnavailable ? "cursor-not-allowed" : "cursor-pointer"}`}
         onClick={onClick}

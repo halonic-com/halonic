@@ -13,6 +13,8 @@ export interface WelcomeSampleProblem {
 export const trySampleWords = {
   action: "Try the Acme sample",
   creating: "Creating the sample…",
+  /** What a screen reader hears while it is busy (microcopy 19); the sample always goes in Documents. */
+  creatingName: "Creating the Acme sample in ~/Documents…",
   cost: "Runs on the built-in test model, with scripted replies. No key, no cost.",
 } as const;
 
@@ -49,6 +51,7 @@ export function TrySample({ quiet, busy, onPress }: TrySampleProps) {
         variant={quiet ? "ghost" : "secondary"}
         busy={busy}
         busyLabel={trySampleWords.creating}
+        busyName={trySampleWords.creatingName}
         {...(quiet ? {} : { "aria-describedby": costId })}
         onClick={onPress}
       >

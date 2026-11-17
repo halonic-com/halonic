@@ -12,3 +12,11 @@ export function freshCopyLine(name: string, trustFailure?: string): string {
     ? sentence
     : `${sentence} Couldn't save trust: ${trustFailure.replace(/\.$/, "")}.`;
 }
+
+/** The toast when a fresh copy couldn't be written; the reason ends the line, with a full stop (microcopy 5). */
+export function freshCopyFailedLine(reason: string): string {
+  return `Couldn't create a fresh copy of the sample: ${reason.replace(/\.$/, "")}.`;
+}
+
+/** The toast's button: the same **Try again** every failed action has. */
+export const freshCopyTryAgain = "Try again";

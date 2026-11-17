@@ -7,8 +7,11 @@ export const sampleCardWords = {
   finished: "You've seen it work.",
   runTests: "Run its tests",
   startOwnWorkspace: "Start your own workspace",
-  /** Read after a done step's title, as the mark itself is hidden from screen readers. */
-  doneNote: "done",
+  /** What a screen reader hears for a step's row (microcopy 19.2): "Step 2 of 3: See what it did, not done". */
+  stepLabel: (position: number, title: string, done: boolean) =>
+    `Step ${position} of 3: ${title}, ${done ? "done" : "not done"}`,
+  /** Said when a step finishes while the card is open (microcopy 19.2). */
+  progressAnnouncement: (done: number) => `Try the sample: ${done} of 3 done.`,
 } as const;
 
 /** Each step's title and the hint under it. */
