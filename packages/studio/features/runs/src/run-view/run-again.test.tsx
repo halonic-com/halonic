@@ -48,6 +48,10 @@ async function open(
 const button = (root: HTMLElement, name: string) =>
   [...root.querySelectorAll("button")].find((one) => one.textContent === name);
 
+// The failed run's banner has its own Copy details; Run again's line may add one.
+const copyDetailsCount = (root: HTMLElement) =>
+  [...root.querySelectorAll("button")].filter((one) => one.textContent === "Copy details").length;
+
 const failed = summaryWith({
   id: "run_a_7k2m9p",
   status: "failed",
@@ -95,6 +99,7 @@ verifies("runs.run-view.run-again", () => {
     });
     const announce = vi.fn();
     const root = await open(failed, { startRun }, vi.fn(), announce, engineWords.phone);
+    const before = copyDetailsCount(root);
     await act(async () => button(root, "Run again")?.click());
     expect(root.textContent).toContain(
       "Couldn't start the run: Halonic on your computer isn't answering.",
@@ -102,7 +107,7 @@ verifies("runs.run-view.run-again", () => {
     expect(announce).toHaveBeenCalledExactlyOnceWith(
       "Couldn't start the run: Halonic on your computer isn't answering.",
     );
-    expect(button(root, "Copy details")).toBeUndefined();
+    expect(copyDetailsCount(root)).toBe(before);
   });
 
   it("gives an unexplained failure the can't-explain line with Copy details", async () => {
@@ -110,12 +115,13 @@ verifies("runs.run-view.run-again", () => {
       throw new Error("no answer");
     });
     const root = await open(failed, { startRun }, vi.fn(), undefined, engineWords.phone);
+    const before = copyDetailsCount(root);
     await act(async () => button(root, "Run again")?.click());
     expect(root.textContent).toContain(
       "Couldn't start the run: Halonic ran into a problem it can't explain yet.",
     );
     expect(root.textContent).not.toContain("isn't answering");
-    expect(button(root, "Copy details")).toBeDefined();
+    expect(copyDetailsCount(root)).toBe(before + 1);
   });
 
   it("says each failed start once", async () => {
