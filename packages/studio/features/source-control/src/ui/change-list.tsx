@@ -1,21 +1,24 @@
 import { Button, List, ListHeading, PlaceIcon, SettingsIcon } from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef } from "react";
 import type { ChangeItem } from "../change-items.ts";
 import { groupIntoItems } from "../change-items.ts";
 import type { ChangedFile, ChangesList } from "../changes-list.ts";
 import { itemWords, mergeWords, versionWords } from "../changes-words.ts";
-import { ItemChanges } from "./item-changes.tsx";
+import type { ReturnFocus } from "./use-open-item.ts";
 
 /** Props for {@link ChangeList}. */
 export interface ChangeListProps {
   readonly list: ChangesList;
-  readonly files: readonly ChangedFile[];
-  /** Whether the developer view is on: it adds Discard and "Discard this part". */
-  readonly developer?: boolean;
+  /** The items to show, in the order {@link orderItems} gives. */
+  readonly items: readonly ChangeItem[];
+  /** Opens the item's What changed page. */
+  readonly onOpen: (id: string) => void;
+  /** Where focus goes when the list comes back from a page; `undefined` leaves it alone. */
+  readonly returnFocus?: ReturnFocus | undefined;
+  /** Called once focus is placed from `returnFocus`, so the caller can forget it. */
+  readonly onFocusPlaced?: (() => void) | undefined;
   /** On a phone Create version is a full-width touch button under the heading and count (2.12). */
   readonly phone?: boolean;
-  /** Moves focus to the page's heading, for when the last item goes and the whole list with it. */
-  readonly focusHeading?: () => void;
 }
 
 /** Whether a kind places the entry; otherwise it is one of the "Other files". */
@@ -36,58 +39,43 @@ function rowOf(item: ChangeItem) {
   return { id: item.id, title: item.name, meta: item.sentence, icon: iconOf(item) };
 }
 
+/** The order the rows are drawn in: items, then the files no kind places. */
+export function orderItems(files: readonly ChangedFile[]): ChangeItem[] {
+  const grouped = groupIntoItems(files);
+  return [...grouped.filter(isItem), ...grouped.filter((item) => !isItem(item))];
+}
+
 /**
  * What changed, one row for each item (checklist part 2, 2.2), under "Since your last version" with
  * its count and Create version; files no kind places are under "Other files". The rows are the
- * kit List: one Tab stop, ↑ ↓ move, Enter opens the item, which shows what changed in it with
- * Undo this change. When an open item is gone, as after Undo these changes, focus moves to the row
- * that took its place, or else to the heading.
+ * kit List: one Tab stop, ↑ ↓ move, Enter opens the item's What changed page. When the list comes
+ * back from that page, focus goes to the row it was opened from, or the one that took its place.
  */
 export function ChangeList({
   list,
-  files,
-  developer = false,
+  items,
+  onOpen,
+  returnFocus,
+  onFocusPlaced,
   phone = false,
-  focusHeading,
 }: ChangeListProps) {
   const waitingId = useId();
   const waiting = list.merging;
-  const grouped = groupIntoItems(files);
-  // The order the rows are drawn in: items, then the files no kind places.
-  const items = [...grouped.filter(isItem), ...grouped.filter((item) => !isItem(item))];
-  const [openId, setOpenId] = useState<string>();
-  const panelHeading = useRef<HTMLHeadingElement>(null);
-  const region = useRef<HTMLDivElement>(null);
-  const openIndex = useRef(-1);
-  const focusInside = useRef(false);
-  const heading = useRef(focusHeading);
-  heading.current = focusHeading;
-  // With the last item gone the list goes too; focus it had inside goes to the page's heading.
-  useEffect(
-    () => () => {
-      if (focusInside.current) heading.current?.();
-    },
-    [],
-  );
+  const region = useRef<HTMLElement>(null);
+  const placeFocus = useRef(returnFocus);
+  const focusPlaced = useRef(onFocusPlaced);
+  focusPlaced.current = onFocusPlaced;
   const latestItems = useRef(items);
   latestItems.current = items;
-  const open = items.find((item) => item.id === openId);
-  if (open !== undefined) openIndex.current = items.indexOf(open);
-  // `items` is a new array on every render; the effect below follows the open item being there.
-  const isOpenPresent = open !== undefined;
-
   useEffect(() => {
-    const focusLost = !document.activeElement || document.activeElement === document.body;
-    if (isOpenPresent) {
-      // The last change an Undo button belonged to is gone, and the button with it.
-      if (focusLost) panelHeading.current?.focus();
-      return;
-    }
-    if (openId === undefined) return;
-    // The open item is gone, as after Undo these changes: the row that took its place, else the heading.
-    setOpenId(undefined);
-    if (focusLost) focusRowOrHeading(region.current, latestItems.current[openIndex.current]);
-  }, [openId, isOpenPresent]);
+    const target = placeFocus.current;
+    if (target === undefined) return;
+    const next =
+      latestItems.current.find((item) => item.id === target.id) ??
+      latestItems.current[target.index];
+    focusRowOrHeading(region.current, next);
+    focusPlaced.current?.();
+  }, []);
 
   const itemRows = items.filter(isItem).map(rowOf);
   const otherRows = items.filter((item) => !isItem(item)).map(rowOf);
@@ -97,12 +85,6 @@ export function ChangeList({
       aria-label={versionWords.sinceLastVersion}
       ref={region}
       className="flex flex-col gap-3"
-      onFocus={() => {
-        focusInside.current = true;
-      }}
-      onBlur={(event) => {
-        focusInside.current = event.currentTarget.contains(event.relatedTarget);
-      }}
     >
       {phone ? (
         <Button
@@ -144,12 +126,8 @@ export function ChangeList({
           },
           { id: "other", heading: { name: itemWords.otherFiles }, rows: otherRows },
         ]}
-        {...(openId === undefined ? {} : { current: openId })}
-        onOpen={(id) => setOpenId(id === openId ? undefined : id)}
+        onOpen={onOpen}
       />
-      {open === undefined ? null : (
-        <ItemChanges list={list} item={open} developer={developer} headingRef={panelHeading} />
-      )}
     </section>
   );
 }

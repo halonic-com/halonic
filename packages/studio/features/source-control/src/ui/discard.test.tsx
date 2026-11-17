@@ -36,7 +36,13 @@ function developerView(initial: boolean) {
   };
 }
 
-async function openPage(options: { developer?: boolean; staged?: boolean } = {}) {
+async function openPage(
+  options: {
+    developer?: boolean;
+    staged?: boolean;
+    texts?: { before: string; after: string };
+  } = {},
+) {
   const fake = fakeSource({
     kind: "ready",
     changes: [
@@ -45,7 +51,7 @@ async function openPage(options: { developer?: boolean; staged?: boolean } = {})
       { path: "old/gone.md", status: "deleted", staged: false },
     ],
   });
-  fake.setTexts(hub, { before, after });
+  fake.setTexts(hub, options.texts ?? { before, after });
   fake.setTexts("skills/tone/SKILL.md", { before: null, after: "Be kind.\n" });
   fake.setTexts("old/gone.md", { before: "bye\n", after: null });
   const toasts = createToastStore();
@@ -90,7 +96,7 @@ verifies("source-control.discard", () => {
       expect(fake.replaced[0]).toEqual({ path: hub, text: before, expected: after });
       const toast = toasts.list()[0];
       expect(toast?.title).toBe("Discarded changes in 1 file");
-      expect(toast?.text).toBe(hub);
+      expect(toast?.text).toBe("sales");
       await act(async () => {
         toast?.action?.onClick();
         await settle();
@@ -180,7 +186,8 @@ verifies("source-control.discard", () => {
       const { root, developer } = await openPage();
       await act(async () => developer.turn(true));
       expect(buttons(section(root, hub), "Discard")).toHaveLength(1);
-      expect(buttons(root, "Undo these changes")).toHaveLength(0);
+      // The page's own button undoes the whole item; only the file's button changes its word.
+      expect(buttons(root, "Undo these changes")).toHaveLength(1);
     });
 
     it("discards only one part, keeps the other and offers Undo", async () => {
@@ -240,5 +247,17 @@ verifies("source-control.line-diff", () => {
     expect(text).toContain("Line 8");
     expect(text).toContain("Removed line: - a");
     expect(text).toContain("Added line: + A");
+  });
+
+  it("heads a part of several lines with the first and last line it covers", async () => {
+    const { root } = await openPage({
+      developer: true,
+      texts: {
+        before: lines("a", "b", "c", "d"),
+        after: lines("a", "B", "C", "d"),
+      },
+    });
+    await press(buttons(section(root, hub), "Show lines")[0]);
+    expect(section(root, hub).textContent).toContain("Lines 2 to 3");
   });
 });

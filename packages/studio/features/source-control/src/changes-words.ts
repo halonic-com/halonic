@@ -4,6 +4,10 @@
 /** The page's heading and the states that replace its content. */
 export const pageWords = {
   title: "Changes",
+  /** The What changed page's way back to the list. */
+  back: "Back to Changes",
+  /** The page's other button: "Open workflow", "Open agent". */
+  openItem: (kind: string) => `Open ${kind}`,
   /** The sidebar's Changes, read after its name: "Changes, 3 changes". */
   spokenCount: (count: number) => (count === 1 ? "1 change" : `${count} changes`),
 };
