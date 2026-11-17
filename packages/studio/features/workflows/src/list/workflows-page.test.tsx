@@ -227,6 +227,7 @@ verifies("workflows.list.rows-and-states", () => {
     expect(page.textContent).toContain(
       "Couldn't refresh workflows. Halonic ran into a problem it can't explain yet.",
     );
+    expect(buttonNamed(page, "Copy details")).toBeDefined();
 
     failing = false;
     await act(async () => buttonNamed(page, "Try again")?.click());

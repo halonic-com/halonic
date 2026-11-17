@@ -7,6 +7,9 @@
 
 The requirement now says: only a host that says the engine can't be reached gets "isn't answering", in that host's words; any other failure gives its own reason, or "Halonic ran into a problem it can't explain yet." with Copy details (microcopy F13), and a later failure keeps the rows under "Couldn't refresh runs." and the reason. The scenario for the first failed load changes to match, and a scenario for the phone's words is added.
 
+`runs.run-view.run-again` said the same about a run that didn't start. It now gives the same reasons as a failed load of a run, and its scenarios cover a kinded reason, the phone's words and an unexplained failure with Copy details.
+
 ## Covers
 
 - runs.list
+- runs.run-view.run-again

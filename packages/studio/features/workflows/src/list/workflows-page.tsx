@@ -1,4 +1,4 @@
-import { Button, EmptyState, usePresentation } from "@halonicjs/studio-kit";
+import { Button, EmptyState, inlineLinkClasses, usePresentation } from "@halonicjs/studio-kit";
 import {
   copyDetailsWords,
   detailsOf,
@@ -219,7 +219,10 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
   );
 }
 
-/** The line over the rows the list kept when a later read failed, with **Try again**. */
+/**
+ * The line over the rows the list kept when a later read failed, with **Try again**, and **Copy
+ * details** when there's no reason to show (as the Runs list's).
+ */
 function RefreshFailed({
   error,
   words,
@@ -231,11 +234,21 @@ function RefreshFailed({
   readonly refreshing: boolean;
   readonly tryAgain: () => void;
 }) {
+  const copyDetails = useCopyDetails();
   return (
     <p className="flex flex-wrap items-center gap-2 text-small text-fg-muted">
       {error instanceof EngineNotAnswering
         ? words.showingLast
         : `${listWords.refreshFailed} ${reasonOf(error, words)}`}
+      {unexplained(error) && (
+        <button
+          type="button"
+          className={inlineLinkClasses}
+          onClick={() => void copyDetails(detailsOf(listWords.refreshFailed, error))}
+        >
+          {copyDetailsWords.label}
+        </button>
+      )}
       <Button
         variant="ghost"
         busy={refreshing}

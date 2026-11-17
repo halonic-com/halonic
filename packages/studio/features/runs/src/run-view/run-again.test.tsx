@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { EngineNotAnswering, type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -23,6 +24,7 @@ async function open(
   runStart: RunStartHost | undefined,
   openRun = vi.fn(),
   announce?: (line: string) => void,
+  engine?: EngineWords,
 ) {
   const log = logOf(summary.id, [[0, entered("draft")]]).map((event) =>
     event.type === "run.started" ? { ...event, input: { message: "Hi" } } : event,
@@ -36,6 +38,7 @@ async function open(
       openRun={openRun}
       {...(announce === undefined ? {} : { announce })}
       {...(runStart === undefined ? {} : { runStart })}
+      {...(engine === undefined ? {} : { engine })}
     />,
   );
   await settled();
@@ -84,6 +87,35 @@ verifies("runs.run-view.run-again", () => {
       "Couldn't start the run: The workflow changed.",
     );
     expect(openRun).not.toHaveBeenCalled();
+  });
+
+  it("says the engine isn't answering in the host's words only when the host says so", async () => {
+    const startRun = vi.fn(async () => {
+      throw new EngineNotAnswering();
+    });
+    const announce = vi.fn();
+    const root = await open(failed, { startRun }, vi.fn(), announce, engineWords.phone);
+    await act(async () => button(root, "Run again")?.click());
+    expect(root.textContent).toContain(
+      "Couldn't start the run: Halonic on your computer isn't answering.",
+    );
+    expect(announce).toHaveBeenCalledExactlyOnceWith(
+      "Couldn't start the run: Halonic on your computer isn't answering.",
+    );
+    expect(button(root, "Copy details")).toBeUndefined();
+  });
+
+  it("gives an unexplained failure the can't-explain line with Copy details", async () => {
+    const startRun = vi.fn(async () => {
+      throw new Error("no answer");
+    });
+    const root = await open(failed, { startRun }, vi.fn(), undefined, engineWords.phone);
+    await act(async () => button(root, "Run again")?.click());
+    expect(root.textContent).toContain(
+      "Couldn't start the run: Halonic ran into a problem it can't explain yet.",
+    );
+    expect(root.textContent).not.toContain("isn't answering");
+    expect(button(root, "Copy details")).toBeDefined();
   });
 
   it("says each failed start once", async () => {
