@@ -1,7 +1,7 @@
 import type { WorkspaceFolderProbe } from "@halonicjs/adapter-fs-tauri";
 import { TauriDefinitionStore } from "@halonicjs/adapter-fs-tauri";
-import type { CreatedSample, SampleHost } from "@halonicjs/studio-feature-workspace";
 import { errorKindOf } from "@halonicjs/std";
+import type { CreatedSample, SampleHost } from "@halonicjs/studio-feature-workspace";
 import { copyWorkspace } from "@halonicjs/workspace";
 import {
   commands,

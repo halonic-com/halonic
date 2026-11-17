@@ -15,7 +15,8 @@ function hostOf(taken: string[], answers: Record<string, unknown> = {}) {
       if (command === "documents_folder") return "/docs/Documents";
       if (command === "probe_workspace_folder")
         return taken.includes(String(args?.["name"])) ? "files" : "new";
-      if (command === "create_workspace_folder" && !Object.hasOwn(answers, command)) return `${args?.["parent"]}/${args?.["name"]}`;
+      if (command === "create_workspace_folder" && !Object.hasOwn(answers, command))
+        return `${args?.["parent"]}/${args?.["name"]}`;
       return answer;
     },
     openChannel: () => {
