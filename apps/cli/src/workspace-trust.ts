@@ -26,6 +26,7 @@ import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { trustMessages } from "./messages/trust.ts";
 import { NotTrustedError } from "./not-trusted.ts";
+import { printable } from "./output/printable.ts";
 import { trustChangesDocument } from "./output/trust-changes-json.ts";
 import { type FingerprintedCheck, trustCheckLines } from "./output/trust-check.ts";
 import { halonicVersion } from "./version.ts";
@@ -182,7 +183,9 @@ export async function trustedGrant(
   loaded: LoadedWorkspace,
 ): Promise<TrustGrant> {
   const workspace = await readWorkspaceTrust(dir, machine.commandSearch, loaded);
-  const { name, subject } = workspace;
+  const { subject } = workspace;
+  // Escaped for the ✕ line, which is printed after the check (HAL-11883).
+  const name = printable(workspace.name);
   const check = await cliTrustService(machine.trustStore, machine.clock).check(subject);
   assertTrustable(check, workspace);
   if (check.status === "trusted") {

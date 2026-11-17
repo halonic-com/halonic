@@ -141,13 +141,17 @@ async function reviewAndTrust(
   const opened = await openWorkspaceDir(input, context);
   const workspace = await readWorkspaceTrust(opened, machine.commandSearch);
   const facts = { name: workspace.name, folder: opened.shown };
+  // The name comes from `workspace.yaml`, so each sentence quotes it escaped:
+  // the question and the refusal follow the check on the same screen, and a
+  // cursor move in the name could rewrite the check above them.
+  const name = printable(workspace.name);
   // The rule `run` and `doctor` skip trust by: a run there starts nothing,
   // so there is nothing to check, ask or save (HAL-6631). A `--fingerprint`
   // has nothing to match, so it is left unused.
   if (reachesOnlyTheTestModel(workspace.subject)) {
     return {
       exitCode: exitCode.ok,
-      lines: [marked(trustMessages.notNeeded(workspace.name))],
+      lines: [marked(trustMessages.notNeeded(name))],
       json: { ...facts, status: "not-needed" },
     };
   }
@@ -161,7 +165,7 @@ async function reviewAndTrust(
   const changes =
     check.status === "changed" ? trustChangesDocument(check.changes, check.trustedAt) : undefined;
   if (fingerprint !== undefined && fingerprint !== check.fingerprint) {
-    throw fingerprintChanged({ name: workspace.name, check, lines, dir, changes });
+    throw fingerprintChanged({ name, check, lines, dir, changes });
   }
   if (check.status === "trusted") {
     return {
@@ -172,7 +176,7 @@ async function reviewAndTrust(
   }
 
   const trusted = await askToTrust(context, {
-    name: workspace.name,
+    name,
     check,
     lines,
     yes: input.options["yes"] === true,
@@ -191,11 +195,11 @@ async function reviewAndTrust(
     // The files changed between the check and the answer: the refusal gives
     // the fingerprint they have now, as a check run now would.
     const now = { ...check, fingerprint: granted.error.fingerprint };
-    throw fingerprintChanged({ name: workspace.name, check: now, lines: [], dir, changes });
+    throw fingerprintChanged({ name, check: now, lines: [], dir, changes });
   }
   return {
     exitCode: exitCode.ok,
-    lines: [marked(trustMessages.trusted(workspace.name))],
+    lines: [marked(trustMessages.trusted(name))],
     json: {
       ...facts,
       status: "trusted",
@@ -207,6 +211,7 @@ async function reviewAndTrust(
 
 /** What a refusal of `trust` shows: the check, and what changed since it was trusted. */
 interface TrustRefusalFacts {
+  /** The workspace's name, escaped for the terminal. */
   readonly name: string;
   readonly check: FingerprintedCheck;
   /** The check's lines, shown before the first question and in the refusal. */
@@ -285,7 +290,7 @@ async function listTrusted(machine: TrustMachine, cwd: string): Promise<CommandR
   const here = await realpath(cwd).catch(() => cwd);
   const workspaces = await Promise.all(records.map((record) => listed(record, here)));
   const rows = workspaces.map((workspace) => [
-    phrase`${workspace.name}`,
+    phrase`${printable(workspace.name)}`,
     phrase`${workspace.folder}`,
     trustMessages.trustedOn(shownDate(workspace.trustedAt)).phrase,
   ]);
@@ -318,7 +323,7 @@ async function removeTrust(
   await cliTrustService(machine.store, machine.clock).revoke(location);
   return {
     exitCode: exitCode.ok,
-    lines: [marked(trustMessages.removed(name))],
+    lines: [marked(trustMessages.removed(printable(name)))],
     json: { name, folder: dir.shown, status: "removed" },
   };
 }

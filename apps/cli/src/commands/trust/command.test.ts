@@ -103,6 +103,39 @@ verifies("cli.commands.trust.review-and-trust", () => {
     expect(written()).toContain("Trust acme on this computer? [y/N]");
   });
 
+  it("escapes control characters in the workspace's name in the question, the refusal, the ✓ line and --list", async () => {
+    // A cursor move and a carriage return, which could rewrite the check above the line.
+    writeAcme({ "workspace.yaml": 'id: acme\nname: "Acme\\u001b[6A\\r"\n' });
+    const shown = "Acme\\u001b[6A\\u000d";
+    const raw = (text: string) => text.includes("\u001b") || text.includes("\r");
+
+    const { terminal, written } = terminalTyping("n");
+    await runCli(["trust", "--dir", "acme"], captureIo(folder), commands(), { terminal });
+    expect(written()).toContain(`Trust ${shown} on this computer? [y/N]`);
+    expect(raw(written())).toBe(false);
+
+    const refused = captureIo(folder);
+    await runCli(["trust", "--dir", "acme"], refused, commands());
+    expect(refused.stderr).toContain(
+      `✕ ${shown} isn't trusted on this computer yet, and there's no terminal to ask you.`,
+    );
+    expect(raw(refused.stderr.join("\n"))).toBe(false);
+
+    const fingerprint = refused.stdout.at(-1) ?? "";
+    const trusted = captureIo(folder);
+    await runCli(
+      ["trust", "--dir", "acme", "--yes", "--fingerprint", fingerprint],
+      trusted,
+      commands(),
+    );
+    expect(trusted.stdout).toEqual([`✓ ${shown} can run now.`]);
+
+    const listed = captureIo(folder);
+    await runCli(["trust", "--list"], listed, commands());
+    expect(listed.stdout.join("\n")).toContain(shown);
+    expect(raw(listed.stdout.join("\n"))).toBe(false);
+  });
+
   it("saves nothing when either answer is no", async () => {
     writeAcme();
     for (const answers of [["n"], ["y", ""]]) {
