@@ -29,3 +29,9 @@ the other text back. A later check should not reverse this without a new approve
 ## Covers
 
 - files.ui.outside-strip
+- files.ui.file-tab
+- files.ui.problems-list
+- files.ui.large-or-not-text
+- files.ui.tree-view
+- files.ui.new-file
+- shell.save-note
