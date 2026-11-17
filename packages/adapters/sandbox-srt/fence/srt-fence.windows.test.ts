@@ -27,6 +27,16 @@ async function read(stream: ReadableStream<Uint8Array>): Promise<string> {
   return text + decoder.decode();
 }
 
+/** What one attempt to create a file did: refused or written, with which error, and the size of what is left on disk (`null` for nothing). */
+interface CreateOutcome {
+  outcome: "written" | "refused";
+  error: string | null;
+  leftSize: number | null;
+}
+
+/** An attempt that was refused and left no file behind. */
+const refusedWithNothingLeft = { outcome: "refused", error: expect.any(String), leftSize: null };
+
 describe("SrtSandbox on Windows, through the session", () => {
   let base: string;
   let work: string;
@@ -146,11 +156,14 @@ console.log(JSON.stringify(result));
     await expect(readFile(join(workspace, "made.txt"), "utf8")).rejects.toThrow();
   });
 
-  /** Runs a script that tries to create each file (as path segments below the working folder) and reports which were refused. */
+  /**
+   * Runs a script that tries to create each file (as path segments below the working folder) and
+   * reports, for each, whether it was refused, with what error, and what was left on disk.
+   */
   async function createFiles(
     name: string,
     attempts: Record<string, string[]>,
-  ): Promise<Record<string, string>> {
+  ): Promise<Record<string, CreateOutcome>> {
     const out = await runScript(
       name,
       `const fs = require("node:fs");
@@ -160,13 +173,17 @@ const attempts = ${JSON.stringify(attempts)};
 const result = {};
 for (const [label, segments] of Object.entries(attempts)) {
   const target = path.join(work, ...segments);
+  let outcome = "written";
+  let error = null;
   try {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, "x");
-    result[label] = "written";
-  } catch {
-    result[label] = "refused";
+  } catch (caught) {
+    outcome = "refused";
+    error = caught.code ?? String(caught);
   }
+  const left = fs.existsSync(target) ? fs.statSync(target).size : null;
+  result[label] = { outcome, error, leftSize: left };
 }
 console.log(JSON.stringify(result));
 `,
@@ -181,8 +198,10 @@ console.log(JSON.stringify(result));
       claudeSettings: [".claude", "settings.json"],
       vscodeTasks: [".vscode", "tasks.json"],
     });
-    expect(result).toEqual({ claudeSettings: "refused", vscodeTasks: "refused" });
-    await expect(readFile(join(work, ".claude", "settings.json"), "utf8")).rejects.toThrow();
+    expect(result).toEqual({
+      claudeSettings: refusedWithNothingLeft,
+      vscodeTasks: refusedWithNothingLeft,
+    });
   });
 
   it("can't create a git hook or change the git config of a repository that was there at the start", async () => {
@@ -212,21 +231,25 @@ console.log(JSON.stringify(result));
 
   // Known gap (HAL-11305): srt on Windows can't deny a file that doesn't exist, and Halonic makes
   // no placeholder for root files. `it.fails` turns this red when srt changes, so we notice.
-  it.fails("can't create the tool settings in the root of the working folder", async () => {
+  it("can't create the tool settings in the root of the working folder", async () => {
     const result = await createFiles("create-root-files.cjs", {
       npmrc: [".npmrc"],
       mcp: [".mcp.json"],
       hookManager: [".pre-commit-config.yaml"],
     });
-    expect(result).toEqual({ npmrc: "refused", mcp: "refused", hookManager: "refused" });
+    expect(result).toEqual({
+      npmrc: refusedWithNothingLeft,
+      mcp: refusedWithNothingLeft,
+      hookManager: refusedWithNothingLeft,
+    });
   });
 
   // Known gap (HAL-11305): a repository made during the session has no deny.
-  it.fails("can't make a git repository with its own hooks", async () => {
+  it("can't make a git repository with its own hooks", async () => {
     const result = await createFiles("git-init.cjs", {
       newRepositoryHook: ["fresh", ".git", "hooks", "pre-commit"],
     });
-    expect(result).toEqual({ newRepositoryHook: "refused" });
+    expect(result).toEqual({ newRepositoryHook: refusedWithNothingLeft });
   });
 
   it("without a bridge, reaches no loopback port and gets none of srt's network variables", async () => {

@@ -11,7 +11,7 @@ The sandbox-srt adapter shall, on Windows, where srt can deny only a file or fol
 Native srt on Windows put no deny on a tool-settings file that didn't exist when the session opened (the Windows fence job showed it for `.claude/settings.json`), while a folder deny covers what is made inside it later. Halonic therefore denies the tool folders, making them empty first. An empty folder is not shown by `git status` and no tool reads settings from it. A placeholder for a root file (`.npmrc`, `.mcp.json`, `.envrc`, a hook-manager config) would show in the person's `git status` and an empty one breaks pre-commit and direnv, so none is made. That gap, and a repository made during the session, stay open (HAL-11305), and native srt on Windows stays experimental until they are covered.
 
 - Decided by: Liam (HAL-11246, 16 Nov)
-- Signed: pending Liam's review of the pull request
+Liam signs this in his review of the pull request.
 
 ## Examples
 
