@@ -3,6 +3,7 @@
 - Task: HAL-11624
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11613#document-ux-check (the UX check rows F1 to F6, F8 and F9 list the approved text for each change; a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:h6H1cfZ1SesfEL0RTPlxSgfCbk6moE5GEK7wK6YZpO/57qerVNvqZu5JUCPGEIh0DIiWbip/n50iQhZlbRtzAw==
 
 ## What changes
 
