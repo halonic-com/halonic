@@ -14,6 +14,7 @@ import {
   workspaceFilesKey,
 } from "@halonicjs/app";
 import { randomIds, systemClock } from "@halonicjs/std";
+import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import {
@@ -53,6 +54,7 @@ import {
   type TauriIpc,
   tauriAgentHostTransport,
 } from "@halonicjs/studio-services";
+import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
@@ -170,6 +172,13 @@ export function provideFolderServices(
       },
       newToken: () => crypto.randomUUID(),
       reportError: (error) => console.error("The engine", error),
+    }),
+  );
+  services.provide(
+    AgentsHostService,
+    new WorkspaceAgents({
+      files: services.get(workspaceFilesKey),
+      onChange: (listener) => scope.events.on("files.changed", listener),
     }),
   );
   const workflows = services.provide(
