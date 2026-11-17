@@ -27,8 +27,14 @@ type Checked =
   | { readonly kind: "refused"; readonly reason: string }
   | { readonly kind: "failed" };
 
-/** The agent that was about to start, from the last `agent.started`; `undefined` when none did. */
+/**
+ * The agent that was about to start: the one `run.failed` names, else, for a run logged before it
+ * did, the last top-level `agent.started`; `undefined` when neither names one. In a parallel state
+ * several agents start, so the last start can be the wrong one.
+ */
 export function sandboxNotReadyAgent(log: readonly RunEvent[] | undefined): string | undefined {
+  const refused = log?.findLast((event) => event.type === "run.failed")?.agent;
+  if (refused !== undefined) return refused;
   return log?.findLast(
     (event): event is Extract<RunEvent, { type: "agent.started" }> =>
       event.type === "agent.started" && event.parent === undefined,
