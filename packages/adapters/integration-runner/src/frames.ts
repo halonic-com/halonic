@@ -68,6 +68,32 @@ export type FrameBody = Infer<typeof requestBody>;
  */
 const errorCode = s.string().min(1).max(64);
 
+/** The most `detail` entries a failure note carries. */
+export const maxFailureDetailEntries = 8;
+
+/**
+ * What a failed call says about why it failed, besides its message: the
+ * error's kind and an optional `failureCause` of its own, for the run record
+ * (`run.failed.cause`). The caps are the ones the engine keeps, so a longer
+ * value would only be dropped there. The runner sends no more than they allow
+ * (`failureNoteOf`) and Halonic checks `kind` and filters every value.
+ */
+const failureNoteFields = {
+  kind: s.string().min(1).max(32).optional(),
+  failureCause: s
+    .object({
+      code: s.string().min(1).max(64).optional(),
+      detail: s
+        .record(s.string().min(1).max(40), s.string().max(300))
+        .refine((detail) => Object.keys(detail).length <= maxFailureDetailEntries, {
+          message: "too many detail entries",
+        })
+        .optional(),
+    })
+    .strict()
+    .optional(),
+};
+
 /**
  * One tool as the integration's code declares it. Halonic checks it against
  * the permission sheet before the first call, so a tool that differs from
@@ -101,11 +127,17 @@ export const runnerFrame = s.discriminatedUnion("type", [
       call: frameId,
       text: s.string().optional(),
       error: s.string().optional(),
+      ...failureNoteFields,
     })
     .strict()
     .refine((frame) => (frame.text === undefined) !== (frame.error === undefined), {
       message: "a result has either text or an error",
-    }),
+    })
+    .refine(
+      (frame) =>
+        frame.error !== undefined || (frame.kind === undefined && frame.failureCause === undefined),
+      { message: "only an error says why it failed" },
+    ),
   s
     .object({
       type: s.literal("fetch"),

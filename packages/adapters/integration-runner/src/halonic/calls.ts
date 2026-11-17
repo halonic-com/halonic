@@ -5,7 +5,14 @@
 // longer than the grace. When a call stops running, the bridge closes its
 // requests (HAL-4353).
 
-import { RunnerCallTimeoutError, type RunnerLimits, RunnerToolError } from "./limits.ts";
+import { isErrorKind } from "@halonicjs/std";
+import type { RunnerFrame } from "../frames.ts";
+import {
+  RunnerCallTimeoutError,
+  type RunnerLimits,
+  RunnerToolError,
+  type RunnerToolFailure,
+} from "./limits.ts";
 
 /** What the call table needs from the bridge. */
 export interface CallTableHooks {
@@ -31,6 +38,12 @@ interface TableCall {
   /** Clears the call's timers and its abort listener. */
   cleanUp(): void;
 }
+
+/** A `result` frame's outcome: its text, or its error with what the runner said about why. */
+type ResultOutcome = Pick<
+  Extract<RunnerFrame, { type: "result" }>,
+  "text" | "error" | "kind" | "failureCause"
+>;
 
 /** Halonic's record of the runner's calls. */
 export class CallTable {
@@ -90,21 +103,43 @@ export class CallTable {
    * Takes a `result` frame. Returns false when no call with that number is
    * waiting for one: a result Halonic never asked for, or a second one (A33).
    */
-  settle(
-    call: number,
-    outcome: { text?: string | undefined; error?: string | undefined },
-  ): boolean {
+  settle(call: number, outcome: ResultOutcome): boolean {
     const entry = this.#calls.get(call);
     if (entry === undefined) return false;
     this.#remove(call, entry);
     if (entry.state === "cancelled") return true;
     this.#hooks.onEnded(call);
     if (outcome.error !== undefined) {
-      entry.reject(new RunnerToolError(this.#hooks.filter(outcome.error)));
+      entry.reject(
+        new RunnerToolError(this.#hooks.filter(outcome.error), this.#failureOf(outcome)),
+      );
     } else {
       entry.resolve(this.#hooks.filter(outcome.text ?? ""));
     }
     return true;
+  }
+
+  /**
+   * What the runner said about why a call failed. A `kind` that is not an
+   * error kind is dropped. A `code` or `detail` value the secret filter
+   * changes is dropped, never kept in its filtered form: a changed value is
+   * not what the integration meant, and may hold part of a secret.
+   */
+  #failureOf(outcome: ResultOutcome): RunnerToolFailure {
+    const failure: RunnerToolFailure = {};
+    if (isErrorKind(outcome.kind)) failure.kind = outcome.kind;
+    const named = outcome.failureCause;
+    if (named === undefined) return failure;
+    const cause: NonNullable<RunnerToolFailure["failureCause"]> = {};
+    if (named.code !== undefined && this.#isUnchanged(named.code)) cause.code = named.code;
+    const kept = Object.entries(named.detail ?? {}).filter(([, value]) => this.#isUnchanged(value));
+    if (kept.length > 0) cause.detail = Object.fromEntries(kept);
+    if (cause.code !== undefined || cause.detail !== undefined) failure.failureCause = cause;
+    return failure;
+  }
+
+  #isUnchanged(text: string): boolean {
+    return this.#hooks.filter(text) === text;
   }
 
   /** Fails every call with `error`, when the runner stops. */
