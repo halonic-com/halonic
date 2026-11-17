@@ -1,7 +1,10 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { fixedLookup } from "./checked-addresses.ts";
+import { openTunnel } from "./connect-tunnel.ts";
 import { fakeResolver } from "./loopback-server.test-helper.ts";
 import { createNodeHttpClient } from "./node-http-client.ts";
+import { ProxyEndpoint } from "./proxy-endpoint.ts";
 import { ProxyError } from "./proxy-error.ts";
 import {
   type ConnectAnswer,
@@ -217,28 +220,39 @@ verifies("http-node.proxy-tunnel", () => {
       await expect(http.fetch("https://model.test/")).rejects.toThrow(/didn't answer .* in time/);
     });
 
-    it("stops waiting for a silent proxy when the caller's signal aborts", async () => {
+    it("gives up on a handshake that never finishes, after the same timeout", async () => {
+      const via = await proxy((_r, client) => {
+        client.write("HTTP/1.1 200 OK\r\n\r\n");
+      });
+      const { http } = clientVia(via.port, { proxyConnectTimeoutMs: 100 });
+
+      await expect(http.fetch("https://model.test/")).rejects.toThrow(/didn't answer .* in time/);
+    });
+
+    it("stops waiting for a silent proxy when the caller's signal aborts, with the caller's reason", async () => {
       const via = await proxy(() => {});
       const { http } = clientVia(via.port);
       const controller = new AbortController();
+      const reason = new Error("caller gave up");
 
       const request = http.fetch("https://model.test/", { signal: controller.signal });
-      setTimeout(() => controller.abort(new Error("caller gave up")), 30);
+      setTimeout(() => controller.abort(reason), 30);
 
-      await expect(request).rejects.toThrow();
+      await expect(request).rejects.toBe(reason);
     });
 
-    it("stops a handshake that never finishes when the caller's signal aborts", async () => {
+    it("stops a handshake that never finishes when the caller's signal aborts, with the caller's reason", async () => {
       const via = await proxy((_r, client) => {
         client.write("HTTP/1.1 200 OK\r\n\r\n");
       });
       const { http } = clientVia(via.port);
       const controller = new AbortController();
+      const reason = new Error("caller gave up");
 
       const request = http.fetch("https://model.test/", { signal: controller.signal });
-      setTimeout(() => controller.abort(new Error("caller gave up")), 50);
+      setTimeout(() => controller.abort(reason), 50);
 
-      await expect(request).rejects.toThrow();
+      await expect(request).rejects.toBe(reason);
     });
 
     it("never reaches a name that isn't a plain host, with no CR or LF on the CONNECT line (attack 10)", async () => {
@@ -246,6 +260,23 @@ verifies("http-node.proxy-tunnel", () => {
       const { http } = clientVia(via.port);
 
       await expect(http.fetch("https://model.test%0d%0aX:y/")).rejects.toThrow();
+      expect(via.connects).toHaveLength(0);
+    });
+
+    it("refuses a host name that isn't plain before anything is sent, even past URL parsing (attack 10)", async () => {
+      const via = await proxy(tunnelTo({}));
+      const result = ProxyEndpoint.parse(`http://127.0.0.1:${via.port}`);
+      if (result.kind !== "proxy") throw new Error("the fixture's proxy setting should parse");
+
+      await expect(
+        openTunnel({
+          proxy: result.endpoint,
+          lookup: fixedLookup(["127.0.0.1"]),
+          target: { hostname: "model.test\r\nX: y", port: 443 },
+          connectTimeoutMs: 1_000,
+          signal: undefined,
+        }),
+      ).rejects.toThrow(/not a host name a proxy can be asked for/);
       expect(via.connects).toHaveLength(0);
     });
   });

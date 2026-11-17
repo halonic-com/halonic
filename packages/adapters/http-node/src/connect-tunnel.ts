@@ -19,7 +19,7 @@ export interface TunnelOptions {
   /** Hands out the proxy's own address; the proxy is the user's, so it may be private. */
   readonly lookup: LookupFunction;
   readonly target: TunnelTarget;
-  /** How long the proxy has to answer CONNECT. The caller's `signal` still ends it sooner. */
+  /** How long the proxy has to answer CONNECT and the handshake. The caller's `signal` still ends it sooner. */
   readonly connectTimeoutMs: number;
   readonly signal: AbortSignal | undefined;
 }
@@ -35,21 +35,45 @@ export interface TunnelOptions {
  * @throws ProxyError when the proxy refuses or fails
  */
 export async function openTunnel(options: TunnelOptions): Promise<tls.TLSSocket> {
-  const socket = await connectThroughProxy(options);
+  // One clock covers CONNECT and the TLS handshake, so a proxy that answers
+  // 200 and then goes silent can't hold the request for good.
+  const timeout = new AbortController();
+  const timer = setTimeout(() => {
+    timeout.abort(
+      new ProxyError(
+        `Your proxy ${options.proxy} didn't answer for ${options.target.hostname} in time.`,
+      ),
+    );
+  }, options.connectTimeoutMs);
+  const signal =
+    options.signal === undefined
+      ? timeout.signal
+      : AbortSignal.any([options.signal, timeout.signal]);
   try {
-    return await secure(socket, options.target, options.signal);
+    const socket = await connectThroughProxy(options, signal);
+    try {
+      return await secure(socket, options.target, signal);
+    } catch (error) {
+      socket.destroy();
+      throw error;
+    }
   } catch (error) {
-    socket.destroy();
+    // The caller's abort reads as that abort, the way it does on the direct path.
+    if (signal.aborted) {
+      throw signal.reason;
+    }
     throw error instanceof ProxyError
       ? error
       : new ProxyError(
           `The connection to ${options.target.hostname} through your proxy failed its ` +
             `security check: ${describe(error)}`,
         );
+  } finally {
+    clearTimeout(timer);
   }
 }
 
-function connectThroughProxy(options: TunnelOptions): Promise<Socket> {
+function connectThroughProxy(options: TunnelOptions, signal: AbortSignal): Promise<Socket> {
   const { proxy, target } = options;
   const authority = authorityOf(target);
   const shown = target.hostname;
@@ -67,13 +91,9 @@ function connectThroughProxy(options: TunnelOptions): Promise<Socket> {
       lookup: options.lookup,
       agent: false,
       maxHeaderSize: maxConnectHeaderBytes,
-      signal: options.signal,
+      signal,
     });
-    const timer = setTimeout(() => {
-      request.destroy(new ProxyError(`Your proxy ${proxy} didn't answer for ${shown} in time.`));
-    }, options.connectTimeoutMs);
     request.on("error", (error) => {
-      clearTimeout(timer);
       reject(
         error instanceof ProxyError
           ? error
@@ -81,7 +101,6 @@ function connectThroughProxy(options: TunnelOptions): Promise<Socket> {
       );
     });
     request.on("connect", (response, socket, head) => {
-      clearTimeout(timer);
       const refusal = refusalOf(response.statusCode ?? 0, head, shown);
       if (refusal !== undefined) {
         socket.destroy();
@@ -108,8 +127,9 @@ function refusalOf(status: number, head: Buffer, shown: string): string | undefi
   return undefined;
 }
 
-function secure(socket: Socket, target: TunnelTarget, signal: AbortSignal | undefined) {
+function secure(socket: Socket, target: TunnelTarget, signal: AbortSignal) {
   return new Promise<tls.TLSSocket>((resolve, reject) => {
+    signal.throwIfAborted();
     // TLS takes no server name for an IP address (RFC 6066); with `host` set to
     // the address, the certificate is checked against its IP entry instead.
     const secured = tls.connect({
@@ -117,14 +137,14 @@ function secure(socket: Socket, target: TunnelTarget, signal: AbortSignal | unde
       host: target.hostname,
       ...(isIP(target.hostname) === 0 ? { servername: target.hostname } : {}),
     });
-    const onAbort = () => secured.destroy(signal?.reason);
-    signal?.addEventListener("abort", onAbort, { once: true });
+    const onAbort = () => secured.destroy(signal.reason);
+    signal.addEventListener("abort", onAbort, { once: true });
     secured.once("secureConnect", () => {
-      signal?.removeEventListener("abort", onAbort);
+      signal.removeEventListener("abort", onAbort);
       resolve(secured);
     });
     secured.once("error", (error) => {
-      signal?.removeEventListener("abort", onAbort);
+      signal.removeEventListener("abort", onAbort);
       reject(error);
     });
   });
