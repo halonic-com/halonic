@@ -48,6 +48,7 @@ import {
   engineLockFile,
   routineStateCollection,
   runTimerCollection,
+  workspaceBudget,
   workspaceExecutorOptions,
 } from "@halonicjs/adapter-workspace-models";
 import {
@@ -368,6 +369,7 @@ function engineOn(
               )
             : await versions.definitionsOf(hubId, workflowId, version, runId),
         ...connectors?.runs,
+        budget: workspaceBudget(latest),
       },
     },
     // Kept in the workspace's folder in the profile, so the last tick and queues survive a restart.

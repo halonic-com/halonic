@@ -21,6 +21,7 @@ import {
   startsAProgram,
   type WorkflowRef,
   workflowAgentsOf,
+  workspaceBudget,
   workspaceExecutorOptions,
 } from "@halonicjs/adapter-workspace-models";
 import { type AssembledEngine, assembleEngine, noListedToolApproval } from "@halonicjs/engine";
@@ -189,6 +190,7 @@ export class EngineService {
             ids: this.#options.ids,
             definitionsOf: async (hubId, workflowId) =>
               runDefinitionsOf(workspace, hubId, workflowId),
+            budget: workspaceBudget(() => workspace),
           },
         },
         coordination: new NodeCoordination({

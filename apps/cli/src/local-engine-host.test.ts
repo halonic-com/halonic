@@ -114,6 +114,35 @@ verifies("cli.local-engine", () => {
     expect(schedulerErrors).toEqual([]);
   });
 
+  it("stops a run at the monthly budget in workspace.yaml", async () => {
+    // The test model at a price, so a run costs something, and a budget its first call uses up.
+    const models = await readFile(join(acme, "models.yaml"), "utf8");
+    await writeFile(
+      join(acme, "models.yaml"),
+      models.replace("model: echo", "model: echo\n    price: { input: 1, output: 1 }"),
+    );
+    const settings = await readFile(join(acme, "workspace.yaml"), "utf8");
+    await writeFile(
+      join(acme, "workspace.yaml"),
+      `${settings}budget:\n  currency: EUR\n  monthly: 0.00001\n`,
+    );
+    workspace = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
+    const engine = await openEngine();
+
+    const started = await new WorkflowRuns(engine.executor).startRun(
+      workspace,
+      "support-reply",
+      await samsEmail(),
+    );
+
+    // Its first model call goes out at no spend; the next one finds the month over budget.
+    expect(started.found === "one" && started.run.summary).toMatchObject({
+      status: "failed",
+      reason: "budget",
+      error: expect.stringContaining("Monthly budget reached"),
+    });
+  });
+
   it("keeps the run in the workspace's run store in the profile, where `halonic runs` reads it", async () => {
     const engine = await openEngine();
     const started = await new WorkflowRuns(engine.executor).startRun(
