@@ -63,7 +63,7 @@ export function SandboxModal({
           <div
             ref={bodyRef}
             onScroll={measure}
-            className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6"
+            className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6 [@media(max-height:560px)]:gap-3 [@media(max-height:560px)]:p-4"
           >
             <header className="flex flex-col gap-1">
               {step === undefined ? null : <p className="text-small text-fg-muted">{step}</p>}
@@ -82,7 +82,9 @@ export function SandboxModal({
           ) : null}
         </div>
         {footer === undefined ? null : (
-          <footer className="flex flex-col gap-2 border-t border-border px-6 py-4">{footer}</footer>
+          <footer className="flex flex-col gap-2 border-t border-border px-6 py-4 [@media(max-height:560px)]:py-2">
+            {footer}
+          </footer>
         )}
       </section>
     </div>
