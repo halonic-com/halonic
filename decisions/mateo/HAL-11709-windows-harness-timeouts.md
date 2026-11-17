@@ -3,6 +3,7 @@
 - Task: HAL-11709
 - Approval: Liam reviewed the change on HAL-11709 and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BPUEFnqZoBZIk/XVoq2qpGWerBRNoth8vQUqQS0ljuCyx4xLal3A8p931jL6mUKoY1AeFC7rwJ4Y8vWfElXDAg==
 
 ## What changes
 
