@@ -118,6 +118,8 @@ export interface ToolResult {
 export interface ApprovalNeeded {
   readonly type: "approval";
   readonly tool: string;
+  /** The connector the tool comes from, for the log; absent for a tool that comes from no connector. */
+  readonly connector?: string;
   readonly args: unknown;
   /** Where the agent stopped; the call that waits for the OK is `resume.calls[0]`. */
   readonly resume: AgentResume;

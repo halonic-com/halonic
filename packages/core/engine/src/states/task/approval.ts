@@ -30,13 +30,14 @@ const approvalEvents: readonly string[] = ["approve", "reject"];
 export function askForApproval(
   { run, stateId }: StateContext,
   stopped: PendingCall,
-  { tool, args, resume }: ApprovalNeeded,
+  { tool, args, resume, connector }: ApprovalNeeded,
 ): StateStep {
   const requested: DecidedEvent = {
     type: "approval.requested",
     state: stateId,
     agent: stopped.agent,
     tool,
+    ...(connector === undefined ? {} : { connector }),
     args,
     callId: nextCallId(run),
     resume,
