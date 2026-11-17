@@ -73,6 +73,12 @@ export interface WorkspaceTrustControl {
    * the check couldn't run (see {@link failure}), or `unknown` before the first answer.
    */
   readonly status: "unknown" | "trusted" | "not-trusted" | "changed" | "list-unreadable" | "failed";
+  /**
+   * Whether the workspace holds nothing to trust (HAL-10131): no connector, agent program,
+   * plugin or real model, so only the test model can run. `status` stays `not-trusted`, but the
+   * badge is `none` and `review()` is `undefined`. Absent counts as `false`.
+   */
+  readonly needsNoTrust?: boolean;
   /** Why the check couldn't run, while `status` is `failed`. */
   readonly failure: string | undefined;
   /** Runs the check again after it failed. Never rejects. */

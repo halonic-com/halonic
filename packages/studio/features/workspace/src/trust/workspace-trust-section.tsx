@@ -5,6 +5,7 @@ import {
   LOADING_LINE,
   loadFailed,
   NOT_TRUSTED_LINE,
+  NOTHING_TO_TRUST_LINE,
   REMOVE_TRUST,
   REMOVE_TRUST_BODY,
   REMOVING,
@@ -85,7 +86,7 @@ export function WorkspaceTrustSection({ trust, name, toasts }: WorkspaceTrustSec
         <div className="flex items-start gap-2">
           <StatusMark status={status} />
           <div className="flex min-w-0 flex-1 flex-col gap-2">
-            <p className="m-0">{statusLine(status, trustedAt, trust.failure)}</p>
+            <p className="m-0">{statusLine(status, trustedAt, trust)}</p>
             <div>
               {status === "trusted" ? (
                 <Button
@@ -105,7 +106,7 @@ export function WorkspaceTrustSection({ trust, name, toasts }: WorkspaceTrustSec
                   {TRY_AGAIN}
                 </Button>
               ) : null}
-              {status === "not-trusted" || status === "changed" ? (
+              {asksForReview(status, trust) ? (
                 <Button ref={action} size="sm" onClick={check.open}>
                   {status === "changed" ? REVIEW_CHANGES : REVIEW}
                 </Button>
@@ -143,11 +144,21 @@ function StatusMark({ status }: { readonly status: WorkspaceTrustControl["status
   );
 }
 
+/** Whether **Review** or **Review changes** shows: not for a workspace with nothing to trust. */
+function asksForReview(
+  status: WorkspaceTrustControl["status"],
+  trust: WorkspaceTrustControl,
+): boolean {
+  return status === "changed" || (status === "not-trusted" && trust.needsNoTrust !== true);
+}
+
 function statusLine(
   status: WorkspaceTrustControl["status"],
   trustedAt: string | undefined,
-  failure: string | undefined,
+  trust: WorkspaceTrustControl,
 ): string {
+  if (status === "not-trusted" && trust.needsNoTrust === true) return NOTHING_TO_TRUST_LINE;
+  const failure = trust.failure;
   switch (status) {
     case "trusted":
       return trustedAt === undefined ? "Trusted" : trustedOn(trustedAt);

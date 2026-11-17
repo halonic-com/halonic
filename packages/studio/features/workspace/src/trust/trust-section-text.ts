@@ -1,5 +1,7 @@
 /** The words of the workspace page's Trust section (states-flow-map 2.7, microcopy 4.5 and 6.1). */
 export const TRUST_HEADING = "Trust";
+/** The line when the workspace holds nothing to trust (HAL-10131, HAL-11795). */
+export const NOTHING_TO_TRUST_LINE = "Nothing to trust here.";
 export const NOT_TRUSTED_LINE =
   "Not trusted yet. Halonic won't start programs or call real models from this workspace.";
 export const REVIEW = "Review";
