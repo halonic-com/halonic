@@ -7,6 +7,8 @@ import {
 } from "@halonicjs/studio-shell";
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { PhoneSampleChip } from "../sample/sample-chip.tsx";
+import { SampleSheet } from "../sample/sample-sheet.tsx";
 import { PhoneWorkspaceSheet } from "./phone-workspace-sheet.tsx";
 import type { LoadServedWorkspace, ServedWorkspace } from "./served-workspace.ts";
 
@@ -29,13 +31,15 @@ export interface ServedWindowProps {
 
 /**
  * The served Studio's window: the shell's Studio window, with the phone's workspace row on More
- * opening the picker sheet (`workspace.served-picker`).
+ * opening the picker sheet (`workspace.served-picker`), and, when the computer serves the sample,
+ * its chip under that row opening the sample sheet (`workspace.try-sample`).
  *
  * @example
  * <ServedWindow shell={shell} workspace={workspace} host="served" platform="linux" language="en" served={facts} load={load} />
  */
 export function ServedWindow({ served, load, ...window }: ServedWindowProps) {
   const [picking, setPicking] = useState(false);
+  const [aboutSample, setAboutSample] = useState(false);
   return (
     <>
       <StudioWindow
@@ -48,7 +52,13 @@ export function ServedWindow({ served, load, ...window }: ServedWindowProps) {
                 onChange: () => setPicking(true),
               }
         }
+        phoneBadge={
+          served?.sample === true ? (
+            <PhoneSampleChip onOpenSheet={() => setAboutSample(true)} />
+          ) : undefined
+        }
       />
+      {aboutSample ? <SampleSheet onClose={() => setAboutSample(false)} /> : null}
       {picking ? <PhoneWorkspaceSheet load={load} onClose={() => setPicking(false)} /> : null}
     </>
   );

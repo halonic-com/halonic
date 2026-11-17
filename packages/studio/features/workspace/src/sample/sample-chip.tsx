@@ -14,6 +14,29 @@ export interface SampleChipProps {
   readonly onFreshCopy: () => void;
 }
 
+/** Props for {@link PhoneSampleChip}. */
+export interface PhoneSampleChipProps {
+  /** Opens the sample sheet, which the shell's More page shows under the workspace row. */
+  readonly onOpenSheet: () => void;
+}
+
+/**
+ * The sample chip on a phone, on More's own line under the workspace row. It opens the
+ * {@link SampleSheet}, not a menu: a phone never starts a workspace or makes a fresh copy.
+ */
+export function PhoneSampleChip({ onOpenSheet }: PhoneSampleChipProps) {
+  return (
+    <HeaderBadge
+      as="menu"
+      description={sampleChipWords.cost}
+      entries={[]}
+      onOpenSheet={onOpenSheet}
+    >
+      {sampleChipWords.chip}
+    </HeaderBadge>
+  );
+}
+
 /**
  * The header chip "Sample · test model" of a workspace created as the Acme sample
  * (`workspace.try-sample`). It is a menu button with the cost line, **New workspace…** and

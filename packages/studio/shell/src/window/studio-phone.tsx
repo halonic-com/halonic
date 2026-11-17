@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import { PageErrorBoundary } from "../page/page-error-boundary.tsx";
 import type { ShellPhoneSearchProps } from "../palette/shell-phone-search.tsx";
 import { MorePage, type MorePageSwitcher } from "../phone/more-page.tsx";
@@ -49,6 +49,8 @@ export interface StudioPhonePageProps extends Omit<StudioPageProps, "location"> 
   readonly shown: readonly ShownPlace[];
   /** The More page's workspace switcher row, once the app has a workspace picker (T3). */
   readonly switcher?: MorePageSwitcher | undefined;
+  /** The More page's header badge, on its own line under the switcher row. */
+  readonly badge?: ReactNode;
   /** The window's `openSettings`: with it, More ends with a Settings row. */
   readonly onSettings?: (() => void) | undefined;
   /** In the desktop app, or in a browser, as Settings words its saved lines. */
@@ -85,6 +87,7 @@ function PhonePageBody({
   places,
   shown,
   switcher,
+  badge,
   onSettings,
   settingsPlace,
   regionFormat,
@@ -98,6 +101,7 @@ function PhonePageBody({
     return (
       <MorePage
         switcher={switcher}
+        badge={badge}
         places={shown}
         onOpen={(place) => places.openPlace(place)}
         onSettings={onSettings}

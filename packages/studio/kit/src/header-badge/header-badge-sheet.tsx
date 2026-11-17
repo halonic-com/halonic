@@ -9,6 +9,8 @@ export interface HeaderBadgeSheetProps {
   readonly title: string;
   /** The Menu's description line, as the sheet's first body line. */
   readonly description?: string | undefined;
+  /** One more sentence, in `text-body`, after the description: "To start your own workspace, use Halonic on your computer.". */
+  readonly note?: string | undefined;
   /** The Menu's entries. Dividers fall away: every row has its own line under it. */
   readonly entries: readonly MenuEntry[];
   /** Back. */
@@ -29,13 +31,20 @@ const rowClasses = [
 /**
  * What the header badge's menu becomes on a phone (component specs 20.1, 20.2): a panel sheet
  * titled with the badge's words, the Menu's description line as its first body line, then its
- * items as 48px link rows, danger items last. The shell puts it on its page stack when the badge
+ * items as 48px link rows, danger items last. A sheet with a `note` and no entries is a sentence
+ * to read, such as the sample chip's on a phone. The shell puts it on its page stack when the badge
  * calls `onOpenSheet`; a tap on a row calls the item's `onSelect`.
  *
  * @example
  * <HeaderBadgeSheet title="Sample · test model" description={costLine} entries={sampleEntries} onClose={back} />
  */
-export function HeaderBadgeSheet({ title, description, entries, onClose }: HeaderBadgeSheetProps) {
+export function HeaderBadgeSheet({
+  title,
+  description,
+  note,
+  entries,
+  onClose,
+}: HeaderBadgeSheetProps) {
   const items = entries.filter(isMenuItem);
   const ordered = [
     ...items.filter((item) => item.danger !== true),
@@ -46,13 +55,16 @@ export function HeaderBadgeSheet({ title, description, entries, onClose }: Heade
       {description === undefined ? null : (
         <p className="pb-3 text-small text-fg-muted">{description}</p>
       )}
-      <ul className="-mx-4">
-        {ordered.map((item) => (
-          <li key={item.id}>
-            <LinkRow item={item} />
-          </li>
-        ))}
-      </ul>
+      {note === undefined ? null : <p className="pb-3 text-body">{note}</p>}
+      {ordered.length === 0 ? null : (
+        <ul className="-mx-4">
+          {ordered.map((item) => (
+            <li key={item.id}>
+              <LinkRow item={item} />
+            </li>
+          ))}
+        </ul>
+      )}
     </SidePanel>
   );
 }

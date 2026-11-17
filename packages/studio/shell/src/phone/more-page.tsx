@@ -70,9 +70,7 @@ export function MorePage({ switcher, places, onOpen, onSettings, badge }: MorePa
         More
       </h1>
       {switcher === undefined ? null : <WorkspaceRow {...switcher} />}
-      {badge === undefined ? null : (
-        <div className="mt-2 flex min-h-12 items-center ps-15">{badge}</div>
-      )}
+      {badge === undefined ? null : <div className="mt-2 flex min-h-12 items-center">{badge}</div>}
       {rows.length === 0 ? null : (
         <div className="mt-2">
           <List

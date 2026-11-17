@@ -82,6 +82,8 @@ export interface StudioWindowProps {
   readonly phoneSwitcher?: MorePageSwitcher | undefined;
   /** The workspace's header badges, such as "Not trusted yet · Review", on the desktop. */
   readonly badges?: ReactNode;
+  /** The header badge on the phone's More page, on its own line under the workspace row. */
+  readonly phoneBadge?: ReactNode;
   /**
    * The engine's resource report, for the status bar item with Halonic's memory and free disk
    * space. The desktop app passes it; a served browser and a phone don't show the item.
@@ -335,6 +337,7 @@ export function StudioWindow(props: StudioWindowProps) {
           places={phone}
           shown={shown}
           switcher={props.phoneSwitcher}
+          badge={props.phoneBadge}
           onSettings={() => openSettings()}
           settingsPlace={host === "desktop-app" ? "app" : "served"}
           regionFormat={props.regionFormat}

@@ -61,6 +61,16 @@ export function checkResultLine(answering: boolean, address: string, checkedAt: 
   return `${answering ? "Answering" : "Not answering"} at ${address} · checked ${checkedAt}`;
 }
 
+/** The phone's status chip words: "Answering" or "Not answering", with no dot (flow-first-run 7.3). */
+export function checkChipWords(answering: boolean): string {
+  return answering ? "Answering" : "Not answering";
+}
+
+/** The line under the phone's chip: "at localhost:11434 · checked 10:42". */
+export function checkChipDetail(address: string, checkedAt: string): string {
+  return `at ${address} · checked ${checkedAt}`;
+}
+
 /** What a screen reader hears when a check ends, also when the result is the same as before. */
 export function checkAnnouncement(
   providerName: string,

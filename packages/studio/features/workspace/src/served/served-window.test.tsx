@@ -147,3 +147,35 @@ verifies("workspace.served-picker", () => {
     });
   });
 });
+
+const chip = () =>
+  [...element.querySelectorAll("button")].find(
+    (item) => item.textContent === "Sample · test model",
+  );
+
+verifies("workspace.try-sample", () => {
+  describe("on a phone", () => {
+    it("shows the chip under the workspace row, and it opens the sheet with the cost line and the sentence", async () => {
+      const sample = { ...acme, sample: true };
+      start(sample, async () => sample);
+      await openMore();
+      expect(chip()).toBeDefined();
+      expect(row()?.contains(chip() ?? null)).toBe(false);
+      await act(async () => chip()?.click());
+      const panel = element.querySelector("aside");
+      expect(panel?.querySelector("h2")?.textContent).toBe("Sample · test model");
+      expect(panel?.textContent).toContain("Runs on the built-in test model");
+      expect(panel?.textContent).toContain(
+        "To start your own workspace, use Halonic on your computer.",
+      );
+      expect(panel?.textContent).not.toContain("Fresh copy");
+      expect(panel?.textContent).not.toContain("New workspace");
+    });
+
+    it("shows no chip when the computer serves another workspace", async () => {
+      start(acme, async () => acme);
+      await openMore();
+      expect(chip()).toBeUndefined();
+    });
+  });
+});
