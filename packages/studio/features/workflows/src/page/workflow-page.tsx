@@ -124,6 +124,16 @@ export function WorkflowScreen({
     { readonly name: string | undefined; readonly n: number } | undefined
   >(firstTestsPick(startOnTests));
   const testsMade = useRef(0);
+  // A page that is already open and is asked for its Tests (`startOnTests` turns true) goes to
+  // Configuration on Tests, as if it had opened there.
+  const [askedForTests, setAskedForTests] = useState(startOnTests === true);
+  if ((startOnTests === true) !== askedForTests) {
+    setAskedForTests(startOnTests === true);
+    if (startOnTests) {
+      setView("configuration");
+      setMadeTest(firstTestsPick(true));
+    }
+  }
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
   const errors =
