@@ -170,6 +170,11 @@ fn guard_keeps_the_connect_page_with_the_change_address_fragment_on_android_only
 /// What the guard does instead depends on the platform's scheme.
 #[test]
 fn guard_keeps_no_other_page_of_the_app_origin_in_the_window() {
+    // The URL parser resolves dot segments, so these name the other page.
+    let dotted = [
+        format!("{APP_PAGE}/..{OTHER_PAGE}"),
+        format!("/%2e%2e{OTHER_PAGE}"),
+    ];
     let paths = [
         OTHER_PAGE,
         "/studio.html#change-address",
@@ -179,19 +184,20 @@ fn guard_keeps_no_other_page_of_the_app_origin_in_the_window() {
         "/studio.html/",
         "/",
         "/index.html",
-        "/connect.html/../studio.html",
         "/connect.html/",
         "/connect.html/..%2fstudio.html",
         "/connect%2Ehtml",
-        "/%2e%2e/studio.html",
         "/connect.html?x=1",
         "/connect.html?",
         "/connect.html?x=1#change-address",
         "/connect.html#other",
         "/connect.html#",
-        "/studio.html/../connect.html",
         "/studio.html/..%2fconnect.html",
     ];
+    let paths = paths
+        .iter()
+        .copied()
+        .chain(dotted.iter().map(String::as_str));
     for path in paths {
         let url = format!("{APP_ORIGIN}{path}");
         assert_ne!(decide(&url, None), Destination::Stay, "{url}");
