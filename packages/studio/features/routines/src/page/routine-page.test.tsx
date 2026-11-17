@@ -40,6 +40,7 @@ function hostReading(routine: () => RoutineView, fail?: () => Error | undefined)
   const { host, change } = memoryHost([], []);
   const reading = {
     ...host,
+    nextTimes: async () => ({ times: [], atNextCheck: false }),
     read: async () => {
       const error = fail?.();
       if (error) throw error;
@@ -50,7 +51,7 @@ function hostReading(routine: () => RoutineView, fail?: () => Error | undefined)
 }
 
 const screenOf = (host: RoutinesHost, id = "daily") => (
-  <RoutineScreen host={host} hubId="acme" id={id} />
+  <RoutineScreen host={host} hubId="acme" id={id} announce={() => {}} />
 );
 
 verifies("routines.page.frame-and-states", () => {
@@ -147,7 +148,13 @@ verifies("routines.page.frame-and-states", () => {
       () => new KindedError("not_found", "No such routine."),
     );
     const page = await show(
-      <RoutineScreen host={host} hubId="acme" id="gone" goToRoutines={goToRoutines} />,
+      <RoutineScreen
+        host={host}
+        hubId="acme"
+        id="gone"
+        announce={() => {}}
+        goToRoutines={goToRoutines}
+      />,
     );
 
     expect(page.textContent).toContain("This routine isn't in this workspace any more.");
