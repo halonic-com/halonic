@@ -1,3 +1,4 @@
+import { isGuard } from "@halonicjs/format";
 import { Disclosure, Field, Input, Select, TextArea } from "@halonicjs/studio-kit";
 import { useEffect, useState } from "react";
 import type { RoutineTrigger } from "../api.ts";
@@ -160,7 +161,7 @@ export function SignalFields({ trigger, onChange }: SignalFieldsProps) {
     setCondition(text);
     setLeft(false);
     const value = readCondition(text);
-    if (value === "invalid") return;
+    if (typeof value === "string") return;
     const { when: _previous, ...rest } = trigger;
     onChange(value === undefined ? rest : { ...rest, when: value });
   };
@@ -182,7 +183,7 @@ export function SignalFields({ trigger, onChange }: SignalFieldsProps) {
           <Field
             label={words.onlyWhen}
             hint={words.onlyWhenHint}
-            error={left && conditionValue === "invalid" ? words.notJson : null}
+            error={left ? conditionError(conditionValue) : null}
           >
             <TextArea
               value={conditionText}
@@ -191,7 +192,7 @@ export function SignalFields({ trigger, onChange }: SignalFieldsProps) {
               onChange={(event) => changeCondition(event.target.value)}
               onBlur={() => {
                 setLeft(true);
-                if (conditionValue !== "invalid") setCondition(undefined);
+                if (typeof conditionValue !== "string") setCondition(undefined);
               }}
             />
           </Field>
@@ -201,14 +202,21 @@ export function SignalFields({ trigger, onChange }: SignalFieldsProps) {
   );
 }
 
-/** The condition a text holds: `undefined` for none (empty), `"invalid"` when it isn't a JSON object. */
-function readCondition(text: string): SignalTrigger["when"] | "invalid" {
+type ConditionProblem = "not-json" | "not-condition";
+
+/** The condition a text holds: `undefined` for none (empty), `"not-json"` or `"not-condition"` when it can't be used. */
+function readCondition(text: string): SignalTrigger["when"] | ConditionProblem {
   if (text.trim() === "") return undefined;
   try {
     const value: unknown = JSON.parse(text);
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return "invalid";
-    return value as SignalTrigger["when"];
+    return isGuard(value) ? value : "not-condition";
   } catch {
-    return "invalid";
+    return "not-json";
   }
+}
+
+function conditionError(value: ReturnType<typeof readCondition>): string | null {
+  if (value === "not-json") return words.notJson;
+  if (value === "not-condition") return words.notCondition;
+  return null;
 }

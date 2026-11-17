@@ -155,6 +155,15 @@ verifies("routines.when.signal-fields", () => {
     expect(page.textContent).toContain("Not valid JSON.");
   });
 
+  it("writes nothing for JSON that is no condition", async () => {
+    const { page, saved } = await card(signal);
+    const when = control(page, "Only when");
+    await type(when, '{"foo":1}');
+    await leave(when);
+    expect(saved).toHaveLength(0);
+    expect(page.textContent).toContain("Not a condition Halonic knows.");
+  });
+
   it("starts Advanced open when there is a condition, and drops it when emptied", async () => {
     const withWhen: RoutineTrigger = { ...signal, when: { exists: "mail.id" } };
     const { page, saved } = await card(withWhen);

@@ -39,6 +39,7 @@ export const whenWords = {
   onlyWhen: "Only when",
   onlyWhenHint: "A condition on the signal's data, as JSON. Leave empty to start on every signal.",
   notJson: "Not valid JSON.",
+  notCondition: "Not a condition Halonic knows.",
   couldntSave: (reason: string) => `Couldn't save the change. ${reason}`,
 } as const;
 
