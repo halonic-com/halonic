@@ -23,7 +23,7 @@ export interface ViewErrorBoundaryProps {
  *
  * @example
  * <ViewErrorBoundary>
- *   <Suspense fallback={null}><ItemView context={context} /></Suspense>
+ *   <LoadedView view={section} props={{ item, context }} />
  * </ViewErrorBoundary>
  */
 export class ViewErrorBoundary extends Component<ViewErrorBoundaryProps, ViewErrorBoundaryState> {

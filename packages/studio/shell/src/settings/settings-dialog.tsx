@@ -1,21 +1,12 @@
 import { Dialog, isComposing } from "@halonicjs/studio-kit";
-import {
-  type ComponentType,
-  lazy,
-  type RefObject,
-  Suspense,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import type { SettingsSectionContribution } from "../points/frame.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { Registered } from "../points/point-store.ts";
 import { settingsSectionToOpen } from "../points/settings-sections.ts";
-import { loadView } from "../view.ts";
 import { ViewErrorBoundary } from "../view-error-boundary.tsx";
+import { LoadedView } from "../view-loading.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import {
   listedSections,
@@ -286,7 +277,6 @@ export function SectionView({
   regionFormat,
   workspaceName,
 }: SectionViewProps) {
-  const View = useSectionView(section);
   return (
     <section aria-labelledby={`settings-section-${section.id}`}>
       {page === true ? (
@@ -312,27 +302,12 @@ export function SectionView({
       ) : null}
       {/* A view that fails to load or draw shows nothing; the list and the other sections keep working. */}
       <ViewErrorBoundary>
-        <Suspense fallback={null}>
-          <View
-            context={context}
-            closeSettings={closeSettings}
-            place={place}
-            surface={surface}
-            regionFormat={regionFormat}
-          />
-        </Suspense>
+        <LoadedView<SettingsSectionProps>
+          view={section}
+          name={section.title}
+          props={{ context, closeSettings, place, surface, regionFormat }}
+        />
       </ViewErrorBoundary>
     </section>
-  );
-}
-
-/** The section's view, imported the first time it shows; one import per section. */
-function useSectionView(section: SettingsSectionContribution): ComponentType<SettingsSectionProps> {
-  return useMemo(
-    () =>
-      lazy(async () => ({
-        default: await loadView<ComponentType<SettingsSectionProps>>(section),
-      })),
-    [section],
   );
 }
