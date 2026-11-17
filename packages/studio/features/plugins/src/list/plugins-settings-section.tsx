@@ -8,9 +8,10 @@ import { PluginsList } from "./plugins-list.tsx";
 /**
  * Settings → Plugins (`plugins.plugin-settings-list`): the installed plugins and the ones that
  * come with Halonic, with **Add plugin**. A row opens the plugin's page, which closes Settings
- * first so the focus can go to the page's heading.
+ * first so the focus can go to the page's heading. A served Settings is view only, whichever of
+ * the `place` prop and the host's `place` says so.
  */
-export function PluginsSettingsSection({ context, closeSettings }: SettingsSectionProps) {
+export function PluginsSettingsSection({ context, closeSettings, place }: SettingsSectionProps) {
   const plugins = context.services.get(PluginsService);
   const installed = useSyncExternalStore(plugins.feed.subscribe, plugins.feed.current);
   const [adding, setAdding] = useState(false);
@@ -31,7 +32,7 @@ export function PluginsSettingsSection({ context, closeSettings }: SettingsSecti
         onOpenInNewTab={(plugin) => open(plugin, true)}
         {...(plugins.installer === undefined ? {} : { onAdd: () => setAdding(true) })}
         onRetry={() => {}}
-        {...(plugins.place === undefined ? {} : { place: plugins.place })}
+        place={place === "served" || plugins.place === "served" ? "served" : "app"}
       />
       {adding && plugins.installer !== undefined ? (
         <AddPluginDialog
