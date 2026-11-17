@@ -20,9 +20,9 @@ const states: Record<string, SandboxSetupState> = {
   testing: {
     kind: "testing",
     checks: [
-      { label: "Can write inside your project", result: "passed" },
-      { label: "Can't read outside your project", result: "passed" },
-      { label: "Can't reach a blocked website", result: "pending" },
+      { id: "write-inside", label: "Can write inside your project", result: "passed" },
+      { id: "read-outside", label: "Can't read outside your project", result: "passed" },
+      { id: "reach-blocked", label: "Can't reach a blocked website", result: "pending" },
     ],
   },
   "test-failed": {
