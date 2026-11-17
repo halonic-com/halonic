@@ -132,13 +132,16 @@ export function intervalText({ count, unit }: EveryInterval): string {
   return `${count}${unit}`;
 }
 
+/** The signal name picking On a signal starts with. */
+export const DEFAULT_SIGNAL = "mail.tagged";
+
 /** The trigger kinds the picker can switch to, in the order it lists them. */
-export const PICKABLE_KINDS = ["manual", "schedule", "every"] as const;
+export const PICKABLE_KINDS = ["manual", "schedule", "every", "signal"] as const;
 export type PickableKind = (typeof PICKABLE_KINDS)[number];
 
 /**
  * What picking a kind writes: manual, weekdays at 08:00 in the device's zone (no zone when it
- * can't be read), or every hour.
+ * can't be read), every hour, or the signal `mail.tagged`.
  */
 export function defaultTrigger(kind: PickableKind, deviceZone: string | undefined): RoutineTrigger {
   switch (kind) {
@@ -152,5 +155,7 @@ export function defaultTrigger(kind: PickableKind, deviceZone: string | undefine
       };
     case "every":
       return { kind: "every", interval: "1h" };
+    case "signal":
+      return { kind: "signal", name: DEFAULT_SIGNAL };
   }
 }
