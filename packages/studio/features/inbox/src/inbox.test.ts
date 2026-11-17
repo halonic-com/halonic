@@ -5,7 +5,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { InboxRunsService, InboxService } from "./api.ts";
 import { inboxFeature } from "./feature.ts";
-import { Inbox, type InboxRuns } from "./inbox.ts";
+import { answerTimeoutMs, Inbox, type InboxRuns } from "./inbox.ts";
 import { isRunItem } from "./inbox-items.ts";
 import { pendingApproval, waitingRun } from "./test-runs.test-helper.ts";
 
@@ -130,6 +130,41 @@ verifies("inbox.live", () => {
     await expect(inbox.decisions.approve(item)).rejects.toThrow("The engine isn't answering.");
     expect(inbox.state.items).toHaveLength(1);
     expect(inbox.signal().value).toBe(1);
+  });
+
+  it("ends an answer the engine never gives with an error, and keeps the item", async () => {
+    vi.useFakeTimers();
+    try {
+      const fake = fakeRuns([notes]);
+      fake.send.mockReturnValueOnce(new Promise(() => {}));
+      const inbox = new Inbox(fake.runs);
+      await vi.advanceTimersByTimeAsync(0);
+      const [item] = inbox.state.items;
+      if (item === undefined || !isRunItem(item)) throw new Error("expected a run's item");
+
+      const answered = expect(inbox.decisions.approve(item)).rejects.toThrow("in time");
+      await vi.advanceTimersByTimeAsync(answerTimeoutMs);
+      await answered;
+      expect(inbox.state.items).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("loads again when an answer comes too late, so an item nobody waits on leaves", async () => {
+    const fake = fakeRuns([notes]);
+    fake.send.mockRejectedValueOnce(
+      Object.assign(new Error("refused"), { code: "engine.decision-callid-must-match" }),
+    );
+    const inbox = new Inbox(fake.runs);
+    await settled();
+    const [item] = inbox.state.items;
+    if (item === undefined || !isRunItem(item)) throw new Error("expected a run's item");
+
+    fake.change([]);
+    await expect(inbox.decisions.approve(item)).rejects.toThrow("refused");
+    await settled();
+    expect(inbox.state.items).toHaveLength(0);
   });
 
   it("keeps the items and the count when a load fails, and says why until one succeeds", async () => {
