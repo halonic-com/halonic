@@ -3,6 +3,7 @@
 - Task: HAL-11642
 - Approval: the states audit on HAL-11635 (https://paperclip.halonic.com/HAL/issues/HAL-11635#document-states-audit), gap 4, sent to Liam as HAL-11642 (https://paperclip.halonic.com/HAL/issues/HAL-11642). Microcopy 1.4 and 22 F13 are board-approved; this applies them. A team decision with no board card.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oe8KhHYAYNxsinjdfnsvVkL4V6TE0wC8tXXJK0yULHBUzGETfUIZX9pgN+6Wj7I7OVT654/WZ7g7279CpxdKCQ==
 
 ## What changes
 
