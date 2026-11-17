@@ -126,3 +126,77 @@ export const CONFIRM_BODY = [
   "A sandbox makes that a hard limit instead of a question. You can set one up any time in Settings.",
 ];
 export const SET_UP_A_SANDBOX = "Set up a sandbox";
+
+/** S3: setting up, with the steps of each path (HAL-3777 wording). */
+export const SETUP_TITLE = "Setting up your sandbox";
+export const CANCEL = "Cancel";
+export const STEP_DONE = "Done";
+export const STEP_WORKING = "Working…";
+export const STEP_WAITING = "Waiting";
+export const PERMISSION_NEXT_WINDOWS = "Windows will ask for permission next. This is expected.";
+export const PERMISSION_NEXT_PASSWORD =
+  "Your computer will ask for your password next. This is expected.";
+export const OFFLINE = "We couldn't download what we need. Check your connection.";
+export const TRY_AGAIN = "Try again";
+export const STEPS_WSL = [
+  "Check your computer",
+  "Download WSL",
+  "Install WSL",
+  "Set up the sandbox",
+  "Finish",
+] as const;
+export const STEPS_NATIVE = ["Check your computer", "Install the sandbox", "Finish"] as const;
+
+/** S3b: restart needed. */
+export const RESTART_TITLE = "Restart to finish";
+export const RESTART_BODY =
+  "WSL is installed. Windows has to restart to finish. Halonic reopens and continues where you left off.";
+export const RESTART_NOW = "Restart now";
+export const RESTART_LATER = "Restart later";
+
+/** S3c: can't set up. One reason and one hint show, never the engine's code. */
+export const CANT_TITLE = "We couldn't set this up";
+export const CHOOSE_ANOTHER = "Choose another option";
+export const CANT_REASONS = {
+  "not-allowed": "Your Windows account isn't allowed to install it.",
+  "virtualisation-off": "Virtualisation is turned off on this computer.",
+  "blocked-by-policy": "Your organisation doesn't allow it.",
+} as const;
+export const CANT_HINTS = {
+  "not-allowed": "Ask your IT admin to allow it.",
+  "virtualisation-off": "Turn it on in your computer's BIOS settings.",
+  "blocked-by-policy": "Ask your IT admin to allow it.",
+} as const;
+export const SHOW_STEPS = "Show steps";
+
+/** S3d: a tool is missing (macOS and Linux). */
+export const CHECK_TITLE = "One thing is missing";
+export const checkBody = (tool: string) =>
+  `${tool} is needed for the sandbox. Run this in a terminal, then check again.`;
+export const UBUNTU_2404 =
+  "Ubuntu 24.04 blocks the sandbox by default. This command allows it. It needs admin rights, so Halonic doesn't run it for you.";
+export const CHECK_AGAIN = "Check again";
+export const toolReady = (tool: string) => `${tool}: ready`;
+export const toolMissing = (tool: string) => `${tool}: missing`;
+
+/** S4: the quick test, and S4b when it didn't pass. */
+export const TEST_TITLE = "Testing your sandbox";
+export const TEST_INTRO = "This takes a few seconds.";
+export const TEST_FAILED_TITLE = "The test didn't pass";
+export const testFailedBody = (failedCheck: string) =>
+  `${failedCheck}, so the sandbox isn't protecting you yet.`;
+export const CHECK_PASSED = "passed";
+export const CHECK_DIDNT_PASS = "didn't pass";
+export const CHECK_PENDING = "waiting";
+
+/** S5: done, with a sandbox and without. */
+export const DONE_TITLE = "Sandbox is on";
+export const doneBody = (name: string) => `${name} is active. Agents work inside your project.`;
+export const doneCaveat = (caveat: string) =>
+  `Good to know: ${caveat.charAt(0).toLowerCase()}${caveat.slice(1)}`;
+export const DONE_FOOTER = "You can change this any time in Settings → Sandbox.";
+export const NONE_TITLE = "You're all set";
+export const NONE_BODY =
+  "Agents will ask before running commands or touching files outside your project.";
+export const NONE_FOOTER = "You can set up a sandbox any time in Settings → Sandbox.";
+export const OPEN_HALONIC = "Open Halonic";
