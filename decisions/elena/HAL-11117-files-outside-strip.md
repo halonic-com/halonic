@@ -3,6 +3,7 @@
 - Task: HAL-11117
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11117 (design fix 7 of HAL-11098's design check; Liam's review of #3179 asked for this note; a team decision with no board card, HAL-2282 rule, because it builds on the approved files flow 2.4)
 - Kind: user-visible
+- Superseded by: `HAL-11383-files-strip-compare-only.md` for the strip's buttons (Keep mine and Load theirs are now Compare only); the quiet-reload toast stays
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gM6/IjpnkFxNUYQRJ3b7+Y3T9GjfTNQiSI44jGE6Xl3FSLCBoCYoqRP42reCKxFLd2eihrZXZCya/SPYoSdWAA==
 
 ## What changes

@@ -48,7 +48,7 @@ export interface FileCompare {
 export type CompareChoice = "keep-mine" | "use-other" | "combine-both";
 
 /**
- * What `FilesHost.create` and `FilesHost.rename` reject with when the path itself is the problem
+ * What `FilesHost.create` rejects with when the path itself is the problem
  * ("workspace.yaml already exists."). Any other rejection is a write that failed.
  */
 export class FilePathError extends Error {

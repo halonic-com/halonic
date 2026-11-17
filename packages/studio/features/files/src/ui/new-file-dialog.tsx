@@ -75,6 +75,12 @@ export function NewFileDialog({
     onCreated(wanted);
   }
 
+  /** The Callout goes with the press, so focus returns to the field first and stays inside the form. */
+  function retry(): void {
+    field.current?.focus();
+    void create();
+  }
+
   return (
     <Dialog
       title={filesWords.newFileTitle}
@@ -88,7 +94,7 @@ export function NewFileDialog({
     >
       {writeFailure !== undefined && (
         <div className="mb-3">
-          <Callout tone="danger" action={{ label: filesWords.tryAgain, onClick: () => create() }}>
+          <Callout tone="danger" action={{ label: filesWords.tryAgain, onClick: retry }}>
             {writeFailure}
           </Callout>
         </div>

@@ -77,7 +77,7 @@ export function FileView({ item, context }: ItemViewProps) {
   const trash: Trashed | undefined = useSyncExternalStore(subscribeTrashed, () =>
     trashedFile(path),
   );
-  // The choice just made, said in a line above the editor until the file changes outside again.
+  // The choice just made, said in a line above the editor until the next edit.
   const [settled, setSettled] = useState<CompareChoice | undefined>();
   const [outside, setOutside] = useState<OutsideChange | undefined>(() => host.outside().get(path));
 
@@ -210,6 +210,7 @@ export function FileView({ item, context }: ItemViewProps) {
       onChange: (next) => {
         lastText.current = next;
         edits.current += 1;
+        setSettled(undefined);
         host.edit(path, next);
       },
       onProblemJump: (problem) =>

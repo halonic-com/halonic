@@ -105,9 +105,8 @@ verifies("files.ui.outside-strip", () => {
   it("shows the strip with only Compare, and keeps the editor", async () => {
     const { page } = fixture("changed");
     await flush();
-    expect(page.querySelector("[role=status]")?.textContent).toBe(
-      "a.agent.yaml changed outside HalonicCompare",
-    );
+    expect(page.querySelector("[role=status]")?.textContent).toContain("changed outside Halonic");
+    expect(page.querySelector("[role=status]")?.textContent).not.toContain("Halonic.");
     expect(page.querySelector("[role=status] em")?.textContent).toBe("a.agent.yaml");
     expect(button(page, "Keep mine")).toBeUndefined();
     expect(button(page, "Load theirs")).toBeUndefined();
@@ -122,6 +121,17 @@ verifies("files.ui.outside-strip", () => {
     expect(settle).toHaveBeenCalledWith("a.agent.yaml", "keep-mine");
     expect(focused).toHaveBeenCalledTimes(1);
     expect(page.textContent).toContain("Keeping yours");
+  });
+
+  it("drops the line about the choice at the next edit", async () => {
+    const { page } = fixture("deleted");
+    await flush();
+    await press(page, "Keep mine");
+    expect(page.textContent).toContain("Keeping yours");
+    await act(async () => {
+      opened.at(-1)?.onChange?.("typed after");
+    });
+    expect(page.textContent).not.toContain("Keeping yours");
   });
 
   it("moves focus into Compare when it opens, and back to the editor when it is cancelled", async () => {
