@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { type ToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
+import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";

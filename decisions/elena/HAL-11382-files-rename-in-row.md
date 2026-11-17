@@ -32,3 +32,5 @@ rename with Undo.
 ## Covers
 
 - files.ui.rename-file
+- packages/studio/features/files/src/ui/rename-file-dialog.test.tsx
+- packages/studio/features/files/src/ui/files-sidebar-view.test.tsx
