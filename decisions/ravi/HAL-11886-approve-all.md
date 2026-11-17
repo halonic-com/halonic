@@ -2,7 +2,6 @@
 
 - Approval: Liam assigned HAL-11886 and left the choice to Ravi; Liam signs this note
 - Kind: user-visible
-- Signature: (Liam signs on review)
 - Task: HAL-11886
 
 ## What changes
