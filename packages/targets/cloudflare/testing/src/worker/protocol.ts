@@ -44,4 +44,37 @@ export const workerPaths = {
   run: "/run",
   /** `POST` with the deploy's self-test token: answers `{ ok: true }` once the Worker started. */
   selfTest: "/self-test",
+  /** `GET`: the V8 coverage collected since the Worker loaded, as a {@link RawCoverage}. Only a Worker built for coverage has it. */
+  coverage: "/coverage",
 } as const;
+
+/** One counted range of a function, in offsets into the script's text. V8's own shape. */
+export interface CoverageRange {
+  readonly startOffset: number;
+  readonly endOffset: number;
+  readonly count: number;
+}
+
+/** A function with its counted ranges, the first being the whole function. V8's own shape. */
+export interface FunctionCoverage {
+  readonly functionName: string;
+  readonly ranges: readonly CoverageRange[];
+  readonly isBlockCoverage: boolean;
+}
+
+/** One script's coverage. `url` is the script's name inside workerd. */
+export interface ScriptCoverage {
+  readonly url: string;
+  readonly functions: readonly FunctionCoverage[];
+}
+
+/** What `Profiler.takePreciseCoverage` answers, which `/coverage` passes on as it is. */
+export interface RawCoverage {
+  readonly result: readonly ScriptCoverage[];
+}
+
+/**
+ * Where a Worker built for coverage keeps the function that takes its
+ * coverage, on `globalThis`. `coverage-start.ts` sets it; `/coverage` calls it.
+ */
+export const coverageHook = "__halonicTakeWorkerdCoverage";

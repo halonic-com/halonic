@@ -29,6 +29,8 @@ Shared settings every package extends.
   The preset measures coverage of `src` on every run and fails when it is
   below the package's floor, `"halonic": { "coverage": { "lines", "branches" } }`
   in its `package.json`. See [checks.md](../../docs/guides/checks.md#coverage-floors).
+  A package with `"runtime": "workers"` also gets what workerd counted
+  (`src/workerd-coverage-provider.ts`, see `@halonicjs/target-cloudflare-testing`).
 
   Test hygiene, proven by `src/test-hygiene.test.ts`:
   - A test that never calls `expect()` fails, and a package can't turn
