@@ -36,6 +36,12 @@ fed made-up data, so the spacing under each section's name is the app's. The Age
 `load…` function in their `api.ts`, which loads the view only when called. The phone's Settings
 sheet isn't taken yet.
 
+## Welcome
+
+`welcome-<new|recent|failed>-<1440|360>-<light|dark>.png` shows the shell's real Welcome screen
+brand-new, with five Recent rows, and after a Recent row failed to open (HAL-11985). The spec also
+checks that the title and **Open folder** sit at the same y in all three states.
+
 ## Pictures for halonic.dev
 
 `e2e/site-screenshots.spec.ts` takes the pictures the website shows (HAL-10732): the run page of a

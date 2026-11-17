@@ -56,11 +56,11 @@ type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly
  * Studio", what a workspace is, and **Open folder**, the one primary button, centred with no
  * sidebar and no tabs. With the app's New workspace dialog, **New workspace…** sits under it as
  * a secondary button. The column hangs a fixed 18% of the window height from the top rather than
- * centring, so nothing above a new line (Recent, an error) moves under the pointer. While the folder opens the button reads "Opening…" and is busy: it keeps
- * focus and ignores presses. A folder that fails to open says why under the text in the danger
- * colour, and the button works again (`shell.welcome.cant-open`); a reason Halonic can't explain
- * comes with **Copy details**. Cancelling the picker changes
- * nothing. Focus starts on **Open folder** (accessibility pass 1.3).
+ * centring, so nothing above a new line (Recent, an error) moves under the pointer. While the
+ * folder opens the button reads "Opening…" and is busy: it keeps focus and ignores presses. A
+ * folder that fails to open says why under the text in the danger colour, and the button works
+ * again (`shell.welcome.cant-open`); a reason Halonic can't explain comes with **Copy details**.
+ * Cancelling the picker changes nothing. Focus starts on **Open folder** (accessibility pass 1.3).
  *
  * Under the button, **Recent** lists up to five remembered workspaces, and one press opens one
  * (states-flow-map W2). A row whose folder is gone says so on the same line with
