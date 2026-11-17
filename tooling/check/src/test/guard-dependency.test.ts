@@ -97,6 +97,21 @@ verifies("check.guard-dependency", () => {
     expect(guardDependencyChanged("pnpm-lock.yaml", "version: 1\n", "version: 2\n")).toBe(true);
   });
 
+  test("counts any change when the importer entry can't be tied to a package block", () => {
+    // No `version:` line under the importer entry.
+    const noVersion = (integrity: string): string =>
+      lock("6.0.2")
+        .replace("        version: 6.0.2\n", "")
+        .replace("integrity: sha512-x", `integrity: sha512-${integrity}`);
+    expect(guardDependencyChanged("pnpm-lock.yaml", noVersion("x"), noVersion("y"))).toBe(true);
+    // A version with no matching `packages` or `snapshots` block.
+    const orphan = (integrity: string): string =>
+      lock("6.0.2")
+        .replaceAll("'@typescript/typescript6@6.0.2':", "'@typescript/typescript6@6.0.9':")
+        .replace("integrity: sha512-x", `integrity: sha512-${integrity}`);
+    expect(guardDependencyChanged("pnpm-lock.yaml", orphan("x"), orphan("y"))).toBe(true);
+  });
+
   test("makes the guard report the file under its own name", async () => {
     const errors = async (head: string): Promise<string[]> =>
       (

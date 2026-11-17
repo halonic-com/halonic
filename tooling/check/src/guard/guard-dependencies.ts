@@ -82,7 +82,11 @@ function lockfileFacts(text: string | undefined): string | undefined {
   const packages = [...section("packages"), ...section("snapshots")];
   const blocksOf = (id: string): string[] =>
     packages.flatMap((line, index) => (keyOf(line) === id ? block(packages, index) : []));
-  const resolved = blocksOf(`${guardDependency}@${version}`);
+  const resolved = version === undefined ? [] : blocksOf(`${guardDependency}@${version}`);
+  if (resolved.length === 0) {
+    // The entry can't be tied to a package block, so any difference counts.
+    return text;
+  }
   const below = resolved
     .filter((line) => /^ {6}\S/.test(line))
     .flatMap((line) => {

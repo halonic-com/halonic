@@ -211,6 +211,7 @@ covers it:
 | a lower coverage floor in `package.json`, a new `v8`/`c8`/`istanbul ignore` comment, or changed `coverage` settings | the changed file |
 | a file under the guard's own paths changed, added or deleted: `.github/`, `packages/testing/parity/allowed-differences.json`, `packages/testing/spec/`, `tooling/check/`, `tooling/config/src/vitest-preset.ts`, `turbo.json` | that path, as written here |
 | `tooling/check/policy.json` changed in `extraExports` only (a note of either kind is enough, so the CTO can sign it as `internal`) | `tooling/check/policy.json` |
+| the lines for `@typescript/typescript6` (the parser the guard runs) changed in `pnpm-workspace.yaml` or `pnpm-lock.yaml` (a note of either kind is enough) | that file |
 
 A package with tests but no readable result file on either side always
 fails: no note can stand in for a comparison the guard couldn't make.
@@ -425,7 +426,13 @@ more exception: a change to `tooling/check/policy.json` that touches
 nothing but `extraExports` (a package's deliberate extra entry point) needs
 a note that lists `tooling/check/policy.json`, and an `internal` note the
 CTO signs is enough. Any other change to `policy.json`, even in the same
-pull request, is a trust-root change. The check also
+pull request, is a trust-root change. The same goes for the npm package the guard
+runs: the `check.guard-dependency` rule counts a change to the catalog entry of
+`@typescript/typescript6` in `pnpm-workspace.yaml`, or to the lockfile lines that resolve it
+(its `tooling/check` importer entry, its package and snapshot entries and those of its own
+dependencies). Other changes to those two files, such as another dev dependency, are not
+reported. A lockfile layout the reader doesn't know counts any difference as a change. A note of
+either kind that lists the file under Covers is enough. The check also
 checks any note's approval again in the merge queue, against the queue
 base's `approvers.json`. The merge queue is different: there GitHub runs
 the file from the merge group's commit, which holds the pull request's own
