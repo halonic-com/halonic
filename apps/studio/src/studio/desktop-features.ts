@@ -1,3 +1,5 @@
+import { agentsFeature } from "@halonicjs/studio-feature-agents";
+import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
 import { filesFeature } from "@halonicjs/studio-feature-files";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { firstRunFeature } from "@halonicjs/studio-feature-first-run";
@@ -62,6 +64,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     runsFeature,
     settingsFeature,
     sourceControlFeature,
+    agentsFeature,
     workflowsFeature,
     workspaceFeature,
   ],
@@ -82,6 +85,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     InboxRequestsService,
     RunsSourceService,
     ChangesSourceService,
+    AgentsHostService,
     WorkflowsHostService,
     RoutinesHostService,
     ModelsFilesService,
