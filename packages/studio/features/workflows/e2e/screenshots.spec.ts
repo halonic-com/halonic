@@ -98,3 +98,43 @@ for (const size of sizes) {
     }
   }
 }
+
+/** The sandbox setup screens (HAL-5405, S3 to S5) at the plan's largest size, and the busiest at the smallest. */
+const setupScreens = [
+  "setting-up",
+  "offline",
+  "restart-needed",
+  "cant-set-up",
+  "tool-missing",
+  "testing",
+  "test-failed",
+  "done",
+  "done-none",
+] as const;
+
+for (const screen of setupScreens) {
+  for (const size of [sizes[0], sizes[3]]) {
+    if (size === sizes[3] && screen !== "offline" && screen !== "tool-missing") continue;
+    for (const scheme of schemes) {
+      test(`sandbox setup, ${screen}, ${size.width}x${size.height}, ${scheme}`, async ({
+        page,
+      }) => {
+        await page.setViewportSize(size);
+        await page.emulateMedia({ colorScheme: scheme });
+        await page.goto(`/sandbox-setup.html?state=${screen}`);
+        await expect(page.getByRole("heading", { level: 2 })).toBeVisible();
+        await expect(page.getByTestId("sandbox-halo")).toBeAttached();
+        // The card's last button must stay reachable inside the window (the body scrolls, the actions don't).
+        const card = await page.getByRole("region").boundingBox();
+        expect(card, "the card is shown").not.toBeNull();
+        if (card !== null) {
+          expect(card.y + card.height, "the card fits the window").toBeLessThanOrEqual(size.height);
+        }
+        await page.screenshot({
+          path: `test-results/screenshots/sandbox-setup-${screen}-${size.width}x${size.height}-${scheme}.png`,
+          fullPage: true,
+        });
+      });
+    }
+  }
+}

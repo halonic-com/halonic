@@ -18,6 +18,7 @@ export default defineConfig({
       input: {
         "run-card": `${import.meta.dirname}/e2e/pages/run-card.html`,
         "sandbox-choice": `${import.meta.dirname}/e2e/pages/sandbox-choice.html`,
+        "sandbox-setup": `${import.meta.dirname}/e2e/pages/sandbox-setup.html`,
         "run-steps": `${import.meta.dirname}/e2e/pages/run-steps.html`,
         approval: `${import.meta.dirname}/e2e/pages/approval.html`,
       },

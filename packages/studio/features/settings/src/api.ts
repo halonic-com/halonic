@@ -193,3 +193,11 @@ export type {
   SandboxChoiceScreen,
 } from "./sandbox-choice/ui/sandbox-choice-flow.tsx";
 export { SandboxChoiceFlow } from "./sandbox-choice/ui/sandbox-choice-flow.tsx";
+export type {
+  SandboxCantSetUpReason,
+  SandboxCheckResult,
+  SandboxSetupFlowProps,
+  SandboxSetupState,
+  SandboxStepStatus,
+} from "./sandbox-choice/ui/sandbox-setup-flow.tsx";
+export { SandboxSetupFlow } from "./sandbox-choice/ui/sandbox-setup-flow.tsx";
