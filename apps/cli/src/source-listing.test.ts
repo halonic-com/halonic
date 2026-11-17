@@ -2,16 +2,13 @@ import { mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
+import { connectorHostClass } from "@halonicjs/adapter-http-kit";
 import { MemorySecrets, MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  type ConnectorMachine,
-  cliConnectorFactories,
-  connectorHostClass,
-} from "./connector-machine.ts";
+import { type ConnectorMachine, cliConnectorFactories } from "./connector-machine.ts";
 import { exitCodeOfError } from "./exit-code-for.ts";
 import { runMessages } from "./messages/run.ts";
 import { readSourceListing } from "./source-listing.ts";

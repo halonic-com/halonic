@@ -1,4 +1,6 @@
 import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { runnerNodeFolder, runnerProfile } from "@halonicjs/adapter-integration-runner";
@@ -64,6 +66,20 @@ verifies("agent-host.plugin-routes", () => {
         expect(profile.readOnlyPaths).not.toContain(dirname(dirname(process.execPath)));
       } finally {
         await dispose();
+      }
+    });
+
+    it("lets an integration's requests reach this computer, which the sheet then limits", async () => {
+      const server = createServer((_request, response) => response.end("ok"));
+      await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
+      const { machine, dispose } = machineOf();
+      try {
+        const { port } = server.address() as AddressInfo;
+        const response = await machine.transport.fetch(`http://localhost:${port}/`);
+        expect(await response.text()).toBe("ok");
+      } finally {
+        await dispose();
+        await new Promise((done) => server.close(done));
       }
     });
 

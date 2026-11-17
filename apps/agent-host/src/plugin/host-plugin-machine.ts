@@ -5,6 +5,7 @@ import {
   FileSystemFolderReader,
   FileTrustStore,
 } from "@halonicjs/adapter-fs-node";
+import { connectorHostClass } from "@halonicjs/adapter-http-kit";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import {
   type PluginBackendMachine,
@@ -101,8 +102,8 @@ export function hostPluginMachine(options: HostPluginMachineOptions): HostPlugin
       nodeFolder: runnerNodeFolder(process.execPath),
       runnerFile: runnerFile(),
     },
-    // The plugin's own sheet limits the hosts; public sites only.
-    transport: createNodeHttpClient({ hostClass: () => "public" }),
+    // The plugin's own sheet limits the hosts; a name leads to the internet, an address as written to its own class.
+    transport: createNodeHttpClient({ hostClass: connectorHostClass }),
     // The start's temp folder goes when its runner stops, or when the start fails.
     startRunner: async (startOptions) => {
       const { tempFolder } = startOptions.machine;
