@@ -1,7 +1,7 @@
 # server.chat-turn-model-address
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9483 (sign-off of HAL-196)
 
 The server shall, for a chat turn whose `agent` settings name a `secret`, ask its `modelSettings` port whether the hub's workspace allows that pair of secret and address (`allows(hubId, agent)`), and when it doesn't, answer 400 `model_address_not_allowed` before the trust gate or the executor is asked, so no model request is made. Settings without a `secret` are not asked. The `halonic serve` command shall allow the pair only when a provider file of the workspace served now names that same secret, has the same `type` and calls the same address (`baseUrl`, else the type's own address, compared without a trailing slash); a hub the workspace doesn't have is refused. The workspace is read on each request, so a changed provider file applies at once.

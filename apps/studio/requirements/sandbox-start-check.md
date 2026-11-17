@@ -1,7 +1,7 @@
 # studio.sandbox-start-check
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-4293, HAL-1709; `app.sandbox-start-check`, `inbox.sandbox-row`
 
 The Studio app shall give the run page and the Inbox a sandbox start check from the agent host's own sandbox check, whenever the shell has an agent host, whether or not the build offers Settings › Agent sandbox's setup: the check only reads. It shall tell those who listen when a check passes, so the Inbox's sandbox row hears of a pass made on a run page, and tell no one of a check that refuses or can't run. The result it returns is the check's own, unchanged.

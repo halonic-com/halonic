@@ -1,7 +1,7 @@
 # shell.item-tabs
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1740; plugins design 8.3 and decision D2 (HAL-1739); plugins UX checklist 9 and B3 (HAL-1952)
 
 When a tab is on an item, whose place key is `kind/hub/id` as in a deep link, and a feature added that kind, the shell shall show the kind's `open` view on the tab's page, given the item and the context of the feature that added the kind. The view shall be imported the first time a tab shows an item of that kind. When no feature added the item's kind, the page shall stay empty.

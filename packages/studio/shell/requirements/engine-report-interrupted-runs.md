@@ -1,7 +1,7 @@
 # shell.engine-report-interrupted-runs
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1845 (F15b)
 
 When the engine process tells the shell it is ready and how many runs it ended as `interrupted` on the way, the shell shall send `engine.connection { state: "connected", interruptedRuns }` with that number. If the engine doesn't tell, then the shell shall send `connected` without `interruptedRuns`.

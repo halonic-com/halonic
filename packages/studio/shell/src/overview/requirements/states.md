@@ -1,7 +1,7 @@
 # shell.overview.states
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1303 (T10, P1); state coverage rows LB (HAL-2160); UX checklist section 0
 
 The overview page shall show, in place of its sections and using the words the feature passes in, one of these states: the failed state with a Try again button when the items couldn't load, skeleton rows named for screen readers while they load, "nothing yet" when there is no hub and nothing shared, and a no-match line naming the search text when the search finds nothing, with a **Clear search** button the shell draws. It shall keep the search field in every state but the failed one.

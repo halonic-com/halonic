@@ -1,7 +1,7 @@
 # files.ui.tree-view
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-329 files flow 3.3 (new, accessibility); req-files (HAL-110); HAL-1293; component specs 24.6; HAL-11383
 
 The Files view shall show the file tree as an ARIA tree with one Tab stop, show a long name cut in the middle with the full name as the row's title, draw the error count, the warning count and the "not saved" mark on each row, each with a glyph so no state rests on colour alone (✕ errors, △ warnings, ✎ not saved), show warnings only on a row that has no errors, name a folder row that has marks as "*name*, folder, a file inside not saved, 3 errors", and show a loading state, a can't-load state with "Try again", and an empty state in place of the tree.

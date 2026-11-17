@@ -1,7 +1,7 @@
 # check.guard-two-guardians
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1337
 
 If a pull request changes, adds or deletes a trust root of the guard, that is `tooling/check/approvers.json`, `.gitattributes`, `tooling/check/policy.json` outside `extraExports`, `.github/workflows/guard-notes.yml`, `tooling/check/src/guard/`, `tooling/check/package.json`, the two guard commands or the `lib/` helpers they import, then the note check shall fail it unless its decision note carries `- Signature:` lines from two different keys that the base branch's `tooling/check/approvers.json` lists as `guardians`, or from every guardian if the base lists fewer than two.

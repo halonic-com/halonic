@@ -1,7 +1,7 @@
 # workspace.try-sample
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: flow-first-run 2.2, ux-checklists-t14-t15 part 2; HAL-1308
 
 When the app gives the workspace window a sample host, the Welcome screen shall offer **Try the Acme sample**. When the host creates the sample, the window shall open its folder beside the others and show the toast "Created *name*", with the trust record's failure after it when it wasn't saved. If the host can't create it, then the window shall give Welcome the folder and reason, open nothing and show no toast. The window shall remember on this device, in the folder's Recent entry, that it was created as the sample, and shall tell the host which folders those are, so that when the first taken sample folder is one of them the host reopens it and writes nothing. While a workspace is remembered as the sample and is trusted, the header shall show the chip "Sample · test model", a menu with the cost line, **New workspace…** and **Fresh copy of the sample**; before it is trusted the trust badge has the slot. **Fresh copy of the sample** shall ask the host for a copy with no known samples, open it beside the others and show "Created *name*. Your earlier copy is still in Recent."; if the host can't, it shall show the reason in a danger toast. When the served Studio on a phone serves the sample, More shall show the chip on its own line under the workspace row, and pressing it shall open a panel sheet titled "Sample · test model" with the cost line and "To start your own workspace, use Halonic on your computer.", with no New workspace and no Fresh copy.

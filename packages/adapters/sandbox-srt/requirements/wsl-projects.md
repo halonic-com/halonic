@@ -1,7 +1,7 @@
 # sandbox-srt.wsl-projects
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5402 (project location in Halonic's WSL distro, design in HAL-3779 section 5.1)
 
 The sandbox-srt adapter shall give a project in Halonic's WSL distro the Linux path its `projects` folder in the `halonic` user's home when it lives in the distro and `/mnt/halonic/<name>` when it's on the Windows drive, and shall give each Linux path in the distro its Windows path on the distro's WSL share, for "Open in Explorer" and "Open in VS Code". It shall refuse a project name that isn't one plain folder name, so a name can't reach out of `projects` or `/mnt/halonic`.

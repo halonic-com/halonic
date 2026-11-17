@@ -1,7 +1,7 @@
 # workflows.runs.card-receipt
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8395 (T8 PR 6); ux-checklists-t8-t9 (HAL-1360) part 1, 1.1; UX 3.7; state R15
 
 When the person picks a run in the workflow's Runs view, the run card shall show the run's receipt at card width, read from the run's log: the banner when the run needs attention, the same summary line and sections as the run page's receipt, then Every step with **Show the run log**; while the log is read it shall show a skeleton named "Loading run" and the run's number, with the header and no status chip, and when it can't be read it shall say "Couldn't load run" and the run's number, why, and **Try again**, inside the card with the header and ✕ still working; its footer link shall say **Open the run log** in every state, and only the toggle inside Every step shall say **Show the run log**.

@@ -1,7 +1,7 @@
 # agent-host.google-callback-over-frames
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10029; Liam's approval of the plan on HAL-10017 (Revision 2)
 
 When the agent host serves over frames (`--stdio --relay-host`), the agent host shall send Google's redirect to the relay's port at `/v1/google/callback`, the one path Studio's relay passes on without the launch token, and shall serve that callback with the same route table, the same `Host`, `Origin` and `state` checks, and the same fixed page as on its own port. The page shall carry `Cache-Control: no-store`, `Referrer-Policy: no-referrer` and `Connection: close`, because the code is in the address bar and the history, and the relay learns that the answer ended only when the host closes the connection. The agent host shall serve the callback at `/v1/google/callback` only over frames, and at `/api/google/callback` only on its own port. The sign-in shall use PKCE, so that the code is useless without the verifier the agent host holds in memory.

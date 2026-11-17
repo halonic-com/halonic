@@ -1,7 +1,7 @@
 # agent-host.google-secret-routes
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9910; Liam's plan approval on HAL-10655; `server.google-secret`, `server.google-staged-secret`
 
 When Studio saves or replaces a Google client secret on the agent host, the agent host shall run the Google setup's own secret routes itself, with the setup records and the secret store of the profile it serves, and keep their rules: a secret that Google refused never replaces one in use. `POST /v1/google/secret` with `{ accountRef, clientSecret }` shall run the handler's save and answer what it answers (`{ saved: true }`, or 409 `secret_needs_staging` when the secret must be checked with Google first). `POST /v1/google/secret/replace` with the same body shall try the same save first and answer `{ result: "replaced" }` when it keeps the secret. When the save answers 409 `secret_needs_staging`, the agent host shall stage the secret, check it with Google, and answer `{ result }` with the handler's own outcome: `accepted` (with `accountsFixed`, the refs the secret fixed), `refused`, `signInRefused`, or any other kind the check ends with, such as `unreachable`. It shall pass each outcome on as its own word and never fold one into another. The agent host shall not discard or promote a staged secret itself: it leaves the staged and the in-use secret as the handler leaves them, and a retry stages the secret again.

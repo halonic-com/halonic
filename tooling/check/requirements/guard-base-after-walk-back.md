@@ -1,7 +1,7 @@
 # check.guard-base-after-walk-back
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-7660
 
 When main is red and CI takes the requirement guard's test results from an older green commit on main, the guard shall still compare the pull request's files with the main commit its merge ref was built on, and shall leave out the tests in files main changed between the two, so it reports only the pull request's own changes.

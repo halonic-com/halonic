@@ -1,7 +1,7 @@
 # files.ui.problems-list
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-329 files flow 4.1 and 4.2 (`files.editor.revalidates-while-typing`); accessibility pass 5.2; HAL-10534; HAL-11383
 
 The file tab shall show the problems of its file in a list under the editor, headed "Problems (n)", errors before warnings and then in the order of the text, each row "Line n: " and the sentence, named for a screen reader with its severity. It shall check again 300 ms after the files last changed, never while typing, and show the result in the list and as squiggles and gutter icons in the editor. Choosing a row, by click or Enter, shall put the editor's cursor at that line and column and focus the editor; clicking a gutter icon shall open the list and focus its row; F8 and Shift F8 shall move between problems and announce the one reached as "Line 2, error: …". With none it shall say "No problems.", and for a file that opens read-only because it is large, which is not checked, "This file is too long to check." The list shall collapse to its header, which keeps the count. When changes in the file cause problems in other files that were not there when the tab opened, a line under the list shall say "Your edits here cause n problems in other files." with the first file as a link that opens it.

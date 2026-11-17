@@ -1,7 +1,7 @@
 # engine.remote-decision
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10852, relay part 2 of HAL-10833 (Liam's conditions on HAL-10835 and HAL-10847)
 
 When `approve` or `reject` is sent to a run with `by: "remote-device"`, the engine shall take it exactly as it takes the same send without `by`, from a card click: the same call id check, the same refusals, the same events and the same answer to the harness call, and shall record `by: "remote-device"` on `approval.resolved` instead of `by: "person"`. Only the host that calls `send` sets `by`; the engine reads it from the send options and from nothing a phone sent. The first answer for an approval wins: when two answers for it arrive at once, the engine takes the one it records first and refuses the other with `engine.decision-callid-must-match`, and records nothing for it. An answer for an id the run doesn't wait on, or for one that was already answered, is refused the same way; an answer to a run that has ended is refused with `engine.run-ended`. A refused answer reaches no harness.

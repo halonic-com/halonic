@@ -1,7 +1,7 @@
 # fs-tauri.runs-and-blobs-on-disk
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-110 stub (HAL-10 migration checklist P5); HAL-6175; where the files go: HAL-119 (the CLI's rule, one shared function) and HAL-2022 G4 (nothing of a workspace's data in the workspace); `FolderBlobStore` in `fs-node`; `ports.blob-store-checks`; `BlobStore` port v1
 
 The desktop stores shall keep a workspace's runs and blobs where the CLI keeps them, in the same format, so `halonic` and the desktop app read each other's runs and blobs: runs as `fs-tauri.run-store` says, and blobs in `<profile>/workspaces/<key>/blobs/<first two hex characters>/<hash>`, the folder `blobsFolder` in `@halonicjs/profile` names, each file holding only the bytes, as `FolderBlobStore` keeps them. (The stub said `.studio/blobs` inside the workspace; HAL-119 and HAL-2022 G4 moved a workspace's data into the profile.)

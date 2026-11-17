@@ -1,7 +1,7 @@
 # server.studio-page
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9489, decided on HAL-9482; the served Studio and the phone's workspace picker on HAL-1291
 
 When the host gives the server the built Studio page, the server shall serve its files to `GET` and `HEAD` requests, without a sign-in: `/` answers the page's entry, `studio.html`, and any other path answers the file of that name in the build. The page shows its own sign-in before a session exists, and its files are the same for everyone and hold nothing of the workspace. The page's routes sit behind the same `Host` and `Origin` checks, the same daily request ceiling and the same response headers as every other route. Every `/api` path keeps its own answer, whatever file the build holds, and a request to `/api/…` that no route knows answers 404 as it did before.

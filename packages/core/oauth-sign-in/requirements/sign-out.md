@@ -1,7 +1,7 @@
 # oauth-sign-in.sign-out
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8323 (HAL-984 design, section 4, "Signing out")
 
 The sign-in shall on sign-out revoke the saved refresh token at the revoke endpoint of the sign-in the user approved, never at one from the sheet as it is now, with the client of that approved sign-in, unless the sign-out is for a new grant that the revoke would end too (the old or the new approval says `revokeEndsClientGrants`, and both have the same client and token server), in which case no revoke is sent, and then remove the grant whether or not the server confirmed, and shall drop the access token in use so that it is not given out again.

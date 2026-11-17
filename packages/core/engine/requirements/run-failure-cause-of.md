@@ -1,7 +1,7 @@
 # engine.run-failure-cause-of
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-11593 (Liam's decision on HAL-715); Studio's "API off" chip and run banner
 
 The engine shall turn the error that stopped a run into the typed `cause` its `run.failed` event records (requirement `events.run-failed-cause`) in one function, `failureCauseOf(error)`. The `kind` shall be the error's kind (`errorKindOf`); an error without a kind, or with the kind `internal`, shall give no cause. The `code` and `detail` shall come from the error's `failureCause` property, which an integration sets to name its own cause, such as `google.api-disabled` with the API, the project and the link that switches it on. The engine shall not trust that property: it shall keep a `code` only when it is lower-case words joined by dots or dashes, and a `detail` entry only when its key is one camel-case word of at most 40 characters and its value is a string of at most 300 characters that holds nothing shaped like a key (`findSecretShape`), keeping at most 8 entries and leaving `detail` out when none is kept. It shall read only the error itself, not its `cause`. A call that fails shall end the run with `run.failed` carrying that cause when there is one, and without a `cause` otherwise, as before.

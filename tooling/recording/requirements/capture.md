@@ -1,7 +1,7 @@
 # recording.capture
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6422; the capture step of the README recording's storyboard on HAL-6395 (section 6, step 1)
 
 When the capture runs a recording, the capture shall run each command for real in a new empty home folder, with only the given program folder and the system folders on `PATH`, and shall write what the terminal showed as asciicast v2, with each write at its real time and a marker, labelled with the command, where each command is typed. Before the commands, the capture shall run `halonic --version` once, off camera, in the same kind of clean home folder, and shall save what it printed next to the cast as `<name>.version`.

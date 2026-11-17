@@ -1,7 +1,7 @@
 # app.integration-folder
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-983; trust build plan item 3a on HAL-188 (a hash of every file, symbolic links refused); I5 design on HAL-958, section 5 and attack case A12; the limits of `app.plugin-folder` (2,000 files and folders, 50 MB)
 
 The app shall read a local integration's folder in a workspace through the `FolderReader` port: list it, refuse it on the listing alone when it holds a link or a special file anywhere, more than 2,000 files and folders, or more than 50 MB of files, before reading any byte, then read and parse `integration.yaml` before any other file, so a sheet with problems is refused without reading the rest, then read every other file and hash all of them, the sheet's bytes as parsed included, with `integrationCodeDigest` by their paths in the folder. The listing checks and the limits are the ones `app.plugin-folder` uses, from one shared module. A file that grows past the byte limit or disappears while it is read shall stop the read with a problem. A folder without `integration.yaml`, or without any entry, shall be refused.

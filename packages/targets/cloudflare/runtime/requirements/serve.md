@@ -1,7 +1,7 @@
 # runtime.serve
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9486 (part 9b of HAL-197); secure-serve rules of HAL-195; decided on HAL-9480
 
 The Worker's `fetch()` shall answer `/health` and, for a deployment that set its token, `/self-test` itself, and shall hand every other request to `host/server`'s handler with the Cloudflare adapters. The handler's rules apply unchanged: the `Host` check, the `Origin` check, the sign-in with the length-limited password check, the daily request ceiling and the same neutral 404 for every unknown path.

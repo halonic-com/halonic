@@ -1,7 +1,7 @@
 # deploy.destroy
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6705; build plan 3b (HAL-198); multi-cloud ADR 5.6, 5.9
 
 The `destroy` command shall delete what a deploy created, in this order: the Worker, the bucket, the database. It shall delete only resources marked as Halonic's, and refuse before deleting anything when one exists that isn't. It shall call `confirm` with the list before it deletes, and stop if the answer is no. It shall hold the deploy lock while it works and renew it between deletes. A resource that is already gone shall be skipped, so a second run finishes a failed first one. A bucket that holds files shall fail with `bucket-not-empty`. `plan` shall list and change nothing. Once it holds the lock it shall look again and delete nothing, failing with `destroy-changed`, if what exists differs from the list the user confirmed. The live-test sweeper shall delete through `deleteResource`, the call `destroy` uses, and shall list and delete only names with its prefix. Before it deletes a bucket it shall delete the bucket's objects, which `destroy` never does.

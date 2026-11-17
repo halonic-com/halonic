@@ -1,7 +1,7 @@
 # cli.local-integrations
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5181, items 3a and 8a of the HAL-188 build plan; the runner start's trust check is `app.trusted-runner-start` (HAL-983)
 
 When a command checks a workspace's trust, the `halonic` command shall read as local integrations every folder directly under `integrations/` that holds an `integration.yaml`, each hashed as a runner start hashes it and with no settings, so a `{ fromSetting }` host shows as `not set`; it shall leave out a folder that can't be read as an integration and a folder whose id an earlier one already has. When a trusted local integration's files changed, the trust check shall show it under Addresses as one `code changed` row tagged Changed, without naming the files, and when it moved, one row with its folder before and after. When a workspace with a local integration isn't trusted, `halonic run` shall exit with code 3 and no runner of the integration shall start.

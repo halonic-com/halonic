@@ -1,7 +1,7 @@
 # sign-in.token-attacks
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8618 (HAL-984 design, section 8: attack cases T11, T13, T15, T17, T18 and T22)
 
 The sign-in tokens shall use a saved grant only for the sign-in the user approved, and shall treat a provider as hostile: a grant whose approved sign-in differs from the sheet and settings now, however they changed, is never refreshed and the user is asked to sign in again; sign-out revokes at the approved revoke URL with the approved client and never at the sheet's; however many requests need a token at once one refresh runs, and a late 401 for a replaced token forces none; a 401 forces a refresh at most once in 30 seconds, never for a token that is not the current one, and never makes the user sign in again; and a provider that rotates refresh tokens and detects reuse never sees a retired one, because the rotated token is saved before the new access token is used and a sign-out waits for a refresh in flight.

@@ -1,7 +1,7 @@
 # sign-in.flow-attacks
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8618 (HAL-984 design, section 8: attack cases T7 to T10 and T19 to T21)
 
 The sign-in flow shall keep the code, the client secret and the tokens inside the sign-in the user approved, whatever a provider or a browser callback does: it shall send a token request only to the approved token endpoint and never follow a redirect, refuse a callback that is not the one the pending sign-in waits for (a wrong or missing `state`, a code that was not issued or was used, a wrong `iss`, a path nothing waits at, a sheet or a setting that changed, an expired sign-in), save nothing from a token answer that is not a bearer token with usable tokens or that is too large, and show a page that repeats nothing the request carried.

@@ -1,7 +1,7 @@
 # system-node.start-folder
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6884 (a workspace connector starts where its script is, HAL-2310 part 3), with Mateo's conditions
 
 The Node sandbox adapters shall start a program only in a folder that, where it really is through symbolic links, lies inside the profile's working folder or inside a path of its `readOnlyPaths`, and not inside a path of its `deniedPaths` (unless that part is in `reopenedPaths`) or one of the session's own private folders. A relative start folder is read against the working folder, a part that doesn't exist yet is read through the links above it, and the program starts in the real folder that was checked.

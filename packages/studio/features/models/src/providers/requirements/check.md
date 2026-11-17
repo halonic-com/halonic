@@ -1,7 +1,7 @@
 # models.providers.check
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: flow-first-run 6.3 (HAL-663), microcopy 5; G2 of the first-run build list (HAL-1308)
 
 The provider page of a provider that runs on this computer or your own network shall have a **Check** button that asks the provider whether it is answering, and shall show the result as one status line with the time of the check. On a phone the button shall be full width and the result shall be a chip, **Answering** (success) or **Not answering** (warning), with "at *address* · checked *time*" under it in small muted text and no dot. It shall show no Check for a cloud provider or a provider with no address.

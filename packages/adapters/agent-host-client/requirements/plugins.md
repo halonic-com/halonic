@@ -1,7 +1,7 @@
 # agent-host-client.plugins
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9389; Liam's plan approval on HAL-9389; `agent-host.plugin-routes`
 
 The plugin stand-in shall offer `call` with a plugin's id, a tool and its arguments, and ask the host's `POST /v1/plugins/call` with those three and nothing else, so the page never sends a path, a trust record or a secret. It shall answer the tool's text. It shall fail with the host's kind and status when the host refuses (`plugin_not_trusted`, `not_fenced`, `not_in_this_build`, `too_many_plugins`, `host_stopping`, `plugin_failed`), with a message that says why in plain words and, for `not_fenced`, that nothing was started. It shall fail with `answer_invalid` for an answer that isn't a tool's.

@@ -1,7 +1,7 @@
 # runtime.health-route
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6802; design review HAL-6790 (Elena, 12 Nov)
 
 The Worker's `fetch()` shall, until `host/server` is on `main` (HAL-195), answer `GET` and `HEAD` on `/health` with status 200 and exactly `{"status":"ok"}`, without a sign-in. The answer shall carry no version, no configuration and no name of anything bound to the Worker. Every other path shall answer 404 and every other method on `/health` shall answer 405 with an `Allow` header, each with a code and a short message. No Studio file shall be served.

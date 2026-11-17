@@ -1,7 +1,7 @@
 # sandbox-srt.windows-tool-folders
 
 - Status: active
-- Since: 0.1.2
+- Since: unreleased
 - Source: HAL-11246, HAL-11305
 
 The sandbox-srt adapter shall, on Windows, where srt denies through the access on an existing file or folder, make each of `.claude`, `.codex`, `.cursor`, `.vscode`, `.zed`, `.devcontainer`, `.husky` and `.config` in the working folder, empty, when nothing is at that path, deny each as a whole folder for writing (a file already at that path is denied as it is), deny `.idea`, `.git/hooks` and `.git/config` for writing when they exist, and never make `.git`, `.idea` or a file in the working folder's root.

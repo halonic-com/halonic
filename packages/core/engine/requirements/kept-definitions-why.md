@@ -1,7 +1,7 @@
 # engine.kept-definitions-why
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5214, findings of the 11 Nov code review
 
 When a run's definitions blob exists but can't be read as definitions, because it isn't JSON or doesn't hold a workflow, the error the engine gives (`engine.kept-definitions`) shall also say why, and shall keep the error that caused it as its `cause`. A blob that is missing gives the error as before.

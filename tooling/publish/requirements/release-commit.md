@@ -1,7 +1,7 @@
 # publish.release-commit
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5259 (tag the release pull request when the merge queue pushes it with others)
 
 The release bot shall tag the commit of a merged release pull request, "chore(release): Halonic <version>" (optionally followed by a task suffix such as "(HAL-4824)"), even when the merge queue pushed that commit to `main` together with other commits, and shall tag nothing when no commit of the push is a release pull request.

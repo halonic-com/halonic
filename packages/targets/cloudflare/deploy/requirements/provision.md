@@ -1,7 +1,7 @@
 # deploy.provision
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6704; build plan 3a (HAL-198); multi-cloud ADR 5.6
 
 The deploy shall find the Worker, the D1 database `<worker>-data` and the R2 bucket `<worker>-blobs` by name, and create the database and bucket when they are missing. It shall mark what it creates, and stop with a typed error naming each resource it found that carries no mark, unless `adopt` is set. In `plan` mode it shall list what it would create, use or adopt and make no change.

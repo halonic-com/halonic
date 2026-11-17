@@ -1,7 +1,7 @@
 # integration-runner.live-secret-filter
 
 - Status: active
-- Since: 0.2.0
+- Since: unreleased
 - Source: HAL-8613 (HAL-984 design, section 5 and attack case T4)
 
 The runner bridge shall filter tool results, tool errors and stderr with the secret forms as they are when each is filtered, not as they were when the runner started, so an access token that a sign-in refresh issues while the runner runs is removed too. A value that begins in bytes the stream held back and ends in the next piece when the forms change shall still be removed.

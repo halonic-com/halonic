@@ -1,7 +1,7 @@
 # app.run-standing
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1301 (T8); run-object-mapping revision 3, sections 2 and 4 (HAL-2015); microcopy revision 94, 15.2 (HAL-751)
 
 The app shall tell where a run stands from its summary: running, needs you, waiting, done, failed, stopped at its budget, cancelled, or couldn't try. A run with an open approval shall need you, even while its status is running. A waiting run shall need you when it waits for an approval or at a step that takes events, and shall be waiting when it waits for a child run or a timer. A failed run shall be stopped at its budget when its reason is `budget`, cancelled when its reason is `cancelled`, and failed otherwise.

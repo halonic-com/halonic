@@ -1,7 +1,7 @@
 # google-setup.client-id-shape
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-713 (design 5.1; UX checklist section 3.1)
 
 When text is one or more digits, a hyphen, one or more lower-case letters or digits and then `.apps.googleusercontent.com`, `isClientId` shall return true; otherwise it shall return false. The setup record shall accept a `clientId` only when `isClientId` returns true for it.

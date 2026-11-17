@@ -1,7 +1,7 @@
 # shell.studio-window
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1290 (T2), plan PR 16; component specs 24.1 to 24.5 (HAL-175); UX checklist part 1, 1.1 to 1.3 and 1.7 (HAL-1323)
 
 The shell shall put the desktop Studio window together from its parts for one open workspace: the Halonic Studio mark, Back, Forward and the window tabs in the title bar, the sidebar, the active tab's page with the last five tabs' pages kept mounted, the status bar items features added with the save note at its right end, and the Ctrl K palette. A new workspace shall start with one tab on Home. The sidebar shall show the Search box, then Home and the places features added, each with its signal read through the context of the feature that added it, then its resize edge. The workspace switcher shall show only once the app gives it a workspace menu.

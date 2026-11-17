@@ -1,7 +1,7 @@
 # app.host-settings
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6159 (the settings host API, design on HAL-6159, reviewed on HAL-6216); the T11 spec on HAL-1294, sections 3 and 6 (an unreadable stored value silently starts from its default; a failed save keeps the old value; a section updates in place when the CLI or another window changes a setting)
 
 The kernel shall have a `HostSettings` service over a `HostSettingsStore`. A host setting shall be defined by `hostSetting(key, fallback, accepts)`, which shall throw a `RangeError` for a key the store can't save or a fallback its own check refuses. After `load`, `get` shall give the saved value when it passes the setting's check, and otherwise the fallback, without an error; before a successful `load`, `get` shall throw. `load` shall pass on the store's error when the settings can't be read. `set` shall refuse a value the check refuses with a `RangeError` and save nothing; when the store's save fails, it shall throw and keep the value from before. It shall keep a copy of what it saved. `reset` shall put a setting back to its fallback by removing its saved value, in turn with saves; when the store's removal fails, it shall throw and keep the value from before.

@@ -1,7 +1,7 @@
 # library.library-place
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1303 (T10, P4b); flow-library 3.1; req-library
 
 The Library feature shall add the Library place, which shows the Library page over the open workspace's items. The place shall open on the tab the workspace was last on, and on Skills the first time. Alt+4, Alt+5, Alt+6 and Alt+7 shall open the Library on Skills, Knowledge, Collections and Connectors, whether or not the Library was drawn yet. The place shall remember the tab it shows for the workspace. On the Skills and Collections tabs, the New button shall open that tab's New dialog, and the new skill's or collection's page shall open once it is made. A row shall open the item under its hub, and a row of what the workspace shares shall open under the one name the tab key uses for the workspace itself.

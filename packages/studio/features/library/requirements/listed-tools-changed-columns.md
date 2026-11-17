@@ -1,7 +1,7 @@
 # library.listed-tools-changed-columns
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-2213 part 2; Noah's frames T10-F33 to F48 (HAL-2882, approved in HAL-2896)
 
 The Library feature shall show a tool that changed since it was approved with one labelled line per changed text, the **Approved version** beside the **New version**, stacked on a phone. Words taken out shall be struck through and words added underlined. A change a person can't see shall get one warning line that says why, and a tool whose text is the same but whose server connects differently shall get a plate that says so.

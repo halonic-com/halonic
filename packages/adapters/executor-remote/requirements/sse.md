@@ -1,7 +1,7 @@
 # executor-remote.sse
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-195 (build plan PR 10d, remote run executor); PR 10 plan approved on HAL-9093
 
 The client shall read a run's events from a server-sent event stream parsed from the `fetch` response body, not through `EventSource`, which can't carry the session cookie of a native client or take a signal. It shall split messages on a blank line whatever the chunks are (a chunk may end in the middle of a line, a message or a multi-byte character) and accept `\n`, `\r\n` and `\r` line ends, with a `\r\n` counting as one line end even when the chunks cut between the two. It shall skip comment lines and messages without data, join several `data:` lines with a newline, and give a message without an `event:` the name `message`. A message counts only when its blank line arrived: a body that ends inside a message drops the half message, so a broken connection never delivers part of an event.

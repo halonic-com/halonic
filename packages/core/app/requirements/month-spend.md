@@ -1,7 +1,7 @@
 # app.month-spend
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: task HAL-8552 (the Spend tile on Studio Home); month rule of `engine.budget-stops`
 
 The app shall add up run summaries by calendar month (UTC) for the last `count` months up to and including the month of a given time, oldest first. A run belongs to the month of its `startedAt`; a month's `spent` is the sum of its runs' `cost`, the same sum the monthly budget stops on. A month without runs has `spent` 0, and a run outside the months is left out. The engine and the Studio shall both use this rule, so a month's bar and the monthly budget stop always agree.

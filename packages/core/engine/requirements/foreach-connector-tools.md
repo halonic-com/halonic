@@ -1,7 +1,7 @@
 # engine.foreach-connector-tools
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5214, findings of the 11 Nov code review
 
 Where the executor is given connector calls, when the engine asks for a `foreach` item's model call, a model call in the child run of an item that runs a workflow or in any run below it, or a subagent's under one, it shall offer only the connector tools a `parallel` branch is offered (`engine.parallel-state`, `engine.parallel-connector-approve`): an item's agent can't wait for a person or make a call that changes things, so it never sees a tool that could only fail the run.

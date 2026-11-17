@@ -1,7 +1,7 @@
 # integration-sign-in.approved-sign-ins
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8588 (HAL-984 design, sections 4 and 6)
 
 The host shall fill in an integration's sign-ins with `approvedSignIns(sheet, settings)`, reading the sheet and the settings each time a sign-in is looked at and never keeping them, say which setting is wrong when the settings can't fill a sign-in in, and give the kit a token only for the sign-in the sheet and the settings describe now. The kit's view of the tokens shall have no way to forget a token or wait for a refresh.

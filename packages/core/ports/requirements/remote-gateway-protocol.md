@@ -1,7 +1,7 @@
 # ports.remote-gateway-protocol
 
 - Status: active
-- Since: 0.2.0
+- Since: unreleased
 - Source: tunnel phase A of the plan "phone reaches a runtime host through pluggable tunnels", approved by the board on 11 Nov; task HAL-5684
 
 The remote gateway protocol (version 1) shall carry only sessions, their events, approvals and prompt input. A phone shall send `hello`, `list-sessions`, `watch`, `unwatch`, `answer-approval` and `prompt`, and nothing else; the host shall send `welcome`, `sessions`, `event`, `ok` and `error`.

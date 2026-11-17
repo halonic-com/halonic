@@ -1,7 +1,7 @@
 # check.guard-notes-append-only
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9693
 
 If a pull request edits or deletes a file under `decisions/` that the base branch already has, other than the pull request's own note, then the note check shall fail it unless its decision note is `user-visible`, lists that file's path under Covers, and its signature verifies. Notes on the base branch are the record of what was approved, so they are append-only.

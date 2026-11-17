@@ -1,7 +1,7 @@
 # oauth-sign-in.refresh-grant
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8323 (HAL-984 design, section 4)
 
 The sign-in shall refresh an access token with one POST of `grant_type=refresh_token` to the token endpoint it is given, with the refresh token and the client's identity in the form body or header and never in the URL, refusing redirects and stopping when the caller's signal aborts, and shall give back what the answer means, or `unreachable` without anything the `HttpClient` reported.

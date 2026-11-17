@@ -1,7 +1,7 @@
 # studio.workspace-trust
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1291 (T3 trust core), HAL-65 trust requirements, HAL-7876 (shared trust reader)
 
 When the desktop app opens a folder, it shall check the workspace's trust before the workspace is shown, reading the folder as the CLI reads it: the workspace's files through the loader, its local integrations through the folder reader, and each connector's program through the shell. It shall take the workspace's name from `workspace.yaml`, or the folder's own name when there is none. It shall answer the scope's `isTrusted` with yes only when the last check found a person's trust in exactly what the folder holds, and with no before the first check ends, while a check runs, and when a check fails. It shall check again after the workspace's files are saved.

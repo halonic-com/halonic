@@ -1,7 +1,7 @@
 # cloudflare-storage.r2-blob-store-hashes
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9486; the export of a deployment's data (HAL-197 Cloud part 9)
 
 The R2 blob store's `hashes` shall list the hash of every blob in the store, in byte order and across every page R2 answers, and leave out a key under the prefix that is not a blob hash.

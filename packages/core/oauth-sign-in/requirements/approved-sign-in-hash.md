@@ -1,7 +1,7 @@
 # oauth-sign-in.approved-sign-in-hash
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8323 (HAL-984 design, section 4, "The grant belongs to the sign-in the user approved")
 
 The sign-in shall fingerprint an approved sign-in as `sha256:` and the hex SHA-256 of its resolved values in canonical JSON, so that a change to any resolved value changes the hash and a change in the order of scopes or hosts does not.

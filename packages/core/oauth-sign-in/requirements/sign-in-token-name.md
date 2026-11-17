@@ -1,7 +1,7 @@
 # oauth-sign-in.sign-in-token-name
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8323 (HAL-984 design, section 4, "Keeping tokens")
 
 The sign-in shall keep a sign-in's refresh token under the token name `s<length>_<integration>_<sign-in>`, where `<length>` is the length of the integration's name, and shall throw a `RangeError` for a name that isn't lower-case words joined by `-` and for a result longer than 128 characters.

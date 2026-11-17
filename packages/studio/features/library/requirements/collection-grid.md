@@ -1,7 +1,7 @@
 # library.collection-grid
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1303 (T10, P7b4); flow-library 5.3; accessibility pass 9.3
 
 When a cell of the collection page's grid has focus, a typed character shall open the cell's editor with that character in place of the value, Delete and Backspace shall empty the cell, and Home, End, Ctrl Home, Ctrl End, Page Up and Page Down shall move between cells. Shift F10 shall open the row's menu. In an editor, Enter shall save the value and go to the cell below, and Tab shall save it and go to the next cell, or leave the grid from the last one. A cell that holds a message shall have a danger ring. After a record is added the page shall say "Added" and its id and put focus in the new row's first cell. After a record is removed the page shall say "Removed" and its id and put focus in the same column of the row that took its place. With no records the page shall say "No records yet." with **Add record**, which opens the new row; for a chosen view with none it shall say "No records match this view."

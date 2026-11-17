@@ -1,7 +1,7 @@
 # server.response-headers
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9 plan phase 4; build plan on HAL-195 (PR 2)
 
 The server shall put on every response it sends, including every refusal, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Cross-Origin-Resource-Policy: same-origin` and `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`. A response to a request made over `https` shall also carry `Strict-Transport-Security`.

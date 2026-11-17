@@ -1,7 +1,7 @@
 # inbox.sandbox-row
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-4293, HAL-1709; ux-checklists-sandbox (HAL-1833) 3.5, 3.9 and 3.10; the sandbox-start words (`app.sandbox-start-words`)
 
 When routines didn't run because the sandbox couldn't start, the Inbox shall list one setup item for this computer (`setup:sandbox:this-computer`), whose title counts the routines: "2 routines didn't run". It shall count the routine runs that failed with `sandbox-not-ready` and that no later run has superseded: a run that started after them shows the sandbox can start. One routine that failed three times counts once. A run you started by hand isn't counted: its own page says what happened. The row's line shall be the reason's sentence from the one catalogue, `sandboxStartWords`, and the card shall show that reason and then the fix, **Check again**, the guide's link and "Didn't run because of this" with each run, named by its routine and never by its key, and its **Open run**. A reason Halonic doesn't know reads as `other`.

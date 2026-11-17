@@ -1,7 +1,7 @@
 # harness-bridge.paperclip-write
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-3107 (step 3 of HAL-3023, plan section 4.5); follows `harness-bridge.github-write`
 
 The Node bridge shall offer, as `BridgeTools` the engine can serve at `/mcp` under the rules of `harness-bridge.mcp`, two tools that write to one Paperclip task fixed when the tools are made: `paperclip_post_comment`, which takes a `body`, and `paperclip_set_status`, which takes a `status` of `todo`, `in_progress`, `in_review`, `blocked` or `done`. The program shall never name the task or the Paperclip address. The tools shall make only a `POST` to the task's `comments` path or a `PATCH` to the task's path, to the address given when the tools were made, and shall not follow a redirect. They shall offer no way to reassign, cancel, delete or create a task, and an argument they don't list shall get an error result.

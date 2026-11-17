@@ -1,7 +1,7 @@
 # harness-bridge.github-write
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-3107 (step 3 of HAL-3023, plan section 4.5); follows `harness-bridge.github-read`
 
 The Node bridge shall offer, as `BridgeTools` the engine can serve at `/mcp` under the rules of `harness-bridge.mcp`, two tools that write to one GitHub repository fixed when the tools are made: `github_open_pull_request`, which takes a `title`, a `head` branch and a `base` branch, and may take a `body` and `draft`; and `github_update_pull_request`, which takes a pull request `number` and a new `title`, a new `body` or both. The program shall never name the repository. The tools shall make only a `POST` to the repository's `pulls` path or a `PATCH` to one pull request's path, to `https://api.github.com`, and shall not follow a redirect. They shall offer no way to merge, close, delete, release or publish, and an argument they don't list shall get an error result.

@@ -1,7 +1,7 @@
 # models.api-keys.key-status
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10 migration checklist U31 (Now, decided; new) (req-models, HAL-110; flow-models, HAL-177)
 
 The provider page shall show whether a key is stored for the provider's secret name, without ever showing the key itself.

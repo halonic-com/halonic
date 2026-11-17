@@ -1,7 +1,7 @@
 # contracts.tool-approval-store
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-2210 step 3; `ToolApprovalStore` port v1 (`ports.listed-tool-approval`); store rows H5, H6 and D8 of the HAL-2579 test cases. It becomes active with `ports.listed-tool-approval`.
 
 Where an adapter implements `ToolApprovalStore`, it shall give back every field of an approval, for every kind of server address, `null` for a key it has no approval for, and an empty list for a source it holds none for. Approving a key again shall replace its approval, and revoking shall delete it; revoking a key without an approval shall not be an error. It shall keep the key's three parts apart, so no joined spelling of one key reads another, and shall know no tool named like an object's own properties, such as `constructor` or `__proto__`, until one is approved under that name. It shall compare keys exactly as given (no case folding and no Unicode normalisation) and list one source in one workspace sorted by name in UTF-16 code-unit order. It shall keep what was approved, whatever the caller later does with the objects it passed in or got back. When a stored approval can't be read, `get` for that key and `list` for its source shall reject with an `UnreadableToolApprovalError` naming the workspace and source as fields, `get`'s naming the tool too, while other tools and sources still read; `revoke` shall delete it, and approving the key again shall replace it. It shall note waiting versions as `ports.listed-tool-approval-waiting` sets out, keyed like approvals, and forget a tool's waiting versions when it is approved or revoked.

@@ -1,7 +1,7 @@
 # app.runner-fence-no-sandbox
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5397; HAL-3779 design (section 7); extends app.runner-fence
 
 When the person chose to continue without a sandbox, the fence status of plugin and integration code shall be `not-fenced` with the reason `no-sandbox`, whatever the platform, the sandbox check and the fence proof say. The reason `no-sandbox` shall be one of the runner's own reasons, so a saved yes for it is kept apart from the yes for `windows`.

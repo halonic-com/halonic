@@ -1,7 +1,7 @@
 # models.spend.month-line
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: flow-models 5 (HAL-177), `models.spend.unpriced-never-zero` in req-models (HAL-110)
 
 The Models feature shall add a status bar item that says what this calendar month (UTC) has cost so far, estimated, by the rule the monthly budget stops on (`app.month-spend`): "Est. €3.20 this month", or with a monthly budget "Est. €3.20 of €50.00 this month". Once the month's cost has reached the monthly budget it shall add " · used up". The item shall show only while a provider may bill per use (never when `workspace.yaml` allows local providers only), never as a placeholder, and shall show nothing until the run list has been read, so it never says "€0.00" for a month it hasn't read. A press shall run the command `workspace.open-models`. Its tooltip shall say "Estimated from the prices in workspace settings › Models. Not a provider invoice. Test runs and chats aren't counted." When the focused tab shows a run the run list holds, the item shall put the run first, its cost counting its sub-runs, the way the budget stops a run: "Est. this run €0.15 of €5.00 · €3.35 of €50.00 this month" (without a per-run budget "Est. this run €0.15 · …"). Calls without a price shall be named, "Est. this run €0.10 + 2 calls without a price · …", and a run whose calls all lack a price names no amount, so the line never says "€0.00" for it. Calls made on this computer, a test run in view (the run list holds real runs only) are not part of this item yet. In a narrow window the item shall drop its parts from the right and keep "Est. this run €0.15" (the run's amount, "of €5.00", "+ 2 calls without a price", then the month), and its tooltip shall say the full line before the estimate note.

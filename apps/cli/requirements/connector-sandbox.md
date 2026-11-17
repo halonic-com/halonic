@@ -1,7 +1,7 @@
 # cli.connector-sandbox
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-2310 (D45, board yes on HAL-2257 Q3); Liam's decision on HAL-8403
 
 The CLI shall start a run's workspace `stdio` connector in a sandbox session of its own, built by Halonic from the connector file, whenever the sandbox works on this computer, with Halonic's own data denied to it. When the sandbox doesn't work, it shall start the connector on this computer as before, under the connector file's trust line, and shall open no session. Reading a source's tool listing outside a run (`halonic tools`) starts a connector as before.

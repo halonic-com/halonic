@@ -1,7 +1,7 @@
 # oauth-sign-in.pkce
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-699 (plan approved by Liam; security points agreed in HAL-718); the generic form of `google-sign-in.pkce` (HAL-8323)
 
 The sign-in shall make each PKCE verifier from 32 bytes of cryptographically secure randomness, written as 43 base64url characters without padding, shall derive its challenge only with the S256 method, and shall refuse a random source that gives any other number of bytes.

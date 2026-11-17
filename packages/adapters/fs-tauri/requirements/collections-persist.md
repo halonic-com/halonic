@@ -1,7 +1,7 @@
 # fs-tauri.collections-persist
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-110 stub (HAL-10 migration checklist P5: collections work on desktop); HAL-6175; where the files go: HAL-119 (the CLI's rule, one shared function) and HAL-2022 G4 (nothing of a workspace's data in the workspace); `FileRecordStore` in `fs-node`; `ports.record-log-files`, `ports.record-fold`; `RecordStore` port v2
 
 When a collection record changes on desktop, the desktop store shall append the change to the collection's log where the CLI keeps it, in the same format and under the same write lock, so the records are still there after the app restarts and `halonic` reads them: `<profile>/workspaces/<key>/records/<SHA-256 of the collection>.jsonl`, the folder `recordsFolder` in `@halonicjs/profile` names, one change per line, as `FileRecordStore` keeps it. (The stub said `.studio/collections/<collection>.jsonl` inside the workspace; HAL-119 and HAL-2022 G4 moved a workspace's data into the profile.)

@@ -1,7 +1,7 @@
 # server.secrets-remove
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1292 (T4, PR 4a); models flow 3.3 (the API key's rules)
 
 The server shall remove a provider key on `DELETE /api/secrets/<name>`, behind the sign-in, and answer `{"removed": true}`, also when no key was stored under the name.

@@ -1,7 +1,7 @@
 # harness-kit.harness-profile
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-189 plan 4h and changes from the review (HAL-1967); HAL-4739; HAL-4790; HAL-4878 requirement 1; HAL-5127; HAL-5644; HAL-11238
 
 When the engine asks for a harness call's sandbox profile, the harness kit shall build it from the trusted workspace, Halonic's data folder and the person's home folder, on real paths, with every symlink and junction resolved:

@@ -1,7 +1,7 @@
 # models.budget.budget-settings
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: flow-models 2.1 (HAL-177), HAL-63 requirements (budgets you can see), U30 in req-models (HAL-110)
 
 The Models section of the workspace page shall show a Budget block while a provider may bill per use or a budget is set. With a budget it says the amounts that are set ("€5.00 per run · €50.00 per month") and has **Change**. With none it says "No budget set for" and up to three provider names, then "+n more", with **Set budget**. **Change** and **Set budget** open the two amounts in place, named with their currency ("Per run, in euros"), with focus on Per run. Saving writes `budget.perRun` and `budget.monthly` of `workspace.yaml` as one undoable step with a toast ("Budget set: …") that offers **Undo**; an amount that isn't above 0 writes nothing and says so under its field. With both fields empty the button reads **Remove budget** and the toast says "Removed the budget". Save and Cancel put focus back on the button that opened the editor. Removing the last amount removes `budget` from `workspace.yaml`, unless it has a currency. A budget block with only a currency is no budget.

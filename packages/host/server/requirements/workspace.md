@@ -1,7 +1,7 @@
 # server.workspace
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9489, decided on HAL-9482; the phone's workspace picker on HAL-1291
 
 The server shall answer `GET /api/workspace` behind the sign-in, like the other session routes: a request without a session gets 401 with the code `not_signed_in`. The route is read-only and answers a JSON body with exactly three keys: `name`, the workspace's name; `sample`, whether it is the sample workspace; and `folder`, the workspace's folder with the home folder written as `~`. The folder under the home folder shall be sent as `~` and the rest of its path, with `/` between the names. The home folder itself shall be sent as `~`. A folder that isn't under the home folder shall be sent as only its own name. The server shall never send an absolute path. A host that gives the server no workspace facts leaves the route out, and it then answers 404.

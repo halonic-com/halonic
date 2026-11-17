@@ -1,7 +1,7 @@
 # server.sign-in
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9 plan phase 4; HAL-6 finding 6; build plan on HAL-195 (PR 3)
 
 The server shall answer `POST /api/login` with a JSON body `{ "password": "…" }` by checking the password against the hash in the `serve-password` secret with the `PasswordHasher` port. A right password shall start a session and answer 200 with `{ "signedIn": true }` and a `Set-Cookie`. A wrong password shall answer 401 with the code `wrong_password`. A body that isn't JSON of that form, a `Content-Type` other than `application/json`, an empty password, or one over 1024 characters shall answer 400 with the code `bad_request` without a password check. A server with no password configured shall answer 404, because there is nothing to sign in to. `POST /api/logout` shall end the session its cookie names and answer 204 with a cookie that clears it.

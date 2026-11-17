@@ -1,7 +1,7 @@
 # cloudflare-storage.d1-record-store-collections
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9486; the export of a deployment's data (HAL-197 Cloud part 9)
 
 The D1 record store's `collections` shall name every collection that has at least one change, once each and in byte order, so an export can find what a deployment holds.

@@ -1,7 +1,7 @@
 # std.url-host
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-63 requirements (the `std` host parser, B3 and B4), for the Models budget rules (HAL-1292)
 
 The URL host reader shall give the host of an `http` or `https` URL as a domain name, an IPv4 address or an IPv6 address, reading the number forms and brackets of the WHATWG URL rules, and shall give nothing for any URL or host it does not fully understand, so that a caller which needs a safe answer treats it as unknown.

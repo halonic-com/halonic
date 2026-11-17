@@ -1,7 +1,7 @@
 # workspace.harness-working-folders
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: Julian's security check on HAL-4739, tracked by Priya on HAL-4759; stack 4h of the HAL-189 implementation plan
 
 The workspace package shall list the working folder of every harness agent in a workspace (one whose `harness` is set and isn't `halonic`), in every hub, with `files/agents/<id>` for an agent whose file names no folder. Each folder is relative to the workspace root, as the agent file wrote it, listed once and sorted by code unit. Agents in Halonic's own loop add nothing.

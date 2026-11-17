@@ -1,7 +1,7 @@
 # sign-in.echo-attacks
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8618 (HAL-984 design, section 8: attack cases T4 and T5)
 
 The kit shall remove from every answer each value the sign-in tokens list, as it is, URL-encoded and JSON-escaped, wherever the server puts it, and shall refuse as `secret-in-request` a request of the integration's own that carries any of them, without sending it.

@@ -1,7 +1,7 @@
 # runtime.password-limit
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6802, HAL-8635, HAL-6799 (Julian's security review)
 
 The password hasher the Worker wires shall refuse a password longer than 1,024 bytes, counted as the hasher reads it (NFC, in UTF-8), before it does any PBKDF2 work: `verify` shall answer `false` and `hash` shall reject with a `RangeError`, and neither shall call `deriveBits`. A password of exactly 1,024 bytes shall go on to the hasher.

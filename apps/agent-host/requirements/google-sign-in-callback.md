@@ -1,7 +1,7 @@
 # agent-host.google-sign-in-callback
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9409; Liam's decision on HAL-10018
 
 When Google sends the browser back to the agent host's `/api/google/callback`, the agent host shall finish the sign-in the request's `state` belongs to without asking for the launch token, because a browser that follows a redirect can't send one, and shall answer with the fixed page of the host server, never text from the request. The agent host shall serve without the token only a route that says so, and shall still refuse such a request whose `Host` isn't its own loopback address and port, or that has an `Origin` header. A request to any other path, or one that names a path without that setting, still needs the token.

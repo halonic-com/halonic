@@ -1,7 +1,7 @@
 # library.status-section
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1063; Sofia's layout review (HAL-7814); Liam's plan approval (HAL-7815)
 
 The Library feature shall give a status section for one connector, which the connector page puts under its `h1`. The section shall show the connector's state as a word, with the sentence that says why, then a "Recent refusals" heading and the refusals as a plain list of text lines, newest first, never more than 20, with a note when the list is full. While the host has not answered, the section shall show loading; when the first answer fails, it shall show that refusals couldn't load with Try again; and it shall say that nothing was refused only after the host answered with none. Under it, when listed tools wait for a person's approval, the section shall show a "Waiting for approval" heading and one plain text line for each such tool, each reading "<tool>" stays off until you approve it. (the connector is the page's title, so it isn't named), and shall show that group not at all when none waits. When a later answer fails, the section shall say the engine isn't answering and keep what it showed. A state change while the page is open shall be announced once; the first state shown shall not be. The section shall draw no landmark, no live region on the list, and no line cut short.

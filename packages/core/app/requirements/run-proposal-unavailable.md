@@ -1,7 +1,7 @@
 # app.run-proposal-unavailable
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: req-workspace `app.run-proposal-done` (a proposal whose ref is missing); req-inbox `inbox.proposal.review` ("This proposal can't be opened any more." with "Remove"); HAL-3248
 
 When an open proposal's ref is missing, deleted outside Halonic, the proposal service shall report it as unavailable, and every call that needs the run's texts (Accept, its parts, Compare) shall fail with an unavailable error and write nothing. When the person removes an unavailable proposal, the proposal service shall keep its record, settled as unavailable, with each file still undecided left as not reviewed. It shall refuse to remove a proposal whose ref is still there.

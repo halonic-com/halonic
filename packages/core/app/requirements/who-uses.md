@@ -1,7 +1,7 @@
 # app.who-uses
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1303, P2; the Library's "Used by" lists and the delete confirmation read it
 
 When the Library asks who uses a skill, a knowledge source, a collection or a connector, `whoUses` shall return, from the loaded workspace, the agents that list it (`skills`, `knowledge`, `collections`, `connectors`), the hubs that list it in `uses`, the routines whose mail trigger names it (connectors only), and the collections that have a `ref` field pointing at it (collections only). Each entry names its id, its name and the hub folder it sits in (`null` at the workspace root), in the order of the files' paths. A skill, knowledge source or connector can be shared at the root or be a hub's own, and a hub's own wins over a shared one with the same id: asked about a hub's own item (`hub` set), `whoUses` shall return only the agents and routines of that hub and no hubs; asked about a shared item (`hub` `null`), it shall leave out the agents and routines of hubs that have their own item with that id. A file that didn't parse shall not appear. An item nobody uses shall give four empty lists.

@@ -1,7 +1,7 @@
 # studio.workspace-instruction-trust
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10524 (G1); instruction trust UX checklist S4, S5, S7
 
 The Studio app shall let the run page ask a person to trust one agent's instructions in the open workspace, through the shell's own dialog, and answer `trusted`, `declined`, `busy` or `unavailable`. Only the shell saves, and only on a yes. Where the shell can't ask (a served page or a phone), the app shall provide no way to ask, so the page offers no button.

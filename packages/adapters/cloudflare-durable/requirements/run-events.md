@@ -1,7 +1,7 @@
 # cloudflare-durable.run-events
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6850; build plan part 11 (HAL-197); design review HAL-6790 (Elena, 12 Nov); `RunExecutor.subscribe` in the port
 
 The Cloudflare run object shall let a client watch its run: a stream that first gives the stored events after the `seq` the client names, then each event as it is stored, in order, each once and without a gap, however the watch and an append interleave. It shall close the stream normally after the event that ends the run, and error it when it breaks, so a client that has no ending knows to ask again from its last `seq`. It shall refuse a watch of a run with no events, and a watch beyond a fixed number of watchers (32), and it shall error a stream whose reader has fallen too far behind, rather than hold its events without limit.

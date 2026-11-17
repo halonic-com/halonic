@@ -1,7 +1,7 @@
 # check.licences-vendored
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6167
 
 If a file under `packages/` or `apps/` has a third-party licence in the comment block at its top (an `@license` tag, the Mozilla Public License, a GNU General Public License, or an `SPDX-License-Identifier` other than `Apache-2.0`) and isn't on the `vendored` list of `tooling/check/licences.json`, or a `vendored` entry lacks a field, names a file that is gone, or has no licence text in `tooling/check/licence-texts/`, then `pnpm check:licences` shall fail and name the file. `pnpm check:sbom --notices` shall add one block per `vendored` entry, with its name, path, licence, source and licence text, to `THIRD-PARTY-NOTICES.txt`.

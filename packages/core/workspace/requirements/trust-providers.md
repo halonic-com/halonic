@@ -1,7 +1,7 @@
 # workspace.trust-providers
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5200 (code review of 11 Nov, on HAL-5196)
 
 The workspace package shall add each model provider but the test model (`mock`) to the trust content, sorted by id, with its type, its `baseUrl` normalised as a connector's URL is (only when the file names one), its secret by name and never its value, `local`, and its options as written when there are any. Only its name stays out. A provider whose `baseUrl` has user info, a backslash before its query, or no `//` after `http:` or `https:` shall be refused instead, with the reason and without its address, and content with a refused provider shall have no fingerprint. A workspace whose only provider is the test model shall have the same content and fingerprint as one without providers. The trust changes shall list providers that are new, changed (with the fields that differ) and removed.

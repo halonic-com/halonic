@@ -1,7 +1,7 @@
 # fs-web.open-local-folder
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10 migration checklist P3, HAL-3335, HAL-5766
 
 Where the browser offers folder access (`showDirectoryPicker`), the browser folder store shall open the folder the person picks with read and write access, report its location as `browser:<folder name>`, and list, read, write and remove files in it as the `DefinitionStore` port says, leaving out the browser's pending copies (`*.crswap`). When the person cancels the picker, it shall open nothing and give `cancelled`, not an error. Where the browser has no `showDirectoryPicker`, it shall give `not-supported` without showing anything. A write with `expected` shall check the file again right before the browser puts the write in place, and when the file changed from outside meanwhile, it shall drop the write and give `changed-on-disk`.

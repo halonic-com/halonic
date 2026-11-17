@@ -1,7 +1,7 @@
 # studio.workspace-trust-review
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: mockup-trust rev 2 (HAL-1018), states-flow-map 2.5 and 2.6 (HAL-5878), the CLI's trust check (cli-output 3.5); HAL-1291, HAL-8559
 
 The desktop app shall build the trust check from the same check the CLI uses, in the CLI's words. For a workspace nobody has trusted it shall give the title "Trust *name*?", a summary that names what the workspace will start, pass, list and allow (counts of 0 left out), and Programs, Agents and Addresses sections that have rows, each with its count. For a workspace whose record no longer matches it shall give "*name* changed since you trusted it on *date*", a summary of what is new and changed, the New and Changed rows and how many items are unchanged. A program whose version isn't pinned shall carry its warning and be named for the person to confirm. A trusted workspace shall have nothing to review. Saving a person's trust shall save exactly the fingerprint that was shown, check again, and say why when it saved nothing.

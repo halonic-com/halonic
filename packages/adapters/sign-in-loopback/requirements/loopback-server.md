@@ -1,7 +1,7 @@
 # sign-in-loopback.loopback-server
 
 - Status: active
-- Since: 0.2.0
+- Since: unreleased
 - Source: HAL-11618 (HAL-8613, HAL-984 design, section 4)
 
 The loopback server shall listen on `127.0.0.1` and a port the system picks, hand each request to the flow's `Request → Response` handler, and refuse with a 421, before the handler sees it, a request whose `Host` is not the loopback address and this port. A handler that throws shall give an empty 500, and closing shall let an answer in flight finish.

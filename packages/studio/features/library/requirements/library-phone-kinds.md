@@ -1,7 +1,7 @@
 # library.library-phone-kinds
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1303 (P9c); flow-library 8; Liam on HAL-11166
 
 While the app is a phone, the Library place's page shall be a flush list of the four kinds (Skills, Knowledge, Collections, Connectors), and a row shall open that kind's list as a page of its own above it, with the kind's name as its title and heading and no tabs. The list of kinds also has a Plugins row when Settings has a plugins section, and that row opens it. The bottom navigation stays on both pages. A request for a tab (Alt+4 to Alt+7) while the list of kinds shows opens that kind's page.

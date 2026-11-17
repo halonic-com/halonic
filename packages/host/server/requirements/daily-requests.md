@@ -1,7 +1,7 @@
 # server.daily-requests
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-7197; format.deployments-cloudflare; build plan on HAL-195 (PR 4)
 
 The server shall count every request that passes the `Host` and `Origin` checks against `dailyRequests`, per UTC day, in the `RequestCountStore` port, before it reads the body or routes the request. The count shall include `GET /api/hello`, the sign-in routes and every other route. A request past the ceiling shall get status 429 with the code `daily_limit_reached` and a `Retry-After` header holding the whole seconds up to the next UTC midnight, and it shall never reach a route, so it never starts a run. A request refused by the `Host` or `Origin` check shall not be counted, so a caller with a foreign `Host` can't use up the day. A server with no `dailyRequests` shall not count and shall not touch the store. The ceiling shall be the same on every host, because it is checked here and not in a host target.

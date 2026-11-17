@@ -1,7 +1,7 @@
 # sign-in-loopback.sign-in-launcher
 
 - Status: active
-- Since: 0.2.0
+- Since: unreleased
 - Source: HAL-11618 (HAL-8613, HAL-984 design, section 4)
 
 The sign-in launcher shall start the loopback server when a sign-in begins, start the flow on its port, open the browser at the provider and keep the server only while a sign-in waits: it stops after the callback came, after a cancel and after the lifetime. A sign-in the flow refuses shall start nothing and give the flow's reason.

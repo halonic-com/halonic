@@ -1,7 +1,7 @@
 # models.providers.list-and-show
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10 migration checklist U30 (Now) (req-models, HAL-110; flow-models, HAL-177)
 
 The Providers section of the workspace page shall list the providers in `providers/`, sorted by id, each with its type and a "local" or "cloud" badge, and each shall open a provider page showing its type, base URL, secret name and file.

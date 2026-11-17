@@ -1,7 +1,7 @@
 # integration-kit.workspace-choices
 
 - Status: active
-- Since: 0.2.0
+- Since: unreleased
 - Source: HAL-11618 (HAL-8613, notes from the attack tests HAL-8618)
 
 The kit shall give the settings and the secret view of a workspace's choices from one function each, which the loader and the host's sign-ins both use, so the sheet's secret names are translated to the workspace's in one place and the settings are read from one source.

@@ -1,7 +1,7 @@
 # runtime.admin-key
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9486 (part 9b of HAL-197); multi-cloud ADR on HAL-35, 5.6; threat-model row "Export and import"; decided on HAL-9480
 
 The Worker shall answer routes under `/admin/` only when the Worker secret `admin-key-hash` (`HALONIC_SECRET_ADMIN_KEY_HASH`) is set. It holds the SHA-256 of the one-job admin key in hex, never the key. Without it, every `/admin/...` path shall go to `host/server` and answer the same neutral 404 as any unknown path: a normal deployment has no export surface.

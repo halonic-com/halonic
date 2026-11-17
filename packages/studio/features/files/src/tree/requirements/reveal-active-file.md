@@ -1,7 +1,7 @@
 # files.tree.reveal-active-file
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-329 files flow 3.3 (new); req-files (HAL-110); HAL-1293
 
 When the user switches to a file tab while the file tree is shown, the file tree shall open the folders down to that file and select its row.

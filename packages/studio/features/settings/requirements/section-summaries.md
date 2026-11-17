@@ -1,7 +1,7 @@
 # settings.section-summaries
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9385 (B16); design check B16 (HAL-9316); UX checklist 3.1 and 3.23
 
 The Settings feature shall give each of its sections an icon, and Assistant and Agent sandbox a one-line summary for the phone's Settings list. Assistant's summary shall read "Not set up" while no provider is set, else the model (or the provider's name when no model is named) and the turn limit, joined by " · ", such as "smart · turn limit 16". Agent sandbox's summary shall read the state chip's words, such as "Ready", once the host's check answers, and shall be left out when the app has no sandbox host or the check fails.

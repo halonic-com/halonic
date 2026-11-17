@@ -1,7 +1,7 @@
 # runtime.listen-abort
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-195 (build plan PR 10c, remote run executor); PR 10 plan approved on HAL-9093
 
 The Node listener shall abort the `signal` of the request it hands to the handler when the client closes the connection before the answer is written, and shall leave it alone when the answer was written in full.

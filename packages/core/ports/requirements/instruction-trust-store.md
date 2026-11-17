@@ -1,7 +1,7 @@
 # ports.instruction-trust-store
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-3106, migration plan step 2 (a changed instruction file asks for trust again); Liam's decision on HAL-10213 (a new port, not a field of the placement record)
 
 The ports package shall have an `InstructionTrustStore` port (version 1) that gets, saves and removes the instructions a person trusted for an agent, by workspace location and agent id. A record shall hold the key, the pin (the digest of the whole set and each file's digest, by file name) and the time the person trusted it. No record means nothing is trusted. The port shall only store records: it shall have no method that decides whether instructions are trusted. Every adapter shall pass the `contracts.instruction-trust-store` suite.
