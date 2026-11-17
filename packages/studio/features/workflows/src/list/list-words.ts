@@ -1,4 +1,4 @@
-import { errorReasonFor } from "@halonicjs/studio-shell";
+import { engineWordsOf, errorReasonFor } from "@halonicjs/studio-shell";
 import type { WorkflowRunOutcome } from "../api.ts";
 
 /** The Workflows list's words (microcopy 9.1, flow-workflows 2.1). */
@@ -73,9 +73,15 @@ export function runWhen(iso: string, now: Date): string {
   return `${moment.getFullYear() === now.getFullYear() ? date : `${date} ${moment.getFullYear()}`} ${clock}`;
 }
 
-/** The reason a failed read gives (the generic sentence for an `internal` error), as one sentence ending in a full stop. */
-export function failureReason(error: unknown): string {
-  const message = errorReasonFor(error);
+/**
+ * The reason a failed read gives, as one sentence ending in a full stop. An error that isn't the
+ * engine's own kinded one says the engine isn't answering (`notAnswering`), never its raw text.
+ */
+export function failureReason(
+  error: unknown,
+  notAnswering: string = engineWordsOf({}).notAnswering,
+): string {
+  const message = errorReasonFor(error, notAnswering);
   return message.endsWith(".") ? message : `${message}.`;
 }
 

@@ -188,7 +188,8 @@ verifies("settings.ai-agent-section", () => {
     );
 
     await act(async () => tryAgain?.click());
-    expect(view.textContent).toContain("The settings file is locked.");
+    expect(view.textContent).not.toContain("locked");
+    expect(view.textContent).toContain("Halonic couldn't read the settings stored");
 
     readable = true;
     const again = [...view.querySelectorAll("button")].find((b) => b.textContent === "Try again");

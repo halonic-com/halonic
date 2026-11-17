@@ -220,12 +220,13 @@ function unavailable({ title, service }: ErrorContext, reason: string): ErrorMes
 /**
  * The reason a failed action gives, for a screen that shows it after its own words. A kinded
  * error's message is safe to show; an `internal` error, or a kinded one with no message, gives
- * the generic sentence, never its own text.
+ * the generic sentence, never its own text. A screen with a phrase of its own, or the engine's
+ * "isn't answering" words, passes it as `fallback`.
  */
-export function errorReasonFor(error: unknown): string {
-  if (errorKindOf(error) === "internal") return words.cantExplain;
+export function errorReasonFor(error: unknown, fallback: string = words.cantExplain): string {
+  if (errorKindOf(error) === "internal") return fallback;
   const reason = kindedMessageOf(error).trim();
-  return reason === "" ? words.cantExplain : reason;
+  return reason === "" ? fallback : reason;
 }
 
 /** The message of a kinded error. `errorKindOf` only gives a kind to errors with a string message. */

@@ -1,5 +1,11 @@
 import { Button, Dialog, EmptyState, SkeletonBar, ViewOnlyLine } from "@halonicjs/studio-kit";
-import { focusSectionHeading, type SettingsSectionProps } from "@halonicjs/studio-shell";
+import {
+  type EngineWords,
+  engineWordsOf,
+  errorReasonFor,
+  focusSectionHeading,
+  type SettingsSectionProps,
+} from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type TrustedSource, type TrustedSourcesHost, TrustedSourcesService } from "../api.ts";
 import * as text from "./trusted-sources-text.ts";
@@ -12,6 +18,7 @@ export function TrustedSourcesSection({ context, place }: SettingsSectionProps) 
       host={host}
       readOnly={place === "served"}
       announce={(line) => context.announcer.announce(line)}
+      engine={engineWordsOf(context)}
     />
   );
 }
@@ -23,6 +30,8 @@ export interface TrustedSourcesViewProps {
   readonly readOnly: boolean;
   /** Says a result where a screen reader hears it: the settings container's live region. */
   readonly announce: (line: string) => void;
+  /** Whose words say the engine isn't answering; the desktop app's when absent. */
+  readonly engine?: EngineWords;
 }
 
 /** The records, most recently trusted first, as the list shows them. */
@@ -40,7 +49,8 @@ type Loaded =
  * with **Remove** and its confirmation, the empty sentence, the note on the CLI's own records and,
  * served, the same list read-only. A list that can't be read says so and offers Try again.
  */
-export function TrustedSourcesView({ host, readOnly, announce }: TrustedSourcesViewProps) {
+export function TrustedSourcesView({ host, readOnly, announce, engine }: TrustedSourcesViewProps) {
+  const { notAnswering } = engine ?? engineWordsOf({});
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
   const [removing, setRemoving] = useState<TrustedSource | undefined>();
   const [busy, setBusy] = useState(false);
@@ -65,12 +75,12 @@ export function TrustedSourcesView({ host, readOnly, announce }: TrustedSourcesV
       },
       (reason: unknown) => {
         if (!alive.current) return;
-        setLoaded({ state: "failed", reason: reasonOf(reason) });
+        setLoaded({ state: "failed", reason: reasonOf(reason, notAnswering) });
         focusHeading.current = false;
         setRetrying(false);
       },
     );
-  }, [host]);
+  }, [host, notAnswering]);
 
   useEffect(() => {
     alive.current = true;
@@ -100,7 +110,7 @@ export function TrustedSourcesView({ host, readOnly, announce }: TrustedSourcesV
     } catch (reason) {
       if (!alive.current) return;
       setBusy(false);
-      setError(text.removeFailed(source.name, reasonOf(reason)));
+      setError(text.removeFailed(source.name, reasonOf(reason, notAnswering)));
       return;
     }
     if (!alive.current) return;
@@ -217,7 +227,7 @@ export function TrustedSourcesView({ host, readOnly, announce }: TrustedSourcesV
   );
 }
 
-function reasonOf(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.replace(/\.+$/u, "");
+/** Why a read or a removal failed, without its closing full stop; the raw error never shows. */
+function reasonOf(error: unknown, notAnswering: string): string {
+  return errorReasonFor(error, notAnswering).replace(/\.+$/u, "");
 }

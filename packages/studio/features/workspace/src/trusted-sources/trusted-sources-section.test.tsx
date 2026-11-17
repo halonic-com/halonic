@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -119,7 +120,7 @@ verifies("workspace.trusted-sources", () => {
   it("keeps the dialog open and says why when removing fails", async () => {
     vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
     const host = hostOf([inbox], async () => {
-      throw new Error("the disk is full");
+      throw new KindedError("unavailable", "The disk is full");
     });
     const announce = await show(host);
     act(() => button("Remove")?.click());
@@ -128,7 +129,7 @@ verifies("workspace.trusted-sources", () => {
       await vi.advanceTimersByTimeAsync(50);
     });
     expect(document.querySelector("dialog")?.textContent).toContain(
-      "Couldn't remove trust from inbox-helper: the disk is full.",
+      "Couldn't remove trust from inbox-helper: The disk is full.",
     );
     expect(element.textContent).toContain("inbox-helper");
     expect(announce).not.toHaveBeenCalled();
@@ -154,11 +155,13 @@ verifies("workspace.trusted-sources", () => {
   });
 
   it("says it couldn't load, with the reason, and tries again", async () => {
-    const list = vi.fn().mockRejectedValueOnce(new Error("the profile is locked."));
+    const list = vi
+      .fn()
+      .mockRejectedValueOnce(new KindedError("unavailable", "The profile is locked."));
     list.mockResolvedValue([pdf]);
     await show({ list, remove: vi.fn() });
     expect(element.textContent).toContain("Couldn't load trusted sources");
-    expect(element.textContent).toContain("the profile is locked");
+    expect(element.textContent).toContain("The profile is locked");
     await act(async () => button("Try again")?.click());
     expect(element.textContent).toContain("pdf-tools");
   });
@@ -194,5 +197,25 @@ verifies("workspace.trusted-sources", () => {
 
     expect(element.textContent).toContain("pdf-tools");
     expect(document.activeElement).toBe(element.querySelector("h3"));
+  });
+
+  it("shows no path or stack when the list or a removal fails", async () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
+    const leak = new Error("EACCES: /srv/studio/.halonic/trust.json\n    at read (trust.ts:1:1)");
+    const list = vi.fn().mockRejectedValueOnce(leak);
+    list.mockResolvedValue([pdf]);
+    await show({ list, remove: vi.fn().mockRejectedValue(leak) });
+    expect(element.textContent).toContain("The engine isn't answering");
+    expect(element.textContent).not.toMatch(/srv|EACCES|trust\.ts/);
+
+    await act(async () => button("Try again")?.click());
+    act(() => button("Remove")?.click());
+    await act(async () => confirm()?.click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50);
+    });
+    const dialog = document.querySelector("dialog")?.textContent ?? "";
+    expect(dialog).toContain("Couldn't remove trust from pdf-tools: The engine isn't answering.");
+    expect(dialog).not.toMatch(/srv|EACCES|trust\.ts/);
   });
 });
