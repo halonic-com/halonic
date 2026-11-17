@@ -3,7 +3,6 @@
 - Task: HAL-1302 (T9, item rows)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-1360 (the T9 UX checklist, part 2, 2.2: the row's ⋮, "Open Sorter" and "Undo these changes", and "and 340 more" past 200 items; a team decision on top of the approved screen, HAL-2282 rule)
 - Kind: user-visible
-- Signature: unsigned
 
 ## What changes
 
