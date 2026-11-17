@@ -14,6 +14,8 @@ import { UsedByField } from "./used-by-field.tsx";
 
 type Edited = keyof SkillChange;
 type Drafts = Partial<Record<Edited, string>>;
+/** Instructions are saved this long after the last key, so a pause saves without waiting for Tab. */
+const INSTRUCTIONS_SAVE_AFTER_MS = 800;
 const editedFields: readonly Edited[] = ["name", "description", "instructions"];
 
 function refOf(hub: string, id: string): SkillRef {
@@ -22,9 +24,9 @@ function refOf(hub: string, id: string): SkillRef {
 
 /**
  * The `skill` item kind's page: Name, When to use it and Instructions, each saved when you leave
- * it; the header fields the page doesn't edit, read-only; the other files in the skill's folder;
- * and who uses it (flow-library 5.1). An emptied Name or When to use it keeps its old value with
- * a hint that stays until the next edit.
+ * it (Instructions also after a short pause in typing); the header fields the page doesn't edit,
+ * read-only; the other files in the skill's folder; and who uses it (flow-library 5.1). An emptied
+ * Name or When to use it keeps its old value with a hint that stays until the next edit.
  */
 export function SkillPage({ item, context }: ItemViewProps) {
   const host = context.services.find(SkillHostService);
@@ -79,6 +81,21 @@ function LoadedSkillPage({
   });
   const [drafts, setDrafts] = useState<Drafts>({});
   const instructions = useRef<HTMLTextAreaElement>(null);
+  const draftsNow = useRef<Drafts>(drafts);
+  draftsNow.current = drafts;
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // The latest `leave`, so the pause timer and leaving the page save what is typed now.
+  const saveInstructions = useRef<() => void>(() => undefined);
+  useEffect(
+    () => () => {
+      // Leaving the page with the cursor in Instructions saves what was typed.
+      if (saveTimer.current !== undefined) {
+        clearTimeout(saveTimer.current);
+        saveInstructions.current();
+      }
+    },
+    [],
+  );
   const ready = loaded && !gone && !unreadable && parts !== undefined;
   // A skill just made in New skill opens with the cursor in Instructions, ready to write.
   useEffect(() => {
@@ -128,15 +145,27 @@ function LoadedSkillPage({
   const shown = (field: Edited) => drafts[field] ?? stored[field];
   const change = (field: Edited, value: string) => {
     setDrafts((current) => ({ ...current, [field]: value }));
-    if (field !== "instructions") model.edited(field);
+    draftsNow.current = { ...draftsNow.current, [field]: value };
+    if (field !== "instructions") {
+      model.edited(field);
+      return;
+    }
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => saveInstructions.current(), INSTRUCTIONS_SAVE_AFTER_MS);
   };
   const leave = async (field: Edited) => {
-    const draft = drafts[field];
+    if (field === "instructions") {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = undefined;
+    }
+    const draft = draftsNow.current[field];
     if (draft === undefined) return;
     if (await model.leave({ [field]: draft })) {
-      setDrafts(without(field));
+      // Keys typed while the write ran keep their draft.
+      if (draftsNow.current[field] === draft) setDrafts(without(field));
     }
   };
+  saveInstructions.current = () => void leave("instructions");
   const keptHint = (field: SkillField, text: string) => (kept.includes(field) ? text : undefined);
 
   return (
@@ -180,7 +209,9 @@ function LoadedSkillPage({
           <TextArea
             ref={instructions}
             value={shown("instructions")}
+            minRows={8}
             maxRows={24}
+            placeholder={skillWords.instructionsPlaceholder}
             onChange={(event) => change("instructions", event.target.value)}
             onBlur={() => void leave("instructions")}
           />
