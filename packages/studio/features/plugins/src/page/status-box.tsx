@@ -1,5 +1,5 @@
 import { Button, Callout, DashedRingIcon } from "@halonicjs/studio-kit";
-import { useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import type { PluginCardStatus } from "../cards/plugin-card.tsx";
 import { CHANGED_LINE, NOT_TRUSTED_LINE } from "../panel/panel-text.ts";
 import {
@@ -27,6 +27,7 @@ import type { InstalledPlugin, PluginLoadProblem } from "./plugin-pages.ts";
 /** The one status box (T12): on, not trusted yet, changed, or the can't-load Callout. */
 export function StatusBox({
   id,
+  boxRef,
   plugin,
   now,
   onCheckAgain,
@@ -36,6 +37,8 @@ export function StatusBox({
   viewOnly = false,
 }: {
   readonly id: string;
+  /** The box itself, focusable, so the page can put focus back here when a button goes away. */
+  readonly boxRef: RefObject<HTMLDivElement | null>;
   readonly plugin: InstalledPlugin;
   readonly now: () => Date;
   readonly onCheckAgain: () => Promise<void>;
@@ -48,14 +51,31 @@ export function StatusBox({
   readonly viewOnly?: boolean;
 }) {
   const [checking, setChecking] = useState(false);
+  // Check again that works replaces the whole Callout: focus the box instead of dropping to the page.
+  const checkedAgain = useRef(false);
+  useEffect(() => {
+    if (checkedAgain.current && plugin.status !== "cant-load") {
+      checkedAgain.current = false;
+      boxRef.current?.focus();
+    }
+  }, [plugin.status, boxRef]);
+  const upToDate = typeof update?.state === "object";
+  const wasUpToDate = useRef(upToDate);
+  useEffect(() => {
+    // "Up to date" replaces the button that had focus.
+    if (upToDate && !wasUpToDate.current) boxRef.current?.focus();
+    wasUpToDate.current = upToDate;
+  }, [upToDate, boxRef]);
+  const focusable = { id, ref: boxRef, tabIndex: -1 } as const;
   if (plugin.status === "cant-load") {
     const checkAgain = async () => {
       setChecking(true);
+      checkedAgain.current = true;
       await onCheckAgain();
       setChecking(false);
     };
     return (
-      <div id={id}>
+      <div {...focusable} className="outline-none">
         <Callout tone="danger" title={cantLoadTitle(plugin.name)}>
           <p>{CANT_LOAD_LINE}</p>
           <Problems problems={plugin.problems} />
@@ -82,7 +102,7 @@ export function StatusBox({
   const trusted = trustedDay(plugin.trustedAt, now());
   const box = statusWords(plugin.status, plugin, trusted);
   return (
-    <div id={id} className="flex gap-2 rounded-md bg-surface-subtle p-3">
+    <div {...focusable} className="flex gap-2 rounded-md bg-surface-subtle p-3 outline-none">
       <span
         aria-hidden="true"
         className="inline-grid size-icon-sm shrink-0 place-items-center *:size-full"

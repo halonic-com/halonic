@@ -68,6 +68,8 @@ export interface PluginTrustDialogProps {
   readonly onTrust: () => void;
   /** **Not now** and Escape, or **Keep** for an update: the plugin stays as it was. */
   readonly onNotNow: () => void;
+  /** Where focus goes when the button that opened the dialog is gone. */
+  readonly returnFocus?: (() => HTMLElement | null) | undefined;
 }
 
 /**
@@ -96,6 +98,7 @@ export function PluginTrustDialog(props: PluginTrustDialogProps) {
       footnote={TRUST_CHECK_LAST_LINE}
       confirm={{ label: trustButton(reason), busyLabel: TRUSTING }}
       busy={props.busy ?? false}
+      {...(props.returnFocus === undefined ? {} : { returnFocus: props.returnFocus })}
       {...(props.failure === undefined
         ? {}
         : {
