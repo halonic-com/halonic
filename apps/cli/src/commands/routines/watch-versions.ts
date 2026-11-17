@@ -13,6 +13,7 @@ import type { DefinitionSource, TrustGrant } from "@halonicjs/ports";
 import { encodeUtf8 } from "@halonicjs/std";
 import {
   filesOf,
+  type LoadedFileOf,
   type LoadedWorkspace,
   loadWorkspace,
   runDefinitionsOf,
@@ -47,6 +48,13 @@ export interface VersionChecks {
    * @throws why nothing may start from it
    */
   trust(workspace: LoadedWorkspace): Promise<TrustGrant | null>;
+  /**
+   * Refuses an agent in a harness, for a watch that starts no program for
+   * one. Left out, none is refused.
+   *
+   * @throws when `agent` is in a harness
+   */
+  harnessAgent?(agent: LoadedFileOf<"agent">): void;
   /**
    * Checks the sandbox for the workflow a run starts.
    *
@@ -240,6 +248,7 @@ export class WatchedVersions implements WorkspaceVersions {
     const file = filesOf(workspace, "agent").find(
       (each) => each.hub === hubId && each.value.id === agentId,
     );
+    if (file !== undefined) this.#checks.harnessAgent?.(file);
     const text = file === undefined ? undefined : fileTexts.get(file.path);
     if (text === undefined) {
       throw new Error(plainText(routinesMessages.noAgentFileInVersion(hubId, agentId).phrase));
