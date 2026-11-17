@@ -8,6 +8,7 @@ import { fakeSource, settle } from "../source.test-helper.ts";
 import { openItem } from "../test-support/open-item.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ChangesView } from "./changes-page.tsx";
+import { partChangeKind } from "./part-change.tsx";
 
 afterEach(unmountAll);
 
@@ -54,6 +55,10 @@ verifies("source-control.changed-words", () => {
       expect(page.textContent).toContain("REMOVED");
       expect(page.querySelector("ins")).toBeNull();
       expect(page.querySelector("del")?.textContent).toBe("Before: gpt");
+    });
+
+    it("tells nothing for a part neither version has a value for", () => {
+      expect(partChangeKind({ found: false }, { found: false })).toBeNull();
     });
   });
 });

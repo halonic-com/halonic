@@ -1,12 +1,15 @@
 import { type ChangeLine, type PartValue, partValueIn } from "@halonicjs/app";
+import { StatusChip } from "@halonicjs/studio-kit";
+import { useMemo } from "react";
 import type { ChangedFile } from "../changes-list.ts";
 import { partChangeWords, versionWords } from "../changes-words.ts";
 
 /** What happened to a part: it was set, it was given a value, or its value was taken away. */
 export type PartChangeKind = "changed" | "added" | "removed";
 
-/** Tells what happened to a part from its value in the last version and now. */
-export function partChangeKind(before: PartValue, after: PartValue): PartChangeKind {
+/** Tells what happened to a part from its value in the last version and now; null when neither has it. */
+export function partChangeKind(before: PartValue, after: PartValue): PartChangeKind | null {
+  if (!before.found && !after.found) return null;
   if (!before.found) return "added";
   if (!after.found) return "removed";
   return "changed";
@@ -32,35 +35,37 @@ export interface PartChangesProps {
  */
 export function PartChanges({ file, line }: PartChangesProps) {
   const { texts } = file;
-  if (texts === undefined || line.parts.length === 0) return null;
+  const changes = useMemo(() => {
+    if (texts === undefined) return [];
+    return line.parts.flatMap((part) => {
+      const before = partValueIn(texts.before, part);
+      const after = partValueIn(texts.after, part);
+      const kind = partChangeKind(before, after);
+      return kind === null ? [] : [{ part, before, after, kind }];
+    });
+  }, [texts, line.parts]);
+  if (changes.length === 0) return null;
   return (
     <div className="flex flex-col gap-1">
-      {line.parts.map((part) => {
-        const before = partValueIn(texts.before, part);
-        const after = partValueIn(texts.after, part);
-        const kind = partChangeKind(before, after);
-        return (
-          <div key={part.join("/")} className="flex items-start gap-2">
-            <span className="text-small shrink-0 rounded-full border border-border px-2 text-fg-muted">
-              {partChangeWords[kind]}
-            </span>
-            <div className="flex min-w-0 flex-col gap-1">
-              {kind === "added" ? null : (
-                <del className="text-small whitespace-pre-wrap break-words text-fg-muted">
-                  <span className="sr-only">{partChangeWords.before} </span>
-                  {shownValue(before)}
-                </del>
-              )}
-              {kind === "removed" ? null : (
-                <ins className="text-small whitespace-pre-wrap break-words no-underline">
-                  <span className="sr-only">{partChangeWords.after} </span>
-                  {shownValue(after)}
-                </ins>
-              )}
-            </div>
+      {changes.map(({ part, before, after, kind }) => (
+        <div key={part.join("/")} className="flex items-start gap-2">
+          <StatusChip tone="neutral">{partChangeWords[kind]}</StatusChip>
+          <div className="flex min-w-0 flex-col gap-1">
+            {kind === "added" ? null : (
+              <del className="text-small whitespace-pre-wrap break-words text-fg-muted">
+                <span className="sr-only">{partChangeWords.before} </span>
+                {shownValue(before)}
+              </del>
+            )}
+            {kind === "removed" ? null : (
+              <ins className="text-small whitespace-pre-wrap break-words no-underline">
+                <span className="sr-only">{partChangeWords.after} </span>
+                {shownValue(after)}
+              </ins>
+            )}
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
   );
 }
