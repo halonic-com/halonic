@@ -9,8 +9,9 @@
 The requirement `files.ui.delete-file` now names the full path in the toasts ("Moved *full path* to
 the trash", "Couldn't move *full path* to the trash", "Couldn't put *full path* back"), because two
 hubs can hold the same file name. An open tab of the deleted file keeps its text greyed and
-read-only under the strip "This file was moved to the trash" with **Undo**, and never writes the
-file again. Focus in the tree goes to the next row, else the previous one, else the folder, and
+read-only at once under the strip "This file was moved to the trash" with **Undo** (said once to a
+screen reader, taking no focus), and never writes the file again. When Undo can no longer bring the
+file back, the tab says the file isn't in this workspace any more. Focus in the tree goes to the next row, else the previous one, else the folder, and
 after Undo to the restored row.
 
 The requirement `files.ui.file-tab` now says "This file isn't in this workspace any more." with

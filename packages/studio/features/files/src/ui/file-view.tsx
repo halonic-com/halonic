@@ -17,6 +17,7 @@ import { CompareView } from "./compare-view.tsx";
 import { OutsideStrip } from "./outside-strip.tsx";
 import { ProblemsPanel } from "./problems-panel.tsx";
 import { TrashedStrip } from "./trashed-strip.tsx";
+import { useFileGone } from "./use-file-gone.ts";
 
 /** How long after the last change the problems are checked again, in milliseconds. */
 export const recheckDelayMs = 300;
@@ -64,8 +65,6 @@ export function FileView({ item, context }: ItemViewProps) {
   const refocus = useRef(false);
   // The last text the tab held, so the editor can open again greyed when the file goes to the trash.
   const lastText = useRef<string | undefined>(undefined);
-  // Whether the file is gone from the workspace now, after the tab loaded it.
-  const [gone, setGone] = useState(false);
   // The way to put the file back, while a delete in this window has it in the trash.
   const trash: Trashed | undefined = useSyncExternalStore(subscribeTrashed, () =>
     trashedFile(path),
@@ -144,7 +143,6 @@ export function FileView({ item, context }: ItemViewProps) {
       (text) => {
         if (stopped) return;
         lastText.current = text ?? undefined;
-        setGone(false);
         setLoaded(loadedOf(text));
       },
       (error: unknown) => {
@@ -160,41 +158,16 @@ export function FileView({ item, context }: ItemViewProps) {
     };
   }, [host, path, round]);
 
-  // A file that was open and is gone: deleted here (the editor stays, greyed and read-only, with
-  // Undo) or taken away from outside Halonic. Its last text is never written back.
   const ready = loaded.kind === "ready";
-  useEffect(() => {
-    if (!ready) return;
-    let stopped = false;
-    let was = false;
-    const check = () => {
-      host.read(path).then(
-        (text) => {
-          if (stopped) return;
-          if (text === null) {
-            was = true;
-            setGone(true);
-          } else if (was) {
-            // Back (Undo, or a restore elsewhere): the editor opens again on what the file holds now.
-            was = false;
-            refocus.current = true;
-            reload();
-          }
-        },
-        () => {},
-      );
-    };
-    const unsubscribe = host.subscribe(check);
-    const unsubscribeTrash = subscribeTrashed(check);
-    return () => {
-      stopped = true;
-      unsubscribe();
-      unsubscribeTrash();
-    };
-  }, [ready, host, path]);
+  const gone = useFileGone(host, path, ready, trash !== undefined, () => {
+    // Back (Undo, or a restore elsewhere): the editor opens again on what the file holds now.
+    refocus.current = true;
+    reload();
+  });
 
-  const trashedHere = gone && trash !== undefined;
-  const missing = loaded.kind === "missing" || (ready && gone && !trashedHere);
+  // Read-only from the moment the file goes to the trash, before any read has said it is gone.
+  const trashedHere = ready && trash !== undefined;
+  const missing = loaded.kind === "missing" || (ready && gone && trash === undefined);
   const editing = ready && !comparing && !missing;
   useEffect(() => {
     const container = parent.current;
@@ -315,7 +288,7 @@ export function FileView({ item, context }: ItemViewProps) {
           description={loaded.reason}
         />
       )}
-      {ready && trashedHere && trash !== undefined && (
+      {trashedHere && trash !== undefined && (
         <TrashedStrip
           announce={(text) => announcer.current.announce(text)}
           onUndo={() => void trash.undo()}

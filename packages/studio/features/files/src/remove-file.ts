@@ -28,6 +28,8 @@ async function putBack(
     clearTrashed(path);
     return true;
   } catch (error) {
+    // The delete can no longer be undone, so an open tab stops offering Undo.
+    clearTrashed(path);
     const reason = reasonOf(error);
     toasts?.show({
       tone: "danger",
