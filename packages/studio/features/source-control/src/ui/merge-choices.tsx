@@ -18,7 +18,7 @@ export function MergeStrip({ list }: { readonly list: ChangesList }) {
   return (
     <LineFrame
       icon={<WarningIcon />}
-      action={{ label: mergeWords.continue, onClick: () => list.continueMerge() }}
+      action={{ label: mergeWords.continue, onClick: () => list.merge.continue() }}
     >
       {mergeWords.inTheMiddle(people)}
     </LineFrame>
@@ -48,13 +48,13 @@ export function MergeChoices({
 
   async function finish() {
     setFailure(undefined);
-    const reason = await list.finishMerge();
+    const reason = await list.merge.finish();
     if (reason !== undefined) return setFailure(`${mergeWords.finishFailed}. ${reason}`);
     toasts?.show({ tone: "success", title: mergeWords.merged(merge?.people ?? []) });
   }
   async function cancel() {
     setFailure(undefined);
-    const reason = await list.cancelMerge();
+    const reason = await list.merge.cancel();
     if (reason !== undefined) return setFailure(`${mergeWords.cancelFailed}. ${reason}`);
     toasts?.show({ tone: "success", title: mergeWords.cancelled });
   }
@@ -144,12 +144,12 @@ function ItemChoice({
   async function choose(choice: UpdateChoice) {
     setFailure(undefined);
     used.current = choice;
-    const reason = await list.chooseUpdate(item.path, choice);
+    const reason = await list.merge.choose(item.path, choice);
     if (reason !== undefined) setFailure(`${mergeWords.choiceFailed}. ${reason}`);
   }
   async function undo() {
     setFailure(undefined);
-    const reason = await list.undoUpdateChoice(item.path);
+    const reason = await list.merge.undo(item.path);
     if (reason !== undefined) setFailure(`${mergeWords.choiceFailed}. ${reason}`);
   }
   const keep = (choice: UpdateChoice, label: string) => (
@@ -181,6 +181,7 @@ function ItemChoice({
           undo={() => void undo()}
           busy={busy}
           action={keep("mine", mergeWords.keepMine)}
+          notUsed={item.choice === "both" ? mergeWords.yours : undefined}
         />
         <Tile
           title={mergeWords.theirsName(people)}
@@ -191,7 +192,9 @@ function ItemChoice({
           undo={() => void undo()}
           busy={busy}
           action={keep("theirs", mergeWords.useTheirs(people))}
-          notUsed={mergeWords.notUsed(people)}
+          notUsed={
+            item.choice === "both" ? mergeWords.theirsName(people) : mergeWords.notUsed(people)
+          }
         />
         {canBoth ? (
           <Tile

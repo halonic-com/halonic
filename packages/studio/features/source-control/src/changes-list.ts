@@ -3,20 +3,19 @@ import type { VcsChange } from "@halonicjs/ports";
 import { applyLineChanges, diffLines, type LineChange } from "@halonicjs/std";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
-import type { ChangesSource, Identity, KeptFile, UpdateChoice, UpdateMerge } from "./api.ts";
+import type { ChangesSource, Identity, KeptFile, UpdateMerge } from "./api.ts";
 import { type ChangeItem, groupIntoItems } from "./change-items.ts";
 import {
   type ChangedFile,
   type ChangesListState,
   type DiscardOutcome,
   historyPageSize,
-  type MergeOutcome,
   type UndoOutcome,
   type UpdatesOutcome,
 } from "./changes-list-state.ts";
+import { MergeSteps } from "./changes-merge.ts";
 import {
   discardWords,
-  mergeWords,
   pageWords,
   shareWords,
   undoWords,
@@ -72,9 +71,18 @@ export class ChangesList {
   #reads = 0;
   #historyReads = 0;
   #disposed = false;
+  /** The steps of a merge of both sides: choose per item, Undo, Finish and Cancel. */
+  readonly merge: MergeSteps;
 
   constructor(source: ChangesSource) {
     this.source = source;
+    this.merge = new MergeSteps({
+      source,
+      state: () => this.#state,
+      disposed: () => this.#disposed,
+      set: (state) => this.#set(state),
+      refresh: () => this.refresh(),
+    });
     this.#stopWatching = source.subscribe(() => void this.refresh());
     void this.refresh();
   }
@@ -450,50 +458,6 @@ export class ChangesList {
   /** Whether a merge of both sides' versions is started: what waits for it is unavailable. */
   get merging(): boolean {
     return this.#state.merge !== undefined;
-  }
-
-  /** Opens the choices of a merge that was left open. */
-  continueMerge(): void {
-    if (this.#state.merge !== undefined) this.#set({ ...this.#state, choosing: true });
-  }
-
-  /** Settles one item: Keep mine, Use theirs or Keep both. */
-  chooseUpdate(path: string, choice: UpdateChoice): Promise<MergeOutcome> {
-    const people = this.#state.merge?.people ?? [];
-    const label = people.length === 1 ? (people[0] ?? "") : "shared";
-    return this.#mergeStep(() => this.source.chooseUpdate(path, choice, label));
-  }
-
-  /** Takes a choice back. */
-  undoUpdateChoice(path: string): Promise<MergeOutcome> {
-    return this.#mergeStep(() => this.source.undoUpdateChoice(path));
-  }
-
-  /** Completes the merge once every item is chosen, as "Merged Sam's updates". */
-  async finishMerge(): Promise<MergeOutcome> {
-    const people = this.#state.merge?.people ?? [];
-    return this.#mergeStep(() => this.source.finishMerge(mergeWords.merged(people)), true);
-  }
-
-  /** Drops the merge and puts every file back as it was. */
-  cancelMerge(): Promise<MergeOutcome> {
-    return this.#mergeStep(() => this.source.cancelMerge(), true);
-  }
-
-  /** Runs one step of the merge, one at a time, then reads again; the reason it failed, or `undefined`. */
-  async #mergeStep(step: () => Promise<void>, ends = false): Promise<MergeOutcome> {
-    if (this.#disposed || this.#state.mergeBusy) return mergeWords.working;
-    this.#set({ ...this.#state, mergeBusy: true });
-    let reason: string | undefined;
-    try {
-      await step();
-    } catch (error) {
-      reason = loadFailureReason(error);
-    }
-    if (this.#disposed) return reason;
-    this.#set({ ...this.#state, mergeBusy: false, choosing: !ends || reason !== undefined });
-    await this.refresh();
-    return reason;
   }
 
   /**

@@ -99,7 +99,7 @@ verifies("source-control.get-updates-per-item", () => {
       const { fake } = await openPage({ started: merge([item("a.md", "mine\n", "sam\n")]) });
       await press("Get updates");
       await press("Keep mine");
-      expect(fake.mergeCalls).toContain("choose a.md mine Sam");
+      expect(fake.mergeCalls).toContain("choose a.md mine Sam's");
       expect(document.body.textContent).toContain("Keeping yours");
       expect(document.body.textContent).toContain("Sam's: not used");
       expect(document.activeElement?.textContent).toContain("Keeping yours");
@@ -107,6 +107,15 @@ verifies("source-control.get-updates-per-item", () => {
       expect(fake.mergeCalls).toContain("undo a.md");
       expect(button("Keep mine")).toBeDefined();
       expect(document.activeElement).toBe(button("Keep mine"));
+    });
+
+    it('folds both sides without "not used" after Keep both, and names the copy with Sam\'s', async () => {
+      const { fake } = await openPage({ started: merge([item("a.md", "mine\n", "sam\n")]) });
+      await press("Get updates");
+      await press("Keep both");
+      expect(fake.mergeCalls).toContain("choose a.md both Sam's");
+      expect(document.body.textContent).toContain("Keeping both");
+      expect(document.body.textContent).not.toContain("not used");
     });
 
     it("keeps Finish unavailable until every item is chosen, and says how many are left", async () => {
