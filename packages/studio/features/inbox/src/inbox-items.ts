@@ -20,7 +20,7 @@ export interface ApprovalItem {
   readonly tool: string;
   /** The connector the tool comes from, such as `notes-mcp`, or `null` for a built-in tool. */
   readonly connector: string | null;
-  /** The name the agent called, such as `notes-mcp__create_note`. */
+  /** The tool name as the engine logged it, without the connector. */
   readonly rawTool: string;
   /** The arguments the agent sent, as it sent them. */
   readonly args: unknown;
@@ -96,9 +96,6 @@ export function isRunItem(item: InboxItem): item is RunItem {
   return item.kind !== "setup";
 }
 
-/** The separator between a connector's name and its tool's name in the name an agent calls. */
-const connectorSeparator = "__";
-
 /**
  * What waits for you in these runs, newest first: one item for each tool
  * call waiting for your OK, and one for each run at a `wait` step. A run
@@ -137,9 +134,6 @@ function approvalItem(
   approval: RunSummary["approvals"][number],
   nameOfAgent: (agentId: string) => string,
 ): ApprovalItem {
-  // A name that starts with the separator has no connector before it.
-  const separator = approval.tool.indexOf(connectorSeparator);
-  const hasConnector = separator > 0;
   return {
     kind: "approval",
     key: `${runId}:${approval.callId}`,
@@ -149,8 +143,8 @@ function approvalItem(
     subagent: approval.subagent ?? null,
     agentName: nameOfAgent(approval.agent),
     subagentName: approval.subagent === undefined ? null : nameOfAgent(approval.subagent),
-    tool: hasConnector ? approval.tool.slice(separator + connectorSeparator.length) : approval.tool,
-    connector: hasConnector ? approval.tool.slice(0, separator) : null,
+    tool: approval.tool,
+    connector: approval.connector ?? null,
     rawTool: approval.tool,
     args: approval.args,
     since: approval.at,

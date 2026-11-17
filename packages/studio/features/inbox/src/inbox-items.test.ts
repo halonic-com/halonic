@@ -27,7 +27,7 @@ verifies("inbox.items", () => {
       subagentName: null,
       tool: "create_note",
       connector: "notes-mcp",
-      rawTool: "notes-mcp__create_note",
+      rawTool: "create_note",
       args: { title: "Refund for order 1042" },
       since: "2026-11-10T10:42:00.000Z",
       state: "sort",
@@ -42,11 +42,12 @@ verifies("inbox.items", () => {
     expect(inboxItems([run])[0]).toMatchObject({ agent: "sorter", subagent: "checker" });
   });
 
-  it("gives a built-in tool no connector", () => {
+  it("gives a built-in tool no connector, and never reads one from the tool's name", () => {
     const run = waitingRun("r1", { approvals: [pendingApproval("call-1", "search", "T1")] });
     expect(inboxItems([run])[0]).toMatchObject({ tool: "search", connector: null });
-    const leading = waitingRun("r1", { approvals: [pendingApproval("call-1", "__search", "T1")] });
-    expect(inboxItems([leading])[0]).toMatchObject({ tool: "__search", connector: null });
+    const { connector: _, ...logged } = pendingApproval("call-1", "mail__search", "T1");
+    const old = waitingRun("r1", { approvals: [{ ...logged, tool: "mail__search" }] });
+    expect(inboxItems([old])[0]).toMatchObject({ tool: "mail__search", connector: null });
   });
 
   it("lists a run at a wait step with the description core filled in", () => {
