@@ -17,6 +17,8 @@ export type {
   ModelSkipReason,
   ProviderText,
   RunCatchUp,
+  RunFailureCause,
+  RunFailureKind,
   RunFailureReason,
   RunKind,
   RunParent,

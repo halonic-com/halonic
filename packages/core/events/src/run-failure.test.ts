@@ -1,7 +1,13 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
-import type { ProviderText, RunFailureReason } from "./run-basics.ts";
+import type {
+  ProviderText,
+  RunFailureCause,
+  RunFailureKind,
+  RunFailureReason,
+} from "./run-basics.ts";
 import type { RunEventBody, RunEventType } from "./run-event.ts";
+import { summaryOf } from "./summarize.test-helper.ts";
 import { summarize } from "./summarize.ts";
 
 // Type tests for why a run failed and for the waits a step logs before it
@@ -284,5 +290,47 @@ verifies("events.run-failed-instructions-not-trusted", () => {
       pin: { digest: string; files: Record<string, string> };
       changed: boolean;
     }>().toExtend<EventOf<"agent.finished">>();
+  });
+});
+
+verifies("events.run-failed-cause", () => {
+  typeTest("gives a cause a kind, and optionally a code and short strings", () => {
+    expectTypeOf<RunFailureCause>().toEqualTypeOf<{
+      readonly kind: RunFailureKind;
+      readonly code?: string;
+      readonly detail?: Readonly<Record<string, string>>;
+    }>();
+    expectTypeOf<EventOf<"run.failed">["cause"]>().toEqualTypeOf<RunFailureCause | undefined>();
+  });
+
+  it("puts the cause of a failed run on its summary", () => {
+    const cause: RunFailureCause = {
+      kind: "denied",
+      code: "google.api-disabled",
+      detail: { api: "drive.googleapis.com" },
+    };
+    expect(
+      summaryOf({ type: "run.failed", state: "s", error: "x", reason: "error", cause }).cause,
+    ).toEqual(cause);
+  });
+
+  it("keeps a cause that has only a kind", () => {
+    const summary = summaryOf({
+      type: "run.failed",
+      state: "s",
+      error: "x",
+      cause: { kind: "unavailable" },
+    });
+    expect(summary.cause).toEqual({ kind: "unavailable" });
+  });
+
+  it("loads a run.failed without a cause, as older logs have", () => {
+    const summary = summaryOf({ type: "run.failed", state: "s", error: "x", reason: "budget" });
+    expect(summary.cause).toBeUndefined();
+    expect(summary.reason).toBe("budget");
+  });
+
+  it("has no cause while the run hasn't failed", () => {
+    expect(summaryOf().cause).toBeUndefined();
   });
 });

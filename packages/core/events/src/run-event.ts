@@ -6,6 +6,7 @@ import type {
   LoggedInstructionPin,
   ModelSkipReason,
   ProviderText,
+  RunFailureCause,
   RunFailureReason,
   RunKind,
   RunParent,
@@ -419,6 +420,8 @@ export type RunEventBody =
    * absent in older logs. A reader that doesn't know the reason still shows `error`.
    * `providerText`: the model provider's own error text, for `--debug` and Copy details only
    * (requirement `events.provider-text`); absent in older logs and when it gave none.
+   * `cause`: the typed cause, from the error the failing call threw, when that error has a
+   * kind (requirement `events.run-failed-cause`); absent in older logs. A screen reads it, never `error`.
    */
   | {
       type: "run.failed";
@@ -432,6 +435,7 @@ export type RunEventBody =
       pin?: LoggedInstructionPin;
       changed?: boolean;
       providerText?: ProviderText;
+      cause?: RunFailureCause;
     }
   /**
    * A Try it or Test run ended at a step it couldn't try, and nothing in it

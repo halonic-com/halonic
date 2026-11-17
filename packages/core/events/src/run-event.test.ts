@@ -7,6 +7,7 @@ import type {
   HarnessStartCause,
   LoggedInstructionPin,
   ProviderText,
+  RunFailureCause,
   RunFailureReason,
   RunKind,
   RunParent,
@@ -170,6 +171,8 @@ verifies("events.run-log-contract", () => {
       changed?: boolean;
       // Added after the reference by events.provider-text (HAL-3119).
       providerText?: ProviderText;
+      // Added after the reference by events.run-failed-cause (HAL-11593).
+      cause?: RunFailureCause;
     }>();
   });
 

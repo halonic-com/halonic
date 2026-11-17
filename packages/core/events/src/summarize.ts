@@ -128,6 +128,7 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
       summary.endedAt = event.at;
       summary.error = event.error;
       summary.reason = event.reason ?? null;
+      if (event.cause !== undefined) summary.cause = event.cause;
       summary.approvals = [];
       return;
     case "run.cant-try":

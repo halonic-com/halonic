@@ -35,6 +35,10 @@ optional and come with a requirement.
   whether something was trusted before, and a parallel branch's
   `agent.finished` carries `pin` and `changed` too (requirement
   `run-failed-instructions-not-trusted`).
+  `cause` is the typed cause (`kind`, and optionally a stable `code` such as
+  `google.api-disabled` and a `detail` of short strings), from the error the
+  failing call threw; the summary has it as `cause`, and older logs have none
+  (requirement `run-failed-cause`). A screen reads it, never `error`.
 - `summarize(events)`: folds a run's events into a `RunSummary`. Every run
   store uses it.
 - `upgradeEvent(raw)` and `parseEventLine(line)`: read stored events,
