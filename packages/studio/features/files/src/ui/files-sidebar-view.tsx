@@ -38,7 +38,8 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   const [adding, setAdding] = useState(false);
   const [renaming, setRenaming] = useState<string>();
   // The row that takes the focus once it is in the tree: the renamed file at its new place.
-  const [reveal, setReveal] = useState<string>();
+  // The row the tree keeps its Tab stop on; `focus` also moves the focus there (not after a blur).
+  const [reveal, setReveal] = useState<{ path: string; focus: boolean }>();
   const toasts = useToastStore();
   const addButton = useRef<HTMLButtonElement>(null);
   // The New file button that opened the dialog, the top one or the empty state's, gets focus back.
@@ -129,18 +130,18 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
         // A file that was open stays open under its new name; a closed one is not opened.
         moved: (to) => {
           setRenaming(undefined);
-          setReveal(to);
+          setReveal({ path: to, focus: !blur });
           if (activeNow.current === from) context.openItem?.(fileItem(to));
         },
         movedBack: (back) => {
-          setReveal(back);
+          setReveal({ path: back, focus: true });
           if (activeNow.current === renamedPath(from, name)) context.openItem?.(fileItem(back));
         },
       });
       if (refused !== undefined && blur) {
         toasts?.show({ tone: "danger", title: refused });
         setRenaming(undefined);
-        setReveal(from);
+        setReveal({ path: from, focus: false });
       }
       return refused;
     },
@@ -218,13 +219,15 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
               renaming: {
                 path: renaming,
                 onApply: (name: string, blur: boolean) => applyRename(renaming, name, blur),
-                onCancel: () => {
+                onCancel: (blur: boolean) => {
                   setRenaming(undefined);
-                  setReveal(renaming);
+                  setReveal({ path: renaming, focus: !blur });
                 },
               },
             })}
-        {...(reveal === undefined ? {} : { revealPath: reveal, onRevealed: clearReveal })}
+        {...(reveal === undefined
+          ? {}
+          : { revealPath: reveal.path, revealFocus: reveal.focus, onRevealed: clearReveal })}
         {...(activePath === undefined ? {} : { activePath })}
       />
     );

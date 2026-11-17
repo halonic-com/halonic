@@ -402,6 +402,73 @@ verifies("files.ui.rename-file", () => {
     );
     expect(page.querySelector("input")).not.toBeNull();
   });
+
+  // The user clicked or tabbed somewhere else: focus is on `elsewhere` and the field loses it.
+  async function leaveRow(input: HTMLInputElement | null) {
+    const elsewhere = document.createElement("button");
+    document.body.append(elsewhere);
+    await act(async () => {
+      elsewhere.focus();
+      input?.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    return elsewhere;
+  }
+
+  it("leaves the focus where the user put it when the row is left after a rename", async () => {
+    let paths = ["agents/a.agent.yaml", "models.yaml"];
+    const subscribers: (() => void)[] = [];
+    const host: FilesHost = {
+      ...contextHost(),
+      list: async () => listing(paths),
+      subscribe: (listener) => {
+        subscribers.push(listener);
+        return () => {};
+      },
+      rename: async () => {
+        paths = ["agents/a.agent.yaml", "providers.yaml"];
+        return { places: 0, owners: [], undo: async () => {} };
+      },
+    };
+    const { page } = await startRename(host);
+    const input = rowNamed(page, "models.yaml").querySelector("input");
+    await typeInto(input, "providers.yaml");
+    const elsewhere = await leaveRow(input);
+    await act(async () => {
+      for (const listener of subscribers) listener();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(page.querySelector("input")).toBeNull();
+    expect(document.activeElement).toBe(elsewhere);
+    expect(rowNamed(page, "providers.yaml").tabIndex).toBe(0);
+    elsewhere.remove();
+  });
+
+  it("leaves the focus where the user put it when the row is left after a refusal", async () => {
+    const rename = async () => {
+      throw new Error("providers.yaml already exists.");
+    };
+    const { page } = await startRename({ ...contextHost(), rename });
+    const input = rowNamed(page, "models.yaml").querySelector("input");
+    await typeInto(input, "providers.yaml");
+    const elsewhere = await leaveRow(input);
+    expect(page.querySelector("input")).toBeNull();
+    expect(document.activeElement).toBe(elsewhere);
+    expect(rowNamed(page, "models.yaml").tabIndex).toBe(0);
+    elsewhere.remove();
+  });
+
+  it("leaves the focus where the user put it when the row is left with the name unchanged", async () => {
+    const rename = vi.fn(contextHost().rename);
+    const { page } = await startRename({ ...contextHost(), rename });
+    const input = rowNamed(page, "models.yaml").querySelector("input");
+    const elsewhere = await leaveRow(input);
+    expect(rename).not.toHaveBeenCalled();
+    expect(page.querySelector("input")).toBeNull();
+    expect(document.activeElement).toBe(elsewhere);
+    expect(rowNamed(page, "models.yaml").tabIndex).toBe(0);
+    elsewhere.remove();
+  });
 });
 
 verifies("files.ui.delete-file", () => {

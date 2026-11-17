@@ -12,7 +12,7 @@ export interface RenameRowProps {
    */
   readonly onApply: (name: string, blur: boolean) => Promise<string | undefined>;
   /** Escape, or a name left as it was: the row shows the name again. */
-  readonly onCancel: () => void;
+  readonly onCancel: (blur: boolean) => void;
 }
 
 /** The part of a name to select first: all but the extensions. */
@@ -36,14 +36,14 @@ export function RenameRow({ name, onApply, onCancel }: RenameRowProps) {
     if (settled.current || busy) return;
     if (value === name) {
       settled.current = true;
-      return onCancel();
+      return onCancel(blur);
     }
     setBusy(true);
     const refused = await onApply(value, blur);
     setBusy(false);
     if (refused === undefined || blur) {
       settled.current = true;
-      if (refused !== undefined) onCancel();
+      if (refused !== undefined) onCancel(true);
       return;
     }
     setProblem(refused);
@@ -60,7 +60,7 @@ export function RenameRow({ name, onApply, onCancel }: RenameRowProps) {
         if (event.key === "Escape") {
           event.preventDefault();
           settled.current = true;
-          onCancel();
+          onCancel(false);
         } else if (event.key === "Enter" && !event.nativeEvent.isComposing) {
           event.preventDefault();
           void apply(false);

@@ -25,6 +25,8 @@ export interface FilesTreeProps {
   readonly renaming?: { readonly path: string } & Pick<RenameRowProps, "onApply" | "onCancel">;
   /** A row to give focus to as soon as it is in the tree, such as the renamed file at its new place. */
   readonly revealPath?: string;
+  /** Whether `revealPath` also takes the focus; false keeps it where the user put it and moves only the Tab stop. */
+  readonly revealFocus?: boolean;
   /** Called once `revealPath` has focus. */
   readonly onRevealed?: () => void;
   /** The time in milliseconds; tests pass their own. */
@@ -73,6 +75,7 @@ export function FilesTree({
   onIntent,
   renaming,
   revealPath,
+  revealFocus = true,
   onRevealed,
   now = Date.now,
 }: FilesTreeProps) {
@@ -95,12 +98,14 @@ export function FilesTree({
     if (revealPath === undefined) return;
     for (const item of tree.current?.querySelectorAll<HTMLElement>("[data-path]") ?? []) {
       if (item.dataset["path"] !== revealPath) continue;
-      item.focus();
+      if (revealFocus) item.focus();
+      // A key that was handled earlier must not pull the focus here when only the Tab stop moves.
+      else focusing.current = false;
       onStateChange({ ...state, focus: revealPath });
       onRevealed?.();
       return;
     }
-  }, [revealPath, rows, onRevealed, onStateChange, state]);
+  }, [revealPath, revealFocus, rows, onRevealed, onStateChange, state]);
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const result = pressKey(rows, { ...state, focus: state.focus ?? stop }, event, now());
