@@ -10,7 +10,7 @@ import {
 } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ComponentType } from "react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { PluginsHostService } from "../api.ts";
 import { pluginsFeature } from "../feature.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
@@ -23,6 +23,23 @@ import {
 } from "../test-support/plugins.ts";
 import { installFakePopover } from "../test-support/popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
+
+// The first test lazy-loads the view and the feature graph, which takes longer than the 5 s default
+// on a loaded runner.
+vi.setConfig({ testTimeout: 30_000 });
+
+/** Waits, inside act, until `read` finds the element, so a test never clicks before the UI settles. */
+async function findElement<T extends Element>(read: () => T | null | undefined): Promise<T> {
+  return vi.waitFor(
+    async () => {
+      await act(async () => {});
+      const found = read();
+      if (found === null || found === undefined) throw new Error("Not on screen yet");
+      return found;
+    },
+    { timeout: 10_000, interval: 20 },
+  );
+}
 
 let removePopover = () => {};
 let toasts = createToastStore();
@@ -124,16 +141,18 @@ verifies("plugins.plugin-settings-list", () => {
     );
     expect(view.textContent).toContain("Weather");
 
-    await act(async () =>
-      document.querySelector<HTMLElement>('[aria-label="More actions for Weather"]')?.click(),
+    const more = await findElement(() =>
+      document.querySelector<HTMLElement>('[aria-label="More actions for Weather"]'),
     );
-    await act(async () =>
-      [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
-        .find((item) => item.textContent?.trim() === "Open")
-        ?.click(),
+    await act(async () => more.click());
+    const open = await findElement(() =>
+      [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+        (item) => item.textContent?.trim() === "Open",
+      ),
     );
+    await act(async () => open.click());
 
-    expect(closed).toBe(1);
+    await vi.waitFor(() => expect(closed).toBe(1));
     expect(opened).toEqual([{ kind: "plugin", hub: "this-computer", id: "weather" }]);
   });
 
@@ -242,7 +261,7 @@ verifies("plugins.plugin-settings-list", () => {
         surface="window"
       />,
     );
-    expect(view.textContent).toContain("Weather");
+    await vi.waitFor(() => expect(view.textContent).toContain("Weather"));
     expect(view.textContent).toContain(
       "View only here. Add, trust and remove plugins on the computer that runs Halonic:",
     );
