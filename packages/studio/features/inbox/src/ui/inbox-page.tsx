@@ -1,3 +1,4 @@
+import { RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { Button, EmptyState, List, usePresentation } from "@halonicjs/studio-kit";
 import {
   type EngineWords,
@@ -28,9 +29,11 @@ import { ApprovalCard } from "./approval-card.tsx";
 import type { NextItem } from "./card-parts.tsx";
 import { countDetail, itemTitle, lateCount, rowFor } from "./inbox-row.tsx";
 import { NoticesSection } from "./notices-section.tsx";
+import type { RunFactsOf } from "./run-facts.ts";
 import { SetupPane } from "./setup-pane.tsx";
 import { useOpenItem } from "./use-open-item.ts";
 import { useRequestPane } from "./use-request-pane.tsx";
+import { useRunFacts } from "./use-run-facts.ts";
 import { useSentRequestCard } from "./use-sent-request-card.ts";
 import { WaitCard } from "./wait-card.tsx";
 
@@ -60,9 +63,11 @@ export function InboxPage({ context }: PlaceViewProps) {
     () => mergeNotices(appNotices, inbox.extraNotices),
     [appNotices, inbox.extraNotices],
   );
+  const runFacts = useRunFacts(context.services.find(RunsListService));
   return (
     <InboxView
       inbox={inbox}
+      runFacts={runFacts}
       words={engineWordsOf(context)}
       announce={(line) => context.announcer.announce(line)}
       requests={context.services.find(InboxRequestsService)}
@@ -100,6 +105,11 @@ export interface InboxViewProps {
   readonly openBudget?: (() => void) | undefined;
   /** Opens a run's page, for **Open run** on the toast that says a request started. */
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
+  /**
+   * The workflow and starter of a run: the row says the workflow, and the card says what started
+   * the run and has **Open run** (with `openRun`). Without it the Inbox says neither.
+   */
+  readonly runFacts?: RunFactsOf | undefined;
   /** Says a line where a screen reader hears it: "New in Needs you: …" for a sent request's card that didn't open. */
   readonly announce?: ((line: string) => void) | undefined;
 }
@@ -134,6 +144,7 @@ export function InboxView({
   openNewConnector,
   openBudget,
   openRun,
+  runFacts,
   announce,
 }: InboxViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
@@ -198,7 +209,9 @@ export function InboxView({
                 headingRef: needsYouHeading,
                 ...countDetail(waitingCount(state.items), lateCount(state.items, now())),
               }}
-              rows={state.items.map((item) => rowFor(item, now()))}
+              rows={state.items.map((item) =>
+                rowFor(item, now(), item.kind === "setup" ? undefined : runFacts?.(item.runId)),
+              )}
               onOpen={(key) => openItem(state.items.find((item) => item.key === key) ?? null)}
               {...(open === null ? {} : { current: open.key })}
               empty={
@@ -251,6 +264,7 @@ export function InboxView({
               focus={focus}
               openNewConnector={openNewConnector}
               openRun={openRun}
+              runFacts={runFacts}
               announce={announce}
               now={now}
               answering={state.error === undefined}
@@ -317,6 +331,7 @@ function OpenCard({
   focus,
   openNewConnector,
   openRun,
+  runFacts,
   announce,
 }: {
   readonly item: InboxItem;
@@ -326,6 +341,7 @@ function OpenCard({
   readonly focus: SetupFocus | undefined;
   readonly openNewConnector: (() => void) | undefined;
   readonly openRun: ((hubId: string, runId: string) => void) | undefined;
+  readonly runFacts: RunFactsOf | undefined;
   readonly announce: ((line: string) => void) | undefined;
   readonly next: NextItem | null;
   readonly now: () => Date;
@@ -339,6 +355,12 @@ function OpenCard({
   useEffect(() => {
     inbox.takeAside(item.key);
   }, [inbox, item.key]);
+  const facts = item.kind === "setup" ? undefined : runFacts?.(item.runId);
+  // Open run needs the run's hub, which the Runs list gives; without it the card has no button.
+  const openThisRun =
+    openRun === undefined || facts === undefined
+      ? undefined
+      : (runId: string) => openRun(facts.hubId, runId);
   const target = secretTarget("google", items);
   // With no account to set up and no place to open, the button would do nothing, so it isn't offered.
   const somewhereToGo = target.kind === "setup" || openNewConnector !== undefined;
@@ -372,6 +394,8 @@ function OpenCard({
         agentName={item.agentName}
         subagentName={item.subagentName}
         decisions={inbox.decisions}
+        onOpenRun={openThisRun}
+        startedBy={facts?.startedBy}
         next={next}
         back={null}
         now={now}
@@ -387,6 +411,8 @@ function OpenCard({
     <WaitCard
       item={item}
       decisions={inbox.decisions}
+      onOpenRun={openThisRun}
+      startedBy={facts?.startedBy}
       next={next}
       back={null}
       now={now}

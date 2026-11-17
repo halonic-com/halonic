@@ -60,6 +60,8 @@ interface CardHeaderProps {
   readonly heading: RefObject<HTMLHeadingElement | null>;
   /** "Waiting since 10:42 (1 min)", or `null` once decided: the card no longer waits. */
   readonly since: string | null;
+  /** What started the run, after "Started by": "you, with Run"; left out, the line isn't shown. */
+  readonly startedBy?: string | undefined;
   /** Opens the run; leave it out while the Studio has no run page, and the button isn't shown. */
   readonly onOpenRun?: (() => void) | undefined;
 }
@@ -78,9 +80,16 @@ export function useEveryMinute(): void {
 
 /**
  * A card's header: its title, which takes focus when it opens, since when it waits while it
- * does, and **Open run** (flow-inbox 5.3).
+ * does, what started the run, and **Open run** (flow-inbox 5.3).
  */
-export function CardHeader({ titleId, title, heading, since, onOpenRun }: CardHeaderProps) {
+export function CardHeader({
+  titleId,
+  title,
+  heading,
+  since,
+  startedBy,
+  onOpenRun,
+}: CardHeaderProps) {
   return (
     <header className="flex items-start gap-3">
       <div className="min-w-0 flex-1">
@@ -93,6 +102,9 @@ export function CardHeader({ titleId, title, heading, since, onOpenRun }: CardHe
           {title}
         </h2>
         {since === null ? null : <p className="text-small text-fg-muted">{since}</p>}
+        {startedBy === undefined ? null : (
+          <p className="text-small text-fg-muted">Started by {startedBy}</p>
+        )}
       </div>
       {onOpenRun === undefined ? null : (
         <Button size="sm" onClick={onOpenRun}>

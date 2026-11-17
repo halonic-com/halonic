@@ -8,7 +8,7 @@
 import type { LoggedInstructionPin, RunEvent, RunSummary } from "@halonicjs/events";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
-export { type RunChip, type RunRow, runRow } from "./list/run-row.ts";
+export { type RunChip, type RunRow, runRow, startedBy } from "./list/run-row.ts";
 export type { WorkflowRef } from "./list/runs-filter.ts";
 export { RunCardReceipt, type RunCardReceiptProps } from "./run-view/card-receipt.tsx";
 export { type RunLogRead, useRunLog } from "./run-view/every-step.tsx";

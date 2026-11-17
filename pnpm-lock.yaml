@@ -2810,6 +2810,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
+      '@halonicjs/studio-feature-runs':
+        specifier: workspace:*
+        version: link:../runs
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../kit
