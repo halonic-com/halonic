@@ -3,6 +3,7 @@
 - Task: HAL-11274
 - Approval: Liam reviewed and approved this change on HAL-11274 (a team decision with no board card, HAL-2282 rule). He signs this note.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LCYgw+lxHGJK3PZu7PW+C3+dtshRcq7TA4q7pmmBH49GWfLNJsFEXLqMqrKE5ZOCqlOgxmlRjpoVMJveyYoKCw==
 
 ## What changes
 
