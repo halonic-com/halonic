@@ -27,6 +27,8 @@ const rowStateClasses = {
   selected: { fill: "bg-accent-soft", row: "selected-forced", main: "selected-bar" },
   // No hover or press: it can't be opened.
   unavailable: { fill: "bg-surface", row: "", main: "" },
+  // No hover or press: a click does nothing, as there's no `onOpen` and no selection.
+  inert: { fill: "bg-surface", row: "", main: "" },
 } as const;
 
 /**
@@ -93,11 +95,25 @@ function cornerBarClasses(look: ListLook, top: boolean, last: boolean): string {
   return [top ? "after:top-2" : "", last ? "after:bottom-2" : ""].filter(Boolean).join(" ");
 }
 
-function rowState(isUnavailable: boolean, isSelected: boolean): keyof typeof rowStateClasses {
+function rowState(
+  isUnavailable: boolean,
+  isInert: boolean,
+  isSelected: boolean,
+): keyof typeof rowStateClasses {
   if (isUnavailable) {
     return "unavailable";
   }
-  return isSelected ? "selected" : "default";
+  if (isSelected) {
+    return "selected";
+  }
+  return isInert ? "inert" : "default";
+}
+
+function cursorOf(isUnavailable: boolean, isInert: boolean): string {
+  if (isUnavailable) {
+    return "cursor-not-allowed";
+  }
+  return isInert ? "cursor-default" : "cursor-pointer";
 }
 
 /** Where a row sits in its box. */
@@ -197,7 +213,8 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
   const isUnavailable = row.unavailable !== undefined;
   const reasonId = useId();
   // Being current only changes the row's look: its `aria-selected` and checkbox follow the selection.
-  const state = rowStateClasses[rowState(isUnavailable, isSelected || isCurrent)];
+  const isInert = shared.onOpen === undefined && selection === undefined;
+  const state = rowStateClasses[rowState(isUnavailable, isInert, isSelected || isCurrent)];
   const cells = cellClasses({ look, ...place, state, hasCheck, hasMore });
   const mainColumn = firstFocusColumn(hasCheck);
   const more = moreClasses[phone ? "phone" : "desktop"];
@@ -234,7 +251,7 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
         {...grid.cell(row.id, mainColumn)}
         aria-label={shared.columns === undefined ? row.label : undefined}
         aria-describedby={isUnavailable ? reasonId : undefined}
-        className={`p-0 ${cells.main} ${isUnavailable ? "cursor-not-allowed" : "cursor-pointer"}`}
+        className={`p-0 ${cells.main} ${cursorOf(isUnavailable, isInert)}`}
         onClick={onClick}
         onAuxClick={onAuxClick}
         onKeyDown={onKeyDown}
