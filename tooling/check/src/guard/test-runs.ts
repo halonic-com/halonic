@@ -19,8 +19,8 @@ const ranStatuses = ["passed", "failed"];
  *   measured at run time, so a shared helper, a fixture or the code under
  *   test can weaken a test without editing it. A drop in a package nothing
  *   changed in is run-to-run noise (polling, tests that skip in some
- *   environments). So is a drop only `vi.waitFor`'s retries can explain
- *   (see `timingOnlyDrops`).
+ *   environments). `verifies()` counts only the passing attempt of a
+ *   `vi.waitFor` retry (HAL-6453), so retries don't move the count.
  * Both checkouts' tests must have run first. A missing or unreadable result
  * file is a finding too, so the guard fails closed.
  *
@@ -51,8 +51,6 @@ export function checkTestRuns(checkouts: Checkouts): GuardFinding[] {
   ).filter((finding) => head.files.includes(finding.file));
   const fileOf = requirementFiles(before);
   const touched = touchedRequirements(checkouts, [...before, ...after]);
-  const timing = timingOnlyDrops(checkouts, before, after);
-  const edited = (id: string): boolean => touched.has(id) && !timing.has(id);
   findings.push(
     ...fewerInFile,
     ...compareCounts(
@@ -68,7 +66,7 @@ export function checkTestRuns(checkouts: Checkouts): GuardFinding[] {
       subject: id,
       file: fileOf.get(id) ?? id,
       message: `The tests of the requirement "${id}" made ${now} expect call(s), ${was} on the merge base.`,
-    })).filter((finding) => finding.subject !== undefined && edited(finding.subject)),
+    })).filter((finding) => finding.subject !== undefined && touched.has(finding.subject)),
   );
   return findings;
 }
@@ -220,69 +218,4 @@ function touchedRequirements(
     }
   }
   return touched;
-}
-
-/** A call of `vi.waitFor`, which runs its `expect` calls again until they pass. */
-const retryCall = /\bvi\.waitFor\s*\(/;
-/** A top-level import of `vi`, so a `vi.waitFor` only in a string or a comment doesn't count. */
-const viImport = /^import\s*\{[^}]*\bvi\b[^}]*\}\s*from\s*["']vitest["']/m;
-
-/**
- * HAL-6369: the requirements whose lower expect count only `vi.waitFor`'s
- * retries can explain, so it depends on the runner's speed. That needs all of:
- * - a test file of the requirement calls `vi.waitFor`
- * - the pull request edits none of its test files
- * - no test of it dropped to 0 calls: a retry runs its callback at least once
- * - its test files without `vi.waitFor` make as many calls as before
- */
-function timingOnlyDrops(
-  { base, head }: Checkouts,
-  before: readonly TestOutcome[],
-  after: readonly TestOutcome[],
-): ReadonlySet<string> {
-  const retryingFiles = new Map<string, boolean>();
-  const retries = (file: string): boolean => {
-    let found = retryingFiles.get(file);
-    if (found === undefined) {
-      found = [base, head].some((side) => {
-        if (!side.files.includes(file)) {
-          return false;
-        }
-        const text = side.read(file);
-        return viImport.test(text) && retryCall.test(text);
-      });
-      retryingFiles.set(file, found);
-    }
-    return found;
-  };
-  const filesOf = new Map<string, Set<string>>();
-  for (const test of [...before, ...after]) {
-    if (test.requirement !== undefined) {
-      filesOf.set(test.requirement, (filesOf.get(test.requirement) ?? new Set()).add(test.file));
-    }
-  }
-  const keyOf = (test: TestOutcome): string => `${test.file}\n${test.name}`;
-  const callsAfter = new Map(after.map((test) => [keyOf(test), test.assertions ?? 0]));
-  const droppedToZero = new Set(
-    before
-      .filter((test) => (test.assertions ?? 0) > 0 && callsAfter.get(keyOf(test)) === 0)
-      .map((test) => test.requirement),
-  );
-  const steady = (tests: readonly TestOutcome[]): Map<string, number> =>
-    sumAssertions(tests.filter((test) => !retries(test.file)));
-  const steadyBefore = steady(before);
-  const steadyAfter = steady(after);
-  const timing = new Set<string>();
-  for (const [id, files] of filesOf) {
-    const all = [...files];
-    if (
-      all.some(retries) &&
-      all.every((file) => changeOf(file, base, head) === undefined) &&
-      !droppedToZero.has(id) &&
-      (steadyAfter.get(id) ?? 0) >= (steadyBefore.get(id) ?? 0)
-    ) {
-      timing.add(id);
-    }
-  }
-  return timing;
 }
