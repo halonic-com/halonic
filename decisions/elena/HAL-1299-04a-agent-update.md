@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11705 (Liam approved the T6 plan, whose PR 4 builds the Configuration pages on a host `update` method)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DAQ7FyebF9tDHwVjG3ogmAz2a69tq5LJQA+zmCAhWMUDDHUDRhr94BOGaU5ZMdLG+2+LCSX0nIWfyT8/US2PBw==
 
 `AgentsHost` gains `settings` and `update`, and `WorkspaceAgents` implements them, so `studio.workspace-agents`
 (Source and the requirement sentence) grows by one promise: it changes an agent's name, description or
