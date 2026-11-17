@@ -38,6 +38,7 @@ import {
   LOADING_LABEL,
   moreFor,
   NOT_TRUSTED_CHIP,
+  noInstallerLine,
   OPEN,
   OPEN_IN_NEW_TAB,
   PLUGINS,
@@ -130,6 +131,22 @@ function builtInRowsOf(
       ...(canOpen ? { more: { label: moreFor(plugin.name), onClick: openMore(id) } } : {}),
     };
   });
+}
+
+/** The line above the command a list ends with, when this list can't add a plugin itself. */
+function commandLine(viewOnly: boolean, phone: boolean, canAdd: boolean): string | undefined {
+  if (viewOnly) return viewOnlyLine(phone);
+  return canAdd ? undefined : noInstallerLine();
+}
+
+function AddOnCommandLine({ line }: { readonly line: string | undefined }) {
+  if (line === undefined) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      <ViewOnlyLine>{line}</ViewOnlyLine>
+      <CommandBox command={ADD_COMMAND} />
+    </div>
+  );
 }
 
 /**
@@ -229,12 +246,7 @@ export function PluginsList({
           {...builtInOpener(onOpenBuiltIn)}
         />
       )}
-      {viewOnly ? (
-        <div className="flex flex-col gap-2">
-          <ViewOnlyLine>{viewOnlyLine(phone)}</ViewOnlyLine>
-          <CommandBox command={ADD_COMMAND} />
-        </div>
-      ) : null}
+      <AddOnCommandLine line={commandLine(viewOnly, phone, add !== undefined)} />
       <ContextMenu
         label={installed?.name ?? builtInMenu?.name ?? PLUGINS}
         entries={entries}
