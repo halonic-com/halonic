@@ -56,6 +56,12 @@ verifies("agent-host.sandbox-choice-routes", () => {
       await profile(),
       "win32",
     );
-    expect((await native.start()).backends[0]?.limits).toContain("schannel-tls-fails");
+    expect((await native.start()).backends[0]?.limits).toEqual([
+      "project-folder-writable",
+      "name-lookups-leave",
+      "reads-open-by-default",
+      "wsl-service-reachable",
+      "schannel-tls-fails",
+    ]);
   });
 });

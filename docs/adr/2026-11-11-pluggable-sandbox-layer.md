@@ -142,8 +142,8 @@ list:
 | `project-folder-writable` | The agent can change and delete anything in the project folder | every backend |
 | `name-lookups-leave` | Name lookups go out through a system service, so data can leave in the names | `srt` (Windows), `mxc` |
 | `wsl-service-reachable` | The WSL service answers sandboxed programs, and `wsl.exe` can't be denied | `srt` (Windows) |
-| `user-files-readable` | The sandbox reads whatever the Users group can read, unless a path is denied | `srt` (Windows) |
-| `kept-roots-readable` | Every sandboxed session on the computer can read every project folder srt has kept a grant on | `srt` (Windows) |
+| `reads-open-by-default` | The sandbox reads whatever the Users group can read, unless a path is denied | `srt` (Windows) |
+| `kept-roots-readable` | Every sandboxed session on the computer can read every project folder srt has kept a grant on | residual of an `ok` check on `srt` (Windows), not static (HAL-5398) |
 | `schannel-tls-fails` | Tools on Windows' own TLS stack fail (`curl.exe`, PowerShell web calls, `dotnet restore`) | `srt` (Windows) |
 | `files-leave-machine` | Project files are copied to another machine | `cloud` |
 | `no-file-fence`, `no-network-fence` | Nothing is fenced | `none` |
