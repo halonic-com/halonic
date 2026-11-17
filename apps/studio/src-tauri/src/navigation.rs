@@ -17,10 +17,11 @@ use tauri_plugin_opener::OpenerExt;
 /// The page `back_to_connect` loads: the app's own page, which is the connect
 /// page on Android (tauri.android.conf.json) and the Studio on desktop
 /// (tauri.conf.json), the only page the guard keeps. On Android,
-/// `#change-address` tells the connect page to show the connect screen with
-/// the remembered address filled in, instead of connecting straight away.
+/// `#page-not-shown` tells the connect page to show the connect screen with
+/// the remembered address filled in, instead of connecting straight away,
+/// and a line saying the page the window was on can't be shown here.
 const CHANGE_ADDRESS_PAGE: &str = if cfg!(target_os = "android") {
-    "http://tauri.localhost/connect.html#change-address"
+    "http://tauri.localhost/connect.html#page-not-shown"
 } else if cfg!(windows) {
     "http://tauri.localhost/studio.html"
 } else {

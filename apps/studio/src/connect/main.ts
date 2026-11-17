@@ -21,5 +21,6 @@ void startConnectPage({
   document,
   bridge: internals === undefined ? outsideTheApp : tauriBridge(internals, window),
   store: localAddressStore(localStorage),
-  changeAddress: location.hash === "#change-address",
+  changeAddress: location.hash === "#change-address" || location.hash === "#page-not-shown",
+  pageNotShown: location.hash === "#page-not-shown",
 });
