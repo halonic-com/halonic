@@ -162,7 +162,8 @@ export function FilesTree({
               aria-expanded={node.kind === "folder" ? open : undefined}
               aria-selected={node.path === activePath}
               aria-label={folderLabel(node, label)}
-              aria-description={node.kind === "folder" ? undefined : label}
+              // The marks are not read along with the name field while it is edited.
+              aria-description={node.kind === "folder" || renaming?.path === node.path ? undefined : label}
               title={node.name.length > nameLimit ? node.name : undefined}
               className={`flex min-h-8 cursor-pointer items-center gap-1 rounded-sm pr-2 text-sm text-fg outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-accent aria-selected:bg-accent-soft`}
               style={{ paddingLeft: `${row.depth * 16 + 4}px` }}
