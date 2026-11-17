@@ -90,6 +90,17 @@ _stages_ the version: it isn't public until a person approves it on npmjs.com.
 Releases need the board's yes: ask through a task for
 Chief, and merge or run only once the user has approved.
 
+## Release branch
+
+A patch release can come from a `release/<version>` branch instead of `main`, for example when `main` has
+moved on and only a fix should ship.
+
+- The maintainer (merge captain) cuts `release/<version>` from the commit the release review covered.
+- Only fixes land on it. Where possible they are cherry-picks of pull requests already merged to `main`.
+- A run by hand from the branch is a release, so it needs the board's yes like any other, and a dry run
+  (`dry_run` on) first.
+- The branch needs the same protection as `main`: pull requests only, review, and a green `ci-ok`.
+
 ## Tests
 
 `src/pack.test.ts` packs both layer packages, installs the tarballs into a folder outside the workspace,
