@@ -2,7 +2,7 @@
 
 - Task: HAL-11746, found on halonic#3315 (HAL-11621)
 - Approval: HAL-11746 asks for each difference to be fixed or allowed; Liam reviews the change and signs this note on HAL-11746
-- Kind: internal
+- Kind: user-visible
 
 ## What changes
 
