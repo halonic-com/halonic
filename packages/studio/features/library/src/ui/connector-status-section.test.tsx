@@ -111,6 +111,8 @@ verifies("library.status-section", () => {
       const headings = [...root.querySelectorAll("h2")].map((heading) => heading.textContent);
       expect(headings).toEqual(["Recent refusals"]);
       expect(root.textContent).not.toContain("waits for your approval");
+      expect(root.textContent).not.toContain("Waiting for approval");
+      expect(root.querySelectorAll("ul")).toHaveLength(1);
     });
 
     it("shows the time of each refusal", async () => {
