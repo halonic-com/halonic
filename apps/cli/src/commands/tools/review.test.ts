@@ -127,9 +127,9 @@ verifies("cli.commands.tools.review", () => {
     if (fixLine === undefined) throw new Error("approve names the command to read the tool first");
     const command = fixLine.slice(fixLine.indexOf("halonic tools review")).split(" ");
 
-    const run = await kit.tools(command.slice(2));
+    const run = await kit.tools(command.slice(2), terminalTyping("n", "n").terminal);
 
-    expect(run.code).toBe(exitCode.failed);
+    expect(run.code).toBe(exitCode.ok);
     expect(run.stdout.join("\n")).toContain("lookup");
   });
 
@@ -156,16 +156,26 @@ verifies("cli.commands.tools.review", () => {
     expect(after?.fingerprint).not.toBe(shown?.fingerprint);
   });
 
-  it("shows no control or bidi character of a server's text", async () => {
-    const evil = `${escapeCode}[31mred${rightToLeft}`;
+  it("shows no control or bidi character of a server's description or schema", async () => {
+    const evil = `${escapeCode}[31mred\r${rightToLeft}`;
     kit.notes().servers.tools = [
-      { ...notesTools.archive, name: `archive${evil}`, description: `Moves${evil} a note.` },
+      {
+        ...notesTools.archive,
+        description: `Moves${evil} a note.`,
+        inputSchema: {
+          type: "object",
+          properties: { id: { type: "string", description: `the note's id${evil}` } },
+        },
+      },
     ];
 
     const run = await kit.tools(["review", "notes-mcp"]);
 
     const text = [...run.stdout, ...run.stderr].join("\n");
+    expect(text).toContain("Moves");
+    expect(text).toContain("the note's id");
     expect(text).not.toContain(escapeCode);
+    expect(text).not.toContain("\r");
     expect(text).not.toContain(rightToLeft);
   });
 });
