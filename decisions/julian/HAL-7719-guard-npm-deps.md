@@ -2,6 +2,7 @@
 
 - Approval: HAL-7719 (Liam, CTO)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FbQg/U01rX42pHAzTBEBWUD1/O9+FLDwF3Hn1stUG2uf7bF4YZrqkVCPvxsBly8UKd0EardhogCLv/+xN5R5Dw==
 - Task: HAL-7719
 
 The requirement guard runs on the TypeScript parser `@typescript/typescript6`. Until now a change
