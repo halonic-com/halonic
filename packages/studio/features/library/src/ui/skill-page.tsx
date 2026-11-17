@@ -1,23 +1,8 @@
 import type { SkillChange } from "@halonicjs/app";
-import {
-  Button,
-  Callout,
-  EmptyState,
-  Field,
-  FormRows,
-  Input,
-  TextArea,
-} from "@halonicjs/studio-kit";
+import { Button, EmptyState, Field, FormRows, Input, TextArea } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
-import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { savingFor } from "../saving.ts";
 import { takeSkillInstructionsFocus } from "../skill-focus-request.ts";
 import { SkillHostService, type SkillRef } from "../skill-host.ts";
 import { type SkillField, SkillModel } from "../skill-model.ts";
@@ -29,6 +14,7 @@ import { UsedByField } from "./used-by-field.tsx";
 
 type Edited = keyof SkillChange;
 type Drafts = Partial<Record<Edited, string>>;
+const editedFields: readonly Edited[] = ["name", "description", "instructions"];
 
 function refOf(hub: string, id: string): SkillRef {
   return { hub: hub === sharedHubKey ? null : hub, id };
@@ -43,8 +29,15 @@ function refOf(hub: string, id: string): SkillRef {
 export function SkillPage({ item, context }: ItemViewProps) {
   const host = context.services.find(SkillHostService);
   const model = useMemo(
-    () => (host === undefined ? undefined : new SkillModel(host, refOf(item.hub, item.id))),
-    [host, item.hub, item.id],
+    () =>
+      host === undefined
+        ? undefined
+        : new SkillModel(
+            host,
+            refOf(item.hub, item.id),
+            savingFor(context.saving, `skill/${item.hub}/${item.id}`),
+          ),
+    [host, context.saving, item.hub, item.id],
   );
   if (model === undefined) {
     return <Gone context={context} />;
@@ -69,43 +62,14 @@ function Gone({ context }: Pick<ItemViewProps, "context">) {
   );
 }
 
-function SaveFailureLine({
-  failure,
-  onRetry,
-}: {
-  readonly failure: { readonly reason: string } | undefined;
-  readonly onRetry: () => void;
-}) {
-  if (failure === undefined) return null;
-  return (
-    <Callout
-      tone="danger"
-      title={skillWords.saveFailed}
-      action={{ label: skillWords.tryAgain, onClick: onRetry }}
-    >
-      {failure.reason}
-    </Callout>
-  );
-}
-
 function LoadedSkillPage({
   item,
   context,
   model,
 }: Pick<ItemViewProps, "item" | "context"> & { readonly model: SkillModel }) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
-  const {
-    loaded,
-    failed,
-    failureReason,
-    gone,
-    unreadable,
-    parts,
-    files,
-    usage,
-    kept,
-    saveFailure,
-  } = useSyncExternalStore(subscribe, () => model.state);
+  const { loaded, failed, failureReason, gone, unreadable, parts, files, usage, kept } =
+    useSyncExternalStore(subscribe, () => model.state);
   const trash = useItemTrash(context, {
     kind: "skill",
     hub: item.hub === sharedHubKey ? null : item.hub,
@@ -123,6 +87,18 @@ function LoadedSkillPage({
     }
   }, [ready, item.hub, item.id]);
 
+  // A write that the window's Try again runs later never reaches `leave`, so a draft that now equals
+  // the saved text is dropped here, and the field follows the file again (a change from outside shows).
+  useEffect(() => {
+    if (parts === undefined) return;
+    setDrafts((current) => {
+      const settled = editedFields.filter((field) => current[field] === parts[field]);
+      return settled.length === 0
+        ? current
+        : settled.reduce((rest, field) => without(field)(rest), current);
+    });
+  }, [parts]);
+
   if (gone) {
     return trash.strip ?? <Gone context={context} />;
   }
@@ -138,7 +114,7 @@ function LoadedSkillPage({
     );
   }
   if (!loaded) {
-    return <p className="px-4 py-5 text-small text-fg-muted">{skillWords.loading}</p>;
+    return <p className="px-4 py-5 text-small text-fg-muted">{skillWords.loading(item.id)}</p>;
   }
   if (unreadable || parts === undefined) {
     return <EmptyState title={skillWords.unreadable} />;
@@ -161,9 +137,6 @@ function LoadedSkillPage({
       setDrafts(without(field));
     }
   };
-  const retrySave = async () => {
-    for (const field of Object.keys(drafts) as Edited[]) await leave(field);
-  };
   const keptHint = (field: SkillField, text: string) => (kept.includes(field) ? text : undefined);
 
   return (
@@ -175,7 +148,6 @@ function LoadedSkillPage({
         </h1>
         {trash.menu}
       </div>
-      <SaveFailureLine failure={saveFailure} onRetry={() => void retrySave()} />
       <FormRows>
         <Field label={skillWords.name} hint={keptHint("name", skillWords.nameKept)}>
           <Input

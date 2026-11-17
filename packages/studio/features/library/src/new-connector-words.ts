@@ -43,6 +43,12 @@ export const connectorPageWords = {
   place: "Library",
 } as const;
 
+/** The connector page's Tools row for a connector whose file says every tool asks first (microcopy 11.4). */
+export const connectorToolsWords = {
+  line: "Agents get the tools you approve from the ones the server lists. A person approves each call to every tool.",
+  changeInFile: "Change which tools agents get in the file.",
+} as const;
+
 /** The sentence that says which tools ask first, the same on the dialog and on the connector's page. */
 export const asksFirstWords: Record<ConnectorAsks, string> = {
   "every-tool": newConnectorWords.asksFirst,

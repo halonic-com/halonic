@@ -381,6 +381,19 @@ verifies("library.library-phone-kinds", () => {
     expect(memory.set).not.toHaveBeenCalled();
   });
 
+  it("shows how many items each kind has on its row (flow-library 8.1)", async () => {
+    const { context } = contextOf(undefined, { openPlaceList: vi.fn() });
+    const page = await show(context, "phone");
+    const rows = [...page.querySelectorAll("li button")].map((each) => each.textContent);
+    expect(rows).toEqual([
+      "Skills2 skills›",
+      "Knowledge0 sources›",
+      "Collections0 collections›",
+      "Connectors0 connectors›",
+    ]);
+    expect(page.textContent).not.toContain("Documents your agents can search.");
+  });
+
   it("shows a kind's items under its own heading, with no tabs, when the page is pushed", async () => {
     const { context, list } = contextOf(undefined);
     const page = await show(context, "phone", "skill");

@@ -6,8 +6,8 @@ import {
   type SkillParts,
   type SkillTextError,
 } from "@halonicjs/app";
-import { errorReasonFor } from "@halonicjs/studio-shell";
 import { readFailureReason } from "./read-failure.ts";
+import { type SaveItem, saveWithoutWindow } from "./saving.ts";
 import type { SkillFile, SkillHost, SkillRef } from "./skill-host.ts";
 import { skillWords } from "./skill-words.ts";
 
@@ -30,8 +30,6 @@ export interface SkillState {
   readonly usage?: ItemUsage;
   /** The fields whose last edit was emptied and refused; each hint stays until that field's next edit. */
   readonly kept: readonly SkillField[];
-  /** A save failed and its draft is still unsaved; the next successful save of that part clears it. */
-  readonly saveFailure: { readonly reason: string } | undefined;
 }
 
 /** The field a refused edit emptied; `undefined` for a file that can't be edited at all. */
@@ -55,20 +53,23 @@ export class SkillModel {
     unreadable: false,
     files: [],
     kept: [],
-    saveFailure: undefined,
   };
-  private failedParts = new Set<keyof SkillChange>();
   private text = "";
   private readonly listeners = new Set<() => void>();
   private stopHost: (() => void) | undefined;
   private latest = 0;
+  /** Changes typed but not yet written; a failed write leaves them here. */
+  private unsaved: SkillChange = {};
 
   private readonly host: SkillHost;
   private readonly skill: SkillRef;
+  private readonly saving: SaveItem | undefined;
 
-  constructor(host: SkillHost, skill: SkillRef) {
+  /** `saving` writes through the window's save state, which shows a failed save; without it a failed save only logs. */
+  constructor(host: SkillHost, skill: SkillRef, saving?: SaveItem) {
     this.host = host;
     this.skill = skill;
+    this.saving = saving;
   }
 
   /** Calls `listener` after each change of `state`; returns the way to stop. The first listener starts watching the host. */
@@ -117,7 +118,6 @@ export class SkillModel {
         files: source.files,
         usage,
         kept: this.state.kept,
-        saveFailure: this.state.saveFailure,
         ...(read.ok ? { parts: read.value } : {}),
       });
     } catch (error) {
@@ -137,46 +137,53 @@ export class SkillModel {
   /**
    * Saves what was typed in a field the person left. An emptied name or description writes
    * nothing and keeps the old value with its hint; text that changes nothing writes nothing.
-   * Resolves to whether the field's draft can go: `false` when the write failed, so the draft
-   * stays to be saved again.
+   * A change whose write failed stays in `unsaved` and goes out with the next write, which builds
+   * its text from the saved text and every unsaved change, so a later save of another field
+   * (or the window's Try again) never loses it. Resolves to whether the field's draft can go:
+   * `false` when the write failed, so the draft stays to be saved again.
    */
   async leave(change: SkillChange): Promise<boolean> {
-    const edited = editSkillText(this.text, change);
+    this.unsaved = { ...this.unsaved, ...change };
+    let edited = editSkillText(this.text, this.unsaved);
     if (!edited.ok) {
       const refused = refusedField(edited.error);
-      if (refused !== undefined && !this.state.kept.includes(refused)) {
+      if (refused === undefined) return false;
+      if (!this.state.kept.includes(refused)) {
         this.set({ ...this.state, kept: [...this.state.kept, refused] });
       }
-      return refused !== undefined;
+      const { [refused]: _refused, ...rest } = this.unsaved;
+      this.unsaved = rest;
+      edited = editSkillText(this.text, this.unsaved);
+      if (!edited.ok) return false;
     }
-    const part = Object.keys(change)[0] as keyof SkillChange;
     if (edited.value === this.text) {
-      // Back to what is saved: that part has nothing left to lose.
-      if (this.failedParts.delete(part) && this.failedParts.size === 0) {
-        this.set({ ...this.state, saveFailure: undefined });
-      }
+      this.unsaved = {};
       return true;
     }
-    try {
-      await this.host.write(this.skill, edited.value);
-    } catch (error) {
-      console.error("Couldn't save the skill.", error);
-      this.failedParts.add(part);
-      this.set({ ...this.state, saveFailure: { reason: errorReasonFor(error) } });
-      return false;
-    }
-    this.failedParts.delete(part);
-    // What was written is the text now, even if the refresh below fails or is late: the next
-    // leave edits on top of it. An older read still in flight no longer counts.
-    this.latest++;
-    this.text = edited.value;
-    const read = readSkillText(edited.value);
-    this.set({
-      ...this.state,
-      unreadable: !read.ok,
-      saveFailure: this.failedParts.size === 0 ? undefined : this.state.saveFailure,
-      ...(read.ok ? { parts: read.value } : {}),
-    });
+    const write = async () => {
+      const sent = this.unsaved;
+      const next = editSkillText(this.text, sent);
+      if (!next.ok) throw new Error(`The skill can't be saved: ${next.error}.`);
+      await this.host.write(this.skill, next.value);
+      // What was written is the text now, even if the refresh below fails or is late: the next
+      // leave edits on top of it. An older read still in flight no longer counts.
+      this.latest++;
+      this.text = next.value;
+      this.unsaved = Object.fromEntries(
+        Object.entries(this.unsaved).filter(
+          ([field, value]) => value !== sent[field as keyof SkillChange],
+        ),
+      );
+      const read = readSkillText(next.value);
+      this.set({
+        ...this.state,
+        unreadable: !read.ok,
+        ...(read.ok ? { parts: read.value } : {}),
+      });
+    };
+    const written = await (this.saving?.(this.state.parts?.name || this.skill.id, write) ??
+      saveWithoutWindow(write, "skill"));
+    if (!written) return false;
     await this.refresh();
     return true;
   }

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { requestConnectorTitleFocus } from "../connector-focus-request.ts";
 import { type ConnectorStatusHost, ConnectorStatusHostService } from "../connector-status-host.ts";
 import { libraryFeature } from "../feature.ts";
-import { asksFirstWords } from "../new-connector-words.ts";
+import { asksFirstWords, connectorToolsWords } from "../new-connector-words.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ConnectorPage } from "./connector-page.tsx";
 
@@ -70,17 +70,43 @@ describe("ConnectorPage", () => {
       "every-tool",
     ],
     ["Gmail and Google Drive", { kind: "google", account: "fin@acme.example" }, "changes"],
-  ] as const)(
-    "says what asks first for %s, in the dialog's words",
-    async (_way, connection, asks) => {
-      hostList.mockResolvedValueOnce([
-        { id: "notes", name: "Notes", state: "connected", connection, asks },
-      ]);
-      const root = render(<ConnectorPage {...props("notes")} />);
-      await settled();
-      expect(root.textContent).toContain(asksFirstWords[asks]);
-    },
-  );
+  ] as const)("says what asks first for %s", async (_way, connection, asks) => {
+    hostList.mockResolvedValueOnce([
+      { id: "notes", name: "Notes", state: "connected", connection, asks },
+    ]);
+    const root = render(<ConnectorPage {...props("notes")} />);
+    await settled();
+    expect(root.textContent).toContain(
+      asks === "every-tool" ? connectorToolsWords.line : asksFirstWords[asks],
+    );
+  });
+
+  it("offers a quiet link to the file under the tools line of an every-tool connector (11.4)", async () => {
+    hostList.mockResolvedValueOnce([
+      {
+        id: "notes",
+        name: "Notes",
+        state: "connected",
+        connection: { kind: "http", url: "https://notes.acme.example/mcp", secrets: [] },
+        asks: "every-tool",
+      },
+    ]);
+    const openItem = vi.fn();
+    const page = props("notes");
+    const root = render(
+      <ConnectorPage {...page} context={{ ...page.context, openItem } as typeof page.context} />,
+    );
+    await settled();
+    const link = [...root.querySelectorAll("button")].find(
+      (each) => each.textContent === connectorToolsWords.changeInFile,
+    );
+    await act(async () => link?.click());
+    expect(openItem).toHaveBeenCalledWith({
+      kind: "file",
+      hub: "workspace",
+      id: expect.stringContaining("notes"),
+    });
+  });
 
   it("says nothing about asking first when the file doesn't say it", async () => {
     const root = render(<ConnectorPage {...props("notes")} />);

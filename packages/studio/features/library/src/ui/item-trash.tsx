@@ -80,10 +80,9 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
     if (await putBack(removed, name, toasts)) {
       focusTitle.current = true;
       setRemoved(undefined);
-      // The title takes focus but only says the name; nothing else says the item is back.
-      context.announcer.announce(deleteWords.restored(name));
+      // Nothing is announced: the title takes focus and reads the name (microcopy 19.7).
     }
-  }, [removed, name, toasts, context.announcer]);
+  }, [removed, name, toasts]);
 
   const entries = [
     // The desktop opens the file in a tab; a phone has no tabs, so it shows the text in a sheet.
@@ -122,6 +121,7 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
             context={context}
             kind={kind}
             place={{ hub, id }}
+            name={name}
             onClose={() => setShowingFile(false)}
           />
         )}
@@ -131,8 +131,13 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
     removed === undefined ? null : (
       <p className="flex flex-wrap items-center gap-2 px-4 py-5">
         <span id={stripTextId}>
-          {deleteWords.pageMoved(kind, name)}
-          {movedLine === undefined ? null : `. ${movedLine}`}
+          {deleteWords.pageMoved(kind, movedLine !== undefined)}
+          {movedLine === undefined ? null : (
+            <>
+              {" "}
+              <span className="block">{movedLine}</span>
+            </>
+          )}
         </span>
         <Button
           ref={focusOnMount}

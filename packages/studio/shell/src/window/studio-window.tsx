@@ -198,6 +198,7 @@ export function StudioWindow(props: StudioWindowProps) {
           openPhone({ key: `${place}/${sub}`, title }, { list: true, replaceSibling: true });
       },
       badges: shell.badges,
+      saving: workspace.saving,
       openItem: (item, options) => openHere.current(locationOfItem(item, options)),
       openItemInNewTab: (item) => openItemInNewTab.current(locationOfItem(item)),
       openSettings,
