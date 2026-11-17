@@ -189,6 +189,14 @@ export { SandboxChoiceHostService } from "./sandbox-choice/sandbox-choice-host.t
 export type { SandboxCard, SandboxChoiceView } from "./sandbox-choice/sandbox-choice-view.ts";
 export { sandboxChoiceView } from "./sandbox-choice/sandbox-choice-view.ts";
 export type {
+  SandboxBadge,
+  SandboxStatusAction,
+  SandboxStatusInput,
+  SandboxStatusRow,
+  SandboxStatusView,
+} from "./sandbox-choice/sandbox-status-view.ts";
+export { sandboxStatusView } from "./sandbox-choice/sandbox-status-view.ts";
+export type {
   SandboxChoiceFlowProps,
   SandboxChoiceScreen,
 } from "./sandbox-choice/ui/sandbox-choice-flow.tsx";
