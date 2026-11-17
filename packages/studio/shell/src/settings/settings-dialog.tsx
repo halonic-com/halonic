@@ -51,7 +51,7 @@ export const phoneSavedLine = "Saved on this phone. Your computer keeps its own.
 
 /**
  * The line under the name of a workspace section: whose settings these are, and that changing
- * them shows in Changes. The same for Models, Trust and Workspace, so the container writes it
+ * them shows in Changes. The same for Models and Workspace (not Trust: it is kept by the app), so the container writes it
  * (flow-settings 4).
  */
 export function workspaceSectionLine(workspaceName: string): string {
@@ -334,7 +334,9 @@ export function SectionView({
           {place === "served" && surface === "phone" ? phoneSavedLine : displaySavedLines[place]}
         </p>
       ) : null}
-      {section.scope === "workspace" && workspaceName !== undefined ? (
+      {section.scope === "workspace" &&
+      section.workspaceLine !== false &&
+      workspaceName !== undefined ? (
         <p className="mt-2 text-small text-fg-muted">{workspaceSectionLine(workspaceName)}</p>
       ) : null}
       {description === undefined ? null : (

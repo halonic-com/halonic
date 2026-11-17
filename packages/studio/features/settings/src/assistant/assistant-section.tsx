@@ -16,7 +16,6 @@ import {
   AssistantWorkspaceService,
   HostSettingsService,
 } from "../api.ts";
-import { openModelsCommand } from "../links/workspace-links.tsx";
 import { checkModel, checkTurnLimit } from "./assistant-checks.ts";
 import { LocalOnlyWarning, SetsItsOwn, ViewOnlyNotes } from "./assistant-notes.tsx";
 import { assistantPrefs, turnLimitRange } from "./assistant-prefs.ts";
@@ -37,6 +36,9 @@ const providerOptions = assistantProviders.map((provider) => ({
   value: provider,
   label: providerDefaults[provider].label,
 }));
+
+/** The command that opens the workspace page at Models, as Ctrl K does. */
+const openModelsCommand = "workspace.open-models";
 
 /** Settings → Assistant as the settings container shows it. */
 export function AssistantSection({ context, closeSettings, place, surface }: SettingsSectionProps) {

@@ -133,7 +133,7 @@ export function WorkspaceTrustSection({ trust, name, toasts }: WorkspaceTrustSec
   );
 }
 
-function StatusMark({ status }: { readonly status: WorkspaceTrustControl["status"] }) {
+export function StatusMark({ status }: { readonly status: WorkspaceTrustControl["status"] }) {
   return (
     <span
       aria-hidden="true"
@@ -152,7 +152,7 @@ function asksForReview(
   return (status === "changed" || status === "not-trusted") && trust.needsNoTrust !== true;
 }
 
-function statusLine(
+export function statusLine(
   status: WorkspaceTrustControl["status"],
   trustedAt: string | undefined,
   trust: WorkspaceTrustControl,
