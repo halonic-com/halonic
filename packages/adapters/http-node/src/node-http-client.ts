@@ -1,9 +1,23 @@
 import { lookup as dnsLookup } from "node:dns/promises";
-import type { AddressCheckingHttpClient, HostClass } from "@halonicjs/adapter-http-kit";
+import {
+  type AddressCheckingHttpClient,
+  type HostClass,
+  parseIpAddress,
+} from "@halonicjs/adapter-http-kit";
 import type { HttpClient } from "@halonicjs/ports";
 import { AddressRefusedError } from "./address-refused.ts";
-import { checkedAddresses, fixedLookup, type Resolve } from "./checked-addresses.ts";
-import { type PreparedRequest, sendOnce } from "./send-once.ts";
+import {
+  checkedAddresses,
+  fixedLookup,
+  proxyAddresses,
+  type Resolve,
+  type Target,
+} from "./checked-addresses.ts";
+import { openTunnel } from "./connect-tunnel.ts";
+import { ProxyError } from "./proxy-error.ts";
+import type { ProxyConfig, ProxyFromEnv } from "./proxy-from-env.ts";
+import { routeFor } from "./proxy-route.ts";
+import { type Connection, type PreparedRequest, sendOnce } from "./send-once.ts";
 
 /** What the Node transport needs to know about the hosts it may reach. */
 export interface NodeHttpOptions {
@@ -23,6 +37,15 @@ export interface NodeHttpOptions {
   readonly resolve?: Resolve;
   /** How many redirects `redirect: "follow"` takes. Default 20, as `fetch`. */
   readonly maxRedirects?: number;
+  /**
+   * The proxy for public `https` hosts, as `proxyFromEnv` read it. A request
+   * that has to use it but can't fails with a `ProxyError` and never goes
+   * direct. `loopback` and `private` hosts and `NO_PROXY` hosts always go
+   * direct, with the full address check. Default: no proxy.
+   */
+  readonly proxy?: ProxyFromEnv;
+  /** How long a proxy has to answer CONNECT. Default 20 seconds. */
+  readonly proxyConnectTimeoutMs?: number;
 }
 
 const redirectStatuses = new Set([301, 302, 303, 307, 308]);
@@ -85,14 +108,61 @@ export function createNodeHttpClient(options: NodeHttpOptions): AddressCheckingH
     if (hostClass === undefined) {
       throw new AddressRefusedError(`${url.host} is not a host this client may reach`);
     }
+    const route = routeFor(url, hostClass, options.proxy ?? { kind: "none" });
     const target = {
       hostname: url.hostname.replace(/^\[|\]$/g, ""),
       port: Number(url.port || (url.protocol === "https:" ? 443 : 80)),
       hostClass,
     };
-    const addresses = await checkedAddresses(target, resolve, new Set(options.ownPorts?.() ?? []));
+    const ownPorts = new Set(options.ownPorts?.() ?? []);
+    const connection: Connection =
+      route.kind === "direct"
+        ? await connectDirect(target, ownPorts)
+        : await connectThroughProxy(target, route.proxy, ownPorts, signal);
     signal?.throwIfAborted();
-    return sendOnce(url, request, fixedLookup(addresses), signal);
+    return sendOnce(url, request, connection, signal);
+  }
+
+  async function connectDirect(target: Target, ownPorts: ReadonlySet<number>): Promise<Connection> {
+    const addresses = await checkedAddresses(target, resolve, ownPorts);
+    return { kind: "direct", lookup: fixedLookup(addresses) };
+  }
+
+  /**
+   * Through a proxy the address check can't run, so what is checked is the
+   * name: its class, its port and the certificate. An IP literal is still
+   * checked as itself. The proxy's own address must not be one of Halonic's
+   * own ports.
+   */
+  async function connectThroughProxy(
+    target: Target,
+    proxy: ProxyConfig,
+    ownPorts: ReadonlySet<number>,
+    signal: AbortSignal | undefined,
+  ): Promise<Connection> {
+    if (parseIpAddress(target.hostname) !== undefined) {
+      await checkedAddresses(target, resolve, ownPorts);
+    }
+    const { host, port } = proxy.endpoint;
+    const addresses = await proxyAddresses(
+      host.replace(/^\[|\]$/g, ""),
+      port,
+      resolve,
+      ownPorts,
+    ).catch((error: unknown) => {
+      throw error instanceof AddressRefusedError
+        ? error
+        : new ProxyError(`Could not find your proxy ${proxy.endpoint}: ${String(error)}`);
+    });
+    signal?.throwIfAborted();
+    const socket = await openTunnel({
+      proxy: proxy.endpoint,
+      lookup: fixedLookup(addresses),
+      target,
+      connectTimeoutMs: options.proxyConnectTimeoutMs ?? 20_000,
+      signal,
+    });
+    return { kind: "tunnel", socket };
   }
 }
 
