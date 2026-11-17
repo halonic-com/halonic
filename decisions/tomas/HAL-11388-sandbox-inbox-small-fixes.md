@@ -3,7 +3,6 @@
 - Task: HAL-11388
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11388 (wording from microcopy 13.1a and design check HAL-11370 item X1; small wording and detail of an approved screen is a team decision, HAL-2282 rule)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:60EDQqfQcmNKa2h+wPSKzGt+WhWf5Qq2sjXjrX/BVo7jinRgfjyXf/McuJKG9PAjAvcspHSrvANkFoRMzki9Dw==
 
 ## What changes
 
@@ -12,6 +11,8 @@ until the user picks what happens to the contents, and the reason is shown under
 
 The requirement `settings.wsl-remove-dialog` changes: two choices instead of three, and an unavailable
 confirm button with its reason. `inbox.sandbox-row` gains one sentence about the footer.
+`settings.sandbox-choice-flow` and `settings.sandbox-choice-view` only change the spelling
+"virtualisation" to "virtualization"; their behaviour stays the same.
 
 Tests: the test that checked the Cancel choice is replaced by one for the new behaviour. In
 `sandbox-setup-view.test.tsx` the "no way to run anyway" assertion no longer looks for `without the
@@ -26,3 +27,5 @@ close control, so the choice list only holds real outcomes.
 
 - settings.wsl-remove-dialog
 - inbox.sandbox-row
+- settings.sandbox-choice-flow
+- settings.sandbox-choice-view
