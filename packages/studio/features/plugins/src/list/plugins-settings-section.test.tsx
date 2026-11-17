@@ -10,7 +10,7 @@ import {
 } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ComponentType } from "react";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { PluginsHostService } from "../api.ts";
 import { pluginsFeature } from "../feature.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
@@ -24,9 +24,14 @@ import {
 import { installFakePopover } from "../test-support/popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 
-// The first test lazy-loads the view and the feature graph, which takes longer than the 5 s default
-// on a loaded runner.
-vi.setConfig({ testTimeout: 30_000 });
+// The section loads lazily. On a busy CI machine the first import (transforming the section, its
+// dialogs and the kit behind them) can take longer than a test's own 5 s, and tests run in random
+// order, so any test can be first. One that times out keeps running and leaves the next tests an
+// empty page (HAL-11721). Do it up front under the hook's longer limit; each test then only waits
+// for the already loaded section to draw.
+beforeAll(async () => {
+  await import("./plugins-settings-section.tsx");
+}, 60_000);
 
 /** Waits, inside act, until `read` finds the element, so a test never clicks before the UI settles. */
 async function findElement<T extends Element>(read: () => T | null | undefined): Promise<T> {
@@ -37,7 +42,7 @@ async function findElement<T extends Element>(read: () => T | null | undefined):
       if (found === null || found === undefined) throw new Error("Not on screen yet");
       return found;
     },
-    { timeout: 10_000, interval: 20 },
+    { timeout: 4_000, interval: 20 },
   );
 }
 
