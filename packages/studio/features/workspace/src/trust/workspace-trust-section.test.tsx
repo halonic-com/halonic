@@ -146,6 +146,15 @@ verifies("workspace.trust-section", () => {
     expect(button("Review")).toBeUndefined();
   });
 
+  it("says there is nothing to trust, with no Review changes, when the record reads changed (HAL-11850)", () => {
+    const { value } = control("changed");
+    show({ ...value, needsNoTrust: true });
+
+    expect(document.body.textContent).toContain("Nothing to trust here.");
+    expect(button("Review changes")).toBeUndefined();
+    expect(button("Review")).toBeUndefined();
+  });
+
   it("offers Review for a workspace that isn't trusted yet", () => {
     show(control("not-trusted").value);
     expect(element.textContent).toContain(
