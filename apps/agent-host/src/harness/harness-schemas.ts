@@ -51,3 +51,29 @@ export const runBody = s.object({ run: id }).strict();
 
 /** A harness's sign-in for one agent, by the agent's settings folder (an absolute path). */
 export const signInBody = s.object({ harness: id, settingsFolder: absolutePath }).strict();
+
+/**
+ * What Studio gives to ask for a harness call's sandbox profile: the workspace
+ * (one the launcher named), what the agent's file says about its working
+ * folder and sites, the run's proposal folder when it has one, and the bridge
+ * it opened here, by id. The bridge's token stays here, as at the start of a
+ * run, and so do the data folder, the home folder and the program's
+ * variables: the host knows them, and Studio can't widen them.
+ */
+export const profileBody = s
+  .object({
+    workspace: absolutePath,
+    agent: s
+      .object({
+        runId: id,
+        hubId: id,
+        agentId: id,
+        harness: id,
+        workingFolder: s.string().min(1).nullable(),
+        allowedSites: s.array(s.string().min(1)),
+        filesFolder: absolutePath.nullable(),
+      })
+      .strict(),
+    bridge: id,
+  })
+  .strict();

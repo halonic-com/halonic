@@ -30,6 +30,12 @@ export {
   type HarnessEnvironment,
   type SignInOpened,
 } from "./harness.ts";
+export {
+  AgentHostProfiles,
+  type AgentHostProfilesOptions,
+  type BuiltProfile,
+  type ProfileAgent,
+} from "./harness-profiles.ts";
 export { AgentHostPluginToolCaller, type PluginToolArgs } from "./plugins.ts";
 export { AgentHostSandbox, AgentHostSession } from "./sandbox.ts";
 export {

@@ -1,9 +1,9 @@
 import { tmpdir } from "node:os";
+import { programEnvironment } from "@halonicjs/adapter-harness-kit";
 import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
 import type { SandboxProfile } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { programEnvironment } from "./local-harness-host.ts";
 
 verifies("cli.local-harness-host", () => {
   it("gives a harness program the listed variables only, never a token the list doesn't know", async () => {

@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { type Machine, SrtSandbox, WSL_SHARED_FOLDERS } from "@halonicjs/adapter-sandbox-srt";
+import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { type FramedHandshake, type Handshake, type HostIo, run } from "./host.ts";
 import { FrameKind } from "./stdio/frame-codec.ts";
@@ -212,6 +213,49 @@ describe("run with the Google routes", () => {
   it("serves no Google route without a profile folder", async () => {
     // The host's own 404 for a path it doesn't serve, not the route's answer for a missing account.
     expect(await disconnectAnswer([])).toMatch(/^404 .*"not_found"/u);
+  });
+});
+
+verifies("agent-host.profile-route", () => {
+  /** Serves with `args`, asks for a harness profile with a bridge nobody opened, and stops. */
+  async function profileAnswer(args: readonly string[]): Promise<string> {
+    const { io, input, lines, nextLine } = starter();
+    const running = run(args, "1.2.3", io);
+    await nextLine();
+    const handshake = JSON.parse(lines[0] ?? "") as Handshake;
+    const agent = {
+      runId: "run_1",
+      hubId: "hub_1",
+      agentId: "writer",
+      harness: "claude-code",
+      workingFolder: null,
+      allowedSites: [],
+      filesFolder: null,
+    };
+    const answer = await fetch(`${handshake.url}/v1/harnesses/profile`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${handshake.token}`, "content-type": "application/json" },
+      body: JSON.stringify({ workspace: tmpdir(), agent, bridge: "no-such-bridge" }),
+    });
+    const text = `${answer.status} ${await answer.text()}`;
+    input.end();
+    await running;
+    return text;
+  }
+
+  it("serves the profile route for the profile folder it was given", async () => {
+    const profile = await mkdtemp(join(tmpdir(), "halonic-host-profile-"));
+    try {
+      expect(await profileAnswer(["--profile-folder", profile])).toMatch(
+        /^404 .*"kind":"unknown_bridge"/u,
+      );
+    } finally {
+      await rm(profile, { recursive: true, force: true });
+    }
+  });
+
+  it("serves no profile route without a profile folder", async () => {
+    expect(await profileAnswer([])).toMatch(/^404 .*"not_found"/u);
   });
 });
 
