@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-11701, decided on HAL-11698 (option a); read by Studio's approval card (INBOX-CARD-24)
 
-An `approval.requested` event shall be able to name the connector the tool comes from in an optional `connector`, next to `tool`. `tool` stays the bare tool name, as the model was offered it; a reader that wants to show where the tool comes from reads `connector` and does not split a `connector__tool` name. Logs written before the field existed stay valid and read without it.
+The `approval.requested` event shall be able to name the connector the tool comes from in an optional `connector`, next to `tool`. `tool` stays the bare tool name, as the model was offered it; a reader that wants to show where the tool comes from reads `connector` and does not split a `connector__tool` name. Logs written before the field existed stay valid and read without it.
 
 ## Examples
 
