@@ -6,7 +6,7 @@
 
 While the folder has a remote, the Changes page shall show Get updates beside the heading. Get updates shall bring in the shared copy's newer versions only when this workspace has no version the shared copy lacks (a fast-forward), and shall say so with the toast "Got 2 versions from the shared copy" (one version: "Got 1 version from the shared copy"), or "Already up to date" when there was nothing newer. The button shall say "Getting updates…" and ignore presses while it works, and the page and the sidebar's count shall be read again afterwards. When the shared copy and this workspace both have new versions, or the shared copy can't be reached, or git refuses, nothing shall change and the danger toast shall say "Couldn't get versions" with the reason, "Nothing changed here." and Try again. A folder with no remote shall have no Get updates.
 
-Choosing between the two sides per item (Keep mine, Use theirs, Keep both) is `source-control.get-updates-per-item`; until the page offers it, both sides having moved only stops with the toast above.
+Choosing between the two sides per item (Keep mine, Use theirs, Keep both) is not part of this requirement; until it exists, both sides having moved only stops with the toast above.
 
 ## Examples
 
