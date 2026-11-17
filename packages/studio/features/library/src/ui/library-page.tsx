@@ -7,7 +7,14 @@ import {
   useTabIds,
   useToastStore,
 } from "@halonicjs/studio-kit";
-import { errorMessageFor, OverviewPage } from "@halonicjs/studio-shell";
+import {
+  errorMessageFor,
+  type FocusTarget,
+  focusRow,
+  OverviewPage,
+  targetAfterRemoving,
+  visibleRowIds,
+} from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { deleteWords, phoneCanDelete } from "../delete-words.ts";
 import type { LibraryEntry, LibraryItemsHost, LibraryListing } from "../library-items-host.ts";
@@ -23,7 +30,6 @@ import {
   tryingAgain,
 } from "../library-words.ts";
 import { removeItem } from "../remove-item.ts";
-import { type FocusTarget, focusRow, targetAfterRemoving, visibleRowIds } from "../row-focus.ts";
 
 /** The props of {@link LibraryPage}. */
 export interface LibraryPageProps {

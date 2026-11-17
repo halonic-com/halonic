@@ -135,6 +135,12 @@ export {
   type OverviewPageProps,
   type OverviewWords,
 } from "./overview/overview-page.tsx";
+export {
+  type FocusTarget,
+  focusRow,
+  targetAfterRemoving,
+  visibleRowIds,
+} from "./overview/row-focus.ts";
 export { PageBackLinkSlot } from "./page/back-link-slot.tsx";
 export { copyDetails, useCopyDetails } from "./page/copy-details.ts";
 export { ItemGone, type ItemGoneProps } from "./page/item-gone.tsx";

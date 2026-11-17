@@ -34,6 +34,7 @@ function setup(
     "hubs/acme/workflows/routines/weekly-report.routine.yaml": weeklyFile,
     ...hub,
   };
+  const undoSteps: Record<string, string>[] = [];
   const changes: { label: string; changes: Record<string, string | null> }[] = [];
   const fileListeners = new Set<() => void>();
   const runListeners = new Set<() => void>();
@@ -45,11 +46,23 @@ function setup(
           .filter((path) => path.startsWith(`${dir}/`))
           .sort(),
       change: (label, made) => {
+        const before = { ...store };
+        undoSteps.push(before);
         changes.push({ label, changes: made });
         for (const [path, text] of Object.entries(made)) {
           if (text === null) delete store[path];
           else store[path] = text;
         }
+      },
+      undo: () => {
+        const before = undoSteps.pop();
+        if (before === undefined) return false;
+        for (const path of Object.keys(store)) delete store[path];
+        Object.assign(store, before);
+        return true;
+      },
+      get step() {
+        return undoSteps.length;
       },
     },
     onChange: (listener) => {
@@ -241,6 +254,26 @@ verifies("studio.workspace-routines", () => {
         changes: { "hubs/acme/workflows/routines/weekly-report.routine.yaml": null },
       },
     ]);
+  });
+
+  it("puts a deleted routine back with Undo, but only while the delete is the newest change", async () => {
+    const { host, store } = setup();
+    const path = "hubs/acme/workflows/routines/weekly-report.routine.yaml";
+    const before = store[path];
+
+    await (await host.trash(weekly)).undo();
+    expect(store[path]).toBe(before);
+
+    const trashed = await host.trash(weekly);
+    await host.create({ name: "Morning check", hubId: "acme" });
+    await expect(trashed.undo()).rejects.toThrow("can't be put back");
+    expect(store[path]).toBeUndefined();
+  });
+
+  it("names what a routine starts, for the line that says what deleting it stops", async () => {
+    const { host } = setup();
+    const [row] = await host.list();
+    expect(row?.targetName).toBe("Analyst");
   });
 
   it("creates a manual routine that runs the hub's first workflow", async () => {

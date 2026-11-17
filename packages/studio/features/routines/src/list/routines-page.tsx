@@ -1,9 +1,13 @@
-import { Button, EmptyState, usePresentation } from "@halonicjs/studio-kit";
+import { Button, EmptyState, usePresentation, useToastStore } from "@halonicjs/studio-kit";
 import {
   type EngineWords,
   engineWordsOf,
+  type FocusTarget,
+  focusRow,
   OverviewPage,
   type PlaceViewProps,
+  targetAfterRemoving,
+  visibleRowIds,
 } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -13,9 +17,10 @@ import {
   RoutinesHostService,
 } from "../api.ts";
 import { NewRoutineDialog } from "../new/new-routine-dialog.tsx";
-import { listWords } from "./list-words.ts";
+import { deleteWords, listWords } from "./list-words.ts";
 import { dropNewRoutineRequest, takeNewRoutineRequests } from "./new-request.ts";
 import { routineHubs, rowId } from "./routine-rows.tsx";
+import { trashRoutine } from "./trash-routine.ts";
 
 /**
  * Whether the routines have loaded: the skeleton, a first read that failed, or the list. A list
@@ -91,6 +96,8 @@ export function RoutinesView({ host, open, openInNewTab, engine, newWorkflow }: 
   const [load, setLoad] = useState<Load>({ kind: "loading" });
   const title = useRef<HTMLHeadingElement>(null);
   const [creating, setCreating] = useState(false);
+  const toasts = useToastStore();
+  const page = useRef<HTMLDivElement>(null);
 
   // Each read takes a number; only the newest read's result is shown, so a slow older read never
   // overwrites a newer one, and nothing is set after unmount.
@@ -147,6 +154,35 @@ export function RoutinesView({ host, open, openInNewTab, engine, newWorkflow }: 
     if (listing !== undefined) (openInNewTab ?? open)?.(listing);
   };
 
+  // Where focus goes once it can: a restored row only shows when the list is read again, so the
+  // target waits for the list that was on screen when it was set to be replaced.
+  const pendingFocus = useRef<{ target: FocusTarget; listAtStart: Load } | undefined>(undefined);
+  const latestLoad = useRef(load);
+  latestLoad.current = load;
+  const applyFocus = useCallback(() => {
+    const pending = pendingFocus.current;
+    if (pending === undefined || page.current === null) return;
+    const { target } = pending;
+    const shown = target === "empty" ? title.current !== null : focusRow(page.current, target.row);
+    if (target === "empty") title.current?.focus();
+    if (shown || latestLoad.current !== pending.listAtStart) pendingFocus.current = undefined;
+  }, []);
+  // Runs after every render, to catch the row when it appears.
+  useEffect(applyFocus);
+  const focusOn = (target: FocusTarget) => {
+    pendingFocus.current = { target, listAtStart: latestLoad.current };
+    applyFocus();
+  };
+  const trashRow = (id: string) => {
+    const listing = listingOf(id);
+    if (listing === undefined || page.current === null) return;
+    const after = targetAfterRemoving(visibleRowIds(page.current), id);
+    void trashRoutine(host, toasts, listing, {
+      onTrashed: () => focusOn(after),
+      onRestored: () => focusOn({ row: id }),
+    });
+  };
+
   const startCreating = () => setCreating(true);
   // A routine needs a hub to live in, and the hubs are known only once the first read is done.
   const canCreate = load.kind === "ready" && host.hubs().length > 0;
@@ -158,7 +194,7 @@ export function RoutinesView({ host, open, openInNewTab, engine, newWorkflow }: 
   }, [canCreate, noHubs]);
 
   return (
-    <div className="flex w-full flex-col gap-4 px-6 py-5">
+    <div ref={page} className="flex w-full flex-col gap-4 px-6 py-5">
       <header className={phone ? "sr-only" : "flex flex-col gap-1"}>
         <h1 ref={title} tabIndex={-1} className="text-title outline-none">
           {listWords.title}
@@ -213,6 +249,20 @@ export function RoutinesView({ host, open, openInNewTab, engine, newWorkflow }: 
           {...(canCreate
             ? { newButton: { label: listWords.newRoutine, onClick: startCreating } }
             : {})}
+          itemMenu={(row) => [
+            { id: "open", label: deleteWords.open, onSelect: () => openRow(row.id) },
+            {
+              id: "open-in-new-tab",
+              label: deleteWords.openInNewTab,
+              onSelect: () => openRowInNewTab(row.id),
+            },
+            {
+              id: "delete",
+              label: deleteWords.delete,
+              danger: true,
+              onSelect: () => trashRow(row.id),
+            },
+          ]}
           onOpen={openRow}
           onOpenInNewTab={openRowInNewTab}
         />
