@@ -130,7 +130,7 @@ export function WorkflowScreen({
   // `testsAsked` counts up while it is true) goes to Configuration on Tests, as if it had opened
   // there. It is counted like a made test, so
   // Configuration remounts even if it is already open.
-  useAskedForTests(startOnTests ? testsAsked : undefined, () => {
+  useAskedForTests(startOnTests, testsAsked, () => {
     setView("configuration");
     testsMade.current += 1;
     setMadeTest({ name: undefined, n: testsMade.current });
