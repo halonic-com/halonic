@@ -18,8 +18,11 @@ export const deleteWords = {
   pageMenuLabel: (name: string) => `More actions for ${name}`,
   /** The toast's title: with a second line it is a sentence and ends with a full stop. */
   moved: (name: string, withLine: boolean) => `Moved ${name} to the trash${withLine ? "." : ""}`,
-  /** The page strip's text, where the item stays under it. */
-  pageMoved: (kind: LibraryItemKind) => `This ${kindNouns[kind]} was moved to the trash`,
+  /** The page strip's text, where the item stays under it: it names the item, as Undo's description. */
+  pageMoved: (kind: LibraryItemKind, name: string) =>
+    `The ${kindNouns[kind]} ${name} was moved to the trash`,
+  /** Said when Undo has put the item back; the page's title takes focus but doesn't say it. */
+  restored: (name: string) => `Restored ${name}`,
   /** The toast when the item couldn't be moved; `reason` is a kinded error's sentence. */
   couldntMove: (name: string, reason: string | undefined) =>
     reason === undefined
