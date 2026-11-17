@@ -4,6 +4,7 @@
  * list, dialogs and page read it, and so do the Triggers sections the feature adds to an agent's
  * and a workflow's page.
  */
+import type { Guard } from "@halonicjs/format";
 import { KindedError } from "@halonicjs/std";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
@@ -65,7 +66,7 @@ export type RoutineTrigger =
       readonly query: string;
       readonly every: string;
     }
-  | { readonly kind: "signal"; readonly name: string; readonly when?: string | undefined }
+  | { readonly kind: "signal"; readonly name: string; readonly when?: Guard | undefined }
   | { readonly kind: "webhook" };
 
 /** What to do when a time comes while the previous run is still going. */
@@ -116,7 +117,6 @@ export interface RoutineNextTimes {
 /** Why a time didn't start, as the scheduler records it. */
 export type RoutineSkipReason =
   | "busy"
-  | "paused"
   | "missed"
   | "latest"
   | "cap"

@@ -39,6 +39,7 @@ import {
   NoLimitMemoryService,
   ProviderCheckService,
 } from "@halonicjs/studio-feature-models/api";
+import { RoutinesHostService } from "@halonicjs/studio-feature-routines/api";
 import {
   InstructionTrustHostService,
   RunStartHostService,
@@ -74,6 +75,7 @@ import { WorkspaceModelsFiles } from "../models/workspace-models-files.ts";
 import { WorkspaceNoLimit } from "../models/workspace-no-limit.ts";
 import { WorkspaceProviderCheck } from "../models/workspace-provider-check.ts";
 import { providePlugins } from "../plugins/provide-plugins.ts";
+import { WorkspaceRoutines } from "../routines/workspace-routines.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
 import { WorkspaceInstructionTrust } from "./workspace-instruction-trust.ts";
@@ -178,6 +180,16 @@ export function provideFolderServices(
       runs: services.get(RunsSourceService),
       ...(settle === undefined ? {} : { settle }),
       engine,
+    }),
+  );
+  services.provide(
+    RoutinesHostService,
+    new WorkspaceRoutines({
+      files: services.get(workspaceFilesKey),
+      onChange: (listener) => scope.events.on("files.changed", listener),
+      runs: services.get(RunsSourceService),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      now: () => new Date(),
     }),
   );
   // Run again on the run page starts a run the way the workflow page's Run does.

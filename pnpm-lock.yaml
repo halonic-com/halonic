@@ -579,6 +579,9 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../packages/core/ports
+      '@halonicjs/routines':
+        specifier: workspace:*
+        version: link:../../packages/core/routines
       '@halonicjs/schema-kit':
         specifier: workspace:*
         version: link:../../packages/core/schema-kit
@@ -2985,6 +2988,9 @@ importers:
 
   packages/studio/features/routines:
     dependencies:
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../../core/format
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
