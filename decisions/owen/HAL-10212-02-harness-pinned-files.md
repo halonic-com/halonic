@@ -3,7 +3,6 @@
 - Task: HAL-10212 (follow-ups 1 and 2 of the review of #2917 on HAL-10210)
 - Approval: HAL-10212, Liam's review of the pull request; Liam signs this note as the CTO
 - Kind: internal
-- Signature: (pending)
 
 ## What changes
 
