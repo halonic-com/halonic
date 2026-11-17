@@ -48,7 +48,7 @@ async function exists(path: string): Promise<boolean> {
 export async function prepareToolFolders(workingFolder: string): Promise<string[]> {
   for (const folder of toolFoldersToCreate) {
     const path = join(workingFolder, folder);
-    if (!(await exists(path))) await mkdir(path);
+    if (!(await exists(path))) await mkdir(path, { recursive: true });
   }
   const present: string[] = [];
   for (const folder of toolFoldersIfPresent) {

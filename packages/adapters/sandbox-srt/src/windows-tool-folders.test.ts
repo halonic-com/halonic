@@ -25,6 +25,14 @@ verifies("sandbox-srt.windows-tool-folders", () => {
       }
     });
 
+    it("makes the working folder too when it isn't there yet", async () => {
+      const missing = join(work, "not-yet");
+      await prepareToolFolders(missing);
+      for (const folder of toolFoldersToCreate) {
+        expect(await readdir(join(missing, folder))).toEqual([]);
+      }
+    });
+
     it("never makes .git, .idea or a file in the root", async () => {
       await prepareToolFolders(work);
       const names = await readdir(work);
