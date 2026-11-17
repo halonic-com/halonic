@@ -38,6 +38,13 @@ function warningsShown(node: TreeNode): number {
   return node.marks.errors > 0 ? 0 : node.marks.warnings;
 }
 
+/** A folder's name with its marks, so a screen reader reads them as one label; files keep their own name. */
+function folderLabel(node: TreeNode, marks: string | undefined): string | undefined {
+  return marks !== undefined && node.kind === "folder"
+    ? filesWords.folderMarks(node.name, marks)
+    : undefined;
+}
+
 function marksLabel(node: TreeNode): string | undefined {
   const warnings = warningsShown(node);
   const outside = node.kind === "folder" ? filesWords.outsideInside : filesWords.outside;
@@ -154,11 +161,7 @@ export function FilesTree({
               aria-setsize={row.siblings}
               aria-expanded={node.kind === "folder" ? open : undefined}
               aria-selected={node.path === activePath}
-              aria-label={
-                label !== undefined && node.kind === "folder"
-                  ? filesWords.folderMarks(node.name, label)
-                  : undefined
-              }
+              aria-label={folderLabel(node, label)}
               aria-description={node.kind === "folder" ? undefined : label}
               title={node.name.length > nameLimit ? node.name : undefined}
               className={`flex min-h-8 cursor-pointer items-center gap-1 rounded-sm pr-2 text-sm text-fg outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-accent aria-selected:bg-accent-soft`}
