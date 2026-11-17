@@ -1,4 +1,3 @@
-import { connect } from "node:net";
 import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
 import {
   type HarnessBridgeOptions,
@@ -15,6 +14,7 @@ import { maxBodyBytes } from "../server/json-body.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { BridgeTable, bridgeRoutes } from "./bridge-routes.ts";
 import { type OpenBridgeBody, openBridgeBody, priceIn } from "./bridge-schemas.ts";
+import { rawExchange, rawPost, statusOf } from "./raw-socket.ts";
 
 /**
  * Attacks on the bridge routes from another program on the same computer:
@@ -96,41 +96,6 @@ async function started(): Promise<{ url: string; port: number }> {
   };
   server = await startHostServer(token, bridgeRoutes(serverFor, bridges));
   return { url: server.url, port: Number(new URL(server.url).port) };
-}
-
-/**
- * Writes `raw` bytes to the port, as any local program can, and resolves with
- * everything sent back once the connection closes (or after `waitMs`).
- */
-function rawExchange(port: number, raw: string | Buffer, waitMs = 2_000): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    const socket = connect(port, "127.0.0.1", () => socket.write(raw));
-    const timer = setTimeout(() => socket.destroy(), waitMs);
-    socket.on("data", (chunk: Buffer) => chunks.push(chunk));
-    socket.on("error", reject);
-    socket.on("close", () => {
-      clearTimeout(timer);
-      resolve(Buffer.concat(chunks).toString("utf8"));
-    });
-  });
-}
-
-function statusOf(answer: string): number {
-  return Number(answer.split(" ")[1]);
-}
-
-function rawPost(port: number, path: string, headers: string[], body: string): string {
-  return [
-    `POST ${path} HTTP/1.1`,
-    `Host: 127.0.0.1:${port}`,
-    "Content-Type: application/json",
-    `Content-Length: ${Buffer.byteLength(body)}`,
-    "Connection: close",
-    ...headers,
-    "",
-    body,
-  ].join("\r\n");
 }
 
 function post(url: string, path: string, body: unknown, init: RequestInit = {}): Promise<Response> {
