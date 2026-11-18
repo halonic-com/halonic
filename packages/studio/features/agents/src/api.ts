@@ -21,12 +21,31 @@ export interface AgentListing extends AgentRef {
   readonly model?: string | undefined;
 }
 
+/** The programs an agent can run in: Halonic's own loop, Claude Code or Codex (the file's `harness`). */
+export type AgentHarnessId = "halonic" | "claude-code" | "codex";
+
+/** The harnesses in the order the Harness page lists them. */
+export const agentHarnessIds: readonly AgentHarnessId[] = ["halonic", "claude-code", "codex"];
+
+/**
+ * Whether a harness can run on this computer, as the agent host's `detect()` finds it. `signed-out`
+ * is for the agent's own settings folder; `failed` means the check itself didn't work.
+ */
+export type HarnessReadiness =
+  | { readonly status: "ready"; readonly version: string }
+  | { readonly status: "signed-out"; readonly version: string }
+  | { readonly status: "missing" }
+  | { readonly status: "unsupported"; readonly version: string; readonly supported: string }
+  | { readonly status: "failed"; readonly error: string };
+
 /** What the Configuration pages show of an agent. */
 export interface AgentSettings extends AgentListing {
   /** What the agent is told to do; empty before anyone writes it. */
   readonly instructions: string;
   /** The most model calls for one run of the agent (its turn limit); 6 when the file says none. */
   readonly maxSteps: number;
+  /** The program the agent runs in; `halonic` when its file names none. */
+  readonly harness: AgentHarnessId;
 }
 
 /** A change to an agent's settings; a field left out stays as it is. */
@@ -39,6 +58,8 @@ export interface AgentChange {
   readonly model?: string | undefined;
   /** The turn limit, a whole number from 1 to 200. */
   readonly maxSteps?: number | undefined;
+  /** The program the agent runs in. */
+  readonly harness?: AgentHarnessId | undefined;
 }
 
 /** A hub a new agent can go in. */
@@ -85,6 +106,11 @@ export interface AgentsHost {
   update(ref: AgentRef, change: AgentChange): Promise<void>;
   /** The model aliases the agent's hub can use, by name, in the order the Models pages list them; empty when there are none. */
   modelAliases(ref: AgentRef): Promise<readonly string[]>;
+  /**
+   * Whether `harness` can run on this computer, for this agent (its sign-in is the agent's own).
+   * Never rejects: a check that didn't work answers `failed`. `halonic` is always `ready`.
+   */
+  harnessReadiness(ref: AgentRef, harness: AgentHarnessId): Promise<HarnessReadiness>;
   /**
    * The name of an agent the host has read or made, for a tab or a page title, or `undefined`
    * before it has read it. Sync, because a tab is named the moment it opens.

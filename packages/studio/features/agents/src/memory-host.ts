@@ -1,19 +1,27 @@
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import type {
+  AgentHarnessId,
   AgentHub,
   AgentListing,
   AgentRef,
   AgentSettings,
   AgentsHost,
   AgentUser,
+  HarnessReadiness,
 } from "./api.ts";
 
 /** What {@link memoryAgentsHost} starts with. */
 export interface MemoryAgentsHostOptions {
   readonly hubs: readonly AgentHub[];
   readonly agents?:
-    | readonly (AgentListing & { readonly instructions?: string; readonly maxSteps?: number })[]
+    | readonly (AgentListing & {
+        readonly instructions?: string;
+        readonly maxSteps?: number;
+        readonly harness?: AgentHarnessId;
+      })[]
     | undefined;
+  /** What `harnessReadiness` answers for Claude Code and Codex; ready when left out. */
+  readonly readiness?: Readonly<Partial<Record<AgentHarnessId, HarnessReadiness>>> | undefined;
   /** The model aliases every hub can use. */
   readonly modelAliases?: readonly string[] | undefined;
   /** The workflows that run each agent, keyed by `hubId/id` of the agent. */
@@ -29,6 +37,7 @@ function keyOf(ref: AgentRef): string {
 function listingOf({
   instructions: _instructions,
   maxSteps: _maxSteps,
+  harness: _harness,
   ...listing
 }: AgentSettings): AgentListing {
   return listing;
@@ -41,7 +50,7 @@ function listingOf({
 export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
   const agents = new Map<string, AgentSettings>();
   for (const agent of options.agents ?? [])
-    agents.set(keyOf(agent), { instructions: "", maxSteps: 6, ...agent });
+    agents.set(keyOf(agent), { instructions: "", maxSteps: 6, harness: "halonic", ...agent });
   const listeners = new Set<() => void>();
 
   const found = (ref: AgentRef): AgentSettings => {
@@ -68,6 +77,12 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       found(ref);
       return options.modelAliases ?? [];
     },
+    harnessReadiness: async (ref, harness) => {
+      found(ref);
+      return harness === "halonic"
+        ? { status: "ready", version: "" }
+        : (options.readiness?.[harness] ?? { status: "ready", version: "1.0.0" });
+    },
     nameOf: (ref) => agents.get(keyOf(ref))?.name,
     referencesTo: async (ref) => {
       found(ref);
@@ -91,6 +106,7 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
         name,
         instructions: instructions ?? "",
         maxSteps: 6,
+        harness: "halonic",
       });
       for (const listener of listeners) listener();
       return { hubId, id };
