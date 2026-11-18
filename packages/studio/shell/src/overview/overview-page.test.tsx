@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -334,5 +335,26 @@ verifies("shell.overview.used-by", () => {
     const page = show({ hubs: used });
     type(search(page), "agents");
     expect(page.textContent).not.toContain("Acme refunds");
+  });
+});
+
+verifies("shell.overview.phone-head", () => {
+  it("gives the search field the whole line and makes the create button 48px on a phone", () => {
+    const page = render(
+      <PresentationProvider presentation="phone">
+        <OverviewPage
+          hubs={hubs}
+          words={words}
+          onOpen={() => undefined}
+          onOpenInNewTab={() => undefined}
+          newButton={{ label: "New skill", onClick: () => undefined }}
+        />
+      </PresentationProvider>,
+    );
+    const button = [...page.querySelectorAll("button")].find(
+      (candidate) => candidate.textContent === "New skill",
+    );
+    expect(button?.className).toContain("min-h-touch");
+    expect(button?.parentElement?.className).toContain("flex-col");
   });
 });

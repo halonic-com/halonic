@@ -10,6 +10,7 @@ import {
   type MenuEntry,
   PlusIcon,
   SearchIcon,
+  usePresentation,
 } from "@halonicjs/studio-kit";
 import { type KeyboardEvent, type ReactNode, type Ref, useRef, useState } from "react";
 import {
@@ -156,6 +157,7 @@ export function OverviewPage({
   quietWhenEmpty = false,
   emptyTitleRef,
 }: OverviewPageProps) {
+  const phone = usePresentation() === "phone";
   const [query, setQuery] = useState("");
   const searchField = useRef<HTMLInputElement>(null);
   const [chosen, setChosen] = useState(allFilter);
@@ -188,7 +190,8 @@ export function OverviewPage({
       {tabs}
       {showHead && (
         <>
-          <div className="flex items-center gap-2 px-4 py-2">
+          {/* On a phone the search field has the whole line, so its placeholder isn't cut, and the create button is 48px. */}
+          <div className={`flex gap-2 px-4 py-2 ${phone ? "flex-col" : "items-center"}`}>
             <div className="min-w-0 flex-1">
               <Input
                 ref={searchField}
@@ -202,7 +205,12 @@ export function OverviewPage({
               />
             </div>
             {newButton && (
-              <Button variant="primary" icon={<PlusIcon />} onClick={newButton.onClick}>
+              <Button
+                variant="primary"
+                icon={<PlusIcon />}
+                onClick={newButton.onClick}
+                {...(phone ? { size: "touch", block: true } : {})}
+              >
                 {newButton.label}
               </Button>
             )}
