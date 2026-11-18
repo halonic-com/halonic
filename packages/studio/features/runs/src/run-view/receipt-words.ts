@@ -34,11 +34,14 @@ export const receiptWords = {
   /** One approval the run asked for: what was decided, by whom (RCPT-2.4), and when. */
   approvalLine: (action: string, decision: "approved" | "rejected", by: string, time: string) =>
     `${capitalised(action)}: ${decision}${by === "" ? "" : ` by ${by}`} at ${time}`,
-  /** A wait step's answer (HAL-12727): "approve" and "reject" read as the tool approvals' words. */
-  waitAnswerLine: (step: string, event: string, time: string) => {
+  /**
+   * A wait step's answer (HAL-12727): "approve" and "reject" read as the tool approvals' words;
+   * any other names `answer`, the label the step gave that event, else the event id (HAL-12745).
+   */
+  waitAnswerLine: (step: string, event: string, answer: string, time: string) => {
     if (event === "approve") return `${capitalised(step)}: approved by you at ${time}`;
     if (event === "reject") return `${capitalised(step)}: rejected by you at ${time}`;
-    return `${capitalised(step)}: answered ${event} by you at ${time}`;
+    return `${capitalised(step)}: answered ${answer} by you at ${time}`;
   },
   approvalWaiting: (action: string) => `${capitalised(action)}: waiting for your answer`,
   /** An approval left open when the run ended: nobody can answer it any more. */

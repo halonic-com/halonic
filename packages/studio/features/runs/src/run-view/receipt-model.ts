@@ -205,7 +205,8 @@ function isWaitStep(waiting: RunEventOf<"run.waiting">, before: RunEvent | undef
 
 /**
  * A wait step's line, named by its title, else its state: answered by the
- * user's event, or not answered when a timer moved it on or the run ended.
+ * user's event, named by its label where the step gave one, or not answered
+ * when a timer moved it on or the run ended.
  * Only a person sends a wait step its answer, so it is "by you".
  */
 function waitStepText(
@@ -221,7 +222,9 @@ function waitStepText(
       event.type === "run.waiting",
   );
   if (end?.type === "event.received") {
-    return receiptWords.waitAnswerLine(step, end.event, clockTime(new Date(end.at)));
+    // The same words the Inbox card offered for that answer (`events.answer-labels`).
+    const answer = waiting.labels?.[end.event] ?? end.event;
+    return receiptWords.waitAnswerLine(step, end.event, answer, clockTime(new Date(end.at)));
   }
   return end?.type === "timer.fired" || ended
     ? receiptWords.approvalNotAnswered(step)
