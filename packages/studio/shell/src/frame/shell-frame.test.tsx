@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
 import type { EngineConnection, EngineConnectionState } from "@halonicjs/ports";
-import { createToastStore, Dialog, usePresentation } from "@halonicjs/studio-kit";
+import { createToastStore, Dialog, Field, Input, usePresentation } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { createAnnouncer } from "../announcer/announcer.ts";
 import { createCloseStack } from "../close-stack/close-stack.ts";
@@ -375,5 +375,28 @@ verifies("shell.engine-line", () => {
     act(() => connection.set("lost"));
     const panel = container.querySelector('[data-layout="phone"] > div');
     expect(panel?.firstElementChild?.textContent).toBe(lineText);
+  });
+});
+
+verifies("shell.frame-field-errors", () => {
+  it("reads a kit Field's error that appears after focus has left it", async () => {
+    let showError: (error: string) => void = () => {};
+    function TurnLimit() {
+      const [error, setError] = useState<string | null>(null);
+      showError = setError;
+      return (
+        <Field label="Turn limit" error={error}>
+          <Input />
+        </Field>
+      );
+    }
+    const { container, timers } = renderFrame(<TurnLimit />);
+    act(() => showError("Enter a whole number from 1 to 64."));
+    await nextFrame();
+    act(() => timers.advance(0));
+    await nextFrame();
+    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe(
+      "Turn limit: Enter a whole number from 1 to 64.",
+    );
   });
 });
