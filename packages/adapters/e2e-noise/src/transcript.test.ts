@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { type NoiseHandshake, NoiseSession, type NoiseRole } from "./noise-session.ts";
+import { type NoiseHandshake, type NoiseRole, NoiseSession } from "./noise-session.ts";
 import { checkCode } from "./pairing-crypto.ts";
 import { fixedRandom, fromHex, toHex } from "./session.test-helper.ts";
 

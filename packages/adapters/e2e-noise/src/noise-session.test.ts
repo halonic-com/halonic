@@ -5,6 +5,7 @@ import { expect, it } from "vitest";
 import { NoiseSession, NoiseSessionError, type NoiseSessionOptions } from "./noise-session.ts";
 import type { InstantiateNoise } from "./noise-wasm.ts";
 import {
+  fixedRandom,
   keepingInstances,
   memoryHolds,
   memoryIsZero,
@@ -13,9 +14,11 @@ import {
 } from "./session.test-helper.ts";
 
 const tagBytes = 16;
-const hostKey = randomBytes(32);
-const phoneKey = randomBytes(32);
-const psk = randomBytes(32);
+// Plain arrays, not Buffers: a Buffer's slice() is a view, so the session
+// would zero these along with the copy it was given.
+const hostKey = Uint8Array.from(randomBytes(32));
+const phoneKey = Uint8Array.from(randomBytes(32));
+const psk = Uint8Array.from(randomBytes(32));
 
 /** Options for one side; the keys are copies, since a session zeroes what it is given. */
 function pairingOptions(role: "initiator" | "responder"): NoiseSessionOptions {
@@ -225,13 +228,14 @@ verifies("e2e-noise.host-randomness", () => {
   });
 
   it("fails the handshake when the random function throws", () => {
-    const session = NoiseSession.start({
-      ...pairingOptions("initiator"),
-      randomFill: () => {
-        throw new Error("no randomness");
-      },
-    });
-    expect(() => session.writeMessage(new Uint8Array())).toThrow(NoiseSessionError);
-    expect(session.ended).toBe(true);
+    const throwing = () => {
+      throw new Error("no randomness");
+    };
+    const runOut = fixedRandom(new Uint8Array(0));
+    for (const randomFill of [throwing, runOut]) {
+      const session = NoiseSession.start({ ...pairingOptions("initiator"), randomFill });
+      expect(() => session.writeMessage(new Uint8Array())).toThrow(NoiseSessionError);
+      expect(session.ended).toBe(true);
+    }
   });
 });

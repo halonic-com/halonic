@@ -26,8 +26,11 @@ verifies("e2e-noise.pairing-derivations", () => {
   });
 
   it("gives every check code vector's check code", () => {
-    expect(vectors.checkCodes.length).toBeGreaterThan(0);
-    for (const vector of vectors.checkCodes) {
+    // The vectors without a handshake hash only test turning HKDF bytes into
+    // letters, which the ports package checks.
+    const fromHashes = vectors.checkCodes.filter((vector) => vector.handshakeHash !== "");
+    expect(fromHashes.length).toBeGreaterThan(0);
+    for (const vector of fromHashes) {
       expect(checkCode(fromHex(vector.handshakeHash))).toBe(vector.checkCode);
     }
   });

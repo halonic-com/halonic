@@ -15,22 +15,24 @@ export function toHex(bytes: Uint8Array): string {
 /** The DER prefix of an X25519 private key in PKCS #8, before its 32 bytes. */
 const pkcs8X25519Prefix = fromHex("302e020100300506032b656e04220420");
 
-/** The X25519 public key of a private key, from `node:crypto`. */
+/** The X25519 public key of a private key, from `node:crypto`: the last 32 bytes of its SPKI. */
 export function publicKeyOf(privateKey: Uint8Array): Uint8Array {
   const der = Buffer.concat([pkcs8X25519Prefix, privateKey]);
-  const key = createPublicKey(createPrivateKey({ key: der, format: "der", type: "pkcs8" }));
-  const x = key.export({ format: "jwk" }).x;
-  if (x === undefined) throw new Error("no public key");
-  return Uint8Array.from(Buffer.from(x, "base64url"));
+  const publicKey = createPublicKey(createPrivateKey({ key: der, format: "der", type: "pkcs8" }));
+  const spki = publicKey.export({ format: "der", type: "spki" });
+  return Uint8Array.from(spki.subarray(-32));
 }
 
-/** A random function that gives these bytes once, then throws. */
+/**
+ * A random function that gives exactly these bytes, once. Any other call
+ * throws: a different length, or any call after the first, when none are left.
+ */
 export function fixedRandom(bytes: Uint8Array): (into: Uint8Array) => void {
-  let left: Uint8Array | undefined = bytes;
+  let left = bytes;
   return (into) => {
-    if (left === undefined || left.length !== into.length) throw new Error("no more random bytes");
+    if (left.length !== into.length) throw new Error("no more random bytes");
     into.set(left);
-    left = undefined;
+    left = new Uint8Array(0);
   };
 }
 

@@ -167,8 +167,7 @@ export class NoiseSession {
 
   /** Runs one call; a failure, a trap or a throw ends the session. */
   #call(run: (noise: NoiseExports) => number): number {
-    const noise = this.#exports;
-    if (noise === undefined) throw new NoiseSessionError();
+    const noise = this.#live();
     let result: number;
     try {
       result = run(noise);
@@ -185,13 +184,27 @@ export class NoiseSession {
   /** The input buffer, refusing more bytes than it holds. */
   #input(noise: NoiseExports, length = 0): Uint8Array {
     if (length > noiseMaxMessageBytes) throw new NoiseSessionError();
-    return new Uint8Array(noise.memory.buffer, noise.noise_input(), noiseMaxMessageBytes);
+    return memoryView(noise, noise.noise_input(), noiseMaxMessageBytes);
   }
 
   /** A copy of the output's first `length` bytes. */
   #output(length: number): Uint8Array {
-    const noise = this.#exports;
-    if (noise === undefined) throw new NoiseSessionError();
-    return new Uint8Array(noise.memory.buffer, noise.noise_output(), length).slice();
+    const noise = this.#live();
+    return memoryView(noise, noise.noise_output(), length).slice();
   }
+
+  /** The instance, or a throw once the session has ended. */
+  #live(): NoiseExports {
+    if (this.#exports === undefined) throw new NoiseSessionError();
+    return this.#exports;
+  }
+}
+
+/**
+ * A view of `length` bytes at `pointer` in the instance's memory. Takes the
+ * pointer first: the first call that asks for a buffer allocates both
+ * buffers, which grows the memory and detaches any view made before it.
+ */
+function memoryView(noise: NoiseExports, pointer: number, length: number): Uint8Array {
+  return new Uint8Array(noise.memory.buffer, pointer, length);
 }
