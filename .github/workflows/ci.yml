@@ -10,7 +10,7 @@ on:
   # progress and start every job again. pr-details.yml handles those: it
   # re-runs the title, leak and coverage-floor jobs here when they failed.
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
   merge_group:
   push:
     branches: [main, "release/**"]
@@ -48,6 +48,7 @@ jobs:
       docs: ${{ steps.diff.outputs.docs }}
       workflows: ${{ steps.diff.outputs.workflows }}
       code: ${{ steps.diff.outputs.code }}
+      full: ${{ steps.diff.outputs.full }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -59,7 +60,21 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          DRAFT: ${{ github.event.pull_request.draft }}
         run: |
+          # A draft gets the light run: the jobs that need `full` skip, which
+          # leaves the fast gates, the leak and secret scans, the policy rules,
+          # the build and tests (Turbo runs only what changed) and the Linux
+          # area jobs. Runners are shared with the merge queue, and a draft
+          # gets new commits often (HAL-12419). Marking it ready starts the
+          # full run, and that run's ci-ok is the one review and the queue
+          # wait for.
+          if [ "$DRAFT" = true ]; then
+            echo "full=false" | tee -a "$GITHUB_OUTPUT"
+            echo "::notice title=Draft::Light CI for a draft. Mark it ready for review to run every job."
+          else
+            echo "full=true" | tee -a "$GITHUB_OUTPUT"
+          fi
           areas=(
             "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|tooling/check/licence-texts/crates/)"
             "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|harness-bridge|system-node|integration-runner|integration-kit|connector-stdio-sandbox|git)/|apps/cli/(fence/|src/(local-harness-host|open-local-integration|local-integration-machine|integration-connector-factory|workspace-engine))|packages/core/ports/|pnpm-lock\.yaml$)"
@@ -532,7 +547,7 @@ jobs:
   base-tests:
     name: Merge base's tests (no cache)
     needs: changes
-    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && needs.changes.outputs.full == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     # The walk-back runs older commits whose tests were not written for a
@@ -689,7 +704,7 @@ jobs:
   guard:
     name: Requirements and the requirement guard (merge base's copy)
     needs: [changes, build, base-tests]
-    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' }}
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && needs.changes.outputs.full == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -835,7 +850,7 @@ jobs:
     # hands an agent a package that fails.
     name: Empty package and feature pass every check
     needs: changes
-    if: needs.changes.outputs.scaffold == 'true'
+    if: needs.changes.outputs.scaffold == 'true' && needs.changes.outputs.full == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     permissions:
@@ -1001,7 +1016,7 @@ jobs:
     # so they run only in the Linux job.
     name: Tauri shell on Windows (build and tests)
     needs: changes
-    if: needs.changes.outputs.tauri == 'true'
+    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.full == 'true'
     runs-on: windows-2025
     timeout-minutes: 40
     permissions:
@@ -1326,7 +1341,7 @@ jobs:
     # and its dependencies, so no cache is restored.
     name: Keychain contract on macOS
     needs: changes
-    if: needs.changes.outputs.tauri == 'true'
+    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.full == 'true'
     runs-on: macos-15
     timeout-minutes: 15
     permissions:
@@ -1442,7 +1457,7 @@ jobs:
     # in the fence, not a flaky test. No cache is restored.
     name: Sandbox fence (Seatbelt)
     needs: changes
-    if: needs.changes.outputs.sandbox-fence == 'true'
+    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.full == 'true'
     runs-on: macos-15
     timeout-minutes: 15
     permissions:
@@ -1504,7 +1519,7 @@ jobs:
     # script from passing silently. No cache: see the setup action.
     name: Sandbox fence (MXC on Windows 11)
     needs: changes
-    if: needs.changes.outputs.sandbox-mxc == 'true'
+    if: needs.changes.outputs.sandbox-mxc == 'true' && needs.changes.outputs.full == 'true'
     runs-on: windows-11-arm
     timeout-minutes: 30
     permissions:
@@ -1545,7 +1560,7 @@ jobs:
     # ruleset change.
     name: Sandbox packages on ${{ matrix.name }}
     needs: changes
-    if: needs.changes.outputs.sandbox == 'true' || needs.changes.outputs.windows == 'true'
+    if: (needs.changes.outputs.sandbox == 'true' || needs.changes.outputs.windows == 'true') && needs.changes.outputs.full == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     permissions:
@@ -1686,7 +1701,7 @@ jobs:
     # the job summary.
     name: Sandbox fence on Windows (canary probes)
     needs: changes
-    if: needs.changes.outputs.sandbox-fence == 'true'
+    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.full == 'true'
     runs-on: windows-2025
     timeout-minutes: 30
     permissions:
@@ -1760,7 +1775,7 @@ jobs:
     # and the build time in the job summary.
     name: Agent host executable (${{ matrix.name }})
     needs: changes
-    if: needs.changes.outputs.agent_host == 'true'
+    if: needs.changes.outputs.agent_host == 'true' && needs.changes.outputs.full == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     permissions:
@@ -1806,7 +1821,7 @@ jobs:
     # and that the uninstaller removes the agent sandbox. Signing is later.
     name: Windows installer (build, install, uninstall)
     needs: changes
-    if: needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true'
+    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true'
     runs-on: windows-2025
     timeout-minutes: 45
     permissions:
@@ -1998,7 +2013,7 @@ jobs:
     # only and are never uploaded.
     name: Windows update (0.1.0 to 0.1.1)
     needs: changes
-    if: needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true'
+    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true'
     runs-on: windows-2025
     timeout-minutes: 75
     permissions:
@@ -2066,7 +2081,7 @@ jobs:
     # Java 17. The signed release build is HAL-1203.
     name: Android shell (debug APK)
     needs: changes
-    if: needs.changes.outputs.android == 'true'
+    if: needs.changes.outputs.android == 'true' && needs.changes.outputs.full == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     permissions:
@@ -2177,7 +2192,7 @@ jobs:
     # builds the pages and serves them, and stops with the tests.
     name: Studio end-to-end (Playwright)
     needs: changes
-    if: needs.changes.outputs.studio == 'true'
+    if: needs.changes.outputs.studio == 'true' && needs.changes.outputs.full == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
