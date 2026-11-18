@@ -35,6 +35,19 @@ const log = (sandboxReason?: string): RunEvent[] => [
   } as RunEvent,
 ];
 
+/** The start of the run, which the page needs to offer Run again. */
+const runStarted = {
+  runId: failedRun.id,
+  seq: 0,
+  at: "2026-11-16T08:00:00Z",
+  type: "run.started",
+  hubId: "acme",
+  workflowId: "support-reply",
+  input: {},
+  kind: "run",
+  definitionsVersion: "v1",
+} as RunEvent;
+
 async function open(
   events: RunEvent[] | undefined,
   check?: () => Promise<SandboxStartResult>,
@@ -105,27 +118,40 @@ verifies("runs.run-view.sandbox-not-ready", () => {
   });
 
   it("turns Check again into Run again when the check passes, where the page can run again", async () => {
-    const events = [
+    const root = await open(
+      [runStarted, ...log("bubblewrap-missing")],
+      async () => ({ ok: true }),
+      false,
+      undefined,
       {
-        runId: failedRun.id,
-        seq: 0,
-        at: "2026-11-16T08:00:00Z",
-        type: "run.started",
-        hubId: "acme",
-        workflowId: "support-reply",
-        input: {},
-        kind: "run",
-        definitionsVersion: "v1",
-      } as RunEvent,
-      ...log("bubblewrap-missing"),
-    ];
-    const root = await open(events, async () => ({ ok: true }), false, undefined, {
-      startRun: vi.fn(),
-    });
+        startRun: vi.fn(),
+      },
+    );
     const inBanner = () => [...(banner(root)?.querySelectorAll("button") ?? [])];
     expect(inBanner().map((one) => one.textContent)).toEqual(["Check again"]);
     await act(async () => button(root)?.click());
     expect(inBanner().map((one) => one.textContent)).toEqual(["Run again"]);
+  });
+
+  it("offers Run again straight away, and no check, for a reason a check can't clear", async () => {
+    const check = vi.fn(async (): Promise<SandboxStartResult> => ({ ok: true }));
+    const startRun = vi.fn();
+    const root = await open([runStarted, ...log("not-offered")], check, false, undefined, {
+      startRun,
+    });
+    const inBanner = () => [...(banner(root)?.querySelectorAll("button") ?? [])];
+
+    expect(inBanner().map((one) => one.textContent)).toEqual(["Run again"]);
+    expect(banner(root)?.textContent).toContain(sandboxStartWords("not-offered").calloutFix);
+    expect(banner(root)?.textContent).not.toContain("The sandbox works now");
+    await act(async () => inBanner()[0]?.click());
+    expect(check).not.toHaveBeenCalled();
+    expect(startRun).toHaveBeenCalledTimes(1);
+  });
+
+  it("has no button for a reason a check can't clear where the page can't run again", async () => {
+    const root = await open(log("not-offered"), async () => ({ ok: true }));
+    expect(banner(root)?.querySelectorAll("button")).toHaveLength(0);
   });
 
   it("links the guide for the reason", async () => {
