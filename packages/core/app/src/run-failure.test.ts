@@ -248,6 +248,23 @@ verifies("app.run-failure", () => {
       });
     });
 
+    it("names the provider and type of a provider file Halonic can't call (HAL-12342)", () => {
+      const cause = {
+        kind: "not_found" as const,
+        code: "models.unknown-provider-type",
+        detail: { provider: "weird", type: "carrier-pigeon" },
+      };
+      expect(runFailureOf(failedWith("error", { cause }), undefined)).toEqual({
+        reason: "unknown-provider-type",
+        provider: "weird",
+        type: "carrier-pigeon",
+      });
+      const { detail: _, ...withoutFacts } = cause;
+      expect(runFailureOf(failedWith("error", { cause: withoutFacts }), undefined)).toEqual(
+        general,
+      );
+    });
+
     it("gives a cancelled run no facts", () => {
       expect(runFailureOf(failedWith("cancelled"), calledModel())).toBeUndefined();
     });

@@ -69,6 +69,17 @@ export const runMessages = defineMessages("run", {
   /** Its fix. */
   gitWontStartFix: () => phrase`Install git and make sure it's on your PATH, then try again.`,
   /**
+   * The reason after "Couldn't run support-reply:" when the git found is a
+   * wrapper script, a version manager's shim or a git older than 2.31, which
+   * drops Halonic's git settings, so it can't run safely (HAL-12342). Exit 9,
+   * as {@link gitWontStart}, and the same meaning as the Studio's refusal.
+   */
+  gitNotItself: (git: string, nothingDone: Phrase = nothingRan) =>
+    phrase`the git at ${git} doesn't pass Halonic's git settings on to git, so the live version can't be read safely. ${nothingDone}`,
+  /** Its fix: Halonic takes git from the PATH, so git itself goes first on it. */
+  gitNotItselfFix: () =>
+    phrase`It may be a wrapper script, a version manager's shim or git older than 2.31. Put git 2.31 or later itself first on your PATH, then try again.`,
+  /**
    * The reason after "Couldn't run support-reply:" when an agent of the
    * workflow is in a harness (Claude Code or Codex), which this computer's
    * engine has no adapter for yet: `unavailable`, exit 9. `harness` is the
