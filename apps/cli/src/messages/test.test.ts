@@ -121,6 +121,27 @@ describe("test's sentences", () => {
     ).toBe('Expected the run to go through Read mail and "clos", but it went through Read mail.');
   });
 
+  it("names both ends by id and lists the workflow's steps when a test names a step it doesn't have", () => {
+    const steps = [unknownStep("read"), unknownStep("replied")];
+    expect(
+      words(testMessages.endedInNoSuchStep(unknownStep("nothing"), unknownStep("replied"), steps)),
+    ).toBe(
+      'Expected the run to end in the step "nothing", but it ended in "replied". The workflow has no step "nothing"; its steps are "read" and "replied".',
+    );
+    expect(
+      words(
+        testMessages.wentThroughNoSuchStep(
+          [unknownStep("read"), unknownStep("clos"), unknownStep("rplied")],
+          [unknownStep("read")],
+          [unknownStep("clos"), unknownStep("rplied")],
+          steps,
+        ),
+      ),
+    ).toBe(
+      'Expected the run to go through "read", "clos" and "rplied", but it went through "read". The workflow has no step "clos" or "rplied"; its steps are "read" and "replied".',
+    );
+  });
+
   it("has the line for a program step without a script", () => {
     expect(words(testMessages.unscriptedProgram("Build report"))).toBe(
       "The step Build report would start a program, and tests never start programs. Script its result in the test file.",
@@ -135,7 +156,7 @@ describe("test's sentences", () => {
   it("has the lines for no tests and a filter that matches none", () => {
     expect(words(testMessages.noTests("acme"))).toBe("acme has no workflow tests yet.");
     expect(words(testMessages.noTestsFix())).toBe(
-      "Add one next to a workflow as <workflow>.test.yaml.",
+      "Add one next to a workflow as <workflow>.test.yaml, with the workflow's id and its cases: each a name, an input and what to expect. See some in the Acme example: halonic init --example acme.",
     );
     expect(words(testMessages.noMatch("refnd"))).toBe('No tests match "refnd".');
     expect(words(testMessages.noMatchFix())).toBe("Run halonic test --list to see them all.");

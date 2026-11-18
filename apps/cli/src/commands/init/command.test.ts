@@ -49,6 +49,7 @@ verifies("cli.commands.init.create-workspace", () => {
         "Next:",
         "  cd acme",
         "  halonic validate                    check the files as you edit them",
+        "  halonic test                        run its tests (no key, nothing sent)",
         "  Add your first agent: https://docs.halonic.dev/examples/approval-step",
       ]);
       expect(io.stderr).toEqual([]);
@@ -65,6 +66,28 @@ verifies("cli.commands.init.create-workspace", () => {
       expect(io.stdout[0]).toBe("✓ Created the workspace acme in this folder.");
       expect(io.stdout).not.toContain("  cd acme");
       expect(existsSync(join(acme, "workspace.yaml"))).toBe(true);
+    });
+
+    it("shows the full path, and cds into it, when the folder is more than two folders up", async () => {
+      const deep = join(folder, "one", "two", "three");
+      mkdirSync(deep, { recursive: true });
+      const acme = join(folder, "acme");
+
+      const { code, io } = await initIn(deep, acme);
+
+      expect(code).toBe(exitCode.ok);
+      expect(io.stdout[0]).toBe(`✓ Created the workspace acme in ${acme}.`);
+      expect(io.stdout[3]).toBe(`  cd ${acme}`);
+    });
+
+    it("shows a folder up to two folders up the way it's typed from here", async () => {
+      const deep = join(folder, "one", "two");
+      mkdirSync(deep, { recursive: true });
+
+      const { io } = await initIn(deep, join(folder, "acme"));
+
+      expect(io.stdout[0]).toBe(`✓ Created the workspace acme in ${join("..", "..", "acme")}.`);
+      expect(io.stdout[3]).toBe(`  cd ${join("..", "..", "acme")}`);
     });
 
     it("puts a folder name with a space in quotes after cd, so it can be copied", async () => {
