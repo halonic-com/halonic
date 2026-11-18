@@ -953,8 +953,8 @@ doesn't look pressable, and Tab enters at the first step still to do. The card d
 
 The roving focus behind the List, for a `grid` the kit doesn't draw (the Inbox list). Pass each
 row's `id` and which of its cells can take focus (a second argument, `{ startColumn, startRow }`,
-picks the column and the row that take focus first, by default column 0 of the first row); spread `gridProps` on the grid and
-`cell(row, column)` on each focusable element.
+picks the column and the row that take focus first, by default column 0 of the first row); spread
+`gridProps` on the grid and `cell(row, column)` on each focusable element.
 
 ```tsx
 const grid = useGridNavigation(

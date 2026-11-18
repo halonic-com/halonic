@@ -32,6 +32,9 @@ While the open workspace is remembered on this device as the Acme sample, the Fi
 - Given the card showed "You've seen it work." in an earlier visit,
   when Home opens,
   then Get set up's slot shows nothing.
+- Given step 1 is done,
+  when you press its row,
+  then nothing opens, and pressing step 2's row opens it.
 - Given no request is waiting,
   when you open step 2,
   then the Inbox opens on the request form.
