@@ -17,6 +17,8 @@ export {
   type WaitingTool,
 } from "./approve-listed-tools.ts";
 export {
+  allowedToolsCheck,
+  allowsTool,
   type ConnectorToolCheckInput,
   checkConnectorTools,
   connectorToolServer,

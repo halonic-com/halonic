@@ -2,11 +2,13 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-2210 (HAL-850 step 5), from the adversarial cases on HAL-2579 (rows F9, G2) and the CLI and Studio check on HAL-2842 (T4, T11, T12), for `ports.listed-tool-approval`
+- Source: HAL-2210 (HAL-850 step 5), from the adversarial cases on HAL-2579 (rows F9, G2) and the CLI and Studio check on HAL-2842 (T4, T11, T12), for `ports.listed-tool-approval`; HAL-12340
 
 The app shall give one review of a source's listed tools, which Studio and the CLI both only format: the tools to ask about, those with an approval ("Changed") before those without one ("Not approved"), each in listing order; the tools Halonic refused, with why; and the tools their server keeps changing, which are shown but not asked about. A tool that waits only because the source now points at another server, with the same text, is marked as such, so the person isn't shown "Changed" over no changes. When the whole listing is refused, or one of the source's approvals can't be read, the review says so, naming the tool whose approval it is when it can be told.
 
 The app shall let a person approve one waiting listed tool by the name its server lists it under, and, when the person gives the fingerprint they were shown, only at exactly that fingerprint: if the tool is waiting at another fingerprint, nothing is approved and the person is told the current one. Approving by name also works for a tool its server keeps changing, as `ports.listed-tool-approval` asks.
+
+The app shall keep a source's check to the tools its connector's `tools.allow` offers to agents (`allowedToolsCheck`), so a review never asks about a tool the connector file hides: the waiting tools, the tools on and the refused tools it leaves out are dropped, and a refusal of the whole listing stays. A connector with no `allow` keeps its whole check.
 
 The app shall list what changed in a waiting tool since it was approved, one entry per text that differs, with the approved and the current text. It shall mark a change a person can't see on screen: the same text in another Unicode normal form, a difference only in invisible format characters such as a zero-width space, a difference only in white space such as a trailing space, and a difference only where one side has a character outside ASCII, such as a Cyrillic look-alike. A change in a value that isn't text, such as `required`, `enum` or a limit, is listed too, and so is an argument added as an empty schema (`{}`), which takes anything. Each change names where it is as a path no other place in the tool shares, even when a property's name holds a `.` or a `/`.
 

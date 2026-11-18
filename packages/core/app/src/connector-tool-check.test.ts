@@ -4,6 +4,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { approveWaitingTool } from "./approve-listed-tools.ts";
 import {
+  allowedToolsCheck,
+  allowsTool,
   checkConnectorTools,
   connectorToolServer,
   hasToolApproval,
@@ -61,6 +63,38 @@ verifies("app.listed-tool-review", () => {
       env: null,
       secretEnv: await writtenDigest({ NOTES_TOKEN: "notes-token" }, digest),
     });
+  });
+
+  it("keeps a check to the tools the connector's allow offers to agents", async () => {
+    const store = new TestToolApprovalStore();
+    const files = {
+      ...connector({ stdio: { command: "files-mcp", args: [] } }),
+      tools: { approve: "all", allow: ["read_text_file"] },
+    } as Connector;
+    const check = await checkConnectorTools({
+      location,
+      connector: files,
+      listed: [tool("read_text_file"), tool("write_file"), tool("move.file")],
+      trust,
+      store,
+      digest,
+      clock,
+    });
+    if (!check.ok) throw new Error("files-mcp lists its tools");
+
+    const allowed = allowedToolsCheck(check.value, files);
+
+    expect(check.value.waiting.map((waiting) => waiting.listedName)).toEqual([
+      "read_text_file",
+      "write_file",
+    ]);
+    expect(allowed.waiting.map((waiting) => waiting.listedName)).toEqual(["read_text_file"]);
+    expect(check.value.refusals.map((refusal) => refusal.name)).toEqual(["move.file"]);
+    expect(allowed.refusals).toEqual([]);
+    expect(allowsTool(files, "write_file")).toBe(false);
+    expect(allowedToolsCheck(check.value, connector({ http: { url: "https://x.test" } }))).toBe(
+      check.value,
+    );
   });
 
   it("checks a wrapper at the variables it takes from the person's environment", async () => {

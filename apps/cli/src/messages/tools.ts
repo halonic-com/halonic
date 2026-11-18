@@ -122,6 +122,9 @@ export const toolsMessages = defineMessages("tools", {
     phrase`Approved ${tool} from ${source}, as it is now.`,
   approvedAlready: (tool: string, source: string) =>
     phrase`${tool} from ${source} is approved already.`,
+  /** After a named tool was approved that the connector file hides (HAL-12340). */
+  notInAllow: (tool: string, source: string) =>
+    phrase`Agents never see ${tool}: the tools.allow of ${source} leaves it out. To offer it, add it there.`,
   /** An old fingerprint and a made-up one look the same, so it never claims a change (HAL-12596). */
   fingerprintNotCurrent: (tool: string, fingerprint: string) =>
     phrase`That fingerprint doesn't match ${tool} as it is now: ${fingerprint}.`,

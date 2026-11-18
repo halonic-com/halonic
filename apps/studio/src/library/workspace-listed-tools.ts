@@ -1,6 +1,7 @@
 import { ConnectorFailedError } from "@halonicjs/adapter-agent-host-client";
 import { connectorConfigOf } from "@halonicjs/app";
 import {
+  allowedToolsCheck,
   approveNamedTool,
   checkConnectorTools,
   type ListedToolApprovalCheck,
@@ -96,7 +97,8 @@ export class WorkspaceListedTools implements ListedToolsHost {
     if ("google" in source.connector.transport || "http" in source.connector.transport) {
       return nothingToReview(sourceName);
     }
-    const check = await this.#check(source);
+    // A tool the connector's `tools.allow` leaves out is never offered to agents, so it isn't shown (HAL-12340).
+    const check = allowedToolsCheck(await this.#check(source), source.connector);
     const risks = listedRisksOf(check);
     return listedToolsSnapshot(sourceName, reviewListedTools(check), {
       workspaceName:

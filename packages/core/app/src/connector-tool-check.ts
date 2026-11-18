@@ -127,6 +127,46 @@ export async function connectorToolServer(
   return err("its tools are built into Halonic, so it lists none to approve");
 }
 
+/**
+ * Whether the connector's `tools.allow` offers a listed tool to agents: it
+ * names the tool, or the connector has no `allow`. A run never offers any
+ * other tool (`allowedToolsOf` in the engine), whatever was approved.
+ *
+ * @example
+ * allowsTool(files, "write_file"); // => false when `allow: [read_text_file]`
+ */
+export function allowsTool(connector: Pick<Connector, "tools">, listedName: string): boolean {
+  const { allow } = connector.tools;
+  return allow === undefined || allow.includes(listedName);
+}
+
+/**
+ * The check kept to the tools the connector's `tools.allow` offers to
+ * agents, so a review, a notice or `--all` never asks about a tool the
+ * connector file hides on purpose (HAL-12340). A refusal of the whole
+ * listing stays: it stops the allowed tools too.
+ *
+ * @example
+ * reviewListedTools(allowedToolsCheck(check, connector));
+ */
+export function allowedToolsCheck(
+  check: ListedToolApprovalCheck,
+  connector: Pick<Connector, "tools">,
+): ListedToolApprovalCheck {
+  if (connector.tools.allow === undefined) {
+    return check;
+  }
+  const allowed = (name: string) => allowsTool(connector, name);
+  return {
+    ...check,
+    tools: check.tools.filter((tool) => tool.kind !== "listed" || allowed(tool.listedName)),
+    waiting: check.waiting.filter((waiting) => allowed(waiting.listedName)),
+    refusals: check.refusals.filter(
+      (refusal) => refusal.refused === "listing" || allowed(refusal.name ?? ""),
+    ),
+  };
+}
+
 /** What {@link revokeNamedTool} did. */
 export type NamedToolRevoke = "revoked" | "not_approved";
 

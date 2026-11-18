@@ -167,7 +167,10 @@ async function approveByName(
       machine.clock,
       fingerprint,
     );
-    const said = approvedLines(result, name, source, approved);
+    const said = [
+      ...approvedLines(result, name, source, approved),
+      ...notOfferedLines(name, source),
+    ];
     for (const line of said) {
       context.printAhead(line);
       lines.push(line);
@@ -239,6 +242,21 @@ function approvedLines(
         jsonFields,
       );
   }
+}
+
+/**
+ * A tool the connector's `tools.allow` leaves out is approved when named,
+ * so it is ready once `allow` names it, but agents never see it until then
+ * (HAL-12340). Only reached when the approval went through: an error throws
+ * before this.
+ */
+function notOfferedLines(typed: string, source: ToolSource): Phrase[] {
+  if (isOffered(source, typed)) {
+    return [];
+  }
+  return [
+    phrase`${markPart("needsYou")} ${toolsMessages.notInAllow(printable(typed), source.shown).phrase}`,
+  ];
 }
 
 /** `htl1:` and the first 12 hex digits, then "…": what `--all` prints per tool. */
