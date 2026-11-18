@@ -49,11 +49,11 @@ export const configurationWords = {
   toolLists: { skills: "Skills", knowledge: "Knowledge", connectors: "Connectors" },
   /** The picker's button under each list; an empty list shows only this (microcopy 8.5, MA16). */
   addTool: { skills: "Add skill", knowledge: "Add knowledge", connectors: "Add connector" },
-  /** In place of the button when the hub's Library has none of the kind (microcopy 8.5). */
+  /** In place of the button when the hub can use none of the kind (microcopy 8.5, HAL-12870). */
   noneInLibrary: {
-    skills: "No skills yet.",
-    knowledge: "No knowledge yet.",
-    connectors: "No connectors yet.",
+    skills: "No skills this hub can use yet.",
+    knowledge: "No knowledge this hub can use yet.",
+    connectors: "No connectors this hub can use yet.",
   },
   /** In place of the button when the agent has them all already (microcopy 8.5). */
   allAdded: {
@@ -63,11 +63,11 @@ export const configurationWords = {
   },
   /** After either line; it opens Library on that list's tab. */
   openLibrary: "Open Library ›",
-  /** Under a list, for each item its file names that the Library doesn't have (microcopy 8.5, MA16). */
+  /** Under a list, for each item its file names that the hub can't use (microcopy 8.5, MA16, HAL-12870). */
   missingTool: {
-    skills: (name: string) => `There's no skill called ${name}.`,
-    knowledge: (name: string) => `There's no knowledge source called ${name}.`,
-    connectors: (name: string) => `There's no connector called ${name}.`,
+    skills: (name: string) => `This hub can't use a skill called ${name}.`,
+    knowledge: (name: string) => `This hub can't use a knowledge source called ${name}.`,
+    connectors: (name: string) => `This hub can't use a connector called ${name}.`,
   },
   removeTool: (name: string) => `Remove ${name}`,
   toolsLoadFailedTitle: "Couldn't load the Library",
