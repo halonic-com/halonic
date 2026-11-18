@@ -41,17 +41,39 @@ export class SharedCopy {
     return (await this.#exists(sameName)) ? sameName : null;
   }
 
+  /**
+   * The versions this workspace has that the shared copy lacks, as a `git log` range: every
+   * version before the first share. `null` for a history with no version yet, which has nothing
+   * to share whatever the shared copy holds.
+   */
+  async unsharedRange(): Promise<string | null> {
+    if (!(await this.#exists("HEAD"))) return null;
+    const shared = await this.ref();
+    return shared === null ? "HEAD" : `${shared}..HEAD`;
+  }
+
   /** How many versions `range` holds, counting at most the cap. */
   async count(range: string): Promise<number> {
-    const log = await this.#options.run([
-      "log",
-      "--oneline",
-      `--max-count=${this.#options.countCap}`,
-      range,
-    ]);
+    return (await this.#lines(["--oneline", range])).length;
+  }
+
+  /**
+   * The ids of the versions `range` holds that touch the workspace folder, as History lists
+   * them: newest first, at most the cap.
+   */
+  async idsInFolder(range: string): Promise<string[]> {
+    return this.#lines(["--format=%H", range, "--", "."]);
+  }
+
+  /** The lines `git log` prints for `args`, at most the cap, empty ones left out. */
+  async #lines(args: readonly string[]): Promise<string[]> {
+    const log = await this.#options.run(["log", `--max-count=${this.#options.countCap}`, ...args]);
     if (log === "no-git") throw noGit();
     if (log.code !== 0) throw new KindedError("unavailable", this.#options.reason(log));
-    return log.stdout.split("\n").filter((line) => line.trim() !== "").length;
+    return log.stdout
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line !== "");
   }
 
   async #exists(ref: string): Promise<boolean> {

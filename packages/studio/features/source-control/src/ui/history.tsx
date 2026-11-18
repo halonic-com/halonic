@@ -1,4 +1,4 @@
-import { Button, List } from "@halonicjs/studio-kit";
+import { Button, List, StatusChip } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import type { Version } from "../api.ts";
 import type { ChangesList, HistoryState } from "../changes-list.ts";
@@ -11,10 +11,15 @@ import { VersionFacts } from "./version-page.tsx";
 /** How many versions a phone shows before "See all history". */
 const PHONE_HISTORY_ROWS = 5;
 
+/** No version is marked "Not shared yet" when the page doesn't say which are. */
+const NONE_UNSHARED: ReadonlySet<string> = new Set();
+
 /** Props for {@link History}. */
 export interface HistoryProps {
   readonly list: ChangesList;
   readonly history: HistoryState;
+  /** The versions the shared copy lacks; on a phone they carry "Not shared yet". */
+  readonly unshared?: ReadonlySet<string>;
   /** What time it is now, so "Today" and "Yesterday" are right. */
   readonly now?: Date;
   /** On a phone Show more and Try again are 48px touch buttons, and git's words say "your computer". */
@@ -30,13 +35,15 @@ export interface HistoryProps {
  * in it. No branch graph.
  *
  * On a phone (2.14) a version opens as its own page through `versionPage`, and coming back puts
- * focus on its row, unfolding See all history if the row is past the newest 5.
+ * focus on its row, unfolding See all history if the row is past the newest 5. There (2.12) each
+ * row ends in a chevron, and a version the shared copy lacks carries "Not shared yet".
  *
- * Not here yet: Restore just this, Go back, and the shared marks.
+ * Not here yet: Restore just this and Go back.
  */
 export function History({
   list,
   history,
+  unshared = NONE_UNSHARED,
   now = new Date(),
   phone = false,
   versionPage,
@@ -62,6 +69,7 @@ export function History({
           <HistoryBody
             list={list}
             history={history}
+            unshared={unshared}
             now={now}
             phone={phone}
             pickedId={picked?.id}
@@ -79,6 +87,7 @@ export function History({
 function HistoryBody({
   list,
   history,
+  unshared,
   now,
   phone,
   pickedId,
@@ -88,6 +97,7 @@ function HistoryBody({
 }: {
   readonly list: ChangesList;
   readonly history: HistoryState;
+  readonly unshared: ReadonlySet<string>;
   readonly now: Date;
   readonly phone: boolean;
   readonly pickedId: string | undefined;
@@ -156,8 +166,11 @@ function HistoryBody({
               id: version.id,
               title: version.name,
               meta: `${version.author} · ${timeOfDay(version.at)}`,
+              ...(phone && unshared.has(version.id) ? { trailing: notSharedChip } : {}),
             })),
           }))}
+          // On a phone each version opens its own page; the kit draws the chevrons only there.
+          chevrons
           {...(pickedId === undefined ? {} : { current: pickedId })}
           onOpen={onPick}
         />
@@ -196,6 +209,9 @@ function useFocusRow(initialId: string | undefined, onPlaced: (() => void) | und
   }, [pendingId]);
   return { region, request: setPendingId };
 }
+
+/** The chip on a version the shared copy lacks; the kit puts it at the start of the meta line. */
+const notSharedChip = <StatusChip tone="neutral">{historyWords.notShared}</StatusChip>;
 
 /** See all history (a folded phone list) or Show more (older versions to read): one or neither. */
 function HistoryFooter({

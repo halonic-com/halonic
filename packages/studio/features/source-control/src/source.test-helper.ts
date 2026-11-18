@@ -35,6 +35,7 @@ export function fakeSource(initial: ChangesRead) {
   let updatesFailure: unknown;
   let remoteFailure: unknown;
   let unshared = 0;
+  let unsharedIds: readonly string[] = [];
   let waiting = 0;
   let checkFailure: unknown;
   let checkCalls = 0;
@@ -120,6 +121,7 @@ export function fakeSource(initial: ChangesRead) {
       remote = true;
     },
     countUnshared: async () => unshared,
+    listUnshared: async () => (unshared === 0 ? [] : unsharedIds),
     checkUpdates: async () => {
       checkCalls += 1;
       if (checkFailure !== undefined) throw checkFailure;
@@ -244,9 +246,10 @@ export function fakeSource(initial: ChangesRead) {
     setRemote: (has: boolean) => {
       remote = has;
     },
-    /** How many versions the shared copy lacks. */
-    setUnshared: (count: number) => {
+    /** How many versions the shared copy lacks, and which of History's versions those are. */
+    setUnshared: (count: number, ids: readonly string[] = []) => {
       unshared = count;
+      unsharedIds = ids;
     },
     /** How many versions the shared copy has that this workspace lacks, as the next check finds. */
     setWaiting: (count: number) => {

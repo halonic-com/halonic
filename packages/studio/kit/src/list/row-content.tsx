@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ChevronRightIcon } from "../icons/chevron-right-icon.tsx";
 import { StatusChip } from "../status-chip/status-chip.tsx";
 import type { AnyListRow, ListColumn } from "./list-props.ts";
 import { RowColumns } from "./row-columns.tsx";
@@ -38,6 +39,8 @@ export interface RowContentProps {
   readonly row: AnyListRow;
   readonly phone: boolean;
   readonly dense: boolean;
+  /** The row opens a page of its own: it ends in a chevron (a phone List's `chevrons`). */
+  readonly chevron: boolean;
   /** The id of the meta line, which an unavailable row's cell names with `aria-describedby`. */
   readonly reasonId: string;
   /** A checkbox cell comes first and holds the gap, so the cell has no left padding. */
@@ -47,7 +50,15 @@ export interface RowContentProps {
 }
 
 /** The main cell's inside: the icon or avatar, the title, the meta line and the trailing part. */
-export function RowContent({ row, phone, dense, reasonId, afterCheck, columns }: RowContentProps) {
+export function RowContent({
+  row,
+  phone,
+  dense,
+  chevron,
+  reasonId,
+  afterCheck,
+  columns,
+}: RowContentProps) {
   if (columns !== undefined) {
     return (
       <RowColumns
@@ -61,8 +72,9 @@ export function RowContent({ row, phone, dense, reasonId, afterCheck, columns }:
   }
   const meta = row.unavailable?.reason ?? row.error?.reason ?? row.meta;
   const trailing = trailingOf(row);
-  // On a phone the right edge has one job: next to a More button, the chip starts the meta line.
-  const trailingBelow = phone && row.more !== undefined;
+  // On a phone the right edge has one job: next to a More button or a chevron, the chip starts
+  // the meta line.
+  const trailingBelow = phone && (row.more !== undefined || chevron);
   const showTrailingRight = !trailingBelow && trailing !== undefined;
 
   return (
@@ -79,6 +91,11 @@ export function RowContent({ row, phone, dense, reasonId, afterCheck, columns }:
         <MetaLine row={row} text={meta} id={reasonId} chip={trailingBelow ? trailing : undefined} />
       </div>
       {showTrailingRight ? <span className="flex shrink-0 items-center">{trailing}</span> : null}
+      {chevron ? (
+        <span data-part="row-chevron" className="flex size-icon-md shrink-0 text-fg-subtle">
+          <ChevronRightIcon />
+        </span>
+      ) : null}
     </div>
   );
 }

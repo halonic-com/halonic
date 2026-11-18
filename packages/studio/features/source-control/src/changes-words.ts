@@ -308,6 +308,8 @@ export const historyWords = {
   seeAll: "See all history",
   /** A version's page on a phone goes back to History (552 5.6). */
   back: "Back to History",
+  /** On a phone, the chip on a version the shared copy lacks (611 3). */
+  notShared: "Not shared yet",
   today: "Today",
   yesterday: "Yesterday",
   /** The name of the box that shows the picked version. */

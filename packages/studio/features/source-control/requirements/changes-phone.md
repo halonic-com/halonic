@@ -12,7 +12,7 @@ When See all history is pressed, the Changes page shall move focus to the first 
 
 On a phone, an item row shall have its ⋮ in the row's padding and no chevron.
 
-When the screen is a phone, a version in History shall open as its own page in place of the Changes page, with Back to History, the version's name as the page's heading, who made it and when, its notes and what's in it. When Back to History is pressed, the Changes page shall put focus on that version's row and shall show all of History when the row is past the newest 5.
+When the screen is a phone, a version in History shall open as its own page in place of the Changes page, with Back to History, the version's name as the page's heading, who made it and when, its notes and what's in it. When Back to History is pressed, the Changes page shall put focus on that version's row and shall show all of History when the row is past the newest 5. When a later read no longer has the open version, the Changes page shall show again and shall stay when a still later read has the version back.
 
 ## Examples
 
@@ -39,3 +39,6 @@ When the screen is a phone, a version in History shall open as its own page in p
 - Given a phone and 25 versions, with See all history pressed,
   when the person opens "Version 18" and goes back,
   then History shows all versions and "Version 18" has focus.
+- Given a phone with "Version 2" open,
+  when a later read no longer has it and a still later read has it back,
+  then the Changes page shows and stays.
