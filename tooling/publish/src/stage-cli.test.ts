@@ -76,6 +76,14 @@ verifies("publish.staged-cli", () => {
     expect(readFileSync(join(consumer, "copy/workspace.yaml"), "utf8").length).toBeGreaterThan(0);
   }, 60_000);
 
+  it("lists the board-approved npm keywords in the installed manifest", () => {
+    const manifest = JSON.parse(
+      readFileSync(join(consumer, "node_modules/halonic/package.json"), "utf8"),
+    ) as { keywords: string[] };
+    expect(manifest.keywords).toContain("local-first");
+    expect(manifest.keywords).not.toContain("mcp");
+  });
+
   it("carries the runner file and the patched sandbox runtime, and no TypeScript", () => {
     const installed = join(consumer, "node_modules/halonic");
     expect(existsSync(join(installed, "dist/runner.mjs"))).toBe(true);
