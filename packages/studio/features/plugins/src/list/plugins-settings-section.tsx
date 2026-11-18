@@ -56,6 +56,7 @@ export function PluginsSettingsSection({ context, closeSettings, place }: Settin
         {...(plugins.installer === undefined ? {} : { onAdd: () => setAdding(true) })}
         onRetry={() => {}}
         place={place === "served" || plugins.place === "served" ? "served" : "app"}
+        headingLevel={4}
       />
       {adding && plugins.installer !== undefined ? (
         <AddPluginDialog

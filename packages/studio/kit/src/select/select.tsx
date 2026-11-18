@@ -1,5 +1,5 @@
 import { type ChangeEvent, type Ref, useId, useState } from "react";
-import { assignRef } from "../field/control.ts";
+import { assignRef, describedBy } from "../field/control.ts";
 import { useFieldControl } from "../field/field.tsx";
 import { ChevronDownIcon } from "../icons/chevron-down-icon.tsx";
 import { type FieldSize, fieldBoxClasses, fieldBoxState } from "../input/field-box.ts";
@@ -39,6 +39,8 @@ export interface SelectProps {
   readonly name?: string;
   /** The name, for a Select outside a Field. Inside one the Field's label names it. */
   readonly "aria-label"?: string;
+  /** The `id` of a line outside the Field that also describes the control, read after the Field's own. */
+  readonly describedBy?: string | undefined;
   /** The phone's picker sheet with no options: what's missing and where to add it. */
   readonly emptyText?: string;
   /** The control you focus: the `<select>` on desktop, the picker button on a phone. */
@@ -78,6 +80,7 @@ export function Select({
   disabled,
   name,
   "aria-label": ariaLabel,
+  describedBy: extraDescription,
   emptyText = "",
   ref,
 }: SelectProps) {
@@ -120,6 +123,7 @@ export function Select({
           disabled={disabled}
           name={name}
           ariaLabel={ariaLabel}
+          extraDescription={extraDescription}
           options={options}
           value={picked?.value}
           onChange={onChange}
@@ -137,7 +141,7 @@ export function Select({
           data-field-text=""
           className={`${controlClasses} appearance-none ${tone}`}
           aria-label={ariaLabel}
-          aria-describedby={field?.describedBy}
+          aria-describedby={describedBy(field?.describedBy, extraDescription)}
           aria-invalid={invalid || undefined}
           aria-required={field?.required || undefined}
         >
@@ -162,6 +166,7 @@ interface PickerButtonProps {
   readonly disabled: boolean | undefined;
   readonly name: string | undefined;
   readonly ariaLabel: string | undefined;
+  readonly extraDescription: string | undefined;
   readonly options: readonly SelectOption[];
   /** The picked value, or `undefined` while the placeholder shows. */
   readonly value: string | undefined;
@@ -182,6 +187,7 @@ function PickerButton({
   disabled,
   name,
   ariaLabel,
+  extraDescription,
   options,
   value,
   onChange,
@@ -216,7 +222,7 @@ function PickerButton({
         className={`${controlClasses} flex items-center text-start phone:py-3`}
         aria-haspopup="dialog"
         aria-labelledby={labelledBy}
-        aria-describedby={field?.describedBy}
+        aria-describedby={describedBy(field?.describedBy, extraDescription)}
       >
         <span id={valueId} className={`min-w-0 break-words ${tone}`}>
           {label}
