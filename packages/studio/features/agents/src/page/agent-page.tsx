@@ -147,12 +147,15 @@ export function AgentScreen({
   const [view, setView] = useState<AgentView>("configuration");
   const [saveFailed, setSaveFailed] = useState<string>();
   const ids = useTabIds();
-  const save = async (change: AgentChange) => {
+  // Resolves to whether the change was written, so a page can put its control back when it wasn't.
+  const save = async (change: AgentChange): Promise<boolean> => {
     try {
       await host.update({ hubId, id }, change);
       setSaveFailed(undefined);
+      return true;
     } catch (error) {
       setSaveFailed(error instanceof Error ? error.message : pageWords.saveFailed);
+      return false;
     }
   };
   const name = load.kind === "ready" ? load.value.name : id;

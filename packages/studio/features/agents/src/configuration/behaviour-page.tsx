@@ -7,8 +7,8 @@ import { useAutoSaved } from "./use-auto-saved.ts";
 /** Props for {@link BehaviourPage}. */
 export interface BehaviourPageProps {
   readonly settings: AgentSettings;
-  /** Saves one change; rejects with the reason it couldn't write. */
-  readonly save: (change: AgentChange) => Promise<void>;
+  /** Saves one change; resolves to whether it was written. */
+  readonly save: (change: AgentChange) => Promise<boolean>;
 }
 
 const keyCheck = (text: string): string | null =>
