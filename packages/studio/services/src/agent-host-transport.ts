@@ -6,6 +6,7 @@ import {
   type AgentHostStreamRoute,
   type AgentHostTransport,
 } from "@halonicjs/adapter-agent-host-client";
+import { AgentHostNotAnswering } from "./agent-host-not-answering.ts";
 import { TauriChannel } from "./tauri-channel.ts";
 import { type TauriCallbacks, type TauriIpc, tauriChannelIpc } from "./tauri-ipc.ts";
 
@@ -22,9 +23,12 @@ let nextStreamId = 1;
  * commands (`apps/studio/src-tauri/src/agent_host.rs`). The shell starts the
  * host and keeps its launch token, so the page never sees it.
  *
- * A refusal from the shell (`unknown_route`, `host_unavailable`, ...) is an
- * {@link AgentHostError} with status `0`. The host's own refusals are
- * answers, as the transport promises.
+ * A refusal from the shell (`unknown_route`, `io`, ...) is an
+ * {@link AgentHostError} with status `0`, except `host_unavailable`: a host
+ * that isn't running or didn't answer in time is an
+ * {@link AgentHostNotAnswering}, which Studio's screens word as the engine
+ * not answering. The host's own refusals are answers, as the transport
+ * promises.
  */
 export class TauriAgentHostTransport implements AgentHostTransport {
   readonly #ipc: TauriIpc & TauriCallbacks;
@@ -93,7 +97,7 @@ export class TauriAgentHostTransport implements AgentHostTransport {
     return { ok: true, lines: stream.lines() };
   }
 
-  /** Invokes `command`, turning the shell's refusal into an {@link AgentHostError}. */
+  /** Invokes `command`, turning the shell's refusal into an error (see {@link shellRefusal}). */
   async #invoke(command: string, args: Record<string, unknown>, signal?: AbortSignal) {
     signal?.throwIfAborted();
     try {
@@ -235,16 +239,21 @@ function invalid(route: string): AgentHostError {
   );
 }
 
-/** The shell's refusal `{ kind, message }`, or anything else `invoke` rejected with. */
-function shellRefusal(error: unknown): AgentHostError {
+/**
+ * The shell's refusal `{ kind, message }`, or anything else `invoke` rejected
+ * with, as an {@link AgentHostError}; `host_unavailable` as an
+ * {@link AgentHostNotAnswering} around it.
+ */
+function shellRefusal(error: unknown): AgentHostError | AgentHostNotAnswering {
   if (isRecord(error) && typeof error["kind"] === "string") {
     const message = typeof error["message"] === "string" ? error["message"] : error["kind"];
-    return new AgentHostError(
+    const refusal = new AgentHostError(
       0,
       error["kind"],
       `The shell refused the agent host call: ${message}.`,
       typeof error["reason"] === "string" ? error["reason"] : undefined,
     );
+    return refusal.kind === "host_unavailable" ? new AgentHostNotAnswering(refusal) : refusal;
   }
   const message = error instanceof Error ? error.message : String(error);
   return new AgentHostError(0, "shell_failed", `The shell's agent host call failed: ${message}.`);
