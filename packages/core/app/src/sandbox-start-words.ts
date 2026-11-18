@@ -101,8 +101,8 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
     fix: "sign in, for example with docker login for Docker Sandboxes.",
   },
   "not-offered": {
-    reason: "Halonic runs Claude Code and Codex agents only in the sandbox for now.",
-    fix: "set this agent back to the sandbox.",
+    reason: "Halonic can't run Claude Code or Codex agents outside the sandbox yet.",
+    fix: "save a change to this agent's file, which puts it back in the sandbox.",
   },
   other: {
     reason: "Halonic can't tell what the sandbox is missing.",

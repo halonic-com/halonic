@@ -18,8 +18,6 @@ function refusalSentence(refusal: RunNowRefusal, routine: RunNowRoutine): string
       return runNowWords.targetNeverLive(routine.targetName);
     case "target-in-trash":
       return runNowWords.targetInTrash(routine.targetName);
-    case "agent-runs-not-built":
-      return runNowWords.agentRunsNotBuilt;
   }
 }
 

@@ -1,12 +1,6 @@
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import type { SetTimer } from "@halonicjs/adapter-scheduler-node";
-import {
-  type BridgeApprovals,
-  type Clock,
-  type IdGenerator,
-  isAgentRunsNotAvailable,
-  type Secrets,
-} from "@halonicjs/ports";
+import type { BridgeApprovals, Clock, IdGenerator, Secrets } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
@@ -364,17 +358,15 @@ verifies("studio.engine-service", () => {
       await service.close();
     });
 
-    it("refuses a routine's agent with the executor's own refusal while agent runs aren't built", async () => {
+    it("refuses a routine's agent as `unavailable` while agent runs aren't built", async () => {
       const service = serviceOn(fakeShell());
 
-      const refusal = await service
-        .startRoutine(
+      await expect(
+        service.startRoutine(
           { agent: { hubId: "support", agentId: "writer", prompt: "Go." } },
           { routineKey: "support/weekly", at: "2026-11-15T10:00:00.000Z" },
-        )
-        .catch((error: unknown) => error);
-
-      expect(isAgentRunsNotAvailable(refusal)).toBe(true);
+        ),
+      ).rejects.toMatchObject({ kind: "unavailable" });
       await service.close();
     });
 

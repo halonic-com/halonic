@@ -415,7 +415,6 @@ verifies("routines.page.run-now", () => {
       [{ reason: "target-in-trash" }, "Not started: Briefing is in the trash."],
       [{ reason: "target-not-found" }, "Not started: Briefing isn't in this hub any more."],
       [{ reason: "not-trusted" }, "Not started: Daily isn't trusted yet."],
-      [{ reason: "agent-runs-not-built" }, "Not started: Run now can't start an agent yet."],
       [
         { reason: "signed-out", account: "fin@acme.example" },
         "Not started: fin@acme.example is signed out.",

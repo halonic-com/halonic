@@ -49,7 +49,7 @@ code is built the way it is, before you change something they describe.
 | [Google sign-in and the setup record](2026-11-14-google-sign-in-and-the-setup-record.md) | The callback sits outside the session with `state` as proof, on loopback only; the setup record holds no secret and points at its connector |
 | [Only the remote gateway is reachable by a tunnel](2026-11-16-only-the-remote-gateway-is-reachable-by-a-tunnel.md) | `TunnelProvider` points only at the loopback remote gateway, which speaks a narrow, versioned protocol; resumable, foreground-only, no plain http |
 | [Pairing and the end-to-end session](2026-11-18-pairing-and-the-end-to-end-session.md) | Gateway protocol v2 runs inside Noise: XXpsk3 to pair (the code is the psk, the check code comes from the handshake hash), IK to reconnect; `not-paired` only after the host proved itself |
-| [A backend the app doesn't offer here says `not-offered`](2026-11-18-sandbox-reason-not-offered.md) | A new `SandboxUnavailableReason` for Studio's "on this computer", worded as "only in the sandbox" rather than "can't tell what's missing" (v8) |
+| [A backend the app doesn't offer here says `not-offered`](2026-11-18-sandbox-reason-not-offered.md) | A new `SandboxUnavailableReason` for Studio's "on this computer", worded as "can't run … outside the sandbox yet" rather than "can't tell what's missing" (v8) |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).

@@ -42,6 +42,7 @@ import {
   type DefinitionStore,
   type HttpClient,
   type IdGenerator,
+  isAgentRunsNotAvailable,
   noKeyOrigins,
   type RunExecutor,
   type Secrets,
@@ -194,9 +195,8 @@ export class EngineService {
    *
    * @param trigger the routine's key and the time the person asked for the run
    * @returns the new run's id
-   * @throws AgentRunsNotAvailable when the target is an agent, because agent runs aren't built yet
-   *   (`ports.agent-runs-not-available`): the executor's own refusal, so the routine can say so
-   * @throws what {@link EngineService.startRun} throws
+   * @throws KindedError `unavailable` when the target is an agent, because agent runs aren't built yet
+   *   (`ports.agent-runs-not-available`), or what {@link EngineService.startRun} throws
    */
   async startRoutine(
     start: RoutineRunStart,
@@ -213,8 +213,15 @@ export class EngineService {
     await this.checkAgent(start.agent);
     // As the port: the local executor's own `startAgent` takes no request until agent runs are built.
     const executor: RunExecutor = (await this.open()).executor;
-    const { id } = await executor.startAgent({ ...start.agent, trigger: runTrigger });
-    return { id };
+    try {
+      const { id } = await executor.startAgent({ ...start.agent, trigger: runTrigger });
+      return { id };
+    } catch (error) {
+      if (!isAgentRunsNotAvailable(error)) throw error;
+      throw new KindedError("unavailable", "This window can't start an agent yet.", {
+        fix: "Run this routine from the command line.",
+      });
+    }
   }
 
   /**

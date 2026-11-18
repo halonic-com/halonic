@@ -9,7 +9,7 @@ When the user chooses **New routine**, the routines feature shall ask for a name
 ## Examples
 
 - Given one hub "acme", then the dialog has **Name**, focused, and no Hub field, and the line "Folder: hubs/acme/workflows/routines/".
-- Given acme's first workflow is "Briefing", then the dialog says "It runs Briefing when you press Run now. Pick when it runs on its own next."; given acme has no workflow and its first agent is "Analyst", it says "This routine starts Analyst, but routines can't start an agent yet. Point it at a workflow to run it."
+- Given acme's first workflow is "Briefing", then the dialog says "It runs Briefing when you press Run now. Pick when it runs on its own next."; given acme has no workflow and its first agent is "Analyst", it says "This routine starts Analyst, but Halonic can't run an agent on its own yet, only as a step in a workflow. Make a workflow, then pick it under Starts on the routine's page."
 - Given the hubs "acme" and "beta", then a **Hub** field lists both, and picking "beta" changes the line to "Folder: hubs/beta/workflows/routines/" and the line about what it runs.
 - Given the name "Morning digest", then the line reads "File: hubs/acme/workflows/routines/morning-digest.routine.yaml"; given acme already has `morning-digest`, it reads `morning-digest-2.routine.yaml`.
 - Given the user presses **Create** with the name "Morning digest", then the host creates it in the picked hub and its tab opens.

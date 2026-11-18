@@ -46,7 +46,6 @@ export const runNowWords = {
   targetNotFound: (target: string) => `Not started: ${target} isn't in this hub any more.`,
   targetNeverLive: (target: string) => `Not started: ${target} isn't live yet.`,
   targetInTrash: (target: string) => `Not started: ${target} is in the trash.`,
-  agentRunsNotBuilt: "Not started: Run now can't start an agent yet.",
   couldntStart: (name: string) => `Couldn't start ${name}.`,
   signIn: "Sign in with Google",
   couldntSignIn: (account: string) => `Couldn't start the sign-in for ${account}.`,

@@ -1,5 +1,4 @@
 import type { RunSummary } from "@halonicjs/events";
-import { AgentRunsNotAvailable } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { EngineNotAnswering, NothingToRun } from "@halonicjs/studio-feature-routines/api";
 import { verifies } from "@halonicjs/testing-spec";
@@ -401,20 +400,6 @@ verifies("studio.workspace-routines", () => {
     });
     await expect(down.host.runNow?.(weekly)).rejects.toThrow(EngineNotAnswering);
     expect(setup().host.runNow).toBeUndefined();
-  });
-
-  it("says Run now can't start an agent yet, not that the engine isn't answering", async () => {
-    const agentRuns = setup({
-      engine: {
-        start: async () => {
-          throw new AgentRunsNotAvailable("Not yet.");
-        },
-      },
-    });
-    expect(await agentRuns.host.runNow?.(weekly)).toEqual({
-      started: false,
-      refusal: { reason: "agent-runs-not-built" },
-    });
   });
 
   it("keeps the window's own reason for an agent it can't start", async () => {

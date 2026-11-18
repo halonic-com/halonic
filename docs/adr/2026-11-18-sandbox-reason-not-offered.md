@@ -27,8 +27,9 @@ Nothing else in the port changes.
 ## Consequences
 
 - Every catalogue that words each code words `not-offered`: Studio's
-  sandbox-start words ("Halonic runs Claude Code and Codex agents only in the
-  sandbox for now. Set this agent back to the sandbox."), the CLI's sandbox
+  sandbox-start words ("Halonic can't run Claude Code or Codex agents outside
+  the sandbox yet. Save a change to this agent's file, which puts it back in
+  the sandbox."), the CLI's sandbox
   messages and Settings' backend sentence. The compiler finds a catalogue that
   misses it.
 - The runner's reasons take the check's code as it is, so they list it too. No

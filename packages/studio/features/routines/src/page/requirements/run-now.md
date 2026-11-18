@@ -14,5 +14,4 @@ Where the host can start a run, the routine page shall show **Run now** in its h
 - Given the routine is off, then **Run now** is still there and starts the run.
 - Given the host refuses because the target isn't live yet, then a toast that stays says "Not started: Briefing isn't live yet."
 - Given the host refuses because the account is signed out, then a toast that stays says "Not started: fin@acme.example is signed out."
-- Given the routine starts an agent and the host refuses because agent runs aren't built yet, then a toast that stays says "Not started: Run now can't start an agent yet.", not that the engine isn't answering.
 - Given the engine isn't answering, then a toast that stays says "Couldn't start Daily." with the reason.
