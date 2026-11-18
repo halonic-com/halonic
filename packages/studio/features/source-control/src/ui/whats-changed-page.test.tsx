@@ -128,10 +128,40 @@ verifies("source-control.whats-changed-page", () => {
         { path: second, text: "Be brief.\n", expected: "Be kind.\n" },
         { path: first, text: "Be kind.\n", expected: "Be brief.\n" },
       ]);
+      expect(toasts.list()).toHaveLength(1);
+      expect(toasts.list()[0]).toMatchObject({
+        tone: "danger",
+        title: "Couldn't discard these changes",
+      });
+      expect(toasts.list()[0]?.text).toContain("The file changed while you were looking.");
+      expect(toasts.list()[0]?.action).toBeUndefined();
+      expect(page.querySelector('[role="alert"]')).toBeNull();
+    });
+
+    it("shows a warning with the files not put back, and Try again, when the roll-back fails too", async () => {
+      const { fake, root, toasts } = await openPage();
+      const page = openItem(root, "tone");
+      const [first, second] = skillPaths;
+      fake.setTexts(second, { before: "Be brief.\n", after: "Edited elsewhere.\n" });
+      const replaceFile = fake.source.replaceFile.bind(fake.source);
+      let writes = 0;
+      vi.spyOn(fake.source, "replaceFile").mockImplementation(async (path, text, expected) => {
+        writes += 1;
+        // The third write is the roll-back of the first file.
+        return writes === 3 ? "changed-on-disk" : replaceFile(path, text, expected);
+      });
+      await act(async () => {
+        buttons(page, "Undo these changes")[0]?.click();
+        await settle();
+      });
       expect(toasts.list()).toHaveLength(0);
-      expect(page.querySelector('[role="alert"]')?.textContent).toContain(
-        "The file changed while you were looking.",
-      );
+      const callout = page.querySelector<HTMLElement>('[role="group"]');
+      expect(callout?.textContent).toContain("Couldn't undo all changes to tone");
+      expect(callout?.textContent).toContain(first);
+      expect(callout?.textContent).not.toContain(second);
+      expect(document.activeElement).toBe(callout);
+      // The kit keeps the busy label in the button too, so its text is both.
+      expect(buttons(callout as HTMLElement, "Try againUndoing…")).toHaveLength(1);
     });
   });
 });

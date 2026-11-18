@@ -49,7 +49,12 @@ export type UndoOutcome =
 export type DiscardOutcome =
   | UndoOutcome
   | { readonly kind: "noCopy" }
-  | { readonly kind: "discarded"; readonly putBack: () => Promise<string | undefined> };
+  | { readonly kind: "discarded"; readonly putBack: () => Promise<string | undefined> }
+  /**
+   * An item's undo failed and so did the roll-back: `paths` are the files not put back as they
+   * were, and `reason` says what went wrong. Only an item's undo gives this, never one file's.
+   */
+  | { readonly kind: "partial"; readonly reason: string; readonly paths: readonly string[] };
 
 /** What {@link ChangesList.getUpdates} did. */
 export type UpdatesOutcome =

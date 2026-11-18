@@ -159,6 +159,12 @@ export const discardWords = {
   noCopyBody: "Halonic couldn't keep a copy, so this can't be undone.",
   noCopyConfirm: "Undo changes",
   noCopyBusy: "Undoing…",
+  /** The Callout when an item's undo failed and the roll-back failed too (checklist 2.5). */
+  partialTitle: (name: string) => `Couldn't undo all changes to ${name}`,
+  partialBody: (reason: string) =>
+    `${reason} Halonic couldn't put these files back as they were, and kept a copy of what it changed.`,
+  tryAgain: "Try again",
+  tryAgainBusy: "Undoing…",
 };
 
 /** Create version (checklist part 2, 2.6; microcopy revision 94, 16). */

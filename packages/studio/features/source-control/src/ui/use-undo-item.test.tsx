@@ -44,7 +44,7 @@ verifies("source-control.discard", () => {
           <Probe />
         </ToastStoreProvider>,
       );
-      let first: Promise<string | undefined> = Promise.resolve(undefined);
+      let first: Promise<void> = Promise.resolve();
       await act(async () => {
         first = undoing?.undo(item) ?? first;
         await undoing?.undo(item);
