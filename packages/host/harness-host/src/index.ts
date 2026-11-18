@@ -4,7 +4,13 @@ export {
   type BridgeServicesSource,
   LocalBridgeHost,
 } from "./bridge-host.ts";
-export { type HarnessHost, type HarnessHostInput, harnessHostOf } from "./harness-host.ts";
+export {
+  type HarnessHost,
+  type HarnessHostInput,
+  harnessHostOf,
+  type RunProposalsParts,
+  runProposalsOf,
+} from "./harness-host.ts";
 export { HistoryProposalFolders, ProposalsNeedHistoryError } from "./history-proposal-folders.ts";
 export {
   HarnessApprovalsNotWiredError,
