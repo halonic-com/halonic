@@ -72,7 +72,7 @@ export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
       </h2>
       <Rows load={load} owner={owner} retry={retry} openRoutine={openRoutine} />
       {addError !== undefined && (
-        <p role="alert" className="text-small text-danger-text">
+        <p role="alert" className="text-small text-danger">
           {addError}
         </p>
       )}

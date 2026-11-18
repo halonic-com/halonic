@@ -24,7 +24,7 @@ export function FileHeader({ path, actions }: FileHeaderProps) {
   const folder = folderOf(path);
   return (
     <header className="flex items-center gap-2 px-4 py-2">
-      <h1 className="min-w-0 truncate text-base font-medium" title={path}>
+      <h1 className="min-w-0 truncate text-body-strong" title={path}>
         {fileName(path)}
       </h1>
       {folder !== "" && <span className="min-w-0 truncate text-small text-fg-muted">{folder}</span>}

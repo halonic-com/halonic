@@ -204,7 +204,7 @@ function ConfigurationBody({
     <ul className="flex flex-col divide-y divide-border">
       {rows.map((row, at) => (
         <li key={at} className="flex items-center gap-3 py-3">
-          <span aria-hidden="true" className={row.severity === "error" ? "text-danger-text" : ""}>
+          <span aria-hidden="true" className={row.severity === "error" ? "text-danger" : ""}>
             {row.glyph}
           </span>
           <span className="sr-only">{row.severity === "error" ? words.error : words.warning}:</span>
