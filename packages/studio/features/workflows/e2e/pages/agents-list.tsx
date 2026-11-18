@@ -52,6 +52,8 @@ const host: AgentsHost = {
   nameOf: (ref) => agents.find((agent) => agent.hubId === ref.hubId && agent.id === ref.id)?.name,
   modelAliases: async () => ["fast", "smart"],
   harnessReadiness: async () => ({ status: "ready", version: "1.0.0" }),
+  filePath: async (ref) => `hubs/${ref.hubId}/agents/${ref.id}.agent.yaml`,
+  trash: async () => ({ undo: async () => undefined }),
   referencesTo: async () => [],
   subscribe: () => () => undefined,
   create: async ({ hubId, name }) => ({ hubId, id: name.toLowerCase() }),

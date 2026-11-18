@@ -17,6 +17,9 @@ function setup() {
   };
   const changes: { label: string; changes: Record<string, string | null> }[] = [];
   const listeners = new Set<() => void>();
+  // What each step replaced, so `undo` can put it back, as the kernel's files do.
+  const undoable: Record<string, string | null>[] = [];
+  let step = 0;
   const host = new WorkspaceAgents({
     files: {
       read: async (path) => store[path] ?? null,
@@ -26,11 +29,29 @@ function setup() {
           .sort(),
       change: (label, made) => {
         changes.push({ label, changes: made });
+        undoable.push(
+          Object.fromEntries(Object.keys(made).map((path) => [path, store[path] ?? null])),
+        );
+        step += 1;
         for (const [path, text] of Object.entries(made)) {
           if (text === null) delete store[path];
           else store[path] = text;
         }
         for (const listener of listeners) listener();
+      },
+      undo: () => {
+        const before = undoable.pop();
+        if (before === undefined) return false;
+        for (const [path, text] of Object.entries(before)) {
+          if (text === null) delete store[path];
+          else store[path] = text;
+        }
+        step += 1;
+        for (const listener of listeners) listener();
+        return true;
+      },
+      get step() {
+        return step;
       },
     },
     onChange: (listener) => {
@@ -187,6 +208,48 @@ verifies("studio.workspace-agents", () => {
       await expect(
         host.harnessReadiness({ hubId: "acme", id: "gone" }, "codex"),
       ).rejects.toMatchObject({
+        kind: "not_found",
+      });
+    });
+  });
+});
+
+verifies("studio.workspace-agents-trash", () => {
+  describe("WorkspaceAgents trash", () => {
+    it("gives the path of the agent's file, and not_found for an agent that isn't there", async () => {
+      const { host } = setup();
+      expect(await host.filePath({ hubId: "acme", id: "writer" })).toBe(
+        "hubs/acme/agents/writer.agent.yaml",
+      );
+      await expect(host.filePath({ hubId: "acme", id: "gone" })).rejects.toMatchObject({
+        kind: "not_found",
+      });
+    });
+
+    it("moves the agent's file to the trash as one change, and Undo puts it back while that is the newest", async () => {
+      const { host, store, changes } = setup();
+      const ref = { hubId: "acme", id: "writer" };
+
+      const trashed = await host.trash(ref);
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toBeUndefined();
+      expect(changes).toEqual([
+        { label: "Deleted agent Writer", changes: { "hubs/acme/agents/writer.agent.yaml": null } },
+      ]);
+      expect(await host.list()).toEqual([]);
+
+      await trashed.undo();
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toBe(writerFile);
+      expect((await host.list()).map((agent) => agent.id)).toEqual(["writer"]);
+    });
+
+    it("refuses Undo once something else changed, and an agent that isn't there", async () => {
+      const { host, store } = setup();
+      const trashed = await host.trash({ hubId: "acme", id: "writer" });
+      store["hubs/acme/agents/other.agent.yaml"] = "id: other\nname: Other\n";
+      await host.create({ name: "Newer", hubId: "acme" });
+
+      await expect(trashed.undo()).rejects.toMatchObject({ kind: "conflict" });
+      await expect(host.trash({ hubId: "acme", id: "gone" })).rejects.toMatchObject({
         kind: "not_found",
       });
     });

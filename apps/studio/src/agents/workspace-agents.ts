@@ -11,6 +11,7 @@ import type {
   AgentUser,
   HarnessReadiness,
   NewAgent,
+  TrashedAgent,
 } from "@halonicjs/studio-feature-agents/api";
 import { filesOf, loadWorkspace, modelAliases } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
@@ -26,6 +27,10 @@ export interface WorkspaceAgentsParts {
       changes: Record<string, string | null>,
       options?: { coalesceKey?: string },
     ): void;
+    /** The kernel's `WorkspaceFiles.undo`: `false` when there was nothing to undo. */
+    undo(): boolean;
+    /** The kernel's `WorkspaceFiles.step`: moves on every change, so it tells a step is still the newest. */
+    readonly step: number;
   };
   /** Calls `listener` after every change of the workspace's files; returns the way to stop. */
   readonly onChange: (listener: () => void) => () => void;
@@ -175,6 +180,33 @@ export class WorkspaceAgents implements AgentsHost {
       { coalesceKey: `agent:${path}:${fields}` },
     );
     if (change.name !== undefined) this.#names.set(`${ref.hubId}/${ref.id}`, change.name);
+  }
+
+  /** The path of the agent's file; throws `not_found` when the agent isn't there. */
+  async filePath(ref: AgentRef): Promise<string> {
+    return (await this.#find(ref)).path;
+  }
+
+  /**
+   * Moves the agent's file to the trash as one change. Undo is the workspace's undo, so it puts the
+   * agent back only while the delete is still the newest step: after any other change it rejects
+   * and undoes nothing.
+   */
+  async trash(ref: AgentRef): Promise<TrashedAgent> {
+    const { files } = this.#parts;
+    const { agent, path } = await this.#find(ref);
+    files.change(`Deleted agent ${agent.name}`, { [path]: null });
+    const afterDelete = files.step;
+    return {
+      undo: async () => {
+        if (files.step !== afterDelete || !files.undo()) {
+          throw new KindedError(
+            "conflict",
+            `${agent.name} can't be put back, because the workspace changed after it was deleted.`,
+          );
+        }
+      },
+    };
   }
 
   /** The aliases of `models.yaml` and of the agent's hub; throws `not_found` when the agent isn't there. */

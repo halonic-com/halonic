@@ -76,6 +76,15 @@ export interface NewAgent {
   readonly instructions?: string | undefined;
 }
 
+/** An agent that was moved to the trash, and the way to bring it back. */
+export interface TrashedAgent {
+  /**
+   * Puts the agent back. It is the workspace's undo, so it works only while the delete is still the
+   * newest change; after any other change it rejects with `conflict` and undoes nothing.
+   */
+  undo(): Promise<void>;
+}
+
 /** A workflow that runs an agent in one of its task steps. */
 export interface AgentUser {
   readonly hubId: string;
@@ -111,6 +120,17 @@ export interface AgentsHost {
    * Never rejects: a check that didn't work answers `failed`. `halonic` is always `ready`.
    */
   harnessReadiness(ref: AgentRef, harness: AgentHarnessId): Promise<HarnessReadiness>;
+  /**
+   * The path of the agent's file from the workspace folder, for **Open as file**. Rejects like
+   * {@link AgentsHost.read}.
+   */
+  filePath(ref: AgentRef): Promise<string>;
+  /**
+   * Moves the agent's file to the trash as one change, with no dialog. Rejects with `not_found`
+   * when the agent isn't there, and with the reason it couldn't. The workflows that run the agent
+   * are left as they are and show an error until they name another one.
+   */
+  trash(ref: AgentRef): Promise<TrashedAgent>;
   /**
    * The name of an agent the host has read or made, for a tab or a page title, or `undefined`
    * before it has read it. Sync, because a tab is named the moment it opens.

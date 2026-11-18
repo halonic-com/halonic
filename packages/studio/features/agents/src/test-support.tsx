@@ -56,3 +56,26 @@ export function openDialogsInJsdom(): void {
   });
   Element.prototype.scrollIntoView = () => {};
 }
+
+/** jsdom has no popover API: a menu opens by setting `data-popover-open`. Returns the way to undo it. */
+export function installFakePopover(): () => void {
+  const names = ["showPopover", "hidePopover"] as const;
+  for (const name of names) {
+    Object.defineProperty(HTMLElement.prototype, name, {
+      configurable: true,
+      value(this: HTMLElement) {
+        const open = name === "showPopover";
+        if (this.hasAttribute("data-popover-open") === open) return;
+        this.dispatchEvent(
+          Object.assign(new Event("beforetoggle"), { newState: open ? "open" : "closed" }),
+        );
+        this.toggleAttribute("data-popover-open", open);
+        // jsdom hides every `[popover]` and can't focus inside it.
+        this.style.display = open ? "block" : "";
+      },
+    });
+  }
+  return () => {
+    for (const name of names) Reflect.deleteProperty(HTMLElement.prototype, name);
+  };
+}
