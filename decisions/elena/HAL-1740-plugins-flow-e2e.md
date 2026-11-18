@@ -3,6 +3,7 @@
 - Task: HAL-1740
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12150#comment-0cf2cf4d-d6fc-4d56-9d39-745e3f359e4f (Liam approved the Plugins flow step in the Studio end-to-end job)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FchNXbKzN+hHt7lDc+dx15uLbg8uECRStNWExBBe20ghED0Rm60WzIt8sXqb9tImtu2KWT2WcwFqnBaBAnoBDA==
 
 ## What changes
 
