@@ -254,6 +254,7 @@ export {
   type StatusChipTone,
 } from "./status-chip/status-chip.tsx";
 export { Switch, type SwitchProps, type SwitchUnavailable } from "./switch/switch.tsx";
+export type { TabOrientation } from "./tabs/tab-keys.ts";
 export {
   type Tab,
   type TabCount,
