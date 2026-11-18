@@ -11,8 +11,10 @@
 // `http`), not its own `fetch`, which the window's content policy stops. The
 // shell checks every address and every redirect hop, and a key never goes
 // through the webview's network layer (the page still reads it from `secrets`).
-// The page can start neither a connector nor a harness: a workflow with an
-// agent that needs either is refused as `unavailable` before the engine opens.
+// The page starts no connector: a workflow with an agent that lists one is
+// refused as `unavailable` before the engine opens. Agents in a harness run in
+// the agent host's sandbox (`openHarnessHost`, HAL-10849); where no agent host
+// runs, a workflow with one is refused the same way.
 
 import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
 import { TauriBlobStore, TauriRecordStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
@@ -27,9 +29,15 @@ import {
   workspaceExecutorOptions,
 } from "@halonicjs/adapter-workspace-models";
 import type { startOfDueRun } from "@halonicjs/app";
-import { type AssembledEngine, assembleEngine, noListedToolApproval } from "@halonicjs/engine";
+import {
+  type AssembledEngine,
+  assembleEngine,
+  type LocalExecutor,
+  noListedToolApproval,
+} from "@halonicjs/engine";
 import type { Agent } from "@halonicjs/format";
 import {
+  type BridgeApprovals,
   type Clock,
   type DefinitionStore,
   type HttpClient,
@@ -48,6 +56,7 @@ import {
   loadWorkspace,
   runDefinitionsOf,
 } from "@halonicjs/workspace";
+import type { StudioHarnessHost } from "./studio-harness-host.ts";
 
 /** What a routine starts, with its placeholders filled in: what the routine scheduler would start. */
 export type RoutineRunStart = ReturnType<typeof startOfDueRun>;
@@ -88,6 +97,14 @@ export interface EngineServiceOptions {
   readonly newToken: () => string;
   /** Hears each error the engine handles itself, such as a timer that will be retried. */
   reportError(error: unknown): void;
+  /**
+   * Builds the harness host on the agent host, when one runs (`openStudioHarnessHost`).
+   * `approvalsOf` gives one run's bridge approvals, the engine's once it is built.
+   * Without it, a workflow with an agent in a harness is refused.
+   */
+  openHarnessHost?(
+    approvalsOf: (runId: string) => BridgeApprovals | undefined,
+  ): Promise<StudioHarnessHost>;
 }
 
 /** The engine of one workspace in the page, opened on first use. */
@@ -117,7 +134,8 @@ export class EngineService {
 
   /**
    * Refuses a workflow the page can't run, before the engine opens: one with
-   * an agent in a harness, or an agent that lists a connector.
+   * an agent that lists a connector, or an agent in a harness when no agent
+   * host runs.
    *
    * @throws KindedError `unavailable` naming the agent
    * @throws RangeError when the hub or the workflow doesn't exist
@@ -126,7 +144,7 @@ export class EngineService {
     const workspace = await loadWorkspace(this.#options.definitions);
     runDefinitionsOf(workspace, run.hubId, run.workflowId);
     for (const { value: agent } of workflowAgentsOf(workspace, run)) {
-      refuseWhatThePageCantStart(agent);
+      this.#refuseWhatThePageCantStart(agent);
     }
   }
 
@@ -145,7 +163,7 @@ export class EngineService {
     if (file === undefined) {
       throw new RangeError(`The hub "${hubId}" has no agent "${agentId}".`);
     }
-    refuseWhatThePageCantStart(file.value);
+    this.#refuseWhatThePageCantStart(file.value);
   }
 
   /**
@@ -223,12 +241,46 @@ export class EngineService {
     return this.close();
   }
 
+  /**
+   * Refuses an agent the page can't start: one that lists a connector, or one in a harness
+   * program when no agent host runs.
+   */
+  #refuseWhatThePageCantStart(agent: Agent): void {
+    if (startsAProgram(agent.harness) && this.#options.openHarnessHost === undefined) {
+      throw unavailable(agent.name, "runs in a harness program");
+    }
+    if (agent.connectors.length > 0) {
+      throw unavailable(agent.name, "uses a connector");
+    }
+  }
+
+  /**
+   * The harness host, or none when no agent host runs or it can't be reached
+   * now. Without one the engine still opens for the workflows that need none,
+   * and a run of an agent in a harness fails at its harness step.
+   */
+  async #openHarnessHost(
+    approvalsOf: (runId: string) => BridgeApprovals | undefined,
+  ): Promise<StudioHarnessHost | undefined> {
+    try {
+      return await this.#options.openHarnessHost?.(approvalsOf);
+    } catch (error) {
+      this.#options.reportError(error);
+      return undefined;
+    }
+  }
+
   async #openOnce(): Promise<AssembledEngine> {
     const { ipc, location, clock, reportError } = this.#options;
     await holdLock(ipc, location);
     try {
       const workspace = await loadWorkspace(this.#options.definitions);
-      return assembleEngine({
+      const runStore = new TauriRunStore(ipc, location);
+      // Set once the engine is built; a bridge opens only during a run, so after that.
+      let executor: LocalExecutor | undefined;
+      const harnessHost = await this.#openHarnessHost((runId) => executor?.bridgeApprovals(runId));
+      await harnessHost?.start(await openRunsOf(runStore));
+      const engine = assembleEngine({
         createScheduler: nodeSchedulerFactory({
           store: new TauriRecordStore(ipc, location),
           collection: runTimerCollection,
@@ -249,12 +301,18 @@ export class EngineService {
             listedToolApproval: noListedToolApproval,
           }),
           runs: {
-            store: new TauriRunStore(ipc, location),
+            store: runStore,
             blobs: new TauriBlobStore(ipc, location),
             ids: this.#options.ids,
             definitionsOf: async (hubId, workflowId) =>
               runDefinitionsOf(workspace, hubId, workflowId),
             budget: workspaceBudget(() => workspace),
+            ...(harnessHost === undefined
+              ? {}
+              : {
+                  harnesses: harnessHost.harnesses,
+                  proposalFolders: harnessHost.proposalFolders,
+                }),
           },
         },
         coordination: new NodeCoordination({
@@ -266,11 +324,23 @@ export class EngineService {
         // Last, so no other engine starts while this one still delivers a timer.
         release: () => releaseLock(ipc, location),
       });
+      executor = engine.executor;
+      return engine;
     } catch (error) {
       await releaseLock(ipc, location);
       throw error;
     }
   }
+}
+
+/**
+ * The runs the engine hasn't ended, whose proposal folders stay at the
+ * host's start: those waiting for a person, and those it will end as
+ * interrupted on its first run.
+ */
+async function openRunsOf(runs: TauriRunStore): Promise<ReadonlySet<string>> {
+  const open = await runs.list({ status: ["running", "waiting"] });
+  return new Set(open.map((run) => run.id));
 }
 
 /** Takes the shell's engine lock, or refuses with a `conflict` that names the other process. */
@@ -309,16 +379,6 @@ function refusalOf(refusal: unknown): { kind?: string; message?: string; pid?: n
     ...(typeof message === "string" ? { message } : {}),
     ...(typeof pid === "number" ? { pid } : {}),
   };
-}
-
-/** Refuses an agent in a harness program or one that lists a connector: the page starts neither. */
-function refuseWhatThePageCantStart(agent: Agent): void {
-  if (startsAProgram(agent.harness)) {
-    throw unavailable(agent.name, "runs in a harness program");
-  }
-  if (agent.connectors.length > 0) {
-    throw unavailable(agent.name, "uses a connector");
-  }
 }
 
 function unavailable(agentName: string, why: string): KindedError {

@@ -59,6 +59,7 @@ import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
+import { openStudioHarnessHost } from "../engine/studio-harness-host.ts";
 import { WorkspaceFilesHost } from "../files/workspace-files-host.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
 import { WorkspaceNotices } from "../inbox/workspace-notices.ts";
@@ -156,6 +157,7 @@ export function provideFolderServices(
       onFilesChanged: (listener) => scope.events.on("files.changed", listener),
     }),
   );
+  const transport = tauriAgentHostTransport(window);
   const engine = services.provide(
     engineServiceKey,
     new EngineService({
@@ -173,9 +175,22 @@ export function provideFolderServices(
       },
       newToken: () => crypto.randomUUID(),
       reportError: (error) => console.error("The engine", error),
+      ...(transport === undefined
+        ? {}
+        : {
+            openHarnessHost: (approvalsOf) =>
+              openStudioHarnessHost({
+                transport,
+                location,
+                definitions: new TauriDefinitionStore(files, location),
+                digest: webCryptoDigest,
+                clock: systemClock,
+                approvalsOf,
+                reportError: (error) => console.error("The harness host", error),
+              }),
+          }),
     }),
   );
-  const transport = tauriAgentHostTransport(window);
   services.provide(
     AgentsHostService,
     new WorkspaceAgents({
