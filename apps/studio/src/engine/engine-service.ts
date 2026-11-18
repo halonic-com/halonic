@@ -15,6 +15,9 @@
 // refused as `unavailable` before the engine opens. Agents in a harness run in
 // the agent host's sandbox (`openHarnessHost`, HAL-10849); where no agent host
 // runs, a workflow with one is refused the same way.
+// Nothing starts from a workspace that isn't trusted, unless it reaches only
+// the test model, the CLI's rule (HAL-1984, HAL-12409): the engine checks it
+// on the workspace it loaded, when it opens and before each start.
 
 import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
 import { TauriBlobStore, TauriRecordStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
@@ -90,6 +93,12 @@ export interface EngineServiceOptions {
    * trusted exactly these files (HAL-11342).
    */
   readonly isTrusted: (workspace: LoadedWorkspace) => Promise<boolean>;
+  /**
+   * Whether anything may start from the workspace, as the engine loaded it: it is trusted on this
+   * computer, or it reaches only the test model. Asked when the engine opens and before each
+   * start; a check that rejects is a no.
+   */
+  readonly mayStart: (workspace: LoadedWorkspace) => Promise<boolean>;
   readonly ids: IdGenerator;
   /** How the scheduler wakes itself up. */
   readonly setTimer: SetTimer;
@@ -107,10 +116,16 @@ export interface EngineServiceOptions {
   ): Promise<StudioHarnessHost>;
 }
 
+/** An open engine and the workspace it was built on. */
+interface OpenEngine {
+  readonly engine: AssembledEngine;
+  readonly workspace: LoadedWorkspace;
+}
+
 /** The engine of one workspace in the page, opened on first use. */
 export class EngineService {
   readonly #options: EngineServiceOptions;
-  #opening: Promise<AssembledEngine> | undefined;
+  #opening: Promise<OpenEngine> | undefined;
 
   constructor(options: EngineServiceOptions) {
     this.#options = options;
@@ -122,14 +137,42 @@ export class EngineService {
    * same engine. A call that fails leaves nothing held, so the next call tries again.
    *
    * @throws KindedError `conflict` when another engine, the CLI's or another
-   *   window's, holds the workspace's lock
+   *   window's, holds the workspace's lock, or `denied` when the workspace may start nothing
    */
-  open(): Promise<AssembledEngine> {
+  async open(): Promise<AssembledEngine> {
+    return (await this.#open()).engine;
+  }
+
+  #open(): Promise<OpenEngine> {
     this.#opening ??= this.#openOnce().catch((error: unknown) => {
       this.#opening = undefined;
       throw error;
     });
     return this.#opening;
+  }
+
+  /**
+   * The open engine, for a start: refuses when its workspace may start nothing now, such as after
+   * a person removed their trust while the engine was open.
+   *
+   * @throws KindedError `denied`, or what {@link EngineService.open} throws
+   */
+  async #forStart(): Promise<AssembledEngine> {
+    const { engine, workspace } = await this.#open();
+    await this.#refuseUntrusted(workspace);
+    return engine;
+  }
+
+  /**
+   * Refuses, failing closed, a workspace that isn't trusted and reaches more than the test model.
+   *
+   * @throws KindedError `denied`
+   */
+  async #refuseUntrusted(workspace: LoadedWorkspace): Promise<void> {
+    const may = await this.#options.mayStart(workspace).catch(() => false);
+    if (!may) {
+      throw new KindedError("denied", "This workspace isn't trusted yet, so nothing was started.");
+    }
   }
 
   /**
@@ -180,7 +223,7 @@ export class EngineService {
     input: Record<string, unknown>,
   ): Promise<{ readonly id: string }> {
     await this.check(run);
-    const engine = await this.open();
+    const engine = await this.#forStart();
     // A run started from the window is the person's own, so it names a manual trigger: with none,
     // the Runs list says it was started in the terminal.
     const trigger = { type: "manual" as const, at: this.#options.clock.now().toISOString() };
@@ -206,13 +249,13 @@ export class EngineService {
     if ("workflow" in start) {
       const { hubId, workflowId } = start.workflow;
       await this.check({ hubId, workflowId });
-      const { executor } = await this.open();
+      const { executor } = await this.#forStart();
       const { id } = await executor.start({ ...start.workflow, trigger: runTrigger });
       return { id };
     }
     await this.checkAgent(start.agent);
     // As the port: the local executor's own `startAgent` takes no request until agent runs are built.
-    const executor: RunExecutor = (await this.open()).executor;
+    const executor: RunExecutor = (await this.#forStart()).executor;
     try {
       const { id } = await executor.startAgent({ ...start.agent, trigger: runTrigger });
       return { id };
@@ -232,8 +275,8 @@ export class EngineService {
     const opening = this.#opening;
     this.#opening = undefined;
     if (opening === undefined) return;
-    const engine = await opening.catch(() => undefined);
-    await engine?.close();
+    const open = await opening.catch(() => undefined);
+    await open?.engine.close();
   }
 
   /** Lets the workspace's service registry close the engine with the workspace. */
@@ -270,11 +313,14 @@ export class EngineService {
     }
   }
 
-  async #openOnce(): Promise<AssembledEngine> {
+  async #openOnce(): Promise<OpenEngine> {
     const { ipc, location, clock, reportError } = this.#options;
     await holdLock(ipc, location);
     try {
       const workspace = await loadWorkspace(this.#options.definitions);
+      // Before the scheduler and the harness host start, so an untrusted workspace's
+      // routines don't fire and its open harness runs don't resume either.
+      await this.#refuseUntrusted(workspace);
       const runStore = new TauriRunStore(ipc, location);
       // Set once the engine is built; a bridge opens only during a run, so after that.
       let executor: LocalExecutor | undefined;
@@ -325,7 +371,7 @@ export class EngineService {
         release: () => releaseLock(ipc, location),
       });
       executor = engine.executor;
-      return engine;
+      return { engine, workspace };
     } catch (error) {
       await releaseLock(ipc, location);
       throw error;

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FileSystemFolderReader, FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
@@ -147,5 +147,68 @@ verifies("studio.workspace-trust", () => {
 
     expect(trust.check).toBeUndefined();
     expect(trust.isTrusted()).toBe(false);
+  });
+});
+
+verifies("studio.untrusted-starts-nothing", () => {
+  const loaded = () => loadWorkspace(new FolderDefinitionStore(folder, folder));
+
+  /** Leaves the folder with one provider and no connector. */
+  async function onlyProvider(provider: string): Promise<void> {
+    await unlink(join(folder, "library/connectors/files.connector.yaml"));
+    await mkdir(join(folder, "providers"), { recursive: true });
+    await writeFile(join(folder, "providers/main.yaml"), provider);
+  }
+
+  it("lets a workspace that reaches only the test model start without trust", async () => {
+    await onlyProvider("id: main\ntype: mock\n");
+    const trust = new WorkspaceTrust(sourcesOf());
+
+    await expect(trust.mayStart(await loaded())).resolves.toBe(true);
+    await trust.refresh();
+    expect(trust.isTrusted()).toBe(false);
+    expect(trust.mayStartNow()).toBe(true);
+  });
+
+  it("stops an untrusted workspace with a keyless model server on this computer", async () => {
+    await onlyProvider(
+      "id: main\ntype: openai-compatible\nbaseUrl: http://localhost:11434/v1\nlocal: true\n",
+    );
+    const trust = new WorkspaceTrust(sourcesOf());
+
+    await expect(trust.mayStart(await loaded())).resolves.toBe(false);
+    await trust.refresh();
+    expect(trust.mayStartNow()).toBe(false);
+  });
+
+  it("stops an untrusted workspace whose provider keeps its key at its own address", async () => {
+    await onlyProvider("id: main\ntype: anthropic\nsecret: anthropic-key\n");
+
+    await expect(new WorkspaceTrust(sourcesOf()).mayStart(await loaded())).resolves.toBe(false);
+  });
+
+  it("lets a trusted workspace start", async () => {
+    const trust = new WorkspaceTrust(sourcesOf());
+    await trust.refresh();
+    const check = trust.check;
+    if (check === undefined || check.status === "refused") throw new Error("expected a check");
+    await trustService().grant(await cliSubject(), check.fingerprint, "prompt");
+
+    await expect(trust.mayStart(await loaded())).resolves.toBe(true);
+  });
+
+  it("says no, without rejecting, when the check fails, and while a check runs", async () => {
+    await onlyProvider("id: main\ntype: mock\n");
+    const broken = new WorkspaceTrust(
+      sourcesOf({ folder: new FileSystemFolderReader(join(folder, "gone"), "gone") }),
+    );
+    await expect(broken.mayStart(await loaded())).resolves.toBe(false);
+
+    const trust = new WorkspaceTrust(sourcesOf());
+    await trust.refresh();
+    const again = trust.refresh();
+    expect(trust.mayStartNow()).toBe(false);
+    await again;
+    expect(trust.mayStartNow()).toBe(true);
   });
 });

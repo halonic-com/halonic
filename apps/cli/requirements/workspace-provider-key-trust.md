@@ -8,6 +8,8 @@ The CLI shall send a provider's stored key (its file's `secret`) to an address o
 
 A stored key may also have a list of allowed origins, kept with the key in the profile's secrets file (HAL-11871). For every model call, the one check before a key is used shall add to the rule above and never replace it: a key with a list shall go only to an origin on it, and still only where the rule above lets it go, and the check shall fail any origin off the list, an address that can't be read included, with the `denied` error `key-origin-not-allowed`, which names the provider and the origin, never the key or the path. A key with no list (one saved before lists existed) shall keep the rule above. A list that can't be read shall fail the call. The Studio's keychain keeps no list yet, so its keys keep the rule above.
 
+In a workspace that isn't trusted on this computer, or whose trust check fails, every model call to a provider other than the test model (`type: mock`) shall fail with the `denied` error `untrusted-workspace`, which names the provider and says nothing was sent, a keyless provider on this computer and the agent editor's unsaved settings included (HAL-12409). Starting anything there needs trust unless the workspace reaches only the test model (HAL-1984), and this check backs up each surface's own check before a run starts. It shall come after the checks above, so a key that would go to another address is still refused as `untrusted-provider-address`.
+
 ## Examples
 
 - Given `providers/crm.yaml` with `type: openai-compatible`, `baseUrl: https://llm.example.com/v1` and a `secret`, in a workspace that isn't trusted,
@@ -19,3 +21,12 @@ A stored key may also have a list of allowed origins, kept with the key in the p
 - Given a key whose list holds `https://llm.example.com`, and a provider file that sends it there, in a workspace that is not trusted,
   when a call goes to it,
   then it fails with `untrusted-provider-address`, because the list adds to the trust rule.
+- Given `providers/ollama.yaml` with `type: openai-compatible`, `baseUrl: http://localhost:11434/v1`, `local: true` and no `secret`, in a workspace that isn't trusted,
+  when a call goes to it,
+  then it fails with `untrusted-workspace`, naming provider ollama, and nothing is sent.
+- Given `providers/anthropic.yaml` with `type: anthropic`, no `baseUrl` and a `secret`, in a workspace that isn't trusted,
+  when a call goes to it,
+  then it fails with `untrusted-workspace`, though the key would go to the type's own address.
+- Given a workspace whose only provider is `type: mock`, which isn't trusted,
+  when a call goes to it,
+  then it goes through.

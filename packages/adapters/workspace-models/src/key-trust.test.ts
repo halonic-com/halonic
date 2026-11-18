@@ -18,6 +18,7 @@ import { keyDestination, workspaceExecutorOptions, workspaceModelResolver } from
 let root: string;
 
 beforeEach(() => {
+  sent.length = 0;
   root = mkdtempSync(join(tmpdir(), "halonic-key-trust-"));
 });
 
@@ -36,8 +37,11 @@ async function workspaceOf(files: Record<string, string>): Promise<LoadedWorkspa
 
 const secrets: Secrets = { get: async () => "fake-key" };
 const clock: Clock = { now: () => new Date("2026-11-15T10:00:00.000Z") };
+/** The addresses a call was sent to, so a test sees that nothing was. */
+const sent: string[] = [];
 const http: HttpClient = {
-  fetch: async () => {
+  fetch: async (url) => {
+    sent.push(String(url));
     throw new TypeError("fetch failed");
   },
 };
@@ -248,12 +252,15 @@ verifies("cli.workspace-provider-key-trust", () => {
     const loadable = cases.filter((each) => each.origin !== undefined);
 
     it.each(loadable)(
-      "$name: refused when the workspace isn't trusted, unless the address is the default",
+      "$name: refused when the workspace isn't trusted, as a key off its address when it is one",
       async (each) => {
         const resolve = resolverOf(await workspaceFor(each), () => false);
 
         if (each.isDefault) {
-          await expect(resolve(call)).resolves.toMatchObject({ secret: withKey });
+          await expect(resolve(call)).rejects.toMatchObject({
+            code: "untrusted-workspace",
+            kind: "denied",
+          });
           return;
         }
         await expect(resolve(call)).rejects.toMatchObject({
@@ -318,7 +325,80 @@ verifies("cli.workspace-provider-key-trust", () => {
           ...unsaved(),
           agent: { type: "anthropic", model: "m", local: false, secret: withKey },
         }),
-      ).resolves.toBeDefined();
+      ).rejects.toMatchObject({ code: "untrusted-workspace" });
     });
   });
+});
+
+verifies("cli.workspace-provider-key-trust", () => {
+  describe.each(Object.entries(entryPoints))(
+    "an untrusted workspace through the %s (HAL-12409)",
+    (_name, resolverOf) => {
+      const keyless = {
+        "workspace.yaml": "id: acme\nname: Acme\ndefaults:\n  model: ollama/qwen3\n",
+        "providers/ollama.yaml": [
+          "id: ollama",
+          "type: openai-compatible",
+          "baseUrl: http://localhost:11434/v1",
+          "local: true",
+          "",
+        ].join("\n"),
+        "hubs/support/hub.yaml": "id: support\nname: Support\n",
+      };
+
+      it("refuses a keyless provider on this computer, and sends nothing", async () => {
+        const resolve = resolverOf(await workspaceOf(keyless), () => false);
+
+        await expect(resolve({ ...call, alias: "ollama/qwen3" })).rejects.toMatchObject({
+          code: "untrusted-workspace",
+          kind: "denied",
+          message:
+            "provider ollama is a real model, and this workspace isn't trusted on this computer, so nothing was sent.",
+          fix: "Review the workspace, then trust it, or use the test model (type: mock).",
+        });
+        expect(sent).toEqual([]);
+      });
+
+      it("calls the same provider once the workspace is trusted", async () => {
+        const resolve = resolverOf(await workspaceOf(keyless), () => true);
+
+        await expect(resolve({ ...call, alias: "ollama/qwen3" })).resolves.toMatchObject({
+          model: "qwen3",
+          local: true,
+        });
+      });
+
+      it("still calls the test model", async () => {
+        const resolve = resolverOf(
+          await workspaceOf({
+            "workspace.yaml": "id: acme\nname: Acme\ndefaults:\n  model: test/echo\n",
+            "providers/test.yaml": "id: test\ntype: mock\n",
+            "hubs/support/hub.yaml": "id: support\nname: Support\n",
+          }),
+          () => false,
+        );
+
+        await expect(resolve({ ...call, alias: "test/echo" })).resolves.toMatchObject({
+          model: "echo",
+          local: true,
+        });
+      });
+
+      it("refuses the agent editor's unsaved settings for a keyless local model", async () => {
+        const resolve = resolverOf(await workspaceOf(keyless), () => false);
+
+        await expect(
+          resolve({
+            ...call,
+            agent: {
+              type: "openai-compatible",
+              model: "qwen3",
+              local: true,
+              baseUrl: "http://localhost:11434/v1",
+            },
+          }),
+        ).rejects.toMatchObject({ code: "untrusted-workspace" });
+      });
+    },
+  );
 });
