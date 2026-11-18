@@ -27,6 +27,9 @@ export const ENTER_SOURCE = "Enter a folder or a git address.";
 
 export const NO_MANIFEST = "That folder has no plugin.yaml.";
 
+/** The Folder field's error when the app reads only a folder chosen with Choose folder (HAL-12448). */
+export const PICK_FOLDER = `Halonic can't read a typed path. Choose the folder with ${CHOOSE_FOLDER}`;
+
 /** The busy button's words: "Getting halonic-weather…". */
 export function gettingLine(name: string): string {
   return name === "" ? ADDING : `Getting ${name}…`;

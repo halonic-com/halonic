@@ -243,7 +243,9 @@ clones the repository at one commit) into the plugins folder in your profile
 trust check and asks. In the Studio desktop app, **Settings → Plugins → Add plugin** does the same
 from a folder you pick with **Choose folder…** or from a git address: the app exports one commit
 of the repository (files only, with no `.git`, no submodules and none of your git settings), checks it
-as `plugin add` does, and adds the plugin not trusted, so you review the check next.
+as `plugin add` does, and adds the plugin not trusted, so you review the check next. The desktop
+app reads only a folder you picked: for a path typed into **Folder**, it asks you to use
+**Choose folder…**.
 
 Both leave private names out of the copy, at any depth: `.git`, `.studio`, `.env`, `.env.*` and
 `.envrc`. Keep them out of your plugin's folder and they never reach anyone else's profile.

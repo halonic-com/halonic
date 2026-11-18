@@ -75,7 +75,7 @@ export type PluginTrustRefusal =
  */
 export type PluginAddRefusal =
   | { readonly kind: "broken"; readonly problems: readonly PluginProblem[] }
-  | { readonly kind: "taken"; readonly id: string };
+  | { readonly kind: "taken"; readonly id: string; readonly name: string };
 
 /** How {@link PluginService.add} adds a plugin. */
 export interface AddPluginOptions {
@@ -205,7 +205,7 @@ export class PluginService {
     const placement = await this.#options.writer.place(plugin.id, placed, {
       replace: options.replace,
     });
-    if (placement === "taken") return err({ kind: "taken", id: plugin.id });
+    if (placement === "taken") return err({ kind: "taken", id: plugin.id, name: plugin.name });
     await this.#installs.save(plugin.id, {
       source: options.from,
       files,
@@ -488,7 +488,8 @@ function unsafeNameProblem(
 
 /** What the reader, the digest or the trust check threw, for this one plugin. */
 function readFailedProblem(error: unknown): PluginProblem {
-  const reason = error instanceof Error ? error.message : String(error);
+  // A reason that ends a sentence already isn't given a second full stop.
+  const reason = (error instanceof Error ? error.message : String(error)).replace(/\.$/u, "");
   return {
     code: "read-failed",
     file: "",

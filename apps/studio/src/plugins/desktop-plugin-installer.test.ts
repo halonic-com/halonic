@@ -126,9 +126,9 @@ verifies("studio.desktop-plugin-installer", () => {
     it("says taken for a name in use", async () => {
       const outcome = await installerOver(
         fakeShell().shell,
-        fakeService(refused({ kind: "taken", id: "Acme-Weather" })).service,
+        fakeService(refused({ kind: "taken", id: "Acme-Weather", name: "Acme Weather" })).service,
       ).add({ kind: "folder", path: "pick:acme" }, never);
-      expect(outcome).toEqual({ kind: "taken", plugin: "Acme-Weather" });
+      expect(outcome).toEqual({ kind: "taken", plugin: "Acme-Weather", name: "Acme Weather" });
     });
 
     it("says no-manifest for a folder without plugin.yaml, and broken with the problems otherwise", async () => {
@@ -151,21 +151,6 @@ verifies("studio.desktop-plugin-installer", () => {
           never,
         ),
       ).toEqual({ kind: "broken", problems: [problem] });
-    });
-
-    it("lets the shell's sentence through for a path the person typed instead of picking", async () => {
-      const sentence = "A plugin can only be added from a folder chosen with Choose folder.";
-      const { service } = fakeService(async () => {
-        throw Object.assign(new Error(sentence), { kind: "denied" });
-      });
-      const error = await installerOver(fakeShell().shell, service)
-        .add({ kind: "folder", path: "/somewhere/typed" }, never)
-        .then(
-          () => expect.unreachable("the add should have failed"),
-          (reason: unknown) => reason,
-        );
-      expect(errorKindOf(error)).toBe("denied");
-      expect((error as Error).message).toBe(sentence);
     });
   });
 
@@ -192,7 +177,7 @@ verifies("studio.desktop-plugin-installer", () => {
 
     it("ends the export when the add is refused or throws", async () => {
       for (const answer of [
-        fakeService(refused({ kind: "taken", id: "acme-weather" })),
+        fakeService(refused({ kind: "taken", id: "acme-weather", name: "Acme Weather" })),
         fakeService(async () => {
           throw new Error("the folder can't be read");
         }),

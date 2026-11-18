@@ -6,7 +6,7 @@ import {
   type PluginInstallRefusalKind,
   pluginInstallRefusalKinds,
 } from "./plugin-install-commands.ts";
-import { pluginInstallFailure } from "./plugin-install-failure.ts";
+import { isSourceNotPicked, pluginInstallFailure } from "./plugin-install-failure.ts";
 import { TauriPluginInstallSource } from "./plugin-install-source.ts";
 
 /** How each refusal of the shell reaches the page: a RangeError, or an error kind. */
@@ -55,7 +55,9 @@ verifies("fs-tauri.plugin-install", () => {
         const error = pluginInstallFailure({ kind, message: `the shell said ${kind}` });
         if (expected[kind] === "range") expect(error).toBeInstanceOf(RangeError);
         else expect(errorKindOf(error)).toBe(expected[kind]);
+        expect(isSourceNotPicked(error)).toBe(kind === "source_not_picked");
       }
+      expect(isSourceNotPicked(new Error("source_not_picked"))).toBe(false);
     });
 
     it("keeps the shell's own sentence for what a person can fix, and adds a line for the rest", () => {
