@@ -238,9 +238,10 @@ export function runFailureOf(
       return harnessFailure(failed, started);
     case "budget":
       return budgetFailure(failed);
+    case "error":
+      return causeOfError(failed) ?? generalFailure(failed);
     case "harness-unavailable":
     case "instructions-not-trusted":
-    case "error":
       return generalFailure(failed);
     default:
       return assertNever(reason, "run failure reason");
@@ -405,6 +406,22 @@ function timeoutFailure(failed: RunFailedEvent, model: FailedModel | undefined):
     within: "5 minutes",
     ...(model.provider?.local === true && address !== undefined ? { localAddress: address } : {}),
   };
+}
+
+/**
+ * The failure an `error` names by its cause code, when the CLI has words
+ * for it: a provider file whose type Halonic can't call is the user's own
+ * typo, not a bug (HAL-12342).
+ */
+function causeOfError(failed: RunFailedEvent): RunFailure | undefined {
+  const { code, detail } = failed.cause ?? {};
+  if (code !== "models.unknown-provider-type") {
+    return undefined;
+  }
+  const { provider, type } = detail ?? {};
+  return provider === undefined || type === undefined
+    ? undefined
+    : { reason: "unknown-provider-type", provider, type };
 }
 
 /** "Halonic can't tell the cause yet:" with the engine's message, which is safe to show. */

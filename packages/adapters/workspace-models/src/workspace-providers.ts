@@ -19,12 +19,13 @@ import {
 import { KindedError } from "@halonicjs/std";
 import { defaultLocalBaseUrl } from "./default-addresses.ts";
 import { type ModelText, modelTexts } from "./model-texts.ts";
+import { openAiCompatibleTypes } from "./provider-types.ts";
 
 /** OpenAI's own API address, for a provider of type `openai` without a `baseUrl`. */
 export const openAiBaseUrl = "https://api.openai.com/v1";
 
 /** The types that speak OpenAI's chat completions API. */
-const openAiCompatibleTypes = new Set(["openai", "openai-compatible", "ollama", "lmstudio"]);
+const openAiCompatible = new Set<string>(openAiCompatibleTypes);
 
 /**
  * The model provider for one provider file.
@@ -62,7 +63,7 @@ export function workspaceProvider(
       ...(file.baseUrl === undefined ? {} : { baseUrl: file.baseUrl }),
     });
   }
-  if (openAiCompatibleTypes.has(file.type)) {
+  if (openAiCompatible.has(file.type)) {
     return new OpenAiCompatibleProvider({
       id: file.id,
       type: file.type,
@@ -77,6 +78,7 @@ export function workspaceProvider(
     "unknown-provider-type",
     modelTexts.unknownType(file.id, file.type),
     modelTexts.unknownTypeFix(file.id),
+    { provider: file.id, type: file.type },
   );
 }
 
@@ -89,8 +91,23 @@ export function workspaceProvider(
 export class WorkspaceModelError extends KindedError {
   /** The detailed code on line 3 and in `--json`. */
   readonly code: WorkspaceModelErrorCode;
+  /**
+   * The cause the engine logs on `run.failed` when this error stops a run:
+   * the code as `models.<code>`, and the names it is about, such as
+   * `{ provider: "acme", type: "acme-cloud" }`, so a host can word it
+   * without reading the message.
+   */
+  readonly failureCause: {
+    readonly code: string;
+    readonly detail?: Readonly<Record<string, string>>;
+  };
 
-  constructor(code: WorkspaceModelErrorCode, reason: ModelText, fix: ModelText) {
+  constructor(
+    code: WorkspaceModelErrorCode,
+    reason: ModelText,
+    fix: ModelText,
+    detail?: Readonly<Record<string, string>>,
+  ) {
     super(
       code === "untrusted-provider-address" || code === "key-origin-not-allowed"
         ? "denied"
@@ -99,6 +116,7 @@ export class WorkspaceModelError extends KindedError {
       { fix },
     );
     this.code = code;
+    this.failureCause = { code: `models.${code}`, ...(detail === undefined ? {} : { detail }) };
   }
 }
 

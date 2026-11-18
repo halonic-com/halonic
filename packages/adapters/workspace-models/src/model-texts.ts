@@ -2,11 +2,13 @@
 // follows the host's own action, as in "✕ Couldn't run Support reply: …"
 // in the CLI; the Studio shows them the same way.
 
+import { providerTypes } from "./provider-types.ts";
+
 /** A sentence of the reason or its fix, with no styling. */
 export type ModelText = string;
 
-/** The provider types the engine can call, as the unknown-type fix lists them. */
-const knownTypes = "anthropic, openai, openai-compatible, ollama, lmstudio or mock";
+/** The provider types the engine can call, as the unknown-type fix lists them: "anthropic, openai, … or mock". */
+const knownTypes = `${providerTypes.slice(0, -1).join(", ")} or ${providerTypes.at(-1)}`;
 
 /**
  * `loadWorkspace` already reports a missing alias or provider before a run
@@ -17,7 +19,7 @@ export const modelTexts = {
   unknownType: (provider: string, type: string): ModelText =>
     `provider ${provider} has type ${type}, which Halonic can't call.`,
   unknownTypeFix: (provider: string): ModelText =>
-    `Give providers/${provider}.yaml one of the types ${knownTypes}.`,
+    `Set type in providers/${provider}.yaml to one of ${knownTypes}, then run again.`,
   noAddress: (provider: string): ModelText => `provider ${provider} has no baseUrl.`,
   noAddressFix: (provider: string): ModelText =>
     `Add the server's address as baseUrl to providers/${provider}.yaml.`,

@@ -1,7 +1,8 @@
 import { secretVariableName } from "@halonicjs/adapter-env-secrets";
+import { providerTypes } from "@halonicjs/adapter-workspace-models";
 import { type MoneyAmountOptions, moneyAmount } from "@halonicjs/app";
 import type { ModelSkipReason } from "@halonicjs/events";
-import { counted, timesInWords } from "./counts.ts";
+import { counted, listInWords, timesInWords } from "./counts.ts";
 import { defineMessages, type Message } from "./define.ts";
 import { errorMessages, issuesLink } from "./general.ts";
 import { type Phrase, phrase } from "./phrase.ts";
@@ -158,6 +159,13 @@ export type RunFailure =
       readonly within: string;
     }
   | {
+      readonly reason: "unknown-provider-type";
+      /** The provider's id, which is also its file's name, such as "acme". */
+      readonly provider: string;
+      /** The type its file names, which Halonic has no adapter for. */
+      readonly type: string;
+    }
+  | {
       readonly reason: "model-no-tools";
       /** The model the alias points at, such as "llama3.2". */
       readonly model: string;
@@ -266,6 +274,11 @@ const lineOne = {
     ),
   // The same sentence as a run the check refused before it started (HAL-1709).
   "sandbox-not-ready": (run) => failedIn(run, sandboxMessages.cantStart().phrase),
+  "unknown-provider-type": (run, failure) =>
+    failedIn(
+      run,
+      phrase`provider ${failure.provider} has type ${failure.type}, which Halonic can't call.`,
+    ),
   "model-no-tools": (run, failure) =>
     failedIn(
       run,
@@ -357,6 +370,9 @@ const lineTwo = {
   "site-blocked": (_run, failure) =>
     phrase`Add ${failure.site} to ${failure.agent}'s allowed sites, if ${failure.agent} should reach it.`,
   "sandbox-not-ready": (_run, failure) => sandboxMessages.refusedFix(failure.code).phrase,
+  // The types come from the list the engine builds providers from, so a new adapter is listed by itself.
+  "unknown-provider-type": (_run, failure) =>
+    phrase`Set type in providers/${failure.provider}.yaml to one of ${listInWords(providerTypes, "or")}, then run again.`,
   // "In models.yaml" first, so it can't read as where the tools are.
   "model-no-tools": (_run, failure) =>
     phrase`In models.yaml, point the model alias ${failure.alias} at a model that can use tools.`,

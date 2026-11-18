@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
-import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
+import { GitHardeningIgnoredError, GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { testGit } from "@halonicjs/adapter-git/testing";
 import { RunHistory } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
@@ -63,6 +63,10 @@ const history: OpenWorkspaceHistory = async (root) =>
 /** Opens no history: git can't start, as when it isn't installed. */
 const noGit: OpenWorkspaceHistory = () =>
   Promise.reject(new Error("git wasn't found on the PATH."));
+
+/** Opens no history: the git on the PATH is a shim that drops Halonic's git settings. */
+const wrappedGit: OpenWorkspaceHistory = () =>
+  Promise.reject(new GitHardeningIgnoredError("/opt/shims/git"));
 
 /** Commits every file in the workspace folder: the workspace's first version, by its hash. */
 async function makeLive(): Promise<string> {
@@ -245,6 +249,23 @@ verifies("cli.run-live-version", () => {
       expect(stderr).toEqual([
         "✕ Couldn't run support-reply: git can't start on this computer, so the live version can't be read. Nothing ran.",
         "  Install git and make sure it's on your PATH, then try again.",
+      ]);
+      expect(await storedRuns()).toBe(0);
+    },
+    gitTimeout,
+  );
+
+  it(
+    "names a git that drops Halonic's git settings, rather than ask to install git",
+    async () => {
+      await makeLive();
+
+      const { code, stderr } = await run(wrappedGit);
+
+      expect(code).toBe(exitCode.unavailable);
+      expect(stderr).toEqual([
+        "✕ Couldn't run support-reply: the git at /opt/shims/git doesn't pass Halonic's git settings on to git, so the live version can't be read safely. Nothing ran.",
+        "  It may be a wrapper script, a version manager's shim or git older than 2.31. Put git 2.31 or later itself first on your PATH, then try again.",
       ]);
       expect(await storedRuns()).toBe(0);
     },
