@@ -62,6 +62,7 @@ export function FormSheet(props: ConfirmingDialogProps) {
         />
       }
       {...(props.returnFocus === undefined ? {} : { returnFocus: props.returnFocus })}
+      {...(props.describedBy === undefined ? {} : { describedBy: props.describedBy })}
     >
       <InFormSheetContext value={true}>
         <div className="flex flex-col gap-4 px-4 pt-3">{props.children}</div>

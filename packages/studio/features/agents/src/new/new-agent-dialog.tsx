@@ -9,7 +9,7 @@ import {
   usePresentation,
 } from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { AgentHub, AgentRef, NewAgent } from "../api.ts";
 import { agentFilePath } from "./agent-file.ts";
 import { newAgentWords as words } from "./new-agent-words.ts";
@@ -51,19 +51,7 @@ export function NewAgentDialog({
   // The hubs can arrive or change while the dialog is open; a hub that's gone falls back to the first.
   const hubId = hubs.some((hub) => hub.id === chosenHub) ? chosenHub : (hubs[0]?.id ?? "");
   const phone = usePresentation() === "phone";
-  // Whether the picked hub has a default model: unknown until the read answers, or when it fails.
-  const [hasDefaultModel, setHasDefaultModel] = useState<boolean>();
-  useEffect(() => {
-    let current = true;
-    setHasDefaultModel(undefined);
-    defaultModelOf(hubId).then(
-      (model) => current && setHasDefaultModel(model !== undefined),
-      () => undefined,
-    );
-    return () => {
-      current = false;
-    };
-  }, [defaultModelOf, hubId]);
+  const note = useModelNote(defaultModelOf, hubId);
   const [instructions, setInstructions] = useState("");
   const [instructionsProblem, setInstructionsProblem] = useState<string>();
   const [problem, setProblem] = useState<string>();
@@ -71,13 +59,12 @@ export function NewAgentDialog({
   const [busy, setBusy] = useState(false);
   const instructionsField = useRef<HTMLTextAreaElement>(null);
   const nameField = useRef<HTMLInputElement>(null);
+  const noteId = useId();
 
   const file = agentFilePath(hubId, name, takenIds(hubId));
   const fileText = file.kind === "file" ? words.file(file.path) : words.folder(file.path);
   // The phone sheet has no room for the file line (microcopy 8.2).
   const fileLine = phone ? undefined : fileText;
-  const modelNote = hasDefaultModel ? words.startNote : words.noModel;
-  const note = hasDefaultModel === undefined ? undefined : modelNote;
 
   async function submit() {
     setFailure(undefined);
@@ -115,6 +102,8 @@ export function NewAgentDialog({
       onConfirm={() => void submit()}
       onCancel={onCancel}
       returnFocus={returnFocus}
+      // The info line says what the dialog makes, so a screen reader reads it on opening (UX 2.1).
+      {...(note === undefined ? {} : { describedBy: noteId })}
     >
       <div className="flex flex-col gap-3">
         <div className={hubs.length > 1 ? "grid grid-cols-[1fr_160px] gap-3" : "grid gap-3"}>
@@ -162,7 +151,7 @@ export function NewAgentDialog({
           />
         </Field>
         {note !== undefined && (
-          <p className="flex items-start gap-2 text-small text-fg-muted">
+          <p id={noteId} className="flex items-start gap-2 text-small text-fg-muted">
             {/* The icon has no size of its own, so in a flex row it needs one; it sits on the first line. */}
             <span className="mt-0.5 size-4 shrink-0 text-fg-subtle" aria-hidden>
               <InfoIcon />
@@ -173,4 +162,29 @@ export function NewAgentDialog({
       </div>
     </Dialog>
   );
+}
+
+/**
+ * The info line about the picked hub's model: where it starts, or that it has none. `undefined`
+ * until the read answers, and when it fails, so the dialog says nothing about the model then.
+ */
+function useModelNote(
+  defaultModelOf: NewAgentDialogProps["defaultModelOf"],
+  hubId: string,
+): string | undefined {
+  const [hasDefaultModel, setHasDefaultModel] = useState<boolean>();
+  useEffect(() => {
+    let current = true;
+    setHasDefaultModel(undefined);
+    defaultModelOf(hubId).then(
+      (model) => current && setHasDefaultModel(model !== undefined),
+      () => undefined,
+    );
+    return () => {
+      current = false;
+    };
+  }, [defaultModelOf, hubId]);
+  if (hasDefaultModel === undefined) return undefined;
+  if (!hasDefaultModel) return words.noModel;
+  return words.startNote;
 }
