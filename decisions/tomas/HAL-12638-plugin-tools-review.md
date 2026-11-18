@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12638 (Nina's C54 docs check on HAL-12634, item P20)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JkCN+dNzOXbxKop9+BInlg2v4NoGzmSC6ZYtEocRYxuV8QMEvowKtQgpDg8G2S7PzR4tI9Tch/gk0afalE6RCw==
 
 The requirement `app.plugin-trust-sections` named the heading of the file list "Backend files". Nina's
 docs check (HAL-12634, P20) found it listing `tools/server.js` for a plugin with no backend: a program's
