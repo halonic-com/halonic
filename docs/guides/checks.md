@@ -314,7 +314,7 @@ trail; the guard doesn't call Paperclip. It checks the **signature line**
 instead, offline, with no token and no network, so fork pull requests are
 checked the same way. The approver signs with their Ed25519 key, and the
 guard accepts the signature only from a key that the base branch's
-`tooling/check/approvers.json` pins for the note's kind (today the CTO's key for both). A pull request
+`tooling/check/approvers.json` pins for the note's kind (today the CTO's key and the security reviewer's for both, so that neither signs a pull request they wrote and the other can). A pull request
 can't add its own key: the guard reads that file from the base branch's
 commit (`pull_request.base.sha`), never from the pull request.
 
@@ -343,8 +343,8 @@ base branch already has the note: a branch name that was used before needs
 a new name. Both guards fail the pull request when they find an error. A
 change to a requirement needs an approved note of either kind. A change to
 the guard's own paths needs a `user-visible` note, except routine changes
-under `.github/`, `tooling/check/` and `.gitattributes`, where the CTO's
-signed `internal` note is enough, unless the change reaches a trust root
+under `.github/`, `tooling/check/` and `.gitattributes`, where a signed
+`internal` note is enough, unless the change reaches a trust root
 (see the two guardians above).
 
 **Notes on `main` are append-only.** A pull request that edits or deletes a
