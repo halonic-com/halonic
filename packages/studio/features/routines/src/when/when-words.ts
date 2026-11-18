@@ -13,6 +13,18 @@ export const whenWords = {
     `Your new schedule isn't live yet. Until it is, the routine keeps the live one: ${live}.`,
   newTriggerNotLive: (live: string) =>
     `Your new trigger isn't live yet. Until it is, the routine keeps the live one: ${live}.`,
+  /**
+   * Until the app has the scheduler, only `halonic routines watch` starts routines on time
+   * (HAL-12323): the same line as the CLI's, with the command shown as code.
+   */
+  onTime: {
+    routine: "Starts on time only while",
+    routines: "Routines start on time only while",
+    command: "halonic routines watch",
+    end: "is running.",
+  },
+  /** `routines watch` checks no mailbox in 0.1, so a mail routine starts only with Run now (HAL-12323). */
+  mailNotChecked: "Halonic doesn't check mail yet, so this routine starts only with Run now.",
   makeLiveFirst: "Make this routine live first to turn it on.",
   isOff: (name: string) => `${name} is off. It only runs with Run now.`,
   isOn: (name: string, next: string | undefined) =>

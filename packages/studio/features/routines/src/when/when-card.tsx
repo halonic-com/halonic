@@ -2,6 +2,7 @@ import { Callout, Card, Switch } from "@halonicjs/studio-kit";
 import { useId, useState } from "react";
 import type { RoutinesHost, RoutineTrigger, RoutineView } from "../api.ts";
 import { failureReason } from "../page/page-words.ts";
+import { OnTimeHint } from "./on-time-hint.tsx";
 import { TriggerFields } from "./trigger-fields.tsx";
 import { useMailboxes } from "./use-mailboxes.ts";
 import { useNextTimes } from "./use-next-times.ts";
@@ -23,9 +24,10 @@ export interface WhenCardProps {
 
 /**
  * The When card (`routines.when.when-card`): the trigger in words, the On/Off switch that applies
- * at once, and the next start times from the live version. A routine that has never been live
- * can't be turned on here yet, and says so; a change that can't be saved is shown in the card and
- * the switch goes back to what is saved.
+ * at once, and the next start times from the live version, with the line that only
+ * `halonic routines watch` keeps them; a mail routine says mail doesn't start it yet. A routine
+ * that has never been live can't be turned on here yet, and says so; a change that can't be saved
+ * is shown in the card and the switch goes back to what is saved.
  */
 export function WhenCard({
   host,
@@ -44,6 +46,8 @@ export function WhenCard({
   const times = useNextTimes(host, routine, routine.enabled && !neverLive && !manual, routine);
   const timeZone = routine.trigger.kind === "schedule" ? routine.trigger.timeZone : undefined;
   const shown = times?.times.map((iso) => nextTime(iso, timeZone, deviceTimeZone()));
+  const hasNext = (shown !== undefined && shown.length > 0) || times?.atNextCheck === true;
+  const mail = routine.trigger.kind === "mail";
 
   const newTriggerNotLive = notLiveLine(routine);
 
@@ -126,6 +130,12 @@ export function WhenCard({
             <span className="text-fg-muted">{words.next}</span> {words.atNextCheck}
           </p>
         )}
+        {hasNext && (
+          <p className="text-small text-fg-muted">
+            <OnTimeHint of="routine" />
+          </p>
+        )}
+        {mail && <p className="text-small text-fg-muted">{words.mailNotChecked}</p>}
         {failure !== undefined && <Callout tone="danger">{failure}</Callout>}
       </div>
     </Card>

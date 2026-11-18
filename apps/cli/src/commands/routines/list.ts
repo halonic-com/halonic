@@ -58,8 +58,9 @@ export async function listRoutines(
  * One row of four cells: the name, the trigger in words, the next run and
  * the last run, dimmed. The name and the trigger's words come from the
  * routine's file, so they are made printable (cli-output section 5). With
- * `withHub`, the name is followed by its hub's id, dimmed, so two routines
- * of the same name in different hubs can be told apart (HAL-4888).
+ * `withHub`, the name is followed by a · and its hub's id, dimmed, so two
+ * routines of the same name in different hubs can be told apart (HAL-4888)
+ * and the hub doesn't read as part of the name (HAL-12323).
  */
 export function routineRow(routine: ListedRoutine, clock: RunClock, withHub = false): Phrase[] {
   return [
@@ -75,7 +76,7 @@ function nameCell(routine: ListedRoutine, withHub: boolean): Phrase {
   if (!withHub || routine.hubId === null) {
     return phrase`${printable(routine.name)}`;
   }
-  return phrase`${printable(routine.name)} ${dim(printable(routine.hubId))}`;
+  return phrase`${printable(routine.name)} ${dim(`· ${printable(routine.hubId)}`)}`;
 }
 
 /** Whether the routines come from more than one hub (the workspace's root counts as one), so each row names its hub. */
