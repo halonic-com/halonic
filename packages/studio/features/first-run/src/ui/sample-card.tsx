@@ -1,8 +1,8 @@
 import {
   Button,
   ChevronRightIcon,
-  List,
-  type ListRow,
+  type SetupStep,
+  SetupSteps,
   TickIcon,
   usePresentation,
 } from "@halonicjs/studio-kit";
@@ -119,17 +119,22 @@ export function SampleSteps({ progress, openers, openTests, announce }: SampleSt
       </>
     );
   }
-  const rows: ListRow<SampleStepId>[] = sampleSteps.map((step, index) => ({
+  // Get set up's rows (HAL-477 2.2): number circles, a `success` tick and the done title muted.
+  const steps: SetupStep<SampleStepId>[] = sampleSteps.map((step, index) => ({
     id: step,
     title: sampleStepWords[step].title,
+    hint: sampleStepWords[step].hint,
+    done: done.has(step),
     label: sampleCardWords.stepLabel(index + 1, sampleStepWords[step].title, done.has(step)),
-    meta: sampleStepWords[step].hint,
-    icon: done.has(step) ? <TickIcon /> : <span aria-hidden="true">{index + 1}</span>,
   }));
   return (
     <>
       <p>{sampleCardWords.caption(done.size)}</p>
-      <List label={sampleCardWords.heading} rows={rows} onOpen={(step) => openers[step]()} />
+      <SetupSteps
+        label={sampleCardWords.heading}
+        steps={steps}
+        onOpen={(step) => openers[step]()}
+      />
     </>
   );
 }
