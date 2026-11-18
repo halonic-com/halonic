@@ -2,6 +2,7 @@
 
 - Approval: HAL-12721 (L2 and L15, from the first-run check in HAL-12714); the stale card's words and **Open run** are flow-inbox 5.4 and INBOX-CARD-31 as approved. Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xUQqRIPPRDmN3dO3+s5r7HFpr9TYCDjPUTu/Fe7FDj2333oFf6xyRetWd563rdxTpFGlxrW1wUFDgtQns6ZsBA==
 - Task: HAL-12726
 
 ## What changes
