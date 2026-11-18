@@ -5,7 +5,9 @@
 //!   same as the CLI's (requirement `secret-names`).
 //! - [`SecretBackend`]: where secrets are kept, with [`get_secret`],
 //!   [`has_secret`], [`set_secret`] and [`delete_secret`] checking names and values first
-//!   (requirement `secret-commands`).
+//!   and refusing Halonic's own names (requirement `secret-commands`), and
+//!   [`get_token`], [`set_token`] and [`delete_token`] for tokens under
+//!   [`TOKEN_PREFIX`] (requirement `token-commands`).
 //! - [`check_backend_contract`]: the behaviour every backend must show.
 //!
 //! This crate holds no Tauri types and no keychain crate: the shell's
@@ -18,10 +20,10 @@ mod memory;
 mod name;
 
 pub use backend::{
-    MAX_VALUE_BYTES, SERVICE, SecretBackend, check_value, delete_secret, get_secret, has_secret,
-    set_secret,
+    MAX_VALUE_BYTES, SERVICE, SecretBackend, check_value, delete_secret, delete_token, get_secret,
+    get_token, has_secret, set_secret, set_token,
 };
 pub use contract::check_backend_contract;
 pub use error::SecretError;
 pub use memory::MemoryBackend;
-pub use name::{MAX_NAME_LENGTH, SecretName};
+pub use name::{HALONIC_NAMES, MAX_NAME_LENGTH, SecretName, TOKEN_PREFIX};

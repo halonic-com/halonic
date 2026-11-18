@@ -9,6 +9,9 @@ use std::fmt;
 pub enum SecretError {
     /// The name breaks the rule of the `Secrets` port.
     InvalidName,
+    /// The name belongs to Halonic ([`crate::SecretName::is_halonic`]): the
+    /// secret commands don't reach it, and tokens have commands of their own.
+    ReservedName,
     /// The value is empty, or longer than [`crate::MAX_VALUE_BYTES`] or than
     /// the backend can keep ([`crate::SecretBackend::max_value_bytes`]).
     InvalidValue,
@@ -29,6 +32,7 @@ impl SecretError {
     pub fn kind(&self) -> &'static str {
         match self {
             SecretError::InvalidName => "invalid_name",
+            SecretError::ReservedName => "reserved_name",
             SecretError::InvalidValue => "invalid_value",
             SecretError::Unavailable => "unavailable",
             SecretError::Denied => "denied",
@@ -45,6 +49,12 @@ impl fmt::Display for SecretError {
                 formatter,
                 "not a secret name: use a letter, then letters, digits, \"-\" or \"_\", at most 128 characters"
             ),
+            SecretError::ReservedName => {
+                write!(
+                    formatter,
+                    "this name belongs to Halonic and can't be used for a secret"
+                )
+            }
             SecretError::InvalidValue => {
                 write!(
                     formatter,

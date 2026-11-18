@@ -38,6 +38,70 @@ fn secret_commands_refuse_bad_names_before_the_backend() {
 }
 
 #[test]
+fn secret_commands_refuse_halonic_names_before_the_backend() {
+    // Each is stored, so a command that reached the backend would answer.
+    let backend = MemoryBackend::new();
+    for stored in [
+        "token_key",
+        "serve_password",
+        "halonic_token_google_refresh_acme",
+    ] {
+        let name = SecretName::parse(stored).expect("a valid name");
+        backend.set(&name, "stored-value").expect("stores");
+    }
+    for name in [
+        "token-key",
+        "Token_Key",
+        "serve-password",
+        "SERVE_PASSWORD",
+        "halonic_token_google_refresh_acme",
+        "Halonic-Token-Google-Refresh-Acme",
+        "halonic_token_",
+    ] {
+        assert_eq!(
+            get_secret(&backend, name),
+            Err(SecretError::ReservedName),
+            "{name:?}"
+        );
+        assert_eq!(
+            has_secret(&backend, name),
+            Err(SecretError::ReservedName),
+            "{name:?}"
+        );
+        assert_eq!(
+            set_secret(&backend, name, "other-value"),
+            Err(SecretError::ReservedName),
+            "{name:?}"
+        );
+        assert_eq!(
+            delete_secret(&backend, name),
+            Err(SecretError::ReservedName),
+            "{name:?}"
+        );
+    }
+    let kept = SecretName::parse("token_key").expect("a valid name");
+    assert_eq!(backend.get(&kept), Ok(Some("stored-value".into())));
+}
+
+#[test]
+fn secret_commands_still_reach_names_that_only_look_like_halonic_ones() {
+    let backend = MemoryBackend::new();
+    for name in [
+        "token-key-2",
+        "my-serve-password",
+        "halonic-tokens",
+        "google_token",
+    ] {
+        set_secret(&backend, name, "value").expect(name);
+        assert_eq!(
+            get_secret(&backend, name),
+            Ok(Some("value".into())),
+            "{name:?}"
+        );
+    }
+}
+
+#[test]
 fn secret_commands_say_whether_a_secret_is_stored_without_returning_it() {
     let backend = MemoryBackend::new();
     assert_eq!(has_secret(&backend, "acme-key"), Ok(false));
@@ -105,6 +169,7 @@ fn secret_commands_never_put_the_value_in_an_error() {
 fn secret_commands_name_every_error_kind() {
     let kinds = [
         SecretError::InvalidName,
+        SecretError::ReservedName,
         SecretError::InvalidValue,
         SecretError::Unavailable,
         SecretError::Denied,
@@ -118,6 +183,7 @@ fn secret_commands_name_every_error_kind() {
         kinds,
         [
             "invalid_name",
+            "reserved_name",
             "invalid_value",
             "unavailable",
             "denied",

@@ -27,8 +27,35 @@ impl SecretName {
         Ok(Self(name.to_ascii_lowercase().replace('-', "_")))
     }
 
+    /// The keychain name of the token `name`: [`TOKEN_PREFIX`] and the
+    /// token's canonical name, at most 128 characters in all. The page's
+    /// `TokenStore` adds the same prefix (`tokenNamePrefix` in
+    /// `@halonicjs/ports`), so tokens stored before the token commands are
+    /// found under the same entry.
+    pub fn token(name: &str) -> Result<Self, SecretError> {
+        let token = Self::parse(name)?;
+        if TOKEN_PREFIX.len() + token.0.len() > MAX_NAME_LENGTH {
+            return Err(SecretError::InvalidName);
+        }
+        Ok(Self(format!("{TOKEN_PREFIX}{}", token.0)))
+    }
+
+    /// Whether the name belongs to Halonic: one of [`HALONIC_NAMES`] or a
+    /// token under [`TOKEN_PREFIX`]. The same rule as `isHalonicSecretName`
+    /// in `@halonicjs/ports`.
+    pub fn is_halonic(&self) -> bool {
+        HALONIC_NAMES.contains(&self.0.as_str()) || self.0.starts_with(TOKEN_PREFIX)
+    }
+
     /// The canonical name, which is what the keychain stores.
     pub fn as_str(&self) -> &str {
         &self.0
     }
 }
+
+/// The canonical prefix of every token's keychain name.
+pub const TOKEN_PREFIX: &str = "halonic_token_";
+
+/// Halonic's own secrets, in canonical form: the key the CLI seals its
+/// tokens with and the hash of the served Studio's sign-in password.
+pub const HALONIC_NAMES: [&str; 2] = ["token_key", "serve_password"];

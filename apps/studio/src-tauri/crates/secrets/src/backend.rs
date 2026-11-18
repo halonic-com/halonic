@@ -14,7 +14,8 @@ pub const SERVICE: &str = "halonic";
 ///
 /// A backend receives names that are already canonical and values that
 /// already passed [`check_value`]; the functions [`get_secret`],
-/// [`has_secret`], [`set_secret`] and [`delete_secret`] see to that. It holds no desktop
+/// [`has_secret`], [`set_secret`] and [`delete_secret`], and the token ones,
+/// see to that. It holds no desktop
 /// types, so the Android backend can implement it with only a plugin
 /// handle.
 pub trait SecretBackend: Send + Sync {
@@ -62,25 +63,56 @@ fn check_value_fits(backend: &dyn SecretBackend, value: &str) -> Result<(), Secr
     Ok(())
 }
 
+/// A name the secret commands may reach: one that passes the name rule and
+/// doesn't belong to Halonic. Halonic's own secrets and its tokens are
+/// refused here, in the shell, so a page that calls the commands directly
+/// can't read or change them; tokens go through the token commands.
+fn secret_name(name: &str) -> Result<SecretName, SecretError> {
+    let name = SecretName::parse(name)?;
+    if name.is_halonic() {
+        return Err(SecretError::ReservedName);
+    }
+    Ok(name)
+}
+
 /// What `secret_get` does: checks the name, then reads.
 pub fn get_secret(backend: &dyn SecretBackend, name: &str) -> Result<Option<String>, SecretError> {
-    backend.get(&SecretName::parse(name)?)
+    backend.get(&secret_name(name)?)
 }
 
 /// What `secret_has` does: checks the name, then answers whether a value is
 /// stored. The value never leaves the backend call.
 pub fn has_secret(backend: &dyn SecretBackend, name: &str) -> Result<bool, SecretError> {
-    backend.has(&SecretName::parse(name)?)
+    backend.has(&secret_name(name)?)
 }
 
 /// What `secret_set` does: checks the name and the value, then writes.
 pub fn set_secret(backend: &dyn SecretBackend, name: &str, value: &str) -> Result<(), SecretError> {
-    let name = SecretName::parse(name)?;
+    let name = secret_name(name)?;
     check_value_fits(backend, value)?;
     backend.set(&name, value)
 }
 
 /// What `secret_delete` does: checks the name, then removes.
 pub fn delete_secret(backend: &dyn SecretBackend, name: &str) -> Result<(), SecretError> {
-    backend.delete(&SecretName::parse(name)?)
+    backend.delete(&secret_name(name)?)
+}
+
+/// What `token_get` does: reads the token `name`, stored under
+/// [`SecretName::token`].
+pub fn get_token(backend: &dyn SecretBackend, name: &str) -> Result<Option<String>, SecretError> {
+    backend.get(&SecretName::token(name)?)
+}
+
+/// What `token_set` does: checks the token's name and value, then writes.
+pub fn set_token(backend: &dyn SecretBackend, name: &str, value: &str) -> Result<(), SecretError> {
+    let name = SecretName::token(name)?;
+    check_value_fits(backend, value)?;
+    backend.set(&name, value)
+}
+
+/// What `token_delete` does: removes the token. Removing a token that isn't
+/// stored succeeds.
+pub fn delete_token(backend: &dyn SecretBackend, name: &str) -> Result<(), SecretError> {
+    backend.delete(&SecretName::token(name)?)
 }
