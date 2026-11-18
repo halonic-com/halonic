@@ -24,11 +24,15 @@ export interface WorkspaceRequestsParts {
    * month is used up isn't started (microcopy 10.3). Without it a request always goes to the engine.
    */
   readonly monthBudget?: () => Promise<MonthBudgetUse | undefined>;
-  /** The page's engine, which starts a run. Absent where the page has no engine, so nothing is offered. */
+  /**
+   * The page's engine, which starts a run, recording `from` as its trigger. Absent where the page
+   * has no engine, so nothing is offered.
+   */
   readonly engine?: {
     startRun(
       run: { readonly hubId: string; readonly workflowId: string },
       input: Record<string, unknown>,
+      from: "inbox",
     ): Promise<{ readonly id: string }>;
   };
 }
@@ -78,6 +82,8 @@ export class WorkspaceRequests implements InboxRequests {
     const { id: runId } = await engine.startRun(
       { hubId: found.hubId, workflowId: found.id },
       { [found.field]: message },
+      // Its own trigger, so the run says it was started in the Inbox, not with Run.
+      "inbox",
     );
     return { runId, hubId: found.hubId };
   }

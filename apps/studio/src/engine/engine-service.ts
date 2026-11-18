@@ -240,8 +240,10 @@ export class EngineService {
   /**
    * Starts a run of the workflow with `input`, on the workspace's files as they are saved: refuses
    * what the page can't run ({@link EngineService.check}), opens the engine, and returns once the
-   * run has started, not when it ends. The run records a manual trigger.
+   * run has started, not when it ends. The run records a manual trigger, or an `inbox` one for a
+   * request from the Inbox's form.
    *
+   * @param from where the person started it: with Run (`manual`, the default) or from the Inbox
    * @returns the new run's id
    * @throws what {@link EngineService.check} and {@link EngineService.open} throw, or the
    *   executor's refusal of the input
@@ -249,12 +251,13 @@ export class EngineService {
   async startRun(
     run: WorkflowRef,
     input: Record<string, unknown>,
+    from: "manual" | "inbox" = "manual",
   ): Promise<{ readonly id: string }> {
     await this.check(run);
     const engine = await this.#forStart();
-    // A run started from the window is the person's own, so it names a manual trigger: with none,
-    // the Runs list says it was started in the terminal.
-    const trigger = { type: "manual" as const, at: this.#options.clock.now().toISOString() };
+    // A run started from the window is the person's own, so it names a trigger: with none, the
+    // Runs list says it was started in the terminal.
+    const trigger = { type: from, at: this.#options.clock.now().toISOString() };
     const { id } = await engine.executor.start({ ...run, input, trigger });
     return { id };
   }

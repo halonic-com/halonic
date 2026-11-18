@@ -341,8 +341,9 @@ verifies("events.run-log-contract", () => {
       cacheWrite1hTokens?: number;
     }>();
     expectTypeOf<RunTrigger>().toEqualTypeOf<{
-      // "webhook" and `deliveryId` added after the reference by events.trigger-webhook (HAL-195).
-      type: "manual" | "schedule" | "every" | "mail" | "signal" | "webhook";
+      // "webhook" and `deliveryId` added after the reference by events.trigger-webhook (HAL-195),
+      // "inbox" by events.trigger-inbox (HAL-12727).
+      type: "manual" | "inbox" | "schedule" | "every" | "mail" | "signal" | "webhook";
       routineId?: string;
       at: string;
       messageId?: string;
