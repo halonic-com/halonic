@@ -73,6 +73,15 @@ verifies("tunnel-attacks.host-and-origin", () => {
       ).toContain("421");
     });
 
+    it("gives no WebSocket to a request with two Host lines, whichever comes first", async () => {
+      expect(
+        await statusOf(({ name }) => ({ host: name, headers: ["Host: evil.example"] })),
+      ).not.toContain("101");
+      expect(
+        await statusOf(({ name }) => ({ host: "evil.example", headers: [`Host: ${name}`] })),
+      ).not.toContain("101");
+    });
+
     it("gives no WebSocket to a request whose target names another host", async () => {
       for (const target of [
         "http://evil.example/v1/gateway",

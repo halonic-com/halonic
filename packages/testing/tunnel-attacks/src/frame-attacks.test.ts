@@ -173,6 +173,7 @@ verifies("tunnel-attacks.frame-attacks", () => {
           ["null", Buffer.from("null")],
           ["two objects", Buffer.from(`${JSON.stringify(hello)}${JSON.stringify(hello)}`)],
           ["nothing", Buffer.alloc(0)],
+          ["a leading byte order mark", Buffer.from(`\ufeff${JSON.stringify(hello)}`)],
           ["a duplicate key", Buffer.from('{"type":"list-sessions","id":"a","id":"b"}')],
           ["a proto key", Buffer.from('{"type":"list-sessions","id":"a","__proto__":{"x":1}}')],
           ["a constructor key", Buffer.from('{"type":"list-sessions","id":"a","constructor":{}}')],
