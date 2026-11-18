@@ -234,7 +234,7 @@ verifies("library.library-page", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(root.textContent).toContain(
-      "docs folder on your computer, then give it to an agent under Tools.",
+      "Put documents in the workspace's docs folder on your computer, then give it to an agent under Tools.",
     );
     expect(button(root, "Open the docs folder")).toBeUndefined();
   });
