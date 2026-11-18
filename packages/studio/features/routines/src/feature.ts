@@ -5,8 +5,7 @@ import { requestNewRoutine } from "./list/new-request.ts";
 
 /**
  * The Routines feature: the Routines list with its New routine dialog, and the `routine` item kind
- * with its page and Ctrl K search. The page's cards, Delete and Run now, and the Triggers sections
- * land in the next pull requests; the interface other features use is in `api.ts`.
+ * with its page and Ctrl K search. The Triggers sections on agents and workflows are added to their pages; the interface other features use is in `api.ts`.
  */
 export const routinesFeature = defineFeature({
   id: "routines",
@@ -33,6 +32,15 @@ export const routinesFeature = defineFeature({
         exists: () => true,
       },
     });
+    for (const on of ["agent", "workflow"]) {
+      studio.itemPage.addSection({
+        on,
+        id: "triggers",
+        order: 30,
+        view: "TriggersSection",
+        load: () => import("./triggers/triggers-section.tsx"),
+      });
+    }
     studio.search.addProvider({
       id: "routines",
       title: searchWords.title,

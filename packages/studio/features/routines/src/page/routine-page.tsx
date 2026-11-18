@@ -107,54 +107,55 @@ export function RoutineScreen({
         onRestored={restored}
         openRun={openRun}
       />
-      <TabPanel
-        ids={ids}
-        tabs={views}
-        selected={view}
-        className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-6 py-4"
-      >
-        {load.kind === "ready" && view === "schedule" && <Summary routine={load.routine} />}
-        {load.kind === "ready" && view === "schedule" && (
-          <WhenCard host={host} routine={load.routine} announce={announce} />
-        )}
-        {load.kind === "ready" && view === "schedule" && (
-          <StartsCard host={host} routine={load.routine} />
-        )}
-        {load.kind === "ready" && view === "schedule" && (
-          <RulesSection host={host} routine={load.routine} />
-        )}
-        {load.kind === "ready" && view === "runs" && (
-          <RunsView
-            host={host}
-            routine={load.routine}
-            load={runs.load}
-            retry={runs.retry}
-            openRun={openRun}
-          />
-        )}
-        {load.kind === "failed" && (
-          <EmptyState
-            tone="error"
-            title={pageWords.loadFailedTitle}
-            description={load.reason}
-            action={{ label: pageWords.tryAgain, onClick: retry, busy: load.retrying }}
-          />
-        )}
-        {load.kind === "loading" && load.skeleton && (
-          <div role="status" className="flex flex-col gap-4">
-            <span className="sr-only">{pageWords.loading(name)}</span>
-            <SkeletonBar kind="value" />
-            {load.slow && (
-              <p className="flex items-center gap-3 text-small text-fg-muted">
-                {pageWords.stillLoading}
-                <Button variant="secondary" size="sm" onClick={retry}>
-                  {pageWords.tryAgain}
-                </Button>
-              </p>
-            )}
-          </div>
-        )}
-      </TabPanel>
+      {load.kind === "ready" ? (
+        <TabPanel
+          ids={ids}
+          tabs={views}
+          selected={view}
+          className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-6 py-4"
+        >
+          {view === "schedule" && <Summary routine={load.routine} />}
+          {view === "schedule" && (
+            <WhenCard host={host} routine={load.routine} announce={announce} />
+          )}
+          {view === "schedule" && <StartsCard host={host} routine={load.routine} />}
+          {view === "schedule" && <RulesSection host={host} routine={load.routine} />}
+          {view === "runs" && (
+            <RunsView
+              host={host}
+              routine={load.routine}
+              load={runs.load}
+              retry={runs.retry}
+              openRun={openRun}
+            />
+          )}
+        </TabPanel>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-6 py-4">
+          {load.kind === "failed" && (
+            <EmptyState
+              tone="error"
+              title={pageWords.loadFailedTitle}
+              description={load.reason}
+              action={{ label: pageWords.tryAgain, onClick: retry, busy: load.retrying }}
+            />
+          )}
+          {load.kind === "loading" && load.skeleton && (
+            <div role="status" className="flex flex-col gap-4">
+              <span className="sr-only">{pageWords.loading(name)}</span>
+              <SkeletonBar kind="value" />
+              {load.slow && (
+                <p className="flex items-center gap-3 text-small text-fg-muted">
+                  {pageWords.stillLoading}
+                  <Button variant="secondary" size="sm" onClick={retry}>
+                    {pageWords.tryAgain}
+                  </Button>
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
