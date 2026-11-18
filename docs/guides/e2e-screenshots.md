@@ -42,6 +42,14 @@ sheet isn't taken yet.
 brand-new, with five Recent rows, and after a Recent row failed to open (HAL-11985). The spec also
 checks that the title and **Open folder** sit at the same y in all three states.
 
+## Plugins
+
+`plugins-<step>-<light|dark>.png` are the plugin screens (HAL-1740), taken by the plugins feature's
+own `e2e/screenshots.spec.ts` while it walks its flow page: Settings › Plugins with nothing
+installed (`empty`), the Add plugin dialog (`add`), the trust check (`trust-check`), the list with
+the plugin on (`on`), the command dialog with its Result (`command-result`) and the Remove dialog
+(`remove`). CI uploads them from `packages/studio/features/plugins/test-results/screenshots`.
+
 ## Pictures for halonic.dev
 
 `e2e/site-screenshots.spec.ts` takes the pictures the website shows (HAL-10732): the run page of a

@@ -5,7 +5,8 @@ const port = 4176;
 
 /**
  * This feature's end-to-end run (`pnpm e2e`): the plugin flow in Chromium, from Add plugin to
- * Remove plugin, over the feature's real views and an in-memory host (HAL-1740).
+ * Remove plugin, over the feature's real views and an in-memory host (HAL-1740), and the
+ * screenshots of each step for the `studio-screenshots` artifact.
  *
  * Only CI runs it, in the `e2e` job, which installs the browsers. Don't run it on the shared
  * runner (HAL-2418). The web server builds the page (vite.config.ts) and serves the build with
