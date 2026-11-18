@@ -96,10 +96,7 @@ function StillLight({ target, color }: { readonly target: Point; readonly color:
     const frame = requestAnimationFrame(() => setLit(true));
     const done = setTimeout(
       () => setShown((state) => ({ ...state, before: undefined })),
-      LIGHT_CORE,
       LIGHT_FADE_MS,
-      LIGHT_GLOW,
-      LIGHT_GLOW_OPACITY_STILL,
     );
     return () => {
       cancelAnimationFrame(frame);

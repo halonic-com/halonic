@@ -84,6 +84,11 @@ verifies("workflows.canvas.point-of-light-rest", () => {
     expect(lights[0]).toBe(oldLight);
     expect(lights[0]?.style.opacity).toBe("0");
     expect(lights[1]?.style.opacity).toBe("1");
+    // The old dot stays until its 120 ms fade has finished.
+    await act(async () => {
+      vi.advanceTimersByTime(80);
+    });
+    expect(element.querySelectorAll("[data-testid=point-of-light]")).toHaveLength(2);
     await act(async () => {
       vi.advanceTimersByTime(200);
     });
