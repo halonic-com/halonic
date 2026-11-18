@@ -16,11 +16,16 @@ afterEach(() => {
 
 const ref = { hubId: "acme", id: "sorter" };
 
-async function openModel(readAliases?: () => Promise<readonly string[]>) {
+async function openModel(
+  readAliases?: () => Promise<readonly string[]>,
+  agent: { model?: string } = { model: "fast" },
+  defaultModel?: string,
+) {
   const memory = memoryAgentsHost({
     hubs: [{ id: "acme", name: "acme" }],
-    agents: [{ ...ref, name: "Sorter", model: "fast" }],
+    agents: [{ ...ref, name: "Sorter", ...agent }],
     modelAliases: ["fast", "smart"],
+    defaultModel,
   });
   const agents = readAliases === undefined ? memory : { ...memory, modelAliases: readAliases };
   const page = await show(<AgentScreen host={agents} hubId="acme" id="sorter" />);
@@ -52,6 +57,18 @@ verifies("agents.configuration.model", () => {
     await act(async () => buttonNamed(page, "Try again")?.click());
     const select = page.querySelector("select") as HTMLSelectElement;
     expect([...select.options].map((option) => option.value)).toEqual(["fast", "smart"]);
+  });
+
+  it("shows the workspace default in the picker while the file names no model", async () => {
+    const { select } = await openModel(undefined, {}, "smart");
+    expect(select.value).toBe("");
+    expect(select.textContent).toContain("Workspace default (smart)");
+    expect(select.textContent).not.toContain("Choose a model");
+  });
+
+  it("asks to choose a model when the file names none and the workspace has no default", async () => {
+    const { select } = await openModel(undefined, {});
+    expect(select.textContent).toContain("Choose a model");
   });
 
   it("lists the hub's aliases and shows the agent's model", async () => {

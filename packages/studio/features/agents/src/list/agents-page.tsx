@@ -205,6 +205,7 @@ export function AgentsView({ host, open, openInNewTab, engine }: AgentsViewProps
           takenIds={(hubId) =>
             listings.filter((listing) => listing.hubId === hubId).map((listing) => listing.id)
           }
+          defaultModelOf={(hubId) => host.defaultModel(hubId)}
           create={(newAgent) => host.create(newAgent)}
           onCreated={(ref) => {
             setCreating(false);

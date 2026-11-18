@@ -51,6 +51,7 @@ const host: AgentsHost = {
   update: async () => undefined,
   nameOf: (ref) => agents.find((agent) => agent.hubId === ref.hubId && agent.id === ref.id)?.name,
   modelAliases: async () => ["fast", "smart"],
+  defaultModel: async () => "fast",
   harnessReadiness: async () => ({ status: "ready", version: "1.0.0" }),
   referencesTo: async () => [],
   subscribe: () => () => undefined,

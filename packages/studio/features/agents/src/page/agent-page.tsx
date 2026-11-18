@@ -94,6 +94,15 @@ export function AgentScreen({ host, hubId, id, goToAgents }: AgentScreenProps) {
     [host, hubId, id],
   );
   const aliases = useLoad<readonly string[]>(aliasesSource);
+  // The model an agent without one runs on, for the Model page; read again when a file changes.
+  const defaultModelSource = useMemo(
+    () => ({
+      fetch: () => host.defaultModel(hubId),
+      subscribe: (onChange: () => void) => host.subscribe(onChange),
+    }),
+    [host, hubId],
+  );
+  const defaultModel = useLoad<string | undefined>(defaultModelSource);
   const [view, setView] = useState<AgentView>("runs");
   const [saveFailed, setSaveFailed] = useState<string>();
   const ids = useTabIds();
@@ -153,6 +162,7 @@ export function AgentScreen({ host, hubId, id, goToAgents }: AgentScreenProps) {
             name={name}
             load={settings.load}
             aliases={aliases.load}
+            defaultModel={defaultModel.load.kind === "ready" ? defaultModel.load.value : undefined}
             retryAliases={aliases.retry}
             retry={settings.retry}
             save={save}

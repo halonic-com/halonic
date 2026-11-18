@@ -163,6 +163,21 @@ verifies("studio.workspace-agents", () => {
       });
     });
 
+    it("reads the hub's default model, else the workspace's, when it names a model that exists", async () => {
+      const { host, store } = setup();
+      expect(await host.defaultModel("acme")).toBeUndefined();
+
+      store["workspace.yaml"] = "id: studio\nname: Studio\ndefaults:\n  model: smart\n";
+      expect(await host.defaultModel("acme")).toBe("smart");
+
+      store["hubs/acme/hub.yaml"] = "id: acme\nname: Acme\ndefaults:\n  model: fast\n";
+      expect(await host.defaultModel("acme")).toBe("fast");
+      expect(await host.defaultModel("beta")).toBe("smart");
+
+      store["workspace.yaml"] = "id: studio\nname: Studio\ndefaults:\n  model: nothing\n";
+      expect(await host.defaultModel("beta")).toBeUndefined();
+    });
+
     it("saves the harness and the turn limit only when they're valid, and writes nothing otherwise", async () => {
       const { host, store, changes } = setup();
       const ref = { hubId: "acme", id: "writer" };

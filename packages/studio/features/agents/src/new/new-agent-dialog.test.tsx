@@ -36,6 +36,7 @@ function dialog(props: Partial<NewAgentDialogProps> = {}) {
       <NewAgentDialog
         hubs={[acme]}
         takenIds={() => []}
+        defaultModelOf={async () => "fast"}
         create={create}
         onCreated={onCreated}
         onCancel={() => undefined}
@@ -139,9 +140,32 @@ verifies("agents.new.create", () => {
   });
 
   it("says the agent has no model yet when the workspace has no default model", async () => {
-    await show(dialog({ noDefaultModel: true }).node);
+    await show(dialog({ defaultModelOf: async () => undefined }).node);
 
     expect(body()).toContain("It has no model yet. Pick one in Configuration › Model.");
+    expect(body()).not.toContain("It starts with");
+  });
+
+  it("says it starts with the workspace's default model and runs in a sandbox", async () => {
+    await show(dialog().node);
+
+    expect(body()).toContain(
+      "It starts with the workspace's default model and runs in a sandbox on your computer.",
+    );
+    expect(body()).not.toContain("It has no model yet");
+  });
+
+  it("says nothing about the model when the default can't be read", async () => {
+    await show(
+      dialog({
+        defaultModelOf: async () => {
+          throw new Error("The hub didn't answer.");
+        },
+      }).node,
+    );
+
+    expect(body()).not.toContain("It starts with");
+    expect(body()).not.toContain("It has no model yet");
   });
 
   it("names the folder alone while the name is empty", () => {
