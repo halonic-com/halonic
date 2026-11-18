@@ -41,7 +41,7 @@ const kindWords: Record<LibraryItemKind, KindWords> = {
     nothingYet: {
       title: "No knowledge yet",
       description:
-        "A knowledge source is a folder of documents your agents can search. Put documents in the hub's docs folder, then give it to an agent under Tools.",
+        "A knowledge source is a folder of documents your agents can search. Put documents in the workspace's docs folder, then give it to an agent under Tools.",
     },
   },
   collection: {
@@ -109,11 +109,11 @@ export function showingLastList(kind: LibraryItemKind, reason?: string): string 
 export const tryingAgain = "Trying again…";
 
 /**
- * The phone's empty Knowledge sentence (microcopy 11.1): a phone can't open the hub's folder, so
- * it says where the documents go on the computer and has no button.
+ * The phone's empty Knowledge sentence (microcopy 11.1): a phone can't open the workspace's docs
+ * folder, so it says where the documents go on the computer and has no button.
  */
 const phoneKnowledgeDescription =
-  "Put documents in the hub's docs folder on your computer, then give it to an agent under Tools.";
+  "Put documents in the workspace's docs folder on your computer, then give it to an agent under Tools.";
 
 /** What {@link overviewWords} needs besides the tab. */
 export interface OverviewWordsOptions {
