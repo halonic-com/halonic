@@ -809,8 +809,10 @@ List draws them.
 A row has a `title`, an optional `meta` line (cut with an ellipsis), a 20px `icon` (16px in a
 32px `dense` row, as in a Menu item) or a 28px `avatar` (both hidden from screen readers), a
 `trailing` chip or value, a `more` button (`{ label, onClick }`, its label naming the row),
-`unavailable` (`{ reason }`), `error` (`{ reason, chip }`) and `muted`, a title in `fg-muted`
-for a finished step. Unlike the Button's, an unavailable row's `reason` is the text itself: the
+`unavailable` (`{ reason }`), `error` (`{ reason, chip }`), `muted`, a title in `fg-muted`
+for a finished step, and `inert`: a click, Enter or Space does nothing and the row has no hover or
+press tint, but the arrows still reach it, and Tab enters the List at the first row that isn't
+inert. Unlike the Button's, an unavailable row's `reason` is the text itself: the
 List draws it in place of the meta line and points `aria-describedby` at it.
 
 ```tsx
@@ -933,7 +935,8 @@ keyboard, focus and phone look. Each step is a 56px row: a 24px circle with its 
 while to do; the title in `text-body-strong` with its `hint` under it; and a chevron at the right
 edge while it isn't done. A done step has a filled `success` circle with a tick, its title in
 `fg-muted` (not struck through, which reads as "cancelled") and no chevron. Each row is read as its
-`label`. `onOpen` gets the steps still to do; a done step's row does nothing. The card draws its
+`label`. `onOpen` gets the steps still to do; a done step's row is `inert`, so it does nothing,
+doesn't look pressable, and Tab enters at the first step still to do. The card draws its
 "N of 3 done" line.
 
 ```tsx
@@ -949,8 +952,8 @@ edge while it isn't done. A done step has a filled `success` circle with a tick,
 ## useGridNavigation
 
 The roving focus behind the List, for a `grid` the kit doesn't draw (the Inbox list). Pass each
-row's `id` and which of its cells can take focus (a second argument, `{ startColumn }`, picks the
-column that takes focus first, 0 by default); spread `gridProps` on the grid and
+row's `id` and which of its cells can take focus (a second argument, `{ startColumn, startRow }`,
+picks the column and the row that take focus first, by default column 0 of the first row); spread `gridProps` on the grid and
 `cell(row, column)` on each focusable element.
 
 ```tsx

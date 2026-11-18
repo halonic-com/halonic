@@ -8,7 +8,9 @@
 
 The Try the sample card's steps now use Get set up's rows (`SetupSteps`). A done step has no
 chevron, and pressing its row now does nothing. Before, it still opened its page: step 1, once
-done, opened the Inbox again. A step still to do opens what it opened before.
+done, opened the Inbox again. A step still to do opens what it opened before. After Sofia's
+second UX check, a done row also stops looking pressable (no hover or press tint, the default
+cursor), and Tab enters the steps at the first step still to do.
 
 The requirement `first-run.sample-card` says so and gains an example. In the sample card's test
 "counts the done steps, marks them for a screen reader, and opens a step to do by its row", the

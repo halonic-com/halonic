@@ -52,6 +52,12 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
    * through, which reads as "cancelled".
    */
   readonly muted?: boolean;
+  /**
+   * A click, Enter or Space on the row does nothing, as a done setup step's: no hover or press tint
+   * and the default cursor. It still takes focus with the arrows and is read as usual, but Tab
+   * enters the List at the first row that isn't inert.
+   */
+  readonly inert?: boolean;
   readonly tag?: never;
   readonly cells?: never;
   readonly child?: never;
@@ -66,6 +72,7 @@ interface ListColumnsRowBase<Id extends string> extends ListRowBase<Id> {
   /** A chip goes in a `status` column instead. */
   readonly trailing?: never;
   readonly muted?: never;
+  readonly inert?: never;
 }
 
 /** A row on its own: its `label` is optional. */

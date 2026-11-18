@@ -91,4 +91,35 @@ verifies("kit.setup-steps", () => {
     act(() => cells[1]?.click());
     expect(onOpen).toHaveBeenCalledExactlyOnceWith("decide");
   });
+
+  it("gives a done step's row no hover or press tint and the default cursor", () => {
+    const { container } = render(
+      <SetupSteps label="Try the sample" steps={steps} onOpen={vi.fn()} />,
+    );
+    const [done, todo] = cellsOf(container);
+    expect(done?.className).toContain("cursor-default");
+    expect(done?.className).not.toContain("hover:");
+    expect(done?.className).not.toContain("active:");
+    expect(todo?.className).toContain("cursor-pointer");
+    expect(todo?.className).toContain("hover:");
+  });
+
+  it("lets Tab enter at the first step still to do, and the arrows still reach a done one", () => {
+    const onOpen = vi.fn();
+    const { container } = render(
+      <SetupSteps label="Try the sample" steps={steps} onOpen={onOpen} />,
+    );
+    const [done, todo] = cellsOf(container);
+    expect(done?.tabIndex).toBe(-1);
+    expect(todo?.tabIndex).toBe(0);
+    act(() => todo?.focus());
+    act(() => {
+      todo?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+    });
+    expect(document.activeElement).toBe(done);
+    act(() => {
+      done?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(onOpen).not.toHaveBeenCalled();
+  });
 });

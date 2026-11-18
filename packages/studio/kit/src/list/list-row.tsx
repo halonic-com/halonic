@@ -180,6 +180,14 @@ export interface RowProps<Id extends string> {
   readonly shared: RowShared<Id>;
 }
 
+/** A click on the row does nothing: the List has no `onOpen` and no selection, or the row is `inert`. */
+export function isRowInert<Id extends string>(
+  row: AnyListRow<Id>,
+  shared: Pick<RowShared<Id>, "onOpen" | "selection">,
+): boolean {
+  return row.inert === true || (shared.onOpen === undefined && shared.selection === undefined);
+}
+
 /** The main cell takes focus first, also after a checkbox cell. */
 export function firstFocusColumn(hasCheck: boolean): number {
   return hasCheck ? 1 : 0;
@@ -215,17 +223,18 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
   const isUnavailable = row.unavailable !== undefined;
   const reasonId = useId();
   // Being current only changes the row's look: its `aria-selected` and checkbox follow the selection.
-  const isInert = shared.onOpen === undefined && selection === undefined;
+  const isInert = isRowInert(row, shared);
   const state = rowStateClasses[rowState(isUnavailable, isInert, isSelected || isCurrent)];
   const cells = cellClasses({ look, ...place, state, hasCheck, hasMore });
   const mainColumn = firstFocusColumn(hasCheck);
   const more = moreClasses[phone ? "phone" : "desktop"];
+  // An inert row gets no handlers, so a click, Enter or Space does nothing.
   const { onClick, onAuxClick, onKeyDown } = rowHandlers({
     id: row.id,
     isUnavailable,
-    onOpen: shared.onOpen,
-    onOpenInNewTab: shared.onOpenInNewTab,
-    onToggle: selection?.onToggle,
+    onOpen: isInert ? undefined : shared.onOpen,
+    onOpenInNewTab: isInert ? undefined : shared.onOpenInNewTab,
+    onToggle: isInert ? undefined : selection?.onToggle,
   });
 
   return (
