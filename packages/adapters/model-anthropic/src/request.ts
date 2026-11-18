@@ -1,5 +1,6 @@
 import type { ChatMessage, ChatParams, ChatRequest, ToolCall } from "@halonicjs/ports";
 import { deepClone, isPlainObject } from "@halonicjs/std";
+import { samplingWireNames, takesSampling } from "./sampling.ts";
 
 /** The answer's length limit when the request sets none; the Messages API needs one on every call. */
 export const defaultMaxTokens = 4096;
@@ -31,6 +32,8 @@ export interface RequestOptions {
  * The JSON body of a `/v1/messages` call for `request`. It builds a new
  * object and leaves `request` as it was. `meta`, `signal` and
  * `responseFormat` are never sent: the Messages API has no plain JSON mode.
+ * Nor are the sampling settings, `params.extra`'s included, to a model that
+ * refuses them (see {@link takesSampling}).
  */
 export function toWireBody(request: ChatRequest, options: RequestOptions): Record<string, unknown> {
   const system = request.messages
@@ -53,6 +56,9 @@ export function toWireBody(request: ChatRequest, options: RequestOptions): Recor
       description: tool.description,
       input_schema: tool.parameters,
     }));
+  }
+  if (!takesSampling(request.model)) {
+    for (const name of samplingWireNames) delete body[name];
   }
   return body;
 }
