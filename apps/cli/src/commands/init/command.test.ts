@@ -14,6 +14,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
+import { shellWord } from "../../output/shell-word.ts";
 import { runCli } from "../../run-cli.ts";
 import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { goldenText, heavyTestTimeout, runGolden } from "../../test/golden.ts";
@@ -77,7 +78,7 @@ verifies("cli.commands.init.create-workspace", () => {
 
       expect(code).toBe(exitCode.ok);
       expect(io.stdout[0]).toBe(`✓ Created the workspace acme in ${acme}.`);
-      expect(io.stdout[3]).toBe(`  cd ${acme}`);
+      expect(io.stdout[3]).toBe(`  cd ${shellWord(acme)}`);
     });
 
     it("shows a folder up to two folders up the way it's typed from here", async () => {
