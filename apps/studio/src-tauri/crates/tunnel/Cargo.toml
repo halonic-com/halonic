@@ -10,13 +10,25 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[dependencies]
+# Base64url without padding, the same rules as @halonicjs/std.
+halonic-blob-store = { path = "../blob-store" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", default-features = false, features = ["std"] }
 # HKDF-SHA256 and SHA-256 for the pairing psk, the check code and the
 # commitment (ADR "Pairing and the end-to-end session"). Pinned to the
 # versions already in Cargo.lock, the ones snow's sha2 0.10 goes with, so
 # they add no crate to the app (HAL-12244). We write no crypto of our own.
-[dependencies]
 hkdf = "=0.12.4"
 sha2 = "=0.10.9"
-
-[dev-dependencies]
-serde_json = { version = "1", default-features = false, features = ["std"] }
+# The Noise handshakes and transport (board decision 4d and the approved
+# tunnel plan: "a vetted library, Noise via snow"). Pinned exactly. Only the
+# primitives our two patterns use: X25519, ChaChaPoly, SHA-256 and the
+# system's random source; no AES-GCM, BLAKE2 or P-256. Not "std" either:
+# it would turn on the optional ring and blake2 too.
+snow = { version = "=0.10.0", default-features = false, features = [
+  "use-curve25519",
+  "use-chacha20poly1305",
+  "use-sha2",
+  "use-getrandom",
+] }
