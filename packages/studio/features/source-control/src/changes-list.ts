@@ -61,6 +61,7 @@ export class ChangesList {
     identity: undefined,
     hasRemote: false,
     unshared: 0,
+    sharedCheck: { kind: "unknown" },
     sharing: false,
     gettingUpdates: false,
     merge: undefined,
@@ -145,6 +146,7 @@ export class ChangesList {
         error: undefined,
       });
       if (answer.kind === "ready") await this.#readHistory(this.#state.history.versions.length);
+      this.#sharing.checkOnce(hasRemote && merge === null);
     } catch (error) {
       if (read !== this.#reads || this.#disposed) return;
       this.#set({ ...this.#state, error });
@@ -463,6 +465,12 @@ export class ChangesList {
   /** Sends the versions the shared copy lacks: how many were sent, or why it didn't work. */
   share(): ReturnType<ShareSteps["share"]> {
     return this.#sharing.share();
+  }
+
+  /** Asks the shared copy for news again, after it couldn't be reached. */
+  checkShared(): Promise<void> {
+    this.#set({ ...this.#state, sharedCheck: { kind: "unknown" } });
+    return this.#sharing.check();
   }
 
   /** Calls `listener` after every change of {@link state}. Returns a function that stops the calls. */

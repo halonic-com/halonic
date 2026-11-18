@@ -44,6 +44,8 @@ export function NotSharedStrip({ list }: { readonly list: ChangesList }) {
   const { unshared, sharing } = list.state;
   const share = async (): Promise<void> => {
     const outcome = await list.share();
+    // A second press while a share runs is dropped without a word.
+    if (outcome === undefined) return;
     if ("sent" in outcome) {
       toasts?.show({ tone: "success", title: shareWords.shared(outcome.sent) });
       return;
@@ -69,6 +71,34 @@ export function NotSharedStrip({ list }: { readonly list: ChangesList }) {
       action={{ label: shareWords.share(unshared), onClick: () => void share() }}
     >
       {shareWords.notShared(unshared)}
+    </LineFrame>
+  );
+}
+
+/** The strip when everything is shared and the shared copy has nothing newer (2.3): no action. */
+export function UpToDateStrip() {
+  return (
+    <LineFrame muted icon={<DashedRingIcon />}>
+      {shareWords.upToDate}
+    </LineFrame>
+  );
+}
+
+/** The strip when the shared copy couldn't be asked (2.3): the reason, and Try again. */
+export function CouldntCheckStrip({
+  list,
+  reason,
+}: {
+  readonly list: ChangesList;
+  readonly reason: string;
+}) {
+  return (
+    <LineFrame
+      muted
+      icon={<DashedRingIcon />}
+      action={{ label: shareWords.tryAgain, onClick: () => void list.checkShared() }}
+    >
+      {shareWords.couldntCheck(reason)}
     </LineFrame>
   );
 }

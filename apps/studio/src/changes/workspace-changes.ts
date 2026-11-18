@@ -22,6 +22,7 @@ import type {
 } from "@halonicjs/studio-feature-source-control/api";
 import { historyArgs, versionsFromLog } from "./history-log.ts";
 import { lastVersionDiffArgs, lastVersionFromDiff } from "./last-version.ts";
+import { SharedCopy } from "./shared-copy.ts";
 import { statusArgs } from "./status-args.ts";
 import { type ChoicesMemory, UpdatesMerge } from "./workspace-merge.ts";
 
@@ -61,6 +62,9 @@ export interface WorkspaceChangesOptions {
 /** What the share address is called in git: the name git itself gives the place a clone came from. */
 const shareRemoteName = "origin";
 
+/** The most versions counted for Share or Get updates; a bigger count reads as this many. */
+const versionCountCap = 1000;
+
 /** The line that keeps Halonic's own data out of the history. */
 const studioIgnoreLine = ".studio/";
 
@@ -72,9 +76,16 @@ const studioIgnoreLine = ".studio/";
 export class WorkspaceChanges implements ChangesSource {
   readonly #options: WorkspaceChangesOptions;
   readonly #merge: UpdatesMerge;
+  readonly #sharedCopy: SharedCopy;
 
   constructor(options: WorkspaceChangesOptions) {
     this.#options = options;
+    this.#sharedCopy = new SharedCopy({
+      run: (args) => this.#run(args),
+      remoteName: shareRemoteName,
+      countCap: versionCountCap,
+      reason: readableProblem,
+    });
     this.#merge = new UpdatesMerge({
       run: async (args) => {
         const answer = await this.#run(args);
@@ -215,15 +226,19 @@ export class WorkspaceChanges implements ChangesSource {
   }
 
   async countUnshared(): Promise<number> {
-    // Before the first share there is no tracking branch: every version is unshared.
-    const upstream = await this.#run(["rev-parse", "--verify", "--quiet", "@{upstream}"]);
-    if (upstream === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
-    if (upstream.code !== 0 && (await this.#head()) === null) return 0;
-    const range = upstream.code === 0 ? "@{upstream}..HEAD" : "HEAD";
-    const log = await this.#run(["log", "--oneline", range]);
-    if (log === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
-    if (log.code !== 0) throw new KindedError("unavailable", readableProblem(log));
-    return log.stdout.split("\n").filter((line) => line.trim() !== "").length;
+    const shared = await this.#sharedCopy.ref();
+    // With no shared version yet, every version is unshared.
+    if (shared === null && (await this.#head()) === null) return 0;
+    return this.#sharedCopy.count(shared === null ? "HEAD" : `${shared}..HEAD`);
+  }
+
+  async checkUpdates(): Promise<number> {
+    const fetch = await this.#run(["fetch", "--quiet", "--no-tags", shareRemoteName]);
+    if (fetch === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+    if (fetch.code !== 0) throw new KindedError("unavailable", updatesReason(fetch));
+    const shared = await this.#sharedCopy.ref();
+    if (shared === null) return 0;
+    return this.#sharedCopy.count((await this.#head()) === null ? shared : `HEAD..${shared}`);
   }
 
   async share(): Promise<void> {

@@ -1,16 +1,7 @@
 import type { ChangesSource, UpdateChoice } from "./api.ts";
-import type { ChangesListState, MergeOutcome } from "./changes-list-state.ts";
+import type { ListHost, MergeOutcome } from "./changes-list-state.ts";
 import { mergeWords } from "./changes-words.ts";
 import { loadFailureReason } from "./load-failure.ts";
-
-/** What the merge steps need from the {@link ChangesList} that owns them. */
-export interface MergeHost {
-  readonly source: ChangesSource;
-  state(): ChangesListState;
-  disposed(): boolean;
-  set(state: ChangesListState): void;
-  refresh(): Promise<void>;
-}
 
 /**
  * The name a kept copy carries, as in `notes (Sam's).md`: the possessive of the person's name
@@ -33,9 +24,9 @@ export function copyLabel(people: readonly string[]): string {
  * cancel. One runs at a time, then the list reads again.
  */
 export class MergeSteps {
-  readonly #host: MergeHost;
+  readonly #host: ListHost;
 
-  constructor(host: MergeHost) {
+  constructor(host: ListHost) {
     this.#host = host;
   }
 

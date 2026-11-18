@@ -1,6 +1,7 @@
 import type { FileChange } from "@halonicjs/app";
 import type {
   ChangesRead,
+  ChangesSource,
   FileTexts,
   Identity,
   UpdateChoice,
@@ -68,6 +69,24 @@ export type MergeOutcome = string | undefined;
 
 export type { UpdateChoice };
 
+/** What asking the shared copy for news found. */
+export type SharedCheck =
+  /** Not asked yet, or being asked. */
+  | { readonly kind: "unknown" }
+  /** The shared copy was reached and has `waiting` versions this workspace lacks. */
+  | { readonly kind: "checked"; readonly waiting: number }
+  /** The shared copy couldn't be reached; `reason` is a sentence a person can read. */
+  | { readonly kind: "failed"; readonly reason: string };
+
+/** What the steps of a feature need from the {@link ChangesList} that owns them. */
+export interface ListHost {
+  readonly source: ChangesSource;
+  state(): ChangesListState;
+  disposed(): boolean;
+  set(state: ChangesListState): void;
+  refresh(): Promise<void>;
+}
+
 /** What the Changes list holds now. */
 export interface ChangesListState {
   /** The last read that worked; `undefined` before the first one. */
@@ -84,6 +103,8 @@ export interface ChangesListState {
   readonly hasRemote: boolean;
   /** How many versions the shared copy lacks, as of the last read; zero without a shared copy. */
   readonly unshared: number;
+  /** What the last look at the shared copy found; see {@link SharedCheck}. */
+  readonly sharedCheck: SharedCheck;
   /** Whether Share is working. */
   readonly sharing: boolean;
   /** Whether Get updates is working. */

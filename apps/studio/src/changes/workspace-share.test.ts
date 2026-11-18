@@ -102,4 +102,69 @@ verifies("source-control.share-versions", () => {
       expect(String(error)).not.toContain("x.example");
     });
   });
+
+  describe("WorkspaceChanges.checkUpdates", () => {
+    it("counts versions the shared copy has that this workspace lacks, after fetching", async () => {
+      const root = mkdtempSync(join(tmpdir(), "share-versions-"));
+      try {
+        const remote = join(root, "remote.git");
+        const work = join(root, "work");
+        const mate = join(root, "mate");
+        spawnSync("git", ["init", "--quiet", "--bare", remote]);
+        spawnSync("git", ["init", "--quiet", work]);
+        commit(work, "a.txt");
+        const changes = history(realGit(work));
+        await changes.addRemote(remote);
+        await changes.share();
+        spawnSync("git", ["clone", "--quiet", remote, mate]);
+        commit(mate, "b.txt");
+        commit(mate, "c.txt");
+        spawnSync("git", ["push", "--quiet"], { cwd: mate });
+        expect(await changes.checkUpdates()).toBe(2);
+        expect(await changes.countUnshared()).toBe(0);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it("counts the unshared versions against the shared copy's branch when none is tracked", async () => {
+      const root = mkdtempSync(join(tmpdir(), "share-versions-"));
+      try {
+        const remote = join(root, "remote.git");
+        const work = join(root, "work");
+        spawnSync("git", ["init", "--quiet", "--bare", remote]);
+        spawnSync("git", ["init", "--quiet", work]);
+        commit(work, "a.txt");
+        commit(work, "b.txt");
+        const changes = history(realGit(work));
+        await changes.addRemote(remote);
+        await changes.share();
+        spawnSync("git", ["branch", "--unset-upstream"], { cwd: work });
+        commit(work, "c.txt");
+        await changes.checkUpdates();
+        expect(await changes.countUnshared()).toBe(1);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it("says a plain reason when the shared copy can't be reached", async () => {
+      const changes = history(async () => ({
+        code: 128,
+        stdout: "",
+        stderr: "fatal: unable to access 'https://x.example/a.git/': Could not resolve host",
+      }));
+      const error = await changes.checkUpdates().catch((caught: unknown) => caught);
+      expect(String(error)).not.toContain("x.example");
+    });
+
+    it("caps how many versions a log counts", async () => {
+      const asked: (readonly string[])[] = [];
+      await history(async (args) => {
+        asked.push(args);
+        return { code: args.includes("@{upstream}") ? 1 : 0, stdout: "abc", stderr: "" };
+      }).countUnshared();
+      expect(asked.some((args) => args.includes("--max-count=1000"))).toBe(true);
+    });
+  });
 });

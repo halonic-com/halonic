@@ -105,4 +105,68 @@ verifies("source-control.share-versions", () => {
       expect(root.textContent).not.toContain("shared yet");
     });
   });
+
+  describe("the up-to-date and couldn't-check strips", () => {
+    it("says Shared with your team. Up to date. with no action when nothing is waiting", async () => {
+      const { fake, root } = await openPage(0);
+      expect(fake.checkCalls()).toBe(1);
+      expect(root.textContent).toContain("Shared with your team. Up to date.");
+      expect(shareButton()).toBeUndefined();
+    });
+
+    it("says nothing about being up to date while the shared copy has versions waiting", async () => {
+      const fake = fakeSource({ kind: "ready", changes: [] });
+      fake.setRemote(true);
+      fake.setWaiting(2);
+      const root = render(<ChangesView list={new ChangesList(fake.source)} />);
+      await act(settle);
+      expect(root.textContent).not.toContain("Up to date");
+    });
+
+    it("says it couldn't check, with the reason and Try again, and Try again asks again", async () => {
+      const fake = fakeSource({ kind: "ready", changes: [] });
+      fake.setRemote(true);
+      fake.failCheck(new KindedError("unavailable", "you can't reach the shared copy right now."));
+      const root = render(<ChangesView list={new ChangesList(fake.source)} />);
+      await act(settle);
+      expect(root.textContent).toContain(
+        "Couldn't check for updates: You can't reach the shared copy right now.",
+      );
+      fake.failCheck(undefined);
+      await press(
+        [...document.querySelectorAll("button")].find((b) => b.textContent === "Try again"),
+      );
+      expect(fake.checkCalls()).toBe(2);
+      expect(root.textContent).toContain("Up to date");
+      expect(root.textContent).not.toContain("Couldn't check");
+    });
+
+    it("asks the shared copy once, not on every read", async () => {
+      const { fake } = await openPage(0);
+      await act(async () => {
+        await settle();
+      });
+      expect(fake.checkCalls()).toBe(1);
+    });
+
+    it("ignores Share pressed again while a share runs, without an answer", async () => {
+      const fake = fakeSource({ kind: "ready", changes: [] });
+      fake.setRemote(true);
+      fake.setUnshared(2);
+      let finish: () => void = () => undefined;
+      fake.holdShare(
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+      );
+      const list = new ChangesList(fake.source);
+      await settle();
+      const first = list.share();
+      await settle();
+      expect(await list.share()).toBeUndefined();
+      finish();
+      expect(await first).toEqual({ sent: 2 });
+      expect(fake.shareCalls()).toBe(1);
+    });
+  });
 });
