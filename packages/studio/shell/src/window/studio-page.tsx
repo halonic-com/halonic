@@ -2,6 +2,7 @@ import type { Announcer } from "../announcer/announcer.ts";
 import { HomePage } from "../home/home-page.tsx";
 import { BackLinkSlotProvider } from "../page/back-link-slot.tsx";
 import { PageBackLink } from "../page/page-back-link.tsx";
+import type { PhonePageMemory } from "../phone/page-memory.tsx";
 import { type PlaceContribution, placeNames } from "../points/frame.ts";
 import type { Registered } from "../points/point-store.ts";
 import { SearchPage } from "../search/search-page.tsx";
@@ -21,6 +22,12 @@ export interface PlaceViewProps {
    * page, and always on the desktop, which has no such pages.
    */
   readonly sub?: string;
+  /**
+   * On a phone, what this page keeps while pages pushed above it are open (`openPlacePage`), as
+   * the phone draws the page fresh when Back returns to it. `undefined` on the desktop, whose tab
+   * keeps the view drawn.
+   */
+  readonly memory?: PhonePageMemory;
 }
 
 /** Props for {@link StudioPage}. */
@@ -33,6 +40,8 @@ export interface StudioPageProps {
   readonly contextFor: (featureId: string) => WorkspaceContext;
   /** Shows an item's back link above its page, as the desktop does; the phone has its own Back. */
   readonly backLink?: boolean;
+  /** The phone page's memory, handed to a place's view (`PlaceViewProps`). */
+  readonly memory?: PhonePageMemory | undefined;
 }
 
 /**
@@ -56,6 +65,7 @@ export function StudioPage({
   announcer,
   contextFor,
   backLink = false,
+  memory,
 }: StudioPageProps) {
   const { contributions } = shell;
   if (location.key === homeLocation.key) {
@@ -89,6 +99,7 @@ export function StudioPage({
         name={location.title}
         context={contextFor(place.featureId)}
         {...(sub === "" ? {} : { sub })}
+        memory={memory}
       />
     );
   }
@@ -127,17 +138,23 @@ function PlaceView({
   name,
   context,
   sub,
+  memory,
 }: {
   readonly place: Registered<PlaceContribution>;
   readonly name: string;
   readonly context: WorkspaceContext;
   readonly sub?: string;
+  readonly memory: PhonePageMemory | undefined;
 }) {
   return (
     <LoadedView<PlaceViewProps>
       view={place}
       name={name}
-      props={{ context, ...(sub === undefined ? {} : { sub }) }}
+      props={{
+        context,
+        ...(sub === undefined ? {} : { sub }),
+        ...(memory === undefined ? {} : { memory }),
+      }}
     />
   );
 }

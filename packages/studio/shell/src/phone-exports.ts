@@ -11,6 +11,7 @@ export {
   type MorePageSwitcher,
   moreRows,
 } from "./phone/more-page.tsx";
+export type { KeptRow, PhonePageMemory } from "./phone/page-memory.tsx";
 export { type PhoneBackResult, pressPhoneBack, usePhoneBackButton } from "./phone/phone-back.ts";
 export {
   PhoneSearchButton,

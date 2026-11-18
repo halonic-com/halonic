@@ -3,6 +3,7 @@ import { placeNames, type SidebarPlace } from "../points/frame.ts";
 import { usePageHeadingFocus } from "../tabs/history-moves.ts";
 import type { TabLocation } from "../tabs/tab-set.ts";
 import type { BottomNavigationPlace } from "./bottom-navigation.tsx";
+import { emptyPageMemory, type PhonePageMemory } from "./page-memory.tsx";
 import {
   currentPhonePage,
   goBackOnPhone,
@@ -25,6 +26,8 @@ export interface PhonePlaces {
   readonly stacks: PlaceStacks;
   /** The page shown: the screen draws it (the More page at More's top). */
   readonly page: PhonePage;
+  /** What the page shown keeps while pages pushed above it are open; see {@link PhonePageMemory}. */
+  readonly memory: PhonePageMemory;
   /** The props for `PhoneTopBar`: the page's title, and Back only under the top of a place. */
   readonly topBar: { readonly title: string; readonly onBack: (() => void) | undefined };
   /** The props for `BottomNavigation`, or `undefined` on an opened item, where it hides. */
@@ -47,6 +50,11 @@ export interface PhonePlaces {
    * `usePhoneBackButton` needs.
    */
   readonly back: () => boolean;
+  /**
+   * Back from the page with this key, when it is the page shown; else nothing moves, as Back has
+   * taken the user off it already. For a page that closes itself.
+   */
+  readonly backFrom: (key: string) => void;
 }
 
 /**
@@ -55,6 +63,9 @@ export interface PhonePlaces {
  * places and lists, and every move takes focus to the new page's `h1`, as on the desktop (a11y
  * A3). A move that changes nothing, such as tapping the place shown at its top, leaves focus
  * where it is.
+ *
+ * Each page in a stack has its own memory while pages above it are open (`PhonePageMemory`), as
+ * the page itself is drawn fresh when it shows again.
  *
  * @example
  * const places = usePhonePlaces();
@@ -70,6 +81,8 @@ export function usePhonePlaces(): PhonePlaces {
   const [stacks, setStacks] = useState(startPlaceStacks);
   // Back has to say at once whether it moved, so the latest stacks are kept here too.
   const latest = useRef(stacks);
+  // Keyed by the page in the stack, so a page opened anew gets a new one and Back finds the old.
+  const memories = useRef(new WeakMap<PhonePage, PhonePageMemory>());
   const focusNewPage = usePageHeadingFocus();
 
   const move = useCallback(
@@ -92,6 +105,15 @@ export function usePhonePlaces(): PhonePlaces {
     move(next);
     return true;
   }, [move]);
+
+  const backFrom = useCallback(
+    (key: string) => {
+      if (currentPhonePage(latest.current).location.key === key) {
+        back();
+      }
+    },
+    [back],
+  );
 
   const open = useCallback(
     (location: TabLocation, options?: PhoneOpenOptions) =>
@@ -118,9 +140,15 @@ export function usePhonePlaces(): PhonePlaces {
   );
 
   const page = currentPhonePage(stacks);
+  let memory = memories.current.get(page);
+  if (memory === undefined) {
+    memory = emptyPageMemory();
+    memories.current.set(page, memory);
+  }
   return {
     stacks,
     page,
+    memory,
     topBar: {
       title: page.location.title,
       onBack: isAtPlaceTop(stacks) ? undefined : () => back(),
@@ -131,5 +159,6 @@ export function usePhonePlaces(): PhonePlaces {
     openIn,
     show,
     back,
+    backFrom,
   };
 }

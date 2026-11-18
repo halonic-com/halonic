@@ -158,7 +158,7 @@ function StudioWindowBody(props: StudioWindowProps) {
   const phone = usePhonePlaces();
   // The phone top bar's slot for the page's own buttons; `null` on the desktop, which has none.
   const [topBarSlot, setTopBarSlot] = useState<HTMLElement | null>(null);
-  const { open: openPhone } = phone;
+  const { open: openPhone, backFrom: backFromPhone } = phone;
   // Settings is a dialog on the desktop and a page on the More stack below 600px (flow-settings 13).
   // Read when it opens, so the context stays the same as the window narrows or widens.
   const onDesktop = useRef(desktop);
@@ -244,6 +244,12 @@ function StudioWindowBody(props: StudioWindowProps) {
         if (!onDesktop.current)
           openPhone({ key: `${place}/${sub}`, title }, { list: true, replaceSibling: true });
       },
+      openPlacePage: (place, sub, title) => {
+        if (!onDesktop.current) openPhone({ key: `${place}/${sub}`, title });
+      },
+      closePlacePage: (place, sub) => {
+        if (!onDesktop.current) backFromPhone(`${place}/${sub}`);
+      },
       badges: shell.badges,
       saving: workspace.saving,
       closeStack: shell.closeStack,
@@ -266,6 +272,7 @@ function StudioWindowBody(props: StudioWindowProps) {
       host,
       openSettings,
       openPhone,
+      backFromPhone,
       settingsSections,
       contributions,
       activeItem,
