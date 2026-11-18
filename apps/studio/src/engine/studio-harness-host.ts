@@ -186,7 +186,7 @@ async function skillTextOf(
 
 /** Why an agent set to "On this computer" doesn't start from the Studio. */
 const noUnfencedReason =
-  "The Studio runs agents only in the sandbox for now. Run this agent from the command line, or set it back to the sandbox.";
+  "Halonic can't run Claude Code or Codex agents outside the sandbox yet. Set this agent back to the sandbox.";
 
 /**
  * The `this-computer` sandbox of the Studio: none. Its check says why, and

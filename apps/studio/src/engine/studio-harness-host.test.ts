@@ -123,7 +123,7 @@ verifies("studio.engine-service", () => {
       const built = await openStudioHarnessHost(inputOn(fakeHost()));
       const unfenced = built.harnesses.sandboxes["this-computer"];
       expect((await unfenced.check()).ok).toBe(false);
-      await expect(unfenced.open({} as SandboxProfile)).rejects.toThrow(/only in the sandbox/);
+      await expect(unfenced.open({} as SandboxProfile)).rejects.toThrow(/outside the sandbox yet/);
     });
 
     it("asks the run's own approvals for a bridge's approval", async () => {

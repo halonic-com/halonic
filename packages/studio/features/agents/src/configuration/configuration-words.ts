@@ -7,7 +7,7 @@ export const configurationWords = {
   instructions: "Instructions",
   /** Shown only while Instructions is empty (microcopy 8.5). */
   instructionsHint:
-    "What it should do and how, in plain words. It follows this in every run and chat.",
+    "What it should do and how, in plain words. It follows this every time it runs.",
   /** Save model 8.4: a key pasted into Description or Instructions is not saved. */
   looksLikeKey: "This looks like a key. Keep it as a secret instead?",
   model: "Model",
@@ -20,8 +20,10 @@ export const configurationWords = {
   workspaceDefault: (name: string) =>
     name === "default" ? "Workspace default" : `Workspace default (${name})`,
   noAliases: "No models yet. Add one in Models.",
-  turnLimit: "Turn limit",
-  turnLimitHint: "The most model calls in one run. Empty means 6.",
+  /** `maxSteps` counts per step, and Claude Code and Codex don't read it (HAL-12642). */
+  turnLimit: "Model call limit",
+  turnLimitHint:
+    "The most model calls in one step. Empty means 6. Claude Code and Codex agents don't use it.",
   /** Microcopy 8.5. */
   turnLimitInvalid: "Enter a whole number from 1 to 200.",
   harness: "Harness",

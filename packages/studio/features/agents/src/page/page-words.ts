@@ -12,6 +12,6 @@ export const pageWords = {
   saveFailed: "The file couldn't be written.",
   couldntSave: (reason: string) => `Couldn't save: ${reason}`,
   runsHeading: "Runs",
-  /** R9: Try it records no run in 0.1, and a run doesn't say which agent ran in it. */
-  noRuns: "No runs with this agent yet.",
+  /** R9: the Runs list can't show one agent's runs yet, so this points there (HAL-12642). */
+  noRuns: "Runs aren't listed by agent yet. See them on the Runs page.",
 } as const;

@@ -218,9 +218,7 @@ export class EngineService {
       return { id };
     } catch (error) {
       if (!isAgentRunsNotAvailable(error)) throw error;
-      throw new KindedError("unavailable", "This window can't start an agent yet.", {
-        fix: "Run this routine from the command line.",
-      });
+      throw new KindedError("unavailable", "This window can't start an agent yet.");
     }
   }
 
@@ -247,10 +245,14 @@ export class EngineService {
    */
   #refuseWhatThePageCantStart(agent: Agent): void {
     if (startsAProgram(agent.harness) && this.#options.openHarnessHost === undefined) {
-      throw unavailable(agent.name, "runs in a harness program");
+      throw unavailable(
+        agent.name,
+        "runs in a harness program",
+        `Set ${agent.name} to Halonic on its Harness page to run it now.`,
+      );
     }
     if (agent.connectors.length > 0) {
-      throw unavailable(agent.name, "uses a connector");
+      throw unavailable(agent.name, "uses a connector", "Run this workflow from the command line.");
     }
   }
 
@@ -381,8 +383,8 @@ function refusalOf(refusal: unknown): { kind?: string; message?: string; pid?: n
   };
 }
 
-function unavailable(agentName: string, why: string): KindedError {
+function unavailable(agentName: string, why: string, fix: string): KindedError {
   return new KindedError("unavailable", `${agentName} ${why}, which this window can't start yet.`, {
-    fix: "Run this workflow from the command line.",
+    fix,
   });
 }

@@ -34,7 +34,7 @@ export function stepOpeners(context: WorkspaceContext, progress: SampleProgress)
 }
 
 /**
- * What **Run its tests** does: opens the sample's support workflow, in the hub of its runs, on its
+ * What **See its tests** does: opens the sample's support workflow, in the hub of its runs, on its
  * Tests. Absent where the window can't open a page.
  */
 export function testsOpener(context: WorkspaceContext): ((hub: string) => void) | undefined {

@@ -212,7 +212,11 @@ verifies("studio.engine-service", () => {
 
       const refusal = await service.check(reply).catch((error: unknown) => error);
 
-      expect(refusal).toMatchObject({ kind: "unavailable" });
+      // The command line refuses Claude Code and Codex agents too, so the fix is the Harness page.
+      expect(refusal).toMatchObject({
+        kind: "unavailable",
+        fix: "Set writer to Halonic on its Harness page to run it now.",
+      });
       expect((refusal as Error).message).toContain("writer");
       expect(shell.calls).toEqual([]);
     });
@@ -220,7 +224,10 @@ verifies("studio.engine-service", () => {
     it("refuses an agent that lists a connector as `unavailable`", async () => {
       const service = serviceOn(fakeShell(), acmeFiles({ writer: "connectors: [mail]\n" }));
 
-      await expect(service.check(reply)).rejects.toMatchObject({ kind: "unavailable" });
+      await expect(service.check(reply)).rejects.toMatchObject({
+        kind: "unavailable",
+        fix: "Run this workflow from the command line.",
+      });
     });
 
     describe("with a model provider", () => {
@@ -366,7 +373,7 @@ verifies("studio.engine-service", () => {
           { agent: { hubId: "support", agentId: "writer", prompt: "Go." } },
           { routineKey: "support/weekly", at: "2026-11-15T10:00:00.000Z" },
         ),
-      ).rejects.toMatchObject({ kind: "unavailable" });
+      ).rejects.toMatchObject({ kind: "unavailable", fix: undefined });
       await service.close();
     });
 

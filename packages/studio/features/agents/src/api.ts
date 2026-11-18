@@ -42,7 +42,7 @@ export type HarnessReadiness =
 export interface AgentSettings extends AgentListing {
   /** What the agent is told to do; empty before anyone writes it. */
   readonly instructions: string;
-  /** The most model calls for one run of the agent (its turn limit); 6 when the file says none. */
+  /** The most model calls in one step of the agent (its model call limit); 6 when the file says none. */
   readonly maxSteps: number;
   /** The program the agent runs in; `halonic` when its file names none. */
   readonly harness: AgentHarnessId;
@@ -74,7 +74,7 @@ export interface AgentChange {
   readonly instructions?: string | undefined;
   /** The model alias, or `provider/model`. */
   readonly model?: string | undefined;
-  /** The turn limit, a whole number from 1 to 200. */
+  /** The model call limit, a whole number from 1 to 200. */
   readonly maxSteps?: number | undefined;
   /** The program the agent runs in. */
   readonly harness?: AgentHarnessId | undefined;
