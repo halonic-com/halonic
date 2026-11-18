@@ -19,9 +19,8 @@ export function useRunFacts(list: RunsList | undefined): RunFactsOf | undefined 
       if (list === undefined || run === undefined) return undefined;
       const { summary } = run;
       const { source } = list;
-      const trigger = summary.trigger;
-      const routineKey =
-        trigger?.type === "schedule" || trigger?.type === "every" ? trigger.routineId : undefined;
+      // A schedule's run and a routine's Run now both name their routine.
+      const routineKey = summary.trigger?.routineId;
       return {
         hubId: summary.hubId,
         workflow: source.workflow(summary.hubId, summary.workflowId)?.name ?? summary.workflowId,
