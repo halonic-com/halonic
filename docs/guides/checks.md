@@ -865,7 +865,7 @@ requirement guard, and the workflow lint unless the group changes
 | Leak guard | the leak guard over the change; runs only our own script, no dependencies, so the secret never meets third-party code |
 | Secret scan | `gitleaks` over the pull request's commits, checksum-verified |
 | Workflow lint | `zizmor` over `.github/`, installed from `.github/zizmor-requirements.txt` by hash; in the merge queue only when `.github/` changes |
-| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits. On `main` and in the queue it then runs `trace`; on a pull request the guard job does |
+| Typecheck, lint, test, build | every task through Turbo; unchanged packages are cache hits. On `main` and in the queue one job (`all`) runs everything, then `trace`. A pull request splits it over three jobs: `checks` (typecheck, lint, build, and a dry run that proves the two test jobs cover every test task once), `test-1` (the slowest packages' tests, listed in `TEST_1_PACKAGES`) and `test-2` (every other package's tests); the guard job runs `trace` over both test jobs' results |
 | Policy rules (base's copy) | pull requests and the queue: `layers`, `dependencies`, `process-starts`, `lockfile`, `advisories` and `deny-toml`, run from the base commit's `tooling/check` with the base's allow-lists (`--lists-from`), so a change can't approve itself |
 | Merge base's tests | pull requests only: the merge base's tests, with no cache and no pull-request code, for the guard's baseline |
 | Requirement guard | pull requests only: `trace` (blocking) and the requirement guard (both blocking), run from the merge base's copy with the merge base's dependencies, over both sides' test results |
