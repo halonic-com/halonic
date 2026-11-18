@@ -10,6 +10,7 @@ import {
   type PluginPlacement,
   segmentAsOpened,
 } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import { isMissing, lstatOrNull } from "./links.ts";
 import { renameOver } from "./rename-over.ts";
 
@@ -218,19 +219,27 @@ export class FileSystemPluginFolder implements PluginFolderWriter {
  * Makes `folder` when it isn't there, and refuses it when it is a symbolic
  * link, a Windows junction or not a folder: `mkdir` would go through a link
  * without a word, and the plugins would be written wherever it points, such
- * as into a workspace. The profile's own folders are never links.
+ * as into a workspace. The profile's own folders are never links. The
+ * refusal is a `conflict`, so a surface shows its reason and fix rather
+ * than a generic error (HAL-12622).
  *
- * @throws Error when `folder` is a link or not a folder
+ * @throws KindedError (`conflict`) when `folder` is a link or not a folder
  */
 async function makePlainFolder(folder: string): Promise<void> {
   await mkdir(folder, { recursive: true });
   const stats = await lstatOrNull(folder);
   if (stats?.isSymbolicLink() === true) {
-    throw new Error(`${folder} is a link; plugins are written only into a plain folder.`);
+    throw notPlainFolder(`${folder} is a link; plugins are written only into a plain folder.`);
   }
   if (stats?.isDirectory() !== true) {
-    throw new Error(`${folder} isn't a folder; plugins are written only into a plain folder.`);
+    throw notPlainFolder(`${folder} isn't a folder; plugins are written only into a plain folder.`);
   }
+}
+
+function notPlainFolder(message: string): KindedError {
+  return new KindedError("conflict", message, {
+    fix: "Replace it with a plain folder, then try again.",
+  });
 }
 
 /**
