@@ -66,8 +66,9 @@ const pypiFilesHost = "files.pythonhosted.org";
  *
  * - The environment holds only the tool's own `env` (its settings), its
  *   secrets, and what Halonic sets: `PATH`, and its home and temp folders
- *   inside the session. Halonic's variables win over the tool's settings,
- *   and the secrets come last, as on this computer.
+ *   inside the session. Halonic's variables win over the tool's settings
+ *   and its secrets, so a secret named `HOME` can't move the home folder.
+ *   The plugin check refuses those names already (`format.plugin-checks`).
  * - A pinned package starts as the host's pinned launcher starts it
  *   (`mcp.pinned-launcher`), with nothing inherited but `PATH`, in the
  *   working folder, and its registry's host joins the allowed sites.
@@ -84,14 +85,17 @@ export function localToolLaunch(
   pin: ConnectorPin | null,
   secretEnv: Readonly<Record<string, string>>,
 ): LocalToolLaunch {
-  const launch = pin === null ? scriptLaunch(stdio, place) : packageLaunch(stdio, place, pin);
+  const launch =
+    pin === null
+      ? scriptLaunch(stdio, place, secretEnv)
+      : packageLaunch(stdio, place, pin, secretEnv);
   const profile: SandboxProfile = {
     workingFolder: place.workingFolder,
     tempFolder: place.tempFolder,
     settingsFolder: null,
     readOnlyPaths: [...place.readOnlyPaths],
     deniedPaths: [...place.deniedPaths],
-    env: { ...launch.env, ...secretEnv },
+    env: launch.env,
     network: {
       bridge: place.bridge,
       allowedSites: unique([...place.sites, ...registrySites(pin)]),
@@ -101,33 +105,50 @@ export function localToolLaunch(
   return { profile, command: launch.command };
 }
 
-/** A command and its environment before the secrets. */
+/** A command and its whole environment, secrets included. */
 interface Planned {
   readonly command: SandboxCommand;
   readonly env: Record<string, string>;
 }
 
-/** A program the person already has, such as `node` or `python`, run as configured. */
-function scriptLaunch(stdio: StdioConfig, place: LocalToolPlace): Planned {
-  const env = {
-    ...stdio.env,
+/**
+ * A program the person already has, such as `node` or `python`, run as
+ * configured: its settings, then its secrets, then Halonic's own variables.
+ */
+function scriptLaunch(
+  stdio: StdioConfig,
+  place: LocalToolPlace,
+  secretEnv: Readonly<Record<string, string>>,
+): Planned {
+  const own = {
     PATH: place.path,
     HOME: place.workingFolder,
     TMPDIR: place.tempFolder,
     TEMP: place.tempFolder,
     TMP: place.tempFolder,
   };
+  const env = { ...stdio.env, ...secretEnv, ...own };
   return { command: { program: stdio.command, args: [...stdio.args] }, env };
 }
 
-/** A pinned package, started by its runner exactly as the pinned launcher starts it on this computer. */
-function packageLaunch(stdio: StdioConfig, place: LocalToolPlace, pin: ConnectorPin): Planned {
+/**
+ * A pinned package, started by its runner exactly as the pinned launcher
+ * starts it on this computer. Its secrets join its settings, so the
+ * launcher's own folders and registry are set after both; `checkPinnedLaunch`
+ * has already refused a pin whose settings or secrets set `PATH` or `HOME`.
+ */
+function packageLaunch(
+  stdio: StdioConfig,
+  place: LocalToolPlace,
+  pin: ConnectorPin,
+  secretEnv: Readonly<Record<string, string>>,
+): Planned {
   const runner = place.runner;
   if (runner === undefined) {
     throw new Error("A pinned local tool needs the runner the host found for it.");
   }
   const launch = pinnedLaunch(
-    stdio,
+    { ...stdio, env: { ...stdio.env, ...secretEnv } },
     pin,
     { PATH: place.path },
     { folder: place.workingFolder, runner: runner.found, platform: runner.platform },
