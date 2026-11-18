@@ -1,5 +1,13 @@
-import type { RunEvent } from "@halonicjs/events";
-import { Button, List, type ListColumn, usePresentation, WarningIcon } from "@halonicjs/studio-kit";
+import { providerNotes, type RunEvent } from "@halonicjs/events";
+import { escapeHidden } from "@halonicjs/std";
+import {
+  Button,
+  List,
+  type ListColumn,
+  NoteLines,
+  usePresentation,
+  WarningIcon,
+} from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { DamagedRunLog, type RunsSource } from "../api.ts";
 import { everyStepWords, runLogWords } from "../run-words.ts";
@@ -30,6 +38,10 @@ const timelineColumns: readonly ListColumn[] = [{ kind: "main" }, { kind: "time"
  * its entry, indented as child rows whose label names the step. They open
  * their step's panel.
  *
+ * Under the timeline or the run log, the providers' notes on how they
+ * changed the run's model calls, each once, quiet lines that need no action
+ * (HAL-12317): what `halonic runs show` and `read_run` say after the steps.
+ *
  * Not here yet: Show on canvas (T7).
  */
 export function EveryStep({
@@ -47,6 +59,7 @@ export function EveryStep({
   const place = usePresentation() === "phone" ? "phone" : "desktop";
   const [showLog, setShowLog] = useState(false);
   const lines = useMemo(() => (showLog ? runLogLines(log) : []), [showLog, log]);
+  const notes = useMemo(() => providerNotes(log).map(escapeHidden), [log]);
   if (log.length === 0) {
     return null;
   }
@@ -65,6 +78,7 @@ export function EveryStep({
           />
         )}
       </div>
+      <NoteLines label={everyStepWords.notes} notes={notes} />
       <Button variant="ghost" size="sm" onClick={() => setShowLog(!showLog)}>
         {showLog ? runLogWords.hide : runLogWords.show}
       </Button>

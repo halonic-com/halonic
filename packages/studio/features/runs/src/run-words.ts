@@ -311,6 +311,8 @@ export const runPageWords = {
  */
 export const everyStepWords = {
   heading: "Every step",
+  /** The name of the providers' notes under the steps (HAL-12317). */
+  notes: "Notes on this run",
   /** The word a screen reader hears first for an entry (mc 19.3). */
   state: {
     done: "done",
