@@ -16,10 +16,25 @@ afterEach(() => {
 
 const ref = { hubId: "acme", id: "sorter" };
 
+/** A window's save state that keeps each count of fields not saved it hears. */
+function fieldCounts() {
+  const counts: number[] = [];
+  return {
+    counts,
+    saving: {
+      setFieldsNotSaved: (item: { key: string; title: string }, count: number) => {
+        expect(item).toEqual({ key: "agent/acme/sorter", title: "Sorter" });
+        counts.push(count);
+      },
+    },
+  };
+}
+
 async function openModel(
   readAliases?: () => Promise<readonly string[]>,
   agent: { model?: string } = { model: "fast" },
   defaultModel?: string,
+  screen: { saving?: ReturnType<typeof fieldCounts>["saving"]; failSaves?: boolean } = {},
 ) {
   const memory = memoryAgentsHost({
     hubs: [{ id: "acme", name: "acme" }],
@@ -27,8 +42,19 @@ async function openModel(
     modelAliases: ["fast", "smart"],
     defaultModel,
   });
-  const agents = readAliases === undefined ? memory : { ...memory, modelAliases: readAliases };
-  const page = await show(<AgentScreen host={agents} hubId="acme" id="sorter" />);
+  const read = readAliases === undefined ? memory : { ...memory, modelAliases: readAliases };
+  const agents =
+    screen.failSaves === true
+      ? {
+          ...read,
+          update: async () => {
+            throw new Error("The disk is full.");
+          },
+        }
+      : read;
+  const page = await show(
+    <AgentScreen host={agents} saving={screen.saving} hubId="acme" id="sorter" />,
+  );
   await act(async () => buttonNamed(page, "Configuration")?.click());
   await act(async () =>
     [...page.querySelectorAll<HTMLElement>("[role=tab]")]
@@ -101,6 +127,59 @@ verifies("agents.configuration.model", () => {
     await typeInto(limit, "");
     await blur(limit);
     expect((await agents.settings(ref)).maxSteps).toBe(6);
+  });
+
+  it("says the model call limit counts per step and harness agents don't use it", async () => {
+    const { page } = await openModel();
+    expect(page.textContent).toContain(
+      "The most model calls in one step. Empty means 6. Claude Code and Codex agents don't use it.",
+    );
+    expect(page.textContent).not.toContain("in one run");
+  });
+
+  it("shows a turn limit's mistake after the pause or when the field is left, not on every key", async () => {
+    const { page, limit } = await openModel();
+    await typeInto(limit, "2.");
+    expect(page.textContent).not.toContain("Enter a whole number from 1 to 200.");
+    await act(async () => vi.advanceTimersByTime(SAVE_PAUSE_MS));
+    expect(page.textContent).toContain("Enter a whole number from 1 to 200.");
+
+    await typeInto(limit, "25");
+    expect(page.textContent).not.toContain("Enter a whole number from 1 to 200.");
+    await typeInto(limit, "x");
+    expect(page.textContent).not.toContain("Enter a whole number from 1 to 200.");
+    await blur(limit);
+    expect(page.textContent).toContain("Enter a whole number from 1 to 200.");
+  });
+
+  it("counts a turn limit with a mistake as a field not saved, until it is fixed", async () => {
+    const { counts, saving } = fieldCounts();
+    const { limit } = await openModel(undefined, undefined, undefined, { saving });
+    await typeInto(limit, "500");
+    await blur(limit);
+    expect(counts.at(-1)).toBe(1);
+
+    await typeInto(limit, "50");
+    expect(counts.at(-1)).toBe(0);
+  });
+
+  it("counts a turn limit whose save failed as a field not saved, and 0 when the page goes", async () => {
+    const { counts, saving } = fieldCounts();
+    const { page, limit } = await openModel(undefined, undefined, undefined, {
+      saving,
+      failSaves: true,
+    });
+    await typeInto(limit, "25");
+    await blur(limit);
+    expect(page.textContent).toContain("Couldn't save: The disk is full.");
+    expect(counts.at(-1)).toBe(1);
+
+    await act(async () =>
+      [...page.querySelectorAll<HTMLElement>("[role=tab]")]
+        .find((tab) => tab.textContent === "Behaviour")
+        ?.click(),
+    );
+    expect(counts.at(-1)).toBe(0);
   });
 
   it("doesn't save a turn limit outside 1 to 200, and says why", async () => {

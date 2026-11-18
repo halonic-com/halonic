@@ -20,7 +20,10 @@ export interface ConfigurationProps {
   readonly defaultModel: string | undefined;
   readonly retryAliases: () => void;
   readonly retry: () => void;
-  readonly save: (change: AgentChange) => Promise<void>;
+  /** Saves one change; resolves to whether it was written, and never rejects. */
+  readonly save: (change: AgentChange) => Promise<boolean>;
+  /** Hears how many fields of the open page aren't saved, for the toolbar's "1 field not saved". */
+  readonly reportNotSaved?: ((count: number) => void) | undefined;
   /** Opens Library on a Tools list's tab, for **Open Library ›**; absent where the app can't. */
   readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
 }
@@ -44,6 +47,7 @@ export function Configuration({
   retry,
   save,
   openLibrary,
+  reportNotSaved,
 }: ConfigurationProps) {
   const [page, setPage] = useState<PageId>("behaviour");
   if (load.kind === "failed") {
@@ -91,7 +95,9 @@ export function Configuration({
       >
         {load.kind === "ready" ? (
           <div className="max-w-column">
-            {page === "behaviour" && <BehaviourPage settings={load.value} save={save} />}
+            {page === "behaviour" && (
+              <BehaviourPage settings={load.value} save={save} reportNotSaved={reportNotSaved} />
+            )}
             {page === "model" &&
               (aliases.kind === "failed" ? (
                 <EmptyState
@@ -106,6 +112,7 @@ export function Configuration({
                   aliases={aliases.kind === "ready" ? aliases.value : []}
                   defaultModel={defaultModel}
                   save={save}
+                  reportNotSaved={reportNotSaved}
                 />
               ))}
             {page === "harness" && <HarnessPage host={host} settings={load.value} save={save} />}

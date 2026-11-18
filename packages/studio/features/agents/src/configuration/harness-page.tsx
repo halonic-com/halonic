@@ -15,7 +15,8 @@ import { harnessStrip } from "./harness-strip.ts";
 export interface HarnessPageProps {
   readonly host: AgentsHost;
   readonly settings: AgentSettings;
-  readonly save: (change: AgentChange) => Promise<void>;
+  /** Saves one change; resolves to whether it was written. */
+  readonly save: (change: AgentChange) => Promise<boolean>;
 }
 
 type Readiness = Partial<Record<AgentHarnessId, HarnessReadiness>>;

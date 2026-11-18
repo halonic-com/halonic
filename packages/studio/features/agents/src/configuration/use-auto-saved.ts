@@ -11,29 +11,37 @@ export interface AutoSaved {
   readonly flush: () => void;
   /** The sentence for the field's red border, or `null` while the text is fine to save. */
   readonly error: string | null;
+  /** Whether the box holds text that isn't in the file: a mistake that shows, or a failed save. */
+  readonly notSaved: boolean;
 }
 
 /**
  * A text field that saves by itself: after a pause in typing, and when the person leaves the
  * field. A text with a mistake (`check` returns its sentence) is not saved; it stays in the box
- * with the error until it's fixed. The saved value arriving from outside replaces the box only
- * when the person hasn't changed it.
+ * with the error until it's fixed. The error shows after the pause or when the field is left,
+ * not on every key, and goes as soon as the text is fixed. A save that fails is tried again at
+ * the next pause or when the field is left. The saved value arriving from outside replaces the
+ * box only when the person hasn't changed it.
  */
 export function useAutoSaved(
   saved: string,
-  save: (next: string) => Promise<void>,
+  save: (next: string) => Promise<boolean>,
   check: (next: string) => string | null,
 ): AutoSaved {
   const [draft, setDraft] = useState(saved);
+  const [revealed, setRevealed] = useState(false);
+  const [failed, setFailed] = useState(false);
   const lastSaved = useRef(saved);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const latest = useRef(draft);
-  const error = check(draft);
+  const mistake = check(draft);
+  const error = revealed ? mistake : null;
 
   // A change made elsewhere (the file edited) shows here while the box has nothing unsaved.
   useEffect(() => {
     if (saved !== lastSaved.current && latest.current === lastSaved.current) {
       setDraft(saved);
+      setFailed(false);
       latest.current = saved;
     }
     lastSaved.current = saved;
@@ -42,14 +50,24 @@ export function useAutoSaved(
   const flush = () => {
     clearTimeout(timer.current);
     const text = latest.current;
-    if (text === lastSaved.current || check(text) !== null) return;
+    if (check(text) !== null) {
+      setRevealed(true);
+      return;
+    }
+    if (text === lastSaved.current) return;
+    const before = lastSaved.current;
     lastSaved.current = text;
-    void save(text);
+    void save(text).then((written) => {
+      // Not written: the file still holds `before`, so the next pause or leave tries again.
+      if (!written && lastSaved.current === text) lastSaved.current = before;
+      if (latest.current === text) setFailed(!written);
+    });
   };
 
   const onChange = (next: string) => {
     latest.current = next;
     setDraft(next);
+    if (check(next) === null) setRevealed(false);
     clearTimeout(timer.current);
     timer.current = setTimeout(flush, SAVE_PAUSE_MS);
   };
@@ -57,5 +75,20 @@ export function useAutoSaved(
   // Leaving the page keeps what was typed.
   useEffect(() => flush, []);
 
-  return { value: draft, onChange, flush, error };
+  return { value: draft, onChange, flush, error, notSaved: error !== null || failed };
+}
+
+/**
+ * Tells the page's `report` how many of its fields aren't saved, each time the number changes,
+ * and 0 when the page goes, since its boxes go with it.
+ */
+export function useReportNotSaved(
+  report: ((count: number) => void) | undefined,
+  fields: readonly AutoSaved[],
+): void {
+  const count = fields.filter((field) => field.notSaved).length;
+  useEffect(() => {
+    report?.(count);
+    return () => report?.(0);
+  }, [report, count]);
 }

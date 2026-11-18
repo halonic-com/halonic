@@ -2,7 +2,7 @@ import { Field, Input, Select, type SelectOption } from "@halonicjs/studio-kit";
 import { useEffect, useState } from "react";
 import type { AgentChange, AgentSettings } from "../api.ts";
 import { configurationWords as words } from "./configuration-words.ts";
-import { useAutoSaved } from "./use-auto-saved.ts";
+import { useAutoSaved, useReportNotSaved } from "./use-auto-saved.ts";
 
 /** The turn limit a file gets when the field is left empty (`agents.editor.max-steps-default`). */
 export const DEFAULT_TURN_LIMIT = 6;
@@ -22,15 +22,24 @@ export interface ModelPageProps {
   readonly aliases: readonly string[];
   /** The model the agent runs on while its file names none; `undefined` when the workspace has no default. */
   readonly defaultModel?: string | undefined;
-  /** Saves one change; rejects with the reason it couldn't write. */
-  readonly save: (change: AgentChange) => Promise<void>;
+  /** Saves one change; resolves to whether it was written. */
+  readonly save: (change: AgentChange) => Promise<boolean>;
+  /** Hears how many fields aren't saved, for the toolbar's "1 field not saved". */
+  readonly reportNotSaved?: ((count: number) => void) | undefined;
 }
 
 /**
  * The Model page (`agents.configuration.model`): the model, picked from the workspace's aliases,
- * and the turn limit. Both save by themselves. A turn limit with a mistake isn't saved.
+ * and the turn limit. Both save by themselves. A turn limit with a mistake isn't saved, and
+ * counts as a field not saved, as does one whose save failed.
  */
-export function ModelPage({ settings, aliases, defaultModel, save }: ModelPageProps) {
+export function ModelPage({
+  settings,
+  aliases,
+  defaultModel,
+  save,
+  reportNotSaved,
+}: ModelPageProps) {
   const [model, setModel] = useState(settings.model ?? "");
   useEffect(() => setModel(settings.model ?? ""), [settings.model]);
   const turnLimit = useAutoSaved(
@@ -38,6 +47,7 @@ export function ModelPage({ settings, aliases, defaultModel, save }: ModelPagePr
     (next) => save({ maxSteps: next.trim() === "" ? DEFAULT_TURN_LIMIT : Number(next) }),
     turnLimitCheck,
   );
+  useReportNotSaved(reportNotSaved, [turnLimit]);
   // A model the file names that isn't an alias (`provider/model`) stays in the list, so it isn't lost.
   const options: SelectOption[] = aliases.map((alias) => ({ value: alias, label: alias }));
   if (model !== "" && !aliases.includes(model)) options.push({ value: model, label: model });

@@ -52,7 +52,7 @@ function Switchable({ host }: { host: Parameters<typeof HarnessPage>[0]["host"] 
       <button type="button" onClick={() => setId("filer")}>
         Switch agent
       </button>
-      <HarnessPage host={host} settings={settings} save={async () => {}} />
+      <HarnessPage host={host} settings={settings} save={async () => true} />
     </>
   );
 }
