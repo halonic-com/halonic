@@ -206,6 +206,7 @@ export function provideFolderServices(
       runs: services.get(RunsSourceService),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       now: () => new Date(),
+      engine: { start: (start, trigger) => engine.startRoutine(start, trigger) },
     }),
   );
   // Run again on the run page starts a run the way the workflow page's Run does.
