@@ -1,3 +1,4 @@
+import type { RunnerUnfencedReason } from "@halonicjs/app";
 import {
   type PluginTrustFiles,
   type PluginTrustSection,
@@ -5,12 +6,20 @@ import {
   pluginTrustSections,
 } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
-import { markHiddenName } from "@halonicjs/std";
 import { Dialog, Disclosure, StatusChip } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import { originText, type PluginOrigin, RISK_WORDS } from "../page/page-text.ts";
 import { Quoted } from "../ui/quoted.tsx";
 import type { ChangeRow, PluginChangeSummary } from "./change-rows.ts";
+import { Labelled, Location } from "./plugin-location.tsx";
+import {
+  addressesLine,
+  type PluginCode,
+  type TrustFence,
+  trustLastLine,
+  type UnfencedYes,
+} from "./runs-line.ts";
+import { Checking, LastLine, UnfencedConsent, useUnfencedYes } from "./runs-line-parts.tsx";
 import { type TrustCheckContent, type TrustSecret, trustCheckContent } from "./trust-check.ts";
 import {
   ADDRESSES_SECTION,
@@ -19,8 +28,6 @@ import {
   CAN_REACH,
   CHANGED_INTRO,
   CHANGED_UNREADABLE,
-  FILES_HEADING,
-  FOLDER_HEADING,
   FROM,
   GOES_ONLY_TO,
   HOW,
@@ -28,7 +35,6 @@ import {
   IN_STUDIO_SECTION,
   inStudioRow,
   keepButton,
-  moreFilesRow,
   NOT_NOW,
   OUTSIDE_TEXT,
   PROGRAMS_SECTION,
@@ -43,7 +49,6 @@ import {
   THE_PROGRAM,
   TOOLS_INTRO,
   TOOLS_SECTION,
-  TRUST_CHECK_LAST_LINE,
   TRUSTING,
   type TrustCheckReason,
   trustButton,
@@ -79,7 +84,18 @@ export interface PluginTrustDialogProps {
   readonly update?: { readonly keep: string; readonly toCommit?: string | undefined } | undefined;
   /** Whether the plugin's programs can run here; when unsaid, the Runs line holds either way. */
   readonly programsRun?: ProgramsRun;
-  readonly onTrust: () => void;
+  /**
+   * Whether plugin code runs in the sandbox on this computer, read when the check opens (the
+   * "Runs" line design section 2). When unsaid, the last line holds either way (T9).
+   */
+  readonly fence?: TrustFence;
+  /** The yes to run without the sandbox saved on this computer, if any (R6). */
+  readonly unfencedYes?: UnfencedYes | undefined;
+  /**
+   * **Trust**. With the checkbox ticked it gets the reason the person said yes for, which the
+   * host saves through the engine's `UnfencedRuns.allow` before it trusts the plugin.
+   */
+  readonly onTrust: (allowUnfenced?: RunnerUnfencedReason) => void;
   /** **Not now** and Escape, or **Keep** for an update: the plugin stays as it was. */
   readonly onNotNow: () => void;
   /** Where focus goes when the button that opened the dialog is gone. */
@@ -100,17 +116,26 @@ export interface PluginTrustDialogProps {
  *   onTrust={trust} onNotNow={close} />
  */
 export function PluginTrustDialog(props: PluginTrustDialogProps) {
-  const { manifest, reason } = props;
+  const { manifest, reason, fence } = props;
   const content = trustCheckContent(manifest);
   const summary = trustSummary(content.counts, props.programsRun);
+  const code: PluginCode = {
+    backend: manifest.backend !== undefined,
+    programs: content.programs.length,
+  };
+  const yes = useUnfencedYes(fence, code, props.unfencedYes);
   return (
     <Dialog
       title={trustTitle(reason, manifest.name, props.trustedOn, manifest.version)}
       size="md"
       closeButton={false}
       cancelLabel={props.update === undefined ? NOT_NOW : keepButton(props.update.keep)}
-      footnote={TRUST_CHECK_LAST_LINE}
-      confirm={{ label: trustButton(reason), busyLabel: TRUSTING }}
+      footnote={<LastLine line={trustLastLine(fence, code)} />}
+      confirm={{
+        label: trustButton(reason),
+        busyLabel: TRUSTING,
+        ...(yes.unavailable === undefined ? {} : { unavailable: yes.unavailable }),
+      }}
       busy={props.busy ?? false}
       {...(props.returnFocus === undefined ? {} : { returnFocus: props.returnFocus })}
       {...(props.failure === undefined
@@ -121,7 +146,7 @@ export function PluginTrustDialog(props: PluginTrustDialogProps) {
                 ? updateNotSavedLine(props.failure)
                 : trustNotSavedLine(props.failure),
           })}
-      onConfirm={props.onTrust}
+      onConfirm={() => props.onTrust(yes.allow)}
       onCancel={props.onNotNow}
     >
       <div className="flex flex-col gap-3">
@@ -135,15 +160,19 @@ export function PluginTrustDialog(props: PluginTrustDialogProps) {
         ) : (
           <>
             {summary === "" ? null : <p className="text-body text-fg">{summary}</p>}
+            {fence?.state === "checking" ? <Checking id={yes.checkingId} /> : null}
             <Sections
               content={content}
               shown={shownSections(manifest)}
               name={manifest.name}
               programsRun={props.programsRun}
+              fence={fence}
+              code={code}
             />
             <Location folder={props.folder} files={props.files} />
           </>
         )}
+        <UnfencedConsent yes={yes} />
       </div>
     </Dialog>
   );
@@ -187,45 +216,6 @@ function SourceLine({
   );
 }
 
-/**
- * Where the plugin sits and which files its fingerprint covers, as `halonic plugin add` shows
- * them. Both come from the workspace, so they are plain text in monospace that wraps at any
- * character, never cut short, with each hidden or direction-changing character written out as a
- * marker (`⟦U+202E⟧`): a person deciding to trust it should see exactly where it sits.
- */
-function Location({
-  folder,
-  files,
-}: {
-  readonly folder: string | undefined;
-  readonly files: PluginTrustFiles | undefined;
-}) {
-  const shown = files?.shown ?? [];
-  return (
-    <div className="flex flex-col gap-3">
-      {folder === undefined ? null : (
-        <Labelled label={FOLDER_HEADING} stacked>
-          <code className="font-mono text-small wrap-anywhere">{markHiddenName(folder)}</code>
-        </Labelled>
-      )}
-      {shown.length === 0 ? null : (
-        <Labelled label={FILES_HEADING} stacked>
-          <ul className="flex list-none flex-col gap-0.5">
-            {shown.map((path) => (
-              <li key={path}>
-                <code className="font-mono text-small wrap-anywhere">{markHiddenName(path)}</code>
-              </li>
-            ))}
-            {files === undefined || files.more === 0 ? null : (
-              <li className="text-small text-fg-muted">{moreFilesRow(files.more)}</li>
-            )}
-          </ul>
-        </Labelled>
-      )}
-    </div>
-  );
-}
-
 /** The sections the check shows, in order. Which sections show doesn't depend on the files. */
 function shownSections(manifest: Plugin): PluginTrustSection[] {
   return pluginTrustSections(pluginTrustContent({ plugin: manifest, files: [] }));
@@ -236,11 +226,15 @@ function Sections({
   shown,
   name,
   programsRun,
+  fence,
+  code,
 }: {
   readonly content: TrustCheckContent;
   readonly shown: readonly PluginTrustSection[];
   readonly name: string;
   readonly programsRun: ProgramsRun;
+  readonly fence: TrustFence;
+  readonly code: PluginCode;
 }) {
   return (
     <div className="flex flex-col">
@@ -251,6 +245,8 @@ function Sections({
           content={content}
           name={name}
           programsRun={programsRun}
+          fence={fence}
+          code={code}
         />
       ))}
     </div>
@@ -262,11 +258,15 @@ function Section({
   content,
   name,
   programsRun,
+  fence,
+  code,
 }: {
   readonly section: PluginTrustSection;
   readonly content: TrustCheckContent;
   readonly name: string;
   readonly programsRun: ProgramsRun;
+  readonly fence: TrustFence;
+  readonly code: PluginCode;
 }) {
   const { tools, programs, secrets, addresses, inStudio, counts } = content;
   switch (section) {
@@ -296,7 +296,11 @@ function Section({
       );
     case "programs":
       return (
-        <Disclosure summary={sectionRow(PROGRAMS_SECTION, programs.length)}>
+        // Opens by itself when the plugin's code isn't in the sandbox (design section 3).
+        <Disclosure
+          summary={sectionRow(PROGRAMS_SECTION, programs.length)}
+          defaultOpen={fence?.state === "not-fenced"}
+        >
           <Items>
             {programs.map((program) => (
               <li key={program.id} className="flex flex-col gap-1">
@@ -336,9 +340,11 @@ function Section({
           ))}
         </Disclosure>
       );
-    case "addresses":
+    case "addresses": {
+      const line = addressesLine(fence, code);
       return (
         <Disclosure summary={sectionRow(ADDRESSES_SECTION, addresses.length)}>
+          {line === undefined ? null : <p className="text-small text-fg-muted">{line}</p>}
           <Items>
             {addresses.map((address) => (
               <li key={address.address} className="text-small wrap-anywhere">
@@ -349,6 +355,7 @@ function Section({
           </Items>
         </Disclosure>
       );
+    }
     case "in-studio":
       return (
         <Disclosure
@@ -438,32 +445,5 @@ function Items({ children }: { readonly children: ReactNode }) {
 function secretKinds(secrets: readonly TrustSecret[]): SecretKind[] {
   return (["backend", "program"] as const).filter((kind) =>
     secrets.some((secret) => secret.kind === kind),
-  );
-}
-
-/** A label over its value, as the design's open rows show them. */
-function Labelled({
-  label,
-  children,
-  stacked = false,
-}: {
-  readonly label: string;
-  readonly children: ReactNode;
-  /** The value sits on lines under the label, as a list does. */
-  readonly stacked?: boolean;
-}) {
-  if (stacked) {
-    return (
-      <div className="flex flex-col gap-1">
-        <span className="text-small text-fg-muted">{label}</span>
-        {children}
-      </div>
-    );
-  }
-  return (
-    <p className="text-small wrap-anywhere">
-      <span className="text-fg-muted">{label} </span>
-      {children}
-    </p>
   );
 }
