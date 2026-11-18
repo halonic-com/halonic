@@ -176,6 +176,28 @@ verifies("model-anthropic.call-errors", () => {
       "Overloaded",
     ],
     [
+      // A `baseUrl` with a wrong path, or a server that doesn't speak this API: waiting won't help.
+      "a 501 Not Implemented",
+      (v) => v.replyNext(501, { detail: "Not Implemented" }),
+      "refused",
+      /^acme at api\.anthropic\.com doesn't support the call to the model "acme-small", so check the baseUrl of acme in models\.yaml \(HTTP 501\)$/,
+      '{"detail":"Not Implemented"}',
+    ],
+    [
+      "a 505 HTTP Version Not Supported",
+      (v) => v.replyNext(505, { detail: "HTTP Version Not Supported" }),
+      "refused",
+      /baseUrl of acme in models\.yaml \(HTTP 505\)$/,
+      '{"detail":"HTTP Version Not Supported"}',
+    ],
+    [
+      "a 503 Service Unavailable",
+      (v) => v.replyNext(503, { detail: "Service Unavailable" }),
+      "provider-busy",
+      /\(HTTP 503\)$/,
+      '{"detail":"Service Unavailable"}',
+    ],
+    [
       "a rate limit",
       (v) => v.replyNext(429, vendorError("rate_limit_error", "Number of requests too high")),
       "provider-busy",
