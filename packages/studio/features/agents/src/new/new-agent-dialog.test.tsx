@@ -146,12 +146,11 @@ verifies("agents.new.create", () => {
     expect(body()).not.toContain("It starts with");
   });
 
-  it("says it starts with the workspace's default model and runs in a sandbox", async () => {
+  it("says it starts with the workspace's default model, without promising a sandbox", async () => {
     await show(dialog().node);
 
-    expect(body()).toContain(
-      "It starts with the workspace's default model and runs in a sandbox on your computer.",
-    );
+    expect(body()).toContain("It starts with the workspace's default model.");
+    expect(body()).not.toContain("sandbox");
     expect(body()).not.toContain("It has no model yet");
   });
 

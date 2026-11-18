@@ -14,7 +14,7 @@ When the user chooses **New agent**, the agents feature shall ask for a name, an
 - Given the user presses **Create** with the name "Refund checker", then the host creates it in the picked hub and its tab opens.
 - Given the name is empty, then **Create** shows "Give it a name.", focuses Name and creates nothing.
 - Given the host can't write the file because "the disk is full", then the dialog says "Couldn't create the agent: the disk is full." and **Create** tries again.
-- Given the hub has a default model (its own, else the workspace's), then the dialog says "It starts with the workspace's default model and runs in a sandbox on your computer."; given neither names one, it says "It has no model yet. Pick one in Configuration › Model."; given the read fails, it says nothing about the model. The line follows the picked hub.
+- Given the hub has a default model (its own, else the workspace's), then the dialog says "It starts with the workspace's default model."; given neither names one, it says "It has no model yet. Pick one in Configuration › Model."; given the read fails, it says nothing about the model. The line follows the picked hub.
 - Given the window is a phone, then the dialog has no File line.
 - Given the user wrote "Check refunds against the policy." in **What should it do? (optional)**, then **Create** hands it to the host as the agent's instructions; left empty, the agent starts with none.
 - Given that box holds text that looks like a key, then **Create** says "This looks like a key. Keep it as a secret instead?" under it, focuses it and creates nothing.
