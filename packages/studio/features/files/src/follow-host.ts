@@ -6,8 +6,8 @@ import { filesWords } from "./files-words.ts";
 
 /** What {@link followFilesHost} shows things with. */
 export interface FollowFilesParts {
-  readonly host: Pick<FilesHost, "outside" | "subscribe" | "onReloaded">;
-  /** The window's toasts, for the reload toast. */
+  readonly host: Pick<FilesHost, "outside" | "subscribe" | "onReloaded" | "onWatchLimit">;
+  /** The window's toasts, for the reload toast and the watch's file limit. */
   readonly toasts: Pick<ToastStore, "show">;
   /** The workspace's save state, whose note says "1 item not saved · Compare". */
   readonly saving: Pick<SaveState, "holdForOutsideChange" | "releaseHold">;
@@ -24,7 +24,8 @@ function holdKey(path: string): string {
  * Shows what happens to the workspace's files outside Halonic, wherever the user is
  * (`files.follow-host`): one toast for each batch taken in ("Reloaded a.agent.yaml: changed outside
  * Halonic", "Reloaded 12 files changed outside Halonic"), and the toolbar's "1 item not saved ·
- * Compare" for each file held for Compare. Returns the way to stop.
+ * Compare" for each file held for Compare. When the workspace has too many files to watch, one
+ * warning toast says so and stays until it's closed. Returns the way to stop.
  *
  * @example
  * const stop = followFilesHost({ host, toasts: shell.toasts, saving: workspace.saving, open });
@@ -49,8 +50,12 @@ export function followFilesHost({ host, toasts, saving, open }: FollowFilesParts
   const stopReloads = host.onReloaded((paths) => {
     toasts.show({ tone: "info", title: filesWords.reloaded(paths.map(fileName)) });
   });
+  const stopWatchLimit = host.onWatchLimit?.((reason) => {
+    toasts.show({ tone: "warning", title: reason, sticky: true });
+  });
   return () => {
     stopSync();
     stopReloads();
+    stopWatchLimit?.();
   };
 }

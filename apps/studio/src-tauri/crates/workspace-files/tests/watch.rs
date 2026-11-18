@@ -111,9 +111,10 @@ fn folder_poll_fails_once_when_a_look_fails() {
         )
         .expect("the watch starts");
 
-    let Ok(WatchMessage::Failed(message)) = received.recv_timeout(PATIENCE) else {
+    let Ok(WatchMessage::Failed(error)) = received.recv_timeout(PATIENCE) else {
         panic!("the watch fails");
     };
+    let message = error.to_string();
     assert!(message.contains("hubs"), "{message}");
     assert_eq!(
         received.recv_timeout(PATIENCE),
@@ -253,11 +254,12 @@ fn folder_poll_fails_a_folder_with_too_many_files_with_what_to_do() {
         move |message| sent.send(message).is_ok(),
     );
     assert!(id.is_ok(), "the watch isn't refused: its failure says why");
-    let Ok(WatchMessage::Failed(message)) = received.recv_timeout(PATIENCE) else {
+    let Ok(WatchMessage::Failed(error)) = received.recv_timeout(PATIENCE) else {
         panic!("the watch fails");
     };
+    assert_eq!(error.kind(), "too_many_files");
     assert_eq!(
-        message,
+        error.to_string(),
         "This folder has more than 50,000 files, too many to watch for changes made \
          outside Halonic. Open a smaller folder to see them as they happen."
     );

@@ -90,19 +90,23 @@ pub struct WatchStart {
 }
 
 /// A watch's message on its channel: `{ type: "changed", paths }`, or once
-/// `{ type: "failed", message }` when it stops.
+/// `{ type: "failed", kind, message }` when it stops. `kind` is the error's
+/// kind, so the page can tell `too_many_files` from the rest.
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum WatchEvent {
     Changed { paths: Vec<String> },
-    Failed { message: String },
+    Failed { kind: &'static str, message: String },
 }
 
 impl From<WatchMessage> for WatchEvent {
     fn from(message: WatchMessage) -> Self {
         match message {
             WatchMessage::Changed(paths) => Self::Changed { paths },
-            WatchMessage::Failed(message) => Self::Failed { message },
+            WatchMessage::Failed(error) => Self::Failed {
+                kind: error.kind(),
+                message: error.to_string(),
+            },
         }
     }
 }
