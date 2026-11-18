@@ -811,7 +811,9 @@ when its title, body or labels change: that would cancel the run in progress
 and build everything again. `.github/workflows/pr-details.yml` handles those
 changes. It checks the new title and, if CI's title, leak or coverage-floor
 job failed, re-runs CI's failed jobs, which read the pull request's current
-title, body and labels. Before a pull request merges, the merge queue runs the
+title, body and labels. A run can only be re-run once it has ended, and
+nothing waits for that on a runner: if CI is still running, the workflow's
+`Re-run CI after a details change` job does the re-run when CI ends. Before a pull request merges, the merge queue runs the
 leak guard again and checks the subject of the squash commit, which is what
 lands on `main`: the title as it was when the pull request was queued, or,
 for a single commit, that commit's own subject. A title changed after queueing
