@@ -2,6 +2,7 @@
 
 - Approval: Liam placed this on HAL-12614, from Sofia's keyboard and screen-reader check on HAL-12584 (row H1); it fixes the markup of existing screens with no new words, a team decision with no board card (HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:khw0y1i6tRzt1leSm30OihDo7aHieSPJqE0NN7ToXTqc6+ebc7SGVNOX165jidyBaL5W7rPVpRHGFbDUw8FzAw==
 - Task: HAL-12614
 
 ## What changes
