@@ -83,6 +83,26 @@ verifies("source-control.history-page", () => {
       expect(rowOf(root, "Version 3").closest("tr")?.getAttribute("aria-current")).toBe("true");
     });
 
+    it("moves focus to a version's title when Enter opens it, and Escape puts it back on the row", async () => {
+      const fake = fakeSource({ kind: "ready", changes: [] });
+      fake.setHistory(versions(3));
+      const { root } = await openPage(fake);
+      const row = rowOf(root, "Version 2");
+      act(() => {
+        row.focus();
+        row.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      });
+      const title = document.activeElement;
+      expect(title?.tagName).toBe("H3");
+      expect(title?.textContent).toBe("Version 2");
+      expect(title?.closest('section[aria-label="Version \\"Version 2\\""]')).not.toBeNull();
+      expect(row.getAttribute("aria-current")).toBe("true");
+      act(() => {
+        title?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      });
+      expect(document.activeElement).toBe(rowOf(root, "Version 2"));
+    });
+
     it("puts the details in a column beside the list and Show more, not after them", async () => {
       const fake = fakeSource({ kind: "ready", changes: [] });
       fake.setHistory(versions(25));
