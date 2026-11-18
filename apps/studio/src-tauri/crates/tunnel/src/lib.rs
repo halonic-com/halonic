@@ -8,18 +8,25 @@
 //! handshakes and the session take frames in and give frames out, and
 //! `snow` does every Noise step. The WebSocket transport comes next.
 
+mod backoff;
 mod codes;
+mod connect;
+mod endpoint;
 mod error;
 mod frames;
 mod handshake;
 mod keys;
 mod session;
+mod transport;
 
+pub use backoff::Backoff;
 pub use codes::{
     CHECK_CODE_INFO, CHECK_CODE_INPUT_BYTES, CHECK_CODE_LENGTH, CheckCode, PAIR_COMMIT_LABEL,
     PAIRING_ALPHABET, PAIRING_CODE_LENGTH, PAIRING_PSK_INFO, PairingCode, check_code,
     check_code_from_bytes, pair_commit,
 };
+pub use connect::{CONNECT_TIMEOUT, ConnectError, Dialer};
+pub use endpoint::{Endpoint, GATEWAY_PATH};
 pub use error::SessionError;
 pub use frames::{
     FrameKind, MAX_FRAME_BYTES, MAX_HANDSHAKE_BYTES, MAX_NAME_BYTES, NOISE_MAX_MESSAGE_BYTES,
@@ -31,3 +38,4 @@ pub use handshake::{
 };
 pub use keys::{KEY_BYTES, PhoneKeys};
 pub use session::{MAX_MESSAGE_BYTES, Opened, REKEY_AFTER, REKEY_AFTER_MESSAGES, Session};
+pub use transport::{SendError, Transport, TransportEvent, TransportState};
