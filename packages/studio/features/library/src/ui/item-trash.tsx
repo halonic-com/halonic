@@ -128,16 +128,19 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
         )}
       </>
     );
-  // Undo takes focus: the page and its ⋮ button, where focus was, are gone.
+  // Undo takes focus: the page and its ⋮ button, where focus was, are gone. The strip is the
+  // first thing on the page, so it gets 16px above it, like the page's sides.
   const strip =
     removed === undefined ? null : (
-      <TrashStrip
-        text={deleteWords.pageMoved(kind, movedLine !== undefined)}
-        detail={movedLine}
-        undoLabel={deleteWords.undo}
-        onUndo={onUndo}
-        focusUndo
-      />
+      <div className="pt-4">
+        <TrashStrip
+          text={deleteWords.pageMoved(kind, movedLine !== undefined)}
+          detail={movedLine}
+          undoLabel={deleteWords.undo}
+          onUndo={onUndo}
+          focusUndo
+        />
+      </div>
     );
   return { menu, titleRef, strip };
 }

@@ -354,7 +354,9 @@ export function FileView({ item, context }: ItemViewProps) {
       {strip === "trash" && trash !== undefined && (
         <TrashedStrip
           announce={(text) => announcer.current.announce(text)}
-          onUndo={() => void trash.undo()}
+          onUndo={async () => {
+            await trash.undo();
+          }}
         />
       )}
       {settled !== undefined && outside === undefined && !comparing && !trashedHere && (
