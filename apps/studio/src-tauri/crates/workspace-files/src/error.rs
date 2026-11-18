@@ -24,6 +24,10 @@ pub enum FileError {
     NotText { path: String },
     /// Anything else the file system said.
     Io { message: String },
+    /// A watched folder has more files than a watch looks at
+    /// (`MAX_WATCHED_FILES`). The watch sends it as its failure; it is never
+    /// a command's refusal.
+    TooManyFiles { limit: usize },
 }
 
 impl FileError {
@@ -37,6 +41,7 @@ impl FileError {
             Self::FolderUnreadable { .. } => "folder_unreadable",
             Self::NotText { .. } => "not_text",
             Self::Io { .. } => "io",
+            Self::TooManyFiles { .. } => "too_many_files",
         }
     }
 
@@ -83,8 +88,26 @@ impl fmt::Display for FileError {
             }
             Self::NotText { path } => write!(formatter, "{path:?} isn't UTF-8 text."),
             Self::Io { message } => formatter.write_str(message),
+            Self::TooManyFiles { limit } => write!(
+                formatter,
+                "This folder has more than {} files, too many to watch for changes made outside Halonic. Open a smaller folder to see them as they happen.",
+                thousands(*limit)
+            ),
         }
     }
 }
 
 impl std::error::Error for FileError {}
+
+/// `count` with a comma between thousands, as people read it: `50,000`.
+fn thousands(count: usize) -> String {
+    let digits = count.to_string();
+    let mut grouped = String::new();
+    for (index, digit) in digits.chars().enumerate() {
+        if index > 0 && (digits.len() - index) % 3 == 0 {
+            grouped.push(',');
+        }
+        grouped.push(digit);
+    }
+    grouped
+}
