@@ -160,6 +160,12 @@ export const runMessages = defineMessages("run", {
       events.map((event) => `--event ${event}`),
       "and",
     )}: the run ended first.`,
+  /**
+   * A provider's note on how it changed the run's model calls, in its own
+   * words, such as "Left out temperature: claude-sonnet-5-5 doesn't take it."
+   * (requirement `cli.run-provider-notes`).
+   */
+  providerNote: (note: string) => phrase`${printable(note)}`,
   /** The fix under a missing `--input` file: most often a typo in the path. */
   noInputFileFix: () =>
     phrase`Check the file name. It's looked for from the folder you ran the command in.`,

@@ -23,7 +23,12 @@ import { startedInWords } from "../../messages/runs-list.ts";
 import { printable } from "../../output/printable.ts";
 import { workspaceModelsOf } from "../../run-failure-of.ts";
 import { type RunClock, startedAt } from "../../run-times.ts";
-import { runViewDefinitions, stepLines, stepLinesWithOutput } from "../../run-view.ts";
+import {
+  providerNoteLines,
+  runViewDefinitions,
+  stepLines,
+  stepLinesWithOutput,
+} from "../../run-view.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
@@ -85,6 +90,7 @@ export async function showRun(
         lines: [
           heading(run, title, workspaceName, clock),
           ...(steps.length === 0 ? [] : [[], ...steps]),
+          ...providerNoteLines(run.events),
           ...showEnding(
             run,
             title,
