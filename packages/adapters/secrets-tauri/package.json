@@ -2,7 +2,7 @@
   "name": "@halonicjs/adapter-secrets-tauri",
   "private": true,
   "type": "module",
-  "description": "The Secrets and TokenStore ports over the OS keychain, through the Studio shell's secret_* commands.",
+  "description": "The Secrets and TokenStore ports over the OS keychain, through the Studio shell's secret_* and token_* commands.",
   "exports": {
     ".": "./src/index.ts"
   },
