@@ -43,9 +43,9 @@ export function budgetStopOf(summary: RunSummary): BudgetStop | undefined {
   return { per, budget, spent: spentAmount, currency };
 }
 
-/** The first of the month after the run stopped (UTC), as "1 Dec": when a monthly budget starts again. */
+/** The first of the month after the run stopped (UTC), as "1 January": when a monthly budget starts again. */
 export function budgetResetsOn(stoppedAt: string): string {
   const stopped = new Date(stoppedAt);
   const next = new Date(Date.UTC(stopped.getUTCFullYear(), stopped.getUTCMonth() + 1, 1));
-  return next.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+  return next.toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" });
 }

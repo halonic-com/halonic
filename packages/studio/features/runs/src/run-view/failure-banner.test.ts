@@ -294,20 +294,21 @@ verifies("runs.run-view.failure-banners", () => {
     const checks =
       "Halonic checks the budget before each model call, so calls already under way can take a run over it.";
 
-    it("says the CLI's words for a run's budget", () => {
+    it("says the CLI's first line and Studio's second for a run's budget", () => {
       const banner = stopped("budget.run", { limit: "5", spent: "5.08", currency: "EUR" });
       expect(linesOf(banner)).toEqual([
         "Support reply stopped in the step Draft: this run reached its budget of €5.00 (estimated €5.08 spent).",
-        "Raise budget.perRun in workspace.yaml.",
+        "Change the budget, then run again.",
         checks,
       ]);
       expect(banner).toMatchObject({
         tone: "attention",
         title: "Stopped at its estimated budget",
+        fixes: [{ kind: "change-budget" }],
       });
     });
 
-    it("says the CLI's words for the month's budget, with when it resets, in the budget's currency", () => {
+    it("says the CLI's first line and Studio's second for the month's budget, with when it resets, in the budget's currency", () => {
       const banner = stopped(
         "budget.month",
         { limit: "50", spent: "50.1", currency: "USD" },
@@ -315,7 +316,7 @@ verifies("runs.run-view.failure-banners", () => {
       );
       expect(linesOf(banner)).toEqual([
         "Support reply stopped in the step Draft: this month's estimated spend reached its budget of $50.00.",
-        "Raise budget.monthly in workspace.yaml, or wait until it resets on 1 Jan.",
+        "Change the budget, or wait until it resets on 1 January (UTC).",
         checks,
       ]);
     });

@@ -238,7 +238,7 @@ function fixAction(
     ? []
     : [
         {
-          label: failureWords.openModels,
+          label: fix.kind === "change-budget" ? runPageWords.changeBudget : failureWords.openModels,
           onClick: () => {
             openModels();
           },

@@ -62,6 +62,8 @@ export type BannerAction =
 export type BannerFix =
   | { readonly kind: "copy-command"; readonly command: string }
   | { readonly kind: "open-models" }
+  /** **Change budget**: Settings › Models › Budget, which is where Models opens. */
+  | { readonly kind: "change-budget" }
   | {
       readonly kind: "open-external";
       readonly label: string;
@@ -207,6 +209,7 @@ function endedBanner(summary: RunSummary, workflow: string, step: string): RunBa
         ...(stop === undefined ? [] : [budgetFix(stop, summary)]),
         runPageWords.budgetChecks,
       ],
+      ...(stop === undefined ? {} : { fixes: [{ kind: "change-budget" }] }),
       details: [line, `Run ${summary.id}`, message].filter((part) => part !== "").join("\n"),
     };
   }
@@ -228,11 +231,11 @@ function budgetLine(stop: BudgetStop, workflow: string, step: string): string {
     : runPageWords.budgetPerMonth(workflow, step, budget);
 }
 
-/** The CLI's second line: the key to raise, and for a monthly budget when it resets. */
+/** The second line: change the budget, and for a monthly budget when it resets. */
 function budgetFix(stop: BudgetStop, summary: RunSummary): string {
   return stop.per === "run"
-    ? runPageWords.budgetRaisePerRun
-    : runPageWords.budgetRaiseMonthly(budgetResetsOn(summary.endedAt ?? summary.startedAt));
+    ? runPageWords.budgetChangePerRun
+    : runPageWords.budgetChangeMonthly(budgetResetsOn(summary.endedAt ?? summary.startedAt));
 }
 
 function needsYou(text: string): RunBanner {

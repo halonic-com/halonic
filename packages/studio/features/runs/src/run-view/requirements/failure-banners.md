@@ -15,7 +15,7 @@ When a run failed for a reason the engine names, the run page's banner shall say
 - `model-no-tools`: "*llama3.2*, used by the model alias *fast*, can't use tools, and the step *Draft* offers tools. Point the model alias *fast* at a model that can use tools." with **Open Models** before **Run again**, because running again fails the same way until the alias changes; a log without the alias reads "*llama3.2* can't use tools, and the step *Draft* offers tools. Pick a model that can in Models, then run again.";
 - `interrupted`: "*Support reply* stopped because Halonic's engine stopped during the step *Draft reply*. Nothing after that step ran.", and for a run that never entered a step "…stopped because Halonic's engine stopped before the first step. Nothing ran.".
 
-When a run stopped at its budget and its `run.failed` cause (`events.run-failed-cause`) is `budget.run` or `budget.month` with the limit, the spend and the currency, the run page's budget banner (amber, titled "Stopped at its estimated budget") shall say what `halonic run` says, in the budget's currency: for the run's budget "*Support reply* stopped in the step *Draft*: this run reached its budget of €5.00 (estimated €5.08 spent)." and "Raise budget.perRun in workspace.yaml.", and for the month's "…: this month's estimated spend reached its budget of €50.00." and "Raise budget.monthly in workspace.yaml, or wait until it resets on 1 Jan.", where the date is the first of the month after the run stopped (UTC). The banner shall read the cause only, never the error text. A budget stop without a cause, or with a figure missing from it, shall keep the general line "*Support reply* stopped in the step *Draft*.". The budget banner's last line about calls already under way stays.
+When a run stopped at its budget and its `run.failed` cause (`events.run-failed-cause`) is `budget.run` or `budget.month` with the limit, the spend and the currency, the run page's budget banner (amber, titled "Stopped at its estimated budget") shall say what `halonic run` says on its first line, in the budget's currency, and in Studio's words, without the workspace key names (HAL-12069), on its second, with a **Change budget** button that opens Settings › Models: for the run's budget "*Support reply* stopped in the step *Draft*: this run reached its budget of €5.00 (estimated €5.08 spent)." and "Change the budget, then run again.", and for the month's "…: this month's estimated spend reached its budget of €50.00." and "Change the budget, or wait until it resets on 1 January (UTC).", where the date is the first of the month after the run stopped (UTC). The banner shall read the cause only, never the error text. A budget stop without a cause, or with a figure missing from it, shall keep the general line "*Support reply* stopped in the step *Draft*.". The budget banner's last line about calls already under way stays.
 
 The model and its provider shall come from the log's last model call, the host from `run.failed`. A banner that needs the model shall wait for the log, and until then the page's general banner shows. The engine's own error text, and the provider's, shall never be on the banner.
 
@@ -27,10 +27,10 @@ Limits, for the docs: the banners have no **Copy details** yet. The provider is 
 
 - Given a run that stopped with the cause `budget.run`, a limit of 5, a spend of 5.08 and the currency EUR, in the step Draft,
   when its page is shown,
-  then the budget banner reads "Support reply stopped in the step Draft: this run reached its budget of €5.00 (estimated €5.08 spent).", then "Raise budget.perRun in workspace.yaml.".
+  then the budget banner reads "Support reply stopped in the step Draft: this run reached its budget of €5.00 (estimated €5.08 spent).", then "Change the budget, then run again.".
 - Given a run that stopped with the cause `budget.month` on 31 December,
   when its page is shown,
-  then the second line reads "Raise budget.monthly in workspace.yaml, or wait until it resets on 1 Jan.".
+  then the second line reads "Change the budget, or wait until it resets on 1 January (UTC).".
 - Given a run that stopped at its budget with no cause,
   when its page is shown,
   then the banner's first line reads "Support reply stopped in the step Draft." with no second line about the budget key.

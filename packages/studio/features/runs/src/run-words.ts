@@ -285,10 +285,14 @@ export const runPageWords = {
     `${workflow} stopped in the step ${step}: this run reached its budget of ${budget} (estimated ${spent} spent).`,
   budgetPerMonth: (workflow: string, step: string, budget: string) =>
     `${workflow} stopped in the step ${step}: this month's estimated spend reached its budget of ${budget}.`,
-  /** The second line: a per-run budget doesn't reset, so only the monthly one can be waited out. */
-  budgetRaisePerRun: "Raise budget.perRun in workspace.yaml.",
-  budgetRaiseMonthly: (resetsOn: string) =>
-    `Raise budget.monthly in workspace.yaml, or wait until it resets on ${resetsOn}.`,
+  /**
+   * The second line, without the CLI's key names (Studio's users change the budget in Settings;
+   * HAL-12069). A per-run budget doesn't reset, so only the monthly one can be waited out.
+   */
+  budgetChangePerRun: "Change the budget, then run again.",
+  budgetChangeMonthly: (resetsOn: string) =>
+    `Change the budget, or wait until it resets on ${resetsOn} (UTC).`,
+  changeBudget: "Change budget",
   budgetChecks:
     "Halonic checks the budget before each model call, so calls already under way can take a run over it.",
   cancelledIn: (workflow: string, step: string) =>
