@@ -3,6 +3,7 @@
 - Task: HAL-12368
 - Approval: the team's call on HAL-12368 (small wording on an approved screen, HAL-2282), from Sofia's UX check L6 on HAL-12363 and microcopy revision 109 on HAL-751; Liam reviews and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GQ7eoNUiqECmKmkb6nrd8f/ieGbknQl0v4nvr2vlE+3U00TfDWWV3XQZ5nY0bOCPhm+Sh9lENTWKijg9Ri0FBg==
 
 ## What changes
 
