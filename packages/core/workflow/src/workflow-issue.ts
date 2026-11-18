@@ -15,6 +15,7 @@ export type WorkflowIssueCode =
   | "workflow-without-target"
   | "self-subflow"
   | "timer-outside-wait"
+  | "timer-with-event"
   | "parallel-without-branches"
   | "foreach-without-items"
   | "foreach-without-work"

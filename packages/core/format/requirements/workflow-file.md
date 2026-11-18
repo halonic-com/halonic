@@ -9,5 +9,7 @@ When `parseFile` reads a workflow file, the format shall accept the old `Workflo
 ## Examples
 
 - Given a state with only an agent and a transition `{ to: done }`, when it is parsed, then the state is a `task` and the transition's event is `done`.
-- Given `when: { between: [1, 2] }`, when it is parsed, then it fails with `invalid_union` at the guard.
+- Given `when: { between: [1, 2] }`, when it is parsed, then it fails with `invalid_union` at the guard, and the message names `between` as an unknown condition kind and lists the allowed ones.
+- Given `when: { equals: x }`, when it is parsed, then the message says `equals` takes a list of two values.
+- Given `version: 2`, when it is parsed, then it fails at `version` with `version must be 1`.
 - Given `gets: [run.id]` and `after: '0m'`, when it is parsed, then it fails with `invalid_format` at both.
