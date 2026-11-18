@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-8692 (Noah's spec after Sofia's UX check on HAL-8421, building on the layout the board approved on HAL-8416; a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:koX4hIO7trvOsERHvVx2huwkZhk4c6yq02GGor7N+ZoQ48hb7mveVzNpCo6pgqKWpwApwyTfeIDCb3xfFdOYBg==
 - Task: HAL-8421
 
 ## What changes
