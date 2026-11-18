@@ -41,7 +41,12 @@ verifies("mcp.http-connector", () => {
       const server = new FakeMcpHttpServer(contractServer([]));
       const values: Record<string, string> = {};
       const client = connect(server, { get: async (name) => values[name] ?? null });
-      await expect(client.listTools()).rejects.toThrow('needs the secret "notes-token"');
+      const refused = client.listTools();
+      await expect(refused).rejects.toThrow('needs the secret "notes-token"');
+      await expect(refused).rejects.toMatchObject({
+        name: "SecretNotSetError",
+        secretName: "notes-token",
+      });
       expect(server.requests).toEqual([]);
       values["notes-token"] = "acme-token";
       expect(await client.listTools()).not.toEqual([]);

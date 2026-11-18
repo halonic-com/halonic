@@ -7,6 +7,7 @@ import type {
 } from "@halonicjs/ports";
 import { McpError } from "../protocol/errors.ts";
 import { type ClientInfo, McpSession } from "../protocol/session.ts";
+import { SecretNotSetError } from "../stdio/start-errors.ts";
 import { ConnectorToolError, resultText, toConnectorTool } from "../stdio/tool-mapping.ts";
 import { defaultHttpLimits, type HttpLimits, McpHttpTransport } from "./http-transport.ts";
 
@@ -127,9 +128,7 @@ class McpHttpConnector implements ConnectorClient {
     const secretName = this.#config.secret;
     if (secretName === undefined) return headers;
     const token = await this.#context.secrets.get(secretName);
-    if (token === null) {
-      throw new Error(`Connector "${this.id}" needs the secret "${secretName}", which isn't set.`);
-    }
+    if (token === null) throw new SecretNotSetError(this.id, secretName);
     headers.set("authorization", `Bearer ${token}`);
     return headers;
   }
