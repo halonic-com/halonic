@@ -40,6 +40,8 @@ export type LayerConfig = {
   /** One version for the whole layer package. */
   version: string;
   description: string;
+  /** The npm keywords. */
+  keywords: string[];
   /** Packages the tarball depends on, each pinned to one exact version. */
   dependencies: Record<string, string>;
   /** Packages the consumer brings, with their version ranges. */
@@ -112,12 +114,17 @@ export function readLayerConfig(directory: string): LayerConfig {
       throw new Error(`${layer}/layer.json has no "${field}".`);
     }
   }
+  const keywords = config["keywords"] ?? [];
+  if (!Array.isArray(keywords) || keywords.some((keyword) => typeof keyword !== "string")) {
+    throw new Error(`${layer}/layer.json has "keywords" that are not a list of words.`);
+  }
   return {
     layer,
     directory,
     name: String(config["name"]),
     version: String(config["version"]),
     description: String(config["description"]),
+    keywords: keywords as string[],
     dependencies: (config["dependencies"] ?? {}) as Record<string, string>,
     peerDependencies: (config["peerDependencies"] ?? {}) as Record<string, string>,
   };
