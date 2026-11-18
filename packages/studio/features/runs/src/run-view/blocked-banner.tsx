@@ -3,12 +3,15 @@ import { Callout } from "@halonicjs/studio-kit";
 import { runPageWords } from "../run-words.ts";
 import { BlockedSitesBannerText, seeTheStepText } from "./blocked-sites.tsx";
 import type { StepEntry } from "./every-step-model.ts";
+import { noConnectionProven } from "./sandbox-model.ts";
 import { type AgentBlockedSites, stepBlockedSites } from "./step-events-model.ts";
 
 /** A run the sandbox stopped: the step it failed in and what that step was refused. */
 export interface BlockedFailure {
   readonly entryId: string;
   readonly blocked: AgentBlockedSites;
+  /** Whether the step's sandbox proves no connection was made ({@link noConnectionProven}). */
+  readonly noConnectionProven: boolean;
 }
 
 /**
@@ -28,7 +31,7 @@ export function blockedFailure(
   const blocked = failed === undefined ? undefined : stepBlockedSites(log, failed.id)[0];
   return failed === undefined || blocked === undefined
     ? undefined
-    : { entryId: failed.id, blocked };
+    : { entryId: failed.id, blocked, noConnectionProven: noConnectionProven(log, failed.id) };
 }
 
 /** The failed banner for a run the sandbox stopped: which sites, and **See the step**. */
@@ -39,7 +42,7 @@ export function BlockedFailureBanner({
   readonly failure: BlockedFailure;
   readonly onSeeStep: (entryId: string) => void;
 }) {
-  const { entryId, blocked } = failure;
+  const { entryId, blocked, noConnectionProven: proven } = failure;
   return (
     <section aria-label={runPageWords.failedName}>
       <Callout
@@ -49,7 +52,7 @@ export function BlockedFailureBanner({
         <BlockedSitesBannerText
           step={blocked.sites}
           agent={blocked.agent}
-          noConnectionProven={false}
+          noConnectionProven={proven}
         />
       </Callout>
     </section>
