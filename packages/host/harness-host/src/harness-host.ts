@@ -7,6 +7,7 @@
 import {
   AgentPlacement,
   ProposalFolders,
+  type ProposalRecordLock,
   type ProposalVcs,
   type RunCopies,
   RunProposals,
@@ -73,6 +74,12 @@ export interface RunProposalsParts {
   readonly copies: RunCopies | null;
   /** The proposal records' own store, in the profile, never the workspace's. */
   readonly records: DefinitionStore;
+  /**
+   * Keeps other processes off a run's record while one decides it: required
+   * on a host where a command or a second app can decide the same proposals
+   * while the engine runs.
+   */
+  readonly recordLock?: ProposalRecordLock;
   /** The workspace's files, which Accept writes. */
   readonly store: DefinitionStore;
   /** Where Accept moves a file the run deleted: `refusingTrash` on a host without Accept. */

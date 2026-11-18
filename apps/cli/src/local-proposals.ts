@@ -6,9 +6,11 @@
 // Studio.
 //
 // The command opens no engine and takes no engine lock: a proposal belongs
-// to a run that has ended, which no engine touches again, and Accept writes
-// each file only while it is still the run's base, so a newer edit is never
-// overwritten. It works while `halonic routines watch` runs.
+// to a run that has ended, and Accept writes each file only while it is
+// still the run's base, so a newer edit is never overwritten. It works while
+// `halonic routines watch` runs. The engine and the command still open the
+// same records, so every read and write of a record holds that run's record
+// lock (`folderRecordLock`), in the engine as in the command.
 
 import { realpath } from "node:fs/promises";
 import { FolderDefinitionStore, FolderRunCopies, FolderTrash } from "@halonicjs/adapter-fs-node";
@@ -23,6 +25,7 @@ import {
   workspaceFolders,
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
+import { folderRecordLock } from "./proposal-record-lock.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 
 /** What the proposal parts are built from. */
@@ -50,6 +53,7 @@ export function localProposalParts(input: LocalProposalPartsInput): RunProposals
     // With history off, a run that writes files works in a plain copy of the saved files.
     copies: new FolderRunCopies(folders.runCopiesFolder()),
     records: new FolderDefinitionStore(folders.proposalRecordsFolder()),
+    recordLock: folderRecordLock(folders.proposalRecordsFolder()),
     store,
     trash: new FolderTrash({ folder: folders.trashFolder(), store, digest }),
     onEndFailed: (_runId, error) => input.reportError(error),

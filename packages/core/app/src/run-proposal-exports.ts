@@ -30,6 +30,7 @@ export {
   WorkspaceTooBigToCopyError,
 } from "./run-proposal-types.ts";
 export {
+  type ProposalRecordLock,
   type ProposalVcs,
   type RunCopies,
   RunProposals,
