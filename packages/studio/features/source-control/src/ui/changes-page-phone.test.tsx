@@ -51,6 +51,20 @@ function createVersionButton(root: HTMLElement): HTMLButtonElement | undefined {
   );
 }
 
+function buttonNamed(root: HTMLElement, name: string): HTMLButtonElement | undefined {
+  return [...root.querySelectorAll("button")].find(
+    (element) => element.textContent?.trim() === name,
+  );
+}
+
+function historyRow(root: HTMLElement, name: string): HTMLElement {
+  const found = [...root.querySelectorAll<HTMLElement>('[role="gridcell"]')].find((row) =>
+    row.textContent?.includes(name),
+  );
+  if (found === undefined) throw new Error(`no row ${name}`);
+  return found;
+}
+
 verifies("source-control.changes-phone", () => {
   describe("ChangesView on a phone", () => {
     it("leaves the heading to screen readers and keeps a 16px inset", async () => {
@@ -156,6 +170,44 @@ verifies("source-control.changes-phone", () => {
       const focusedRow = document.activeElement?.closest("[data-row-id]");
       expect(focusedRow?.getAttribute("data-row-id")).toBe("v20");
       expect(document.activeElement?.textContent).toContain("Version 20");
+    });
+
+    it("opens a version as its own page and goes back to its row in History", async () => {
+      const fake = changedModels();
+      const versions = manyVersions(3).map((version) =>
+        version.id === "v2"
+          ? { ...version, notes: "Sorter replies in Dutch", files: ["agents/sorter.yaml"] }
+          : version,
+      );
+      fake.setHistory(versions);
+      const root = await openPhonePage(fake);
+      act(() => historyRow(root, "Version 2").click());
+      const heading = root.querySelector("h1");
+      expect(heading?.textContent).toBe("Version 2");
+      expect(document.activeElement).toBe(heading);
+      expect(root.textContent).toContain("Sam Lee · ");
+      expect(root.textContent).toContain("Sorter replies in Dutch");
+      expect(root.textContent).toContain("What's in it · 1 file");
+      expect(root.textContent).toContain("agents/sorter.yaml");
+      expect(root.textContent).not.toContain("Create version");
+      act(() => buttonNamed(root, "Back to History")?.click());
+      expect(root.querySelector("h1")?.textContent).toBe("Changes");
+      expect(document.activeElement?.closest("[data-row-id]")?.getAttribute("data-row-id")).toBe(
+        "v2",
+      );
+    });
+
+    it("unfolds History when going back to a version past the newest 5", async () => {
+      const fake = changedModels();
+      fake.setHistory(manyVersions(25));
+      const root = await openPhonePage(fake);
+      act(() => buttonNamed(root, "See all history")?.click());
+      act(() => historyRow(root, "Version 18").click());
+      act(() => buttonNamed(root, "Back to History")?.click());
+      expect(root.textContent).not.toContain("See all history");
+      expect(document.activeElement?.closest("[data-row-id]")?.getAttribute("data-row-id")).toBe(
+        "v18",
+      );
     });
 
     it("shows all of a short History with no See all history", async () => {
