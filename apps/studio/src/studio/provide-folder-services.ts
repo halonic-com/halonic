@@ -235,13 +235,11 @@ export function provideFolderServices(
       engine,
     }),
   );
-  services.provide(
-    LibraryItemsHostService,
-    new WorkspaceLibraryItems({
-      files: services.get(workspaceFilesKey),
-      onChange: (listener) => scope.events.on("files.changed", listener),
-    }),
-  );
+  const libraryItems = new WorkspaceLibraryItems({
+    files: services.get(workspaceFilesKey),
+    onChange: (listener) => scope.events.on("files.changed", listener),
+  });
+  services.provide(LibraryItemsHostService, libraryItems);
   services.provide(
     SkillHostService,
     new WorkspaceSkills({
@@ -279,17 +277,23 @@ export function provideFolderServices(
   );
   services.provide(
     NewConnectorHostService,
-    new WorkspaceNewConnector({
-      files: services.get(workspaceFilesKey),
-      onChange: (listener) => scope.events.on("files.changed", listener),
-    }),
+    new WorkspaceNewConnector(
+      {
+        files: services.get(workspaceFilesKey),
+        onChange: (listener) => scope.events.on("files.changed", listener),
+      },
+      (place, name) => libraryItems.remember("connector", place, name),
+    ),
   );
   services.provide(
     NewSkillHostService,
-    new WorkspaceNewSkill({
-      files: services.get(workspaceFilesKey),
-      onChange: (listener) => scope.events.on("files.changed", listener),
-    }),
+    new WorkspaceNewSkill(
+      {
+        files: services.get(workspaceFilesKey),
+        onChange: (listener) => scope.events.on("files.changed", listener),
+      },
+      (place, name) => libraryItems.remember("skill", place, name),
+    ),
   );
   services.provide(LibraryTabMemoryService, new WorkspaceLibraryTab(storageOf(window), location));
   provideGoogleSetup(services, {

@@ -44,6 +44,10 @@ export interface WorkspaceLibraryItemsHostParts extends WorkspaceLibraryItemsPar
   };
 }
 
+function nameKey(kind: LibraryItemKind, { hub, id }: LibraryItemPlace): string {
+  return `${kind}/${hub ?? ""}/${id}`;
+}
+
 const settingsPath = "workspace.yaml";
 
 type Item = LoadedFileOf<LibraryItemKind>;
@@ -67,9 +71,22 @@ function detailOf(item: Item): string | undefined {
  */
 export class WorkspaceLibraryItems implements LibraryItemsHost {
   readonly #parts: WorkspaceLibraryItemsHostParts;
+  /** The names read or made so far, by kind, hub and id, for {@link WorkspaceLibraryItems.nameOf}. */
+  readonly #names = new Map<string, string>();
 
   constructor(parts: WorkspaceLibraryItemsHostParts) {
     this.#parts = parts;
+    // A rename in a page, or a file edited by hand, changes the name a tab shows.
+    parts.onChange(() => void this.#readNames());
+  }
+
+  nameOf(kind: LibraryItemKind, place: LibraryItemPlace): string | undefined {
+    return this.#names.get(nameKey(kind, place));
+  }
+
+  /** Remembers the name of an item that was just made, before the next `list` reads it. */
+  remember(kind: LibraryItemKind, place: LibraryItemPlace, name: string): void {
+    this.#names.set(nameKey(kind, place), name);
   }
 
   async list(kind: LibraryItemKind): Promise<LibraryListing> {
@@ -77,6 +94,7 @@ export class WorkspaceLibraryItems implements LibraryItemsHost {
     const items = filesOf(workspace, kind) as Item[];
     const entryOf = (item: Item): LibraryEntry => {
       const detail = detailOf(item);
+      this.remember(kind, { hub: item.hub, id: item.value.id }, item.value.name ?? item.value.id);
       return {
         id: item.value.id,
         name: item.value.name ?? item.value.id,
@@ -141,6 +159,24 @@ export class WorkspaceLibraryItems implements LibraryItemsHost {
 
   subscribe(listener: () => void): () => void {
     return this.#parts.onChange(listener);
+  }
+
+  /** Reads every item's name again; a failed read keeps the names from before. */
+  async #readNames(): Promise<void> {
+    try {
+      const workspace = await loadWorkspace(this.#source());
+      for (const kind of ["skill", "knowledge", "collection", "connector"] as const) {
+        for (const item of filesOf(workspace, kind) as Item[]) {
+          this.remember(
+            kind,
+            { hub: item.hub, id: item.value.id },
+            item.value.name ?? item.value.id,
+          );
+        }
+      }
+    } catch {
+      // The names stay as they were; the next change reads them again.
+    }
   }
 
   /** The workspace as files, with unsaved changes applied. */
