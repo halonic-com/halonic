@@ -5,6 +5,7 @@ import type {
   BridgeProvider,
   BridgeProviderAccess,
   BridgeRecorder,
+  BridgeToolCheck,
   BridgeTools,
   Secrets,
 } from "@halonicjs/ports";
@@ -39,11 +40,13 @@ const toolList = s.array(
     parameters: s.record(s.string(), s.unknown()),
   }),
 );
-const toolCheck = s.discriminatedUnion("kind", [
-  s.object({ kind: s.literal("run") }),
-  s.object({ kind: s.literal("ask") }),
-  s.object({ kind: s.literal("refused"), reason: s.string() }),
-]);
+const toolCheck = portSchema<BridgeToolCheck>(
+  s.discriminatedUnion("kind", [
+    s.object({ kind: s.literal("run") }),
+    s.object({ kind: s.literal("ask"), connector: s.string().optional() }),
+    s.object({ kind: s.literal("refused"), reason: s.string() }),
+  ]),
+);
 const toolResult = s.object({ result: s.string(), outcome: s.enum(["ok", "error", "unknown"]) });
 const approvalDecision = portSchema<BridgeApprovalDecision>(
   s.object({ approved: s.boolean(), comment: s.string().optional() }),

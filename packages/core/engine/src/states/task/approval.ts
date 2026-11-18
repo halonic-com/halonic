@@ -72,10 +72,11 @@ export function askForHarnessApproval(context: StateContext, input: HarnessAsked
   if (programHarnessOf(context.run, context.agents, pending.agent) === null) {
     return nothing;
   }
-  const { tool, args } = input;
+  const { tool, connector, args } = input;
   return askForApproval(context, pending, {
     type: "approval",
     tool,
+    ...(connector === undefined ? {} : { connector }),
     args,
     resume: nothingToResume,
   });

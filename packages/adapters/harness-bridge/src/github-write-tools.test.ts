@@ -54,9 +54,13 @@ verifies("harness-bridge.github-write", () => {
 
     it("sends acceptable calls to a person and refuses any other name", async () => {
       const { tools } = toolsWith(created);
-      expect(await tools.check("github_open_pull_request", openArgs)).toEqual({ kind: "ask" });
+      expect(await tools.check("github_open_pull_request", openArgs)).toEqual({
+        kind: "ask",
+        connector: "github",
+      });
       expect(await tools.check("github_update_pull_request", { number: 3, body: "" })).toEqual({
         kind: "ask",
+        connector: "github",
       });
       expect(await tools.check("github_merge_pull_request", { number: 3 })).toMatchObject({
         kind: "refused",

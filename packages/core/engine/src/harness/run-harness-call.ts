@@ -68,6 +68,8 @@ export interface HarnessAnswer {
 /** What a harness asks a person to approve: one of its program's tool calls. */
 export interface HarnessQuestion {
   readonly tool: string;
+  /** The connector the tool comes from, when it comes from one. */
+  readonly connector?: string;
   readonly args: unknown;
 }
 

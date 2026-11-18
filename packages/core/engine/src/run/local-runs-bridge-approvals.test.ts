@@ -22,9 +22,9 @@ verifies("engine.bridge-approvals", () => {
     const bridge = setup.executor.bridgeApprovals("run_1");
     const ask = (signal: AbortSignal = new AbortController().signal) =>
       bridge.request(bashCall, { signal });
-    const waitsOn = (callId: string) =>
+    const waitsOn = (callId: string, tool = "Bash") =>
       vi.waitFor(async () =>
-        expect(await runs.get("run_1")).toMatchObject({ approvals: [{ callId, tool: "Bash" }] }),
+        expect(await runs.get("run_1")).toMatchObject({ approvals: [{ callId, tool }] }),
       );
     return { ...setup, ports, runs, harnessCall, ask, waitsOn };
   }
@@ -45,6 +45,34 @@ verifies("engine.bridge-approvals", () => {
       "approval.resolved",
     ]);
     expect(await runs.get("run_1")).toMatchObject({ status: "running", approvals: [] });
+    await executor.cancel("run_1");
+    await harnessCall;
+  });
+
+  it("records the connector the bridge's question names, and none when it names none", async () => {
+    const { executor, runs, ask, waitsOn, harnessCall } = await runningCall();
+    const bridge = executor.bridgeApprovals("run_1");
+    const withConnector = bridge.request(
+      { callId: "bridge-1", tool: "github_open_pull_request", connector: "github", args: {} },
+      { signal: new AbortController().signal },
+    );
+    await waitsOn("call-2", "github_open_pull_request");
+    await executor.send("run_1", "approve", undefined, { callId: "call-2" });
+    await withConnector;
+
+    const bare = ask();
+    await waitsOn("call-4");
+    await executor.send("run_1", "approve", undefined, { callId: "call-4" });
+    await bare;
+
+    const requested = (runs.logs.get("run_1") ?? []).filter(
+      ({ type }) => type === "approval.requested",
+    );
+    expect(requested).toMatchObject([
+      { tool: "github_open_pull_request", connector: "github" },
+      { tool: "Bash" },
+    ]);
+    expect(requested[1]).not.toHaveProperty("connector");
     await executor.cancel("run_1");
     await harnessCall;
   });

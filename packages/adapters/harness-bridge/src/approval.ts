@@ -14,6 +14,8 @@ export type ApprovalAnswer =
 /** One call to ask a person about: a Halonic tool, or one of the program's own, such as "Bash". */
 export interface ApprovalQuestion {
   tool: string;
+  /** The connector the tool comes from, when it comes from one. */
+  connector?: string;
   args: unknown;
 }
 

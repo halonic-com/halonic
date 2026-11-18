@@ -98,7 +98,7 @@ interface ToolSpec {
  *
  * @example
  * const tools = new GitHubWriteTools({ repository: "halonic-com/halonic", secret: "GITHUB_WRITE_TOKEN", secrets, fetch });
- * await tools.check("github_open_pull_request", { title, head, base }); // { kind: "ask" }
+ * await tools.check("github_open_pull_request", { title, head, base }); // { kind: "ask", connector: "github" }
  */
 export class GitHubWriteTools implements BridgeTools {
   readonly #options: GitHubWriteToolsOptions;
@@ -130,7 +130,7 @@ export class GitHubWriteTools implements BridgeTools {
       if (error instanceof GitHubToolError) return { kind: "refused", reason: error.message };
       throw error;
     }
-    return { kind: "ask" };
+    return { kind: "ask", connector: "github" };
   }
 
   async call(

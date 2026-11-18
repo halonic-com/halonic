@@ -198,6 +198,8 @@ export interface HarnessAskedInput extends InputBase {
   /** The `callId` of the harness call that asks. */
   readonly callId: string;
   readonly tool: string;
+  /** The connector the tool comes from, when it comes from one. */
+  readonly connector?: string;
   readonly args: unknown;
 }
 
