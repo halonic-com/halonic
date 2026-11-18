@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { FILE_KIND, fileItem, fileName } from "../file-item.ts";
 import { FilesHostService, type FilesListing } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
+import { askFocusOnOpen } from "../focus-on-open.ts";
 import { startingPath } from "../new-file.ts";
 import { removeFile } from "../remove-file.ts";
 import { renamedPath, renameFile, typedNameProblem } from "../rename-file.ts";
@@ -303,6 +304,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
           onCreated={(path) => {
             setAdding(false);
             toasts?.show({ tone: "success", title: filesWords.created(path) });
+            askFocusOnOpen(path);
             context.openItem?.(fileItem(path));
           }}
         />

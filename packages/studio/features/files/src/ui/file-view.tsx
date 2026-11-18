@@ -11,6 +11,7 @@ import {
   type OutsideChange,
 } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
+import { takeFocusOnOpen } from "../focus-on-open.ts";
 import {
   causedElsewhere,
   type Elsewhere,
@@ -302,7 +303,9 @@ export function FileView({ item, context }: ItemViewProps) {
         editorRef.current = made;
         made.setProblems(problemsRef.current);
         unsubscribe = follow(made);
-        if (refocus.current) {
+        // A file the user just made opens with the cursor in the editor (files flow 8.10).
+        const justMade = takeFocusOnOpen(path);
+        if (refocus.current || justMade) {
           refocus.current = false;
           made.focus();
         }
