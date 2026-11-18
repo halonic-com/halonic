@@ -34,10 +34,14 @@ planted at a gitlink, reporting each as a refused write.
 Each network request srt's proxy refuses a program is reported to `onBlocked` as a `network` block
 with the host and port it asked for, which the run page shows as Blocked sites. srt's command line
 keeps these to itself, so our patch of srt (`patches/`) adds `--report-fd`: srt writes each refusal's
-line to a pipe the runner reads outside the fence, and the program gets `/dev/null` in its place (on
-Windows, only its three standard streams). A connection the fence stops below the proxy, such as one
-straight at an address on Windows, is refused all the same but not reported: only the proxy knows the
-name that was asked for.
+line to a pipe the runner reads outside the fence. On Linux and macOS the program gets `/dev/null` in
+its place. On Windows srt's inheritable pipe handle reaches the program, unnamed: a program that
+guesses its value can write to the pipe, though it gains no network that way. So the runner treats
+each line as untrusted: it drops a line over 1 KiB rather than holding it, and reports only a host srt
+itself would accept (at most 255 characters, an IP address or DNS-name characters) and a port from 1
+to 65535. A forged line can at most add a made-up site to Blocked sites. A connection the fence stops
+below the proxy, such as one straight at an address on Windows, is refused all the same but not
+reported: only the proxy knows the name that was asked for.
 
 On Linux and macOS the launcher gets its own temp folder, private to the user, directly under
 `/tmp` and removed when the session ends. Its name holds the host's process id

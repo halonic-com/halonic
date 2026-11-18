@@ -52,6 +52,11 @@ function exitReason(started: Started): SandboxExit["reason"] {
   return started.stopped ? "stopped" : "exited";
 }
 
+/** Where the session logs a failure no caller can get, when its opener names no other place. */
+function warnOnStderr(message: string): void {
+  process.stderr.write(`${message}\n`);
+}
+
 /**
  * A sandbox-runtime session. It owns a private folder (the settings file and
  * the canary of the fence proof) that the program can't read, and outside
@@ -74,6 +79,8 @@ export class SrtSession implements SandboxSession {
   /** The folder that holds the sessions' `commondir` journals, and this session's journal in it. */
   readonly #journal: { folder: string | null; file: string | null };
   readonly #grants: KeptGrants | null;
+  /** Where a failure that no caller can get is logged, such as a block listener that throws. */
+  readonly #warn: (message: string) => void;
   #fence: SandboxFence;
   #closing: Promise<void> | null = null;
   #timedOut = false;
@@ -91,6 +98,7 @@ export class SrtSession implements SandboxSession {
     journal: { folder: string | null; file: string | null },
     grants: KeptGrants | null,
     toolEnv: Record<string, string>,
+    warn: (message: string) => void,
   ) {
     this.profile = profile;
     this.#runner = runner;
@@ -102,6 +110,7 @@ export class SrtSession implements SandboxSession {
     this.#nestedGit = git.nested;
     this.#journal = journal;
     this.#grants = grants;
+    this.#warn = warn;
     this.#launcherEnv = launcherEnv(profile, process.env, folder, launcherTemp);
     this.#programEnv = programEnv(profile, process.env, folder, toolEnv);
     this.#timer = setTimeout(() => void this.#expire(), remainingMs);
@@ -129,13 +138,14 @@ export class SrtSession implements SandboxSession {
       journalFolder?: string | null;
       /** On Windows: takes back the grants srt keeps on the session's folders. Without it nothing is forgotten. */
       grants?: KeptGrants | null;
-      /** Where a failure to forget is logged when no caller can get it. */
+      /** Where a failure is logged when no caller can get it (a failure to forget, or a block listener that throws); stderr by default. */
       warn?: (message: string) => void;
       sharedFolders?: readonly string[];
     } = {},
   ): Promise<SrtSession> {
     const startedAt = Date.now();
     const grants = options.grants ?? null;
+    const warn = options.warn ?? warnOnStderr;
     grants?.assertSupported();
     assertVariableNames(profile);
     const { journalFolder = null, sharedFolders = [] } = options;
@@ -206,6 +216,7 @@ export class SrtSession implements SandboxSession {
         { folder: journalFolder, file: journal },
         grants,
         await sessionToolEnv(profile),
+        warn,
       );
       return session;
     } catch (error) {
@@ -215,7 +226,7 @@ export class SrtSession implements SandboxSession {
       // The fence proof ran a program on the folders, so srt may have kept grants on them.
       const forgotten = await grants?.forget([profile.workingFolder, profile.tempFolder]);
       if (forgotten !== undefined && forgotten.failed.length > 0) {
-        (options.warn ?? (() => undefined))(describeForgetFailures(forgotten.failed));
+        warn(describeForgetFailures(forgotten.failed));
       }
       throw error;
     }
@@ -278,9 +289,21 @@ export class SrtSession implements SandboxSession {
     };
   }
 
-  /** Tells every listener about one refused access. */
+  /**
+   * Tells every listener about one refused access. A network block comes from
+   * a pipe event that no caller awaits, so a listener that throws is logged
+   * rather than left to end the host, and the other listeners still hear it.
+   */
   #report(block: SandboxBlock): void {
-    for (const listener of this.#listeners) listener(block);
+    for (const listener of this.#listeners) {
+      try {
+        listener(block);
+      } catch (error) {
+        this.#warn(
+          `a listener for refused accesses failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
   }
 
   close(): Promise<void> {

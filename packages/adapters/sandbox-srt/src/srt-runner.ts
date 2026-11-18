@@ -4,11 +4,16 @@ import { readFileSync } from "node:fs";
 import { realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
-import { createInterface } from "node:readline";
 import { Readable, Writable } from "node:stream";
 import { promisify } from "node:util";
 import { type PathLookup, skillScriptsRefusal, touchesSkillScripts } from "@halonicjs/format";
-import { type NetworkBlock, parseNetworkReport, reportFd } from "./network-reports.ts";
+import {
+  maxReportLineBytes,
+  type NetworkBlock,
+  parseNetworkReport,
+  reportFd,
+} from "./network-reports.ts";
+import { ReportLines } from "./report-lines.ts";
 
 /** A program running inside the fence, as the session sees it. */
 export interface RunningProgram {
@@ -254,15 +259,18 @@ export const srtRunner: Runner = {
 
 /**
  * Hands each block srt writes to its report fd to `onNetworkBlock`. The lines
- * come in before the child's `close`, which waits for every pipe to end.
+ * come in before the child's `close`, which waits for every pipe to end. On
+ * Windows the program can write to the pipe too, so the lines are bounded
+ * (see {@link ReportLines}) and each is parsed as untrusted.
  */
 function readNetworkReports(child: ChildProcess, onNetworkBlock: (block: NetworkBlock) => void) {
   const input = child.stdio[reportFd] as Readable;
-  const lines = createInterface({ input, crlfDelay: Number.POSITIVE_INFINITY });
-  lines.on("line", (line) => {
+  const lines = new ReportLines(maxReportLineBytes, (line) => {
     const block = parseNetworkReport(line);
     if (block !== null) onNetworkBlock(block);
   });
+  input.on("data", (chunk: Buffer) => lines.push(chunk));
+  input.on("end", () => lines.end());
   // A broken report pipe loses reports, never the run: the proxy has refused the request either way.
   input.on("error", () => {});
 }

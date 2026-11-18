@@ -41,6 +41,25 @@ verifies("sandbox-srt.network-reports", () => {
       await session.close();
     });
 
+    it("still reaches the other listeners when one throws, and the failure is logged", async () => {
+      const { runner, runs } = fakeRunner();
+      const warnings: string[] = [];
+      const sandbox = new SrtSandbox(linux, runner, null, {
+        warn: (message) => warnings.push(message),
+      });
+      const session = await sandbox.open(makeProfile(base));
+      const blocks: SandboxBlock[] = [];
+      session.onBlocked(() => {
+        throw new Error("listener broke");
+      });
+      session.onBlocked((block) => blocks.push(block));
+      await session.start(command);
+      runs[0]?.request.onNetworkBlock?.({ kind: "network", host: "blocked.example", port: 443 });
+      expect(blocks).toEqual([{ kind: "network", host: "blocked.example", port: 443 }]);
+      expect(warnings).toEqual(["a listener for refused accesses failed: listener broke"]);
+      await session.close();
+    });
+
     it("is asked for on every program, and not on the fence probe, which runs before any listener", async () => {
       const { runner, runs, probes } = fakeRunner();
       const session = await new SrtSandbox(linux, runner).open(makeProfile(base));
