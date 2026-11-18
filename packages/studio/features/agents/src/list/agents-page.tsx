@@ -35,6 +35,17 @@ type Load =
       readonly refreshing: boolean;
     };
 
+/** Focuses a row, or the empty state's title when no row is left; false while it isn't drawn. */
+function focusTarget(
+  page: HTMLElement,
+  target: FocusTarget,
+  emptyTitle: HTMLHeadingElement | null,
+): boolean {
+  if (target !== "empty") return focusRow(page, target.row);
+  emptyTitle?.focus();
+  return emptyTitle !== null;
+}
+
 /** The Agents place's page: the open workspace's agents, from `AgentsHostService`. */
 export function AgentsPage({ context }: PlaceViewProps) {
   const { openItem } = context;
@@ -67,7 +78,7 @@ export interface AgentsViewProps {
   readonly open?: (ref: AgentRef) => void;
   /** Opens an agent's page in a new tab: a Ctrl-click, a middle click and Ctrl Enter. Without it, those open it in the same tab as a click. */
   readonly openInNewTab?: (ref: AgentRef) => void;
-  /** Opens a workspace file in a tab, for **Open as file**; without it, and on a phone, the row's menu has none. */
+  /** Opens a workspace file in a tab, for **Open as file**; without it the row's menu has none. */
   readonly openFile?: (path: string) => void;
   /** What the page calls the engine when it can't read, for this window's host; the desktop app's by default. */
   readonly engine?: EngineWords;
@@ -90,6 +101,7 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
   const toasts = useToastStore();
   const title = useRef<HTMLHeadingElement>(null);
   const page = useRef<HTMLDivElement>(null);
+  const emptyTitle = useRef<HTMLHeadingElement>(null);
 
   // Each read takes a number; only the newest read's result is shown, so a slow older read never
   // overwrites a newer one, and nothing is set after unmount.
@@ -160,22 +172,30 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
   };
 
   // Where focus goes once it can: a restored row only shows when the list is read again, so the
-  // target waits for the list that was on screen when it was set to be replaced.
-  const pendingFocus = useRef<{ target: FocusTarget; listAtStart: Load } | undefined>(undefined);
+  // target waits for the list that was on screen when it was set to be replaced. After a delete it
+  // also waits until the deleted row has left the list, so nothing that row held can take it back.
+  const pendingFocus = useRef<
+    { target: FocusTarget; listAtStart: Load; gone?: string | undefined } | undefined
+  >(undefined);
   const latestLoad = useRef(load);
   latestLoad.current = load;
   const applyFocus = useCallback(() => {
     const pending = pendingFocus.current;
     if (pending === undefined || page.current === null) return;
-    const { target } = pending;
-    const shown = target === "empty" ? title.current !== null : focusRow(page.current, target.row);
-    if (target === "empty") title.current?.focus();
-    if (shown || latestLoad.current !== pending.listAtStart) pendingFocus.current = undefined;
+    const { target, gone } = pending;
+    const listReadAgain = latestLoad.current !== pending.listAtStart;
+    if (gone !== undefined && visibleRowIds(page.current).includes(gone)) {
+      // A read that still shows the row (it failed, so the old rows stay) leaves focus where it is.
+      if (listReadAgain) pendingFocus.current = undefined;
+      return;
+    }
+    const shown = focusTarget(page.current, target, emptyTitle.current);
+    if (shown || listReadAgain) pendingFocus.current = undefined;
   }, []);
-  // Runs after every render, to catch the row when it appears.
+  // Runs after every render, to catch the row when it appears or the deleted one when it goes.
   useEffect(applyFocus);
-  const focusOn = (target: FocusTarget) => {
-    pendingFocus.current = { target, listAtStart: latestLoad.current };
+  const focusOn = (target: FocusTarget, gone?: string) => {
+    pendingFocus.current = { target, listAtStart: latestLoad.current, gone };
     applyFocus();
   };
   const trashRow = (id: string) => {
@@ -183,7 +203,7 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
     if (listing === undefined || page.current === null) return;
     const after = targetAfterRemoving(visibleRowIds(page.current), id);
     void trashAgent(host, toasts, listing, {
-      onTrashed: () => focusOn(after),
+      onTrashed: () => focusOn(after, id),
       onRestored: () => focusOn({ row: id }),
     });
   };
@@ -250,24 +270,30 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
           }}
           loading={load.kind === "loading"}
           quietWhenEmpty
+          emptyTitleRef={emptyTitle}
           {...(canCreate
             ? { newButton: { label: listWords.newAgent, onClick: startCreating } }
             : {})}
           itemMenu={(row) => [
-            { id: "open", label: deleteWords.open, onSelect: () => openRow(row.id) },
-            {
-              id: "open-in-new-tab",
-              label: deleteWords.openInNewTab,
-              onSelect: () => openRowInNewTab(row.id),
-            },
-            ...(openFile === undefined || phone
+            // A phone has no tabs and a tap on the row opens the agent: its menu is Delete alone (UX 9.12).
+            ...(phone
               ? []
               : [
+                  { id: "open", label: deleteWords.open, onSelect: () => openRow(row.id) },
                   {
-                    id: "open-as-file",
-                    label: deleteWords.openAsFile,
-                    onSelect: () => openRowAsFile(row.id),
+                    id: "open-in-new-tab",
+                    label: deleteWords.openInNewTab,
+                    onSelect: () => openRowInNewTab(row.id),
                   },
+                  ...(openFile === undefined
+                    ? []
+                    : [
+                        {
+                          id: "open-as-file",
+                          label: deleteWords.openAsFile,
+                          onSelect: () => openRowAsFile(row.id),
+                        },
+                      ]),
                 ]),
             {
               id: "delete",

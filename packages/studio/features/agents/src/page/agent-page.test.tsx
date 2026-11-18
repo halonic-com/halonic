@@ -309,11 +309,11 @@ verifies("agents.page.menu", () => {
     expect(toasts.list()[0]).toMatchObject({ tone: "danger", title: "Couldn't put Sorter back" });
   });
 
-  it("adds the workflows that now show an error to the strip", async () => {
+  it("adds the workflow steps that now show an error to the strip", async () => {
     const host = memoryAgentsHost({
       hubs: [{ id: "acme", name: "acme" }],
       agents: [sorter],
-      users: { "acme/sorter": [{ hubId: "acme", id: "reply", name: "Reply" }] },
+      users: { "acme/sorter": [{ hubId: "acme", id: "reply", name: "Reply", steps: 1 }] },
     });
     const { page } = await open(host);
 
@@ -321,7 +321,7 @@ verifies("agents.page.menu", () => {
 
     expect(page.textContent).toContain("This agent was moved to the trash.");
     expect(page.textContent).toContain(
-      "1 workflow now shows an error until you pick another agent for its step.",
+      "1 workflow step now shows an error until you pick another agent.",
     );
   });
 

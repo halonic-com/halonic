@@ -20,7 +20,7 @@ verifies("agents.host", () => {
   });
 
   it("gives the workflows that run an agent, or none", async () => {
-    const reply = { hubId: "acme", id: "reply", name: "Reply" };
+    const reply = { hubId: "acme", id: "reply", name: "Reply", steps: 1 };
     const host = memoryAgentsHost({
       hubs: [acme],
       agents: [refundChecker, { hubId: "acme", id: "triage", name: "Triage" }],
