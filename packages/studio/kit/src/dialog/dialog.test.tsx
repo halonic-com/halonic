@@ -54,6 +54,20 @@ verifies("kit.dialog", () => {
     expect(body?.className).toContain("px-6 pt-1 pb-4 text-body text-fg-muted");
   });
 
+  it("sits in the centre, or a fixed distance from the top with anchor top", () => {
+    const centred = dialogOf(render(deleteDialog()).container);
+    expect(centred.className).toContain("m-auto");
+    const top = dialogOf(
+      render(
+        <Dialog title="New" anchor="top" onCancel={() => {}}>
+          Body
+        </Dialog>,
+      ).container,
+    );
+    expect(top.className).toContain("mt-[12vh]");
+    expect(top.className).not.toContain("m-auto");
+  });
+
   it("draws a 16px-radius raised box over the overlay that fades in", () => {
     const dialog = dialogOf(render(deleteDialog()).container);
     for (const part of [
