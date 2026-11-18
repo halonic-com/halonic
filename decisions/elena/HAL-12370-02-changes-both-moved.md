@@ -3,6 +3,7 @@
 - Task: HAL-12370
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12363 (Sofia's UX check, row L13: small wording on the approved Changes screen, a team decision under HAL-2282; same words as microcopy revision 109 on HAL-751)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aYuqajM4gIJr9xelaL1Isx7HWzACUA/NnX3rVwD4aYtPQBrJn+JFOalb4wKzRzuqUZc/yODnE3qptSYmDkNpAg==
 
 ## What changes
 
