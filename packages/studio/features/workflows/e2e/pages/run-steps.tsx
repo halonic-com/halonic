@@ -82,7 +82,14 @@ const source: RunsSource = {
   log: async () => log,
   workflow: () => ({ name: "Review pull request", stepDescription: (id) => descriptions[id] }),
   routine: () => undefined,
-  runnableWorkflows: async () => ["review-pull-request"],
+  runnableWorkflows: async () => [
+    {
+      hubId: "my-notes",
+      id: "review-pull-request",
+      name: "Review pull request",
+      command: "review-pull-request",
+    },
+  ],
   currency: () => "EUR",
   providerKind: () => undefined,
   monthlyBudget: () => undefined,

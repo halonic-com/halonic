@@ -12,7 +12,7 @@ import {
 } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWordsOf, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { SampleHintService } from "../api.ts";
+import { type RunnableWorkflow, RunStartHostService, SampleHintService } from "../api.ts";
 import { listRows } from "../list/list-rows.ts";
 import type { RunRow } from "../list/run-row.ts";
 import {
@@ -29,8 +29,10 @@ import {
 } from "../list/runs-filter.ts";
 import { useAnnounceFilterChange } from "../list/use-filter-announcement.ts";
 import { FailureReason, RefreshFailedLine } from "../load-failure.tsx";
-import { emptyListWords, pageWords, runCommand } from "../run-words.ts";
+import { emptyListWords, pageWords } from "../run-words.ts";
 import { type RunsList, RunsListService, type RunsListState } from "../runs-list.ts";
+import { runCommand } from "../start-words.ts";
+import { NoWorkflowSentence, type PressRun, PressRunSentence } from "./press-run-line.tsx";
 
 /** The Runs place's page: the open workspace's runs, from `RunsListService`. */
 export function RunsPage({ context }: PlaceViewProps) {
@@ -41,17 +43,20 @@ export function RunsPage({ context }: PlaceViewProps) {
       engine={engineWordsOf(context)}
       isSample={context.services.find(SampleHintService)?.isSample() === true}
       announceState={(key, text) => context.announcer.announceState(key, text)}
+      canRun={context.services.find(RunStartHostService) !== undefined}
       {...(openItem === undefined
         ? {}
         : {
             openRun: (run: RunSummary) => openItem({ kind: "run", hub: run.hubId, id: run.id }),
+            openWorkflow: ({ hubId, id }: RunnableWorkflow) =>
+              openItem({ kind: "workflow", hub: hubId, id }),
           })}
     />
   );
 }
 
 /** Props for {@link RunsView}. */
-export interface RunsViewProps {
+export interface RunsViewProps extends PressRun {
   readonly list: RunsList;
   /** Opens a run's page in the active tab, for a row's click and Enter. */
   readonly openRun?: (run: RunSummary) => void;
@@ -63,6 +68,8 @@ export interface RunsViewProps {
   readonly isSample?: boolean;
   /** Reads how many runs a filter change left (`announcer.announceState`); absent in tests that don't listen. */
   readonly announceState?: (key: string, text: string) => void;
+  /** Whether a workflow's page has **Run** here (an engine), so "No runs yet" points to it, not the command line. */
+  readonly canRun?: boolean;
 }
 
 /**
@@ -86,6 +93,8 @@ export function RunsView({
   engine = engineWordsOf({}),
   isSample = false,
   announceState,
+  canRun = false,
+  openWorkflow,
 }: RunsViewProps) {
   const phone = usePresentation() === "phone";
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
@@ -149,7 +158,7 @@ export function RunsView({
         openRow={openRow}
         now={now()}
         phone={phone}
-        isSample={isSample}
+        noRuns={{ isSample, canRun, ...(openWorkflow === undefined ? {} : { openWorkflow }) }}
       />
     </div>
   );
@@ -168,7 +177,7 @@ function PageBody({
   openRow,
   now,
   phone,
-  isSample,
+  noRuns,
 }: {
   readonly state: RunsListState;
   readonly engine: EngineWords;
@@ -181,7 +190,7 @@ function PageBody({
   readonly openRow: ((id: string) => void) | undefined;
   readonly now: Date;
   readonly phone: boolean;
-  readonly isSample: boolean;
+  readonly noRuns: NoRunsWays;
 }) {
   if (!state.loaded && state.error !== undefined) {
     return (
@@ -198,7 +207,7 @@ function PageBody({
   }
   const empty = state.loaded ? emptyList(rows, filters) : undefined;
   if (empty?.kind === "no-runs") {
-    return <NoRuns workflows={state.workflows} isSample={isSample} />;
+    return <NoRuns workflows={state.workflows} {...noRuns} />;
   }
   return (
     <>
@@ -217,35 +226,44 @@ function PageBody({
   );
 }
 
+/** What decides how "No runs yet" says to start one: the sample's Inbox, **Run**, or the command line. */
+interface NoRunsWays extends PressRun {
+  readonly isSample: boolean;
+  readonly canRun: boolean;
+}
+
 /**
  * No runs at all (R1), with no filters above it: there's nothing to filter. The line names a
- * workflow to run, or says there is none (HAL-10128); in the Acme sample it says to start one from
- * the Inbox, as Home does (HAL-12225).
+ * workflow to run, or says there is none (HAL-10128): open it and press **Run** where its page has
+ * Run (HAL-12371), else the command line. In the Acme sample it says to start one from the Inbox,
+ * as Home does (HAL-12225).
  */
-function NoRuns({
-  workflows,
-  isSample,
-}: {
-  readonly workflows: readonly string[] | undefined;
-  readonly isSample: boolean;
-}) {
-  return (
-    <EmptyState
-      title={emptyListWords.noRunsTitle}
-      description={<NoRunsLine workflows={workflows} isSample={isSample} />}
-    />
-  );
+function NoRuns(
+  props: NoRunsWays & { readonly workflows: readonly RunnableWorkflow[] | undefined },
+) {
+  return <EmptyState title={emptyListWords.noRunsTitle} description={<NoRunsLine {...props} />} />;
 }
 
 /** The line under "No runs yet": the Inbox in the sample, else where to add a workflow or which one to run. */
 function NoRunsLine({
   workflows,
   isSample,
-}: {
-  readonly workflows: readonly string[] | undefined;
-  readonly isSample: boolean;
-}) {
+  canRun,
+  openWorkflow,
+}: NoRunsWays & { readonly workflows: readonly RunnableWorkflow[] | undefined }) {
   if (isSample) return emptyListWords.noRunsSample;
+  if (canRun) {
+    if (workflows?.length === 0) return <NoWorkflowSentence />;
+    return (
+      <>
+        <PressRunSentence
+          workflows={workflows}
+          {...(openWorkflow === undefined ? {} : { openWorkflow })}
+        />{" "}
+        {emptyListWords.noRunsFromCommandLine}
+      </>
+    );
+  }
   if (workflows?.length === 0) return emptyListWords.noRunsNoWorkflow;
   return (
     <>

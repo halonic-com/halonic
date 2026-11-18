@@ -12,10 +12,10 @@ import {
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { type RunsSource, RunsSourceService } from "../api.ts";
+import { type RunnableWorkflow, type RunsSource, RunsSourceService } from "../api.ts";
 import { runsFeature } from "../feature.ts";
 import { RunsList, RunsListService } from "../runs-list.ts";
-import { fakeSource } from "../source.test-helper.ts";
+import { fakeSource, runnable } from "../source.test-helper.ts";
 import { approvalAt, minutesLater, mondayMorning, summaryWith } from "../summary.test-helper.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { RunsView } from "./runs-page.tsx";
@@ -46,6 +46,7 @@ async function openPage(
   openRun?: (run: RunSummary) => void,
   engine?: EngineWords,
   isSample?: boolean,
+  run?: { readonly openWorkflow?: (workflow: RunnableWorkflow) => void },
 ) {
   const list = new RunsList(source);
   const root = render(
@@ -55,6 +56,7 @@ async function openPage(
       {...(openRun === undefined ? {} : { openRun })}
       {...(engine === undefined ? {} : { engine })}
       {...(isSample === undefined ? {} : { isSample })}
+      {...(run === undefined ? {} : { canRun: true, ...run })}
     />,
   );
   await settled();
@@ -235,9 +237,44 @@ verifies("runs.list", () => {
       expect(root.textContent).not.toContain("Go to Workflows");
     });
 
-    it("names the first workflow to run when the workspace has one", async () => {
+    it("says to open the first workflow and press Run, where its page has Run", async () => {
       const fake = fakeSource([]);
-      fake.workflows(["support-reply", "welcome"]);
+      fake.workflows([runnable("weekly-report", "Weekly report"), runnable("welcome", "Welcome")]);
+      const openWorkflow = vi.fn();
+      const { root } = await openPage(fake.source, undefined, undefined, undefined, {
+        openWorkflow,
+      });
+      expect(root.textContent).toContain(
+        "To start one, open Weekly report in Workflows and press Run. Runs started from the command line show up here too.",
+      );
+      expect(root.querySelector("code")).toBeNull();
+      expect(root.querySelector("strong")?.textContent).toBe("Run");
+      await click(control(root, "Weekly report"));
+      expect(openWorkflow).toHaveBeenCalledWith(runnable("weekly-report", "Weekly report"));
+    });
+
+    it("with Run, tells a workspace with no workflow to add one and press Run on it", async () => {
+      const fake = fakeSource([]);
+      fake.workflows([]);
+      const { root } = await openPage(fake.source, undefined, undefined, undefined, {});
+      expect(root.textContent).toContain(
+        "This workspace has no workflows yet. Add one in Workflows, then press Run on it.",
+      );
+      expect(root.textContent).not.toContain("command line");
+    });
+
+    it("with Run, says a workflow while the workflows can't be read", async () => {
+      const fake = fakeSource([]);
+      fake.workflows(new Error("unreadable"));
+      const { root } = await openPage(fake.source, undefined, undefined, undefined, {});
+      expect(root.textContent).toContain(
+        "To start one, open a workflow in Workflows and press Run.",
+      );
+    });
+
+    it("without Run, as in a served Studio, names the first workflow's command", async () => {
+      const fake = fakeSource([]);
+      fake.workflows([runnable("support-reply", "Support reply"), runnable("welcome", "Welcome")]);
       const { root } = await openPage(fake.source);
       expect(root.textContent).toContain(
         "Runs started from the command line show up here. To start one, type halonic run support-reply in a terminal.",
@@ -245,7 +282,7 @@ verifies("runs.list", () => {
       expect(root.querySelector("code")?.textContent).toBe("halonic run support-reply");
     });
 
-    it("sends a workspace with no workflow to Workflows", async () => {
+    it("without Run, sends a workspace with no workflow to Workflows", async () => {
       const fake = fakeSource([]);
       fake.workflows([]);
       const { root } = await openPage(fake.source);
@@ -255,7 +292,7 @@ verifies("runs.list", () => {
       expect(root.querySelector("code")).toBeNull();
     });
 
-    it("keeps the sentence without a name when the workflows can't be read", async () => {
+    it("without Run, keeps the sentence without a name when the workflows can't be read", async () => {
       const fake = fakeSource([]);
       fake.workflows(new Error("unreadable"));
       const { root } = await openPage(fake.source);
@@ -267,13 +304,14 @@ verifies("runs.list", () => {
     });
 
     it("says to start a run from the Inbox in the Acme sample, as Home does", async () => {
-      const fake = fakeSource([]);
-      fake.workflows(["support-reply"]);
-      const { root } = await openPage(fake.source, undefined, undefined, true);
-      expect(root.textContent).toContain("No runs yet");
-      expect(root.textContent).toContain("Start one from the Inbox, and it shows up here.");
-      expect(root.textContent).not.toContain("command line");
-      expect(root.querySelector("code")).toBeNull();
+      for (const run of [undefined, {}]) {
+        const { root } = await openPage(fakeSource([]).source, undefined, undefined, true, run);
+        expect(root.textContent).toContain("No runs yet");
+        expect(root.textContent).toContain("Start one from the Inbox, and it shows up here.");
+        expect(root.textContent).not.toContain("command line");
+        expect(root.textContent).not.toContain("press Run");
+        expect(root.querySelector("code")).toBeNull();
+      }
     });
 
     it("says only test runs are there, and Show test runs shows them", async () => {
