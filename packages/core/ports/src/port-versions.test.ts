@@ -12,6 +12,7 @@ const notPorts = new Set([
   "cant-try-error.ts",
   "agent-runs-not-available.ts",
   "chat.ts",
+  "connector-tool-error.ts",
   "harness-sign-in-command.ts",
   "index.ts",
   "model-price.ts",
