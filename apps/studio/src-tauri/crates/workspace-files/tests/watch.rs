@@ -8,7 +8,10 @@ use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use halonic_workspace_files::{Fence, FileError, FolderSnapshot, WatchMessage, Watches};
+use halonic_workspace_files::{
+    Fence, FileError, FolderSnapshot, MAX_WATCHED_FILES, WatchMessage, Watches,
+};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use support::Scratch;
 
 /// Short, so the tests don't wait long; they wait for messages, never for
@@ -58,9 +61,13 @@ fn folder_poll_sends_each_change_as_a_batch_until_stopped() {
     let (sent, received) = mpsc::channel();
     let watches = Watches::default();
     let id = watches
-        .start("main", INTERVAL, scan_from(&looks), move |message| {
-            sent.send(message).is_ok()
-        })
+        .start(
+            "main",
+            "acme",
+            INTERVAL,
+            scan_from(&looks),
+            move |message| sent.send(message).is_ok(),
+        )
         .expect("the watch starts");
 
     let message = received.recv_timeout(PATIENCE).expect("a batch");
@@ -91,6 +98,7 @@ fn folder_poll_fails_once_when_a_look_fails() {
     watches
         .start(
             "main",
+            "acme",
             INTERVAL,
             move || {
                 looks
@@ -119,6 +127,7 @@ fn folder_poll_refuses_a_folder_it_cannot_look_at_and_stops_a_pages_watches() {
     let watches = Watches::default();
     let refused = watches.start(
         "main",
+        "acme",
         INTERVAL,
         || {
             Err(FileError::Io {
@@ -132,18 +141,132 @@ fn folder_poll_refuses_a_folder_it_cannot_look_at_and_stops_a_pages_watches() {
 
     let quiet = || Ok::<_, FileError>(FolderSnapshot::default());
     watches
-        .start("main", INTERVAL, quiet, |_| true)
+        .start("main", "acme", INTERVAL, quiet, |_| true)
         .expect("a watch");
     watches
-        .start("main", INTERVAL, quiet, |_| true)
+        .start("main", "acme", INTERVAL, quiet, |_| true)
         .expect("a watch");
     watches
-        .start("other", INTERVAL, quiet, |_| true)
+        .start("other", "acme", INTERVAL, quiet, |_| true)
         .expect("a watch");
     watches.stop_owner("main");
     assert_eq!(watches.count(), 1);
     watches.stop_owner("other");
     assert_eq!(watches.count(), 0);
+}
+
+#[test]
+fn folder_poll_shares_one_look_among_the_watches_of_a_folder() {
+    let scratch = Scratch::new("shared");
+    scratch.put("a.yaml", "a");
+    let first = FolderSnapshot::of(scratch.path(), &Fence::Outside).expect("a look");
+    scratch.put("b.yaml", "b");
+    let second = FolderSnapshot::of(scratch.path(), &Fence::Outside).expect("a look");
+    // The change shows only once all three watches are on the folder.
+    let looks = Arc::new(Mutex::new(vec![first]));
+    let joined_looks = Arc::new(AtomicUsize::new(0));
+    let watches = Watches::default();
+    let mut received = Vec::new();
+    for page in ["runs", "library", "google"] {
+        let (sent, receiver) = mpsc::channel();
+        let scan: Box<dyn FnMut() -> Result<FolderSnapshot, FileError> + Send> =
+            if received.is_empty() {
+                Box::new(scan_from(&looks))
+            } else {
+                let joined_looks = Arc::clone(&joined_looks);
+                Box::new(move || {
+                    joined_looks.fetch_add(1, Ordering::Relaxed);
+                    Ok(FolderSnapshot::default())
+                })
+            };
+        watches
+            .start(page, "acme", INTERVAL, scan, move |message| {
+                sent.send(message).is_ok()
+            })
+            .expect("the watch starts");
+        received.push(receiver);
+    }
+
+    assert_eq!(watches.count(), 3);
+    assert_eq!(watches.folder_count(), 1, "one look for the folder");
+    looks.lock().expect("the looks").push(second);
+    for receiver in &received {
+        let message = receiver.recv_timeout(PATIENCE).expect("a batch");
+        assert_eq!(message, WatchMessage::Changed(vec!["b.yaml".to_owned()]));
+    }
+    assert_eq!(
+        joined_looks.load(Ordering::Relaxed),
+        0,
+        "the watches that joined never look themselves"
+    );
+
+    watches.stop_owner("runs");
+    watches.stop_owner("library");
+    assert_eq!(watches.folder_count(), 1, "one watch is left on it");
+    watches.stop_owner("google");
+    assert_eq!(
+        watches.folder_count(),
+        0,
+        "the look ends with its last watch"
+    );
+}
+
+#[test]
+fn folder_poll_looks_at_each_folder_on_its_own() {
+    let watches = Watches::default();
+    let quiet = || Ok::<_, FileError>(FolderSnapshot::default());
+    for folder in ["acme", "other"] {
+        watches
+            .start("main", folder, INTERVAL, quiet, |_| true)
+            .expect("a watch");
+    }
+    assert_eq!(watches.folder_count(), 2);
+    watches.stop_owner("main");
+    assert_eq!(watches.folder_count(), 0);
+}
+
+#[test]
+fn folder_poll_stops_at_its_file_limit() {
+    let scratch = Scratch::new("limit");
+    scratch.put("a.yaml", "a");
+    scratch.put("b.yaml", "b");
+    scratch.put("c.yaml", "c");
+    FolderSnapshot::of_at_most(scratch.path(), &Fence::Outside, 3).expect("three files fit");
+    let refused = FolderSnapshot::of_at_most(scratch.path(), &Fence::Outside, 2);
+    assert_eq!(refused, Err(FileError::TooManyFiles { limit: 2 }));
+    const { assert!(MAX_WATCHED_FILES >= 10_000, "tens of thousands") };
+}
+
+#[test]
+fn folder_poll_fails_a_folder_with_too_many_files_with_what_to_do() {
+    let (sent, received) = mpsc::channel();
+    let watches = Watches::default();
+    let id = watches.start(
+        "main",
+        "acme",
+        INTERVAL,
+        || {
+            Err(FileError::TooManyFiles {
+                limit: MAX_WATCHED_FILES,
+            })
+        },
+        move |message| sent.send(message).is_ok(),
+    );
+    assert!(id.is_ok(), "the watch isn't refused: its failure says why");
+    let Ok(WatchMessage::Failed(message)) = received.recv_timeout(PATIENCE) else {
+        panic!("the watch fails");
+    };
+    assert_eq!(
+        message,
+        "This folder has more than 50,000 files, too many to watch for changes made \
+         outside Halonic. Open a smaller folder to see them as they happen."
+    );
+    assert_eq!(
+        received.recv_timeout(PATIENCE),
+        Err(mpsc::RecvTimeoutError::Disconnected)
+    );
+    assert_eq!(watches.count(), 0);
+    assert_eq!(watches.folder_count(), 0);
 }
 
 /// A scan that gives `looks` in turn, then the last one again and again.
