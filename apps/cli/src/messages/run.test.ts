@@ -85,6 +85,15 @@ describe("run's sentences", () => {
     );
   });
 
+  it("quotes a --dir with a space, so the suggested command can be copied and run", () => {
+    expect(words(runMessages.answerHere("5db229", ["approve"], "../disk/Acme sample"))).toBe(
+      'Answer with: halonic runs send --dir "../disk/Acme sample" 5db229 approve',
+    );
+    expect(words(runMessages.runLog("5db229", "Acme sample"))).toBe(
+      'Run log: halonic runs show --dir "Acme sample" 5db229',
+    );
+  });
+
   it("writes the author's label after an event that has one, and keeps the event to type", () => {
     const labels = { approve: "Send reply", hold: "Ask me later" };
     expect(words(runMessages.answerHere("01jd8q", ["approve", "reject"], undefined, labels))).toBe(
