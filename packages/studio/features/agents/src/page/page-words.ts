@@ -12,9 +12,19 @@ export const pageWords = {
   saveFailed: "The file couldn't be written.",
   couldntSave: (reason: string) => `Couldn't save: ${reason}`,
   runsHeading: "Runs",
-  /** R9: the Runs list can't show one agent's runs yet, so this points there (HAL-12642). */
+  /**
+   * R9: the Runs list can't show one agent's runs yet, so this points there (HAL-12642). Said only
+   * when no workflow runs the agent (HAL-12399).
+   */
   noRuns: "Runs aren't listed by agent yet. See them on the Runs page.",
   /** Halonic runs an agent only as a step in a workflow in 0.1 (HAL-12399, rule N3 of HAL-12363). */
   runsInAWorkflow: (name: string) =>
     `${name} runs as a step in a workflow. Add it to one in Workflows.`,
+  /** For an agent that workflows run: its runs are theirs, in Runs (HAL-12399). */
+  runsInWorkflows: (name: string, workflows: readonly string[]) =>
+    workflows.length === 1
+      ? `${name} runs as a step in ${workflows[0]}. That workflow's runs are in Runs.`
+      : `${name} runs as a step in ${workflows.length} workflows. Their runs are in Runs.`,
+  /** When the workflows can't be read, the page doesn't guess whether the agent has run. */
+  runsAsAStep: (name: string) => `${name} runs as a step in a workflow.`,
 } as const;

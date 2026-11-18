@@ -19,6 +19,7 @@ import {
   type AgentsHost,
   AgentsHostService,
   type AgentToolList,
+  type AgentUser,
 } from "../api.ts";
 import { Configuration } from "../configuration/configuration.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
@@ -133,6 +134,15 @@ export function AgentScreen({
     [host, hubId],
   );
   const defaultModel = useLoad<string | undefined>(defaultModelSource);
+  // The workflows that run the agent, for what the Runs tab says; read again when a file changes.
+  const usersSource = useMemo(
+    () => ({
+      fetch: () => host.referencesTo({ hubId, id }),
+      subscribe: (onChange: () => void) => host.subscribe(onChange),
+    }),
+    [host, hubId, id],
+  );
+  const users = useLoad<readonly AgentUser[]>(usersSource);
   // Runs can't list anything in 0.1 (R9), so the page opens where the agent is finished (HAL-12399).
   const [view, setView] = useState<AgentView>("configuration");
   const [saveFailed, setSaveFailed] = useState<string>();
@@ -229,8 +239,11 @@ export function AgentScreen({
           <div className="min-w-0 flex-1 overflow-auto p-6">
             <section aria-label={pageWords.runsHeading} className="flex flex-col gap-2">
               <h2 className="text-caption text-fg-muted">{pageWords.runsHeading}</h2>
-              <p className="text-small text-fg-muted">{pageWords.noRuns}</p>
-              <p className="text-small text-fg-muted">{pageWords.runsInAWorkflow(name)}</p>
+              {runsLines(name, users.load).map((line) => (
+                <p key={line} className="text-small text-fg-muted">
+                  {line}
+                </p>
+              ))}
             </section>
           </div>
         )}
@@ -278,6 +291,23 @@ function AgentRead({
       )}
     </div>
   );
+}
+
+/**
+ * What the Runs tab says. A run doesn't say which agent ran in it (R9), so the tab lists none: an
+ * agent no workflow runs can't have run, and one that workflows run is pointed to their runs. While
+ * the workflows are read it says nothing, and when they can't be read it doesn't guess.
+ */
+function runsLines(name: string, users: Load<readonly AgentUser[]>): readonly string[] {
+  if (users.kind === "loading") return [];
+  if (users.kind === "failed") return [pageWords.runsAsAStep(name)];
+  if (users.value.length === 0) return [pageWords.noRuns, pageWords.runsInAWorkflow(name)];
+  return [
+    pageWords.runsInWorkflows(
+      name,
+      users.value.map((user) => user.name),
+    ),
+  ];
 }
 
 type AgentView = "configuration" | "runs";
