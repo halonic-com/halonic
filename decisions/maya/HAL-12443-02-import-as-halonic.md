@@ -3,6 +3,7 @@
 - Task: HAL-12443
 - Approval: Julian asked for this fix as finding F1 of the srt-wsl security review (https://paperclip.halonic.com/HAL/issues/HAL-12443), and reviews it. A team decision with no board card.
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:UHfYe/5VALfppNvasHLfuRPsRu3p2NPGgNaGhX4w1nBEJECDDgH2YZWxgy+A3dDZDsukx8dohcFoCW0ZaZ1zDA==
 
 ## What changes
 
