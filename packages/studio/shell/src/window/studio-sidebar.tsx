@@ -37,6 +37,10 @@ export interface StudioSidebarProps {
    * Pass the same list each render. Without any, there is no switch.
    */
   readonly views?: readonly Registered<SidebarViewContribution>[] | undefined;
+  /** The switch's picked tab, when the window keeps it; see `SidebarViews`. */
+  readonly selectedView?: string | undefined;
+  /** Called with the switch's tab the user picks, when the window keeps it. */
+  readonly onSelectView?: ((id: string) => void) | undefined;
   /** The workspace switcher, once the app has a workspace menu (T3); without it, none shows. */
   readonly switcher?: WorkspaceSwitcherProps | undefined;
 }
@@ -78,6 +82,8 @@ export function StudioSidebar(props: StudioSidebarProps) {
         <SidebarViews
           views={props.views ?? noViews}
           contextFor={contextFor}
+          selected={props.selectedView}
+          onSelect={props.onSelectView}
           places={
             <PlacesList
               places={places}

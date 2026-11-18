@@ -1,5 +1,5 @@
 import type { MenuEntry } from "@halonicjs/studio-kit";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HeaderBadges } from "../badges/header-badges.tsx";
 import { FeatureDialogs } from "../dialogs/feature-dialogs.tsx";
 import type { StudioHost } from "../engine/engine-words.ts";
@@ -26,6 +26,7 @@ import { SettingsDialog } from "../settings/settings-dialog.tsx";
 import { listedSections, settingsGroups } from "../settings/settings-groups.ts";
 import { useSettingsOpening } from "../settings/settings-opening.ts";
 import type { Shell } from "../shell.ts";
+import { studioTab } from "../sidebar/sidebar-views.tsx";
 import type { WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
 import { usePageHeadingFocus } from "../tabs/history-moves.ts";
 import { openLocation } from "../tabs/open-location.ts";
@@ -188,10 +189,21 @@ export function StudioWindow(props: StudioWindowProps) {
     ? (location) => openLocation(tabs, announcer, location, true)
     : (location) => phone.open(location);
   const activeItem = useMemo(() => activeItemOf(tabs), [tabs]);
+  // The sidebar switch's tab, kept here in memory only so a view can ask for another one.
+  const [sidebarView, setSidebarView] = useState<string>(studioTab);
+  const showSidebarView = useCallback(
+    (viewId: string) => {
+      const known =
+        viewId === studioTab ||
+        contributions.sidebarViews.list().some((view) => view.id === viewId);
+      if (known) setSidebarView(viewId);
+    },
+    [contributions],
+  );
   const contextFor = useCallback(
     (featureId: string): WorkspaceContext => ({
       ...shell.services.contextFor(featureId, workspace.services),
-      ...(onDesktop.current ? { activeItem } : {}),
+      ...(onDesktop.current ? { activeItem, showSidebarView } : {}),
       openPlace: (place) => openPlaceHere.current(place),
       openPlaceList: (place, sub, title) => {
         if (!onDesktop.current)
@@ -212,7 +224,16 @@ export function StudioWindow(props: StudioWindowProps) {
         return true;
       },
     }),
-    [shell, workspace, openSettings, openPhone, settingsSections, contributions, activeItem],
+    [
+      shell,
+      workspace,
+      openSettings,
+      openPhone,
+      settingsSections,
+      contributions,
+      activeItem,
+      showSidebarView,
+    ],
   );
   const runCommand = (commandId: string): boolean => {
     const command = contributions.commands.get(commandId, contextFor);
@@ -282,6 +303,8 @@ export function StudioWindow(props: StudioWindowProps) {
         <StudioSidebar
           places={places}
           views={sidebarViews}
+          selectedView={sidebarView}
+          onSelectView={setSidebarView}
           tabs={tabs}
           announcer={announcer}
           platform={platform}

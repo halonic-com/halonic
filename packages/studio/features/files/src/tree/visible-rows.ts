@@ -52,3 +52,37 @@ export function foldersAbove(path: string): string[] {
 export function revealFile(expanded: ReadonlySet<string>, path: string): ReadonlySet<string> {
   return new Set([...expanded, ...foldersAbove(path)]);
 }
+
+/**
+ * The row to show for a path the tree may not have (requirement `files.tree.reveal-request`): the
+ * path's own row, else its deepest folder in the tree. The tree lists only folders that hold
+ * files, so an empty or missing folder falls back to the one above it.
+ *
+ * @param roots - the top rows from `buildTree`
+ * @param path - a path from the workspace folder, such as `hubs/reports/docs`
+ * @returns the row, or `undefined` when not even the path's top folder is in the tree
+ */
+export function deepestRow(roots: readonly TreeNode[], path: string): TreeNode | undefined {
+  let found: TreeNode | undefined;
+  let level: readonly TreeNode[] = roots;
+  for (const name of path.split("/").filter((segment) => segment !== "")) {
+    const node = level.find((candidate) => candidate.name === name);
+    if (node === undefined) break;
+    found = node;
+    if (node.kind === "file") break;
+    level = node.children;
+  }
+  return found;
+}
+
+/**
+ * The opened folders after the tree reveals a row another feature asked for: the ones that were
+ * open, those above it and, for a folder, the folder itself, so its files show.
+ *
+ * @param expanded - the opened folders now
+ * @param row - the row from `deepestRow`
+ */
+export function revealRow(expanded: ReadonlySet<string>, row: TreeNode): ReadonlySet<string> {
+  const opened = revealFile(expanded, row.path);
+  return row.kind === "folder" ? new Set([...opened, row.path]) : opened;
+}

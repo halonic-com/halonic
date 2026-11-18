@@ -17,9 +17,10 @@ import { startingPath } from "../new-file.ts";
 import { removeFile } from "../remove-file.ts";
 import { renamedPath, renameFile, typedNameProblem } from "../rename-file.ts";
 import { subscribeRenameAsked, takeRenameAsked } from "../rename-request.ts";
+import { takeFilesRevealRequests } from "../reveal-request.ts";
 import { emptyTreeState, type TreeIntent, type TreeState } from "../tree/tree-keyboard.ts";
 import { buildTree } from "../tree/tree-model.ts";
-import { visibleRows } from "../tree/visible-rows.ts";
+import { deepestRow, revealRow, visibleRows } from "../tree/visible-rows.ts";
 import { FilesTree } from "./files-tree.tsx";
 import { NewFileDialog } from "./new-file-dialog.tsx";
 
@@ -142,6 +143,25 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   const activeNow = useRef(activePath);
   activeNow.current = activePath;
   const clearReveal = useCallback(() => setReveal(undefined), []);
+
+  // A path another feature asked to show, such as the Library's docs folder, taken once the tree
+  // is listed: its row, else its deepest folder there, else the tree's first row.
+  const revealAsked = useCallback(
+    (path: string) => {
+      const row = deepestRow(roots, path);
+      const target = row?.path ?? roots[0]?.path;
+      if (target === undefined) return;
+      if (row !== undefined)
+        setState((was) => ({ ...was, expanded: revealRow(was.expanded, row) }));
+      setReveal({ path: target, focus: true });
+    },
+    [roots],
+  );
+  const listedNow = loaded.kind === "ready";
+  useEffect(
+    () => (listedNow ? takeFilesRevealRequests(revealAsked) : undefined),
+    [listedNow, revealAsked],
+  );
 
   const applyRename = useCallback(
     async (from: string, name: string, left: () => boolean): Promise<string | undefined> => {

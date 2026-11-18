@@ -14,6 +14,7 @@ import { fakeShowModal } from "../test-support/fake-show-modal.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import { MapTarget } from "../test-support/map-target.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
+import type { WorkspaceContext } from "../workspace-context.ts";
 import type { PlaceViewProps } from "./studio-page.tsx";
 import { type StudioSwitcher, StudioWindow, type WindowActions } from "./studio-window.tsx";
 import { StudioWorkspace } from "./studio-workspace.ts";
@@ -300,5 +301,97 @@ verifies("shell.studio-window", () => {
       expect(container.querySelector("dialog[open]")).toBeNull();
       expect(document.activeElement).toBe(places(container));
     });
+  });
+});
+
+verifies("shell.sidebar-view-request", () => {
+  /** The context the last drawn Home card got, so a test can call what the window gave it. */
+  let seen: WorkspaceContext | undefined;
+
+  function SeeContextCard({ context }: HomeCardProps) {
+    seen = context;
+    return <p>Seen</p>;
+  }
+
+  const filesFeature = defineFeature({
+    id: "files",
+    title: "Files",
+    register(studio) {
+      studio.sidebarViews.add({
+        id: "files",
+        order: 10,
+        label: "Files",
+        view: "FilesView",
+        load: async () => ({ FilesView: () => <p className="file-tree">The file tree</p> }),
+      });
+      studio.home.addCard({
+        id: "cards",
+        view: "SeeContextCard",
+        load: async () => ({ SeeContextCard }),
+      });
+    },
+  });
+
+  function renderWithFiles() {
+    seen = undefined;
+    return renderWindow(createShell({ features: [filesFeature], timers: new FakeTimers() }));
+  }
+
+  const viewTab = (container: HTMLElement, name: string) =>
+    Array.from(
+      container.querySelectorAll<HTMLElement>(
+        '[role="tablist"][aria-label="Sidebar view"] [role="tab"]',
+      ),
+    ).find((tab) => tab.textContent?.startsWith(name) === true);
+  const selectedView = (container: HTMLElement) =>
+    ["Studio", "Files"].find(
+      (name) => viewTab(container, name)?.getAttribute("aria-selected") === "true",
+    );
+
+  it("shows the view a feature asks for, and the places again for studio", async () => {
+    const { container } = renderWithFiles();
+    await settle();
+    expect(selectedView(container)).toBe("Studio");
+
+    act(() => seen?.showSidebarView?.("files"));
+    await settle();
+
+    expect(selectedView(container)).toBe("Files");
+    expect(container.querySelector(".file-tree")).not.toBeNull();
+
+    act(() => seen?.showSidebarView?.("studio"));
+
+    expect(selectedView(container)).toBe("Studio");
+    expect(container.querySelector('nav[aria-label="Places"]')).not.toBeNull();
+  });
+
+  it("changes nothing for a view no feature added", async () => {
+    const { container } = renderWithFiles();
+    await settle();
+
+    expect(() => act(() => seen?.showSidebarView?.("notes"))).not.toThrow();
+
+    expect(selectedView(container)).toBe("Studio");
+    expect(container.querySelector('nav[aria-label="Places"]')).not.toBeNull();
+  });
+
+  it("keeps the tab the user picks, as the switch did on its own", async () => {
+    const { container } = renderWithFiles();
+    await settle();
+
+    act(() => viewTab(container, "Files")?.click());
+    await settle();
+
+    expect(selectedView(container)).toBe("Files");
+    expect(container.querySelector(".file-tree")).not.toBeNull();
+  });
+
+  it("gives a phone's context no showSidebarView", async () => {
+    media.resize(400);
+    renderWithFiles();
+    await settle();
+
+    expect(seen).toBeDefined();
+    expect(seen?.showSidebarView).toBeUndefined();
   });
 });
