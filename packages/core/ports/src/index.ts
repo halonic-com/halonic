@@ -354,6 +354,7 @@ export {
   type SandboxStrength,
   type SandboxUnavailableReason,
   sandboxPackageManagers,
+  sandboxResiduals,
   sandboxUnavailableReasons,
   sandboxVersion,
 } from "./sandbox.ts";
