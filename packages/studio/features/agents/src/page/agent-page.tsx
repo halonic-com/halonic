@@ -10,7 +10,7 @@ import {
   useTabIds,
 } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type AgentChange,
   type AgentRef,
@@ -20,19 +20,22 @@ import {
 } from "../api.ts";
 import { Configuration } from "../configuration/configuration.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
+import { fileItemOf } from "../trash/file-item.ts";
+import { useAgentTrash } from "../trash/use-agent-trash.tsx";
 import { pageWords } from "./page-words.ts";
 import { RenameField } from "./rename-field.tsx";
 import { useLoad } from "./use-load.ts";
 
 /** The agent's page in its tab: `item` names the agent, the host reads its row. */
 export function AgentPage({ item, context }: ItemViewProps) {
-  const { openPlace } = context;
+  const { openPlace, openItem } = context;
   return (
     <AgentScreen
       host={context.services.get(AgentsHostService)}
       hubId={item.hub}
       id={item.id}
       {...(openPlace && { goToAgents: () => openPlace("agents") })}
+      {...(openItem && { openFile: (path: string) => openItem(fileItemOf(path)) })}
     />
   );
 }
@@ -41,6 +44,8 @@ export interface AgentScreenProps extends AgentRef {
   readonly host: AgentsHost;
   /** Leaves an agent that is gone for the Agents list; absent where the shell can't open a place. */
   readonly goToAgents?: (() => void) | undefined;
+  /** Opens a workspace file in a tab, for **Open as file**; absent where the app can't, which leaves it out of the menu. */
+  readonly openFile?: ((path: string) => void) | undefined;
 }
 
 /**
@@ -48,7 +53,7 @@ export interface AgentScreenProps extends AgentRef {
  * agent's Runs. The page is a skeleton when the read takes over 300 ms, and says why when the
  * agent can't be read. Flow, Configuration and the Try it chat join it in the next pull requests.
  */
-export function AgentScreen({ host, hubId, id, goToAgents }: AgentScreenProps) {
+export function AgentScreen({ host, hubId, id, goToAgents, openFile }: AgentScreenProps) {
   // After a Try again reads, the agent's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
   const source = useMemo(
@@ -114,10 +119,30 @@ export function AgentScreen({ host, hubId, id, goToAgents }: AgentScreenProps) {
       setSaveFailed(error instanceof Error ? error.message : pageWords.saveFailed);
     }
   };
+  const name = load.kind === "ready" ? load.value.name : id;
+  // After Undo brings a deleted agent back, its name takes the focus once the page is drawn again.
+  const focusWhenBack = useRef(false);
+  const titleRef = useCallback((heading: HTMLHeadingElement | null) => {
+    title.current = heading;
+    if (heading !== null && focusWhenBack.current) {
+      focusWhenBack.current = false;
+      heading.focus();
+    }
+  }, []);
+  const trash = useAgentTrash({
+    host,
+    agent: { hubId, id },
+    name,
+    openFile,
+    onRestored: () => {
+      focusWhenBack.current = true;
+    },
+  });
+  // The strip with Undo stands where "isn't in this workspace any more" would.
+  if (trash.strip !== null) return trash.strip;
   if (load.kind === "failed" && load.gone === true && goToAgents !== undefined) {
     return <ItemGone kindName="agent" place="Agents" onGoTo={goToAgents} />;
   }
-  const name = load.kind === "ready" ? load.value.name : id;
   return (
     <div className="flex size-full min-h-0 flex-col">
       <header
@@ -127,20 +152,23 @@ export function AgentScreen({ host, hubId, id, goToAgents }: AgentScreenProps) {
             : "flex items-center gap-3 border-b border-border px-6 py-3"
         }
       >
-        <LetterTile name={name} />
-        <div className="flex flex-col">
-          <p className="text-caption text-fg-muted">{pageWords.kind}</p>
-          {/* On a phone the top bar already names the agent, so the page keeps only its type. */}
-          <h1 ref={title} tabIndex={-1} className="sr-only">
-            {name}
-          </h1>
-          {!phone && load.kind === "ready" && (
-            <RenameField
-              name={name}
-              takenNames={takenNames}
-              onRename={(next) => void save({ name: next })}
-            />
-          )}
+        <div className="flex min-w-0 items-center gap-3">
+          <LetterTile name={name} />
+          <div className="flex flex-col">
+            <p className="text-caption text-fg-muted">{pageWords.kind}</p>
+            {/* On a phone the top bar already names the agent, so the page keeps only its type. */}
+            <h1 ref={titleRef} tabIndex={-1} className="sr-only">
+              {name}
+            </h1>
+            {!phone && load.kind === "ready" && (
+              <RenameField
+                name={name}
+                takenNames={takenNames}
+                onRename={(next) => void save({ name: next })}
+              />
+            )}
+          </div>
+          {load.kind === "ready" && trash.menu}
         </div>
         <TabList
           label={pageWords.views}

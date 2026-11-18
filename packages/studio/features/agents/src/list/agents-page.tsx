@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { type AgentListing, type AgentRef, type AgentsHost, AgentsHostService } from "../api.ts";
 import { NewAgentDialog } from "../new/new-agent-dialog.tsx";
 import { deleteWords } from "../trash/delete-words.ts";
+import { fileItemOf } from "../trash/file-item.ts";
 import { trashAgent } from "../trash/trash-agent.ts";
 import { agentHubs, rowId } from "./agent-rows.tsx";
 import { listWords } from "./list-words.ts";
@@ -58,12 +59,6 @@ export function AgentsPage({ context }: PlaceViewProps) {
     />
   );
 }
-
-/**
- * The tab item that shows a workspace file in the code editor: the Files feature's item kind
- * (`file`) and hub part (`workspace`), which the Library's Open as file uses too.
- */
-export const fileItemOf = (path: string) => ({ kind: "file", hub: "workspace", id: path });
 
 /** Props for {@link AgentsView}. */
 export interface AgentsViewProps {

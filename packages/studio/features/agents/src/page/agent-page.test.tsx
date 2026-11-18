@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
-import { PresentationProvider } from "@halonicjs/studio-kit";
+import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { AgentListing, AgentsHost } from "../api.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
-import { buttonNamed, show, typeInto, unmount } from "../test-support.tsx";
+import { buttonNamed, installFakePopover, show, typeInto, unmount } from "../test-support.tsx";
 import { AgentScreen } from "./agent-page.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -150,5 +150,134 @@ verifies("agents.page.rename", () => {
     await press(nameInput(page), "Escape");
     expect(nameInput(page).value).toBe("Sorter");
     expect(await nameInFile(host)).toBe("Sorter");
+  });
+});
+
+verifies("agents.page.menu", () => {
+  let restorePopover: () => void;
+  beforeEach(() => {
+    restorePopover = installFakePopover();
+  });
+  afterEach(() => restorePopover());
+
+  const settled = () =>
+    act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  const menuButton = (page: HTMLElement) =>
+    page.querySelector<HTMLElement>('button[aria-label="More actions for Sorter"]');
+  const entries = () =>
+    [...document.querySelectorAll('[role="menuitem"]')].map((each) => each.textContent);
+
+  async function pick(page: HTMLElement, entry: string) {
+    act(() => menuButton(page)?.click());
+    const item = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+      (each) => each.textContent === entry,
+    );
+    await act(async () => item?.click());
+    await settled();
+  }
+
+  async function open(
+    host: AgentsHost,
+    props: { phone?: boolean; openFile?: (path: string) => void } = {},
+  ) {
+    const toasts = createToastStore();
+    const screen = (
+      <ToastStoreProvider store={toasts}>
+        <AgentScreen
+          host={host}
+          hubId="acme"
+          id="sorter"
+          {...(props.openFile ? { openFile: props.openFile } : {})}
+        />
+      </ToastStoreProvider>
+    );
+    const page = await show(
+      props.phone ? (
+        <PresentationProvider presentation="phone">{screen}</PresentationProvider>
+      ) : (
+        screen
+      ),
+    );
+    await settled();
+    return { page, toasts };
+  }
+
+  it("has Open as file and Delete in the header's ⋮ menu", async () => {
+    const { page } = await open(hostWith(), { openFile: () => undefined });
+    act(() => menuButton(page)?.click());
+
+    expect(entries()).toEqual(["Open as file", "Delete"]);
+  });
+
+  it("has Delete only on a phone, or where the app can't open a file", async () => {
+    const phone = await open(hostWith(), { phone: true, openFile: () => undefined });
+    act(() => menuButton(phone.page)?.click());
+    expect(entries()).toEqual(["Delete"]);
+    unmount();
+
+    const noFile = await open(hostWith());
+    act(() => menuButton(noFile.page)?.click());
+    expect(entries()).toEqual(["Delete"]);
+  });
+
+  it("opens the agent's file in a tab", async () => {
+    const openFile = vi.fn();
+    const { page } = await open(hostWith(), { openFile });
+
+    await pick(page, "Open as file");
+
+    expect(openFile).toHaveBeenCalledWith("hubs/acme/agents/sorter.agent.yaml");
+  });
+
+  it("replaces the page with a strip with Undo after Delete, and Undo brings the page back with its name focused", async () => {
+    const { page, toasts } = await open(hostWith());
+
+    await pick(page, "Delete");
+
+    expect(page.textContent).toContain("This agent was moved to the trash");
+    expect(document.activeElement?.textContent).toBe("Undo");
+    expect(toasts.list()).toEqual([]);
+    expect(page.textContent).not.toContain("AGENT");
+
+    await act(async () => buttonNamed(page, "Undo")?.click());
+    await settled();
+    expect(page.textContent).toContain("AGENT");
+    expect(document.activeElement).toBe(page.querySelector("h1"));
+  });
+
+  it("adds the workflows that now show an error to the strip", async () => {
+    const host = memoryAgentsHost({
+      hubs: [{ id: "acme", name: "acme" }],
+      agents: [sorter],
+      users: { "acme/sorter": [{ hubId: "acme", id: "reply", name: "Reply" }] },
+    });
+    const { page } = await open(host);
+
+    await pick(page, "Delete");
+
+    expect(page.textContent).toContain("This agent was moved to the trash.");
+    expect(page.textContent).toContain(
+      "1 workflow now shows an error until you pick another agent for its step.",
+    );
+  });
+
+  it("says why it couldn't move the agent, in a toast that stays, and keeps the page", async () => {
+    const host = hostWith();
+    host.trash = async () => {
+      throw new KindedError("unavailable", "the disk is full");
+    };
+    const { page, toasts } = await open(host);
+
+    await pick(page, "Delete");
+
+    expect(toasts.list()[0]).toMatchObject({
+      tone: "danger",
+      title: "Couldn't move Sorter to the trash: the disk is full.",
+      sticky: true,
+      action: { label: "Try again" },
+    });
+    expect(page.textContent).toContain("AGENT");
   });
 });
