@@ -46,10 +46,11 @@ Read or report known problems in the [open issues](https://github.com/halonic-co
   subscriptions, local models or the test model. Studio shows no tokens or
   cost yet. No spending limit: set one at your provider.
 - Studio doesn't start connectors (MCP servers) yet.
-- Agents can't use your Claude or ChatGPT subscription. They use an API key or
-  a local model. Agents that run Claude Code or Codex are in progress.
-- The sandbox is in progress: 0.1.0 doesn't start agent programs, so nothing
-  runs in it.
+- Agents can run in Claude Code or Codex only through `halonic serve` for now,
+  in the sandbox on this computer. Studio and `halonic run` don't start them
+  yet. Such an agent uses the Claude or ChatGPT plan its program is signed in
+  to; `halonic doctor` shows how to sign it in. Other agents can't use your
+  subscription: they use an API key or a local model.
 
 ## Install the command line from source
 
