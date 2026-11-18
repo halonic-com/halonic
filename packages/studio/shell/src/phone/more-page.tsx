@@ -90,9 +90,10 @@ export function MorePage({
         More
       </h1>
       <SwitcherRow switcher={switcher} menuSwitcher={menuSwitcher} />
-      {/* Empty when the badges given all draw nothing, such as an untrusted sample's chip. */}
+      {/* Empty when the badges given all draw nothing, such as an untrusted sample's chip. A
+          column stretches each badge's own line, so its divider runs full width like the rows'. */}
       {badge === undefined ? null : (
-        <div className="mt-2 flex min-h-12 items-center empty:hidden">{badge}</div>
+        <div className="mt-2 flex min-h-12 flex-col justify-center empty:hidden">{badge}</div>
       )}
       {rows.length === 0 ? null : (
         <div className="mt-2">

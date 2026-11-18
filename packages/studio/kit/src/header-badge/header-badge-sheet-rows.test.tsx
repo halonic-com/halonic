@@ -52,6 +52,13 @@ verifies("kit.header-badge-sheet-rows", () => {
     expect(row.querySelector(".text-accent svg")).not.toBeNull();
   });
 
+  it("reads the tag in the label's own element, so no space comes before the comma", () => {
+    // A browser puts a space between flex items when it names the row: "Acme sample , Sample".
+    const [sample] = rows();
+    const words = sample?.querySelector(".sr-only");
+    expect(words?.parentElement?.textContent).toBe("Acme sample, Sample");
+  });
+
   it("gives a row with no tag and not checked neither", () => {
     const [, beta] = rows();
     const row = beta as HTMLButtonElement;

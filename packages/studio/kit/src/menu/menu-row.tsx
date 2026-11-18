@@ -89,7 +89,7 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
         </span>
       )}
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className={faded}>{item.label}</span>
+        <ItemLabel label={item.label} tag={item.tag} className={faded} />
         {item.detail === undefined ? null : (
           // Out of the item's name, which stays the label: a screen reader reads it as its description.
           <span
@@ -138,15 +138,33 @@ function AttentionDot({ words }: { readonly words: string }) {
   );
 }
 
-/** The outline tag after the label; a screen reader hears its words after the item's name. */
+/** The item's label, and its tag's words for a screen reader, which the outline tag hides. */
+function ItemLabel({
+  label,
+  tag,
+  className,
+}: {
+  readonly label: string;
+  readonly tag: string | undefined;
+  readonly className: string;
+}) {
+  return (
+    <span className={className}>
+      {label}
+      {tag === undefined ? null : <span className="sr-only">, {tag}</span>}
+    </span>
+  );
+}
+
+/**
+ * The outline tag after the label. A screen reader hears its words from inside the label's span
+ * instead: the label is a flex item, so words in a sibling would be read as "Acme , Sample".
+ */
 function ItemTag({ words }: { readonly words: string }) {
   return (
-    <>
-      <span aria-hidden="true" className="inline-flex shrink-0">
-        <StatusChip tone="outline">{words}</StatusChip>
-      </span>
-      <span className="sr-only">, {words}</span>
-    </>
+    <span aria-hidden="true" className="inline-flex shrink-0">
+      <StatusChip tone="outline">{words}</StatusChip>
+    </span>
   );
 }
 

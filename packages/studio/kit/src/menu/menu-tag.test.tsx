@@ -48,6 +48,13 @@ verifies("kit.menu-tag", () => {
     expect(spoken(sample as HTMLElement)).toBe("Acme sample, Sample");
   });
 
+  it("reads the tag in the label's own element, so no space comes before the comma", () => {
+    // A browser puts a space between flex items when it names the row: "Acme sample , Sample".
+    const [sample] = rows();
+    const words = sample?.querySelector(".sr-only");
+    expect(words?.parentElement?.textContent).toBe("Acme sample, Sample");
+  });
+
   it("gives an item with no tag none", () => {
     const [, beta] = rows();
     expect(beta?.querySelector(".border-border-strong")).toBeNull();

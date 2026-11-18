@@ -96,6 +96,8 @@ function LinkRow({ item }: { readonly item: MenuItem }) {
       <span className="flex min-w-0 flex-1 flex-col">
         <span className={`wrap-break-word ${item.unavailable === undefined ? "" : "opacity-45"}`}>
           {item.label}
+          {/* In the label's own span: in a sibling flex item it would be read as "Acme , Sample". */}
+          {item.tag === undefined ? null : <span className="sr-only">, {item.tag}</span>}
         </span>
         {item.detail === undefined ? null : (
           <span id={detailId} aria-hidden="true" className="truncate text-small text-fg-muted">
@@ -109,12 +111,9 @@ function LinkRow({ item }: { readonly item: MenuItem }) {
         )}
       </span>
       {item.tag === undefined ? null : (
-        <>
-          <span aria-hidden="true" className="inline-flex shrink-0">
-            <StatusChip tone="outline">{item.tag}</StatusChip>
-          </span>
-          <span className="sr-only">, {item.tag}</span>
-        </>
+        <span aria-hidden="true" className="inline-flex shrink-0">
+          <StatusChip tone="outline">{item.tag}</StatusChip>
+        </span>
       )}
       {item.checked === true ? (
         <span className="size-icon-md shrink-0 text-accent *:size-full" aria-hidden="true">
