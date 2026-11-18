@@ -20,6 +20,8 @@ export interface StepCardProps {
   /** Take focus on mount, for the card a problem's link opened. */
   readonly focusOnMount?: boolean;
   readonly onSelect: () => void;
+  /** Told when the card takes focus, so the canvas can bring it into view. */
+  readonly onFocus?: ((event: React.FocusEvent<HTMLButtonElement>) => void) | undefined;
 }
 
 /**
@@ -36,6 +38,7 @@ export function StepCard({
   mark,
   focusOnMount,
   onSelect,
+  onFocus,
 }: StepCardProps) {
   const button = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -48,6 +51,7 @@ export function StepCard({
       type="button"
       aria-pressed={selected}
       onClick={onSelect}
+      onFocus={onFocus}
       // Dragging the background pans; a press on a card must not start that.
       onPointerDown={(event) => event.stopPropagation()}
       style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
@@ -86,6 +90,15 @@ export function StepCard({
       )}
     </button>
   );
+}
+
+/** How far the Start chip rises above its card's top edge, in px: its `-top-5`. */
+const START_CHIP_RISE = 20;
+
+/** All that a card draws, its Start chip included, in the canvas surface's coordinates. */
+export function cardExtent(box: Box, first: boolean): Box {
+  if (!first) return box;
+  return { ...box, y: box.y - START_CHIP_RISE, height: box.height + START_CHIP_RISE };
 }
 
 /** The status dot's size and its centre's distance from the card's top-right corner, in px. */
