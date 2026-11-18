@@ -1629,6 +1629,19 @@ hidden from them.
 The error line is `danger` with the 16px alert icon, so the colour is never the only sign. A
 control of your own can read the Field through `useFieldControl()`.
 
+**An error that appears after you leave the field** (a value checked on blur) would go unread,
+because focus is already on the next control. So when a Field's error appears or changes while
+focus is outside it, the Field announces "Label: error" once, politely. While focus is inside, the
+screen reader reads the error as the control's description, so a form that moves focus to the
+field hears it once. The error line itself is never a live region. The shell connects this once,
+at its root; without a provider, a Field says nothing:
+
+```tsx
+<FieldAnnounceProvider announce={(text) => announcer.announce(text)}>
+  <App />
+</FieldAnnounceProvider>;
+```
+
 A `prefix` puts its symbol in `text-body` `fg-muted` 8px before the box, centred on it, and
 tapping it focuses the control. Screen readers skip the symbol and hear its `name` after the
 label: "Per run, in euros". The hint and the error still start at the Field's left edge, under
