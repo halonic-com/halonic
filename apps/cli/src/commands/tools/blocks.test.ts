@@ -53,9 +53,7 @@ verifies("cli.commands.tools.blocks", () => {
         "name: Notes server\ntransport:\n  stdio:\n    command: notes-mcp\ntools:\n  read: [archive]\n",
       );
     const { archive, search } = await blocksNow();
-    expect(archive?.at(-2)).toMatch(
-      /^  Doesn't ask before each use: .+ marks it as read-only\.$/u,
-    );
+    expect(archive?.at(-2)).toMatch(/^  Doesn't ask before each use: .+ marks it as read-only\.$/u);
     expect(search).toContain("  Asks you before each use.");
   });
 
