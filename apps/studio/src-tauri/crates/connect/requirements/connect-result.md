@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1375 (flow-install-update 5.3 and 5.4)
 
-When a Connect press ends, the shell shall return one result for the connect page, shaped like the page's `ConnectResult`: connected with the Studio's address, one of the four field errors with the address as shown back where the words need it, or one of the two version screens with the computer's version. If the hello answer is longer than 16 KiB, then the shell shall stop reading it and report "not Halonic".
+When a Connect press ends, the shell shall return one result for the connect page, shaped like the page's `ConnectResult`: connected with the Studio's address, one of the five field errors (the fifth, "no local network permission", only on Android) with the address as shown back where the words need it, or one of the two version screens with the computer's version. If the hello answer is longer than 16 KiB, then the shell shall stop reading it and report "not Halonic".
 
 ## Examples
 

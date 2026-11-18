@@ -154,6 +154,9 @@ class ConnectPage {
       case "notHalonic":
         this.showFieldError(words.notHalonic(result.address));
         return;
+      case "noLocalNetwork":
+        this.showFieldError(words.noLocalNetwork(result.address, result.askAgain));
+        return;
       case "notAnswering":
         if (origin === "connect-screen") {
           this.showFieldError(words.notAnswering(result.address));

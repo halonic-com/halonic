@@ -1,17 +1,20 @@
 //! The `connect` command, the connect page's one call into the shell
 //! (flow-install-update 5.3 and 5.4). The checks and the result live in the
 //! `halonic-connect` crate; this file only adds what needs the network: the
-//! name lookup off the main thread, and the hello call itself.
+//! name lookup off the main thread, Android's local network permission
+//! (HAL-12253), and the hello call itself.
 
 use std::time::Instant;
 
 use halonic_connect::{
     AppVersions, CheckedAddress, ConnectError, ConnectResult, HELLO_TIMEOUT, HelloBody, HelloReply,
-    Host, SystemResolver, TimedResolver, Version, check_address,
+    Host, SystemResolver, TimedResolver, Version, call_needs_local_network, check_address,
+    lookup_needs_local_network, parse_address,
 };
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_http::reqwest;
 
+use crate::local_network::Answer;
 use crate::navigation::ConfirmedAddress;
 
 /// The oldest Halonic on a computer that this app works with. A computer
@@ -21,13 +24,21 @@ const OLDEST_COMPUTER: &str = "0.1.0";
 
 /// Checks the address as typed, makes the hello call and returns what the
 /// page shows. The whole press, name lookup and hello call together, ends
-/// within [`HELLO_TIMEOUT`]. Only a press that ends connected lets the
-/// navigation guard keep that address in the window.
+/// within [`HELLO_TIMEOUT`], plus the time Android's local network question
+/// stays open. That question comes before anything reaches the Wi-Fi: the
+/// lookup of a `.local` name, or the call to a home network address. Only a
+/// press that ends connected lets the navigation guard keep that address in
+/// the window.
 #[tauri::command]
 pub async fn connect<R: Runtime>(app: AppHandle<R>, address: String) -> ConnectResult {
     let confirmed = app.state::<ConfirmedAddress>();
     confirmed.set(None);
-    let deadline = Instant::now() + HELLO_TIMEOUT;
+    let mut deadline = Instant::now() + HELLO_TIMEOUT;
+    let local_name =
+        parse_address(&address).is_ok_and(|parsed| lookup_needs_local_network(&parsed));
+    if local_name && let Err(error) = local_network_allowed(&app, &mut deadline).await {
+        return ConnectResult::refused(error, &address);
+    }
     let input = address.clone();
     // The lookup blocks, so it runs on a worker thread, never the UI's.
     // If the worker thread itself fails, the page shows "Can't reach".
@@ -40,12 +51,33 @@ pub async fn connect<R: Runtime>(app: AppHandle<R>, address: String) -> ConnectR
         Ok(checked) => checked,
         Err(error) => return ConnectResult::refused(error, &address),
     };
+    if !local_name
+        && call_needs_local_network(&checked)
+        && let Err(error) = local_network_allowed(&app, &mut deadline).await
+    {
+        return ConnectResult::refused(error, &address);
+    }
     let reply = call_hello(&checked, deadline).await;
     let result = ConnectResult::after_hello(&checked, &reply, &app_versions(&app));
     if matches!(result, ConnectResult::Connected { .. }) {
         confirmed.set(Some(checked.address));
     }
     result
+}
+
+/// Asks for Android's local network permission, and moves the deadline on
+/// by the time the user took to answer.
+async fn local_network_allowed<R: Runtime>(
+    app: &AppHandle<R>,
+    deadline: &mut Instant,
+) -> Result<(), ConnectError> {
+    let asked = Instant::now();
+    let answer = crate::local_network::allowed(app).await;
+    *deadline += asked.elapsed();
+    match answer {
+        Answer::Allowed => Ok(()),
+        Answer::TurnedDown { ask_again } => Err(ConnectError::NoLocalNetwork { ask_again }),
+    }
 }
 
 /// `GET /api/hello` on exactly the checked IP addresses: no proxy, no

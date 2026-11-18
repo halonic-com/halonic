@@ -36,6 +36,7 @@ mod google_setups;
 mod host_settings;
 mod http_fetch;
 mod instruction_trust;
+mod local_network;
 mod native_dialogs;
 mod navigation;
 mod plugin_folder;
@@ -103,6 +104,10 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         // Registered only so the shell can use it from Rust: no capability
         // grants its commands, so no page can call them.
         .plugin(tauri_plugin_updater::Builder::new().build());
+    // Asked from Rust only, for Android's local network permission: no
+    // capability grants its command, so no page can call it.
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(local_network::plugin());
     builder
         // The navigation guard hands outside links to the browser with the
         // opener. Its click script stays off. That script would run in

@@ -84,6 +84,27 @@
       "properties": {
         "kind": {
           "type": "string",
+          "const": "noLocalNetwork"
+        },
+        "address": {
+          "type": "string"
+        },
+        "askAgain": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind",
+        "address",
+        "askAgain"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
           "const": "appTooOld"
         },
         "computerVersion": {

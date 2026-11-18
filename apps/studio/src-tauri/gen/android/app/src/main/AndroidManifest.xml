@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- From Android 17 the app can't reach the computer on the Wi-Fi without
+         it. Connect asks for it before the first call to a home network
+         address, never for a public one (LocalNetworkPlugin, HAL-12253). -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
 
     <!-- No backup or device transfer: the saved computer address stays on
          this phone, so uninstalling the app deletes it (HAL-6866). -->

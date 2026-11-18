@@ -191,6 +191,25 @@ fn served_page_is_refused_every_app_and_plugin_command() {
 }
 
 #[test]
+fn no_page_may_ask_for_the_local_network_permission() {
+    // Only the shell's `connect` asks, from Rust (HAL-12253). The plugin is
+    // registered on Android only, but the ACL refuses its command anywhere.
+    let window = app_window();
+    for from in [CONNECT_PAGE, SERVED_PAGE] {
+        for command in [
+            "plugin:local-network|allow_local_network",
+            "plugin:local-network|allowLocalNetwork",
+            "plugin:local-network|request_permissions",
+        ] {
+            assert!(
+                invoke(&window, from, command, json!({})).is_err(),
+                "{command} must be refused from {from}"
+            );
+        }
+    }
+}
+
+#[test]
 fn served_page_test_sees_the_connect_page_allowed_to_connect() {
     // Without this, a shell that refused everything would pass the test above.
     let window = app_window();
