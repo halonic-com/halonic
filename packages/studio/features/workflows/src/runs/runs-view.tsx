@@ -18,8 +18,8 @@ export interface RunsViewProps {
   readonly workflow: WorkflowRef;
   /** Opens a run's page, where its log is; absent where the app has no run page. */
   readonly openRun?: ((runId: string) => void) | undefined;
-  /** Opens the Inbox, for the card's **Review in Inbox**; absent where it can't be opened. */
-  readonly reviewInInbox?: (() => void) | undefined;
+  /** Opens the Inbox on what the run waits on, for the card's **Review in Inbox**; absent where it can't be opened. */
+  readonly reviewInInbox?: ((runId: string) => void) | undefined;
   /** What a row's card needs for **Save as test**; absent where the host can't write test cases, and for a run still going. */
   readonly saveAsTest?: ((row: RunRow) => SaveAsTestProps | undefined) | undefined;
   /** Opens the Runs list, which starts with Test runs off; absent where it can't be opened. */
@@ -150,7 +150,7 @@ export function RunsView({
           onClose={closeCard}
           onOpenLog={openRun && (() => openRun(open.id))}
           openRun={openRun}
-          reviewInInbox={reviewInInbox}
+          reviewInInbox={reviewInInbox && (() => reviewInInbox(open.id))}
           saveAsTest={saveAsTest?.(open)}
         />
       )}

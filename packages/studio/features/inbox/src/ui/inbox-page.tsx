@@ -34,6 +34,7 @@ import { SetupPane } from "./setup-pane.tsx";
 import { useOpenItem } from "./use-open-item.ts";
 import { useRequestPane } from "./use-request-pane.tsx";
 import { useRunFacts } from "./use-run-facts.ts";
+import { useRunReview } from "./use-run-review.ts";
 import { useSentRequestCard } from "./use-sent-request-card.ts";
 import { WaitCard } from "./wait-card.tsx";
 
@@ -63,7 +64,10 @@ export function InboxPage({ context }: PlaceViewProps) {
     () => mergeNotices(appNotices, inbox.extraNotices),
     [appNotices, inbox.extraNotices],
   );
-  const runFacts = useRunFacts(context.services.find(RunsListService));
+  const runs = context.services.find(RunsListService);
+  const runFacts = useRunFacts(runs);
+  // Effects run children first, so the view below already listens for the item this opens.
+  useRunReview(inbox, runs);
   return (
     <InboxView
       inbox={inbox}
@@ -118,7 +122,7 @@ export interface InboxViewProps {
  * The Inbox (flow-inbox 3.1, UX checklist 2.1, 2.3, 2.9 and 2.10): "Inbox", then Needs you, a
  * grid of what waits for you, setup items first, then newest first, with its count in the heading
  * ("Needs you, 2 waiting"), beside the open item's card. Nothing is open at first, unless Home's Needs you asked
- * for an item (`Inbox.requestOpen`). Enter or a click opens a
+ * for an item (`Inbox.requestOpen`) or a run's **Review in Inbox** for what the run waits on. Enter or a click opens a
  * row's card, which takes focus; once decided, the card stays, with **Next** to the next item.
  *
  * A setup item opens its source's view (`SetupPane`); **Not now** and Escape close it and put
