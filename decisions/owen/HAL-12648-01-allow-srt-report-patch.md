@@ -2,6 +2,7 @@
 
 - Approval: HAL-12648 (studio-claims 4.7, team decision on HAL-12643). Liam approves this note in review of this PR.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KmBO68i+m3E1LUY+q5qTNHk/RfsMbYXj1wisTvXPY2RblM/SCrk/TtTcMxZkicwyR4ppLu87wqDtrZSVcVOyBA==
 
 ## What changes
 
