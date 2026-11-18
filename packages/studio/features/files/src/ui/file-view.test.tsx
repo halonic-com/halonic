@@ -114,9 +114,12 @@ verifies("files.ui.file-tab", () => {
     expect(opened[0]?.options.label).toBe(
       "models.yaml, YAML editor. Press Escape, then Tab, to leave the editor.",
     );
-    expect([...page.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
-      "▾Problems (0)",
-    ]);
+    // No Save button: the header's ⋮ and the Problems toggle are all there is (menu items aside).
+    expect(
+      [...page.querySelectorAll("button:not([role=menuitem])")].map(
+        (b) => b.getAttribute("aria-label") ?? b.textContent,
+      ),
+    ).toEqual(["More actions for models.yaml", "▾Problems (0)"]);
   });
 
   it("sends every edit to the workspace's files", async () => {

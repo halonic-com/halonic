@@ -1,7 +1,14 @@
 import { type CodeEditor, languageFor, openCodeEditor } from "@halonicjs/studio-code-editor";
-import { Callout, EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
+import {
+  Callout,
+  EmptyState,
+  SkeletonBar,
+  useToastStore,
+  useWriteClipboard,
+} from "@halonicjs/studio-kit";
 import { errorReasonFor, type ItemViewProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { copyPath } from "../copy-path.ts";
 import { fileItem, fileName } from "../file-item.ts";
 import { sizeOf, textKindOf } from "../file-size.ts";
 import {
@@ -18,8 +25,11 @@ import {
   problemsElsewhere,
   withNewSince,
 } from "../problems-elsewhere.ts";
+import { removeFile } from "../remove-file.ts";
+import { askRename } from "../rename-request.ts";
 import { subscribeTrashed, type Trashed, trashedFile } from "../trash.ts";
 import { CompareView } from "./compare-view.tsx";
+import { FileHeader } from "./file-header.tsx";
 import { OutsideStrip } from "./outside-strip.tsx";
 import { ProblemsPanel } from "./problems-panel.tsx";
 import { TrashedStrip } from "./trashed-strip.tsx";
@@ -129,6 +139,8 @@ function LoadNotice({
  */
 export function FileView({ item, context }: ItemViewProps) {
   const host = context.services.get(FilesHostService);
+  const toasts = useToastStore();
+  const writeClipboard = useWriteClipboard();
   const path = item.id;
   const [loaded, setLoaded] = useState<Loaded>({ kind: "loading" });
   const parent = useRef<HTMLDivElement>(null);
@@ -346,10 +358,24 @@ export function FileView({ item, context }: ItemViewProps) {
   }
 
   return (
-    <section className="flex h-full min-h-0 flex-col" aria-label={fileName(path)}>
-      <h1 className="truncate px-4 py-2 text-base font-medium" title={path}>
-        {fileName(path)}
-      </h1>
+    <section
+      className="flex h-full min-h-0 flex-col"
+      aria-label={fileName(path)}
+      onKeyDown={(event) => {
+        // F2 renames from anywhere in the tab, the editor included, as it does on a tree row.
+        if (event.key !== "F2" || event.ctrlKey || event.metaKey || event.altKey) return;
+        event.preventDefault();
+        askRename(path);
+      }}
+    >
+      <FileHeader
+        path={path}
+        actions={{
+          rename: () => askRename(path),
+          remove: () => void removeFile(host, toasts, path),
+          copyPath: () => void copyPath(writeClipboard, toasts, path),
+        }}
+      />
       <LoadNotice loaded={loaded} missing={missing} onRetry={reload} />
       {strip === "trash" && trash !== undefined && (
         <TrashedStrip
