@@ -3,6 +3,7 @@
 - Task: HAL-12858
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12858 (a detail of the approved Library screen, so a team decision with no board card, HAL-2282 rule; Liam approves this note in review on the task)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:W31VgWjzkUVHt5EYDeGX0y2rGjC54Ju2Kh34rygWD1smBSZ3Zsk2LY2uAYv0yFsj7Aqn15hLuWSa3PQ4bjnjCA==
 
 ## What changes
 
