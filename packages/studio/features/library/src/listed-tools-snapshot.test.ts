@@ -32,6 +32,7 @@ function reviewedTool(
         },
       },
       approved: null,
+      risk: "write",
       serverChanged,
       keepsChanging: false,
     },
@@ -125,6 +126,16 @@ describe("listedToolsSnapshot", () => {
         trust,
       );
       expect(snapshot.unreadable).toEqual({});
+    });
+
+    it("lists the approved tools that run without asking, as the trust says", () => {
+      const snapshot = listedToolsSnapshot(
+        "Notes",
+        { ...emptyReview, on: ["lookup", "update_note"] },
+        { workspaceName: "Acme", asksBeforeUse: (name) => name !== "lookup" },
+      );
+      expect(snapshot.approved).toEqual(["lookup", "update_note"]);
+      expect(snapshot.approvedWithoutAsking).toEqual(["lookup"]);
     });
   });
 });

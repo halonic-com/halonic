@@ -1,6 +1,6 @@
 import { reviewListedTools } from "@halonicjs/app/listed-tools";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { plainText } from "../../messages/phrase.ts";
 import { notesConnector, notesTools } from "../../test/acme-notes.ts";
 import { toolsKit } from "../../test/tools-kit.spec.ts";
@@ -53,7 +53,9 @@ verifies("cli.commands.tools.blocks", () => {
         "name: Notes server\ntransport:\n  stdio:\n    command: notes-mcp\ntools:\n  read: [archive]\n",
       );
     const { archive, search } = await blocksNow();
-    expect(archive?.at(-2)).toMatch(/^  Doesn't ask before each use: .+ marks it as read-only\.$/u);
+    expect(archive?.at(-2)).toMatch(
+      /^ {2}Doesn't ask before each use: .+ marks it as read-only\.$/u,
+    );
     expect(search).toContain("  Asks you before each use.");
   });
 
@@ -143,4 +145,49 @@ verifies("cli.commands.tools.blocks", () => {
     const { long } = await blocksNow();
     expect(long?.some((line) => line.endsWith(tail))).toBe(true);
   });
+
+  describe("whether it asks before each use, as a run does", () => {
+    /** The last but one line of each block: whether it asks. */
+    async function asksNow(tools: string): Promise<Record<string, string | undefined>> {
+      await kit.notes().rewriteConnector(notesConnectorWith(tools));
+      kit.notes().servers.tools = [notesTools.archive, updateNote];
+      const blocks = await blocksNow();
+      return Object.fromEntries(
+        Object.entries(blocks).map(([name, lines]) => [name, lines.at(-2)]),
+      );
+    }
+
+    it("asks before every tool of a connector with no tools section", async () => {
+      expect(await asksNow("")).toEqual({ archive: asks, update_note: asks });
+    });
+
+    it("asks before a tool that approve and read both name", async () => {
+      expect(await asksNow("tools:\n  approve: [archive]\n  read: [archive]\n")).toEqual({
+        archive: asks,
+        update_note: asks,
+      });
+    });
+
+    it("asks before a tool its listing says sends, even when the read list marks it", async () => {
+      await kit.notes().rewriteConnector(notesConnectorWith("tools:\n  read: [archive]\n"));
+      kit.notes().servers.tools = [
+        { ...notesTools.archive, _meta: { "com.halonic/risk": "send" } },
+      ];
+      const { archive } = await blocksNow();
+      expect(archive?.at(-2)).toBe(asks);
+    });
+  });
 });
+
+/** A tool `notes-mcp` never listed before, so it was never approved. */
+const updateNote = {
+  name: "update_note",
+  description: "Changes a note.",
+  inputSchema: { type: "object" },
+};
+const asks = "  Asks you before each use.";
+
+/** `notes-mcp`'s connector file with these `tools:` lines instead of `approve: all`. */
+function notesConnectorWith(tools: string): string {
+  return notesConnector().replace("tools:\n  approve: all\n", tools);
+}

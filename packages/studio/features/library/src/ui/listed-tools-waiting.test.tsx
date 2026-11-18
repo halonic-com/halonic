@@ -50,6 +50,7 @@ function snapshot(waiting: readonly string[]): ListedToolsSnapshot {
     keepsChanging: [],
     refused: [],
     approved: [],
+    approvedWithoutAsking: [],
     listingRefused: null,
     unreadable: null,
     hasApprovals: false,
