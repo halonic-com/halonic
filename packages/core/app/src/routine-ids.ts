@@ -10,17 +10,21 @@ import { encodeUtf8 } from "@halonicjs/std";
  * is asked, and two workspaces sharing a run store never share a run.
  *
  * `routine-<workspace hash>-<due time>-<hash of the routine key and due time>`,
- * such as `routine-9f67cab0a2a7258c-20261103T080000.000Z-5d2b8e…`: 62
- * letters, digits, "-" and "." whatever the key, so every run store keeps it
- * as a file name (`checkRunId` of `@halonicjs/ports`). The routine key is in
- * the run's `trigger.routineId`. The hash comes last, so the short id people
- * type, the last 6 characters, differs from run to run.
+ * such as `routine-9f67cab0a2a7258c-20261103T080000Z-5d2b8e…`: 58 letters,
+ * digits and "-" whatever the key, so every run store keeps it as a file
+ * name (`checkRunId` of `@halonicjs/ports`) and it names the run's proposal
+ * ref (`checkProposalRef`), which takes no "." (HAL-12383). Routines are due
+ * on whole minutes, so the due time leaves out its milliseconds; the hash
+ * still covers the whole time. The routine key is in the run's
+ * `trigger.routineId`. The hash comes last, so the short id people type, the
+ * last 6 characters, differs from run to run.
  *
  * @param workspaceId - names the workspace for as long as it exists, the same on every host (never a path)
  */
 export function routineRunId(workspaceId: string, key: string, at: Date): string {
   const due = at.toISOString();
-  const compactDue = due.replaceAll("-", "").replaceAll(":", "");
+  const wholeSeconds = due.slice(0, due.indexOf("."));
+  const compactDue = `${wholeSeconds.replaceAll("-", "").replaceAll(":", "")}Z`;
   return `${routineRunPrefix(workspaceId)}${compactDue}-${shortHash(`${key}@${due}`)}`;
 }
 
