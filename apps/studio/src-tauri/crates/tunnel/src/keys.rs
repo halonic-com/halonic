@@ -15,7 +15,8 @@ pub const KEY_BYTES: usize = 32;
 
 /// The phone's static key pair. Its `Debug` form shows the public key only,
 /// and the private key is wiped from memory when the pair is dropped. It
-/// isn't `Clone`, so there is one copy to wipe.
+/// isn't `Clone`, so this crate holds one copy to wipe; the copy `snow`
+/// keeps in a handshake's state isn't wiped.
 #[derive(ZeroizeOnDrop)]
 pub struct PhoneKeys {
     private: [u8; KEY_BYTES],

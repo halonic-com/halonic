@@ -233,11 +233,22 @@ fn handshake_body(
     }
 }
 
-/// Whether `name` shows as the plain text it is: no control characters and
-/// none that change how the text around them is laid out.
+/// Whether `name` shows as the plain text it is: no control characters, none
+/// that change how the text around them is laid out and none that are there
+/// without showing.
 fn is_plain_name(name: &str) -> bool {
-    name.chars()
-        .all(|character| !character.is_control() && !is_layout_control(character))
+    name.chars().all(|character| {
+        !character.is_control() && !is_layout_control(character) && !is_invisible(character)
+    })
+}
+
+/// The format characters that show as nothing and join nothing: the zero
+/// width space, the word joiner, the invisible operators and the byte order
+/// mark, which can make two names that look alike differ. The zero width
+/// joiner and non-joiner stay allowed: Persian, the Indic scripts and emoji
+/// need them.
+fn is_invisible(character: char) -> bool {
+    matches!(character, '\u{200B}' | '\u{2060}'..='\u{2064}' | '\u{FEFF}')
 }
 
 /// The characters that lay text out rather than show as text: the line and

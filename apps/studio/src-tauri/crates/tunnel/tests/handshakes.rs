@@ -280,8 +280,15 @@ fn session_handshakes_read_handshake_failed_while_pairing_as_unreadable() {
 
 #[test]
 fn session_handshakes_read_a_host_name_that_is_not_plain_text_as_unreadable() {
-    // A line break, a right-to-left override and an isolate.
-    for name in ["Desk\nPrinter", "Desk\u{202E}kseD", "\u{2067}Desk"] {
+    // A line break, a right-to-left override, an isolate, a zero width space
+    // and a byte order mark.
+    for name in [
+        "Desk\nPrinter",
+        "Desk\u{202E}kseD",
+        "\u{2067}Desk",
+        "De\u{200B}sk",
+        "\u{FEFF}Desk",
+    ] {
         assert_eq!(
             pair_typed_with(name).0.err(),
             Some(SessionError::Unreadable),
@@ -291,6 +298,12 @@ fn session_handshakes_read_a_host_name_that_is_not_plain_text_as_unreadable() {
     // Letters of a right-to-left script need no formatting characters.
     let (check, _) = pair_typed_with("مكتب");
     assert_eq!(check.expect("message 2 is read").host_name, "مكتب");
+    // Persian writes some words with a zero width non-joiner.
+    let (check, _) = pair_typed_with("می\u{200C}خواهم");
+    assert_eq!(
+        check.expect("message 2 is read").host_name,
+        "می\u{200C}خواهم"
+    );
 }
 
 #[test]

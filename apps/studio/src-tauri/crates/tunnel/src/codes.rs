@@ -42,7 +42,7 @@ pub const PAIR_COMMIT_LABEL: &str = "halonic pair commit v1";
 /// form, so this side accepts nothing else.
 ///
 /// Its `Debug` form leaves the code out, so a log line never holds it, and
-/// the code is wiped from memory when it's dropped.
+/// this crate's copy of the code is wiped from memory when it's dropped.
 #[derive(Clone, PartialEq, Eq, ZeroizeOnDrop)]
 pub struct PairingCode(String);
 
@@ -57,8 +57,8 @@ impl PairingCode {
 
     /// The Noise psk for the pairing handshake: HKDF-SHA256 of the code's
     /// ASCII, with an empty salt and the info [`PAIRING_PSK_INFO`]. The code
-    /// itself is never sent, and the psk is wiped from memory when it's
-    /// dropped.
+    /// itself is never sent. This copy of the psk is wiped from memory when
+    /// it's dropped; the copy `snow` keeps in its handshake state isn't.
     pub fn psk(&self) -> Zeroizing<[u8; 32]> {
         let mut psk = Zeroizing::new([0u8; 32]);
         hkdf_sha256(self.0.as_bytes(), PAIRING_PSK_INFO, psk.as_mut_slice());
