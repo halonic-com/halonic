@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12343; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7MUJoVi8h3pYHh8zEs9KX4Re5jDBxsn8zKpBFkA6X7n9pE8XuUFOKctl0yClOSJHU08C1AQmBTxGue1JS8+PCg==
 
 A local tool's session opened when the plugin had a trust grant from `load()`, so a script changed after load ran under the earlier yes. Backends already read the plugin folder again before they start.
 
