@@ -21,6 +21,18 @@ export function sandboxNotReadyReason(
   return failed?.sandboxReason ?? "other";
 }
 
+/**
+ * The reasons a check on this computer can't clear. `not-offered` is about where the agent is set
+ * to run, not about the computer: the check could pass while the run would be refused again
+ * (HAL-12804). The fix is a file save, and Run again is the honest test of it.
+ */
+const notCheckableReasons: ReadonlySet<string> = new Set(["not-offered"]);
+
+/** Whether checking this computer's sandbox again can tell the person anything about `reason`. */
+function checkable(reason: string): boolean {
+  return !notCheckableReasons.has(reason);
+}
+
 /** What the last check came to: it passed, the sandbox still can't start (and why), or it couldn't run. */
 type Checked =
   | { readonly kind: "ready" }
@@ -46,7 +58,8 @@ export function sandboxNotReadyAgent(log: readonly RunEvent[] | undefined): stri
  * `runs.run-view.sandbox-not-ready`): what is wrong and the fix, from the one catalogue, then
  * "Nothing ran.", **Check again** and a link to the guide. A passing check says the sandbox works
  * and turns the button into **Run again**; nothing runs by itself. Without a `check` (a served
- * page) there is no button. The button stays, busy, while a check runs, so it keeps focus; the
+ * page) there is no button. For a reason a check can't clear ({@link checkable}) the banner offers
+ * **Run again** straight away, or no button where the page can't run again. The button stays, busy, while a check runs, so it keeps focus; the
  * answer is said through `announce`, and a passing check moves focus to the banner.
  */
 export function SandboxNotReadyBanner({
@@ -63,7 +76,10 @@ export function SandboxNotReadyBanner({
   readonly check: SandboxStartCheck | undefined;
   readonly announce?: ((line: string) => void) | undefined;
   readonly phone: boolean;
-  /** The page's Run again, offered once a check passes; absent when the page can't run again. */
+  /**
+   * The page's Run again, offered once a check passes, or at once for a reason a check can't clear;
+   * absent when the page can't run again.
+   */
   readonly runAgain?: RunAgain | undefined;
 }) {
   const [checked, setChecked] = useState<Checked>();
@@ -88,15 +104,16 @@ export function SandboxNotReadyBanner({
     }
   };
 
-  const words = sandboxStartWords(lastReason ?? reason);
+  const shownReason = lastReason ?? reason;
+  const words = sandboxStartWords(shownReason);
   const ready = checked?.kind === "ready";
   // The button is gone once the sandbox is ready, so focus goes to the banner that says so.
   useEffect(() => {
     if (ready) banner.current?.focus();
   }, [ready]);
-  const action = ready
-    ? runAgain && { label: runPageWords.runAgain, onClick: runAgain.start }
-    : check && { label: runPageWords.sandboxCheckAgain, onClick: again };
+  const runAgainAction = runAgain && { label: runPageWords.runAgain, onClick: runAgain.start };
+  const checkAction = check && { label: runPageWords.sandboxCheckAgain, onClick: again };
+  const action = ready || !checkable(shownReason) ? runAgainAction : checkAction;
   return (
     <section aria-label={runPageWords.failedName}>
       <Callout
