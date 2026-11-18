@@ -77,6 +77,8 @@ fn main() {
         "google_setup_read",
         "workspace_key",
         "resource_report",
+        "pair_scan",
+        "pair_scan_cancel",
         "update_status",
         "update_watch",
         "update_check",

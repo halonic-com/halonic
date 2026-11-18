@@ -20,7 +20,9 @@
 //! command (capabilities/desktop-resources.json) and the `update_*` commands
 //! (capabilities/desktop-updates.json) and the page's close request
 //! (capabilities/desktop-window.json) and the `wsl_*` commands of the sandbox
-//! backup (capabilities/desktop-sandbox-backup.json); the Studio it then opens is
+//! backup (capabilities/desktop-sandbox-backup.json), and on Android the
+//! pairing scanner's `pair_scan` and `pair_scan_cancel`
+//! (capabilities/phone-pair-scan.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
 //! everything but the confirmed address out of the window.
 
@@ -39,6 +41,7 @@ mod instruction_trust;
 mod local_network;
 mod native_dialogs;
 mod navigation;
+mod pair_scan;
 mod plugin_folder;
 mod plugin_folder_place;
 mod plugin_folder_remove;
@@ -108,6 +111,10 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     // capability grants its command, so no page can call it.
     #[cfg(target_os = "android")]
     let builder = builder.plugin(local_network::plugin());
+    // The pairing scanner's camera, driven from Rust with fixed options: the
+    // connect page gets only `pair_scan` and `pair_scan_cancel`.
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(pair_scan::plugin());
     builder
         // The navigation guard hands outside links to the browser with the
         // opener. Its click script stays off. That script would run in
@@ -133,6 +140,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                 agent_host::end_page_streams(webview.app_handle(), webview.label());
                 http_fetch::end_page_calls(webview.app_handle(), webview.label());
                 files::end_page_watches(webview.app_handle(), webview.label());
+                pair_scan::end_page_scan(webview.app_handle());
                 #[cfg(desktop)]
                 updates::end_page_watches(webview.app_handle(), webview.label());
             }
@@ -146,6 +154,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                 agent_host::end_page_streams(window.app_handle(), window.label());
                 http_fetch::end_page_calls(window.app_handle(), window.label());
                 files::end_page_watches(window.app_handle(), window.label());
+                pair_scan::end_page_scan(window.app_handle());
                 #[cfg(desktop)]
                 updates::end_page_watches(window.app_handle(), window.label());
             }
@@ -221,6 +230,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             google_setups::google_setup_read,
             workspace_key::workspace_key,
             resource_report::resource_report,
+            pair_scan::pair_scan,
+            pair_scan::pair_scan_cancel,
             #[cfg(desktop)]
             updates::update_status,
             #[cfg(desktop)]
