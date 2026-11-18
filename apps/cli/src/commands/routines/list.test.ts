@@ -138,6 +138,18 @@ verifies("cli.commands.routines.list", () => {
       expect(io.stdout).toEqual(["Paused check   Every 15 minutes   Off   Never ran", hint]);
     });
 
+    it("lists a routine file that doesn't load with its error, never hiding it", async () => {
+      await addRoutines({ broken: routine("broken", "Broken check", "{ every: 0m }") });
+
+      const { code, io } = await routinesIn();
+
+      expect(code).toBe(exitCode.ok);
+      expect(io.stdout).toEqual([
+        'broken   Invalid file, line 3: use a number and a unit, e.g. "15m", "1h", "1d" (runs are placed from midnight UTC)   Off   Never ran',
+        hint,
+      ]);
+    });
+
     it("says No set time for a routine no clock starts", async () => {
       await addRoutines({ manual: routine("manual", "By hand", "{ manual: true }") });
 

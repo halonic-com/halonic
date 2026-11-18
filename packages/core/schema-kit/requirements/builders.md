@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: new in the core schema-kit package; `json` and `url` for the recording file (HAL-143)
+- Source: new in the core schema-kit package; `json` and `url` for the recording file (HAL-143); `preprocess` for a routine interval written as a bare number (HAL-12607)
 
-The `s` object shall offer Zod 4.6.7's builders for string, number, boolean, null, unknown, literal, enum, object, array, tuple, record, union, discriminated union, intersection, lazy and json, plus `url`, and no others, so that every file kind can be written without importing Zod. `url` accepts only an absolute `http` or `https` URL as `URL` writes it: lower-case scheme and host (a name, a dotted IPv4 address or a bracketed IPv6 address), an optional port, no user or password, and after the host only RFC 3986 characters and `%` with two hex digits.
+The `s` object shall offer Zod 4.6.7's builders for string, number, boolean, null, unknown, literal, enum, object, array, tuple, record, union, discriminated union, intersection, lazy, json and preprocess, plus `url`, and no others, so that every file kind can be written without importing Zod. `url` accepts only an absolute `http` or `https` URL as `URL` writes it: lower-case scheme and host (a name, a dotted IPv4 address or a bracketed IPv6 address), an optional port, no user or password, and after the host only RFC 3986 characters and `%` with two hex digits.
 
 ## Examples
 
@@ -16,7 +16,10 @@ The `s` object shall offer Zod 4.6.7's builders for string, number, boolean, nul
   then it passes.
 - Given the list of builders on `s`,
   when it is read,
-  then it holds exactly the seventeen names above.
+  then it holds exactly the eighteen names above.
+- Given `s.preprocess((value) => (typeof value === "number" ? String(value) : value), s.string().regex(/^\d+m$/, "use minutes"))` and `15`,
+  when it is parsed,
+  then there is one `invalid_format` issue at `[]` with the message `use minutes`, and its JSON Schema is the string's, with the pattern.
 - Given `s.url()` and `https://www.googleapis.com/drive/v3/files?q=%27root%27+in+parents`,
   when it is parsed,
   then it passes.

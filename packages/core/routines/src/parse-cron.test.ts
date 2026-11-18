@@ -124,8 +124,20 @@ verifies("routines.cron-rejects-bad-expressions", () => {
     expect(new CronError("x").name).toBe("CronError");
   });
 
-  it("rejects a range that runs backwards", () => {
-    expect(() => parseCron("0 0 * * 5-1")).toThrow('Weekday: "5-1" is outside 0-7.');
+  it("rejects a range that runs backwards, and says so", () => {
+    expect(() => parseCron("0 0 * * 5-1")).toThrow(
+      'Weekday: "5-1" runs backwards; write the smaller number first.',
+    );
+    expect(() => parseCron("0 0 * * fri-mon")).toThrow(
+      'Weekday: "fri-mon" runs backwards; write the smaller number first.',
+    );
+    expect(() => parseCron("50-10/5 * * * *")).toThrow(
+      'Minute: "50-10" runs backwards; write the smaller number first.',
+    );
+  });
+
+  it("names an end outside the field's limits before the order of a range", () => {
+    expect(() => parseCron("0 0 * * 9-1")).toThrow('Weekday: "9-1" is outside 0-7.');
   });
 
   it("rejects an empty or doubled step part", () => {
