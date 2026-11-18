@@ -73,6 +73,24 @@ verifies("source-control.share-versions", () => {
       }
     });
 
+    it("counts none for a repository with no version yet, even with a shared copy", async () => {
+      const root = mkdtempSync(join(tmpdir(), "share-versions-"));
+      try {
+        const remote = join(root, "remote.git");
+        const work = join(root, "work");
+        spawnSync("git", ["init", "--quiet", "--bare", remote]);
+        spawnSync("git", ["init", "--quiet", work]);
+        const changes = history(realGit(work));
+        await changes.addRemote(remote);
+        spawnSync("git", ["config", "branch.main.remote", "origin"], { cwd: work });
+        spawnSync("git", ["config", "branch.main.merge", "refs/heads/main"], { cwd: work });
+        spawnSync("git", ["symbolic-ref", "HEAD", "refs/heads/main"], { cwd: work });
+        expect(await changes.countUnshared()).toBe(0);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
     it("asks the shell for exactly `push --quiet --set-upstream origin HEAD`", async () => {
       const asked: (readonly string[])[] = [];
       await history(async (args) => {
