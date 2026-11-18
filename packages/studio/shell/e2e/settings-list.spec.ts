@@ -26,9 +26,15 @@ for (const layout of layouts) {
     await page.setViewportSize({ width: layout.width, height: layout.height });
     await page.goto("/settings-list.html");
     const scroller = layout.scroller(page);
-    await scroller.evaluate((element) => {
-      element.scrollTop = 600;
-    });
+    // The list keeps its scroll from the `scroll` event, which comes a frame later. A user's scroll
+    // has sent it long before they tap a row, so wait for it here too.
+    await scroller.evaluate(
+      (element) =>
+        new Promise<void>((resolve) => {
+          element.addEventListener("scroll", () => resolve(), { once: true });
+          element.scrollTop = 600;
+        }),
+    );
     await expect.poll(() => scroller.evaluate((element) => element.scrollTop)).toBeGreaterThan(300);
     const before = await scroller.evaluate((element) => element.scrollTop);
     // In a short window the bar with "Open" has scrolled away with the column, and a real click
