@@ -12,13 +12,14 @@ export function folderOf(path: string): string {
 /** Props for {@link FileHeader}. */
 export interface FileHeaderProps {
   readonly path: string;
-  /** What the ⋮ menu's items do. The tab is open already, so it has no Open items. */
-  readonly actions: Pick<FileMenuActions, "rename" | "remove" | "copyPath">;
+  /** What the ⋮ menu's items do. The tab is open already, so it has no Open items but Open as *kind*. */
+  readonly actions: Pick<FileMenuActions, "openAsItem" | "rename" | "remove" | "copyPath">;
 }
 
 /**
  * The head of a file's tab: the file's name, the folder in muted text, then the ⋮ menu with
- * Rename, Copy path and Delete (`files.ui.file-tab-header`). The name is the page's `h1`.
+ * Open as *kind* for an agent's, a workflow's or a routine's file, Rename, Copy path and Delete
+ * (`files.ui.file-tab-header`). The name is the page's `h1`.
  */
 export function FileHeader({ path, actions }: FileHeaderProps) {
   const folder = folderOf(path);

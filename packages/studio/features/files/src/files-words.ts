@@ -83,6 +83,8 @@ export const filesWords = {
     rename: "Rename",
     delete: "Delete",
     copyPath: "Copy path",
+    /** The tab's item for a file that defines an agent, a workflow or a routine. */
+    openAs: (kind: string): string => `Open as ${kind}`,
   },
   /** The name of a row's ⋮ button and of the tab's, which say which file the menu is for. */
   moreActions: (name: string): string => `More actions for ${name}`,
