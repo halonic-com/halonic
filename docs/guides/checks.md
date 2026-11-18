@@ -213,7 +213,7 @@ covers it:
 | Change | The note lists |
 | --- | --- |
 | an active requirement is edited, retired, demoted to draft, renamed or deleted | the requirement ID |
-| fewer tests ran for a requirement (even if the total stays the same), or its tests make fewer `expect` calls (only when the pull request changes a file in the package that owns its tests, or its requirement file: a helper, a fixture or the code under test can weaken a test without editing it, but counts in a package nothing changed in vary from run to run; see below for tests that call `vi.waitFor`) | the requirement ID |
+| fewer tests ran for a requirement (even if the total stays the same), or its tests make fewer `expect` calls (only when the pull request changes a file in the package that owns its tests, or its requirement file: a helper, a fixture or the code under test can weaken a test without editing it, but counts in a package nothing changed in vary from run to run) | the requirement ID |
 | a test file is deleted, or fewer of its tests ran | the test file |
 | a new `.skip`, `.only`, `.todo`, `skipIf`, `runIf`, `ctx.skip()`, `test.fails` or `retry` option in a test file or Vitest config | the file |
 | a new `vi.mock` of a module in the package a `verifies(…)` test file's requirements are about | the test file |
@@ -227,24 +227,10 @@ A package with tests but no readable result file on either side always
 fails: no note can stand in for a comparison the guard couldn't make.
 
 `vi.waitFor` runs its callback, `expect` calls included, again until it
-passes, so a test that uses it makes more calls on a slow runner than on a
-fast one. The guard therefore doesn't report fewer `expect` calls for a
-requirement when only those retries can explain the drop. That needs all of
-these:
-
-- one of the requirement's test files imports `vi` from `vitest` and calls
-  `vi.waitFor`
-- the pull request edits none of the requirement's test files
-- none of its tests drops to 0 calls: a retry runs its callback at least once
-- its test files without `vi.waitFor` make as many calls as before
-
-Everything else is still reported: fewer tests for the requirement or in a
-file, a deleted test file, a drop to 0 calls, a drop in a test file without
-`vi.waitFor`, and any drop once the pull request edits one of the
-requirement's test files. The planned fix counts only the passing attempt
-inside `verifies()`, so the count no longer depends on the runner; once it
-lands, this exception goes away. `check.guard-fewer-assertions` has the exact
-rule.
+passes. `verifies()` counts only the calls of the attempt that passed, so a
+test that uses it makes the same number of calls on a slow runner as on a fast
+one, and the guard holds it to the same rule as any other test.
+`check.guard-fewer-assertions` has the exact rule.
 
 **Before you ask for a signature**, go through this list. Most failed note
 checks come from one of these:
