@@ -1,4 +1,11 @@
-import { Button, EmptyState, PlusIcon, SkeletonBar, useToastStore } from "@halonicjs/studio-kit";
+import {
+  Button,
+  EmptyState,
+  PlusIcon,
+  SkeletonBar,
+  useToastStore,
+  useWriteClipboard,
+} from "@halonicjs/studio-kit";
 import { errorReasonFor, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { FILE_KIND, fileItem, fileName } from "../file-item.ts";
@@ -41,6 +48,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   // The row the tree keeps its Tab stop on; `focus` also moves the focus there (not after a blur).
   const [reveal, setReveal] = useState<{ path: string; focus: boolean }>();
   const toasts = useToastStore();
+  const writeClipboard = useWriteClipboard();
   const addButton = useRef<HTMLButtonElement>(null);
   // The New file button that opened the dialog, the top one or the empty state's, gets focus back.
   const opener = useRef<HTMLElement | null>(null);
@@ -176,7 +184,17 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   const onIntent = useCallback(
     (intent: TreeIntent) => {
       if (intent.kind === "open") context.openItem?.(fileItem(intent.path));
+      if (intent.kind === "open-in-new-tab") context.openItemInNewTab?.(fileItem(intent.path));
       if (intent.kind === "rename") setRenaming(intent.path);
+      if (intent.kind === "copy-path") {
+        void writeClipboard(intent.path).then((copied) =>
+          toasts?.show(
+            copied
+              ? { tone: "success", title: filesWords.pathCopied(intent.path) }
+              : { tone: "danger", title: filesWords.pathNotCopied },
+          ),
+        );
+      }
       if (intent.kind === "trash") {
         pendingFocus.current = undefined;
         // Focus goes to the next row, else the previous one, else the folder.
@@ -189,7 +207,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
         });
       }
     },
-    [context, host, toasts, roots, state.expanded, focusRow],
+    [context, host, toasts, writeClipboard, roots, state.expanded, focusRow],
   );
 
   if (loaded.kind === "loading") {

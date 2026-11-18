@@ -1,14 +1,54 @@
-import { ChevronDownIcon, ChevronRightIcon } from "@halonicjs/studio-kit";
-import { Fragment, type KeyboardEvent, useEffect, useMemo, useRef } from "react";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  ContextMenu,
+  type ContextMenuTarget,
+} from "@halonicjs/studio-kit";
+import {
+  Fragment,
+  type KeyboardEvent,
+  type MouseEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { fileName } from "../file-item.ts";
+import { fileMenuEntries } from "../file-menu.ts";
 import { filesWords } from "../files-words.ts";
 import { cutInMiddle } from "../tree/cut-name.ts";
 import { pressKey, type TreeIntent, type TreeState } from "../tree/tree-keyboard.ts";
 import type { TreeNode } from "../tree/tree-model.ts";
 import { type TreeRow, visibleRows } from "../tree/visible-rows.ts";
 import { RenameRow, type RenameRowProps } from "./rename-row.tsx";
+import { RowMenuButton } from "./row-menu-button.tsx";
 
 /** The most characters of a name a row shows before it cuts the middle. */
 const nameLimit = 32;
+
+/** The file a menu is open for, with where it opened. */
+interface RowMenu extends ContextMenuTarget {
+  readonly path: string;
+}
+
+/** Whether the key press asks for the focused row's menu: Shift F10 or the Menu key. */
+function opensMenu(event: Pick<KeyboardEvent, "key" | "shiftKey">): boolean {
+  return event.key === "ContextMenu" || (event.shiftKey && event.key === "F10");
+}
+
+/** What a screen reader reads after a file's name: its marks, but not while its name is edited. */
+function descriptionOf(
+  node: TreeNode,
+  marks: string | undefined,
+  renamingPath: string | undefined,
+): string | undefined {
+  return node.kind === "folder" || node.path === renamingPath ? undefined : marks;
+}
+
+/** Whether a row shows the ⋮: a file does, except while its name is edited. */
+function hasMenuButton(node: TreeNode, renamingPath: string | undefined): boolean {
+  return node.kind === "file" && node.path !== renamingPath;
+}
 
 /** Props for {@link FilesTree}. */
 export interface FilesTreeProps {
@@ -94,6 +134,10 @@ export function FilesTree({
   // The row that takes the Tab stop: the focused one, or the first while nothing is focused.
   const stop = rows.some((row) => row.node.path === state.focus) ? state.focus : rows[0]?.node.path;
   const focusing = useRef(false);
+  const [menu, setMenu] = useState<RowMenu>();
+  const menuPath = menu?.path;
+  const isFile = (path: string) =>
+    rows.some((row) => row.node.path === path && row.node.kind === "file");
 
   useEffect(() => {
     if (!focusing.current || state.focus === undefined) return;
@@ -118,12 +162,45 @@ export function FilesTree({
   }, [revealPath, revealFocus, rows, onRevealed, onStateChange, state]);
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const focused = (event.target as HTMLElement).closest<HTMLElement>("[data-path]");
+    const path = focused?.dataset["path"];
+    if (opensMenu(event) && focused !== null && path !== undefined && isFile(path)) {
+      event.preventDefault();
+      setMenu({ path, element: focused });
+      return;
+    }
     const result = pressKey(rows, { ...state, focus: state.focus ?? stop }, event, now());
     if (!result.handled) return;
     event.preventDefault();
     focusing.current = true;
     onStateChange(result.state);
     if (result.intent !== undefined) onIntent?.(result.intent);
+  }
+
+  /** The file menu's items: each asks the page for what a key on the row asks for. */
+  function menuEntries(path: string) {
+    const ask = (kind: "open" | "open-in-new-tab" | "rename" | "trash" | "copy-path") => () =>
+      onIntent?.({ kind, path });
+    return fileMenuEntries({
+      open: ask("open"),
+      openInNewTab: ask("open-in-new-tab"),
+      rename: ask("rename"),
+      remove: ask("trash"),
+      copyPath: ask("copy-path"),
+    });
+  }
+
+  /** A right-click on a file row opens its menu at the pointer; a folder has none. */
+  function rightClicked(node: TreeNode, event: MouseEvent<HTMLElement>) {
+    if (node.kind !== "file") return;
+    event.preventDefault();
+    event.stopPropagation();
+    onStateChange({ ...state, focus: node.path });
+    setMenu({
+      path: node.path,
+      element: event.currentTarget,
+      at: { x: event.clientX, y: event.clientY },
+    });
   }
 
   function activate(row: TreeRow) {
@@ -148,6 +225,12 @@ export function FilesTree({
       className="grid"
       onKeyDown={onKeyDown}
     >
+      <ContextMenu
+        label={filesWords.fileMenu(fileName(menu?.path ?? ""))}
+        entries={menu === undefined ? [] : menuEntries(menu.path)}
+        target={menu}
+        onClose={() => setMenu(undefined)}
+      />
       {rows.map((row) => {
         const { node } = row;
         const open = node.kind === "folder" && state.expanded.has(node.path);
@@ -166,16 +249,15 @@ export function FilesTree({
               aria-selected={node.path === activePath}
               aria-label={folderLabel(node, label)}
               // The marks are not read along with the name field while it is edited.
-              aria-description={
-                node.kind === "folder" || renaming?.path === node.path ? undefined : label
-              }
+              aria-description={descriptionOf(node, label, renaming?.path)}
               title={node.name.length > nameLimit ? node.name : undefined}
-              className={`flex min-h-8 cursor-pointer items-center gap-1 rounded-sm pr-2 text-sm text-fg outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-accent aria-selected:bg-accent-soft`}
+              className={`group flex min-h-8 cursor-pointer items-center gap-1 rounded-sm pr-2 text-sm text-fg outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-accent aria-selected:bg-accent-soft`}
               style={{ paddingLeft: `${row.depth * 16 + 4}px` }}
               onClick={(event) => {
                 event.stopPropagation();
                 activate(row);
               }}
+              onContextMenu={(event) => rightClicked(node, event)}
             >
               <span
                 className="inline-grid size-icon-md shrink-0 place-items-center *:size-full"
@@ -196,6 +278,16 @@ export function FilesTree({
                 <span className="min-w-0 truncate">{cutInMiddle(node.name, nameLimit)}</span>
               )}
               <RowMarks node={node} />
+              {hasMenuButton(node, renaming?.path) && (
+                <RowMenuButton
+                  name={node.name}
+                  open={menuPath === node.path}
+                  onPress={(event) => {
+                    onStateChange({ ...state, focus: node.path });
+                    setMenu({ path: node.path, element: event.currentTarget });
+                  }}
+                />
+              )}
             </div>
           </Fragment>
         );
