@@ -28,6 +28,7 @@ undocumented_unsafe_blocks = "deny"
 sha2 = { version = "=0.10.9", default-features = false }
 
 [target.'cfg(windows)'.dependencies]
+halonic-file-identity = { path = "../file-identity" }
 windows-sys = { version = "=0.61.2", features = [
   "Win32_Foundation",
   "Win32_Security",

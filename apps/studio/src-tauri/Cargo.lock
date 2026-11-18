@@ -1519,6 +1519,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-file-identity"
+version = "0.1.0"
+dependencies = [
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "halonic-git-guard"
 version = "0.1.0"
 
@@ -1608,6 +1615,7 @@ dependencies = [
 name = "halonic-sandbox-elevate"
 version = "0.1.0"
 dependencies = [
+ "halonic-file-identity",
  "sha2",
  "windows-sys 0.61.2",
 ]
@@ -1656,6 +1664,7 @@ dependencies = [
 name = "halonic-trust-grant"
 version = "0.1.0"
 dependencies = [
+ "halonic-file-identity",
  "halonic-git-guard",
  "halonic-trust-store",
  "serde",

@@ -3,11 +3,12 @@
 mod signer;
 
 use crate::{Machine, UNINSTALL_KEY, Value};
+use halonic_file_identity::file_identity;
 use std::ffi::{OsStr, OsString, c_void};
 use std::io::{self, Write};
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
-use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
-use std::os::windows::io::{AsRawHandle, FromRawHandle};
+use std::os::windows::fs::MetadataExt;
+use std::os::windows::io::FromRawHandle;
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -24,8 +25,7 @@ use windows_sys::Win32::Security::{
     SetFileSecurityW, TOKEN_ELEVATION, TOKEN_QUERY, TokenElevation,
 };
 use windows_sys::Win32::Storage::FileSystem::{
-    BY_HANDLE_FILE_INFORMATION, CREATE_NEW, CreateFileW, FILE_ATTRIBUTE_NORMAL,
-    FILE_ATTRIBUTE_REPARSE_POINT, FILE_FLAG_BACKUP_SEMANTICS, GetFileInformationByHandle,
+    CREATE_NEW, CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_ATTRIBUTE_REPARSE_POINT,
     MOVEFILE_DELAY_UNTIL_REBOOT, MoveFileExW,
 };
 use windows_sys::Win32::System::Com::CoTaskMemFree;
@@ -193,7 +193,7 @@ impl Machine for Windows {
     }
 
     fn same_file(&self, one: &Path, other: &Path) -> bool {
-        match (file_id(one), file_id(other)) {
+        match (file_identity(one), file_identity(other)) {
             (Ok(one), Ok(other)) => one == other,
             _ => false,
         }
@@ -357,27 +357,6 @@ fn with_descriptor<T>(
     // SAFETY: `descriptor` was allocated by the conversion, freed once.
     unsafe { LocalFree(descriptor) };
     result
-}
-
-/// The volume and file index that name `path`'s file or folder on this
-/// computer, whatever name reached it.
-fn file_id(path: &Path) -> io::Result<(u32, u32, u32)> {
-    // No access asked for, only the name's identity. Backup semantics opens
-    // a folder too; links are followed, so a link to the folder is the folder.
-    let file = std::fs::OpenOptions::new()
-        .access_mode(0)
-        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
-        .open(path)?;
-    let mut info = BY_HANDLE_FILE_INFORMATION::default();
-    // SAFETY: `file` is open for the call, and `info` outlives it.
-    if unsafe { GetFileInformationByHandle(file.as_raw_handle(), &mut info) } == 0 {
-        return Err(io::Error::last_os_error());
-    }
-    Ok((
-        info.dwVolumeSerialNumber,
-        info.nFileIndexHigh,
-        info.nFileIndexLow,
-    ))
 }
 
 /// A folder Windows knows by `id`, from Windows rather than the environment.
