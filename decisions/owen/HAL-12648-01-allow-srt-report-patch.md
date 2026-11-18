@@ -9,10 +9,13 @@
   hash of the patch the next pull request brings, and its `reason` and `remove-when` name the new part.
 - The new part adds `--report-fd <fd>` to srt's command line. srt writes the violation line of each
   network request its proxy refused (`deny network-outbound host:port (reason)`) to that inherited
-  descriptor. The program never gets it: srt puts `/dev/null` in its slot, as it does for
-  `--control-fd`, and on Windows passes the program only its three standard streams. A fd that can't
-  be opened stops srt before anything starts, and a reader that goes away loses reports, never the
-  run: the proxy refuses the request either way.
+  descriptor. On Linux and macOS the program never gets it: srt puts `/dev/null` in its slot, as it
+  does for `--control-fd`. On Windows srt's inheritable pipe handle reaches the program, unnamed, so
+  a program that guesses its value can write to the pipe. That gives it no network, but it could
+  forge report lines, so sandbox-srt treats every line as untrusted (bounded lines, only hosts and
+  ports srt itself would accept; see the next pull request's note). A fd that can't be opened stops
+  srt before anything starts, and a reader that goes away loses reports, never the run: the proxy
+  refuses the request either way.
 
 ## Why
 
