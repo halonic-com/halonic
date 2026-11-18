@@ -21,6 +21,7 @@ import {
   agentHostHarnesses,
   type BridgeAgent,
   type BridgeServices,
+  type RemoteDecisions,
 } from "@halonicjs/adapter-agent-host-client";
 import { claudeCodeEnvironment } from "@halonicjs/adapter-harness-claude-code/environment";
 import { codexEnvironment } from "@halonicjs/adapter-harness-codex/environment";
@@ -57,9 +58,18 @@ export interface StudioHarnessInput {
    * only once the engine is built; `refusingApprovals` until then.
    */
   approvalsOf(runId: string): BridgeApprovals | undefined;
+  /**
+   * Takes the decisions a phone makes on one run's bridge questions into the
+   * same approvals. Called only once the engine is built; until then, and
+   * when it gives none, a phone's decision is refused.
+   */
+  remoteDecisionsOf(runId: string): RemoteDecisions | undefined;
   /** Hears the error of a clean-up at the start that couldn't finish. */
   reportError(error: unknown): void;
 }
+
+/** What the engine gives the harness host once it is built: one run's approvals and its phone's decisions. */
+export type EngineDecisions = Pick<StudioHarnessInput, "approvalsOf" | "remoteDecisionsOf">;
 
 /** What the engine gets: `harnesses` and `proposalFolders` go to `runs` of the executor. */
 export interface StudioHarnessHost {
@@ -130,9 +140,11 @@ export async function openStudioHarnessHost(input: StudioHarnessInput): Promise<
  * What each agent's bridge serves, as the CLI's does: the program's own
  * sign-in for both providers, so no key passes through, and no Halonic
  * tools. Its approvals are the engine's for the agent's run, which a card
- * and a phone decide; until the engine is built, they refuse every request.
+ * and a phone decide; until the engine is built, they refuse every request,
+ * and a phone's decision is refused.
  */
 function bridgeServicesOf(agent: BridgeAgent, input: StudioHarnessInput): BridgeServices {
+  const remoteDecisions = input.remoteDecisionsOf(agent.runId);
   return {
     providers: { anthropic: { kind: "sign-in" }, openai: { kind: "sign-in" } },
     prices: {},
@@ -142,6 +154,7 @@ function bridgeServicesOf(agent: BridgeAgent, input: StudioHarnessInput): Bridge
       call: async (name) => ({ result: `${name} isn't a tool of this agent.`, outcome: "error" }),
     },
     approvals: input.approvalsOf(agent.runId) ?? refusingApprovals,
+    ...(remoteDecisions === undefined ? {} : { remoteDecisions }),
     secrets: { get: async () => null },
   };
 }
