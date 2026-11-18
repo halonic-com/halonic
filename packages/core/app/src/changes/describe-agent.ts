@@ -16,7 +16,7 @@ import type { ChangeLine } from "./revert-parts.ts";
  * listed here gets a line too, after these, under its key. `methods` have a
  * line each.
  */
-const AGENT_FIELDS: Readonly<Record<string, string>> = {
+export const AGENT_FIELDS: Readonly<Record<string, string>> = {
   name: "Name",
   description: "Description",
   instructions: "Instructions",
