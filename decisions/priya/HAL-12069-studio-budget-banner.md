@@ -3,6 +3,7 @@
 - Task: HAL-12069
 - Approval: Liam approves this change on HAL-12069, for HAL-12069. Sofia decided the wording on HAL-12066 (small wording on an approved screen, HAL-2282 rule), so there is no board card.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:m/fMci6uf3/Ixfi2dAOUxfJUcQr1hX16ibcg6tahBf7mkJNL29O/xRbdw2NdJlNrtQ+zB6X8OOaCxwq5NM0UBQ==
 
 ## What changes
 
