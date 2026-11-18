@@ -2,6 +2,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { waitingRun } from "../test-runs.test-helper.ts";
 import { budgetNotices, monthBudgetUse, monthBudgetUsedUp } from "./budget-notices.ts";
+import type { FailedRunNotice } from "./failed-run-notices.ts";
+import { newestFirst } from "./merge-notices.ts";
 
 const now = new Date("2026-11-16T12:00:00.000Z");
 const monthly = { limit: 50, currency: "EUR" };
@@ -104,5 +106,71 @@ verifies("inbox.budget-notices", () => {
       (notice) => notice.kind,
     );
     expect(kinds).toEqual(["budget-month", "budget-run"]);
+  });
+
+  it("takes the amounts from the run's typed cause, not its error", () => {
+    const typed = budgetRun("r1", {
+      error: "Something the engine said",
+      cause: {
+        kind: "limit_reached",
+        code: "budget.run",
+        detail: { limit: "0.01", spent: "0.36", currency: "EUR" },
+      },
+    });
+    const [notice] = budgetNotices([typed], { monthly: undefined, workflowName, now });
+    expect(notice?.title).toBe(
+      "Support replies stopped at its estimated budget · Reached €0.01 per run (estimated €0.36) · 2 hours ago",
+    );
+  });
+
+  it("reads the error of a run logged before the cause", () => {
+    const [notice] = budgetNotices([budgetRun("r1")], { monthly: undefined, workflowName, now });
+    expect(notice?.title).toContain("· Reached €5.00 per run (estimated €5.08) ·");
+  });
+
+  it("names no amount when neither the cause nor the error says it", () => {
+    const runs = [
+      budgetRun("r1", { error: "Something else" }),
+      budgetRun("r2", { cause: { kind: "limit_reached", code: "budget.run" } }),
+    ];
+    const titles = budgetNotices(runs, { monthly: undefined, workflowName, now }).map(
+      (notice) => notice.title,
+    );
+    expect(titles).toEqual([
+      "Support replies stopped at its estimated budget · 2 hours ago",
+      "Support replies stopped at its estimated budget · 2 hours ago",
+    ]);
+  });
+
+  it("makes no row for a run whose cause is the monthly budget", () => {
+    const month = budgetRun("r1", {
+      cause: {
+        kind: "limit_reached",
+        code: "budget.month",
+        detail: { limit: "50", spent: "50.10", currency: "EUR" },
+      },
+    });
+    expect(budgetNotices([month], { monthly: undefined, workflowName, now })).toEqual([]);
+  });
+
+  it("puts the month's row first, above a newer failed run", () => {
+    const spent = waitingRun("r2", { cost: 50.02, startedAt: "2026-11-16T08:00:00.000Z" });
+    const [month] = budgetNotices([spent], { monthly, workflowName, now });
+    const failed: FailedRunNotice = {
+      kind: "failed-run",
+      key: "failed-run:acme/daily:2026-11-16",
+      routineId: "acme/daily",
+      runId: "r9",
+      hubId: "acme",
+      at: "2026-11-16T11:30:00.000Z",
+      count: 1,
+      fixed: false,
+      title: "Daily summary failed at 11:30",
+    };
+    if (month === undefined) throw new Error("no month row");
+    expect([failed, month].sort(newestFirst).map((notice) => notice.kind)).toEqual([
+      "budget-month",
+      "failed-run",
+    ]);
   });
 });

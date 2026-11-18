@@ -9,7 +9,8 @@ const loadFailed = "Couldn't load notices";
 
 /**
  * The notices under Needs you (flow-inbox 3.2): flat rows acted on in place, each with its one
- * link and **×**. A fixed notice says "Fixed" instead of the link and keeps the ×. The heading is
+ * link and **×**. A fixed notice says "Fixed" instead of the link and keeps the ×. The month's used-up
+ * budget has no ×: it can't be dismissed while it is true (flow-inbox 4.1). The heading is
  * hidden when there is nothing to show. Returns `null` with no source.
  *
  * @param openRun Opens a run's page; without it a notice has no **Open run**.
@@ -32,11 +33,15 @@ export function NoticesSection({
 }) {
   const { notices, error, retry } = useNotices(source);
   const rows = useRef<HTMLUListElement>(null);
-  // The dismissed row goes away, so focus moves first: to the next notice's ×, else the previous one's.
+  // The dismissed row goes away, so focus moves first: to the next notice's ×, else the previous
+  // one's. The month's budget row has no ×, so there focus goes to its **Change budget**.
   const dismiss = (source: InboxNotices, index: number, key: string) => {
-    const buttons = rows.current?.querySelectorAll<HTMLElement>("li button[aria-label^='Dismiss']");
-    const next = buttons?.[index + 1] ?? buttons?.[index - 1];
-    if (next === undefined) onEmptied();
+    const items = rows.current?.querySelectorAll<HTMLElement>(":scope > li");
+    const row = items?.[index + 1] ?? items?.[index - 1];
+    const next =
+      row?.querySelector<HTMLElement>("button[aria-label^='Dismiss']") ??
+      row?.querySelector<HTMLElement>("button");
+    if (next === null || next === undefined) onEmptied();
     else next.focus();
     source.dismiss(key);
   };
@@ -109,13 +114,15 @@ function NoticeRow({
       ) : (
         (link ?? changeBudget)
       )}
-      <Button
-        variant="ghost"
-        size="sm"
-        icon={<CloseIcon />}
-        label={`Dismiss ${title}`}
-        onClick={dismiss}
-      />
+      {notice.kind === "budget-month" ? null : (
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<CloseIcon />}
+          label={`Dismiss ${title}`}
+          onClick={dismiss}
+        />
+      )}
     </li>
   );
 }
