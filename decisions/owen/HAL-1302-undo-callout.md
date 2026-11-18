@@ -3,6 +3,7 @@
 - Task: HAL-1302 (T9, partial-result Callout, audit item 4)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-1302 (Liam's decision of 18 Nov, a team decision on top of the approved save model 3.4, HAL-1102)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:18eV3Bxo1+ZcscSrhfh+ZuvhzecRVFK+Pt+S4ymOqRvtdaUNywgSz9XHknj8kMTM5Fvdxcs07SErDjA52PTmCw==
 
 ## What changes
 
