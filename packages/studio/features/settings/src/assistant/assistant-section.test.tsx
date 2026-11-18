@@ -65,7 +65,7 @@ verifies("settings.ai-agent-section", () => {
     if (typeof describe !== "function") throw new Error("no description function");
     const context = {} as WorkspaceContext;
     expect(await describe(context, "app")).toBe(
-      "Used for new assistant chats in every workspace on this computer. Never saved in a workspace.",
+      "Halonic can't open assistant chats yet. These settings are kept for when it can, for every workspace on this computer. Never saved in a workspace.",
     );
     expect(await describe(context, "served")).toContain(
       "every workspace on the computer running Halonic",
@@ -74,7 +74,7 @@ verifies("settings.ai-agent-section", () => {
 
   it("does not repeat the first line in its body", async () => {
     const { view } = await setup();
-    expect(view.textContent).not.toContain("Used for new assistant chats");
+    expect(view.textContent).not.toContain("Halonic can't open assistant chats yet");
   });
 
   it("saves a picked provider with its address, secret name and Local", async () => {
