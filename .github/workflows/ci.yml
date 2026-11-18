@@ -76,13 +76,13 @@ jobs:
             echo "full=true" | tee -a "$GITHUB_OUTPUT"
           fi
           areas=(
-            "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|tooling/check/licence-texts/crates/)"
+            "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|tooling/check/licence-texts/crates/|packages/adapters/e2e-noise/src/noise\.wasm$)"
             "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|harness-bridge|system-node|integration-runner|integration-kit|connector-stdio-sandbox|git)/|apps/cli/(fence/|src/(local-harness-host|open-local-integration|local-integration-machine|integration-connector-factory|workspace-engine))|packages/core/ports/|pnpm-lock\.yaml$)"
             "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node|git)/|packages/core/ports/)"
             "windows=^(\.github/workflows/ci\.yml$|\.github/actions/|pnpm-lock\.yaml$|apps/(cli|agent-host)/|packages/adapters/(fs-node|harness-kit|harness-claude-code|harness-codex|mcp|memory|system-node|http-kit|integration-kit)/|packages/core/(workspace|app|events|format|ports|profile|routines|schema-kit|std|workflow|yaml)/|packages/testing/(contracts|spec|parity|integration)/|tooling/(config|publish)/)"
             "sandbox-mxc=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/sandbox-mxc/|packages/adapters/integration-runner/|packages/core/app/(src|requirements)/sandbox-|packages/core/ports/|pnpm-lock\.yaml$)"
             "android=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|apps/studio/src/connect/|apps/studio/connect\.html$|apps/studio/vite\.config\.ts$|apps/studio/package\.json$|pnpm-lock\.yaml$)"
-            "agent_host=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/agent-host/|package\.json$)"
+            "agent_host=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/agent-host/|packages/adapters/e2e-noise/|package\.json$)"
             "studio=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/|packages/studio/)"
             "docs=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/docs/|docs/)"
             "workflows=^\.github/"
@@ -996,12 +996,29 @@ jobs:
           cargo rustc --locked -p halonic-e2e-noise-wasm --profile noise-wasm \
             --target wasm32-unknown-unknown --crate-type cdylib
           sha256sum target/wasm32-unknown-unknown/noise-wasm/halonic_e2e_noise_wasm.wasm
+      # Uploaded before the comparison, so when it fails the author can
+      # download the file and commit it without Rust (as cargo-lock.yml does
+      # for the lockfile).
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: noise-wasm
           path: apps/studio/src-tauri/target/wasm32-unknown-unknown/noise-wasm/halonic_e2e_noise_wasm.wasm
           if-no-files-found: error
           retention-days: 7
+      # The committed file must be exactly this build (HAL-12451). The area
+      # filter runs this job when the crate, the lockfile, the toolchain or
+      # the .wasm changes, so a crate change without a new .wasm fails here,
+      # and so does a new .wasm without a crate change.
+      - name: The committed noise.wasm is this build
+        env:
+          COMMITTED: ${{ github.workspace }}/packages/adapters/e2e-noise/src/noise.wasm
+        run: |
+          built=target/wasm32-unknown-unknown/noise-wasm/halonic_e2e_noise_wasm.wasm
+          if ! cmp --silent "$built" "$COMMITTED"; then
+            echo "::error file=packages/adapters/e2e-noise/src/noise.wasm::The committed noise.wasm ($(sha256sum < "$COMMITTED" | cut -c1-64)) is not what the crate builds ($(sha256sum < "$built" | cut -c1-64)). Download the noise-wasm artifact of this run and commit it as packages/adapters/e2e-noise/src/noise.wasm."
+            exit 1
+          fi
+          echo "noise.wasm matches the build: $(sha256sum < "$built" | cut -c1-64)"
       # The keychain's contract test is ignored in plain `cargo test`: it
       # needs an unlocked keychain (HAL-4499). Here a GNOME Keyring on a
       # private D-Bus, unlocked with a password made for this run, is the
@@ -1038,6 +1055,29 @@ jobs:
           pnpm check:sbom --name halonic-studio --version 0.0.0-ci
           --out "$RUNNER_TEMP/notices" --notices
           --cargo apps/studio/src-tauri --cargo-target x86_64-pc-windows-msvc
+      # snow and its crates are compiled into the noise.wasm the agent host
+      # ships (HAL-12451). The notices above walk every workspace member, so
+      # they list them through the Windows target. A crate that only the
+      # WebAssembly build pulls in would be missed: this step fails then.
+      # Not `--cargo-target wasm32-unknown-unknown` above: that would also
+      # list the shell's browser crates (wasm-bindgen, web-sys), which no file
+      # we ship contains.
+      - name: The notices list noise.wasm's crates
+        run: |
+          set -o pipefail
+          rust=$(sed -n '/^Rust crates$/,/^Vendored files$/p' "$RUNNER_TEMP/notices/THIRD-PARTY-NOTICES.txt")
+          # Our own crate prints with its path and a repeat with "(*)"; both
+          # are left out.
+          crates=$(cargo tree --locked -p halonic-e2e-noise-wasm --target wasm32-unknown-unknown \
+            -e normal --prefix none --format '{p}' | grep -v ' (' | sort -u)
+          missing=""
+          while read -r name version; do
+            grep -qE "^${name} (.*, )?${version#v}(,|$)" <<< "$rust" || missing+=" $name@${version#v}"
+          done <<< "$crates"
+          if [ -n "$missing" ]; then
+            echo "::error::THIRD-PARTY-NOTICES.txt doesn't list these crates compiled into noise.wasm:$missing"
+            exit 1
+          fi
       - name: Save the Rust cache
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
