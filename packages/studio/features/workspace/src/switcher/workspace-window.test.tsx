@@ -1,138 +1,23 @@
 // @vitest-environment jsdom
 
-import { KindedError } from "@halonicjs/std";
-import { createToastStore } from "@halonicjs/studio-kit";
-import {
-  createShell,
-  defineFeature,
-  type Feature,
-  type ResourceWatch,
-  type Shell,
-  StudioWorkspace,
-  watchResources,
-  workspaceContentAttribute,
-} from "@halonicjs/studio-shell";
+import { defineFeature, watchResources, workspaceContentAttribute } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { NewWorkspaceHost } from "../new-workspace/new-workspace-dialog.tsx";
-import { type MountedWorkspaceWindow, mountWorkspaceWindow } from "./mount-workspace-window.tsx";
-import { RecentWorkspaces } from "./recent-workspaces.ts";
 import type { WorkspaceSaving } from "./workspace-saving.ts";
-import { folderName, MENU_BUSY_AFTER_MS, WorkspaceSwitcher } from "./workspace-switcher.ts";
+import { MENU_BUSY_AFTER_MS } from "./workspace-switcher.ts";
+import {
+  element,
+  press,
+  setUpWindow,
+  start,
+  switcherButton,
+  tearDownWindow,
+} from "./workspace-window.test-helper.tsx";
 import { workspaceKeyPosition } from "./workspace-window.tsx";
 
-// Tells React this is a test, so it checks that updates happen inside act().
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-
-let element: HTMLElement;
-let mounted: MountedWorkspaceWindow | undefined;
-let restoreMedia: () => void = () => {};
-
-beforeEach(() => {
-  // jsdom has no matchMedia: every query fails, so the window is a desktop one.
-  const original = window.matchMedia;
-  window.matchMedia = (query) =>
-    ({
-      media: query,
-      matches: false,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-    }) as unknown as MediaQueryList;
-  restoreMedia = () => {
-    window.matchMedia = original;
-  };
-  element = document.createElement("div");
-  document.body.append(element);
-});
-
-afterEach(() => {
-  act(() => mounted?.unmount());
-  mounted = undefined;
-  element.remove();
-  restoreMedia();
-});
-
-/** A workspace's services for a shell with no features: nothing is ever provided or read. */
-function noServices() {
-  return {
-    provide: () => {
-      throw new Error("No feature provides services here.");
-    },
-    get: () => {
-      throw new Error("No feature reads services here.");
-    },
-    has: () => false,
-  };
-}
-
-/** Starts the window; a folder in `gone` fails to open as not found. */
-function start(
-  picks: string[],
-  gone: string[] = [],
-  saving?: WorkspaceSaving,
-  features: readonly Feature[] = [],
-  newWorkspace?: NewWorkspaceHost,
-  resources?: ResourceWatch,
-): { shell: Shell; switcher: WorkspaceSwitcher } {
-  const shell = createShell({ features, host: "desktop-app", platform: "windows" });
-  const storage = new Map<string, string>();
-  const switcher = new WorkspaceSwitcher({
-    pickFolder: async () => picks.shift(),
-    openFolder: async (location) => {
-      if (gone.includes(location)) {
-        throw new KindedError("not_found", `No folder ${location}`);
-      }
-      const name = folderName(location);
-      const workspace = new StudioWorkspace({
-        toasts: createToastStore(),
-        services: noServices(),
-        name,
-      });
-      return { name, workspace, saving, dispose: async () => {} };
-    },
-    recent: new RecentWorkspaces({
-      getItem: (key) => storage.get(key) ?? null,
-      setItem: (key, value) => {
-        storage.set(key, value);
-      },
-    }),
-    toasts: shell.toasts,
-  });
-  act(() => {
-    mounted = mountWorkspaceWindow(element, {
-      shell,
-      switcher,
-      platform: "windows",
-      language: "en",
-      ...(newWorkspace === undefined ? {} : { newWorkspace }),
-      resources,
-    });
-  });
-  return { shell, switcher };
-}
-
-function switcherButton(): HTMLButtonElement | null {
-  return element.querySelector<HTMLButtonElement>('button[aria-label^="Workspace: "]');
-}
-
-/** The workspace menu's row that reads `label`. */
-function menuRow(label: string): HTMLElement | undefined {
-  return [...element.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
-    (each) => each.textContent === label,
-  );
-}
-
-/** The `h1` of the page the shown workspace shows. */
-function shownHeading(): HTMLElement | null {
-  return element.querySelector<HTMLElement>("main h1");
-}
-
-async function press(init: KeyboardEventInit): Promise<void> {
-  await act(async () => {
-    window.dispatchEvent(new KeyboardEvent("keydown", { ...init, bubbles: true }));
-  });
-}
+beforeEach(setUpWindow);
+afterEach(tearDownWindow);
 
 verifies("workspace.workspace-window", () => {
   it("shows Welcome with no switcher until a folder is open", () => {
@@ -264,49 +149,6 @@ verifies("workspace.workspace-window", () => {
     );
     await act(async () => row?.click());
     expect(opened).toHaveBeenCalledOnce();
-  });
-
-  it("moves focus to Home's title after the menu's Open a folder… (a11y W1)", async () => {
-    // jsdom has no popovers, which the menu closes itself with.
-    HTMLElement.prototype.hidePopover ??= () => {};
-    const { switcher } = start(["/work/beta"]);
-    await act(() => switcher.openLocation("/work/acme"));
-
-    await act(async () => menuRow("Open a folder…")?.click());
-    await act(async () => {});
-    expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: beta");
-    expect(document.activeElement).toBe(shownHeading());
-  });
-
-  it("moves focus to the shown workspace's title on Ctrl 2 (a11y W1)", async () => {
-    const { switcher } = start([]);
-    await act(() => switcher.openLocation("/work/acme"));
-    await act(() => switcher.openLocation("/work/beta"));
-    await press({ key: "1", ctrlKey: true });
-    switcherButton()?.focus();
-
-    await press({ key: "2", ctrlKey: true });
-    expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: beta");
-    expect(document.activeElement).toBe(shownHeading());
-  });
-
-  it("moves focus to the title of the workspace left after Close workspace (a11y W1)", async () => {
-    HTMLElement.prototype.hidePopover ??= () => {};
-    const { switcher } = start([]);
-    await act(() => switcher.openLocation("/work/acme"));
-    await act(() => switcher.openLocation("/work/beta"));
-
-    await act(async () => menuRow("Close workspace")?.click());
-    expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: acme");
-    expect(document.activeElement).toBe(shownHeading());
-  });
-
-  it("leaves focus alone when a workspace is shown without the person asking", async () => {
-    const { switcher } = start([]);
-
-    // As the app's restore at start does: straight on the switcher, not through the window.
-    await act(() => switcher.openLocation("/work/acme"));
-    expect(document.activeElement).toBe(document.body);
   });
 
   it("goes back to Welcome when the last workspace closes", async () => {
