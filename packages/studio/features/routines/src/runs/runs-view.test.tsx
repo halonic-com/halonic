@@ -64,7 +64,13 @@ function hostWith(answer: () => Promise<RoutineRuns>, routine: RoutineView = dai
 
 async function openRuns(host: RoutinesHost, openRun?: (runId: string) => void) {
   const page = await show(
-    <RoutineScreen host={host} hubId="acme" id="daily" announce={() => {}} openRun={openRun} />,
+    <RoutineScreen
+      host={host}
+      hubId="acme"
+      id="daily"
+      announce={() => {}}
+      {...(openRun ? { openRun } : {})}
+    />,
   );
   const tab = [...page.querySelectorAll<HTMLElement>("[role=tab]")].find((each) =>
     each.textContent?.startsWith("Runs"),
@@ -167,7 +173,7 @@ verifies("routines.runs.view", () => {
     let fail = true;
     const page = await openRuns(
       hostWith(async () => {
-        if (fail) throw new KindedError("engine_unavailable", "The engine isn't answering.");
+        if (fail) throw new KindedError("unavailable", "The engine isn't answering.");
         return { runs: [run("9hv3bw")], skips: [] };
       }),
     );
