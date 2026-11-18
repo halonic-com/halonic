@@ -37,7 +37,8 @@ const sandboxRuntime = "@anthropic-ai/sandbox-runtime";
  * `bin/halonic.js` keeps its Node version check and imports the bundle.
  *
  * The bundle carries third-party code whose licences need their notices, so
- * `THIRD-PARTY-NOTICES.txt` is copied into the package.
+ * `THIRD-PARTY-NOTICES.txt` is copied into the package. Its README is
+ * `tooling/publish/cli/README.md`, written for users.
  *
  * @param version the version of the package and of `halonic --version`
  * @param noticesFile the `THIRD-PARTY-NOTICES.txt` written by `pnpm check:sbom --notices`
@@ -85,7 +86,8 @@ export async function stageCli(
   cpSync(join(cliDirectory, "bin/node-floor.js"), join(directory, "bin/node-floor.js"));
   for (const name of ["LICENSE", "NOTICE"]) cpSync(join(root, name), join(directory, name));
   cpSync(noticesFile, join(directory, "THIRD-PARTY-NOTICES.txt"));
-  cpSync(join(cliDirectory, "README.md"), join(directory, "README.md"));
+  // The npm page shows this README: the one for users, not apps/cli's notes for the people who work on the CLI.
+  cpSync(join(root, "tooling/publish/cli/README.md"), join(directory, "README.md"));
   writeManifest(directory, version, bundled);
   return { directory, name: "halonic", version };
 }
