@@ -15,9 +15,6 @@ import { join } from "node:path";
 import {
   FileAgentPlacementStore,
   FileInstructionTrustStore,
-  FolderDefinitionStore,
-  FolderRunCopies,
-  FolderTrash,
   makePrivateFolder,
 } from "@halonicjs/adapter-fs-node";
 import { type GitRunnerOptions, lazyGitVcs } from "@halonicjs/adapter-git";
@@ -57,6 +54,7 @@ import {
   type WorkspaceFolders,
 } from "@halonicjs/profile";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import { localProposalParts } from "./local-proposals.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import { skillFileOf } from "./skill-file.ts";
@@ -118,7 +116,7 @@ export interface LocalHarnessInput {
    * agent's file from the run's version. Without it, from disk.
    */
   readonly versions?: Pick<WorkspaceVersions, "agentFileOf" | "skillTextOf">;
-  /** The workspace's files, which Accept writes (not wired yet) and a proposal's base is read from. */
+  /** The workspace's files, which Accept writes and a proposal's base is read from. */
   readonly store: DefinitionStore;
   readonly digest: Digest;
   readonly clock: Clock;
@@ -218,19 +216,14 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
     },
     digest: input.digest,
     clock: input.clock,
-    proposals: {
-      vcs: git.vcs,
-      // With history off, a run that writes files works in a plain copy of the saved files.
-      copies: new FolderRunCopies(folders.runCopiesFolder()),
-      records: new FolderDefinitionStore(folders.proposalRecordsFolder()),
+    // The same parts `halonic proposals` reviews the proposals with.
+    proposals: localProposalParts({
+      folders,
       store: input.store,
-      trash: new FolderTrash({
-        folder: folders.trashFolder(),
-        store: input.store,
-        digest: input.digest,
-      }),
-      onEndFailed: (_runId, error) => input.reportError(error),
-    },
+      digest: input.digest,
+      vcs: git.vcs,
+      reportError: input.reportError,
+    }),
   });
   const kept = [
     folders.proposalRecordsFolder(),
