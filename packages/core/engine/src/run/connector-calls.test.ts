@@ -58,6 +58,7 @@ verifies("engine.run-connector-calls", () => {
       type: "tool",
       result: "The call wasn't made: the arguments of send_mail aren't an object.",
       outcome: "error",
+      cause: { code: "not-made", why: "bad-arguments" },
     });
     expect(mail.calls).toEqual([]);
   });
@@ -77,6 +78,7 @@ verifies("engine.run-connector-calls", () => {
       type: "tool",
       result: 'The call wasn\'t made: the connector "mail" no longer offers send_mail.',
       outcome: "error",
+      cause: { code: "not-made", why: "tool-gone" },
     });
     expect(mail.calls).toEqual([]);
   });

@@ -4,6 +4,7 @@
 // key, and only then does the engine make it, here.
 
 import type { SendingSettings } from "@halonicjs/app";
+import type { ToolFailureCause, ToolNotMadeReason } from "@halonicjs/events";
 import type { Agent, Connector } from "@halonicjs/format";
 import type { ConnectorClient } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
@@ -96,7 +97,7 @@ export async function makeConnectorCall(
 ): Promise<ToolResult> {
   const connector = connectors.find((connected) => connected.id === effect.connector);
   if (connector === undefined) {
-    return notMade(`the connector "${effect.connector}" isn't connected`);
+    return notMade("not-connected", `the connector "${effect.connector}" isn't connected`);
   }
   const tools = await collectTurnTools({
     callerTools: [],
@@ -110,14 +111,17 @@ export async function makeConnectorCall(
   // the call goes out under `listedName`.
   const tool = tools.byName.get(effect.tool);
   if (tool?.kind !== "server") {
-    return notMade(`the connector "${effect.connector}" no longer offers ${effect.tool}`);
+    return notMade(
+      "tool-gone",
+      `the connector "${effect.connector}" no longer offers ${effect.tool}`,
+    );
   }
   if (tool.risk === "send") {
     const sending = await boundary.checkSending(effect.connector);
-    if (!sending.allowed) return notMade(sending.reason);
+    if (!sending.allowed) return notMade("sending-off", sending.reason);
   }
   if (!isPlainObject(effect.args)) {
-    return notMade(`the arguments of ${effect.tool} aren't an object`);
+    return notMade("bad-arguments", `the arguments of ${effect.tool} aren't an object`);
   }
   const logged = {
     ...(tool.loggedRisk === undefined ? {} : { risk: tool.loggedRisk }),
@@ -137,7 +141,9 @@ export async function makeConnectorCall(
 /**
  * As {@link makeConnectorCall}, on the run's connectors, which `open` gives.
  * When they can't start, the call isn't made, as for a connector that isn't
- * connected, so its outcome is `error`, and the model hears why.
+ * connected, so its outcome is `error`, and the model hears why. Its cause
+ * is `connector-not-started`, not `not-connected`, which keeps meaning that
+ * the connector isn't among the run's.
  */
 export async function makeRunConnectorCall(
   open: () => Promise<readonly ConnectorClient[]>,
@@ -150,13 +156,19 @@ export async function makeRunConnectorCall(
   try {
     connectors = await open();
   } catch (error) {
-    return notMade(`the connector "${effect.connector}" isn't connected: ${errorMessage(error)}`);
+    const why = `the connector "${effect.connector}" isn't connected: ${errorMessage(error)}`;
+    return failed(why, { code: "connector-not-started", why: "other" });
   }
   return makeConnectorCall(connectors, boundary, effect, listedToolApproval, declared);
 }
 
-function notMade(why: string): ToolResult {
-  return { type: "tool", result: `The call wasn't made: ${why}.`, outcome: "error" };
+/** A call the engine didn't make, for `reason`; the model hears `why`. */
+function notMade(reason: ToolNotMadeReason, why: string): ToolResult {
+  return failed(why, { code: "not-made", why: reason });
+}
+
+function failed(why: string, cause: ToolFailureCause): ToolResult {
+  return { type: "tool", result: `The call wasn't made: ${why}.`, outcome: "error", cause };
 }
 
 /**

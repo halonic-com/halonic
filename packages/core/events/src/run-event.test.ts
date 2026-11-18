@@ -14,6 +14,7 @@ import type {
   RunTrigger,
   RunVersion,
   StoredBlob,
+  ToolFailureCause,
   ToolNoun,
   ToolOutcome,
   ToolRisk,
@@ -267,6 +268,8 @@ verifies("events.run-log-contract", () => {
       verb?: ToolVerb;
       // Added after the reference by events.tool-result-blob (HAL-1533).
       resultBlob?: StoredBlob;
+      // Added after the reference by events.tool-result-cause (HAL-12471).
+      cause?: ToolFailureCause;
     }>();
     expectTypeOf<EventOf<"approval.requested">>().toEqualTypeOf<{
       type: "approval.requested";

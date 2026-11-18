@@ -13,6 +13,7 @@ import type {
   RunParent,
   RunTrigger,
   RunVersion,
+  ToolFailureCause,
   ToolNoun,
   ToolOutcome,
   ToolRisk,
@@ -109,6 +110,8 @@ export interface ToolResult {
   readonly noun?: ToolNoun;
   /** What one call did to its noun, from the sheet only, for `tool.result`. */
   readonly verb?: ToolVerb;
+  /** Why the call failed, when the engine knows, for `tool.result` (requirement `engine.tool-result-cause`). */
+  readonly cause?: ToolFailureCause;
 }
 
 /**
