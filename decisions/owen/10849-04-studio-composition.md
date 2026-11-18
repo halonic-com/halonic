@@ -2,7 +2,6 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-10849 (board's yes on HAL-11378: the Studio runs harness agents in 0.1)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qbcG5n1Eoyq/6od1O8eG8ZCkGJvFEcsA8k4QXpn9Q7MhQk1EFTtUR7y2IUl6SDEb1kGzVNPsp8Q72PVsqPrJBw==
 - Task: HAL-10849
 
 `studio.engine-service` said the page refuses every workflow with an agent in a harness, because
