@@ -244,7 +244,7 @@ code=0; chroot "$root" su halonic -s /bin/sh -c "$updater import-unmount ${point
 [ "$code" -eq 2 ] || fail "halonic could unmount an import (exit $code)"
 chroot "$root" "$updater" import-unmount "${point##*/}" | grep -q '^unmounted' || fail "import-unmount failed"
 [ ! -e "$root$point" ] || fail "import-unmount left the mount point"
-rm "$root/usr/sbin/mount" "$root/tmp/mount-args"
+rm -f "$root/usr/sbin/mount" "$root/tmp/mount-args"
 # Import mounts a crash left behind: a folder named import- and 32 hex digits
 # goes; a project's folder, one with another name, a link and a folder holding
 # a file stay (the step never deletes contents); a second run changes nothing
