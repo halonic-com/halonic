@@ -190,7 +190,7 @@ verifies("routines.when.when-card", () => {
     };
     const page = await show(<WhenCard host={host} routine={changed} announce={() => {}} />);
     expect(page.textContent).toContain(
-      "Your new schedule isn't live yet. Until it is, the routine runs Weekdays at 07:30.",
+      "Your new schedule isn't live yet. Until it is, the routine keeps the live one: Weekdays at 07:30.",
     );
     unmount();
     const same = await show(
