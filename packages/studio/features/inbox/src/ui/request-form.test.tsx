@@ -1,13 +1,7 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
-import {
-  ClipboardProvider,
-  createToastStore,
-  PresentationProvider,
-  type ToastStore,
-  ToastStoreProvider,
-} from "@halonicjs/studio-kit";
+import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -18,112 +12,32 @@ import {
   type InboxRequests,
   type RequestWorkflow,
 } from "../request/inbox-requests.ts";
-import { pendingApproval, waitingRun } from "../test-runs.test-helper.ts";
+import { waitingRun } from "../test-runs.test-helper.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { InboxView } from "./inbox-page.tsx";
+import {
+  button,
+  message,
+  open,
+  requestsStarting,
+  send,
+  settled,
+  support,
+  travel,
+  type,
+} from "./request-form.test-helper.tsx";
+
+function fakeRequests(offered: readonly RequestWorkflow[], start?: InboxRequests["start"]) {
+  const started = vi.fn(start ?? (async () => ({ runId: "r9", hubId: "acme" })));
+  return { requests: requestsStarting(offered, started), started };
+}
 
 beforeEach(fakeModal);
 afterEach(() => {
   unmountAll();
   restoreModal();
 });
-
-const support: RequestWorkflow = {
-  key: "support/support-reply",
-  name: "Support reply",
-  label: "Answer a customer's email",
-  description: 'A customer\'s email, for example: "Hi, my order #1042 arrived damaged."',
-};
-const travel: RequestWorkflow = {
-  key: "ops/book-travel",
-  name: "Book travel",
-  label: "Book travel",
-};
-
-async function settled(): Promise<void> {
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
-}
-
-function fakeRequests(offered: readonly RequestWorkflow[], start?: InboxRequests["start"]) {
-  const started = vi.fn(start ?? (async () => ({ runId: "r9", hubId: "acme" })));
-  const requests: InboxRequests = {
-    offered: async () => offered,
-    subscribe: () => () => {},
-    start: started,
-  };
-  return { requests, started };
-}
-
-async function open(
-  requests: InboxRequests | undefined,
-  options: {
-    phone?: boolean;
-    openRun?: (hubId: string, runId: string) => void;
-    openBudget?: () => void;
-    writeClipboard?: (text: string) => Promise<boolean>;
-  } = {},
-) {
-  const toasts: ToastStore = createToastStore();
-  const waiting = waitingRun("r1", {
-    approvals: [pendingApproval("call-1", "notes-mcp__create_note", new Date().toISOString())],
-  });
-  const runs = fakeRuns([waiting]);
-  const inbox = new Inbox(runs.runs);
-  const view = (
-    <ToastStoreProvider store={toasts}>
-      <InboxView
-        inbox={inbox}
-        requests={requests}
-        openRun={options.openRun}
-        openBudget={options.openBudget}
-      />
-    </ToastStoreProvider>
-  );
-  const shown = options.phone ? (
-    <PresentationProvider presentation="phone">{view}</PresentationProvider>
-  ) : (
-    view
-  );
-  const root = render(
-    options.writeClipboard === undefined ? (
-      shown
-    ) : (
-      <ClipboardProvider writeClipboard={options.writeClipboard}>{shown}</ClipboardProvider>
-    ),
-  );
-  await settled();
-  return { root, toasts, runs, inbox };
-}
-
-function message(root: HTMLElement): HTMLTextAreaElement {
-  const found = root.querySelector("textarea");
-  if (found === null) throw new Error("no Message field");
-  return found;
-}
-
-async function type(field: HTMLTextAreaElement, text: string) {
-  await act(async () => {
-    const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
-    set?.call(field, text);
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-}
-
-function button(root: HTMLElement, name: string): HTMLButtonElement {
-  const found = [...root.querySelectorAll("button")].find((b) => b.textContent?.startsWith(name));
-  if (found === undefined) throw new Error(`no button "${name}"`);
-  return found;
-}
-
-async function send(root: HTMLElement) {
-  await act(async () => {
-    button(root, "Send").click();
-  });
-  await settled();
-}
 
 verifies("inbox.request", () => {
   describe("what the pane offers", () => {
@@ -491,52 +405,5 @@ verifies("inbox.request", () => {
       );
       expect(message(root).value).toBe("Keep me");
     });
-  });
-});
-
-verifies("inbox.request-not-started", () => {
-  it("says a failure it can't explain in plain words, with Copy details holding the error", async () => {
-    const { requests } = fakeRequests([support], async () => {
-      throw new TypeError("steps is undefined");
-    });
-    const writeClipboard = vi.fn(async (_text: string) => true);
-    const { root } = await open(requests, { writeClipboard });
-    await type(message(root), "Hello");
-    await send(root);
-    expect(root.querySelector('[role="alert"]')?.textContent).toBe(
-      "Not started: Halonic ran into a problem it can't explain yet. · Copy details",
-    );
-    expect(root.textContent).not.toContain("isn't answering");
-    await act(async () => button(root, "Copy details").click());
-    expect(writeClipboard).toHaveBeenCalledWith(expect.stringContaining("steps is undefined"));
-  });
-
-  it("offers Copy details in the phone's sheet too", async () => {
-    const { requests } = fakeRequests([support], async () => {
-      throw new TypeError("steps is undefined");
-    });
-    const { root } = await open(requests, { phone: true });
-    await act(async () => {
-      button(root, "New request").click();
-    });
-    await type(message(root), "Hello");
-    await send(root);
-    // The sheet's alert slot fills a frame later; the line's words are the desktop test's.
-    const sheet = root.querySelector("dialog");
-    expect([...(sheet?.querySelectorAll("button") ?? [])].map((b) => b.textContent)).toContain(
-      "Copy details",
-    );
-  });
-
-  it("lower-cases a common first word after the colon, with no Copy details", async () => {
-    const { requests } = fakeRequests([support], async () => {
-      throw new KindedError("conflict", "The workflow changed.");
-    });
-    const { root } = await open(requests);
-    await type(message(root), "Hello");
-    await send(root);
-    expect(root.querySelector('[role="alert"]')?.textContent).toBe(
-      "Not started: the workflow changed.",
-    );
   });
 });
