@@ -131,6 +131,13 @@ export type RunEventBody =
        * `events.tool-call-as-text`). That call never runs. Absent otherwise.
        */
       toolCallAsText?: true;
+      /**
+       * The provider's plain sentences on how it changed the call, such as
+       * a setting the model doesn't take (requirement
+       * `events.provider-notes`). Kept on every call they came with; shown
+       * once per run (`providerNotes`). Absent otherwise.
+       */
+      notes?: string[];
     }
   /**
    * The call moved on to the next model. `providerText`: the provider's own

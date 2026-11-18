@@ -287,6 +287,9 @@ async function askModel(
     ...(response.reasoning === undefined ? {} : { thoughts: response.reasoning }),
     ...(cost === undefined ? {} : { cost }),
     ...(isToolCallAsText(response, tools.byName) ? { toolCallAsText: true as const } : {}),
+    ...(response.notes === undefined || response.notes.length === 0
+      ? {}
+      : { notes: response.notes }),
   });
   return answer;
 }
