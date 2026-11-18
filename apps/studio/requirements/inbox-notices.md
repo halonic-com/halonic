@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1305; inbox.notices-section; HAL-11190
+- Source: HAL-1305; inbox.notices-section; HAL-11190; HAL-10915
 
-The Studio shall give the Inbox, for the open workspace, the failed routine runs in its run logs as notices, and the budget notices of `inbox.budget-notices` for the workspace's monthly budget, without the ones the person dismissed, each named by its routine, or by its workflow when the routine is gone. A request that the month's budget refuses shall not start a run (`inbox.budget-notices`). A dismissal shall be kept on this device, per workspace folder, as the notice's key and nothing else, and shall survive a restart. A dismissal shall not undo what another window of the same workspace dismissed, and a dismissal whose notice is gone shall be forgotten. When storage can't be read or written, a dismissal shall last until the window closes.
+The Studio shall give the Inbox, for the open workspace, the failed routine runs in its run logs as notices, and the budget notices of `inbox.budget-notices` for the workspace's monthly budget, without the ones the person dismissed (the month's used-up budget can't be dismissed, so a dismissal never hides it), each named by its routine, or by its workflow when the routine is gone. A request that the month's budget refuses shall not start a run (`inbox.budget-notices`). A dismissal shall be kept on this device, per workspace folder, as the notice's key and nothing else, and shall survive a restart. A dismissal shall not undo what another window of the same workspace dismissed, and a dismissal whose notice is gone shall be forgotten. When storage can't be read or written, a dismissal shall last until the window closes.
 
 ## Examples
 

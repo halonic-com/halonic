@@ -15,7 +15,10 @@ export interface RunBudgetNotice {
   readonly title: string;
 }
 
-/** The month's budget used up, as one row of the Inbox's Notices. It has **Change budget**, no run. */
+/**
+ * The month's budget used up, as one row of the Inbox's Notices. It has **Change budget**, no run
+ * and no ×: while it is true nothing starts, so it can't be dismissed, and it goes first.
+ */
 export interface MonthBudgetNotice {
   readonly kind: "budget-month";
   /** `budget-month:<YYYY-MM>:<limit>`: a raised budget that runs out again is a new notice. */
@@ -46,6 +49,41 @@ export interface BudgetNoticeFacts {
 /** The run budget's own error: "Run budget reached: 5.08 of 5.00 EUR spent." */
 const runBudgetError =
   /^Run budget reached: (\d+(?:\.\d+)?) of (\d+(?:\.\d+)?) ([A-Za-z]{3}) spent\.$/;
+
+/** The monthly budget's own error, for a run logged before the typed cause. */
+const monthlyBudgetError = /^Monthly budget reached: /;
+
+/** What the run budget's stop says of a run: its limit, its spend and their currency. */
+interface RunBudgetStop {
+  readonly limit: number;
+  readonly spent: number;
+  readonly currency: string;
+}
+
+/**
+ * How the run budget stopped `run`: from its typed cause (`budget.run`, requirement
+ * `engine.budget-stops`), else from the error of a run logged before the cause. `null` when the
+ * monthly budget stopped it, `"no-amounts"` when neither says the amounts.
+ */
+function runBudgetStop(run: RunSummary): RunBudgetStop | "no-amounts" | null {
+  const { cause } = run;
+  if (cause?.code === "budget.month") return null;
+  if (cause?.code === "budget.run") {
+    const limit = Number(cause.detail?.["limit"]);
+    const spent = Number(cause.detail?.["spent"]);
+    const currency = cause.detail?.["currency"];
+    if (Number.isFinite(limit) && Number.isFinite(spent) && currency !== undefined) {
+      return { limit, spent, currency };
+    }
+    return "no-amounts";
+  }
+  const error = run.error ?? "";
+  if (monthlyBudgetError.test(error)) return null;
+  const stop = runBudgetError.exec(error);
+  if (stop === null) return "no-amounts";
+  const [, spent, limit, currency] = stop;
+  return { limit: Number(limit), spent: Number(spent), currency: currency ?? "" };
+}
 
 /**
  * The monthly budget's use this month, or `undefined` with no monthly budget. Test runs and runs of
@@ -100,7 +138,7 @@ function nextMonthStart(now: Date): string {
 /**
  * The budget notices in these runs (requirement `inbox.budget-notices`): one per top-level run
  * this month that the run budget stopped, and one when the month's spend has reached the monthly
- * budget. Newest first. A run the monthly budget stopped has no row of its own: the month's row says it.
+ * budget. The month's row first, then newest first. A run the monthly budget stopped has no row of its own: the month's row says it.
  *
  * @example
  * budgetNotices(summaries, { monthly, workflowName, now: new Date() });
@@ -116,16 +154,17 @@ export function budgetNotices(
     if (run.kind !== "run" || run.parentRunId !== null) continue;
     if (run.status !== "failed" || run.reason !== "budget" || run.endedAt === null) continue;
     if (monthOf(run.endedAt) !== month) continue;
-    const stop = runBudgetError.exec(run.error ?? "");
+    const stop = runBudgetStop(run);
     if (stop === null) continue;
-    const [, spent, limit, currency] = stop;
+    const amounts =
+      stop === "no-amounts" ? "" : ` · ${reachedPerRun(stop.limit, stop.spent, stop.currency)}`;
     notices.push({
       kind: "budget-run",
       key: `budget-run:${run.id}`,
       runId: run.id,
       hubId: run.hubId,
       at: run.endedAt,
-      title: `${facts.workflowName(run)} stopped at its estimated budget · ${reachedPerRun(Number(limit), Number(spent), currency)} · ${ago(run.endedAt, now)}`,
+      title: `${facts.workflowName(run)} stopped at its estimated budget${amounts} · ${ago(run.endedAt, now)}`,
     });
   }
   const use = monthBudgetUse(runs, facts.monthly, now);
