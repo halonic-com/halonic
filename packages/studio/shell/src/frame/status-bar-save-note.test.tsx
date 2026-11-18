@@ -125,6 +125,25 @@ verifies("shell.save-note", () => {
     expect(compare).toHaveBeenCalledOnce();
   });
 
+  it("marks a problem with its mark's tone, so the bar can take its fill", async () => {
+    const tone = () => note.firstElementChild?.getAttribute("data-problem");
+    expect(tone()).toBeNull();
+
+    act(() => saving.setFieldsNotSaved(supportReply, 2));
+    expect(tone()).toBe("warning");
+    act(() => saving.setFieldsNotSaved(supportReply, 0));
+    act(() => saving.holdForOutsideChange(sorter, vi.fn()));
+    expect(tone()).toBe("warning");
+
+    await failSave(supportReply);
+    expect(tone()).toBe("danger");
+  });
+
+  it("fits its action into the 24px status bar", async () => {
+    await failSave(supportReply);
+    expect(note.querySelector("button")?.className).toContain("min-h-statusbar");
+  });
+
   it("shows fields not saved with a warning mark and no button", () => {
     act(() => saving.setFieldsNotSaved(supportReply, 2));
     expect(spoken()).toBe("Warning 2 fields not saved");
