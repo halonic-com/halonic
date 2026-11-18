@@ -6,7 +6,14 @@ import { limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { type RoutinesHost, RoutinesHostService, type RoutineView } from "../api.ts";
+import {
+  EngineNotAnswering,
+  type RoutinesHost,
+  RoutinesHostService,
+  type RoutineView,
+  type RunNowRefusal,
+  type RunNowResult,
+} from "../api.ts";
 import { routinesFeature } from "../feature.ts";
 import {
   buttonNamed,
@@ -259,7 +266,7 @@ function hostWithTrash() {
   return { host: withTrash, save };
 }
 
-async function showWithToasts(host: RoutinesHost) {
+async function showWithToasts(host: RoutinesHost, openRun?: (runId: string) => void) {
   const toasts = createToastStore();
   const page = await show(
     <ToastStoreProvider store={toasts}>
@@ -269,6 +276,7 @@ async function showWithToasts(host: RoutinesHost) {
         id="daily"
         announce={() => {}}
         goToRoutines={() => {}}
+        {...(openRun && { openRun })}
       />
     </ToastStoreProvider>,
   );
@@ -355,10 +363,86 @@ verifies("routines.page.rename-and-delete", () => {
       action: { label: "Undo" },
     });
     expect(page.textContent).toContain("This routine isn't in this workspace any more.");
+    expect(document.activeElement?.textContent).toContain("isn't in this workspace any more");
 
     await act(async () => toasts.list()[0]?.action?.onClick());
     await settle();
 
     expect(nameField(page).value).toBe("Daily");
+    expect(document.activeElement?.tagName).toBe("H1");
+  });
+});
+
+/** A host that reads "Daily" and answers Run now with `answer`, or rejects with it when it is an error. */
+function hostRunning(answer: RunNowResult | Error, view: RoutineView = daily) {
+  const { host } = hostReading(() => view);
+  const runNow = vi.fn(async () => {
+    if (answer instanceof Error) throw answer;
+    return answer;
+  });
+  return { host: { ...host, runNow } as RoutinesHost, runNow };
+}
+
+const runNowButton = (page: HTMLElement) => buttonNamed(page, "Run now");
+
+verifies("routines.page.run-now", () => {
+  it("shows no Run now while the host has no engine", async () => {
+    const page = await show(screenOf(hostReading(() => daily).host));
+
+    expect(runNowButton(page)).toBeUndefined();
+  });
+
+  it("starts the run, also while the routine is off, and offers Open run", async () => {
+    const opened: string[] = [];
+    const { host, runNow } = hostRunning(
+      { started: true, runId: "run_1", shortId: "abc123" },
+      { ...daily, enabled: false },
+    );
+    const { page, toasts } = await showWithToasts(host, (runId) => opened.push(runId));
+
+    await act(async () => runNowButton(page)?.click());
+
+    expect(runNow).toHaveBeenCalledWith(expect.objectContaining({ hubId: "acme", id: "daily" }));
+    expect(toasts.list()[0]).toMatchObject({
+      title: "Run started · Daily · Run abc123",
+      action: { label: "Open run" },
+    });
+    toasts.list()[0]?.action?.onClick();
+    expect(opened).toEqual(["run_1"]);
+  });
+
+  it("says the one reason a refusal gives, and the toast stays", async () => {
+    const refusals: [RunNowRefusal, string][] = [
+      [{ reason: "target-never-live" }, "Not started: Briefing isn't live yet."],
+      [{ reason: "target-in-trash" }, "Not started: Briefing is in the trash."],
+      [{ reason: "target-not-found" }, "Not started: Briefing isn't in this hub any more."],
+      [{ reason: "not-trusted" }, "Not started: Daily isn't trusted yet."],
+      [
+        { reason: "signed-out", account: "fin@acme.example" },
+        "Not started: fin@acme.example is signed out.",
+      ],
+    ];
+    for (const [refusal, title] of refusals) {
+      const { host } = hostRunning({ started: false, refusal });
+      const { page, toasts } = await showWithToasts(host);
+
+      await act(async () => runNowButton(page)?.click());
+
+      expect(toasts.list()[0]).toMatchObject({ title, sticky: true });
+      unmount();
+    }
+  });
+
+  it("says when the engine isn't answering", async () => {
+    const { host } = hostRunning(new EngineNotAnswering());
+    const { page, toasts } = await showWithToasts(host);
+
+    await act(async () => runNowButton(page)?.click());
+
+    expect(toasts.list()[0]).toMatchObject({
+      title: "Couldn't start Daily.",
+      text: "The engine isn't answering.",
+      sticky: true,
+    });
   });
 });

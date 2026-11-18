@@ -9,7 +9,7 @@ import {
   useToastStore,
 } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, NameField } from "@halonicjs/studio-shell";
-import { type RefObject, useCallback, useRef } from "react";
+import { type RefObject, useCallback, useEffect, useRef } from "react";
 import { type RoutinesHost, RoutinesHostService, type RoutineView } from "../api.ts";
 import { Avatar } from "../list/routine-rows.tsx";
 import { trashRoutine } from "../list/trash-routine.ts";
@@ -17,11 +17,12 @@ import { RulesSection } from "../rules/rules-section.tsx";
 import { StartsCard } from "../starts/starts-card.tsx";
 import { WhenCard } from "../when/when-card.tsx";
 import { failureReason, pageWords } from "./page-words.ts";
+import { runRoutineNow } from "./run-now.ts";
 import { useRoutine } from "./use-routine.ts";
 
 /** The routine's page in its tab: `item` names the routine, the host gives its fields. */
 export function RoutinePage({ item, context }: ItemViewProps) {
-  const { openPlace } = context;
+  const { openPlace, openItem } = context;
   return (
     <RoutineScreen
       host={context.services.get(RoutinesHostService)}
@@ -29,6 +30,9 @@ export function RoutinePage({ item, context }: ItemViewProps) {
       id={item.id}
       announce={(text) => context.announcer.announce(text)}
       {...(openPlace && { goToRoutines: () => openPlace("routines") })}
+      {...(openItem && {
+        openRun: (runId: string) => openItem({ kind: "run", hub: item.hub, id: runId }),
+      })}
     />
   );
 }
@@ -42,6 +46,8 @@ export interface RoutineScreenProps {
   readonly announce: (text: string) => void;
   /** Opens the Routines list, for a routine that isn't there any more; without it the page can't offer that. */
   readonly goToRoutines?: () => void;
+  /** Opens a run's page, for the Run now toast's **Open run**; without it the toast has no such button. */
+  readonly openRun?: (runId: string) => void;
 }
 
 /**
@@ -50,11 +56,29 @@ export interface RoutineScreenProps {
  * "isn't live yet" notice, then the When card, the Starts card and the Rules. While the file is read a skeleton shows after 300 ms; a routine that
  * can't be read says why, and one that is gone says so with a way back to Routines.
  */
-export function RoutineScreen({ host, hubId, id, announce, goToRoutines }: RoutineScreenProps) {
+export function RoutineScreen({
+  host,
+  hubId,
+  id,
+  announce,
+  goToRoutines,
+  openRun,
+}: RoutineScreenProps) {
   // After a Try again reads, the routine's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
   const focusTitle = useCallback(() => title.current?.focus(), []);
   const { load, retry } = useRoutine(host, { hubId, id }, focusTitle);
+  // After Undo brings a deleted routine back, its name takes the focus once the page is drawn again.
+  const focusWhenBack = useRef(false);
+  const ready = load.kind === "ready";
+  useEffect(() => {
+    if (!ready || !focusWhenBack.current) return;
+    focusWhenBack.current = false;
+    focusTitle();
+  }, [ready, focusTitle]);
+  const restored = useCallback(() => {
+    focusWhenBack.current = true;
+  }, []);
   if (load.kind === "failed" && load.gone && goToRoutines !== undefined) {
     return <ItemGone kindName="routine" place="Routines" onGoTo={goToRoutines} />;
   }
@@ -66,6 +90,8 @@ export function RoutineScreen({ host, hubId, id, announce, goToRoutines }: Routi
         routine={load.kind === "ready" ? load.routine : undefined}
         name={name}
         title={title}
+        onRestored={restored}
+        openRun={openRun}
       />
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-6 py-4">
         {load.kind === "ready" && <Summary routine={load.routine} />}
@@ -124,7 +150,7 @@ function Summary({ routine }: { readonly routine: RoutineView }) {
 
 /**
  * The page's header: the avatar, "ROUTINE" and the name, which is a rename field once the routine
- * is read, then its ⋮ menu with Delete. On a phone the top bar already names the routine, so the
+ * is read, then its ⋮ menu with Delete and **Run now** at the right (only where the host can start a run). On a phone the top bar already names the routine, so the
  * page keeps only its type.
  */
 function RoutineHeader({
@@ -132,12 +158,17 @@ function RoutineHeader({
   routine,
   name,
   title,
+  onRestored,
+  openRun,
 }: {
   readonly host: RoutinesHost;
   /** The routine, once it is read; before that the header shows the id and has no menu. */
   readonly routine: RoutineView | undefined;
   readonly name: string;
   readonly title: RefObject<HTMLHeadingElement | null>;
+  /** Called once Undo has put a deleted routine back. */
+  readonly onRestored: () => void;
+  readonly openRun: ((runId: string) => void) | undefined;
 }) {
   const phone = usePresentation() === "phone";
   const toasts = useToastStore();
@@ -183,7 +214,7 @@ function RoutineHeader({
                 id: "delete",
                 label: pageWords.delete,
                 danger: true,
-                onSelect: () => void trashRoutine(host, toasts, routine),
+                onSelect: () => void trashRoutine(host, toasts, routine, { onRestored }),
               },
             ]}
             trigger={(trigger) => (
@@ -198,6 +229,17 @@ function RoutineHeader({
           />
         )}
       </div>
+      {routine !== undefined && host.runNow !== undefined && (
+        <div className="ml-auto">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void runRoutineNow(host, toasts, routine, openRun)}
+          >
+            {pageWords.runNow}
+          </Button>
+        </div>
+      )}
     </header>
   );
 }

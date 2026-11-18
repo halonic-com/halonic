@@ -364,7 +364,11 @@ verifies("studio.workspace-routines", () => {
         },
       },
     });
-    expect(await host.runNow?.(weekly)).toEqual({ started: true, runId: "run-1" });
+    expect(await host.runNow?.(weekly)).toEqual({
+      started: true,
+      runId: "run-1",
+      shortId: "run-1",
+    });
     expect(started).toEqual([["analyst", "acme/weekly-report"]]);
 
     const gone = setup({ engine: { start: async () => ({ id: "x" }) } }, [], {
