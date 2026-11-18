@@ -42,6 +42,11 @@ interface DialogCommonProps {
   /** "Delete agent?", "New agent". The dialog's name. */
   readonly title: string;
   readonly size?: DialogSize;
+  /**
+   * `top` sits the box a fixed distance from the top of the window, so a body that grows while
+   * the person types grows downward and the fields above it stay put. Default `center`.
+   */
+  readonly anchor?: "center" | "top";
   /** A fixed height in px instead of one that follows the content (Settings: 640). Not on a phone. */
   readonly height?: number;
   /** No body padding, for a body that lays out and scrolls its own columns (Settings). */

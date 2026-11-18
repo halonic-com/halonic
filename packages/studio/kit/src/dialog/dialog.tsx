@@ -9,6 +9,8 @@ import { retryAction } from "./retry-action.ts";
 import { useCancelEvents } from "./use-cancel-events.ts";
 import { useModal } from "./use-modal.ts";
 
+const anchorClasses = { center: "m-auto", top: "mx-auto mt-[12vh] mb-auto" } as const;
+
 const sizeClasses: Record<DialogSize, string> = {
   sm: "w-dialog-sm",
   md: "w-dialog-md",
@@ -20,7 +22,7 @@ const sizeClasses: Record<DialogSize, string> = {
  * `<dialog>` stays hidden.
  */
 const frame = [
-  "dialog-frame m-auto flex-col overflow-hidden rounded-lg border border-transparent p-0",
+  "dialog-frame flex-col overflow-hidden rounded-lg border border-transparent p-0",
   "bg-surface-raised text-fg shadow-3 open:flex",
   "transition-opacity duration-(--duration-base) ease-(--ease-enter) starting:opacity-0",
   "backdrop:bg-overlay backdrop:transition-opacity backdrop:duration-(--duration-base)",
@@ -66,7 +68,7 @@ export function Dialog(props: DialogProps) {
 
 /** The centred box: every Dialog on desktop, and a confirmation on a phone. */
 function DialogBox(props: DialogProps) {
-  const { size = "sm", flush = false, form = false, busy = false } = props;
+  const { size = "sm", anchor = "center", flush = false, form = false, busy = false } = props;
   const phone = usePresentation() === "phone";
   const ids = { title: useId(), body: useId(), footnote: useId(), confirm: useId() };
   const dialog = useRef<HTMLDialogElement>(null);
@@ -149,7 +151,7 @@ function DialogBox(props: DialogProps) {
       ref={dialog}
       aria-labelledby={ids.title}
       aria-describedby={describedBy(props, ids)}
-      className={`${frame} ${sizeClasses[size]}${props.height === undefined || phone ? "" : " dialog-height"}`}
+      className={`${frame} ${anchorClasses[anchor]} ${sizeClasses[size]}${props.height === undefined || phone ? "" : " dialog-height"}`}
       style={heightStyle(props.height, phone)}
       {...events}
     >

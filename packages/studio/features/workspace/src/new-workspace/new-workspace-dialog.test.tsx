@@ -118,6 +118,23 @@ verifies("workspace.new-workspace-dialog", () => {
     expect(seen.created).toEqual(["~/Documents/Acme Support"]);
   });
 
+  it("keeps Name where it is: the box sits at the top and the note reserves 3 lines", async () => {
+    await show({ state: "not-empty" });
+    await type("Quarterly Review of Escalations and Refunds");
+    const dialog = document.querySelector("dialog");
+    expect(dialog?.className).toContain("mt-[12vh]");
+    expect(dialog?.className).not.toContain("m-auto");
+    const note = [...document.querySelectorAll("p")].find((p) =>
+      p.textContent?.startsWith("This folder isn't empty."),
+    );
+    expect(note?.className).toContain("min-h-15");
+    const folder = [...document.querySelectorAll("span")].find((s) =>
+      s.textContent?.endsWith("Quarterly Review of Escalations and Refunds"),
+    );
+    expect(folder?.className).toContain("break-all");
+    expect(folder?.className).not.toContain("truncate");
+  });
+
   it("reads Create here for a folder with files and Open it for a workspace", async () => {
     const seen = await show({ state: "not-empty" });
     await type("Acme");

@@ -235,6 +235,7 @@ export function NewWorkspaceDialog({
     <Dialog
       title={NEW_WORKSPACE_TITLE}
       size="md"
+      anchor="top"
       form
       confirm={{
         label: BUTTON[state],
