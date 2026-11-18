@@ -86,6 +86,27 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
         ? { status: "ready", version: "" }
         : (options.readiness?.[harness] ?? { status: "ready", version: "1.0.0" });
     },
+    filePath: async (ref) => {
+      found(ref);
+      return `hubs/${ref.hubId}/agents/${ref.id}.agent.yaml`;
+    },
+    trash: async (ref) => {
+      const agent = found(ref);
+      agents.delete(keyOf(ref));
+      for (const listener of listeners) listener();
+      let newest = true;
+      return {
+        // Like the app's: the delete has to be the newest change to be undone.
+        undo: async () => {
+          if (!newest || agents.has(keyOf(ref))) {
+            throw new KindedError("conflict", `${agent.name} can't be put back.`);
+          }
+          newest = false;
+          agents.set(keyOf(ref), agent);
+          for (const listener of listeners) listener();
+        },
+      };
+    },
     nameOf: (ref) => agents.get(keyOf(ref))?.name,
     referencesTo: async (ref) => {
       found(ref);

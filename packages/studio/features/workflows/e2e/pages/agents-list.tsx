@@ -53,6 +53,8 @@ const host: AgentsHost = {
   modelAliases: async () => ["fast", "smart"],
   defaultModel: async () => "fast",
   harnessReadiness: async () => ({ status: "ready", version: "1.0.0" }),
+  filePath: async (ref) => `hubs/${ref.hubId}/agents/${ref.id}.agent.yaml`,
+  trash: async () => ({ undo: async () => undefined }),
   referencesTo: async () => [],
   subscribe: () => () => undefined,
   create: async ({ hubId, name }) => ({ hubId, id: name.toLowerCase() }),
