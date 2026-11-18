@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { FileAgentPlacementStore } from "@halonicjs/adapter-fs-node";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { AgentPlacement } from "@halonicjs/app";
-import { type ProfileEnvironment, type ProfileFolder, profileFolder } from "@halonicjs/profile";
+import { type ProfileEnvironment, placementFolder, profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { SandboxGateMachine } from "./sandbox-gate.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
@@ -17,15 +17,6 @@ import { isWslShare } from "./wsl.ts";
 
 /** What the sandbox check reads that isn't the workspace's: the sandbox and the person's choices. */
 export type SandboxGateHost = Pick<SandboxGateMachine, "sandbox" | "placement" | "wslDistro">;
-
-/**
- * The folder of the "On this computer" choices, `placements` in the profile
- * folder, never inside a workspace, so a pull can't make one (fs-node's
- * `FileAgentPlacementStore`).
- */
-export function placementFolder(profile: ProfileFolder): string {
-  return join(profile.root, "placements");
-}
 
 /**
  * This computer's sandbox and choices, in the profile from `environment`,

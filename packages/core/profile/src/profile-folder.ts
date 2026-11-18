@@ -38,6 +38,9 @@ const settingsFolderName = "settings";
 /** The name of the folder in the profile that holds the approvals of listed tools. */
 const toolApprovalFolderName = "tool-approvals";
 
+/** The name of the folder in the profile that holds each agent's "this computer" choice. */
+const placementFolderName = "placements";
+
 /** The name of the folder in the profile that holds each connector's settings. */
 const connectionSettingsFolderName = "connections";
 
@@ -206,6 +209,23 @@ export function sharedRunnerTempFolder(profile: ProfileFolder): string | undefin
  */
 export function toolApprovalFolder(profile: ProfileFolder): string {
   return joinPath(profile.platform, profile.root, toolApprovalFolderName);
+}
+
+/**
+ * The folder for each agent's "this computer" choice, `placements` in the
+ * profile folder. The CLI and the agent host both keep them there, never
+ * inside a workspace, so an agent that edits the workspace can't take itself
+ * out of its sandbox.
+ *
+ * @param profile - the profile folder, from {@link profileFolder}
+ * @returns the placement folder, joined the profile's way; nothing is created
+ *
+ * @example
+ * placementFolder({ platform: "linux", root: "/srv/acme/.local/share/halonic" });
+ * // "/srv/acme/.local/share/halonic/placements"
+ */
+export function placementFolder(profile: ProfileFolder): string {
+  return joinPath(profile.platform, profile.root, placementFolderName);
 }
 
 /**
