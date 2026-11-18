@@ -3,6 +3,7 @@
 - Task: HAL-12239
 - Approval: Liam approved it in decision 15 of the phase B build plan on HAL-12232 (https://paperclip.halonic.com/HAL/issues/HAL-12232#document-plan): "Tests check it against upstream's sample matrices and decode its output with `jsqr`, a dev-only dependency (category `dev-tooling`, which I approve)."
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:RGgHLR/SvD7NV2BW4fY5DIpb5Rap1AkFssN746RvpiQ1E+kBZjEtUtlR6td9mO/Ra2ZnVfJJwhgrF4pZ/wKTBQ==
 
 ## What changes
 
