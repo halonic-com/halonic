@@ -3,6 +3,7 @@
 - Task: HAL-10915
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12735 (Sofia's UX acceptance rows B2 and B4, built on the approved flow-inbox 4.1 and 4.3; a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iUJ6XuN+ECq6Dby92xnZlMNzbcCS5VP92Yj6ggCvvXUmhhGn4ZPeVCZ18lidr8de+ofm4OG6wQIf8XIvplOBBg==
 
 ## What changes
 
