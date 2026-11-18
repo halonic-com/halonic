@@ -10,7 +10,12 @@ import {
 } from "../lib/cargo-notices.ts";
 import type { DependencyList } from "../lib/config-files.ts";
 import { readDeny } from "../lib/deny.ts";
-import type { LicencePolicy } from "../lib/licences.ts";
+import {
+  type GradleLicences,
+  gradleNoticeEntries,
+  gradlePolicyProblems,
+} from "../lib/gradle-notices.ts";
+import { type LicencePolicy, licenceTextPath } from "../lib/licences.ts";
 import {
   findDanglingRefs,
   findSbomProblems,
@@ -19,13 +24,14 @@ import {
   renderNotices,
   type Sbom,
   vendoredNotices,
+  withOwnLicence,
   withProduct,
 } from "../lib/sbom.ts";
 import { findRepoRoot, listWorkspacePackages, readJson } from "../lib/workspace.ts";
 
 /**
  * pnpm check:sbom --name <product> --version <v> --out <dir> [--package <name>]
- *   [--notices [--cargo <dir> --cargo-target <triple>]...]
+ *   [--notices [--cargo <dir> --cargo-target <triple>]... [--gradle <file>] [--with-licence]]
  *
  * Release step. Writes `<product>-<v>.cdx.json` (CycloneDX, made by
  * `pnpm sbom`, so no extra tool) for the production dependencies of one
@@ -41,6 +47,12 @@ import { findRepoRoot, listWorkspacePackages, readJson } from "../lib/workspace.
  * `<dir>` links for each `--cargo-target` (HAL-6289), read with `cargo
  * metadata`, which fetches them on a clean machine. It fails when a crate's
  * licence is not allowed by `<dir>/deny.toml` or a crate has no licence text.
+ *
+ * With `--gradle` the notices also list the Android app's Gradle libraries,
+ * from the file its `thirdPartyLicences` task writes (HAL-12585). It fails on
+ * a licence that `gradle` in `tooling/check/licences.json` doesn't allow.
+ * `--with-licence` puts our own `LICENSE` and `NOTICE` at the top, for the
+ * APK, which ships one file.
  */
 
 interface LicenceListEntry {
@@ -168,6 +180,79 @@ function crateEntries(
   return { entries, problems };
 }
 
+/** The Gradle libraries of the file at `path`, and what is wrong with them or the policy. */
+function gradleEntries(root: string, path: string): { entries: NoticeEntry[]; problems: string[] } {
+  const policy = readJson<LicencePolicy>(join(root, "tooling/check/licences.json"));
+  const gradle = policy.gradle ?? { names: {}, proprietary: [] };
+  const allowed = new Set(policy.shipped);
+  const found = gradleNoticeEntries(readJson<GradleLicences>(resolve(path)), {
+    policy: gradle,
+    allowed,
+    text: (spdx) => {
+      const file = join(root, licenceTextPath(spdx));
+      return existsSync(file) ? readFileSync(file, "utf8") : undefined;
+    },
+  });
+  return {
+    entries: found.entries,
+    problems: [...gradlePolicyProblems(gradle, allowed), ...found.problems],
+  };
+}
+
+/** Writes THIRD-PARTY-NOTICES.txt into `out` and returns how many problems it found. */
+function writeNotices(
+  root: string,
+  out: string,
+  argv: readonly string[],
+  report: (title: string, found: readonly string[]) => void,
+): number {
+  const scope = scopeOf(option(argv, "--package"));
+  const cargo = options(argv, "--cargo");
+  const gradle = option(argv, "--gradle");
+  const sections: NoticeSection[] = [
+    { title: "npm packages", entries: noticeEntries(root, scope) },
+  ];
+  const problems: string[] = [];
+  if (cargo.length > 0) {
+    const crates = crateEntries(root, cargo, options(argv, "--cargo-target"));
+    sections.push({ title: "Rust crates", entries: crates.entries });
+    problems.push(...crates.problems);
+  }
+  if (gradle !== undefined) {
+    const libraries = gradleEntries(root, gradle);
+    sections.push({ title: "Android libraries (Gradle)", entries: libraries.entries });
+    problems.push(...libraries.problems);
+  }
+  const policy = readJson<LicencePolicy>(join(root, "tooling/check/licences.json"));
+  const vendored = vendoredNotices(policy.vendored ?? [], (path) =>
+    readFileSync(join(root, path), "utf8"),
+  );
+  if (vendored.length > 0) {
+    sections.push({ title: "Vendored files", entries: vendored });
+  }
+  report("notices", problems);
+  const notices = renderNotices("Halonic", sections);
+  writeFileSync(
+    join(out, "THIRD-PARTY-NOTICES.txt"),
+    argv.includes("--with-licence")
+      ? withOwnLicence(
+          "Halonic",
+          readFileSync(join(root, "LICENSE"), "utf8"),
+          readFileSync(join(root, "NOTICE"), "utf8"),
+          notices,
+        )
+      : notices,
+  );
+  console.log(
+    `check:sbom: notices for ${sections.map((section) => `${section.entries.length} ${section.title}`).join(" and ")}, ${problems.length} problem(s).`,
+  );
+  return problems.length;
+}
+
+function scopeOf(product: string | undefined): string[] {
+  return product === undefined ? ["--recursive"] : ["--filter", product];
+}
+
 function main(argv: readonly string[]): number {
   const version = option(argv, "--version");
   const out = option(argv, "--out");
@@ -180,15 +265,16 @@ function main(argv: readonly string[]): number {
     name === undefined ||
     version === undefined ||
     out === undefined ||
-    (cargo.length > 0 && (!notices || targets.length === 0))
+    (cargo.length > 0 && (!notices || targets.length === 0)) ||
+    (!notices && (argv.includes("--gradle") || argv.includes("--with-licence")))
   ) {
     console.error(
-      "Usage: pnpm check:sbom --name <product> --version <v> --out <dir> [--package <name>] [--notices [--cargo <dir> --cargo-target <triple>]...]",
+      "Usage: pnpm check:sbom --name <product> --version <v> --out <dir> [--package <name>] [--notices [--cargo <dir> --cargo-target <triple>]... [--gradle <file>] [--with-licence]]",
     );
     return 2;
   }
   const root = findRepoRoot();
-  const scope = product === undefined ? ["--recursive"] : ["--filter", product];
+  const scope = scopeOf(product);
   mkdirSync(out, { recursive: true });
   const sbomPath = join(out, `${name}-${version}.cdx.json`);
   pnpm(root, ["sbom", ...scope, "--sbom-format", "cyclonedx", "--prod", "--out", sbomPath]);
@@ -212,30 +298,8 @@ function main(argv: readonly string[]): number {
   console.log(
     `check:sbom: ${problems.length} problem(s) in ${sbom.components?.length ?? 0} component(s), written to ${sbomPath}.`,
   );
-  let crateProblems = 0;
-  if (notices) {
-    const sections: NoticeSection[] = [
-      { title: "npm packages", entries: noticeEntries(root, scope) },
-    ];
-    if (cargo.length > 0) {
-      const crates = crateEntries(root, cargo, targets);
-      sections.push({ title: "Rust crates", entries: crates.entries });
-      report("notices", crates.problems);
-      crateProblems = crates.problems.length;
-    }
-    const policy = readJson<LicencePolicy>(join(root, "tooling/check/licences.json"));
-    const vendored = vendoredNotices(policy.vendored ?? [], (path) =>
-      readFileSync(join(root, path), "utf8"),
-    );
-    if (vendored.length > 0) {
-      sections.push({ title: "Vendored files", entries: vendored });
-    }
-    writeFileSync(join(out, "THIRD-PARTY-NOTICES.txt"), renderNotices("Halonic", sections));
-    console.log(
-      `check:sbom: notices for ${sections.map((section) => `${section.entries.length} ${section.title}`).join(" and ")}, ${crateProblems} problem(s).`,
-    );
-  }
-  return problems.length === 0 && crateProblems === 0 ? 0 : 1;
+  const noticeProblems = notices ? writeNotices(root, out, argv, report) : 0;
+  return problems.length === 0 && noticeProblems === 0 ? 0 : 1;
 }
 
 process.exitCode = main(process.argv.slice(2));

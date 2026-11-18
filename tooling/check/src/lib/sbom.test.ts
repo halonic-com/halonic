@@ -7,6 +7,7 @@ import {
   type NoticeEntry,
   type NoticeSection,
   renderNotices,
+  withOwnLicence,
   withProduct,
 } from "./sbom.ts";
 
@@ -256,5 +257,20 @@ describe("withProduct", () => {
 
   test("adds the product when the SBOM has no metadata", () => {
     expect(withProduct({}, "halonic-cli", "1.0.0").metadata?.component?.name).toBe("halonic-cli");
+  });
+});
+
+describe("withOwnLicence", () => {
+  test("puts our licence and notice above the third-party notices, each set apart", () => {
+    const text = withOwnLicence(
+      "Acme",
+      "Apache License\r\n",
+      "Acme, Copyright 2026\n",
+      "Acme includes …\n",
+    );
+    const rule = "=".repeat(72);
+    expect(text).toBe(
+      `Acme is licensed under the following licence.\n\n${rule}\n\nApache License\n\n${rule}\n\nAcme, Copyright 2026\n\n${rule}\n\nAcme includes …\n`,
+    );
   });
 });
