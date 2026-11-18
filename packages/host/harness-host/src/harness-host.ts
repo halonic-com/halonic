@@ -38,6 +38,8 @@ export interface HarnessHostInput {
   readonly bridgeServer: HarnessBridgeServer;
   /** What each agent's bridge serves: its providers, prices, tools and approvals. */
   readonly services: BridgeServicesSource;
+  /** Hears of a bridge failure the run log couldn't record (requirement `harness-host.bridge-failures`); it must not throw. */
+  readonly reportError: (error: unknown) => void;
   readonly profiles: HarnessProfileBuilder;
   /** The person's home folder, for `~` in sandbox events; `null` when unknown. */
   readonly home: string | null;
@@ -120,7 +122,11 @@ export function harnessHostOf(input: HarnessHostInput): HarnessHost {
     placement,
     sandboxes: input.sandboxes,
     harnesses: input.harnesses,
-    bridges: new LocalBridgeHost({ server: input.bridgeServer, services: input.services }),
+    bridges: new LocalBridgeHost({
+      server: input.bridgeServer,
+      services: input.services,
+      reportError: input.reportError,
+    }),
     profiles: input.profiles,
     home: input.home,
     ...(input.instructions === undefined ? {} : { instructions: input.instructions }),

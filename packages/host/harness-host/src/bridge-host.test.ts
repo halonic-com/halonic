@@ -26,6 +26,7 @@ function setup() {
         return services;
       },
     },
+    reportError: () => {},
   });
   return { server, asked, host };
 }
@@ -69,6 +70,7 @@ verifies("harness-host.bridge", () => {
         },
       },
       services: { servicesFor: () => services },
+      reportError: () => {},
     });
 
     await expect(host.open(writer, recorder)).rejects.toThrow("Can't listen on loopback.");

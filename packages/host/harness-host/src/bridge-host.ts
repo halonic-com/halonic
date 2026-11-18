@@ -52,17 +52,30 @@ export interface BridgeServicesSource {
  * Opens each harness run's bridge on this computer, with the services the
  * host gives for its agent.
  *
+ * A request the bridge failed without naming the reason to the program goes
+ * to the run log as a `bridge.failed`, and to `reportError` when the run log
+ * can't take it.
+ *
  * @example
- * const bridges = new LocalBridgeHost({ server, services });
+ * const bridges = new LocalBridgeHost({ server, services, reportError });
  * const bridge = await bridges.open(agent, recorder);
  */
 export class LocalBridgeHost implements HarnessBridgeHost {
   readonly #server: HarnessBridgeServer;
   readonly #services: BridgeServicesSource;
+  readonly #reportError: (error: unknown) => void;
 
-  constructor(options: { server: HarnessBridgeServer; services: BridgeServicesSource }) {
+  /**
+   * @param options.reportError - hears of a bridge failure the run log couldn't record; it must not throw
+   */
+  constructor(options: {
+    server: HarnessBridgeServer;
+    services: BridgeServicesSource;
+    reportError: (error: unknown) => void;
+  }) {
     this.#server = options.server;
     this.#services = options.services;
+    this.#reportError = options.reportError;
   }
 
   /** @throws what `servicesFor` throws, or the server's `open` when it can't listen */
@@ -81,7 +94,41 @@ export class LocalBridgeHost implements HarnessBridgeHost {
       recorder,
       tools: services.tools,
       approvals: services.approvals,
+      reportError: (failure) => this.#recordFailure(recorder, agent.agentId, failure),
     });
+  }
+
+  /**
+   * Writes a failure the bridge told the program the run log has the details
+   * of, as a `bridge.failed` (requirement `harness-host.bridge-failures`).
+   * The bridge's hook must not throw and can't wait, so a record that fails
+   * goes to `reportError` rather than back to the bridge.
+   */
+  #recordFailure(
+    recorder: BridgeRecorder,
+    agentId: string,
+    failure: { kind: string; message: string },
+  ): void {
+    const reportLost = (error: unknown) => {
+      this.#reportError(
+        new Error(
+          `The run log couldn't record a failure of the harness bridge (${failure.kind}): ${failure.message}`,
+          { cause: error },
+        ),
+      );
+    };
+    try {
+      recorder
+        .record({
+          type: "bridge.failed",
+          agent: agentId,
+          kind: failure.kind,
+          message: failure.message,
+        })
+        .catch(reportLost);
+    } catch (error) {
+      reportLost(error);
+    }
   }
 }
 
