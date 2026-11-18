@@ -225,9 +225,14 @@ function endedBanner(summary: RunSummary, workflow: string, step: string): RunBa
 
 /** The CLI's first line for a budget stop, in the budget's currency. */
 function budgetLine(stop: BudgetStop, workflow: string, step: string): string {
-  const budget = moneyAmount(stop.budget, stop.currency);
+  const budget = moneyAmount(stop.budget, stop.currency, { tiny: "less than" });
   return stop.per === "run"
-    ? runPageWords.budgetPerRun(workflow, step, budget, moneyAmount(stop.spent, stop.currency))
+    ? runPageWords.budgetPerRun(
+        workflow,
+        step,
+        budget,
+        moneyAmount(stop.spent, stop.currency, { tiny: "less than" }),
+      )
     : runPageWords.budgetPerMonth(workflow, step, budget);
 }
 
