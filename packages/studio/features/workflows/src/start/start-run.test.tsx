@@ -5,7 +5,7 @@ import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { EngineNotAnswering, type WorkflowView } from "../api.ts";
+import { EngineNotAnswering, StartInTerminal, type WorkflowView } from "../api.ts";
 import { WorkflowScreen } from "../page/workflow-page.tsx";
 import {
   buttonNamed,
@@ -338,6 +338,27 @@ verifies("workflows.start.start-run", () => {
     expect(announce).toHaveBeenCalledExactlyOnceWith(
       "Couldn't start the run: the workflow changed.",
     );
+  });
+
+  it("shows the command that starts it in a terminal, with no Try again, when only a terminal can", async () => {
+    const { page } = await open(async () => {
+      throw new StartInTerminal({
+        reason: "Reporter uses a connector, which Studio can't start yet.",
+        lead: "To start it, run this in a terminal:",
+        command: "halonic run reply",
+      });
+    });
+
+    await click(runButton(page));
+    await click(buttonNamed(page, "Start run"));
+
+    expect(page.textContent).toContain(
+      "Couldn't start the run: Reporter uses a connector, which Studio can't start yet.",
+    );
+    expect(page.textContent).toContain("To start it, run this in a terminal:");
+    expect(page.textContent).not.toContain("terminal:.");
+    expect(page.querySelector("aside code")?.textContent).toBe("halonic run reply");
+    expect(page.textContent).not.toContain("Try again");
   });
 
   it("starts nothing when the input isn't a JSON object", async () => {

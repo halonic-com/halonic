@@ -418,9 +418,11 @@ verifies("studio.workspace-files-delete", () => {
     const { host, changes } = setup([], {}, { ...workspace, [other]: "echo" });
 
     await expect(host.remove("gone.md")).rejects.toThrow("gone.md isn't here any more.");
-    await expect(host.remove(skill)).rejects.toThrow(
-      "This skill has other files in its folder, so it can't be deleted here yet.",
-    );
+    await expect(host.remove(skill)).rejects.toMatchObject({
+      kind: "unavailable",
+      message: "Studio can't delete a skill that has other files in its folder yet.",
+      fix: "To delete refunds, delete the folder hubs/support/library/skills/refunds in File Explorer.",
+    });
     expect(changes).toEqual([]);
   });
 });
