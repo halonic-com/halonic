@@ -151,7 +151,8 @@ export function NewRoutineDialog({
           <span className="text-fg-subtle" aria-hidden>
             <InfoIcon />
           </span>
-          {words.runs(target.name)}
+          {/* The engine can't run an agent from a routine yet (C52 claim 1.6), so that line says so. */}
+          {target.kind === "agent" ? words.agentCantRun(target.name) : words.runs(target.name)}
         </p>
       )}
     </div>

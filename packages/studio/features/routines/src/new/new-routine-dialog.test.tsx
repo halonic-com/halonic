@@ -68,7 +68,7 @@ verifies("routines.new.create", () => {
     expect(document.activeElement).toBe(nameField());
   });
 
-  it("names the hub's first agent when the host starts the routine with one", async () => {
+  it("names the hub's first agent and says routines can't start an agent yet", async () => {
     const analyst: RoutineTargetChoice = {
       kind: "agent",
       hubId: "acme",
@@ -77,7 +77,10 @@ verifies("routines.new.create", () => {
     };
     await show(dialog({ starterTarget: async () => analyst }).node);
 
-    expect(body()).toContain("It runs Analyst when you press Run now.");
+    expect(body()).toContain(
+      "This routine starts Analyst, but routines can't start an agent yet. Point it at a workflow to run it.",
+    );
+    expect(body()).not.toContain("when you press Run now");
   });
 
   it("shows the file the name makes, with -2 when the id is taken, and follows the hub", async () => {
