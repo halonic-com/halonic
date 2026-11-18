@@ -24,6 +24,8 @@ import { RunLedger } from "./gateway/run-ledger.ts";
 import { googleRoutes } from "./google/google-routes.ts";
 import { openGoogleSetup } from "./google/google-setup.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
+import { hostHarnessProfiles } from "./harness/host-profiles.ts";
+import { profileRoute } from "./harness/profile-route.ts";
 import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
 import { hostModelRoutes } from "./model/host-model-routes.ts";
@@ -403,9 +405,11 @@ function hostServices(
     (text) => process.stderr.write(text),
   );
   const plugins = hostPlugins(version, sandbox, profile);
+  const profiles = hostHarnessProfiles(profile, connectors.workspaceRoots, harnesses, logToError);
   const routes = [
     healthRoute(version),
-    ...sandboxRoutes(sandbox, sessions),
+    // A session's temp folder, made with its harness profile, goes when the session closes.
+    ...sandboxRoutes(profiles?.removingTempFolders(sandbox) ?? sandbox, sessions),
     ...(choice === undefined ? [] : sandboxChoiceRoutes(choice)),
     ...setupRoutes(new SetupJobs(sandbox, undefined, wslRemover), sessions),
     ...bridgeRoutes(
@@ -425,6 +429,7 @@ function hostServices(
           }),
     ),
     ...harnessRoutes({ harnesses, sessions, bridges, runs }),
+    ...(profiles === undefined ? [] : [profileRoute(profiles, bridges)]),
     ...connectorRoutes(connectorDeps),
     ...modelRoutes(
       hostModelRoutes({

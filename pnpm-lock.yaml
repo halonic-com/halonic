@@ -313,6 +313,9 @@ importers:
       '@halonicjs/adapter-harness-codex':
         specifier: workspace:*
         version: link:../../packages/adapters/harness-codex
+      '@halonicjs/adapter-harness-kit':
+        specifier: workspace:*
+        version: link:../../packages/adapters/harness-kit
       '@halonicjs/adapter-http-kit':
         specifier: workspace:*
         version: link:../../packages/adapters/http-kit
@@ -355,6 +358,12 @@ importers:
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../packages/core/app
+      '@halonicjs/engine':
+        specifier: workspace:*
+        version: link:../../packages/core/engine
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../../packages/core/events
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../packages/core/format
@@ -688,6 +697,9 @@ importers:
 
   packages/adapters/agent-host-client:
     dependencies:
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../../core/events
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports

@@ -101,6 +101,7 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `GET /v1/harnesses` | `[{"id","name"}]` |
 | `POST /v1/harnesses/detect` with `{"harness"}`, and `"settingsFolder"` for one agent | the `HarnessDetection` |
 | `POST /v1/harnesses/sign-in` with `{"harness","settingsFolder"}` | `{"opened":true}`, or `{"opened":false,"reason","command"}` (below) |
+| `POST /v1/harnesses/profile` with `{"workspace","agent","bridge"}` (only with a profile folder) | the `HarnessProfile`: `{"profile","deniedGroups"}` (below); `404 unknown_workspace`, `unknown_harness` or `unknown_bridge`; `422 profile_refused` with the builder's reason |
 | `POST /v1/harnesses/runs/start` | an NDJSON stream: the run's id, then its events (below) |
 | `POST /v1/harnesses/runs/send` with `{"run","input"}` | `{"sent":true}`, or `409 send_failed` when the run refuses the input |
 | `POST /v1/harnesses/runs/cancel` with `{"run"}` | `{"cancelled":true}` |
@@ -168,6 +169,15 @@ Studio gives the engine a stand-in `Harness` for each one the host lists, and th
 A run that fails or is cancelled ends with `{"type":"failed","message"}` instead of `finished`. A harness, session or bridge the host doesn't have gets `404 unknown_harness`, `unknown_session` or `unknown_bridge`. When Studio goes away the run is cancelled, and when the host stops it cancels every run before it closes the sessions.
 
 The port's `environment` has no route: the engine asks for it without waiting, and it only reads its arguments, so Studio calls the adapter's own function with the bridge's address and token from `/v1/bridge/open`.
+
+## Building a harness profile
+
+`POST /v1/harnesses/profile` is the engine's `HarnessProfileBuilder` run next to the sandbox (HAL-10849): it reads folders on disk and resolves links, which Studio's page can't. The body is `{ workspace, agent: { runId, hubId, agentId, harness, workingFolder, allowedSites, filesFolder }, bridge }`, with the bridge by the id `POST /v1/bridge/open` gave. The host builds the profile with `HarnessProfiles` for a `workspace` the launcher named (`--sweep-root`; compared by real path) and answers it as the engine's `HarnessProfile`, which Studio opens a session with.
+
+- **What Studio decides, and what it doesn't.** Studio gives the agent's working folder and sites from its file, and the run's proposal folder. Halonic's data folder (the profile folder), the home folder and the program's variables are the host's own; a body with any other field is `400`. The bridge's token never leaves the host, and is not in the answer.
+- **A refused profile.** A working folder that leaves the workspace or is in a protected folder, a proposal folder outside Halonic's data folder, a folder of the run in a denied one and the like are `422 profile_refused` with the builder's own reason.
+- **Temp folders.** Each profile gets its own fresh, private temp folder in the workspace's folder of the profile. The host removes it when the session opened with that profile closes, and removes no other folder. A host that crashed leaves its open sessions' folders; clearing them is a follow-up.
+- **Windows.** The host does not yet find where a harness is installed there, so a profile is `422 profile_refused` on Windows, as the CLI refuses a harness run there.
 
 ## Signing an agent in
 
