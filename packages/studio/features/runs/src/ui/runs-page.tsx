@@ -7,8 +7,8 @@ import {
   type ListColumn,
   type ListColumnsRow,
   StatusChip,
-  Tooltip,
   usePresentation,
+  useTooltip,
 } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWordsOf, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
@@ -431,9 +431,7 @@ function listRow(row: RunRow): ListColumnsRow {
           row.startedByTooltip === undefined ? (
             row.startedBy
           ) : (
-            <Tooltip text={row.startedByTooltip}>
-              {(props) => <span {...props}>{row.startedBy}</span>}
-            </Tooltip>
+            <StartedByWithTooltip words={row.startedBy} tooltip={row.startedByTooltip} />
           ),
       },
       when: { value: row.time, ...(row.took === undefined ? {} : { detail: row.took }) },
@@ -441,6 +439,29 @@ function listRow(row: RunRow): ListColumnsRow {
     label: row.label,
     ...(row.standing === "failed" ? { error: { reason: row.line, chip: row.chip.word } } : {}),
   };
+}
+
+/**
+ * A schedule's Started by, with the routine's name in a tooltip. `useTooltip`, not `Tooltip`: its
+ * `inline-flex` wrapper can't be cut, so a long schedule on a phone's row would show as "…" alone.
+ * As plain inline text it's cut like any other (HAL-12829).
+ */
+function StartedByWithTooltip({
+  words,
+  tooltip,
+}: {
+  readonly words: string;
+  readonly tooltip: string;
+}) {
+  const { anchor, trigger, popover } = useTooltip({ text: tooltip });
+  return (
+    <>
+      <span {...anchor} {...trigger}>
+        {words}
+      </span>
+      {popover}
+    </>
+  );
 }
 
 /** One quiet line where the rows would be, with its one button if it has one (R2, R4 to R6). */

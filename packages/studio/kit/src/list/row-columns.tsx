@@ -156,6 +156,17 @@ function WideCell({
 }
 
 /**
+ * How each part of a stacked row's third line fits when the line is too long. A `code` and a
+ * `time` are never cut, as in the side-by-side layout, so only `text` parts give way, each cut
+ * with an ellipsis: "01JD9A · Weekly report routi… · 11:21" (HAL-12829).
+ */
+const footerPartClasses: Record<Exclude<ListColumnKind, "main" | "status">, string> = {
+  code: "shrink-0 whitespace-nowrap font-mono text-code",
+  text: "min-w-0 truncate",
+  time: "shrink-0 whitespace-nowrap",
+};
+
+/**
  * The third line of a stacked row: every column but `main` and `status`, in their order, joined
  * with " · ". A `time` shows its value only; the short id keeps its typeface.
  */
@@ -176,18 +187,19 @@ function StackedFooter({
     if (value === undefined) {
       return [];
     }
-    const part =
-      column.kind === "code" ? <span className="font-mono text-code">{value}</span> : value;
-    return [{ key: column.key, part }];
+    return [{ key: column.key, part: value, fit: footerPartClasses[column.kind] }];
   });
   return (
     <span className="flex min-w-0 items-center gap-1.5">
       {tagFirst ? <Tag row={row} /> : null}
-      <span className={`truncate text-small ${textColour(row, "text-fg-muted")}`}>
-        {parts.map(({ key, part }, index) => (
+      <span
+        className={`flex min-w-0 items-baseline text-small ${textColour(row, "text-fg-muted")}`}
+      >
+        {parts.map(({ key, part, fit }, index) => (
           <Fragment key={key}>
-            {index === 0 ? null : " · "}
-            {part}
+            {/* `whitespace-pre` keeps the spaces round the dot: a flex item would drop them. */}
+            {index === 0 ? null : <span className="shrink-0 whitespace-pre"> · </span>}
+            <span className={fit}>{part}</span>
           </Fragment>
         ))}
       </span>
