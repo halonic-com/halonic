@@ -3,7 +3,13 @@ import { ServiceRegistry } from "@halonicjs/app";
 import { tokenNamePrefix } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { provideShellSecrets, secretsKey, shellKeychain, tokenStoreKey } from "./shell-secrets.ts";
+import {
+  provideShellSecrets,
+  secretsKey,
+  shellKeychain,
+  shellKeyOrigins,
+  tokenStoreKey,
+} from "./shell-secrets.ts";
 import { tauriIpc } from "./tauri-ipc.ts";
 
 /** One command the page sent, with the name as it sent it. */
@@ -145,6 +151,21 @@ verifies("services.shell-secrets", () => {
         { command: "secret_get", name: "openai-key" },
         { command: "secret_delete", name: "openai-key" },
       ]);
+    });
+  });
+
+  describe("shellKeyOrigins", () => {
+    it("reads a key's origins from the shell's secret_allowed_origins", async () => {
+      const calls: { command: string; args: unknown }[] = [];
+      const origins = shellKeyOrigins({
+        invoke: async (command, args) => {
+          calls.push({ command, args });
+          return ["https://llm.example.com"];
+        },
+      });
+
+      expect(await origins.allowedOrigins("openai-key")).toEqual(["https://llm.example.com"]);
+      expect(calls).toEqual([{ command: "secret_allowed_origins", args: { name: "openai-key" } }]);
     });
   });
 });

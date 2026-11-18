@@ -19,7 +19,7 @@ const halonicNames = ["token_key", "serve_password"];
 const tokenPrefix = "halonic_token_";
 
 /**
- * A shell that answers the `secret_*` and `token_*` commands as
+ * A shell that answers the `secret_*` and `token_*` commands, origins included, as
  * `crates/secrets` does over its `MemoryBackend`, written out on its own
  * rather than from the adapter: names checked and stored lower case with `-`
  * as `_`, Halonic's own names refused to the secret commands, tokens kept
@@ -31,6 +31,8 @@ export class FakeShell implements TauriShell {
   readonly calls: ShellCall[] = [];
   /** What the keychain holds, by canonical name. */
   readonly entries = new Map<string, string>();
+  /** The origins each key may be sent to, by canonical name, as the shell keeps them beside the key. */
+  readonly origins = new Map<string, string[]>();
   readonly #maxValueBytes: number;
   readonly #granted: boolean;
   readonly #refusesHalonicNames: boolean;
@@ -79,9 +81,16 @@ export class FakeShell implements TauriShell {
         this.entries.set(name, this.#checkedValue(args?.["value"]));
         return null;
       case "secret_delete":
+        this.origins.delete(name);
+        this.entries.delete(name);
+        return null;
       case "token_delete":
         this.entries.delete(name);
         return null;
+      case "secret_allowed_origins":
+        return this.origins.get(name) ?? null;
+      case "secret_allow_origin":
+        return this.#allowOrigin(name, args?.["address"]);
       default:
         throw `Command ${command} not found`;
     }
@@ -104,6 +113,29 @@ export class FakeShell implements TauriShell {
       throw refusal("reserved_name", "this name belongs to Halonic");
     }
     return canonical;
+  }
+
+  /** `allow_origin` behind `secret_allow_origin`: the shell makes the origin, as `new URL` does. */
+  #allowOrigin(name: string, address: unknown): object {
+    const url = URL.parse(String(address));
+    if (url === null || (url.protocol !== "https:" && url.protocol !== "http:")) {
+      return { result: "bad-address", problem: "not-an-address" };
+    }
+    if (url.username !== "" || url.password !== "") {
+      return { result: "bad-address", problem: "has-user-info" };
+    }
+    if (!this.entries.has(name)) {
+      return { result: "no-key" };
+    }
+    const origins = this.origins.get(name) ?? [];
+    if (origins.includes(url.origin)) {
+      return { result: "already-allowed", origin: url.origin };
+    }
+    if (origins.length >= 8) {
+      return { result: "full" };
+    }
+    this.origins.set(name, [...origins, url.origin]);
+    return { result: "added", origin: url.origin };
   }
 
   #checkedValue(value: unknown): string {

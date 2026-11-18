@@ -54,6 +54,7 @@ import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
 import {
   ShellHttpClient,
   shellKeychain,
+  shellKeyOrigins,
   type TauriIpc,
   tauriAgentHostTransport,
 } from "@halonicjs/studio-services";
@@ -168,6 +169,7 @@ export function provideFolderServices(
       location,
       definitions: new TauriDefinitionStore(files, location),
       secrets: shellKeychain(ipc),
+      keyOrigins: shellKeyOrigins(ipc),
       http: new ShellHttpClient(ipc),
       clock: systemClock,
       isTrusted: async (workspace) => (await trust.checkLoaded(workspace)).status === "trusted",

@@ -2,7 +2,7 @@
 
 import { TauriEngineLock } from "@halonicjs/adapter-fs-tauri";
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
-import type { Clock, IdGenerator, Secrets } from "@halonicjs/ports";
+import { type Clock, type IdGenerator, noKeyOrigins, type Secrets } from "@halonicjs/ports";
 import { EngineService, type EngineServiceOptions } from "./engine-service.ts";
 
 export const location = "/acme";
@@ -142,6 +142,7 @@ export function serviceOn(
     location,
     definitions,
     secrets,
+    keyOrigins: noKeyOrigins,
     http: { fetch },
     clock,
     isTrusted: async () => true,

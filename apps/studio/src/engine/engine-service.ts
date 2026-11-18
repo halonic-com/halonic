@@ -53,7 +53,7 @@ import {
   type HttpClient,
   type IdGenerator,
   isAgentRunsNotAvailable,
-  noKeyOrigins,
+  type KeyOrigins,
   type RunExecutor,
   type Secrets,
 } from "@halonicjs/ports";
@@ -103,6 +103,11 @@ export interface EngineServiceOptions {
   readonly definitions: DefinitionStore;
   /** The keychain, as `Secrets`. */
   readonly secrets: Secrets;
+  /**
+   * The origins each key in the keychain may be sent to (HAL-11887). Asked on every model call
+   * with a key; a key with a list goes only to those origins, a key without one keeps the trust rule.
+   */
+  readonly keyOrigins: KeyOrigins;
   /** What the model providers call their servers with. */
   readonly http: HttpClient;
   readonly clock: Clock;
@@ -406,8 +411,7 @@ export class EngineService {
             http: this.#options.http,
             clock,
             isTrusted: () => this.#options.isTrusted(workspace),
-            // The desktop keychain keeps no origin list yet, so its keys stay on the trust rule.
-            keyOrigins: noKeyOrigins,
+            keyOrigins: this.#options.keyOrigins,
             // Until Studio has its approval store (HAL-850 step 6), no listed tool is offered.
             listedToolApproval: noListedToolApproval,
           }),

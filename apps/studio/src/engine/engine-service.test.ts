@@ -1,6 +1,6 @@
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import type { SetTimer } from "@halonicjs/adapter-scheduler-node";
-import type { Secrets } from "@halonicjs/ports";
+import type { KeyOrigins, Secrets } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
@@ -166,7 +166,7 @@ verifies("studio.engine-service", () => {
       expect(shell.calls).toEqual([]);
     });
 
-    it("sends an agent's model call through the given `http`, with the key from `secrets`", async () => {
+    it("sends an agent's model call through the given `http`, with the key from `secrets` and its origins from `keyOrigins`", async () => {
       const requests: { url: string; authorization: string | null }[] = [];
       const http = {
         fetch: async (url: string, init?: RequestInit) => {
@@ -192,7 +192,14 @@ verifies("studio.engine-service", () => {
         const timer = setTimeout(callback, delayMs);
         return () => clearTimeout(timer);
       };
-      const service = serviceOn(fakeShell(), files, { http, secrets, setTimer });
+      const asked: string[] = [];
+      const keyOrigins: KeyOrigins = {
+        allowedOrigins: async (name) => {
+          asked.push(name);
+          return ["https://models.example.com"];
+        },
+      };
+      const service = serviceOn(fakeShell(), files, { http, secrets, keyOrigins, setTimer });
 
       try {
         await service.startRun(reply, {});
@@ -200,6 +207,7 @@ verifies("studio.engine-service", () => {
 
         expect(requests[0]?.url).toMatch(/^https:\/\/models\.example\.com\/v1\//);
         expect(requests[0]?.authorization).toBe("Bearer fake-key");
+        expect(asked).toContain("acme-key");
         expect(globalFetch).not.toHaveBeenCalled();
       } finally {
         globalFetch.mockRestore();
