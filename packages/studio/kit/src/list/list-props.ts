@@ -7,8 +7,11 @@ interface ListRowBase<Id extends string> {
   /** Stable, never the index: focus and selection follow it. */
   readonly id: Id;
   readonly title: string;
-  /** One line under the title, cut with an ellipsis. */
-  readonly meta?: string;
+  /**
+   * One line under the title, cut with an ellipsis. Usually words; a node when part of it needs
+   * other words for a screen reader, as a glyph does.
+   */
+  readonly meta?: ReactNode;
   /**
    * A 20px icon before the text, 16px in a `dense` row as in a Menu item. Hidden from screen
    * readers: the title names the row.
