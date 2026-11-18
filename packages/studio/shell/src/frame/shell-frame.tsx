@@ -113,6 +113,18 @@ export function ShellFrame(props: ShellFrameProps) {
   );
 }
 
+const panel = "overflow-hidden rounded-md border border-border";
+
+/**
+ * On a short phone window (400 % zoom, a phone held sideways) the bars would leave the page no room,
+ * so the column scrolls as one, bars included, as a kit Dialog does (component specs 8, "Short of
+ * room"). The content still fills the room left, so the bottom navigation stays at the bottom of a
+ * page that doesn't fill the window.
+ */
+const phoneColumn = "short:overflow-y-auto";
+const phoneContent = "short:flex-[1_0_auto]";
+const phonePage = "short:overflow-visible";
+
 /**
  * Both layouts are one tree: the phone puts its own bars where the desktop's panel top and status
  * bar go, and leaves the title bar out but keeps its place (`null`), so `main` stays at the same
@@ -142,12 +154,10 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
           {props.titleBar}
         </header>
       ) : null}
-      <div
-        className={`flex min-h-0 flex-1 flex-col bg-surface ${desktop ? "overflow-hidden rounded-md border border-border" : ""}`}
-      >
+      <div className={`flex min-h-0 flex-1 flex-col bg-surface ${desktop ? panel : phoneColumn}`}>
         {desktop ? null : props.phoneTopBar}
         <EngineLine engine={props.engine} />
-        <div className="relative flex min-h-0 flex-1">
+        <div className={`relative flex min-h-0 flex-1 ${desktop ? "" : phoneContent}`}>
           {desktop ? (
             <SidebarSlot
               narrow={drawer.narrow}
@@ -160,7 +170,10 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
               {props.sidebar}
             </SidebarSlot>
           ) : null}
-          <main className="min-w-0 flex-1 overflow-auto" inert={drawer.open}>
+          <main
+            className={`min-w-0 flex-1 overflow-auto ${desktop ? "" : phonePage}`}
+            inert={drawer.open}
+          >
             {props.children}
           </main>
           <ToastRegion store={props.toasts} />

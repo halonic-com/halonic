@@ -20,6 +20,16 @@ export const failedText = "Couldn't record your decision.";
 export const decidedElsewhereText =
   "This is no longer waiting for you. It was answered somewhere else or the run moved on.";
 
+/**
+ * A card fills the item pane: its body scrolls and its bar of answers stays in sight under it. In a
+ * short window (400 % zoom, a phone held sideways) that bar would leave the request no room, so the
+ * body stops scrolling on its own and the bar follows the request, as a kit Dialog does (component
+ * specs 8, "Short of room"). The item pane then scrolls the whole card.
+ */
+export const cardClasses = "flex min-h-0 flex-col short:min-h-auto";
+/** The scrolling body of a card, above its bar; see {@link cardClasses}. */
+export const cardBodyClasses = "flex flex-col gap-4 overflow-y-auto p-4 short:overflow-visible";
+
 /** The item after this one, for the decided card's **Next** (flow-inbox 5.3). */
 export interface NextItem {
   readonly title: string;
