@@ -1,6 +1,7 @@
 import { type Secrets, secretKey, type TokenStore } from "@halonicjs/ports";
-import { KeychainError, keychainFailure } from "./keychain-error.ts";
+import { KeychainError } from "./keychain-error.ts";
 import { secretCommands, type TauriShell } from "./shell.ts";
+import { callShell, expectNothing, expectValue } from "./shell-call.ts";
 
 /** Whether a value is stored, without reading it: what a page that only shows "Set" needs. */
 export interface SecretPresence {
@@ -8,7 +9,7 @@ export interface SecretPresence {
 }
 
 /**
- * Secrets and tokens in the OS keychain, for the Studio desktop app: every
+ * Secrets in the OS keychain, for the Studio desktop app: every
  * call goes to the shell's `secret_get`, `secret_has`, `secret_set` or `secret_delete`
  * command, which keeps the value under the service `halonic` in canonical
  * form, the same entry the CLI uses.
@@ -20,8 +21,9 @@ export interface SecretPresence {
  * `RangeError`; a keychain that is locked, missing or refuses is a
  * {@link KeychainError}.
  *
- * Secrets and tokens share the one keychain service, as they do in the CLI,
- * so a token and a configured secret with the same name are the same entry.
+ * The shell refuses Halonic's own names here (`reserved_name`, a
+ * `RangeError`): `token-key`, `serve-password` and every name under the
+ * token prefix. Sign-in tokens go through `TauriTokens` instead.
  */
 export class TauriSecrets implements Secrets, TokenStore, SecretPresence {
   readonly #shell: TauriShell;
@@ -34,17 +36,12 @@ export class TauriSecrets implements Secrets, TokenStore, SecretPresence {
   /**
    * The stored value, or `null` when nothing is stored under the name.
    *
-   * @throws RangeError when the name breaks the secret name rule
+   * @throws RangeError when the name breaks the secret name rule or belongs to Halonic
    * @throws KeychainError when the keychain can't be read
    */
   async get(name: string): Promise<string | null> {
     checkName(name);
-    const answer = await this.#call(secretCommands.get, { name });
-    // The shell never stores an empty value, so "" is as malformed as a number.
-    if (answer === null || (typeof answer === "string" && answer !== "")) {
-      return answer;
-    }
-    throw new KeychainError("backend", "the shell's answer is not a value");
+    return expectValue(await this.#call(secretCommands.get, { name }));
   }
 
   /**
@@ -52,7 +49,7 @@ export class TauriSecrets implements Secrets, TokenStore, SecretPresence {
    * the value itself never reaches the page: use this, not {@link get}, to
    * show "Set" or "Not set".
    *
-   * @throws RangeError when the name breaks the secret name rule
+   * @throws RangeError when the name breaks the secret name rule or belongs to Halonic
    * @throws KeychainError when the keychain can't be read
    */
   async has(name: string): Promise<boolean> {
@@ -67,7 +64,7 @@ export class TauriSecrets implements Secrets, TokenStore, SecretPresence {
   /**
    * Stores the value, replacing one already stored under the name.
    *
-   * @throws RangeError when the name breaks the rule, or the shell refuses the value
+   * @throws RangeError when the name breaks the rule or belongs to Halonic, or the shell refuses the value
    * @throws KeychainError when the keychain can't be written
    */
   async set(name: string, value: string): Promise<void> {
@@ -78,7 +75,7 @@ export class TauriSecrets implements Secrets, TokenStore, SecretPresence {
   /**
    * Removes the value. Removing a name that holds nothing succeeds.
    *
-   * @throws RangeError when the name breaks the secret name rule
+   * @throws RangeError when the name breaks the secret name rule or belongs to Halonic
    * @throws KeychainError when the keychain can't be written
    */
   async remove(name: string): Promise<void> {
@@ -86,17 +83,8 @@ export class TauriSecrets implements Secrets, TokenStore, SecretPresence {
     expectNothing(await this.#call(secretCommands.delete, { name }));
   }
 
-  /**
-   * Runs one command, turning a refusal into a `RangeError` or a {@link KeychainError}.
-   *
-   * @param value - the value being set, so a refusal that repeats it loses its message
-   */
-  async #call(command: string, args: Record<string, unknown>, value?: string): Promise<unknown> {
-    try {
-      return await this.#shell.invoke(command, args);
-    } catch (reason) {
-      throw keychainFailure(reason, value);
-    }
+  #call(command: string, args: Record<string, unknown>, value?: string): Promise<unknown> {
+    return callShell(this.#shell, command, args, value);
   }
 }
 
@@ -107,15 +95,4 @@ export class TauriSecrets implements Secrets, TokenStore, SecretPresence {
  */
 function checkName(name: string): void {
   secretKey(name);
-}
-
-/**
- * `secret_set` and `secret_delete` return Rust's `()`, which reaches the page
- * as `null`. Any other answer means the call may not have done what it says,
- * so it is refused rather than taken for success.
- */
-function expectNothing(answer: unknown): void {
-  if (answer !== null) {
-    throw new KeychainError("backend", "the shell's answer is not empty");
-  }
 }

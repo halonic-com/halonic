@@ -1,8 +1,10 @@
 # @halonicjs/adapter-secrets-tauri
 
-The `Secrets` and `TokenStore` ports for the Studio desktop app: every call goes to the shell's
-`secret_get`, `secret_set` or `secret_delete` command, which keeps the value in the OS keychain
-under the service `halonic`, the same entry the CLI uses.
+The `Secrets` and `TokenStore` ports for the Studio desktop app. `TauriSecrets` calls the shell's
+`secret_get`, `secret_has`, `secret_set` or `secret_delete` command, which keeps the value in the OS
+keychain under the service `halonic`, the same entry the CLI uses, and refuses Halonic's own names
+(`reserved_name`). `TauriTokens` calls `token_get`, `token_set` or `token_delete`, which keep each
+sign-in token under the token prefix, where the secret commands can't reach it.
 
 - **Layer:** adapters
 - **Owner:** priya

@@ -7,8 +7,11 @@ import { KeychainError } from "./keychain-error.ts";
 import type { RefusalKind } from "./shell.ts";
 import { TauriSecrets } from "./tauri-secrets.ts";
 
+// The contracts' names include Halonic's own (`serve-password`, `token-key`), which the shell
+// refuses to the secret commands. They check what the adapter does with a name, so they run
+// over a shell with that refusal off; `tauri-tokens.test.ts` checks the refusal itself.
 secretsContract("tauri", async (values) => {
-  const shell = new FakeShell();
+  const shell = new FakeShell({ refusesHalonicNames: false });
   const secrets = new TauriSecrets(shell);
   for (const [name, value] of Object.entries(values)) {
     await secrets.set(name, value);
@@ -16,7 +19,10 @@ secretsContract("tauri", async (values) => {
   return secrets;
 });
 
-tokenStoreContract("tauri", async () => new TauriSecrets(new FakeShell()));
+tokenStoreContract(
+  "tauri",
+  async () => new TauriSecrets(new FakeShell({ refusesHalonicNames: false })),
+);
 
 /** The error a call rejects with. */
 async function rejection(action: Promise<unknown>): Promise<unknown> {

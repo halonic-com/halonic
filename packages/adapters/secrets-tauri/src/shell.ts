@@ -3,7 +3,7 @@ import { isPlainObject } from "@halonicjs/std";
 /**
  * The part of Tauri's IPC this adapter needs. The shell puts `invoke` on the
  * app's own page (`window.__TAURI_INTERNALS__`), and the `desktop-secrets`
- * capability lets that page call the `secret_*` commands. Passed in, so
+ * capability lets that page call the `secret_*` and `token_*` commands. Passed in, so
  * tests use a fake shell and the adapter needs no Tauri library.
  */
 export interface TauriShell {
@@ -28,11 +28,26 @@ export const secretCommands = {
 } as const;
 
 /**
+ * The shell's token commands (`apps/studio/src-tauri/src/secrets.rs`), the
+ * page's only way to a token. The shell keeps each token under the token
+ * prefix and the token's canonical name; the page names the token only.
+ */
+export const tokenCommands = {
+  /** `{ name }` → the token, or `null` when nothing is stored. */
+  get: "token_get",
+  /** `{ name, value }` → nothing; replaces a stored token. */
+  set: "token_set",
+  /** `{ name }` → nothing; also when nothing is stored. */
+  delete: "token_delete",
+} as const;
+
+/**
  * Why the shell refused a call: the `kind` of its `SecretError`
  * (`crates/secrets/src/error.rs`), the same on desktop and Android.
  */
 export const refusalKinds = [
   "invalid_name",
+  "reserved_name",
   "invalid_value",
   "unavailable",
   "denied",

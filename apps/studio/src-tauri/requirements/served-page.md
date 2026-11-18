@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: 0.1.0
-- Source: HAL-196 section 3, HAL-1375, HAL-192, HAL-2612, HAL-2701, HAL-4878, HAL-9378
+- Source: HAL-196 section 3, HAL-1375, HAL-192, HAL-2612, HAL-2701, HAL-4878, HAL-9378, HAL-11253
 
-The shell shall refuse every app and plugin command to a request from any address other than its own connect page, and shall let the connect page call only `connect` and, on desktop, `git`, `secret_get`, `secret_has`, `secret_set`, `secret_delete`, `pick_folder`, `documents_folder`, `pick_parent_folder`, `create_workspace_folder`, `probe_workspace_folder`, `open_workspace_folder`, `trust_get`, `trust_list`, `trust_folders_found`, `trust_grant`, `trust_revoke`, `reopen_folder`, `forget_folder`, `run_append`, `run_events`, `run_snapshot`, `run_logs`, `engine_lock_hold`, `engine_lock_release`, `blob_put`, `blob_get`, `record_append`, `record_read`, `record_replace`, `google_setup_read`, `workspace_key`, `agent_host_request`, `agent_host_stream`, `agent_host_stream_end`, `agent_host_security_updates`, `fs_list`, `fs_read`, `fs_write`, `fs_remove`, `fs_watch`, `fs_unwatch`, `folder_entries`, `folder_read` and `folder_location`. The Studio the computer serves shall get no native access.
+The shell shall refuse every app and plugin command to a request from any address other than its own connect page, and shall let the connect page call only `connect` and, on desktop, `git`, `secret_get`, `secret_has`, `secret_set`, `secret_delete`, `token_get`, `token_set`, `token_delete`, `pick_folder`, `documents_folder`, `pick_parent_folder`, `create_workspace_folder`, `probe_workspace_folder`, `open_workspace_folder`, `trust_get`, `trust_list`, `trust_folders_found`, `trust_grant`, `trust_revoke`, `reopen_folder`, `forget_folder`, `run_append`, `run_events`, `run_snapshot`, `run_logs`, `engine_lock_hold`, `engine_lock_release`, `blob_put`, `blob_get`, `record_append`, `record_read`, `record_replace`, `google_setup_read`, `workspace_key`, `agent_host_request`, `agent_host_stream`, `agent_host_stream_end`, `agent_host_security_updates`, `fs_list`, `fs_read`, `fs_write`, `fs_remove`, `fs_watch`, `fs_unwatch`, `folder_entries`, `folder_read` and `folder_location`. The Studio the computer serves shall get no native access.
 
 ## Examples
 
@@ -20,6 +20,9 @@ The shell shall refuse every app and plugin command to a request from any addres
 - Given a request from the connect page on desktop,
   when it invokes `secret_get` with the name `not a name`,
   then the call reaches the command and is refused as `invalid_name`.
+- Given a request from the connect page on desktop,
+  when it invokes `secret_get` with the name `token-key`, `serve-password` or one that starts with `halonic_token_`,
+  then the call reaches the command and is refused as `reserved_name`.
 - Given a request from the connect page on desktop,
   when it invokes `trust_grant` for a folder that doesn't exist,
   then the call reaches the command and is refused as `folder_unreadable`.

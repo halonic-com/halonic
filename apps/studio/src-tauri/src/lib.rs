@@ -3,7 +3,7 @@
 //! (tauri.android.conf.json). `window::open` opens it, so its native title
 //! follows the page's title. The page may call the `connect` command
 //! (capabilities/connect-page.json) and, on desktop, `git`
-//! (capabilities/desktop-git.json), the `secret_*` commands
+//! (capabilities/desktop-git.json), the `secret_*` and `token_*` commands
 //! (capabilities/desktop-secrets.json) and `pick_folder`, `documents_folder`,
 //! `pick_parent_folder`, `create_workspace_folder`,
 //! `probe_workspace_folder`, `open_workspace_folder` and the `trust_*`
@@ -157,6 +157,9 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             secrets::secret_has,
             secrets::secret_set,
             secrets::secret_delete,
+            secrets::token_get,
+            secrets::token_set,
+            secrets::token_delete,
             trust::pick_folder,
             trust::documents_folder,
             system_region::system_region,

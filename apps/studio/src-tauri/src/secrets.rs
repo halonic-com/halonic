@@ -1,5 +1,7 @@
 //! The `secret_get`, `secret_has`, `secret_set` and `secret_delete` commands, the page's
-//! way to the keychain (HAL-192, interface agreed with Priya on HAL-229).
+//! way to the keychain (HAL-192, interface agreed with Priya on HAL-229), and
+//! `token_get`, `token_set` and `token_delete`, its only way to a token. The
+//! secret commands refuse Halonic's own names, tokens included.
 //! The name and value rules live in the `halonic-secrets` crate and the
 //! desktop keychain in `halonic-keychain`; this file only runs the calls
 //! off the main thread and shapes the answers.
@@ -8,7 +10,8 @@ use std::sync::Arc;
 
 use halonic_keychain::DesktopKeychain;
 use halonic_secrets::{
-    SecretBackend, SecretError, delete_secret, get_secret, has_secret, set_secret,
+    SecretBackend, SecretError, delete_secret, delete_token, get_secret, get_token, has_secret,
+    set_secret, set_token,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Manager, Runtime};
@@ -98,4 +101,33 @@ pub async fn secret_delete<R: Runtime>(
     name: String,
 ) -> Result<(), SecretRefusal> {
     on_worker(&app, move |backend| delete_secret(backend, &name)).await
+}
+
+/// The token, or `null` when nothing is stored under the name. The shell
+/// adds the token prefix; the page names the token only.
+#[tauri::command]
+pub async fn token_get<R: Runtime>(
+    app: AppHandle<R>,
+    name: String,
+) -> Result<Option<String>, SecretRefusal> {
+    on_worker(&app, move |backend| get_token(backend, &name)).await
+}
+
+/// Stores the token, replacing any token already there.
+#[tauri::command]
+pub async fn token_set<R: Runtime>(
+    app: AppHandle<R>,
+    name: String,
+    value: String,
+) -> Result<(), SecretRefusal> {
+    on_worker(&app, move |backend| set_token(backend, &name, &value)).await
+}
+
+/// Removes the token. Removing a token that isn't stored succeeds.
+#[tauri::command]
+pub async fn token_delete<R: Runtime>(
+    app: AppHandle<R>,
+    name: String,
+) -> Result<(), SecretRefusal> {
+    on_worker(&app, move |backend| delete_token(backend, &name)).await
 }
