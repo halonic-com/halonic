@@ -106,6 +106,9 @@ fn session_rekey_refuses_what_the_session_cannot_carry() {
         session.seal(&[b'x'; MAX_MESSAGE_BYTES + 1], now),
         Err(SessionError::MessageTooLarge)
     );
+    // The caller's mistake doesn't end the session.
+    let frames = session.seal(b"smaller", now).unwrap();
+    assert_eq!(open(&mut host, &frames[0]).1, b"smaller");
 
     let mut tampered = seal(&mut host, FrameKind::Message, b"event");
     tampered[3] ^= 1;
@@ -118,4 +121,31 @@ fn session_rekey_reads_no_refusal_after_a_reconnect() {
     for refusal in [&[0x30][..], &[0x31, 0, 4]] {
         assert_eq!(session.open(refusal), Err(SessionError::Unreadable));
     }
+}
+
+#[test]
+fn session_rekey_ends_for_good_after_a_frame_that_does_not_decrypt() {
+    let now = Instant::now();
+    let (mut session, mut host) = connected(now);
+    let mut tampered = seal(&mut host, FrameKind::Message, b"event");
+    tampered[3] ^= 1;
+    assert_eq!(session.open(&tampered), Err(SessionError::Unreadable));
+
+    // A valid frame after it is refused, and nothing more is sent.
+    let valid = seal(&mut host, FrameKind::Message, b"event");
+    assert_eq!(session.open(&valid), Err(SessionError::Ended));
+    assert_eq!(session.seal(b"reply", now), Err(SessionError::Ended));
+    assert_eq!(
+        session.rekey_if_due(now + REKEY_AFTER),
+        Err(SessionError::Ended)
+    );
+}
+
+#[test]
+fn session_rekey_ends_for_good_after_a_rekey_frame_that_is_not_empty() {
+    let (mut session, mut host) = connected(Instant::now());
+    let rekey = seal(&mut host, FrameKind::Rekey, b"not empty");
+    assert_eq!(session.open(&rekey), Err(SessionError::Unreadable));
+    let valid = seal(&mut host, FrameKind::Message, b"event");
+    assert_eq!(session.open(&valid), Err(SessionError::Ended));
 }

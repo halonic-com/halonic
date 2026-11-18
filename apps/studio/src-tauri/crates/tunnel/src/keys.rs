@@ -6,14 +6,17 @@ use std::fmt;
 
 use snow::params::DHChoice;
 use snow::resolvers::{CryptoResolver, DefaultResolver};
+use zeroize::{ZeroizeOnDrop, Zeroizing};
 
 use crate::error::SessionError;
 
 /// The length of an X25519 key, private or public.
 pub const KEY_BYTES: usize = 32;
 
-/// The phone's static key pair. Its `Debug` form shows the public key only.
-#[derive(Clone)]
+/// The phone's static key pair. Its `Debug` form shows the public key only,
+/// and the private key is wiped from memory when the pair is dropped. It
+/// isn't `Clone`, so there is one copy to wipe.
+#[derive(ZeroizeOnDrop)]
 pub struct PhoneKeys {
     private: [u8; KEY_BYTES],
     public: [u8; KEY_BYTES],
@@ -22,19 +25,23 @@ pub struct PhoneKeys {
 impl PhoneKeys {
     /// A new key pair from the system's secure random source.
     pub fn generate() -> Result<Self, SessionError> {
-        let mut private = [0u8; KEY_BYTES];
-        fill_random(&mut private)?;
-        Self::from_private(private)
+        let mut private = Zeroizing::new([0u8; KEY_BYTES]);
+        fill_random(private.as_mut_slice())?;
+        Self::from_private(&private)
     }
 
-    /// The key pair of a private key the key store gave back.
-    pub fn from_private(private: [u8; KEY_BYTES]) -> Result<Self, SessionError> {
+    /// The key pair of a private key the key store gave back. The caller
+    /// keeps its own copy and wipes it.
+    pub fn from_private(private: &[u8; KEY_BYTES]) -> Result<Self, SessionError> {
         let mut dh = DefaultResolver
             .resolve_dh(&DHChoice::Curve25519)
             .ok_or(SessionError::Crypto)?;
-        dh.set(&private);
+        dh.set(private);
         let public = dh.pubkey().try_into().map_err(|_| SessionError::Crypto)?;
-        Ok(Self { private, public })
+        Ok(Self {
+            private: *private,
+            public,
+        })
     }
 
     /// The private key, for the key store to wrap and for the handshakes.

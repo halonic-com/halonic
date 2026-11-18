@@ -6,10 +6,11 @@ use std::time::Instant;
 
 use halonic_blob_store::base64url;
 use halonic_tunnel::{
-    FrameKind, Opened, PairRefusedReason, Pairing, PairingCode, PairingRoute, PhoneDetails,
-    PhoneKeys, Platform, Reconnect, SessionError, check_code, pair_commit,
+    FrameKind, Opened, PairRefusedReason, Pairing, PairingCheck, PairingCode, PairingRoute,
+    PhoneDetails, PhoneKeys, Platform, Reconnect, SessionError, check_code, pair_commit,
 };
 use serde_json::{Value, json};
+use snow::HandshakeState;
 use support::{FakeHost, open, read_handshake, seal, write_handshake};
 
 const CODE: &str = "XX7A9Q36KFB3";
@@ -27,7 +28,23 @@ fn start_pairing(keys: &PhoneKeys, route: PairingRoute) -> (Pairing, Vec<u8>) {
 }
 
 fn host_name_payload() -> Vec<u8> {
-    json!({ "hostName": "Desk" }).to_string().into_bytes()
+    host_named("Desk")
+}
+
+fn host_named(name: &str) -> Vec<u8> {
+    json!({ "hostName": name }).to_string().into_bytes()
+}
+
+/// A typed-route pairing that reached message 2 with a host that knows the
+/// code: the phone's answer to message 2, and the host's side.
+fn pair_typed_with(host_name: &str) -> (Result<PairingCheck, SessionError>, HandshakeState) {
+    let host = FakeHost::new();
+    let keys = PhoneKeys::generate().unwrap();
+    let (pairing, frame1) = start_pairing(&keys, PairingRoute::Typed);
+    let mut noise = host.pairing(CODE);
+    read_handshake(&mut noise, FrameKind::Pair1, &frame1).unwrap();
+    let frame2 = write_handshake(&mut noise, FrameKind::Pair2, &host_named(host_name));
+    (pairing.read_reply(&frame2, Instant::now()), noise)
 }
 
 fn json_of(bytes: &[u8]) -> Value {
@@ -259,4 +276,32 @@ fn session_handshakes_read_handshake_failed_while_pairing_as_unreadable() {
         pairing.read_reply(&[0x30], Instant::now()).err(),
         Some(SessionError::Unreadable)
     );
+}
+
+#[test]
+fn session_handshakes_read_a_host_name_that_is_not_plain_text_as_unreadable() {
+    // A line break, a right-to-left override and an isolate.
+    for name in ["Desk\nPrinter", "Desk\u{202E}kseD", "\u{2067}Desk"] {
+        assert_eq!(
+            pair_typed_with(name).0.err(),
+            Some(SessionError::Unreadable),
+            "{name:?}"
+        );
+    }
+    // Letters of a right-to-left script need no formatting characters.
+    let (check, _) = pair_typed_with("مكتب");
+    assert_eq!(check.expect("message 2 is read").host_name, "مكتب");
+}
+
+#[test]
+fn session_handshakes_read_no_refusal_after_the_host_rekeyed() {
+    let (check, mut noise) = pair_typed_with("Desk");
+    let check = check.expect("message 2 is read");
+    read_handshake(&mut noise, FrameKind::Pair3, &check.frame3).unwrap();
+    let mut host_session = noise.into_transport_mode().unwrap();
+    let mut session = check.session;
+
+    let rekey = seal(&mut host_session, FrameKind::Rekey, &[]);
+    assert_eq!(session.open(&rekey), Ok(Opened::Rekeyed));
+    assert_eq!(session.open(&[0x31, 0, 4]), Err(SessionError::Unreadable));
 }

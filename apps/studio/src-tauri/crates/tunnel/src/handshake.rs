@@ -112,7 +112,7 @@ impl Pairing {
         let psk = code.psk();
         let mut noise = Builder::new(PAIRING_PATTERN.parse()?)
             .local_private_key(keys.private())?
-            .psk(3, &psk)?
+            .psk(3, psk.as_slice())?
             .prologue(PROLOGUE.as_bytes())?
             .build_initiator()?;
 
@@ -156,7 +156,9 @@ impl Pairing {
         let host_name = serde_json::from_slice::<HostPayload>(&payload2)
             .map_err(|_| SessionError::Unreadable)?
             .host_name;
-        if host_name.len() > MAX_NAME_BYTES {
+        // On the typed route a fake host chooses the name, so it must show
+        // as the plain text it is. The check code is the real defence.
+        if host_name.len() > MAX_NAME_BYTES || !is_plain_name(&host_name) {
             return Err(SessionError::Unreadable);
         }
 
@@ -229,6 +231,23 @@ fn handshake_body(
         Some((kind, _)) if kind == refusal => Err(SessionError::from_cleartext(bytes)),
         _ => Err(SessionError::Unreadable),
     }
+}
+
+/// Whether `name` shows as the plain text it is: no control characters and
+/// none that change how the text around them is laid out.
+fn is_plain_name(name: &str) -> bool {
+    name.chars()
+        .all(|character| !character.is_control() && !is_layout_control(character))
+}
+
+/// The characters that lay text out rather than show as text: the line and
+/// paragraph separators, and the bidi marks, embeddings, overrides and
+/// isolates, which can show a name's letters in another order.
+fn is_layout_control(character: char) -> bool {
+    matches!(
+        character,
+        '\u{061C}' | '\u{200E}' | '\u{200F}' | '\u{2028}'..='\u{202E}' | '\u{2066}'..='\u{2069}'
+    )
 }
 
 fn write_handshake(noise: &mut HandshakeState, payload: &[u8]) -> Result<Vec<u8>, SessionError> {

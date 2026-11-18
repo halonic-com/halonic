@@ -7,9 +7,9 @@ The phone's end of the end-to-end session with the computer's remote gateway (tu
 
 - `Endpoint`: a `wss:`, `https:` or `tcp:` endpoint from a pairing, and the gateway's WebSocket URL there.
 - `Transport`: the byte pipe to one gateway, the `TunnelTransport` port's rules in Rust. It reconnects with `Backoff::TUNNEL`, refuses frames while not open and never resends, and pauses and resumes. Each `Opened` event is a new connection for the session layer to handshake on, with an id that its frames and drops carry, so nothing meant for one connection reaches the next. Sends and closes have time limits (`Timeouts::TUNNEL`), so a peer that stops reading can't hold up a pause. `tokio-tungstenite` does only the upgrade and the frames, capped at one session frame. TLS comes from the `Dialer`'s rustls config, which the shell builds with the platform verifier.
-- `PhoneKeys`: the phone's static X25519 key pair. The key store that wraps it (D2) is not this crate's.
+- `PhoneKeys`: the phone's static X25519 key pair. The key store that wraps it (D2) is not this crate's. The private key, the pairing code and the psk are wiped from memory when they're dropped.
 - `Pairing` and `Reconnect`: the two handshakes, `Noise_XXpsk3_25519_ChaChaPoly_SHA256` and `Noise_IK_25519_ChaChaPoly_SHA256`, done by `snow`. Each takes frames in and gives frames out, so the tests run them against a fake host built on `snow`'s responder side. `SessionError` says what the phone can tell: `CantConfirm` (never Removed), `PairRefused`, or `Unreadable`.
-- `Session`: one gateway message per transport message, with the `rekey` frame every 10,000 messages or 30 minutes.
+- `Session`: one gateway message per transport message, with the `rekey` frame every 10,000 messages or 30 minutes. It fails closed: after its first error, every call gives `Ended`.
 
 Still to come in this crate: the phone's connection states on top of the transport and the session.
 
