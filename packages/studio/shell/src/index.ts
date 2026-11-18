@@ -458,6 +458,7 @@ export {
   type WelcomeRecentList,
 } from "./welcome/welcome.tsx";
 export {
+  sampleTag,
   WELCOME_RECENT_ROWS,
   type WelcomeRecentWorkspace,
 } from "./welcome/welcome-recent.tsx";

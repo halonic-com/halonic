@@ -368,7 +368,9 @@ export function StudioWindow(props: StudioWindowProps) {
             places={phone}
             shown={shown}
             switcher={props.phoneSwitcher}
+            menuSwitcher={sidebarSwitcher}
             badge={props.phoneBadge}
+            desktopBadges={props.badges}
             onSettings={() => openSettings()}
             settingsPlace={host === "desktop-app" ? "app" : "served"}
             regionFormat={props.regionFormat}

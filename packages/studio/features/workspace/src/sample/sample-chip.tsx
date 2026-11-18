@@ -1,5 +1,5 @@
-import { HeaderBadge, type MenuEntry } from "@halonicjs/studio-kit";
-import { useSyncExternalStore } from "react";
+import { HeaderBadge, HeaderBadgeSheet, type MenuItem } from "@halonicjs/studio-kit";
+import { useState, useSyncExternalStore } from "react";
 import { NEW_WORKSPACE_MENU_ROW } from "../new-workspace/new-workspace-text.ts";
 import type { WorkspaceTrustControl } from "../trust/workspace-trust-control.ts";
 import { sampleChipWords } from "./sample-text.ts";
@@ -41,7 +41,8 @@ export function PhoneSampleChip({ onOpenSheet }: PhoneSampleChipProps) {
  * The header chip "Sample · test model" of a workspace created as the Acme sample
  * (`workspace.try-sample`). It is a menu button with the cost line, **New workspace…** and
  * **Fresh copy of the sample**. While the workspace isn't trusted yet the trust badge has the
- * slot and the chip stays away.
+ * slot and the chip stays away. In a desktop window as narrow as a phone the chip sits on More and
+ * opens the same rows as a sheet, since the computer can write folders there.
  *
  * @example
  * <SampleChip trust={opened.trust} onNewWorkspace={askNewWorkspace} onFreshCopy={freshCopy} />
@@ -51,24 +52,42 @@ export function SampleChip({ trust, onNewWorkspace, onFreshCopy }: SampleChipPro
     (onChange) => trust?.subscribe(onChange) ?? (() => {}),
     () => trust?.status,
   );
+  const [sheetOpen, setSheetOpen] = useState(false);
   if (trust !== undefined && status !== "trusted") {
     return null;
   }
-  const entries: readonly MenuEntry[] = [
+  const entries: readonly MenuItem[] = [
     ...(onNewWorkspace === undefined
       ? []
       : [{ id: "new-workspace", label: NEW_WORKSPACE_MENU_ROW, onSelect: onNewWorkspace }]),
     { id: "fresh-copy", label: sampleChipWords.freshCopy, onSelect: onFreshCopy },
   ];
   return (
-    <HeaderBadge
-      as="menu"
-      description={sampleChipWords.cost}
-      entries={entries}
-      // The desktop window never presents as a phone, where this opens a sheet (PR 7).
-      onOpenSheet={() => {}}
-    >
-      {sampleChipWords.chip}
-    </HeaderBadge>
+    <>
+      <HeaderBadge
+        as="menu"
+        description={sampleChipWords.cost}
+        entries={entries}
+        onOpenSheet={() => setSheetOpen(true)}
+      >
+        {sampleChipWords.chip}
+      </HeaderBadge>
+      {sheetOpen ? (
+        <div className="fixed inset-0 z-40 bg-surface">
+          <HeaderBadgeSheet
+            title={sampleChipWords.chip}
+            description={sampleChipWords.cost}
+            entries={entries.map((entry) => ({
+              ...entry,
+              onSelect: () => {
+                setSheetOpen(false);
+                entry.onSelect();
+              },
+            }))}
+            onClose={() => setSheetOpen(false)}
+          />
+        </div>
+      ) : null}
+    </>
   );
 }
