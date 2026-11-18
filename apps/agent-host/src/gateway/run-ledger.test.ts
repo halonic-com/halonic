@@ -50,6 +50,44 @@ verifies("agent-host.gateway-run-ledger", () => {
       expect(ledger.approvalRisk("run", "approval-1")).toBeUndefined();
     });
 
+    it("names the connector an approval's tool comes from, from the bridge and from the run", async () => {
+      const ledger = startedLedger();
+      const request = { callId: "b", tool: "create_issue", connector: "github", args: {} };
+      ledger.bridgeApprovalAsked("run_1", "writer", request, decided);
+      ledger.event("run", {
+        type: "approval.requested",
+        agent: "writer",
+        tool: "send_mail",
+        connector: "mail",
+        args: {},
+        callId: "call-1",
+      });
+      const approvals = (await eventsFrom(ledger, 0)).flatMap(({ body }) =>
+        body.type === "approval-requested" ? [body.approval] : [],
+      );
+      expect(approvals).toMatchObject([
+        { id: "approval-1", connector: "github" },
+        { id: "approval-2", connector: "mail" },
+      ]);
+    });
+
+    it("leaves the connector out for a tool that comes from no connector", async () => {
+      const ledger = startedLedger();
+      ledger.bridgeApprovalAsked(
+        "run_1",
+        "writer",
+        { callId: "b", tool: "Bash", args: {} },
+        decided,
+      );
+      const seen = await eventsFrom(ledger, 1);
+      const body = seen[0]?.body;
+      expect(body?.type === "approval-requested" && Object.keys(body.approval)).toEqual([
+        "id",
+        "summary",
+        "risk",
+      ]);
+    });
+
     it("settles a bridge approval whose call ended without a decision as denied", async () => {
       const ledger = startedLedger();
       ledger.bridgeApprovalAsked(

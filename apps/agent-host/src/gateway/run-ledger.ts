@@ -45,6 +45,9 @@ const summaryLength = 300;
 /** What the `sessions` reply may spend on its sessions: its message limit, less the envelope. */
 const sessionsBudgetBytes = gatewayMaxMessageBytes - 1024;
 
+/** The call an approval is asked for, as the run's event and the bridge's request both name it. */
+type AskedCall = Pick<BridgeApprovalRequest, "callId" | "tool" | "connector" | "args">;
+
 interface PendingApproval {
   /** Where the approval is decided: by the run as an event, or at the bridge. */
   readonly via: "run" | "bridge";
@@ -131,7 +134,7 @@ export class RunLedger {
     const session = this.#sessions.get(id);
     if (session === undefined) return;
     if (event.type === "approval.requested") {
-      this.#ask(session, "run", event.callId, event.tool, event.args);
+      this.#ask(session, "run", event);
     } else if (event.type === "agent.finished" && event.parent === undefined) {
       this.#append(session, { type: "message", role: "agent", text: describe(event.output) });
     }
@@ -151,7 +154,7 @@ export class RunLedger {
   ): void {
     const session = this.#runningSessionOf(runId, agentId);
     if (session === undefined) return;
-    this.#ask(session, "bridge", request.callId, request.tool, request.args, decide);
+    this.#ask(session, "bridge", request, decide);
   }
 
   /**
@@ -296,20 +299,19 @@ export class RunLedger {
   #ask(
     session: LedgerSession,
     via: PendingApproval["via"],
-    callId: string,
-    tool: string,
-    args: unknown,
+    call: AskedCall,
     decide?: DecideRemotely,
   ): void {
     const approval: GatewayApproval = {
       id: `approval-${session.nextApproval++}`,
-      summary: shorten(`${tool}: ${describe(args)}`, summaryLength),
-      risk: judgeApprovalRisk(tool),
+      summary: shorten(`${call.tool}: ${describe(call.args)}`, summaryLength),
+      risk: judgeApprovalRisk(call.tool),
+      ...(call.connector === undefined ? {} : { connector: call.connector }),
     };
     const seq = this.#append(session, { type: "approval-requested", approval });
     session.pending.push({
       via,
-      callId,
+      callId: call.callId,
       approval,
       seq,
       ...(decide === undefined ? {} : { decide }),

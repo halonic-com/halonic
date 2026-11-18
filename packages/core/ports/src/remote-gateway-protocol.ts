@@ -71,6 +71,8 @@ export interface GatewayApproval {
   readonly id: string;
   readonly summary: string;
   readonly risk: "normal" | "risky";
+  /** The connector the tool comes from, when it comes from one, so the phone can say which connector asks. */
+  readonly connector?: string;
 }
 
 /**
