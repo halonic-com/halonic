@@ -3,7 +3,7 @@
 What names a file or folder on this computer, whatever name reached it (`file_identity`): letter case, a short 8.3 name, a `\\?\` prefix or a link. A folder deleted and made again at the same path gets a new identity, so the trust grants can tell it from the folder the person picked (HAL-6637), and the sandbox helper can tell whether it runs from its own folder.
 
 - **Unix and Android:** the device and the inode (`metadata`).
-- **Windows:** the volume serial number and the 128-bit file ID, from `GetFileInformationByHandleEx` with `FileIdInfo`, on a handle opened with no access and `FILE_FLAG_BACKUP_SEMANTICS`, so folders open too. ReFS needs all 128 bits, because its 64-bit file index isn't unique (HAL-12329). On NTFS the file ID is the 64-bit file index. Where the call isn't supported (FAT, some network shares), it falls back to the 64-bit file index from `GetFileInformationByHandle`; any other error stays an error.
+- **Windows:** the volume serial number and the 128-bit file ID, from `GetFileInformationByHandleEx` with `FileIdInfo`, on a handle opened with no access and `FILE_FLAG_BACKUP_SEMANTICS`, so folders open too. ReFS needs all 128 bits, because its 64-bit file index isn't unique (HAL-12329). On NTFS the file ID is the 64-bit file index. Where the call isn't supported (FAT, some network shares), it falls back to the 64-bit file index from `GetFileInformationByHandle`; any other error stays an error. The volume serial number comes from the same call, so it is 64 bits with the file ID and 32 bits with the fallback, and on NTFS the two differ. A volume always takes the same call, so two reads of one folder agree; only identities read the same way should be compared.
 
 ## Why this crate allows `unsafe`
 

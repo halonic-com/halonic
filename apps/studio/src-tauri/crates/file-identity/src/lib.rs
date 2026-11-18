@@ -17,7 +17,12 @@ use std::path::Path;
 /// the same file or folder.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FileIdentity {
-    /// The device on Unix, the volume serial number on Windows.
+    /// The device on Unix, the volume serial number on Windows. Which serial
+    /// number depends on the call that read it: the 64-bit one with the
+    /// 128-bit file ID, the 32-bit one with the 64-bit file index. On NTFS,
+    /// where both calls work, the two differ, so compare only identities
+    /// read the same way. A volume always takes the same call, so two reads
+    /// of one folder agree.
     pub volume: u64,
     /// The inode on Unix, the file ID on Windows. On NTFS the file ID is
     /// the 64-bit file index, so only ReFS uses the upper bits.
