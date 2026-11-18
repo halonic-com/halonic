@@ -271,7 +271,10 @@ impl TrustState {
             identity,
         };
         if let Err(refusal) = list.remember(checked) {
-            eprintln!("reopen_folder: {location:?} can't be moved first: {refusal:?}");
+            halonic_shell_log::record(
+                "reopen_folder",
+                format!("{location:?} can't be moved first: {refusal:?}"),
+            );
         }
         Ok(())
     }
@@ -341,7 +344,10 @@ fn remember_picked(list: &PickedFolders, canonical: &Path, location: &str) {
         })
     });
     if let Err(refusal) = remembered {
-        eprintln!("pick_folder: {location:?} can't be remembered: {refusal:?}");
+        halonic_shell_log::record(
+            "pick_folder",
+            format!("{location:?} can't be remembered: {refusal:?}"),
+        );
     }
 }
 

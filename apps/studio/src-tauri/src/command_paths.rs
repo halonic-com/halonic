@@ -53,7 +53,12 @@ fn login_path() -> Option<OsString> {
             }
         });
     halonic_login_shell::login_variables(shell.as_ref(), &["PATH"], LOGIN_SHELL_WAIT)
-        .map_err(|error| eprintln!("command_paths: the login shell's PATH can't be read: {error}"))
+        .map_err(|error| {
+            halonic_shell_log::record(
+                "command_paths",
+                format!("the login shell's PATH can't be read: {error}"),
+            )
+        })
         .ok()?
         .remove("PATH")
 }

@@ -114,9 +114,12 @@ impl PickedFolders {
             Ok(text) => text,
             Err(error) if error.kind() == ErrorKind::NotFound => return Vec::new(),
             Err(error) => {
-                eprintln!(
-                    "picked folders: {} can't be read, so none are remembered: {error}",
-                    self.file.display()
+                halonic_shell_log::record(
+                    "picked folders",
+                    format!(
+                        "{} can't be read, so none are remembered: {error}",
+                        self.file.display()
+                    ),
                 );
                 return Vec::new();
             }
@@ -130,17 +133,23 @@ impl PickedFolders {
                 folders
             }
             Ok(list) => {
-                eprintln!(
-                    "picked folders: {} has version {}, not {FORMAT_VERSION}, so none are remembered",
-                    self.file.display(),
-                    list.version
+                halonic_shell_log::record(
+                    "picked folders",
+                    format!(
+                        "{} has version {}, not {FORMAT_VERSION}, so none are remembered",
+                        self.file.display(),
+                        list.version
+                    ),
                 );
                 Vec::new()
             }
             Err(error) => {
-                eprintln!(
-                    "picked folders: {} is damaged, so none are remembered: {error}",
-                    self.file.display()
+                halonic_shell_log::record(
+                    "picked folders",
+                    format!(
+                        "{} is damaged, so none are remembered: {error}",
+                        self.file.display()
+                    ),
                 );
                 Vec::new()
             }

@@ -38,12 +38,18 @@ pub(super) fn prove_started<R: Runtime>(app: &AppHandle<R>) {
         return;
     }
     if !tauri::async_runtime::block_on(crate::agent_host::host_answers(app)) {
-        eprintln!("updates: the agent host didn't answer, so {version} hasn't proved it starts");
+        halonic_shell_log::record(
+            "updates",
+            format!("the agent host didn't answer, so {version} hasn't proved it starts"),
+        );
         return;
     }
     if let Err(error) = std::fs::create_dir_all(&folder).and_then(|()| std::fs::write(&marker, b""))
     {
-        eprintln!("updates: {} can't be written: {error}", marker.display());
+        halonic_shell_log::record(
+            "updates",
+            format!("{} can't be written: {error}", marker.display()),
+        );
         return;
     }
     {
@@ -68,7 +74,7 @@ pub(super) fn prove_started<R: Runtime>(app: &AppHandle<R>) {
             && name != keep
             && let Err(error) = std::fs::remove_file(entry.path())
         {
-            eprintln!("updates: {name} can't be removed: {error}");
+            halonic_shell_log::record("updates", format!("{name} can't be removed: {error}"));
         }
     }
 }
@@ -95,6 +101,6 @@ pub(super) fn log_way_back(inner: &Inner, target: &str) {
             .and_then(|mut log| std::io::Write::write_all(&mut log, line.as_bytes()))
     });
     if let Err(error) = written {
-        eprintln!("updates: updates.log can't be written: {error}");
+        halonic_shell_log::record("updates", format!("updates.log can't be written: {error}"));
     }
 }
