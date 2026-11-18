@@ -1,0 +1,14 @@
+[package]
+name = "halonic-device-keys"
+description = "The phone's own key for each paired computer: the DeviceKeyStore port, the store that keeps each key wrapped by the platform's key store, and the contract checks."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# No dependencies: the key pair comes from the phone transport (snow), and
+# the wrapping from the shell's platform adapter (the Android Keystore).
