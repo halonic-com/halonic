@@ -161,8 +161,7 @@ export const discardWords = {
   noCopyBusy: "Undoing…",
   /** The Callout when an item's undo failed and the roll-back failed too (checklist 2.5). */
   partialTitle: (name: string) => `Couldn't undo all changes to ${name}`,
-  partialBody: (reason: string) =>
-    `${reason} Halonic couldn't put these files back as they were, and kept a copy of what it changed.`,
+  partialBody: (reason: string) => `${reason} Halonic couldn't put these files back as they were.`,
   tryAgain: "Try again",
   tryAgainBusy: "Undoing…",
 };

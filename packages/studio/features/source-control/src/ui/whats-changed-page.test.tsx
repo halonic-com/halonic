@@ -163,5 +163,37 @@ verifies("source-control.whats-changed-page", () => {
       // The kit keeps the busy label in the button too, so its text is both.
       expect(buttons(callout as HTMLElement, "Try againUndoing…")).toHaveLength(1);
     });
+
+    it("finishes the undo when the person presses Try again, and clears the warning", async () => {
+      const { fake, root, toasts } = await openPage();
+      const page = openItem(root, "tone");
+      const [first, second] = skillPaths;
+      fake.setTexts(second, { before: "Be brief.\n", after: "Edited elsewhere.\n" });
+      const replaceFile = fake.source.replaceFile.bind(fake.source);
+      let writes = 0;
+      vi.spyOn(fake.source, "replaceFile").mockImplementation(async (path, text, expected) => {
+        writes += 1;
+        return writes === 3 ? "changed-on-disk" : replaceFile(path, text, expected);
+      });
+      await act(async () => {
+        buttons(page, "Undo these changes")[0]?.click();
+        await settle();
+      });
+      // The first file is back at its last version, the second is still changed.
+      fake.setTexts(second, { before: "Be brief.\n", after: "Be kind.\n" });
+      const callout = page.querySelector<HTMLElement>('[role="group"]');
+      await act(async () => {
+        buttons(callout as HTMLElement, "Try againUndoing…")[0]?.click();
+        await settle();
+      });
+      expect(fake.replaced.at(-1)).toEqual({
+        path: second,
+        text: "Be brief.\n",
+        expected: "Be kind.\n",
+      });
+      expect(fake.replaced.filter((write) => write.path === first)).toHaveLength(1);
+      expect(root.querySelector('[role="group"]')).toBeNull();
+      expect(toasts.list()[0]?.title).toBe("Undid changes to tone.");
+    });
   });
 });

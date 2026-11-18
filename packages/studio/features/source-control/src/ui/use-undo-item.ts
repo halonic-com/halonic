@@ -38,7 +38,10 @@ export interface UndoItem {
   readonly undoWithoutCopy: () => Promise<void>;
   /** Drops the question: nothing was changed. */
   readonly cancelWithoutCopy: () => void;
-  /** Runs the undo again for the item of {@link partial}. */
+  /**
+   * Runs the undo again for the item of {@link partial}, read again, so only the files still
+   * changed are put back; clears the warning when none are left.
+   */
   readonly retry: () => Promise<void>;
 }
 
@@ -91,7 +94,12 @@ export function useUndoItem(list: ChangesList): UndoItem {
     },
     cancelWithoutCopy: () => setWithoutCopyFor(undefined),
     retry: async () => {
-      if (partial !== undefined) await run(partial.item, false);
+      if (partial === undefined) return;
+      // Some files went back already, so undo what the list reads as still changed now.
+      await list.refresh();
+      const current = list.items.find((item) => item.id === partial.item.id);
+      if (current === undefined) setPartial(undefined);
+      else await run(current, false);
     },
   };
 }
