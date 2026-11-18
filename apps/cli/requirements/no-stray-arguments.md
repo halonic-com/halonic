@@ -11,9 +11,12 @@ When a command that takes no arguments, only options, is given one, the `halonic
 - Given a folder without a workspace,
   when `halonic validate ./lt` runs,
   then it exits with code 2, says "halonic validate takes no arguments, and you gave ./lt.", and suggests "halonic validate --dir ./lt" and "halonic plugin add ./lt"; it doesn't check the current folder.
-- When `halonic doctor ./lt` runs,
+- Given a folder without a workspace,
+  when `halonic doctor ./lt` runs,
   then it suggests "halonic doctor --dir ./lt".
-- When `halonic validate ./lt ./acme` runs,
+- Given two folders without a workspace,
+  when `halonic validate ./lt ./acme` runs,
   then line 2 is validate's usage line.
-- When `halonic secret list openai-key` runs,
+- Given a command without `--dir`,
+  when `halonic secret list openai-key` runs,
   then line 2 is the usage line of `secret list`.
