@@ -5,22 +5,18 @@ import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { defineFeature } from "../feature.ts";
 import type { HomeCardProps } from "../home/home-page.tsx";
-import { PhoneTopBarActions, useInPhoneTopBar } from "../phone/phone-top-bar-actions.tsx";
 import { serviceKey } from "../service-key.ts";
-import { createShell } from "../shell.ts";
 import { currentLocation } from "../tabs/tab-set.ts";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { fakeShowModal } from "../test-support/fake-show-modal.ts";
-import { FakeTimers } from "../test-support/fake-timers.ts";
-import { MapTarget } from "../test-support/map-target.ts";
-import { render, unmountAll } from "../test-support/render.tsx";
+import {
+  DESKTOP_WIDTH,
+  PHONE_WIDTH,
+  renderPhoneWindow as renderWith,
+  settle,
+} from "../test-support/phone-window.tsx";
+import { unmountAll } from "../test-support/render.tsx";
 import type { PlaceViewProps } from "./studio-page.tsx";
-import { StudioWindow } from "./studio-window.tsx";
-import { StudioWorkspace } from "./studio-workspace.ts";
-
-/** A phone's width, under `PHONE_MAX_WIDTH`. */
-const PHONE_WIDTH = 390;
-const DESKTOP_WIDTH = 1280;
 
 let media: FakeMediaQueries;
 let restoreMedia: () => void;
@@ -131,64 +127,6 @@ const agentsFeature = defineFeature({
   },
 });
 
-/** A page with its own ⋮: in the phone's top bar, else in its header. */
-function AgentsWithMenuView() {
-  const inTopBar = useInPhoneTopBar();
-  const menu = (
-    <button type="button" aria-label="More actions for Agents">
-      ⋮
-    </button>
-  );
-  return (
-    <>
-      <h1 tabIndex={-1}>Agents</h1>
-      {inTopBar ? (
-        <PhoneTopBarActions>{menu}</PhoneTopBarActions>
-      ) : (
-        <div className="page-head">{menu}</div>
-      )}
-    </>
-  );
-}
-
-/** A place's top page with a + of its own, next to the top bar's Search. */
-function InboxWithNewView() {
-  return (
-    <>
-      <h1 tabIndex={-1}>Inbox</h1>
-      <PhoneTopBarActions>
-        <button type="button" aria-label="New rule">
-          +
-        </button>
-      </PhoneTopBarActions>
-    </>
-  );
-}
-
-const inboxWithNewFeature = defineFeature({
-  id: "inbox",
-  title: "Inbox",
-  register(studio) {
-    studio.places.add({
-      id: "inbox",
-      view: "InboxView",
-      load: async () => ({ InboxView: InboxWithNewView }),
-    });
-  },
-});
-
-const agentsWithMenuFeature = defineFeature({
-  id: "agents",
-  title: "Agents",
-  register(studio) {
-    studio.places.add({
-      id: "agents",
-      view: "AgentsView",
-      load: async () => ({ AgentsView: AgentsWithMenuView }),
-    });
-  },
-});
-
 const brokenAgentsFeature = defineFeature({
   id: "agents",
   title: "Agents",
@@ -260,45 +198,7 @@ function OpenAppearanceCard({ context }: HomeCardProps) {
 }
 
 function renderPhoneWindow(features = [inboxFeature, agentsFeature]) {
-  const shell = createShell({ features, timers: new FakeTimers() });
-  const services = new MapTarget();
-  shell.services.instantiate(services);
-  const workspace = new StudioWorkspace({ toasts: shell.toasts, services });
-  const container = render(
-    <StudioWindow
-      shell={shell}
-      workspace={workspace}
-      host="served"
-      platform="linux"
-      language="en"
-    />,
-  );
-  const title = () => container.querySelector("header p")?.textContent;
-  const heading = () => container.querySelector("main h1")?.textContent;
-  const button = (name: string) =>
-    container.querySelector<HTMLButtonElement>(`header button[aria-label="${name}"]`);
-  const tapPlace = (name: string) =>
-    act(() =>
-      container
-        .querySelector<HTMLElement>(`nav[aria-label="Places"] a[aria-label^="${name}"]`)
-        ?.click(),
-    );
-  const openUnderMore = async (name: string) => {
-    tapPlace("More");
-    const row = [...container.querySelectorAll("main tr")].find((candidate) =>
-      candidate.textContent?.includes(name),
-    );
-    act(() => row?.querySelector<HTMLElement>("[role=gridcell]")?.click());
-    await settle();
-  };
-  return { container, workspace, title, heading, button, tapPlace, openUnderMore };
-}
-
-/** Lets the lazily imported views resolve and React draw them. */
-async function settle() {
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
+  return renderWith(features);
 }
 
 verifies("shell.studio-phone", () => {
@@ -465,52 +365,5 @@ verifies("shell.studio-phone", () => {
     act(() => media.resize(DESKTOP_WIDTH));
 
     expect(container.querySelector('dialog[open][aria-label="Search"]')).toBeNull();
-  });
-});
-
-verifies("shell.phone-top-bar-actions", () => {
-  it("puts a page's own button in the top bar, after the title, and takes it away on Back", async () => {
-    const { container, title, button, openUnderMore } = renderPhoneWindow([
-      inboxFeature,
-      agentsWithMenuFeature,
-    ]);
-    await openUnderMore("Agents");
-
-    expect(title()).toBe("Agents");
-    const menu = button("More actions for Agents");
-    expect(menu).not.toBeNull();
-    // A flex item of the top bar's actions, like Search: the slot itself draws no box.
-    expect(menu?.parentElement?.className).toBe("contents");
-    expect(container.querySelector("main .page-head")).toBeNull();
-    expect(container.querySelector('main button[aria-label="More actions for Agents"]')).toBeNull();
-
-    act(() => button("Back")?.click());
-    await settle();
-    expect(button("More actions for Agents")).toBeNull();
-  });
-
-  it("puts the page's buttons before Search at the top of a place", async () => {
-    const { container, tapPlace } = renderPhoneWindow([inboxWithNewFeature, agentsFeature]);
-    tapPlace("Inbox");
-    await settle();
-
-    const labels = [...container.querySelectorAll("header button")].map((b) =>
-      b.getAttribute("aria-label"),
-    );
-    expect(labels).toEqual(["New rule", "Search"]);
-  });
-
-  it("draws nothing in a desktop tab, where the page shows the button in its header", async () => {
-    const { container, workspace } = renderPhoneWindow([inboxFeature, agentsWithMenuFeature]);
-    act(() => media.resize(DESKTOP_WIDTH));
-    act(() => workspace.tabs.openHere({ key: "agents", title: "Agents" }));
-    await settle();
-
-    expect(container.querySelector(".page-head button")?.getAttribute("aria-label")).toBe(
-      "More actions for Agents",
-    );
-    expect(container.querySelectorAll('button[aria-label="More actions for Agents"]')).toHaveLength(
-      1,
-    );
   });
 });
