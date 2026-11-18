@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { EngineNotAnswering, engineWords, limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -350,5 +351,19 @@ verifies("workflows.list.rows-and-states", () => {
 
     expect(page.textContent).toContain("Mail triage");
     expect(page.textContent).not.toContain("No workflows yet");
+  });
+});
+
+verifies("workflows.list.rows-and-states", () => {
+  it("offers no New workflow on a phone, with workflows or without", async () => {
+    for (const listed of [workflows, []]) {
+      const page = await show(
+        <PresentationProvider presentation="phone">
+          <WorkflowsView host={memoryHost(hubs, listed).host} />
+        </PresentationProvider>,
+      );
+      expect(buttonNamed(page, "New workflow")).toBeUndefined();
+      unmount();
+    }
   });
 });

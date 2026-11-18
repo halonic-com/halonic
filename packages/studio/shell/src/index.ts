@@ -239,6 +239,7 @@ export { PhoneTopBar, type PhoneTopBarProps } from "./phone/phone-top-bar.tsx";
 export {
   PhoneTopBarActions,
   type PhoneTopBarActionsProps,
+  PhoneTopBarSlot,
   useInPhoneTopBar,
 } from "./phone/phone-top-bar-actions.tsx";
 export {

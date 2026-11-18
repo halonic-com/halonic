@@ -7,7 +7,7 @@ import {
   usePresentation,
   useToastStore,
 } from "@halonicjs/studio-kit";
-import type { ItemViewProps } from "@halonicjs/studio-shell";
+import { type ItemViewProps, PhoneTopBarActions, useInPhoneTopBar } from "@halonicjs/studio-shell";
 import { useCallback, useRef, useState } from "react";
 import { deleteWords, phoneCanDelete } from "../delete-words.ts";
 import { itemFileRef } from "../item-file.ts";
@@ -29,7 +29,10 @@ export interface TrashableItem {
 
 /** What {@link useItemTrash} gives a page. */
 export interface ItemTrash {
-  /** The page's ⋮ button with Delete, or `null` when the app gives no Library items. */
+  /**
+   * The page's ⋮ button with Delete, or `null` when the app gives no Library items. Under a phone
+   * top bar it goes there, after the item's name, wherever the page puts it.
+   */
   readonly menu: React.ReactNode;
   /** Goes on the page's title (`<h1 tabIndex={-1}>`): after Undo the page comes back with focus on it. */
   readonly titleRef: React.RefCallback<HTMLElement>;
@@ -48,6 +51,7 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
   const host = context.services.find(LibraryItemsHostService);
   const toasts = useToastStore();
   const desktop = usePresentation() === "desktop";
+  const inTopBar = useInPhoneTopBar();
   const [removed, setRemoved] = useState<RemovedLibraryItem>();
   const [showingFile, setShowingFile] = useState(false);
   const { kind, hub, id, name, usage } = item;
@@ -101,21 +105,24 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
       ? [{ id: "delete", label: deleteWords.delete, danger: true, onSelect: onDelete }]
       : []),
   ];
+  const moreMenu = (
+    <Menu
+      align="end"
+      trigger={(props) => (
+        <Button
+          {...props}
+          variant="ghost"
+          icon={<MoreIcon />}
+          label={deleteWords.pageMenuLabel(name)}
+        />
+      )}
+      entries={entries}
+    />
+  );
   const menu =
     host === undefined || entries.length === 0 ? null : (
       <>
-        <Menu
-          align="end"
-          trigger={(props) => (
-            <Button
-              {...props}
-              variant="ghost"
-              icon={<MoreIcon />}
-              label={deleteWords.pageMenuLabel(name)}
-            />
-          )}
-          entries={entries}
-        />
+        {inTopBar ? <PhoneTopBarActions>{moreMenu}</PhoneTopBarActions> : moreMenu}
         {showingFile && (
           <OpenAsFileSheet
             host={host}

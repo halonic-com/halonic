@@ -1,7 +1,10 @@
 import { createContext, type ReactNode, use } from "react";
 import { createPortal } from "react-dom";
 
-/** Where a page's top bar buttons go: the top bar's slot, or `null` with no phone top bar. */
+/**
+ * Where a page's top bar buttons go: the top bar's slot, or `null` with no phone top bar. The
+ * phone window gives it; a feature's test can give its own element to stand for the top bar.
+ */
 export const PhoneTopBarSlot = createContext<HTMLElement | null>(null);
 
 /** Props for {@link PhoneTopBarActions}. */
