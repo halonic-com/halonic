@@ -1,6 +1,6 @@
 import type { Announcer } from "./announcer/announcer.ts";
 import type { BadgeRegistry } from "./badges/badge-registry.ts";
-import type { EngineWords } from "./engine/engine-words.ts";
+import type { EngineWords, StudioHost } from "./engine/engine-words.ts";
 import type { SidebarPlace } from "./points/frame.ts";
 import type { ItemRef, OpenItemOptions } from "./points/item-kinds.ts";
 import type { SaveState } from "./save/save-state.ts";
@@ -22,6 +22,12 @@ export interface WorkspaceContext {
    * falls back to the desktop app's words for a context built without a window.
    */
   readonly engineWords?: EngineWords;
+  /**
+   * Where this window runs, so a feature can leave out what a host can't do, such as approving
+   * tools on a phone. The window gives it to the views and commands it draws; a context built
+   * without a window has none, which a feature reads as the desktop app.
+   */
+  readonly host?: StudioHost;
   /**
    * Opens one of the sidebar's places as the sidebar does: in the active tab on the desktop, asking
    * for focus on its page's `h1`, and as its list on a phone. The window gives it to the views it

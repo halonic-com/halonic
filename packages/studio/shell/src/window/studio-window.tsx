@@ -218,6 +218,7 @@ export function StudioWindow(props: StudioWindowProps) {
     (featureId: string): WorkspaceContext => ({
       ...shell.services.contextFor(featureId, workspace.services),
       ...(onDesktop.current ? { activeItem, showSidebarView } : {}),
+      host,
       openPlace: (place) => openPlaceHere.current(place),
       openPlaceList: (place, sub, title) => {
         if (!onDesktop.current)
@@ -241,6 +242,7 @@ export function StudioWindow(props: StudioWindowProps) {
     [
       shell,
       workspace,
+      host,
       openSettings,
       openPhone,
       settingsSections,
