@@ -354,7 +354,6 @@ verifies("routines.page.rename-and-delete", () => {
       </PresentationProvider>,
     );
     expect(page.querySelector('input[aria-label="Routine name"]')).toBeNull();
-
     act(() =>
       page.querySelector<HTMLElement>('button[aria-label="More actions for Daily"]')?.click(),
     );
@@ -362,17 +361,14 @@ verifies("routines.page.rename-and-delete", () => {
       (each) => each.textContent === "Rename",
     );
     await act(async () => item?.click());
-
     const sheet = document.querySelector("dialog[open]");
     const input = sheet?.querySelector<HTMLInputElement>("input") as HTMLInputElement;
     expect(sheet?.textContent).toContain("Rename routine");
     expect(input.value).toBe("Daily");
-
     await typeInto(input, "   ");
     await act(async () => buttonNamed(sheet as HTMLElement, "Rename")?.click());
     expect(sheet?.textContent).toContain("Give it a name.");
     expect(save).not.toHaveBeenCalled();
-
     await typeInto(input, "Morning");
     await act(async () => buttonNamed(sheet as HTMLElement, "Rename")?.click());
     expect(save).toHaveBeenCalledExactlyOnceWith(
