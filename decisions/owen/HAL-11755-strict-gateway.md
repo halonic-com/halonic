@@ -1,7 +1,7 @@
 # Decision: the gateway refuses a request with two Host lines and a message that starts with a byte order mark
 
 - Task: HAL-11755 (two Low findings of the attack tests on HAL-5687)
-- Approval: HAL-11755, Liam's review of the pull request; Liam signs this note as the CTO
+- Approval: https://paperclip.halonic.com/HAL/issues/HAL-11755 (Liam's review of the pull request; Liam signs this note as the CTO)
 - Kind: internal
 
 ## What changes
