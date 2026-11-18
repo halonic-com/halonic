@@ -13,6 +13,8 @@ export interface WhenCardProps {
   readonly routine: RoutineView;
   /** Reads text to screen readers, politely. */
   readonly announce: (text: string) => void;
+  /** Opens New connector, for the link shown when a mail trigger has no Google connector to watch; without it there is no link. */
+  readonly addConnector?: () => void;
 }
 
 /**
@@ -21,7 +23,7 @@ export interface WhenCardProps {
  * can't be turned on here yet, and says so; a change that can't be saved is shown in the card and
  * the switch goes back to what is saved.
  */
-export function WhenCard({ host, routine, announce }: WhenCardProps) {
+export function WhenCard({ host, routine, announce, addConnector }: WhenCardProps) {
   const reasonId = useId();
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | undefined>();
@@ -87,6 +89,7 @@ export function WhenCard({ host, routine, announce }: WhenCardProps) {
           trigger={routine.trigger}
           enabled={routine.enabled}
           mailboxes={mailboxes}
+          {...(addConnector && { addConnector })}
           onChange={(trigger) => void changeTrigger(trigger)}
         />
         {blocked && (

@@ -33,7 +33,7 @@ import { useRoutine } from "./use-routine.ts";
 
 /** The routine's page in its tab: `item` names the routine, the host gives its fields. */
 export function RoutinePage({ item, context }: ItemViewProps) {
-  const { openPlace, openItem } = context;
+  const { openPlace, openItem, runCommand } = context;
   return (
     <RoutineScreen
       host={context.services.get(RoutinesHostService)}
@@ -41,6 +41,7 @@ export function RoutinePage({ item, context }: ItemViewProps) {
       id={item.id}
       announce={(text) => context.announcer.announce(text)}
       {...(openPlace && { goToRoutines: () => openPlace("routines") })}
+      {...(runCommand && { addConnector: () => void runCommand("library.new-connector") })}
       {...(openItem && {
         openRun: (runId: string) => openItem({ kind: "run", hub: item.hub, id: runId }),
       })}
@@ -59,6 +60,8 @@ export interface RoutineScreenProps {
   readonly goToRoutines?: () => void;
   /** Opens a run's page, for the Run now toast's **Open run**; without it the toast has no such button. */
   readonly openRun?: (runId: string) => void;
+  /** Opens New connector, for the When card's **Add a Google connector**; without it the card has no such link. */
+  readonly addConnector?: () => void;
 }
 
 /**
@@ -74,6 +77,7 @@ export function RoutineScreen({
   announce,
   goToRoutines,
   openRun,
+  addConnector,
 }: RoutineScreenProps) {
   // After a Try again reads, the routine's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -118,12 +122,14 @@ export function RoutineScreen({
           selected={view}
           className={`flex min-h-0 flex-1 flex-col gap-3 overflow-auto py-4 ${phone ? "px-4" : "px-6"}`}
         >
-          {view === "schedule" && <Summary routine={load.routine} />}
           {view === "schedule" && (
-            <WhenCard host={host} routine={load.routine} announce={announce} />
+            <ScheduleView
+              host={host}
+              routine={load.routine}
+              announce={announce}
+              addConnector={addConnector}
+            />
           )}
-          {view === "schedule" && <StartsCard host={host} routine={load.routine} />}
-          {view === "schedule" && <RulesSection host={host} routine={load.routine} />}
           {view === "runs" && (
             <RunsView
               host={host}
@@ -161,6 +167,33 @@ export function RoutineScreen({
         </div>
       )}
     </div>
+  );
+}
+
+/** The Schedule view: the summary, then the When card, the Starts card and the Rules. */
+function ScheduleView({
+  host,
+  routine,
+  announce,
+  addConnector,
+}: {
+  readonly host: RoutinesHost;
+  readonly routine: RoutineView;
+  readonly announce: (text: string) => void;
+  readonly addConnector: (() => void) | undefined;
+}) {
+  return (
+    <>
+      <Summary routine={routine} />
+      <WhenCard
+        host={host}
+        routine={routine}
+        announce={announce}
+        {...(addConnector && { addConnector })}
+      />
+      <StartsCard host={host} routine={routine} />
+      <RulesSection host={host} routine={routine} />
+    </>
   );
 }
 

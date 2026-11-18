@@ -2,7 +2,7 @@
 
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import type {
   RoutineChanges,
   RoutineMailbox,
@@ -85,6 +85,29 @@ verifies("routines.when.mail-fields", () => {
     expect(page.textContent).toContain(
       "Add a Google connector first: a mail trigger watches its Gmail inbox.",
     );
+  });
+
+  it("offers Add a Google connector under the error, and only where New connector can open", async () => {
+    const addConnector = vi.fn();
+    const host = {
+      mailboxes: async () => [],
+      nextTimes: async () => ({ times: [], atNextCheck: false }),
+      save: async () => {},
+    } as unknown as RoutinesHost;
+    const manual = routineWith({ kind: "manual" });
+    const withLink = await show(
+      <WhenCard host={host} routine={manual} announce={() => {}} addConnector={addConnector} />,
+    );
+    expect(withLink.textContent).not.toContain("Add a Google connector");
+    await choose(withLink.querySelector("select") as HTMLSelectElement, "mail");
+    const link = [...withLink.querySelectorAll("button")].find(
+      (button) => button.textContent === "Add a Google connector",
+    );
+    await act(async () => link?.click());
+    expect(addConnector).toHaveBeenCalledOnce();
+    const without = await card({ kind: "manual" }, []);
+    await choose(without.page.querySelector("select") as HTMLSelectElement, "mail");
+    expect(without.page.querySelectorAll("button")).toHaveLength(0);
   });
 
   it("says it is still reading while the connectors are read, and drops that once they arrive", async () => {
