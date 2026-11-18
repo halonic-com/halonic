@@ -91,7 +91,7 @@ verifies("runs.run-view.agent-says", () => {
     expect(frame?.classList.contains("border-dashed")).toBe(true);
     expect(frame?.getAttribute("aria-labelledby")).toBe("run-agent-says");
     expect(root.querySelector("h2")?.textContent).toBe(
-      "What the agent says it did (not from the run log)",
+      "What the agent says it did (its own words, not checked)",
     );
     expect(root.querySelector("p")?.textContent).toBe(text);
     expect(root.querySelector("img, a")).toBeNull();

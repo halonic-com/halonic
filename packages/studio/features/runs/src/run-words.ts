@@ -486,7 +486,7 @@ export const receiptWords = {
   createdFiles: (names: readonly string[]) =>
     `Created ${names.length === 1 ? "1 file" : `${names.length} files`}: ${namesInWords(names)}`,
   /** The heading of the agent's own words after the receipt (RCPT-3.4). */
-  agentSaysHeading: "What the agent says it did (not from the run log)",
+  agentSaysHeading: "What the agent says it did (its own words, not checked)",
 };
 
 /** "a.md", or "a.md and b.md", or "a.md, b.md and c.md". */

@@ -116,7 +116,7 @@ everyStep(events, summary, workflow, new Date());
 // [{ id: "step-0", name: "Read", mark: "done", line: "Took 1 min", time: "10:40", label: "Read, done, 10:40, Took 1 min" }, …]
 ```
 
-Above Every step, the receipt's Items section names the files the run saved (requirement `runs.run-view.receipt-items`), and a dashed frame, "What the agent says it did (not from the run log)", holds the last answer an agent of the run gave, as plain text (requirement `runs.run-view.agent-says`). The frame is model output: the receipt's lines never come from it.
+Above Every step, the receipt's Items section names the files the run saved (requirement `runs.run-view.receipt-items`), and a dashed frame, "What the agent says it did (its own words, not checked)", holds the last answer an agent of the run gave, as plain text (requirement `runs.run-view.agent-says`). The frame is model output: the receipt's lines never come from it.
 
 ```ts
 import { agentSays, itemLines } from "./run-view/receipt-model.ts";

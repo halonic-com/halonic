@@ -307,7 +307,7 @@ verifies("runs.run-view.agent-says", () => {
     const text = root.textContent ?? "";
     expect(text).toContain("Created 1 file: weekly-report.md");
     const frame = text.indexOf(
-      "What the agent says it did (not from the run log)This week: 12 emails.",
+      "What the agent says it did (its own words, not checked)This week: 12 emails.",
     );
     expect(frame).toBeGreaterThan(text.indexOf("Created 1 file"));
     expect(text.indexOf("Every step")).toBeGreaterThan(frame);
