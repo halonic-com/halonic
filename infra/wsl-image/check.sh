@@ -169,15 +169,88 @@ if chroot "$root" dpkg-statoverride --list "$own" >/dev/null; then
 fi
 chroot "$root" "$updater" status | grep -q '"securityUpdated":"[0-9]\{4\}-' || fail "status doesn't say when updates ran"
 chroot "$root" "$updater" security-update | grep -q '^skipped' || fail "security updates ran twice in a day"
-# Import mounts a crash left behind (HAL-5402): nothing happens with no import
-# folder; a folder named import- and 32 hex digits goes, one with another name,
-# a link and a folder holding a file stay (the step never deletes contents); a
-# second run changes nothing more; halonic can't run it.
-imports="$root/mnt/halonic-import"
-chroot "$root" "$updater" cleanup-import-mounts | grep -q '^nothing to clean up' || fail "a missing import folder wasn't fine"
-mkdir -p "$imports"
+# Import mounts (HAL-5402, HAL-12443), with a stand-in mount (first on the
+# updater's PATH) that writes down its arguments: the chroot has no drvfs.
+# import-mount takes the folder on standard input only, refuses one that isn't
+# an absolute drive folder, mounts it read-only for halonic at a fresh name
+# under /mnt/halonic and removes the mount point when the mount fails; it
+# refuses a missing /mnt/halonic, a link there or one halonic could write.
+imports="$root/mnt/halonic"
+cat > "$root/usr/sbin/mount" <<'MOUNT'
+#!/bin/sh
+[ ! -e /tmp/mount-fails ] || exit 32 # leak-guard: allow absolute-path the chroot's own /tmp
+printf '%s\n' "$@" > /tmp/mount-args # leak-guard: allow absolute-path the chroot's own /tmp
+MOUNT
+chmod 0755 "$root/usr/sbin/mount"
+drive=C:
+acme="$drive\\Work\\acme"
+import_mount() { # <stdin text>: runs import-mount as root, prints its output, returns its exit code
+  printf '%s' "$1" | chroot "$root" "$updater" import-mount 2>/dev/null
+}
+code=0; import_mount "$acme
+" >/dev/null || code=$?
+[ "$code" -eq 1 ] || fail "a missing /mnt/halonic gave exit $code, not 1"
+ln -s /tmp "$imports"
+code=0; import_mount "$acme
+" >/dev/null || code=$?
+[ "$code" -eq 1 ] || fail "a link at /mnt/halonic gave exit $code, not 1"
+[ -z "$(find "$root/tmp" -maxdepth 1 -name 'import-*' -print -quit)" ] || fail "a mount point was made through the link"
+rm "$imports"
+install -d -m 0757 -o root -g root "$imports"
+code=0; import_mount "$acme
+" >/dev/null || code=$?
+[ "$code" -eq 1 ] || fail "a /mnt/halonic others can write gave exit $code, not 1"
+chmod 0755 "$imports"
+point="$(import_mount "$acme
+")" || fail "import-mount failed"
+[[ "$point" =~ ^/mnt/halonic/import-[0-9a-f]{32}$ ]] || fail "import-mount printed $point"
+[ "$(stat -c '%U %a' "$root$point")" = "root 700" ] || fail "the mount point isn't root's with mode 700"
+uid="$(chroot "$root" id -u halonic)"
+gid="$(chroot "$root" id -g halonic)"
+[ "$(cat "$root/tmp/mount-args")" = "$(printf '%s\n' -t drvfs "$acme" "$point" -o "ro,noexec,nosuid,nodev,uid=$uid,gid=$gid,umask=077")" ] ||
+  fail "import-mount ran mount with: $(cat "$root/tmp/mount-args")"
+second="$(import_mount "$acme
+")"
+[ "$second" != "$point" ] || fail "two imports got the same mount point"
+chroot "$root" "$updater" import-unmount "${second##*/}" >/dev/null
+for folder in "$drive\\" "$drive" "$drive\\Work\\..\\x" "$drive\\Work\\.\\x" "$drive\\Work\\\\x" "$drive\\Work\\" \
+  '\\server\share\x' 'c:/Work' "$acme$(printf '\tb')" ''; do
+  rm -f "$root/tmp/mount-args"
+  code=0; import_mount "$folder
+" >/dev/null || code=$?
+  [ "$code" -eq 2 ] || fail "the folder '$folder' gave exit $code, not 2"
+  [ ! -e "$root/tmp/mount-args" ] || fail "the folder '$folder' was mounted"
+done
+code=0; import_mount "$acme
+$drive\\Work\\other
+" >/dev/null || code=$?
+[ "$code" -eq 2 ] || fail "two folders gave exit $code, not 2"
+code=0; echo "$acme" | chroot "$root" "$updater" import-mount "$acme" >/dev/null 2>&1 || code=$?
+[ "$code" -eq 2 ] || fail "a folder on the command line gave exit $code, not 2"
+code=0; echo "$acme" | chroot "$root" su halonic -s /bin/sh -c "$updater import-mount" >/dev/null 2>&1 || code=$?
+[ "$code" -eq 2 ] || fail "halonic could mount a folder (exit $code)"
+touch "$root/tmp/mount-fails"
+code=0; import_mount "$acme
+" >/dev/null || code=$?
+rm "$root/tmp/mount-fails"
+[ "$code" -eq 1 ] || fail "a failed mount gave exit $code, not 1"
+[ "$(find "$imports" -mindepth 1 -maxdepth 1 | wc -l)" -eq 1 ] || fail "a failed mount left its mount point"
+# import-unmount takes a name only, never a path, and halonic can't run it.
+for name in ../x "$point" import-0123 import-0123456789ABCDEF0123456789ABCDEF ''; do
+  code=0; chroot "$root" "$updater" import-unmount "$name" >/dev/null 2>&1 || code=$?
+  [ "$code" -eq 2 ] || fail "import-unmount '$name' gave exit $code, not 2"
+done
+code=0; chroot "$root" su halonic -s /bin/sh -c "$updater import-unmount ${point##*/}" 2>/dev/null || code=$?
+[ "$code" -eq 2 ] || fail "halonic could unmount an import (exit $code)"
+chroot "$root" "$updater" import-unmount "${point##*/}" | grep -q '^unmounted' || fail "import-unmount failed"
+[ ! -e "$root$point" ] || fail "import-unmount left the mount point"
+rm "$root/usr/sbin/mount" "$root/tmp/mount-args"
+# Import mounts a crash left behind: a folder named import- and 32 hex digits
+# goes; a project's folder, one with another name, a link and a folder holding
+# a file stay (the step never deletes contents); a second run changes nothing
+# more; halonic can't run it; nothing happens with no /mnt/halonic.
 stale=import-0123456789abcdef0123456789abcdef
-mkdir "$imports/$stale" "$imports/import-0123" "$imports/import-0123456789ABCDEF0123456789ABCDEF" "$imports/$stale.old"
+mkdir "$imports/acme" "$imports/$stale" "$imports/import-0123" "$imports/import-0123456789ABCDEF0123456789ABCDEF" "$imports/$stale.old"
 ln -s /tmp "$imports/import-fedcba9876543210fedcba9876543210"
 mkdir "$imports/import-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 touch "$imports/import-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/file"
@@ -185,11 +258,12 @@ code=0; out="$(chroot "$root" "$updater" cleanup-import-mounts 2>/dev/null)" || 
 [ "$code" -eq 7 ] || fail "a folder with a file gave exit $code, not 7"
 [ "$out" = "cleaned 1 import mounts, 1 left" ] || fail "cleanup said: $out"
 [ ! -e "$imports/$stale" ] || fail "the stale mount point stayed"
-for stays in import-0123 import-0123456789ABCDEF0123456789ABCDEF "$stale.old" import-fedcba9876543210fedcba9876543210; do
+for stays in acme import-0123 import-0123456789ABCDEF0123456789ABCDEF "$stale.old" import-fedcba9876543210fedcba9876543210; do
   [ -e "$imports/$stays" ] || [ -L "$imports/$stays" ] || fail "$stays was removed"
 done
 [ -f "$imports/import-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/file" ] || fail "a file was deleted"
 code=0; chroot "$root" su halonic -s /bin/sh -c "$updater cleanup-import-mounts" 2>/dev/null || code=$?
 [ "$code" -eq 2 ] || fail "halonic could clean up import mounts (exit $code)"
 rm -rf "$imports"
+chroot "$root" "$updater" cleanup-import-mounts | grep -q '^nothing to clean up' || fail "a missing /mnt/halonic wasn't fine"
 echo "OK: image checks passed"
