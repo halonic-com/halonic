@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-12727 (L5, D3), from the first-run check HAL-12714 (F11)
 
-A run started from the Inbox's request form shall say so wherever the Studio says what started a run: the Runs list's Started by column and the run page's Started by row shall read "You, in the Inbox", and the row's sentence and the Inbox card shall say "Started by you, in the Inbox". A run whose log names a trigger this Studio doesn't know, written by a newer Halonic, shall still show, with the words of a run started with Run.
+When a run was started from the Inbox's request form, the Studio shall say so wherever it says what started a run: the Runs list's Started by column and the run page's Started by row shall read "You, in the Inbox", and the row's sentence and the Inbox card shall say "Started by you, in the Inbox". If a run's log names a trigger this Studio doesn't know, written by a newer Halonic, the Studio shall still show the run, with the words of a run started with Run.
 
 ## Examples
 
