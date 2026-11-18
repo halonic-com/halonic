@@ -12,6 +12,7 @@ The host shall start an integration's sign-in from the sign-in the sheet and the
 - Given a sheet whose `authorizeUrl` already sets `state`, `redirect_uri` or `code_challenge`, then the authorize URL carries Halonic's values.
 - Given a callback with the right state and a code, then the code, the verifier and the client secret go to the approved token URL, the refresh token is saved with the approved sign-in, and the outcome is `signedIn`.
 - Given the same callback twice, a wrong `state`, or a path that isn't pending, then nothing is exchanged and the answer is a plain 400.
+- Given a started sign-in, then the flow says its path is waiting for a callback (`handlesPath`) until the callback is answered, the sign-in is cancelled or it expires, and no other path is.
 - Given a sign-in started twice, then the first one's callback gets a 400.
 - Given a sign-in that waited 10 minutes, then its callback gets a 400.
 - Given an `iss` that isn't the declared issuer, or, with none declared, isn't the authorize URL's origin, then nothing is exchanged.

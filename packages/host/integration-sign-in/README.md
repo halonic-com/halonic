@@ -19,6 +19,7 @@ signs out without a refresh in flight undoing it, and runs the sign-in itself: t
 | `IntegrationSignIns.signOut` | waits for a refresh in flight, revokes at the address the user approved, removes the grant and drops the access token in use |
 
 | `createSignInFlow` | starts a sign-in and answers its callback. `start` builds the authorize URL (`state`, the PKCE challenge and the redirect to a new random path on `127.0.0.1` are set by Halonic, whatever the sheet says) and keeps the sign-in pending; `handleCallback` is the `Request → Response` handler for the callback path: a path that isn't pending gets a plain 400, `iss` is checked, the sheet is looked at again and must still be the one that started, and the exchange uses the sign-in as it was then. Only the refresh token is kept. The page repeats nothing the request carried; `onOutcome` tells the app how it ended |
+| `createSignInHost` | every integration's sign-ins, from one source each: `integration(name)` gives its `signIns` (`tokens` for the kit's `signInTokens`), its `flow` and `status()` (`signedIn`, `signedOut`, `approvalChanged`, `cannotSignIn`, with how the last sign-in ended). The integration's `read()` gives the sheet and the settings, and the app builds the loader's `choices` from the same place; its `secrets` are the person's picks (the kit's `chosenSecrets`), which the client secret is read through. `handleCallback` hands a callback to the flow whose path it is |
 
 The grant store, the `HttpClient` (https only, no redirects), the secrets and the
 clock are passed in like ports.
