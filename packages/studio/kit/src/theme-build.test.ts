@@ -86,6 +86,16 @@ describe("theme.css built by Tailwind: on a muted fill", () => {
     expect(moreContrast).toBeGreaterThan(css.indexOf(".on-muted\\:bg-border"));
     expect(css.lastIndexOf("@media (prefers-contrast: more)", moreContrast)).toBeGreaterThan(-1);
   });
+
+  it("lays a coloured chip's soft fill over surface there, after its plain soft fill (HAL-12459)", async () => {
+    const css = await buildCss(["bg-warning-soft", "on-muted:bg-over-surface-warning-soft"]);
+    const overSurface = css.indexOf(".on-muted\\:bg-over-surface-warning-soft");
+    expect(overSurface).toBeGreaterThan(css.indexOf(".bg-warning-soft"));
+    // One opaque box: the soft fill as the top layer, surface as the colour beneath it.
+    expect(css).toContain(
+      "background: linear-gradient(var(--color-warning-soft), var(--color-warning-soft)), var(--color-surface);",
+    );
+  });
 });
 
 describe("theme.css built by Tailwind: lines", () => {

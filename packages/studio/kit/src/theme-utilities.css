@@ -56,6 +56,15 @@
   background: linear-gradient(var(--color-fg), var(--color-fg)), var(--color-surface);
 }
 
+/*
+ * bg-over-surface-*: a see-through soft fill laid over surface, as one opaque box. A coloured chip
+ * in a muted fill takes it: its soft fill over the muted grey drops its text below 4.5:1, over
+ * surface it keeps the contrast it has on a page (HAL-12459).
+ */
+@utility bg-over-surface-* {
+  background: linear-gradient(--value(--color-*), --value(--color-*)), var(--color-surface);
+}
+
 /* ---------------------------------------------------------------- The halo, as six utilities */
 
 /* The window frame: the halo over the canvas. In dark, the glow is at half strength (HAL-8420). */
