@@ -12,7 +12,7 @@ import {
 } from "@halonicjs/adapter-harness-kit";
 import type { HarnessAgent, HarnessProfile, ProgramHarness } from "@halonicjs/engine";
 import { SCHEMA_VERSION } from "@halonicjs/format";
-import type { Digest, Harness, HarnessBridge, Sandbox } from "@halonicjs/ports";
+import type { Digest, Harness, HarnessBridge, Sandbox, SandboxProfile } from "@halonicjs/ports";
 import { type ProfileFolder, workspaceFolders } from "@halonicjs/profile";
 import { namedWorkspace } from "../server/named-workspace.ts";
 
@@ -55,6 +55,11 @@ export interface HostHarnessProfilesOptions {
    * {@link installOf}).
    */
   readonly installOf?: (harness: string) => Promise<HarnessInstall>;
+  /**
+   * How long a built profile may wait for its session to open before its
+   * temp folder is removed, in milliseconds. Ten minutes when left out.
+   */
+  readonly unopenedAfterMs?: number;
   /** Hears a temp folder that couldn't be removed when its session closed. */
   readonly onLeftoverTempFolder: (folder: string, error: unknown) => void;
 }
@@ -73,6 +78,8 @@ export class HostHarnessProfiles {
   readonly #byWorkspace = new Map<string, Promise<HarnessProfiles>>();
   /** The hosts made so far; a session's temp folder is removed by the one that made it. */
   readonly #hosts: WorkspaceHarnessHost[] = [];
+  /** The profiles built whose session hasn't opened yet, by temp folder, with the timer that removes it. */
+  readonly #unopened = new Map<string, NodeJS.Timeout>();
 
   constructor(options: HostHarnessProfilesOptions) {
     this.#options = options;
@@ -91,7 +98,9 @@ export class HostHarnessProfiles {
     const real = await namedWorkspace(this.#options.workspaceRoots, workspace);
     if (real === undefined) return undefined;
     const profiles = await this.#profilesOf(real);
-    return await profiles.profileOf(harnessAgentOf(agent), bridge, instructionsFolder);
+    const built = await profiles.profileOf(harnessAgentOf(agent), bridge, instructionsFolder);
+    this.#removeIfUnopened(built.profile);
+    return built;
   }
 
   /**
@@ -106,8 +115,30 @@ export class HostHarnessProfiles {
     return {
       check: () => sandbox.check(),
       capabilities: () => sandbox.capabilities(),
-      open: (profile, options) => wrapped().open(profile, options),
+      open: (profile, options) => {
+        this.#opening(profile);
+        return wrapped().open(profile, options);
+      },
     };
+  }
+
+  /** A profile whose session never opens (its run was cancelled in between, say) gets its temp folder removed after a while. */
+  #removeIfUnopened(profile: SandboxProfile): void {
+    const timer = setTimeout(
+      () => {
+        this.#unopened.delete(profile.tempFolder);
+        for (const host of this.#hosts) void host.removeTempFolderOf(profile);
+      },
+      this.#options.unopenedAfterMs ?? 10 * 60_000,
+    );
+    timer.unref();
+    this.#unopened.set(profile.tempFolder, timer);
+  }
+
+  /** The session is opening, so it removes its own temp folder when it closes. */
+  #opening(profile: SandboxProfile): void {
+    clearTimeout(this.#unopened.get(profile.tempFolder));
+    this.#unopened.delete(profile.tempFolder);
   }
 
   /** The workspace's builder, made on the first ask, however many ask together. */
@@ -237,7 +268,7 @@ export function hostHarnessProfiles(
 }
 
 /** The Web Crypto API that Node has, as the {@link Digest} port. */
-const webCryptoDigest: Digest = {
+export const webCryptoDigest: Digest = {
   async sha256(data) {
     return new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
   },

@@ -20,7 +20,7 @@ import {
   FolderTrash,
   makePrivateFolder,
 } from "@halonicjs/adapter-fs-node";
-import type { GitRunnerOptions } from "@halonicjs/adapter-git";
+import { type GitRunnerOptions, lazyGitVcs } from "@halonicjs/adapter-git";
 import { NodeHarnessBridgeServer, providerHostClass } from "@halonicjs/adapter-harness-bridge";
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
@@ -52,7 +52,6 @@ import type {
 } from "@halonicjs/ports";
 import type { ProfileEnvironment, ProfileFolder, WorkspaceFolders } from "@halonicjs/profile";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
-import { lazyProposalGit } from "./lazy-proposal-git.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { placementFolder } from "./sandbox-gate-machine.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
@@ -180,7 +179,7 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
       sweepRoots: [tempRoot, folders.proposalWorktreesFolder(), folders.runCopiesFolder()],
       recordFolder: keptGrantsRecordFolder(profile.root),
     });
-  const git = lazyProposalGit({
+  const git = lazyGitVcs({
     location: input.location,
     worktrees: folders.proposalWorktreesFolder(),
     ...(input.git === undefined ? {} : { git: input.git }),

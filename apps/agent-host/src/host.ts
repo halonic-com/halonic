@@ -25,7 +25,9 @@ import { googleRoutes } from "./google/google-routes.ts";
 import { openGoogleSetup } from "./google/google-setup.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
 import { hostHarnessProfiles } from "./harness/host-profiles.ts";
+import { hostProposalFolders } from "./harness/host-proposals.ts";
 import { profileRoute } from "./harness/profile-route.ts";
+import { proposalRoutes } from "./harness/proposal-routes.ts";
 import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
 import { hostModelRoutes } from "./model/host-model-routes.ts";
@@ -406,6 +408,7 @@ function hostServices(
   );
   const plugins = hostPlugins(version, sandbox, profile);
   const profiles = hostHarnessProfiles(profile, connectors.workspaceRoots, harnesses, logToError);
+  const proposals = hostProposalFolders(profile, connectors.workspaceRoots, logToError);
   const routes = [
     healthRoute(version),
     // A session's temp folder, made with its harness profile, goes when the session closes.
@@ -430,6 +433,7 @@ function hostServices(
     ),
     ...harnessRoutes({ harnesses, sessions, bridges, runs }),
     ...(profiles === undefined ? [] : [profileRoute(profiles, bridges)]),
+    ...(proposals === undefined ? [] : proposalRoutes(proposals)),
     ...connectorRoutes(connectorDeps),
     ...modelRoutes(
       hostModelRoutes({

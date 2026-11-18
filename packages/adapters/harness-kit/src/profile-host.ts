@@ -139,16 +139,16 @@ export class WorkspaceHarnessHost implements HarnessProfileHost {
         try {
           session = await sandbox.open(profile, options);
         } catch (error) {
-          await this.#removeTempFolderOf(profile);
+          await this.removeTempFolderOf(profile);
           throw error;
         }
-        return closingWith(session, () => this.#removeTempFolderOf(profile));
+        return closingWith(session, () => this.removeTempFolderOf(profile));
       },
     };
   }
 
   /** Removes the profile's temp folder when this host made it. Never throws. */
-  async #removeTempFolderOf(profile: SandboxProfile): Promise<void> {
+  async removeTempFolderOf(profile: SandboxProfile): Promise<void> {
     const folder = profile.tempFolder;
     if (!this.#tempFolders.delete(folder)) return;
     try {

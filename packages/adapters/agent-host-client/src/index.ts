@@ -37,6 +37,7 @@ export {
   type ProfileAgent,
 } from "./harness-profiles.ts";
 export { AgentHostPluginToolCaller, type PluginToolArgs } from "./plugins.ts";
+export { AgentHostProposalFolders, type ProposalFolderRun } from "./proposal-folders.ts";
 export { AgentHostSandbox, AgentHostSession } from "./sandbox.ts";
 export {
   AgentHostSandboxSetup,
