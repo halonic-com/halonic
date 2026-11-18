@@ -3,6 +3,7 @@
 - Task: HAL-12400
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12400 (found in the usability walk-through HAL-12375, Stage C23; small wording of an approved screen, team decision, HAL-2282 rule; wording follows rule N1 of Sofia's UX check HAL-12363; Liam's code review)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7t0C3YORFG4tGZIU8IZEk/GjcdvYG6GBKP0yGWGNn195o6/LlMcNh0xLLB7Q8oYF0gII/rFPTAV5Ld5WiSc/AQ==
 
 ## What changes
 
