@@ -48,7 +48,10 @@ checks that the title and **Open folder** sit at the same y in all three states.
 own `e2e/screenshots.spec.ts` while it walks its flow page: Settings › Plugins with nothing
 installed (`empty`), the Add plugin dialog (`add`), the trust check (`trust-check`), the list with
 the plugin on (`on`), the command dialog with its Result (`command-result`) and the Remove dialog
-(`remove`). CI uploads them from `packages/studio/features/plugins/test-results/screenshots`.
+(`remove`). `e2e/pages/screens.tsx` draws the screens the flow doesn't reach, from made-up data:
+the plugin's page on, not trusted yet and can't load (`page-on`, `page-not-trusted`,
+`page-cant-load`), its panel (`panel`) and its cards in each state (`cards`). CI uploads them
+from `packages/studio/features/plugins/test-results/screenshots`.
 
 ## Pictures for halonic.dev
 

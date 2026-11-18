@@ -11,7 +11,7 @@ In `.github/workflows/ci.yml`, the `studio-screenshots` upload in the Studio end
 
 ## Why
 
-The T16 visual checks of the plugin screens need pictures, and browsers run only in CI. The plugins feature's new `e2e/screenshots.spec.ts` takes them in its existing `Plugins flow` step; without this path they would not be uploaded.
+The T16 visual checks of the plugin screens need pictures, and browsers run only in CI. The plugins feature's new `e2e/screenshots.spec.ts` takes 22 of them in its existing `Plugins flow` step; without this path they would not be uploaded.
 
 ## Covers
 

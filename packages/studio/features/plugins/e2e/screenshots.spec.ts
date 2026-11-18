@@ -53,3 +53,23 @@ for (const scheme of schemes) {
     await shoot(page, "remove", scheme);
   });
 }
+
+/** The screens the flow doesn't reach (e2e/pages/screens.tsx), each with a line it must show. */
+const screens = {
+  "page-on": "What it adds",
+  "page-not-trusted": "What it adds",
+  "page-cant-load": "uses the tool send_email, which sends.",
+  panel: "Sunny, 18 degrees in Ghent.",
+  cards: "Couldn't get Today's weather",
+} as const;
+
+for (const [screen, shown] of Object.entries(screens)) {
+  for (const scheme of schemes) {
+    test(`plugin screen, ${screen}, ${scheme}`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto(`/screens.html?screen=${screen}`);
+      await expect(page.getByText(shown).first()).toBeVisible();
+      await shoot(page, screen, scheme);
+    });
+  }
+}
