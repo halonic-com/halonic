@@ -4,6 +4,7 @@
 - Task: HAL-12608, from Nina's docs check on HAL-12594 (section 8, P14)
 - Approval: Liam's review on HAL-12608 (https://github.com/halonic-com/halonic/pull/3686 carries it)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bGOMKWXCVeG3MwJhAXUPE5PH3mrSlvw1yxsl6AkNPdms8LizyCjbLZ+c6/uuteKswS/9wd44xvlCPQPi+vuMDQ==
 
 ## What changes
 
