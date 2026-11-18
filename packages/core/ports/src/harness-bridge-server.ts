@@ -1,4 +1,4 @@
-import type { ToolOutcome, Usage } from "@halonicjs/events";
+import type { RunEventBody, ToolOutcome, Usage } from "@halonicjs/events";
 import type { ToolDefinition } from "./chat.ts";
 import type { HarnessBridge, HarnessEvent } from "./harness.ts";
 import { type ModelPrice, priceOf } from "./model-price.ts";
@@ -28,15 +28,21 @@ export type BridgeProviderAccess =
    */
   | { kind: "sign-in" };
 
-/** What the bridge records itself: the model calls and Halonic tool calls that go through it. */
-export type BridgeEvent = Extract<
-  HarnessEvent,
-  { type: "llm.request" | "llm.response" | "tool.called" | "tool.result" }
->;
+/**
+ * What is recorded of the bridge: the model calls and Halonic tool calls that
+ * go through it, and the failures it told the program the run log has the
+ * details of (`bridge.failed`, from {@link HarnessBridgeOptions.reportError}).
+ */
+export type BridgeEvent =
+  | Extract<HarnessEvent, { type: "llm.request" | "llm.response" | "tool.called" | "tool.result" }>
+  | Extract<RunEventBody, { type: "bridge.failed" }>;
 
 /** Writes the bridge's events to the run's log. The engine adds `runId`, `seq`, `at` and the `state`. */
 export interface BridgeRecorder {
   /**
+   * A `bridge.failed` never counts towards the budget, so recording one never
+   * throws `limit_reached`.
+   *
    * @throws KindedError `limit_reached` for an `llm.request` once the run's
    *   budget is reached: the bridge then sends the model call nowhere and
    *   answers the program with 429 and the error's message
