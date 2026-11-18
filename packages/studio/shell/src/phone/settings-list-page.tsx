@@ -129,15 +129,36 @@ function firstSummaries(
   return { summaries, pending };
 }
 
+/** Whether an element scrolls its content: its `overflow-y` lets the content scroll. */
+function scrolls(element: Element): boolean {
+  const overflow = getComputedStyle(element).overflowY;
+  return overflow === "auto" || overflow === "scroll";
+}
+
+/**
+ * The element that scrolls the page: its nearest ancestor that scrolls, or `null` when none does.
+ * On a phone that is the window's `main`; in a short window (`short:`) it is the whole phone
+ * column, as `main` no longer scrolls there.
+ */
+function scrollerOf(page: HTMLElement): HTMLElement | null {
+  for (let parent = page.parentElement; parent !== null; parent = parent.parentElement) {
+    if (scrolls(parent)) {
+      return parent;
+    }
+  }
+  return null;
+}
+
 /**
  * Keeps the page's scroll position in `scroll` while it is open, and puts it back when the page is
- * drawn again, as Back from a section's page does. The scroller is the window's `main`.
+ * drawn again, as Back from a section's page does. The scroller is whichever element scrolls the
+ * page (`scrollerOf`).
  */
 function useKeptScroll(scroll: RefObject<number>) {
   const page = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
-    const scroller = page.current?.closest("main");
-    if (scroller === null || scroller === undefined) {
+    const scroller = page.current === null ? null : scrollerOf(page.current);
+    if (scroller === null) {
       return;
     }
     scroller.scrollTop = scroll.current;
