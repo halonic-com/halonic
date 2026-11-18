@@ -305,7 +305,9 @@ verifies("inbox.approval-card", () => {
       later(2);
       await press(button(root, "Approve"));
       const slot = root.querySelector("[role='alert']");
-      expect(slot?.textContent).toContain("Studio can't answer runs yet.");
+      expect(slot?.textContent).toContain(
+        "Studio can't answer runs yet. To answer this one, run this in a terminal:",
+      );
       expect(slot?.querySelector("code, [class*='font-mono']")?.textContent).toBe(
         "halonic runs send 7k2m9p approve",
       );
