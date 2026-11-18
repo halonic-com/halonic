@@ -68,6 +68,11 @@ export function StartsCard({ host, routine }: StartsCardProps) {
           />
         </Field>
         <TargetState routine={routine} name={name} />
+        {routine.live !== undefined && routine.live.targetName !== routine.targetName && (
+          <p className="text-small text-fg-muted">
+            {words.newTargetNotLive(routine.live.targetName)}
+          </p>
+        )}
         {target.kind === "workflow" ? (
           <InputField input={target.input} onChange={(input) => void save({ ...target, input })} />
         ) : (

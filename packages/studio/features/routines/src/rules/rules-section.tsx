@@ -23,6 +23,12 @@ export function RulesSection({ host, routine }: RulesSectionProps) {
   const showCatchUp = kind !== "manual" && kind !== "webhook";
   if (!showOverlap && !showCatchUp) return null;
 
+  const { live } = routine;
+  const rulesNotLive =
+    live !== undefined &&
+    ((showOverlap && live.overlap !== routine.overlap) ||
+      (showCatchUp && live.catchUp !== routine.catchUp));
+
   const save = async (changes: RoutineChanges) => {
     setFailure(undefined);
     try {
@@ -54,6 +60,7 @@ export function RulesSection({ host, routine }: RulesSectionProps) {
           />
         </Field>
       )}
+      {rulesNotLive && <p className="text-small text-fg-muted">{words.newRulesNotLive}</p>}
       {failure !== undefined && <Callout tone="danger">{failure}</Callout>}
     </section>
   );

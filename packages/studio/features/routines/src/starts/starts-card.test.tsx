@@ -5,6 +5,7 @@ import { act } from "react";
 import { afterEach, expect, it } from "vitest";
 import type {
   RoutineChanges,
+  RoutineLiveValues,
   RoutinesHost,
   RoutineTarget,
   RoutineTargetChoice,
@@ -165,5 +166,26 @@ verifies("routines.starts.starts-card", () => {
     expect((await card(routineStarting(briefing, "in-trash"))).page.textContent).toContain(
       "Briefing is in the trash, so this routine won't start it.",
     );
+  });
+
+  it("says which target still starts while the saved one isn't live", async () => {
+    const live: RoutineLiveValues = {
+      triggerSentence: "Weekdays at 07:30",
+      targetName: "Briefing",
+      overlap: "skip",
+      catchUp: "last",
+    };
+    const changed = {
+      ...routineStarting({ kind: "agent", hubId: "acme", id: "helper", prompt: "Go." }),
+      targetName: "Helper",
+      live,
+    };
+    const { page } = await card(changed);
+    expect(page.textContent).toContain(
+      "Your new choice isn't live yet. Until it is, the routine starts Briefing.",
+    );
+    unmount();
+    const same = await card({ ...routineStarting(briefing), live });
+    expect(same.page.textContent).not.toContain("isn't live yet");
   });
 });
