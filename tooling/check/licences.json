@@ -35,6 +35,7 @@
   "gradle": {
     "//": "POM licence names of the Android app's Gradle libraries, and Google's libraries we ship under their own terms. See decisions/mateo/HAL-12585-01-gradle-notices.md.",
     "names": {
+      "Apache 2.0": "Apache-2.0",
       "Apache License, Version 2.0": "Apache-2.0",
       "Apache-2.0": "Apache-2.0",
       "The Apache License, Version 2.0": "Apache-2.0",
