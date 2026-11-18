@@ -12,6 +12,7 @@ import {
 } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWordsOf, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { SampleHintService } from "../api.ts";
 import { listRows } from "../list/list-rows.ts";
 import type { RunRow } from "../list/run-row.ts";
 import {
@@ -36,6 +37,7 @@ export function RunsPage({ context }: PlaceViewProps) {
     <RunsView
       list={context.services.get(RunsListService)}
       engine={engineWordsOf(context)}
+      isSample={context.services.find(SampleHintService)?.isSample() === true}
       {...(openItem === undefined
         ? {}
         : {
@@ -54,6 +56,8 @@ export interface RunsViewProps {
   readonly now?: () => Date;
   /** What the page calls the engine when it isn't answering, for this window's host; the desktop app's by default. */
   readonly engine?: EngineWords;
+  /** Whether the workspace is the Acme sample, where a run starts from the Inbox. */
+  readonly isSample?: boolean;
 }
 
 /**
@@ -75,6 +79,7 @@ export function RunsView({
   openRun,
   now = () => new Date(),
   engine = engineWordsOf({}),
+  isSample = false,
 }: RunsViewProps) {
   const phone = usePresentation() === "phone";
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
@@ -133,6 +138,7 @@ export function RunsView({
         openRow={openRow}
         now={now()}
         phone={phone}
+        isSample={isSample}
       />
     </div>
   );
@@ -151,6 +157,7 @@ function PageBody({
   openRow,
   now,
   phone,
+  isSample,
 }: {
   readonly state: RunsListState;
   readonly engine: EngineWords;
@@ -163,6 +170,7 @@ function PageBody({
   readonly openRow: ((id: string) => void) | undefined;
   readonly now: Date;
   readonly phone: boolean;
+  readonly isSample: boolean;
 }) {
   if (!state.loaded && state.error !== undefined) {
     return (
@@ -179,7 +187,7 @@ function PageBody({
   }
   const empty = state.loaded ? emptyList(rows, filters) : undefined;
   if (empty?.kind === "no-runs") {
-    return <NoRuns workflows={state.workflows} />;
+    return <NoRuns workflows={state.workflows} isSample={isSample} />;
   }
   return (
     <>
@@ -198,23 +206,42 @@ function PageBody({
   );
 }
 
-/** No runs at all (R1), with no filters above it: there's nothing to filter. The line names a workflow to run, or says there is none (HAL-10128). */
-function NoRuns({ workflows }: { readonly workflows: readonly string[] | undefined }) {
+/**
+ * No runs at all (R1), with no filters above it: there's nothing to filter. The line names a
+ * workflow to run, or says there is none (HAL-10128); in the Acme sample it says to start one from
+ * the Inbox, as Home does (HAL-12225).
+ */
+function NoRuns({
+  workflows,
+  isSample,
+}: {
+  readonly workflows: readonly string[] | undefined;
+  readonly isSample: boolean;
+}) {
   return (
     <EmptyState
       title={emptyListWords.noRunsTitle}
-      description={
-        workflows?.length === 0 ? (
-          emptyListWords.noRunsNoWorkflow
-        ) : (
-          <>
-            {emptyListWords.noRunsBody}
-            <code className="font-mono text-code">{runCommand(workflows)}</code>
-            {emptyListWords.noRunsBodyEnd}
-          </>
-        )
-      }
+      description={<NoRunsLine workflows={workflows} isSample={isSample} />}
     />
+  );
+}
+
+/** The line under "No runs yet": the Inbox in the sample, else where to add a workflow or which one to run. */
+function NoRunsLine({
+  workflows,
+  isSample,
+}: {
+  readonly workflows: readonly string[] | undefined;
+  readonly isSample: boolean;
+}) {
+  if (isSample) return emptyListWords.noRunsSample;
+  if (workflows?.length === 0) return emptyListWords.noRunsNoWorkflow;
+  return (
+    <>
+      {emptyListWords.noRunsBody}
+      <code className="font-mono text-code">{runCommand(workflows)}</code>
+      {emptyListWords.noRunsBodyEnd}
+    </>
   );
 }
 

@@ -148,6 +148,8 @@ export const emptyListWords = {
   noRunsBodyEnd: " in a terminal.",
   noRunsNoWorkflow:
     "Runs started from the command line show up here. This workspace has no workflow yet: add one in Workflows.",
+  /** The body in the Acme sample, where a run starts from the Inbox, as Home's Recent runs says (HAL-12225). */
+  noRunsSample: "Start one from the Inbox, and it shows up here.",
   onlyTestRuns: "Only test runs so far.",
   showTestRuns: "Show test runs",
   /** The Workflow chip's workflow has no run yet; the button clears the chip. */

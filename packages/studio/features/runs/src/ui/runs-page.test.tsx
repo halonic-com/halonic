@@ -45,6 +45,7 @@ async function openPage(
   source: RunsSource,
   openRun?: (run: RunSummary) => void,
   engine?: EngineWords,
+  isSample?: boolean,
 ) {
   const list = new RunsList(source);
   const root = render(
@@ -53,6 +54,7 @@ async function openPage(
       now={() => mondayMorning}
       {...(openRun === undefined ? {} : { openRun })}
       {...(engine === undefined ? {} : { engine })}
+      {...(isSample === undefined ? {} : { isSample })}
     />,
   );
   await settled();
@@ -262,6 +264,16 @@ verifies("runs.list", () => {
         "Runs started from the command line show up here. To start one, type halonic run in a terminal.",
       );
       expect(root.querySelector("code")?.textContent).toBe("halonic run");
+    });
+
+    it("says to start a run from the Inbox in the Acme sample, as Home does", async () => {
+      const fake = fakeSource([]);
+      fake.workflows(["support-reply"]);
+      const { root } = await openPage(fake.source, undefined, undefined, true);
+      expect(root.textContent).toContain("No runs yet");
+      expect(root.textContent).toContain("Start one from the Inbox, and it shows up here.");
+      expect(root.textContent).not.toContain("command line");
+      expect(root.querySelector("code")).toBeNull();
     });
 
     it("says only test runs are there, and Show test runs shows them", async () => {
