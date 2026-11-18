@@ -21,7 +21,7 @@ Before it reads its arguments or opens the profile, the command shall check whet
   then it prints the "already allowed" line, exits 0 and writes nothing.
 - Given no stored key `missing-key`,
   when it is run for that key,
-  then it exits 4 with `There is no key named "missing-key". Save it on the Models page first.`
+  then it exits 4 with `There's no key named "missing-key". Save it with halonic secret set missing-key or on the Models page first.`
 - Given `HALONIC_RUN_TOKEN` in the environment,
   when it is run,
   then it exits 7 with the refusal on stderr and the secrets file is as it was.
