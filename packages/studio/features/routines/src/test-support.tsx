@@ -71,6 +71,7 @@ export function memoryHost(
         },
       };
     },
+    runs: async () => ({ runs: [], skips: [] }),
     starterTarget: async (hubId: string) => starter(hubId),
     create: async ({ name, hubId }: { name: string; hubId: string }): Promise<RoutineRef> => {
       const made = listing(hubId, name.toLowerCase().replaceAll(" ", "-"), name);
