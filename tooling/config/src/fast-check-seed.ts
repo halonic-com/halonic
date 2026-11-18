@@ -1,3 +1,4 @@
+// Throwaway: forces a cold Turbo run to measure task timings (HAL-9808). Never merged.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
