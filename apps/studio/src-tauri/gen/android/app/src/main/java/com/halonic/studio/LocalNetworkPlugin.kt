@@ -12,6 +12,7 @@ import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 
 private const val ALIAS = "localNetwork"
+private const val PERMISSION = "android.permission.ACCESS_LOCAL_NETWORK"
 
 /** The first Android that blocks the local network without the permission. */
 private const val ANDROID_17 = 37
@@ -25,7 +26,7 @@ private const val ANDROID_17 = 37
  */
 @TauriPlugin(
   permissions = [
-    Permission(strings = ["android.permission.ACCESS_LOCAL_NETWORK"], alias = ALIAS)
+    Permission(strings = [PERMISSION], alias = ALIAS)
   ]
 )
 class LocalNetworkPlugin(activity: Activity) : Plugin(activity) {
@@ -33,12 +34,13 @@ class LocalNetworkPlugin(activity: Activity) : Plugin(activity) {
    * Answers `{"granted": true}` when the app may reach the local network,
    * showing Android's own question first if the user hasn't answered it.
    * Older Androids don't know the permission and never block, so they
-   * answer at once.
+   * answer at once. A "no" says in `askAgain` whether Android will show its
+   * question on the next press, or only Settings can turn it on.
    */
   @Command
   fun allowLocalNetwork(invoke: Invoke) {
     if (Build.VERSION.SDK_INT < ANDROID_17 || getPermissionState(ALIAS) == PermissionState.GRANTED) {
-      answer(invoke, true)
+      answer(invoke, true, false)
     } else {
       requestPermissionForAlias(ALIAS, invoke, "localNetworkAnswered")
     }
@@ -46,10 +48,11 @@ class LocalNetworkPlugin(activity: Activity) : Plugin(activity) {
 
   @PermissionCallback
   private fun localNetworkAnswered(invoke: Invoke) {
-    answer(invoke, getPermissionState(ALIAS) == PermissionState.GRANTED)
+    val granted = getPermissionState(ALIAS) == PermissionState.GRANTED
+    answer(invoke, granted, !granted && activity.shouldShowRequestPermissionRationale(PERMISSION))
   }
 
-  private fun answer(invoke: Invoke, granted: Boolean) {
-    invoke.resolve(JSObject().put("granted", granted))
+  private fun answer(invoke: Invoke, granted: Boolean, askAgain: Boolean) {
+    invoke.resolve(JSObject().put("granted", granted).put("askAgain", askAgain))
   }
 }

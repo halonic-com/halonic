@@ -116,8 +116,12 @@ verifies("studio.connect.field-errors", () => {
       "Something answered at 192.168.1.1, but it isn't Halonic. Check the address.",
     ],
     [
-      { kind: "noLocalNetwork", address: "192.168.1.20:4280" } as const,
-      "Halonic needs the Nearby devices permission to reach 192.168.1.20:4280. Press Connect and choose Allow, or turn it on in your phone's Settings under Apps, Halonic, Permissions.",
+      { kind: "noLocalNetwork", address: "192.168.1.20:4280", askAgain: true } as const,
+      "Can't reach 192.168.1.20:4280 without the Nearby devices permission. Press Connect again and choose Allow.",
+    ],
+    [
+      { kind: "noLocalNetwork", address: "192.168.1.20:4280", askAgain: false } as const,
+      "Can't reach 192.168.1.20:4280 without the Nearby devices permission. In your phone's Settings, open Apps, Halonic, Permissions, Nearby devices and choose Allow. Then press Connect again.",
     ],
   ])("shows %o as one field error, read when it appears", async (result, text) => {
     const page = await openPage(new FakeShell().answer(result), new MemoryStore());

@@ -21,9 +21,13 @@ export const words = {
   notHalonic: (address: string): Piece[] => [
     `Something answered at ${address}, but it isn't Halonic. Check the address.`,
   ],
-  // HAL-12253: Android 17's "Nearby devices" permission, turned down.
-  noLocalNetwork: (address: string): Piece[] => [
-    `Halonic needs the Nearby devices permission to reach ${address}. Press Connect and choose Allow, or turn it on in your phone's Settings under Apps, Halonic, Permissions.`,
+  // HAL-12253, worded on HAL-12260: Android 17's "Nearby devices"
+  // permission, turned down. `askAgain` is whether Android will show its
+  // question on the next press; when it won't, only Settings can help.
+  noLocalNetwork: (address: string, askAgain: boolean): Piece[] => [
+    askAgain
+      ? `Can't reach ${address} without the Nearby devices permission. Press Connect again and choose Allow.`
+      : `Can't reach ${address} without the Nearby devices permission. In your phone's Settings, open Apps, Halonic, Permissions, Nearby devices and choose Allow. Then press Connect again.`,
   ],
   appTooOld: (computerVersion: string): string =>
     `This app is too old for Halonic on your computer (${computerVersion}). Install the new app to continue.`,

@@ -17,8 +17,11 @@ mod android {
 
     /// The Kotlin plugin's answer.
     #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
     pub struct Answer {
         pub granted: bool,
+        #[serde(default)]
+        pub ask_again: bool,
     }
 
     /// Loads the Kotlin side, which only Android has.
@@ -37,23 +40,43 @@ mod android {
 #[cfg(target_os = "android")]
 pub use android::plugin;
 
+/// The user's answer to Android's local network question.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Answer {
+    Allowed,
+    /// Turned down. `ask_again` says whether Android will show its question
+    /// on the next press; when it won't, only the phone's Settings can turn
+    /// the permission on.
+    TurnedDown {
+        ask_again: bool,
+    },
+}
+
 /// Whether the app may reach the local network, asking the user first with
 /// Android's own question when they haven't answered it yet. A plugin that
-/// fails reads as "no", so the page says why instead of timing out.
+/// fails reads as "no, and won't ask again", so the page says why instead
+/// of timing out, and points to Settings when it can't tell.
 #[cfg(target_os = "android")]
-pub async fn allowed<R: Runtime>(app: &AppHandle<R>) -> bool {
+pub async fn allowed<R: Runtime>(app: &AppHandle<R>) -> Answer {
     use tauri::Manager;
+    let turned_down = Answer::TurnedDown { ask_again: false };
     let Some(plugin) = app.try_state::<android::LocalNetwork<R>>() else {
-        return false;
+        return turned_down;
     };
-    plugin
+    match plugin
         .0
         .run_mobile_plugin_async::<android::Answer>("allowLocalNetwork", ())
         .await
-        .is_ok_and(|answer| answer.granted)
+    {
+        Ok(answer) if answer.granted => Answer::Allowed,
+        Ok(answer) => Answer::TurnedDown {
+            ask_again: answer.ask_again,
+        },
+        Err(_) => turned_down,
+    }
 }
 
 #[cfg(not(target_os = "android"))]
-pub async fn allowed<R: Runtime>(_app: &AppHandle<R>) -> bool {
-    true
+pub async fn allowed<R: Runtime>(_app: &AppHandle<R>) -> Answer {
+    Answer::Allowed
 }

@@ -88,11 +88,15 @@
         },
         "address": {
           "type": "string"
+        },
+        "askAgain": {
+          "type": "boolean"
         }
       },
       "required": [
         "kind",
-        "address"
+        "address",
+        "askAgain"
       ],
       "additionalProperties": false
     },

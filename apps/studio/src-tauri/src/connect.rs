@@ -14,6 +14,7 @@ use halonic_connect::{
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_http::reqwest;
 
+use crate::local_network::Answer;
 use crate::navigation::ConfirmedAddress;
 
 /// The oldest Halonic on a computer that this app works with. A computer
@@ -35,8 +36,8 @@ pub async fn connect<R: Runtime>(app: AppHandle<R>, address: String) -> ConnectR
     let mut deadline = Instant::now() + HELLO_TIMEOUT;
     let local_name =
         parse_address(&address).is_ok_and(|parsed| lookup_needs_local_network(&parsed));
-    if local_name && !local_network_allowed(&app, &mut deadline).await {
-        return ConnectResult::refused(ConnectError::NoLocalNetwork, &address);
+    if local_name && let Err(error) = local_network_allowed(&app, &mut deadline).await {
+        return ConnectResult::refused(error, &address);
     }
     let input = address.clone();
     // The lookup blocks, so it runs on a worker thread, never the UI's.
@@ -52,9 +53,9 @@ pub async fn connect<R: Runtime>(app: AppHandle<R>, address: String) -> ConnectR
     };
     if !local_name
         && call_needs_local_network(&checked)
-        && !local_network_allowed(&app, &mut deadline).await
+        && let Err(error) = local_network_allowed(&app, &mut deadline).await
     {
-        return ConnectResult::refused(ConnectError::NoLocalNetwork, &address);
+        return ConnectResult::refused(error, &address);
     }
     let reply = call_hello(&checked, deadline).await;
     let result = ConnectResult::after_hello(&checked, &reply, &app_versions(&app));
@@ -66,11 +67,17 @@ pub async fn connect<R: Runtime>(app: AppHandle<R>, address: String) -> ConnectR
 
 /// Asks for Android's local network permission, and moves the deadline on
 /// by the time the user took to answer.
-async fn local_network_allowed<R: Runtime>(app: &AppHandle<R>, deadline: &mut Instant) -> bool {
+async fn local_network_allowed<R: Runtime>(
+    app: &AppHandle<R>,
+    deadline: &mut Instant,
+) -> Result<(), ConnectError> {
     let asked = Instant::now();
-    let allowed = crate::local_network::allowed(app).await;
+    let answer = crate::local_network::allowed(app).await;
     *deadline += asked.elapsed();
-    allowed
+    match answer {
+        Answer::Allowed => Ok(()),
+        Answer::TurnedDown { ask_again } => Err(ConnectError::NoLocalNetwork { ask_again }),
+    }
 }
 
 /// `GET /api/hello` on exactly the checked IP addresses: no proxy, no

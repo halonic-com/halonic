@@ -82,6 +82,7 @@ fn connect_result_fixtures_match_what_the_crate_serialises() {
         },
         ConnectResult::NoLocalNetwork {
             address: text("192.168.1.20:4280"),
+            ask_again: true,
         },
         ConnectResult::AppTooOld {
             computer_version: text("0.3.1"),
