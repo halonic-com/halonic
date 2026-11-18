@@ -46,7 +46,8 @@ pub enum Answer {
     Allowed,
     /// Turned down. `ask_again` says whether Android will show its question
     /// on the next press; when it won't, only the phone's Settings can turn
-    /// the permission on.
+    /// the permission on. Only Android builds it.
+    #[cfg_attr(not(target_os = "android"), expect(dead_code))]
     TurnedDown {
         ask_again: bool,
     },
