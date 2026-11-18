@@ -63,7 +63,7 @@ verifies("connector-stdio-sandbox.local-tool-plugin-copy", () => {
   });
 
   it.skipIf(process.platform === "win32")(
-    "refuses a checked file that is now a link, even to the same bytes",
+    "[platform:win32] needs links without admin rights: refuses a checked file that is now a link, even to the same bytes",
     async () => {
       await writeFile(join(root, "same.js"), files["tools/server.js"] ?? "");
       await rm(join(plugin, "tools", "server.js"));
@@ -77,7 +77,7 @@ verifies("connector-stdio-sandbox.local-tool-plugin-copy", () => {
   );
 
   it.skipIf(process.platform === "win32")(
-    "refuses a checked file that is now a named pipe, without waiting for a writer",
+    "[platform:win32] needs mkfifo: refuses a checked file that is now a named pipe, without waiting for a writer",
     async () => {
       await rm(join(plugin, "tools", "server.js"));
       execFileSync("mkfifo", [join(plugin, "tools", "server.js")]);
