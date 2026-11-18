@@ -64,6 +64,8 @@ impl Root {
 
     /// The cases to check: all of them, or without the 8.3 ones when the
     /// volume makes no short names and CI didn't ask for them.
+    // Its note goes to whoever reads the test run, not to the shell's log.
+    #[allow(clippy::print_stderr)]
     fn cases<'a>(&self, golden: &'a Golden) -> Vec<&'a Case> {
         let short_names = golden
             .cases
@@ -76,8 +78,6 @@ impl Root {
                 "no 8.3 short names under {}: the volume has them off (`fsutil 8dot3name query`)",
                 self.0.display()
             );
-            // A note for whoever reads the test run, not the shell's log.
-            #[allow(clippy::print_stderr)]
             eprintln!(
                 "note: no 8.3 short names under {}, so the 8.3 cases are left out",
                 self.0.display()
