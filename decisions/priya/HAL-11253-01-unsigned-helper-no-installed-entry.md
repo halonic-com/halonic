@@ -3,6 +3,7 @@
 - Task: HAL-11253
 - Approval: Liam approved this change on HAL-11253 (comment of 18 Nov): an unsigned build writes no helper copy to Program Files and registers no Installed apps entry.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:AwK2wR5X5USVAonDOXUv4ip/+uyhhImeyafIF1OzxiS8CKD+c5IBIxRouIsPXrmv+ullMwe6EfAvvRvUexjfAg==
 
 ## What changes
 
