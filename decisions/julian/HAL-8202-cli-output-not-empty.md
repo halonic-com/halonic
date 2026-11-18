@@ -1,6 +1,6 @@
 # Decision: the CLI compare checks that a call still prints something
 
-- Approval: HAL-8202, from the guardian review on HAL-8178; Liam reviews and signs this note
+- Approval: [HAL-8202](/HAL/issues/HAL-8202), from the guardian review on HAL-8178; Liam signs this note, as Julian wrote the change
 - Kind: user-visible
 - Task: HAL-8202
 
@@ -25,4 +25,5 @@ Two tests in `cli-judge.test.ts`: a new call that prints nothing where the old o
 
 ## Covers
 
+- parity.compare-cli-calls
 - packages/testing/parity/allowed-differences.json
