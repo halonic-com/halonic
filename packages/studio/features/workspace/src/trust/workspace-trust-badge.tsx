@@ -7,7 +7,7 @@ import type { WorkspaceTrustControl } from "./workspace-trust-control.ts";
 
 /** What the badge's tooltip says (states-flow-map T2): only what trust gates today (HAL-12409, C52 7.1). */
 export const notTrustedTooltip =
-  "Its routines and connectors stay off until you review it. You can still read and edit everything.";
+  "Until you review it, its routines and connectors won't start and keys won't go to non-standard model addresses. You can still read and edit everything.";
 
 /** The tooltip when the list of trusted workspaces can't be read (T4). */
 export const unreadableTooltip = "Halonic couldn't read its list of trusted workspaces.";
