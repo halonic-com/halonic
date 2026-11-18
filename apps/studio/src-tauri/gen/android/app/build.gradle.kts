@@ -1,6 +1,8 @@
 import groovy.json.JsonOutput
+import java.io.InputStream
 import java.util.Properties
 import java.util.zip.ZipFile
+import java.util.zip.ZipInputStream
 import javax.inject.Inject
 import javax.xml.parsers.DocumentBuilderFactory
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
@@ -139,44 +141,88 @@ fun pomLicences(pom: Element): List<Map<String, String?>> {
     return emptyList()
 }
 
-/** The third_party_licenses.txt Google puts at the root of its AARs, verbatim. */
-fun embeddedLicences(group: String, name: String, version: String): String? {
-    val aar = configurations.detachedConfiguration(dependencies.create("$group:$name:$version@aar"))
+/** The AAR of a module. It must exist: the POM says the module is one. */
+fun aarOf(group: String, name: String, version: String): File =
+    configurations.detachedConfiguration(dependencies.create("$group:$name:$version@aar"))
         .apply { isTransitive = false }
         .singleFile
-    return ZipFile(aar).use { zip ->
+
+/**
+ * The JAR of a module, or null when it has none. A Kotlin Multiplatform root
+ * module may publish no JAR of its own: its code is in the `-jvm` or
+ * `-android` module, which the classpath lists too.
+ */
+fun jarOf(group: String, name: String, version: String): File? =
+    configurations.detachedConfiguration(dependencies.create("$group:$name:$version@jar"))
+        .apply { isTransitive = false }
+        .incoming.artifactView { lenient(true) }.files.singleOrNull()
+
+/** The third_party_licenses.txt Google puts at the root of its AARs, verbatim. */
+fun embeddedLicences(aar: File): String? =
+    ZipFile(aar).use { zip ->
         zip.getEntry("third_party_licenses.txt")?.let { entry ->
             zip.getInputStream(entry).use { it.readBytes().toString(Charsets.UTF_8) }
         }
     }
+
+val noticeEntry = Regex("^META-INF/NOTICE[^/]*$", RegexOption.IGNORE_CASE)
+
+/**
+ * The META-INF/NOTICE files of a JAR, sorted by name. Apache-2.0 section 4(d)
+ * asks us to pass on a library's NOTICE file with it (HAL-12776).
+ */
+fun jarNotices(jar: InputStream): List<String> {
+    val found = sortedMapOf<String, String>()
+    ZipInputStream(jar).use { zip ->
+        generateSequence { zip.nextEntry }
+            .filter { noticeEntry.matches(it.name) }
+            .forEach { found[it.name] = zip.readBytes().toString(Charsets.UTF_8) }
+    }
+    return found.values.toList()
+}
+
+/** The NOTICE files of an AAR: those of the classes.jar inside it. */
+fun aarNotices(aar: File): List<String> =
+    ZipFile(aar).use { zip ->
+        zip.getEntry("classes.jar")?.let { jarNotices(zip.getInputStream(it)) } ?: emptyList()
+    }
+
+/** What the Gradle licence file says about one module, or null for a module that ships no code. */
+fun licenceEntry(module: ModuleComponentIdentifier): Map<String, Any?>? {
+    val pom = pomOf(module.group, module.module, module.version)
+    val packaging = pom.text("packaging") ?: "jar"
+    // A BOM (packaging "pom") only pins versions: no artifact, nothing shipped.
+    if (packaging == "pom") {
+        return null
+    }
+    val aar = if (packaging == "aar") aarOf(module.group, module.module, module.version) else null
+    val jar = if (aar == null) jarOf(module.group, module.module, module.version) else null
+    if (aar == null && jar == null) {
+        logger.warn("thirdPartyLicences: ${module.displayName} has no JAR, so no NOTICE file was read")
+    }
+    return mapOf(
+        "group" to module.group,
+        "name" to module.module,
+        "version" to module.version,
+        "licences" to pomLicences(pom),
+        "embedded" to aar?.let { embeddedLicences(it) },
+        "notices" to (aar?.let { aarNotices(it) } ?: jar?.inputStream()?.let { jarNotices(it) } ?: emptyList()),
+    )
 }
 
 val gradleLicencesFile = layout.buildDirectory.file("third-party/gradle-licences.json")
 
 tasks.register("thirdPartyLicences") {
-    description = "Lists the release libraries with their POM licences and their AARs' third_party_licenses.txt."
+    description = "Lists the release libraries with their POM licences, their AARs' third_party_licenses.txt and their NOTICE files."
     outputs.file(gradleLicencesFile)
     outputs.upToDateWhen { false }
-    notCompatibleWithConfigurationCache("It reads POM and AAR files of the classpath while it runs.")
+    notCompatibleWithConfigurationCache("It reads POM, AAR and JAR files of the classpath while it runs.")
     doLast {
         val modules = configurations.getByName("universalReleaseRuntimeClasspath")
             .incoming.resolutionResult.allComponents
             .mapNotNull { it.id as? ModuleComponentIdentifier }
             .sortedBy { it.displayName }
-        val artifacts = modules.map { module ->
-            val pom = pomOf(module.group, module.module, module.version)
-            mapOf(
-                "group" to module.group,
-                "name" to module.module,
-                "version" to module.version,
-                "licences" to pomLicences(pom),
-                "embedded" to if (pom.text("packaging") == "aar") {
-                    embeddedLicences(module.group, module.module, module.version)
-                } else {
-                    null
-                },
-            )
-        }
+        val artifacts = modules.mapNotNull { licenceEntry(it) }
         val json = JsonOutput.prettyPrint(JsonOutput.toJson(mapOf("artifacts" to artifacts)))
         gradleLicencesFile.get().asFile.apply { parentFile.mkdirs() }.writeText("$json\n")
     }

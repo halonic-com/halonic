@@ -49,6 +49,25 @@ describe("gradleNoticeEntries", () => {
     ]);
   });
 
+  test("passes on a library's NOTICE files after its licence text, without blank ones", () => {
+    const found = gradleNoticeEntries(
+      {
+        artifacts: [
+          library("acme-json", {
+            notices: ["# Acme JSON\n\nCopyright 2026 Acme Corp.\n", "  \n"],
+          }),
+          library("acme-plain", { notices: null }),
+        ],
+      },
+      rules,
+    );
+    expect(found.problems).toEqual([]);
+    expect(found.entries.map((entry) => entry.texts)).toEqual([
+      ["Apache License text", "# Acme JSON\n\nCopyright 2026 Acme Corp."],
+      ["Apache License text"],
+    ]);
+  });
+
   test("lists a named proprietary library with its terms, then its embedded notices verbatim", () => {
     const found = gradleNoticeEntries(
       {
@@ -59,6 +78,7 @@ describe("gradleNoticeEntries", () => {
             version: "18.1.0",
             licences: [{ name: sdk, url: "https://example.com/terms" }],
             embedded: "JSR 305: BSD-3-Clause",
+            notices: ["Acme basement NOTICE"],
           },
         ],
       },
@@ -73,6 +93,7 @@ describe("gradleNoticeEntries", () => {
       texts: [
         `com.example.gms:acme-basement is not open-source software. It is distributed under the ${sdk}: https://example.com/terms`,
         "JSR 305: BSD-3-Clause",
+        "Acme basement NOTICE",
       ],
     });
   });
