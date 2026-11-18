@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-12783, from the accessibility recheck on HAL-12774; flow-agents 5.1
 
-While the Studio uses its phone layout, the agents feature shall show the Configuration's list of pages (Behaviour, Model, Harness) as a horizontal `TabList` across the top of the Configuration, in the same segmented look as the Runs and Configuration tabs above it, with the picked page below it at the full width; on the desktop the list shall stay a vertical column beside the page.
+While the Studio uses its phone layout, the agents feature shall show the Configuration's list of pages (Behaviour, Model, Harness, Tools) as a horizontal `TabList` across the top of the Configuration, in the same segmented look as the Runs and Configuration tabs above it, with the picked page below it at the full width; on the desktop the list shall stay a vertical column beside the page.
 
 ## Examples
 
