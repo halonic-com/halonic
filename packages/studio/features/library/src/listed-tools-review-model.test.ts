@@ -32,6 +32,7 @@ function snapshot(overrides: Partial<ListedToolsSnapshot> = {}): ListedToolsSnap
     keepsChanging: [],
     refused: [],
     approved: [],
+    approvedWithoutAsking: [],
     listingRefused: null,
     unreadable: null,
     hasApprovals: false,

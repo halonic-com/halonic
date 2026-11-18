@@ -23,7 +23,13 @@ export {
 export type { Collection, CollectionField, CollectionView } from "./kinds/collection/schema.ts";
 export { FIELD_TYPES } from "./kinds/collection/schema.ts";
 export { connectorIsLocal } from "./kinds/connector/is-local.ts";
-export { approveAll, type Connector, marksRead, needsApproval } from "./kinds/connector/schema.ts";
+export {
+  approveAll,
+  asksBeforeEachUse,
+  type Connector,
+  marksRead,
+  needsApproval,
+} from "./kinds/connector/schema.ts";
 export type {
   CloudflareSettings,
   Deployment,

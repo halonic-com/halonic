@@ -42,6 +42,7 @@ function snapshot(toReview: readonly string[], approved: readonly string[] = [])
     keepsChanging: [],
     refused: [],
     approved,
+    approvedWithoutAsking: [],
     listingRefused: null,
     unreadable: null,
     hasApprovals: approved.length > 0,

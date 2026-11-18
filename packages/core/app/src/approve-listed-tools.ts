@@ -10,6 +10,7 @@ import {
   type ListedToolText,
   type ToolApproval,
   type ToolApprovalStore,
+  type ToolRisk,
   type ToolServer,
   type WaitingVersion,
   waitingVersionKeptMs,
@@ -45,6 +46,12 @@ export interface WaitingTool {
   readonly tool: ListedToolText;
   /** The tool as it was approved, so the screen can show what changed, or `null` when it never was. */
   readonly approved: ListedToolText | null;
+  /**
+   * Its risk as the listing was read ({@link OfferedListedTool.risk}): `send`
+   * when its listing says so. The screens pass it to `asksBeforeEachUse`,
+   * since the `read` list can't lower `send`.
+   */
+  readonly risk: ToolRisk;
   /**
    * `true` when it was approved at another server address: the workspace
    * points the source at another URL or command, or gives the integration
@@ -159,6 +166,7 @@ export async function approveListedTools(
       fingerprint: fingerprint.value,
       tool: text,
       approved: approval?.tool ?? null,
+      risk: tool.risk,
       serverChanged,
       keepsChanging: keepsChanging(versions, input.clock.now()),
     });

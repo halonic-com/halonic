@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { marksRead, parseFile } from "../../index.ts";
+import { asksBeforeEachUse, marksRead, parseFile } from "../../index.ts";
 import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.spec.ts";
 
 /** A connector file whose `tools` lines are `lines`. */
@@ -97,5 +97,26 @@ verifies("format.connector-read", () => {
   it("marks no tool without a read list", () => {
     expect(marksRead({ approve: [] }, "search_issues")).toBe(false);
     expect(marksRead({ approve: [], read: [] }, "search_issues")).toBe(false);
+  });
+
+  it("asks before each use of every tool when the file has no read list", () => {
+    expect(asksBeforeEachUse({ approve: [] }, "lookup")).toBe(true);
+    expect(asksBeforeEachUse({ approve: [] }, "update_note")).toBe(true);
+  });
+
+  it("doesn't ask before a tool the read list marks, and asks before the others", () => {
+    const tools = { approve: [], read: ["lookup"] };
+    expect(asksBeforeEachUse(tools, "lookup")).toBe(false);
+    expect(asksBeforeEachUse(tools, "lookup", "write")).toBe(false);
+    expect(asksBeforeEachUse(tools, "update_note")).toBe(true);
+  });
+
+  it("asks before a tool that approve and read both name", () => {
+    expect(asksBeforeEachUse({ approve: ["lookup"], read: ["lookup"] }, "lookup")).toBe(true);
+    expect(asksBeforeEachUse({ approve: "all", read: ["lookup"] }, "lookup")).toBe(true);
+  });
+
+  it("asks before a tool its listing says sends, even when the read list marks it", () => {
+    expect(asksBeforeEachUse({ approve: [], read: ["mail"] }, "mail", "send")).toBe(true);
   });
 });

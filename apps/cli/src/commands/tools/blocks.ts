@@ -10,7 +10,7 @@ import {
   listedToolChangeLabel,
   type ReviewedTool,
 } from "@halonicjs/app/listed-tools";
-import { marksRead } from "@halonicjs/format";
+import { asksBeforeEachUse } from "@halonicjs/format";
 import type { Message } from "../../messages/define.ts";
 import { bold, dim, markPart, type Phrase, phrase, plainText } from "../../messages/phrase.ts";
 import { toolsMessages } from "../../messages/tools.ts";
@@ -39,11 +39,10 @@ export function toolBlock(reviewed: ReviewedTool, source: ToolSource): Phrase[] 
   const leftOut = reviewed.leftOutArguments.map(
     (reason) => toolsMessages.leftOutArguments(printable(reason)).phrase,
   );
-  // A run asks before every tool the connector's `read` list doesn't mark,
-  // so only a marked tool goes without asking (HAL-12339).
-  const asks = marksRead(source.connector.tools, waiting.listedName)
-    ? toolsMessages.doesntAsk(printable(source.workspace))
-    : toolsMessages.asksBeforeEachUse();
+  // The engine's rule, so the line says what a run does (HAL-12545).
+  const asks = asksBeforeEachUse(source.connector.tools, waiting.listedName, waiting.risk)
+    ? toolsMessages.asksBeforeEachUse()
+    : toolsMessages.doesntAsk(printable(source.workspace));
   return [
     heading,
     ...[
