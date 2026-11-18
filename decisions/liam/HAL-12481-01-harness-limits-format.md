@@ -2,6 +2,7 @@
 
 - Approval: HAL-12481, Liam's plan on the task (Halonic Code first slice, HAL-12473)
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:NF4Rs6NDkuxzLO+Z1IO19tS9lQiTacPb284DKyeGiPn1G7aHblhUfPf0Uocc9tyj2iwS8ue8gg7Bn2hxC7OvDA==
 
 The agent file gets an optional `harnessLimits` block with `maxSteps`,
 `maxMinutes` and `maxCost`, so a Claude Code or Codex step can be bounded
