@@ -27,12 +27,13 @@ env:
   # turbo.json caps Turbo at 2 tasks at once for agent workspaces; CI keeps
   # Turbo's own default of 10.
   TURBO_CONCURRENCY: "10"
-  # "on": a pull request's build job tests only the packages it changes and
-  # their dependents (tooling/check's affected-tests); typecheck, lint and
-  # build still cover every package, and the merge queue and main test
-  # everything. Stays "off" until the merge base's tests and the requirement
-  # guard select the same packages (HAL-12539).
-  AFFECTED_TESTS: "off"
+  # "on": a pull request's build job and the merge base's tests run only the
+  # tests of the packages it changes, their dependents and the packages whose
+  # tests verify their requirements (tooling/check's affected-tests), and the
+  # guard job compares only those. Typecheck, lint and build still cover every
+  # package, and the merge queue and main test everything. "off" tests every
+  # package again (HAL-12539).
+  AFFECTED_TESTS: "on"
 
 jobs:
   changes:
@@ -657,6 +658,7 @@ jobs:
           # the merge base.
           if [ "$(git rev-list --parents -n 1 HEAD | wc -w)" = 3 ]; then
             sha=$(git rev-parse HEAD^1)
+            echo "merge-ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           else
             sha=$(git merge-base "$BASE" HEAD)
           fi
@@ -696,17 +698,50 @@ jobs:
           done
           echo "::error::No commit within 20 of the merge base on main installs. Fix main first (docs/guides/broken-main.md)."
           exit 1
+      # The same packages as the build job: the merge base's own copy of
+      # affected-tests compares the merge ref with its first parent. The
+      # guard works the set out again and compares only those packages, so
+      # testing more here is harmless and testing fewer fails it.
+      - id: affected
+        name: Choose the packages to test
+        if: env.AFFECTED_TESTS == 'on'
+        env:
+          MERGE_BASE: ${{ steps.merge-base.outputs.sha }}
+          MERGE_REF: ${{ steps.merge-base.outputs.merge-ref }}
+        run: |
+          cli=tooling/check/src/cli/affected-tests.ts
+          if [ -n "$MERGE_REF" ] && [ -f "$cli" ]; then
+            pnpm exec node "$cli" --base "$MERGE_BASE" --head "$MERGE_REF"
+          else
+            echo "::notice title=Affected tests::No merge commit, or the merge base has no affected-tests, so every package is tested."
+            echo "all=true" >> "$GITHUB_OUTPUT"
+          fi
       # A failing test here means main itself is red, and that would fail
       # every pull request, the one that repairs main included.
       - id: base-test-run
         name: Run the merge base's tests without reading any cache
         continue-on-error: true
-        run: pnpm exec turbo run test --force --continue --output-logs=errors-only
+        env:
+          AFFECTED: ${{ steps.affected.outputs.all == 'false' }}
+          TEST_FILTERS: ${{ steps.affected.outputs.filters }}
+        run: |
+          if [ "$AFFECTED" != true ]; then
+            pnpm exec turbo run test --force --continue --output-logs=errors-only
+            exit 0
+          fi
+          read -ra filters <<< "$TEST_FILTERS"
+          if [ "${#filters[@]}" -eq 0 ]; then
+            echo "::notice title=Affected tests::No package's tests are needed for this change."
+            exit 0
+          fi
+          pnpm exec turbo run test "${filters[@]}" --force --continue --output-logs=errors-only
       # Then walk back along main's first-parent history to the newest commit
       # whose push CI run passed (at most 20 commits back from the merge base,
       # then fail) and use its tests as the baseline. As with the lockfile, the
       # baseline is always a commit on main, and the guard installs and
       # compares against exactly this commit. API and network errors fail.
+      # It runs every package's tests: the guard compares only the affected
+      # ones, and a red main is rare.
       - id: walk-back
         name: Walk back to main's newest green commit
         if: steps.base-test-run.outcome == 'failure'
@@ -799,11 +834,13 @@ jobs:
             echo "::error::The merge base's tests job didn't report its result archive's ID and sha256."
             exit 1
           fi
-      # The same commit the build job tested.
+      # The same commit the build job tested, with its first parent, the
+      # commit affected-tests compares it with.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           path: head
+          fetch-depth: 2
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -872,11 +909,42 @@ jobs:
       - name: Find the merge base's Node
         working-directory: base
         run: echo "BASE_NODE=$(pnpm exec node -p process.execPath)" >> "$GITHUB_ENV"
-      # Reads the result files the tests wrote. A missing result
-      # file fails the check.
+      # The packages whose tests ran, worked out again by the merge base's
+      # copy of affected-tests with the same commit as the test jobs.
+      - id: affected
+        name: Choose the packages to check
+        if: env.AFFECTED_TESTS == 'on'
+        working-directory: head
+        env:
+          BUILT_ON_SHA: ${{ needs.base-tests.outputs.built-on }}
+        run: |
+          cli="$BASE_DIR/tooling/check/src/cli/affected-tests.ts"
+          if [ -f "$cli" ]; then
+            "$BASE_NODE" "$cli" --base "$BUILT_ON_SHA"
+          else
+            echo "all=true" >> "$GITHUB_OUTPUT"
+          fi
+      # Reads the result files the tests wrote, of the affected packages
+      # only when only those were tested. A missing result file fails the
+      # check.
       - name: Requirements and their tests (trace, merge base's copy)
         working-directory: head
-        run: '"$BASE_NODE" "$BASE_DIR/tooling/check/src/cli/check.ts" trace --report'
+        env:
+          AFFECTED: ${{ steps.affected.outputs.all == 'false' }}
+          FOLDERS: ${{ steps.affected.outputs.folders }}
+        run: |
+          scope=()
+          if [ "$AFFECTED" = true ]; then
+            read -ra folders <<< "$FOLDERS"
+            if [ "${#folders[@]}" -eq 0 ]; then
+              echo "::notice title=Affected tests::No package's tests ran, so there is nothing to trace."
+              exit 0
+            fi
+            for folder in "${folders[@]}"; do
+              scope+=(--package "$folder")
+            done
+          fi
+          "$BASE_NODE" "$BASE_DIR/tooling/check/src/cli/check.ts" trace --report "${scope[@]}"
       # Blocking through ci-ok. The base side is the main commit the merge
       # ref was built on (base-tests), so the guard sees only the pull
       # request's own changes. After a walk-back, --built-on gives the guard
@@ -910,7 +978,12 @@ jobs:
           if [ "$BUILT_ON_SHA" != "$BASE_SHA" ]; then
             built_on=(--built-on "$BUILT_ON_DIR")
           fi
-          "$BASE_NODE" "$BASE_DIR/$guard" --base "$BASE_DIR" "${built_on[@]}" --branch "$HEAD_BRANCH" \
+          # The guard works out the affected packages itself (HAL-12539).
+          affected=()
+          if [ "$AFFECTED_TESTS" = on ]; then
+            affected=(--affected-base "$BUILT_ON_SHA")
+          fi
+          "$BASE_NODE" "$BASE_DIR/$guard" --base "$BASE_DIR" "${built_on[@]}" "${affected[@]}" --branch "$HEAD_BRANCH" \
             --repo "$REPO" --pr "$PR_NUMBER" --head-sha "$PR_HEAD_SHA" --base-sha "$PR_BASE_SHA"
 
   scaffold:

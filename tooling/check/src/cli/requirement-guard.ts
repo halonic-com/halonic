@@ -3,12 +3,13 @@ import { type PullRequest, signedApprovals } from "../guard/approvals.ts";
 import { gitObjects } from "../guard/git-objects.ts";
 import { checkRequirementGuard, guardChecks } from "../guard/guard.ts";
 import { checkTestRuns } from "../guard/test-runs.ts";
-import { loadContext } from "../lib/context.ts";
+import { selectedFolders, selectTests } from "../lib/affected-tests.ts";
+import { type CheckContext, loadContext } from "../lib/context.ts";
 import { formatAnnotation, formatProblem } from "../lib/problems.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
 
 const usage =
-  "Usage: node tooling/check/src/cli/requirement-guard.ts --base <merge-base checkout> --branch <branch name> [--built-on <checkout>] [--skip-test-runs] [--repo <owner/name> --pr <number> --head-sha <sha> --base-sha <sha>]";
+  "Usage: node tooling/check/src/cli/requirement-guard.ts --base <merge-base checkout> --branch <branch name> [--built-on <checkout>] [--affected-base <commit>] [--skip-test-runs] [--repo <owner/name> --pr <number> --head-sha <sha> --base-sha <sha>]";
 
 /**
  * node <merge base>/tooling/check/src/cli/requirement-guard.ts --base <dir> --branch <name>
@@ -28,6 +29,12 @@ const usage =
  * `--built-on`, so it doesn't report what main changed in between
  * (HAL-7660).
  *
+ * `--affected-base` says the tests ran only for the packages the pull
+ * request affects. The guard works that set out itself, with the same
+ * function and commit as the test jobs (affected-tests, the merge ref's first
+ * parent), and compares only those packages' tests. An affected package
+ * without a result file still fails (HAL-12539).
+ *
  * `--repo`, `--pr`, `--head-sha` and `--base-sha` name the pull request a
  * note's signature must be for; both commits must be in the current
  * folder's git repo. Without all four no note's signature verifies.
@@ -43,10 +50,13 @@ async function main(argv: readonly string[]): Promise<number> {
   const headRoot = findRepoRoot();
   const builtOn = flagValue(argv, "--built-on");
   const tested = loadContext(resolve(base));
+  const head = loadContext(headRoot);
+  const affected = affectedFolders(head, flagValue(argv, "--affected-base"));
   const report = await checkRequirementGuard({
     base: builtOn === undefined ? tested : loadContext(resolve(builtOn)),
-    head: loadContext(headRoot),
+    head,
     ...(builtOn === undefined ? {} : { tested }),
+    ...(affected === undefined ? {} : { affected }),
     branch,
     approvals: signedApprovals(pullRequestOf(argv), gitObjects(headRoot)),
     checks: argv.includes("--skip-test-runs")
@@ -64,6 +74,25 @@ async function main(argv: readonly string[]): Promise<number> {
     `requirement-guard: ${errors} error(s), ${allowed} change(s) allowed by a decision note (${seconds}s).`,
   );
   return errors === 0 ? 0 : 1;
+}
+
+/** The folders whose tests ran, or `undefined` for every package. */
+function affectedFolders(
+  head: CheckContext,
+  affectedBase: string | undefined,
+): ReadonlySet<string> | undefined {
+  if (affectedBase === undefined) {
+    return undefined;
+  }
+  const selection = selectTests(head, affectedBase);
+  if (selection.kind === "all") {
+    console.log(`requirement-guard: comparing every package's tests: ${selection.reason}.`);
+    return undefined;
+  }
+  console.log(
+    `requirement-guard: comparing the tests of ${selection.packages.length} affected package(s).`,
+  );
+  return selectedFolders(selection, head.packages);
 }
 
 function pullRequestOf(argv: readonly string[]): PullRequest | undefined {

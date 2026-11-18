@@ -28,6 +28,11 @@ export interface FileFinding {
 export interface TraceModel {
   /** Every well-formed requirement file, in path order. */
   readonly requirements: readonly TracedRequirement[];
+  /**
+   * The well-formed requirements of the packages outside `--package`, without
+   * tests: a test in scope may verify one of them (HAL-12539).
+   */
+  readonly outOfScope: readonly TracedRequirement[];
   /** Requirement files that are malformed or not inside a package. */
   readonly malformed: readonly FileFinding[];
   /** Every `verifies(…)` call in a test file. */
@@ -42,7 +47,7 @@ export interface TraceModel {
 
 /** Reads every requirement file, `verifies` call and result file in the repo. */
 export function buildTraceModel(context: CheckContext): TraceModel {
-  const { found, malformed, calls, packagesWithTests } = readRepoFiles(context);
+  const { found, outside, malformed, calls, packagesWithTests } = readRepoFiles(context);
   const { taggedTests, withoutResults, unreadableResults } = readResultFiles(
     context,
     packagesWithTests,
@@ -52,7 +57,16 @@ export function buildTraceModel(context: CheckContext): TraceModel {
     pkg,
     tests: taggedTests.filter((test) => test.requirement === requirement.id),
   }));
-  return { requirements, malformed, calls, taggedTests, withoutResults, unreadableResults };
+  const outOfScope = outside.map(({ requirement, pkg }) => ({ requirement, pkg, tests: [] }));
+  return {
+    requirements,
+    outOfScope,
+    malformed,
+    calls,
+    taggedTests,
+    withoutResults,
+    unreadableResults,
+  };
 }
 
 /** True when the trace check covers this package: every package, or those in `--package` folders. */
@@ -64,12 +78,20 @@ function inTraceScope(context: CheckContext, pkg: WorkspacePackage): boolean {
 /** The requirement files and the test files, read. */
 function readRepoFiles(context: CheckContext) {
   const found: { requirement: Requirement; pkg: WorkspacePackage }[] = [];
+  const outside: { requirement: Requirement; pkg: WorkspacePackage }[] = [];
   const malformed: FileFinding[] = [];
   const calls: VerifiesCall[] = [];
   const packagesWithTests = new Set<WorkspacePackage>();
   for (const file of context.files) {
     const pkg = owningPackage(file, context.packages);
-    if (pkg === undefined || !inTraceScope(context, pkg)) {
+    if (pkg === undefined) {
+      continue;
+    }
+    if (!inTraceScope(context, pkg)) {
+      // Only to look IDs up: a malformed file here is its own package's finding.
+      if (isRequirementFile(file)) {
+        readRequirement(file, pkg, context, outside, []);
+      }
       continue;
     }
     if (isRequirementFile(file)) {
@@ -79,7 +101,7 @@ function readRepoFiles(context: CheckContext) {
       calls.push(...findVerifiesCalls(file, context.read(file)));
     }
   }
-  return { found, malformed, calls, packagesWithTests };
+  return { found, outside, malformed, calls, packagesWithTests };
 }
 
 /** Parses one requirement file into `found`, or its problems into `malformed`. */

@@ -1,18 +1,22 @@
-import { execFileSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { testSelection } from "../lib/affected-tests.ts";
-import { findRepoRoot, listWorkspacePackages } from "../lib/workspace.ts";
+import { selectedFolders, selectTests } from "../lib/affected-tests.ts";
+import { loadContext } from "../lib/context.ts";
+import { findRepoRoot } from "../lib/workspace.ts";
 
 /**
- * Prints which packages' tests a pull request needs, for CI's build job.
+ * Prints which packages' tests a pull request needs, for CI's build job,
+ * the merge base's tests and the guard job.
  *
- *   node tooling/check/src/cli/affected-tests.ts --base <commit>
- *     compares `<commit>...HEAD` and prints `all=true` with the reason, or
- *     `all=false` and `filters=` with one `--filter=<package>` per package
- *     (empty when no package's tests are needed)
+ *   node tooling/check/src/cli/affected-tests.ts --base <commit> [--head <commit>]
+ *     compares `<base>...<head>` (`HEAD` by default) and prints `all=true`
+ *     with the reason, or `all=false`, `filters=` with one
+ *     `--filter=<package>` per package and `folders=` with their folders
+ *     (both empty when no package's tests are needed)
  *
- * In Actions, `all` and `filters` also go to `$GITHUB_OUTPUT`.
+ * The packages come from the current checkout, which can be another commit
+ * than `--head`: the merge base's tests run it on the merge base. In
+ * Actions, `all`, `filters` and `folders` also go to `$GITHUB_OUTPUT`.
  */
 
 function output(line: string): void {
@@ -24,29 +28,28 @@ function output(line: string): void {
 }
 
 if (import.meta.main) {
-  const { values } = parseArgs({ options: { base: { type: "string" } } });
+  const { values } = parseArgs({
+    options: { base: { type: "string" }, head: { type: "string" } },
+  });
   if (values.base === undefined || values.base === "") {
     console.error("affected-tests: pass --base <commit>.");
     process.exitCode = 2;
   } else {
-    const root = findRepoRoot();
-    const changed = execFileSync("git", ["diff", "--name-only", `${values.base}...HEAD`], {
-      cwd: root,
-      encoding: "utf8",
-      maxBuffer: 64 * 1024 * 1024,
-    });
-    const files = changed.split("\n").filter((file) => file !== "");
-    const selection = testSelection(files, listWorkspacePackages(root));
-    if (selection.kind === "all") {
-      console.log(`  every package: ${selection.reason}`);
+    const context = loadContext(findRepoRoot());
+    const selection = selectTests(context, values.base, values.head ?? "HEAD");
+    const folders = selectedFolders(selection, context.packages);
+    if (selection.kind === "all" || folders === undefined) {
+      console.log(`  every package: ${selection.kind === "all" ? selection.reason : ""}`);
       output("all=true");
       output("filters=");
+      output("folders=");
     } else {
       for (const name of selection.packages) {
         console.log(`  package: ${name}`);
       }
       output("all=false");
       output(`filters=${selection.packages.map((name) => `--filter=${name}`).join(" ")}`);
+      output(`folders=${[...folders].sort().join(" ")}`);
     }
   }
 }
