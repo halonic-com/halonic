@@ -30,7 +30,7 @@ test("adds a plugin from a folder, trusts it, runs its command and removes it", 
   const command = page.getByRole("dialog", { name: "Show the forecast" });
   await expect(command.getByRole("heading", { name: "Result" })).toBeVisible();
   await expect(command).toContainText("Sunny, 18 degrees in Ghent.");
-  await command.getByRole("button", { name: "Close" }).click();
+  await command.getByRole("button", { name: "Close", exact: true }).click();
   await expect(command).toBeHidden();
 
   // Remove plugin, from the row's menu.
