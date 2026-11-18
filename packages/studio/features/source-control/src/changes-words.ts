@@ -306,6 +306,8 @@ export const historyWords = {
   showMore: "Show more",
   /** On a phone the newest few show first; this row shows the rest (552 5.1). */
   seeAll: "See all history",
+  /** A version's page on a phone goes back to History (552 5.6). */
+  back: "Back to History",
   today: "Today",
   yesterday: "Yesterday",
   /** The name of the box that shows the picked version. */

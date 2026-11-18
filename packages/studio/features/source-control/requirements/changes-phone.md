@@ -10,7 +10,9 @@ On a phone, the sharing strip shall say "Only on your computer." with the hint "
 
 When See all history is pressed, the Changes page shall move focus to the first version it shows that was hidden before.
 
-On a phone, an item row shall have its ⋮ in the row's padding and no chevron. While its phone layout is not built, the version page shall follow the desktop page.
+On a phone, an item row shall have its ⋮ in the row's padding and no chevron.
+
+When the screen is a phone, a version in History shall open as its own page in place of the Changes page, with Back to History, the version's name as the page's heading, who made it and when, its notes and what's in it. When Back to History is pressed, the Changes page shall put focus on that version's row and shall show all of History when the row is past the newest 5.
 
 ## Examples
 
@@ -31,3 +33,9 @@ On a phone, an item row shall have its ⋮ in the row's padding and no chevron. 
   then History shows all 5 and no See all history.
 - Given a phone and git that doesn't answer,
   then the page says "Couldn't load changes", "Halonic on your computer isn't answering." and Try again.
+- Given a phone and 3 versions,
+  when the person opens "Version 2",
+  then the page's heading is "Version 2" and has focus, the page says who made it, its notes and its files, and Back to History puts focus on its row.
+- Given a phone and 25 versions, with See all history pressed,
+  when the person opens "Version 18" and goes back,
+  then History shows all versions and "Version 18" has focus.

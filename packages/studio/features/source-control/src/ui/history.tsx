@@ -3,8 +3,10 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { Version } from "../api.ts";
 import type { ChangesList, HistoryState } from "../changes-list.ts";
 import { historyWords } from "../changes-words.ts";
-import { fullDate, groupByDay, timeOfDay } from "../history-days.ts";
+import { groupByDay, timeOfDay } from "../history-days.ts";
 import { loadFailureReason } from "../load-failure.ts";
+import type { OpenVersion } from "./use-open-version.ts";
+import { VersionFacts } from "./version-page.tsx";
 
 /** How many versions a phone shows before "See all history". */
 const PHONE_HISTORY_ROWS = 5;
@@ -17,6 +19,8 @@ export interface HistoryProps {
   readonly now?: Date;
   /** On a phone Show more and Try again are 48px touch buttons, and git's words say "your computer". */
   readonly phone?: boolean;
+  /** On a phone a version opens as its own page; without it the details show beside the list. */
+  readonly versionPage?: OpenVersion | undefined;
 }
 
 /**
@@ -25,12 +29,24 @@ export interface HistoryProps {
  * Enter or a click shows the version's details beside the list: who, when, the notes and what's
  * in it. No branch graph.
  *
+ * On a phone (2.14) a version opens as its own page through `versionPage`, and coming back puts
+ * focus on its row, unfolding See all history if the row is past the newest 5.
+ *
  * Not here yet: Restore just this, Go back, and the shared marks.
  */
-export function History({ list, history, now = new Date(), phone = false }: HistoryProps) {
+export function History({
+  list,
+  history,
+  now = new Date(),
+  phone = false,
+  versionPage,
+}: HistoryProps) {
   const headingId = useId();
   const [pickedId, setPickedId] = useState<string>();
-  const picked = history.versions.find((version) => version.id === pickedId);
+  const picked =
+    versionPage === undefined
+      ? history.versions.find((version) => version.id === pickedId)
+      : undefined;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3">
       <h2 id={headingId} className="text-heading">
@@ -49,7 +65,9 @@ export function History({ list, history, now = new Date(), phone = false }: Hist
             now={now}
             phone={phone}
             pickedId={picked?.id}
-            onPick={setPickedId}
+            onPick={versionPage?.show ?? setPickedId}
+            returnTo={versionPage?.returnTo}
+            onReturned={versionPage?.focusPlaced}
           />
         </div>
         {picked === undefined ? null : <Details version={picked} />}
@@ -65,6 +83,8 @@ function HistoryBody({
   phone,
   pickedId,
   onPick,
+  returnTo,
+  onReturned,
 }: {
   readonly list: ChangesList;
   readonly history: HistoryState;
@@ -72,10 +92,15 @@ function HistoryBody({
   readonly phone: boolean;
   readonly pickedId: string | undefined;
   readonly onPick: (id: string) => void;
+  /** The version whose page was just left: its row takes focus, unfolded if need be. */
+  readonly returnTo?: string | undefined;
+  readonly onReturned?: (() => void) | undefined;
 }) {
   const [busy, setBusy] = useState(false);
-  const [seeAll, setSeeAll] = useState(false);
-  const firstUnfolded = useFocusAfterUnfold();
+  const [seeAll, setSeeAll] = useState(
+    () => history.versions.findIndex((version) => version.id === returnTo) >= PHONE_HISTORY_ROWS,
+  );
+  const focusRow = useFocusRow(returnTo, onReturned);
   const failed = history.error !== undefined && (
     <div role="alert" className="flex flex-col items-start gap-2">
       <p className="text-body text-danger">
@@ -113,11 +138,11 @@ function HistoryBody({
   const folded = phone && !seeAll && history.versions.length > PHONE_HISTORY_ROWS;
   const shown = folded ? history.versions.slice(0, PHONE_HISTORY_ROWS) : history.versions;
   const unfold = () => {
-    firstUnfolded.request(history.versions[PHONE_HISTORY_ROWS]?.id);
+    focusRow.request(history.versions[PHONE_HISTORY_ROWS]?.id);
     setSeeAll(true);
   };
   return (
-    <div ref={firstUnfolded.region} className="contents">
+    <div ref={focusRow.region} className="contents">
       {failed || null}
       {history.versions.length === 0 ? (
         <p className="text-body text-fg-muted">{historyWords.noVersions}</p>
@@ -150,12 +175,16 @@ function HistoryBody({
 }
 
 /**
- * Pressing See all history removes the button that had focus. So that focus doesn't drop to the
- * page, it moves to the first version the unfolded list shows, once that row is drawn.
+ * Puts focus on a version's row once it is drawn. Pressing See all history removes the button
+ * that had focus, so focus moves to the first version the unfolded list shows instead of dropping
+ * to the page. Coming back from a version's page, focus starts on that version's row
+ * (`initialId`), and `onPlaced` says it is done.
  */
-function useFocusAfterUnfold() {
+function useFocusRow(initialId: string | undefined, onPlaced: (() => void) | undefined) {
   const region = useRef<HTMLDivElement>(null);
-  const [pendingId, setPendingId] = useState<string>();
+  const [pendingId, setPendingId] = useState(initialId);
+  const placed = useRef(onPlaced);
+  placed.current = onPlaced;
   useEffect(() => {
     if (pendingId === undefined) return;
     const cell = region.current?.querySelector<HTMLElement>(
@@ -163,6 +192,7 @@ function useFocusAfterUnfold() {
     );
     cell?.focus();
     setPendingId(undefined);
+    placed.current?.();
   }, [pendingId]);
   return { region, request: setPendingId };
 }
@@ -216,26 +246,7 @@ function Details({ version }: { readonly version: Version }) {
       className="flex min-w-0 flex-col gap-2 rounded-md border border-border p-4 wide:sticky wide:top-4"
     >
       <h3 className="text-heading">{version.name}</h3>
-      <p className="text-small text-fg-muted">
-        {version.author} · {fullDate(version.at)}
-      </p>
-      {version.notes === "" ? null : (
-        <p className="text-body whitespace-pre-wrap">{version.notes}</p>
-      )}
-      <h4 className="text-label text-fg-muted">
-        {historyWords.whatsInIt} · {historyWords.fileCount(version.files.length)}
-      </h4>
-      {version.files.length === 0 ? (
-        <p className="text-body text-fg-muted">{historyWords.noFiles}</p>
-      ) : (
-        <ul className="flex flex-col gap-1">
-          {version.files.map((path) => (
-            <li key={path} className="text-body break-all">
-              {path}
-            </li>
-          ))}
-        </ul>
-      )}
+      <VersionFacts version={version} level="details" />
     </section>
   );
 }
