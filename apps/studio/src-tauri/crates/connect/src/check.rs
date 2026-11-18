@@ -24,6 +24,9 @@ pub enum ConnectError {
     NotAnswering,
     /// "Something answered at …, but it isn't Halonic."
     NotHalonic,
+    /// The address is on the Wi-Fi and Android's local network permission
+    /// was turned down. Only the Android shell returns it.
+    NoLocalNetwork,
 }
 
 impl From<NotAnAddress> for ConnectError {

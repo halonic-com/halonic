@@ -21,6 +21,10 @@ export const words = {
   notHalonic: (address: string): Piece[] => [
     `Something answered at ${address}, but it isn't Halonic. Check the address.`,
   ],
+  // HAL-12253: Android 17's "Nearby devices" permission, turned down.
+  noLocalNetwork: (address: string): Piece[] => [
+    `Halonic needs the Nearby devices permission to reach ${address}. Press Connect and choose Allow, or turn it on in your phone's Settings under Apps, Halonic, Permissions.`,
+  ],
   appTooOld: (computerVersion: string): string =>
     `This app is too old for Halonic on your computer (${computerVersion}). Install the new app to continue.`,
   computerTooOld: (computerVersion: string): string =>

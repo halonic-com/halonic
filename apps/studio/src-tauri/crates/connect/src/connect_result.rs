@@ -35,6 +35,9 @@ pub enum ConnectResult {
     NotHalonic {
         address: String,
     },
+    NoLocalNetwork {
+        address: String,
+    },
     AppTooOld {
         computer_version: String,
     },
@@ -96,6 +99,7 @@ impl ConnectResult {
             ConnectError::NotHomeNetwork => ConnectResult::NotHomeNetwork,
             ConnectError::NotAnswering => ConnectResult::NotAnswering { address: address() },
             ConnectError::NotHalonic => ConnectResult::NotHalonic { address: address() },
+            ConnectError::NoLocalNetwork => ConnectResult::NoLocalNetwork { address: address() },
         }
     }
 
@@ -237,6 +241,12 @@ mod tests {
             ConnectResult::refused(ConnectError::NotHomeNetwork, "8.8.8.8"),
             ConnectResult::NotHomeNetwork
         );
+        assert_eq!(
+            ConnectResult::refused(ConnectError::NoLocalNetwork, "http://192.168.1.20:4280"),
+            ConnectResult::NoLocalNetwork {
+                address: "192.168.1.20:4280".to_owned()
+            }
+        );
     }
 
     #[test]
@@ -267,6 +277,12 @@ mod tests {
                 address: "a".to_owned()
             }),
             json!({"kind": "notHalonic", "address": "a"})
+        );
+        assert_eq!(
+            shape(ConnectResult::NoLocalNetwork {
+                address: "a".to_owned()
+            }),
+            json!({"kind": "noLocalNetwork", "address": "a"})
         );
         assert_eq!(
             shape(ConnectResult::AppTooOld {

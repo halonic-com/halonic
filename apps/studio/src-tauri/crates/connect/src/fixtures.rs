@@ -59,6 +59,7 @@ fn fixture_name(result: &ConnectResult) -> &'static str {
         ConnectResult::NotHomeNetwork => "not-home-network.json",
         ConnectResult::NotAnswering { .. } => "not-answering.json",
         ConnectResult::NotHalonic { .. } => "not-halonic.json",
+        ConnectResult::NoLocalNetwork { .. } => "no-local-network.json",
         ConnectResult::AppTooOld { .. } => "app-too-old.json",
         ConnectResult::ComputerTooOld { .. } => "computer-too-old.json",
     }
@@ -77,6 +78,9 @@ fn connect_result_fixtures_match_what_the_crate_serialises() {
             address: text("192.168.1.20:4280"),
         },
         ConnectResult::NotHalonic {
+            address: text("192.168.1.20:4280"),
+        },
+        ConnectResult::NoLocalNetwork {
             address: text("192.168.1.20:4280"),
         },
         ConnectResult::AppTooOld {

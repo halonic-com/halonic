@@ -36,6 +36,7 @@ export const connectResultSchema = s.discriminatedUnion("kind", [
   s.object({ kind: s.literal("notHomeNetwork") }).strict(),
   s.object({ kind: s.literal("notAnswering"), address: s.string() }).strict(),
   s.object({ kind: s.literal("notHalonic"), address: s.string() }).strict(),
+  s.object({ kind: s.literal("noLocalNetwork"), address: s.string() }).strict(),
   s.object({ kind: s.literal("appTooOld"), computerVersion: s.string() }).strict(),
   s.object({ kind: s.literal("computerTooOld"), computerVersion: s.string() }).strict(),
 ]);
