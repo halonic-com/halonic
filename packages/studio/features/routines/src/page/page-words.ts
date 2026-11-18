@@ -46,4 +46,21 @@ export const runNowWords = {
   targetNeverLive: (target: string) => `Not started: ${target} isn't live yet.`,
   targetInTrash: (target: string) => `Not started: ${target} is in the trash.`,
   couldntStart: (name: string) => `Couldn't start ${name}.`,
+  signIn: "Sign in with Google",
+  couldntSignIn: (account: string) => `Couldn't start the sign-in for ${account}.`,
+} as const;
+
+/** The run dialog for a routine whose changes aren't live (flow-routines 3.8). */
+export const runDialogWords = {
+  title: (name: string) => `Run ${name} now?`,
+  runsLive: (since: string | undefined) =>
+    since === undefined ? "Runs the live version." : `Runs the live version from ${since}.`,
+  notInIt: "Your changes aren't in it.",
+  neverLive: (name: string) => `${name} isn't live yet. It runs once it has a live version.`,
+  runNow: "Run now",
+  runBusy: "Starting…",
+  makeLiveFirst: "Make live first",
+  makeLiveAndRun: "Make live and run",
+  makeLiveBusy: "Making live…",
+  couldntMakeLive: (name: string) => `Couldn't make ${name} live.`,
 } as const;

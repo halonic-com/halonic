@@ -1,4 +1,4 @@
-import type { ToastStore } from "@halonicjs/studio-kit";
+import type { ToastMessage, ToastStore } from "@halonicjs/studio-kit";
 import type { RoutinesHost, RoutineView, RunNowRefusal } from "../api.ts";
 import { failureReason, runNowWords } from "./page-words.ts";
 
@@ -31,6 +31,8 @@ export async function runRoutineNow(
   toasts: ToastStore | null,
   routine: RunNowRoutine,
   openRun: ((runId: string) => void) | undefined,
+  /** Set on the start that follows trusting the workspace, so a second refusal can't loop. */
+  trustedJustNow = false,
 ): Promise<void> {
   if (host.runNow === undefined) return;
   try {
@@ -45,10 +47,18 @@ export async function runRoutineNow(
       });
       return;
     }
+    const { refusal } = result;
+    if (refusal.reason === "not-trusted" && host.askTrust !== undefined && !trustedJustNow) {
+      // The workspace's one gate opens instead of a toast; Not now leaves the toast's sentence.
+      if ((await host.askTrust()) === "trusted") {
+        return runRoutineNow(host, toasts, routine, openRun, true);
+      }
+    }
     toasts?.show({
       tone: "danger",
-      title: refusalSentence(result.refusal, routine),
+      title: refusalSentence(refusal, routine),
       sticky: true,
+      ...signInStep(host.signIn?.bind(host), toasts, refusal),
     });
   } catch (error) {
     toasts?.show({
@@ -58,4 +68,28 @@ export async function runRoutineNow(
       sticky: true,
     });
   }
+}
+
+/** **Sign in with Google** on a signed-out refusal, where the host can run the sign-in. */
+function signInStep(
+  signIn: RoutinesHost["signIn"],
+  toasts: ToastStore | null,
+  refusal: RunNowRefusal,
+): Pick<ToastMessage, "action"> {
+  if (refusal.reason !== "signed-out" || signIn === undefined) return {};
+  const { account } = refusal;
+  return {
+    action: {
+      label: runNowWords.signIn,
+      onClick: () => {
+        signIn(account).catch((error: unknown) => {
+          toasts?.show({
+            tone: "danger",
+            title: runNowWords.couldntSignIn(account),
+            text: failureReason(error),
+          });
+        });
+      },
+    },
+  };
 }

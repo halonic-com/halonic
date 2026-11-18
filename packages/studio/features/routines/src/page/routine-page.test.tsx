@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
-import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -25,6 +25,14 @@ import {
   typeInto,
   unmount,
 } from "../test-support.tsx";
+import {
+  daily,
+  hostReading,
+  runNowButton,
+  screenOf,
+  settle,
+  showWithToasts,
+} from "./page.test-helper.tsx";
 import { RoutinePage, RoutineScreen } from "./routine-page.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -33,45 +41,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const daily: RoutineView = {
-  hubId: "acme",
-  id: "daily",
-  name: "Daily",
-  enabled: true,
-  trigger: { kind: "schedule", cron: "30 7 * * 1-5" },
-  triggerSentence: "Weekdays at 07:30",
-  summary: "Weekdays at 07:30 → Briefing",
-  targetName: "Briefing",
-  target: { kind: "workflow", hubId: "acme", id: "briefing", input: "{}" },
-  targetState: "ready",
-  overlap: "skip",
-  catchUp: "last",
-  file: "hubs/acme/workflows/routines/daily.routine.yaml",
-  everLive: true,
-  changesNotLive: false,
-  problems: [],
-};
-
-/** A host that reads `routine`, or rejects with `fail`, and tells its listeners about a change. */
-function hostReading(routine: () => RoutineView, fail?: () => Error | undefined) {
-  const { host, change } = memoryHost([], []);
-  const reading = {
-    ...host,
-    mailboxes: async () => [],
-    targets: async () => [],
-    nextTimes: async () => ({ times: [], atNextCheck: false }),
-    read: async () => {
-      const error = fail?.();
-      if (error) throw error;
-      return routine();
-    },
-  } as RoutinesHost;
-  return { host: reading, change: () => change([]) };
-}
-
-const screenOf = (host: RoutinesHost, id = "daily") => (
-  <RoutineScreen host={host} hubId="acme" id={id} announce={() => {}} />
-);
+const nameField = (page: HTMLElement) =>
+  page.querySelector<HTMLInputElement>('input[aria-label="Routine name"]') as HTMLInputElement;
 
 verifies("routines.page.frame-and-states", () => {
   it("shows the avatar, the kind, the name and the summary", async () => {
@@ -268,28 +239,6 @@ function hostWithTrash() {
   return { host: withTrash, save };
 }
 
-async function showWithToasts(host: RoutinesHost, openRun?: (runId: string) => void) {
-  const toasts = createToastStore();
-  const page = await show(
-    <ToastStoreProvider store={toasts}>
-      <RoutineScreen
-        host={host}
-        hubId="acme"
-        id="daily"
-        announce={() => {}}
-        goToRoutines={() => {}}
-        {...(openRun && { openRun })}
-      />
-    </ToastStoreProvider>,
-  );
-  return { page, toasts };
-}
-
-const nameField = (page: HTMLElement) =>
-  page.querySelector<HTMLInputElement>('input[aria-label="Routine name"]') as HTMLInputElement;
-
-const settle = () => act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
-
 verifies("routines.page.rename-and-delete", () => {
   let restorePopover: () => void;
   beforeEach(() => {
@@ -417,8 +366,6 @@ function hostRunning(answer: RunNowResult | Error, view: RoutineView = daily) {
   });
   return { host: { ...host, runNow } as RoutinesHost, runNow };
 }
-
-const runNowButton = (page: HTMLElement) => buttonNamed(page, "Run now");
 
 verifies("routines.page.run-now", () => {
   it("shows no Run now while the host has no engine", async () => {
