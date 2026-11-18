@@ -22,7 +22,6 @@ export const PROVIDER_TYPES = [
   "ollama",
   "lmstudio",
 ] as const;
-export const NO_SECRET = "none";
 
 /** The caption over a provider page's title, set in capitals. */
 export const PROVIDER_CAPTION = "Provider";
@@ -54,7 +53,7 @@ export function providerUpdatedLine(name: string): string {
 export const CHECK = "Check";
 export const CHECKING = "Checking…";
 export const CHECK_HINT =
-  "Small local models can miss tool calls. Run a workflow's tests to see whether yours keeps up.";
+  "Small local models can miss tool calls. Try a short run to see whether yours keeps up.";
 
 /** The status line after a check, as it is read on the page: "Answering at localhost:11434 · checked 10:42". */
 export function checkResultLine(answering: boolean, address: string, checkedAt: string): string {

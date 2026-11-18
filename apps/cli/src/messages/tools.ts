@@ -83,9 +83,9 @@ export const toolsMessages = defineMessages("tools", {
   keepsChanging: () => phrase`Keeps changing`,
   arguments: () => phrase`Arguments`,
   asksBeforeEachUse: () => phrase`Asks you before each use.`,
-  /** Instead of {@link asksBeforeEachUse}, when the connector doesn't ask before calling the tool. */
+  /** Instead of {@link asksBeforeEachUse}, when the connector's `read` list marks the tool, so a run doesn't ask. */
   doesntAsk: (workspace: string) =>
-    phrase`Doesn't ask before each use: ${workspace} lowered its risk.`,
+    phrase`Doesn't ask before each use: ${workspace} marks it as read-only.`,
   leftOutArguments: (reason: string) => phrase`Halonic left out part of its arguments: ${reason}.`,
   /** A Changed tool whose text is the same (N1). */
   connectsDifferently: (source: string) =>

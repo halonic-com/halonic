@@ -219,6 +219,18 @@ export class RunProposals {
   }
 
   /**
+   * The proposals still open, newest first (`app.run-proposal-list`), for a
+   * host that lists them without the run log, as `halonic proposals` does.
+   * A settled proposal is left out, and so is a record that can't be read.
+   */
+  async list(): Promise<ProposedRecord[]> {
+    const proposed = await this.records.proposals();
+    return proposed
+      .filter((record) => record.settled === undefined)
+      .sort((a, b) => b.finishedAt.localeCompare(a.finishedAt));
+  }
+
+  /**
    * Accepts what the target covers (`app.run-proposal-accept`,
    * `app.run-proposal-trust`). Each undecided file is written with its own
    * `expected`, only while the saved file is still the run's base; one the

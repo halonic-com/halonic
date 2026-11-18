@@ -103,6 +103,13 @@ verifies("publish.staged-cli", () => {
     ).toBe("notices\n");
   });
 
+  it("carries the README for users, not the CLI's notes for its developers", () => {
+    const readme = readFileSync(join(consumer, "node_modules/halonic/README.md"), "utf8");
+    expect(readme).toContain("npm install -g halonic");
+    expect(readme).toContain("https://docs.halonic.dev/getting-started");
+    expect(readme).not.toContain("**Layer:**");
+  });
+
   it("refuses to stage when the notices file is missing", async () => {
     await expect(
       stageCli(root, version, join(scratch, "none.txt"), join(scratch, "never")),

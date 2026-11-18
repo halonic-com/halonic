@@ -168,20 +168,22 @@ verifies("shell.palette-groups", () => {
     ]);
   });
 
-  it("says nothing matches when no place or item does, and still lists fitting Actions", () => {
+  it("says nothing matches when no place, item or action does", () => {
     const content = palette({
       words: "refnud",
       openTabs: [home],
       actions: [{ id: "shell.new-tab", title: "New tab" }],
     });
     expect(content).toEqual({ groups: [], nothingFound: true, couldNotSearch: false });
+  });
 
-    const withAction = palette({
+  it("doesn't say nothing matches above the Actions that match (L12, HAL-12730)", () => {
+    const content = palette({
       words: "new",
       actions: [{ id: "shell.new-tab", title: "New tab" }],
     });
-    expect(withAction.nothingFound).toBe(true);
-    expect(read(withAction)).toEqual(["Actions:", "New tab"]);
+    expect(content.nothingFound).toBe(false);
+    expect(read(content)).toEqual(["Actions:", "New tab"]);
   });
 
   it("says it couldn't search, not that nothing matches, when a provider failed and nothing matches", () => {

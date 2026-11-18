@@ -103,6 +103,8 @@ export interface ChangesListState {
   readonly hasRemote: boolean;
   /** How many versions the shared copy lacks, as of the last read; zero without a shared copy. */
   readonly unshared: number;
+  /** The versions in History the shared copy lacks, as of the last read; none without one. */
+  readonly unsharedIds: ReadonlySet<string>;
   /** What the last look at the shared copy found; see {@link SharedCheck}. */
   readonly sharedCheck: SharedCheck;
   /** Whether Share is working. */

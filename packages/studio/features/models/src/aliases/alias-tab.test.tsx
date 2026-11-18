@@ -234,7 +234,7 @@ verifies("models.aliases.edit-fallbacks", () => {
     const { files, changes } = memoryFiles(workspaceModels);
     const tab = await showTab(files);
     expect(tab.textContent).toContain(
-      "Tried in order when this fails. Other aliases: default, fast",
+      "Tried in order when this one is down, slow or busy, or has no key set. Other aliases: default, fast",
     );
 
     await typeInto(field(tab, "Fallbacks"), " default, , fast ");

@@ -78,3 +78,19 @@ export const profileBody = s
     instructionsFolder: absolutePath.nullable(),
   })
   .strict();
+
+/**
+ * What Studio gives to make a run's instructions folder: the workspace (one
+ * the launcher named) and the files, by name and text. The host picks where
+ * the folder goes, and refuses a name that isn't `AGENTS.md` or a skill's
+ * `SKILL.md`.
+ */
+export const instructionsBody = s
+  .object({
+    workspace: absolutePath,
+    files: s.array(s.object({ name: s.string().min(1), text: s.string() }).strict()).min(1),
+  })
+  .strict();
+
+/** A run's instructions folder to remove, as the host answered it. */
+export const releaseInstructionsBody = s.object({ folder: absolutePath }).strict();

@@ -29,6 +29,8 @@ export interface StatusBarSaveNoteProps {
  * "Saving…", so the status bar doesn't blink while the user types.
  *
  * The note isn't a live region; `announceSaveNotes` reads out the states worth hearing, once.
+ * While it's a problem it carries `data-problem="warning"` or `"danger"`, the tone of its mark, so
+ * the bar round it can take that tone's soft fill without knowing the save state.
  *
  * @example
  * <ShellFrame saveNote={<StatusBarSaveNote saving={workspace.saving} />} …>
@@ -41,7 +43,10 @@ export function StatusBarSaveNote({ saving, timers = systemTimers }: StatusBarSa
   const heldName =
     action === "compare" && note.kind === "items-not-saved" ? note.first.title : undefined;
   return (
-    <div className="flex items-center gap-1.5 whitespace-nowrap text-small text-fg-muted">
+    <div
+      className="flex items-center gap-1.5 whitespace-nowrap text-small text-fg-muted"
+      data-problem={isProblem(words.mark) ? words.mark : undefined}
+    >
       {marks[words.mark]}
       {words.name === undefined ? (
         <span className={isProblem(words.mark) ? `${longWords} text-fg` : undefined}>
@@ -58,7 +63,7 @@ export function StatusBarSaveNote({ saving, timers = systemTimers }: StatusBarSa
           <span aria-hidden="true">·</span>
           <Button
             variant="ghost"
-            size="sm"
+            size="xs"
             onClick={() => (action === "try-again" ? saving.tryAgain() : saving.compare())}
           >
             {saveNoteActionLabels[action]}

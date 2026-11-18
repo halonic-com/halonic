@@ -46,12 +46,21 @@ const host: AgentsHost = {
   settings: async (ref) => {
     const found = agents.find((agent) => agent.hubId === ref.hubId && agent.id === ref.id);
     if (found === undefined) throw new Error("not found");
-    return { instructions: "", maxSteps: 6, harness: "halonic", ...found };
+    return {
+      instructions: "",
+      maxSteps: 6,
+      harness: "halonic",
+      skills: [],
+      knowledge: [],
+      connectors: [],
+      ...found,
+    };
   },
   update: async () => undefined,
   nameOf: (ref) => agents.find((agent) => agent.hubId === ref.hubId && agent.id === ref.id)?.name,
   modelAliases: async () => ["fast", "smart"],
   defaultModel: async () => "fast",
+  toolOptions: async () => ({ skills: [], knowledge: [], connectors: [] }),
   harnessReadiness: async () => ({ status: "ready", version: "1.0.0" }),
   filePath: async (ref) => `hubs/${ref.hubId}/agents/${ref.id}.agent.yaml`,
   trash: async () => ({ undo: async () => undefined }),

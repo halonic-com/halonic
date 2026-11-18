@@ -8,6 +8,8 @@ import type {
   AgentRef,
   AgentSettings,
   AgentsHost,
+  AgentToolList,
+  AgentToolOption,
   AgentUser,
   HarnessReadiness,
   NewAgent,
@@ -49,6 +51,9 @@ export interface WorkspaceAgentsParts {
 
 /** Where the agent files of a hub are kept. */
 const agentFolder = (hubId: string): string => `hubs/${hubId}/agents`;
+
+/** Where the workspace keeps the skills, knowledge and connectors its hubs share. */
+const sharedLibraryFolder = "library";
 
 /** The workspace's model aliases, which every hub can use. */
 const modelsFile = "models.yaml";
@@ -122,6 +127,37 @@ export class WorkspaceAgents implements AgentsHost {
       instructions: agent.instructions,
       maxSteps: agent.maxSteps,
       harness: agent.harness ?? "halonic",
+      skills: agent.skills,
+      knowledge: agent.knowledge,
+      connectors: agent.connectors,
+    };
+  }
+
+  /**
+   * The skills, knowledge and connectors the agent's hub can use: its own, then the shared ones,
+   * only those its `uses` lists when it has one (as the workspace check allows).
+   */
+  async toolOptions(
+    ref: AgentRef,
+  ): Promise<Readonly<Record<AgentToolList, readonly AgentToolOption[]>>> {
+    await this.#find(ref);
+    const workspace = await this.#load();
+    const uses = filesOf(workspace, "hub").find((file) => file.hub === ref.hubId)?.value.uses;
+    const optionsOf = (list: AgentToolList, kind: "skill" | "knowledge" | "connector") => {
+      const items = filesOf(workspace, kind);
+      const own = items.filter((item) => item.hub === ref.hubId);
+      const shared = items.filter(
+        (item) => item.hub === null && (uses === undefined || uses[list].includes(item.value.id)),
+      );
+      return [...own, ...shared].map((item) => ({
+        id: item.value.id,
+        name: item.value.name ?? item.value.id,
+      }));
+    };
+    return {
+      skills: optionsOf("skills", "skill"),
+      knowledge: optionsOf("knowledge", "knowledge"),
+      connectors: optionsOf("connectors", "connector"),
     };
   }
 
@@ -168,6 +204,9 @@ export class WorkspaceAgents implements AgentsHost {
       "model",
       "maxSteps",
       "harness",
+      "skills",
+      "knowledge",
+      "connectors",
     ] as const) {
       const value = change[field];
       if (value !== undefined) edits.push({ kind: "set", path: [field], value });
@@ -294,7 +333,10 @@ export class WorkspaceAgents implements AgentsHost {
     return workspace;
   }
 
-  /** The workspace's hubs, its `models.yaml` and its settings as files, with unsaved changes applied. */
+  /**
+   * The workspace's hubs, its shared library, its `models.yaml` and its settings as files, with
+   * unsaved changes applied.
+   */
   #source(): DefinitionSource {
     const { files } = this.#parts;
     const existing = async (path: string) => ((await files.read(path)) === null ? [] : [path]);
@@ -302,6 +344,7 @@ export class WorkspaceAgents implements AgentsHost {
       location: "workspace:unsaved",
       list: async () => [
         ...(await files.list("hubs")),
+        ...(await files.list(sharedLibraryFolder)),
         ...(await existing(modelsFile)),
         ...(await existing(settingsPath)),
       ],

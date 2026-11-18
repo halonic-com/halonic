@@ -49,7 +49,10 @@ export interface PaletteGroup {
 export interface PaletteContent {
   /** Only the groups with rows, in order. */
   readonly groups: readonly PaletteGroup[];
-  /** Words are typed and no place or item matches them, so the "Nothing matches" line shows. */
+  /**
+   * Words are typed and no place, item or action matches them, so the "Nothing matches" line
+   * shows. Above matching actions it would read as a mistake (L12, HAL-12730).
+   */
   readonly nothingFound: boolean;
   /**
    * Words are typed, no place or item matches them and a search provider failed, so the palette
@@ -115,9 +118,9 @@ export function itemLocation(item: ItemRef, label: string, kinds: PaletteKindNam
  * In a group the whole name comes first, then names that start with the words, then a word that
  * starts with them, then names that only contain them; among equal matches the more recently
  * opened comes first. Each group keeps its best 5 rows. A source that isn't built yet adds
- * nothing, so it never shows an error or a stand-in. When nothing matches because a provider
- * failed, the palette says it couldn't search rather than that nothing matches; when other
- * providers found something, it shows that.
+ * nothing, so it never shows an error or a stand-in. It says nothing matches only when no action
+ * matches either. When nothing matches because a provider failed, the palette says it couldn't
+ * search rather than that nothing matches; when other providers found something, it shows that.
  */
 export function paletteGroups(sources: PaletteSources): PaletteContent {
   const openKeys = new Set(sources.openTabs.map((location) => location.key));
@@ -176,7 +179,8 @@ export function paletteGroups(sources: PaletteSources): PaletteContent {
   );
   return {
     groups: nonEmpty([group("items", items), group("actions", actions)]),
-    nothingFound: items.length === 0 && !hiddenMatch && !sources.searchFailed,
+    nothingFound:
+      items.length === 0 && actions.length === 0 && !hiddenMatch && !sources.searchFailed,
     couldNotSearch: items.length === 0 && !hiddenMatch && sources.searchFailed,
   };
 }

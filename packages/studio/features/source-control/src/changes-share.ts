@@ -4,20 +4,27 @@ import { shareWords } from "./changes-words.ts";
 import { loadFailureReason } from "./load-failure.ts";
 import { isShareAddress } from "./share-address.ts";
 
+/** What the page knows of the shared copy: {@link readRemote}'s answer. */
+interface RemoteRead {
+  readonly hasRemote: boolean;
+  readonly unshared: number;
+  readonly unsharedIds: ReadonlySet<string>;
+}
+
 /**
- * Whether the folder has a shared copy, and how many versions it lacks. The count is zero when
- * git can't say, so the page stays quiet.
+ * Whether the folder has a shared copy, how many versions it lacks and which of History's
+ * versions those are. Both are none when git can't say, so the page stays quiet.
  */
-export async function readRemote(
-  source: ChangesSource,
-  ready: boolean,
-): Promise<{ hasRemote: boolean; unshared: number }> {
+export async function readRemote(source: ChangesSource, ready: boolean): Promise<RemoteRead> {
   const hasRemote = ready && (await source.hasRemote());
-  if (!hasRemote) return { hasRemote, unshared: 0 };
+  const nothing: RemoteRead = { hasRemote, unshared: 0, unsharedIds: new Set() };
+  if (!hasRemote) return nothing;
   try {
-    return { hasRemote, unshared: await source.countUnshared() };
+    const unshared = await source.countUnshared();
+    const unsharedIds = new Set(await source.listUnshared());
+    return { hasRemote, unshared, unsharedIds };
   } catch {
-    return { hasRemote, unshared: 0 };
+    return nothing;
   }
 }
 

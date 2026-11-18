@@ -98,6 +98,26 @@ const timersOutsideWait: StateCheck = ({ id, state }) =>
           : [],
       );
 
+/**
+ * A timer never fires on an event, so a named event next to `after` would be
+ * silently dropped: `--event approve` is then refused at run time. "done" is
+ * the default event, so it is what a plain timer has.
+ */
+const timerWithEvent: StateCheck = ({ id, state }) =>
+  state.on.flatMap((transition, index) =>
+    transition.after && transition.event !== "done"
+      ? [
+          issue(
+            "error",
+            "timer-with-event",
+            `In "${id}", the transition to "${transition.to}" has both event "${transition.event}" and a timer (after ${transition.after}); a timer never fires on an event. Keep one of the two, or split it into two transitions if both are wanted`,
+            stateKey(id, "on", index, "event"),
+            id,
+          ),
+        ]
+      : [],
+  );
+
 const waitWithoutEvents: StateCheck = ({ id, state }) => {
   const onlyDone = state.on.every((transition) => transition.event === "done" && !transition.after);
   if (state.type !== "wait" || !onlyDone) {
@@ -207,6 +227,7 @@ export const STATE_CHECKS: readonly StateCheck[] = [
   unknownGets,
   taskWithoutAgent,
   timersOutsideWait,
+  timerWithEvent,
   waitWithoutEvents,
   foreachShape,
   subflowTarget,

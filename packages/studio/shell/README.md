@@ -274,7 +274,8 @@ The palette's content is worked out without a DOM (design-search 2, component sp
 places, the recent places, what the search providers found and the commands. With nothing typed it
 gives Open tabs, then Recent places that no tab shows. With words typed it gives "Agents, workflows
 and more" (open and recent places and found items whose name matches, each once) and Actions (the
-commands whose title matches). `nothingFound` says when the "Nothing matches" line shows, and
+commands whose title matches). `nothingFound` says when the "Nothing matches" line shows (no
+place, item or action matches), and
 `couldNotSearch` when nothing matches because a search provider failed, so the palette says
 "Couldn't search" in its place. What other providers found still shows. Each
 group keeps its best 5 rows, ordered by `matchName`: the whole name, then its start, then a word's
@@ -632,7 +633,9 @@ problems after a warning or danger mark named "Warning" or "Error", with **Compa
 again**. It isn't a live region: `announceSaveNotes(saving, announcer)` reads the note out
 politely, once, when it becomes items not saved, and never for Saving… or Saved. It stays quiet
 for a failure too, since the danger toast is an alert that already reads it, with its reason.
-`saveNoteWords` holds the words.
+`saveNoteWords` holds the words. While the note is a problem it carries `data-problem="warning"` or
+`"danger"`, and the status bar takes that tone's soft fill from it, so the frame doesn't need the
+save state. Its buttons are the kit's 20px `xs` size, which fits the bar.
 
 ```tsx
 announceSaveNotes(workspace.saving, shell.announcer);
@@ -929,7 +932,9 @@ and records the feature that added each (`Registered`). A bad id, a repeated id 
   and `itemPage.addSection`. An item page section names a kind some feature adds, and the section's
   feature uses the page's feature only through its `api.ts` (`shell.feature-isolation`). When a
   kind's `tab.subscribe` says its items changed, the window asks `tab.exists` for each tab on one
-  of them and closes the tab of a gone item the way Mod W does (`shell.gone-item-tabs`).
+  of them and closes the tab of a gone item the way Mod W does (`shell.gone-item-tabs`). It also
+  asks `tab.describe` again and renames a tab whose name changed, so a tab opened before the
+  feature knew the item's name stops showing its id (`shell.item-tab-names`).
 - **Frame** (`shell.frame-points`): `cards.add`, `panelWindows.add`, `statusBar.add`,
   `titleBar.add`, `phoneBar.add`, `dialogs.add` and `settings.add`, with `places.add` and
   `home.addCard` above. A dialog host (`shell.feature-dialogs`) is a view the window draws once,

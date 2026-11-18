@@ -138,6 +138,19 @@ verifies("studio.workspace-workflows", () => {
     expect(host.nameOf(first)).toBe(first.name);
   });
 
+  it("tells subscribers once when it learns a name, so a tab opened before the read follows it", async () => {
+    const { host, store } = setup();
+    let heard = 0;
+    host.subscribe(() => heard++);
+    await host.read({ hubId: "acme", id: "reply" });
+    await host.read({ hubId: "acme", id: "reply" });
+    await host.list();
+    expect(heard).toBe(1);
+    store["hubs/acme/workflows/reply.workflow.yaml"] = replyFile.replace("Reply", "Answer");
+    await host.list();
+    expect([heard, host.nameOf({ hubId: "acme", id: "reply" })]).toEqual([2, "Answer"]);
+  });
+
   it("takes -2 when the hub has the id, and writes the name as typed", async () => {
     const { host, store } = setup();
 

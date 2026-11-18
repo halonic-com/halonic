@@ -20,11 +20,13 @@ export const CHANGE_STEP_BUDGET = "Change";
 export const HONEST_LINE =
   "Runs stop at an estimated budget. Costs are estimated from the prices you enter.";
 export const HOW_THE_BUDGET_WORKS = "How the budget works";
+/** As the engine keeps to it: `keepToBudget` once a step, `spendOf` over the whole run tree (HAL-12642). */
 export const BUDGET_DETAILS = [
-  "Halonic checks the budget before each model call, so calls already under way can take a run over it.",
+  "Halonic checks the budget before each step. A step can make several model calls, so a run can go over.",
   "Calls without a price don't count towards the budget.",
+  "Claude Code and Codex calls on your own sign-in don't count.",
   "Budgets apply to runs. Chats and the assistant aren't counted yet.",
-  "Per run, each child run counts on its own.",
+  "A run and every child run under it share one per-run budget.",
   "Each deployment counts its own month.",
 ] as const;
 export const STEP_NOT_SAVED = "The prices and budget couldn't be saved.";

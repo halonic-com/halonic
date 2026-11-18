@@ -62,20 +62,23 @@ export interface HarnessHostInput {
   readonly digest: Digest;
   readonly clock: Clock;
   /** What the proposal service needs besides the digest and the clock. */
-  readonly proposals: {
-    /** The workspace's version control, or `null` when history is off. */
-    readonly vcs: ProposalVcs | null;
-    /** Where runs with history off get their copy, or `null`: such a run then can't start. */
-    readonly copies: RunCopies | null;
-    /** The proposal records' own store, in the profile, never the workspace's. */
-    readonly records: DefinitionStore;
-    /** The workspace's files, which Accept writes. */
-    readonly store: DefinitionStore;
-    /** Where Accept moves a file the run deleted: `refusingTrash` on a host without Accept. */
-    readonly trash: Trash;
-    /** Receives the error of a folder's end that couldn't finish; the next `start` clears it. */
-    readonly onEndFailed: (runId: string, error: unknown) => void;
-  };
+  readonly proposals: RunProposalsParts;
+}
+
+/** What the run proposal service is built from, besides the digest and the clock. */
+export interface RunProposalsParts {
+  /** The workspace's version control, or `null` when history is off. */
+  readonly vcs: ProposalVcs | null;
+  /** Where runs with history off get their copy, or `null`: such a run then can't start. */
+  readonly copies: RunCopies | null;
+  /** The proposal records' own store, in the profile, never the workspace's. */
+  readonly records: DefinitionStore;
+  /** The workspace's files, which Accept writes. */
+  readonly store: DefinitionStore;
+  /** Where Accept moves a file the run deleted: `refusingTrash` on a host without Accept. */
+  readonly trash: Trash;
+  /** Receives the error of a folder's end that couldn't finish; the next `start` clears it. */
+  readonly onEndFailed: (runId: string, error: unknown) => void;
 }
 
 /** What the engine gets: pass `harnesses` and `proposalFolders` to the executor of `assembleEngine`. */
@@ -125,17 +128,32 @@ export function harnessHostOf(input: HarnessHostInput): HarnessHost {
     ...(input.startTimeoutsMs === undefined ? {} : { startTimeoutsMs: input.startTimeoutsMs }),
   };
 
-  const { copies, ...proposalParts } = input.proposals;
-  const proposals = new RunProposals({
-    ...proposalParts,
-    ...(copies === null ? {} : { copies }),
-    digest: input.digest,
-    clock: input.clock,
-  });
+  const proposals = runProposalsOf(input.proposals, input.digest, input.clock);
   const folders = new ProposalFolders({ proposals });
   return {
     harnesses,
-    proposalFolders: new HistoryProposalFolders({ folders, hasCopies: copies !== null }),
+    proposalFolders: new HistoryProposalFolders({
+      folders,
+      hasCopies: input.proposals.copies !== null,
+    }),
     start: (openRuns) => folders.start(openRuns),
   };
+}
+
+/**
+ * The run proposal service on the host's parts: the one {@link harnessHostOf}
+ * makes the folders on, and the one a host that reviews proposals without
+ * running anything (`halonic proposals`) lists, shows and accepts them with.
+ *
+ * @example
+ * const proposals = runProposalsOf({ vcs, copies, records, store, trash, onEndFailed }, digest, clock);
+ * await proposals.list();
+ */
+export function runProposalsOf(
+  parts: RunProposalsParts,
+  digest: Digest,
+  clock: Clock,
+): RunProposals {
+  const { copies, ...rest } = parts;
+  return new RunProposals({ ...rest, ...(copies === null ? {} : { copies }), digest, clock });
 }

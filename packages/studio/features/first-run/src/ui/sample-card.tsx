@@ -50,7 +50,7 @@ export interface SampleStepsProps {
   readonly progress: SampleProgress;
   /** What each step opens; a step without one can't be opened. */
   readonly openers: StepOpeners;
-  /** Opens the support workflow's Tests in a hub; without it, or before a run has finished, the finished card has no Run its tests. */
+  /** Opens the support workflow's Tests in a hub; without it, or before a run has finished, the finished card has no See its tests. */
   readonly openTests?: ((hub: string) => void) | undefined;
   /** Says a line through the shell's announcer; the card says "Try the sample: 2 of 3 done." when a step finishes. */
   readonly announce?: (line: string) => void;
@@ -89,7 +89,7 @@ export function SampleSteps({ progress, openers, openTests, announce }: SampleSt
         <p>{sampleCardWords.caption(done.size)}</p>
         <div className="border-t border-border">
           {openTests === undefined || finishedRun === undefined ? null : (
-            <LinkRow label={sampleCardWords.runTests} onPress={() => openTests(finishedRun.hub)} />
+            <LinkRow label={sampleCardWords.seeTests} onPress={() => openTests(finishedRun.hub)} />
           )}
           {startOwnWorkspace === undefined ? null : (
             <LinkRow label={sampleCardWords.startOwnWorkspace} onPress={startOwnWorkspace} />
@@ -108,7 +108,7 @@ export function SampleSteps({ progress, openers, openTests, announce }: SampleSt
         <p>{sampleCardWords.caption(done.size)}</p>
         {openTests === undefined || finishedRun === undefined ? null : (
           <Button variant="secondary" size="sm" onClick={() => openTests(finishedRun.hub)}>
-            {sampleCardWords.runTests}
+            {sampleCardWords.seeTests}
           </Button>
         )}
         {startOwnWorkspace === undefined ? null : (

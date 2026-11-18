@@ -17,3 +17,4 @@ The models feature shall offer the Prices and budget step when a provider that m
 - Given `abc` in the first Input and `0` in Per run, then both say why at once and focus is on the first Input.
 - Given nothing is typed, then the button reads Save prices and pressing it closes the step without writing.
 - Given the budget has `monthly: 50` and the user presses Change, then Per month shows `50` and Save keeps the budget.
+- Given the step is open, then How the budget works says that the budget is checked before each step, that a step can make several model calls so a run can go over, that Claude Code and Codex calls on the person's own sign-in don't count, and that a run and every child run under it share one per-run budget, as `engine.budget-stops` keeps to it (HAL-12642).

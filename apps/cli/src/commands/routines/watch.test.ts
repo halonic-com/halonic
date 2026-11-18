@@ -30,7 +30,6 @@ const followUp = [
   "      - to: done",
   "        event: answered",
   "      - to: done",
-  "        event: no-answer",
   "        after: 5m",
   "  done:",
   "    type: final",

@@ -3,6 +3,8 @@
 // HTML, images, tables, nested lists and links to anything but a web page.
 // The screens draw the data with React, so no string ever becomes markup.
 
+import { isWebAddress } from "@halonicjs/studio-kit";
+
 /** A run of text inside a block. */
 export type Inline =
   | { readonly kind: "text"; readonly text: string }
@@ -298,14 +300,4 @@ function bracketsAt(
 /** `snake_case_names` and `2*3*4` stay text: emphasis starts only after a space or punctuation. */
 function opensEmphasis(source: string, at: number): boolean {
   return at === 0 || !/[\p{L}\p{N}]/u.test(source[at - 1] ?? "");
-}
-
-// The same rule as the kit's ExternalLink, which throws on anything else.
-function isWebAddress(href: string): boolean {
-  try {
-    const { protocol } = new URL(href);
-    return protocol === "https:" || protocol === "http:";
-  } catch {
-    return false;
-  }
 }

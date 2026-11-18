@@ -200,7 +200,7 @@ describe("the review body", () => {
         toReview: [row("read_note", { asksBeforeUse: false })],
       });
       expect(container.textContent).toContain(
-        "Doesn't ask before each use: Acme lowered its risk.",
+        "Doesn't ask before each use: Acme marks it as read-only.",
       );
     });
 

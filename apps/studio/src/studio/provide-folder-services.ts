@@ -133,15 +133,14 @@ export function provideFolderServices(
   services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
   services.provide(ProviderCheckService, new WorkspaceProviderCheck(new ShellHttpClient(ipc)));
   provideWorkspaceRuns(services, { ipc, files, window }, location);
+  // One service for both ends: the run page saves a person's trust, and the engine checks it.
+  const instructionTrust = new InstructionTrustService({
+    store: new TauriInstructionTrustStore(ipc),
+    clock: systemClock,
+  });
   services.provide(
     InstructionTrustHostService,
-    new WorkspaceInstructionTrust(
-      new InstructionTrustService({
-        store: new TauriInstructionTrustStore(ipc),
-        clock: systemClock,
-      }),
-      location,
-    ),
+    new WorkspaceInstructionTrust(instructionTrust, location),
   );
   services.provide(
     ChangesSourceService,
@@ -185,6 +184,7 @@ export function provideFolderServices(
                 definitions: new TauriDefinitionStore(files, location),
                 digest: webCryptoDigest,
                 clock: systemClock,
+                instructionTrust,
                 approvalsOf,
                 reportError: (error) => console.error("The harness host", error),
               }),

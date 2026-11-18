@@ -36,8 +36,9 @@ export function paletteOptionId(listId: string, row: PaletteRow): string {
 
 /**
  * What the palette shows under its search row (component specs 24.3, VK T2-F6, F22 to F25): the
- * "Couldn't search" or "Nothing matches" line when words find no place or item, then the groups,
- * each named by its title, then the skeleton rows while providers look.
+ * "Couldn't search" line when words find no place or item, or "Nothing matches" when no action
+ * matches either, then the groups, each named by its title, then the skeleton rows while
+ * providers look.
  *
  * The groups are one `listbox`: the search box keeps the focus and points at the active option,
  * so a screen reader reads the option's name ("Support reply, workflow, switch to tab"). Nothing

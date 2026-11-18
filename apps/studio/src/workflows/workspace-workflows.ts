@@ -88,6 +88,8 @@ export class WorkspaceWorkflows implements WorkflowsHost {
   #hubs: readonly WorkflowHub[] = [];
   /** The names of the workflows read or made so far, by hub and id, for {@link WorkspaceWorkflows.nameOf}. */
   readonly #names = new Map<string, string>();
+  /** Who hears that a name was learned or changed, so a tab opened before the read follows it. */
+  readonly #nameListeners = new Set<() => void>();
 
   /** Present only when the page has an engine; see {@link WorkflowsHost.startRun}. */
   startRun?: NonNullable<WorkflowsHost["startRun"]>;
@@ -164,7 +166,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
         },
       ];
     });
-    for (const { hubId, id, name } of listings) this.#names.set(`${hubId}/${id}`, name);
+    this.#learnNames(listings);
     return listings;
   }
 
@@ -176,7 +178,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     );
     if (file === undefined) throw workflowGone();
     const { value } = file;
-    this.#names.set(`${hubId}/${id}`, value.name);
+    this.#learnNames([{ hubId, id, name: value.name }]);
     return {
       hubId,
       id,
@@ -299,10 +301,28 @@ export class WorkspaceWorkflows implements WorkflowsHost {
   }
 
   subscribe(listener: () => void): () => void {
+    this.#nameListeners.add(listener);
     const stops = [this.#parts.onChange(listener), this.#parts.runs.subscribe(listener)];
     return () => {
+      this.#nameListeners.delete(listener);
       for (const stop of stops) stop();
     };
+  }
+
+  /**
+   * Keeps the names for {@link WorkspaceWorkflows.nameOf} and tells subscribers once when one is
+   * new or changed: a tab opened before the first read shows the id until then (L14, HAL-12730).
+   */
+  #learnNames(named: readonly { hubId: string; id: string; name: string }[]): void {
+    let learned = false;
+    for (const { hubId, id, name } of named) {
+      const key = `${hubId}/${id}`;
+      if (this.#names.get(key) === name) continue;
+      this.#names.set(key, name);
+      learned = true;
+    }
+    if (!learned) return;
+    for (const listener of [...this.#nameListeners]) listener();
   }
 
   /** Creates the workflow in `hubId`; throws when the workspace has no such hub, so no stray folder is made. */
