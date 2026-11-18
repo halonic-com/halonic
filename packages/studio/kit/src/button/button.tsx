@@ -12,7 +12,7 @@ import { Spinner } from "./spinner.tsx";
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
 /**
- * The button's height: `xs` 24px, only for the status bar, `sm` 28px, `md` 32px (the default),
+ * The button's height: `xs` 20px, only for the status bar, `sm` 28px, `md` 32px (the default),
  * `lg` 40px. `touch` is 48px, for a phone's bottom bar and a sheet's confirming button.
  */
 export type ButtonSize = "xs" | "sm" | "md" | "lg" | "touch";
@@ -127,11 +127,12 @@ const asLargeOnTouch = "phone:min-h-control-lg phone:px-4 touch:min-h-control-lg
 const hitArea = "phone:hit-touch touch:hit-touch";
 
 /**
- * `xs` fills the 24px status bar exactly, in the bar's caption type; the others use the body's
+ * `xs` fits the 24px status bar with its 1px line and 1px to spare above and below, in the bar's
+ * caption type, as high as a Status chip; the others use the body's
  * strong type. On a phone and a touch screen `xs` grows like `sm`.
  */
 const sizeClasses: Record<ButtonSize, string> = {
-  xs: `min-h-statusbar px-2 text-caption whitespace-nowrap ${asLargeOnTouch} ${hitArea}`,
+  xs: `min-h-5 px-2 text-caption whitespace-nowrap ${asLargeOnTouch} ${hitArea}`,
   sm: `min-h-control-sm px-2.5 text-body-strong whitespace-nowrap ${asLargeOnTouch} ${hitArea}`,
   md: `min-h-control-md px-3 text-body-strong whitespace-nowrap ${asLargeOnTouch} ${hitArea}`,
   lg: `min-h-control-lg px-4 text-body-strong whitespace-nowrap ${hitArea}`,
@@ -144,7 +145,7 @@ const sizeClasses: Record<ButtonSize, string> = {
  * with the 48px hit area; on a phone 48px with a 20px icon. phone: wins where both apply.
  */
 const iconButtonClasses: Record<ButtonSize, string> = {
-  xs: "size-statusbar touch:size-control-lg touch:hit-touch phone:size-touch",
+  xs: "size-5 touch:size-control-lg touch:hit-touch phone:size-touch",
   sm: "size-control-sm touch:size-control-lg touch:hit-touch phone:size-touch",
   md: "size-control-md touch:size-control-lg touch:hit-touch phone:size-touch",
   lg: "size-control-lg touch:hit-touch phone:size-touch",

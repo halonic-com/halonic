@@ -141,7 +141,7 @@ verifies("shell.save-note", () => {
 
   it("fits its action into the 24px status bar", async () => {
     await failSave(supportReply);
-    expect(note.querySelector("button")?.className).toContain("min-h-statusbar");
+    expect(note.querySelector("button")?.className).toContain("min-h-5");
   });
 
   it("shows fields not saved with a warning mark and no button", () => {

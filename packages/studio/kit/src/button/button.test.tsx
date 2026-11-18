@@ -59,7 +59,7 @@ verifies("kit.button", () => {
   );
 
   it.each([
-    ["xs", "min-h-statusbar px-2 text-caption"],
+    ["xs", "min-h-5 px-2 text-caption"],
     ["sm", "min-h-control-sm px-2.5"],
     ["md", "min-h-control-md px-3"],
     ["lg", "min-h-control-lg px-4"],

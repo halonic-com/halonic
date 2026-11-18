@@ -9,7 +9,7 @@ Users see this change. The note is `internal` because no key is pinned for
 
 ## What changes
 
-- The kit's `Button` gets a fifth size, `xs`: 24px high, in the caption type, only for the status bar. **Try again** and **Compare** in the save note use it, so they no longer stick out 2px above and below the 24px bar. On a phone and a touch screen `xs` grows to 40px with a 48px hit area, like `sm`.
+- The kit's `Button` gets a fifth size, `xs`: 20px high (as high as a Status chip), in the caption type, only for the status bar. **Try again** and **Compare** in the save note use it, so they no longer stick out of the 24px bar. Not 24px: the bar's 24px include its 1px top line, so a 24px button still stuck out by a pixel in Chromium. On a phone and a touch screen `xs` grows to 40px with a 48px hit area, like `sm`.
 - The body's strong type moves from the classes every button shares into each size's classes, so `xs` can use the caption type without two font-size classes on one button. No other size changes how it looks.
 - While the save note is a problem, the status bar takes the soft fill of the note's mark: `warning-soft` for fields or items not saved, `danger-soft` for a failed save. It fades in 120 ms, at once under reduced motion. The badges don't colour the bar.
 
