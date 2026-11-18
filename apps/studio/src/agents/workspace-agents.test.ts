@@ -162,5 +162,33 @@ verifies("studio.workspace-agents", () => {
         kind: "not_found",
       });
     });
+
+    it("saves the harness and the turn limit only when they're valid, and writes nothing otherwise", async () => {
+      const { host, store, changes } = setup();
+      const ref = { hubId: "acme", id: "writer" };
+      expect((await host.settings(ref)).harness).toBe("halonic");
+      await host.update(ref, { harness: "codex" });
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toContain("harness: codex");
+      expect((await host.settings(ref)).harness).toBe("codex");
+      const written = changes.length;
+      for (const maxSteps of [0, 201, 2.5]) {
+        await expect(host.update(ref, { maxSteps })).rejects.toMatchObject({
+          kind: "invalid_input",
+        });
+      }
+      expect(changes).toHaveLength(written);
+    });
+
+    it("answers whether a harness can run: Halonic always, the others as the host finds, a failed check as failed", async () => {
+      const { host } = setup();
+      const ref = { hubId: "acme", id: "writer" };
+      expect(await host.harnessReadiness(ref, "halonic")).toMatchObject({ status: "ready" });
+      expect(await host.harnessReadiness(ref, "codex")).toMatchObject({ status: "failed" });
+      await expect(
+        host.harnessReadiness({ hubId: "acme", id: "gone" }, "codex"),
+      ).rejects.toMatchObject({
+        kind: "not_found",
+      });
+    });
   });
 });

@@ -1,13 +1,16 @@
 import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
 import { useState } from "react";
-import type { AgentChange, AgentSettings } from "../api.ts";
+import type { AgentChange, AgentSettings, AgentsHost } from "../api.ts";
 import type { Load } from "../page/use-load.ts";
 import { BehaviourPage } from "./behaviour-page.tsx";
 import { configurationWords as words } from "./configuration-words.ts";
+import { HarnessPage } from "./harness-page.tsx";
 import { ModelPage } from "./model-page.tsx";
 
 /** Props for {@link Configuration}. */
 export interface ConfigurationProps {
+  /** The host, for the Harness page's check of the programs on this computer. */
+  readonly host: AgentsHost;
   readonly name: string;
   readonly load: Load<AgentSettings>;
   /** The model aliases the agent's hub can use, for the Model page. */
@@ -16,16 +19,16 @@ export interface ConfigurationProps {
   readonly save: (change: AgentChange) => Promise<void>;
 }
 
-type PageId = "behaviour" | "model";
+type PageId = "behaviour" | "model" | "harness";
 
 /** The pages that are built, in the order of flow-agents 5.1. */
-const pageIds: readonly PageId[] = ["behaviour", "model"];
+const pageIds: readonly PageId[] = ["behaviour", "model", "harness"];
 
 /**
  * The agent's Configuration (`agents.configuration.pages`): a list of pages on the left and the
  * picked page beside it. A page that isn't built is absent, not empty (flow-agents 5.1).
  */
-export function Configuration({ name, load, aliases, retry, save }: ConfigurationProps) {
+export function Configuration({ host, name, load, aliases, retry, save }: ConfigurationProps) {
   const [page, setPage] = useState<PageId>("behaviour");
   if (load.kind === "failed") {
     return (
@@ -72,11 +75,9 @@ export function Configuration({ name, load, aliases, retry, save }: Configuratio
       >
         {load.kind === "ready" ? (
           <div className="max-w-column">
-            {page === "behaviour" ? (
-              <BehaviourPage settings={load.value} save={save} />
-            ) : (
-              <ModelPage settings={load.value} aliases={aliases} save={save} />
-            )}
+            {page === "behaviour" && <BehaviourPage settings={load.value} save={save} />}
+            {page === "model" && <ModelPage settings={load.value} aliases={aliases} save={save} />}
+            {page === "harness" && <HarnessPage host={host} settings={load.value} save={save} />}
           </div>
         ) : (
           <div role="status" className="flex flex-col gap-4">

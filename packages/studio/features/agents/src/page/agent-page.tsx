@@ -151,6 +151,7 @@ export function AgentScreen({ host, hubId, id, goToAgents }: AgentScreenProps) {
       <TabPanel ids={ids} tabs={agentTabs} selected={view} className="flex min-h-0 flex-1 flex-col">
         {view === "configuration" ? (
           <Configuration
+            host={host}
             name={name}
             load={settings.load}
             aliases={aliases}

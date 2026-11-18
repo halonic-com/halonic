@@ -46,11 +46,12 @@ const host: AgentsHost = {
   settings: async (ref) => {
     const found = agents.find((agent) => agent.hubId === ref.hubId && agent.id === ref.id);
     if (found === undefined) throw new Error("not found");
-    return { instructions: "", maxSteps: 6, ...found };
+    return { instructions: "", maxSteps: 6, harness: "halonic", ...found };
   },
   update: async () => undefined,
   nameOf: (ref) => agents.find((agent) => agent.hubId === ref.hubId && agent.id === ref.id)?.name,
   modelAliases: async () => ["fast", "smart"],
+  harnessReadiness: async () => ({ status: "ready", version: "1.0.0" }),
   referencesTo: async () => [],
   subscribe: () => () => undefined,
   create: async ({ hubId, name }) => ({ hubId, id: name.toLowerCase() }),

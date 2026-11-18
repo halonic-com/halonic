@@ -2,12 +2,14 @@ import type { DefinitionSource } from "@halonicjs/ports";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import type {
   AgentChange,
+  AgentHarnessId,
   AgentHub,
   AgentListing,
   AgentRef,
   AgentSettings,
   AgentsHost,
   AgentUser,
+  HarnessReadiness,
   NewAgent,
 } from "@halonicjs/studio-feature-agents/api";
 import { filesOf, loadWorkspace, modelAliases } from "@halonicjs/workspace";
@@ -27,6 +29,11 @@ export interface WorkspaceAgentsParts {
   };
   /** Calls `listener` after every change of the workspace's files; returns the way to stop. */
   readonly onChange: (listener: () => void) => () => void;
+  /**
+   * Asks the agent host whether a harness can run for this agent. Absent where there is no agent
+   * host (the browser), which answers "couldn't check".
+   */
+  readonly detectHarness?: (ref: AgentRef, harness: AgentHarnessId) => Promise<HarnessReadiness>;
 }
 
 /** Where the agent files of a hub are kept. */
@@ -103,7 +110,26 @@ export class WorkspaceAgents implements AgentsHost {
       ...listingOf(ref.hubId, agent),
       instructions: agent.instructions,
       maxSteps: agent.maxSteps,
+      harness: agent.harness ?? "halonic",
     };
+  }
+
+  /** Whether `harness` can run for this agent; `halonic` always can, and a check that didn't work says so. */
+  async harnessReadiness(ref: AgentRef, harness: AgentHarnessId): Promise<HarnessReadiness> {
+    await this.#find(ref);
+    if (harness === "halonic") return { status: "ready", version: "" };
+    const detect = this.#parts.detectHarness;
+    if (detect === undefined) {
+      return {
+        status: "failed",
+        error: "Halonic can't check programs on this computer from here.",
+      };
+    }
+    try {
+      return await detect(ref, harness);
+    } catch (error) {
+      return { status: "failed", error: error instanceof Error ? error.message : String(error) };
+    }
   }
 
   /**
@@ -114,11 +140,24 @@ export class WorkspaceAgents implements AgentsHost {
     if (change.name !== undefined && change.name.trim() === "") {
       throw new KindedError("invalid_input", "An agent needs a name.");
     }
+    if (
+      change.maxSteps !== undefined &&
+      !(Number.isInteger(change.maxSteps) && change.maxSteps >= 1 && change.maxSteps <= 200)
+    ) {
+      throw new KindedError("invalid_input", "The turn limit is a whole number from 1 to 200.");
+    }
     const { path } = await this.#find(ref);
     const text = await this.#parts.files.read(path);
     if (text === null) throw agentGone();
     const edits: YamlEdit[] = [];
-    for (const field of ["name", "description", "instructions", "model", "maxSteps"] as const) {
+    for (const field of [
+      "name",
+      "description",
+      "instructions",
+      "model",
+      "maxSteps",
+      "harness",
+    ] as const) {
       const value = change[field];
       if (value !== undefined) edits.push({ kind: "set", path: [field], value });
     }
