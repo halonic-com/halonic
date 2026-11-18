@@ -3,6 +3,7 @@
 - Task: HAL-12585 (option B of the proposal on HAL-12579)
 - Approval: Julian proposed option B on HAL-12579 (its proposal document) and assigned the implementation on HAL-12585; the board picked the official barcode-scanner plugin (decision 4c), which brings ML Kit. Julian reviews this as a licence PR, Liam signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FnJSK/VJuRBUU8bZyJTLmjHSMY0I8+8ilLVgb/220jEfHxjqHg1yrxtLwZqZiHqjokAsZ0IJzgc2mFp/fUZOCQ==
 
 ## What changes
 
