@@ -1,14 +1,22 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
-import { PresentationProvider } from "@halonicjs/studio-kit";
+import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type RoutinesHost, RoutinesHostService, type RoutineView } from "../api.ts";
 import { routinesFeature } from "../feature.ts";
-import { buttonNamed, listing, memoryHost, show, unmount } from "../test-support.tsx";
+import {
+  buttonNamed,
+  installFakePopover,
+  listing,
+  memoryHost,
+  show,
+  typeInto,
+  unmount,
+} from "../test-support.tsx";
 import { RoutinePage, RoutineScreen } from "./routine-page.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -25,6 +33,7 @@ const daily: RoutineView = {
   trigger: { kind: "schedule", cron: "30 7 * * 1-5" },
   triggerSentence: "Weekdays at 07:30",
   summary: "Weekdays at 07:30 → Briefing",
+  targetName: "Briefing",
   target: { kind: "workflow", hubId: "acme", id: "briefing", input: "{}" },
   targetState: "ready",
   overlap: "skip",
@@ -61,7 +70,7 @@ verifies("routines.page.frame-and-states", () => {
     const page = await show(screenOf(hostReading(() => daily).host));
 
     expect(page.textContent).toContain("ROUTINE");
-    expect(page.querySelector("h1")?.textContent).toBe("Daily");
+    expect(nameField(page).value).toBe("Daily");
     expect(page.textContent).toContain("Weekdays at 07:30 → Briefing");
     expect(page.textContent).not.toContain("Changes not live yet");
     expect(page.textContent).not.toContain("doesn't run");
@@ -138,7 +147,7 @@ verifies("routines.page.frame-and-states", () => {
     failing = false;
     document.body.append(page);
     await act(async () => buttonNamed(page, "Try again")?.click());
-    expect(page.querySelector("h1")?.textContent).toBe("Daily");
+    expect(nameField(page).value).toBe("Daily");
     expect(page.textContent).not.toContain("Couldn't load");
     expect(document.activeElement).toBe(page.querySelector("h1"));
   });
@@ -190,7 +199,7 @@ verifies("routines.page.frame-and-states", () => {
         Sections={() => null}
       />,
     );
-    expect(page.querySelector("h1")?.textContent).toBe("Daily");
+    expect(nameField(page).value).toBe("Daily");
   });
 
   it("offers a routine to Ctrl K by name, with its hub and summary", async () => {
@@ -222,5 +231,134 @@ verifies("routines.page.frame-and-states", () => {
       },
     ]);
     expect(await providers[0]?.search("  ", context)).toEqual([]);
+  });
+});
+
+/** A host whose routine is "Daily" until it is trashed, then not found, as the real host does. */
+function hostWithTrash() {
+  let trashed = false;
+  const { host, change } = hostReading(
+    () => daily,
+    () => (trashed ? new KindedError("not_found", "No such routine.") : undefined),
+  );
+  const save = vi.fn(async () => {});
+  const withTrash = {
+    ...host,
+    save,
+    trash: async () => {
+      trashed = true;
+      change();
+      return {
+        undo: async () => {
+          trashed = false;
+          change();
+        },
+      };
+    },
+  } as RoutinesHost;
+  return { host: withTrash, save };
+}
+
+async function showWithToasts(host: RoutinesHost) {
+  const toasts = createToastStore();
+  const page = await show(
+    <ToastStoreProvider store={toasts}>
+      <RoutineScreen
+        host={host}
+        hubId="acme"
+        id="daily"
+        announce={() => {}}
+        goToRoutines={() => {}}
+      />
+    </ToastStoreProvider>,
+  );
+  return { page, toasts };
+}
+
+const nameField = (page: HTMLElement) =>
+  page.querySelector<HTMLInputElement>('input[aria-label="Routine name"]') as HTMLInputElement;
+
+const settle = () => act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+
+verifies("routines.page.rename-and-delete", () => {
+  let restorePopover: () => void;
+  beforeEach(() => {
+    restorePopover = installFakePopover();
+  });
+  afterEach(() => restorePopover());
+
+  it("saves a new name on Enter, and only the name", async () => {
+    const { host, save } = hostWithTrash();
+    const { page } = await showWithToasts(host);
+
+    await typeInto(nameField(page), "Morning");
+    await act(async () =>
+      nameField(page).dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })),
+    );
+
+    expect(save).toHaveBeenCalledExactlyOnceWith(
+      { hubId: "acme", id: "daily" },
+      { name: "Morning" },
+    );
+  });
+
+  it("puts the old name back on Esc and saves nothing", async () => {
+    const { host, save } = hostWithTrash();
+    const { page } = await showWithToasts(host);
+
+    await typeInto(nameField(page), "Morning");
+    await act(async () =>
+      nameField(page).dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+      ),
+    );
+
+    expect(nameField(page).value).toBe("Daily");
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("says why the name couldn't be saved", async () => {
+    const { host, save } = hostWithTrash();
+    save.mockRejectedValue(new KindedError("conflict", "The file changed on disk."));
+    const { page, toasts } = await showWithToasts(host);
+
+    await typeInto(nameField(page), "Morning");
+    await act(async () =>
+      nameField(page).dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })),
+    );
+    await settle();
+
+    expect(toasts.list()[0]).toMatchObject({
+      tone: "danger",
+      title: "Couldn't rename Daily.",
+      text: "The file changed on disk.",
+    });
+  });
+
+  it("deletes from ⋮ with no dialog, then shows the routine gone, and Undo brings it back", async () => {
+    const { host } = hostWithTrash();
+    const { page, toasts } = await showWithToasts(host);
+
+    act(() =>
+      page.querySelector<HTMLElement>('button[aria-label="More actions for Daily"]')?.click(),
+    );
+    const item = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+      (each) => each.textContent === "Delete",
+    );
+    await act(async () => item?.click());
+    await settle();
+
+    expect(document.querySelector("dialog[open]")).toBeNull();
+    expect(toasts.list()[0]).toMatchObject({
+      title: "Moved Daily to the trash.",
+      text: "It won't start Briefing any more. Runs it already started keep going.",
+      action: { label: "Undo" },
+    });
+    expect(page.textContent).toContain("This routine isn't in this workspace any more.");
+
+    await act(async () => toasts.list()[0]?.action?.onClick());
+    await settle();
+
+    expect(nameField(page).value).toBe("Daily");
   });
 });

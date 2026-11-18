@@ -30,6 +30,7 @@ function routineWith(trigger: RoutineTrigger): RoutineView {
     trigger,
     triggerSentence: "Weekdays at 07:30",
     summary: "Weekdays at 07:30 → Briefing",
+    targetName: "Briefing",
     target: { kind: "workflow", hubId: "acme", id: "briefing", input: "{}" },
     targetState: "ready",
     overlap: "skip",

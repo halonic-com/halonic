@@ -28,7 +28,7 @@ type Answer = Exclude<RoutineLoad, { readonly kind: "loading" }>;
 /**
  * Reads one routine from the host, and again when the host says something may have changed. A
  * read after the first keeps the routine on screen, so a refresh never shows a skeleton, and a
- * failed refresh keeps what is shown. **Try again** after a failure keeps the failure on screen
+ * failed refresh keeps what is shown, unless the routine is gone. **Try again** after a failure keeps the failure on screen
  * with `retrying` true and calls `onRetried` once the read works, so the page can move focus off
  * the button that is gone.
  */
@@ -58,15 +58,13 @@ export function useRoutine(
       (error: unknown) => {
         if (mine !== newestRead.current) return;
         retrying.current = false;
+        const gone = errorKindOf(error) === "not_found";
+        // A routine that is gone (moved to the trash here or elsewhere) is not a failed refresh:
+        // the page must stop showing it.
         setAnswer((was) =>
-          was?.kind === "ready"
+          was?.kind === "ready" && !gone
             ? was
-            : {
-                kind: "failed",
-                reason: failureReason(error),
-                retrying: false,
-                gone: errorKindOf(error) === "not_found",
-              },
+            : { kind: "failed", reason: failureReason(error), retrying: false, gone },
         );
       },
     );

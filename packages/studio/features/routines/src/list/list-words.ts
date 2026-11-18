@@ -23,8 +23,8 @@ export const listWords = {
   pausedUntilTrusted: "Paused until trusted",
 } as const;
 
-/** The words of deleting a routine: no dialog, the trash and Undo (flow-routines 2.4, microcopy 12.3). */
-export const deleteWords = {
+/** The words of a routine's ⋮ menu and of deleting it: no dialog, the trash and Undo (flow-routines 2.4, microcopy 12.3). */
+export const rowMenuWords = {
   open: "Open",
   openInNewTab: "Open in new tab",
   delete: "Delete",

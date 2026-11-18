@@ -35,6 +35,7 @@ function routineStarting(
     trigger,
     triggerSentence: "Manual only",
     summary: "Manual only → Briefing",
+    targetName: "Briefing",
     target,
     targetState,
     overlap: "skip",
