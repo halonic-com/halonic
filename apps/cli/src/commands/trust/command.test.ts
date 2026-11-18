@@ -271,8 +271,8 @@ verifies("cli.commands.trust.review-and-trust", () => {
 
     expect(code).toBe(exitCode.notTrusted);
     expect(io.stderr.slice(-2)).toEqual([
-      "✕ Couldn't trust Acme: it changed since that fingerprint was made.",
-      "  Run halonic trust --dir acme again to see what changed.",
+      "✕ That fingerprint doesn't match Acme as it is now.",
+      "  Run halonic trust --dir acme again to review it as it is now.",
     ]);
     expect(io.stdout.at(-1)).not.toBe(old);
     expect(written()).toBe("");
@@ -303,8 +303,8 @@ verifies("cli.commands.trust.review-and-trust", () => {
 
     expect(code).toBe(exitCode.notTrusted);
     expect(io.stderr.slice(-2)).toEqual([
-      "✕ Couldn't trust Acme: it changed since that fingerprint was made.",
-      "  Run halonic trust --dir acme again to see what changed.",
+      "✕ That fingerprint doesn't match Acme as it is now.",
+      "  Run halonic trust --dir acme again to review it as it is now.",
     ]);
     expect(io.stdout.at(-1)).toMatch(fullFingerprint);
     expect(io.stdout.at(-1)).not.toBe(shown);

@@ -165,7 +165,7 @@ async function reviewAndTrust(
   const changes =
     check.status === "changed" ? trustChangesDocument(check.changes, check.trustedAt) : undefined;
   if (fingerprint !== undefined && fingerprint !== check.fingerprint) {
-    throw fingerprintChanged({ name, check, lines, dir, changes });
+    throw fingerprintNotCurrent({ name, check, lines, dir, changes });
   }
   if (check.status === "trusted") {
     return {
@@ -195,7 +195,7 @@ async function reviewAndTrust(
     // The files changed between the check and the answer: the refusal gives
     // the fingerprint they have now, as a check run now would.
     const now = { ...check, fingerprint: granted.error.fingerprint };
-    throw fingerprintChanged({ name, check: now, lines: [], dir, changes });
+    throw fingerprintNotCurrent({ name, check: now, lines: [], dir, changes });
   }
   return {
     exitCode: exitCode.ok,
@@ -258,14 +258,14 @@ async function askToTrust(context: CommandContext, about: TrustQuestion): Promis
   return await context.ask({ question: trustMessages.notPinnedQuestion(), yes, refusal });
 }
 
-/** "✕ Couldn't trust Acme: it changed since that fingerprint was made.", with the check on stderr. */
-function fingerprintChanged(facts: TrustRefusalFacts): NotTrustedError {
+/** "✕ That fingerprint doesn't match Acme as it is now.", with the check on stderr. */
+function fingerprintNotCurrent(facts: TrustRefusalFacts): NotTrustedError {
   return new NotTrustedError({
-    problem: trustMessages.fingerprintChanged(),
-    fix: trustMessages.fingerprintChangedFix(facts.dir),
+    problem: trustMessages.fingerprintNotCurrent(facts.name),
+    fix: trustMessages.fingerprintNotCurrentFix(facts.dir),
     fingerprint: facts.check.fingerprint,
     check: facts.lines,
-    action: trustMessages.action(facts.name),
+    action: null,
     changes: facts.changes,
   });
 }

@@ -2,15 +2,15 @@
 exit 5
 stdout:
 stderr:
-  \e[31m✕\e[39m Couldn't approve lookup: it changed since that fingerprint. It's now htl1:5f6944f6e1ba80785d7362516461dfbb3bf1946e87f8c4eae44b60ba07f48a04.
-    Read the new version first: halonic tools review notes-mcp
+  \e[31m✕\e[39m That fingerprint doesn't match lookup as it is now: htl1:5f6944f6e1ba80785d7362516461dfbb3bf1946e87f8c4eae44b60ba07f48a04.
+    Review it first: halonic tools review notes-mcp
 
 ## NO_COLOR: halonic tools approve notes-mcp lookup --fingerprint htl1:0000000000000000000000000000000000000000000000000000000000000000
 exit 5
 stdout:
 stderr:
-  ✕ Couldn't approve lookup: it changed since that fingerprint. It's now htl1:5f6944f6e1ba80785d7362516461dfbb3bf1946e87f8c4eae44b60ba07f48a04.
-    Read the new version first: halonic tools review notes-mcp
+  ✕ That fingerprint doesn't match lookup as it is now: htl1:5f6944f6e1ba80785d7362516461dfbb3bf1946e87f8c4eae44b60ba07f48a04.
+    Review it first: halonic tools review notes-mcp
 
 ## --json: halonic tools approve notes-mcp lookup --fingerprint htl1:0000000000000000000000000000000000000000000000000000000000000000
 exit 5
@@ -20,8 +20,8 @@ stdout:
     "ok": false,
     "error": {
       "kind": "conflict",
-      "message": "Couldn't approve lookup: it changed since that fingerprint. It's now htl1:5f6944f6e1ba80785d7362516461dfbb3bf1946e87f8c4eae44b60ba07f48a04.",
-      "fix": "Read the new version first: halonic tools review notes-mcp",
+      "message": "That fingerprint doesn't match lookup as it is now: htl1:5f6944f6e1ba80785d7362516461dfbb3bf1946e87f8c4eae44b60ba07f48a04.",
+      "fix": "Review it first: halonic tools review notes-mcp",
       "approved": []
     }
   }

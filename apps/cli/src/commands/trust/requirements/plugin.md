@@ -28,4 +28,4 @@ The `halonic trust --plugin <id>` command shall show the trust check of the plug
   then it says "✓ Removed trust for Weather. Nothing from this plugin runs until you trust it.", Weather is off and it exits 0.
 - Given Weather, on,
   when `halonic trust --plugin weather --yes --fingerprint <a fingerprint that isn't its current one>` is run,
-  then it says "it changed since that fingerprint was made.", Weather stays on and it exits 3.
+  then it says "✕ That fingerprint doesn't match Weather as it is now.", Weather stays on and it exits 3.

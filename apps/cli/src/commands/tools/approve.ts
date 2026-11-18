@@ -215,8 +215,8 @@ function approvedLines(
     case "changed":
       throw new OwnLineError(
         "conflict",
-        toolsMessages.changedSinceFingerprint(name, result.waiting.fingerprint),
-        toolsMessages.readNewVersionFirst(toolsCommand("review", source)),
+        toolsMessages.fingerprintNotCurrent(name, result.waiting.fingerprint),
+        toolsMessages.reviewItFirst(toolsCommand("review", source)),
         jsonFields,
       );
     case "refused":

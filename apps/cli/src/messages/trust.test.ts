@@ -117,11 +117,11 @@ describe("trust's sentences", () => {
     expect(words(trustMessages.yesNeedsFingerprintFix())).toBe(
       "Run halonic trust to see it; the fingerprint is in the check, above the question.",
     );
-    expect(words(trustMessages.fingerprintChanged())).toBe(
-      "it changed since that fingerprint was made.",
+    expect(words(trustMessages.fingerprintNotCurrent("Acme"))).toBe(
+      "That fingerprint doesn't match Acme as it is now.",
     );
-    expect(words(trustMessages.fingerprintChangedFix("./acme"))).toBe(
-      "Run halonic trust --dir ./acme again to see what changed.",
+    expect(words(trustMessages.fingerprintNotCurrentFix("./acme"))).toBe(
+      "Run halonic trust --dir ./acme again to review it as it is now.",
     );
     expect(words(trustMessages.noTerminalFix())).toBe(
       "Review it with halonic trust, then pass --yes --fingerprint <fingerprint>.",
