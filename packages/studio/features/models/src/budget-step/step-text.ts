@@ -26,7 +26,7 @@ export const BUDGET_DETAILS = [
   "Calls without a price don't count towards the budget.",
   "Claude Code and Codex calls on your own sign-in don't count.",
   "Budgets apply to runs. Chats and the assistant aren't counted yet.",
-  "Per run, a run and every child run under it share one budget.",
+  "A run and every child run under it share one per-run budget.",
   "Each deployment counts its own month.",
 ] as const;
 export const STEP_NOT_SAVED = "The prices and budget couldn't be saved.";

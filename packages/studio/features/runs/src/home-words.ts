@@ -8,13 +8,17 @@ export const homeWords = {
   label: "Recent runs",
   empty: "No runs yet. When an agent or workflow runs, you'll see it here.",
   seeAll: "See all runs",
-  /** Under the empty line, so Home never ends on nothing (empty-home-checklist 1, scope b). */
-  startNote:
-    "Studio shows what your agents are doing and lets you read each run. To start one, open a workflow and press Run.",
-  /** The empty line in the Acme sample, where a run starts from the Inbox. */
+  /** Under the empty line, so Home never ends on nothing (empty-home-checklist 1, scope b); `halonic run` is shown as code. */
+  startNote: [
+    "Studio shows what your agents are doing and lets you read each run. To start one, use the command line: ",
+    "halonic run",
+    ".",
+  ],
+  /** The empty line in the Acme sample, where a run starts from the Inbox, not the command line. */
   sampleEmpty: "No runs yet. Start one from the Inbox, and it shows up here.",
   /** The same note when the workspace has no workflow yet (HAL-10128). */
-  noWorkflowNote: "This workspace has no workflows yet. Add one in Workflows, then press Run.",
+  noWorkflowNote:
+    "This workspace has no workflows yet. Add one in Workflows, then start it from the command line.",
 };
 
 /** Home's Spend tile (HAL-8553): the tile's title, the line under the number, and its empty text. */

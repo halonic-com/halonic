@@ -205,7 +205,7 @@ verifies("models.budget-step.ask-for-pay-per-use", () => {
         "Halonic checks the budget before each step. A step can make several model calls, so a run can go over.",
       );
       expect(details).toContain("Claude Code and Codex calls on your own sign-in don't count.");
-      expect(details).toContain("Per run, a run and every child run under it share one budget.");
+      expect(details).toContain("A run and every child run under it share one per-run budget.");
       expect(details).not.toContain("each child run counts on its own");
     });
   });

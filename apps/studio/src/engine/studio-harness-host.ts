@@ -156,7 +156,7 @@ function agentFilesOf(definitions: DefinitionSource): AgentFiles {
 
 /** Why an agent set to "On this computer" doesn't start from the Studio. */
 const noUnfencedReason =
-  "Halonic runs Claude Code and Codex agents only in the sandbox for now. Set this agent back to the sandbox.";
+  "Halonic can't run Claude Code or Codex agents outside the sandbox yet. Set this agent back to the sandbox.";
 
 /**
  * The `this-computer` sandbox of the Studio: none. Its check says why, and

@@ -27,7 +27,7 @@ import {
   type WorkflowRef,
 } from "../list/runs-filter.ts";
 import { FailureReason, RefreshFailedLine } from "../load-failure.tsx";
-import { emptyListWords, pageWords } from "../run-words.ts";
+import { emptyListWords, pageWords, runCommand } from "../run-words.ts";
 import { type RunsList, RunsListService, type RunsListState } from "../runs-list.ts";
 
 /** The Runs place's page: the open workspace's runs, from `RunsListService`. */
@@ -226,7 +226,7 @@ function NoRuns({
   );
 }
 
-/** The line under "No runs yet": the Inbox in the sample, else where to add a workflow or how to run one. */
+/** The line under "No runs yet": the Inbox in the sample, else where to add a workflow or which one to run. */
 function NoRunsLine({
   workflows,
   isSample,
@@ -236,7 +236,13 @@ function NoRunsLine({
 }) {
   if (isSample) return emptyListWords.noRunsSample;
   if (workflows?.length === 0) return emptyListWords.noRunsNoWorkflow;
-  return emptyListWords.noRunsBody;
+  return (
+    <>
+      {emptyListWords.noRunsBody}
+      <code className="font-mono text-code">{runCommand(workflows)}</code>
+      {emptyListWords.noRunsBodyEnd}
+    </>
+  );
 }
 
 /** The skeleton rows until the first list loads (R10), then the runs or the line in their place. */
