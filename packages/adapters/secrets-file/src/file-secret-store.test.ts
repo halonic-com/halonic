@@ -257,11 +257,17 @@ verifies("secrets-file.private", () => {
         ]) {
           const error = await call().then(
             () => undefined,
-            (reason: unknown) => reason as { kind: string; fix: string; message: string },
+            (reason: unknown) =>
+              reason as { kind: string; fix: string; message: string; failureCause: unknown },
           );
           expect(error?.kind).toBe("denied");
           expect(error?.fix).toBe(`Run chmod 600 ${file}, then run again.`);
           expect(error?.message).not.toContain("sk-");
+          // The cause a run logs, so `halonic run` words it as `secret list` does (HAL-12569).
+          expect(error?.failureCause).toEqual({
+            code: "secrets.file-readable",
+            detail: { file },
+          });
         }
         expect(await readFile(file, "utf8")).toBe(before);
       },
