@@ -15,7 +15,7 @@ const mountsFolder = "/mnt/halonic";
  * Checks a project's folder name: one plain name, so it can't reach out of
  * `projects` or `/mnt/halonic` and can't be read as a Windows path or option.
  *
- * @throws when the name is empty, long, `.`/`..`, has a separator, a control character or a Windows-reserved character, or starts with `-`
+ * @throws when the name is empty, long, `.`/`..`, has a separator, a control character or a Windows-reserved character, starts with `-`, or is an import mount's name (`import-` and 32 hex digits)
  */
 export function assertProjectName(name: string): void {
   const problem = projectNameProblem(name);
@@ -30,6 +30,8 @@ function projectNameProblem(name: string): string | undefined {
   if (name.endsWith(".") || name.endsWith(" ")) return "ends with a dot or a space";
   // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what this rejects
   if (/[/\\:*?"<>|\u0000-\u001f]/.test(name)) return "has a character a folder name can't have";
+  // the updater's import mounts in /mnt/halonic have these names, and its clean-up removes them
+  if (/^import-[0-9a-f]{32}$/.test(name)) return "is kept for import mounts";
   return undefined;
 }
 

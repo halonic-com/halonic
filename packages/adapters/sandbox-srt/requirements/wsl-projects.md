@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-5402 (project location in Halonic's WSL distro, design in HAL-3779 section 5.1)
 
-The sandbox-srt adapter shall give a project in Halonic's WSL distro the Linux path its `projects` folder in the `halonic` user's home when it lives in the distro and `/mnt/halonic/<name>` when it's on the Windows drive, and shall give each Linux path in the distro its Windows path on the distro's WSL share, for "Open in Explorer" and "Open in VS Code". It shall refuse a project name that isn't one plain folder name, so a name can't reach out of `projects` or `/mnt/halonic`.
+The sandbox-srt adapter shall give a project in Halonic's WSL distro the Linux path its `projects` folder in the `halonic` user's home when it lives in the distro and `/mnt/halonic/<name>` when it's on the Windows drive, and shall give each Linux path in the distro its Windows path on the distro's WSL share, for "Open in Explorer" and "Open in VS Code". It shall refuse a project name that isn't one plain folder name, so a name can't reach out of `projects` or `/mnt/halonic`, and the name of an import mount (`import-` and 32 lowercase hex digits), so a project's mount in `/mnt/halonic` is never taken for one.
 
 ## Examples
 
@@ -14,6 +14,6 @@ The sandbox-srt adapter shall give a project in Halonic's WSL distro the Linux p
 - Given the project `acme` on the Windows drive,
   when its folder is asked for,
   then it is `/mnt/halonic/acme`.
-- Given the name `../x`, `a/b`, `..`, an empty name or a name starting with `-`,
+- Given the name `../x`, `a/b`, `..`, an empty name, a name starting with `-` or `import-` and 32 hex digits,
   when a folder is asked for,
   then it throws.
