@@ -14,7 +14,7 @@ The `copyCheckedPlugin` function shall copy the files a plugin's trust check has
 - Given a script edited after the trust check,
   when the plugin is copied,
   then it fails with `PluginFileChangedError` naming the script, and the script isn't in the copy.
-- Given, on Linux or macOS, a file the check listed that is now a link to another file with the same bytes,
+- Given a file the check listed that is now, on Linux or macOS, a link to another file with the same bytes,
   when the plugin is copied,
   then it fails with `PluginFileChangedError` naming that file.
 - Given a file added to the plugin's folder after the check,
