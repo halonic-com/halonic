@@ -3,6 +3,7 @@
 - Task: HAL-12459
 - Approval: team decision on HAL-12459 (an accessibility fix in the kit, from Sofia's keyboard and screen-reader check HAL-12426, row A9); Liam reviews the pull request on HAL-12459 and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SVGo6IGBTV8xuuR2whvI8motEiIbtkFfvT/RCAqevkXOA2uAyfUR8TpRusYvOphq8jZ4dFBbmdlETuFGY6JwBw==
 
 ## What changes
 
