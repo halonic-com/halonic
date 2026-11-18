@@ -159,3 +159,38 @@ verifies("fs-node.plugin-folder", () => {
     expect(new FileSystemPluginFolder("/p/plugins").location).toBe("/p/plugins");
   });
 });
+
+verifies("fs-node.plugin-folder-plain", () => {
+  it.each([
+    ["plugins folder", "plugins"],
+    ["staging folder", "plugins.staging"],
+  ])("refuses a %s that is a link, and writes nothing through it", async (_, name) => {
+    const profile = await tempFolder();
+    const outside = await tempFolder();
+    if (name === "plugins.staging") await mkdir(join(profile, "plugins"));
+    await symlink(outside, join(profile, name), folderLinkType);
+    const writer = new FileSystemPluginFolder(join(profile, "plugins"));
+    await expect(writer.place("weather", weather, { replace: false })).rejects.toThrow(/is a link/);
+    expect(await readdir(outside)).toEqual([]);
+  });
+
+  it("deletes nothing through a staging folder that is a link", async () => {
+    const { profile, root } = await profileFolder();
+    const outside = await tempFolder();
+    const leftover = `removed.0f8e2a4c-1b3d-4e5f-9a7b-6c5d4e3f2a1b`;
+    await mkdir(join(outside, leftover));
+    await symlink(outside, join(profile, "plugins.staging"), folderLinkType);
+    const later = new FileSystemPluginFolder(root, { clock: { now: () => inTwoHours() } });
+    await expect(later.place("weather", weather, { replace: false })).rejects.toThrow(/is a link/);
+    expect(await readdir(outside)).toEqual([leftover]);
+    expect(await readdir(root)).toEqual([]);
+  });
+
+  it("refuses a plugins folder that is a file", async () => {
+    const profile = await tempFolder();
+    await writeFile(join(profile, "plugins"), "a file, not a folder");
+    const writer = new FileSystemPluginFolder(join(profile, "plugins"));
+    await expect(writer.place("weather", weather, { replace: false })).rejects.toThrow();
+    expect(await readFile(join(profile, "plugins"), "utf8")).toBe("a file, not a folder");
+  });
+});
