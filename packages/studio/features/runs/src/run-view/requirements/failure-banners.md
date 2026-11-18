@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1845 part 2; failure-states (HAL-1712) F6, F7, F8, F10, F15 and F20; microcopy 22 (HAL-751, revision 48, approved on HAL-1720) and 15.3; ux-checklist-failure-states (HAL-1847) FX-D2; the fixed reason in F6, the model instead of the alias in F7 and no buttons yet are team decisions on HAL-1845
+- Source: HAL-12035 (`budget` from the engine's cause, decided by Liam on the task); HAL-1845 part 2; failure-states (HAL-1712) F6, F7, F8, F10, F15 and F20; microcopy 22 (HAL-751, revision 48, approved on HAL-1720) and 15.3; ux-checklist-failure-states (HAL-1847) FX-D2; the fixed reason in F6, the model instead of the alias in F7 and no buttons yet are team decisions on HAL-1845
 
 When a run failed for a reason the engine names, the run page's banner shall say the cause in plain words, in the danger tone, instead of "Halonic can't tell the cause yet":
 
@@ -15,6 +15,8 @@ When a run failed for a reason the engine names, the run page's banner shall say
 - `model-no-tools`: "*llama3.2*, used by the model alias *fast*, can't use tools, and the step *Draft* offers tools. Point the model alias *fast* at a model that can use tools." with **Open Models** before **Run again**, because running again fails the same way until the alias changes; a log without the alias reads "*llama3.2* can't use tools, and the step *Draft* offers tools. Pick a model that can in Models, then run again.";
 - `interrupted`: "*Support reply* stopped because Halonic's engine stopped during the step *Draft reply*. Nothing after that step ran.", and for a run that never entered a step "…stopped because Halonic's engine stopped before the first step. Nothing ran.".
 
+When a run stopped at its budget and its `run.failed` cause (`events.run-failed-cause`) is `budget.run` or `budget.month` with the limit, the spend and the currency, the run page's budget banner (amber, titled "Stopped at its estimated budget") shall say what `halonic run` says, in the budget's currency: for the run's budget "*Support reply* stopped in the step *Draft*: this run reached its budget of €5.00 (estimated €5.08 spent)." and "Raise budget.perRun in workspace.yaml.", and for the month's "…: this month's estimated spend reached its budget of €50.00." and "Raise budget.monthly in workspace.yaml, or wait until it resets on 1 Jan.", where the date is the first of the month after the run stopped (UTC). The banner shall read the cause only, never the error text. A budget stop without a cause, or with a figure missing from it, shall keep the general line "*Support reply* stopped in the step *Draft*.". The budget banner's last line about calls already under way stays.
+
 The model and its provider shall come from the log's last model call, the host from `run.failed`. A banner that needs the model shall wait for the log, and until then the page's general banner shows. The engine's own error text, and the provider's, shall never be on the banner.
 
 **Open Models** opens the workspace page at Models and is left out where the page can't do that. On a phone the banners that offer it (`model-unreachable` for a local provider, `model-out-of-memory`, `model-missing`, `model-no-tools`) have no button for it: they end with "Fix this on your computer: Models". **Run again** (`runs.run-view.run-again`) comes last.
@@ -22,6 +24,16 @@ The model and its provider shall come from the log's last model call, the host f
 Limits, for the docs: the banners have no **Copy details** yet. The provider is named by its id with a capital until the engine logs a display name, and the model is named instead of its alias for a log that doesn't give the alias.
 
 ## Examples
+
+- Given a run that stopped with the cause `budget.run`, a limit of 5, a spend of 5.08 and the currency EUR, in the step Draft,
+  when its page is shown,
+  then the budget banner reads "Support reply stopped in the step Draft: this run reached its budget of €5.00 (estimated €5.08 spent).", then "Raise budget.perRun in workspace.yaml.".
+- Given a run that stopped with the cause `budget.month` on 31 December,
+  when its page is shown,
+  then the second line reads "Raise budget.monthly in workspace.yaml, or wait until it resets on 1 Jan.".
+- Given a run that stopped at its budget with no cause,
+  when its page is shown,
+  then the banner's first line reads "Support reply stopped in the step Draft." with no second line about the budget key.
 
 - Given a run that failed with `model-unreachable` at api.anthropic.com after a call to the provider `claude`, a cloud provider, with the model claude-sonnet,
   when its page is shown,

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { ProviderKind } from "../api.ts";
 import { mondayMorning, summaryWith } from "../summary.test-helper.ts";
 import { causeBanner } from "./failure-banner.ts";
-import type { RunPageContext } from "./run-page-model.ts";
+import { type RunPageContext, runBanner } from "./run-page-model.ts";
 
 const kinds: Record<string, ProviderKind> = { ollama: "local", claude: "cloud" };
 const context: RunPageContext = {
@@ -36,6 +36,9 @@ function failed(reason: RunSummary["reason"], changes: Partial<RunSummary> = {})
 
 const lines = (banner: ReturnType<typeof causeBanner>) =>
   banner?.kind === "callout" ? banner.lines : undefined;
+
+const budgetPage = (changes: Partial<RunSummary>) =>
+  runBanner({ summary: failed("budget", changes) }, context);
 
 verifies("runs.run-view.failure-banners", () => {
   describe("a model that can't be reached", () => {
@@ -276,5 +279,62 @@ verifies("runs.run-view.failure-banners", () => {
     expect(
       causeBanner(summaryWith({ status: "running", reason: "disk-full" }), [], context, false),
     ).toBeUndefined();
+  });
+
+  describe("a budget stop with the engine's cause", () => {
+    // The same examples as the CLI's `run-failures.test.ts` (requirement `cli.run-failure`).
+    const stopped = (code: string, detail: Record<string, string>, endedAt?: string) =>
+      budgetPage({
+        error: "Run budget reached: 5.08 of 5.00 EUR spent.",
+        cause: { kind: "limit_reached", code, detail },
+        ...(endedAt === undefined ? {} : { endedAt }),
+      });
+    const linesOf = (banner: ReturnType<typeof stopped>) =>
+      banner?.kind === "callout" ? banner.lines : undefined;
+    const checks =
+      "Halonic checks the budget before each model call, so calls already under way can take a run over it.";
+
+    it("says the CLI's words for a run's budget", () => {
+      const banner = stopped("budget.run", { limit: "5", spent: "5.08", currency: "EUR" });
+      expect(linesOf(banner)).toEqual([
+        "Support reply stopped in the step Draft: this run reached its budget of €5.00 (estimated €5.08 spent).",
+        "Raise budget.perRun in workspace.yaml.",
+        checks,
+      ]);
+      expect(banner).toMatchObject({
+        tone: "attention",
+        title: "Stopped at its estimated budget",
+      });
+    });
+
+    it("says the CLI's words for the month's budget, with when it resets, in the budget's currency", () => {
+      const banner = stopped(
+        "budget.month",
+        { limit: "50", spent: "50.1", currency: "USD" },
+        "2026-12-31T23:30:00Z",
+      );
+      expect(linesOf(banner)).toEqual([
+        "Support reply stopped in the step Draft: this month's estimated spend reached its budget of $50.00.",
+        "Raise budget.monthly in workspace.yaml, or wait until it resets on 1 Jan.",
+        checks,
+      ]);
+    });
+
+    it("keeps the general budget words for a cause that is missing a figure", () => {
+      expect(linesOf(stopped("budget.run", { limit: "5", currency: "EUR" }))).toEqual([
+        "Support reply stopped in the step Draft.",
+        checks,
+      ]);
+    });
+  });
+
+  it("keeps the general budget words for a budget stop without a cause", () => {
+    const banner = runBanner(
+      { summary: failed("budget", { error: "Run budget reached: 5.08 of 5.00 EUR spent." }) },
+      context,
+    );
+    expect(banner?.kind === "callout" && banner.lines[0]).toBe(
+      "Support reply stopped in the step Draft.",
+    );
   });
 });
