@@ -1976,6 +1976,8 @@ A left or middle click calls the **`openExternal` service** with the address and
 own navigation, so Studio never leaves its page. The address stays on the link, so "Copy link
 address" still works. A right click is left to the browser. Only `http` and `https` addresses are
 allowed: anything else throws, because addresses are often built from what the user typed.
+Code that decides whether to draw a link at all asks `isWebAddress(href)`, the same rule, so it
+never draws one that throws.
 
 **An address from a request.** "Sign in with Google" gets its address from the host's start
 route, so `href` can be a function that returns a promise. Then `onError` is required, because the
