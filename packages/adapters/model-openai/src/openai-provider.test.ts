@@ -158,6 +158,21 @@ verifies("model-openai.call-errors", () => {
       "The server is overloaded",
     ],
     [
+      // A `baseUrl` with a wrong path, or a server that doesn't speak this API: waiting won't help.
+      "a 501 Not Implemented",
+      (v) => v.replyNext(501, { error: { message: "Not Implemented" } }),
+      "refused",
+      /^acme at acme\.test doesn't support the call to the model "acme-small", so check the baseUrl of acme in models\.yaml \(HTTP 501\)$/,
+      "Not Implemented",
+    ],
+    [
+      "a 505 HTTP Version Not Supported",
+      (v) => v.replyNext(505, { detail: "HTTP Version Not Supported" }),
+      "refused",
+      /baseUrl of acme in models\.yaml \(HTTP 505\)$/,
+      '{"detail":"HTTP Version Not Supported"}',
+    ],
+    [
       "Groq's full flex tier",
       (v) => v.replyNext(498, { error: { message: "Flex tier capacity exceeded" } }),
       "provider-busy",
