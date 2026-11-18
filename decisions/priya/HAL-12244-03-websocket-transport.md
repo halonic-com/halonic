@@ -1,6 +1,6 @@
 # Decision: the phone's WebSocket client is tokio-tungstenite, over our own TLS
 
-- Approval: Paperclip task HAL-12354, where Liam approved the dependency for D1 (HAL-12244) under the conditions below; Julian reviews this PR as the security reviewer
+- Approval: Paperclip task HAL-12354, where Liam approved the dependency for D1 (HAL-12244), and HAL-12431, where he accepted the six extra RustCrypto crates (option A); Julian reviews this PR as the security reviewer
 - Kind: internal
 
 The phone's Rust transport needs a WebSocket client, and nothing in the shell had one.
@@ -16,7 +16,7 @@ the crate, and no command hands a raw socket to the page (board decision 4d).
 Writing our own client was the other choice: about 300 lines of frame parsing we would own and
 audit, for no gain.
 
-**One condition isn't met as written, and needs Liam's word before this merges:** the lockfile
+**One condition wasn't met as written, and Liam accepted it on HAL-12431:** the lockfile
 adds more than the four expected crates. `tungstenite` 0.30 hashes the upgrade key with `sha1`
 0.11, so `sha1` 0.11 joins `sha1` 0.10, with its newer RustCrypto base (`digest` 0.11,
 `block-buffer` 0.12, `crypto-common` 0.2, `hybrid-array` 0.4, `const-oid` 0.10). `utf-8` is no
