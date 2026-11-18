@@ -146,6 +146,9 @@ verifies("plugins.plugin-settings-list", () => {
       />,
     );
     expect(view.textContent).toContain("Weather");
+    // Under the section's own h3 "Plugins", as the other sections draw their groups (HAL-12536).
+    const levels = [...view.querySelectorAll("h2, h3, h4, h5")].map(({ tagName }) => tagName);
+    expect(levels).toEqual(["H4", "H4"]);
 
     const more = await findElement(() =>
       document.querySelector<HTMLElement>('[aria-label="More actions for Weather"]'),
