@@ -1,7 +1,8 @@
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { act } from "react";
-import type { RoutinesHost, RoutineView } from "../api.ts";
-import { memoryHost, show } from "../test-support.tsx";
+import { vi } from "vitest";
+import type { RoutinesHost, RoutineView, RunNowResult } from "../api.ts";
+import { buttonNamed, memoryHost, show } from "../test-support.tsx";
 import { RoutineScreen } from "./routine-page.tsx";
 
 /** The routine every page test reads, unless it says otherwise. */
@@ -62,3 +63,15 @@ export async function showWithToasts(host: RoutinesHost, openRun?: (runId: strin
 }
 
 export const settle = () => act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+
+/** A host that reads "Daily" and answers Run now with `answer`, or rejects with it when it is an error. */
+export function hostRunning(answer: RunNowResult | Error, view: RoutineView = daily) {
+  const { host } = hostReading(() => view);
+  const runNow = vi.fn(async () => {
+    if (answer instanceof Error) throw answer;
+    return answer;
+  });
+  return { host: { ...host, runNow } as RoutinesHost, runNow };
+}
+
+export const runNowButton = (page: HTMLElement) => buttonNamed(page, "Run now");
