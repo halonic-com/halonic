@@ -7,7 +7,7 @@ const kindNouns: Record<LibraryItemKind, string> = {
   connector: "connector",
 };
 
-/** The words of deleting a Library item (flow-library 4, microcopy 2, 7, 8.1, 11.3): no dialog, the trash and Undo. */
+/** The words of deleting a Library item (flow-library 4, microcopy 2, 7, 8.1, 11.3): no dialog, and Undo. There is no trash: saving deletes the file. */
 export const deleteWords = {
   delete: "Delete",
   open: "Open",
@@ -17,15 +17,15 @@ export const deleteWords = {
   tryAgain: "Try again",
   pageMenuLabel: (name: string) => `More actions for ${name}`,
   /** The toast's title: with a second line it is a sentence and ends with a full stop. */
-  moved: (name: string, withLine: boolean) => `Moved ${name} to the trash${withLine ? "." : ""}`,
+  moved: (name: string, withLine: boolean) => `Deleted ${name}${withLine ? "." : ""}`,
   /** The page strip's text: one phrase with no full stop, or a sentence when a second line follows (microcopy 2, 11.3). */
   pageMoved: (kind: LibraryItemKind, withLine: boolean) =>
-    `This ${kindNouns[kind]} was moved to the trash${withLine ? "." : ""}`,
-  /** The toast when the item couldn't be moved; `reason` is a kinded error's sentence. */
+    `This ${kindNouns[kind]} was deleted${withLine ? "." : ""}`,
+  /** The toast when the item couldn't be deleted; `reason` is a kinded error's sentence. */
   couldntMove: (name: string, reason: string | undefined) =>
     reason === undefined
-      ? `Couldn't move ${name} to the trash.`
-      : `Couldn't move ${name} to the trash: ${reason.replace(/\.$/, "")}.`,
+      ? `Couldn't delete ${name}.`
+      : `Couldn't delete ${name}: ${reason.replace(/\.$/, "")}.`,
   couldntUndo: (name: string) => `Couldn't put ${name} back`,
 } as const;
 

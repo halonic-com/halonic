@@ -66,7 +66,7 @@ verifies("routines.list.delete-with-undo", () => {
     expect(document.querySelector("dialog[open]")).toBeNull();
     expect(page.textContent).not.toContain("→ Daily");
     expect(toasts.list()[0]).toMatchObject({
-      title: "Moved Daily to the trash.",
+      title: "Deleted Daily.",
       text: "It won't start Briefing any more. Runs it already started keep going.",
       action: { label: "Undo" },
     });
@@ -128,7 +128,7 @@ verifies("routines.list.delete-with-undo", () => {
 
     expect(toasts.list()[0]).toMatchObject({
       tone: "danger",
-      title: "Couldn't move Daily to the trash: Daily isn't in this workspace any more.",
+      title: "Couldn't delete Daily: Daily isn't in this workspace any more.",
       sticky: true,
       action: { label: "Try again" },
     });
