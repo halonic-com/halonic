@@ -227,7 +227,6 @@ async function panel(plugin: InstalledPlugin) {
 }
 
 interface Screen {
-  readonly requirement: string;
   /** The texts the screen shows in full, so each must read as its own characters. */
   readonly shows: readonly (keyof Texts)[];
   readonly draw: (plugin: InstalledPlugin) => Promise<void>;
@@ -235,7 +234,6 @@ interface Screen {
 
 const SCREENS: Record<string, Screen> = {
   list: {
-    requirement: "plugins.plugin-list",
     shows: ["name", "description"],
     draw: async (plugin) => {
       render(
@@ -257,7 +255,6 @@ const SCREENS: Record<string, Screen> = {
     },
   },
   page: {
-    requirement: "plugins.plugin-page",
     shows: ["name", "description", "tool", "setting", "command", "card"],
     draw: async (plugin) => {
       render(
@@ -274,7 +271,6 @@ const SCREENS: Record<string, Screen> = {
     },
   },
   "trust check": {
-    requirement: "plugins.plugin-trust-check",
     shows: ["name", "tool"],
     draw: async (plugin) => {
       if (plugin.manifest === undefined) throw new Error("No manifest");
@@ -290,7 +286,6 @@ const SCREENS: Record<string, Screen> = {
     },
   },
   card: {
-    requirement: "plugins.plugin-cards",
     shows: ["name", "card"],
     draw: async (plugin) => {
       const card = plugin.cards[0];
@@ -308,7 +303,6 @@ const SCREENS: Record<string, Screen> = {
     },
   },
   "command dialog": {
-    requirement: "plugins.plugin-commands",
     shows: ["name", "command", "field", "help"],
     draw: async (plugin) => {
       const command = plugin.commands[0] as PluginCommand | undefined;
@@ -324,7 +318,6 @@ const SCREENS: Record<string, Screen> = {
     },
   },
   panel: {
-    requirement: "plugins.plugin-panel",
     shows: ["name", "panel", "command", "card"],
     draw: panel,
   },
@@ -414,20 +407,27 @@ async function check(screen: Screen, plain: Drawn, status: PluginCardStatus, tex
   unmountAll();
 }
 
-for (const [title, screen] of Object.entries(SCREENS)) {
-  verifies(screen.requirement, () => {
-    describe(`the ${title} shows a plugin's texts as plain text`, () => {
-      it.each(BATCHES)(
-        "draws nothing a plain label doesn't, batch $batch",
-        async ({ plugins }) => {
-          const plain = new Map<PluginCardStatus, Drawn>();
-          for (const status of STATUSES) plain.set(status, await plainDrawing(screen, status));
-          for (const { status, texts } of plugins) {
-            await check(screen, plain.get(status) as Drawn, status, texts);
-          }
-        },
-        20_000,
-      );
-    });
+function describeScreen(title: string): void {
+  const screen = SCREENS[title] as Screen;
+  describe(`the ${title} shows a plugin's texts as plain text`, () => {
+    it.each(BATCHES)(
+      "draws nothing a plain label doesn't, batch $batch",
+      async ({ plugins }) => {
+        const plain = new Map<PluginCardStatus, Drawn>();
+        for (const status of STATUSES) plain.set(status, await plainDrawing(screen, status));
+        for (const { status, texts } of plugins) {
+          await check(screen, plain.get(status) as Drawn, status, texts);
+        }
+      },
+      20_000,
+    );
   });
 }
+
+// The trace check reads each requirement ID as a plain string, so each screen gets its own call.
+verifies("plugins.plugin-list", () => describeScreen("list"));
+verifies("plugins.plugin-page", () => describeScreen("page"));
+verifies("plugins.plugin-trust-check", () => describeScreen("trust check"));
+verifies("plugins.plugin-cards", () => describeScreen("card"));
+verifies("plugins.plugin-commands", () => describeScreen("command dialog"));
+verifies("plugins.plugin-panel", () => describeScreen("panel"));
