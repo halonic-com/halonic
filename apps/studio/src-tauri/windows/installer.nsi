@@ -807,6 +807,11 @@ Section Install
   ${If} ${Silent}
   ${OrIf} $PassiveMode = 1
   ${OrIf} $UpdateMode = 1
+    ; Halonic change (HAL-11982): "Restart to update" starts this installer
+    ; and then quits, so Studio may still be closing here. Tauri's check below
+    ; then fails to close it, and the install stops with "Failed to kill" on a
+    ; page nobody sees, nothing copied. Let Studio and its helpers close first.
+    ${IfThen} $UpdateMode = 1 ${|} Call WaitUntilHelpersAreClosed ${|}
     !insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
   ${Else}
     Call WaitUntilHalonicIsClosed
@@ -1422,6 +1427,8 @@ FunctionEnd
 ; Retry or Ignore in a window nobody sees, so the installer waited for ever
 ; with the new version half copied and Halonic never reopened. Waits up to
 ; 30 s for each helper's file to be free; if one still isn't, goes on as before.
+; Halonic.exe counts too (HAL-11982), for the update that starts while
+; Studio itself is still closing.
 Function WaitUntilHelpersAreClosed
   Push $0
   Push $1
@@ -1431,13 +1438,15 @@ Function WaitUntilHelpersAreClosed
   StrCpy $2 0
   ${Do}
     StrCpy $1 0
-    ${ForEach} $0 1 3 + 1
+    ${ForEach} $0 1 4 + 1
       ${If} $0 = 1
         StrCpy $R9 "$INSTDIR\halonic-agent-host.exe"
       ${ElseIf} $0 = 2
         StrCpy $R9 "$INSTDIR\halonic-sandbox-elevate.exe"
-      ${Else}
+      ${ElseIf} $0 = 3
         StrCpy $R9 "$INSTDIR\srt-win.exe"
+      ${Else}
+        StrCpy $R9 "$INSTDIR\${MAINBINARYNAME}.exe"
       ${EndIf}
       ${If} ${FileExists} $R9
         ClearErrors
