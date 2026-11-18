@@ -76,6 +76,22 @@ export const filesWords = {
       ? `Couldn't create ${path}.`
       : `Couldn't create ${path}: ${reason.replace(/\.$/, "")}.`,
   pathPrivate: (path: string): string => `"${path}" is not part of the workspace definitions`,
+  /** The file menu of a tree row and of the tab's ⋮ (files flow 3.3 and 4.2). */
+  menu: {
+    open: "Open",
+    openInNewTab: "Open in new tab",
+    rename: "Rename",
+    delete: "Delete",
+    copyPath: "Copy path",
+  },
+  /** The name of a row's ⋮ button and of the tab's, which say which file the menu is for. */
+  moreActions: (name: string): string => `More actions for ${name}`,
+  /** The toast after Copy path. */
+  pathCopied: (path: string): string => `Copied ${path}`,
+  /** The toast when the clipboard didn't take the path. */
+  pathNotCopied: "Couldn't copy the path.",
+  /** The name of a file's menu, read when it opens. */
+  fileMenu: (name: string): string => `${name} menu`,
   /** The name of the field that edits a file's name in its row, for a screen reader. */
   renameLabel: (name: string): string => `Rename ${name}`,
   /** Under the name being edited in its row when it holds a `/`. */

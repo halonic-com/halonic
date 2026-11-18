@@ -3,7 +3,9 @@ import type { TreeRow } from "./visible-rows.ts";
 /** What a key asks the rest of the Studio to do; the tree itself only moves and opens. */
 export type TreeIntent =
   | { readonly kind: "open"; readonly path: string }
+  | { readonly kind: "open-in-new-tab"; readonly path: string }
   | { readonly kind: "rename"; readonly path: string }
+  | { readonly kind: "copy-path"; readonly path: string }
   | { readonly kind: "trash"; readonly path: string };
 
 /** The letters typed in a row, so a quick "sk" finds "skills". */
