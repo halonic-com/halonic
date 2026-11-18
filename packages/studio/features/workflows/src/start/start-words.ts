@@ -36,4 +36,21 @@ export const startWords = {
     running: (step: string) => `running in ${step}`,
     waiting: (step: string) => `waiting in ${step}`,
   },
+  /**
+   * What screen readers hear when the docked run's state changes (microcopy 19.3, canvas strip,
+   * and 9.6). A step name that ends in its own mark ("Approve this reply?") gets no full stop.
+   */
+  announce: {
+    needsYou: (shortId: string, step: string) =>
+      `Run ${shortId} needs you, waiting in ${withFullStop(step)}`,
+    done: (shortId: string) => `Run ${shortId} is done.`,
+    failed: (shortId: string, step: string) => `Run ${shortId} failed in ${withFullStop(step)}`,
+    cancelled: (shortId: string, step: string) =>
+      `Run ${shortId} was cancelled in the step ${withFullStop(step)}`,
+    runningAgain: (shortId: string) => `Run ${shortId} is running again.`,
+  },
 } as const;
+
+function withFullStop(text: string): string {
+  return /[.!?…]$/.test(text) ? text : `${text}.`;
+}

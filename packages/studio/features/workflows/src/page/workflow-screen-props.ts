@@ -1,5 +1,6 @@
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
 import type { WorkflowsHost } from "../api.ts";
+import type { AnnounceState } from "../start/run-announcement.ts";
 
 /** Props for `WorkflowScreen`. */
 export interface WorkflowScreenProps {
@@ -25,4 +26,6 @@ export interface WorkflowScreenProps {
    * already goes to Tests again when this changes, also when it is asked for the same step twice.
    */
   readonly testsAsked?: number;
+  /** Reads a state change to screen readers (`announcer.announceState`); without it nothing is read. */
+  readonly announceState?: AnnounceState;
 }
