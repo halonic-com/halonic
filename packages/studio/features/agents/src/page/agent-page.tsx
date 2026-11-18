@@ -85,17 +85,15 @@ export function AgentScreen({ host, hubId, id, goToAgents }: AgentScreenProps) {
     void read();
     return host.subscribe(() => void read());
   }, [host, hubId, id]);
-  const [aliases, setAliases] = useState<readonly string[]>([]);
   // The hub's model aliases for the Model page; read again when a file changes.
-  useEffect(() => {
-    const read = () =>
-      host
-        .modelAliases({ hubId, id })
-        .then(setAliases)
-        .catch(() => setAliases([]));
-    void read();
-    return host.subscribe(() => void read());
-  }, [host, hubId, id]);
+  const aliasesSource = useMemo(
+    () => ({
+      fetch: () => host.modelAliases({ hubId, id }),
+      subscribe: (onChange: () => void) => host.subscribe(onChange),
+    }),
+    [host, hubId, id],
+  );
+  const aliases = useLoad<readonly string[]>(aliasesSource);
   const [view, setView] = useState<AgentView>("runs");
   const [saveFailed, setSaveFailed] = useState<string>();
   const ids = useTabIds();
@@ -154,7 +152,8 @@ export function AgentScreen({ host, hubId, id, goToAgents }: AgentScreenProps) {
             host={host}
             name={name}
             load={settings.load}
-            aliases={aliases}
+            aliases={aliases.load}
+            retryAliases={aliases.retry}
             retry={settings.retry}
             save={save}
           />

@@ -14,7 +14,8 @@ export interface ConfigurationProps {
   readonly name: string;
   readonly load: Load<AgentSettings>;
   /** The model aliases the agent's hub can use, for the Model page. */
-  readonly aliases: readonly string[];
+  readonly aliases: Load<readonly string[]>;
+  readonly retryAliases: () => void;
   readonly retry: () => void;
   readonly save: (change: AgentChange) => Promise<void>;
 }
@@ -28,7 +29,15 @@ const pageIds: readonly PageId[] = ["behaviour", "model", "harness"];
  * The agent's Configuration (`agents.configuration.pages`): a list of pages on the left and the
  * picked page beside it. A page that isn't built is absent, not empty (flow-agents 5.1).
  */
-export function Configuration({ host, name, load, aliases, retry, save }: ConfigurationProps) {
+export function Configuration({
+  host,
+  name,
+  load,
+  aliases,
+  retryAliases,
+  retry,
+  save,
+}: ConfigurationProps) {
   const [page, setPage] = useState<PageId>("behaviour");
   if (load.kind === "failed") {
     return (
@@ -76,7 +85,21 @@ export function Configuration({ host, name, load, aliases, retry, save }: Config
         {load.kind === "ready" ? (
           <div className="max-w-column">
             {page === "behaviour" && <BehaviourPage settings={load.value} save={save} />}
-            {page === "model" && <ModelPage settings={load.value} aliases={aliases} save={save} />}
+            {page === "model" &&
+              (aliases.kind === "failed" ? (
+                <EmptyState
+                  tone="error"
+                  title={words.modelsLoadFailedTitle}
+                  description={aliases.reason}
+                  action={{ label: words.tryAgain, onClick: retryAliases, busy: aliases.retrying }}
+                />
+              ) : (
+                <ModelPage
+                  settings={load.value}
+                  aliases={aliases.kind === "ready" ? aliases.value : []}
+                  save={save}
+                />
+              ))}
             {page === "harness" && <HarnessPage host={host} settings={load.value} save={save} />}
           </div>
         ) : (

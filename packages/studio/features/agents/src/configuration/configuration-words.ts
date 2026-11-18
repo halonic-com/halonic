@@ -36,6 +36,7 @@ export const configurationWords = {
     `${agent} can't run until ${program} is updated.`,
   loading: (name: string) => `Loading ${name}'s settings`,
   loadFailedTitle: (name: string) => `Couldn't load ${name}'s settings`,
+  modelsLoadFailedTitle: "Couldn't load the models",
   tryAgain: "Try again",
   notSaved: (count: number) => `${count} ${count === 1 ? "field" : "fields"} not saved`,
 } as const;
