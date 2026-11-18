@@ -229,6 +229,7 @@ export {
   type PresentationProviderProps,
   usePresentation,
 } from "./presentation/presentation.tsx";
+export { QrTile, type QrTileProps } from "./qr-tile/qr-tile.tsx";
 export {
   RadioGroup,
   type RadioGroupProps,

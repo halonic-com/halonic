@@ -120,6 +120,10 @@
   /* An SVG luminance mask keeps white and knocks out black in every theme, so these two never change. */
   --color-mask-show: light-dark(#ffffff, #ffffff);
   --color-mask-hide: light-dark(#000000, #000000);
+  /* A QR code is black on white in every theme: a scanner reads light and dark modules, and many
+     can't read them inverted (HAL-12240). */
+  --color-qr-light: light-dark(#ffffff, #ffffff);
+  --color-qr-dark: light-dark(#000000, #000000);
 
   /* ---------------------------------------------------------------- Colour: chart series */
   /* Blue, rose, teal and periwinkle, in that order, for up to four series on a card. Blue and
@@ -203,6 +207,7 @@
   --spacing-touch: 48px; /* touch targets on a phone: buttons, menu items, inputs (h-touch) */
   --spacing-phone-bar: 56px; /* the phone's top bar and bottom navigation (h-phone-bar) */
   --spacing-nav-pill: 56px; /* width of the "where you are" pill in the bottom navigation */
+  --spacing-qr-tile: 232px; /* the QR tile's smallest side, so a phone scans it from arm's length */
   --container-page: 1120px;
   --container-reading: 680px; /* long text */
   --container-column: 744px; /* a form or list column inside a page body */
