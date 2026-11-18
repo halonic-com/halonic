@@ -1,5 +1,5 @@
 import { type Infer, parse, type Schema } from "@halonicjs/schema-kit";
-import { McpError, unexpectedResponse } from "./errors.ts";
+import { McpError, McpStoppedError, unexpectedResponse } from "./errors.ts";
 import {
   errorCodes,
   errorForRpcCode,
@@ -191,7 +191,7 @@ export class McpSession {
         }
       }
       // The transport ended without an answer, even after any resume it tries.
-      throw new McpError("unavailable", `The MCP server stopped before it answered ${method}.`);
+      throw new McpStoppedError(`The MCP server stopped before it answered ${method}.`);
     } catch (error) {
       // The protocol forbids cancelling `initialize`.
       if (signal?.aborted === true && method !== "initialize") {

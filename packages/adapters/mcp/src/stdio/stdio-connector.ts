@@ -11,7 +11,7 @@ import { type Clock, SecretScrubber, systemClock } from "@halonicjs/std";
 import { findRunner, type RunnerSearch, runnerRefusedError } from "../pinned/find-runner.ts";
 import type { LaunchFolders } from "../pinned/launch-folders.ts";
 import { checkPinnedLaunch, pinnedLaunch } from "../pinned/pinned-launch.ts";
-import { McpError } from "../protocol/errors.ts";
+import { McpError, McpStoppedError } from "../protocol/errors.ts";
 import { type ClientInfo, McpSession } from "../protocol/session.ts";
 import { cleanErrorOutput, type PersonalDetails } from "./error-output.ts";
 import { inheritedSecrets } from "./inherited-secrets.ts";
@@ -235,8 +235,7 @@ class McpStdioConnector implements ConnectorClient {
   #lostDuringCall(connection: Connection, toolName: string, error: unknown): unknown {
     if (this.#closed || !connection.transport.ended) return error;
     const reason = error instanceof McpError ? ` ${error.message}` : "";
-    return new McpError(
-      "unavailable",
+    return new McpStoppedError(
       `Connector "${this.id}" lost its program while its tool "${toolName}" ran.${reason} Halonic didn't try the call again, because it may already have had an effect. The next call starts the program again.`,
     );
   }

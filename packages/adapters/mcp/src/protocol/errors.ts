@@ -32,6 +32,17 @@ export class McpError extends Error {
   }
 }
 
+/**
+ * The server or its program stopped, or didn't answer in time, before it
+ * answered a request. It is an `unavailable` {@link McpError} as before; its
+ * own type lets a caller say "it stopped" without reading the message.
+ */
+export class McpStoppedError extends McpError {
+  constructor(message: string) {
+    super("unavailable", message);
+  }
+}
+
 /** The server answered with something we can't read. */
 export function unexpectedResponse(): McpError {
   return new McpError("unexpected-response", "The MCP server answered in an unexpected way.");

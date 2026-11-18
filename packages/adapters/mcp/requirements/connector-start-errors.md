@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-12410 (UX check C2 on HAL-12390: the agent host says why a connector failed)
 
-When a connector's program isn't on this computer, the Node program starter and the pinned launcher shall refuse the start with a `ProgramNotFoundError` that names the program as the connector's file wrote it (or `node`, when an npm runner's `node` is missing). When a secret a connector names isn't set, the stdio and HTTP connectors shall refuse with a `SecretNotSetError` that names the secret. Each error's message shall stay the one the start gave before, and neither shall hold a secret's value or the program's own output, so a caller can name the cause without passing on any other text.
+When a connector's program isn't on this computer, the Node program starter and the pinned launcher shall refuse the start with a `ProgramNotFoundError` that names the program as the connector's file wrote it (or `node`, when an npm runner's `node` is missing). When a secret a connector names isn't set, the stdio and HTTP connectors shall refuse with a `SecretNotSetError` that names the secret. When a stdio program ends, stops reading its input or doesn't answer a request in time while the request waits, or an MCP server stops before it answers, the request shall fail with an `McpStoppedError`, an `McpError` with code `unavailable`, so a caller can say the program stopped. Each message shall stay the one given before, and none shall hold a secret's value or the program's own output, so a caller can name the cause without passing on any other text.
 
 ## Examples
 
@@ -20,3 +20,6 @@ When a connector's program isn't on this computer, the Node program starter and 
 - Given a trusted connector whose `secretEnv` names `notes-token`, which isn't set,
   when its tools are listed,
   then it rejects with a `SecretNotSetError` whose `secretName` is `notes-token`.
+- Given a stdio program that ends while `initialize` waits, or doesn't answer it within the time limit,
+  when the session opens,
+  then it rejects with an `McpStoppedError` of code `unavailable`.

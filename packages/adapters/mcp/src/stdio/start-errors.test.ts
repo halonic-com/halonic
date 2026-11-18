@@ -4,13 +4,28 @@ import { MemorySecrets, MemoryTokenStore } from "@halonicjs/adapter-memory";
 import type { ConnectorConfig } from "@halonicjs/ports";
 import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { unusedRunners } from "../pinned/fake-runners.spec.ts";
 import { runnerRefusedError } from "../pinned/find-runner.ts";
-import { contractServer, FakeStarter, unusedFolders } from "./fake-program.spec.ts";
+import { McpStoppedError } from "../protocol/errors.ts";
+import { McpSession } from "../protocol/session.ts";
+import { contractServer, FakeProgram, FakeStarter, unusedFolders } from "./fake-program.spec.ts";
 import { nodeProgramStarter } from "./node-program-starter.ts";
 import { ProgramNotFoundError, SecretNotSetError } from "./start-errors.ts";
 import { McpStdioConnectorFactory } from "./stdio-connector.ts";
+import { StdioTransport } from "./stdio-transport.ts";
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+/** A program that reads its requests and never answers. */
+function silentTransport() {
+  const launch = { program: "notes-mcp", args: [], env: {}, checkedEnv: {}, cwd: tmpdir() };
+  const program = new FakeProgram(launch, () => undefined);
+  const limits = { requestTimeoutMs: 5000, maxMessageBytes: 1024, stopGraceMs: 100 };
+  return { program, transport: new StdioTransport(program, limits) };
+}
 
 verifies("mcp.connector-start-errors", () => {
   it("names a program the PATH doesn't have", async () => {
@@ -69,5 +84,24 @@ verifies("mcp.connector-start-errors", () => {
     expect(refused).toBeInstanceOf(SecretNotSetError);
     expect(refused).toMatchObject({ secretName: "notes-token" });
     await client.close();
+  });
+
+  it("says a program stopped when it ends while a request waits", async () => {
+    const { program, transport } = silentTransport();
+    const session = new McpSession(transport, { clientInfo: { name: "halonic", version: "0" } });
+    const opening = session.initialize();
+    program.exit(1);
+    await expect(opening).rejects.toBeInstanceOf(McpStoppedError);
+    await expect(opening).rejects.toMatchObject({ code: "unavailable" });
+    await transport.close();
+  });
+
+  it("says a program stopped when it doesn't answer in time", async () => {
+    vi.useFakeTimers();
+    const { transport } = silentTransport();
+    const session = new McpSession(transport, { clientInfo: { name: "halonic", version: "0" } });
+    const failure = expect(session.initialize()).rejects.toBeInstanceOf(McpStoppedError);
+    await vi.advanceTimersByTimeAsync(5000);
+    await failure;
   });
 });

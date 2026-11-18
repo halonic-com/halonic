@@ -26,6 +26,7 @@ export {
   type McpErrorCode,
   McpSession,
   type McpSessionOptions,
+  McpStoppedError,
   type McpTool,
   type McpToolResult,
   type McpTransport,

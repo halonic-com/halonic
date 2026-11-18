@@ -2,7 +2,7 @@
 // transport. Integrations import only this entry, so they never load the
 // stdio launcher or other Node code that the root entry brings in.
 
-export { McpError, type McpErrorCode } from "./errors.ts";
+export { McpError, type McpErrorCode, McpStoppedError } from "./errors.ts";
 export type {
   JsonRpcNotification,
   JsonRpcRequest,
