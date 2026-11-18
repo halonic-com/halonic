@@ -126,11 +126,25 @@ verifies("runs.home", () => {
     const { root } = await show(fakeSource([done, failed, finishedTest, needsYou, running]).source);
     expect(root.querySelector('[role="grid"]')?.getAttribute("aria-label")).toBe("Recent runs");
     expect(rows(root)).toEqual([
-      "Support replyWaiting for your approval in the step SendNeeds you",
-      "Support replyIn DraftRunning",
-      "Support replyFinishedDone",
-      "Support replySupport reply failed in the step Draft.Failed",
+      "Support reply · run 01jd8qWaiting for your approval in the step SendNeeds you",
+      "Support reply · run 7k2m9pIn DraftRunning",
+      "Support reply · run 4f2a1bFinishedDone",
+      "Support reply · run 9x8y7zSupport reply failed in the step Draft.Failed",
     ]);
+  });
+
+  it("tells two runs of one workflow apart by their short ids, first in what a row says", async () => {
+    const other = summaryWith({ id: "run_f_891b5a", approvals: [approvalAt(2)] });
+    const { root } = await show(fakeSource([needsYou, other]).source);
+    const said = rows(root);
+    expect(said).toHaveLength(2);
+    expect(said[0]).not.toBe(said[1]);
+    expect(said.map((row) => row.split("Waiting")[0]).sort()).toEqual([
+      "Support reply · run 01jd8q",
+      "Support reply · run 891b5a",
+    ]);
+    // No label of its own, so a screen reader hears the title first, then the line and the chip.
+    expect(root.querySelector('[role="gridcell"][aria-label]')).toBeNull();
   });
 
   it("says there are no runs yet", async () => {
@@ -199,7 +213,7 @@ verifies("runs.home", () => {
     await act(async () => root.querySelector("button")?.click());
     await settled();
     await settled();
-    expect(rows(root)).toEqual(["Support replyFinishedDone"]);
+    expect(rows(root)).toEqual(["Support reply · run 4f2a1bFinishedDone"]);
   });
 
   it("opens a run in the active tab from its row", async () => {

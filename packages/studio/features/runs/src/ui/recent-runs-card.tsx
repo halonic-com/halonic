@@ -106,13 +106,15 @@ export function RecentRunsView({
 }
 
 /**
- * A run as one row: what ran over its line, and its status chip at the right edge. A failed
- * run's line is the kit's error reason, in `danger`, with the Failed chip, as in the Runs list.
+ * A run as one row: what ran and which run over its line, and its status chip at the right edge.
+ * The title comes first in what a screen reader hears, as the run comes first in the Runs list's
+ * row. A failed run's line is the kit's error reason, in `danger`, with the Failed chip, as in the
+ * Runs list.
  */
 function homeRow(row: RunRow): ListRow {
   return {
     id: row.id,
-    title: row.workflow,
+    title: homeWords.rowTitle(row.workflow, row.shortId),
     meta: row.line,
     trailing: (
       <StatusChip tone={row.chip.tone} dot={row.chip.dot}>
