@@ -3,6 +3,7 @@
 - Task: HAL-12568 (from Nina's C41 docs check, HAL-12558 section 5)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12568 (Liam's review of this pull request on its task; a team decision with no board card, HAL-2282 rule: it adds a static check and rewords two error messages, no new flow or screen)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xPlb0uYbPsev4IOs2Tg8WJelIQ2micTpyzKmJIo2L8ejSdm8ur2JhFnkJzsCyyJbZlojtQ2gQsUQybT/7pbiAg==
 
 ## What changes
 
