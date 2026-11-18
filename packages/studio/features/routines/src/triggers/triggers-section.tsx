@@ -110,7 +110,7 @@ function Rows({
     <ul className="flex flex-col">
       {load.rows.map((row) => (
         <li key={`${row.hubId}/${row.id}`}>
-          <RowButton row={row} now={now} openRoutine={openRoutine} />
+          <RowButton row={row} owner={owner} now={now} openRoutine={openRoutine} />
         </li>
       ))}
     </ul>
@@ -119,10 +119,12 @@ function Rows({
 
 function RowButton({
   row,
+  owner,
   now,
   openRoutine,
 }: {
   readonly row: TriggerRow;
+  readonly owner: TriggerOwner;
   readonly now: Date;
   readonly openRoutine: TriggersViewProps["openRoutine"];
 }) {
@@ -131,7 +133,7 @@ function RowButton({
     <button
       type="button"
       className="flex w-full items-center justify-between gap-2 py-1 text-left"
-      onClick={() => openRoutine?.(row.hubId ?? "", row.id)}
+      onClick={() => openRoutine?.(row.hubId ?? owner.hubId, row.id)}
     >
       <span className="flex flex-col">
         <span>{row.sentence}</span>
