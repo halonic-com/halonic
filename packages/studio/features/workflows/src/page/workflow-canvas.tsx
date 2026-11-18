@@ -171,7 +171,7 @@ export function WorkflowCanvas({
               failed={failedStep === step.id}
               mark={marks?.[step.id]}
               focusOnMount={selectedStep === step.id}
-              waysOn={waysOnFrom(step.id, workflow)}
+              waysOn={waysOnFrom(step.id, workflow, boxes)}
               onSelect={() => {
                 setSelected(step.id);
                 onSelectStep?.(step.id);

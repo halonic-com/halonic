@@ -6,7 +6,7 @@
 
 When the page shows a workflow, the workflows feature shall draw a card for each step with its kind, its id and, for an agent step, its agent or "No agent", mark the first step "Start", draw an arrow for each way a step leads on, let the person select a step, and fit the steps in the view on opening and on **Fit to screen**.
 
-The workflows feature shall name each card for a screen reader title first, then its kind, its Start chip and its agent, and describe where it leads from its arrows in the order they're drawn, since the arrows are only drawn. The canvas shall be a group named "Workflow canvas", not an application, as it has no keys of its own.
+The workflows feature shall name each card for a screen reader title first, then its kind, its Start chip and its agent, and describe where it leads from its arrows in the order their cards are drawn (left to right, then top to bottom, not the file's order), since the arrows are only drawn. The canvas shall be a group named "Workflow canvas", not an application, as it has no keys of its own.
 
 ## Examples
 
@@ -14,7 +14,7 @@ The workflows feature shall name each card for a screen reader title first, then
 - Given an agent step with the agent `writer`, then its card says "writer".
 - Given the person presses a card, then it is the pressed card, and pressing another moves that.
 - Given "Read the email" leads only to "Classify it", then its card is described "Next: Classify it."
-- Given "Classify it" leads to "Draft a reply" and to "Finished without a reply", with no words on either arrow, then its card is described "Next: Draft a reply, or Finished without a reply."
+- Given "Classify it" leads to "Finished without a reply, because nobody needs to answer spam" and to "Draft a reply", in that order in the file, with no words on either arrow, and the canvas draws "Draft a reply" on the left, then its card is described "Next: Draft a reply, or Finished without a reply, because nobody needs to answer spam."
 - Given "Approve this reply?" has an "Approve" arrow to "Finished with the reply approved" and a "Reject" arrow to "Finished without the reply", then its card is described "Approve: Finished with the reply approved. Reject: Finished without the reply."
 - Given an end step, then its card has no description.
 - Given the first step "Read the email" run by `writer`, then a screen reader names its card "Read the email, AGENT STEP, Start, writer", and the card still shows the kind above the title.
