@@ -18,3 +18,4 @@ The `routine` item shall open in its own tab with a page that shows the routine'
 - Given the routine isn't in the workspace, then the page says it isn't there any more with **Go to Routines**.
 - Given the host says the routine changed, then the page reads it again without showing a skeleton.
 - Given Ctrl K is searched for "daily", then the routine is offered with its hub and its summary, and choosing it opens its tab.
+- Given the window is a phone, then the page body has 16px sides.
