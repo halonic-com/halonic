@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-12278; component specs 15.1; UX checklist 1.13 (HAL-1323), "on a page its ⋮"
 
-A feature's page shall be able to put its own 48px buttons in the phone's top bar with `PhoneTopBarActions`: at the right of the top bar, before **Search** where the top of a place shows it, and 4px apart like the top bar's other parts. The buttons shall stay the page's own, keeping its state and going away when the user leaves the page. Where there is no phone top bar, on the desktop, `PhoneTopBarActions` shall draw nothing and `useInPhoneTopBar` shall say `false`, so the page can show the buttons in its own header instead.
+A feature's page shall be able to put its own 48px buttons in the phone's top bar with `PhoneTopBarActions`: at the right edge of the top bar, after **Search** where the top of a place shows it (UX 9.12: Back, "Agents", **Search**, and a 48px **+**), and 4px apart like the top bar's other parts. The buttons shall stay the page's own, keeping its state and going away when the user leaves the page. Where there is no phone top bar, on the desktop, `PhoneTopBarActions` shall draw nothing and `useInPhoneTopBar` shall say `false`, so the page can show the buttons in its own header instead.
 
 ## Examples
 

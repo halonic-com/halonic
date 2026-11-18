@@ -124,7 +124,7 @@ verifies("shell.phone-top-bar-actions", () => {
     expect(button("More actions for Agents")).toBeNull();
   });
 
-  it("puts the page's buttons before Search at the top of a place", async () => {
+  it("puts the page's buttons after Search at the top of a place", async () => {
     const { container, tapPlace } = renderPhoneWindow([inboxWithNewFeature, agentsWithMenuFeature]);
     tapPlace("Inbox");
     await settle();
@@ -132,7 +132,7 @@ verifies("shell.phone-top-bar-actions", () => {
     const labels = [...container.querySelectorAll("header button")].map((b) =>
       b.getAttribute("aria-label"),
     );
-    expect(labels).toEqual(["New rule", "Search"]);
+    expect(labels).toEqual(["Search", "New rule"]);
   });
 
   it("draws nothing in a desktop tab, where the page shows the button in its header", async () => {
