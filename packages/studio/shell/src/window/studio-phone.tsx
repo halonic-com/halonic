@@ -11,7 +11,8 @@ import {
   sectionLocation,
 } from "../phone/settings-list-page.tsx";
 import type { PhonePlaces } from "../phone/use-phone-places.ts";
-import type { ShownPlace } from "../points/frame.ts";
+import type { SettingsSectionContribution, ShownPlace } from "../points/frame.ts";
+import type { Registered } from "../points/point-store.ts";
 import { SectionView } from "../settings/settings-dialog.tsx";
 import { listedSections, type SettingsPlace, settingsGroups } from "../settings/settings-groups.ts";
 import { StudioPage, type StudioPageProps } from "./studio-page.tsx";
@@ -61,6 +62,8 @@ export interface StudioPhonePageProps extends Omit<StudioPageProps, "location"> 
   readonly onSettings?: (() => void) | undefined;
   /** In the desktop app, or in a browser, as Settings words its saved lines. */
   readonly settingsPlace: SettingsPlace;
+  /** The Settings sections the window has, as Settings' list and its pages show them. */
+  readonly settingsSections: readonly Registered<SettingsSectionContribution>[];
   /** The system's region format, handed on to each Settings section. */
   readonly regionFormat?: string | undefined;
   /** Where the Settings list's scroll position is kept while a section's page is open. */
@@ -96,13 +99,13 @@ function PhonePageBody({
   badge,
   onSettings,
   settingsPlace,
+  settingsSections,
   regionFormat,
   settingsScroll,
   workspaceName,
   ...page
 }: StudioPhonePageProps) {
   const { location } = places.page;
-  const { contributions } = page.shell;
   if (location.key === "more") {
     return (
       <MorePage
@@ -117,7 +120,7 @@ function PhonePageBody({
   if (location.key === settingsLocation.key) {
     return (
       <SettingsListPage
-        sections={contributions.settings.list()}
+        sections={settingsSections}
         workspaceName={workspaceName}
         place={settingsPlace}
         contextFor={page.contextFor}
@@ -131,7 +134,7 @@ function PhonePageBody({
     // The same sections the list shows, so a link to one it leaves out opens nothing.
     const section = listedSections(
       settingsGroups({
-        sections: contributions.settings.list(),
+        sections: settingsSections,
         workspaceName,
         place: settingsPlace,
         phone: true,
