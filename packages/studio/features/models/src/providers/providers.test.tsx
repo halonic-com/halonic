@@ -129,6 +129,15 @@ verifies("models.providers.list-and-show", () => {
     expect(view.textContent).toContain("This computer or your own network");
   });
 
+  it("says a Base URL is needed for an openai-compatible provider, which has no usual address", async () => {
+    const compatible = "version: 1\nid: gateway\nname: Gateway\ntype: openai-compatible\n";
+    const view = await page("gateway", filesWith({ gateway: compatible }));
+
+    expect(view.querySelector<HTMLInputElement>("input[placeholder]")?.placeholder).toBe(
+      "Needed for this type",
+    );
+  });
+
   it("says so, naming the file, when the providers can't be read or a file doesn't parse", async () => {
     const failing = { ...filesWith({}), readProviders: async () => Promise.reject(new Error("x")) };
     const failed = await section(failing);

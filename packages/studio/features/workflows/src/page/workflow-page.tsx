@@ -198,7 +198,8 @@ export function WorkflowScreen({
           </div>
         )}
       </header>
-      {settings.load.kind === "ready" && errors === 0 && (
+      {/* With a Run button, the page starts it itself, so the terminal line would only repeat it. */}
+      {!startRun && settings.load.kind === "ready" && errors === 0 && (
         <div
           data-testid="start-command"
           className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-6 py-2 text-small text-fg-muted"

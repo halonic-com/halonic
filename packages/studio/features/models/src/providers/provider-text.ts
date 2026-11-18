@@ -13,6 +13,13 @@ export function blockedLocalOnlyLine(workspaceName: string | undefined): string 
 export const PROVIDER_GONE_LINE = "This provider is no longer in providers/.";
 /** The Base URL box's placeholder: what an empty box means. */
 export const DEFAULT_BASE_URL = "The provider's own";
+/** The Base URL placeholder for a type that has no usual address, so an empty box fails at run time. */
+export const NEEDED_BASE_URL = "Needed for this type";
+
+/** The Base URL box's placeholder for a provider of this type. */
+export function baseUrlPlaceholder(type: string): string {
+  return type === "openai-compatible" ? NEEDED_BASE_URL : DEFAULT_BASE_URL;
+}
 
 /** The adapter types a provider can have, for the Type list. Keep in step with the provider type enum in `@halonicjs/format` (`kinds/provider/schema.ts`). */
 export const PROVIDER_TYPES = [
