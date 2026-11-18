@@ -2,6 +2,7 @@
 
 - Approval: Liam assigned HAL-12344 (finding M2 of the P10 security review on HAL-1743) and left the approach to Ravi; Liam signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:NX9gxG0NgEIwWZxdxeb6f80OM5sYwaLW4HHaBjZiU29acjZtzEb49xanT7etxI6/PgYPHGu5k60tAI/dS5eLBg==
 - Task: HAL-12344
 
 ## What changes
