@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12270
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Ntu3CfgKmdxy9bR4uG4CBRs0zztgPFG6tzaRzEQpaex5icXpDDmZ9SUA5jEpB7t+8GgkosLAER71GGmgD1DBBQ==
 
 `pnpm check:sbom --notices` printed one shared text per licence
 (`tooling/check/licence-texts/<SPDX ID>.txt`) for every vendored file, so a
