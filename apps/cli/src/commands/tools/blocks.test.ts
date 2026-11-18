@@ -54,7 +54,7 @@ verifies("cli.commands.tools.blocks", () => {
       );
     const { archive, search } = await blocksNow();
     expect(archive?.at(-2)).toMatch(
-      /^  Doesn't ask before each use: .+ marks it as only reading\.$/u,
+      /^  Doesn't ask before each use: .+ marks it as read-only\.$/u,
     );
     expect(search).toContain("  Asks you before each use.");
   });
