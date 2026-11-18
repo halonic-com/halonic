@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from "react";
+import type { ReactNode, RefCallback, RefObject } from "react";
 import { PageErrorBoundary } from "../page/page-error-boundary.tsx";
 import type { ShellPhoneSearchProps } from "../palette/shell-phone-search.tsx";
 import { MorePage, type MorePageSwitcher } from "../phone/more-page.tsx";
@@ -22,20 +22,26 @@ export interface StudioPhoneTopBarProps {
   readonly places: PhonePlaces;
   /** What the Search sheet searches; a pick opens on the phone, in its places. */
   readonly search: Omit<ShellPhoneSearchProps, "onOpenLocation" | "onClose">;
+  /** Gets the slot the page's own buttons go in (`PhoneTopBarActions`), before **Search**. */
+  readonly slot: RefCallback<HTMLElement>;
 }
 
 /**
  * The phone's top bar in the Studio window (`shell.studio-phone`): the page's title, Back under
- * the top of a place, and **Search** at the top of a place. A page below a place gets its own
- * actions there once a feature gives it some (its ⋮, "1 of 3").
+ * the top of a place, the page's own buttons (`shell.phone-top-bar-actions`), and **Search** at
+ * the top of a place.
  */
-export function StudioPhoneTopBar({ places, search }: StudioPhoneTopBarProps) {
+export function StudioPhoneTopBar({ places, search, slot }: StudioPhoneTopBarProps) {
   const atPlaceTop = places.topBar.onBack === undefined;
   return (
     <PhoneTopBar
       {...places.topBar}
       actions={
-        atPlaceTop ? <PhoneSearchButton {...search} onOpenLocation={places.open} /> : undefined
+        <>
+          {/* Its children are the top bar's own flex items, 4px apart like the rest. */}
+          <span ref={slot} className="contents" />
+          {atPlaceTop ? <PhoneSearchButton {...search} onOpenLocation={places.open} /> : null}
+        </>
       }
     />
   );
