@@ -15,7 +15,7 @@ import { workspaceModelsOf } from "../../run-failure-of.ts";
 import type { RunClock } from "../../run-times.ts";
 import { type RunDefinitions, runViewDefinitions, stepColumns, stepLines } from "../../run-view.ts";
 import { workflowTitle } from "../runs/listed-run.ts";
-import { failedRunDebugText, showEnding } from "../runs/show-ending.ts";
+import { failedRunDebugText, outputHintLines, showEnding } from "../runs/show-ending.ts";
 
 /** What the result is about besides the run. */
 export interface RunResultFacts {
@@ -132,5 +132,5 @@ function ending(
     return lines;
   }
   const runLog = runMessages.runLog(shortRunId(run.summary.id), facts.dir).phrase;
-  return [...lines, phrase`  ${runLog}`];
+  return [...lines, phrase`  ${runLog}`, ...outputHintLines(run, facts.dir)];
 }

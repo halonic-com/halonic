@@ -32,6 +32,12 @@ export interface RunStep {
   /** The agent the step ran, not one it handed a task to; `undefined` for a step without one. */
   readonly agentId: string | undefined;
   readonly end: StepEnd;
+  /**
+   * What the step's agent finished with (`agent.finished`, `output`): the
+   * output the run went on with, not one of the model's answers on the way.
+   * `undefined` for a step whose agent didn't finish, or that has none.
+   */
+  readonly finished?: { readonly output: unknown };
 }
 
 /** A step as it's being read from the log, before its end is known. */
@@ -39,6 +45,8 @@ interface OpenStep {
   readonly stateId: string;
   readonly enteredAt: string;
   agentId: string | undefined;
+  /** The step's agent's `agent.finished`, once it has one. */
+  finished: { readonly output: unknown } | undefined;
   /**
    * The tool calls the step's agents asked the user's OK for and haven't
    * had it yet, by call id. Parallel branches can each ask at once.
@@ -78,6 +86,7 @@ export function runSteps(events: readonly RunEvent[], summary: RunSummary): RunS
         stateId: event.state,
         enteredAt: event.at,
         agentId: undefined,
+        finished: undefined,
         askingApproval: new Set(),
         waiting: undefined,
         answer: undefined,
@@ -92,6 +101,7 @@ export function runSteps(events: readonly RunEvent[], summary: RunSummary): RunS
       startedAt: open.enteredAt,
       agentId: open.agentId,
       end: stillOpen(open, summary),
+      ...finishedOf(open),
     });
   }
   return steps;
@@ -121,6 +131,12 @@ function readInStep(step: OpenStep, event: RunEvent): void {
     case "agent.started":
       if (event.parent === undefined && event.state === step.stateId) {
         step.agentId ??= event.agent;
+      }
+      break;
+    case "agent.finished":
+      // A subagent's finish and a parallel branch's failure aren't the step's own output.
+      if (event.parent === undefined && event.error === undefined && event.state === step.stateId) {
+        step.finished = { output: event.output };
       }
       break;
     case "approval.requested":
@@ -155,7 +171,18 @@ function closed(step: OpenStep, at: string, how: "done" | "failed"): RunStep {
     step.answer !== undefined && how === "done"
       ? { kind: "answered", ...step.answer }
       : { kind: how, tookMs: Date.parse(at) - Date.parse(step.enteredAt) };
-  return { stateId: step.stateId, startedAt: step.enteredAt, agentId: step.agentId, end };
+  return {
+    stateId: step.stateId,
+    startedAt: step.enteredAt,
+    agentId: step.agentId,
+    end,
+    ...finishedOf(step),
+  };
+}
+
+/** The `finished` field of a {@link RunStep}, when the step's agent finished. */
+function finishedOf(step: OpenStep): Pick<RunStep, "finished"> {
+  return step.finished === undefined ? {} : { finished: step.finished };
 }
 
 /**

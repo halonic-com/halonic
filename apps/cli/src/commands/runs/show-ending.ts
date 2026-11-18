@@ -19,7 +19,7 @@ import {
   runFailureOf,
   type WorkspaceModels,
 } from "../../run-failure-of.ts";
-import { type RunDefinitions, receiptOf } from "../../run-view.ts";
+import { hasAgentOutput, type RunDefinitions, receiptOf } from "../../run-view.ts";
 import { waitDescription } from "./listed-run.ts";
 
 /**
@@ -51,6 +51,18 @@ export function showEnding(
     case "running":
       return [];
   }
+}
+
+/**
+ * The line under a finished run's receipt that says where to read what its
+ * steps wrote (HAL-12073); none for a run that isn't finished, or whose
+ * agents wrote nothing.
+ */
+export function outputHintLines(run: RunDetail, dir: string | undefined): Phrase[] {
+  if (run.summary.status !== "completed" || !hasAgentOutput(run.events, run.summary)) {
+    return [];
+  }
+  return [phrase`  ${runMessages.outputHint(shortRunId(run.summary.id), dir).phrase}`];
 }
 
 /**

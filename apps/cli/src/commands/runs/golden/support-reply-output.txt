@@ -1,0 +1,326 @@
+## colour: halonic runs show 01jd8q --output
+exit 0
+stdout:
+  Support reply in Acme \e[2m·\e[22m run 01jd8q \e[2m·\e[22m started 14:01, finished 14:01
+  
+  \e[32m✓\e[39m Read the email        Writer \e[2m·\e[22m default        1 s
+    Sam wants a refund for order 1042, which arrived damaged.
+  \e[32m✓\e[39m Classify it           Sorter \e[2m·\e[22m default        1 s
+    refund
+  \e[32m✓\e[39m Draft a reply         Writer \e[2m·\e[22m default        1 s
+    Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.
+  \e[33m!\e[39m Approve this reply?   you approved at 14:01
+  
+  \e[32m✓\e[39m Support reply finished in 1 s.
+    Sent nothing \e[2m·\e[22m asked you once
+stderr:
+
+## NO_COLOR: halonic runs show 01jd8q --output
+exit 0
+stdout:
+  Support reply in Acme · run 01jd8q · started 14:01, finished 14:01
+  
+  ✓ Read the email        Writer · default        1 s
+    Sam wants a refund for order 1042, which arrived damaged.
+  ✓ Classify it           Sorter · default        1 s
+    refund
+  ✓ Draft a reply         Writer · default        1 s
+    Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.
+  ! Approve this reply?   you approved at 14:01
+  
+  ✓ Support reply finished in 1 s.
+    Sent nothing · asked you once
+stderr:
+
+## --json: halonic runs show 01jd8q --output
+exit 0
+stdout:
+  {
+    "outputVersion": 1,
+    "ok": true,
+    "events": [
+      {
+        "type": "run.started",
+        "hubId": "support",
+        "workflowId": "support-reply",
+        "input": {
+          "mail": "Hi, my order #1042 arrived damaged. Can I get a refund? — Sam (invented)"
+        },
+        "kind": "run",
+        "definitionsVersion": "87d82ee0c8b244411cfcbbe85442c46d63c5994774ae780592deee031858f3c7",
+        "version": {
+          "reads": "saved-files"
+        },
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 1,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "state.entered",
+        "state": "read",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 2,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "agent.started",
+        "state": "read",
+        "agent": "writer",
+        "prompt": "Say in one sentence what the customer asks for.\n\n## Data\n\n### input.mail\nHi, my order #1042 arrived damaged. Can I get a refund? — Sam (invented)",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 3,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "llm.request",
+        "agent": "writer",
+        "provider": "mock",
+        "model": "echo",
+        "alias": "default",
+        "messages": 2,
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 4,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "llm.response",
+        "agent": "writer",
+        "provider": "mock",
+        "model": "echo",
+        "usage": {
+          "inputTokens": 66,
+          "outputTokens": 15
+        },
+        "latencyMs": 0,
+        "text": "Sam wants a refund for order 1042, which arrived damaged.",
+        "cost": 0,
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 5,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "agent.finished",
+        "state": "read",
+        "agent": "writer",
+        "output": "Sam wants a refund for order 1042, which arrived damaged.",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 6,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "context.updated",
+        "key": "request",
+        "value": "Sam wants a refund for order 1042, which arrived damaged.",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 7,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "transition",
+        "from": "read",
+        "to": "classify",
+        "event": "done",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 8,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "state.entered",
+        "state": "classify",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 9,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "agent.started",
+        "state": "classify",
+        "agent": "sorter",
+        "prompt": "## Data\n\n### input.mail\nHi, my order #1042 arrived damaged. Can I get a refund? — Sam (invented)",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 10,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "llm.request",
+        "agent": "sorter",
+        "provider": "mock",
+        "model": "echo",
+        "alias": "default",
+        "messages": 2,
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 11,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "llm.response",
+        "agent": "sorter",
+        "provider": "mock",
+        "model": "echo",
+        "usage": {
+          "inputTokens": 82,
+          "outputTokens": 2
+        },
+        "latencyMs": 0,
+        "text": "refund",
+        "cost": 0,
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 12,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "agent.finished",
+        "state": "classify",
+        "agent": "sorter",
+        "output": "refund",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 13,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "context.updated",
+        "key": "kind",
+        "value": "refund",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 14,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "transition",
+        "from": "classify",
+        "to": "draft",
+        "event": "done",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 15,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "state.entered",
+        "state": "draft",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 16,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "agent.started",
+        "state": "draft",
+        "agent": "writer",
+        "prompt": "Draft a reply to the customer's email.\n\n## Data\n\n### input.mail\nHi, my order #1042 arrived damaged. Can I get a refund? — Sam (invented)\n\n### context.request\nSam wants a refund for order 1042, which arrived damaged.",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 17,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "llm.request",
+        "agent": "writer",
+        "provider": "mock",
+        "model": "echo",
+        "alias": "default",
+        "messages": 2,
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 18,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "llm.response",
+        "agent": "writer",
+        "provider": "mock",
+        "model": "echo",
+        "usage": {
+          "inputTokens": 83,
+          "outputTokens": 24
+        },
+        "latencyMs": 0,
+        "text": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.",
+        "cost": 0,
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 19,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "agent.finished",
+        "state": "draft",
+        "agent": "writer",
+        "output": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 20,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "context.updated",
+        "key": "reply",
+        "value": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 21,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "transition",
+        "from": "draft",
+        "to": "review",
+        "event": "done",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 22,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "state.entered",
+        "state": "review",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 23,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "run.waiting",
+        "state": "review",
+        "events": [
+          "approve",
+          "reject"
+        ],
+        "labels": {
+          "approve": "Approve",
+          "reject": "Reject"
+        },
+        "title": "Approve this reply?",
+        "body": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.\n\nSample: the test model writes this reply to any email. Approving finishes the run. Nothing is sent.",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 24,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "event.received",
+        "event": "approve",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 25,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "transition",
+        "from": "review",
+        "to": "replied",
+        "event": "approve",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 26,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "state.entered",
+        "state": "replied",
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 27,
+        "at": "2026-11-10T14:01:00.000Z"
+      },
+      {
+        "type": "run.completed",
+        "state": "replied",
+        "context": {
+          "request": "Sam wants a refund for order 1042, which arrived damaged.",
+          "kind": "refund",
+          "reply": "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today."
+        },
+        "runId": "run_mfx3k2a0_01jd8q",
+        "seq": 28,
+        "at": "2026-11-10T14:01:00.000Z"
+      }
+    ]
+  }
+stderr:

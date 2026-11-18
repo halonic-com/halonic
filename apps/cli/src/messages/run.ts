@@ -254,6 +254,9 @@ export const runMessages = defineMessages("run", {
   receipt: (receipt: RunReceipt) => receiptLine(receipt),
   runLog: (runId: string, dir?: string) =>
     phrase`Run log: ${suggestedCommand("runs show", dir, runId)}`,
+  /** Under the run log line when a step wrote something: the way to read it (HAL-12073). */
+  outputHint: (runId: string, dir?: string) =>
+    phrase`Output: ${suggestedCommand("runs show", dir, `${runId} --output`)}`,
   /** After "Stopped." when Ctrl C or SIGTERM stopped the run in this shell (cli-output 1.5). */
   cancelledAfter: (runId: string, step: string) =>
     phrase`The run ${runId} was cancelled after the step ${step}. Nothing after it ran.`,
