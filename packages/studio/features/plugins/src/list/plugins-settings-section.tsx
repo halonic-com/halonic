@@ -5,7 +5,10 @@ import { PluginsService } from "../api.ts";
 import { pluginPageItem } from "../page/plugin-pages.ts";
 import { ReviewPluginDialog } from "../page/review-plugin-dialog.tsx";
 import { usePageActions } from "../page/use-page-actions.ts";
-import { PluginsList } from "./plugins-list.tsx";
+import { BUILT_IN_PLUGINS, PluginsList } from "./plugins-list.tsx";
+
+/** The Library feature's command that shows its Connectors tab. */
+const OPEN_CONNECTORS_COMMAND = "library.connector";
 
 /**
  * Settings → Plugins (`plugins.plugin-settings-list`): the installed plugins and the ones that
@@ -27,6 +30,11 @@ export function PluginsSettingsSection({ context, closeSettings, place }: Settin
     if (inNewTab) context.openItemInNewTab?.(item);
     else context.openItem?.(item);
   };
+  // The built-in integrations are the Library's connectors, so Open goes there.
+  const openConnectors = () => {
+    closeSettings();
+    context.runCommand?.(OPEN_CONNECTORS_COMMAND);
+  };
   const justAdded = installed.find((plugin) => plugin.plugin === added);
   // An added plugin that can't be read has no trust check to show: its page says why.
   const unreadable = justAdded !== undefined && justAdded.manifest === undefined;
@@ -40,7 +48,8 @@ export function PluginsSettingsSection({ context, closeSettings, place }: Settin
       <PluginsList
         load={{ kind: "ready" }}
         plugins={installed}
-        builtIn={plugins.builtIn ?? []}
+        builtIn={plugins.builtIn ?? BUILT_IN_PLUGINS}
+        {...(context.runCommand === undefined ? {} : { onOpenBuiltIn: openConnectors })}
         actions={plugins.actions}
         onOpen={(plugin) => open(plugin, false)}
         onOpenInNewTab={(plugin) => open(plugin, true)}
