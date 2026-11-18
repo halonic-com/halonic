@@ -3,6 +3,7 @@
 - Task: HAL-6239
 - Approval: `tooling/check/` is an own path of the guard, but not a trust root, so the CTO signs this `internal` note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:t8+HEw/XVxOEN0Dl6FXASKB0MlWZtXtci6umMq81Tf84YEh4DFHte+xCOls5H6+ngSv34I4bmFXFnWWvx5RyBA==
 
 ## What changes
 
