@@ -1,23 +1,10 @@
+import { LetterTile } from "@halonicjs/studio-kit";
 import type { OverviewHub, OverviewItem } from "@halonicjs/studio-shell";
 import type { AgentHub, AgentListing, AgentRef } from "../api.ts";
 
 /** The row id of an agent: unique across hubs, because two hubs can both have a `sorter`. */
 export function rowId(ref: AgentRef): string {
   return `${ref.hubId}/${ref.id}`;
-}
-
-/** The first letter of the name, upper case, for the row's avatar (G5 decision 39). */
-function avatarLetter(name: string): string {
-  return (name.trim().charAt(0) || "?").toUpperCase();
-}
-
-/** The agent's letter avatar, on a row and on the agent page's header. */
-export function Avatar({ name }: { readonly name: string }) {
-  return (
-    <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-small-strong text-accent-text">
-      {avatarLetter(name)}
-    </span>
-  );
 }
 
 function itemOf(listing: AgentListing): OverviewItem {
@@ -28,7 +15,7 @@ function itemOf(listing: AgentListing): OverviewItem {
       ? {}
       : { description: listing.description, detail: listing.description }),
     ...(listing.model === undefined ? {} : { usedBy: listing.model }),
-    avatar: <Avatar name={listing.name} />,
+    avatar: <LetterTile name={listing.name} />,
   };
 }
 

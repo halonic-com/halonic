@@ -1,4 +1,4 @@
-import { StatusChip } from "@halonicjs/studio-kit";
+import { LetterTile, StatusChip } from "@halonicjs/studio-kit";
 import type { OverviewHub, OverviewItem } from "@halonicjs/studio-shell";
 import type { RoutineHub, RoutineListing, RoutineRef } from "../api.ts";
 import { listWords, nextWhen } from "./list-words.ts";
@@ -6,19 +6,6 @@ import { listWords, nextWhen } from "./list-words.ts";
 /** The row id of a routine: unique across hubs, because two hubs can both have a `daily`. */
 export function rowId(ref: RoutineRef): string {
   return `${ref.hubId ?? ""}/${ref.id}`;
-}
-
-/** The first letter of the name, upper case, for the row's avatar. */
-function avatarLetter(name: string): string {
-  return (name.trim().charAt(0) || "?").toUpperCase();
-}
-
-export function Avatar({ name }: { readonly name: string }) {
-  return (
-    <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-small-strong text-accent-text">
-      {avatarLetter(name)}
-    </span>
-  );
 }
 
 /**
@@ -54,7 +41,7 @@ function itemOf(listing: RoutineListing, now: Date): OverviewItem {
     ...(listing.enabled && listing.nextRun !== undefined
       ? { usedBy: nextWhen(listing.nextRun, now) }
       : {}),
-    avatar: <Avatar name={listing.name} />,
+    avatar: <LetterTile name={listing.name} />,
     ...(hasChip(listing) ? { chips: <Chip listing={listing} /> } : {}),
   };
 }

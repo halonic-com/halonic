@@ -1,4 +1,4 @@
-import { StatusChip } from "@halonicjs/studio-kit";
+import { LetterTile, StatusChip } from "@halonicjs/studio-kit";
 import type { OverviewHub, OverviewItem } from "@halonicjs/studio-shell";
 import type { WorkflowHub, WorkflowLastRun, WorkflowListing, WorkflowRef } from "../api.ts";
 import { lastRunOutcome, listWords, runWhen } from "./list-words.ts";
@@ -6,19 +6,6 @@ import { lastRunOutcome, listWords, runWhen } from "./list-words.ts";
 /** The row id of a workflow: unique across hubs, because two hubs can both have a `reply`. */
 export function rowId(ref: WorkflowRef): string {
   return `${ref.hubId}/${ref.id}`;
-}
-
-/** The first letter of the name, upper case, for the row's avatar (G5 decision 39). */
-function avatarLetter(name: string): string {
-  return (name.trim().charAt(0) || "?").toUpperCase();
-}
-
-export function Avatar({ name }: { readonly name: string }) {
-  return (
-    <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-small-strong text-accent-text">
-      {avatarLetter(name)}
-    </span>
-  );
 }
 
 /** A chip's drawn symbol and its space: sighted people see "✕ 2 problems", a screen reader hears "2 problems". */
@@ -91,7 +78,7 @@ function itemOf(listing: WorkflowListing, now: Date): OverviewItem {
       ? {}
       : { description: listing.description, detail: listing.description }),
     ...(lastRun === undefined ? {} : { usedBy: <LastRun lastRun={lastRun} now={now} /> }),
-    avatar: <Avatar name={listing.name} />,
+    avatar: <LetterTile name={listing.name} />,
     ...(hasChips(listing) ? { chips: <Chips listing={listing} /> } : {}),
   };
 }

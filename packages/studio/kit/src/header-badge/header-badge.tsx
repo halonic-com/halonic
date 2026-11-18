@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ChevronDownIcon } from "../icons/chevron-down-icon.tsx";
+import { ChevronRightIcon } from "../icons/chevron-right-icon.tsx";
 import { DashedRingIcon } from "../icons/dashed-ring-icon.tsx";
 import { InfoIcon } from "../icons/info-icon.tsx";
 import { Menu, type MenuEntry, type MenuTriggerProps } from "../menu/menu.tsx";
@@ -35,8 +36,25 @@ export interface HeaderBadgeButton {
   readonly onClick: () => void;
 }
 
+/**
+ * How a connection label looks: `success` calm with a green dot, `waiting` calm with an amber dot
+ * (reconnecting), `attention` amber (can't connect), `danger` red (removed, can't be trusted).
+ */
+export type HeaderBadgeStatusTone = "success" | "waiting" | "attention" | "danger";
+
+/** The phone's connection label in its top bar: a state in words that opens its details. */
+export interface HeaderBadgeStatus {
+  readonly as: "status";
+  /** The state, always in words: "Connected · Tim's laptop", "Can't reach your computer". */
+  readonly children: string;
+  readonly tone: HeaderBadgeStatusTone;
+  /** Where it leads, said after the state but not shown (the chevron shows it): "Details". */
+  readonly action: string;
+  readonly onClick: () => void;
+}
+
 /** The props of `HeaderBadge`. */
-export type HeaderBadgeProps = HeaderBadgeMenu | HeaderBadgeButton;
+export type HeaderBadgeProps = HeaderBadgeMenu | HeaderBadgeButton | HeaderBadgeStatus;
 
 /**
  * The neutral Status chip's look, 24px high so it's a usable target in the 40px title bar.
@@ -76,13 +94,23 @@ const phoneLine = "flex min-h-touch items-center border-b border-border pe-4 ps-
  * On a phone it sits on its own 48px line, which the shell puts under the workspace row in More.
  * There the sample chip calls `onOpenSheet` instead of opening a Menu.
  *
+ * `as="status"` is the phone's connection label, which sits in the top bar itself: 32px high with
+ * a 48px target, a dot and the state in words, and a chevron to its details. Colour never carries
+ * the state alone: the dot is decoration and the words say it.
+ *
  * @example
  * <HeaderBadge as="menu" description={costLine} entries={sampleEntries} onOpenSheet={openSheet}>
  *   Sample · test model
  * </HeaderBadge>
  * <HeaderBadge as="button" action="Review" onClick={openTrustCheck}>Not trusted yet</HeaderBadge>
+ * <HeaderBadge as="status" tone="attention" action="Details" onClick={openDetails}>
+ *   Can't reach your computer
+ * </HeaderBadge>
  */
 export function HeaderBadge(props: HeaderBadgeProps) {
+  if (props.as === "status") {
+    return <StatusBadge props={props} />;
+  }
   const phone = usePresentation() === "phone";
   const badge =
     phone || props.as === "button" ? <PlainBadge props={props} /> : <MenuBadge props={props} />;
@@ -90,7 +118,7 @@ export function HeaderBadge(props: HeaderBadgeProps) {
 }
 
 /** The trust badge, or the sample chip on a phone: a button that opens no menu. */
-function PlainBadge({ props }: { readonly props: HeaderBadgeProps }) {
+function PlainBadge({ props }: { readonly props: HeaderBadgeMenu | HeaderBadgeButton }) {
   if (props.as === "menu") {
     return (
       <button
@@ -116,6 +144,38 @@ function PlainBadge({ props }: { readonly props: HeaderBadgeProps }) {
       <span>
         {props.children} · <span className="text-accent-text">{props.action}</span>
       </span>
+    </button>
+  );
+}
+
+const statusLooks: Record<HeaderBadgeStatusTone, { readonly fill: string; readonly dot: string }> =
+  {
+    success: { fill: "bg-surface-muted text-fg", dot: "bg-success" },
+    waiting: { fill: "bg-surface-muted text-fg", dot: "bg-attention" },
+    attention: { fill: "bg-attention-soft text-attention", dot: "bg-attention" },
+    danger: { fill: "bg-danger-soft text-danger", dot: "bg-danger" },
+  };
+
+/**
+ * The connection label: 32px, radius 8px, `text-body-strong`, wrapping at large text instead of
+ * being cut. Its target is 48px high, so it fits the 48px top bar without growing it. Named by its
+ * state and where it leads ("Can't reach your computer. Details"). A colour change, not a live
+ * region: the screen that owns it announces a change once.
+ */
+function StatusBadge({ props }: { readonly props: HeaderBadgeStatus }) {
+  const look = statusLooks[props.tone];
+  return (
+    <button
+      type="button"
+      className={`inline-flex min-h-8 min-w-0 cursor-pointer items-center gap-2 rounded-sm border border-transparent py-1.5 pr-2 pl-3 text-start text-body-strong transition-colors focus-ring hit-touch contrast-more:border-border-control ${look.fill}`}
+      aria-label={`${spokenOf(props.children)}. ${props.action}`}
+      onClick={props.onClick}
+    >
+      <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${look.dot}`} />
+      <span className="min-w-0">{props.children}</span>
+      <Icon>
+        <ChevronRightIcon />
+      </Icon>
     </button>
   );
 }

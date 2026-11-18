@@ -41,6 +41,12 @@ export interface RadioGroupProps<Value extends string> {
   readonly onChange: (value: Value) => void;
   /** Its name when it isn't in a Field. In a Field, the Field's label names the group. */
   readonly label?: string;
+  /**
+   * `"rows"` draws a choose-one list: the options as rows in a bordered box, each row its whole
+   * target, for picking one thing from a list (which computer). `"stack"`, the default, is a few
+   * ways to do something, with no box.
+   */
+  readonly layout?: "stack" | "rows";
 }
 
 /**
@@ -51,7 +57,7 @@ export interface RadioGroupProps<Value extends string> {
  * ring `Highlight`.
  */
 const circleShared = [
-  "m-0 mt-0.5 size-4 shrink-0 phone:mt-1 appearance-none rounded-full border bg-surface",
+  "m-0 size-4 shrink-0 appearance-none rounded-full border bg-surface",
   "transition-colors focus-ring radio-forced",
   "checked:border-5 checked:border-primary checked:bg-on-primary",
 ].join(" ");
@@ -71,13 +77,33 @@ const circleStateClasses = {
  * 45% on the circle and the words (60% with more contrast), `GrayText` at full strength in high
  * contrast. The note keeps its full strength, because it says why.
  */
+/** Each layout's group, row and field classes. A row's circle sits mid-row, beside its two lines. */
+const layouts = {
+  stack: {
+    group: "flex flex-col phone:gap-0 touch:gap-0",
+    // On a phone or a touch screen the whole row is the target, at least 48px high.
+    row: "items-start gap-2 phone:min-h-touch phone:py-3 touch:min-h-touch touch:py-3",
+    circle: "mt-0.5 phone:mt-1",
+    field: "mt-2 pl-6",
+  },
+  rows: {
+    group: "flex flex-col overflow-hidden rounded-md border border-border bg-surface",
+    row: "min-h-14 items-center gap-3 px-4 py-3 touch:min-h-16 phone:min-h-16",
+    circle: "",
+    field: "pr-4 pb-3 pl-11",
+  },
+} as const;
+
+type RadioLayout = keyof typeof layouts;
+
 const unavailableFade = "opacity-45 contrast-more:opacity-60 forced-colors:opacity-100";
 
 /**
  * One choice out of a few, shown all at once: how agents look things up, the ways to connect. A
  * `role="radiogroup"` of native radios, so Tab reaches it once and the arrow keys move the
  * choice. In a Field the Field's label names it and the Field's error sits under it; with an
- * error and nothing picked, every circle takes a `danger` edge.
+ * error and nothing picked, every circle takes a `danger` edge. `layout="rows"` makes it a
+ * choose-one list in a box, a row per option.
  *
  * @example
  * <Field label="Connect with" error={connectError}>
@@ -97,6 +123,7 @@ export function RadioGroup<Value extends string>({
   value,
   onChange,
   label,
+  layout = "stack",
 }: RadioGroupProps<Value>) {
   const field = useFieldControl();
   const name = useId();
@@ -113,13 +140,18 @@ export function RadioGroup<Value extends string>({
       aria-describedby={field?.describedBy}
       aria-invalid={invalid ? true : undefined}
       aria-required={field?.required === true ? true : undefined}
-      className={`flex flex-col phone:gap-0 touch:gap-0 ${spaced ? "gap-3" : "gap-2"}`}
+      className={
+        layout === "rows"
+          ? layouts.rows.group
+          : `${layouts.stack.group} ${spaced ? "gap-3" : "gap-2"}`
+      }
     >
       {options.map((option) => (
         <RadioRow
           key={option.value}
           option={option}
           name={name}
+          layout={layout}
           checked={option.value === value}
           invalid={invalid && value === null}
           onPick={() => onChange(option.value)}
@@ -132,6 +164,7 @@ export function RadioGroup<Value extends string>({
 interface RadioRowProps<Value extends string> {
   readonly option: RadioOption<Value>;
   readonly name: string;
+  readonly layout: RadioLayout;
   readonly checked: boolean;
   readonly invalid: boolean;
   readonly onPick: () => void;
@@ -141,6 +174,7 @@ interface RadioRowProps<Value extends string> {
 function RadioRow<Value extends string>({
   option,
   name,
+  layout,
   checked,
   invalid,
   onPick,
@@ -157,10 +191,11 @@ function RadioRow<Value extends string>({
   }
 
   return (
-    <div className="flex flex-col">
+    <div
+      className={`flex flex-col ${layout === "rows" ? "border-t border-border first:border-t-0" : ""}`}
+    >
       <label
-        // On a phone or a touch screen the whole row is the target, at least 48px high.
-        className={`group/radio flex items-start gap-2 text-body phone:min-h-touch phone:py-3 phone:text-input-touch touch:min-h-touch touch:py-3 ${unavailable ? "cursor-not-allowed text-forced-disabled" : "cursor-pointer text-fg"}`}
+        className={`group/radio flex text-body phone:text-input-touch ${layouts[layout].row} ${unavailable ? "cursor-not-allowed text-forced-disabled" : "cursor-pointer text-fg"}`}
       >
         <input
           type="radio"
@@ -174,7 +209,7 @@ function RadioRow<Value extends string>({
           // so a screen reader reads it once.
           aria-labelledby={labelId}
           aria-describedby={hasNote ? noteId : undefined}
-          className={`${circleShared} ${circleStateClasses[state]} ${unavailable ? unavailableFade : ""}`}
+          className={`${circleShared} ${layouts[layout].circle} ${circleStateClasses[state]} ${unavailable ? unavailableFade : ""}`}
           onChange={onPick}
         />
         <span className="min-w-0">
@@ -189,7 +224,7 @@ function RadioRow<Value extends string>({
         </span>
       </label>
       {checked && option.field !== undefined ? (
-        <div className="mt-2 pl-6">{option.field}</div>
+        <div className={layouts[layout].field}>{option.field}</div>
       ) : null}
     </div>
   );

@@ -5,6 +5,7 @@ import {
   EmptyState,
   Field,
   Input,
+  LetterTile,
   Menu,
   MoreIcon,
   SkeletonBar,
@@ -19,7 +20,6 @@ import {
 import { ItemGone, type ItemViewProps, NameField } from "@halonicjs/studio-shell";
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { type RoutinesHost, RoutinesHostService, type RoutineView } from "../api.ts";
-import { Avatar } from "../list/routine-rows.tsx";
 import { trashRoutine } from "../list/trash-routine.ts";
 import { RulesSection } from "../rules/rules-section.tsx";
 import { RunsView } from "../runs/runs-view.tsx";
@@ -286,7 +286,7 @@ function RoutineHeader({
       }
     >
       <div className="flex min-w-0 items-center gap-3">
-        <Avatar name={name} />
+        <LetterTile name={name} />
         <div className="flex min-w-0 flex-col">
           <p className="text-caption text-fg-muted">{pageWords.kind}</p>
           <h1 ref={title} tabIndex={-1} className={phone ? "sr-only" : "text-title outline-none"}>

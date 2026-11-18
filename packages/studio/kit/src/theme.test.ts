@@ -76,6 +76,10 @@ const contrastPairs: ContrastPair[] = [
   // The switch's off track and a checkbox in a hovered menu item sit on surface-muted.
   ...onSurfaces("border-control", control, ["surface-muted"]),
   ...onSurfaces("accent", control),
+  // The phone's connection label: its dot on the calm label's muted fill (HAL-12240). The words
+  // carry the state, so the dot needs the 3:1 of a graphic, not text's 4.5:1.
+  { ...onFill("success", "surface-muted"), minimum: control },
+  { ...onFill("attention", "surface-muted"), minimum: control },
   // A neutral chip, count or Kbd on a muted fill steps up to border (the on-muted: variant).
   onFill("fg", "border"),
   { ...onFill("fg", "border"), name: "fg on border over surface-muted", beneath: "surface-muted" },
