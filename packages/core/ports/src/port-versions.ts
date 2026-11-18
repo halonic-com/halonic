@@ -21,6 +21,7 @@ import { passwordHasherVersion } from "./password-hasher.ts";
 import { pluginFolderWriterVersion } from "./plugin-folder-writer.ts";
 import { programProbeVersion } from "./program-probe.ts";
 import { recordStoreVersion } from "./record-store.ts";
+import { remoteControlVersion } from "./remote-control.ts";
 import { resourceProbeVersion } from "./resource-probe.ts";
 import { runExecutorVersion } from "./run-executor.ts";
 import { runStoreVersion } from "./run-store.ts";
@@ -68,6 +69,7 @@ export const portVersions = {
   PluginFolderWriter: pluginFolderWriterVersion,
   ProgramProbe: programProbeVersion,
   RecordStore: recordStoreVersion,
+  RemoteControl: remoteControlVersion,
   ResourceProbe: resourceProbeVersion,
   RunExecutor: runExecutorVersion,
   RunStore: runStoreVersion,

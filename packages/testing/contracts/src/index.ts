@@ -47,6 +47,11 @@ export {
   unsafeDefinitionPaths,
 } from "./definition-store.ts";
 export {
+  type FakePhone,
+  FakeRemoteControl,
+  type FakeRemoteControlOptions,
+} from "./fake-remote-control.ts";
+export {
   type FakeProgram,
   type FakeProgramIo,
   FakeSandboxSession,
@@ -131,6 +136,11 @@ export {
   RecordedRegistryClient,
   recordedRegistries,
 } from "./recorded-registry.ts";
+export {
+  type MakeRemoteControl,
+  type RemoteControlHarness,
+  remoteControlContract,
+} from "./remote-control.ts";
 export {
   type RequestCountStoreHarness,
   type RequestCountStoreUnderTest,
