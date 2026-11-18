@@ -18,7 +18,10 @@ import { render, unmountAll } from "../test-support/render.tsx";
 import { entered, logOf } from "./run-log.test-helper.ts";
 import { RunView } from "./run-page.tsx";
 
-afterEach(unmountAll);
+afterEach(() => {
+  unmountAll();
+  vi.useRealTimers();
+});
 
 const modelCall = {
   type: "llm.request",
@@ -145,21 +148,18 @@ verifies("runs.run-view.slow-step-line", () => {
     ]);
     const list = new RunsList(fakeSource([run], { [run.id]: log }).source);
     let clock = mondayMorning.getTime() + 9_950;
+    // Fake timers: the page's 50 ms redraw timer must not fire before the test moves its clock,
+    // which a real timer on a loaded runner can (HAL-12925).
+    vi.useFakeTimers();
     const root = render(<RunView list={list} runId={run.id} now={() => new Date(clock)} />);
-    await settled();
+    await act(async () => vi.advanceTimersByTimeAsync(0));
     expect(root.textContent).not.toContain(
       "Waiting for Ollama. The first answer can take a minute while it loads the model.",
     );
     clock = mondayMorning.getTime() + 10_000;
-    // The page redraws on its own timer; wait for it instead of guessing how long a loaded runner takes.
-    await vi.waitFor(
-      async () => {
-        await settled(20);
-        expect(root.textContent).toContain(
-          "Waiting for Ollama. The first answer can take a minute while it loads the model.",
-        );
-      },
-      { timeout: 5_000 },
+    await act(async () => vi.advanceTimersByTimeAsync(50));
+    expect(root.textContent).toContain(
+      "Waiting for Ollama. The first answer can take a minute while it loads the model.",
     );
   });
 });
