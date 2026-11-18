@@ -1,4 +1,4 @@
-import type { FolderReader } from "@halonicjs/ports";
+import { checkWorkspacePath, type FolderReader } from "@halonicjs/ports";
 import { CommandFolderReader } from "./command-folder-reader.ts";
 import { pluginInstallCommands } from "./plugin-install-commands.ts";
 import { pluginInstallFailure } from "./plugin-install-failure.ts";
@@ -31,8 +31,20 @@ export class TauriPluginSourceReader extends CommandFolderReader implements Fold
     );
   }
 
-  /** A source has no real location to show: the shell never gives one out. */
-  override async locationOf(): Promise<string | null> {
-    return null;
+  /**
+   * The shell never gives out a source's real path, so this is the location
+   * `pick` or `exportGit` answered, with `path` after it when there is an
+   * entry there. Core's `PluginService.add` asks for it once a source is
+   * read, as the port asks of every folder, and keeps nothing of it: the
+   * trust record names the copy in the plugins folder (HAL-12448).
+   */
+  override async locationOf(path?: string): Promise<string | null> {
+    if (path === undefined) return this.location;
+    checkWorkspacePath(path);
+    const slash = path.lastIndexOf("/");
+    const listed = await this.entries(slash === -1 ? undefined : path.slice(0, slash), {
+      recursive: false,
+    });
+    return listed.some((entry) => entry.path === path) ? `${this.location}/${path}` : null;
   }
 }
