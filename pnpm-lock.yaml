@@ -328,6 +328,9 @@ importers:
       '@halonicjs/adapter-http-node':
         specifier: workspace:*
         version: link:../../packages/adapters/http-node
+      '@halonicjs/adapter-integration-kit':
+        specifier: workspace:*
+        version: link:../../packages/adapters/integration-kit
       '@halonicjs/adapter-integration-runner':
         specifier: workspace:*
         version: link:../../packages/adapters/integration-runner
@@ -379,9 +382,15 @@ importers:
       '@halonicjs/host-google-sign-in':
         specifier: workspace:*
         version: link:../../packages/host/google-sign-in
+      '@halonicjs/host-integration-sign-in':
+        specifier: workspace:*
+        version: link:../../packages/host/integration-sign-in
       '@halonicjs/host-server':
         specifier: workspace:*
         version: link:../../packages/host/server
+      '@halonicjs/oauth-sign-in':
+        specifier: workspace:*
+        version: link:../../packages/core/oauth-sign-in
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../packages/core/ports
@@ -398,6 +407,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core/workspace
     devDependencies:
+      '@halonicjs/testing-sign-in':
+        specifier: workspace:*
+        version: link:../../packages/testing/sign-in
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../packages/testing/spec

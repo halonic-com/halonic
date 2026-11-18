@@ -103,6 +103,10 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `POST /v1/harnesses/sign-in` with `{"harness","settingsFolder"}` | `{"opened":true}`, or `{"opened":false,"reason","command"}` (below) |
 | `POST /v1/harnesses/profile` with `{"workspace","agent","bridge"}` (only with a profile folder) | the `HarnessProfile`: `{"profile","deniedGroups"}` (below); `404 unknown_workspace`, `unknown_harness` or `unknown_bridge`; `422 profile_refused` with the builder's reason |
 | `POST /v1/proposals/open` with `{"workspace","run":{"runId","hubId","workflowId","version"}}`, `…/folder-of` and `…/end` with `{"workspace","runId"}`, `…/start` with `{"workspace","openRuns"}` (only with a profile folder) | `{"folder"}` (`null` from `folder-of` when the run has none), `{"folder"}`, `{}`, `{}`; `404 unknown_workspace`; `422 proposal_refused` with the reason when a folder can't be made |
+| `POST /v1/integrations/sign-in/start` with `{"integration","signIn"}` | `{"authorizeUrl"}` to open in the browser; the callback is `GET /sign-in/<random>`, served without the token. `404 unknown_integration` / `unknown_sign_in`, `422 settings_invalid` / `client_secret_missing`, `501 callback_unavailable` over frames |
+| `POST /v1/integrations/sign-in/status` with `{"integration"}` | `{"signIns":[{"signIn","state","lastOutcome"?}]}`; `state` is `signedIn`, `signedOut`, `approvalChanged` or `cannotSignIn` |
+| `POST /v1/integrations/sign-in/cancel` with `{"integration","signIn"}` | `204` |
+| `POST /v1/integrations/sign-in/sign-out` with `{"integration","signIn"}` | `{"result"}`: `{"kind":"notSignedIn"}` or `{"kind":"signedOut","revoke"}` |
 | `POST /v1/harnesses/runs/start` | an NDJSON stream: the run's id, then its events (below) |
 | `POST /v1/harnesses/runs/send` with `{"run","input"}` | `{"sent":true}`, or `409 send_failed` when the run refuses the input |
 | `POST /v1/harnesses/runs/cancel` with `{"run"}` | `{"cancelled":true}` |

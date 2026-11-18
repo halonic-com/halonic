@@ -371,6 +371,17 @@ reuse of the connection, at most 4 at once). The callback page is sent with
 `Connection: close`, and loads nothing outside itself, because the code is in
 the address bar and the history (`agent-host.google-callback-over-frames`).
 
+An integration's sign-in (HAL-12191, HAL-8613) has a second token-free route of
+its own: `GET /sign-in/<random>`, a prefix route of `host-server`, whose path is
+new for each start and whose redirect names the host's own port. It has the
+same `Host` and `Origin` checks and the same defence, the sign-in's `state`
+(plus PKCE), and a path no sign-in waits on gets a plain 400 page that repeats
+nothing of the request. The relay passes only `/v1/google/callback` without the
+token, so in WSL a start of an integration's sign-in is refused
+(`501 callback_unavailable`) instead of sending a browser to a callback that
+can't arrive; passing a `/sign-in/` prefix would be a change to the relay and
+its own security review (`agent-host.integration-sign-in-routes`).
+
 What the callback answers to, in relay mode as on the host's own port:
 
 - **A web page makes the browser call the callback.** The `Host` check (the
