@@ -1,6 +1,7 @@
 # Walks the installer's pages and saves a picture of each, so a reviewer can
 # see what a person sees (HAL-1202). It runs the installer with its pages, in
-# the runner's desktop session, presses Install, and waits for the finish page.
+# the runner's desktop session, presses I Agree and Install, and waits for the
+# finish page.
 # The sandbox step runs for real here; on a runner it is already elevated.
 param(
   [Parameter(Mandatory)][string]$Setup,
@@ -60,6 +61,10 @@ foreach ($i in 1..60) {
   if ($p.MainWindowHandle -ne [IntPtr]::Zero) { $h = $p.MainWindowHandle; break }
 }
 if ($h -eq [IntPtr]::Zero) { throw 'The installer opened no window' }
+# The licence page comes first (HAL-12506).
+Wait-Button $h 'I &Agree' 20
+Save-Picture $h '0-licence'
+[W]::SendMessage([W]::GetDlgItem($h, 1), 0xF5, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
 Wait-Button $h '&Install' 20
 Save-Picture $h '1-install'
 [W]::SendMessage([W]::GetDlgItem($h, 1), 0xF5, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
