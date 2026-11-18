@@ -4,15 +4,19 @@
 //! and `pairing-codes.ts` in `@halonicjs/ports`, and the tests check this
 //! crate against the same test vectors.
 //!
-//! This crate holds no Tauri types. It grows in small steps: the codes and
-//! the frames first, then the Noise handshakes with `snow`, then the
-//! WebSocket transport.
+//! This crate holds no Tauri types. The handshakes and the session take
+//! frames in and give frames out, and `snow` does every Noise step; the
+//! WebSocket transport carries those frames to the gateway.
 
 mod backoff;
 mod codes;
 mod connect;
 mod endpoint;
+mod error;
 mod frames;
+mod handshake;
+mod keys;
+mod session;
 mod transport;
 
 pub use backoff::Backoff;
@@ -23,8 +27,15 @@ pub use codes::{
 };
 pub use connect::{CONNECT_TIMEOUT, ConnectError, Dialer};
 pub use endpoint::{Endpoint, GATEWAY_PATH};
+pub use error::SessionError;
 pub use frames::{
     FrameKind, MAX_FRAME_BYTES, MAX_HANDSHAKE_BYTES, MAX_NAME_BYTES, NOISE_MAX_MESSAGE_BYTES,
     PairRefusedReason, Refusal, frame, read_frame, read_refusal,
 };
+pub use handshake::{
+    PAIR_COMMIT_NONCE_BYTES, PAIRING_PATTERN, PROLOGUE, Pairing, PairingCheck, PairingRoute,
+    PhoneDetails, Platform, RECONNECT_PATTERN, Reconnect,
+};
+pub use keys::{KEY_BYTES, PhoneKeys};
+pub use session::{MAX_MESSAGE_BYTES, Opened, REKEY_AFTER, REKEY_AFTER_MESSAGES, Session};
 pub use transport::{ConnectionId, SendError, Timeouts, Transport, TransportEvent, TransportState};
