@@ -347,6 +347,22 @@ verifies("library.knowledge-summarize", () => {
       expect(button(second, "Try again")).toBeDefined();
     });
 
+    it("keeps focus on Summarize when Try again runs it again and it fails again", async () => {
+      const { props } = setup(undefined, nobody, { kind: "host-unreachable" });
+      const root = render(<KnowledgePage {...props} />);
+      await settled();
+      await act(async () => button(root, "Summarize").click());
+      await settled();
+      const tryAgain = button(root, "Try again");
+      tryAgain.focus();
+      // Try again goes away with its line while Summarize runs, so focus must not go with it.
+      act(() => tryAgain.click());
+      expect(document.activeElement).toBe(button(root, "Summarize"));
+      await settled();
+      expect(root.textContent).toContain("Couldn't summarize Handbook:");
+      expect(document.activeElement).toBe(button(root, "Summarize"));
+    });
+
     it.each([
       [
         "host-unreachable",
