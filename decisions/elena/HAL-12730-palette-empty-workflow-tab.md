@@ -3,6 +3,7 @@
 - Task: HAL-12730
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12721 (Liam's fix list from the first-run check, L12; the wording was confirmed there)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:j3OuRdb+Vl/gexj6Ziogm/tdRv/dkb0c9pBaSArego0awZeodICuqUH5tu/T8CzPFY9IfguztwcAEOVSHUjiDQ==
 
 ## What changes
 
