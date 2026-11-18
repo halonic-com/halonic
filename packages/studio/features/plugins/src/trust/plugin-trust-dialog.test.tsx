@@ -353,7 +353,7 @@ verifies("app.plugin-trust-sections", () => {
 
     const text = dialog().textContent ?? "";
     expect(text).toContain(`Folder${folder}`);
-    expect(text).toContain("Backend files");
+    expect(text).toContain("Files");
     expect(text).toContain("backend/index.js");
     expect(text).toContain("backend/<b>x</b>.js");
     expect(dialog().querySelector("b")).toBeNull();
@@ -378,16 +378,26 @@ verifies("app.plugin-trust-sections", () => {
 
     const text = dialog().textContent ?? "";
     expect(text).not.toContain("Folder");
-    expect(text).not.toContain("Backend files");
+    expect(text).not.toContain("Files");
   });
 
-  it("leaves out Backend files for a plugin with only its manifest, and 'and N more' when nothing is hidden", () => {
+  it("leaves out Files for a plugin with only its manifest, and 'and N more' when nothing is hidden", () => {
     open(weather, { folder: "/plugins/weather", files: { shown: [], more: 0 } });
     expect(dialog().textContent).toContain("Folder");
-    expect(dialog().textContent).not.toContain("Backend files");
+    expect(dialog().textContent).not.toContain("Files");
 
     unmountAll();
     open(weather, { folder: "/plugins/weather", files: { shown: ["a.js"], more: 0 } });
     expect(dialog().textContent).not.toContain("more");
+  });
+});
+
+verifies("app.plugin-program-secret-text", () => {
+  it("says which program gets a secret, as which variable, and where it can connect, as the CLI does", () => {
+    open(withProgramSecret);
+    const text = dialog().textContent ?? "";
+
+    expect(text).toContain("Given to acme as ACME_KEY; acme can reach api.acme.com");
+    expect(text).not.toContain("Goes only to");
   });
 });

@@ -19,7 +19,7 @@ const kit = toolsKit();
 async function blocksNow(): Promise<Record<string, string[]>> {
   const notes = kit.notes();
   const check = await notes.check();
-  if (check === "built_in") throw new Error("notes-mcp lists its tools.");
+  if (typeof check === "string") throw new Error("notes-mcp lists its tools.");
   const source = await openToolSource(
     { positionals: ["notes-mcp"], options: {} },
     { cwd: notes.acme },

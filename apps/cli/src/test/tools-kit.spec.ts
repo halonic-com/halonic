@@ -80,7 +80,7 @@ export function toolsKit(): ToolsKit {
     tools,
     async listedNow() {
       const check = await current().check();
-      if (check === "built_in") throw new Error("notes-mcp lists its tools.");
+      if (typeof check === "string") throw new Error("notes-mcp lists its tools.");
       return {
         on: check.tools.flatMap((tool) => (tool.kind === "listed" ? [tool.listedName] : [])),
         waiting: check.waiting.map((waiting) => ({

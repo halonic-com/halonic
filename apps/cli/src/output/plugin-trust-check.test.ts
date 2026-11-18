@@ -95,7 +95,7 @@ verifies("app.plugin-trust-sections", () => {
       "Folder",
       `  ${folder}`,
       "",
-      "Backend files",
+      "Files",
       "  backend/index.js",
       "",
     ]);
@@ -107,7 +107,7 @@ verifies("app.plugin-trust-sections", () => {
       (_, index) => `backend/file-${String(index).padStart(2, "0")}.js`,
     );
     const lines = linesOf(paths);
-    const start = lines.indexOf("Backend files");
+    const start = lines.indexOf("Files");
     expect(lines.slice(start + 1, start + 12)).toEqual([
       ...paths.slice(0, 10).map((path) => `  ${path}`),
       "  and 3 more",
@@ -120,7 +120,7 @@ verifies("app.plugin-trust-sections", () => {
       (_, index) => `backend/file-${String(index).padStart(2, "0")}.js`,
     );
     const lines = linesOf(paths);
-    const start = lines.indexOf("Backend files");
+    const start = lines.indexOf("Files");
     expect(lines.slice(start + 1, start + 12)).toEqual(paths.map((path) => `  ${path}`));
     expect(lines.join("\n")).not.toContain("more");
   });
@@ -136,12 +136,12 @@ verifies("app.plugin-trust-sections", () => {
       "",
       "Fingerprint",
       "  hpf1:abc",
-      "  Covers the manifest and the backend files above.",
+      "  Covers the manifest and the files above.",
     ]);
   });
 
   it("leaves out the file list for a plugin with only its manifest", () => {
-    expect(linesOf([])).not.toContain("Backend files");
+    expect(linesOf([])).not.toContain("Files");
   });
 
   it("escapes control characters in the folder and in a file name", () => {
@@ -152,5 +152,53 @@ verifies("app.plugin-trust-sections", () => {
     expect(lines).toContain("  /x/\\u001b[2Jplugin");
     expect(lines).toContain("  backend/\\u001b[31mred.js");
     expect(lines.join("\n")).not.toContain("\u001b");
+  });
+});
+
+/** A plugin with no backend: one program that gets a secret. Example data only. */
+const filesManifest = `id: lf
+version: 1.0.0
+sdk: 1
+name: Local files
+description: Lists files.
+localTools:
+  - id: files
+    start:
+      script: { program: node, path: tools/server.js }
+    env:
+      LF_TOKEN: { secret: lf-token }
+    secrets:
+      lf-token:
+        purpose: The files service's token
+        hosts: [api.example.com]
+    network: [api.example.com]
+    tools:
+      - { name: list-files, description: Lists the files in a folder., risk: read, untrusted: true }
+`;
+
+verifies("app.plugin-program-secret-text", () => {
+  it("says which program gets a secret, as which variable, and where it can connect", () => {
+    const parsed = parseFile("plugin", filesManifest);
+    if (!parsed.ok) throw new Error(parsed.error.map((problem) => problem.message).join("; "));
+    const content = pluginTrustContent({
+      plugin: parsed.value.value,
+      files: ["plugin.yaml", "tools/server.js"].map((path) => ({ path, sha256: "a".repeat(64) })),
+    });
+
+    const lines = pluginTrustCheckLines(content, folder).map(plainText);
+
+    const secrets = lines.indexOf("Secrets");
+    expect(lines[secrets + 1]).toMatch(
+      /^ {2}lf-token +given to files as LF_TOKEN; files can reach api\.example\.com$/u,
+    );
+    expect(lines.join("\n")).not.toContain("goes only to");
+    expect(lines).toContain("Files");
+  });
+
+  it("keeps a backend's secret going only to its host", () => {
+    const lines = pluginTrustCheckLines(weatherContent(), folder).map(plainText);
+    expect(lines).toContainEqual(
+      expect.stringMatching(/example-key +goes only to api\.example\.com$/u),
+    );
   });
 });

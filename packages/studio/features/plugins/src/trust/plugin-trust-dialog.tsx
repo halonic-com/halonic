@@ -63,7 +63,7 @@ export interface PluginTrustDialogProps {
   readonly reason: TrustCheckReason;
   /** The plugin folder's real path, shown under Folder; the line is left out when unsaid. */
   readonly folder?: string | undefined;
-  /** The backend files the fingerprint covers, shown under Backend files. */
+  /** The files the fingerprint covers, shown under Files. */
   readonly files?: PluginTrustFiles | undefined;
   /** For `reason="changed"`: what changed, and the day the person trusted the plugin before. */
   readonly changes?: PluginChangeSummary | undefined;
@@ -320,7 +320,11 @@ function Section({
             {secrets.map((secret, index) => (
               <li key={index} className="flex flex-col gap-1">
                 <code className="font-mono text-small wrap-anywhere">{secret.name}</code>
-                <Labelled label={GOES_ONLY_TO}>{secret.goesTo.join(", ")}</Labelled>
+                {secret.givenTo === undefined ? (
+                  <Labelled label={GOES_ONLY_TO}>{secret.goesTo.join(", ")}</Labelled>
+                ) : (
+                  <p className="text-small wrap-anywhere">{secret.givenTo}</p>
+                )}
                 {secret.how === undefined ? null : <Labelled label={HOW}>{secret.how}</Labelled>}
               </li>
             ))}

@@ -27,6 +27,7 @@ import { toolBlock } from "./blocks.ts";
 import { reviewDocument } from "./json.ts";
 import {
   checkToolSource,
+  noToolsToApprove,
   openToolSource,
   type ToolSource,
   type ToolsMachine,
@@ -49,8 +50,9 @@ export async function reviewTools(
 ): Promise<CommandResult | StoppedResult> {
   const source = await openToolSource(input, context, "review");
   const check = await checkToolSource(source, machine, context);
-  if (check === "built_in") {
-    return done([toolsMessages.onlyBuiltIn(source.shown).phrase], { source: source.connector.id });
+  if (typeof check === "string") {
+    const { line, json } = noToolsToApprove(check, source);
+    return done([line], { source: source.connector.id, ...json });
   }
   const review = reviewListedTools(check);
   const json = reviewDocument(review);

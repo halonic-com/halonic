@@ -51,7 +51,7 @@ export const pluginMessages = defineMessages("plugin", {
   asksFirst: () => phrase`asks a person first`,
   programsHeading: () => phrase`Programs`,
   secretsHeading: () => phrase`Secrets`,
-  /** After a secret's name: "goes only to api.weather.example". */
+  /** After a backend secret's name: "goes only to api.weather.example". A program's says more (HAL-12638). */
   secretGoesTo: (host: string) => phrase`goes only to ${host}`,
   addressesHeading: () => phrase`Addresses`,
   /** The heading of the plugin's folder line, as the shared model words it. */
@@ -61,7 +61,7 @@ export const pluginMessages = defineMessages("plugin", {
   /** The last line of the file list when more files follow the ones shown. */
   moreFiles: (count: number) => phrase`${pluginTrustMoreFilesText(count)}`,
   /** The caption under a plugin's fingerprint: what it covers besides the files listed above it. */
-  fingerprintCovers: () => phrase`Covers the manifest and the backend files above.`,
+  fingerprintCovers: () => phrase`Covers the manifest and the files above.`,
   /** T9's last line, under every plugin trust check. */
   notChecked: () =>
     phrase`Plugin code runs apart from the rest of Halonic. Halonic doesn't check what the plugin does with what it's given.`,

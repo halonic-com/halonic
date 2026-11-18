@@ -11,6 +11,7 @@
 import {
   type PluginTrustContent,
   type PluginTrustSection,
+  pluginProgramSecretText,
   pluginTrustFiles,
   pluginTrustSections,
 } from "@halonicjs/app";
@@ -57,7 +58,7 @@ export function pluginTrustCheckLines(content: PluginTrustContent, folder: strin
  *
  * @example
  * pluginFingerprintLines("hpf1:c9b6…");
- * // ["", "Fingerprint", "  hpf1:c9b6…", "  Covers the manifest and the backend files above."]
+ * // ["", "Fingerprint", "  hpf1:c9b6…", "  Covers the manifest and the files above."]
  */
 export function pluginFingerprintLines(fingerprint: string): Phrase[] {
   return [
@@ -152,14 +153,20 @@ function startWords(start: Record<string, unknown>): string[] {
   return words.filter((word): word is string => typeof word === "string");
 }
 
-/** Each secret with the one address it goes to. */
+/**
+ * Each secret with where it goes: a backend's to the hosts Halonic's kit
+ * sends it to; a program's to that program, as its variable, with where the
+ * program may connect (HAL-12638), in Studio's words.
+ */
 function secretRows(content: PluginTrustContent): Phrase[] {
-  return content.secrets.map((secret) =>
-    row(
-      printable(secret.name),
-      pluginMessages.secretGoesTo(secret.hosts.map(shownHost).join(", ")).phrase,
-    ),
-  );
+  return content.secrets.map((secret) => {
+    const program = content.localTools.find((tool) => secret.part === `local:${tool.id}`);
+    const where =
+      program === undefined
+        ? pluginMessages.secretGoesTo(secret.hosts.map(shownHost).join(", ")).phrase
+        : phrase`${printable(pluginProgramSecretText(program, secret.name))}`;
+    return row(printable(secret.name), where);
+  });
 }
 
 /** Every address the plugin may reach, once each, in the order the content lists them. */
