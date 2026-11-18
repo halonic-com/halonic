@@ -4,7 +4,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{Duration, UNIX_EPOCH};
 
-use halonic_shell_log::{MAX_LINE_BYTES, ShellLog, log_line, set_aside};
+use halonic_shell_log::{
+    MAX_LINE_BYTES, ShellLog, find_key_shape, log_line, record_printed, set_aside, start,
+};
 
 /// A folder of its own for one test, under the system's temporary folder,
 /// removed when the test ends.
@@ -76,4 +78,70 @@ fn shell_log_sets_a_full_file_aside_once_and_starts_a_new_one() {
         fs::read_to_string(set_aside(&scratch.file())).expect("the older log"),
         "abcdefgh\n"
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn shell_log_files_are_readable_by_their_owner_only() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let scratch = Scratch::new("mode");
+    let log = ShellLog::with_max_bytes(scratch.file(), 10);
+    log.append("12345678\n").expect("the log can be written");
+    log.append("abcdefgh\n").expect("the log can be written");
+    for file in [scratch.file(), set_aside(&scratch.file())] {
+        let mode = fs::metadata(&file).expect("the log").permissions().mode();
+        assert_eq!(mode & 0o777, 0o600, "{}", file.display());
+    }
+}
+
+#[test]
+fn shell_log_spots_the_key_shapes_studio_holds_back() {
+    let body = "Ab3".repeat(6);
+    for (text, kind) in [
+        (format!("Error: 401 for sk-ant-{body}"), "ai-provider-key"),
+        (
+            format!("client_secret=GOCSPX-{body}"),
+            "google-client-secret",
+        ),
+        (format!("key AIza{body} rejected"), "google-api-key"),
+        (format!("ghp_{body}"), "github-token"),
+        (format!("token github_pat_{body}"), "github-token"),
+        (format!("xoxb-{body}"), "slack-token"),
+    ] {
+        assert_eq!(find_key_shape(&text), Some(kind), "{text}");
+    }
+}
+
+#[test]
+fn shell_log_keeps_text_that_only_looks_like_a_key_prefix() {
+    for text in [
+        "we use sk-learn for this",
+        "sk-learn-tutorial-for-beginners",
+        &format!("task-{}", "Ab3".repeat(6)),
+        &format!("xGOCSPX-{}", "Ab3".repeat(6)),
+        "sk-Ab3Ab3Ab3Ab3Ab3",
+        "the run in notes/acme failed: denied",
+    ] {
+        assert_eq!(find_key_shape(text), None, "{text}");
+    }
+}
+
+// The only test that starts the shared log, which a test binary can start once.
+#[test]
+fn shell_log_leaves_out_a_printed_line_shaped_like_a_key() {
+    let scratch = Scratch::new("printed");
+    start(scratch.file());
+    let key = format!("sk-ant-{}", "Ab3".repeat(6));
+    record_printed("agent host", &format!("Error: 401 for {key}"));
+    record_printed("agent host", "listening on loopback");
+    let log = fs::read_to_string(scratch.file()).expect("the log");
+    assert!(!log.contains(&key), "{log}");
+    assert!(
+        log.contains(
+            "agent host: (a line was left out: it held text shaped like a key (ai-provider-key))"
+        ),
+        "{log}"
+    );
+    assert!(log.contains("agent host: listening on loopback"), "{log}");
 }

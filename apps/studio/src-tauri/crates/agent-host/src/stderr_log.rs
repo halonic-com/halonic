@@ -28,7 +28,7 @@ pub(crate) fn log_stderr(child: &mut Child, source: &'static str) {
                 Ok(0) | Err(_) => return,
                 Ok(_) => {
                     let text = String::from_utf8_lossy(&line);
-                    halonic_shell_log::record(source, text.trim_end());
+                    halonic_shell_log::record_printed(source, text.trim_end());
                 }
             }
         }
