@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12410
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jT05WOdpw8rNZFpwYyAppsjrMYXjTvvG1fhNgNJMRCkvYhfJa7Dyq/Hdu2y2AswvsaBnd+AxfXz1vqfCd+LwBw==
 
 Sofia's UX check (HAL-12390, row G2) asks that a Studio screen say "the engine isn't answering.
 It may still be starting." with **Try again** when the agent host isn't running, instead of
