@@ -52,7 +52,7 @@ export interface OpeningAgent {
   readonly agentId: string;
   readonly hubId?: string;
   /** The agent's file as the call reads it, whose `model` Studio is told. */
-  readonly file?: { readonly model?: string };
+  readonly file?: { readonly model?: string | undefined };
 }
 
 /** What Studio serves one agent's bridge. */
