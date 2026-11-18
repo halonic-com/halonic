@@ -3,6 +3,7 @@
 - Task: HAL-12239
 - Approval: Liam approved it in decision 15 of the phase B build plan on HAL-12232 (https://paperclip.halonic.com/HAL/issues/HAL-12232#document-plan): "The QR encoder is vendored, reviewed source." Julian reviews the source and the licence entries against upstream on HAL-12263.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:onN2M+JKBFXBq7ETFMRZBxX9+FcoVU0FrSiit2e6ZeZUQvyX4NC2tYtS5Nn5MyX41Lb1gEIwI25vjW0U20dpAw==
 
 ## What changes
 
