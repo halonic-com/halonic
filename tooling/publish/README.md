@@ -79,6 +79,19 @@ bundled dependency: it is the copy the workspace runs, with our patch, and the s
 into an empty folder to run `halonic --version` and `halonic doctor` before it uploads anything. The rule is the
 requirement `publish.staged-cli`.
 
+### Publishing the CLI: move `latest`
+
+On npm, `halonic` 1.0.0 is our deprecated placeholder, and it holds the `latest` tag. A real 0.1.x is lower
+than 1.0.0, so npm won't move `latest` to it by itself, and `npm install halonic` would keep installing the
+placeholder (HAL-12286). Every CLI publish before 1.0.0 therefore takes one more step:
+
+1. Publish the release workflow's `cli-package` tarball with `npm publish <tarball> --tag latest`, or, if it was
+   published without the tag, run `npm dist-tag add halonic@<version> latest` right after.
+2. Once the version is live, check that `npm view halonic dist-tags` shows `latest: <version>`.
+
+The merge captain checks step 2 before closing the release task. A run that only stages the version moves
+nothing yet: check again after the stage is approved on npmjs.com.
+
 ## Releasing
 
 [`publish-kit.yml`](../../.github/workflows/publish-kit.yml) publishes every version that isn't on npm
