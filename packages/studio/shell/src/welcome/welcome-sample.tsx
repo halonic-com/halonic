@@ -4,7 +4,7 @@ import { cantOpenWords } from "./cant-open.ts";
 
 /** Why the Acme sample couldn't be created: the folder it goes in, as the user knows it, and the reason. */
 export interface WelcomeSampleProblem {
-  /** The parent folder, such as `~/Documents`. */
+  /** Where the sample was meant to go, such as "Documents". */
   readonly folder: string;
   /** Why nothing was written, such as "permission denied". */
   readonly reason: string;
@@ -17,7 +17,7 @@ export const trySampleWords = {
   action: "Try the Acme sample",
   creating: "Creating the sample…",
   /** What a screen reader hears while it is busy (microcopy 19); the sample always goes in Documents. */
-  creatingName: "Creating the Acme sample in ~/Documents…",
+  creatingName: "Creating the Acme sample in Documents…",
   cost: "Runs on the built-in test model, with scripted replies. No key, no cost.",
 } as const;
 

@@ -1,5 +1,6 @@
 import { Spinner } from "@halonicjs/studio-kit";
 import { type Ref, useId } from "react";
+import { MiddleCut } from "../cut-text/middle-cut.tsx";
 
 /** A workspace remembered on this device, as a Recent row on the Welcome screen shows it. */
 export interface WelcomeRecentWorkspace {
@@ -34,23 +35,6 @@ export interface WelcomeRecentProps {
   readonly rowRef: (location: string) => Ref<HTMLButtonElement>;
   /** The row whose folder failed to open: it gets the danger outline and is described by the alert line. */
   readonly failed?: { readonly location: string; readonly alertId: string } | undefined;
-}
-
-/** How much of a folder's end always shows when its line is cut in the middle. */
-const TAIL_LENGTH = 24;
-
-/** A folder that, when too long, is cut in the middle so its end, which tells folders apart, stays; the cut lands on a "/" when it can. */
-function MiddleCut({ text }: { readonly text: string }) {
-  const cut = Math.max(0, text.length - TAIL_LENGTH);
-  // Cut at a "/" so the end starts on a whole folder name, when there is one to cut at.
-  const slash = text.lastIndexOf("/", cut);
-  const at = slash > 0 ? slash : cut;
-  return (
-    <span className="flex min-w-0 text-caption text-fg-subtle">
-      <span className="truncate">{text.slice(0, at)}</span>
-      <span className="shrink-0 whitespace-pre">{text.slice(at)}</span>
-    </span>
-  );
 }
 
 /**
