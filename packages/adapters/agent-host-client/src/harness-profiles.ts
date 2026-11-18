@@ -83,7 +83,7 @@ const builtSchema = s
  *
  * @example
  * const profiles = new AgentHostProfiles(transport, { workspace, bridgeIdOf });
- * const { profile } = await profiles.profileOf(agent, bridge);
+ * const { profile } = await profiles.profileOf(agent, bridge, null);
  */
 export class AgentHostProfiles {
   readonly #transport: AgentHostTransport;
@@ -99,7 +99,11 @@ export class AgentHostProfiles {
    *   outside the workspace, say), `unknown_workspace`, `unknown_harness` or `unknown_bridge`
    * @throws when the bridge isn't open in the host
    */
-  async profileOf(agent: ProfileAgent, bridge: HarnessBridge): Promise<BuiltProfile> {
+  async profileOf(
+    agent: ProfileAgent,
+    bridge: HarnessBridge,
+    instructionsFolder: string | null,
+  ): Promise<BuiltProfile> {
     const bridgeId = this.#options.bridgeIdOf(bridge);
     if (bridgeId === undefined) {
       throw new Error("The profile is built in the agent host, so its bridge must be open there.");
@@ -117,6 +121,7 @@ export class AgentHostProfiles {
         filesFolder: agent.filesFolder,
       },
       bridge: bridgeId,
+      instructionsFolder,
     });
     return readAnswer(route, answer, builtSchema) as BuiltProfile;
   }

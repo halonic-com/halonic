@@ -75,5 +75,6 @@ export const profileBody = s
       })
       .strict(),
     bridge: id,
+    instructionsFolder: absolutePath.nullable(),
   })
   .strict();

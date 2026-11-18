@@ -8,7 +8,7 @@ import { type HostHarnessProfiles, programHarnessOf } from "./host-profiles.ts";
 /**
  * The harness profile builder over loopback, so Studio can give the engine a
  * `HarnessProfileBuilder` whose profile is built next to the sandbox:
- * `POST /v1/harnesses/profile` with `{ workspace, agent, bridge }` answers
+ * `POST /v1/harnesses/profile` with `{ workspace, agent, bridge, instructionsFolder }` answers
  * `{ profile, deniedGroups }`, the engine's `HarnessProfile`.
  *
  * It answers 404 `unknown_workspace` for a folder the launcher didn't name,
@@ -37,7 +37,12 @@ export function profileRoute(profiles: HostHarnessProfiles, bridges: BridgeTable
         );
       }
       try {
-        const built = await profiles.profileOf(body.workspace, { ...body.agent, harness }, bridge);
+        const built = await profiles.profileOf(
+          body.workspace,
+          { ...body.agent, harness },
+          bridge,
+          body.instructionsFolder,
+        );
         if (built === undefined) {
           return sendError(
             response,

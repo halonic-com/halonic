@@ -66,7 +66,7 @@ export interface HostHarnessProfilesOptions {
  * @example
  * const profiles = new HostHarnessProfiles(options);
  * const sandbox = profiles.removingTempFolders(srt);
- * const built = await profiles.profileOf(workspace, agent, bridge);
+ * const built = await profiles.profileOf(workspace, agent, bridge, null);
  */
 export class HostHarnessProfiles {
   readonly #options: HostHarnessProfilesOptions;
@@ -86,11 +86,12 @@ export class HostHarnessProfiles {
     workspace: string,
     agent: ProfileAgent,
     bridge: HarnessBridge,
+    instructionsFolder: string | null,
   ): Promise<HarnessProfile | undefined> {
     const real = await namedWorkspace(this.#options.workspaceRoots, workspace);
     if (real === undefined) return undefined;
     const profiles = await this.#profilesOf(real);
-    return await profiles.profileOf(harnessAgentOf(agent), bridge);
+    return await profiles.profileOf(harnessAgentOf(agent), bridge, instructionsFolder);
   }
 
   /**

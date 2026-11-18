@@ -235,7 +235,12 @@ verifies("agent-host.profile-route", () => {
     const answer = await fetch(`${handshake.url}/v1/harnesses/profile`, {
       method: "POST",
       headers: { authorization: `Bearer ${handshake.token}`, "content-type": "application/json" },
-      body: JSON.stringify({ workspace: tmpdir(), agent, bridge: "no-such-bridge" }),
+      body: JSON.stringify({
+        workspace: tmpdir(),
+        agent,
+        bridge: "no-such-bridge",
+        instructionsFolder: null,
+      }),
     });
     const text = `${answer.status} ${await answer.text()}`;
     input.end();

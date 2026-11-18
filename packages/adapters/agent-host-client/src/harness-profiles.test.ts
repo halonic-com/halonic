@@ -45,7 +45,7 @@ verifies("agent-host-client.harness-profiles", () => {
   describe("profileOf", () => {
     it("asks for the workspace, the agent's fields and the bridge's id, and gives the host's profile", async () => {
       const host = new FakeHost().answer("POST /v1/harnesses/profile", ok(built));
-      const answer = await profiles(host, () => "bridge_1").profileOf(writer, bridge);
+      const answer = await profiles(host, () => "bridge_1").profileOf(writer, bridge, null);
       expect(answer).toEqual(built);
       expect(host.calls).toEqual([
         {
@@ -62,6 +62,7 @@ verifies("agent-host-client.harness-profiles", () => {
               filesFolder: null,
             },
             bridge: "bridge_1",
+            instructionsFolder: null,
           },
         },
       ]);
@@ -70,7 +71,7 @@ verifies("agent-host-client.harness-profiles", () => {
 
     it("sends the defaults of an agent's file that names no working folder or sites", async () => {
       const host = new FakeHost().answer("POST /v1/harnesses/profile", ok(built));
-      await profiles(host, () => "bridge_1").profileOf({ ...writer, file: {} }, bridge);
+      await profiles(host, () => "bridge_1").profileOf({ ...writer, file: {} }, bridge, null);
       expect(host.calls[0]?.body).toMatchObject({
         agent: { workingFolder: null, allowedSites: [] },
       });
@@ -83,7 +84,7 @@ verifies("agent-host-client.harness-profiles", () => {
         refused(422, "profile_refused", reason),
       );
       const failure = await profiles(host, () => "bridge_1")
-        .profileOf(writer, bridge)
+        .profileOf(writer, bridge, null)
         .catch((error: unknown) => error);
       expect(failure).toBeInstanceOf(AgentHostError);
       expect(failure).toMatchObject({ kind: "profile_refused", message: reason });
@@ -91,7 +92,7 @@ verifies("agent-host-client.harness-profiles", () => {
 
     it("fails before asking when the bridge isn't open in the host", async () => {
       const host = new FakeHost();
-      await expect(profiles(host, () => undefined).profileOf(writer, bridge)).rejects.toThrow(
+      await expect(profiles(host, () => undefined).profileOf(writer, bridge, null)).rejects.toThrow(
         /bridge must be open/,
       );
       expect(host.calls).toEqual([]);
@@ -103,7 +104,9 @@ verifies("agent-host-client.harness-profiles", () => {
         "POST /v1/harnesses/profile",
         ok({ ...built, profile: incomplete }),
       );
-      await expect(profiles(host, () => "bridge_1").profileOf(writer, bridge)).rejects.toThrow();
+      await expect(
+        profiles(host, () => "bridge_1").profileOf(writer, bridge, null),
+      ).rejects.toThrow();
     });
   });
 });
