@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12235, from the tunnel phase B build plan on HAL-12232 (decisions 1–9); Liam wrote it, Julian reviews the ADR and signs this note as the security reviewer
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:XhTjrORWe6pXb3IiEvvyeiu1kfD0vt4ohB6Ace+gkl+NWJjoVugstezHOkmUL866KGyaCYZLYyENHswevvGuDA==
 
 Phase B adds pairing and an end-to-end session to the remote gateway. The ADR "Pairing and the
 end-to-end session" (`docs/adr/2026-11-18-pairing-and-the-end-to-end-session.md`) sets the
