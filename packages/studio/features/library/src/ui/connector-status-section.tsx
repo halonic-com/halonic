@@ -3,7 +3,7 @@ import { type EngineWords, engineWords, errorMessageFor } from "@halonicjs/studi
 import { useCallback, useEffect, useId, useRef, useSyncExternalStore } from "react";
 import { type ConnectionState, connectionStateTable } from "../connection-state.ts";
 import { type ConnectorStatusModel, refusalLimit } from "../connector-status-model.ts";
-import { refusalLine } from "../refusal-line.ts";
+import { type RefusalLinePart, refusalLine, refusalLineText } from "../refusal-line.ts";
 import { statusWords } from "../status-words.ts";
 
 /** Props for {@link ConnectorStatusSection}. */
@@ -132,7 +132,7 @@ function Refusals({
   readonly loaded: boolean;
   readonly error: unknown;
   readonly notAnswering: string;
-  readonly rows: readonly { readonly line: string; readonly at: Date }[];
+  readonly rows: readonly { readonly line: readonly RefusalLinePart[]; readonly at: Date }[];
   readonly retry: () => void;
 }) {
   if (!loaded && error !== undefined) {
@@ -173,13 +173,23 @@ function Refusals({
         {rows.map(({ line, at }, index) => (
           // A refusal has no id of its own, and the list only grows at the top, so the line and its place are the key.
           <li
-            key={`${index}:${line}`}
+            key={`${index}:${refusalLineText(line)}`}
             className="min-h-10 min-w-0 border-b border-border px-4 py-3 text-body text-fg [overflow-wrap:anywhere] last:border-b-0"
           >
             <time dateTime={at.toISOString()} className="block text-small text-fg-muted">
               {statusWords.time(at)}
             </time>
-            <span>{line}</span>
+            <span>
+              {line.map((part, partIndex) =>
+                part.code === true ? (
+                  <code key={`${partIndex}:${part.text}`} className="font-mono text-code">
+                    {part.text}
+                  </code>
+                ) : (
+                  part.text
+                ),
+              )}
+            </span>
           </li>
         ))}
       </ul>

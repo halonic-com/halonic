@@ -130,6 +130,8 @@ verifies("studio.workspace-google-setup-accounts", () => {
 
       for (const attempt of [accounts.checkAgain(), accounts.changeAddress()]) {
         await expect(attempt).rejects.toThrow("can't be saved in the Halonic app yet");
+        // Kinded, so the page shows these words after its colon, not the unexplained-problem line.
+        await expect(attempt).rejects.toMatchObject({ kind: "unavailable" });
       }
 
       expect(JSON.stringify(await records.changes("_google_setups"))).toBe(before);

@@ -10,6 +10,8 @@ export interface ListedToolsWaitingProps {
   readonly model: ListedToolsReviewModel;
   /** The connector's name, as on its card: the dialog's title while its tools are being read. */
   readonly sourceName: string;
+  /** Opens the workspace's trust check; without it, a workspace that isn't trusted gets no button. */
+  readonly onReviewTrust?: () => void;
 }
 
 /** The line for a screen the dialog alone can show, or `undefined` for one the page stays quiet on. */
@@ -17,6 +19,34 @@ function noticeOf(fallback: ReviewFallback): string | undefined {
   if (fallback.kind === "listing-refused") return listedToolsWords.waitingNotice.listingRefused;
   if (fallback.kind === "unreadable") return listedToolsWords.waitingNotice.unreadable;
   return undefined;
+}
+
+/**
+ * The button of the "Couldn't list the tools" line: **Review**, the trust check, when the
+ * workspace isn't trusted (none when the page can't open it), else **Try again**.
+ */
+function LoadFailedButton({
+  needsTrust,
+  onTryAgain,
+  onReviewTrust,
+}: {
+  readonly needsTrust: boolean;
+  readonly onTryAgain: () => void;
+  readonly onReviewTrust?: () => void;
+}) {
+  if (!needsTrust) {
+    return (
+      <Button variant="secondary" onClick={onTryAgain}>
+        {listedToolsWords.tryAgain}
+      </Button>
+    );
+  }
+  if (onReviewTrust === undefined) return null;
+  return (
+    <Button variant="secondary" onClick={onReviewTrust}>
+      {listedToolsWords.reviewTrust}
+    </Button>
+  );
 }
 
 /** One line of text with its button at the right, wrapping under it on a narrow page. */
@@ -34,9 +64,11 @@ function WaitingLine({ text, children }: { readonly text: string; readonly child
  * which opens the review dialog. It shows nothing while the tools are being read and when none
  * waits. When the list couldn't be read, was refused, or an approval is unreadable, it says so in
  * one line with **Try again** or **Review tools**, since the dialog's screens for those can't
- * be reached otherwise. The dialog shares this model, so an approval updates the line behind it.
+ * be reached otherwise. When the workspace isn't trusted, trying again can't help, so the line
+ * offers **Review**, which opens the trust check, instead. The dialog shares this model, so an
+ * approval updates the line behind it.
  */
-export function ListedToolsWaiting({ model, sourceName }: ListedToolsWaitingProps) {
+export function ListedToolsWaiting({ model, sourceName, onReviewTrust }: ListedToolsWaitingProps) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
   const state = useSyncExternalStore(subscribe, () => model.state);
   const { snapshot } = state;
@@ -61,9 +93,11 @@ export function ListedToolsWaiting({ model, sourceName }: ListedToolsWaitingProp
       ) : null}
       {waiting === 0 && fallback?.kind === "load-failed" ? (
         <WaitingLine text={listedToolsWords.loadFailed(fallback.reason)}>
-          <Button variant="secondary" onClick={() => void model.refresh()}>
-            {listedToolsWords.tryAgain}
-          </Button>
+          <LoadFailedButton
+            needsTrust={fallback.needsTrust}
+            onTryAgain={() => void model.refresh()}
+            {...(onReviewTrust === undefined ? {} : { onReviewTrust })}
+          />
         </WaitingLine>
       ) : null}
       {waiting === 0 && fallback !== null && noticeOf(fallback) !== undefined ? (

@@ -21,7 +21,7 @@ import type {
 } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { ListedToolsHost, ListedToolsSnapshot } from "@halonicjs/studio-feature-library/api";
-import { listedToolsSnapshot } from "@halonicjs/studio-feature-library/api";
+import { listedToolsSnapshot, WorkspaceNotTrusted } from "@halonicjs/studio-feature-library/api";
 import {
   filesOf,
   harnessWorkingFolders,
@@ -181,7 +181,7 @@ export class WorkspaceListedTools implements ListedToolsHost {
     }
     const trusted = await this.#options.trust.checkLoaded(workspace);
     if (trusted.status !== "trusted") {
-      throw new KindedError("denied", "this workspace isn't trusted yet, so nothing was started");
+      throw new WorkspaceNotTrusted();
     }
     const grant = trusted.grant;
     const listed = await this.#options.listTools(connectorConfigOf(connector), {

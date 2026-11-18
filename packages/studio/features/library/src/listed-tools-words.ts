@@ -105,6 +105,8 @@ export const listedToolsWords = {
   unreadableUnavailable: "Halonic can't tell which tool it belongs to yet.",
   loadFailed: (reason: string) => `Couldn't list the tools: ${reason}.`,
   tryAgain: "Try again",
+  /** Opens the workspace's trust check, when the tools couldn't be listed because it isn't trusted. */
+  reviewTrust: "Review",
   connecting: "Connecting…",
   /** More tools than this on the screen turns the search field on. */
   searchThreshold: 10,
