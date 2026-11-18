@@ -21,6 +21,7 @@ export default defineConfig({
         "item-header": `${import.meta.dirname}/e2e/pages/item-header.html`,
         "settings-list": `${import.meta.dirname}/e2e/pages/settings-list.html`,
         "item-page-back-link": `${import.meta.dirname}/e2e/pages/item-page-back-link.html`,
+        "save-problem": `${import.meta.dirname}/e2e/pages/save-problem.html`,
       },
     },
   },
