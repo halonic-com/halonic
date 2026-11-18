@@ -3,7 +3,12 @@
 
 export { McpHttpConnectorFactory, type McpHttpOptions } from "./http/http-connector.ts";
 export { defaultHttpLimits, type HttpLimits } from "./http/http-transport.ts";
-export { type FoundRunner, findRunner, type RunnerSearch } from "./pinned/find-runner.ts";
+export {
+  type FoundRunner,
+  findRunner,
+  type RunnerSearch,
+  runnerRefusedError,
+} from "./pinned/find-runner.ts";
 export { type LaunchFolders, nodeLaunchFolders } from "./pinned/launch-folders.ts";
 export { createRunnerSearch } from "./pinned/node-runner-search.ts";
 // The pin check and the pinned launch are shared with
@@ -45,6 +50,7 @@ export {
   RestartLimit,
   type RestartLimits,
 } from "./stdio/restart-limit.ts";
+export { ProgramNotFoundError, SecretNotSetError } from "./stdio/start-errors.ts";
 export { McpStdioConnectorFactory, type McpStdioOptions } from "./stdio/stdio-connector.ts";
 // The transport, restart limit and tool mapping are shared with
 // `@halonicjs/adapter-connector-stdio-sandbox`, which starts the program in a

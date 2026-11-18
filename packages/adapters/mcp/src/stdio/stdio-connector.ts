@@ -8,7 +8,7 @@ import type {
   ConnectorTool,
 } from "@halonicjs/ports";
 import { type Clock, SecretScrubber, systemClock } from "@halonicjs/std";
-import { findRunner, type RunnerSearch } from "../pinned/find-runner.ts";
+import { findRunner, type RunnerSearch, runnerRefusedError } from "../pinned/find-runner.ts";
 import type { LaunchFolders } from "../pinned/launch-folders.ts";
 import { checkPinnedLaunch, pinnedLaunch } from "../pinned/pinned-launch.ts";
 import { McpError } from "../protocol/errors.ts";
@@ -17,6 +17,7 @@ import { cleanErrorOutput, type PersonalDetails } from "./error-output.ts";
 import { inheritedSecrets } from "./inherited-secrets.ts";
 import type { AgentWorkingFolders, ProgramLaunch, ProgramStarter } from "./program.ts";
 import { defaultRestartLimits, RestartLimit, type RestartLimits } from "./restart-limit.ts";
+import { SecretNotSetError } from "./start-errors.ts";
 import { defaultStdioLimits, type StdioLimits, StdioTransport } from "./stdio-transport.ts";
 import { ConnectorStoppedError } from "./stopped-error.ts";
 import { ConnectorToolError, resultText, toConnectorTool } from "./tool-mapping.ts";
@@ -284,9 +285,7 @@ class McpStdioConnector implements ConnectorClient {
     }
     const runners = this.#options.runners;
     const runner = await findRunner(this.#stdio.command, pin.value.registry, runners);
-    if ("refused" in runner) {
-      throw new Error(`Halonic didn't start the connector "${this.id}": ${runner.refused}.`);
-    }
+    if ("refused" in runner) throw runnerRefusedError(this.id, runner);
     const secretEnv = await this.#secretEnv();
     // The registry and the login shell take a while; a client closed meanwhile creates no folder.
     if (this.#closed) {
@@ -324,11 +323,7 @@ class McpStdioConnector implements ConnectorClient {
     const values: Record<string, string> = {};
     for (const [variable, secretName] of Object.entries(this.#config.secretEnv)) {
       const value = await this.#context.secrets.get(secretName);
-      if (value === null) {
-        throw new Error(
-          `Connector "${this.id}" needs the secret "${secretName}", which isn't set.`,
-        );
-      }
+      if (value === null) throw new SecretNotSetError(this.id, secretName);
       this.#scrubber.remember(value);
       values[variable] = value;
     }
