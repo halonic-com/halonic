@@ -428,6 +428,20 @@ verifies("cli.workspace-file-problems", () => {
 
     expect(io.stderr[1]).toBe(`  See them with: halonic validate --dir .${sep}acme`);
   });
+
+  it("points at validate, not at a missing workflow, when the workflow's own file has an error", async () => {
+    const file = join(acme, "hubs/support/workflows/support-reply.workflow.yaml");
+    await writeFile(file, `version: 2\n${await readFile(file, "utf8")}`);
+    const io = captureIo(acme);
+
+    const code = await runCli(["run", "support-reply", ...samsEmail], io, [runCommand()]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr.slice(0, 2)).toEqual([
+      "✕ Couldn't run support-reply: Acme has 1 problem in its files. Nothing ran.",
+      "  See them with: halonic validate",
+    ]);
+  });
 });
 
 verifies("cli.run-failure-debug", () => {

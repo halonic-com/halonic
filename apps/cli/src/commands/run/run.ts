@@ -42,6 +42,7 @@ import {
   openWorkspaceEngine,
   type WorkspaceEngineSetup,
 } from "../../workspace-engine.ts";
+import { refuseFileProblems } from "../../workspace-problems.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
 import { eventLines } from "./event-lines.ts";
 import { runHarnessOf } from "./harness.ts";
@@ -73,6 +74,8 @@ export interface RunSetup extends WorkspaceEngineSetup {
  *
  * @throws UsageError when there isn't exactly one workflow
  * @throws NoWorkspaceError when the folder holds no workspace
+ * @throws WorkspaceFileProblemsError when `halonic validate` would find an
+ *   error in the workspace's files; nothing ran (exit 2)
  * @throws OwnLineError `conflict` when the workspace has history but nothing
  *   is live yet; nothing ran
  * @throws HistoryUnavailableError when the workspace has history but git
@@ -100,6 +103,9 @@ export async function runWorkflow(
   const typedDir = givenDir(input, dir);
   const { workspace, version, changesNotLive } = await liveWorkspace(dir, setup.history);
   const workspaceName = printable(workspaceNameOf(workspace, dir));
+  // Before the lookup: a file with an error is left out, so its workflow
+  // would look missing (HAL-12978). The trust check below refuses it too.
+  refuseFileProblems(dir, workspace, runMessages.nothingRan(), typedDir);
   const harness = await runHarnessOf(
     optionText(input, "harness"),
     (setup.harnesses ?? nodeHarnessPrograms)(),
