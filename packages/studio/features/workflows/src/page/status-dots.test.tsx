@@ -4,6 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it } from "vitest";
 import { show, unmount } from "../test-support.tsx";
 import { reply } from "./page-fixtures.ts";
+import { CARD_BORDER, DOT, dotCentre, StepCard } from "./step-card.tsx";
 import { WorkflowCanvas } from "./workflow-canvas.tsx";
 
 afterEach(unmount);
@@ -42,5 +43,18 @@ verifies("workflows.canvas.status-dots", () => {
       <WorkflowCanvas workflow={reply} marks={{ start: "done", write: "failed" }} />,
     );
     expect(page.querySelector("[data-testid=point-of-light]")).toBeNull();
+  });
+
+  it("places the dot where the light aims: its centre is dotCentre", async () => {
+    const box = { x: 40, y: 30, width: 200, height: 72 };
+    const step = reply.steps[0];
+    if (step === undefined) throw new Error("fixture has no step");
+    const page = await show(
+      <StepCard step={step} box={box} first={false} selected={false} mark="waiting" />,
+    );
+    const dot = page.querySelector<HTMLElement>("[data-testid=status-dot]");
+    const centre = dotCentre(box);
+    expect(Number.parseFloat(dot?.style.left ?? "") + CARD_BORDER + DOT / 2).toBe(centre.x - box.x);
+    expect(Number.parseFloat(dot?.style.top ?? "") + CARD_BORDER + DOT / 2).toBe(centre.y - box.y);
   });
 });
