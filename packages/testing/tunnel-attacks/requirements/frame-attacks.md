@@ -15,7 +15,7 @@ The remote gateway shall answer a hostile stream of frames, sent through a tunne
   then the connection is closed.
 - Given an unmasked frame, a frame with a reserved bit, a reserved opcode, a fragmented or oversized control frame, or a close frame with a bad body,
   then the connection is closed.
-- Given a text frame with invalid UTF-8, a NUL, a very deep nest, a duplicated key or a `__proto__` key, or a binary frame,
+- Given a text frame with invalid UTF-8, a NUL, a very deep nest, a leading byte order mark, a duplicated key or a `__proto__` key, or a binary frame,
   then the host sends `malformed` and closes, and the host is asked for nothing.
 - Given more connections than the gateway allows, or 33 frames sent without waiting,
   then the extra connection or the flooding one is closed, and a slot is free again when a connection ends.

@@ -15,6 +15,8 @@ The remote gateway shall make a WebSocket only of a request that names it by a `
   then the answer is 421.
 - Given a request with no `Host` or with a `Host` forwarded in `X-Forwarded-Host`,
   then no WebSocket is made.
+- Given a request with two `Host` lines, whichever comes first,
+  then no WebSocket is made.
 - Given a request whose target is an absolute URL for another host,
   then no WebSocket is made.
 - Given a tunnel name the gateway was not told to accept,

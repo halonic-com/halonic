@@ -55,6 +55,11 @@ verifies("remote-gateway.message-parser", () => {
         text("null"),
         text('"watch"'),
         text("{}{}"),
+        text(`\ufeff${JSON.stringify(watch)}`),
+        {
+          binary: false,
+          bytes: Uint8Array.of(0xef, 0xbb, 0xbf, ...encoder.encode(JSON.stringify(watch))),
+        },
       ];
       for (const frame of bad) {
         expect(parseGatewayClientMessage(frame)).toEqual({ ok: false, code: "malformed" });

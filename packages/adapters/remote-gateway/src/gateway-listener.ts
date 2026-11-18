@@ -114,7 +114,7 @@ function refusalOf(
 ): Refusal | undefined {
   const allowed = [`${gatewayLoopbackHost}:${port}`, `localhost:${port}`, ...extraHosts];
   const host = request.headers.host?.toLowerCase();
-  if (host === undefined || !allowed.includes(host))
+  if (host === undefined || hostLineCount(request) > 1 || !allowed.includes(host))
     return { status: 421, reason: "Misdirected Request" };
   if (request.headers.origin !== undefined) return { status: 403, reason: "Forbidden" };
   const isUpgrade =
@@ -129,6 +129,13 @@ function refusalOf(
     request.headers["sec-websocket-version"] === "13" &&
     isHandshakeKey(request.headers["sec-websocket-key"]);
   return isUpgrade ? undefined : { status: 404, reason: "Not Found" };
+}
+
+/** How many `Host` lines the request carries: a hop may read another one than we do. */
+function hostLineCount(request: IncomingMessage): number {
+  return request.rawHeaders.filter(
+    (entry, index) => index % 2 === 0 && entry.toLowerCase() === "host",
+  ).length;
 }
 
 /** A handshake key is 16 random bytes in base64. */

@@ -17,7 +17,7 @@ export type GatewayParseResult =
   | { readonly ok: false; readonly code: "malformed" | "too-large" };
 
 const idPattern = new RegExp(`^[A-Za-z0-9_-]{1,${gatewayMaxIdLength}}$`);
-const utf8 = new TextDecoder("utf-8", { fatal: true });
+const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /** The fields each message carries besides `type`, and how each is checked. */
 const fieldChecks: Record<
