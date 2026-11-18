@@ -121,6 +121,8 @@ export const undoWords = {
 export const discardWords = {
   /** The file's button; the developer view says `discard` for the same action. */
   undoTheseChanges: "Undo these changes",
+  /** The phone's bottom bar while Undo these changes runs. */
+  undoingTheseChanges: "Undoing…",
   discard: "Discard",
   discardThisPart: "Discard this part",
   /** The disclosure that opens the line diff of a file. */

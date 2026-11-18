@@ -65,13 +65,15 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
   const pageClass = `flex w-full flex-col gap-4 ${phone ? "p-4" : "px-6 py-5"}`;
   if (nav.open !== undefined) {
     return (
-      <div className={pageClass}>
+      // On a phone the page draws its own inset, so its bottom bar can run edge to edge.
+      <div className={phone ? "flex min-h-full w-full flex-col" : pageClass}>
         <WhatChangedPage
           list={list}
           item={nav.open}
           developer={developer}
           openItem={openItem}
           onBack={nav.back}
+          phone={phone}
         />
       </div>
     );

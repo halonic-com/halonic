@@ -14,6 +14,8 @@ export interface ItemChangesProps {
   readonly item: ChangeItem;
   /** Whether the developer view is on: it adds Discard and "Discard this part". */
   readonly developer: boolean;
+  /** On a phone (2.13) the changes are in words only: no Advanced and no line diff. */
+  readonly phone?: boolean;
 }
 
 /**
@@ -22,7 +24,7 @@ export interface ItemChangesProps {
  * change. The page's `h1` is the item's name, so a file's path, when shown, is the `h2`, and the
  * groups and parts under it go one level down.
  */
-export function ItemChanges({ list, item, developer }: ItemChangesProps) {
+export function ItemChanges({ list, item, developer, phone = false }: ItemChangesProps) {
   return (
     <div className="flex flex-col gap-4">
       {item.files.map((file) => (
@@ -32,6 +34,7 @@ export function ItemChanges({ list, item, developer }: ItemChangesProps) {
           file={file}
           developer={developer}
           showPath={developer || item.files.length > 1}
+          showLineDiff={!phone}
         />
       ))}
     </div>
@@ -43,12 +46,15 @@ function FileChanges({
   file,
   developer,
   showPath,
+  showLineDiff,
 }: {
   readonly list: ChangesList;
   readonly file: ChangedFile;
   readonly developer: boolean;
   /** A path is for the developer view and for telling an item's files apart, never for a row. */
   readonly showPath: boolean;
+  /** Whether Advanced and its line diff are offered; a phone has no file diff. */
+  readonly showLineDiff: boolean;
 }) {
   const hunks = useMemo(() => list.hunks(file), [list, file]);
   // Advanced starts open when Halonic can't say in words what changed: the lines are all there is.
@@ -88,7 +94,7 @@ function FileChanges({
       ) : (
         <CantDescribe file={file} />
       )}
-      {hunks.length === 0 ? null : (
+      {hunks.length === 0 || !showLineDiff ? null : (
         <div className="flex flex-col gap-2">
           <span className="self-start">
             <Button

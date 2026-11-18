@@ -97,6 +97,14 @@ verifies("source-control.changes-phone", () => {
       expect(buttons).not.toContain("Add where to share");
     });
 
+    it("ends an item row with its More button in the row's padding, with nothing after it", async () => {
+      const root = await openPhonePage(changedModels());
+      const more = root.querySelector<HTMLButtonElement>('button[aria-label^="More actions for"]');
+      const cell = more?.closest("td");
+      expect(cell?.className).toContain("pr-1");
+      expect(cell?.nextElementSibling).toBeNull();
+    });
+
     it("draws Get updates as a touch button at the end of the header", async () => {
       const fake = changedModels();
       fake.setRemote(true);
@@ -134,6 +142,20 @@ verifies("source-control.changes-phone", () => {
       expect(root.textContent).toContain("Version 21");
       expect(root.textContent).not.toContain("Version 20");
       expect(root.textContent).not.toContain("Show more");
+    });
+
+    it("moves focus to the first newly shown version after See all history", async () => {
+      const fake = changedModels();
+      fake.setHistory(manyVersions(25));
+      const root = await openPhonePage(fake);
+      const seeAll = [...root.querySelectorAll("button")].find(
+        (element) => element.textContent?.trim() === "See all history",
+      );
+      seeAll?.focus();
+      act(() => seeAll?.click());
+      const focusedRow = document.activeElement?.closest("[data-row-id]");
+      expect(focusedRow?.getAttribute("data-row-id")).toBe("v20");
+      expect(document.activeElement?.textContent).toContain("Version 20");
     });
 
     it("shows all of a short History with no See all history", async () => {
