@@ -90,8 +90,7 @@ pub struct WatchStart {
 }
 
 /// A watch's message on its channel: `{ type: "changed", paths }`, or once
-/// `{ type: "failed", kind, message }` when it stops. `kind` is the error's
-/// kind, so the page can tell `too_many_files` from the rest.
+/// `{ type: "failed", kind, message }` when it stops (`kind` names the error).
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum WatchEvent {
