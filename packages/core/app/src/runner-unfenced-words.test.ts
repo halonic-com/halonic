@@ -34,7 +34,13 @@ verifies("app.runner-unfenced-words", () => {
 
   it("names the person's choice for no-sandbox, never as a missing sandbox", () => {
     const words = runnerUnfencedWords("no-sandbox", "integration");
-    expect(words.reason).toBe("You chose to use Halonic without a sandbox on this computer.");
+    expect(words).toEqual({
+      key: "runner-unfenced.no-sandbox",
+      reason: "You chose to continue without a sandbox on this computer.",
+      fix: "Set up a sandbox in Settings › Agent sandbox.",
+      docsKey: "security/sandbox/",
+      docsLabel: "What the sandbox does",
+    });
     expect(words.reason).not.toBe(sandboxStartWords("other").reason);
   });
 
