@@ -3,11 +3,11 @@ import { KindedError } from "@halonicjs/std";
 import { engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WaitItem } from "../inbox-items.ts";
 import { inboxItems } from "../inbox-items.ts";
 import { waitingRun } from "../test-runs.test-helper.ts";
-import { render, unmountAll } from "../test-support/render.tsx";
+import { renderWithUpdate, unmountAll } from "../test-support/render.tsx";
 import { answerLabel, WaitCard, type WaitCardProps } from "./wait-card.tsx";
 
 afterEach(unmountAll);
@@ -47,11 +47,13 @@ function openCard(overrides: Partial<WaitCardProps> = {}) {
     now: () => clock.now,
     ...overrides,
   };
-  const root = render(<WaitCard {...props} />);
+  const { container: root, update } = renderWithUpdate(<WaitCard {...props} />);
   const later = (seconds: number) => {
     clock.now = new Date(clock.now.getTime() + seconds * 1000);
   };
-  return { root, sent, later };
+  const rerender = (changes: Partial<WaitCardProps>) =>
+    update(<WaitCard {...props} {...changes} />);
+  return { root, sent, later, rerender };
 }
 
 function button(root: HTMLElement, name: string): HTMLButtonElement {
@@ -408,6 +410,89 @@ verifies("inbox.wait-card", () => {
       const { root } = openCard({ onOpenRun });
       await press(button(root, "Open run"));
       expect(onOpenRun).toHaveBeenCalledWith("r43");
+    });
+  });
+
+  describe("an answer's tooltip", () => {
+    beforeEach(() => {
+      HTMLElement.prototype.showPopover = vi.fn();
+      HTMLElement.prototype.hidePopover = vi.fn();
+    });
+    afterEach(() => {
+      Reflect.deleteProperty(HTMLElement.prototype, "showPopover");
+      Reflect.deleteProperty(HTMLElement.prototype, "hidePopover");
+    });
+
+    /** Gives the button's label a width, then focuses the button as the keyboard would. */
+    function focusWithLabel(target: HTMLButtonElement, widths: { full: number; shown: number }) {
+      const label = target.querySelector(".truncate") as HTMLElement;
+      Object.defineProperty(label, "scrollWidth", { configurable: true, value: widths.full });
+      Object.defineProperty(label, "clientWidth", { configurable: true, value: widths.shown });
+      vi.spyOn(target, "matches").mockImplementation((selector) => selector === ":focus-visible");
+      act(() => target.focus());
+    }
+
+    it("doesn't repeat a label the button shows in full", () => {
+      const { root } = openCard();
+      focusWithLabel(button(root, "Approve"), { full: 60, shown: 60 });
+      expect(HTMLElement.prototype.showPopover).not.toHaveBeenCalled();
+    });
+
+    it("shows the whole label when the button cuts it off", () => {
+      const { root } = openCard();
+      focusWithLabel(button(root, "Approve"), { full: 200, shown: 120 });
+      expect(HTMLElement.prototype.showPopover).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("once the run no longer waits", () => {
+    it("turns stale: no answers, no waiting time, and says so with Open run", () => {
+      const onOpenRun = vi.fn();
+      const { root } = openCard({
+        onOpenRun,
+        waiting: false,
+        item: reviewItem({ nextTimer: new Date(2026, 10, 10, 14, 0).toISOString() }),
+      });
+      const callout = root.querySelector("[role='group']") as HTMLElement;
+      expect(callout.textContent).toContain(
+        "This is no longer waiting for you. It was answered somewhere else or the run moved on.",
+      );
+      const labels = [...root.querySelectorAll("button")].map((b) => b.textContent);
+      expect(labels).toEqual(["Open run", "Open run"]);
+      expect(root.textContent).not.toMatch(/Waiting since|Moves on|Studio can't answer/);
+      act(() => button(callout, "Open run").click());
+      expect(onOpenRun).toHaveBeenCalledWith("r43");
+    });
+
+    it("turns stale while open, after a refusal too, and takes the focus its buttons had", async () => {
+      const { root, later, rerender } = openCard({
+        decisions: {
+          answer: async () => {
+            throw new KindedError("unavailable", "Studio can't answer runs yet.", {
+              fix: "halonic runs send 7k2m9p approve",
+            });
+          },
+        },
+      });
+      later(2);
+      await press(button(root, "Approve"));
+      act(() => button(root, "Approve").focus());
+      rerender({ waiting: false });
+      const callout = root.querySelector("[role='group']");
+      expect(callout?.textContent).toContain("This is no longer waiting for you.");
+      expect(document.activeElement).toBe(callout);
+      expect(root.textContent).not.toMatch(
+        /Approve(?! this)|Reject|Studio can't answer|Waiting since/,
+      );
+    });
+
+    it("keeps what you decided when your own answer takes the run out of the list", async () => {
+      const { root, later, rerender } = openCard();
+      later(61);
+      await press(button(root, "Approve"));
+      rerender({ waiting: false });
+      expect(root.textContent).toContain("Approved by you at 10:44. The run continues.");
+      expect(root.textContent).not.toContain("no longer waiting");
     });
   });
 
