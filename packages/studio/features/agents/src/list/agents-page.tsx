@@ -108,6 +108,9 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
   // overwrites a newer one, and nothing is set after unmount.
   const newestRead = useRef(0);
 
+  // Kept stable so the New agent dialog doesn't read the default model again on every list refresh.
+  const defaultModelOf = useCallback((hubId: string) => host.defaultModel(hubId), [host]);
+
   const read = useCallback(
     (showProgress = false) => {
       const mine = ++newestRead.current;
@@ -315,7 +318,7 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
           takenIds={(hubId) =>
             listings.filter((listing) => listing.hubId === hubId).map((listing) => listing.id)
           }
-          defaultModelOf={(hubId) => host.defaultModel(hubId)}
+          defaultModelOf={defaultModelOf}
           create={async (newAgent) => {
             const ref = await host.create(newAgent);
             // With nothing written, the page opens ready for the instructions (`agents.page.new-agent`).
