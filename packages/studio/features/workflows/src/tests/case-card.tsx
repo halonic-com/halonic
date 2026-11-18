@@ -37,7 +37,7 @@ export function CaseCard({ test, onClose, onOpenRun }: CaseCardProps) {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-caption text-fg-muted">{words.kind}</p>
-          <h2 ref={heading} tabIndex={-1} className="text-title">
+          <h2 ref={heading} tabIndex={-1} className="focus-ring text-title">
             {test.name}
           </h2>
         </div>

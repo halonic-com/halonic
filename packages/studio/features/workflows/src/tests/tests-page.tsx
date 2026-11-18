@@ -1,5 +1,5 @@
 import { Button, EmptyState, SkeletonBar, useToastStore } from "@halonicjs/studio-kit";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { WorkflowRef, WorkflowsHost, WorkflowTests } from "../api.ts";
 import { failureReason } from "../list/list-words.ts";
 import { useHostRead } from "../page/use-workflow.ts";
@@ -40,6 +40,7 @@ export function TestsPage({
   const [done, setDone] = useState<ReadonlyMap<number, boolean> | undefined>();
   const [picked, setPicked] = useState<number | undefined>();
   const rowButtons = useRef(new Map<number, HTMLButtonElement>());
+  const ids = useId();
   // A newer read from the host replaces what a run handed back.
   useEffect(() => setRan(undefined), [load]);
   // The case made from a run starts picked, once, as soon as the cases have it.
@@ -145,6 +146,9 @@ export function TestsPage({
         <ul aria-label={words.list} className="flex flex-col divide-y divide-border">
           {rows.map((row, at) => {
             const runId = tests.cases[at]?.result?.runId;
+            // The row's button carries its state and a failed test's sentence, for whoever tabs to it.
+            const stateId = `${ids}-${at}-state`;
+            const failureId = `${ids}-${at}-failure`;
             return (
               <li
                 key={at}
@@ -156,7 +160,9 @@ export function TestsPage({
                 >
                   {row.glyph}
                 </span>
-                <span className="sr-only">{stateWords[row.state]}:</span>
+                <span id={stateId} className="sr-only">
+                  {stateWords[row.state]}:
+                </span>
                 <button
                   type="button"
                   ref={(node) => {
@@ -164,12 +170,17 @@ export function TestsPage({
                     else rowButtons.current.delete(at);
                   }}
                   aria-pressed={picked === at}
+                  aria-describedby={row.failure ? `${stateId} ${failureId}` : stateId}
                   className="focus-ring text-start"
                   onClick={() => setPicked(picked === at ? undefined : at)}
                 >
                   {row.name}
                 </button>
-                {row.failure && <span className="text-small text-danger">{row.failure}</span>}
+                {row.failure && (
+                  <span id={failureId} className="text-small text-danger">
+                    {row.failure}
+                  </span>
+                )}
                 {row.failure && runId !== undefined && openRun && (
                   <Button variant="ghost" size="sm" onClick={() => openRun(runId)}>
                     {words.openRun}
