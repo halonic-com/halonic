@@ -14,7 +14,6 @@ The app shall run each local tool of a trusted plugin through a connector that o
 - Given a plugin whose trust the person took back,
   when its local tool is called,
   then the call fails with the reason `not-trusted`, and no session opens.
-
 - Given a host with no sandbox, such as Android or the browser,
   when a local tool is called,
   then the call fails with `LocalToolUnavailableError` in the state `needs-desktop-app`, and nothing crashes.
