@@ -2,6 +2,7 @@
 
 - Approval: [HAL-8202](/HAL/issues/HAL-8202), from the guardian review on HAL-8178; Liam signs this note, as Julian wrote the change
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:OrYxNbeNpL+gi09K+u9nh+R5WDWbQYe0oM/6grdldHrfpqMKW6Dejx2jgIzrRYozZV/owP7N6rsgOuZxmE/RBQ==
 - Task: HAL-8202
 
 ## What changes
