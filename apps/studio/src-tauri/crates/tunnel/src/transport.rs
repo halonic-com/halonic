@@ -196,15 +196,15 @@ impl Worker {
                     }
                     Some(Command::Resume) => {}
                     Some(Command::Drop) => {
-                        let _ = socket.close(None).await;
+                        let _ = socket.close().await;
                         break;
                     }
                     Some(Command::Pause) => {
-                        let _ = socket.close(None).await;
+                        let _ = socket.close().await;
                         return Next::Pause;
                     }
                     Some(Command::Close) | None => {
-                        let _ = socket.close(None).await;
+                        let _ = socket.close().await;
                         return Next::Close;
                     }
                 },
