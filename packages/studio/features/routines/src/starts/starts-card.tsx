@@ -1,6 +1,7 @@
-import { Callout, Card, Field, Select, TextArea } from "@halonicjs/studio-kit";
+import { Callout, Card, Disclosure, Field, Select, TextArea } from "@halonicjs/studio-kit";
 import { useEffect, useState } from "react";
 import type {
+  RoutineStartField,
   RoutinesHost,
   RoutineTarget,
   RoutineTargetChoice,
@@ -19,7 +20,8 @@ export interface StartsCardProps {
 
 /**
  * The Starts card (`routines.starts.starts-card`): a picker of the workflows and agents the
- * routine's hub lets it start, the workflow's Input as JSON or the agent's Prompt, the
+ * routine's hub lets it start, the workflow's own start field with its Input as JSON under
+ * Advanced (or only the JSON for a workflow without one) or the agent's Prompt, the
  * placeholders the text may use, and one line when the target can't be started. Each change is
  * written as soon as it can be; a change that can't be saved is shown in the card.
  */
@@ -91,7 +93,12 @@ export function StartsCard({ host, routine }: StartsCardProps) {
           </>
         )}
         {target.kind === "workflow" ? (
-          <InputField input={target.input} onChange={(input) => void save({ ...target, input })} />
+          <WorkflowInput
+            name={name}
+            start={current?.start}
+            input={target.input}
+            onChange={(input) => void save({ ...target, input })}
+          />
         ) : (
           <PromptField
             key={targetKey(target)}
@@ -126,6 +133,72 @@ function TargetState({ routine, name }: { readonly routine: RoutineView; readonl
     case "ready":
       return null;
   }
+}
+
+/**
+ * A workflow's input. A workflow with a `start:` block gets the one field it asks for, under its
+ * own label, with the whole input as JSON under Advanced. Without one, or while the input holds
+ * something that field can't show, the input is only JSON.
+ */
+function WorkflowInput({
+  name,
+  start,
+  input,
+  onChange,
+}: {
+  readonly name: string;
+  readonly start: RoutineStartField | undefined;
+  readonly input: string;
+  readonly onChange: (input: string) => void;
+}) {
+  const value = start === undefined ? undefined : startValue(input, start.field);
+  if (start === undefined || value === undefined) {
+    return <InputField input={input} onChange={onChange} />;
+  }
+  return (
+    <>
+      <StartField
+        name={name}
+        start={start}
+        value={value}
+        onChange={(text) => onChange(withStartValue(input, start.field, text))}
+      />
+      <Disclosure summary={words.advanced} defaultOpen={!onlyStartField(input, start.field)}>
+        <div className="px-4 pb-3">
+          <InputField input={input} onChange={onChange} />
+        </div>
+      </Disclosure>
+    </>
+  );
+}
+
+/** The workflow's own start field, such as "Answer a customer's email": written as it is typed. */
+function StartField({
+  name,
+  start,
+  value,
+  onChange,
+}: {
+  readonly name: string;
+  readonly start: RoutineStartField;
+  readonly value: string;
+  readonly onChange: (text: string) => void;
+}) {
+  const [draft, setDraft] = useState<string | undefined>();
+  const text = draft ?? value;
+  return (
+    <Field label={start.label} hint={text.trim() === "" ? words.startEmpty(name) : undefined}>
+      <TextArea
+        value={text}
+        minRows={3}
+        onChange={(event) => {
+          setDraft(event.target.value);
+          onChange(event.target.value);
+        }}
+        onBlur={() => setDraft(undefined)}
+      />
+    </Field>
+  );
 }
 
 /** The workflow's input: written once it is a JSON object; text that isn't says so when the field is left. */
@@ -197,12 +270,36 @@ function PromptField({
 
 /** Whether the text is a JSON object, the only shape a workflow accepts as its input. */
 function isJsonObject(text: string): boolean {
+  return jsonObject(text) !== undefined;
+}
+
+/** The text as a JSON object; `undefined` for text that is anything else. */
+function jsonObject(text: string): Record<string, unknown> | undefined {
   try {
     const value: unknown = JSON.parse(text);
-    return typeof value === "object" && value !== null && !Array.isArray(value);
+    return typeof value === "object" && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : undefined;
   } catch {
-    return false;
+    return undefined;
   }
+}
+
+/** What the start field holds: `""` while the input lacks it, `undefined` when it isn't text. */
+function startValue(input: string, field: string): string | undefined {
+  const object = jsonObject(input) ?? {};
+  const value = Object.hasOwn(object, field) ? object[field] : "";
+  return typeof value === "string" ? value : undefined;
+}
+
+/** The input with the start field set to `text`, keeping everything else it holds. */
+function withStartValue(input: string, field: string, text: string): string {
+  return JSON.stringify({ ...jsonObject(input), [field]: text });
+}
+
+/** Whether the start field is all the input holds, so Advanced has nothing more to show. */
+function onlyStartField(input: string, field: string): boolean {
+  return Object.keys(jsonObject(input) ?? {}).every((key) => key === field);
 }
 
 function targetKey(choice: Pick<RoutineTargetChoice, "kind" | "hubId" | "id">): string {

@@ -307,6 +307,22 @@ verifies("studio.workspace-routines", () => {
     expect(await host.starterTarget("beta")).toBeUndefined();
   });
 
+  it("offers a workflow with the field its start block asks for, and an agent without one", async () => {
+    const { host } = setup({}, [], {
+      "hubs/acme/workflows/reply.workflow.yaml": `${replyFile}start:\n  label: Answer a customer's email\n  field: mail\n`,
+    });
+    expect(await host.targets(weekly)).toEqual([
+      {
+        kind: "workflow",
+        hubId: "acme",
+        id: "reply",
+        name: "Reply",
+        start: { label: "Answer a customer's email", field: "mail" },
+      },
+      { kind: "agent", hubId: "acme", id: "analyst", name: "Analyst" },
+    ]);
+  });
+
   it("refuses a hub with nothing to run, or a hub the workspace doesn't have, and writes nothing", async () => {
     const { host, changes } = setup();
     await expect(host.create({ name: "Check", hubId: "beta" })).rejects.toThrow(NothingToRun);

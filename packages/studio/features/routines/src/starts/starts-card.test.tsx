@@ -23,6 +23,26 @@ const choices: readonly RoutineTargetChoice[] = [
   { kind: "agent", hubId: "acme", id: "helper", name: "Helper" },
 ];
 
+const supportReply: Extract<RoutineTarget, { kind: "workflow" }> = {
+  kind: "workflow",
+  hubId: "acme",
+  id: "support-reply",
+  input: "{}",
+};
+const supportChoices: readonly RoutineTargetChoice[] = [
+  {
+    kind: "workflow",
+    hubId: "acme",
+    id: "support-reply",
+    name: "Support reply",
+    start: { label: "Answer a customer's email", field: "mail" },
+  },
+];
+
+function supportReplyWith(input: string): RoutineView {
+  return { ...routineStarting({ ...supportReply, input }), targetName: "Support reply" };
+}
+
 function routineStarting(
   target: RoutineTarget,
   targetState: RoutineTargetState = "ready",
@@ -48,10 +68,10 @@ function routineStarting(
   };
 }
 
-async function card(routine: RoutineView) {
+async function card(routine: RoutineView, targets = choices) {
   const saved: RoutineChanges[] = [];
   const host = {
-    targets: async () => choices,
+    targets: async () => targets,
     save: async (_ref: unknown, changes: RoutineChanges) => {
       saved.push(changes);
     },
@@ -131,6 +151,45 @@ verifies("routines.starts.starts-card", () => {
     await leave(field);
     expect(saved).toHaveLength(count);
     expect(page.textContent).toContain("The input has to be a JSON object, such as {}.");
+  });
+
+  it("shows the field a workflow's start block asks for, with the JSON under Advanced", async () => {
+    const { page, saved } = await card(supportReplyWith("{}"), supportChoices);
+    expect(page.textContent).toContain("Answer a customer's email");
+    expect(page.textContent).toContain(
+      "Support reply needs this. Left empty, it starts with nothing to work on.",
+    );
+    expect((page.querySelector("details") as HTMLDetailsElement).open).toBe(false);
+    await typeInto(page.querySelector("textarea") as HTMLTextAreaElement, "{{trigger.message}}");
+    expect(saved.at(-1)?.target).toEqual({
+      ...supportReply,
+      input: '{"mail":"{{trigger.message}}"}',
+    });
+  });
+
+  it("keeps what else the input holds, and opens Advanced to show it", async () => {
+    const { page, saved } = await card(
+      supportReplyWith('{"mail":"Hi","tone":"short"}'),
+      supportChoices,
+    );
+    const field = page.querySelector("textarea") as HTMLTextAreaElement;
+    expect(field.value).toBe("Hi");
+    expect(page.textContent).not.toContain("needs this");
+    expect((page.querySelector("details") as HTMLDetailsElement).open).toBe(true);
+    await typeInto(field, "Hello");
+    expect(saved.at(-1)?.target).toEqual({
+      ...supportReply,
+      input: '{"mail":"Hello","tone":"short"}',
+    });
+  });
+
+  it("shows only the JSON while the start field holds something other than text", async () => {
+    const { page } = await card(supportReplyWith('{"mail":{"from":"x"}}'), supportChoices);
+    expect(page.textContent).not.toContain("Answer a customer's email");
+    expect(page.querySelector("details")).toBeNull();
+    expect((page.querySelector("textarea") as HTMLTextAreaElement).value).toBe(
+      '{"mail":{"from":"x"}}',
+    );
   });
 
   it("writes a prompt as it is typed and never an empty one", async () => {

@@ -210,6 +210,17 @@ export interface RoutineTargetChoice {
   readonly hubId: string;
   readonly id: string;
   readonly name: string;
+  /**
+   * The workflow's `start:` block: the one input field it asks for and what it calls it, such as
+   * `mail` with "Answer a customer's email". Absent for an agent and a workflow without one.
+   */
+  readonly start?: RoutineStartField | undefined;
+}
+
+/** The one input field a workflow asks for when it is started, as its `start:` block names it. */
+export interface RoutineStartField {
+  readonly label: string;
+  readonly field: string;
 }
 
 /** The workflow or agent a Triggers section is on, which is what its routines start. */
