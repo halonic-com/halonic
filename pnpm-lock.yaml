@@ -567,6 +567,12 @@ importers:
       '@halonicjs/adapter-fs-tauri':
         specifier: workspace:*
         version: link:../../packages/adapters/fs-tauri
+      '@halonicjs/adapter-harness-claude-code':
+        specifier: workspace:*
+        version: link:../../packages/adapters/harness-claude-code
+      '@halonicjs/adapter-harness-codex':
+        specifier: workspace:*
+        version: link:../../packages/adapters/harness-codex
       '@halonicjs/adapter-memory':
         specifier: workspace:*
         version: link:../../packages/adapters/memory
@@ -588,6 +594,9 @@ importers:
       '@halonicjs/google-setup':
         specifier: workspace:*
         version: link:../../packages/core/google-setup
+      '@halonicjs/host-harness-host':
+        specifier: workspace:*
+        version: link:../../packages/host/harness-host
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../packages/core/ports
