@@ -49,7 +49,7 @@ verifies("settings.ai-agent-section", () => {
     expect(view.textContent).toContain("Answers");
     expect(control<HTMLSelectElement>(view, "select").value).toBe("not-set-up");
     expect(view.textContent).toContain(
-      "Not set up. Assistant chats use each workspace's model aliases.",
+      "Not set up. Assistant chats will use each workspace's model aliases.",
     );
     expect(turnLimitBox(view).value).toBe("");
     expect(view.textContent).toContain(
