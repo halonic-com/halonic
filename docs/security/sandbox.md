@@ -1,19 +1,24 @@
 # The sandbox's limits
 
-What the sandbox for agents is and what it is not. Read it with the
+What the sandbox is and what it is not. Read it with the
 [threat model](threat-model.md#46-agents-in-a-sandbox-b8), which has the full
 list of what it is meant to stop. Workspace trust is a separate check; see
 [workspace trust](trust.md).
 
-Only agents that run in Claude Code or Codex use the sandbox. An agent in
-Halonic's own harness starts no program, so it has none.
+Three kinds of program use the sandbox: an agent that runs in Claude Code or
+Codex, the program of a workspace `stdio` connector that a run starts
+(requirement `cli.connector-sandbox`, in the CLI and in the agent host), and a
+plugin's local tools. An agent in Halonic's own harness starts no program, so
+it has none.
 
-Today neither `halonic run` nor Studio runs an agent in Claude Code or Codex.
-`halonic run` checks the sandbox and then stops with exit 9, because it can't
-run those agents yet (requirement `cli.run-sandbox-gate`). Studio's shell does
-start the agent host, on the first call to it, but the page's engine refuses an
-agent in a harness as `unavailable`. This page describes the fence those runs
-will use.
+Which commands run an agent in Claude Code or Codex depends on the version.
+Halonic 0.1.0 runs none. On `main`, which isn't released yet, `halonic serve`
+runs them (requirement `cli.commands.serve.harness`), and so does Studio, in
+the agent host's sandbox (#3518). Studio refuses such an agent as
+`unavailable` only when no agent host runs. `halonic run` checks the sandbox
+and then stops with exit 9, because it can't run those agents yet (requirement
+`cli.run-sandbox-gate`), and `halonic routines watch` refuses a routine whose
+agent runs in a harness.
 
 ## What it is
 
@@ -28,21 +33,35 @@ reaches only the Halonic bridge and the sites you allowed for that agent.
 Before a session starts any program, it proves the fence: a canary file the
 fence must hide and a canary loopback port it must block
 ([the proof](../adr/2026-11-09-sandbox-fence-proof.md)). A session that isn't
-`fenced` starts nothing.
+`fenced` starts nothing. The one exception is a session that has no fence by
+design (`off`), which starts a program you chose to run without the sandbox
+([sandbox without a fence](../adr/2026-11-11-sandbox-without-fence.md)).
 
 ## No sandbox, no run
 
-If the sandbox can't start, the step doesn't run, and no option makes it
-(requirements `cli.sandbox-gate` and `cli.run-sandbox-gate`). The one exception
-is an agent you chose to run on this computer; see
-["This computer" has none of it](#this-computer-has-none-of-it). The CLI ends
-with exit 9 and names one reason code: `windows`, `container`, `not-supported`,
+If the sandbox can't start, an agent in Claude Code or Codex doesn't run, and
+no option makes it (requirements `cli.sandbox-gate` and `cli.run-sandbox-gate`).
+The one exception is an agent you chose to run on this computer; see
+["This computer" has none of it](#this-computer-has-none-of-it).
+
+A connector is different. Where the sandbox doesn't work, a run's `stdio`
+connector starts on this computer as before, without the fence, under the
+connector file's trust line (decision D45, requirement `cli.connector-sandbox`).
+A plugin's local tools and local
+integration code don't start without the fence unless you said yes to that on
+this computer, and the agent host never starts a plugin's backend without it.
+
+When the sandbox stops an agent, the CLI ends with exit 9 and names one reason
+code: `windows`, `container`, `not-supported`,
 `blocked-by-policy`, `virtualisation-off`, `wsl-missing`, `restart-needed`,
 `distro-missing`, `setup-conflict`, `setup-needed`, `user-namespaces-restricted`,
 `bubblewrap-missing`, `linux-tools-missing`, `ripgrep-missing`, `sign-in-needed`
 or `other`. When more than one applies, the first in that list wins, because its
 fix comes first: what Halonic can't fix, then what an administrator can, then
-what you can do in one step ([the reason codes](../adr/2026-11-09-sandbox-check-reason-codes.md)).
+what you can do in one step ([the first reason codes](../adr/2026-11-09-sandbox-check-reason-codes.md),
+and [the rest](../adr/2026-11-11-pluggable-sandbox-layer.md)). The CLI also has
+a code of its own, `windows-node-in-wsl`, for Windows' Node.js started from a
+WSL folder.
 
 ## The limits
 
@@ -90,7 +109,9 @@ only after srt's one-time install, run once as an administrator, and it has no
 `env`, `sh` or process group, so the launcher builds one `cmd.exe` command line
 and stops a program with `taskkill`. A program, argument or variable with a
 double quote, a percent sign, an exclamation mark, a line break or a NUL is refused. The CI job `sandbox-windows` proves the fence on a real Windows machine. Without the install the check reports `setup-needed`, and the CLI says to
-use Halonic inside WSL 2 on this computer.
+use Halonic inside WSL 2 on this computer. On `main`, `halonic sandbox setup`
+runs that install with one administrator prompt (its requirement is still a
+draft).
 
 ## "This computer" has none of it
 
@@ -103,13 +124,17 @@ without the sandbox. That agent runs with all your rights: it can read your keys
 and Halonic's own data, change any file you can and reach any address. The
 choice lives in your profile folder, never in the workspace. It is bound to the
 exact bytes of the agent's file, so a changed file goes back to the sandbox, and
-it doesn't carry to another computer. The CLI reads these choices and prints a
-`!` line before the run.
+it doesn't carry to another computer. The CLI reads these choices:
+`halonic serve` prints a `!` line for such an agent before its run.
+`halonic run` still stops it with exit 9, and `halonic routines watch`
+refuses its routine.
 
 ## Related decisions
 
 - [A session proves its fence](../adr/2026-11-09-sandbox-fence-proof.md)
 - [Sandbox check reason codes](../adr/2026-11-09-sandbox-check-reason-codes.md)
+- [The pluggable sandbox layer](../adr/2026-11-11-pluggable-sandbox-layer.md)
+- [Sandbox without a fence](../adr/2026-11-11-sandbox-without-fence.md)
 
 ## Keeping this page true
 
