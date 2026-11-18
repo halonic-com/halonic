@@ -3,7 +3,6 @@
 - Task: HAL-12253
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12253 (Priya asked for the permission, the request before a private address only and a clear denied state; Liam reviews the native command in the security review)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:AwEm32ZXr0AfCQACq39QFVPiMw47/dgbRQDBUHuMHp4Y8MATuaQYX2Tr2M+KKO0UR3FIGOET+je6CX5UCF3WDQ==
 
 ## What changes
 
