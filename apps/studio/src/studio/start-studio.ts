@@ -156,7 +156,12 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
     const shell = createShell({ ...desktop, host, platform });
     return startDesktopApp(page, { shell, ipc, platform });
   }
-  return startServedStudio(page, { host, platform, language: studioLanguage });
+  return startServedStudio(page, {
+    host,
+    platform,
+    language: studioLanguage,
+    display: displaySettingsOf(page),
+  });
 }
 
 /** What the desktop app's window is made of. */

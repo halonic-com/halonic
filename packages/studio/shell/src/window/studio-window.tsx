@@ -91,6 +91,12 @@ export interface StudioWindowProps {
    * space. The desktop app passes it; a served browser and a phone don't show the item.
    */
   readonly resources?: ResourceWatch | undefined;
+  /**
+   * This place has no host settings yet, so Settings and Ctrl K leave out the `host` sections
+   * (Assistant, Agent sandbox, About Halonic): a served browser until `halonic serve` gives the
+   * page the computer's settings (HAL-6159 design, section 5).
+   */
+  readonly withoutHostSettings?: boolean | undefined;
 }
 
 /** The memory and disk item: only the desktop app, and only when it passed the engine's report. */
@@ -124,15 +130,20 @@ function DesktopResourceItem({
  * <StudioWindow shell={shell} workspace={workspace} host="desktop-app" platform="windows" language="en" />
  */
 export function StudioWindow(props: StudioWindowProps) {
-  const { shell, workspace, host, platform } = props;
+  const { shell, workspace, host, platform, withoutHostSettings } = props;
   const { tabs } = workspace;
   const { announcer, contributions } = shell;
   const palette = usePaletteOpening(platform);
   const settings = useSettingsOpening(host, platform);
   const showSettingsDialog = settings.show;
+  // The sections this window has, so the list, the dialog and Ctrl K all leave out the same ones.
+  const sections = useMemo(() => {
+    const all = contributions.settings.list();
+    return withoutHostSettings === true ? all.filter(({ scope }) => scope !== "host") : all;
+  }, [contributions, withoutHostSettings]);
   const settingsSections = useMemo(
-    () => contributions.settings.list().map(({ id, title }) => ({ id, title })),
-    [contributions],
+    () => sections.map(({ id, title }) => ({ id, title })),
+    [sections],
   );
   const desktop = usePresentationFromWidth() === "desktop";
   const phone = usePhonePlaces();
@@ -158,7 +169,7 @@ export function StudioWindow(props: StudioWindowProps) {
           ? undefined
           : listedSections(
               settingsGroups({
-                sections: contributions.settings.list(),
+                sections,
                 workspaceName: workspace.name,
                 place: host === "desktop-app" ? "app" : "served",
                 phone: true,
@@ -168,7 +179,7 @@ export function StudioWindow(props: StudioWindowProps) {
         openPhone(sectionLocation(section));
       }
     },
-    [showSettingsDialog, openPhone, contributions, workspace.name, host],
+    [showSettingsDialog, openPhone, sections, workspace.name, host],
   );
   const focusNewPage = usePageHeadingFocus();
   // Read when a view opens a place, so the context stays the same as the window narrows or widens.
@@ -373,6 +384,7 @@ export function StudioWindow(props: StudioWindowProps) {
             desktopBadges={props.badges}
             onSettings={() => openSettings()}
             settingsPlace={host === "desktop-app" ? "app" : "served"}
+            settingsSections={sections}
             regionFormat={props.regionFormat}
             settingsScroll={settingsScroll}
             workspaceName={workspace.name}
@@ -402,7 +414,7 @@ export function StudioWindow(props: StudioWindowProps) {
       {settings.opening === undefined ? null : (
         <SettingsDialog
           key={settings.opening}
-          sections={contributions.settings.list()}
+          sections={sections}
           workspaceName={workspace.name}
           place={host === "desktop-app" ? "app" : "served"}
           regionFormat={props.regionFormat}

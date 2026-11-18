@@ -1,8 +1,17 @@
 import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
-import { ServiceRegistry } from "@halonicjs/app";
+import { HostSettings, ServiceRegistry } from "@halonicjs/app";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
-import { HalonicVersionService } from "@halonicjs/studio-feature-settings/api";
+import {
+  type DisplaySettings,
+  settingsFeature,
+  watchAppearance,
+} from "@halonicjs/studio-feature-settings";
+import {
+  DisplaySettingsService,
+  HalonicVersionService,
+  HostSettingsService,
+} from "@halonicjs/studio-feature-settings/api";
 import {
   type MountedServedWindow,
   mountServedWindow,
@@ -25,25 +34,31 @@ interface ServedStudioOptions {
   readonly host: StudioHost;
   readonly platform: KeyboardPlatform;
   readonly language: string;
+  /** The page's Appearance and Formats, kept in its storage, as the desktop app keeps them. */
+  readonly display: DisplaySettings;
 }
 
 /**
  * The served Studio (`studio.served-workspace`): asks the computer which workspace it serves, then
  * draws its window named after it. Until the answer comes the page keeps its "Starting Halonic…"
  * text; with no answer the window opens anyway, with no workspace name and no workspace row on More.
+ * Its Settings has only the sections this browser keeps, Appearance and Formats
+ * (`studio.served-settings`), until the page has the computer's host settings.
  */
 export function startServedStudio(
   page: StudioPage,
-  { host, platform, language }: ServedStudioOptions,
+  { host, platform, language, display }: ServedStudioOptions,
 ): StartedStudio {
   const pageFetch: PageFetch = page.fetch ?? ((path, init) => fetch(path, init));
   const shell = createShell({
-    features: [inboxFeature],
-    hostServices: [InboxRunsService],
+    features: [inboxFeature, settingsFeature],
+    hostServices: [InboxRunsService, DisplaySettingsService, HostSettingsService],
     host,
     platform,
   });
+  const stopAppearance = watchAppearance(display, page.element.ownerDocument.documentElement);
   const services = servedServices(pageFetch, windowFocus(page.window));
+  services.provide(DisplaySettingsService, display);
   shell.services.instantiate(services);
   const load = () => loadServedWorkspace(pageFetch);
   let window: MountedServedWindow | undefined;
@@ -64,6 +79,7 @@ export function startServedStudio(
       language,
       served,
       load,
+      withoutHostSettings: true,
     });
   };
   load().then(draw, () => draw(undefined));
@@ -71,6 +87,7 @@ export function startServedStudio(
     host,
     stop: async () => {
       stopped = true;
+      stopAppearance();
       window?.unmount();
       workspace?.dispose();
       await services.dispose();
@@ -81,7 +98,8 @@ export function startServedStudio(
 /**
  * The served Studio's services. Without the shell it can't reach the profile, so its host
  * settings are kept in memory, as in the browser demo, until `halonic serve` gives it the
- * server's (HAL-6159 design, section 5). They last until the page is closed. It shows the version
+ * server's (HAL-6159 design, section 5). They last until the page is closed, and nothing reads
+ * them yet: the window leaves out the host sections of Settings until then. It shows the version
  * of Halonic that serves it, for now `halonicVersion`. The Inbox reads and answers the served
  * workspace's runs through `fetch`, the page's own (`studio.served-inbox-runs`).
  */
@@ -90,7 +108,9 @@ export function servedServices(
   onFocus?: (listener: () => void) => () => void,
 ): ServiceRegistry {
   const services = new ServiceRegistry();
-  services.provide(hostSettingsStoreKey, new MemoryHostSettingsStore());
+  const hostSettings = new MemoryHostSettingsStore();
+  services.provide(hostSettingsStoreKey, hostSettings);
+  services.provide(HostSettingsService, new HostSettings(hostSettings));
   services.provide(HalonicVersionService, halonicVersion);
   services.provide(
     InboxRunsService,

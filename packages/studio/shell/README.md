@@ -1005,6 +1005,11 @@ section's row. The window draws `SettingsDialog` with `contributions.settings.li
 as the app's or the served Studio's, and remembers the section shown last for the next opening
 (`useSettingsOpening`). Closing it gives the focus back to the opener.
 
+A place that has no host settings yet passes `withoutHostSettings` to `StudioWindow`
+(`shell.settings-without-host`): the dialog, the phone's list, `openSettings(id)` and
+`settingsSections` then leave out every `host` section, so Ctrl K offers none of them either. The
+served Studio does this until `halonic serve` gives the page the computer's settings.
+
 On a phone the same window shows the phone's layout (`shell.studio-phone`): `StudioPhoneTopBar`
 (the page's title, Back under a place's top, and **Search** at a place's top, opening the Search
 sheet), `StudioPhonePage` (Home or a place's view, as on the desktop, or the `MorePage` at the top
