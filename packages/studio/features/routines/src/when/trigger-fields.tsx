@@ -1,4 +1,4 @@
-import { Field, FilterChips, Input, Select } from "@halonicjs/studio-kit";
+import { Button, Field, FilterChips, Input, Select } from "@halonicjs/studio-kit";
 import { useState } from "react";
 import type { RoutineMailbox, RoutineTrigger } from "../api.ts";
 import { ScheduleAdvanced, SignalFields } from "./advanced-fields.tsx";
@@ -27,6 +27,8 @@ export interface TriggerFieldsProps {
   readonly enabled: boolean;
   /** The Google connectors a mail trigger can watch; `undefined` while they are read, empty when there are none. */
   readonly mailboxes: readonly RoutineMailbox[] | undefined;
+  /** Opens New connector, for the link under the Trigger picker; without it the window can't open one and there is no link. */
+  readonly addConnector?: () => void;
   /** Called with the whole new trigger as soon as a field changes to a value that can be written. */
   readonly onChange: (trigger: RoutineTrigger) => void;
 }
@@ -35,9 +37,15 @@ export interface TriggerFieldsProps {
  * The When card's trigger fields (`routines.when.trigger-fields`): the Trigger picker and, under
  * it, the fields of the kind picked. A trigger the picker can't switch to (a web request) is shown
  * as the kind it is and has no fields yet. Picking New mail with no Google connector writes
- * nothing and says to add one.
+ * nothing, says to add one and, where the window can, links to New connector.
  */
-export function TriggerFields({ trigger, enabled, mailboxes, onChange }: TriggerFieldsProps) {
+export function TriggerFields({
+  trigger,
+  enabled,
+  mailboxes,
+  addConnector,
+  onChange,
+}: TriggerFieldsProps) {
   const [triedMail, setTriedMail] = useState(false);
   // The error belongs to the list it was shown for: connectors that arrive take it away.
   const triggerError = triedMail ? mailboxProblem(mailboxes) : null;
@@ -66,6 +74,13 @@ export function TriggerFields({ trigger, enabled, mailboxes, onChange }: Trigger
           onChange={pick}
         />
       </Field>
+      {triggerError === words.addGoogleConnector && addConnector !== undefined && (
+        <div>
+          <Button variant="secondary" size="sm" onClick={addConnector}>
+            {words.addGoogleConnectorLink}
+          </Button>
+        </div>
+      )}
       {trigger.kind === "schedule" && (
         <ScheduleFields trigger={trigger} enabled={enabled} onChange={onChange} />
       )}
