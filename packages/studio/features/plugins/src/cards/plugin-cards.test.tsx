@@ -163,6 +163,31 @@ verifies("plugins.plugin-cards", () => {
     expect(view.textContent).toContain("Sunny");
   });
 
+  it("says plugin tools aren't in this build on its own, with neither Try again nor Refresh", async () => {
+    const { caller, answer } = callerWithAnswers();
+    const { view } = showCard(caller);
+    await answer(
+      Object.assign(new Error("Plugin tools aren't available in this build."), {
+        kind: "not_in_this_build",
+      }),
+    );
+    const live = view.querySelector('[aria-live="polite"]');
+    expect(live?.textContent).toBe(
+      "Plugin tools aren't in this build of Halonic yet, so Today's weather can't show anything.",
+    );
+    expect(() => button(view, "Try again")).toThrow();
+    expect(() => button(view, "Refresh Today's weather")).toThrow();
+  });
+
+  it("keeps the host's line when this computer can't fence plugin tools, without Try again", async () => {
+    const { caller, answer } = callerWithAnswers();
+    const { view } = showCard(caller);
+    const line = "Plugin tools can't run on this computer yet: the sandbox isn't available here.";
+    await answer(Object.assign(new Error(line), { kind: "not_fenced" }));
+    expect(view.querySelector('[aria-live="polite"]')?.textContent).toBe(line);
+    expect(() => button(view, "Try again")).toThrow();
+  });
+
   it("keeps a card whose plugin isn't trusted empty, with Review, and calls nothing", () => {
     const { caller, calls } = callerWithAnswers();
     const { view, review } = showCard(caller, "not-trusted");
