@@ -57,6 +57,40 @@ verifies("source-control.whats-changed-page", () => {
       expect(root.querySelectorAll("h1")).toHaveLength(1);
     });
 
+    it("shows a new skill's fields under New skill, and its file only under Advanced", async () => {
+      const path = "library/skills/refunds/SKILL.md";
+      const text = lines(
+        "---",
+        "name: Refund handling",
+        "description: Use it for refund questions.",
+        "---",
+        "Check the order first.",
+      );
+      const fake = fakeSource({
+        kind: "ready",
+        changes: [{ path, status: "untracked", staged: false }],
+      });
+      fake.setTexts(path, { before: null, after: text });
+      const root = render(<ChangesView list={new ChangesList(fake.source)} />);
+      await act(settle);
+      const page = openItem(root, "Refund handling");
+      expect(page.textContent).toContain("New skill");
+      const fields = [...page.querySelectorAll("dl > div")].map((field) => [
+        field.querySelector("dt")?.textContent,
+        field.querySelector("dd")?.textContent,
+      ]);
+      expect(fields).toEqual([
+        ["Name", "Refund handling"],
+        ["When to use it", "Use it for refund questions."],
+        ["Instructions", "Check the order first."],
+      ]);
+      expect(page.textContent).not.toContain("---");
+      const advanced = buttons(page, "Advanced")[0];
+      expect(advanced?.getAttribute("aria-expanded")).toBe("false");
+      await act(async () => advanced?.click());
+      expect(page.querySelector(`[aria-label="The whole of ${path}"] pre`)?.textContent).toBe(text);
+    });
+
     it("puts focus on the row it came from when the person presses Back to Changes", async () => {
       const { root } = await openPage();
       openItem(root, "Triage");

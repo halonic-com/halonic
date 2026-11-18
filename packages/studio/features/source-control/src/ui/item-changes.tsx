@@ -1,11 +1,11 @@
-import type { ChangeLine } from "@halonicjs/app";
+import { type ChangeLine, type ItemField, newItemFields } from "@halonicjs/app";
 import type { LineChange } from "@halonicjs/std";
 import { Button, StatusChip, useToastStore } from "@halonicjs/studio-kit";
 import { useId, useMemo, useRef, useState } from "react";
 import type { ChangeItem } from "../change-items.ts";
 import type { ChangedFile, ChangesList } from "../changes-list.ts";
-import { discardWords, listWords, mergeWords, undoWords } from "../changes-words.ts";
-import { PartChanges } from "./part-change.tsx";
+import { discardWords, itemWords, listWords, mergeWords, undoWords } from "../changes-words.ts";
+import { PartChanges, shownValue } from "./part-change.tsx";
 import { type DiscardToasts, useDiscardToasts } from "./use-discard-toasts.ts";
 
 /** Props for {@link ItemChanges}. */
@@ -57,8 +57,7 @@ function FileChanges({
   readonly showLineDiff: boolean;
 }) {
   const hunks = useMemo(() => list.hunks(file), [list, file]);
-  // Advanced starts open when Halonic can't say in words what changed: the lines are all there is.
-  const [showLines, setShowLines] = useState(!file.description.described);
+  const fields = useMemo(() => fieldsOfNew(file), [file]);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string>();
   const discarding = useDiscardToasts();
@@ -88,34 +87,129 @@ function FileChanges({
           {discardWords.failed}. {failure}
         </span>
       )}
+      {fields === undefined ? (
+        <ChangedItemLines list={list} file={file} level={showPath ? 3 : 2} />
+      ) : (
+        <NewItemFields file={file} fields={fields} />
+      )}
+      {showLineDiff ? (
+        <Advanced
+          list={list}
+          file={file}
+          hunks={hunks}
+          newItem={fields !== undefined}
+          discarding={developer ? discarding : undefined}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * Advanced: a new item's whole file, or the line diff of any other file that has one. It starts
+ * open when Halonic can't say in words what changed, since the lines are all there is.
+ */
+function Advanced({
+  list,
+  file,
+  hunks,
+  newItem,
+  discarding,
+}: {
+  readonly list: ChangesList;
+  readonly file: ChangedFile;
+  readonly hunks: readonly LineChange[];
+  readonly newItem: boolean;
+  readonly discarding: DiscardToasts | undefined;
+}) {
+  const [open, setOpen] = useState(!file.description.described && !newItem);
+  if (!newItem && hunks.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="self-start">
+        <Button variant="ghost" size="sm" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {discardWords.advanced}
+        </Button>
+      </span>
+      {open && newItem ? <WholeFile file={file} /> : null}
+      {open && !newItem ? (
+        <LineDiff list={list} file={file} hunks={hunks} discarding={discarding} />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * What changed in a file that isn't a new item: the first lines of a new file, then the changes in
+ * words, or the can't-describe layout.
+ */
+function ChangedItemLines({
+  list,
+  file,
+  level,
+}: {
+  readonly list: ChangesList;
+  readonly file: ChangedFile;
+  readonly level: 2 | 3;
+}) {
+  return (
+    <>
       <NewFileLines file={file} />
       {file.description.described ? (
-        <DescribedLines list={list} file={file} level={showPath ? 3 : 2} />
+        <DescribedLines list={list} file={file} level={level} />
       ) : (
         <CantDescribe file={file} />
       )}
-      {hunks.length === 0 || !showLineDiff ? null : (
-        <div className="flex flex-col gap-2">
-          <span className="self-start">
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-expanded={showLines}
-              onClick={() => setShowLines(!showLines)}
-            >
-              {discardWords.advanced}
-            </Button>
-          </span>
-          {showLines ? (
-            <LineDiff
-              list={list}
-              file={file}
-              hunks={hunks}
-              discarding={developer ? discarding : undefined}
-            />
-          ) : null}
-        </div>
+    </>
+  );
+}
+
+/** A new item's fields, when the file is new and reads as its kind; `undefined` otherwise. */
+function fieldsOfNew(file: ChangedFile): readonly ItemField[] | undefined {
+  const { texts } = file;
+  if (texts?.before !== null || texts.after === null) return undefined;
+  const fields = newItemFields(file.path, texts.after);
+  return fields === undefined || fields.length === 0 ? undefined : fields;
+}
+
+/**
+ * A new item, shown the way an edited one is: "New skill", then each of its fields with its label
+ * and value. The file itself is under Advanced.
+ */
+function NewItemFields({
+  file,
+  fields,
+}: {
+  readonly file: ChangedFile;
+  readonly fields: readonly ItemField[];
+}) {
+  const { kind } = file.description;
+  return (
+    <div className="flex flex-col gap-2">
+      {kind === undefined ? null : (
+        <p className="text-label">{itemWords.newOfKind(itemWords.kind[kind])}</p>
       )}
+      <dl className="flex flex-col gap-2">
+        {fields.map((field) => (
+          <div key={field.key} className="flex flex-col gap-0.5">
+            <dt className="text-label text-fg-muted">{field.label}</dt>
+            <dd className="text-body whitespace-pre-wrap break-words">
+              {shownValue({ found: true, value: field.value })}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+/** A new file's whole text, under Advanced. */
+function WholeFile({ file }: { readonly file: ChangedFile }) {
+  return (
+    <section aria-label={discardWords.wholeFile(file.path)}>
+      <pre className="text-small overflow-x-auto rounded-md border border-border p-2">
+        {file.texts?.after}
+      </pre>
     </section>
   );
 }
