@@ -1,8 +1,15 @@
-import { Button, useToastStore } from "@halonicjs/studio-kit";
+import { Button, CommandBox, useToastStore } from "@halonicjs/studio-kit";
+import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useState, useSyncExternalStore } from "react";
+import { type LoadFailureLine, loadFailureLine } from "../listed-tools-load-failure.ts";
 import type { ListedToolsReviewModel } from "../listed-tools-review-model.ts";
 import { listedToolsWords } from "../listed-tools-words.ts";
 import { type ReviewFallback, reviewFallback } from "./listed-tools-fallbacks.tsx";
+import {
+  type LoadFailedHandlers,
+  LoadFailedText,
+  useLoadFailedActions,
+} from "./listed-tools-load-failed.tsx";
 import { ListedToolsReviewDialog } from "./listed-tools-review-dialog.tsx";
 
 /** Props for {@link ListedToolsWaiting}. */
@@ -14,6 +21,8 @@ export interface ListedToolsWaitingProps {
   readonly onReviewTrust?: () => void;
   /** On a phone the line shows, but approving is for the desktop: no button, a view-only line. */
   readonly viewOnly?: boolean;
+  /** The words for an engine that isn't answering, for where Studio runs; the desktop app's by default. */
+  readonly engine?: EngineWords;
 }
 
 /** The line for a screen the dialog alone can show, or `undefined` for one the page stays quiet on. */
@@ -23,40 +32,38 @@ function noticeOf(fallback: ReviewFallback): string | undefined {
   return undefined;
 }
 
-/**
- * The button of the "Couldn't list the tools" line: **Review**, the trust check, when the
- * workspace isn't trusted (none when the page can't open it), else **Try again**.
- */
-function LoadFailedButton({
-  needsTrust,
-  onTryAgain,
-  onReviewTrust,
-}: {
-  readonly needsTrust: boolean;
-  readonly onTryAgain: () => void;
-  readonly onReviewTrust?: () => void;
-}) {
-  if (!needsTrust) {
-    return (
-      <Button variant="secondary" onClick={onTryAgain}>
-        {listedToolsWords.tryAgain}
-      </Button>
-    );
-  }
-  if (onReviewTrust === undefined) return null;
-  return (
-    <Button variant="secondary" onClick={onReviewTrust}>
-      {listedToolsWords.reviewTrust}
-    </Button>
-  );
-}
-
 /** One line of text with its button at the right, wrapping under it on a narrow page. */
-function WaitingLine({ text, children }: { readonly text: string; readonly children: ReactNode }) {
+function WaitingLine({
+  text,
+  children,
+}: {
+  readonly text: ReactNode;
+  readonly children: ReactNode;
+}) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
       <p className="min-w-0 text-body [overflow-wrap:anywhere]">{text}</p>
       {children}
+    </div>
+  );
+}
+
+/** The "Couldn't list the tools" line with its buttons, and a command to run under it. */
+function LoadFailed({
+  line,
+  ...handlers
+}: LoadFailedHandlers & { readonly line: LoadFailureLine }) {
+  const actions = useLoadFailedActions(line, handlers);
+  return (
+    <div className="flex min-w-0 flex-col gap-2">
+      <WaitingLine text={<LoadFailedText line={line} />}>
+        {actions.map((action) => (
+          <Button key={action.label} variant="secondary" onClick={() => void action.onClick()}>
+            {action.label}
+          </Button>
+        ))}
+      </WaitingLine>
+      {line.command === undefined ? null : <CommandBox command={line.command} />}
     </div>
   );
 }
@@ -68,14 +75,16 @@ function WaitingLine({ text, children }: { readonly text: string; readonly child
  * waits. When the list couldn't be read, was refused, or an approval is unreadable, it says so in
  * one line with **Try again** or **Review tools**, since the dialog's screens for those can't
  * be reached otherwise. When the workspace isn't trusted, trying again can't help, so the line
- * offers **Review**, which opens the trust check, instead. The dialog shares this model, so an
- * approval updates the line behind it.
+ * offers **Review**, which opens the trust check, instead. When the agent host says why the
+ * program couldn't list its tools, the line says it too (`loadFailureLine`). The dialog shares
+ * this model, so an approval updates the line behind it.
  */
 export function ListedToolsWaiting({
   model,
   sourceName,
   onReviewTrust,
   viewOnly = false,
+  engine = engineWords["desktop-app"],
 }: ListedToolsWaitingProps) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
   const state = useSyncExternalStore(subscribe, () => model.state);
@@ -106,13 +115,12 @@ export function ListedToolsWaiting({
         </WaitingLine>
       ) : null}
       {waiting === 0 && fallback?.kind === "load-failed" ? (
-        <WaitingLine text={listedToolsWords.loadFailed(fallback.reason)}>
-          <LoadFailedButton
-            needsTrust={fallback.needsTrust}
-            onTryAgain={() => void model.refresh()}
-            {...(onReviewTrust === undefined ? {} : { onReviewTrust })}
-          />
-        </WaitingLine>
+        <LoadFailed
+          line={loadFailureLine(fallback.error, sourceName, engine)}
+          error={fallback.error}
+          onTryAgain={() => void model.refresh()}
+          onReviewTrust={onReviewTrust}
+        />
       ) : null}
       {waiting === 0 && fallback !== null && noticeOf(fallback) !== undefined ? (
         <WaitingLine text={noticeOf(fallback) ?? ""}>
@@ -122,7 +130,12 @@ export function ListedToolsWaiting({
         </WaitingLine>
       ) : null}
       {open ? (
-        <ListedToolsReviewDialog model={model} sourceName={sourceName} onClose={close} />
+        <ListedToolsReviewDialog
+          model={model}
+          sourceName={sourceName}
+          engine={engine}
+          onClose={close}
+        />
       ) : null}
     </>
   );

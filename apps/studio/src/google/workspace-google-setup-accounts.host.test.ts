@@ -1,6 +1,7 @@
 import { AgentHostError } from "@halonicjs/adapter-agent-host-client";
 import type { SetupRecord, SetupRecords } from "@halonicjs/google-setup";
 import { SecretText } from "@halonicjs/studio-kit";
+import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { accountsOf, acmeKey, hostWith } from "./workspace-google-setup-accounts.testing.ts";
@@ -285,7 +286,20 @@ verifies("studio.workspace-google-setup-accounts", () => {
       expect(failure).toBeInstanceOf(Error);
     });
 
-    it("says the app needs its agent host when it has none, without the old 'not yet' text", async () => {
+    it("passes on a host that doesn't answer as the engine not answering (UX check G2)", async () => {
+      const { accounts } = await accountsOf({
+        host: (own) => ({
+          ...hostOver(own, []),
+          startSignIn: async () => {
+            throw new EngineNotAnswering();
+          },
+        }),
+      });
+
+      await expect(accounts.startSignIn("gaccount_1")).rejects.toBeInstanceOf(EngineNotAnswering);
+    });
+
+    it("refuses as the engine not answering when it has no host (UX check G2)", async () => {
       const { accounts } = await accountsOf();
 
       for (const attempt of [
@@ -298,8 +312,7 @@ verifies("studio.workspace-google-setup-accounts", () => {
         accounts.replaceClientSecret("gaccount_1", new SecretText("GOCSPX-test-value")),
         accounts.disconnect("gaccount_1"),
       ]) {
-        await expect(attempt).rejects.toThrow("needs its agent host");
-        await expect(attempt).rejects.not.toThrow("yet");
+        await expect(attempt).rejects.toBeInstanceOf(EngineNotAnswering);
       }
     });
   });

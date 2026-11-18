@@ -1,3 +1,5 @@
+import type { RefusalLinePart } from "./refusal-line.ts";
+
 /** "1 tool", "2 tools". */
 export function toolCount(count: number): string {
   return `${count} ${count === 1 ? "tool" : "tools"}`;
@@ -107,6 +109,25 @@ export const listedToolsWords = {
       : `Couldn't read your approval for ${tool}, so none of the tools ${source} lists are on. Remove it, then approve it again.`,
   unreadableUnavailable: "Halonic can't tell which tool it belongs to yet.",
   loadFailed: (reason: string) => `Couldn't list the tools: ${reason}.`,
+  /** The line when the agent host says why the connector's program couldn't list its tools (UX check C2). */
+  couldntList: {
+    programMissing: (source: string, program: string): readonly RefusalLinePart[] => [
+      { text: `Couldn't list the tools: ${source} needs the program ` },
+      { text: program, code: true },
+      { text: ", which isn't on this computer. Install it, then try again." },
+    ],
+    /** A command box with {@link listedToolsWords.setSecret} follows it. */
+    secretMissing: (source: string, secret: string) =>
+      `Couldn't list the tools: ${source} needs the secret ${secret}, which isn't set on this computer. Set it in a terminal, then try again:`,
+    /** A command box with {@link listedToolsWords.setSecret} follows it. */
+    secretRefused: (source: string, secret: string) =>
+      `Couldn't list the tools: ${source} didn't accept the secret ${secret}. Set it again in a terminal, then try again:`,
+    /** When the connector declares more than one secret, so Halonic can't tell which one was refused. */
+    secretRefusedUnnamed: (source: string) =>
+      `Couldn't list the tools: ${source} didn't accept its secret. Set it again in a terminal, then try again.`,
+    stopped: (source: string) => `Couldn't list the tools: ${source} stopped before it answered.`,
+  },
+  setSecret: (secret: string) => `halonic secret set ${secret}`,
   tryAgain: "Try again",
   /** Opens the workspace's trust check, when the tools couldn't be listed because it isn't trusted. */
   reviewTrust: "Review",

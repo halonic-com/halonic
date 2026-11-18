@@ -1,3 +1,4 @@
+import { ConnectorFailedError } from "@halonicjs/adapter-agent-host-client";
 import { connectorConfigOf } from "@halonicjs/app";
 import {
   approveNamedTool,
@@ -10,6 +11,7 @@ import {
 import { asksBeforeEachUse, type Connector } from "@halonicjs/format";
 import type {
   Clock,
+  ConnectorConfig,
   DefinitionSource,
   Digest,
   FolderReader,
@@ -21,8 +23,14 @@ import type {
   ToolRisk,
 } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
-import type { ListedToolsHost, ListedToolsSnapshot } from "@halonicjs/studio-feature-library/api";
-import { listedToolsSnapshot, WorkspaceNotTrusted } from "@halonicjs/studio-feature-library/api";
+import {
+  ConnectorCouldntList,
+  type ListedToolsHost,
+  type ListedToolsSnapshot,
+  type ListingFailure,
+  listedToolsSnapshot,
+  WorkspaceNotTrusted,
+} from "@halonicjs/studio-feature-library/api";
 import {
   filesOf,
   harnessWorkingFolders,
@@ -189,14 +197,20 @@ export class WorkspaceListedTools implements ListedToolsHost {
       throw new WorkspaceNotTrusted();
     }
     const grant = trusted.grant;
-    const listed = await this.#options.listTools(connectorConfigOf(connector), {
-      secrets: this.#options.secrets,
-      tokens: this.#options.tokens,
-      http: this.#options.http,
-      workspaceRoot: location,
-      workingFolders: await this.#workingFolders(location, harnessWorkingFolders(workspace)),
-      trust: grant,
-    });
+    const config = connectorConfigOf(connector);
+    const listed = await this.#options
+      .listTools(config, {
+        secrets: this.#options.secrets,
+        tokens: this.#options.tokens,
+        http: this.#options.http,
+        workspaceRoot: location,
+        workingFolders: await this.#workingFolders(location, harnessWorkingFolders(workspace)),
+        trust: grant,
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof ConnectorFailedError)) throw error;
+        throw new ConnectorCouldntList(listingFailureOf(error, config), { cause: error });
+      });
     const check = await checkConnectorTools({
       location,
       connector,
@@ -221,6 +235,23 @@ export class WorkspaceListedTools implements ListedToolsHost {
       ),
     );
   }
+}
+
+/**
+ * The cause the agent host named, for the connector page's words (UX check C2). The server doesn't
+ * say which secret it refused, so a refused secret is named only when the connector has just one.
+ */
+function listingFailureOf(
+  { failure }: ConnectorFailedError,
+  config: ConnectorConfig,
+): ListingFailure {
+  if (failure.reason !== "secret-refused") return failure;
+  const secrets = new Set([
+    ...(config.secret === undefined ? [] : [config.secret]),
+    ...Object.values(config.secretEnv),
+  ]);
+  const [secret] = secrets;
+  return secrets.size === 1 && secret !== undefined ? { reason: failure.reason, secret } : failure;
 }
 
 /** The folder's own name, as the CLI names an unnamed workspace: the last part of its path. */

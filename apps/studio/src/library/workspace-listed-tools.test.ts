@@ -1,3 +1,4 @@
+import { ConnectorFailedError } from "@halonicjs/adapter-agent-host-client";
 import { webCryptoDigest } from "@halonicjs/adapter-fs-tauri";
 import {
   ManualClock,
@@ -8,6 +9,8 @@ import {
   MemoryToolApprovalStore,
 } from "@halonicjs/adapter-memory";
 import type { ConnectorFactoryContext, ConnectorTool } from "@halonicjs/ports";
+import { ConnectorCouldntList } from "@halonicjs/studio-feature-library/api";
+import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
@@ -46,6 +49,8 @@ function hostOf(
     tools?: ConnectorTool[];
     files?: MemoryDefinitionStore;
     trust?: Pick<WorkspaceTrust, "checkLoaded">;
+    /** What starting the connector rejects with, instead of listing its tools. */
+    listError?: unknown;
   } = {},
 ) {
   const started: ConnectorFactoryContext[] = [];
@@ -64,6 +69,7 @@ function hostOf(
     listTools: async (config, context) => {
       started.push(context);
       startedConfigs.push(config);
+      if ("listError" in options) throw options.listError;
       return options.tools ?? [readNote];
     },
   });
@@ -127,6 +133,50 @@ verifies("studio.workspace-listed-tools", () => {
       });
 
       expect(started).toEqual([]);
+    });
+
+    it("passes on why the agent host couldn't list the tools, for the page to word", async () => {
+      const failed = new ConnectorFailedError({ reason: "program-missing", program: "npx" });
+      const { host } = hostOf({ listError: failed });
+
+      const error = await host.review("notes").catch((reason: unknown) => reason);
+
+      expect(error).toBeInstanceOf(ConnectorCouldntList);
+      expect(error).toMatchObject({
+        failure: { reason: "program-missing", program: "npx" },
+        cause: failed,
+      });
+    });
+
+    it("names a refused secret only when the connector has just one", async () => {
+      const withSecrets = (env: string) =>
+        acmeFiles({
+          "library/connectors/notes.connector.yaml": `${notesFile}    secretEnv:\n${env}`,
+        });
+      const refused = new ConnectorFailedError({ reason: "secret-refused" });
+
+      const one = hostOf({
+        files: withSecrets("      NOTES_TOKEN: notes-token\n"),
+        listError: refused,
+      });
+      await expect(one.host.review("notes")).rejects.toMatchObject({
+        failure: { reason: "secret-refused", secret: "notes-token" },
+      });
+
+      const two = hostOf({
+        files: withSecrets("      NOTES_TOKEN: notes-token\n      NOTES_KEY: notes-key\n"),
+        listError: refused,
+      });
+      await expect(two.host.review("notes")).rejects.toMatchObject({
+        failure: { reason: "secret-refused" },
+      });
+      await expect(two.host.review("notes")).rejects.not.toHaveProperty("failure.secret");
+    });
+
+    it("passes on an engine that isn't answering as it is", async () => {
+      const { host } = hostOf({ listError: new EngineNotAnswering() });
+
+      await expect(host.review("notes")).rejects.toBeInstanceOf(EngineNotAnswering);
     });
 
     it("starts what it found trusted, even when the files change right after the check", async () => {

@@ -124,6 +124,7 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
         <ListedToolsWaiting
           model={toolsModel}
           sourceName={name}
+          engine={engineWordsOf(context)}
           {...(runCommand === undefined
             ? {}
             : { onReviewTrust: () => void runCommand(openTrustCommand) })}
