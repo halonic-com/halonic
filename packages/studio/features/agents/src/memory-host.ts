@@ -11,7 +11,11 @@ import type {
 /** What {@link memoryAgentsHost} starts with. */
 export interface MemoryAgentsHostOptions {
   readonly hubs: readonly AgentHub[];
-  readonly agents?: readonly (AgentListing & { readonly instructions?: string })[] | undefined;
+  readonly agents?:
+    | readonly (AgentListing & { readonly instructions?: string; readonly maxSteps?: number })[]
+    | undefined;
+  /** The model aliases every hub can use. */
+  readonly modelAliases?: readonly string[] | undefined;
   /** The workflows that run each agent, keyed by `hubId/id` of the agent. */
   readonly users?: Readonly<Record<string, readonly AgentUser[]>> | undefined;
 }
@@ -22,7 +26,11 @@ function keyOf(ref: AgentRef): string {
 }
 
 /** What a row shows of an agent: its settings without the instructions. */
-function listingOf({ instructions: _instructions, ...listing }: AgentSettings): AgentListing {
+function listingOf({
+  instructions: _instructions,
+  maxSteps: _maxSteps,
+  ...listing
+}: AgentSettings): AgentListing {
   return listing;
 }
 
@@ -33,7 +41,7 @@ function listingOf({ instructions: _instructions, ...listing }: AgentSettings): 
 export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
   const agents = new Map<string, AgentSettings>();
   for (const agent of options.agents ?? [])
-    agents.set(keyOf(agent), { instructions: "", ...agent });
+    agents.set(keyOf(agent), { instructions: "", maxSteps: 6, ...agent });
   const listeners = new Set<() => void>();
 
   const found = (ref: AgentRef): AgentSettings => {
@@ -56,6 +64,10 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       agents.set(keyOf(ref), { ...agent, ...Object.fromEntries(definite) });
       for (const listener of listeners) listener();
     },
+    modelAliases: async (ref) => {
+      found(ref);
+      return options.modelAliases ?? [];
+    },
     nameOf: (ref) => agents.get(keyOf(ref))?.name,
     referencesTo: async (ref) => {
       found(ref);
@@ -73,7 +85,13 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
         .filter((each) => each.hubId === hubId)
         .map((each) => each.id);
       const id = uniqueName(slugify(name), taken);
-      agents.set(keyOf({ hubId, id }), { hubId, id, name, instructions: instructions ?? "" });
+      agents.set(keyOf({ hubId, id }), {
+        hubId,
+        id,
+        name,
+        instructions: instructions ?? "",
+        maxSteps: 6,
+      });
       for (const listener of listeners) listener();
       return { hubId, id };
     },

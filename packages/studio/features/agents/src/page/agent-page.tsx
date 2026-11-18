@@ -85,6 +85,17 @@ export function AgentScreen({ host, hubId, id, goToAgents }: AgentScreenProps) {
     void read();
     return host.subscribe(() => void read());
   }, [host, hubId, id]);
+  const [aliases, setAliases] = useState<readonly string[]>([]);
+  // The hub's model aliases for the Model page; read again when a file changes.
+  useEffect(() => {
+    const read = () =>
+      host
+        .modelAliases({ hubId, id })
+        .then(setAliases)
+        .catch(() => setAliases([]));
+    void read();
+    return host.subscribe(() => void read());
+  }, [host, hubId, id]);
   const [view, setView] = useState<AgentView>("runs");
   const [saveFailed, setSaveFailed] = useState<string>();
   const ids = useTabIds();
@@ -139,7 +150,13 @@ export function AgentScreen({ host, hubId, id, goToAgents }: AgentScreenProps) {
       )}
       <TabPanel ids={ids} tabs={agentTabs} selected={view} className="flex min-h-0 flex-1 flex-col">
         {view === "configuration" ? (
-          <Configuration name={name} load={settings.load} retry={settings.retry} save={save} />
+          <Configuration
+            name={name}
+            load={settings.load}
+            aliases={aliases}
+            retry={settings.retry}
+            save={save}
+          />
         ) : (
           <div className="min-w-0 flex-1 overflow-auto p-6">
             {load.kind === "ready" && (

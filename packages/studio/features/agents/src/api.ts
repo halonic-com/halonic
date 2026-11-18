@@ -25,6 +25,8 @@ export interface AgentListing extends AgentRef {
 export interface AgentSettings extends AgentListing {
   /** What the agent is told to do; empty before anyone writes it. */
   readonly instructions: string;
+  /** The most model calls for one run of the agent (its turn limit); 6 when the file says none. */
+  readonly maxSteps: number;
 }
 
 /** A change to an agent's settings; a field left out stays as it is. */
@@ -33,6 +35,10 @@ export interface AgentChange {
   readonly name?: string | undefined;
   readonly description?: string | undefined;
   readonly instructions?: string | undefined;
+  /** The model alias, or `provider/model`. */
+  readonly model?: string | undefined;
+  /** The turn limit, a whole number from 1 to 200. */
+  readonly maxSteps?: number | undefined;
 }
 
 /** A hub a new agent can go in. */
@@ -77,6 +83,8 @@ export interface AgentsHost {
    * isn't there, with `invalid_input` when the name is empty, and with the reason it couldn't write.
    */
   update(ref: AgentRef, change: AgentChange): Promise<void>;
+  /** The model aliases the agent's hub can use, by name, in the order the Models pages list them; empty when there are none. */
+  modelAliases(ref: AgentRef): Promise<readonly string[]>;
   /**
    * The name of an agent the host has read or made, for a tab or a page title, or `undefined`
    * before it has read it. Sync, because a tab is named the moment it opens.

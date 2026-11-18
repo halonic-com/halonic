@@ -18,3 +18,4 @@ When the desktop app opens a folder, it shall give the Agents feature the folder
 - Given a file changes, then a subscriber hears it, and not after it stopped.
 - Given an agent file with comments, when its name and instructions change, then the file keeps its comments, `settings` gives the new values and the other fields stay.
 - Given an empty name, or an agent the hub doesn't have, then `update` fails with `invalid_input` or `not_found` and writes nothing.
+- Given `models.yaml` with the aliases fast and smart, then `modelAliases` of an agent gives both; when its model and turn limit change, then the file holds them in place and `settings` gives the new values. For an agent the hub doesn't have, `modelAliases` rejects with `not_found`.
