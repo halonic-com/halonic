@@ -31,8 +31,8 @@ import { RunDialog, runDialogReason } from "./run-dialog.tsx";
 import { runRoutineNow } from "./run-now.ts";
 import { type RunNowGate, useRunNowGate } from "./run-now-gate.ts";
 import { TRIGGER_STEP } from "./trigger-step.ts";
+import { usePickerFocus } from "./use-picker-focus.ts";
 import { useRoutine } from "./use-routine.ts";
-import { useTriggerFocus } from "./use-trigger-focus.ts";
 
 /** The file tab's item kind and hub part (the Files feature's `FILE_KIND` and `FILE_HUB`): files belong to the workspace folder. */
 const fileKind = "file";
@@ -111,7 +111,11 @@ export function RoutineScreen({
   const [view, setView] = useState<RoutineViewId>("schedule");
   // Asked for its Trigger picker, the page shows the Schedule view and the picker takes the focus
   // once the card is drawn, whether the page was just opened or already open.
-  const trigger = useTriggerFocus(triggerAsked, () => setView("schedule"));
+  const trigger = usePickerFocus(triggerAsked, () => setView("schedule"));
+  // **Pick what it runs** on a Run now toast asks the same of the Starts card's picker.
+  const [targetAsked, setTargetAsked] = useState<number>();
+  const target = usePickerFocus(targetAsked, () => setView("schedule"));
+  const pickTarget = useCallback(() => setTargetAsked((count) => (count ?? 0) + 1), []);
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
   const routine = load.kind === "ready" ? load.routine : undefined;
@@ -143,6 +147,7 @@ export function RoutineScreen({
         title={title}
         onRestored={restored}
         openRun={openRun}
+        pickTarget={pickTarget}
         openFile={openFile}
         gate={gate}
       />
@@ -166,8 +171,10 @@ export function RoutineScreen({
               routine={load.routine}
               announce={announce}
               addConnector={addConnector}
-              focusTrigger={trigger.focusTrigger}
+              focusTrigger={trigger.focus}
               onTriggerFocused={trigger.done}
+              focusTarget={target.focus}
+              onTargetFocused={target.done}
             />
           )}
           {view === "runs" && (
@@ -218,6 +225,8 @@ function ScheduleView({
   addConnector,
   focusTrigger,
   onTriggerFocused,
+  focusTarget,
+  onTargetFocused,
 }: {
   readonly host: RoutinesHost;
   readonly routine: RoutineView;
@@ -225,6 +234,8 @@ function ScheduleView({
   readonly addConnector: (() => void) | undefined;
   readonly focusTrigger: boolean;
   readonly onTriggerFocused: () => void;
+  readonly focusTarget: boolean;
+  readonly onTargetFocused: () => void;
 }) {
   return (
     <>
@@ -237,7 +248,12 @@ function ScheduleView({
         focusTrigger={focusTrigger}
         onTriggerFocused={onTriggerFocused}
       />
-      <StartsCard host={host} routine={routine} />
+      <StartsCard
+        host={host}
+        routine={routine}
+        focusTarget={focusTarget}
+        onTargetFocused={onTargetFocused}
+      />
       <RulesSection host={host} routine={routine} />
     </>
   );
@@ -301,6 +317,7 @@ function RoutineHeader({
   tabs,
   onRestored,
   openRun,
+  pickTarget,
   openFile,
   gate,
 }: {
@@ -319,6 +336,8 @@ function RoutineHeader({
   /** Called once Undo has put a deleted routine back. */
   readonly onRestored: () => void;
   readonly openRun: ((runId: string) => void) | undefined;
+  /** Shows the Starts card's picker, for a Run now that can't start the routine's agent. */
+  readonly pickTarget: () => void;
   readonly openFile: ((path: string) => void) | undefined;
   /** Whether Run now can start a run while the sandbox can't start, and its button. */
   readonly gate: RunNowGate;
@@ -334,7 +353,9 @@ function RoutineHeader({
     if (routine === undefined || starting || gate.unavailable !== undefined) return;
     setAsking(false);
     setStarting(true);
-    void runRoutineNow(host, toasts, routine, openRun).finally(() => setStarting(false));
+    void runRoutineNow(host, toasts, routine, { openRun, pickTarget }).finally(() =>
+      setStarting(false),
+    );
   };
   const pressRunNow = () => {
     if (routine === undefined || starting) return;

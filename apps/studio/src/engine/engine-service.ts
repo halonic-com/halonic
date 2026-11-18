@@ -50,7 +50,7 @@ import {
   noListedToolApproval,
 } from "@halonicjs/engine";
 import type { RunVersion } from "@halonicjs/events";
-import { isAgentRunsNotAvailable, type RunExecutor } from "@halonicjs/ports";
+import type { RunExecutor } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import {
@@ -226,7 +226,7 @@ export class EngineService {
    *
    * @param trigger the routine's key and the time the person asked for the run
    * @returns the new run's id
-   * @throws KindedError `unavailable` when the target is an agent, because agent runs aren't built yet
+   * @throws AgentRunsNotAvailable when the target is an agent, because agent runs aren't built yet
    *   (`ports.agent-runs-not-available`), or what {@link EngineService.startRun} throws
    */
   async startRoutine(
@@ -246,15 +246,11 @@ export class EngineService {
       return { id };
     }
     await this.checkAgent(start.agent);
-    // As the port: the local executor's own `startAgent` takes no request until agent runs are built.
+    // As the port: the local executor's own `startAgent` takes no request until agent runs are built,
+    // and its refusal goes to the Routines page as it is, which says it in its own words.
     const executor: RunExecutor = (await this.openForStart()).executor;
-    try {
-      const { id } = await executor.startAgent({ ...start.agent, trigger: runTrigger });
-      return { id };
-    } catch (error) {
-      if (!isAgentRunsNotAvailable(error)) throw error;
-      throw new KindedError("unavailable", "This window can't start an agent yet.");
-    }
+    const { id } = await executor.startAgent({ ...start.agent, trigger: runTrigger });
+    return { id };
   }
 
   /** Answers a waiting run (an Inbox Approve or Reject) as `halonic runs send` does, with a start's checks. */

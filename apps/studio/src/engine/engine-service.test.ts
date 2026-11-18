@@ -300,7 +300,7 @@ verifies("studio.engine-service", () => {
       await service.close();
     });
 
-    it("refuses a routine's agent as `unavailable` while agent runs aren't built", async () => {
+    it("passes the executor's refusal of a routine's agent on while agent runs aren't built", async () => {
       const service = serviceOn(fakeShell());
 
       await expect(
@@ -308,7 +308,7 @@ verifies("studio.engine-service", () => {
           { agent: { hubId: "support", agentId: "writer", prompt: "Go." } },
           { routineKey: "support/weekly", at: "2026-11-15T10:00:00.000Z" },
         ),
-      ).rejects.toMatchObject({ kind: "unavailable", fix: undefined });
+      ).rejects.toMatchObject({ name: "AgentRunsNotAvailable" });
       await service.close();
     });
 

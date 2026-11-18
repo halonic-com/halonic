@@ -253,7 +253,9 @@ export type RunNowRefusal =
   | { readonly reason: "not-trusted" }
   | { readonly reason: "target-not-found" }
   | { readonly reason: "target-never-live" }
-  | { readonly reason: "target-in-trash" };
+  | { readonly reason: "target-in-trash" }
+  /** The target is an agent: no agent runs on its own yet, only as a step in a workflow. */
+  | { readonly reason: "agent-runs-not-available" };
 
 /** What Run now answers: the run it started, or why there is none. */
 export type RunNowResult =

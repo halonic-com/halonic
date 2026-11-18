@@ -1,6 +1,6 @@
 import { shortRunId } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
-import type { DefinitionSource } from "@halonicjs/ports";
+import { type DefinitionSource, isAgentRunsNotAvailable } from "@halonicjs/ports";
 import { CronError, describeTrigger, nextRun, routineKey, routineStart } from "@halonicjs/routines";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import {
@@ -111,8 +111,9 @@ export interface WorkspaceRoutinesParts {
   /**
    * Starts what a routine runs, as the scheduler would start it. Absent where the app has no
    * engine, so there is no `runNow`. Rejects with {@link WindowCantStart} or
-   * {@link StartRefused} for what the window can't start, and with an `unavailable`
-   * `KindedError` when the engine can't be reached.
+   * {@link StartRefused} for what the window can't start, with the executor's own
+   * `AgentRunsNotAvailable` for an agent the engine was asked to start, and with an
+   * `unavailable` `KindedError` when the engine can't be reached.
    */
   readonly engine?: {
     start(
@@ -402,6 +403,10 @@ export class WorkspaceRoutines implements RoutinesHost {
       const { id } = await engine.start(start, { routineKey: key, at: at.toISOString() });
       return { started: true, runId: id, shortId: shortRunId(id) };
     } catch (error) {
+      // No agent runs on its own in 0.1, not even under `routines watch`: a reason of its own, so
+      // it isn't taken for an engine that doesn't answer (HAL-12367).
+      if (isAgentRunsNotAvailable(error))
+        return { started: false, refusal: { reason: "agent-runs-not-available" } };
       // Only an engine that can't be reached is "not answering": the window's refusal of what this
       // routine starts keeps its own words.
       if (error instanceof WindowCantStart || error instanceof StartRefused) throw error;

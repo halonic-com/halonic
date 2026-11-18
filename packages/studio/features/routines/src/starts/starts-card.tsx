@@ -1,5 +1,5 @@
 import { Callout, Card, Disclosure, Field, Select, TextArea } from "@halonicjs/studio-kit";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   RoutineStartField,
   RoutinesHost,
@@ -16,6 +16,9 @@ import { useTargets } from "./use-targets.ts";
 export interface StartsCardProps {
   readonly host: RoutinesHost;
   readonly routine: RoutineView;
+  /** Gives the picker the focus, as **Pick what it runs** asks; `onTargetFocused` runs once it has it. */
+  readonly focusTarget?: boolean;
+  readonly onTargetFocused?: () => void;
 }
 
 /**
@@ -25,8 +28,14 @@ export interface StartsCardProps {
  * placeholders the text may use, and one line when the target can't be started. Each change is
  * written as soon as it can be; a change that can't be saved is shown in the card.
  */
-export function StartsCard({ host, routine }: StartsCardProps) {
+export function StartsCard({ host, routine, focusTarget, onTargetFocused }: StartsCardProps) {
   const targets = useTargets(host, routine);
+  const picker = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!focusTarget) return;
+    picker.current?.focus();
+    onTargetFocused?.();
+  }, [focusTarget, onTargetFocused]);
   const [failure, setFailure] = useState<string | undefined>();
   const [picked, setPicked] = useState<RoutineTargetChoice | undefined>();
   // An agent picked but not yet written: the file keeps its target until the agent has a prompt.
@@ -76,6 +85,7 @@ export function StartsCard({ host, routine }: StartsCardProps) {
       <div className="flex flex-col gap-3">
         <Field label={words.pick}>
           <Select
+            ref={picker}
             options={options}
             value={current === undefined ? "" : targetKey(current)}
             placeholder={target.id}

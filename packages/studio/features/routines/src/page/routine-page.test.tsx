@@ -432,6 +432,31 @@ verifies("routines.page.run-now", () => {
     }
   });
 
+  it("says an agent can't run on its own yet, with Pick what it runs and no Try again", async () => {
+    const { host } = hostRunning({
+      started: false,
+      refusal: { reason: "agent-runs-not-available" },
+    });
+    const { page, toasts } = await showWithToasts(host);
+
+    await act(async () => runNowButton(page)?.click());
+
+    expect(toasts.list()).toHaveLength(1);
+    expect(toasts.list()[0]).toMatchObject({
+      tone: "danger",
+      title:
+        "Not started: Halonic can't run an agent on its own yet, only as a step in a workflow.",
+      sticky: true,
+      action: { label: "Pick what it runs" },
+    });
+    await act(async () => toasts.list()[0]?.action?.onClick());
+    const label = [...page.querySelectorAll("label")].find(
+      (candidate) => candidate.textContent === "Workflow or agent",
+    );
+    expect(document.activeElement).not.toBeNull();
+    expect(document.activeElement).toBe(document.getElementById(label?.htmlFor ?? ""));
+  });
+
   it("says when the engine isn't answering", async () => {
     const { host } = hostRunning(new EngineNotAnswering());
     const { page, toasts } = await showWithToasts(host);

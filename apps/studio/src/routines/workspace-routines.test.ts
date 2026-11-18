@@ -1,3 +1,4 @@
+import { AgentRunsNotAvailable } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { EngineNotAnswering, NothingToRun } from "@halonicjs/studio-feature-routines/api";
 import { StartRefused } from "@halonicjs/studio-feature-workflows/api";
@@ -397,6 +398,20 @@ verifies("studio.workspace-routines", () => {
     const refusal = await refused.host.runNow?.(weekly).catch((error: unknown) => error);
     expect(refusal).toBe(windowRefusal);
     expect(refusal).not.toBeInstanceOf(EngineNotAnswering);
+  });
+
+  it("refuses a routine's agent with its own reason, not as an engine that doesn't answer", async () => {
+    const { host } = setup({
+      engine: {
+        start: async () => {
+          throw new AgentRunsNotAvailable("Agent runs aren't built yet.");
+        },
+      },
+    });
+    expect(await host.runNow?.(weekly)).toEqual({
+      started: false,
+      refusal: { reason: "agent-runs-not-available" },
+    });
   });
 
   it("tells a subscriber when a file changed or a run started, and not after it stopped", () => {

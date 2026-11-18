@@ -46,7 +46,7 @@ verifies("studio.engine-service", () => {
       ).rejects.toMatchObject({ kind: "unavailable" });
     });
 
-    it("passes a routine's agent in a harness, then refuses it as `unavailable` while agent runs aren't built", async () => {
+    it("passes a routine's agent in a harness, then passes the executor's refusal on while agent runs aren't built", async () => {
       const { openHarnessHost } = fakeHarnessHost();
       const service = serviceOn(fakeShell(), coder, { openHarnessHost });
 
@@ -58,7 +58,7 @@ verifies("studio.engine-service", () => {
           { agent: { hubId: "support", agentId: "writer", prompt: "Go." } },
           { routineKey: "support/weekly", at: "2026-11-15T10:00:00.000Z" },
         ),
-      ).rejects.toMatchObject({ kind: "unavailable" });
+      ).rejects.toMatchObject({ name: "AgentRunsNotAvailable" });
       await service.close();
     });
 

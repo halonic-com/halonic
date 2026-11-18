@@ -43,6 +43,9 @@ export const runNowWords = {
   targetNotFound: (target: string) => `Not started: ${target} isn't in this hub any more.`,
   targetNeverLive: (target: string) => `Not started: ${target} isn't live yet.`,
   targetInTrash: (target: string) => `Not started: ${target} was deleted.`,
+  agentRunsNotAvailable:
+    "Not started: Halonic can't run an agent on its own yet, only as a step in a workflow.",
+  pickTarget: "Pick what it runs",
   couldntStart: (name: string) => `Couldn't start ${name}.`,
   signIn: "Sign in with Google",
   couldntSignIn: (account: string) => `Couldn't start the sign-in for ${account}.`,

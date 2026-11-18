@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-1306 (T12 PR 13); flow-routines 3.8; microcopy 12.3
+- Source: HAL-1306 (T12 PR 13); flow-routines 3.8; microcopy 12.3 and 1.1 (revision 109, L2 of the UX check on HAL-12363)
 
-Where the host can start a run, the routine page shall show **Run now** in its header, also while the routine is off; pressing it shall start the routine's target at once and say what happened with a toast, and when no run starts, the toast shall stay and say the one reason; while a start is still being answered, the button shall be busy and a second press shall start nothing.
+Where the host can start a run, the routine page shall show **Run now** in its header, also while the routine is off; pressing it shall start the routine's target at once and say what happened with a toast, and when no run starts, the toast shall stay and say the one reason, with **Pick what it runs** when the reason is that no agent runs on its own yet, which shows the Schedule view and gives the Starts card's picker the focus; while a start is still being answered, the button shall be busy and a second press shall start nothing.
 
 ## Examples
 
@@ -14,4 +14,5 @@ Where the host can start a run, the routine page shall show **Run now** in its h
 - Given the routine is off, then **Run now** is still there and starts the run.
 - Given the host refuses because the target isn't live yet, then a toast that stays says "Not started: Briefing isn't live yet."
 - Given the host refuses because the account is signed out, then a toast that stays says "Not started: fin@acme.example is signed out."
+- Given the host refuses because the routine starts an agent, then a toast that stays says "Not started: Halonic can't run an agent on its own yet, only as a step in a workflow." with **Pick what it runs** and no **Try again**, and **Pick what it runs** gives the Starts card's picker the focus.
 - Given the engine isn't answering, then a toast that stays says "Couldn't start Daily." with the reason.
