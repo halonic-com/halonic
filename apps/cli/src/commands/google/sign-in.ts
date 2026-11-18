@@ -37,6 +37,7 @@ import { type CallbackListener, callbackPath, listenForCallback } from "../../lo
 import { googleMessages } from "../../messages/google.ts";
 import type { Phrase } from "../../messages/phrase.ts";
 import { printable } from "../../output/printable.ts";
+import { proxySetting } from "../../proxy-setting.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts";
 import { workspaceIntegrations, workspaceNameOf } from "../../workspace-trust.ts";
@@ -269,7 +270,8 @@ async function runSignIn(run: SignInRun): Promise<GoogleSignInResult> {
   }
   const result = await finishGoogleSignIn(query, {
     pendingSignIns,
-    http: run.setup.http ?? createNodeHttpClient({ hostClass: googleHostClass }),
+    http:
+      run.setup.http ?? createNodeHttpClient({ hostClass: googleHostClass, proxy: proxySetting }),
     tokens: host.tokens,
     clock: run.clock,
     readClientSecret: (clientRef) => host.clientSecrets.readClientSecret(clientRef),

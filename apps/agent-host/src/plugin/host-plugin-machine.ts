@@ -28,6 +28,7 @@ import {
   trustFolder,
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
+import { proxySetting } from "../proxy-setting.ts";
 
 /** How long one runner may live, in milliseconds; a start after it asks the trust check and the gate again. */
 const runnerTimeLimitMs = 10 * 60 * 1000;
@@ -103,7 +104,7 @@ export function hostPluginMachine(options: HostPluginMachineOptions): HostPlugin
       runnerFile: runnerFile(),
     },
     // The plugin's own sheet limits the hosts; a name leads to the internet, an address as written to its own class.
-    transport: createNodeHttpClient({ hostClass: connectorHostClass }),
+    transport: createNodeHttpClient({ hostClass: connectorHostClass, proxy: proxySetting }),
     // The start's temp folder goes when its runner stops, or when the start fails.
     startRunner: async (startOptions) => {
       const { tempFolder } = startOptions.machine;

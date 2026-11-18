@@ -30,6 +30,7 @@ import { hostModelRoutes } from "./model/host-model-routes.ts";
 import { modelRoutes } from "./model/model-routes.ts";
 import { hostPlugins } from "./plugin/host-plugins.ts";
 import { pluginRoutes } from "./plugin/plugin-routes.ts";
+import { proxySetting } from "./proxy-setting.ts";
 import { hostSandboxChoice } from "./sandbox/choice-host.ts";
 import { sandboxChoiceRoutes } from "./sandbox/choice-routes.ts";
 import { sandboxRoutes } from "./sandbox/sandbox-routes.ts";
@@ -387,7 +388,7 @@ function hostServices(
   const sessions = new SessionTable();
   const listeningPorts = new Set<number>();
   const bridges = new BridgeTable();
-  const providerHttp = createNodeHttpClient({ hostClass: providerHostClass });
+  const providerHttp = createNodeHttpClient({ hostClass: providerHostClass, proxy: proxySetting });
   const providerFetch = (url: string, init?: RequestInit) => providerHttp.fetch(url, init);
   // Runs are recorded only when the gateway can show them to someone.
   const ledger = gateway.enabled ? new RunLedger() : undefined;

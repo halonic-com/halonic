@@ -1,57 +1,62 @@
-# Send model calls through a company proxy (unsupported workaround)
+# Send model calls and connectors through a company proxy
 
-**Unsupported. Works on Node.js 22.21 and later, and on 24.** Halonic 0.1.x has
-no proxy setting. This page describes a Node.js feature that happens to cover
-model calls. We don't promise it, and a later version replaces it with a real
-setting.
+If your network sends outgoing traffic through an `http://` proxy, tell Halonic
+with the usual environment variables. Model calls, Google sign-in, and
+connectors and MCP servers over `https` then go through it.
 
-Use it only if your network sends outgoing traffic through an `http://` proxy
-and Halonic can't reach a model provider without it.
-
-## What it covers
-
-- Model calls to Anthropic and OpenAI, and the GitHub and Paperclip tool calls
-  that the same process makes.
-
-## What it does not cover
-
-- Connectors and MCP servers over HTTP. They ignore the proxy and keep trying
-  the network directly.
-- A proxy that needs `https://`, or that is a SOCKS proxy.
+This replaces the unsupported `NODE_USE_ENV_PROXY` workaround that Halonic
+0.1.x needed. If you used it, unset `NODE_USE_ENV_PROXY` and use the steps
+below instead.
 
 ## Steps
 
-1. Stop Halonic. Node.js reads the setting only when a process starts.
-2. In the shell that starts Halonic (`halonic serve`, or the agent host),
-   set these three variables, then start it from that shell:
+1. Stop Halonic. It reads the setting once, when it starts.
+2. In the shell that starts Halonic (`halonic serve`, the CLI or the agent
+   host), set:
 
    ```sh
-   export NODE_USE_ENV_PROXY=1
    export HTTPS_PROXY=http://<proxy-host>:<port>
-   export NO_PROXY=localhost,127.0.0.1,::1
+   export NO_PROXY=internal.example.com,.corp.example
    ```
 
    If the proxy needs a user name and password, put them in the URL before
-   the host, as the user name, a colon, the password and an at sign. Encode
-   any special character in them as `%XX`.
+   the host: the user name, a colon, the password and an at sign. Encode any
+   special character in them as `%XX`.
 
 3. Start Halonic from the same shell and run a model call.
 
-## Read before you use it
+## What goes through the proxy
 
-- **`NO_PROXY` must list `localhost,127.0.0.1,::1`.** Node.js does not skip
-  this computer on its own. Without it, calls to Halonic's own local servers go
-  to your proxy. Add the Paperclip host to `NO_PROXY` too if it is a private
-  address. Otherwise, if `HTTP_PROXY` is also set, a Paperclip token on an
-  `http://` URL goes to the proxy in clear text.
-- **The flag reaches every Node.js process started from that shell.**
-  `NODE_USE_ENV_PROXY` is inherited by any Node.js child process, not only
-  Halonic. Open a separate shell for it, or unset the variables afterwards.
-- **A proxy that re-signs HTTPS sees your provider key.** If your company's
-  proxy replaces certificates, Node.js must trust the company certificate
-  (`NODE_EXTRA_CA_CERTS=<path-to-certificate>`). Whether to allow that is your
-  company's decision. Halonic can't tell it is happening.
+- **Public `https` hosts**, such as the model providers, Google and `https`
+  connectors. Halonic asks the proxy for a tunnel to the host's name and
+  checks the host's certificate itself, so the proxy cannot read the traffic.
+- **Never through the proxy:** this computer (`localhost`), hosts on your home
+  network that you typed in yourself, and any host that `NO_PROXY` lists.
+  Those connect directly, with Halonic's usual address check.
+- **Refused when a proxy is set:** a public host over plain `http://`. Without
+  TLS nothing ties the name to the server the proxy reached. Use `https://`,
+  or add the host to `NO_PROXY` if it must be reached directly.
+
+## If it does not work
+
+Halonic never goes around a proxy it can't use. If the setting is unusable
+(for example `socks5://…`, or no `http://` in front), or the proxy refuses or
+drops the tunnel, each request that needs it fails and says why. Fix the
+variable and restart Halonic.
+
+## Good to know
+
+- **`https_proxy` and `no_proxy` in lower case win** over the upper-case names,
+  as in curl. An empty value counts as not set.
+- **`HTTP_PROXY` is not read.** Halonic tunnels only `https`.
+- **`https://` and SOCKS proxies are not supported yet.**
 - **A password in the proxy URL travels unencrypted to an `http://` proxy.**
-  That is normal for company proxies, but know it.
-- `NO_PROXY` takes names, subdomains, and `host:port`. It has no address
+  That is normal for company proxies, but know it. Halonic never prints the
+  user name or password, and never sends them to anything but the proxy.
+- **`NO_PROXY` takes names, subdomains and `host:port`.** It has no address
   ranges such as `10.0.0.0/8`.
+- **A proxy that re-signs HTTPS** only works if Halonic trusts your company's
+  certificate (`NODE_EXTRA_CA_CERTS=<path-to-certificate>`). A re-signing proxy
+  sees your provider key. Whether to allow that is your company's decision.
+- **Programs the sandbox starts get no proxy variable.** The sandbox has its own
+  network rules and ignores yours.

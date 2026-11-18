@@ -36,6 +36,7 @@ import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { LocalIntegrationMachine } from "./open-local-integration.ts";
 import type { PluginBackendMachine } from "./open-plugin-backend.ts";
 import { openPluginService } from "./plugin-host.ts";
+import { proxySetting } from "./proxy-setting.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
@@ -96,7 +97,9 @@ export function computerIntegrationMachine(
       nodeFolder: runnerNodeFolder(process.execPath),
       runnerFile: runnerFile(),
     },
-    transport: input.transport ?? createNodeHttpClient({ hostClass: connectorHostClass }),
+    transport:
+      input.transport ??
+      createNodeHttpClient({ hostClass: connectorHostClass, proxy: proxySetting }),
     // Read again at every start: what was checked when the command began is never reused.
     trustCheck: async () => {
       const read = await readWorkspaceTrust(input.dir, input.trust.commandSearch, input.workspace);

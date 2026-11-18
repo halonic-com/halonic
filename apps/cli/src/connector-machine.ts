@@ -30,6 +30,7 @@ import {
   type OpenIntegration,
 } from "./integration-connector-factory.ts";
 import { type OpenPluginBackend, PluginConnectorFactory } from "./plugin-connector-factory.ts";
+import { proxySetting } from "./proxy-setting.ts";
 import { nodeSandboxWorks } from "./sandbox-works.ts";
 import { halonicVersion } from "./version.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
@@ -69,7 +70,7 @@ export function nodeConnectorMachine(
 
 /** What an `http` connector reaches its server with: Node's, with the CLI's address rules. */
 export function connectorHttpClient(): HttpClient {
-  return createNodeHttpClient({ hostClass: connectorHostClass });
+  return createNodeHttpClient({ hostClass: connectorHostClass, proxy: proxySetting });
 }
 
 /** What runs a workspace's `stdio` connectors in a sandbox session, where the sandbox works (D45). */

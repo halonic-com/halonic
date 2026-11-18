@@ -208,6 +208,7 @@ Its text is attacker text. The rules are the requirement
 | --- | --- | --- |
 | A secret goes to the wrong address | An integration's secret is placed by the kit only for a declared secret and an allowed host; the integration never sees the value | **On `main`** (`integration-kit.secrets-placed-by-kit`) |
 | Requests go to hosts nobody declared, or redirect there | Exact, case-insensitive host match over `https`; every redirect hop is checked like the first request | **On `main`** (`declared-hosts-only`, `redirects-checked`) |
+| A company proxy hides where a request really goes | With `HTTPS_PROXY` set, public `https` hosts go through a CONNECT tunnel to the host's name, and Halonic runs TLS itself over it, so the proxy sees no content and the certificate is checked against the name. The proxy setting is read once by the app, outside the sandbox, never reaches the sandbox launcher or the program, and its user name and password never appear in a message, a log or a redirect. A bad setting fails every request that needs it and never goes direct; `loopback`, `private` and `NO_PROXY` hosts always go direct with the full address check; a public host over plain `http` is refused; the CONNECT reply is size-limited, timed and must leave no stray bytes | **On `main`** (`http-node.proxy-config`, `http-node.proxy-tunnel`, `http-node.proxy-guard`, `sandbox-srt.session`) |
 | Plain `http` leaks a secret | `http` only to this machine or a private address, and a secret only to this machine | **On `main`** (`local-http-hosts`) |
 | One integration reads another's tokens | Names are `i<n>_<integration>_<token>`; a policy declares what each may read | **On `main`** (`scoped-tokens`) |
 | A slow or huge response ties up the host | Header, idle and overall timeouts and a size limit on every request | **On `main`** (`request-limits`) |
@@ -258,6 +259,18 @@ Its text is attacker text. The rules are the requirement
   before you trust a workspace. A pinned connector can't name a variable that
   moves its registry, proxy or certificates, and a connector in a sandbox
   can't use `inheritEnv` at all.
+- **With a proxy, Halonic can't prove which address was reached.** The proxy
+  resolves the name and connects, so the address check can't run. What still
+  holds is an allowed name and port, TLS only, and a certificate valid for
+  that name. A DNS answer at the proxy that points the name at an internal
+  server works only if that server holds a valid certificate for the name,
+  the same protection a browser has. Keeping private addresses out of reach
+  is the proxy's own egress policy. Halonic doesn't resolve the name itself
+  as an extra check: it can't be tied to what the proxy resolves, it fails
+  open when local DNS is down (the usual reason for a proxy), and it would
+  read as a guarantee it isn't. Also, with an `http://` proxy the proxy
+  password travels unencrypted to the proxy, and model calls open a new
+  connection each time (no keep-alive).
 - **Outside the desktop shell there is no keychain.** The desktop app gives each
   workspace's services the keychain before any feature's services are built
   (`provideShellSecrets`, HAL-2952). In a browser, tokens go to whatever store
