@@ -1,3 +1,4 @@
+import { defaultLocalAddress } from "@halonicjs/adapter-workspace-models";
 import {
   defaultCurrency,
   type HubWorkflow,
@@ -9,7 +10,9 @@ import {
   workflowIn,
 } from "@halonicjs/app";
 import { type RoutineClock, routineClocks } from "@halonicjs/app/routines";
+import { type WorkspaceModels, workspaceModelsOf } from "@halonicjs/app/run-failure";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
+import type { Provider } from "@halonicjs/format";
 import type {
   DefinitionStore,
   DefinitionWatch,
@@ -26,7 +29,12 @@ import type {
   RunWorkflow,
   SourcedRun,
 } from "@halonicjs/studio-feature-runs/api";
-import { filesOf, loadWorkspace, providerIsLocal } from "@halonicjs/workspace";
+import {
+  filesOf,
+  type LoadedWorkspace,
+  loadWorkspace,
+  providerIsLocal,
+} from "@halonicjs/workspace";
 
 /** How often the runs are read again to see whether one changed: every 10 s (states K5). */
 export const runsPollInterval = 10_000;
@@ -61,6 +69,8 @@ export interface WorkspaceRunsOptions {
 
 /** What the workspace's files say about its runs. */
 interface WorkspaceFacts {
+  /** The files as read, for the models of a hub's runs. */
+  readonly workspace: LoadedWorkspace;
   readonly workflows: readonly HubWorkflow[];
   /** By key, the `trigger.routineId` of the runs each starts. */
   readonly routines: ReadonlyMap<string, RoutineClock>;
@@ -180,6 +190,11 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     return this.#facts?.providerNames.get(providerId);
   }
 
+  models(hubId: string): WorkspaceModels | undefined {
+    const workspace = this.#facts?.workspace;
+    return workspace === undefined ? undefined : workspaceModelsOf(workspace, hubId, providerHost);
+  }
+
   currency(): string {
     return this.#facts?.currency ?? defaultCurrency;
   }
@@ -250,6 +265,7 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     const workspace = await loadWorkspace(this.#options.definitions);
     const settings = filesOf(workspace, "workspace")[0]?.value;
     this.#facts = {
+      workspace,
       workflows: hubWorkflows(workspace),
       routines: routineClocks(workspace),
       providers: new Map(
@@ -333,4 +349,15 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
   #tell(): void {
     for (const listener of [...this.#listeners]) listener();
   }
+}
+
+/**
+ * A provider's host and port, as the CLI's failure lines name it: the host of `baseUrl`, never its
+ * path, or else the default address of a model server on this computer.
+ */
+function providerHost(provider: Provider): string | undefined {
+  if (provider.baseUrl !== undefined) {
+    return URL.canParse(provider.baseUrl) ? new URL(provider.baseUrl).host : undefined;
+  }
+  return defaultLocalAddress(provider.type);
 }

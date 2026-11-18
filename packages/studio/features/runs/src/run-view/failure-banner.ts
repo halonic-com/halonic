@@ -12,8 +12,10 @@ import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { failureWords } from "../failure-words.ts";
 import { currentStepName } from "../list/run-row.ts";
 import { providerNameOf } from "../provider-name.ts";
-import { capitalised, runPageWords } from "../run-words.ts";
+import { capitalised } from "../run-words.ts";
+import { accountBanner } from "./account-banners.ts";
 import { apiOffOf } from "./api-off.ts";
+import { danger } from "./danger-banner.ts";
 import type { BannerFix, RunBanner, RunPageContext } from "./run-page-model.ts";
 
 /** The cause code the Studio gives a run it stopped because the workspace's trust was removed (`trustRemovedCause`). */
@@ -79,7 +81,12 @@ export function causeBanner(
     case "model-out-of-memory":
       return modelOutOfMemory(facts, context, phone);
     case "model-missing":
-      return modelMissing(facts, context, phone);
+      return modelMissing(facts, context, phone) ?? accountBanner(log, context, step, phone);
+    case "key-refused":
+    case "provider-busy":
+    case "out-of-credit":
+    case "local-only":
+      return accountBanner(log, context, step, phone);
     case "model-timeout":
       return modelTimeout(facts, context, step, phone);
     case "model-no-tools":
@@ -365,13 +372,6 @@ function fixInModels(lines: readonly string[], phone: boolean): RunBanner {
   return phone
     ? danger([...lines, failureWords.fixOnComputer(failureWords.modelsPlace)])
     : danger(lines, { fixes: [openModels] });
-}
-
-function danger(
-  lines: readonly string[],
-  buttons: Pick<Extract<RunBanner, { kind: "callout" }>, "fixes" | "links" | "details"> = {},
-): RunBanner {
-  return { kind: "callout", tone: "danger", name: runPageWords.failedName, lines, ...buttons };
 }
 
 /**

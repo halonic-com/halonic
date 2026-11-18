@@ -20,12 +20,13 @@ import {
 import { useRunAgain } from "./run-again.ts";
 import { RunAgainFailed } from "./run-again-failed.tsx";
 import { DamagedLogBanner } from "./run-page.tsx";
+import { modelsOf } from "./run-page-model.ts";
 
 /** The props of `RunCardReceipt`. */
 export interface RunCardReceiptProps {
   readonly source: Pick<
     RunsSource,
-    "workflow" | "currency" | "providerKind" | "providerName" | "agentName"
+    "workflow" | "currency" | "providerKind" | "providerName" | "agentName" | "models"
   >;
   readonly run: SourcedRun;
   /** What `useRunLog` read of the run's log; the card reads it too, to know when to show its chip. */
@@ -133,6 +134,7 @@ export function RunCardReceipt({
     ...(source.agentName === undefined
       ? {}
       : { agentName: (id: string) => source.agentName?.(id) }),
+    ...modelsOf(source, summary.hubId),
     currency: source.currency(),
     now: now ?? new Date(),
   };

@@ -168,6 +168,30 @@ verifies("studio.workspace-runs", () => {
     expect(runs.providerName("gone")).toBeUndefined();
   });
 
+  it("gives a hub's models with each provider's address, and none before the files are read", async () => {
+    const { engine } = await waitingRun();
+    const definitions = new MemoryDefinitionStore({
+      "workspace.yaml": "id: acme\nname: Acme\n",
+      "models.yaml": "aliases:\n  local:\n    provider: ollama\n    model: llama3.2\n",
+      "providers/ollama.yaml": "id: ollama\nname: Ollama\ntype: ollama\nlocal: true\n",
+      "providers/work.yaml":
+        "id: work\nname: Work\ntype: openai-compatible\nbaseUrl: https://gateway.acme.example/v1\n",
+      "providers/claude.yaml": "id: claude\nname: Claude\ntype: anthropic\nsecret: anthropic-key\n",
+    });
+    const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions });
+    expect(runs.models("support")).toBeUndefined();
+
+    await runs.list();
+
+    const models = runs.models("support");
+    expect(models?.name).toBe("Acme");
+    expect([...(models?.aliases.keys() ?? [])]).toEqual(["local"]);
+    expect(Object.fromEntries(models?.addresses ?? [])).toEqual({
+      ollama: "localhost:11434",
+      work: "gateway.acme.example",
+    });
+  });
+
   it("reads the workspace's monthly budget, and none when it sets none", async () => {
     const { engine } = await waitingRun();
     const capped = new WorkspaceRuns({

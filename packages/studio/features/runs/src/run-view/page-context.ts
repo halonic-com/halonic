@@ -1,6 +1,6 @@
 import type { SourcedRun } from "../api.ts";
 import type { RunsList } from "../runs-list.ts";
-import type { RunPageContext } from "./run-page-model.ts";
+import { modelsOf, type RunPageContext } from "./run-page-model.ts";
 
 /** What the page's words need: the run's workflow, the child runs' workflows, the currency, the time. */
 export function pageContext(
@@ -26,6 +26,7 @@ export function pageContext(
     ...(source.agentName === undefined
       ? {}
       : { agentName: (id: string) => source.agentName?.(id) }),
+    ...modelsOf(source, run.summary.hubId),
     currency: source.currency(),
     now,
   };
