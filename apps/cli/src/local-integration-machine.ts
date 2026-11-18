@@ -22,7 +22,7 @@ import {
   SrtSandbox,
   sandboxRuntimeFolder,
 } from "@halonicjs/adapter-sandbox-srt";
-import { RunnerStartGate, UnfencedRuns } from "@halonicjs/app";
+import { RunnerStartGate, type SaveTimers, UnfencedRuns } from "@halonicjs/app";
 import {
   type ProfileEnvironment,
   pluginsFolder,
@@ -48,6 +48,12 @@ import {
 
 /** How long one runner may live, in milliseconds; a start after it asks the trust check and the gate again. */
 const runnerTimeLimitMs = 10 * 60 * 1000;
+
+/** Node's timers for reading the saved yes again; they don't keep the process open by themselves. */
+const unfencedRunTimers: SaveTimers = {
+  set: (callback, delayMs) => setTimeout(callback, delayMs).unref(),
+  clear: (handle) => clearTimeout(handle as NodeJS.Timeout),
+};
 
 /** A {@link LocalIntegrationMachine} that removes the temp folders it made once the engine is done. */
 export interface ComputerIntegrationMachine extends LocalIntegrationMachine {
@@ -84,6 +90,7 @@ export function computerIntegrationMachine(
     runs: new UnfencedRuns({
       store: new FileUnfencedRunConsentStore(unfencedRunsFolder(profile)),
       clock: systemClock,
+      timers: unfencedRunTimers,
     }),
   });
   const trust = cliTrustService(input.trust.trustStore, input.trust.clock);

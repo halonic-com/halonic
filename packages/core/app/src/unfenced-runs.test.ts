@@ -2,15 +2,36 @@ import type { Clock } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { RunnerFence } from "./runner-fence.ts";
+import { HandTimers } from "./testing/hand-timers.ts";
 import { TestUnfencedRunConsentStore } from "./testing/test-unfenced-run-consent-store.ts";
-import { UnfencedRuns } from "./unfenced-runs.ts";
+import { savedYesCheckMs, UnfencedRuns } from "./unfenced-runs.ts";
 
 const nineNov = "2026-11-09T10:00:00.000Z";
 const clock: Clock = { now: () => new Date(nineNov) };
 
 function setup() {
   const store = new TestUnfencedRunConsentStore();
-  return { store, runs: new UnfencedRuns({ store, clock }) };
+  const timers = new HandTimers();
+  return { store, timers, runs: new UnfencedRuns({ store, clock, timers }) };
+}
+
+/** Another process on the same computer: its own runs, the same saved yes. */
+function otherProcess(store: TestUnfencedRunConsentStore) {
+  return new UnfencedRuns({ store, clock, timers: new HandTimers() });
+}
+
+/** Lets the checks and stops the timers started finish. */
+async function settle(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/** A start that stays in progress until the test finishes it. */
+function startInProgress() {
+  let finish!: () => void;
+  const finished = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  return { finished, finish };
 }
 
 const windows: RunnerFence = { state: "not-fenced", reason: "windows" };
@@ -78,10 +99,10 @@ verifies("app.unfenced-runs", () => {
       const { runs } = setup();
       await runs.allow("windows");
       const stopped: string[] = [];
-      runs.registerUnfencedRun(async () => {
+      runs.registerUnfencedRun("windows", async () => {
         stopped.push("weather");
       });
-      runs.registerUnfencedRun(async () => {
+      runs.registerUnfencedRun("windows", async () => {
         stopped.push("home-station");
       });
 
@@ -94,7 +115,7 @@ verifies("app.unfenced-runs", () => {
       const { runs } = setup();
       await runs.allow("windows");
       const stopped: string[] = [];
-      const unregister = runs.registerUnfencedRun(async () => {
+      const unregister = runs.registerUnfencedRun("windows", async () => {
         stopped.push("weather");
       });
       unregister();
@@ -106,10 +127,10 @@ verifies("app.unfenced-runs", () => {
       const { runs, store } = setup();
       await runs.allow("windows");
       const stopped: string[] = [];
-      runs.registerUnfencedRun(async () => {
+      runs.registerUnfencedRun("windows", async () => {
         throw new Error("the runner didn't answer");
       });
-      runs.registerUnfencedRun(async () => {
+      runs.registerUnfencedRun("windows", async () => {
         stopped.push("home-station");
       });
 
@@ -118,6 +139,119 @@ verifies("app.unfenced-runs", () => {
       );
       expect(stopped).toEqual(["home-station"]);
       expect(await store.get()).toBeNull();
+    });
+
+    it("waits for a start in progress, and returns only after it stopped what it started", async () => {
+      const { runs } = setup();
+      await runs.allow("windows");
+      const { finished, finish } = startInProgress();
+      const events: string[] = [];
+      const starting = runs.whileStarting(async () => {
+        await finished;
+        events.push("start saw the yes was gone and stopped its runner");
+      });
+
+      const takenBack = runs.takeBack().then(() => events.push("taken back"));
+      await settle();
+      expect(events).toEqual([]);
+      finish();
+      await Promise.all([starting, takenBack]);
+      expect(events).toEqual(["start saw the yes was gone and stopped its runner", "taken back"]);
+    });
+
+    it("still takes the yes back when a start in progress fails", async () => {
+      const { runs, store } = setup();
+      await runs.allow("windows");
+      const starting = runs.whileStarting(async () => {
+        throw new Error("the runner didn't start");
+      });
+      await runs.takeBack();
+      await expect(starting).rejects.toThrow("the runner didn't start");
+      expect(await store.get()).toBeNull();
+    });
+  });
+
+  describe("taking it back in another process", () => {
+    it("stops a run here at the next check after Take back in another process", async () => {
+      const { runs, store, timers } = setup();
+      await runs.allow("windows");
+      const stopped: string[] = [];
+      runs.registerUnfencedRun("windows", async () => {
+        stopped.push("weather");
+      });
+
+      await otherProcess(store).takeBack();
+      expect(timers.delays()).toEqual([savedYesCheckMs]);
+      timers.fire();
+      await settle();
+      expect(stopped).toEqual(["weather"]);
+      // Nothing is left to stop, so the yes isn't read again.
+      expect(timers.delays()).toEqual([]);
+    });
+
+    it("keeps a run going, and checks again, while its yes is still saved", async () => {
+      const { runs, timers } = setup();
+      await runs.allow("windows");
+      const stopped: string[] = [];
+      runs.registerUnfencedRun("windows", async () => {
+        stopped.push("weather");
+      });
+
+      timers.fire();
+      await settle();
+      expect(stopped).toEqual([]);
+      expect(timers.delays()).toEqual([savedYesCheckMs]);
+    });
+
+    it("stops a run whose yes was replaced by one for another reason, or can't be read", async () => {
+      const { runs, store, timers } = setup();
+      await runs.allow("container");
+      const stopped: string[] = [];
+      runs.registerUnfencedRun("container", async () => {
+        stopped.push("weather");
+      });
+      await otherProcess(store).allow("bubblewrap-missing");
+      runs.registerUnfencedRun("bubblewrap-missing", async () => {
+        stopped.push("home-station");
+      });
+
+      timers.fire();
+      await settle();
+      expect(stopped).toEqual(["weather"]);
+
+      store.breakConsent();
+      timers.fire();
+      await settle();
+      expect(stopped).toEqual(["weather", "home-station"]);
+    });
+
+    it("tries again at the next check when a run fails to stop", async () => {
+      const { runs, store, timers } = setup();
+      await runs.allow("windows");
+      let tries = 0;
+      runs.registerUnfencedRun("windows", async () => {
+        tries += 1;
+        if (tries === 1) throw new Error("the runner didn't answer");
+      });
+
+      await store.remove();
+      timers.fire();
+      await settle();
+      expect(tries).toBe(1);
+      expect(timers.delays()).toEqual([savedYesCheckMs]);
+      timers.fire();
+      await settle();
+      expect(tries).toBe(2);
+      expect(timers.delays()).toEqual([]);
+    });
+
+    it("stops checking when the last run stops by itself", async () => {
+      const { runs, timers } = setup();
+      await runs.allow("windows");
+      const unregister = runs.registerUnfencedRun("windows", async () => undefined);
+      expect(timers.delays()).toEqual([savedYesCheckMs]);
+      unregister();
+      expect(timers.delays()).toEqual([]);
     });
   });
 });
