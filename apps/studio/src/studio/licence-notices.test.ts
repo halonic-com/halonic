@@ -140,3 +140,51 @@ verifies("studio.installer-third-party-notices", () => {
     expect(ignored).toContain("apps/studio/src-tauri/legal/");
   });
 });
+
+verifies("studio.installer-licence-page", () => {
+  const template = () => readFileSync(join(shellFolder, "windows/installer.nsi"), "utf8");
+
+  it("gives the bundler windows/licence.txt, which covers Microsoft's runtime", () => {
+    const config = JSON.parse(
+      readFileSync(join(shellFolder, "tauri.installer.conf.json"), "utf8"),
+    ) as { bundle?: { licenseFile?: string } };
+    expect(config.bundle?.licenseFile).toBe("windows/licence.txt");
+    const terms = readFileSync(join(shellFolder, "windows/licence.txt"), "utf8");
+    expect(terms).toContain("vcruntime140.dll");
+    expect(terms).toContain("MICROSOFT VISUAL C++ RUNTIME");
+    expect(terms).toContain('"I Agree"');
+  });
+
+  it("stops the build when there is no licence file", () => {
+    expect(template()).toMatch(/!if "\$\{LICENSE\}" == ""\s+!error /);
+  });
+
+  it("shows the page after the reinstall page and before the install page", () => {
+    const text = template();
+    const licence = text.indexOf("!insertmacro MUI_PAGE_LICENSE");
+    expect(licence).toBeGreaterThan(text.indexOf("Page custom PageReinstall PageLeaveReinstall"));
+    expect(licence).toBeLessThan(text.indexOf("Page custom PageInstall PageInstallLeave"));
+    const pre = text.lastIndexOf("!define MUI_PAGE_CUSTOMFUNCTION_PRE", licence);
+    expect(text.slice(pre, text.indexOf("\n", pre))).toContain("SkipLicence");
+  });
+
+  it("skips the page for run again, passive and update installs", () => {
+    const text = template();
+    const start = text.indexOf("Function SkipLicence");
+    const body = text.slice(start, text.indexOf("FunctionEnd", start));
+    for (const mode of ["$PassiveMode = 1", "$UpdateMode = 1", "$RunAgain = 1"]) {
+      expect(body).toContain(mode);
+    }
+    expect(body).toContain("Abort");
+  });
+
+  it("walks the page in the installer job before Install", () => {
+    const walk = readFileSync(join(shellFolder, "windows/screenshot-installer.ps1"), "utf8");
+    const agree = walk.indexOf("Wait-Button $h 'I &Agree'");
+    expect(agree).toBeGreaterThan(-1);
+    expect(walk.indexOf("Save-Picture $h '0-licence'")).toBeGreaterThan(agree);
+    expect(walk.indexOf("Wait-Button $h '&Install'")).toBeGreaterThan(agree);
+    // A sent press would block on the Install page's own message loop.
+    expect(walk.slice(agree, walk.indexOf("Wait-Button $h '&Install'"))).toContain("PostMessage");
+  });
+});
