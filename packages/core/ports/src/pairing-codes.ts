@@ -159,7 +159,13 @@ export interface PairingQrPayload {
   readonly code: string;
   /** The host's name, at most {@link pairingQrMaxHostNameBytes} bytes of UTF-8. */
   readonly hostName: string;
-  /** Where the phone reaches the gateway: 1 to 3 `https:`, `wss:` or `tcp:` URLs, the one to try first first. */
+  /**
+   * Where the phone reaches the gateway: 1 to 3 URLs, the one to try first
+   * first, each in its canonical form: `tcp://`, `wss://` or `https://`, an
+   * IPv4 address or a lower-case host name, and a port only when it isn't the
+   * scheme's default (443 for `wss:` and `https:`; `tcp:` always has one), as
+   * `tcp://192.168.1.20:4100` or `wss://studio.tail1234.ts.net`.
+   */
   readonly endpoints: readonly string[];
 }
 
@@ -178,20 +184,46 @@ export const pairingQrMaxEndpoints = 3;
 const recordVersion = 1;
 const keyBytes = 32;
 const codeBytes = 8;
-const endpointSchemes = ["https:", "wss:", "tcp:"];
+
+/** The schemes of an endpoint, by the number in the low two bits of its kind byte; 3 is unused. */
+const endpointSchemes = ["tcp", "wss", "https"] as const;
+type EndpointScheme = (typeof endpointSchemes)[number];
+
+/** The port a scheme has when its URL gives none; `tcp:` has none, so it always gives one. */
+const defaultPorts: Readonly<Record<EndpointScheme, number | undefined>> = {
+  tcp: undefined,
+  wss: 443,
+  https: 443,
+};
+
+/** The kind byte's other bits: a host name instead of IPv4, `.ts.net` left off the name, a port follows. */
+const kindName = 0b100;
+const kindTailnet = 0b1000;
+const kindPort = 0b1_0000;
+const tailnetSuffix = ".ts.net";
+const maxHostNameLength = 253;
+
+/** An endpoint as its parts: a host name is lower-case ASCII, and `port` is left out when it is the default. */
+interface Endpoint {
+  readonly scheme: EndpointScheme;
+  readonly host: readonly number[] | string;
+  readonly port: number | undefined;
+}
 
 /**
  * Writes a pairing QR code's text: `halonic-pair:` and base64url, without
  * padding, of a record of the version (1), the host key, the code as one
  * base-31 number in 8 bytes, the host name (a length byte, then UTF-8, cut
- * at a whole character to 32 bytes) and the endpoints (a count, then a
- * length byte and the URL of each).
+ * at a whole character to 32 bytes) and the endpoints (a count, then an
+ * entry for each, see {@link writeEndpoint}).
  *
  * The endpoints are kept in their order, and one that would take the text
  * past {@link pairingQrMaxBytes} is left out, so the host lists the LAN
  * endpoint first. `endpoints` in the result are the ones kept. Throws a
  * `RangeError` for a key that isn't 32 bytes, a code that isn't a pairing
- * code, an endpoint without an allowed scheme, or when no endpoint fits.
+ * code, an endpoint that isn't in its canonical form (see
+ * {@link PairingQrPayload.endpoints}) or is an IPv6 address, or when no
+ * endpoint fits.
  */
 export function encodePairingQr(payload: PairingQrPayload): {
   readonly text: string;
@@ -202,21 +234,22 @@ export function encodePairingQr(payload: PairingQrPayload): {
   const name = cutUtf8(payload.hostName, pairingQrMaxHostNameBytes);
   const head = [recordVersion, ...payload.hostKey, ...codeAsBytes(code), name.length, ...name];
   const kept: string[] = [];
-  const urls: number[] = [];
+  const entries: number[] = [];
   for (const endpoint of payload.endpoints) {
-    if (!endpointSchemes.some((scheme) => endpoint.startsWith(scheme))) {
-      throw new RangeError(`an endpoint must use https:, wss: or tcp:: ${endpoint}`);
+    const parts = parseEndpoint(endpoint);
+    if (parts === undefined) {
+      throw new RangeError(`not an endpoint in its canonical form: ${endpoint}`);
     }
-    const url = encodeUtf8(endpoint);
+    const entry = writeEndpoint(parts);
     // The head, the count byte, the endpoints kept so far and this one.
-    const length = head.length + 1 + urls.length + 1 + url.length;
-    if (kept.length === pairingQrMaxEndpoints || url.length > 255) continue;
+    const length = head.length + 1 + entries.length + entry.length;
+    if (kept.length === pairingQrMaxEndpoints) continue;
     if (qrTextBytes(length) > pairingQrMaxBytes) continue;
     kept.push(endpoint);
-    urls.push(url.length, ...url);
+    entries.push(...entry);
   }
   if (kept.length === 0) throw new RangeError("no endpoint fits in the QR code");
-  const record = Uint8Array.from([...head, kept.length, ...urls]);
+  const record = Uint8Array.from([...head, kept.length, ...entries]);
   return { text: pairingQrPrefix + encodeBase64url(record), endpoints: kept };
 }
 
@@ -224,8 +257,9 @@ export function encodePairingQr(payload: PairingQrPayload): {
  * Reads a pairing QR code's text, exactly as {@link encodePairingQr} writes
  * it. Anything else is `undefined`: another prefix, padding or a character
  * outside base64url, another version, a code past 31¹², a name that isn't
- * UTF-8 or is too long, no endpoint or more than three, an endpoint without
- * an allowed scheme, a missing or an extra byte, or a text over 150 bytes.
+ * UTF-8 or is too long, no endpoint or more than three, an endpoint entry
+ * that writing wouldn't give, a missing or an extra byte, or a text over 150
+ * bytes.
  */
 export function decodePairingQr(text: string): PairingQrPayload | undefined {
   if (!text.startsWith(pairingQrPrefix) || text.length > pairingQrMaxBytes) return undefined;
@@ -240,14 +274,98 @@ export function decodePairingQr(text: string): PairingQrPayload | undefined {
   if (count === undefined || count < 1 || count > pairingQrMaxEndpoints) return undefined;
   const endpoints: string[] = [];
   for (let index = 0; index < count; index += 1) {
-    const endpoint = reader.text(255);
-    if (!endpointSchemes.some((scheme) => endpoint?.startsWith(scheme))) return undefined;
-    endpoints.push(endpoint as string);
+    const endpoint = readEndpoint(reader);
+    if (endpoint === undefined) return undefined;
+    endpoints.push(endpoint);
   }
   if (hostKey === undefined || code === undefined || hostName === undefined || !reader.done()) {
     return undefined;
   }
   return { hostKey, code, hostName, endpoints };
+}
+
+const ipv4Part = "(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)";
+const ipv4 = new RegExp(`^${ipv4Part}(?:\\.${ipv4Part}){3}$`);
+const nameLabel = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+const canonicalEndpoint = /^(tcp|wss|https):\/\/([^:/]+)(?::([1-9]\d{0,4}))?$/;
+
+/**
+ * An endpoint's parts when it is in its canonical form, else `undefined`.
+ * An IPv4 address has no leading zeros. A host name is dot-separated labels
+ * of lower-case letters, digits and inner dashes, at most 253 characters,
+ * and its last label starts with a letter, so it can't be read as an address.
+ */
+function parseEndpoint(endpoint: string): Endpoint | undefined {
+  const match = canonicalEndpoint.exec(endpoint);
+  if (match === null) return undefined;
+  const scheme = match[1] as EndpointScheme;
+  const hostText = match[2] ?? "";
+  const port = match[3] === undefined ? undefined : Number(match[3]);
+  if (port === undefined ? scheme === "tcp" : port > 65_535 || port === defaultPorts[scheme]) {
+    return undefined;
+  }
+  if (ipv4.test(hostText)) return { scheme, host: hostText.split(".").map(Number), port };
+  return isHostName(hostText) ? { scheme, host: hostText, port } : undefined;
+}
+
+function isHostName(host: string): boolean {
+  const labels = host.split(".");
+  return (
+    host.length <= maxHostNameLength &&
+    labels.every((label) => nameLabel.test(label)) &&
+    /^[a-z]/.test(labels.at(-1) ?? "")
+  );
+}
+
+/**
+ * An endpoint's entry: a kind byte (the scheme in the low two bits, 0 `tcp`,
+ * 1 `wss`, 2 `https`; then {@link kindName}, {@link kindTailnet} and
+ * {@link kindPort}; the top three bits zero), then the 4 bytes of an IPv4
+ * address or a length byte and the host name without a final `.ts.net`, then
+ * the port in 2 bytes, big-endian, when it isn't the default.
+ */
+function writeEndpoint({ scheme, host, port }: Endpoint): number[] {
+  let kind = endpointSchemes.indexOf(scheme) | (port === undefined ? 0 : kindPort);
+  const entry: number[] = [];
+  if (typeof host === "string") {
+    const tailnet = host.endsWith(tailnetSuffix);
+    const name = tailnet ? host.slice(0, -tailnetSuffix.length) : host;
+    kind |= kindName | (tailnet ? kindTailnet : 0);
+    entry.push(name.length, ...encodeUtf8(name));
+  } else {
+    entry.push(...host);
+  }
+  if (port !== undefined) entry.push(port >> 8, port & 0xff);
+  return [kind, ...entry];
+}
+
+/**
+ * An entry read back to its URL, or `undefined` when it isn't exactly the
+ * entry {@link writeEndpoint} gives for that URL: so a kind byte with a top
+ * bit set, a `.ts.net` bit on an IPv4 address, a name left with `.ts.net`, a
+ * default port written out, port 0 or a `tcp:` entry without a port are all
+ * refused.
+ */
+function readEndpoint(reader: RecordReader): string | undefined {
+  const start = reader.offset;
+  const kind = reader.byte() ?? 0;
+  const scheme = endpointSchemes[kind & 0b11];
+  const host = kind & kindName ? readHostName(reader, kind) : reader.bytes(4)?.join(".");
+  const port = kind & kindPort ? reader.bytes(2) : undefined;
+  if (scheme === undefined || host === undefined) return undefined;
+  const url = `${scheme}://${host}${port === undefined ? "" : `:${((port[0] ?? 0) << 8) | (port[1] ?? 0)}`}`;
+  const parts = parseEndpoint(url);
+  if (parts === undefined) return undefined;
+  const entry = writeEndpoint(parts);
+  const read = reader.since(start);
+  return entry.length === read.length && entry.every((byte, index) => byte === read[index])
+    ? url
+    : undefined;
+}
+
+function readHostName(reader: RecordReader, kind: number): string | undefined {
+  const name = reader.text(maxHostNameLength);
+  return name !== undefined && kind & kindTailnet ? `${name}${tailnetSuffix}` : name;
 }
 
 function codeAsBytes(code: string): number[] {
@@ -343,6 +461,16 @@ class RecordReader {
     const text = bytes === undefined ? undefined : decodeUtf8(bytes);
     if (text === undefined) this.broken = true;
     return text;
+  }
+
+  /** Where the next byte is read from. */
+  get offset(): number {
+    return this.at;
+  }
+
+  /** The bytes read since `start`. */
+  since(start: number): Uint8Array {
+    return this.record.slice(start, this.at);
   }
 
   done(): boolean {
