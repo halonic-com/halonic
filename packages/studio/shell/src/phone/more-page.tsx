@@ -1,15 +1,21 @@
 import {
   ChevronDownIcon,
   ChevronRightIcon,
+  HeaderBadgeSheet,
+  isMenuItem,
   List,
   type ListRow,
   PlaceIcon,
   SettingsIcon,
   StatusChip,
 } from "@halonicjs/studio-kit";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import type { ShownPlace, SidebarPlace } from "../points/frame.ts";
-import { letterMark, type SwitcherWorkspace } from "../sidebar/workspace-switcher.tsx";
+import {
+  letterMark,
+  type SwitcherWorkspace,
+  type WorkspaceSwitcherProps,
+} from "../sidebar/workspace-switcher.tsx";
 import { phonePlaceOf } from "./place-stacks.ts";
 
 /** Props for {@link MorePage}. */
@@ -19,6 +25,12 @@ export interface MorePageProps {
    * shows, so the page never has a switcher that does nothing.
    */
   readonly switcher?: MorePageSwitcher | undefined;
+  /**
+   * The sidebar's switcher, for a desktop window as narrow as a phone, which has no sidebar: when
+   * there is no `switcher`, its row opens the workspace menu as a sheet, so switching workspaces
+   * still works at 320px (WCAG 1.4.10).
+   */
+  readonly menuSwitcher?: WorkspaceSwitcherProps | undefined;
   /**
    * The places the features added, from `showPlace`, as the sidebar gets them. Only the ones that
    * live under More are listed; Home, Inbox and Runs have the bottom navigation.
@@ -43,7 +55,8 @@ export interface MorePageProps {
  * with More highlighted. It holds what doesn't fit in the bottom navigation:
  *
  * - **The workspace switcher** as the first row, once the app has a workspace picker, 56px: the letter mark, the workspace's name over
- *   its folder, and a chevron. It is one button, named "Workspace: Acme. Change workspace".
+ *   its folder, and a chevron. It is one button, named "Workspace: Acme. Change workspace". In a
+ *   desktop window as narrow as a phone it opens the sidebar's workspace menu as a sheet.
  * - **The header badge**, when there is one, on its own 48px line under it, so the two are sibling
  *   targets and never one inside the other.
  * - **The lists**: a flush List of Agents, Workflows, Routines, Library and Changes, in that order
@@ -62,15 +75,25 @@ export interface MorePageProps {
  *   onOpen={(place) => setStacks(openPhonePage(stacks, { key: place, title: placeNames[place].label }, { list: true }))}
  * />
  */
-export function MorePage({ switcher, places, onOpen, onSettings, badge }: MorePageProps) {
+export function MorePage({
+  switcher,
+  menuSwitcher,
+  places,
+  onOpen,
+  onSettings,
+  badge,
+}: MorePageProps) {
   const rows = onSettings === undefined ? moreRows(places) : [...moreRows(places), settingsRow];
   return (
     <div className="flex flex-col">
       <h1 tabIndex={-1} className="sr-only">
         More
       </h1>
-      {switcher === undefined ? null : <WorkspaceRow {...switcher} />}
-      {badge === undefined ? null : <div className="mt-2 flex min-h-12 items-center">{badge}</div>}
+      <SwitcherRow switcher={switcher} menuSwitcher={menuSwitcher} />
+      {/* Empty when the badges given all draw nothing, such as an untrusted sample's chip. */}
+      {badge === undefined ? null : (
+        <div className="mt-2 flex min-h-12 items-center empty:hidden">{badge}</div>
+      )}
       {rows.length === 0 ? null : (
         <div className="mt-2">
           <List
@@ -138,6 +161,59 @@ export interface MorePageSwitcher {
   readonly workspace: SwitcherWorkspace;
   /** The row's tap: opens the workspace picker as a picker sheet (T3). */
   readonly onChange: () => void;
+}
+
+/** The More sheet's title for the workspace menu, as the served phone's picker sheet is titled. */
+const workspaceSheetTitle = "Workspace";
+
+/** The app's switcher row when there is one, else the sidebar's switcher's, else nothing. */
+function SwitcherRow({ switcher, menuSwitcher }: Pick<MorePageProps, "switcher" | "menuSwitcher">) {
+  if (switcher !== undefined) {
+    return <WorkspaceRow {...switcher} />;
+  }
+  if (menuSwitcher === undefined) {
+    return null;
+  }
+  return <MenuSwitcherRow {...menuSwitcher} />;
+}
+
+/**
+ * The switcher row of a narrow desktop window: it opens the workspace menu's rows as the kit's
+ * sheet over the window, and a picked row closes the sheet before it does its job.
+ */
+function MenuSwitcherRow({ workspace, menu, busy = false }: WorkspaceSwitcherProps) {
+  const [open, setOpen] = useState(false);
+  const entries = menu.map((entry) =>
+    isMenuItem(entry)
+      ? {
+          ...entry,
+          onSelect: () => {
+            setOpen(false);
+            entry.onSelect();
+          },
+        }
+      : entry,
+  );
+  return (
+    <>
+      <WorkspaceRow
+        workspace={workspace}
+        onChange={() => {
+          // A workspace still opening ignores presses, as the sidebar's switcher does.
+          if (!busy) setOpen(true);
+        }}
+      />
+      {open ? (
+        <div className="fixed inset-0 z-40 bg-surface">
+          <HeaderBadgeSheet
+            title={workspaceSheetTitle}
+            entries={entries}
+            onClose={() => setOpen(false)}
+          />
+        </div>
+      ) : null}
+    </>
+  );
 }
 
 /** The switcher row: 56px, padding 0 16px, the same mark as the sidebar's switcher. */

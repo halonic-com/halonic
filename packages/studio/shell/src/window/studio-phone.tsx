@@ -14,6 +14,7 @@ import type { PhonePlaces } from "../phone/use-phone-places.ts";
 import type { ShownPlace } from "../points/frame.ts";
 import { SectionView } from "../settings/settings-dialog.tsx";
 import { listedSections, type SettingsPlace, settingsGroups } from "../settings/settings-groups.ts";
+import type { WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
 import { StudioPage, type StudioPageProps } from "./studio-page.tsx";
 
 /** Props for {@link StudioPhoneTopBar}. */
@@ -55,8 +56,15 @@ export interface StudioPhonePageProps extends Omit<StudioPageProps, "location"> 
   readonly shown: readonly ShownPlace[];
   /** The More page's workspace switcher row, once the app has a workspace picker (T3). */
   readonly switcher?: MorePageSwitcher | undefined;
+  /** The sidebar's switcher, for More in a desktop window as narrow as a phone. */
+  readonly menuSwitcher?: WorkspaceSwitcherProps | undefined;
   /** The More page's header badge, on its own line under the switcher row. */
   readonly badge?: ReactNode;
+  /**
+   * The desktop's header badges, for More when there is no `badge`: a desktop window as narrow as
+   * a phone has no title bar to show them in (WCAG 1.4.10).
+   */
+  readonly desktopBadges?: ReactNode;
   /** The window's `openSettings`: with it, More ends with a Settings row. */
   readonly onSettings?: (() => void) | undefined;
   /** In the desktop app, or in a browser, as Settings words its saved lines. */
@@ -93,7 +101,9 @@ function PhonePageBody({
   places,
   shown,
   switcher,
+  menuSwitcher,
   badge,
+  desktopBadges,
   onSettings,
   settingsPlace,
   regionFormat,
@@ -107,7 +117,8 @@ function PhonePageBody({
     return (
       <MorePage
         switcher={switcher}
-        badge={badge}
+        menuSwitcher={menuSwitcher}
+        badge={badge ?? desktopBadges}
         places={shown}
         onOpen={(place) => places.openPlace(place)}
         onSettings={onSettings}

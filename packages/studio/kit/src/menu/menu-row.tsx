@@ -1,6 +1,7 @@
 import { useId } from "react";
 import { TickIcon } from "../icons/tick-icon.tsx";
 import { Kbd } from "../kbd/kbd.tsx";
+import { StatusChip } from "../status-chip/status-chip.tsx";
 import type { MenuItem } from "./menu.tsx";
 
 /**
@@ -105,6 +106,7 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
           </span>
         ) : null}
       </span>
+      {item.tag === undefined ? null : <ItemTag words={item.tag} />}
       {item.attention === undefined ? null : <AttentionDot words={item.attention} />}
       {item.keys === undefined ? null : (
         <span className="ml-auto pl-4">
@@ -133,6 +135,18 @@ function AttentionDot({ words }: { readonly words: string }) {
       />
       <span className="sr-only">, {words}</span>
     </span>
+  );
+}
+
+/** The outline tag after the label; a screen reader hears its words after the item's name. */
+function ItemTag({ words }: { readonly words: string }) {
+  return (
+    <>
+      <span aria-hidden="true" className="inline-flex shrink-0">
+        <StatusChip tone="outline">{words}</StatusChip>
+      </span>
+      <span className="sr-only">, {words}</span>
+    </>
   );
 }
 

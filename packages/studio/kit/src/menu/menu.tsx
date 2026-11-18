@@ -12,6 +12,11 @@ export interface MenuItem {
    * in the workspace menu. It describes the item: its name stays the label.
    */
   readonly detail?: string | undefined;
+  /**
+   * A fact about the item as an outline tag after its label, read after its name: the "Sample"
+   * of the Acme sample in the workspace menu (flow-first-run 8).
+   */
+  readonly tag?: string | undefined;
   /** An optional 16px icon before the label (20px on a phone). */
   readonly icon?: ReactNode;
   /** Its shortcut, shown on the right as a Kbd and named with `aria-keyshortcuts`. */
