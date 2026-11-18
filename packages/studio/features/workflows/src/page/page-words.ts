@@ -14,6 +14,14 @@ export const pageWords = {
   fit: "Fit to screen",
   startChip: "Start",
   noAgent: "No agent",
+  /**
+   * Where a card leads, read out after its name, since a screen reader doesn't see the arrows
+   * (a11y check E1). One sentence for the ways on without words, one per way with words.
+   */
+  waysOn: {
+    next: (targets: readonly string[]) => `Next: ${targets.join(", or ")}`,
+    labelled: (label: string, target: string) => `${label}: ${target}`,
+  },
   stepKind: {
     task: "AGENT STEP",
     wait: "WAIT",
