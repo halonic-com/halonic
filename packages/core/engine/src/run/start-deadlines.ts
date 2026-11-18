@@ -88,7 +88,14 @@ export class StartDeadlines {
         this.#waiting.delete(timerSlot);
         timeUp();
       });
-      await this.#scheduler.schedule(runId, timerId, new Date(since + leftMs).toISOString());
+      try {
+        await this.#scheduler.schedule(runId, timerId, new Date(since + leftMs).toISOString());
+      } catch (error) {
+        // No timer was set, so nothing is counted and no wait is left behind.
+        since = null;
+        this.#waiting.delete(timerSlot);
+        throw error;
+      }
     };
     const stopCounting = async () => {
       if (since === null) return;

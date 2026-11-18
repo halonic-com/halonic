@@ -151,6 +151,14 @@ verifies("engine.harness-step-limits", () => {
     expect((error as Error).message).toBe(
       'Agent "writer" ran for its 10 minutes (harnessLimits.maxMinutes), so Halonic stopped Claude Code.',
     );
+    expect(
+      failedCallInput(error, { callId: "call-1", at: "2026-11-18T10:00:00.000Z", step: "draft" })
+        .cause,
+    ).toEqual({
+      kind: "limit_reached",
+      code: "harness.max-minutes",
+      detail: { limit: "10", used: "10" },
+    });
     expect(ports.steps.slice(-3)).toEqual(["harness.cancel", "session.close", "bridge.close"]);
     expect(stillOpen(ports.steps)).toBe(0);
   });
@@ -169,6 +177,26 @@ verifies("engine.harness-step-limits", () => {
     );
 
     expect(output).toBe("Done");
+    expect(await scheduler.waitFor("run_1", "start:step:call-1")).toMatchObject({ key: "run_1" });
+    expect(scheduler.timers.size).toBe(0);
+  });
+
+  it("cancels the maxMinutes timer when the harness fails to start", async () => {
+    const ports = harnessPorts();
+    ports.harness.start = () => {
+      throw new Error("No such program.");
+    };
+    const { limits, scheduler } = startLimits();
+
+    const { error } = await runCallOn(
+      ports,
+      limits,
+      undefined,
+      undefined,
+      limitedCall({ maxMinutes: 10 }),
+    );
+
+    expect((error as Error).message).toBe("No such program.");
     expect(await scheduler.waitFor("run_1", "start:step:call-1")).toMatchObject({ key: "run_1" });
     expect(scheduler.timers.size).toBe(0);
   });

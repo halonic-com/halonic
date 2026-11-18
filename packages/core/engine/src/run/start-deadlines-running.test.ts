@@ -18,8 +18,14 @@ function handClock() {
   };
 }
 
-function runningSetup() {
-  const scheduler = new NotingScheduler();
+/** A scheduler that takes no timer. */
+class RefusingScheduler extends NotingScheduler {
+  override async schedule(): Promise<void> {
+    throw new Error("The scheduler is down.");
+  }
+}
+
+function runningSetup(scheduler = new NotingScheduler()) {
   const { clock, pass } = handClock();
   const deadlines = new StartDeadlines(scheduler, clock);
   let timesUp = 0;
@@ -68,6 +74,15 @@ verifies("engine.harness-step-limits", () => {
     setup.arrive();
 
     expect(setup.timer()).toBeUndefined();
+    expect(setup.timesUp()).toBe(0);
+  });
+
+  it("leaves no wait behind when the scheduler doesn't take the timer", async () => {
+    const setup = runningSetup(new RefusingScheduler());
+
+    await expect(setup.start()).rejects.toThrow("The scheduler is down.");
+    setup.arrive();
+
     expect(setup.timesUp()).toBe(0);
   });
 });

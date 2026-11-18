@@ -263,19 +263,24 @@ async function runInBridge(
         ...(call.agent.model === undefined ? {} : { model: call.agent.model }),
       };
       await started.stepLimits.startClock(started.limits);
-      const run = harness.start(task, session, bridge);
-      const events = run[Symbol.asyncIterator]();
-      let result: { output: unknown } | undefined;
-      let failure: unknown;
+      // From here the clock stops however the step ends, even when the harness fails to start.
       try {
-        result = { output: await followRun(started, session, run, events, timeoutMs) };
-      } catch (error) {
-        failure = error;
+        const run = harness.start(task, session, bridge);
+        const events = run[Symbol.asyncIterator]();
+        let result: { output: unknown } | undefined;
+        let failure: unknown;
+        try {
+          result = { output: await followRun(started, session, run, events, timeoutMs) };
+        } catch (error) {
+          failure = error;
+        }
+        await started.stepLimits.stopClock();
+        await stopRun(harness, run, events, result === undefined ? { error: failure } : undefined);
+        if (result === undefined) throw failure;
+        return result.output;
+      } finally {
+        await started.stepLimits.stopClock();
       }
-      await started.stepLimits.stopClock();
-      await stopRun(harness, run, events, result === undefined ? { error: failure } : undefined);
-      if (result === undefined) throw failure;
-      return result.output;
     } finally {
       await session.close();
       stopReports();
