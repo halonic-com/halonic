@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12859 (found in the usability re-walk HAL-12840, C86; a detail of an approved screen, so a team decision under HAL-2282; the phone line reuses the header badge's existing words)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:n4H2vH7u0Z/PCRtVm3AWxHHKbYRHlYiwnZyS1TTu3tiLUiJTAi8UM3YjY7ibQlN116oFeL8+jFauvuLhWXWnCw==
 
 Settings › Trust no longer offers **Open Trust** when the workspace holds nothing to trust: the page it
 opened shows the same "Nothing to trust here." line and no **Review**, so the button led nowhere new.
