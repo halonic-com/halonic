@@ -54,8 +54,8 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
     fix: "ask whoever manages this computer to allow it.",
   },
   "virtualisation-off": {
-    reason: "Hardware virtualization is turned off on this computer.",
-    fix: "turn it on in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualization.",
+    reason: "Hardware virtualisation is turned off on this computer.",
+    fix: "turn it on in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualisation.",
   },
   "wsl-missing": {
     reason: "WSL isn't installed, and the sandbox needs it.",

@@ -44,7 +44,7 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
   "blocked-by-policy":
     "A company policy on this computer blocks the sandbox. Ask whoever manages this computer to allow it, then run it again.",
   "virtualisation-off":
-    "Hardware virtualization is turned off on this computer. Turn it on in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualization. Then run it again.",
+    "Hardware virtualisation is turned off on this computer. Turn it on in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualisation. Then run it again.",
   "wsl-missing":
     "WSL isn't installed, and the sandbox needs it. Install it with wsl --install --no-distribution in a terminal run as administrator, restart Windows, then run it again.",
   "restart-needed":
@@ -76,7 +76,7 @@ const reasons: Readonly<Record<WordedReason, string>> = {
   container: "Halonic is running inside a container, and the sandbox can't start there.",
   "not-supported": "This distro runs on WSL 1, and the sandbox needs WSL 2.",
   "blocked-by-policy": "A company policy on this computer blocks the sandbox.",
-  "virtualisation-off": "Hardware virtualization is turned off on this computer.",
+  "virtualisation-off": "Hardware virtualisation is turned off on this computer.",
   "wsl-missing": "WSL isn't installed, and the sandbox needs it.",
   "restart-needed": "Windows needs to restart to finish setting up WSL.",
   "distro-missing": "WSL works, but Halonic's own Linux system for the sandbox isn't installed.",
@@ -103,7 +103,7 @@ const fixes: Readonly<Record<WordedReason, string>> = {
   "not-supported": `switch it to WSL 2 with wsl --set-version ${distroSlot} 2 in PowerShell on Windows.`,
   "blocked-by-policy": "ask whoever manages this computer to allow it.",
   "virtualisation-off":
-    "turn it on in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualization.",
+    "turn it on in the computer's firmware settings (BIOS or UEFI). In a virtual machine, turn on nested virtualisation.",
   "wsl-missing":
     "install it with wsl --install --no-distribution in a terminal run as administrator, then restart Windows.",
   "restart-needed": "restart Windows.",
