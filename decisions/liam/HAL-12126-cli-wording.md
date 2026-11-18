@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-12126 asks for this change, from the new-user flow check on HAL-12121; small wording on approved screens, a team decision under the HAL-2282 rule. Julian signs, since Liam wrote it.
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:4/qy6gJAiwSHIkicFh9iVxf3j2A02oLPrhTT2RQzXz8mvjGH6Rws8K3tlrVhiiMUGCO/uCYrKSFpuNfykaM4Dw==
 
 ## What changes
 
