@@ -4,7 +4,10 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import {
+  createFromWelcome,
+  holdOpens,
   menuRow,
+  newWorkspaceHost,
   press,
   setUpWindow,
   shownHeading,
@@ -29,6 +32,18 @@ verifies("workspace.workspace-window", () => {
     await act(async () => menuRow("Open a folder…")?.click());
     await act(async () => {});
     expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: beta");
+    expect(document.activeElement).toBe(shownHeading());
+  });
+
+  it("moves focus to Home's title after New workspace… › Create (a11y W1, first run L13)", async () => {
+    start([], [], undefined, [], newWorkspaceHost);
+    const release = holdOpens();
+
+    // The dialog closes and gives focus back to Welcome's New workspace… before the folder opens.
+    await createFromWelcome("notes");
+    await act(async () => release());
+    await act(async () => {});
+    expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: notes");
     expect(document.activeElement).toBe(shownHeading());
   });
 

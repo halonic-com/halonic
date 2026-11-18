@@ -7,7 +7,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceSaving } from "./workspace-saving.ts";
 import { MENU_BUSY_AFTER_MS } from "./workspace-switcher.ts";
 import {
+  createFromWelcome,
   element,
+  newWorkspaceHost,
   press,
   setUpWindow,
   start,
@@ -46,38 +48,9 @@ verifies("workspace.workspace-window", () => {
   });
 
   it('creates a workspace from Welcome\'s New workspace… and opens it with "Created acme"', async () => {
-    const { shell } = start([], [], undefined, [], {
-      defaultParent: async () => "/docs",
-      folderOf: (parent, name) => `${parent}/${name}`,
-      probe: async () => "new",
-      create: async () => ({ kind: "trusted" }),
-    });
-    // jsdom has `<dialog>` but no `showModal()`; opening it is all this needs.
-    Object.assign(HTMLDialogElement.prototype, {
-      showModal(this: HTMLDialogElement) {
-        this.setAttribute("open", "");
-      },
-      close(this: HTMLDialogElement) {
-        this.removeAttribute("open");
-      },
-    });
-    const newButton = [...element.querySelectorAll("button")].find((each) =>
-      each.textContent?.includes("New workspace…"),
-    );
+    const { shell } = start([], [], undefined, [], newWorkspaceHost);
 
-    await act(async () => newButton?.click());
-    const name = document.querySelector<HTMLInputElement>("input");
-    await act(async () => {
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-      setter?.call(name, "acme");
-      name?.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    const create = [...document.querySelectorAll("button")].find((each) =>
-      each.textContent?.startsWith("Create"),
-    );
-    await act(async () => create?.click());
-    await act(async () => {});
-
+    await createFromWelcome("acme");
     expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: acme");
     expect(shell.toasts.list().map((toast) => toast.title)).toEqual(["Created acme"]);
   });

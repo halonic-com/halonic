@@ -21,6 +21,23 @@ import { folderName, WorkspaceSwitcher } from "./workspace-switcher.ts";
 export const element = document.createElement("div");
 let mounted: MountedWorkspaceWindow | undefined;
 let restoreMedia: () => void = () => {};
+/** While set, every folder waits for it before it opens; see {@link holdOpens}. */
+let held: Promise<void> | undefined;
+
+/**
+ * Makes folders wait to open until the returned function is called, as a real folder takes a
+ * moment to read: a dialog that started the open is gone before the workspace is shown.
+ */
+export function holdOpens(): () => void {
+  let release: () => void = () => {};
+  held = new Promise((resolve) => {
+    release = resolve;
+  });
+  return () => {
+    held = undefined;
+    release();
+  };
+}
 
 /** Puts `element` in the page; run it before each test. */
 export function setUpWindow(): void {
@@ -43,6 +60,7 @@ export function setUpWindow(): void {
 export function tearDownWindow(): void {
   act(() => mounted?.unmount());
   mounted = undefined;
+  held = undefined;
   element.remove();
   restoreMedia();
 }
@@ -74,6 +92,7 @@ export function start(
   const switcher = new WorkspaceSwitcher({
     pickFolder: async () => picks.shift(),
     openFolder: async (location) => {
+      await held;
       if (gone.includes(location)) {
         throw new KindedError("not_found", `No folder ${location}`);
       }
@@ -120,6 +139,43 @@ export function menuRow(label: string): HTMLElement | undefined {
 /** The `h1` of the page the shown workspace shows. */
 export function shownHeading(): HTMLElement | null {
   return element.querySelector<HTMLElement>("main h1");
+}
+
+/** A New workspace… host that makes every folder new in `/docs` and trusts what it creates. */
+export const newWorkspaceHost: NewWorkspaceHost = {
+  defaultParent: async () => "/docs",
+  folderOf: (parent, name) => `${parent}/${name}`,
+  probe: async () => "new",
+  create: async () => ({ kind: "trusted" }),
+};
+
+/** Presses Welcome's **New workspace…**, types `name` and presses **Create**. */
+export async function createFromWelcome(name: string): Promise<void> {
+  // jsdom has `<dialog>` but no `showModal()`; opening it is all this needs.
+  Object.assign(HTMLDialogElement.prototype, {
+    showModal(this: HTMLDialogElement) {
+      this.setAttribute("open", "");
+    },
+    close(this: HTMLDialogElement) {
+      this.removeAttribute("open");
+    },
+  });
+  const newButton = [...element.querySelectorAll("button")].find((each) =>
+    each.textContent?.includes("New workspace…"),
+  );
+
+  await act(async () => newButton?.click());
+  const field = document.querySelector<HTMLInputElement>("input");
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    setter?.call(field, name);
+    field?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const create = [...document.querySelectorAll("button")].find((each) =>
+    each.textContent?.startsWith("Create"),
+  );
+  await act(async () => create?.click());
+  await act(async () => {});
 }
 
 export async function press(init: KeyboardEventInit): Promise<void> {
