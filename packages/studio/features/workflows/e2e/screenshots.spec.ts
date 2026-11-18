@@ -294,7 +294,7 @@ for (const shown of canvasRuns) {
     test(`canvas, ${shown}, ${scheme}`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: scheme });
       await page.goto(`/canvas.html?run=${shown}`);
-      await expect(page.getByRole("application")).toBeVisible();
+      await expect(page.getByRole("group", { name: "Workflow canvas" })).toBeVisible();
       await expect(page.getByText("Summarise the change")).toBeVisible();
       const taken = { none: 0, mid: 1, done: 3, branch: 3, failed: 2 }[shown];
       await expect(page.locator("g[data-taken]")).toHaveCount(taken);
