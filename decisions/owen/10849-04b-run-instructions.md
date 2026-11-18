@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-10849 (board's yes on HAL-11378: the Studio runs harness agents in 0.1)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:UMMF6gK2/DgW8WmlKXE9gNU4dXQStuVc4pX6AXW38dZStQQESBj4e/qUwPCaYxC5SkJ2bSYBMU4rp3cE57xwDQ==
 - Task: HAL-10849
 
 `studio.engine-service` changes in two places:
