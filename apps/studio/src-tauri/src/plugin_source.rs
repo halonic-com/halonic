@@ -13,8 +13,9 @@
 //!
 //! Reading follows no link and never opens a special file (the
 //! `halonic-workspace-files` reader's rules), leaves out the `.git` folder
-//! at the top, and stops at the plugin size limits, which are core's
-//! `MAX_PLUGIN_ENTRIES` and `MAX_PLUGIN_BYTES`.
+//! at any depth along with `.studio` and `.env*` (the workspace's private
+//! names, which core leaves out too), and stops at the plugin size limits,
+//! which are core's `MAX_PLUGIN_ENTRIES` and `MAX_PLUGIN_BYTES`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -24,7 +25,8 @@ use halonic_blob_store::base64url;
 use halonic_git_guard::plain_path;
 use halonic_profile::ProfileFolder;
 use halonic_workspace_files::{
-    EntryKind, Fence, FileError, FolderEntry, FolderReader, check_workspace_path, segment_as_opened,
+    EntryKind, Fence, FileError, FolderEntry, FolderReader, check_workspace_path,
+    is_private_workspace_path,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Manager, Runtime};
@@ -152,10 +154,11 @@ pub(crate) fn check_source(
     Ok((real, location))
 }
 
-/// Whether `path` is the `.git` folder at the top of the source, or inside it.
-fn in_git_folder(path: &str) -> bool {
-    let first = path.split('/').next().unwrap_or_default();
-    segment_as_opened(first) == ".git"
+/// Whether `path` is, or is inside, a private entry at any depth: `.git`,
+/// `.studio`, `.env*` and the other names the workspace keeps private. A
+/// plugin never has one, so none is listed or read.
+fn is_private(path: &str) -> bool {
+    is_private_workspace_path(path)
 }
 
 /// A reader of the picked folder `root`, with the profile left out.
@@ -164,50 +167,48 @@ fn source_reader(profile: &ProfileFolder, root: PathBuf) -> FolderReader {
     FolderReader::new(root).fenced(fence)
 }
 
-/// Every entry under `dir` (the whole source for `None`), without the `.git`
-/// folder. At most `limit` (never over [`MAX_ENTRIES`]) and one more are
-/// listed, so a caller sees there are too many. The `.git` folder is never
-/// walked, so a checkout with a long history costs nothing.
+/// Every entry under `dir` (the whole source for `None`), without a private
+/// entry (see [`is_private`]) or anything inside one. At most `limit` (never
+/// over [`MAX_ENTRIES`]) and one more are listed, so a caller sees there are
+/// too many. A private folder is never walked, so a nested checkout with a
+/// long history costs nothing.
 pub(crate) fn source_entries(
     reader: &FolderReader,
     dir: Option<&str>,
     limit: Option<usize>,
     recursive: bool,
 ) -> Result<Vec<FolderEntry>, FileError> {
-    if dir.is_some_and(in_git_folder) {
+    if dir.is_some_and(is_private) {
         return Ok(Vec::new());
     }
     let limit = limit.map_or(MAX_ENTRIES, |limit| limit.min(MAX_ENTRIES));
-    // `.git` is only ever the first segment, so below a folder there is none.
-    if dir.is_some() || !recursive {
-        let mut found = reader.entries(dir, Some(limit + 2), recursive)?;
-        found.retain(|entry| !in_git_folder(&entry.path));
-        found.truncate(limit + 1);
-        return Ok(found);
-    }
     let mut found = Vec::new();
-    for top in reader.entries(None, Some(limit + 2), false)? {
-        if in_git_folder(&top.path) {
-            continue;
-        }
-        let folder = (top.kind == EntryKind::Folder).then(|| top.path.clone());
-        found.push(top);
-        if let Some(folder) = folder {
-            let room = (limit + 1).saturating_sub(found.len());
-            found.extend(reader.entries(Some(folder.as_str()), Some(room), true)?);
+    let mut pending = vec![dir.map(str::to_owned)];
+    while let Some(folder) = pending.pop() {
+        let room = (limit + 1).saturating_sub(found.len());
+        // Private entries are dropped after the listing, so ask for room for them too.
+        let listed = reader.entries(folder.as_deref(), Some(room + MAX_ENTRIES + 1), false)?;
+        for entry in listed {
+            if is_private(&entry.path) {
+                continue;
+            }
+            if recursive && entry.kind == EntryKind::Folder {
+                pending.push(Some(entry.path.clone()));
+            }
+            found.push(entry);
         }
         if found.len() > limit {
             break;
         }
     }
-    found.truncate(limit + 1);
     // UTF-16 code units, as the reader and the port order them.
     found.sort_by(|left, right| left.path.encode_utf16().cmp(right.path.encode_utf16()));
+    found.truncate(limit + 1);
     Ok(found)
 }
 
 /// The file's exact bytes, or `None` when there is none, and nothing for
-/// anything in the `.git` folder. A file over [`MAX_BYTES`] is refused
+/// anything private. A file over [`MAX_BYTES`] is refused
 /// before it is read.
 pub(crate) fn source_read(
     reader: &FolderReader,
@@ -215,7 +216,7 @@ pub(crate) fn source_read(
     path: &str,
 ) -> Result<Option<Vec<u8>>, InstallRefusal> {
     check_workspace_path(path)?;
-    if in_git_folder(path) {
+    if is_private(path) {
         return Ok(None);
     }
     let too_big = fs::symlink_metadata(root.join(path))
@@ -267,7 +268,7 @@ pub async fn plugin_source_pick<R: Runtime>(
 
 /// Every entry under `dir` (`null` for the whole folder) of the picked folder
 /// `source`, links and special files listed but never followed, and the
-/// `.git` folder left out.
+/// private entries (`.git`, `.studio`, `.env*`) left out.
 #[tauri::command]
 pub async fn plugin_source_entries<R: Runtime>(
     app: AppHandle<R>,

@@ -256,4 +256,27 @@ verifies("app.plugin-add", () => {
     expect(await pathsIn(folder)).toEqual([]);
     expect(await service.install("weather")).toBeNull();
   });
+
+  it("leaves private names out at any depth, so they are never read or placed", async () => {
+    const { folder, service } = setup();
+    const source = weatherSource({
+      ".env": "KEY=1",
+      ".envrc": "x",
+      ".studio/state": "x",
+      ".git/HEAD": "ref: x\n",
+      "backend/.env.local": "KEY=2",
+      "vendor/dep/.git/HEAD": "ref: x\n",
+      "vendor/dep/lib.js": "1",
+    });
+    const read: string[] = [];
+    source.beforeRead = (path) => {
+      read.push(path);
+    };
+    const result = await service.add(source, { from, replace: false });
+    expect(result.ok).toBe(true);
+    const placed = await pathsIn(folder);
+    expect(placed).toContain("weather/vendor/dep/lib.js");
+    expect(placed.filter((path) => /\.(env|git|studio)/u.test(path))).toEqual([]);
+    expect(read.filter((path) => /\.(env|git|studio)/u.test(path))).toEqual([]);
+  });
 });

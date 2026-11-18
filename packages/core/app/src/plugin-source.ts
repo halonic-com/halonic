@@ -3,7 +3,12 @@
 // the bytes it hashed, so what is trusted is what was checked even when the
 // source changes while it is added (HAL-1736 plan, step 1).
 
-import type { FolderEntriesOptions, FolderEntry, FolderReader } from "@halonicjs/ports";
+import {
+  type FolderEntriesOptions,
+  type FolderEntry,
+  type FolderReader,
+  isPrivateWorkspacePath,
+} from "@halonicjs/ports";
 
 /** The folder name the source is read under, before its plugin's id is known. */
 export const sourceFolder = "source";
@@ -12,6 +17,11 @@ export const sourceFolder = "source";
  * Shows the source folder `source` as the one folder {@link sourceFolder},
  * so `readPluginFolder` reads it as it reads a plugin folder, and keeps the
  * bytes of every file it reads. A file is read from the source only once.
+ *
+ * A private name at any depth (`.git`, `.studio`, `.env*`, see
+ * `isPrivateWorkspacePath`) isn't there: it isn't listed, and reads as no
+ * file, so a plugin author's secrets never reach the plugins folder. The CLI
+ * and the Studio both add through this, so they leave out the same names.
  */
 export class PluginSourceSnapshot implements FolderReader {
   readonly #source: FolderReader;
@@ -30,13 +40,17 @@ export class PluginSourceSnapshot implements FolderReader {
     if (dir === undefined) {
       return [{ path: sourceFolder, kind: "folder" }];
     }
-    const listed = await this.#source.entries(fromSource(dir), options);
-    return listed.map((entry) => ({ ...entry, path: `${sourceFolder}/${entry.path}` }));
+    const inSource = fromSource(dir);
+    if (inSource !== undefined && isPrivateWorkspacePath(inSource)) return [];
+    const listed = await this.#source.entries(inSource, options);
+    return listed
+      .filter((entry) => !isPrivateWorkspacePath(entry.path))
+      .map((entry) => ({ ...entry, path: `${sourceFolder}/${entry.path}` }));
   }
 
   async read(path: string): Promise<Uint8Array | null> {
     const inSource = fromSource(path);
-    if (inSource === undefined) return null;
+    if (inSource === undefined || isPrivateWorkspacePath(inSource)) return null;
     const kept = this.#read.get(inSource);
     if (kept !== undefined) return kept.slice();
     const bytes = await this.#source.read(inSource);
