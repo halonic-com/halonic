@@ -5,15 +5,23 @@ import {
   Menu,
   MoreIcon,
   SkeletonBar,
+  type Tab,
+  type TabIds,
+  TabList,
+  TabPanel,
   usePresentation,
+  useTabIds,
   useToastStore,
 } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, NameField } from "@halonicjs/studio-shell";
-import { type RefObject, useCallback, useEffect, useRef } from "react";
+import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { type RoutinesHost, RoutinesHostService, type RoutineView } from "../api.ts";
 import { Avatar } from "../list/routine-rows.tsx";
 import { trashRoutine } from "../list/trash-routine.ts";
 import { RulesSection } from "../rules/rules-section.tsx";
+import { RunsView } from "../runs/runs-view.tsx";
+import { runsWords } from "../runs/runs-words.ts";
+import { type RoutineRunsLoad, useRoutineRuns } from "../runs/use-routine-runs.ts";
 import { StartsCard } from "../starts/starts-card.tsx";
 import { WhenCard } from "../when/when-card.tsx";
 import { failureReason, pageWords } from "./page-words.ts";
@@ -68,6 +76,11 @@ export function RoutineScreen({
   const title = useRef<HTMLHeadingElement>(null);
   const focusTitle = useCallback(() => title.current?.focus(), []);
   const { load, retry } = useRoutine(host, { hubId, id }, focusTitle);
+  const [view, setView] = useState<RoutineViewId>("schedule");
+  const ids = useTabIds();
+  const routine = load.kind === "ready" ? load.routine : undefined;
+  const runs = useRoutineRuns(host, routine);
+  const views = routineTabs(runs.load);
   // After Undo brings a deleted routine back, its name takes the focus once the page is drawn again.
   const focusWhenBack = useRef(false);
   const ready = load.kind === "ready";
@@ -87,19 +100,38 @@ export function RoutineScreen({
     <div className="flex size-full min-h-0 flex-col">
       <RoutineHeader
         host={host}
-        routine={load.kind === "ready" ? load.routine : undefined}
+        routine={routine}
         name={name}
+        tabs={{ ids, views, selected: view, onSelect: setView }}
         title={title}
         onRestored={restored}
         openRun={openRun}
       />
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-6 py-4">
-        {load.kind === "ready" && <Summary routine={load.routine} />}
-        {load.kind === "ready" && (
+      <TabPanel
+        ids={ids}
+        tabs={views}
+        selected={view}
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-6 py-4"
+      >
+        {load.kind === "ready" && view === "schedule" && <Summary routine={load.routine} />}
+        {load.kind === "ready" && view === "schedule" && (
           <WhenCard host={host} routine={load.routine} announce={announce} />
         )}
-        {load.kind === "ready" && <StartsCard host={host} routine={load.routine} />}
-        {load.kind === "ready" && <RulesSection host={host} routine={load.routine} />}
+        {load.kind === "ready" && view === "schedule" && (
+          <StartsCard host={host} routine={load.routine} />
+        )}
+        {load.kind === "ready" && view === "schedule" && (
+          <RulesSection host={host} routine={load.routine} />
+        )}
+        {load.kind === "ready" && view === "runs" && (
+          <RunsView
+            host={host}
+            routine={load.routine}
+            load={runs.load}
+            retry={runs.retry}
+            openRun={openRun}
+          />
+        )}
         {load.kind === "failed" && (
           <EmptyState
             tone="error"
@@ -122,9 +154,33 @@ export function RoutineScreen({
             )}
           </div>
         )}
-      </div>
+      </TabPanel>
     </div>
   );
+}
+
+/** The page's two views. */
+type RoutineViewId = "schedule" | "runs";
+
+/**
+ * The tabs: Schedule, and Runs with the number of runs that wait for a person (amber), else a
+ * still dot while one runs.
+ */
+function routineTabs(runs: RoutineRunsLoad): readonly Tab<RoutineViewId>[] {
+  const own = runs.kind === "ready" ? runs.runs.runs : [];
+  const waiting = own.filter((run) => run.outcome === "waiting").length;
+  const going = own.some((run) => run.outcome === "running");
+  return [
+    { id: "schedule", label: runsWords.scheduleTab },
+    {
+      id: "runs",
+      label: runsWords.tab,
+      ...(waiting > 0 && {
+        count: { value: waiting, tone: "warning" as const, name: runsWords.tabNeedsYou(waiting) },
+      }),
+      ...(waiting === 0 && going && { running: { name: runsWords.tabRunning } }),
+    },
+  ];
 }
 
 /**
@@ -158,6 +214,7 @@ function RoutineHeader({
   routine,
   name,
   title,
+  tabs,
   onRestored,
   openRun,
 }: {
@@ -166,12 +223,26 @@ function RoutineHeader({
   readonly routine: RoutineView | undefined;
   readonly name: string;
   readonly title: RefObject<HTMLHeadingElement | null>;
+  /** The page's views, shown as tabs once the routine is read. */
+  readonly tabs: {
+    readonly ids: TabIds;
+    readonly views: readonly Tab<RoutineViewId>[];
+    readonly selected: RoutineViewId;
+    readonly onSelect: (view: RoutineViewId) => void;
+  };
   /** Called once Undo has put a deleted routine back. */
   readonly onRestored: () => void;
   readonly openRun: ((runId: string) => void) | undefined;
 }) {
   const phone = usePresentation() === "phone";
   const toasts = useToastStore();
+  // A second press while the host still starts the first run would start a second run.
+  const [starting, setStarting] = useState(false);
+  const start = () => {
+    if (routine === undefined || starting) return;
+    setStarting(true);
+    void runRoutineNow(host, toasts, routine, openRun).finally(() => setStarting(false));
+  };
   const rename = ({ hubId, id }: RoutineView, next: string) => {
     host.save({ hubId, id }, { name: next }).catch((error: unknown) => {
       toasts?.show({
@@ -229,13 +300,18 @@ function RoutineHeader({
           />
         )}
       </div>
+      {routine !== undefined && (
+        <TabList
+          label={runsWords.viewsLabel}
+          tabs={tabs.views}
+          selected={tabs.selected}
+          onSelect={tabs.onSelect}
+          ids={tabs.ids}
+        />
+      )}
       {routine !== undefined && host.runNow !== undefined && (
         <div className="ml-auto">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => void runRoutineNow(host, toasts, routine, openRun)}
-          >
+          <Button variant="secondary" size="sm" busy={starting} onClick={start}>
             {pageWords.runNow}
           </Button>
         </div>

@@ -162,6 +162,8 @@ export type RoutineRunStart =
 /** One run a routine started, as a row of the Runs view. */
 export interface RoutineRun {
   readonly runId: string;
+  /** The id a person sees and types back, as in the Runs list. */
+  readonly shortId: string;
   readonly startedAt: string;
   readonly outcome: "running" | "waiting" | "completed" | "failed" | "cant-try";
   readonly startedBy: RoutineRunStart;

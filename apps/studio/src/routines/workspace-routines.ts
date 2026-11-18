@@ -279,6 +279,7 @@ export class WorkspaceRoutines implements RoutinesHost {
       .map(
         (summary): RoutineRun => ({
           runId: summary.id,
+          shortId: shortRunId(summary.id),
           startedAt: summary.startedAt,
           outcome: summary.status,
           startedBy: startedByOf(summary),

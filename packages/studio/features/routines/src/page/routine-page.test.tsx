@@ -411,6 +411,22 @@ verifies("routines.page.run-now", () => {
     expect(opened).toEqual(["run_1"]);
   });
 
+  it("starts one run for two presses while the host is still starting the first", async () => {
+    const { host } = hostRunning({ started: true, runId: "run_1", shortId: "abc123" });
+    let answer: (result: RunNowResult) => void = () => {};
+    const runNow = vi.fn(() => new Promise<RunNowResult>((resolve) => (answer = resolve)));
+    const { page } = await showWithToasts({ ...host, runNow } as RoutinesHost);
+
+    await act(async () => runNowButton(page)?.click());
+    await act(async () => runNowButton(page)?.click());
+    expect(runNow).toHaveBeenCalledTimes(1);
+    expect(runNowButton(page)?.getAttribute("aria-busy")).toBe("true");
+
+    await act(async () => answer({ started: true, runId: "run_1", shortId: "abc123" }));
+    await act(async () => runNowButton(page)?.click());
+    expect(runNow).toHaveBeenCalledTimes(2);
+  });
+
   it("says the one reason a refusal gives, and the toast stays", async () => {
     const refusals: [RunNowRefusal, string][] = [
       [{ reason: "target-never-live" }, "Not started: Briefing isn't live yet."],
