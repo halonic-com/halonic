@@ -1,5 +1,5 @@
 import { Button, List } from "@halonicjs/studio-kit";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { Version } from "../api.ts";
 import type { ChangesList, HistoryState } from "../changes-list.ts";
 import { historyWords } from "../changes-words.ts";
@@ -75,6 +75,7 @@ function HistoryBody({
 }) {
   const [busy, setBusy] = useState(false);
   const [seeAll, setSeeAll] = useState(false);
+  const firstUnfolded = useFocusAfterUnfold();
   const failed = history.error !== undefined && (
     <div role="alert" className="flex flex-col items-start gap-2">
       <p className="text-body text-danger">
@@ -111,8 +112,12 @@ function HistoryBody({
   };
   const folded = phone && !seeAll && history.versions.length > PHONE_HISTORY_ROWS;
   const shown = folded ? history.versions.slice(0, PHONE_HISTORY_ROWS) : history.versions;
+  const unfold = () => {
+    firstUnfolded.request(history.versions[PHONE_HISTORY_ROWS]?.id);
+    setSeeAll(true);
+  };
   return (
-    <>
+    <div ref={firstUnfolded.region} className="contents">
       {failed || null}
       {history.versions.length === 0 ? (
         <p className="text-body text-fg-muted">{historyWords.noVersions}</p>
@@ -137,11 +142,29 @@ function HistoryBody({
         more={history.more}
         busy={busy}
         phone={phone}
-        onSeeAll={() => setSeeAll(true)}
+        onSeeAll={unfold}
         onShowMore={() => void showMore()}
       />
-    </>
+    </div>
   );
+}
+
+/**
+ * Pressing See all history removes the button that had focus. So that focus doesn't drop to the
+ * page, it moves to the first version the unfolded list shows, once that row is drawn.
+ */
+function useFocusAfterUnfold() {
+  const region = useRef<HTMLDivElement>(null);
+  const [pendingId, setPendingId] = useState<string>();
+  useEffect(() => {
+    if (pendingId === undefined) return;
+    const cell = region.current?.querySelector<HTMLElement>(
+      `[data-row-id="${CSS.escape(pendingId)}"] [role="gridcell"]`,
+    );
+    cell?.focus();
+    setPendingId(undefined);
+  }, [pendingId]);
+  return { region, request: setPendingId };
 }
 
 /** See all history (a folded phone list) or Show more (older versions to read): one or neither. */

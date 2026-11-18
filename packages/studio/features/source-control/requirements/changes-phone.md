@@ -8,7 +8,9 @@ When the screen is a phone, the Changes page shall be the same page in one colum
 
 On a phone, the sharing strip shall say "Only on your computer." with the hint "Add where to share on a computer." and no action, Get updates shall be a 48px button at the end of the header, History shall show the newest 5 versions and then a full-width 48px row, See all history, that shows the rest, History's Show more shall be a full-width 48px button after that, and its Try again a 48px button.
 
-While their phone layouts are not built, the item rows, What changed and the version page shall follow the desktop pages.
+When See all history is pressed, the Changes page shall move focus to the first version it shows that was hidden before.
+
+On a phone, an item row shall have its ⋮ in the row's padding and no chevron. While its phone layout is not built, the version page shall follow the desktop page.
 
 ## Examples
 
@@ -22,6 +24,9 @@ While their phone layouts are not built, the item rows, What changed and the ver
   then the strip says "Only on your computer." and "Add where to share on a computer." and has no Add where to share.
 - Given a phone and 25 versions,
   then History shows the newest 5 and See all history, and after pressing it Show more is a full-width touch button.
+- Given a phone and 25 versions,
+  when See all history is pressed,
+  then focus is on the 6th newest version.
 - Given a phone and 5 versions,
   then History shows all 5 and no See all history.
 - Given a phone and git that doesn't answer,
