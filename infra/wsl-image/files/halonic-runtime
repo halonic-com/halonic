@@ -164,6 +164,16 @@ do_security_update() {
     return 0
   fi
   not_busy
+  DEBIAN_FRONTEND=noninteractive
+  export DEBIAN_FRONTEND
+  # Studio stops an update that takes too long by killing wsl.exe (HAL-12444).
+  # If that hit dpkg, every later apt-get refuses ("dpkg was interrupted"), so
+  # finish what was cut off first; with nothing pending this does nothing. Its
+  # package scripts may set a bit or a capability, and the apt-get update below
+  # can fail offline, so drop those right away, not only after the upgrade.
+  dpkg --force-confold --configure -a
+  drop_setuid
+  drop_capabilities
   lists="$(mktemp -d "$state/apt.XXXXXX")"
   trap 'rm -rf "$lists"' EXIT
   mkdir "$lists/partial"
@@ -178,8 +188,6 @@ SRC
   # Debian's security archive only, whatever else is in sources.list.d.
   set -- -o Dir::Etc::SourceList=/dev/null -o "Dir::Etc::SourceParts=$lists" \
     -o "Dir::State::Lists=$lists" -o Dpkg::Options::=--force-confold
-  DEBIAN_FRONTEND=noninteractive
-  export DEBIAN_FRONTEND
   apt-get "$@" -q update
   apt-get "$@" -q -y upgrade
   apt-get clean
