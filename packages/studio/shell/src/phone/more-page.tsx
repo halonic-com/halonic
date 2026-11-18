@@ -1,7 +1,7 @@
 import {
   ChevronDownIcon,
   ChevronRightIcon,
-  HeaderBadgeSheet,
+  HeaderBadgeSheetDialog,
   isMenuItem,
   List,
   type ListRow,
@@ -180,7 +180,8 @@ function SwitcherRow({ switcher, menuSwitcher }: Pick<MorePageProps, "switcher" 
 
 /**
  * The switcher row of a narrow desktop window: it opens the workspace menu's rows as the kit's
- * sheet over the window, and a picked row closes the sheet before it does its job.
+ * modal sheet over the window, so nothing behind it takes focus, and a picked row closes the
+ * sheet before it does its job.
  */
 function MenuSwitcherRow({ workspace, menu, busy = false }: WorkspaceSwitcherProps) {
   const [open, setOpen] = useState(false);
@@ -205,13 +206,11 @@ function MenuSwitcherRow({ workspace, menu, busy = false }: WorkspaceSwitcherPro
         }}
       />
       {open ? (
-        <div className="fixed inset-0 z-40 bg-surface">
-          <HeaderBadgeSheet
-            title={workspaceSheetTitle}
-            entries={entries}
-            onClose={() => setOpen(false)}
-          />
-        </div>
+        <HeaderBadgeSheetDialog
+          title={workspaceSheetTitle}
+          entries={entries}
+          onClose={() => setOpen(false)}
+        />
       ) : null}
     </>
   );
