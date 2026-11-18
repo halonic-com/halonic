@@ -3,6 +3,14 @@ import { DURATION_PATTERN, id, version } from "../../shared/fields.ts";
 import { Guard } from "../../shared/guard.ts";
 import { WEBHOOK_HEADER_PATTERN } from "./webhook-headers.ts";
 
+/**
+ * Reads a number as text, for an interval such as "15m". YAML reads
+ * `every: 15` as a number; as the text "15" it gets the interval's message
+ * for a count without a unit, instead of failing the whole trigger
+ * (HAL-12607). No number passes: the pattern needs a unit.
+ */
+const numberAsText = (value: unknown) => (typeof value === "number" ? String(value) : value);
+
 /** On a schedule: five-field cron or a shortcut such as @daily, in a time zone. */
 const ScheduleTrigger = s
   .object({
@@ -15,12 +23,15 @@ const ScheduleTrigger = s
 /** At a fixed interval. */
 const EveryTrigger = s
   .object({
-    every: s
-      .string()
-      .regex(
-        DURATION_PATTERN,
-        'use a number and a unit, e.g. "15m", "1h", "1d" (runs are placed from midnight UTC)',
-      ),
+    every: s.preprocess(
+      numberAsText,
+      s
+        .string()
+        .regex(
+          DURATION_PATTERN,
+          'use a number and a unit, e.g. "15m", "1h", "1d" (runs are placed from midnight UTC)',
+        ),
+    ),
   })
   .strict();
 
@@ -48,10 +59,10 @@ const MailTrigger = s
          * any number of more than one digit, such as "15m"
          * (format.routine-mail-interval).
          */
-        every: s
-          .string()
-          .regex(DURATION_PATTERN, 'use a number and a unit, e.g. "2m"')
-          .default("2m"),
+        every: s.preprocess(
+          numberAsText,
+          s.string().regex(DURATION_PATTERN, 'use a number and a unit, e.g. "2m"').default("2m"),
+        ),
       })
       .strict(),
   })

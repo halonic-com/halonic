@@ -109,8 +109,10 @@ verifies("app.routine-list", () => {
         [routinePath("daily")]: routineFile("daily", "{ every: 1d }"),
       });
 
+      // The file doesn't load, so it is listed with its error and no next run.
       expect(routines.map((each) => [each.routineId, each.nextRun])).toEqual([
         ["daily", "2026-11-12T00:00:00.000Z"],
+        ["far", null],
       ]);
     });
 
@@ -157,5 +159,39 @@ verifies("app.routine-list", () => {
       ["broken", null],
       ["daily", "2026-11-12T00:00:00.000Z"],
     ]);
+  });
+
+  it("lists a routine file that doesn't load, off, with its first error, in path order", async () => {
+    const runs = new MemoryRuns();
+    runs.add("run_broken", "2026-11-10T08:00:00.000Z", [startedBy("broken")]);
+    const routines = await listed(
+      {
+        [routinePath("daily")]: routineFile("daily", "{ every: 1d }"),
+        [routinePath("broken")]: routineFile("broken", "{ every: 0m }"),
+      },
+      runs,
+    );
+
+    expect(routines.map((each) => each.routineId)).toEqual(["broken", "daily"]);
+    expect(routines[0]).toMatchObject({
+      key: "reports/broken",
+      hubId: "reports",
+      routineId: "broken",
+      name: "broken",
+      enabled: false,
+      trigger:
+        'Invalid file, line 3: use a number and a unit, e.g. "15m", "1h", "1d" (runs are placed from midnight UTC)',
+      nextRun: null,
+      lastRun: { id: "run_broken" },
+    });
+  });
+
+  it("keys a routine file at the workspace root that doesn't load by @workspace", async () => {
+    const [routine] = await listed({
+      "workflows/routines/backup.routine.yaml": "id: backup\ntrigger: { manual: true }",
+    });
+
+    expect(routine).toMatchObject({ key: "@workspace/backup", hubId: null, name: "backup" });
+    expect(routine?.trigger).toMatch(/^Invalid file, line 1: /);
   });
 });
