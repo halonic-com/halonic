@@ -1,4 +1,5 @@
 import type { Secrets } from "@halonicjs/ports";
+import * as rig from "@halonicjs/testing-sign-in";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { signInIntegration } from "./app-sign-in-integration.ts";
@@ -25,7 +26,7 @@ verifies("agent-host.integration-sign-in-routes", () => {
         secretNames: { "example-client": "workspace-key" },
       };
       const integration = signInIntegration(store, {
-        read: async () => ({ sheet: exampleSheet(), choices }),
+        read: async () => ({ sheet: exampleSheet(rig), choices }),
       });
 
       expect((await integration.read()).settings).toEqual({ clientId: "fake-client" });
@@ -38,7 +39,7 @@ verifies("agent-host.integration-sign-in-routes", () => {
       const store = storeOfEverything();
       let secretNames: Record<string, string> = { "example-client": "first-key" };
       const integration = signInIntegration(store, {
-        read: async () => ({ sheet: exampleSheet(), choices: { secretNames } }),
+        read: async () => ({ sheet: exampleSheet(rig), choices: { secretNames } }),
       });
       await integration.secrets.get("example-client");
 
@@ -52,7 +53,7 @@ verifies("agent-host.integration-sign-in-routes", () => {
       const store = storeOfEverything();
       const integration = signInIntegration(store, {
         read: async () => ({
-          sheet: exampleSheet(),
+          sheet: exampleSheet(rig),
           choices: { secretNames: { "example-client": "token-key" } },
         }),
       });
@@ -66,7 +67,7 @@ verifies("agent-host.integration-sign-in-routes", () => {
       const integration = signInIntegration(store, {
         plugin: "weather",
         read: async () => ({
-          sheet: exampleSheet(),
+          sheet: exampleSheet(rig),
           choices: {
             secretNames: { "example-client": "plugin__weather__client", other: "openai-key" },
           },

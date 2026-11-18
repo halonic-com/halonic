@@ -1,4 +1,5 @@
-import { signInName } from "@halonicjs/testing-sign-in";
+import type { FakeOAuthServer } from "@halonicjs/testing-sign-in";
+import * as rig from "@halonicjs/testing-sign-in";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
@@ -18,8 +19,10 @@ afterEach(async () => {
 });
 
 /** The routes over the real sign-in host, with the fake provider behind it. */
-async function started(options: { relayPort?: number; example?: ExampleSignInHost } = {}) {
-  const example = options.example ?? exampleSignInHost();
+async function started(
+  options: { relayPort?: number; example?: ExampleSignInHost<FakeOAuthServer> } = {},
+) {
+  const example = options.example ?? exampleSignInHost(rig);
   server = await startHostServer(
     token,
     integrationSignInRoutes({
@@ -46,7 +49,7 @@ function post(url: string, path: string, body: unknown, withToken = true): Promi
 async function start(url: string): Promise<string> {
   const response = await post(url, "/v1/integrations/sign-in/start", {
     integration: "example",
-    signIn: signInName,
+    signIn: rig.signInName,
   });
   expect(response.status).toBe(200);
   return ((await response.json()) as { authorizeUrl: string }).authorizeUrl;
@@ -73,7 +76,7 @@ verifies("agent-host.integration-sign-in-routes", () => {
       expect(await states(url)).toEqual({
         signIns: [
           {
-            signIn: signInName,
+            signIn: rig.signInName,
             state: "signedIn",
             lastOutcome: expect.objectContaining({ kind: "signedIn" }),
           },
@@ -87,7 +90,7 @@ verifies("agent-host.integration-sign-in-routes", () => {
 
       const response = await post(url, "/v1/integrations/sign-in/sign-out", {
         integration: "example",
-        signIn: signInName,
+        signIn: rig.signInName,
       });
 
       expect(await response.json()).toEqual({ result: { kind: "signedOut", revoke: "revoked" } });
@@ -105,7 +108,7 @@ verifies("agent-host.integration-sign-in-routes", () => {
         signIns: [
           {
             state: "signedOut",
-            lastOutcome: { kind: "cancelled", signIn: signInName },
+            lastOutcome: { kind: "cancelled", signIn: rig.signInName },
           },
         ],
       });
@@ -117,7 +120,7 @@ verifies("agent-host.integration-sign-in-routes", () => {
 
       const cancelled = await post(url, "/v1/integrations/sign-in/cancel", {
         integration: "example",
-        signIn: signInName,
+        signIn: rig.signInName,
       });
 
       expect(cancelled.status).toBe(204);
@@ -175,7 +178,7 @@ verifies("agent-host.integration-sign-in-routes", () => {
         const body =
           path === "status"
             ? { integration: "unknown" }
-            : { integration: "unknown", signIn: signInName };
+            : { integration: "unknown", signIn: rig.signInName };
         const response = await post(url, `/v1/integrations/sign-in/${path}`, body);
         expect(response.status).toBe(404);
         expect(await response.json()).toMatchObject({ error: { kind: "unknown_integration" } });
@@ -195,13 +198,13 @@ verifies("agent-host.integration-sign-in-routes", () => {
     });
 
     it("answers 422 for a setting that is missing", async () => {
-      const example = exampleSignInHost();
+      const example = exampleSignInHost(rig);
       example.changeSettings({});
       const { url } = await started({ example });
 
       const response = await post(url, "/v1/integrations/sign-in/start", {
         integration: "example",
-        signIn: signInName,
+        signIn: rig.signInName,
       });
 
       expect(response.status).toBe(422);
@@ -209,13 +212,13 @@ verifies("agent-host.integration-sign-in-routes", () => {
     });
 
     it("answers 422 for a client secret that isn't set", async () => {
-      const example = exampleSignInHost();
+      const example = exampleSignInHost(rig);
       example.forgetClientSecret();
       const { url } = await started({ example });
 
       const response = await post(url, "/v1/integrations/sign-in/start", {
         integration: "example",
-        signIn: signInName,
+        signIn: rig.signInName,
       });
 
       expect(response.status).toBe(422);
@@ -223,13 +226,13 @@ verifies("agent-host.integration-sign-in-routes", () => {
     });
 
     it("answers 502 with a fixed message for a pick of Halonic's own secret, and logs only an error name", async () => {
-      const example = exampleSignInHost();
+      const example = exampleSignInHost(rig);
       example.pickClientSecret("token-key");
       const { url } = await started({ example });
 
       const response = await post(url, "/v1/integrations/sign-in/start", {
         integration: "example",
-        signIn: signInName,
+        signIn: rig.signInName,
       });
 
       expect(response.status).toBe(502);
@@ -242,7 +245,7 @@ verifies("agent-host.integration-sign-in-routes", () => {
 
       const response = await post(url, "/v1/integrations/sign-in/start", {
         integration: "example",
-        signIn: signInName,
+        signIn: rig.signInName,
       });
 
       expect(response.status).toBe(501);
@@ -254,12 +257,12 @@ verifies("agent-host.integration-sign-in-routes", () => {
 
       const extra = await post(url, "/v1/integrations/sign-in/start", {
         integration: "example",
-        signIn: signInName,
+        signIn: rig.signInName,
         port: 1,
       });
       const bad = await post(url, "/v1/integrations/sign-in/start", {
         integration: "../example",
-        signIn: signInName,
+        signIn: rig.signInName,
       });
 
       expect(extra.status).toBe(400);
