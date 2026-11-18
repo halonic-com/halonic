@@ -132,7 +132,7 @@ pub async fn token_get<R: Runtime>(
     app: AppHandle<R>,
     name: String,
 ) -> Result<Option<String>, SecretRefusal> {
-    on_worker(&app, move |backend| get_token(backend, &name)).await
+    on_worker(&app, "token_get", move |backend| get_token(backend, &name)).await
 }
 
 /// Stores the token, replacing any token already there.
@@ -142,7 +142,10 @@ pub async fn token_set<R: Runtime>(
     name: String,
     value: String,
 ) -> Result<(), SecretRefusal> {
-    on_worker(&app, move |backend| set_token(backend, &name, &value)).await
+    on_worker(&app, "token_set", move |backend| {
+        set_token(backend, &name, &value)
+    })
+    .await
 }
 
 /// Removes the token. Removing a token that isn't stored succeeds.
@@ -151,5 +154,8 @@ pub async fn token_delete<R: Runtime>(
     app: AppHandle<R>,
     name: String,
 ) -> Result<(), SecretRefusal> {
-    on_worker(&app, move |backend| delete_token(backend, &name)).await
+    on_worker(&app, "token_delete", move |backend| {
+        delete_token(backend, &name)
+    })
+    .await
 }
