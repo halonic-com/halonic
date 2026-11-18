@@ -1,7 +1,7 @@
 # Decision: upload the plugins flow's failure report with the e2e report
 
 - Task: HAL-1740
-- Approval: (Liam's approval link goes here, requested on HAL-1740)
+- Approval: https://paperclip.halonic.com/HAL/issues/HAL-12181#comment-1273ccb2-50d2-49b1-bbb6-e04e1ab6ef56 (Liam approved the plugins test-results path in the failure-only e2e upload)
 - Kind: internal
 
 ## What changes
