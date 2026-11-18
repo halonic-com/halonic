@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12649, from the team decision on HAL-12643 (C52 item 8); Liam signs this note in review on HAL-12649
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9+Mx1TZ3ruaCh67fjTz7KVw3pBLlMN+1fLliLEN8893k2VosKb1t5/62sYxgWRlSJihl8TOaKYr7fpMF9jTrBA==
 
 The `Sandbox` port's closed list of reasons gains `not-offered`, just before
 `other`, and the port goes to version 8
