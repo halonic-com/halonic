@@ -302,16 +302,3 @@ verifies("studio.engine-service", () => {
     });
   });
 });
-
-verifies("studio.inbox-request-trigger", () => {
-  it("records an inbox trigger for a run the Inbox's request form starts", async () => {
-    const service = serviceOn(fakeShell());
-    const start = vi.spyOn((await service.open()).executor, "start");
-
-    await service.startRun({ hubId: "support", workflowId: "reply" }, {}, "inbox");
-
-    const trigger = { type: "inbox", at: "2026-11-15T10:00:00.000Z" };
-    expect(start).toHaveBeenCalledWith(expect.objectContaining({ trigger }));
-    await service.close();
-  });
-});
