@@ -116,7 +116,7 @@ createRoot(root).render(
   <StrictMode>
     <PresentationProvider presentation="desktop">
       <ToastStoreProvider store={toasts}>
-        <div className="relative min-h-screen bg-bg p-6 text-fg">
+        <div className="relative min-h-screen bg-surface p-6 text-fg">
           <main className="mx-auto flex max-w-3xl flex-col gap-6">{screen()}</main>
           <ToastRegion store={toasts} />
         </div>
