@@ -37,7 +37,7 @@ When the screen is a phone and Get updates opens the choices, they shall open as
   then the page says "Couldn't load changes", "Halonic on your computer isn't answering." and Try again.
 - Given a phone and 3 versions,
   when the person opens "Version 2",
-  then the page's heading is "Version 2" and has focus, the page says who made it, its notes and its files, and Back to History puts focus on its row.
+  then the page's heading is "Version 2" and has focus, the page says who made it, its notes and its items, and Back to History puts focus on its row.
 - Given a phone and 25 versions, with See all history pressed,
   when the person opens "Version 18" and goes back,
   then History shows all versions and "Version 18" has focus.

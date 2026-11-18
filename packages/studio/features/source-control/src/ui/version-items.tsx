@@ -8,10 +8,19 @@ import {
   type ListRow,
 } from "@halonicjs/studio-kit";
 import { useEffect, useRef, useState } from "react";
-import type { Version } from "../api.ts";
-import { groupVersionFiles, type VersionItem } from "../change-items.ts";
+import type { ChangesSource, Version } from "../api.ts";
+import { type ChangeItem, groupVersionFiles, type VersionItem } from "../change-items.ts";
 import type { ChangesList } from "../changes-list.ts";
-import { historyWords, itemWords, mergeWords, restoreWords } from "../changes-words.ts";
+import type { ChangedFile } from "../changes-list-state.ts";
+import {
+  historyWords,
+  itemWords,
+  mergeWords,
+  restoreWords,
+  versionWords,
+} from "../changes-words.ts";
+import { versionFiles } from "../version-files.ts";
+import { orderItems } from "./change-list.tsx";
 import { ItemIcon } from "./item-icon.tsx";
 import { type RestoreItem, useRestoreItem } from "./use-restore-item.ts";
 
@@ -24,16 +33,18 @@ export interface VersionItemsProps {
 }
 
 /**
- * What's in a version (checklist part 2, 2.9 and 2.14): a row for each item it changed, named as
- * the Changes list names it, each with a ⋮ whose one entry is **Restore just this**. While a merge
+ * What's in a version (checklist part 2, 2.9 and 2.14): a row for each item it changed, with the
+ * icon, name and kind the Changes list gives it and no path (`source-control.history-page`), each
+ * with a ⋮ whose one entry is **Restore just this**. While a merge
  * is started the entry waits, with "Finish getting updates first." as its second line.
  */
 export function VersionItems({ version, list, headingLevel }: VersionItemsProps) {
   const restoring = useRestoreItem(list);
   const [menu, setMenu] = useState<{ readonly id: string; readonly target: ContextMenuTarget }>();
-  const items = groupVersionFiles(version.files);
-  const heading = `${historyWords.whatsInIt} · ${historyWords.fileCount(version.files.length)}`;
-  if (items.length === 0) {
+  const items = useVersionItems(list.source, version.files);
+  const itemCount = groupVersionFiles(version.files).length;
+  const heading = `${historyWords.whatsInIt} · ${versionWords.itemCount(itemCount)}`;
+  if (version.files.length === 0) {
     return (
       <>
         <ListHeading name={historyWords.whatsInIt} headingLevel={headingLevel} />
@@ -41,12 +52,19 @@ export function VersionItems({ version, list, headingLevel }: VersionItemsProps)
       </>
     );
   }
+  if (items === undefined) {
+    // No row until the names are read, so no id shows before its name does.
+    return (
+      <div aria-busy="true">
+        <ListHeading name={heading} headingLevel={headingLevel} />
+      </div>
+    );
+  }
   const menuItem = items.find((item) => item.id === menu?.id);
   const rows: ListRow[] = items.map((item) => ({
     id: item.id,
     title: item.name,
-    // The details show the files in the version (`source-control.history-page`); the icon says the kind.
-    meta: item.paths.join(", "),
+    meta: item.kind === undefined ? undefined : itemWords.kind[item.kind],
     icon: <ItemIcon kind={item.kind} />,
     more: {
       label: itemWords.moreActionsFor(item.name),
@@ -65,6 +83,40 @@ export function VersionItems({ version, list, headingLevel }: VersionItemsProps)
       />
     </div>
   );
+}
+
+/**
+ * The items of a version once their names are read from their files as they are now, in the
+ * Changes list's order; `undefined` while they are read.
+ */
+function useVersionItems(
+  source: ChangesSource,
+  paths: readonly string[],
+): readonly VersionItem[] | undefined {
+  const [read, setRead] = useState<{
+    readonly paths: readonly string[];
+    readonly files: readonly ChangedFile[];
+  }>();
+  useEffect(() => {
+    let current = true;
+    void versionFiles(source, paths).then((files) => {
+      if (current) setRead({ paths, files });
+    });
+    return () => {
+      current = false;
+    };
+  }, [source, paths]);
+  return read?.paths === paths ? orderItems(read.files).map(asVersionItem) : undefined;
+}
+
+/** A Changes list item as a version's item: the paths of its files are what Restore puts back. */
+function asVersionItem(item: ChangeItem): VersionItem {
+  return {
+    id: item.id,
+    name: item.name,
+    kind: item.kind,
+    paths: item.files.map((file) => file.path),
+  };
 }
 
 function restoreEntry(

@@ -201,6 +201,14 @@ verifies("source-control.changes-page", () => {
       stop();
       expect(focus.size + changed.size).toBe(0);
     });
+    it("reads a file as it is now without asking git, and nothing for a file that isn't there", async () => {
+      const git = vi.fn(async () => answer(""));
+      const { changes } = history(git, fakeFiles({ "a.yaml": "now\n" }));
+      expect(await changes.readFile("a.yaml")).toBe("now\n");
+      expect(await changes.readFile("gone.yaml")).toBeNull();
+      expect(git).not.toHaveBeenCalled();
+    });
+
     describe("reading a changed file", () => {
       const diffText = "--- a/a.yaml\n+++ b/a.yaml\n@@ -1 +1 @@\n-old\n+new\n";
       const modified = { path: "a.yaml", status: "modified", staged: false } as const;

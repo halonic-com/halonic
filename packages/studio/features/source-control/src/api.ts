@@ -114,6 +114,11 @@ export interface ChangesSource {
   /** Reads one changed file's text in the last version and now. Throws when it can't be read as text. */
   readonly readTexts: (change: VcsChange) => Promise<FileTexts>;
   /**
+   * Reads a workspace file as it is now, so History can name the items of a version by their
+   * files; `null` when the file isn't there. Throws when it can't be read.
+   */
+  readonly readFile: (path: string) => Promise<string | null>;
+  /**
    * Replaces a file's text, only while it still holds `expected` (`null` for a file that isn't
    * there); otherwise nothing is written and the answer is `"changed-on-disk"`.
    */

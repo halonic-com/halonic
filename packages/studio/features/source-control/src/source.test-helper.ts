@@ -70,6 +70,7 @@ export function fakeSource(initial: ChangesRead) {
       if (found === undefined) throw new Error(`no texts for ${change.path}`);
       return found;
     },
+    readFile: async (path) => texts.get(path)?.after ?? null,
     replaceFile: async (path, text, expected) => {
       replaced.push({ path, text, expected });
       const current = texts.get(path);

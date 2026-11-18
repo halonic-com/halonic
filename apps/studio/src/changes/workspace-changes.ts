@@ -131,6 +131,10 @@ export class WorkspaceChanges implements ChangesSource {
     return { before: await this.#lastVersionOf(change, after), after };
   }
 
+  readFile(path: string): Promise<string | null> {
+    return this.#options.files.read(path);
+  }
+
   async replaceFile(path: string, text: string, expected: string | null): Promise<ReplaceResult> {
     const result = await this.#options.files.write(path, text, {
       expected: expected === null ? "absent" : await contentDigest(expected, this.#options.digest),
