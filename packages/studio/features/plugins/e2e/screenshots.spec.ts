@@ -15,6 +15,8 @@ async function shoot(page: Page, step: string, scheme: string): Promise<void> {
   await page.screenshot({
     path: `test-results/screenshots/plugins-${step}-${scheme}.png`,
     fullPage: true,
+    // A dialog fades in: without this the shot catches it half drawn, with the backdrop not dimmed.
+    animations: "disabled",
   });
 }
 
