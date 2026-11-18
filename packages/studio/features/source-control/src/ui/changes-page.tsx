@@ -13,7 +13,12 @@ import { GetUpdates } from "./get-updates.tsx";
 import { History } from "./history.tsx";
 import { IdentityDialog } from "./identity-dialog.tsx";
 import { MergeChoices, MergeStrip } from "./merge-choices.tsx";
-import { NotSharedStrip, SharingStrip } from "./sharing-strip.tsx";
+import {
+  CouldntCheckStrip,
+  NotSharedStrip,
+  SharingStrip,
+  UpToDateStrip,
+} from "./sharing-strip.tsx";
 import { type OpenItem, useOpenItem } from "./use-open-item.ts";
 import { WhatChangedPage } from "./whats-changed-page.tsx";
 
@@ -46,7 +51,7 @@ export interface ChangesViewProps {
  * On a phone (2.12) it is the same page in one column with a 16px inset: the top bar says
  * "Changes", so the heading is for screen readers only, and git's words say "your computer".
  *
- * Not here yet: the sharing strip's states after Share (teammate's versions, up to date).
+ * Not here yet: the sharing strip's teammate-versions state.
  */
 export function ChangesView({ list, developerView, openItem }: ChangesViewProps) {
   const phone = usePresentation() === "phone";
@@ -119,7 +124,11 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
   );
 }
 
-/** The sharing strip's state now: no address, or versions the shared copy lacks; else none. */
+/**
+ * The sharing strip's state now: no address, versions the shared copy lacks, the shared copy
+ * couldn't be asked, or everything shared and up to date; else none. On the phone only the
+ * no-address line shows.
+ */
 function SharingLine({
   list,
   phone,
@@ -129,11 +138,14 @@ function SharingLine({
   readonly phone: boolean;
   readonly onAdd: () => void;
 }) {
-  const { read, hasRemote, merge, unshared, sharing } = list.state;
+  const { read, hasRemote, merge, unshared, sharing, sharedCheck } = list.state;
   if (read?.kind === "ready" && !hasRemote) return <SharingStrip onAdd={onAdd} phone={phone} />;
   const notShared = unshared > 0 || sharing;
-  if (hasRemote && merge === undefined && !phone && notShared)
-    return <NotSharedStrip list={list} />;
+  if (!hasRemote || merge !== undefined || phone) return null;
+  if (notShared) return <NotSharedStrip list={list} />;
+  if (sharedCheck.kind === "failed")
+    return <CouldntCheckStrip list={list} reason={sharedCheck.reason} />;
+  if (sharedCheck.kind === "checked" && sharedCheck.waiting === 0) return <UpToDateStrip />;
   return null;
 }
 

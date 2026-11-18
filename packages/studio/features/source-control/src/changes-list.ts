@@ -61,6 +61,7 @@ export class ChangesList {
     identity: undefined,
     hasRemote: false,
     unshared: 0,
+    sharedCheck: { kind: "unknown" },
     sharing: false,
     gettingUpdates: false,
     merge: undefined,
@@ -74,6 +75,8 @@ export class ChangesList {
   #reads = 0;
   #historyReads = 0;
   #disposed = false;
+  /** Whether the shared copy was asked yet; it is asked once when the page first sees one. */
+  #asked = false;
   /** The steps of a merge of both sides: choose per item, Undo, Finish and Cancel. */
   readonly merge: MergeSteps;
   readonly #sharing: ShareSteps;
@@ -145,10 +148,18 @@ export class ChangesList {
         error: undefined,
       });
       if (answer.kind === "ready") await this.#readHistory(this.#state.history.versions.length);
+      this.#askSharedCopyOnce(hasRemote && merge === null);
     } catch (error) {
       if (read !== this.#reads || this.#disposed) return;
       this.#set({ ...this.#state, error });
     }
+  }
+
+  /** Asks the shared copy for news the first time the page can show the answer. */
+  #askSharedCopyOnce(canShow: boolean): void {
+    if (!canShow || this.#asked) return;
+    this.#asked = true;
+    void this.checkShared();
   }
 
   /** Shows the next {@link historyPageSize} older versions. */
@@ -463,6 +474,12 @@ export class ChangesList {
   /** Sends the versions the shared copy lacks: how many were sent, or why it didn't work. */
   share(): ReturnType<ShareSteps["share"]> {
     return this.#sharing.share();
+  }
+
+  /** Asks the shared copy for news again, after it couldn't be reached. */
+  checkShared(): Promise<void> {
+    this.#set({ ...this.#state, sharedCheck: { kind: "unknown" } });
+    return this.#sharing.check();
   }
 
   /** Calls `listener` after every change of {@link state}. Returns a function that stops the calls. */

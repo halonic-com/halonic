@@ -1,5 +1,5 @@
 import type { ChangesSource } from "./api.ts";
-import type { MergeHost } from "./changes-merge.ts";
+import type { ListHost, SharedCheck } from "./changes-list-state.ts";
 import { shareWords } from "./changes-words.ts";
 import { loadFailureReason } from "./load-failure.ts";
 import { isShareAddress } from "./share-address.ts";
@@ -23,9 +23,9 @@ export async function readRemote(
 
 /** The steps of sharing: adding the place to share to, and sending versions there. */
 export class ShareSteps {
-  readonly #host: MergeHost;
+  readonly #host: ListHost;
 
-  constructor(host: MergeHost) {
+  constructor(host: ListHost) {
     this.#host = host;
   }
 
@@ -50,11 +50,12 @@ export class ShareSteps {
 
   /**
    * Sends the versions the shared copy lacks and reads again. Gives how many were sent, or why
-   * it didn't work; one share runs at a time.
+   * it didn't work. One share runs at a time: pressing again meanwhile gives `undefined` and
+   * says nothing.
    */
-  async share(): Promise<{ readonly sent: number } | { readonly failed: string }> {
+  async share(): Promise<{ readonly sent: number } | { readonly failed: string } | undefined> {
     const host = this.#host;
-    if (host.disposed() || host.state().sharing) return { failed: shareWords.alreadySharing };
+    if (host.disposed() || host.state().sharing) return undefined;
     const sent = host.state().unshared;
     host.set({ ...host.state(), sharing: true });
     try {
@@ -63,8 +64,29 @@ export class ShareSteps {
       if (!host.disposed()) host.set({ ...host.state(), sharing: false });
       return { failed: loadFailureReason(error) };
     }
-    if (!host.disposed()) host.set({ ...host.state(), sharing: false });
+    // A share only works when the shared copy has nothing this workspace lacks.
+    if (!host.disposed()) {
+      host.set({ ...host.state(), sharing: false, sharedCheck: { kind: "checked", waiting: 0 } });
+    }
     await host.refresh();
     return { sent };
+  }
+
+  /**
+   * Asks the shared copy what it has and keeps the answer for the strip, then reads again so the
+   * counts follow what git now knows. A shared copy that can't be reached is kept as a reason.
+   */
+  async check(): Promise<void> {
+    const host = this.#host;
+    if (host.disposed() || !host.state().hasRemote) return;
+    let next: SharedCheck;
+    try {
+      next = { kind: "checked", waiting: await host.source.checkUpdates() };
+    } catch (error) {
+      next = { kind: "failed", reason: loadFailureReason(error) };
+    }
+    if (host.disposed()) return;
+    host.set({ ...host.state(), sharedCheck: next });
+    if (next.kind === "checked") await host.refresh();
   }
 }

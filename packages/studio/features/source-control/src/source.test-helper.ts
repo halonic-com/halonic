@@ -35,6 +35,9 @@ export function fakeSource(initial: ChangesRead) {
   let updatesFailure: unknown;
   let remoteFailure: unknown;
   let unshared = 0;
+  let waiting = 0;
+  let checkFailure: unknown;
+  let checkCalls = 0;
   let shareFailure: unknown;
   let shareGate: Promise<void> = Promise.resolve();
   let shareCalls = 0;
@@ -117,6 +120,11 @@ export function fakeSource(initial: ChangesRead) {
       remote = true;
     },
     countUnshared: async () => unshared,
+    checkUpdates: async () => {
+      checkCalls += 1;
+      if (checkFailure !== undefined) throw checkFailure;
+      return waiting;
+    },
     share: async () => {
       shareCalls += 1;
       await shareGate;
@@ -240,6 +248,16 @@ export function fakeSource(initial: ChangesRead) {
     setUnshared: (count: number) => {
       unshared = count;
     },
+    /** How many versions the shared copy has that this workspace lacks, as the next check finds. */
+    setWaiting: (count: number) => {
+      waiting = count;
+    },
+    /** Makes the check of the shared copy fail with `error`; `undefined` makes it work again. */
+    failCheck: (error: unknown) => {
+      checkFailure = error;
+    },
+    /** How many times the shared copy was asked. */
+    checkCalls: () => checkCalls,
     /** Makes Share fail with `error`; `undefined` makes it work again. */
     failShare: (error: unknown) => {
       shareFailure = error;

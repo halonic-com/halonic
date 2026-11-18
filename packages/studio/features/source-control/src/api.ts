@@ -163,10 +163,17 @@ export interface ChangesSource {
   readonly addRemote: (address: string) => Promise<void>;
   /**
    * How many versions this workspace has that the shared copy lacks, by what git last knew of the
-   * shared copy (nothing is fetched). Before the first share it is every version. Throws when git
+   * shared copy (nothing is fetched; {@link checkUpdates} does that). Before the first share it is
+   * every version the shared copy doesn't have, counted at most a thousand. Throws when git
    * answers with an error.
    */
   readonly countUnshared: () => Promise<number>;
+  /**
+   * Asks the shared copy what it has now and gives how many versions it holds that this
+   * workspace lacks (a bigger count than a thousand reads as a thousand). Throws, with a reason a
+   * person can read, when the shared copy can't be reached or doesn't accept the sign-in.
+   */
+  readonly checkUpdates: () => Promise<number>;
   /**
    * Sends this workspace's versions to the shared copy. Throws, with a reason a person can read,
    * when the shared copy can't be reached, doesn't accept the sign-in, or has versions this

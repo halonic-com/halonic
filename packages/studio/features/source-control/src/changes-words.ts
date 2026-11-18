@@ -336,5 +336,8 @@ export const shareWords = {
   /** The toast's title when sharing failed; the reason and "Nothing was sent." follow. */
   shareFailed: "Couldn't share",
   nothingSent: "Nothing was sent.",
-  alreadySharing: "Halonic is already sharing.",
+  /** The strip when everything is shared and nothing is waiting. */
+  upToDate: "Shared with your team. Up to date.",
+  /** The strip when the shared copy couldn't be asked; the reason is a sentence. */
+  couldntCheck: (reason: string) => `Couldn't check for updates: ${reason}`,
 };
