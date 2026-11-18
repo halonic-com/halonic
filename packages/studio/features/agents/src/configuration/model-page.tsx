@@ -22,8 +22,8 @@ export interface ModelPageProps {
   readonly aliases: readonly string[];
   /** The model the agent runs on while its file names none; `undefined` when the workspace has no default. */
   readonly defaultModel?: string | undefined;
-  /** Saves one change; rejects with the reason it couldn't write. */
-  readonly save: (change: AgentChange) => Promise<void>;
+  /** Saves one change; resolves to whether it was written. */
+  readonly save: (change: AgentChange) => Promise<boolean>;
 }
 
 /**

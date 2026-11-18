@@ -21,7 +21,7 @@ export interface AutoSaved {
  */
 export function useAutoSaved(
   saved: string,
-  save: (next: string) => Promise<void>,
+  save: (next: string) => Promise<boolean>,
   check: (next: string) => string | null,
 ): AutoSaved {
   const [draft, setDraft] = useState(saved);

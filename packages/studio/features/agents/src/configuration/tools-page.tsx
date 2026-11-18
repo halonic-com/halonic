@@ -24,8 +24,8 @@ export interface ToolsPageProps {
   /** The host, for the Library items the agent's hub can use. */
   readonly host: AgentsHost;
   readonly settings: AgentSettings;
-  /** Saves one change; rejects with the reason it couldn't write. */
-  readonly save: (change: AgentChange) => Promise<void>;
+  /** Saves one change; resolves to whether it was written, and never rejects. */
+  readonly save: (change: AgentChange) => Promise<boolean>;
   /** Opens Library on the tab of a list, for **Open Library ›**; absent where the app can't. */
   readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
 }
@@ -89,7 +89,7 @@ interface ToolListProps {
   readonly chosen: readonly string[];
   /** What the hub can use; `undefined` while the Library can't be read. */
   readonly options: readonly AgentToolOption[] | undefined;
-  readonly save: (next: readonly string[]) => Promise<void>;
+  readonly save: (next: readonly string[]) => Promise<boolean>;
   readonly openLibrary: (() => void) | undefined;
 }
 

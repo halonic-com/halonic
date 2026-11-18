@@ -20,7 +20,8 @@ export interface ConfigurationProps {
   readonly defaultModel: string | undefined;
   readonly retryAliases: () => void;
   readonly retry: () => void;
-  readonly save: (change: AgentChange) => Promise<void>;
+  /** Saves one change; resolves to whether it was written, and never rejects. */
+  readonly save: (change: AgentChange) => Promise<boolean>;
   /** Opens Library on a Tools list's tab, for **Open Library ›**; absent where the app can't. */
   readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
 }
