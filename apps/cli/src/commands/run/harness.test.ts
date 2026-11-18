@@ -164,9 +164,9 @@ verifies("cli.run-harness", () => {
       expect(await startedRuns()).toEqual([]);
     });
 
-    // HAL-6580: an untrusted Acme showed its trust check and fingerprint, then
-    // exited 3, for a run this computer's engine could never start.
-    it("refuses a harness program with exit 9 before the trust check, on a workspace that isn't trusted", async () => {
+    // HAL-6477: harness programs run, so an untrusted Acme gets its trust check, once the
+    // sandbox was checked first (HAL-6580).
+    it("checks the sandbox, then shows the trust check on a workspace that isn't trusted", async () => {
       const { code, stdout, stderr } = await run(
         claudeCodeReady,
         sandboxReady,
@@ -174,12 +174,8 @@ verifies("cli.run-harness", () => {
         "claude-code",
       );
 
-      expect(code).toBe(exitCode.unavailable);
-      expect(stderr).toEqual([
-        "✕ Couldn't run support-reply: Halonic can't run agents in Claude Code yet, and Writer is in Claude Code. Nothing ran.",
-        "  Run it with --harness halonic.",
-      ]);
-      expect(fingerprintsIn([...stdout, ...stderr])).toBe(0);
+      expect(code).toBe(exitCode.notTrusted);
+      expect(fingerprintsIn([...stdout, ...stderr])).toBeGreaterThan(0);
       expect(checks).toBe(1);
       expect(await startedRuns()).toEqual([]);
     });
@@ -236,18 +232,6 @@ verifies("cli.run-harness", () => {
         "✕ Couldn't run support-reply: Writer names allowed sites or a working folder, but its file runs it in Halonic's own loop, so they were never checked. Nothing ran.",
       );
       expect(checks).toBe(0);
-      expect(await startedRuns()).toEqual([]);
-    });
-
-    it("passes every check, then refuses it as this computer's engine has no harness adapter yet", async () => {
-      await trustAcme();
-      const { code, stderr } = await run(claudeCodeReady, sandboxReady, "--harness", "claude-code");
-
-      expect(code).toBe(exitCode.unavailable);
-      expect(stderr[0]).toBe(
-        "✕ Couldn't run support-reply: Halonic can't run agents in Claude Code yet, and Writer is in Claude Code. Nothing ran.",
-      );
-      expect(checks).toBe(1);
       expect(await startedRuns()).toEqual([]);
     });
 
