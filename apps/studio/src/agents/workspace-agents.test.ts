@@ -8,6 +8,8 @@ const replyFile =
 
 function setup() {
   const store: Record<string, string> = {
+    "models.yaml":
+      "aliases:\n  fast:\n    provider: anthropic\n    model: claude-haiku\n  smart:\n    provider: anthropic\n    model: claude-sonnet\n",
     "hubs/acme/hub.yaml": "id: acme\nname: Acme\n",
     "hubs/beta/hub.yaml": "id: beta\nname: Beta\n",
     "hubs/acme/agents/writer.agent.yaml": writerFile,
@@ -144,6 +146,21 @@ verifies("studio.workspace-agents", () => {
         },
       );
       expect(changes).toEqual([]);
+    });
+
+    it("reads the turn limit and the model aliases, and saves a model and a turn limit in place", async () => {
+      const { host, store } = setup();
+      const ref = { hubId: "acme", id: "writer" };
+      expect(await host.settings(ref)).toMatchObject({ model: "fast", maxSteps: 6 });
+      expect(await host.modelAliases(ref)).toEqual(["fast", "smart"]);
+
+      await host.update(ref, { model: "smart", maxSteps: 25 });
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toContain("model: smart");
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toContain("maxSteps: 25");
+      expect(await host.settings(ref)).toMatchObject({ model: "smart", maxSteps: 25 });
+      await expect(host.modelAliases({ hubId: "acme", id: "nobody" })).rejects.toMatchObject({
+        kind: "not_found",
+      });
     });
   });
 });

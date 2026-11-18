@@ -10,7 +10,7 @@ import type {
   AgentUser,
   NewAgent,
 } from "@halonicjs/studio-feature-agents/api";
-import { filesOf, loadWorkspace } from "@halonicjs/workspace";
+import { filesOf, loadWorkspace, modelAliases } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
 
 /** What {@link WorkspaceAgents} needs of the workspace's files. */
@@ -31,6 +31,9 @@ export interface WorkspaceAgentsParts {
 
 /** Where the agent files of a hub are kept. */
 const agentFolder = (hubId: string): string => `hubs/${hubId}/agents`;
+
+/** The workspace's model aliases, which every hub can use. */
+const modelsFile = "models.yaml";
 
 const agentSuffix = ".agent.yaml";
 
@@ -96,7 +99,11 @@ export class WorkspaceAgents implements AgentsHost {
   /** One agent's settings, from its file with unsaved changes applied; throws `not_found` when it isn't there. */
   async settings(ref: AgentRef): Promise<AgentSettings> {
     const { agent } = await this.#find(ref);
-    return { ...listingOf(ref.hubId, agent), instructions: agent.instructions };
+    return {
+      ...listingOf(ref.hubId, agent),
+      instructions: agent.instructions,
+      maxSteps: agent.maxSteps,
+    };
   }
 
   /**
@@ -111,7 +118,7 @@ export class WorkspaceAgents implements AgentsHost {
     const text = await this.#parts.files.read(path);
     if (text === null) throw agentGone();
     const edits: YamlEdit[] = [];
-    for (const field of ["name", "description", "instructions"] as const) {
+    for (const field of ["name", "description", "instructions", "model", "maxSteps"] as const) {
       const value = change[field];
       if (value !== undefined) edits.push({ kind: "set", path: [field], value });
     }
@@ -129,6 +136,12 @@ export class WorkspaceAgents implements AgentsHost {
       { coalesceKey: `agent:${path}:${fields}` },
     );
     if (change.name !== undefined) this.#names.set(`${ref.hubId}/${ref.id}`, change.name);
+  }
+
+  /** The aliases of `models.yaml` and of the agent's hub; throws `not_found` when the agent isn't there. */
+  async modelAliases(ref: AgentRef): Promise<readonly string[]> {
+    await this.#find(ref);
+    return [...modelAliases(await this.#load(), ref.hubId).keys()];
   }
 
   async #find({ hubId, id }: AgentRef) {
@@ -188,12 +201,15 @@ export class WorkspaceAgents implements AgentsHost {
     return workspace;
   }
 
-  /** The workspace's hubs as files, with unsaved changes applied. Only `hubs/` is listed. */
+  /** The workspace's hubs and its `models.yaml` as files, with unsaved changes applied. */
   #source(): DefinitionSource {
     const { files } = this.#parts;
     return {
       location: "workspace:unsaved",
-      list: async () => files.list("hubs"),
+      list: async () => [
+        ...(await files.list("hubs")),
+        ...((await files.read(modelsFile)) === null ? [] : [modelsFile]),
+      ],
       read: (path) => files.read(path),
       version: async () => "unsaved",
     };

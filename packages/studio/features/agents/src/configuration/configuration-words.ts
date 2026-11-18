@@ -2,7 +2,7 @@
 export const configurationWords = {
   tab: "Configuration",
   pages: "Configuration pages",
-  pageNames: { behaviour: "Behaviour" },
+  pageNames: { behaviour: "Behaviour", model: "Model" },
   description: "Description",
   instructions: "Instructions",
   /** Shown only while Instructions is empty (microcopy 8.5). */
@@ -10,6 +10,14 @@ export const configurationWords = {
     "What it should do and how, in plain words. It follows this in every run and chat.",
   /** Save model 8.4: a key pasted into Description or Instructions is not saved. */
   looksLikeKey: "This looks like a key. Keep it as a secret instead?",
+  model: "Model",
+  /** Shown in the picker while the file names no model, or one that no longer exists. */
+  chooseModel: "Choose a model",
+  noAliases: "No models yet. Add one in Models.",
+  turnLimit: "Turn limit",
+  turnLimitHint: "The most model calls in one run. Empty means 6.",
+  /** Microcopy 8.5. */
+  turnLimitInvalid: "Enter a whole number from 1 to 200.",
   loading: (name: string) => `Loading ${name}'s settings`,
   loadFailedTitle: (name: string) => `Couldn't load ${name}'s settings`,
   tryAgain: "Try again",
