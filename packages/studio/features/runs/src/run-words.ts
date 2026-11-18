@@ -296,7 +296,7 @@ export const runPageWords = {
     `Change the budget, or wait until it resets on ${resetsOn} (UTC).`,
   changeBudget: "Change budget",
   budgetChecks:
-    "Halonic checks the budget before each model call, so calls already under way can take a run over it.",
+    "Halonic checks the budget before each step. A step can make several model calls, so a run can go over.",
   cancelledIn: (workflow: string, step: string) =>
     `${workflow} was cancelled in the step ${step}. Nothing after it ran.`,
   cancelledBeforeStart: (workflow: string) => `${workflow} was cancelled before it started.`,

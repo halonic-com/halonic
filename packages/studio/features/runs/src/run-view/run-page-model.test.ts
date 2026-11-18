@@ -199,7 +199,7 @@ verifies("runs.run-page", () => {
         title: "Stopped at its estimated budget",
         lines: [
           "Support reply stopped in the step Draft.",
-          "Halonic checks the budget before each model call, so calls already under way can take a run over it.",
+          "Halonic checks the budget before each step. A step can make several model calls, so a run can go over.",
         ],
         details: expect.stringMatching(
           /^Support reply stopped in the step Draft\.\nRun \S+\nRun budget reached: 5\.08 of 5\.00 EUR spent\.$/,
