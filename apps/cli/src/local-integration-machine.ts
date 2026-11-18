@@ -59,8 +59,8 @@ import {
 /** How long one runner may live, in milliseconds; a start after it asks the trust check and the gate again. */
 const runnerTimeLimitMs = 10 * 60 * 1000;
 
-/** Node's timers for reading the saved yes again; they don't keep the process open by themselves. */
-const unfencedRunTimers: SaveTimers = {
+/** Node's timers for a start's time limit and for reading the saved yes again; they don't keep the process open by themselves. */
+const nodeTimers: SaveTimers = {
   set: (callback, delayMs) => setTimeout(callback, delayMs).unref(),
   clear: (handle) => clearTimeout(handle as NodeJS.Timeout),
 };
@@ -102,8 +102,9 @@ export function computerIntegrationMachine(
     runs: new UnfencedRuns({
       store: noUnfencedRunConsent,
       clock: systemClock,
-      timers: unfencedRunTimers,
+      timers: nodeTimers,
     }),
+    timers: nodeTimers,
   });
   const trust = cliTrustService(input.trust.trustStore, input.trust.clock);
   const made: string[] = [];
