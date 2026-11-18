@@ -125,6 +125,8 @@ verifies("workspace.narrow-window", () => {
       "Workspace: Acme sample. Change workspace",
     );
     expect(chip()).not.toBeNull();
+    // The person is on a computer already (HAL-12962).
+    expect(element.textContent).toContain("Editing workflows is easier in a wider window.");
   });
 
   it("opens the workspace menu as a sheet, and a row closes it and switches", async () => {
@@ -132,6 +134,8 @@ verifies("workspace.narrow-window", () => {
 
     await act(async () => workspaceRow()?.click());
     expect(sheetTitle()).toBe("Workspace");
+    // The menu's heading stays as the sheet's section label (HAL-12962).
+    expect(element.querySelector(".fixed h3")?.textContent).toBe("Recent");
     await pressSheetRow("Beta");
 
     expect(sheetTitle()).toBeUndefined();

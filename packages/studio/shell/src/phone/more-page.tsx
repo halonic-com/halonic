@@ -48,6 +48,11 @@ export interface MorePageProps {
    * under the switcher row. Left out when there is none, and then it takes no room.
    */
   readonly badge?: ReactNode;
+  /**
+   * In the desktop app, where More shows only when the window is narrow or zoomed: the person is
+   * on a computer already, so the footer line points at a wider window instead.
+   */
+  readonly inDesktopApp?: boolean | undefined;
 }
 
 /**
@@ -63,7 +68,8 @@ export interface MorePageProps {
  *   and only where a feature added them, each with its icon and a chevron. Changes shows its count
  *   in place of the chevron. **Settings** ends the list, with its icon and a chevron, once the
  *   window has `openSettings` (it opens the Settings list page).
- * - **The footer line**: "Editing workflows is easier on a computer."
+ * - **The footer line**: "Editing workflows is easier on a computer.", or in the desktop app
+ *   "Editing workflows is easier in a wider window."
  *
  * The top bar already shows "More", so the page's `h1` is for screen readers only; the shell moves
  * focus to it after a move, as on every page.
@@ -82,6 +88,7 @@ export function MorePage({
   onOpen,
   onSettings,
   badge,
+  inDesktopApp = false,
 }: MorePageProps) {
   const rows = onSettings === undefined ? moreRows(places) : [...moreRows(places), settingsRow];
   return (
@@ -106,11 +113,17 @@ export function MorePage({
         </div>
       )}
       <p className="px-4 py-3 text-small text-fg-subtle">
-        Editing workflows is easier on a computer.
+        {inDesktopApp ? footerLines.desktopApp : footerLines.phone}
       </p>
     </div>
   );
 }
+
+/** The footer line: on a phone, and in a narrow desktop app window (HAL-12962). */
+const footerLines = {
+  phone: "Editing workflows is easier on a computer.",
+  desktopApp: "Editing workflows is easier in a wider window.",
+} as const;
 
 const settingsRowId = "settings";
 
