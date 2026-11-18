@@ -60,8 +60,10 @@ payload. The host recomputes it once message 3 decrypts; a mismatch is a wrong
 try. Everything the attacker controls in its handshake with the host is then
 fixed before the host's ephemeral key exists, and the phone's own hash depends
 on a message 3 the attacker can't predict when it writes message 2, because of
-the nonce. One leaked code then gives at most a 1-in-31⁶ chance at the check
-code. The nonce also keeps the commitment, which travels in cleartext, from
+the nonce. Each handshake with the host then gives at most a 1-in-31⁶ chance
+at the check code, and a handshake abandoned after the host's message 2 counts
+as a wrong try (pairing rules), so one leaked code gives at most 5 in 31⁶. The
+nonce also keeps the commitment, which travels in cleartext, from
 linking a phone's static key across pairings.
 
 **Check code.** HKDF-SHA256 of the handshake hash, empty salt, info
@@ -83,7 +85,12 @@ of four. Input is read case-insensitively; spaces, dots and dashes are dropped.
 - After that message 3 the host waits 2 minutes for Allow. Don't allow, a
   timeout, or the phone leaving ends the pairing.
 - A message 3 that doesn't decrypt, or whose commitment doesn't match, is a
-  wrong try and doesn't use the code up. 5 wrong tries end the code.
+  wrong try and doesn't use the code up. So is a pairing handshake the host
+  answered with message 2 that doesn't end in a message 3 that decrypts and
+  matches: closed, dropped or timed out. Otherwise someone with a leaked code
+  could open handshakes over and over and hang up on every one whose check
+  code doesn't match the phone's, for free. A flaky network can burn a try;
+  we accept that. 5 wrong tries end the code.
   A host takes at most 10 failed tries a minute, across all codes; past that
   it refuses message 1 until the minute is over.
 - The host compares in constant time anything derived from the code.
@@ -95,8 +102,9 @@ of four. Input is read case-insensitively; spaces, dots and dashes are dropped.
   pairing, never lets anyone in, and the person sees it and can open a new
   code. Tighter limits per address don't help behind a tunnel, where every
   phone has the tunnel's address.
-- After message 3 decrypts and its commitment matches, the host's answer is encrypted: `paired` once Allow
-  is pressed, or `pair-refused` with `denied` or `timed-out`.
+- After message 3 decrypts and its commitment matches, the host's answer is
+  encrypted: `paired` once Allow is pressed, or `pair-refused` with `denied`
+  or `timed-out`.
 
 **Reconnect: `Noise_IK_25519_ChaChaPoly_SHA256`.** The phone encrypts message 1
 to the pinned host key and sends its own static key in it. The host answers
@@ -174,7 +182,8 @@ is the framing, the codecs, the rules above and the tests.
   nothing reaches it meanwhile (`apps/agent-host/AGENTS.md`).
 - The phase B attack suite (B7) has fixed rules to test: no message before
   the handshake, `not-paired` never before message 2, `handshake-failed` never
-  read as Removed, a mismatched commitment counted as a wrong try, a replayed
+  read as Removed, a mismatched commitment counted as a wrong try, a pairing
+  handshake abandoned after message 2 counted as a wrong try, a replayed
   IK message 1 never counted as a connection, the try limits, the handshake
   timeout on both sides, the sizes and the rekey limit.
 - The host stores only public data about phones. Its own static key goes

@@ -143,8 +143,11 @@ export const gatewaySessionLimits = {
  * code lives `codeLifetimeMs` and pairs at most one phone: the first pairing
  * message 3 that decrypts with it uses it up. The host then waits
  * `allowWaitMs` for Allow. A message 3 that doesn't decrypt, or whose
-commitment doesn't match, is a wrong try and doesn't use the code up;
- * `wrongTriesPerCode` of them end the code, and the host takes at most
+ * commitment doesn't match, is a wrong try and doesn't use the code up. So is
+ * a pairing handshake the host answered with message 2 that closes, drops or
+ * times out before a message 3 that decrypts and matches, so a leaked code
+ * can't be tried against the host's check code for free.
+ * `wrongTriesPerCode` wrong tries end the code, and the host takes at most
  * `failedTriesPerMinute` failed tries across all codes before it refuses
  * pairing message 1 until the minute is over.
  */

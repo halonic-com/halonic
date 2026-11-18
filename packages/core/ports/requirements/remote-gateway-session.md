@@ -12,7 +12,7 @@ The end-to-end session shall open with a Noise handshake and carry every gateway
 
 **Cleartext refusals.** The only cleartext frames shall be `handshake-failed`, which has no body, and `pair-refused`, with a reason (`wrong-code`, `code-ended`, `code-used` or `rate-limited`) and the tries left: 1 to 4 for `wrong-code`, 0 for the rest. The host shall close after either. Both are informative, and the phone shall clear nothing because of one. Reading one shall accept exactly what writing one gives, and nothing else.
 
-**Pairing rules.** A pairing code shall live 5 minutes and pair at most one phone; the first message 3 that decrypts with it uses it up. The host shall then wait 2 minutes for Allow. A message 3 that doesn't decrypt, or whose commitment doesn't match, is a wrong try and doesn't use the code up; 5 end the code, and a host shall take at most 10 failed tries a minute across all codes.
+**Pairing rules.** A pairing code shall live 5 minutes and pair at most one phone; the first message 3 that decrypts with it uses it up. The host shall then wait 2 minutes for Allow. A message 3 that doesn't decrypt, or whose commitment doesn't match, is a wrong try and doesn't use the code up, and so is a pairing handshake the host answered with message 2 that closes, drops or times out before a message 3 that decrypts and matches; 5 wrong tries end the code, and a host shall take at most 10 failed tries a minute across all codes.
 
 **Rekeying and length.** A sender shall send a `rekey` frame at least every 10,000 transport messages or 30 minutes, whichever comes first, and rekey its sending direction after it; a reader shall close the connection when the 10,001st message arrives without one. The host shall end a session after 24 hours.
 
@@ -39,6 +39,9 @@ The end-to-end session shall open with a Noise handshake and carry every gateway
 - Given the pairing rules,
   when they are read,
   then a code lives 5 minutes, Allow is waited for 2 minutes, 5 wrong tries end a code and a host takes at most 10 failed tries a minute.
+- Given a pairing handshake the host answered with message 2,
+  when the phone closes it, drops or times out before a message 3 that decrypts and matches,
+  then it is a wrong try, as a message 3 that doesn't decrypt or doesn't match is.
 - Given the session limits,
   when they are read,
   then a handshake times out after 10 seconds, a sender rekeys every 10,000 messages or 30 minutes, and a session lasts at most 24 hours.

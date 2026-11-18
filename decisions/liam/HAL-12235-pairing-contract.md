@@ -20,7 +20,9 @@ B8, so nothing changes for a user yet.
 - The new requirement `ports.remote-gateway-session` holds the handshakes, the frames, the
   cleartext refusals, the pairing rules and the rekeying constants. After Julian's review it also
   holds the phone's commitment to pairing message 3, sent in message 1, so that someone who knows
-  a leaked code can't search for a message 3 that makes the two check codes match.
+  a leaked code can't search for a message 3 that makes the two check codes match. A pairing
+  handshake the host answered with message 2 that doesn't end in a message 3 that decrypts and
+  matches is a wrong try too, so that search can't move to the host's side either.
 
 ## Covers
 
