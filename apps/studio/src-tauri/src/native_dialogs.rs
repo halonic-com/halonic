@@ -1,4 +1,5 @@
-//! The shell's native dialogs: the folder picker and the two trust
+//! The shell's native dialogs: the folder picker, the save dialog for the
+//! sandbox backup (HAL-10974) and the two trust
 //! questions, about a folder (HAL-2612) and about an agent's instructions.
 //! They are shown with `rfd`, the library `tauri-plugin-dialog` uses, called
 //! from Rust only: registering the plugin would put its script in every
@@ -40,6 +41,24 @@ pub fn pick_folder<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
         .pick_folder()
     })?;
     picked.map(|folder| folder.path().to_owned())
+}
+
+/// Shows the save dialog for a backup file named `suggested`; `None` when
+/// the person cancels it.
+#[cfg(desktop)]
+pub fn pick_backup_file<R: Runtime>(app: &AppHandle<R>, suggested: &str) -> Option<PathBuf> {
+    let suggested = suggested.to_owned();
+    let picked = show_and_wait(app, move |parent| {
+        let dialog = rfd::AsyncFileDialog::new()
+            .set_file_name(suggested)
+            .add_filter("Backup", &["tar"]);
+        match parent {
+            Some(window) => dialog.set_parent(window),
+            None => dialog,
+        }
+        .save_file()
+    })?;
+    picked.map(|file| file.path().to_owned())
 }
 
 /// Shows the trust question about a folder; `true` only when the person
@@ -121,6 +140,11 @@ fn shell_window<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
 
 #[cfg(mobile)]
 pub fn pick_folder<R: Runtime>(_app: &AppHandle<R>) -> Option<PathBuf> {
+    None
+}
+
+#[cfg(mobile)]
+pub fn pick_backup_file<R: Runtime>(_app: &AppHandle<R>, _suggested: &str) -> Option<PathBuf> {
     None
 }
 

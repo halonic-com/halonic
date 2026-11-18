@@ -81,6 +81,7 @@ import {
 } from "./window-close.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
+import { wslBackupOf } from "./wsl-backup-shell.ts";
 
 export { desktopFeatures };
 
@@ -326,7 +327,7 @@ export async function openFolder(
   provideShellSecrets(services, window);
   provideShellHostSettings(services, window);
   services.provide(HostSettingsService, await hostSettingsOf(services, window));
-  provideAgentSandbox(services, window);
+  await provideAgentSandbox(services, window, ipc);
   if (ipc !== undefined) {
     services.provide(UpdaterService, updaterOf(ipc));
     services.provide(RestartRunsService, restartRunsOfWindow);
@@ -414,7 +415,11 @@ function updaterOf(ipc: TauriIpc & TauriCallbacks): TauriUpdater {
  * Gives the section the agent host's sandbox through the shell, when the build offers it and the
  * shell has an agent host. Without it the section reads Not available.
  */
-function provideAgentSandbox(services: ServiceRegistry, window: object): void {
+async function provideAgentSandbox(
+  services: ServiceRegistry,
+  window: object,
+  ipc: TauriIpc | undefined,
+): Promise<void> {
   const transport = tauriAgentHostTransport(window);
   if (transport === undefined) return;
   // The start check only reads: "Check again" on a run page and in the Inbox works whether or not
@@ -427,7 +432,13 @@ function provideAgentSandbox(services: ServiceRegistry, window: object): void {
   if (agentSandboxOffered)
     services.provide(
       AgentSandboxService,
-      new AgentHostSandboxFacts(transport, undefined, undefined, () => transport.securityUpdates()),
+      new AgentHostSandboxFacts(
+        transport,
+        undefined,
+        undefined,
+        () => transport.securityUpdates(),
+        ipc === undefined ? undefined : await wslBackupOf(ipc),
+      ),
     );
 }
 
