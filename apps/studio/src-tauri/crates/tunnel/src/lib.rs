@@ -8,15 +8,23 @@
 //! the frames first, then the Noise handshakes with `snow`, then the
 //! WebSocket transport.
 
+mod backoff;
 mod codes;
+mod connect;
+mod endpoint;
 mod frames;
+mod transport;
 
+pub use backoff::Backoff;
 pub use codes::{
     CHECK_CODE_INFO, CHECK_CODE_INPUT_BYTES, CHECK_CODE_LENGTH, CheckCode, PAIR_COMMIT_LABEL,
     PAIRING_ALPHABET, PAIRING_CODE_LENGTH, PAIRING_PSK_INFO, PairingCode, check_code,
     check_code_from_bytes, pair_commit,
 };
+pub use connect::{CONNECT_TIMEOUT, ConnectError, Dialer};
+pub use endpoint::{Endpoint, GATEWAY_PATH};
 pub use frames::{
     FrameKind, MAX_FRAME_BYTES, MAX_HANDSHAKE_BYTES, MAX_NAME_BYTES, NOISE_MAX_MESSAGE_BYTES,
     PairRefusedReason, Refusal, frame, read_frame, read_refusal,
 };
+pub use transport::{ConnectionId, SendError, Timeouts, Transport, TransportEvent, TransportState};
