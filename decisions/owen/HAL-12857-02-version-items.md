@@ -5,7 +5,7 @@
 
 A version's details (beside History on a desktop, its own page on a phone) list "What's in it" as
 the version's items, counted as items, each with the icon, name and kind the Changes list gives it,
-named by its file as it is now (by its id once deleted), in place of the raw paths and a file count.
+named by its file as it is now (by its id as a name once deleted, "Weekly report"), in place of the raw paths and a file count.
 `source-control.history-page` and `source-control.changes-phone` say so. The tests that checked the
 paths now check the items and that no path shows; none was weakened.
 

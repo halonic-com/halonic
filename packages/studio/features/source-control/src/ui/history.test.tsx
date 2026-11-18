@@ -119,6 +119,29 @@ verifies("source-control.history-page", () => {
       expect(document.activeElement).toBe(rowOf(root, "Version 2"));
     });
 
+    it("names an item deleted since the version by its id as a name, never the bare id", async () => {
+      const fake = fakeSource({ kind: "ready", changes: [] });
+      fake.setHistory([
+        {
+          id: "v1",
+          name: "First version",
+          notes: "",
+          author: "Sam Lee",
+          at: recent,
+          files: ["hubs/reports/workflows/weekly-report.workflow.yaml"],
+        },
+      ]);
+      const { root } = await openPage(fake);
+      await act(async () => {
+        rowOf(root, "First version").click();
+        await settle();
+      });
+      const details = root.querySelector('section[aria-label="Version \\"First version\\""]');
+      const items = [...(details?.querySelectorAll("li") ?? [])].map((item) => item.textContent);
+      expect(items).toEqual(["Weekly reportWorkflow"]);
+      expect(details?.textContent).not.toContain("weekly-report");
+    });
+
     it("puts the details in a column beside the list and Show more, not after them", async () => {
       const fake = fakeSource({ kind: "ready", changes: [] });
       fake.setHistory(versions(25));

@@ -1,4 +1,5 @@
-import { describeFileChange } from "@halonicjs/app";
+import { describeFileChange, nameFromId } from "@halonicjs/app";
+import { placeOf } from "@halonicjs/workspace";
 import type { ChangesSource } from "./api.ts";
 import type { ChangedFile } from "./changes-list-state.ts";
 
@@ -8,7 +9,7 @@ const readsAtOnce = 4;
 /**
  * A version's files, each with the name its file gives it now, for History to group into the items
  * the Changes list would show (`orderItems`): an item has the same name, kind and icon in both. An
- * item deleted since, or a file that can't be read, is named by its id.
+ * item deleted since, or a file that can't be read, is named by its id as a name ("Weekly report").
  *
  * @example
  * orderItems(await versionFiles(source, ["hubs/reports/workflows/weekly-report.workflow.yaml"]));
@@ -35,7 +36,15 @@ async function namedFile(source: ChangesSource, path: string): Promise<ChangedFi
   }
 }
 
-/** A file of a version, with the name its text gives it now; no change is described. */
+/**
+ * A file of a version, with the name its text gives it now, else its id as a name; no change is
+ * described.
+ */
 function fileOf(path: string, text: string | null): ChangedFile {
-  return { path, description: describeFileChange(path, text, text), texts: undefined };
+  const description = describeFileChange(path, text, text);
+  const placeId = placeOf(path)?.placeId;
+  if (description.name !== undefined || placeId === undefined) {
+    return { path, description, texts: undefined };
+  }
+  return { path, description: { ...description, name: nameFromId(placeId) }, texts: undefined };
 }
