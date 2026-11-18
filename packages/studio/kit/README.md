@@ -643,6 +643,11 @@ const ids = useTabIds();
 The up and down arrow keys move and select instead of left and right; Home, End and the one Tab
 stop work as above. A counter or running dot sits at the end of its row. `fill` doesn't apply.
 
+On a phone a side column leaves the page too little width, so there the same list goes across the
+top as a horizontal `TabList` (the segmented look) and the page sits below it at the full width. Pick
+the orientation from `usePresentation()`, so it stays one list:
+`orientation={usePresentation() === "phone" ? "horizontal" : "vertical"}`.
+
 | State | What shows |
 | --- | --- |
 | Default | `fg-muted` text, a row at least 32px high (48px on a touch screen), labels wrap |
