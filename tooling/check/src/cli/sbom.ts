@@ -10,7 +10,7 @@ import {
 } from "../lib/cargo-notices.ts";
 import type { DependencyList } from "../lib/config-files.ts";
 import { readDeny } from "../lib/deny.ts";
-import { type LicencePolicy, licenceTextPath } from "../lib/licences.ts";
+import type { LicencePolicy } from "../lib/licences.ts";
 import {
   findDanglingRefs,
   findSbomProblems,
@@ -18,6 +18,7 @@ import {
   type NoticeSection,
   renderNotices,
   type Sbom,
+  vendoredNotices,
   withProduct,
 } from "../lib/sbom.ts";
 import { findRepoRoot, listWorkspacePackages, readJson } from "../lib/workspace.ts";
@@ -115,18 +116,6 @@ function noticeEntries(root: string, scope: readonly string[]): NoticeEntry[] {
       };
     }),
   );
-}
-
-/** The vendored files of `licences.json`, each with its licence text. */
-function vendoredNotices(root: string): NoticeEntry[] {
-  const policy = readJson<LicencePolicy>(join(root, "tooling/check/licences.json"));
-  return (policy.vendored ?? []).map((entry) => ({
-    name: `${entry.name} (${entry.path})`,
-    versions: [],
-    licence: entry.licence,
-    source: entry.source,
-    texts: [readFileSync(join(root, licenceTextPath(entry.licence)), "utf8")],
-  }));
 }
 
 const storedTexts = "tooling/check/licence-texts/crates";
@@ -234,7 +223,10 @@ function main(argv: readonly string[]): number {
       report("notices", crates.problems);
       crateProblems = crates.problems.length;
     }
-    const vendored = vendoredNotices(root);
+    const policy = readJson<LicencePolicy>(join(root, "tooling/check/licences.json"));
+    const vendored = vendoredNotices(policy.vendored ?? [], (path) =>
+      readFileSync(join(root, path), "utf8"),
+    );
     if (vendored.length > 0) {
       sections.push({ title: "Vendored files", entries: vendored });
     }
