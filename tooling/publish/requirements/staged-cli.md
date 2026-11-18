@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-9558 (replace the stub CLI package in release.yml), HAL-9546 (0.1.0 fact-check)
+- Source: HAL-9558 (replace the stub CLI package in release.yml), HAL-9546 (0.1.0 fact-check), HAL-12394 (README for users)
 
-The stager shall build the npm package `halonic` from `apps/cli` for a given version into `tooling/publish/dist/cli`: the CLI and every workspace package and library it imports bundled into one JavaScript file that imports only Node's own modules (Node doesn't run TypeScript inside `node_modules`), `bin/halonic.js` with its Node version check pointed at that bundle, the integration runner file, the `examples` folder, `THIRD-PARTY-NOTICES.txt` (the bundle carries third-party code), and the sandbox runtime, as the workspace resolves it with our patch, with the dependencies it needs as bundled dependencies. `halonic --version` shall print the given version. It shall fail when the notices file is missing, the runner file isn't built or when the bundle imports a package that isn't Node's own.
+The stager shall build the npm package `halonic` from `apps/cli` for a given version into `tooling/publish/dist/cli`: the CLI and every workspace package and library it imports bundled into one JavaScript file that imports only Node's own modules (Node doesn't run TypeScript inside `node_modules`), `bin/halonic.js` with its Node version check pointed at that bundle, the integration runner file, the `examples` folder, `THIRD-PARTY-NOTICES.txt` (the bundle carries third-party code), the README for users from `tooling/publish/cli/README.md` (the npm page shows it), and the sandbox runtime, as the workspace resolves it with our patch, with the dependencies it needs as bundled dependencies. `halonic --version` shall print the given version. It shall fail when the notices file is missing, the runner file isn't built or when the bundle imports a package that isn't Node's own.
 
 ## Examples
 
@@ -22,6 +22,9 @@ The stager shall build the npm package `halonic` from `apps/cli` for a given ver
   then staging fails and names `pnpm check:sbom --notices`.
 - Given the staged package packed and installed,
   then `THIRD-PARTY-NOTICES.txt` is in the installed package.
+- Given the staged package packed and installed,
+  then its README is the one for users, with the install line and a link to docs.halonic.dev,
+  not the notes in `apps/cli/README.md`.
 - Given the integration runner file isn't built,
   when the CLI is staged,
   then staging fails and names the build command.
