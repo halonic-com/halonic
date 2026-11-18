@@ -450,12 +450,23 @@ through `POST /v1/plugins/call`: the request names the plugin by an id of
 lower-case letters, digits, `.`, `_` and `-` only, never a path. The host reads
 the plugin's folder in its own profile and checks its own trust record at every
 call; the start refuses a folder that no longer has the fingerprint just
-checked. The runner starts only in the host's fenced sandbox. The host holds no
-saved yes for running without it, so a computer without the sandbox (Windows
-until HAL-3403) answers `403 not_fenced` and starts nothing. The `halonic`
-command holds none either (`noUnfencedRunConsent`, HAL-12639): nothing offers
-that yes yet, so a file placed in the profile's `unfenced-runs` folder by hand
-starts no plugin backend or local integration. A plugin's
+checked. The runner starts in the host's fenced sandbox. On a computer without
+it (Windows until HAL-3403), it starts only with the user's yes for the reason
+at that start, read from the profile at every start, and then in the
+launcher's sandbox; without that yes it answers `403 not_fenced`
+and starts nothing. The yes is saved only through
+`POST /v1/unfenced-runs/allow` (`agent-host.unfenced-runs-routes`), behind the
+launch token, which only Studio's window holds: runners and harness agents
+never get it, and no tool the model can call reaches the route. The gate saves
+it only for the reason that holds at that moment, so a caller can't save a yes
+for a status the user didn't see, and checks it again at every start.
+`POST /v1/unfenced-runs/take-back` removes it and stops this host's runners
+without the sandbox before it answers. The `halonic` command still holds no
+yes (`noUnfencedRunConsent`, HAL-12639): it offers none, so a file in the
+profile's `unfenced-runs` folder starts no local integration or plugin backend
+from the command. In the host, a file written into that folder by hand counts
+as a yes, as the trust records next to it count as trust: whoever can write the
+profile already decides what runs. A plugin's
 backend gets no secret and no sign-in token through the host yet. Its
 secrets are to come from Studio, which hands a trusted plugin's declared
 secrets to the host before each use; the host builds their names itself and

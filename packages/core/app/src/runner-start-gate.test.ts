@@ -416,3 +416,55 @@ verifies("app.runner-start-gate", () => {
     });
   });
 });
+
+verifies("app.runner-start-gate-status", () => {
+  describe("RunnerStartGate's status and yes", () => {
+    it("answers the status a start would decide, and starts nothing", async () => {
+      const { gate, runs, started } = setup({ check: inContainer });
+      expect(await gate.status()).toEqual({ run: "needs-yes", reason: "container" });
+      await runs.allow("container");
+      expect(await gate.status()).toEqual({
+        run: "allowed",
+        reason: "container",
+        allowedAt: nineNov,
+      });
+      expect(started).toEqual([]);
+    });
+
+    it("answers windows on Windows, even when the sandbox check passes", async () => {
+      const { gate } = setup({ platform: "win32" });
+      expect(await gate.status()).toEqual({ run: "needs-yes", reason: "windows" });
+    });
+
+    it("removes the saved yes when it reads the status of a computer in the sandbox", async () => {
+      const { gate, runs, store } = setup();
+      await runs.allow("container");
+      expect(await gate.status()).toEqual({ run: "fenced" });
+      expect(await store.get()).toBeNull();
+    });
+
+    it("saves the yes only for the reason code runs without the sandbox now", async () => {
+      const { gate, store, started, startIn } = setup({ check: inContainer });
+      expect(await gate.allow("container")).toEqual({
+        run: "allowed",
+        reason: "container",
+        allowedAt: nineNov,
+      });
+      expect(await store.get()).toEqual({ reason: "container", allowedAt: nineNov });
+      expect((await gate.start(startIn)).run).toBe("unfenced");
+      expect(started.map((runner) => runner.startedIn)).toEqual(["launcher"]);
+    });
+
+    it("saves nothing for a reason that isn't the current one", async () => {
+      const { gate, store } = setup({ check: inContainer });
+      expect(await gate.allow("bubblewrap-missing")).toBeNull();
+      expect(await store.get()).toBeNull();
+    });
+
+    it("saves nothing when the computer is in the sandbox", async () => {
+      const { gate, store } = setup();
+      expect(await gate.allow("container")).toBeNull();
+      expect(await store.get()).toBeNull();
+    });
+  });
+});

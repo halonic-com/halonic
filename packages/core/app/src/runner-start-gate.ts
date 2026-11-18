@@ -45,6 +45,13 @@ interface FencedSandbox {
 /** A decision that lets code run without the sandbox. */
 type Allowed = Extract<UnfencedRunDecision, { run: "allowed" }>;
 
+/** The fence status at this moment, and the sandbox and check it came from. */
+interface FenceNow {
+  readonly fenced: FencedSandbox;
+  readonly check: SandboxCheck;
+  readonly fence: RunnerFence;
+}
+
 /** What the gate needs from a started runner. */
 export interface GatedRunner {
   /** The session's fence proof, read when the runner started. */
@@ -160,14 +167,7 @@ export class RunnerStartGate {
   async start<Runner extends GatedRunner>(
     startIn: StartInSandbox<Runner>,
   ): Promise<GatedStart<Runner>> {
-    const fenced = this.#fencedSandbox();
-    const check = await fenced.sandbox.check();
-    const fence = runnerFence({
-      platform: this.#platform,
-      check,
-      backend: fenced.backend,
-      mxcFences: fenced.mxcFences,
-    });
+    const { fenced, check, fence } = await this.#fenceNow();
     const decideAndStart = () => this.#decideAndStart(startIn, fenced, check, fence);
     if (fence.state === "not-fenced") {
       // Take back waits for this start, from before it reads the yes.
@@ -193,6 +193,55 @@ export class RunnerStartGate {
       case "allowed":
         return this.#startUnfenced(startIn, fence, decision);
     }
+  }
+
+  /**
+   * What a start would decide now, for the trust check and Settings to show:
+   * the same fence status and saved yes {@link RunnerStartGate.start} asks,
+   * so the two never disagree on the reason. It starts nothing.
+   *
+   * Like {@link UnfencedRuns.decide}, it removes the saved yes when the
+   * computer is in the sandbox now, so a later failure asks again.
+   *
+   * @example
+   * const status = await gate.status();
+   * if (status.run === "needs-yes") showRunsLine(status.reason);
+   *
+   * @throws the store's error when a saved yes can't be removed after the computer passed
+   */
+  async status(): Promise<UnfencedRunDecision> {
+    const { fence } = await this.#fenceNow();
+    return await this.#runs.decide(fence);
+  }
+
+  /**
+   * Saves the user's yes for `reason`, but only when `reason` is why code
+   * runs without the sandbox right now: a yes is never saved for a status
+   * the user didn't see. Only for the trust check's box, ticked in Studio.
+   *
+   * @example
+   * const allowed = await gate.allow("container");
+   * if (allowed === null) readTheStatusAgain();
+   *
+   * @returns the yes as saved, or `null` when `reason` isn't the current one and nothing was saved
+   */
+  async allow(reason: RunnerUnfencedReason): Promise<Allowed | null> {
+    const { fence } = await this.#fenceNow();
+    if (fence.state !== "not-fenced" || fence.reason !== reason) return null;
+    return await this.#runs.allow(reason);
+  }
+
+  /** Asks the fenced sandbox's check again, and the fence status it gives on this platform. */
+  async #fenceNow(): Promise<FenceNow> {
+    const fenced = this.#fencedSandbox();
+    const check = await fenced.sandbox.check();
+    const fence = runnerFence({
+      platform: this.#platform,
+      check,
+      backend: fenced.backend,
+      mxcFences: fenced.mxcFences,
+    });
+    return { fenced, check, fence };
   }
 
   /** The fenced sandbox for this start: MXC while the sandbox choice has it in use, else srt. */

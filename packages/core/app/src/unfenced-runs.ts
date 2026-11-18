@@ -145,10 +145,18 @@ export class UnfencedRuns {
 
   /**
    * Saves the user's yes for `reason`, replacing any yes for another reason.
-   * Only for the trust check's box, ticked by the user in Studio.
+   * Only for the trust check's box, ticked by the user in Studio; a host
+   * saves it through `RunnerStartGate.allow`, which first checks that
+   * `reason` is the current one.
+   *
+   * @returns the yes as saved
    */
-  async allow(reason: RunnerUnfencedReason): Promise<void> {
-    await this.#store.save({ reason, allowedAt: this.#clock.now().toISOString() });
+  async allow(
+    reason: RunnerUnfencedReason,
+  ): Promise<Extract<UnfencedRunDecision, { run: "allowed" }>> {
+    const allowedAt = this.#clock.now().toISOString();
+    await this.#store.save({ reason, allowedAt });
+    return { run: "allowed", reason, allowedAt };
   }
 
   /**
