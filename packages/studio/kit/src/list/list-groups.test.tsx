@@ -103,6 +103,15 @@ verifies("kit.list-groups", () => {
     expect(misnamed).toBeDefined();
   });
 
+  it("takes a group's own heading level, for a group inside the one above it", () => {
+    const inside: ListGroup = { ...yesterday, heading: { name: "Yesterday", headingLevel: 3 } };
+    const { container } = render(
+      <List label="Runs" groups={[today, inside]} groupHeadingLevel={2} />,
+    );
+    expect(container.querySelector("h2")?.textContent).toBe("Today");
+    expect(container.querySelector("h3")?.textContent).toBe("Yesterday");
+  });
+
   it("draws no group without rows, heading and all", () => {
     const { container } = render(<List label="Runs" groups={[today, lastWeek, yesterday]} />);
     expect(container.textContent).not.toContain("Last week");

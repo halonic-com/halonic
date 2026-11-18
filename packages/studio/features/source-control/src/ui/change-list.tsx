@@ -159,7 +159,12 @@ export function ChangeList({
             heading: sinceHeading,
             rows: itemRows,
           },
-          { id: "other", heading: { name: itemWords.otherFiles }, rows: otherRows },
+          // Other files is a group inside Since your last version, so a level below it (a11y C3).
+          {
+            id: "other",
+            heading: { name: itemWords.otherFiles, headingLevel: 3 },
+            rows: otherRows,
+          },
         ]}
         onOpen={onOpen}
       />

@@ -199,6 +199,27 @@ verifies("source-control.create-version", () => {
       expect(fake.versions[0]?.paths).toEqual(["README.md"]);
     });
 
+    it("names the list What's in it, an h3 under the dialog's title", async () => {
+      await openDialog();
+      const heading = [...(dialog()?.querySelectorAll("h2, h3") ?? [])].find(
+        (element) => element.textContent === "What's in it",
+      );
+      expect(heading?.tagName).toBe("H3");
+      const list = dialog()?.querySelector("section > ul");
+      expect(list?.getAttribute("aria-labelledby")).toBe(heading?.id);
+    });
+
+    it("describes each item's checkbox by what changed in it", async () => {
+      await openDialog();
+      const box = [...(dialog()?.querySelectorAll("label") ?? [])]
+        .find((label) => label.textContent === "Triage")
+        ?.querySelector("input");
+      const description = document.getElementById(box?.getAttribute("aria-describedby") ?? "");
+      expect(description?.closest("li")).toBe(box?.closest("li"));
+      expect(description?.textContent).toBeTruthy();
+      expect(description?.textContent).not.toContain("Triage");
+    });
+
     it("builds the offered name from the ticked items until the name is edited", async () => {
       await openDialog();
       const boxes = () => [

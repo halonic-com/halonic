@@ -271,7 +271,9 @@ verifies("source-control.change-list", () => {
       const headings = [...root.querySelectorAll("h2")].map((heading) => heading.textContent);
       expect(headings[0]).toContain("Since your last version");
       expect(headings[0]).toContain("1 item");
-      expect(headings[1]).toBe("Other files");
+      // Other files is a group inside Since your last version, so a level below it.
+      expect(root.querySelector("h3")?.textContent).toBe("Other files");
+      expect(headings).not.toContain("Other files");
     });
 
     it("leaves focus alone on a re-render while an item is open", async () => {
