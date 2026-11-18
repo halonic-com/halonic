@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12354, where Liam approved the dependency for D1 (HAL-12244), and HAL-12431, where he accepted the six extra RustCrypto crates (option A); Julian reviews this PR as the security reviewer
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jifngVA7zag/0h5CZFF+6KOQqDz0LpM5SZST8RVfuPaex/eUKzk1MAZd3UJ34ArlE1ug55tjOvzosZ4cqBfSBw==
 
 The phone's Rust transport needs a WebSocket client, and nothing in the shell had one.
 `tokio-tungstenite` does only the upgrade and the frames, pinned to `=0.30.0` with no default
