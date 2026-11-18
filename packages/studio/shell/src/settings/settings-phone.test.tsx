@@ -391,6 +391,6 @@ verifies("shell.settings-workspace-line", () => {
     const lineUnder = () => container.querySelector("section h1 + p")?.textContent ?? "";
 
     await tapRow("Models");
-    expect(lineUnder()).toBe("Part of Acme. Changes here show in Changes and can be undone.");
+    expect(lineUnder()).toBe("Part of Acme.");
   });
 });

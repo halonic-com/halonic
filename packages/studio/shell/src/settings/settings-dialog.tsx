@@ -50,12 +50,13 @@ export const displaySavedLines: Readonly<Record<SettingsPlace, string>> = {
 export const phoneSavedLine = "Saved on this phone. Your computer keeps its own.";
 
 /**
- * The line under the name of a workspace section: whose settings these are, and that changing
- * them shows in Changes. The same for Models and Workspace (not Trust: it is kept by the app), so the container writes it
- * (flow-settings 4).
+ * The line under the name of a workspace section: whose settings these are. The same for Models
+ * and Workspace (not Trust: it is kept by the app), so the container writes it (flow-settings 4).
+ * It no longer promises Changes and undo, which a workspace with history off has neither of
+ * (HAL-12859).
  */
 export function workspaceSectionLine(workspaceName: string): string {
-  return `Part of ${workspaceName}. Changes here show in Changes and can be undone.`;
+  return `Part of ${workspaceName}.`;
 }
 
 /** Props for {@link SettingsDialog}. */
