@@ -27,15 +27,23 @@ const sorter: AgentListing = { hubId: "acme", id: "sorter", name: "Sorter" };
 const hostWith = () => memoryAgentsHost({ hubs: [{ id: "acme", name: "acme" }], agents: [sorter] });
 
 verifies("agents.page.frame", () => {
-  it("shows AGENT, the name and the empty Runs line at once", async () => {
+  it("shows AGENT and the name at once, and opens on Configuration", async () => {
     const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
 
     expect(page.textContent).toContain("AGENT");
     expect(page.querySelector("h1")?.textContent).toBe("Sorter");
-    expect(page.textContent).toContain(
-      "Runs aren't listed by agent yet. See them on the Runs page.",
-    );
+    expect(buttonNamed(page, "Configuration")?.getAttribute("aria-selected")).toBe("true");
     expect(page.querySelector("[role=status]")).toBeNull();
+  });
+
+  it("says on the empty Runs tab that the agent runs as a step in a workflow", async () => {
+    const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
+    await act(async () => buttonNamed(page, "Runs")?.click());
+
+    expect(page.textContent).toContain("Runs aren't listed by agent yet. See them on the Runs page.");
+    expect(page.textContent).toContain(
+      "Sorter runs as a step in a workflow. Add it to one in Workflows.",
+    );
   });
 
   it("doesn't repeat the name on a phone, where the top bar has it", async () => {

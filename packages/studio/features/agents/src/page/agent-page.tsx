@@ -13,6 +13,7 @@ import { ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type AgentChange,
+  type AgentListing,
   type AgentRef,
   type AgentSettings,
   type AgentsHost,
@@ -25,7 +26,7 @@ import { fileItemOf } from "../trash/file-item.ts";
 import { useAgentTrash } from "../trash/use-agent-trash.tsx";
 import { pageWords } from "./page-words.ts";
 import { RenameField } from "./rename-field.tsx";
-import { useLoad } from "./use-load.ts";
+import { type Load, useLoad } from "./use-load.ts";
 
 /**
  * The Library's commands that open it on a tab (`library.skill` and so on); the Agents feature
@@ -66,8 +67,9 @@ export interface AgentScreenProps extends AgentRef {
 
 /**
  * The agent page's frame (`agents.page.frame`): the letter avatar, "AGENT" and the name, then the
- * agent's Runs. The page is a skeleton when the read takes over 300 ms, and says why when the
- * agent can't be read. Flow, Configuration and the Try it chat join it in the next pull requests.
+ * agent's Configuration, with its Runs in the other tab. The page is a skeleton when the read
+ * takes over 300 ms, and says why when the agent can't be read. Flow and the Try it chat join it
+ * in the next pull requests.
  */
 export function AgentScreen({
   host,
@@ -131,7 +133,8 @@ export function AgentScreen({
     [host, hubId],
   );
   const defaultModel = useLoad<string | undefined>(defaultModelSource);
-  const [view, setView] = useState<AgentView>("runs");
+  // Runs can't list anything in 0.1 (R9), so the page opens where the agent is finished (HAL-12399).
+  const [view, setView] = useState<AgentView>("configuration");
   const [saveFailed, setSaveFailed] = useState<string>();
   const ids = useTabIds();
   const save = async (change: AgentChange) => {
@@ -143,6 +146,8 @@ export function AgentScreen({
     }
   };
   const name = load.kind === "ready" ? load.value.name : id;
+  // Until the agent is read, its read speaks for the page whichever view is open.
+  const panel: AgentView | "read" = load.kind === "ready" ? view : "read";
   // After Undo brings a deleted agent back, its name takes the focus once the page is drawn again.
   const focusWhenBack = useRef(false);
   const titleRef = useCallback((heading: HTMLHeadingElement | null) => {
@@ -202,7 +207,12 @@ export function AgentScreen({
         </p>
       )}
       <TabPanel ids={ids} tabs={agentTabs} selected={view} className="flex min-h-0 flex-1 flex-col">
-        {view === "configuration" ? (
+        {panel === "read" && (
+          <div className="min-w-0 flex-1 overflow-auto p-6">
+            <AgentRead load={load} name={name} retry={retry} />
+          </div>
+        )}
+        {panel === "configuration" && (
           <Configuration
             host={host}
             name={name}
@@ -214,40 +224,58 @@ export function AgentScreen({
             save={save}
             openLibrary={openLibrary}
           />
-        ) : (
+        )}
+        {panel === "runs" && (
           <div className="min-w-0 flex-1 overflow-auto p-6">
-            {load.kind === "ready" && (
-              <section aria-label={pageWords.runsHeading} className="flex flex-col gap-2">
-                <h2 className="text-caption text-fg-muted">{pageWords.runsHeading}</h2>
-                <p className="text-small text-fg-muted">{pageWords.noRuns}</p>
-              </section>
-            )}
-            {load.kind === "failed" && (
-              <EmptyState
-                tone="error"
-                title={pageWords.loadFailedTitle}
-                description={load.reason}
-                action={{ label: pageWords.tryAgain, onClick: retry, busy: load.retrying }}
-              />
-            )}
-            {load.kind === "loading" && load.skeleton && (
-              <div role="status" className="flex flex-col gap-4">
-                <span className="sr-only">{pageWords.loading(name)}</span>
-                <SkeletonBar kind="value" />
-                <SkeletonBar kind="value" />
-                {load.slow && (
-                  <p className="flex items-center gap-3 text-small text-fg-muted">
-                    {pageWords.stillLoading}
-                    <Button variant="secondary" size="sm" onClick={retry}>
-                      {pageWords.tryAgain}
-                    </Button>
-                  </p>
-                )}
-              </div>
-            )}
+            <section aria-label={pageWords.runsHeading} className="flex flex-col gap-2">
+              <h2 className="text-caption text-fg-muted">{pageWords.runsHeading}</h2>
+              <p className="text-small text-fg-muted">{pageWords.noRuns}</p>
+              <p className="text-small text-fg-muted">{pageWords.runsInAWorkflow(name)}</p>
+            </section>
           </div>
         )}
       </TabPanel>
+    </div>
+  );
+}
+
+/**
+ * The agent while it is read, whichever view is open: a skeleton after 300 ms, then "Still
+ * loading" with **Try again**, or why it couldn't be read.
+ */
+function AgentRead({
+  load,
+  name,
+  retry,
+}: {
+  readonly load: Load<AgentListing>;
+  readonly name: string;
+  readonly retry: () => void;
+}) {
+  if (load.kind === "failed") {
+    return (
+      <EmptyState
+        tone="error"
+        title={pageWords.loadFailedTitle}
+        description={load.reason}
+        action={{ label: pageWords.tryAgain, onClick: retry, busy: load.retrying }}
+      />
+    );
+  }
+  if (load.kind === "ready" || !load.skeleton) return null;
+  return (
+    <div role="status" className="flex flex-col gap-4">
+      <span className="sr-only">{pageWords.loading(name)}</span>
+      <SkeletonBar kind="value" />
+      <SkeletonBar kind="value" />
+      {load.slow && (
+        <p className="flex items-center gap-3 text-small text-fg-muted">
+          {pageWords.stillLoading}
+          <Button variant="secondary" size="sm" onClick={retry}>
+            {pageWords.tryAgain}
+          </Button>
+        </p>
+      )}
     </div>
   );
 }

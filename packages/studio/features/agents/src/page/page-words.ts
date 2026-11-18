@@ -14,4 +14,7 @@ export const pageWords = {
   runsHeading: "Runs",
   /** R9: the Runs list can't show one agent's runs yet, so this points there (HAL-12642). */
   noRuns: "Runs aren't listed by agent yet. See them on the Runs page.",
+  /** Halonic runs an agent only as a step in a workflow in 0.1 (HAL-12399, rule N3 of HAL-12363). */
+  runsInAWorkflow: (name: string) =>
+    `${name} runs as a step in a workflow. Add it to one in Workflows.`,
 } as const;
