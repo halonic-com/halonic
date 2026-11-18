@@ -69,6 +69,16 @@ export interface RunRoutine {
   readonly schedule: string | undefined;
 }
 
+/** A workflow the empty lines name, to say how to start a run (HAL-10128, HAL-12371). */
+export interface RunnableWorkflow {
+  readonly hubId: string;
+  readonly id: string;
+  /** Its name as its file says: "Weekly report". */
+  readonly name: string;
+  /** The name `halonic run` takes: `weekly-report`, or `acme/weekly-report` when two hubs have it. */
+  readonly command: string;
+}
+
 /** Where a model provider runs: on this computer, or elsewhere. */
 export type ProviderKind = "local" | "cloud";
 
@@ -92,11 +102,10 @@ export interface RunsSource {
    */
   readonly routine: (key: string) => RunRoutine | undefined;
   /**
-   * The workflows the workspace has, each as the name `halonic run` takes (`support-reply`, or
-   * `support/reply` when two hubs have a `reply`), in the Workflows list's order. Empty when the
-   * workspace has none. Rejects when the files can't be read.
+   * The workflows the workspace has, in the Workflows list's order. Empty when the workspace has
+   * none. Rejects when the files can't be read.
    */
-  readonly runnableWorkflows: () => Promise<readonly string[]>;
+  readonly runnableWorkflows: () => Promise<readonly RunnableWorkflow[]>;
   /**
    * Whether the provider with this id runs on this computer (`local`) or reaches past it
    * (`cloud`), as its file says; the mock model counts as local. `undefined` when the workspace
