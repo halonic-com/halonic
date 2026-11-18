@@ -10,7 +10,7 @@ import { fakeSource, settle } from "../source.test-helper.ts";
 import { openItem } from "../test-support/open-item.ts";
 import { installFakePopover } from "../test-support/popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { ChangeList, orderItems } from "./change-list.tsx";
+import { ChangeList, orderItems, ROW_LIMIT } from "./change-list.tsx";
 import { ChangesView } from "./changes-page.tsx";
 import { useOpenItem } from "./use-open-item.ts";
 import { WhatChangedPage } from "./whats-changed-page.tsx";
@@ -236,18 +236,28 @@ verifies("source-control.change-list", () => {
       });
     });
 
-    it("draws the first 200 items and counts the rest under the list", async () => {
-      const changes = Array.from({ length: 205 }, (_, index) => ({
-        path: `notes/file-${String(index).padStart(3, "0")}.txt`,
-        status: "untracked" as const,
-        staged: false,
+    it("draws only the first rows up to the limit and counts the rest under the list", async () => {
+      const files = Array.from({ length: 8 }, (_, index) => ({
+        path: `notes/file-${index}.txt`,
+        texts: undefined,
+        description: {
+          path: `notes/file-${index}.txt`,
+          kind: undefined,
+          described: false,
+          lines: [],
+        },
       }));
+      const list = new ChangesList(fakeSource({ kind: "ready", changes: [] }).source);
       const root = render(
-        <ChangesView list={new ChangesList(fakeSource({ kind: "ready", changes }).source)} />,
+        <ChangeList list={list} items={orderItems(files)} onOpen={() => undefined} rowLimit={3} />,
       );
       await act(settle);
-      expect(root.querySelectorAll("tr[data-row-id]")).toHaveLength(200);
+      expect(root.querySelectorAll("tr[data-row-id]")).toHaveLength(3);
       expect(root.textContent).toContain("and 5 more");
+    });
+
+    it("draws up to 200 rows by default", () => {
+      expect(ROW_LIMIT).toBe(200);
     });
 
     it("keeps the heading and the count when only files no kind places changed", async () => {
