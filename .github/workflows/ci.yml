@@ -2242,7 +2242,9 @@ jobs:
         if: always()
         with:
           name: studio-screenshots
-          path: packages/studio/features/workflows/test-results/screenshots/*.png
+          path: |
+            packages/studio/features/workflows/test-results/screenshots/*.png
+            packages/studio/features/plugins/test-results/screenshots/*.png
           if-no-files-found: ignore
           retention-days: 7
 

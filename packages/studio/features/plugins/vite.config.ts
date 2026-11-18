@@ -15,7 +15,10 @@ export default defineConfig({
     outDir: `${import.meta.dirname}/dist/e2e`,
     emptyOutDir: true,
     rollupOptions: {
-      input: { flow: `${import.meta.dirname}/e2e/pages/flow.html` },
+      input: {
+        flow: `${import.meta.dirname}/e2e/pages/flow.html`,
+        screens: `${import.meta.dirname}/e2e/pages/screens.html`,
+      },
     },
   },
   preview: { host: "127.0.0.1" },
