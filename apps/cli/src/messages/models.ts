@@ -20,7 +20,8 @@ export const modelsMessages = defineMessages("models", {
   /** A path, query or fragment after the address is dropped, not refused. */
   onlyAddressKept: (address: string) => phrase`Only the address part is kept: ${address}.`,
 
-  noKey: (key: string) => phrase`There is no key named "${key}". Save it on the Models page first.`,
+  noKey: (key: string) =>
+    phrase`There is no key named "${key}". Save it first with: halonic secret set ${key}`,
   notAnAddress: (typed: string) =>
     phrase`"${typed}" isn't an address. Use one that starts with https:// or http://, for example https://gateway.example.com.`,
   addressHasUserInfo: () => phrase`Remove the user name and password from the address.`,
