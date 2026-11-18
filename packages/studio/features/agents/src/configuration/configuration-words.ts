@@ -2,7 +2,7 @@
 export const configurationWords = {
   tab: "Configuration",
   pages: "Configuration pages",
-  pageNames: { behaviour: "Behaviour", model: "Model", harness: "Harness" },
+  pageNames: { behaviour: "Behaviour", model: "Model", harness: "Harness", tools: "Tools" },
   description: "Description",
   instructions: "Instructions",
   /** Shown only while Instructions is empty (microcopy 8.5). */
@@ -40,6 +40,24 @@ export const configurationWords = {
     `${agent} can't run until ${program} is installed.`,
   stripTooOld: (agent: string, program: string) =>
     `${agent} can't run until ${program} is updated.`,
+  /** The Tools page's lists (flow-agents 5.2). */
+  toolLists: { skills: "Skills", knowledge: "Knowledge", connectors: "Connectors" },
+  /** The picker's button under each list. */
+  addTool: { skills: "Add skill", knowledge: "Add knowledge", connectors: "Add connector" },
+  /** Under a list the agent has nothing in. */
+  noTools: {
+    skills: "It uses no skills yet.",
+    knowledge: "It searches no knowledge yet.",
+    connectors: "It uses no connectors yet.",
+  },
+  /** Under a list when the hub has nothing more to add, in place of the button. */
+  nothingToAdd: {
+    skills: "Make a skill in Library to add it here.",
+    knowledge: "Make a knowledge source in Library to add it here.",
+    connectors: "Make a connector in Library to add it here.",
+  },
+  removeTool: (name: string) => `Remove ${name}`,
+  toolsLoadFailedTitle: "Couldn't load the Library",
   loading: (name: string) => `Loading ${name}'s settings`,
   loadFailedTitle: (name: string) => `Couldn't load ${name}'s settings`,
   modelsLoadFailedTitle: "Couldn't load the models",

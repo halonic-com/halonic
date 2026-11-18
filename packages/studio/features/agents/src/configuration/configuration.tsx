@@ -6,10 +6,11 @@ import { BehaviourPage } from "./behaviour-page.tsx";
 import { configurationWords as words } from "./configuration-words.ts";
 import { HarnessPage } from "./harness-page.tsx";
 import { ModelPage } from "./model-page.tsx";
+import { ToolsPage } from "./tools-page.tsx";
 
 /** Props for {@link Configuration}. */
 export interface ConfigurationProps {
-  /** The host, for the Harness page's check of the programs on this computer. */
+  /** The host, for the Harness page's check of the programs on this computer and the Tools page's pickers. */
   readonly host: AgentsHost;
   readonly name: string;
   readonly load: Load<AgentSettings>;
@@ -22,10 +23,10 @@ export interface ConfigurationProps {
   readonly save: (change: AgentChange) => Promise<void>;
 }
 
-type PageId = "behaviour" | "model" | "harness";
+type PageId = "behaviour" | "model" | "harness" | "tools";
 
 /** The pages that are built, in the order of flow-agents 5.1. */
-const pageIds: readonly PageId[] = ["behaviour", "model", "harness"];
+const pageIds: readonly PageId[] = ["behaviour", "model", "harness", "tools"];
 
 /**
  * The agent's Configuration (`agents.configuration.pages`): a list of pages on the left and the
@@ -105,6 +106,7 @@ export function Configuration({
                 />
               ))}
             {page === "harness" && <HarnessPage host={host} settings={load.value} save={save} />}
+            {page === "tools" && <ToolsPage host={host} settings={load.value} save={save} />}
           </div>
         ) : (
           <div role="status" className="flex flex-col gap-4">

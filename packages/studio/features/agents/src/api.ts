@@ -46,6 +46,24 @@ export interface AgentSettings extends AgentListing {
   readonly maxSteps: number;
   /** The program the agent runs in; `halonic` when its file names none. */
   readonly harness: AgentHarnessId;
+  /** The ids of the skills it uses, in the file's order. */
+  readonly skills: readonly string[];
+  /** The ids of the knowledge sources it searches, in the file's order. */
+  readonly knowledge: readonly string[];
+  /** The ids of the connectors whose tools it may use, in the file's order. */
+  readonly connectors: readonly string[];
+}
+
+/** The lists of the Tools page: what an agent uses of the Library. */
+export type AgentToolList = "skills" | "knowledge" | "connectors";
+
+/** The Tools page's lists, in the order it shows them. */
+export const agentToolLists: readonly AgentToolList[] = ["skills", "knowledge", "connectors"];
+
+/** A Library item an agent can be given: its id, as the agent's file names it, and its name. */
+export interface AgentToolOption {
+  readonly id: string;
+  readonly name: string;
 }
 
 /** A change to an agent's settings; a field left out stays as it is. */
@@ -60,6 +78,12 @@ export interface AgentChange {
   readonly maxSteps?: number | undefined;
   /** The program the agent runs in. */
   readonly harness?: AgentHarnessId | undefined;
+  /** The whole list of skill ids. */
+  readonly skills?: readonly string[] | undefined;
+  /** The whole list of knowledge source ids. */
+  readonly knowledge?: readonly string[] | undefined;
+  /** The whole list of connector ids. */
+  readonly connectors?: readonly string[] | undefined;
 }
 
 /** A hub a new agent can go in. */
@@ -122,6 +146,12 @@ export interface AgentsHost {
    * workspace's; `undefined` when neither names one. Rejects with the reason it couldn't read it.
    */
   defaultModel(hubId: string): Promise<string | undefined>;
+  /**
+   * The Library items the agent's hub can use, for the Tools page's pickers: the hub's own and the
+   * shared ones (only those its `uses` lists, when it has one), each list in the Library's order.
+   * Rejects with `not_found` when the agent isn't there, and with the reason it couldn't read them.
+   */
+  toolOptions(ref: AgentRef): Promise<Readonly<Record<AgentToolList, readonly AgentToolOption[]>>>;
   /**
    * Whether `harness` can run on this computer, for this agent (its sign-in is the agent's own).
    * Never rejects: a check that didn't work answers `failed`. `halonic` is always `ready`.
