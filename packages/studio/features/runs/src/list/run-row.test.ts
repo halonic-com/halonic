@@ -245,6 +245,22 @@ verifies("runs.row-columns", () => {
       );
     });
 
+    it("names the routine whose Run now started the run, or has its key once it's gone", () => {
+      const runNow = triggered({ type: "manual", at, routineId }, morningBrief);
+      const gone = triggered({ type: "manual", at, routineId });
+
+      expect(runNow.startedBy).toBe("Morning brief routine, with Run now");
+      expect(runNow.startedByTooltip).toBeUndefined();
+      expect(runNow.label).toBe(
+        "Run 01jd8q, Support reply, running, in Draft. Started by the Morning brief routine, with Run now, 10:40.",
+      );
+      expect(gone.startedBy).toBe("A routine, with Run now");
+      expect(gone.startedByTooltip).toBe(routineId);
+      expect(gone.label).toBe(
+        "Run 01jd8q, Support reply, running, in Draft. Started by a routine, with Run now, 10:40.",
+      );
+    });
+
     it("says a catch-up run caught up after sleep, with the routine's name in the tooltip", () => {
       const row = triggered(
         { type: "schedule", at, routineId, catchUp: { skipped: 61 } },

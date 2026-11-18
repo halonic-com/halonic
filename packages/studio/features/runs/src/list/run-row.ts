@@ -133,7 +133,8 @@ export function runRow(run: SourcedRun, context: RowContext): RunRow {
  * What started the run (mc 15.1): its test case, the run it's a child of, or
  * its trigger. A run without a trigger was started in the terminal. A
  * routine's run on a clock says the routine's schedule, with its name in the
- * tooltip. `spoken` is what the row's sentence says after "Started by".
+ * tooltip; Run now on a routine names the routine, or has its key in the
+ * tooltip once the routine is gone. `spoken` is what the row's sentence says after "Started by".
  */
 export function startedBy(
   run: SourcedRun,
@@ -156,7 +157,14 @@ export function startedBy(
     case undefined:
       return words(startedByWords.terminal, spoken.terminal);
     case "manual":
-      return words(startedByWords.run, spoken.run);
+      if (trigger.routineId === undefined) return words(startedByWords.run, spoken.run);
+      return routine === undefined
+        ? {
+            words: startedByWords.runNowGone,
+            spoken: spoken.runNowGone,
+            tooltip: trigger.routineId,
+          }
+        : words(startedByWords.runNow(routine.name), spoken.runNow(routine.name));
     case "inbox":
       return words(startedByWords.inbox, spoken.inbox);
     case "mail":

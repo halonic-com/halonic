@@ -10,6 +10,8 @@ The run page shall show a Details column beside Every step with side-label rows 
 
 - Given a finished run started with Run that took 2 min 10 s, used 1,204 input and 312 output tokens and cost €0.03,
   then Details reads Started by "You, with Run", Started "today 10:40", Took "2 min 10 s", Model calls and tokens "1,204 in · 312 out" and Estimated cost "€0.03".
+- Given a run started with Run now on the routine Weekly report,
+  then Details reads Started by "Weekly report routine, with Run now", the same words as its row on the Runs list (HAL-12406).
 - Given a live run that made no model call,
   then Details has no Took row, Model calls and tokens reads "None" and there is no Estimated cost row.
 - Given a run with 3 calls and no price,
