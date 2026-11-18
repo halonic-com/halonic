@@ -100,7 +100,7 @@ export function StepPanel({
               step={sites}
               agent={agent}
               noConnectionProven={proven}
-              place="desktop"
+              place={place}
             />
           </div>
         ))}

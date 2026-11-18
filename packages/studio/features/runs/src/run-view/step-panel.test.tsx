@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { RunEventBody } from "@halonicjs/events";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -52,20 +53,23 @@ function refused(host: string, count: number): RunEventBody {
   };
 }
 
-async function openRun(openOther?: (runId: string) => void, step?: string) {
+async function openRun(openOther?: (runId: string) => void, step?: string, phone = false) {
   const list = new RunsList(
     fakeSource([summaryWith({ id: runId, lastSeq: log.length })], { [runId]: log }).source,
   );
   // In StrictMode, as the Studio window mounts every page (`mountStudioWindow`).
+  const view = (
+    <RunView
+      list={list}
+      runId={runId}
+      now={() => mondayMorning}
+      {...(step === undefined ? {} : { step })}
+      {...(openOther === undefined ? {} : { openRun: openOther })}
+    />
+  );
   const root = render(
     <StrictMode>
-      <RunView
-        list={list}
-        runId={runId}
-        now={() => mondayMorning}
-        {...(step === undefined ? {} : { step })}
-        {...(openOther === undefined ? {} : { openRun: openOther })}
-      />
+      {phone ? <PresentationProvider presentation="phone">{view}</PresentationProvider> : view}
     </StrictMode>,
   );
   await act(async () => {
@@ -294,6 +298,14 @@ verifies("runs.run-view.blocked-sites", () => {
     const blocked = root.querySelector("aside section");
     expect(blocked?.textContent).toContain("Blocked sites");
     expect(blocked?.textContent).not.toContain("No connection was made.");
+  });
+
+  it("on a phone, says where to fix it on the computer, with no link (HAL-12648)", async () => {
+    const root = await openRun(undefined, "install", true);
+
+    const blocked = root.querySelector("aside section");
+    expect(blocked?.textContent).toContain("Fix this on your computer, in Writer's file.");
+    expect(blocked?.querySelector("button, a")).toBeNull();
   });
 
   it("has no Blocked sites part for a step whose sandbox refused nothing", async () => {
