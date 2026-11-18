@@ -80,6 +80,13 @@ export const runMessages = defineMessages("run", {
   },
   /** Its fix: `--harness halonic` runs every agent in Halonic's own loop (Liam, HAL-5367). */
   harnessNotAvailableFix: () => phrase`Run it with --harness halonic.`,
+  /**
+   * After the sandbox's fix when it can't start for an agent in a harness:
+   * Halonic's own loop starts no program, so it needs no sandbox. Only `run`
+   * has the option, and "On this computer" is never the way out (HAL-12597).
+   */
+  sandboxRefusedHarnessHint: () =>
+    phrase`Or run it with --harness halonic, which runs every agent in Halonic's own loop and needs no sandbox.`,
   /** `--input`'s line in the help. */
   inputOption: () => phrase`The run's input: a JSON file, or the JSON itself.`,
   /** `--event`'s line in the help. */

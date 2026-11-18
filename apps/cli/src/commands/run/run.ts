@@ -34,7 +34,12 @@ import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import type { RunClock } from "../../run-times.ts";
 import { loadRunWorkspace, type OpenWorkspaceHistory } from "../../run-workspace.ts";
-import { programAgentsOf, type SandboxGateRun, unsandboxedWarning } from "../../sandbox-gate.ts";
+import {
+  programAgentsOf,
+  type SandboxGateRun,
+  SandboxRefusedError,
+  unsandboxedWarning,
+} from "../../sandbox-gate.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import {
   checkEngineRuns,
@@ -260,7 +265,8 @@ function workflowToRun(
  * @throws KindedError `invalid_input` when the run's harness would move an
  *   agent no check read into a program (exit 2)
  * @throws SandboxRefusedError when such an agent needs the sandbox and it
- *   can't start here (exit 9)
+ *   can't start here (exit 9), with the hint that `--harness halonic` runs
+ *   the workflow without it
  * @throws KindedError `unavailable` when an agent of the workflow, or of a
  *   workflow it starts, is in a harness; nothing ran
  */
@@ -271,7 +277,14 @@ async function refuseHarnessAgents(
 ): Promise<void> {
   const [agent] = programAgentsOf(target.workspace, workflow);
   if (agent === undefined) return;
-  await checkEngineRuns(setup, target);
+  try {
+    await checkEngineRuns(setup, target);
+  } catch (error) {
+    if (error instanceof SandboxRefusedError) {
+      throw error.withHint(runMessages.sandboxRefusedHarnessHint());
+    }
+    throw error;
+  }
   const reason = runMessages.harnessNotAvailable(
     printable(agent.value.name),
     // The run's harness when `--harness` names one, as the run would use it.
