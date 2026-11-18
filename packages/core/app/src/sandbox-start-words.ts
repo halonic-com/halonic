@@ -115,7 +115,7 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   },
   "sign-in-needed": {
     reason: "The sandbox needs you to sign in to its service first.",
-    fix: "sign in to the sandbox's service, then check again.",
+    fix: "sign in to the sandbox's service.",
   },
   other: {
     reason: "Halonic can't tell what the sandbox is missing.",

@@ -31,7 +31,7 @@ describe("the sandbox sentences", () => {
     expect(
       sandboxUnavailableReasons.map((code) => words(sandboxMessages.refusedFix(code))),
     ).toEqual([
-      "The sandbox doesn't work on Windows in this version of Halonic. Use Halonic inside WSL 2 on this computer.",
+      "The sandbox can't start on this version of Windows. Use Halonic inside WSL 2 on this computer.",
       "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. halonic validate and halonic test work in a container.",
       "This distro runs on WSL 1, and the sandbox needs WSL 2. Switch it with wsl --set-version <distro> 2 in PowerShell on Windows, then run it again.",
       "A company policy on this computer blocks the sandbox. Ask whoever manages this computer to allow it, then run it again.",
@@ -45,7 +45,7 @@ describe("the sandbox sentences", () => {
       "bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.",
       "socat or ripgrep isn't installed. Install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep, then run it again.",
       "ripgrep isn't installed. Install it, for example on macOS with brew install ripgrep, then run it again.",
-      "The sandbox needs you to sign in to its service first. Sign in, for example with docker login for Docker Sandboxes, then run it again.",
+      "The sandbox needs you to sign in to its service first. Sign in, then run it again.",
       "Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer, then run it again.",
     ]);
   });
@@ -67,7 +67,7 @@ describe("the sandbox sentences", () => {
       ]),
     ).toEqual([
       [
-        "The sandbox doesn't work on Windows in this version of Halonic.",
+        "The sandbox can't start on this version of Windows.",
         "Fix: use Halonic inside WSL 2 on this computer. Then run halonic doctor again.",
       ],
       [
@@ -124,7 +124,7 @@ describe("the sandbox sentences", () => {
       ],
       [
         "The sandbox needs you to sign in to its service first.",
-        "Fix: sign in, for example with docker login for Docker Sandboxes. Then run halonic doctor again.",
+        "Fix: sign in to the sandbox's service. Then run halonic doctor again.",
       ],
       [
         "Halonic can't tell what the sandbox is missing.",

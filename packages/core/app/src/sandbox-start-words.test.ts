@@ -63,7 +63,7 @@ verifies("app.sandbox-start-words", () => {
 
   it("names no sandbox service that Halonic doesn't have", () => {
     expect(sandboxStartWords("sign-in-needed").calloutFix).toBe(
-      "Sign in to the sandbox's service, then check again.",
+      "Sign in to the sandbox's service.",
     );
   });
 
