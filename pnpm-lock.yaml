@@ -3213,6 +3213,9 @@ importers:
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../../core/events
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../../core/format
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std

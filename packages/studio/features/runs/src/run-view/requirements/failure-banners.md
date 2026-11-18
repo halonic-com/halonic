@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-13725 (the proxy line, decided by the team); HAL-12411 (R8: the provider by its file's name, UX check on HAL-12390, microcopy 1.6 E6, revision 113); HAL-12035 (`budget` from the engine's cause, decided by Liam on the task); HAL-1845 part 2; failure-states (HAL-1712) F6, F7, F8, F10, F15 and F20; microcopy 22 (HAL-751, revision 48, approved on HAL-1720) and 15.3; ux-checklist-failure-states (HAL-1847) FX-D2; the fixed reason in F6, the model instead of the alias in F7 and no buttons yet are team decisions on HAL-1845
+- Source: HAL-13725 (the proxy line, decided by the team); HAL-12411 (R8: the provider by its file's name, UX check on HAL-12390, microcopy 1.6 E6, revision 113); HAL-12035 (`budget` from the engine's cause, decided by Liam on the task); HAL-12486 (`models.unknown-provider-type` from the engine's cause, asked for by Liam on HAL-12342); HAL-1845 part 2; failure-states (HAL-1712) F6, F7, F8, F10, F15 and F20; microcopy 22 (HAL-751, revision 48, approved on HAL-1720) and 15.3; ux-checklist-failure-states (HAL-1847) FX-D2; the fixed reason in F6, the model instead of the alias in F7 and no buttons yet are team decisions on HAL-1845
 
 When a run failed for a reason the engine names, the run page's banner shall say the cause in plain words, in the danger tone, instead of "Halonic can't tell the cause yet":
 
@@ -14,6 +14,8 @@ When a run failed for a reason the engine names, the run page's banner shall say
 - `model-timeout`: for a local provider "*Ollama* didn't start answering at localhost:11434 within 5 minutes. It may still be loading the model." (on a phone "*Ollama* on your computer didn't start answering within 5 minutes. It may still be loading the model."); for any other "*Claude* didn't start answering within 5 minutes, so the step *Draft* stopped. Nothing you set caused this.";
 - `model-no-tools`: "*llama3.2*, used by the model alias *fast*, can't use tools, and the step *Draft* offers tools. Point the model alias *fast* at a model that can use tools." with **Open Models** before **Run again**, because running again fails the same way until the alias changes; a log without the alias reads "*llama3.2* can't use tools, and the step *Draft* offers tools. Pick a model that can in Models, then run again.";
 - `interrupted`: "*Support reply* stopped because Halonic's engine stopped during the step *Draft reply*. Nothing after that step ran.", and for a run that never entered a step "…stopped because Halonic's engine stopped before the first step. Nothing ran.".
+
+When a run failed with the `run.failed` cause `models.unknown-provider-type` and the cause names the provider and the type, the run page's banner shall say what `halonic run` says, in the danger tone: "*Support reply* failed in the step *Draft*: provider *weird* has type *carrier-pigeon*, which Halonic can't call." and "Set type in providers/*weird*.yaml to one of anthropic, openai, openai-compatible, ollama, lmstudio or mock, then run again.". The types shall come from the list the models adapter builds providers from (`providerTypes`), never from a list of the page's own. This banner names the provider by its id, as `halonic run` does, because the fix is an edit to the file of that name. The cause is known, so the banner shall have no **Copy details**. A cause that is missing the provider or the type keeps the general banner.
 
 When a run stopped at its budget and its `run.failed` cause (`events.run-failed-cause`) is `budget.run` or `budget.month` with the limit, the spend and the currency, the run page's budget banner (amber, titled "Stopped at its estimated budget") shall say what `halonic run` says on its first line, in the budget's currency, and in Studio's words, without the workspace key names (HAL-12069), on its second, with a **Change budget** button that opens Workspace settings at its Budget block (`workspace.open-budget`) in the same tab, as the Inbox's does, and is left out where the page can't do that: for the run's budget "*Support reply* stopped in the step *Draft*: this run reached its budget of €5.00 (estimated €5.08 spent)." and "Change the budget, then run again.", and for the month's "…: this month's estimated spend reached its budget of €50.00." and "Change the budget, or wait until it resets on 1 January (UTC).", where the date is the first of the month after the run stopped (UTC). The banner shall read the cause only, never the error text. A budget stop without a cause, or with a figure missing from it, shall keep the general line "*Support reply* stopped in the step *Draft*.". The budget banner's last line says the budget is checked before each step and that a step can make several model calls, so a run can go over, as the Models step's How the budget works says (HAL-12742).
 
@@ -36,6 +38,10 @@ Limits, for the docs: the banners have no **Copy details** yet. The model is nam
 - Given a run that stopped at its budget with no cause,
   when its page is shown,
   then the banner's first line reads "Support reply stopped in the step Draft." with no second line about the budget key.
+
+- Given a run that failed in the step Draft with the cause `models.unknown-provider-type`, the provider weird and the type carrier-pigeon,
+  when its page is shown,
+  then the banner reads "Support reply failed in the step Draft: provider weird has type carrier-pigeon, which Halonic can't call." and "Set type in providers/weird.yaml to one of anthropic, openai, openai-compatible, ollama, lmstudio or mock, then run again.", with no Copy details.
 
 - Given a run that failed with `model-unreachable` at api.anthropic.com after a call to the provider `claude`, a cloud provider, with the model claude-sonnet,
   when its page is shown,

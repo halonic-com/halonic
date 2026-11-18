@@ -5,12 +5,14 @@
 // (`run-again.ts`); the local-model banners add Copy command and Open Models before it.
 
 import type { RunEvent, RunSummary } from "@halonicjs/events";
+import { escapeHidden } from "@halonicjs/std";
 import { failureWords } from "../failure-words.ts";
 import { currentStepName } from "../list/run-row.ts";
 import { providerNameOf } from "../provider-name.ts";
 import { capitalised, runPageWords } from "../run-words.ts";
 import { apiOffOf } from "./api-off.ts";
 import type { BannerFix, RunBanner, RunPageContext } from "./run-page-model.ts";
+import { unknownProviderTypeOf } from "./unknown-provider-type.ts";
 
 /** What a failure banner may need from the log. */
 interface FailureFacts {
@@ -48,6 +50,10 @@ export function causeBanner(
   const apiOff = apiOffBanner(summary, phone);
   if (apiOff !== undefined) {
     return apiOff;
+  }
+  const unknownType = unknownProviderTypeBanner(summary, workflow, step);
+  if (unknownType !== undefined) {
+    return unknownType;
   }
   const facts = factsFrom(log ?? []);
   switch (summary.reason) {
@@ -141,6 +147,27 @@ function proxyBanner(
       },
     ],
   );
+}
+
+/**
+ * `models.unknown-provider-type`: the person's own provider file names a type Halonic can't call,
+ * so the banner says, as the CLI does, which file to mend and the types it can name, with no
+ * **Copy details**. The type is the file's own text: hidden characters in it are shown.
+ */
+function unknownProviderTypeBanner(
+  summary: RunSummary,
+  workflow: string,
+  step: string,
+): RunBanner | undefined {
+  const unknown = unknownProviderTypeOf(summary);
+  if (unknown === undefined) {
+    return undefined;
+  }
+  const { provider, type } = unknown;
+  return danger([
+    failureWords.unknownProviderType(workflow, step, provider, escapeHidden(type)),
+    failureWords.unknownProviderTypeFix(provider),
+  ]);
 }
 
 /**

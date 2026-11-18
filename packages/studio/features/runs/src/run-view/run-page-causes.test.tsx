@@ -236,3 +236,31 @@ verifies("runs.run-view.slow-step-line", () => {
     expect(opened).toBe(1);
   });
 });
+
+verifies("runs.run-view.failure-banners", () => {
+  const wrongType = summaryWith({
+    id: "run_d_5p3k8w",
+    status: "failed",
+    reason: "error",
+    error: "Provider weird has type carrier-pigeon.",
+    cause: {
+      kind: "not_found",
+      code: "models.unknown-provider-type",
+      detail: { provider: "weird", type: "carrier-pigeon" },
+    },
+    state: "draft",
+    endedAt: mondayMorning.toISOString(),
+  });
+
+  it("says how to mend a provider type Halonic can't call, with no Copy details", async () => {
+    const root = await openOn("desktop", wrongType);
+    const banner = root.querySelector('section[aria-label="Run failed"]');
+    expect(banner?.textContent).toContain(
+      "provider weird has type carrier-pigeon, which Halonic can't call.",
+    );
+    expect(banner?.textContent).toContain("Set type in providers/weird.yaml to one of anthropic,");
+    expect(banner?.textContent).not.toContain("can't tell the cause yet");
+    const names = [...(banner?.querySelectorAll("button") ?? [])].map((one) => one.textContent);
+    expect(names).not.toContain("Copy details");
+  });
+});

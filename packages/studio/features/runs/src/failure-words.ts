@@ -1,3 +1,4 @@
+import { providerTypes } from "@halonicjs/format";
 import { capitalised } from "./run-words.ts";
 
 /** The model programs by the name a person knows (microcopy 5): "LM Studio", not "Lmstudio". */
@@ -10,6 +11,9 @@ const providerNames: Readonly<Record<string, string>> = { lmstudio: "LM Studio",
 export function providerName(provider: string): string {
   return providerNames[provider] ?? capitalised(provider);
 }
+
+/** "anthropic, openai, … or mock", as the CLI lists them. */
+const typeChoices = new Intl.ListFormat("en-GB", { type: "disjunction" }).format(providerTypes);
 
 /** F7's "the model alias `smart`", or "the model gpt-4o" when the log doesn't give the alias. */
 function modelOrAlias(model: string, alias: string | undefined): string {
@@ -115,6 +119,14 @@ export const failureWords = {
   switchOnInGoogleCloud: (api: string) => `switch on the ${api} API in Google Cloud.`,
   fixOnComputer: (place: string) => `Fix this on your computer: ${place}`,
   modelsPlace: "Models",
+  /**
+   * `models.unknown-provider-type`: the CLI's two lines (cli-output 3.4, HAL-12342). The types come
+   * from the list the models adapter builds providers from, so a new adapter is listed by itself.
+   */
+  unknownProviderType: (workflow: string, step: string, provider: string, type: string) =>
+    `${workflow} failed in the step ${step}: provider ${provider} has type ${type}, which Halonic can't call.`,
+  unknownProviderTypeFix: (provider: string) =>
+    `Set type in providers/${provider}.yaml to one of ${typeChoices}, then run again.`,
   diskFull: (workflow: string, step: string) =>
     `${workflow} stopped in the step ${step}: the disk is full, so Halonic couldn't write the run log. Free some space, then run again.`,
   engineStopped: (workflow: string, step: string) =>

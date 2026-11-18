@@ -15,6 +15,7 @@
   "dependencies": {
     "@halonicjs/app": "workspace:*",
     "@halonicjs/events": "workspace:*",
+    "@halonicjs/format": "workspace:*",
     "@halonicjs/std": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",

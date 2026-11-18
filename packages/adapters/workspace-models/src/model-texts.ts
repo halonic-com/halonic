@@ -2,7 +2,7 @@
 // follows the host's own action, as in "✕ Couldn't run Support reply: …"
 // in the CLI; the Studio shows them the same way.
 
-import { providerTypes } from "./provider-types.ts";
+import { providerTypes } from "@halonicjs/format";
 
 /** A sentence of the reason or its fix, with no styling. */
 export type ModelText = string;

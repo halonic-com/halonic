@@ -438,4 +438,38 @@ verifies("runs.run-view.failure-banners", () => {
       expect(unreachable("my-server", undefined)).toMatch(/^Halonic couldn't reach my-server at /);
     });
   });
+
+  describe("a provider type Halonic can't call", () => {
+    const wrongType = (detail: Record<string, string>) =>
+      failed("error", {
+        cause: { kind: "not_found", code: "models.unknown-provider-type", detail },
+      });
+
+    it("says the CLI's two lines from the cause, with the types Halonic can call, and no button", () => {
+      const banner = causeBanner(
+        wrongType({ provider: "weird", type: "carrier-pigeon" }),
+        undefined,
+        context,
+        false,
+      );
+      expect(lines(banner)).toEqual([
+        "Support reply failed in the step Draft: provider weird has type carrier-pigeon, which Halonic can't call.",
+        "Set type in providers/weird.yaml to one of anthropic, openai, openai-compatible, ollama, lmstudio or mock, then run again.",
+      ]);
+      expect(banner).not.toHaveProperty("fixes");
+      expect(banner).not.toHaveProperty("details");
+    });
+
+    it("keeps the general banner for a cause that is missing the provider or the type", () => {
+      for (const detail of [{ provider: "weird" }, { type: "carrier-pigeon" }]) {
+        expect(causeBanner(wrongType(detail), undefined, context, false)).toBeUndefined();
+      }
+    });
+
+    it("shows a hidden character in the type, rather than letting it turn the line round", () => {
+      const type = `carrier${String.fromCodePoint(0x202e)}pigeon`;
+      const banner = causeBanner(wrongType({ provider: "weird", type }), undefined, context, false);
+      expect(lines(banner)?.[0]).toContain("carrier\\u202epigeon");
+    });
+  });
 });
