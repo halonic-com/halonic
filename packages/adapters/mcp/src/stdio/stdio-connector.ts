@@ -1,11 +1,12 @@
 import { resolve } from "node:path";
 import { connectorInheritedEnv, type StdioTransport as StdioConfig } from "@halonicjs/app";
-import type {
-  ConnectorClient,
-  ConnectorConfig,
-  ConnectorFactory,
-  ConnectorFactoryContext,
-  ConnectorTool,
+import {
+  type ConnectorClient,
+  type ConnectorConfig,
+  type ConnectorFactory,
+  type ConnectorFactoryContext,
+  type ConnectorTool,
+  ConnectorToolError,
 } from "@halonicjs/ports";
 import { type Clock, SecretScrubber, systemClock } from "@halonicjs/std";
 import { findRunner, type RunnerSearch } from "../pinned/find-runner.ts";
@@ -19,7 +20,7 @@ import type { AgentWorkingFolders, ProgramLaunch, ProgramStarter } from "./progr
 import { defaultRestartLimits, RestartLimit, type RestartLimits } from "./restart-limit.ts";
 import { defaultStdioLimits, type StdioLimits, StdioTransport } from "./stdio-transport.ts";
 import { ConnectorStoppedError } from "./stopped-error.ts";
-import { ConnectorToolError, resultText, toConnectorTool } from "./tool-mapping.ts";
+import { resultText, toConnectorTool } from "./tool-mapping.ts";
 
 /** What a stdio connector factory needs besides each connector's config. */
 export interface McpStdioOptions {

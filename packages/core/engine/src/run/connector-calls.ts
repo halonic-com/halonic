@@ -5,12 +5,12 @@
 
 import type { SendingSettings } from "@halonicjs/app";
 import type { Agent, Connector } from "@halonicjs/format";
-import type { ConnectorClient } from "@halonicjs/ports";
+import { type ConnectorClient, isConnectorToolError } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 import type { ListedToolApproval } from "../agent/listed-tool-approval.ts";
 import { countedRisk, type DeclaredTools, isMarkedRead } from "../agent/offer-listed-tools.ts";
 import type { EffectBoundary } from "../agent/run-tool-call.ts";
-import { collectTurnTools, errorMessage } from "../agent/turn-tools.ts";
+import { collectTurnTools, errorMessage, toolErrorText } from "../agent/turn-tools.ts";
 import type { CallToolEffect, ToolResult } from "../kernel/decide-types.ts";
 import { brokeOff } from "../kernel/requested-effect.ts";
 
@@ -83,9 +83,13 @@ export function readToolsOf(
  * `send` passes the "allow sending" check again first, because a person
  * may retry a call after sending was switched off. When the connector or
  * tool can't be found, sending is off or the arguments aren't an object,
- * the call isn't made, so its outcome is `error`. When the call itself
- * fails, the connector may have done the work before it failed, so its
- * outcome is `unknown`, and the run waits for a person.
+ * the call isn't made, so its outcome is `error`. When the tool answers
+ * with an error of its own (`ConnectorToolError`), the call is over and
+ * failed: its outcome is `error`, with the tool's text, and the agent goes
+ * on (HAL-12342). When the call breaks off without an answer, because the
+ * program died, the connection dropped or it ran out of time, the connector
+ * may have done the work before it broke off, so its outcome is `unknown`,
+ * and the run waits for a person.
  */
 export async function makeConnectorCall(
   connectors: readonly ConnectorClient[],
@@ -130,7 +134,9 @@ export async function makeConnectorCall(
     });
     return { type: "tool", result, outcome: "ok", ...logged };
   } catch (error) {
-    return { type: "tool", result: brokeOff(errorMessage(error)), outcome: "unknown", ...logged };
+    return isConnectorToolError(error)
+      ? { type: "tool", result: toolErrorText(error), outcome: "error", ...logged }
+      : { type: "tool", result: brokeOff(errorMessage(error)), outcome: "unknown", ...logged };
   }
 }
 

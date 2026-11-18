@@ -1,6 +1,8 @@
 // The public API of @halonicjs/adapter-mcp. Internal code imports by relative path.
 // The protocol is also its own entry, `./protocol`, which integrations import instead.
 
+// The error lives in the ports package, so the engine can tell it from a call that broke off.
+export { ConnectorToolError } from "@halonicjs/ports";
 export { McpHttpConnectorFactory, type McpHttpOptions } from "./http/http-connector.ts";
 export { defaultHttpLimits, type HttpLimits } from "./http/http-transport.ts";
 export { type FoundRunner, findRunner, type RunnerSearch } from "./pinned/find-runner.ts";
@@ -51,5 +53,5 @@ export { McpStdioConnectorFactory, type McpStdioOptions } from "./stdio/stdio-co
 // sandbox session instead of on this computer and speaks the same MCP to it.
 export { defaultStdioLimits, type StdioLimits, StdioTransport } from "./stdio/stdio-transport.ts";
 export { ConnectorStoppedError } from "./stdio/stopped-error.ts";
-export { ConnectorToolError, resultText, toConnectorTool } from "./stdio/tool-mapping.ts";
+export { resultText, toConnectorTool } from "./stdio/tool-mapping.ts";
 export { refuseWorkingFolders } from "./stdio/working-folder-guard.ts";
