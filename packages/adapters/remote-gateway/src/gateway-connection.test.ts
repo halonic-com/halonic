@@ -22,7 +22,7 @@ verifies("remote-gateway.connection", () => {
       const t = openConnection();
       await t.hello();
       expect(t.sent).toEqual([
-        { type: "welcome", replyTo: "h1", version: 1, maxMessageBytes: gatewayMaxMessageBytes },
+        { type: "welcome", replyTo: "h1", version: 2, maxMessageBytes: gatewayMaxMessageBytes },
       ]);
     });
 
@@ -43,7 +43,7 @@ verifies("remote-gateway.connection", () => {
 
     it("closes with unsupported-version on another version, without a replyTo", async () => {
       const t = openConnection();
-      await t.say({ type: "hello", id: "h1", version: 2 });
+      await t.say({ type: "hello", id: "h1", version: 1 });
       expect(t.sent).toEqual([{ type: "error", code: "unsupported-version" }]);
       expect(t.transport.closed).toBe(true);
     });

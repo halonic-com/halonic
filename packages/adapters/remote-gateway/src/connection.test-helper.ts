@@ -34,7 +34,7 @@ export function openConnection(options: { allowRisky?: boolean } = {}) {
       await settle();
     },
     async hello(): Promise<void> {
-      await this.say({ type: "hello", id: "h1", version: 1 });
+      await this.say({ type: "hello", id: "h1", version: 2 });
     },
   };
 }

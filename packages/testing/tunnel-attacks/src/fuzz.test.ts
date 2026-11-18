@@ -24,7 +24,7 @@ type Rand = () => number;
 const pick = <T>(rand: Rand, list: readonly T[]): T => list[Math.floor(rand() * list.length)] as T;
 
 const validMessages: readonly Record<string, unknown>[] = [
-  { type: "hello", id: "h1", version: 1 },
+  { type: "hello", id: "h1", version: 2 },
   { type: "list-sessions", id: "l1" },
   { type: "watch", id: "w1", sessionId: "s1", afterSeq: 0 },
   { type: "unwatch", id: "u1", sessionId: "s1" },
@@ -174,7 +174,7 @@ function readsAsValid(bytes: Uint8Array, binary: boolean): boolean {
 async function hostileConnection(rig: TunnelRig, rand: Rand): Promise<void> {
   const client = rig.client();
   await client.open(rig.forwarderPort, { host: rig.tunnelName });
-  client.sendJson({ type: "hello", id: "h1", version: 1 });
+  client.sendJson({ type: "hello", id: "h1", version: 2 });
   for (let at = 0, count = 1 + Math.floor(rand() * 6); at < count; at++) {
     client.write(hostileBytes(rand));
   }

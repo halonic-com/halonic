@@ -125,7 +125,7 @@ verifies("remote-gateway.listener", () => {
         const socket = new WebSocket(`ws://127.0.0.1:${t.listener.port}/v1/gateway`);
         const answer = await new Promise<string>((resolve, reject) => {
           socket.onopen = () =>
-            socket.send(JSON.stringify({ type: "hello", id: "h1", version: 1 }));
+            socket.send(JSON.stringify({ type: "hello", id: "h1", version: 2 }));
           socket.onmessage = (event) => resolve(String(event.data));
           socket.onerror = () => reject(new Error("The client could not connect."));
         });
@@ -142,7 +142,7 @@ verifies("remote-gateway.listener", () => {
         t.source.addSession("s1");
         const client = t.client();
         await client.open(t.listener.port);
-        await client.sendJson({ type: "hello", id: "h1", version: 1 });
+        await client.sendJson({ type: "hello", id: "h1", version: 2 });
         await client.sendJson({ type: "watch", id: "w1", sessionId: "s1", afterSeq: 0 });
         await client.frames(2);
         t.source.emit("s1", { type: "state", state: "done" });
@@ -179,11 +179,11 @@ verifies("remote-gateway.listener", () => {
         const handshake = handshakeRequest(t.listener.port);
         const first = clientFrame(
           op.text,
-          Buffer.from(JSON.stringify({ type: "hello", id: "h1", version: 1 })),
+          Buffer.from(JSON.stringify({ type: "hello", id: "h1", version: 2 })),
         );
         client.write(Buffer.concat([Buffer.from(handshake.text), first]));
         expect(await client.frames(1)).toEqual([
-          { type: "welcome", replyTo: "h1", version: 1, maxMessageBytes: gatewayMaxMessageBytes },
+          { type: "welcome", replyTo: "h1", version: 2, maxMessageBytes: gatewayMaxMessageBytes },
         ]);
       } finally {
         await t.stop();
@@ -242,7 +242,7 @@ verifies("remote-gateway.listener", () => {
         t.source.addSession("s1");
         const client = t.client();
         await client.open(t.listener.port);
-        await client.sendJson({ type: "hello", id: "h1", version: 1 });
+        await client.sendJson({ type: "hello", id: "h1", version: 2 });
         await client.sendJson({ type: "watch", id: "w1", sessionId: "s1", afterSeq: 0 });
         await client.frames(2);
         expect(t.source.watcherCount("s1")).toBe(1);
@@ -287,7 +287,7 @@ verifies("remote-gateway.listener", () => {
       try {
         const client = t.client();
         await client.open(t.listener.port);
-        await client.sendJson({ type: "hello", id: "h1", version: 1 });
+        await client.sendJson({ type: "hello", id: "h1", version: 2 });
         expect(await client.frames(1)).toHaveLength(1);
         await new Promise((resolve) => setTimeout(resolve, 1_500));
         expect(client.socket.destroyed).toBe(false);

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { openTunnelRig, type TunnelRig } from "./tunnel-rig.ts";
 import { op, type WireClient, wireFrame } from "./wire-client.ts";
 
-const hello = { type: "hello", id: "h1", version: 1 };
+const hello = { type: "hello", id: "h1", version: 2 };
 
 /** A phone that has done the handshake through the tunnel but not said hello. */
 async function opened(rig: TunnelRig): Promise<WireClient> {
@@ -19,7 +19,7 @@ async function expectUntouched(rig: TunnelRig): Promise<void> {
   const phone = await opened(rig);
   phone.sendJson(hello);
   expect(await phone.frames(1)).toEqual([
-    { type: "welcome", replyTo: "h1", version: 1, maxMessageBytes: gatewayMaxMessageBytes },
+    { type: "welcome", replyTo: "h1", version: 2, maxMessageBytes: gatewayMaxMessageBytes },
   ]);
 }
 
@@ -204,10 +204,10 @@ verifies("tunnel-attacks.frame-attacks", () => {
         early.sendJson({ type: "list-sessions", id: "l1" });
         expect(await early.frames(1)).toEqual([{ type: "error", code: "malformed" }]);
         const twice = await rig.greeted();
-        twice.sendJson({ type: "hello", id: "h2", version: 1 });
+        twice.sendJson({ type: "hello", id: "h2", version: 2 });
         expect(await twice.frames(2)).toHaveLength(2);
         expect(await twice.isClosed()).toBe(true);
-        for (const version of [0, 2, -1, 2 ** 31]) {
+        for (const version of [0, 1, 3, -1, 2 ** 31]) {
           const old = await opened(rig);
           old.sendJson({ type: "hello", id: "h1", version });
           expect(await old.frames(1)).toEqual([{ type: "error", code: "unsupported-version" }]);

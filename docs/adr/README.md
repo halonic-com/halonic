@@ -48,6 +48,7 @@ code is built the way it is, before you change something they describe.
 | [Sandbox check fix data](2026-11-12-sandbox-check-fix-data.md) | A refused check may name its fix as data: an install with the package manager found, or an AppArmor profile for one program (v7, optional) |
 | [Google sign-in and the setup record](2026-11-14-google-sign-in-and-the-setup-record.md) | The callback sits outside the session with `state` as proof, on loopback only; the setup record holds no secret and points at its connector |
 | [Only the remote gateway is reachable by a tunnel](2026-11-16-only-the-remote-gateway-is-reachable-by-a-tunnel.md) | `TunnelProvider` points only at the loopback remote gateway, which speaks a narrow, versioned protocol; resumable, foreground-only, no plain http |
+| [Pairing and the end-to-end session](2026-11-18-pairing-and-the-end-to-end-session.md) | Gateway protocol v2 runs inside Noise: XXpsk3 to pair (the code is the psk, the check code comes from the handshake hash), IK to reconnect; `not-paired` only after the host proved itself |
 
 The exact rules of the workflow decision are in the
 [workflow semantics spec](../specs/workflow-semantics.md).

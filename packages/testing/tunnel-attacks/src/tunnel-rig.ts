@@ -98,7 +98,7 @@ export async function openTunnelRig(options: TunnelRigOptions = {}): Promise<Tun
     async greeted() {
       const phone = client();
       await phone.open(forwarder.port, { host: tunnelName });
-      phone.sendJson({ type: "hello", id: "h1", version: 1 });
+      phone.sendJson({ type: "hello", id: "h1", version: 2 });
       await phone.frames(1);
       return phone;
     },

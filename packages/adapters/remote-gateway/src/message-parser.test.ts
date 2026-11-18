@@ -18,7 +18,7 @@ verifies("remote-gateway.message-parser", () => {
   describe("parseGatewayClientMessage", () => {
     it("accepts each of the six messages a phone may send", () => {
       const messages = [
-        { type: "hello", id: "h", version: 1 },
+        { type: "hello", id: "h", version: 2 },
         { type: "list-sessions", id: "l" },
         watch,
         { type: "unwatch", id: "u", sessionId: "s1" },
@@ -143,8 +143,8 @@ verifies("remote-gateway.message-parser", () => {
     });
 
     it("leaves a hello with another version to the host, which closes with unsupported-version", () => {
-      const result = parseGatewayClientMessage(text({ type: "hello", id: "h", version: 2 }));
-      expect(result).toMatchObject({ ok: true, message: { version: 2 } });
+      const result = parseGatewayClientMessage(text({ type: "hello", id: "h", version: 1 }));
+      expect(result).toMatchObject({ ok: true, message: { version: 1 } });
     });
   });
 });

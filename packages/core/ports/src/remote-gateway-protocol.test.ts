@@ -28,13 +28,13 @@ verifies("ports.remote-gateway-protocol", () => {
 
   typeTest("lets the host send only these messages", () => {
     expectTypeOf<GatewayHostMessage["type"]>().toEqualTypeOf<
-      "welcome" | "sessions" | "event" | "ok" | "error"
+      "welcome" | "sessions" | "event" | "ok" | "error" | "paired" | "pair-refused" | "not-paired"
     >();
   });
 
-  it("is version 1, with a 64 KiB limit per message", () => {
-    expect(gatewayProtocolVersion).toBe(1);
-    expect(gatewayMaxMessageBytes).toBe(65_536);
+  it("is version 2, with one Noise transport message less its tag per message", () => {
+    expect(gatewayProtocolVersion).toBe(2);
+    expect(gatewayMaxMessageBytes).toBe(65_519);
     expect(gatewayErrorCodes).toContain("too-large");
     expect(gatewayErrorCodes).toContain("not-allowed-remotely");
   });
@@ -84,6 +84,13 @@ verifies("ports.remote-gateway-protocol", () => {
     // @ts-expect-error: a refusal names the message it refuses
     const orphan: GatewayHostMessage = { type: "error", code: "history-gone" };
     expectTypeOf([closing, refusal, trusted, orphan]).toEqualTypeOf<GatewayHostMessage[]>();
+  });
+
+  typeTest("ends a pairing inside the session only as denied or timed out", () => {
+    const denied: GatewayHostMessage = { type: "pair-refused", reason: "denied" };
+    // @ts-expect-error: a wrong code is refused in cleartext, before the session exists
+    const wrong: GatewayHostMessage = { type: "pair-refused", reason: "wrong-code" };
+    expectTypeOf([denied, wrong]).toEqualTypeOf<GatewayHostMessage[]>();
   });
 
   typeTest("lets only the host set an approval's risk", () => {
