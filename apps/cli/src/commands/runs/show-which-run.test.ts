@@ -85,7 +85,7 @@ verifies("cli.commands.runs.show", () => {
       expect(none.code).toBe(exitCode.usage);
       expect(none.io.stderr).toEqual([
         "✕ halonic runs show needs a run id.",
-        "  Usage: halonic runs show <run-id> [--dir <folder>]",
+        "  Usage: halonic runs show <run-id> [--output] [--dir <folder>]",
       ]);
 
       const two = await showIn(acme, "a1b2c3", "09d9a0");

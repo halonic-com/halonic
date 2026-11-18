@@ -23,13 +23,13 @@ import { startedInWords } from "../../messages/runs-list.ts";
 import { printable } from "../../output/printable.ts";
 import { workspaceModelsOf } from "../../run-failure-of.ts";
 import { type RunClock, startedAt } from "../../run-times.ts";
-import { runViewDefinitions, stepLines } from "../../run-view.ts";
+import { runViewDefinitions, stepLines, stepLinesWithOutput } from "../../run-view.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
 import type { RunListSetup } from "./list.ts";
 import { listedStatus, workflowTitle } from "./listed-run.ts";
-import { failedRunDebugText, showEnding } from "./show-ending.ts";
+import { failedRunDebugText, outputHintLines, showEnding } from "./show-ending.ts";
 
 /**
  * Shows one run, real or test: its heading, then its steps. Exits 0 for any
@@ -72,7 +72,13 @@ export async function showRun(
       const definitions = runViewDefinitions(loaded, run.summary);
       const title = workflowTitle(definitions.workflow, run.summary);
       const clock = setup.clock();
-      const steps = stepLines(run.events, run.summary, definitions, clock);
+      const withOutput = input.options["output"] === true;
+      const steps = (withOutput ? stepLinesWithOutput : stepLines)(
+        run.events,
+        run.summary,
+        definitions,
+        clock,
+      );
       const debugText = failedRunDebugText(run);
       return {
         exitCode: exitCode.ok,
@@ -87,6 +93,7 @@ export async function showRun(
             dir,
             context.debugging,
           ),
+          ...(withOutput ? [] : outputHintLines(run, dir)),
         ],
         json: { events: run.events },
         ...(debugText === undefined ? {} : { debugText }),

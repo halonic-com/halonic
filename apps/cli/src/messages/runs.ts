@@ -46,6 +46,10 @@ export const runsMessages = defineMessages("runs", {
   showSummary: () => phrase`Show what one run did`,
   /** What `runs show` was doing, for "✕ Couldn't show run 01JD8Q: there's no workspace.yaml here.". */
   showAction: (runId: string) => phrase`show run ${runId}`,
+  /** `--output`'s line in `halonic runs show --help` (HAL-12073). */
+  outputOption: () => phrase`Show what each step wrote`,
+  /** Under the line of an agent step that finished without writing anything, in `runs show --output`. */
+  noOutput: () => phrase`No output.`,
   /** `send`'s line in `halonic runs --help`, from the words of {@link summary}. */
   sendSummary: () => phrase`Answer a run that's waiting for you`,
   /** What `runs send` was doing, for "✕ Couldn't send approve to run 01JD8Q: …". */
