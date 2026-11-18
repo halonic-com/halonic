@@ -4,6 +4,7 @@
 - Approval: Liam approves this note in review on HAL-12175; Julian signs as second guardian
 - Kind: user-visible
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qMolLxg3IeKLy1A2nTfAk0A0KYRiTqrgr47uUxCs3R3bPq2vD/R8kj53vonBnQJzt/GQHegBqreV2t42FgSxBA==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:hOrAH2gCCnJqupB1O6jYaflbFXHBtC6tqv/D2CKySO0y3W+ZVOOpswlFgCBy9/pP8wNjHZZiur7MZVdJ4MY7Bg==
 
 ## What changes
 
