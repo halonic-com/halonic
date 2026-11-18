@@ -1519,6 +1519,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-device-keys"
+version = "0.1.0"
+
+[[package]]
 name = "halonic-file-identity"
 version = "0.1.0"
 dependencies = [

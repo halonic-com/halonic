@@ -1,0 +1,16 @@
+# halonic-device-keys
+
+The phone's own key for each paired computer (HAL-12245, build plan decision 10 on HAL-12232, ADR "Pairing and the end-to-end session"). Plain Rust with no Tauri types and no dependencies; the shell's `device_keys` module puts the Android Keystore behind it.
+
+The phone has one static X25519 key pair per paired computer, so two computers can't link the same phone. The phone transport makes the pair in Rust with `snow` when it pairs. Neither the Android Keystore nor the iOS Secure Enclave (P-256 only) can do the X25519 operations Noise needs, so the pair isn't kept inside them: it is kept in a file, sealed by a key that never leaves them. Nothing secret is in the clear at rest.
+
+- `DeviceKeyStore`: the port. `load`, `save` and `forget` one computer's pair. The phone forgets a computer's pair when the person forgets that computer, and on Removed (the computer proved who it is, then said `not-paired`). A changed host key ("Can't confirm your computer") forgets nothing.
+- `KeyWrapper`: the platform half. `seal` and `open` bytes with a key the platform's key store holds, bound to a context that names the computer.
+  - **Android** (the shell's `device_keys` module and `DeviceKeyPlugin.kt`): an AES-256-GCM key in the Android Keystore, alias `halonic-device-key-wrap-v1`, made in StrongBox when the phone has one and in the Keystore otherwise, with no user authentication (the phone reconnects without asking). The Keystore picks a fresh 12-byte IV for each seal; the context is the additional data.
+  - **iOS** (later): a P-256 key in the Secure Enclave, with `SecKeyCreateEncryptedData` and its ECIES AES-GCM algorithm, the context as the shared data. Only opening needs the Secure Enclave.
+- `WrappedFileStore`: the store the phone uses. One file per computer, `<computer id>.key`, in the app's private data (`device-keys/`): `HDK1`, then the sealed pair (public key, then private key). The context is `halonic device key v1:` and the computer id, so a file copied over another computer's doesn't open. A save writes a temporary file and renames it; on Unix the folder is 0700 and the files 0600. A file that doesn't open (changed, moved, or the Keystore key is gone) is `Unreadable` and stays until it is replaced or forgotten: the phone has to pair again. The app keeps no backup of its data (`allowBackup="false"`), so a sealed file never reaches another phone.
+- `ComputerId`: 1 to 64 ASCII letters, digits, `-` or `_`, so it is also a safe file name.
+- `PrivateKey` never prints, and it and every buffer that held a key are overwritten with zeros when they are done, best effort: the crate forbids `unsafe`, and the copies Kotlin and JSON make on the way to the Keystore can't be wiped.
+- `check_store_contract` and `check_wrapper_contract`: the behaviour every store and wrapper must show. CI runs both with `FakeWrapper`, which is **not encryption** and is for tests only.
+
+The requirement in `requirements/` is a draft until the trace check reads `cargo test` results. Until then, each test's name starts with the last part of the requirement it proves, `device_keys_`.
