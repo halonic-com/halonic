@@ -27,13 +27,63 @@ const sorter: AgentListing = { hubId: "acme", id: "sorter", name: "Sorter" };
 const hostWith = () => memoryAgentsHost({ hubs: [{ id: "acme", name: "acme" }], agents: [sorter] });
 
 verifies("agents.page.frame", () => {
-  it("shows AGENT, the name and the empty Runs line at once", async () => {
+  it("shows AGENT and the name at once, and opens on Configuration", async () => {
     const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
 
     expect(page.textContent).toContain("AGENT");
     expect(page.querySelector("h1")?.textContent).toBe("Sorter");
-    expect(page.textContent).toContain("No runs with this agent yet.");
+    expect(buttonNamed(page, "Configuration")?.getAttribute("aria-selected")).toBe("true");
     expect(page.querySelector("[role=status]")).toBeNull();
+  });
+
+  it("says on the empty Runs tab that the agent runs as a step in a workflow", async () => {
+    const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
+    await act(async () => buttonNamed(page, "Runs")?.click());
+
+    expect(page.textContent).toContain("No runs with this agent yet.");
+    expect(page.textContent).toContain(
+      "Sorter runs as a step in a workflow. Add it to one in Workflows.",
+    );
+  });
+
+  it("doesn't say an agent a workflow runs has no runs, and points to that workflow's runs", async () => {
+    const host = memoryAgentsHost({
+      hubs: [{ id: "acme", name: "acme" }],
+      agents: [sorter],
+      users: { "acme/sorter": [{ hubId: "acme", id: "reply", name: "Support reply", steps: 1 }] },
+    });
+    const page = await show(<AgentScreen host={host} hubId="acme" id="sorter" />);
+    await act(async () => buttonNamed(page, "Runs")?.click());
+
+    expect(page.textContent).not.toContain("No runs with this agent yet.");
+    expect(page.textContent).toContain(
+      "Sorter runs as a step in Support reply. That workflow's runs are in Runs.",
+    );
+  });
+
+  it("counts the workflows when several run the agent, and doesn't guess when they can't be read", async () => {
+    const reply = { hubId: "acme", id: "reply", name: "Support reply", steps: 1 };
+    const triage = { hubId: "acme", id: "triage", name: "Triage", steps: 2 };
+    const several = memoryAgentsHost({
+      hubs: [{ id: "acme", name: "acme" }],
+      agents: [sorter],
+      users: { "acme/sorter": [reply, triage] },
+    });
+    const page = await show(<AgentScreen host={several} hubId="acme" id="sorter" />);
+    await act(async () => buttonNamed(page, "Runs")?.click());
+    expect(page.textContent).toContain(
+      "Sorter runs as a step in 2 workflows. Their runs are in Runs.",
+    );
+    unmount();
+
+    const unread: AgentsHost = {
+      ...hostWith(),
+      referencesTo: () => Promise.reject(new Error("The workflows couldn't be read.")),
+    };
+    const failed = await show(<AgentScreen host={unread} hubId="acme" id="sorter" />);
+    await act(async () => buttonNamed(failed, "Runs")?.click());
+    expect(failed.textContent).not.toContain("No runs with this agent yet.");
+    expect(failed.textContent).toContain("Sorter runs as a step in a workflow.");
   });
 
   it("doesn't repeat the name on a phone, where the top bar has it", async () => {
