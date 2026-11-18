@@ -362,11 +362,43 @@ verifies("studio.engine-service", () => {
 
       await expect(
         service.startRoutine(
-          { agent: { hubId: "support", agentId: "analyst", prompt: "Go." } },
+          { agent: { hubId: "support", agentId: "writer", prompt: "Go." } },
           { routineKey: "support/weekly", at: "2026-11-15T10:00:00.000Z" },
         ),
       ).rejects.toMatchObject({ kind: "unavailable" });
       await service.close();
+    });
+
+    it.each([
+      ["in a harness", "harness: claude-code\n"],
+      ["that lists a connector", "connectors: [mail]\n"],
+    ])("refuses a routine's agent %s before the lock is taken", async (_, writer) => {
+      const shell = fakeShell();
+      const service = serviceOn(shell, acmeFiles({ writer }));
+
+      const refusal = await service
+        .startRoutine(
+          { agent: { hubId: "support", agentId: "writer", prompt: "Go." } },
+          { routineKey: "support/weekly", at: "2026-11-15T10:00:00.000Z" },
+        )
+        .catch((error: unknown) => error);
+
+      expect(refusal).toMatchObject({ kind: "unavailable" });
+      expect((refusal as Error).message).toContain("writer");
+      expect(lockCalls(shell)).toEqual([]);
+    });
+
+    it("says so when the routine's agent doesn't exist, before the lock is taken", async () => {
+      const shell = fakeShell();
+      const service = serviceOn(shell);
+
+      await expect(
+        service.startRoutine(
+          { agent: { hubId: "support", agentId: "ghost", prompt: "Go." } },
+          { routineKey: "support/weekly", at: "2026-11-15T10:00:00.000Z" },
+        ),
+      ).rejects.toThrow(RangeError);
+      expect(lockCalls(shell)).toEqual([]);
     });
   });
 });

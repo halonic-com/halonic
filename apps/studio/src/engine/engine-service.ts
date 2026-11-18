@@ -28,6 +28,7 @@ import {
 } from "@halonicjs/adapter-workspace-models";
 import type { startOfDueRun } from "@halonicjs/app";
 import { type AssembledEngine, assembleEngine, noListedToolApproval } from "@halonicjs/engine";
+import type { Agent } from "@halonicjs/format";
 import {
   type Clock,
   type DefinitionStore,
@@ -41,10 +42,21 @@ import {
 import { KindedError } from "@halonicjs/std";
 import type { TauriIpc } from "@halonicjs/studio-services";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
-import { type LoadedWorkspace, loadWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
+import {
+  filesOf,
+  type LoadedWorkspace,
+  loadWorkspace,
+  runDefinitionsOf,
+} from "@halonicjs/workspace";
 
 /** What a routine starts, with its placeholders filled in: what the routine scheduler would start. */
 export type RoutineRunStart = ReturnType<typeof startOfDueRun>;
+
+/** The hub's agent a routine starts. */
+export interface AgentRef {
+  readonly hubId: string;
+  readonly agentId: string;
+}
 
 /** The open workspace's engine service, provided by the app. */
 export const engineServiceKey: ServiceKey<EngineService> =
@@ -114,13 +126,26 @@ export class EngineService {
     const workspace = await loadWorkspace(this.#options.definitions);
     runDefinitionsOf(workspace, run.hubId, run.workflowId);
     for (const { value: agent } of workflowAgentsOf(workspace, run)) {
-      if (startsAProgram(agent.harness)) {
-        throw unavailable(agent.name, "runs in a harness program");
-      }
-      if (agent.connectors.length > 0) {
-        throw unavailable(agent.name, "uses a connector");
-      }
+      refuseWhatThePageCantStart(agent);
     }
+  }
+
+  /**
+   * Refuses an agent a routine starts on its own that the page can't run, before the engine
+   * opens, as {@link EngineService.check} refuses a workflow's agents.
+   *
+   * @throws KindedError `unavailable` naming the agent
+   * @throws RangeError when the hub has no such agent
+   */
+  async checkAgent({ hubId, agentId }: AgentRef): Promise<void> {
+    const workspace = await loadWorkspace(this.#options.definitions);
+    const file = filesOf(workspace, "agent").find(
+      (agent) => agent.hub === hubId && agent.value.id === agentId,
+    );
+    if (file === undefined) {
+      throw new RangeError(`The hub "${hubId}" has no agent "${agentId}".`);
+    }
+    refuseWhatThePageCantStart(file.value);
   }
 
   /**
@@ -147,7 +172,7 @@ export class EngineService {
 
   /**
    * Starts what a routine runs, for its Run now: a workflow is checked as {@link EngineService.startRun}
-   * checks it. The run records a manual trigger that names the routine, so the routine finds its own
+   * checks it, an agent as {@link EngineService.checkAgent} checks it, both before the engine opens. The run records a manual trigger that names the routine, so the routine finds its own
    * runs again.
    *
    * @param trigger the routine's key and the time the person asked for the run
@@ -167,6 +192,7 @@ export class EngineService {
       const { id } = await executor.start({ ...start.workflow, trigger: runTrigger });
       return { id };
     }
+    await this.checkAgent(start.agent);
     // As the port: the local executor's own `startAgent` takes no request until agent runs are built.
     const executor: RunExecutor = (await this.open()).executor;
     try {
@@ -283,6 +309,16 @@ function refusalOf(refusal: unknown): { kind?: string; message?: string; pid?: n
     ...(typeof message === "string" ? { message } : {}),
     ...(typeof pid === "number" ? { pid } : {}),
   };
+}
+
+/** Refuses an agent in a harness program or one that lists a connector: the page starts neither. */
+function refuseWhatThePageCantStart(agent: Agent): void {
+  if (startsAProgram(agent.harness)) {
+    throw unavailable(agent.name, "runs in a harness program");
+  }
+  if (agent.connectors.length > 0) {
+    throw unavailable(agent.name, "uses a connector");
+  }
 }
 
 function unavailable(agentName: string, why: string): KindedError {
