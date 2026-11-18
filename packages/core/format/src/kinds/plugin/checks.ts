@@ -18,8 +18,9 @@ import { uiProblems } from "./ui-checks.ts";
  * The rules over several fields of a plugin: it has a backend or local
  * tools, its id and secret names aren't too long, its backend passes the
  * integration sheet's checks and starts no program, no id is used twice, no tool or secret name is in two parts, a
- * local tool's environment names its own secrets and the plugin's settings,
- * and its `ui` names what the plugin declares.
+ * local tool's environment names its own secrets and the plugin's settings
+ * and sets none of the variables Halonic sets itself, and its `ui` names
+ * what the plugin declares.
  *
  * @example
  * checkPlugin(plugin); // [] for the weather plugin in the ADR
@@ -117,9 +118,16 @@ function localToolProblems(plugin: Plugin): KindCheckProblem[] {
 }
 
 /**
- * An `env` value names one of this local tool's own secrets, never another
- * part's, so a secret reaches only the program it was declared for. A
- * setting it names exists and isn't a `secret` field: secrets go by `secret`.
+ * The variables Halonic sets itself for every local tool: its `PATH`, and
+ * its home and temp folders inside the session.
+ */
+const halonicVariables = new Set(["HOME", "PATH", "TMPDIR", "TEMP", "TMP"]);
+
+/**
+ * An `env` variable isn't one Halonic sets itself. Its value names one of
+ * this local tool's own secrets, never another part's, so a secret reaches
+ * only the program it was declared for. A setting it names exists and isn't
+ * a `secret` field: secrets go by `secret`.
  */
 function envProblems(
   plugin: Plugin,
@@ -130,6 +138,11 @@ function envProblems(
   const problems: KindCheckProblem[] = [];
   for (const [variable, value] of Object.entries(localTool.env)) {
     const path = ["localTools", index, "env", variable];
+    if (halonicVariables.has(variable)) {
+      const message = `${variable} is set by Halonic for every local tool; use another name`;
+      problems.push(problem(plugin, "env-reserved", path, message));
+      continue;
+    }
     if ("secret" in value) {
       if (!Object.hasOwn(localTool.secrets, value.secret)) {
         const message = `${variable} takes the secret ${value.secret}, which local tool "${localTool.id}" doesn't declare in its secrets`;

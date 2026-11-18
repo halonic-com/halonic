@@ -170,7 +170,8 @@ localTools:
   declares in its own `secrets`. A literal value is not allowed, and a secret
   declared on another local tool or on the backend doesn't count. A secret
   named here is given to that program, so it does get the value; the trust
-  check lists it.
+  check lists it. `HOME`, `PATH`, `TMPDIR`, `TEMP` and `TMP` aren't allowed:
+  Halonic sets those itself, to folders inside the sandbox.
 - **`secrets`** declares the secrets this local tool may use, each with a
   `purpose` (what it is for, shown in the trust check) and its `hosts`. Every
   host of a secret must also be in the tool's `network`.
