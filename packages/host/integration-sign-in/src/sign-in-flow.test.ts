@@ -17,6 +17,24 @@ async function signInWith(test: ReturnType<typeof exampleFlow>, code: string): P
 }
 
 verifies("integration-sign-in.sign-in-flow", () => {
+  it("says which paths are waiting for a callback: a started one, until it is answered, cancelled or expired", async () => {
+    const test = exampleFlow();
+    const first = await test.started();
+    expect(test.flow.handlesPath(first.callbackPath)).toBe(true);
+    expect(test.flow.handlesPath("/sign-in/not-started")).toBe(false);
+
+    await test.flow.handleCallback(first.callback({ state: first.state, code: "fake-code" }));
+    expect(test.flow.handlesPath(first.callbackPath)).toBe(false);
+
+    const second = await test.started();
+    test.flow.cancel(signInName);
+    expect(test.flow.handlesPath(second.callbackPath)).toBe(false);
+
+    const third = await test.started();
+    test.wait(11 * 60 * 1000);
+    expect(test.flow.handlesPath(third.callbackPath)).toBe(false);
+  });
+
   it("builds the authorize URL itself, with a redirect to a random path on 127.0.0.1", async () => {
     const test = exampleFlow();
 

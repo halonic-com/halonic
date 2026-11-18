@@ -14,3 +14,12 @@ export {
   type SignInOutcome,
   type StartResult,
 } from "./sign-in-flow.ts";
+export {
+  createSignInHost,
+  type IntegrationSignInParts,
+  type SignInHost,
+  type SignInHostSettings,
+  type SignInIntegration,
+  type SignInState,
+  type SignInStatus,
+} from "./sign-in-host.ts";
