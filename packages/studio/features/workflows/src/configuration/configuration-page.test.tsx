@@ -171,4 +171,26 @@ verifies("workflows.configuration.pages", () => {
 
     expect(tab(page, "Request form")?.getAttribute("aria-selected")).toBe("true");
   });
+
+  // jsdom has no media queries, so this checks the phone classes and the order; the e2e
+  // screenshots measure the real layout at 390 and 320 px.
+  it("N1, N3: puts the list above the page at full width on a phone, before it in Tab order", async () => {
+    const page = await open([configuration]);
+    const list = page.querySelector<HTMLElement>(
+      "[role=tablist][aria-label='Configuration pages']",
+    );
+    // The panel the pages control, not the workflow page's own Configuration panel round them.
+    const panelId = list?.querySelector("[role=tab]")?.getAttribute("aria-controls") ?? "";
+    const panel = document.getElementById(panelId);
+    const frame = list?.parentElement;
+
+    expect(frame?.className.split(" ")).toContain("phone:flex-col");
+    expect(list?.className.split(" ")).toEqual(
+      expect.arrayContaining(["phone:w-auto", "phone:border-e-0", "phone:border-b"]),
+    );
+    expect(panel?.parentElement).toBe(frame);
+    expect(
+      list && panel && list.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
 });

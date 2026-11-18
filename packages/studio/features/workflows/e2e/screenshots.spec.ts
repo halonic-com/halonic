@@ -319,3 +319,75 @@ for (const shown of canvasRuns) {
     });
   }
 }
+
+/**
+ * A workflow's Configuration in a narrow window (HAL-12800): the page list sits above the page at
+ * full width (N1), and the Tests page's command breaks only between its words (N2). 320 px is a
+ * 1280 px window at 400 % zoom. In a wide window the list stays beside the page.
+ */
+const configurationSizes = [
+  { width: 390, height: 844 },
+  { width: 320, height: 640 },
+] as const;
+
+for (const size of configurationSizes) {
+  for (const scheme of schemes) {
+    test(`N1, N2: configuration, tests, ${size.width}x${size.height}, ${scheme}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(size);
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto("/configuration.html?page=tests");
+      const list = page.getByRole("tablist", { name: "Configuration pages" });
+      await expect(list.getByRole("tab", { name: "Tests" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      const listBox = await list.boundingBox();
+      const panelBox = await page.getByRole("tabpanel").boundingBox();
+      expect(listBox !== null && panelBox !== null, "the list and the page are shown").toBe(true);
+      if (listBox === null || panelBox === null) return;
+      expect(listBox.y + listBox.height, "the list is above the page").toBeLessThanOrEqual(
+        panelBox.y,
+      );
+      expect(listBox.width, "the list is as wide as the window").toBeCloseTo(size.width, 0);
+      expect(panelBox.width, "the page is as wide as the window").toBeCloseTo(size.width, 0);
+      const sideways = await page.evaluate(
+        () =>
+          [document.documentElement, ...document.querySelectorAll("[role=tabpanel]")].filter(
+            (element) => element.scrollWidth > element.clientWidth,
+          ).length,
+      );
+      expect(sideways, "nothing scrolls sideways").toBe(0);
+      // Each word of the command lies on one line: a line break only falls between words.
+      const splitWords = await page.locator("code").evaluate((code) => {
+        const text = code.firstChild;
+        if (text === null) return ["no text"];
+        const split: string[] = [];
+        for (const word of (text.textContent ?? "").matchAll(/\S+/g)) {
+          const range = document.createRange();
+          range.setStart(text, word.index);
+          range.setEnd(text, word.index + word[0].length);
+          const lines = new Set([...range.getClientRects()].map((rect) => Math.round(rect.top)));
+          if (lines.size > 1) split.push(word[0]);
+        }
+        return split;
+      });
+      expect(splitWords, "no word of the command is broken").toEqual([]);
+      await page.screenshot({
+        path: `test-results/screenshots/configuration-tests-${size.width}-${scheme}.png`,
+        fullPage: true,
+      });
+    });
+  }
+}
+
+test("configuration keeps its page list beside the page in a wide window", async ({ page }) => {
+  await page.goto("/configuration.html?page=general");
+  const listBox = await page.getByRole("tablist", { name: "Configuration pages" }).boundingBox();
+  const panelBox = await page.getByRole("tabpanel").boundingBox();
+  expect(listBox !== null && panelBox !== null, "the list and the page are shown").toBe(true);
+  if (listBox === null || panelBox === null) return;
+  expect(listBox.x + listBox.width, "the list is left of the page").toBeLessThanOrEqual(panelBox.x);
+  expect(listBox.y, "the list starts level with the page").toBe(panelBox.y);
+});

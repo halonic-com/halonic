@@ -24,6 +24,9 @@ export interface ConfigurationProps {
  * The workflow's Configuration (`workflows.configuration`): a list of pages on the left (General,
  * Request form, Tests, Problems) and the picked page beside it, in side-label rows. It is read-only until
  * the save model's fields land.
+ *
+ * In the phone layout the list goes above the page at full width, so the page keeps the window's
+ * width (HAL-12800). It stays a vertical list, so the arrow keys work the same in both layouts.
  */
 export function Configuration({
   name,
@@ -57,13 +60,13 @@ export function Configuration({
   };
 
   return (
-    <div className="flex min-h-0 flex-1">
+    <div className="flex min-h-0 flex-1 phone:flex-col">
       <div
         role="tablist"
         aria-orientation="vertical"
         aria-label={words.pages}
         onKeyDown={onKeyDown}
-        className="flex w-52 shrink-0 flex-col gap-1 border-e border-border px-2 py-4"
+        className="flex w-52 shrink-0 flex-col gap-1 border-e border-border px-2 py-4 phone:w-auto phone:border-e-0 phone:border-b phone:py-2"
       >
         {configuration === undefined
           ? configurationPages.map((one) => (
