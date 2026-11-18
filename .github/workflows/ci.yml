@@ -701,7 +701,9 @@ jobs:
       # The same packages as the build job: the merge base's own copy of
       # affected-tests compares the merge ref with its first parent. The
       # guard works the set out again and compares only those packages, so
-      # testing more here is harmless and testing fewer fails it.
+      # testing more here is harmless and testing fewer fails it. So when
+      # the merge base's copy fails (an older copy without --head, say),
+      # every package is tested; the later lines win in $GITHUB_OUTPUT.
       - id: affected
         name: Choose the packages to test
         if: env.AFFECTED_TESTS == 'on'
@@ -711,7 +713,10 @@ jobs:
         run: |
           cli=tooling/check/src/cli/affected-tests.ts
           if [ -n "$MERGE_REF" ] && [ -f "$cli" ]; then
-            pnpm exec node "$cli" --base "$MERGE_BASE" --head "$MERGE_REF"
+            if ! pnpm exec node "$cli" --base "$MERGE_BASE" --head "$MERGE_REF"; then
+              echo "::notice title=Affected tests::The merge base's affected-tests failed, so every package is tested."
+              printf 'all=true\nfilters=\nfolders=\n' >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "::notice title=Affected tests::No merge commit, or the merge base has no affected-tests, so every package is tested."
             echo "all=true" >> "$GITHUB_OUTPUT"

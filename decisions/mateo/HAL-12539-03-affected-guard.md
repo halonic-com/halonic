@@ -24,7 +24,7 @@
   reported as missing. Before, a scoped trace reported it as "doesn't exist".
 - `.github/workflows/ci.yml`: `AFFECTED_TESTS` is `"on"`. The merge base's tests run the merge
   base's own copy of affected-tests on the merge ref and test only those packages (the walk-back
-  to an older green commit still tests everything). The guard job fetches the merge ref's first
+  to an older green commit, or a copy that fails, still tests everything). The guard job fetches the merge ref's first
   parent, scopes trace to the affected folders and passes `--affected-base` to the guard. Changes
   to the root files, `.github/workflows/`, `.github/actions/` and `tooling/check/` still test
   every package, so this pull request itself runs the full suite.
