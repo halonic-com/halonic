@@ -47,13 +47,13 @@ pub(crate) struct PickedFolder {
 }
 
 /// A folder's identity (`halonic-file-identity`): its device and inode on
-/// Unix, its volume serial number and file index on Windows. The shell
-/// writes one for every entry; a Windows entry from before it read them
-/// there has none until it is reopened.
+/// Unix, its volume serial number and file ID on Windows (128 bits, for
+/// ReFS). The shell writes one for every entry; a Windows entry from before
+/// it read them there has none until it is reopened.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct FolderIdentity {
     pub device: u64,
-    pub inode: u64,
+    pub inode: u128,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
