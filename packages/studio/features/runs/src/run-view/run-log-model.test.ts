@@ -42,6 +42,27 @@ verifies("runs.run-view.run-log", () => {
     expect(line).toMatchObject({ fields: '{"event":"ok\\u202egnp.exe"}' });
   });
 
+  it("shows a bridge failure as an event line with its kind and message", () => {
+    const [, line] = runLogLines(
+      logOf("run_a_01jd8q", [
+        [
+          0,
+          {
+            type: "bridge.failed",
+            agent: "writer",
+            kind: "internal",
+            message: "the tool list could not be read",
+          },
+        ],
+      ]),
+    );
+    expect(line).toMatchObject({
+      kind: "event",
+      type: "bridge.failed",
+      fields: '{"agent":"writer","kind":"internal","message":"the tool list could not be read"}',
+    });
+  });
+
   it("shows a step's blocked sites once, where its first was blocked", () => {
     const lines = runLogLines(
       logOf("run_a_01jd8q", [

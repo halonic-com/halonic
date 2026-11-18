@@ -130,6 +130,18 @@ verifies("ports.harness-bridge-server", () => {
     expect([response, finished]).toHaveLength(2);
   });
 
+  it("records a failure the program was told the run log has", () => {
+    const failed: BridgeEvent = {
+      type: "bridge.failed",
+      agent: "writer",
+      kind: "internal",
+      message: "the tool list could not be read",
+    };
+    // @ts-expect-error: a bridge failure has no cost to count
+    const priced: BridgeEvent = { ...failed, cost: 0.01 };
+    expect([failed, priced]).toHaveLength(2);
+  });
+
   it("names no secret for a subscription", () => {
     const subscription: BridgeProviderAccess = { kind: "sign-in" };
     // @ts-expect-error: the person's own sign-in is passed on, never looked up

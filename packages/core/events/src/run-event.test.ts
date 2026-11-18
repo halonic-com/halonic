@@ -40,6 +40,8 @@ verifies("events.run-log-contract", () => {
       | "llm.fallback"
       // Added after the reference by events.llm-skipped (HAL-1880).
       | "llm.skipped"
+      // Added after the reference by events.bridge-failed (HAL-11272).
+      | "bridge.failed"
       | "tool.called"
       // Added after the reference by events.tool-refused (HAL-4658).
       | "tool.refused"
