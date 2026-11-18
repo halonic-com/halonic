@@ -79,7 +79,21 @@ verifies("settings.about-section", () => {
       now,
     );
     expect(view.line).toBe(
-      "Couldn't download Halonic 0.1.1: there isn't enough room on the disk. Halonic tries again at the next check.",
+      "Couldn't download Halonic 0.1.1: something went wrong while downloading. Halonic tries again at the next check.",
+    );
+    expect(view.actions).toEqual(["try-again"]);
+  });
+
+  it("doesn't promise another try when automatic updates are off", () => {
+    const view = aboutView(
+      status(
+        { kind: "download-failed", version: "0.1.1", reason: "offline" },
+        { automatic: false },
+      ),
+      now,
+    );
+    expect(view.line).toBe(
+      "Couldn't download Halonic 0.1.1: you're offline. Try again or check later.",
     );
     expect(view.actions).toEqual(["try-again"]);
   });

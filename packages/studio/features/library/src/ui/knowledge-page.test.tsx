@@ -141,9 +141,7 @@ verifies("library.knowledge-page", () => {
       });
       const root = render(<KnowledgePage {...props} />);
       await settled();
-      expect(root.textContent).toContain(
-        "Agents keep notes here. They show on each agent's Memory page.",
-      );
+      expect(root.textContent).toContain("Agents can keep notes here.");
     });
 
     it("writes mode: auto at once when the second option is picked", async () => {

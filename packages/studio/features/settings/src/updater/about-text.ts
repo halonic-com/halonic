@@ -8,13 +8,12 @@ export const SECTION_TITLE = "About Halonic";
 
 export const CHECK_NOW = "Check now";
 export const CHECKING = "Checking…";
-export const DOWNLOAD_BUSY = "Downloading…";
 export const CANCEL_DOWNLOAD = "Cancel download";
 export const TRY_AGAIN = "Try again";
 
 export const AUTOMATIC = "Update Halonic automatically";
 export const AUTOMATIC_SENTENCE =
-  "Halonic checks for a new version once a day and downloads it in the background. It installs when you restart or quit Halonic. The check sends nothing about you or your work.";
+  "Halonic checks for a new version when it starts and once a day, and downloads it in the background. It installs when you restart or quit Halonic. The check sends nothing about you or your work.";
 
 export const VIEW_ONLY = "Updates are installed on the computer running Halonic.";
 
@@ -35,7 +34,7 @@ export const MANAGED_SENTENCE =
   "Scoop installs new versions of Halonic. Quit Halonic, then run this in a terminal:";
 export const NOTIFY = "Tell me when a new Halonic is out";
 export const NOTIFY_SENTENCE =
-  "Halonic checks once a day whether Scoop has a new version, and shows it here and in the status bar. The check sends nothing about you or your work.";
+  "Halonic checks when it starts and once a day whether Scoop has a new version, and shows it here and in the status bar. The check sends nothing about you or your work.";
 export const checksOff = (when: string | null) =>
   when === null ? CHECKS_OFF_NOTE : `${CHECKS_OFF_NOTE} Checked ${when}.`;
 const CHECKS_OFF_NOTE = "Checks for new versions are off.";
@@ -53,8 +52,11 @@ export const available = (version: string, current: string) =>
 export const downloading = (version: string, progress: string) =>
   `Downloading Halonic ${version}… ${progress}`;
 export const downloadButton = (version: string) => `Download Halonic ${version}`;
-export const downloadFailed = (version: string, reason: string) =>
-  `Couldn't download Halonic ${version}: ${reason}. Halonic tries again at the next check.`;
+/** Only automatic updates download again by themselves (HAL-12642). */
+export const downloadFailed = (version: string, reason: string, automatic: boolean) =>
+  automatic
+    ? `Couldn't download Halonic ${version}: ${reason}. Halonic tries again at the next check.`
+    : `Couldn't download Halonic ${version}: ${reason}. Try again or check later.`;
 export const signatureMismatch = (version: string, current: string) =>
   `Halonic ${version} was downloaded, but its signature doesn't match Halonic's. It wasn't installed, and the download was deleted. Halonic ${current} keeps working.`;
 export const ready = (version: string) =>
@@ -72,7 +74,8 @@ export const downloadReasons = {
   offline: "you're offline",
   "no-answer": "the update server didn't answer",
   stalled: "the download stalled",
-  disk: "there isn't enough room on the disk",
+  /** Every IO error maps to `disk`, and the download goes into memory (HAL-12642). */
+  disk: "something went wrong while downloading",
 } as const;
 
 /** What the announcer says after Check now (mc 20.5): with the version, also when nothing changed. */

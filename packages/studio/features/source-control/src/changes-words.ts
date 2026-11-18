@@ -15,7 +15,7 @@ export const pageWords = {
 /** What the page says when there is nothing to list. */
 export const stateWords = {
   notARepositoryTitle: "Keep a history of your work",
-  notARepositoryBody: "Halonic saves versions of this workspace so you can see what changed.",
+  notARepositoryBody: "Keep versions of this workspace so you can see what changed.",
   turnOnHistory: "Turn on history",
   /** Under "Keep a history of your work": what a folder without history means for saving (save model 2.8). */
   historyIsOff: "History is off. Everything you save is used right away.",
@@ -159,8 +159,9 @@ export const discardWords = {
   /** The toast's Undo, when putting the changes back didn't work. */
   undoFailed: "Couldn't put the changes back",
   cantDiscard: "These changes can't be discarded here.",
+  /** The file is staged by another program, not yet in a version (HAL-12642). */
   addedOutside:
-    "Another program added this file to a version. Discard it there, or create the version here.",
+    "Another program got this file ready for a version. Undo it there, or create the version here.",
   noCopy: "Halonic couldn't keep a copy, so nothing was discarded.",
   /** The one question Undo these changes ever asks: when no copy can be kept (checklist 2.5). */
   noCopyTitle: (name: string) => `Undo changes to ${name}?`,
@@ -180,8 +181,6 @@ export const versionWords = {
   sinceLastVersion: "Since your last version",
   /** The count beside it, with its word so a screen reader says what it counts. */
   itemCount: (count: number) => (count === 1 ? "1 item" : `${count} items`),
-  /** The name of an item's checkbox: "Include agents/triage.agent.yaml". */
-  include: (path: string) => `Include ${path}`,
   createVersion: "Create version",
   creating: "Creating version…",
   name: "Name",
@@ -216,7 +215,7 @@ export const identityWords = {
   intro: "Your name shows next to each version you create, for you and your team.",
   name: "Name",
   email: "Email",
-  emailHint: "Shown in the history. Use a no-reply address if you prefer.",
+  emailHint: "Saved with each version. Use a no-reply address if you prefer.",
   saveAndContinue: "Save and continue",
   saving: "Saving…",
   /** Under Name, for an empty field. */
@@ -240,12 +239,8 @@ export const updatesWords = {
   /** The toast's title when nothing could be got; the reason and "Nothing changed here." follow. */
   failed: "Couldn't get versions",
   nothingChanged: "Nothing changed here.",
-  /**
-   * Both sides have new versions and the choices didn't open; trying again can't help, so the
-   * toast has no Try again (UX check L13).
-   */
-  bothMoved:
-    "The shared copy and this workspace both have new versions, and Halonic can't combine them yet.",
+  /** Shown only when one side is ahead and the shared copy moved during the get; both moved goes to merging (HAL-12642). */
+  bothMoved: "The shared copy changed while getting updates. Try again.",
   tryAgain: "Try again",
   alreadyWorking: "Halonic is already getting updates.",
 };
@@ -305,7 +300,6 @@ export const mergeWords = {
   choiceFailed: "Couldn't make that choice",
   finishFailed: "Couldn't finish getting updates",
   cancelFailed: "Couldn't cancel getting updates",
-  tryAgain: "Try again",
 };
 
 /** History (checklist part 2, 2.9 and 2.10; microcopy revision 94, 16). */

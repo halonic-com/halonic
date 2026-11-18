@@ -11,7 +11,7 @@ import type { DeniedPathGroupCode } from "@halonicjs/events";
 export const sandboxWords = {
   "sandbox.line.sandbox": "In a sandbox",
   "sandbox.line.vm": "In a virtual machine",
-  "sandbox.line.writes": "writes only in its working folder",
+  "sandbox.line.writes": "writes only in its own folders",
   "sandbox.line.reaches.halonic": "reaches only Halonic",
   "sandbox.line.reaches.one": "reaches Halonic and 1 site",
   "sandbox.line.reaches.many": "reaches Halonic and {count} sites",
@@ -29,11 +29,11 @@ export const sandboxWords = {
   "sandbox.panel.title.live": "What this step can do",
   "sandbox.panel.title.ended": "What this step could do",
   "sandbox.panel.writes": "Writes in",
-  "sandbox.panel.writes.temp": "and its own temporary folder",
-  "sandbox.panel.reads": "Reads only",
+  "sandbox.panel.writes.temp": "and its own temp and settings folders",
+  "sandbox.panel.reads": "Can't change",
   "sandbox.panel.reads.more": "and {count} more",
   "sandbox.panel.denied": "Can't open",
-  "sandbox.panel.denied.added": "You added: {paths}",
+  "sandbox.panel.denied.added": "Also: {paths}",
   "sandbox.panel.reaches": "Reaches",
   "sandbox.panel.reaches.halonic": "Halonic",
   "sandbox.panel.reaches.more": "and {count} more",
@@ -46,7 +46,7 @@ export const sandboxWords = {
   "sandbox.panel.kind.remote": "A sandbox on another machine.",
   "sandbox.panel.not-covered":
     "Not covered: if {agent} changes a build script in {folder}, that script runs without the sandbox the next time you build.",
-  "sandbox.panel.phone-fix": "Change this on your computer, in {agent}'s file.",
+  "sandbox.panel.phone-fix": "Change this in {agent}'s file on your computer.",
   "sandbox.panel.action": "Change in {agent}'s settings",
   "sandbox.time.seconds.one": "1 second",
   "sandbox.time.seconds.many": "{count} seconds",
@@ -72,7 +72,7 @@ export function groupKey(code: DeniedPathGroupCode): SandboxKey {
   return `sandbox.group.${code}`;
 }
 
-/** How many read-only paths the Reads only row shows before "and n more" (mc 23.1). */
+/** How many read-only paths the Can't change row shows before "and n more" (mc 23.1). */
 export const readsShown = 3;
 /** How many allowed sites the Reaches row shows before "and n more" (mc 23.1). */
 export const sitesShown = 10;

@@ -195,7 +195,7 @@ verifies("runs.run-view.blocked-sites", () => {
 
     const hint = texts(container, "p").at(-1);
     expect(hint).toBe(
-      "These sites aren't in Writer's allowed sites. No connection was made. To allow one, add it to Writer's allowed sites. Writer can then send that site anything it can read.",
+      "These sites aren't in Writer's allowed sites. No connection was made. To allow one, add it to allowedSites in Writer's file. Writer can then send that site anything it can read.",
     );
     const buttons = container.querySelectorAll("button");
     expect(buttons).toHaveLength(1);
@@ -225,7 +225,7 @@ verifies("runs.run-view.blocked-sites", () => {
     );
 
     expect(container.textContent).toContain(
-      "This site isn't in Writer's allowed sites. To allow it, add it to Writer's allowed sites.",
+      "This site isn't in Writer's allowed sites. To allow it, add it to allowedSites in Writer's file.",
     );
     expect(container.textContent).not.toContain("No connection");
   });

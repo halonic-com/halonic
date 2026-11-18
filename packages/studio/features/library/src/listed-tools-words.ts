@@ -82,13 +82,6 @@ export const listedToolsWords = {
   leftOut: (reason: string) => `Halonic left out part of its arguments: ${reason}.`,
   serverChangedOnly: (source: string) =>
     `Its text hasn't changed, but ${source} connects differently than when you approved it: another address, version or settings.`,
-  whatChanged: (source: string, changed: number, unapproved: number) => {
-    const parts = [
-      ...(changed > 0 ? [`changed ${toolCount(changed)}`] : []),
-      ...(unapproved > 0 ? [`listed ${unapproved} you haven't approved`] : []),
-    ];
-    return parts.length === 0 ? "" : `Since you last approved, ${source} ${parts.join(" and ")}.`;
-  },
   hidden: {
     lookalike: "Looks the same, but a letter was swapped for one from another alphabet.",
     normalization: "Looks the same, but its characters are written another way.",
