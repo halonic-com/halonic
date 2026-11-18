@@ -158,6 +158,19 @@ async fn tunnel_transport_pauses_and_resumes_at_once() {
 }
 
 #[tokio::test]
+async fn tunnel_transport_drops_a_connection_on_request_and_backs_off() {
+    let (listener, transport, mut events, mut server) = connected().await;
+    transport.drop_connection();
+    until_state(&mut events, TransportState::Reconnecting).await;
+    assert!(matches!(
+        server_frame(&mut server).await,
+        None | Some(Message::Close(_))
+    ));
+    let _again = accept(&listener).await;
+    until_state(&mut events, TransportState::Open).await;
+}
+
+#[tokio::test]
 async fn tunnel_transport_ends_its_events_when_closed() {
     let (_listener, transport, mut events, _server) = connected().await;
     transport.close();
