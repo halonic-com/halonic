@@ -809,7 +809,8 @@ List draws them.
 A row has a `title`, an optional `meta` line (cut with an ellipsis), a 20px `icon` (16px in a
 32px `dense` row, as in a Menu item) or a 28px `avatar` (both hidden from screen readers), a
 `trailing` chip or value, a `more` button (`{ label, onClick }`, its label naming the row),
-`unavailable` (`{ reason }`) and `error` (`{ reason, chip }`). Unlike the Button's, an unavailable row's `reason` is the text itself: the
+`unavailable` (`{ reason }`), `error` (`{ reason, chip }`) and `muted`, a title in `fg-muted`
+for a finished step that still opens. Unlike the Button's, an unavailable row's `reason` is the text itself: the
 List draws it in place of the meta line and points `aria-describedby` at it.
 
 ```tsx
@@ -921,6 +922,26 @@ skeleton and an error together, and the screen focuses its title.
   skeleton={{ leading: "icon" }}
   loadingLabel="Loading skills"
   onRetry={reload}
+/>;
+```
+
+## SetupSteps
+
+The steps of a setup card, as Home's Get set up and the sample's Try the sample (HAL-477 2.2,
+first-run 3.3, `kit.setup-steps`). It's a [List](#list) named by `label`, so it keeps the List's
+keyboard, focus and phone look. Each step is a 56px row: a 24px circle with its number, outlined
+while to do; the title in `text-body-strong` with its `hint` under it; and a chevron at the right
+edge while it isn't done. A done step has a filled `success` circle with a tick, its title in
+`fg-muted` (not struck through, which reads as "cancelled") and no chevron. Each row is read as its
+`label`. The card draws its "N of 3 done" line and decides what a done step does on `onOpen`.
+
+```tsx
+<SetupSteps
+  label="Try the sample"
+  steps={[
+    { id: "start", title: "Start a support request", hint: "An invented customer asks for a refund.", done: true, label: "Step 1 of 3: Start a support request, done" },
+  ]}
+  onOpen={openStep}
 />;
 ```
 

@@ -82,6 +82,21 @@ verifies("first-run.sample-card", () => {
     expect(start).toHaveBeenCalledOnce();
   });
 
+  it("draws Get set up's rows: number circles, a success tick, the done title muted, a chevron to do", () => {
+    const root = render(<SampleSteps progress={progressWith(["start"])} openers={noOpeners} />);
+    const [done, todo] = [...root.querySelectorAll<HTMLElement>('[role="gridcell"]')];
+    const circleOf = (cell: HTMLElement | undefined) =>
+      cell?.querySelector<HTMLElement>('[aria-hidden="true"] > .rounded-full');
+    const titleOf = (cell: HTMLElement | undefined) =>
+      cell?.querySelector<HTMLElement>(".text-body-strong");
+    expect(circleOf(done)?.className).toContain("bg-success");
+    expect(titleOf(done)?.className).toContain("text-fg-muted");
+    expect(done?.querySelector(".text-fg-subtle > svg")).toBeNull();
+    expect(circleOf(todo)?.textContent).toBe("2");
+    expect(circleOf(todo)?.className).toContain("size-6");
+    expect(todo?.querySelector(".text-fg-subtle > svg")).not.toBeNull();
+  });
+
   it("says 'Try the sample: 2 of 3 done.' when a step finishes, and not for the count it opened with", () => {
     const listeners = new Set<() => void>();
     let state: SampleProgressState = { done: new Set(["start"]), finishedRun: undefined };
