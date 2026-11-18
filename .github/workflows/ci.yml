@@ -119,7 +119,7 @@ jobs:
             "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node|git)/|packages/core/ports/)"
             "windows=^(\.github/workflows/ci\.yml$|\.github/actions/|pnpm-lock\.yaml$|apps/(cli|agent-host)/|packages/adapters/(fs-node|harness-kit|harness-claude-code|harness-codex|mcp|memory|system-node|http-kit|integration-kit)/|packages/core/(workspace|app|events|format|ports|profile|routines|schema-kit|std|workflow|yaml)/|packages/testing/(contracts|spec|parity|integration)/|tooling/(config|publish)/)"
             "sandbox-mxc=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/sandbox-mxc/|packages/adapters/integration-runner/|packages/core/app/(src|requirements)/sandbox-|packages/core/ports/|pnpm-lock\.yaml$)"
-            "android=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|apps/studio/src/connect/|apps/studio/connect\.html$|apps/studio/vite\.config\.ts$|apps/studio/package\.json$|pnpm-lock\.yaml$)"
+            "android=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|apps/studio/src/connect/|apps/studio/connect\.html$|apps/studio/vite\.config\.ts$|apps/studio/package\.json$|pnpm-lock\.yaml$|tooling/check/(licences\.json$|licence-texts/[^/]+\.txt$|src/(cli/sbom|lib/(gradle-notices|sbom|licences))\.ts$))"
             "agent_host=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/agent-host/|packages/adapters/e2e-noise/|package\.json$)"
             "studio=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/|packages/studio/)"
             "docs=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/docs/|docs/)"
@@ -1332,8 +1332,8 @@ jobs:
           --cargo apps/studio/src-tauri --cargo-target x86_64-pc-windows-msvc
       # The same for the Android app's targets (HAL-12585), whose crates
       # (jni, ndk and others) the Windows file doesn't list. The Gradle
-      # libraries are only known inside the Android build, so the Android
-      # Play build checks them.
+      # libraries are only known inside the Android build, so the android
+      # job checks them.
       - name: Licence notices (Rust crates, Android)
         working-directory: .
         run: >-
@@ -2540,6 +2540,19 @@ jobs:
           path: apps/studio/src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
           if-no-files-found: error
           retention-days: 7
+      # The Gradle libraries of the release build, checked on the pull request
+      # that changes them (HAL-12776): a new Tauri plugin brings its own
+      # through Cargo.lock or the plugin config, and only the Gradle build
+      # can list them. Same task and check as the Android Play build's
+      # notices, so a licence we don't allow fails here, not on release day.
+      # The Android crates are checked in the tauri job.
+      - name: Licence notices (Gradle libraries)
+        run: |
+          export JAVA_HOME="$JAVA_HOME_17_X64"
+          (cd apps/studio/src-tauri/gen/android && ./gradlew :app:thirdPartyLicences)
+          pnpm check:sbom --name halonic-studio-android --version 0.0.0-ci \
+            --out "$RUNNER_TEMP/notices-gradle" --notices \
+            --gradle apps/studio/src-tauri/gen/android/app/build/third-party/gradle-licences.json
       # Only after a good build, and not on an exact key hit (nothing new).
       # A failed build can leave Gradle's record that a module was not found
       # (a passing 404 from Maven Central), which Gradle trusts for 24 hours:

@@ -126,3 +126,51 @@ verifies("studio.android-third-party-notices", () => {
     expect(add).toContain('sha256sum -- "$APK" "$NOTICES" >> SHA256SUMS');
   });
 });
+
+verifies("studio.android-gradle-notices-check", () => {
+  it("runs the Android job for a change to the lockfiles, the plugins or the notices check", () => {
+    const ci = workflow("ci.yml");
+    const area = block(ci, '"android=', '"\n');
+    const pattern = new RegExp(area.slice('"android='.length));
+    for (const path of [
+      "apps/studio/src-tauri/Cargo.lock",
+      "apps/studio/src-tauri/Cargo.toml",
+      "apps/studio/src-tauri/capabilities/default.json",
+      "pnpm-lock.yaml",
+      "tooling/check/licences.json",
+      "tooling/check/licence-texts/Apache-2.0.txt",
+      "tooling/check/src/lib/gradle-notices.ts",
+      "tooling/check/src/cli/sbom.ts",
+    ]) {
+      expect(pattern.test(path), path).toBe(true);
+    }
+    expect(pattern.test("tooling/check/src/lib/layers.ts")).toBe(false);
+  });
+
+  it("lists the Gradle libraries after the debug APK and checks them with check:sbom", () => {
+    const ci = workflow("ci.yml");
+    const job = block(ci, "\n  android:\n", "\n  docs:\n");
+    const step = block(job, "- name: Licence notices (Gradle libraries)", "\n      - ");
+    expect(step).toContain("./gradlew :app:thirdPartyLicences");
+    expect(step).toContain("pnpm check:sbom");
+    expect(step).toContain("--notices");
+    expect(step).toContain(
+      "--gradle apps/studio/src-tauri/gen/android/app/build/third-party/gradle-licences.json",
+    );
+    expect(job.indexOf("- name: Licence notices (Gradle libraries)")).toBeGreaterThan(
+      job.indexOf("- name: Build the debug APK"),
+    );
+  });
+
+  it("reads the NOTICE files of JARs and AARs and leaves out pom-packaged modules", () => {
+    const text = gradle();
+    expect(text).toContain('Regex("^META-INF/NOTICE[^/]*$", RegexOption.IGNORE_CASE)');
+    const entry = block(text, "fun licenceEntry(", "\n}\n");
+    expect(entry).toContain('if (packaging == "pom") {\n        return null');
+    expect(entry).toContain('"notices" to (aar?.let { aarNotices(it) } ?: jar?.inputStream()');
+    expect(block(text, "fun aarNotices(", "\n\n")).toContain('zip.getEntry("classes.jar")');
+    expect(block(text, 'tasks.register("thirdPartyLicences")', "\n}\n")).toContain(
+      "modules.mapNotNull { licenceEntry(it) }",
+    );
+  });
+});
