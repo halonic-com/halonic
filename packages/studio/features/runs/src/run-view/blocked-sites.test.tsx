@@ -213,7 +213,7 @@ verifies("runs.run-view.blocked-sites", () => {
     expect(container.textContent).not.toContain("your computer");
   });
 
-  it("doesn't say no connection was made where that isn't proven yet (a run on Windows)", () => {
+  it("doesn't say no connection was made where that isn't proven (a vm sandbox, or MXC)", () => {
     const container = render(
       <BlockedSitesPanel
         step={stepOf(runLog(["a.example", 1]))}
@@ -236,9 +236,7 @@ verifies("runs.run-view.blocked-sites", () => {
     );
 
     expect(container.querySelector("button, a")).toBeNull();
-    expect(texts(container, "p").at(-1)).toBe(
-      "Fix this on your computer: Writer › Harness › Allowed sites",
-    );
+    expect(texts(container, "p").at(-1)).toBe("Fix this on your computer, in Writer's file.");
   });
 
   it("puts the heading in reach of focus, for the line that opened the entry", () => {

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { stepEventsWords } from "../run-words.ts";
 import { BlockedSitesPanel } from "./blocked-sites.tsx";
 import type { StepEntry } from "./every-step-model.ts";
-import { stepSandboxes } from "./sandbox-model.ts";
+import { noConnectionProven, stepSandboxes } from "./sandbox-model.ts";
 import { SandboxOffPanel, SandboxPanel, sayText } from "./sandbox-panel.tsx";
 import { stepBlockedSites, stepChildRuns, stepEvents } from "./step-events-model.ts";
 
@@ -33,10 +33,10 @@ export interface StepPanelProps {
  * Opening it moves focus to its title, and closing it moves focus back to
  * the entry (kit `SidePanel`).
  *
- * The Blocked sites part has no action yet: the Studio has no agent page to
- * open at its allowed sites, and the hint already says where to add a site.
- * It doesn't say "No connection was made." either, because the page can't
- * tell yet whether the run's sandbox has proven that (HAL-6219).
+ * The Blocked sites and sandbox parts have no desktop action yet: the agent
+ * page has no Allowed sites field to open (HAL-12658), and the hint already
+ * says where to add a site. The hint says "No connection was made." only
+ * where the step's sandbox has proven it ({@link noConnectionProven}).
  */
 export function StepPanel({
   entry,
@@ -50,6 +50,7 @@ export function StepPanel({
   const { modelCalls, toolCalls } = useMemo(() => stepEvents(log, entry.id), [log, entry.id]);
   const blocked = useMemo(() => stepBlockedSites(log, entry.id), [log, entry.id]);
   const sandboxes = useMemo(() => stepSandboxes(log, entry.id), [log, entry.id]);
+  const proven = useMemo(() => noConnectionProven(log, entry.id), [log, entry.id]);
   const children = stepChildRuns(log, entry.id, workflowName);
   const place = phone ? "phone" : "desktop";
   const frame = useRef<HTMLDivElement>(null);
@@ -90,7 +91,7 @@ export function StepPanel({
             <BlockedSitesPanel
               step={sites}
               agent={agent}
-              noConnectionProven={false}
+              noConnectionProven={proven}
               place="desktop"
             />
           </div>

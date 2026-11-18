@@ -5,7 +5,8 @@ import type { DeniedPathGroupCode } from "@halonicjs/events";
  * without touching a component. `{name}` marks a value filled in at run time. Placeholder text
  * until the board approves the sandbox screens (HAL-1784); the keys stay.
  *
- * Never "safe", "secure" or "protected" (microcopy 1.4).
+ * Never "safe", "secure" or "protected" (microcopy 1.4). The phone line names the agent's file,
+ * not "Harness": the agent's Harness page has no sandbox setting yet (HAL-12658).
  */
 export const sandboxWords = {
   "sandbox.line.sandbox": "In a sandbox",
@@ -45,7 +46,7 @@ export const sandboxWords = {
   "sandbox.panel.kind.remote": "A sandbox on another machine.",
   "sandbox.panel.not-covered":
     "Not covered: if {agent} changes a build script in {folder}, that script runs without the sandbox the next time you build.",
-  "sandbox.panel.phone-fix": "Change this on your computer: {agent} › Harness",
+  "sandbox.panel.phone-fix": "Change this on your computer, in {agent}'s file.",
   "sandbox.panel.action": "Change in {agent}'s settings",
   "sandbox.time.seconds.one": "1 second",
   "sandbox.time.seconds.many": "{count} seconds",

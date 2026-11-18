@@ -38,6 +38,28 @@ export function stepSandboxes(events: readonly RunEvent[], entryId: string): Ste
   });
 }
 
+/**
+ * Whether the Blocked sites hint may say "No connection was made." for the step whose entry is
+ * `entryId` (requirement `runs.run-view.blocked-sites`): only when each program the step started
+ * ran in an `os` sandbox. That is srt, whose fence suites prove no connection is made to a site
+ * its proxy refuses, on Linux, macOS and Windows (HAL-6219, HAL-12648). False for a `vm` or
+ * `remote` sandbox, an unreadable event, a step that ran without the sandbox, and an old run
+ * with no `sandbox.opened`.
+ *
+ * MXC is an `os` sandbox too and has no such suite yet. Nothing turns it on (HAL-2546); before
+ * something does, the log has to tell it apart from srt, or MXC has to pass the suite.
+ *
+ * @example
+ * noConnectionProven(events, "step-1"); // true: the step's one program ran in srt
+ */
+export function noConnectionProven(events: readonly RunEvent[], entryId: string): boolean {
+  const sandboxes = stepSandboxes(events, entryId);
+  return (
+    sandboxes.length > 0 &&
+    sandboxes.every((sandbox) => sandbox.kind === "opened" && sandbox.view.strength === "os")
+  );
+}
+
 /** The unit words of {@link timeLimitParts}: a count and which unit it is in. */
 export interface TimePart {
   readonly unit: "seconds" | "minutes" | "hours";
