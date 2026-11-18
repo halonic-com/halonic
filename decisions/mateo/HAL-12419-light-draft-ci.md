@@ -1,6 +1,6 @@
 # Decision: a draft pull request gets a light CI run
 
-- Approval: [HAL-12419](/HAL/issues/HAL-12419)
+- Approval: the task asks for this change (HAL-12419); Liam approves this note in review
 - Kind: internal
 
 ## What changes
