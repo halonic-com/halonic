@@ -3,6 +3,7 @@
 - Task: HAL-12902 (rows HELP A to E of the C96 CLI reference check on HAL-12897)
 - Approval: Liam placed HAL-12902, decided the HELP C wording and reviews this change on it (a team decision with no board card, HAL-2282 rule: wording fixes on text the board already approved). He signs this note.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Dwn+PFd8oqWaA0D4Tyq9bADtQMQyJLIM0tCETxWh02tMwspvJEDYoOHSbdutcuaHjsJgS1L8HXG8NJOhffvLCQ==
 
 ## What changes
 
