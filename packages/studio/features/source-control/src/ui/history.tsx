@@ -6,6 +6,9 @@ import { historyWords } from "../changes-words.ts";
 import { fullDate, groupByDay, timeOfDay } from "../history-days.ts";
 import { loadFailureReason } from "../load-failure.ts";
 
+/** How many versions a phone shows before "See all history". */
+const PHONE_HISTORY_ROWS = 5;
+
 /** Props for {@link History}. */
 export interface HistoryProps {
   readonly list: ChangesList;
@@ -71,6 +74,7 @@ function HistoryBody({
   readonly onPick: (id: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [seeAll, setSeeAll] = useState(false);
   const failed = history.error !== undefined && (
     <div role="alert" className="flex flex-col items-start gap-2">
       <p className="text-body text-danger">
@@ -105,6 +109,8 @@ function HistoryBody({
       setBusy(false);
     }
   };
+  const folded = phone && !seeAll && history.versions.length > PHONE_HISTORY_ROWS;
+  const shown = folded ? history.versions.slice(0, PHONE_HISTORY_ROWS) : history.versions;
   return (
     <>
       {failed || null}
@@ -113,7 +119,7 @@ function HistoryBody({
       ) : (
         <List
           label={historyWords.title}
-          groups={groupByDay(history.versions, now).map((day) => ({
+          groups={groupByDay(shown, now).map((day) => ({
             id: day.id,
             heading: { name: day.heading },
             rows: day.versions.map((version) => ({
@@ -126,20 +132,56 @@ function HistoryBody({
           onOpen={onPick}
         />
       )}
-      {history.more ? (
-        <div>
-          <Button
-            variant="secondary"
-            size={phone ? "touch" : "sm"}
-            block={phone}
-            busy={busy}
-            onClick={() => void showMore()}
-          >
-            {historyWords.showMore}
-          </Button>
-        </div>
-      ) : null}
+      <HistoryFooter
+        folded={folded}
+        more={history.more}
+        busy={busy}
+        phone={phone}
+        onSeeAll={() => setSeeAll(true)}
+        onShowMore={() => void showMore()}
+      />
     </>
+  );
+}
+
+/** See all history (a folded phone list) or Show more (older versions to read): one or neither. */
+function HistoryFooter({
+  folded,
+  more,
+  busy,
+  phone,
+  onSeeAll,
+  onShowMore,
+}: {
+  readonly folded: boolean;
+  readonly more: boolean;
+  readonly busy: boolean;
+  readonly phone: boolean;
+  readonly onSeeAll: () => void;
+  readonly onShowMore: () => void;
+}) {
+  if (folded) {
+    return (
+      <div>
+        <Button variant="secondary" size="touch" block onClick={onSeeAll}>
+          {historyWords.seeAll}
+        </Button>
+      </div>
+    );
+  }
+  if (!more) return null;
+  return (
+    <div>
+      <Button
+        variant="secondary"
+        size={phone ? "touch" : "sm"}
+        block={phone}
+        busy={busy}
+        onClick={onShowMore}
+      >
+        {historyWords.showMore}
+      </Button>
+    </div>
   );
 }
 

@@ -302,6 +302,8 @@ export const historyWords = {
   tryAgain: "Try again",
   noVersions: "No versions yet.",
   showMore: "Show more",
+  /** On a phone the newest few show first; this row shows the rest (552 5.1). */
+  seeAll: "See all history",
   today: "Today",
   yesterday: "Yesterday",
   /** The name of the box that shows the picked version. */
