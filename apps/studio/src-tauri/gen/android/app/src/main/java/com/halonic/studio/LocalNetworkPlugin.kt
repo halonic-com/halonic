@@ -29,7 +29,7 @@ private const val ANDROID_17 = 37
     Permission(strings = [PERMISSION], alias = ALIAS)
   ]
 )
-class LocalNetworkPlugin(activity: Activity) : Plugin(activity) {
+class LocalNetworkPlugin(private val host: Activity) : Plugin(host) {
   /**
    * Answers `{"granted": true}` when the app may reach the local network,
    * showing Android's own question first if the user hasn't answered it.
@@ -49,7 +49,7 @@ class LocalNetworkPlugin(activity: Activity) : Plugin(activity) {
   @PermissionCallback
   private fun localNetworkAnswered(invoke: Invoke) {
     val granted = getPermissionState(ALIAS) == PermissionState.GRANTED
-    answer(invoke, granted, !granted && activity.shouldShowRequestPermissionRationale(PERMISSION))
+    answer(invoke, granted, !granted && host.shouldShowRequestPermissionRationale(PERMISSION))
   }
 
   private fun answer(invoke: Invoke, granted: Boolean, askAgain: Boolean) {
