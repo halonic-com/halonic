@@ -3,6 +3,7 @@
 - Task: HAL-12394
 - Approval: Liam reviews this change on HAL-12394 (a team decision with no board card, HAL-2282 rule: the wording comes from the root README the board already approved). He signs this note.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:PyjarqSomNj9zXtz2jToyeBjIL72g9xMoukkOd/CjW71eFKLlQywMfrO82yyXfLqIiihSVRxARQC3aOsM3PfCA==
 
 ## What changes
 
