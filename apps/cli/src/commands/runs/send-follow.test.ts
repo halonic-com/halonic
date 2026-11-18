@@ -249,6 +249,8 @@ verifies("cli.commands.runs.send", () => {
       expect(io.stderr[0]).toBe(
         "✕ Couldn't send approve to run 01jd8q: the sandbox can't start on this computer. Nothing was sent.",
       );
+      // `runs send` has no --harness, so it doesn't suggest one (HAL-12597).
+      expect(io.stderr.join("\n")).not.toContain("--harness");
       expect(await eventsOfTheRun()).toEqual(before);
     });
   });

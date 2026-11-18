@@ -129,11 +129,33 @@ verifies("cli.run-sandbox-gate", () => {
     expect(code).toBe(exitCode.unavailable);
     expect(io.stderr).toEqual([
       "✕ Couldn't run support-reply: the sandbox can't start on this computer. Nothing ran.",
-      "  bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.",
+      "  bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again. Or run it with --harness halonic, which runs every agent in Halonic's own loop and needs no sandbox.",
       "  More: https://docs.halonic.dev/security/sandbox/#bubblewrap (bubblewrap-missing)",
     ]);
     expect(io.stdout).toEqual([]);
     expect(await runsKept()).toBe(0);
+  });
+
+  it("never suggests On this computer as the way out of a refusal (HAL-12597)", async () => {
+    await writerWith("harness: claude-code\n");
+
+    const { io } = await run(bubblewrapMissing);
+
+    // Line 1's "can't start on this computer." is lower case; the choice is "On this computer".
+    expect(io.stderr.join("\n")).not.toContain("On this computer");
+  });
+
+  it("runs the same workflow with --harness halonic when the sandbox can't start, as the hint says", async () => {
+    // A workspace with an agent in Claude Code isn't local only, or the file wouldn't validate.
+    const workspaceFile = join(acme, "workspace.yaml");
+    const settings = await readFile(workspaceFile, "utf8");
+    await writeFile(workspaceFile, settings.replace("localOnly: true", "localOnly: false"));
+    await writerWith("harness: claude-code\n");
+
+    const { code } = await run(bubblewrapMissing, "--harness", "halonic");
+
+    expect(code).toBe(exitCode.ok);
+    expect(checks).toBe(0);
   });
 
   it("doesn't check the sandbox for a workflow whose agents all run in Halonic", async () => {
