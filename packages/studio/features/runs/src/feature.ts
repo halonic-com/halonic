@@ -68,12 +68,17 @@ export const runsFeature = defineFeature({
           // couldn't search everything instead of showing "no results".
           if (!list.state.loaded) throw list.state.error;
         }
-        return findRuns(listRows(list, new Date()), query).map((row) => ({
-          item: { kind: "run", hub: row.hubId, id: row.id },
-          label: searchWords.label(row.shortId, row.workflow),
-          detail: searchWords.detail(row.hubId),
-          description: row.line,
-        }));
+        return findRuns(listRows(list, new Date()), query).map((row) => {
+          // The hub's name, as every other item's row shows it; its id when its file is gone.
+          const hubName = list.source.hubName?.(row.hubId) ?? row.hubId;
+          return {
+            item: { kind: "run", hub: row.hubId, id: row.id },
+            label: searchWords.label(row.shortId, row.workflow),
+            detail: searchWords.detail(hubName),
+            hubName,
+            description: row.line,
+          };
+        });
       },
     });
     studio.itemKinds.add({

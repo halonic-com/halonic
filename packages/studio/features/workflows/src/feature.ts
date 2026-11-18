@@ -53,14 +53,16 @@ export const workflowsFeature = defineFeature({
               text.toLowerCase().includes(needle),
             ),
           )
-          .map((each) => ({
-            item: { kind: "workflow", hub: each.hubId, id: each.id },
-            label: each.name,
-            detail: searchWords.detail(
-              host.hubs().find((hub) => hub.id === each.hubId)?.name ?? each.hubId,
-            ),
-            ...(each.description === undefined ? {} : { description: each.description }),
-          }));
+          .map((each) => {
+            const hubName = host.hubs().find((hub) => hub.id === each.hubId)?.name ?? each.hubId;
+            return {
+              item: { kind: "workflow", hub: each.hubId, id: each.id },
+              label: each.name,
+              detail: searchWords.detail(hubName),
+              hubName,
+              ...(each.description === undefined ? {} : { description: each.description }),
+            };
+          });
       },
     });
     studio.commands.add({

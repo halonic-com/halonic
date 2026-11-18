@@ -56,13 +56,13 @@ export const routinesFeature = defineFeature({
           const { hubId } = each;
           const matches = [each.name, each.id].some((text) => text.toLowerCase().includes(needle));
           if (hubId === null || !matches) return [];
+          const hubName = host.hubs().find((hub) => hub.id === hubId)?.name ?? hubId;
           return [
             {
               item: { kind: "routine", hub: hubId, id: each.id },
               label: each.name,
-              detail: searchWords.detail(
-                host.hubs().find((hub) => hub.id === hubId)?.name ?? hubId,
-              ),
+              detail: searchWords.detail(hubName),
+              hubName,
               description: each.summary,
             },
           ];

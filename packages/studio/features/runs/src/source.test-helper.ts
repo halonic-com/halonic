@@ -12,7 +12,7 @@ const morningBrief: RunRoutine = { name: "Morning brief", schedule: "Weekdays at
 /**
  * A source whose runs, logs and failures a test sets; every run is in
  * Support reply, made no tool call and costs euros. A run without a log
- * in `initialLogs` has an empty one. Its providers are `mock` and `ollama` (local) and `claude` (cloud). Its one routine is
+ * in `initialLogs` has an empty one. Its one hub is `acme`, named Acme. Its providers are `mock` and `ollama` (local) and `claude` (cloud). Its one routine is
  * `acme/morning-brief`, Morning brief, on weekdays at 08:00.
  */
 export function fakeSource(
@@ -37,6 +37,7 @@ export function fakeSource(
       return [...(logs[runId] ?? [])];
     },
     workflow: () => supportReply,
+    hubName: (hubId) => (hubId === "acme" ? "Acme" : undefined),
     routine: (key) => (key === "acme/morning-brief" ? morningBrief : undefined),
     runnableWorkflows: async () => {
       if (workflowNames instanceof Error) throw workflowNames;
