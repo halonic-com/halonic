@@ -18,7 +18,7 @@ const C = { x: 240, y: 0 };
 const D = { x: 240, y: 120 };
 
 verifies("workflows.canvas.point-of-light-rest", () => {
-  it("floats 1 px, inside the dot, and breathes the glow between 55 % and 100 %", () => {
+  it("floats 1 px, with the core always covering the dot, and breathes the glow between 55 % and 100 %", () => {
     let low = 9;
     let high = 0;
     for (let ms = LIGHT_REST_EASE_MS; ms <= 14_400 + LIGHT_REST_EASE_MS; ms += 50) {
@@ -32,8 +32,8 @@ verifies("workflows.canvas.point-of-light-rest", () => {
     expect(restPose(7000).offset.x).toBeCloseTo(1);
   });
 
-  it("derives the float radius from the dot and the core", () => {
-    expect(LIGHT_FLOAT_RADIUS).toBe((LIGHT_DOT - LIGHT_CORE) / 2);
+  it("derives the float radius from the core and the dot, so the core always covers the dot", () => {
+    expect(LIGHT_FLOAT_RADIUS).toBe((LIGHT_CORE - LIGHT_DOT) / 2);
     expect(LIGHT_FLOAT_RADIUS).toBe(1);
   });
 

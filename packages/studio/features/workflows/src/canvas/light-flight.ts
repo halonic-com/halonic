@@ -10,13 +10,13 @@ import {
 
 /** The status dot, the light's core and its glow, in pixels (`--point-of-light-core`, `--point-of-light-glow`). */
 export const LIGHT_DOT = 10;
-export const LIGHT_CORE = 8;
+export const LIGHT_CORE = 12;
 export const LIGHT_GLOW = 24;
 /**
  * How far the resting light floats from its dot, in pixels (`--point-of-light-float`), and how
- * long one turn takes. The core stays inside the dot: radius is at most (dot - core) / 2, 1 px.
+ * long one turn takes. The core covers the dot: the dot stays inside the core while it floats, so the radius is at most (core - dot) / 2, 1 px.
  */
-export const LIGHT_FLOAT_RADIUS = (LIGHT_DOT - LIGHT_CORE) / 2;
+export const LIGHT_FLOAT_RADIUS = (LIGHT_CORE - LIGHT_DOT) / 2;
 export const LIGHT_FLOAT_MS = 7000;
 /**
  * One way of the breath, in milliseconds, and the glow opacity it moves between

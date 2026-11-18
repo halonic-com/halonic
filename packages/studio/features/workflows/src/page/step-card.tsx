@@ -70,8 +70,8 @@ export function StepCard({
           data-testid="status-dot"
           data-mark={mark}
           style={{
-            left: box.width - DOT_INSET - DOT / 2,
-            top: DOT_INSET - DOT / 2,
+            left: box.width - DOT_INSET - DOT / 2 - CARD_BORDER,
+            top: DOT_INSET - DOT / 2 - CARD_BORDER,
             width: DOT,
             height: DOT,
           }}
@@ -89,8 +89,10 @@ export function StepCard({
 }
 
 /** The status dot's size and its centre's distance from the card's top-right corner, in px. */
-const DOT = 10;
+export const DOT = 10;
 const DOT_INSET = 14;
+/** The card's border width: an absolute child is placed from inside it, `dotCentre` from the outer edge. */
+export const CARD_BORDER = 1;
 
 const DOT_COLOUR: Record<StepMark, string> = {
   done: "bg-success",
