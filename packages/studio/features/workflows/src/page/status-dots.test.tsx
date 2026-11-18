@@ -50,7 +50,14 @@ verifies("workflows.canvas.status-dots", () => {
     const step = reply.steps[0];
     if (step === undefined) throw new Error("fixture has no step");
     const page = await show(
-      <StepCard step={step} box={box} first={false} selected={false} mark="waiting" />,
+      <StepCard
+        step={step}
+        box={box}
+        first={false}
+        selected={false}
+        mark="waiting"
+        onSelect={() => {}}
+      />,
     );
     const dot = page.querySelector<HTMLElement>("[data-testid=status-dot]");
     const centre = dotCentre(box);
