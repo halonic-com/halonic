@@ -7,6 +7,7 @@ import type {
   KnowledgeSource,
   SummarizeOutcome,
 } from "@halonicjs/studio-feature-library/api";
+import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import {
   filesOf,
   isOnThisMachine,
@@ -31,6 +32,8 @@ export interface WorkspaceKnowledgeParts extends WorkspaceSkillsParts {
  * message is left out: it can name an address. `undefined` for an error that isn't the host's.
  */
 function refusalOf(error: unknown): SummarizeOutcome | undefined {
+  // The transport's error for a host that isn't running (`AgentHostNotAnswering`).
+  if (error instanceof EngineNotAnswering) return { kind: "host-unreachable" };
   if (!(error instanceof AgentHostError)) return undefined;
   switch (error.kind) {
     case "provider_not_on_this_machine":
