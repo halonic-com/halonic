@@ -12,7 +12,13 @@ import type {
   HarnessReadiness,
   NewAgent,
 } from "@halonicjs/studio-feature-agents/api";
-import { filesOf, loadWorkspace, modelAliases } from "@halonicjs/workspace";
+import {
+  filesOf,
+  loadWorkspace,
+  modelAliases,
+  resolveModel,
+  settingsPath,
+} from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
 
 /** What {@link WorkspaceAgents} needs of the workspace's files. */
@@ -192,6 +198,20 @@ export class WorkspaceAgents implements AgentsHost {
     return { agent: file.value, path: file.path };
   }
 
+  /**
+   * The hub's default model, else the workspace's; `undefined` when neither names one, or the one
+   * named is neither an alias nor a `provider/model` name.
+   */
+  async defaultModel(hubId: string): Promise<string | undefined> {
+    const workspace = await this.#load();
+    const hub = filesOf(workspace, "hub").find((file) => file.hub === hubId)?.value;
+    const settings = filesOf(workspace, "workspace")[0]?.value;
+    const name = hub?.defaults.model ?? settings?.defaults.model;
+    return name !== undefined && resolveModel(workspace, hubId, name) !== undefined
+      ? name
+      : undefined;
+  }
+
   /** The workflows of the agent's hub that run it in a step; throws `not_found` when the agent isn't there. */
   async referencesTo({ hubId, id }: AgentRef): Promise<readonly AgentUser[]> {
     const workspace = await this.#load();
@@ -240,14 +260,16 @@ export class WorkspaceAgents implements AgentsHost {
     return workspace;
   }
 
-  /** The workspace's hubs and its `models.yaml` as files, with unsaved changes applied. */
+  /** The workspace's hubs, its `models.yaml` and its settings as files, with unsaved changes applied. */
   #source(): DefinitionSource {
     const { files } = this.#parts;
+    const existing = async (path: string) => ((await files.read(path)) === null ? [] : [path]);
     return {
       location: "workspace:unsaved",
       list: async () => [
         ...(await files.list("hubs")),
-        ...((await files.read(modelsFile)) === null ? [] : [modelsFile]),
+        ...(await existing(modelsFile)),
+        ...(await existing(settingsPath)),
       ],
       read: (path) => files.read(path),
       version: async () => "unsaved",

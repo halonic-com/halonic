@@ -9,7 +9,7 @@ import {
   usePresentation,
 } from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AgentHub, AgentRef, NewAgent } from "../api.ts";
 import { agentFilePath } from "./agent-file.ts";
 import { newAgentWords as words } from "./new-agent-words.ts";
@@ -24,8 +24,8 @@ export interface NewAgentDialogProps {
   /** After the agent is written: the caller opens it in its tab. */
   readonly onCreated: (ref: AgentRef) => void;
   readonly onCancel: () => void;
-  /** Whether the workspace has no default model, so the dialog says the agent starts without one. */
-  readonly noDefaultModel?: boolean | undefined;
+  /** The model a new agent of the hub starts with; `undefined` when there is none, so the dialog says so. */
+  readonly defaultModelOf: (hubId: string) => Promise<string | undefined>;
   readonly returnFocus: () => HTMLElement | null;
 }
 
@@ -43,7 +43,7 @@ export function NewAgentDialog({
   create,
   onCreated,
   onCancel,
-  noDefaultModel,
+  defaultModelOf,
   returnFocus,
 }: NewAgentDialogProps) {
   const [name, setName] = useState("");
@@ -51,6 +51,19 @@ export function NewAgentDialog({
   // The hubs can arrive or change while the dialog is open; a hub that's gone falls back to the first.
   const hubId = hubs.some((hub) => hub.id === chosenHub) ? chosenHub : (hubs[0]?.id ?? "");
   const phone = usePresentation() === "phone";
+  // Whether the picked hub has a default model: unknown until the read answers, or when it fails.
+  const [hasDefaultModel, setHasDefaultModel] = useState<boolean>();
+  useEffect(() => {
+    let current = true;
+    setHasDefaultModel(undefined);
+    defaultModelOf(hubId).then(
+      (model) => current && setHasDefaultModel(model !== undefined),
+      () => undefined,
+    );
+    return () => {
+      current = false;
+    };
+  }, [defaultModelOf, hubId]);
   const [instructions, setInstructions] = useState("");
   const [instructionsProblem, setInstructionsProblem] = useState<string>();
   const [problem, setProblem] = useState<string>();
@@ -63,8 +76,8 @@ export function NewAgentDialog({
   const fileText = file.kind === "file" ? words.file(file.path) : words.folder(file.path);
   // The phone sheet has no room for the file line (microcopy 8.2).
   const fileLine = phone ? undefined : fileText;
-  const desktopNote = noDefaultModel ? words.noModel : undefined;
-  const note = phone ? words.phoneNote : desktopNote;
+  const modelNote = hasDefaultModel ? words.startNote : words.noModel;
+  const note = hasDefaultModel === undefined ? undefined : modelNote;
 
   async function submit() {
     setFailure(undefined);

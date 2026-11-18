@@ -20,6 +20,8 @@ export interface ModelPageProps {
   readonly settings: AgentSettings;
   /** The model aliases the agent's hub can use. */
   readonly aliases: readonly string[];
+  /** The model the agent runs on while its file names none; `undefined` when the workspace has no default. */
+  readonly defaultModel?: string | undefined;
   /** Saves one change; rejects with the reason it couldn't write. */
   readonly save: (change: AgentChange) => Promise<void>;
 }
@@ -28,7 +30,7 @@ export interface ModelPageProps {
  * The Model page (`agents.configuration.model`): the model, picked from the workspace's aliases,
  * and the turn limit. Both save by themselves. A turn limit with a mistake isn't saved.
  */
-export function ModelPage({ settings, aliases, save }: ModelPageProps) {
+export function ModelPage({ settings, aliases, defaultModel, save }: ModelPageProps) {
   const [model, setModel] = useState(settings.model ?? "");
   useEffect(() => setModel(settings.model ?? ""), [settings.model]);
   const turnLimit = useAutoSaved(
@@ -45,7 +47,9 @@ export function ModelPage({ settings, aliases, save }: ModelPageProps) {
         <Select
           options={options}
           value={model}
-          placeholder={words.chooseModel}
+          placeholder={
+            defaultModel === undefined ? words.chooseModel : words.workspaceDefault(defaultModel)
+          }
           onChange={(next) => {
             setModel(next);
             void save({ model: next });

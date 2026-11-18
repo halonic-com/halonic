@@ -15,6 +15,8 @@ export interface ConfigurationProps {
   readonly load: Load<AgentSettings>;
   /** The model aliases the agent's hub can use, for the Model page. */
   readonly aliases: Load<readonly string[]>;
+  /** The model an agent without one uses; `undefined` when the workspace has no default. */
+  readonly defaultModel: string | undefined;
   readonly retryAliases: () => void;
   readonly retry: () => void;
   readonly save: (change: AgentChange) => Promise<void>;
@@ -34,6 +36,7 @@ export function Configuration({
   name,
   load,
   aliases,
+  defaultModel,
   retryAliases,
   retry,
   save,
@@ -97,6 +100,7 @@ export function Configuration({
                 <ModelPage
                   settings={load.value}
                   aliases={aliases.kind === "ready" ? aliases.value : []}
+                  defaultModel={defaultModel}
                   save={save}
                 />
               ))}

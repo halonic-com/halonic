@@ -13,6 +13,8 @@ export const configurationWords = {
   model: "Model",
   /** Shown in the picker while the file names no model, or one that no longer exists. */
   chooseModel: "Choose a model",
+  /** Shown in the picker while the file names no model and the workspace has a default (HAL-12214 A5). */
+  workspaceDefault: (name: string) => `Workspace default (${name})`,
   noAliases: "No models yet. Add one in Models.",
   turnLimit: "Turn limit",
   turnLimitHint: "The most model calls in one run. Empty means 6.",

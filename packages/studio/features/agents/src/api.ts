@@ -107,6 +107,11 @@ export interface AgentsHost {
   /** The model aliases the agent's hub can use, by name, in the order the Models pages list them; empty when there are none. */
   modelAliases(ref: AgentRef): Promise<readonly string[]>;
   /**
+   * The model an agent of this hub uses when its file names none: the hub's default, else the
+   * workspace's; `undefined` when neither names one. Rejects with the reason it couldn't read it.
+   */
+  defaultModel(hubId: string): Promise<string | undefined>;
+  /**
    * Whether `harness` can run on this computer, for this agent (its sign-in is the agent's own).
    * Never rejects: a check that didn't work answers `failed`. `halonic` is always `ready`.
    */

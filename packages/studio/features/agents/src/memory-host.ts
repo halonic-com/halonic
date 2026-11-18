@@ -24,6 +24,8 @@ export interface MemoryAgentsHostOptions {
   readonly readiness?: Readonly<Partial<Record<AgentHarnessId, HarnessReadiness>>> | undefined;
   /** The model aliases every hub can use. */
   readonly modelAliases?: readonly string[] | undefined;
+  /** The model an agent without one uses; none when left out. */
+  readonly defaultModel?: string | undefined;
   /** The workflows that run each agent, keyed by `hubId/id` of the agent. */
   readonly users?: Readonly<Record<string, readonly AgentUser[]>> | undefined;
 }
@@ -77,6 +79,7 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       found(ref);
       return options.modelAliases ?? [];
     },
+    defaultModel: async () => options.defaultModel,
     harnessReadiness: async (ref, harness) => {
       found(ref);
       return harness === "halonic"
