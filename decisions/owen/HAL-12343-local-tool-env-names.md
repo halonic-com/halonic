@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12343; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LkeCLnoL/E9UU8V5rWFAs6Aur+KEG3kKRDLKnbkzJRVT/9YeLB8M/S/d0lMRU/ZulaiwHZQvTPbTWxFcU4gQBA==
 
 A local tool's `env` could name `HOME`, `PATH` or a temp folder variable, and a secret of that name was set after Halonic's own variables, so it replaced the tool's home or temp folder. Halonic sets these itself, inside the session.
 
