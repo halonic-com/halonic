@@ -9,10 +9,10 @@ When the open run's status changes, the run page shall read its new state once t
 - needs you: "Run _id_ needs you. Waiting for your approval: _ask_." for an approval, where _ask_ is the banner's "_Agent_ wants to _action_" with the tool's connector in brackets when it has one; for a wait step, "Run _id_ needs you." and then the banner's own words ("Waiting for you: _description_", or "Waiting for you in the step _step_." without a description);
 - running again: "Run _id_ is running again.";
 - waiting, not for the person: "Run _id_ is waiting until _time_.", "Run _id_ is waiting for child run _child id_.", or "Run _id_ is waiting.";
-- done: "Run _id_ finished." and then, only when there is any, what it sent or saved and its estimated cost, as the receipt's summary line says them, joined by commas, never its "Finished in" part. It shall wait until the run's log has the run's end, so it is read once, whole;
-- failed: "Run _id_ failed in the step _step_. The banner at the top says what to do.", or "Run _id_ failed. The banner at the top says what to do." for a run that never reached a step;
+- a finished run: "Run _id_ finished." and then, only when there is any, what it sent or saved and its estimated cost, as the receipt's summary line says them, joined by commas, never its "Finished in" part. It shall wait until the run's log has the run's end, so it is read once, whole;
+- a failed run: "Run _id_ failed in the step _step_. The banner at the top says what to do.", or "Run _id_ failed. The banner at the top says what to do." for a run that never reached a step;
 - stopped at its budget: "Run _id_ stopped at its budget: estimated _spent_ of _budget_.", or "Run _id_ stopped at its budget." when the cause has no figures;
-- cancelled: "Run _id_ was cancelled in the step _step_.", or "Run _id_ was cancelled." before a step;
+- a cancelled run: "Run _id_ was cancelled in the step _step_.", or "Run _id_ was cancelled." before a step;
 - couldn't try: "Run _id_ couldn't try the step _step_.".
 
 The state the page first shows shall not be read, and neither shall the page moving on to another run.
