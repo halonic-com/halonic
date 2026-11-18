@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12617 (row C2 of the keyboard and screen-reader check on HAL-12584; a focus fix on an approved screen with no new words, team decision, HAL-2282 rule; Liam's code review)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:YuxK44sRQPTupx99IVFcO0hdIkRp5SvJpEuse5IpWeUAnYQUEyMQd8Dsu/3lmFuHsuTXVDnSf6O321EhRtpUDQ==
 
 ## What changes
 
