@@ -66,10 +66,11 @@ verifies("first-run.sample-card", () => {
     expect(text).toContain("An invented customer asks for a refund.");
   });
 
-  it("counts the done steps, marks them for a screen reader, and opens a step by its row", () => {
+  it("counts the done steps, marks them for a screen reader, and opens a step to do by its row", () => {
     const start = vi.fn();
+    const decide = vi.fn();
     const root = render(
-      <SampleSteps progress={progressWith(["start"])} openers={{ ...noOpeners, start }} />,
+      <SampleSteps progress={progressWith(["start"])} openers={{ ...noOpeners, start, decide }} />,
     );
     expect(root.querySelector("p")?.textContent).toBe("1 of 3 done");
     const first = root.querySelector<HTMLElement>('[role="gridcell"]');
@@ -79,7 +80,9 @@ verifies("first-run.sample-card", () => {
       "Step 2 of 3: Approve or reject the reply, not done",
     );
     act(() => first?.click());
-    expect(start).toHaveBeenCalledOnce();
+    expect(start).not.toHaveBeenCalled();
+    act(() => (rows[1] as HTMLElement | undefined)?.click());
+    expect(decide).toHaveBeenCalledOnce();
   });
 
   it("draws Get set up's rows: number circles, a success tick, the done title muted, a chevron to do", () => {

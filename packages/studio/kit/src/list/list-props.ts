@@ -48,8 +48,8 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
    */
   readonly label?: string;
   /**
-   * The title in `fg-muted`, as a done setup step's (`SetupSteps`): it's finished, but still
-   * opens. Not struck through, which reads as "cancelled".
+   * The title in `fg-muted`, as a done setup step's (`SetupSteps`): it's finished. Not struck
+   * through, which reads as "cancelled".
    */
   readonly muted?: boolean;
   readonly tag?: never;

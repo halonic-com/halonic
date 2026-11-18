@@ -74,7 +74,7 @@ verifies("kit.setup-steps", () => {
     expect(todo.textContent).toContain("The run waits for you before it finishes.");
   });
 
-  it("reads each row as its label and opens a step by its row", () => {
+  it("reads each row as its label, opens a step to do by its row and does nothing for a done one", () => {
     const onOpen = vi.fn();
     const { container } = render(
       <SetupSteps label="Try the sample" steps={steps} onOpen={onOpen} />,
@@ -86,7 +86,9 @@ verifies("kit.setup-steps", () => {
     expect(cells.map((cell) => cell.getAttribute("aria-label"))).toEqual(
       steps.map((step) => step.label),
     );
+    act(() => cells[0]?.click());
+    expect(onOpen).not.toHaveBeenCalled();
     act(() => cells[1]?.click());
-    expect(onOpen).toHaveBeenCalledWith("decide");
+    expect(onOpen).toHaveBeenCalledExactlyOnceWith("decide");
   });
 });

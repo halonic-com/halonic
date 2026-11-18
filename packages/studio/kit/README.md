@@ -810,7 +810,7 @@ A row has a `title`, an optional `meta` line (cut with an ellipsis), a 20px `ico
 32px `dense` row, as in a Menu item) or a 28px `avatar` (both hidden from screen readers), a
 `trailing` chip or value, a `more` button (`{ label, onClick }`, its label naming the row),
 `unavailable` (`{ reason }`), `error` (`{ reason, chip }`) and `muted`, a title in `fg-muted`
-for a finished step that still opens. Unlike the Button's, an unavailable row's `reason` is the text itself: the
+for a finished step. Unlike the Button's, an unavailable row's `reason` is the text itself: the
 List draws it in place of the meta line and points `aria-describedby` at it.
 
 ```tsx
@@ -933,7 +933,8 @@ keyboard, focus and phone look. Each step is a 56px row: a 24px circle with its 
 while to do; the title in `text-body-strong` with its `hint` under it; and a chevron at the right
 edge while it isn't done. A done step has a filled `success` circle with a tick, its title in
 `fg-muted` (not struck through, which reads as "cancelled") and no chevron. Each row is read as its
-`label`. The card draws its "N of 3 done" line and decides what a done step does on `onOpen`.
+`label`. `onOpen` gets the steps still to do; a done step's row does nothing. The card draws its
+"N of 3 done" line.
 
 ```tsx
 <SetupSteps

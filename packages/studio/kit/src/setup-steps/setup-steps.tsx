@@ -24,7 +24,7 @@ export interface SetupStepsProps<Id extends string = string> {
   readonly label: string;
   /** In order: each step's number is its place. */
   readonly steps: readonly SetupStep<Id>[];
-  /** Enter or a click on a step's row. The card decides what a done step does. */
+  /** Enter or a click on the row of a step still to do. A done step's row does nothing. */
   readonly onOpen: (id: Id) => void;
 }
 
@@ -62,7 +62,7 @@ function StepChevron() {
  * The steps of a setup card, as Get set up's and the sample's Try the sample (HAL-477 2.2, first
  * run 3.3): a 56px row each with a 24px number circle, the title and its hint, and a chevron while
  * it isn't done. A done step has a `success` circle with a tick and its title in `fg-muted`, not
- * struck through, and no chevron.
+ * struck through, and no chevron, and its row does nothing: there's nothing left to do there.
  */
 export function SetupSteps<Id extends string>({ label, steps, onOpen }: SetupStepsProps<Id>) {
   const rows: ListRow<Id>[] = steps.map((step, index) => ({
@@ -74,5 +74,9 @@ export function SetupSteps<Id extends string>({ label, steps, onOpen }: SetupSte
     muted: step.done,
     trailing: step.done ? undefined : <StepChevron />,
   }));
-  return <List label={label} rows={rows} onOpen={onOpen} />;
+  const done = new Set(steps.filter((step) => step.done).map((step) => step.id));
+  const openStepToDo = (id: Id) => {
+    if (!done.has(id)) onOpen(id);
+  };
+  return <List label={label} rows={rows} onOpen={openStepToDo} />;
 }
