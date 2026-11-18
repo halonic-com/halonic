@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-12227 (Library's "Open the docs folder"); plan approved on HAL-12255
 
-Another feature shall be able to ask the file tree to show a path with `requestFilesReveal(path)` from the Files `api.ts`. The path is read from the workspace folder; the request shall drop `.` and empty segments, and an absolute path, a drive, or a path with a `..` segment shall ask for nothing. A request made before the tree is listed shall wait until it is, the latest request shall win, and the tree shall take it once. The tree shall then open the folders down to the path's row and focus it; for a folder, it shall open that folder too. The tree lists only folders that hold files, so when the path isn't in the tree, the tree shall show the deepest folder on the path that is, and when not even the top folder is, the tree's first row, opening nothing. A request shall create nothing and write nothing.
+The Files `api.ts` shall offer `requestFilesReveal(path)`, with which another feature asks the file tree to show a path. The path is read from the workspace folder; the request shall drop `.` and empty segments, and an absolute path, a drive, or a path with a `..` segment shall ask for nothing. A request made before the tree is listed shall wait until it is, the latest request shall win, and the tree shall take it once. The tree shall then open the folders down to the path's row and focus it; for a folder, it shall open that folder too. The tree lists only folders that hold files, so when the path isn't in the tree, the tree shall show the deepest folder on the path that is, and when not even the top folder is, the tree's first row, opening nothing. A request shall create nothing and write nothing.
 
 ## Examples
 
