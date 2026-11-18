@@ -270,6 +270,7 @@ export function WorkflowScreen({
           dock={dock}
           host={host}
           workflow={{ hubId, id }}
+          workflowName={name}
           notAnswering={notAnswering}
           shown={shown}
           onDock={setDock}

@@ -36,12 +36,26 @@ export function useShownRun(
   }, [runs, runId, workflow.hubId, workflow.id, source]);
 }
 
+/** The run input of the workflow's first test, as JSON text; `undefined` when it has no test or they can't be read. */
+async function firstTestInput(
+  host: WorkflowsHost,
+  workflow: WorkflowRef,
+): Promise<string | undefined> {
+  try {
+    return (await host.tests(workflow)).cases[0]?.input;
+  } catch {
+    return undefined;
+  }
+}
+
 export type Dock = "start" | { readonly runId: string } | undefined;
 
 interface RunDockProps {
   readonly dock: Dock;
   readonly host: WorkflowsHost;
   readonly workflow: WorkflowRef;
+  /** The workflow's name, for the start card's title. */
+  readonly workflowName: string;
   readonly notAnswering: string;
   readonly shown: ReturnType<typeof useShownRun>;
   readonly onDock: (next: Dock) => void;
@@ -58,6 +72,7 @@ export function RunDock({
   dock,
   host,
   workflow,
+  workflowName,
   notAnswering,
   shown,
   onDock,
@@ -82,6 +97,8 @@ export function RunDock({
   if (dock === "start" && startRun) {
     return (
       <StartRunCard
+        workflowName={workflowName}
+        firstTestInput={() => firstTestInput(host, workflow)}
         start={(input) => startRun.call(host, workflow, input)}
         notAnswering={notAnswering}
         onStarted={(runId) => {

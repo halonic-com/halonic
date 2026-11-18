@@ -230,4 +230,54 @@ verifies("workflows.start.start-run", () => {
     expect(page.textContent).toContain("The input has to be a JSON object, such as {}.");
     expect(started).not.toHaveBeenCalled();
   });
+
+  /** The page with a host whose tests are `cases`, and the card open. */
+  async function openWithTests(inputs: readonly string[]) {
+    const { host } = memoryHost([], [], [reply], [], {
+      startRun: async () => ({ runId: "run_mfx3k2a1_01jd8q" }),
+      tests: async () => ({ cases: inputs.map((input, n) => ({ name: `case ${n}`, input })) }),
+    });
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
+    await click(runButton(page));
+    return page;
+  }
+
+  it("titles the card with the workflow's name", async () => {
+    const page = await openWithTests([]);
+
+    expect(page.querySelector("aside h2")?.textContent).toBe("Run Support reply");
+  });
+
+  it("fills the input from the first test and says so", async () => {
+    const page = await openWithTests(['{"from": "a@example.com"}', '{"from": "b@example.com"}']);
+
+    expect(page.querySelector("textarea")?.value).toBe('{"from": "a@example.com"}');
+    expect(page.textContent).toContain("Filled from the first test.");
+  });
+
+  it("keeps {} and says nothing when the workflow has no test", async () => {
+    const page = await openWithTests([]);
+
+    expect(page.querySelector("textarea")?.value).toBe("{}");
+    expect(page.textContent).not.toContain("Filled from the first test.");
+  });
+
+  it("drops the note once the person types", async () => {
+    const page = await openWithTests(['{"from": "a@example.com"}']);
+    await typeInput(page, "{}");
+
+    expect(page.textContent).not.toContain("Filled from the first test.");
+  });
+
+  it("closes the card with Cancel and starts nothing", async () => {
+    const started = vi.fn(async () => ({ runId: "x" }));
+    const { page } = await open(started);
+    await click(runButton(page));
+    await click(buttonNamed(page, "Cancel"));
+
+    expect(page.querySelector("aside[aria-label='Start run']")).toBeNull();
+    expect(started).not.toHaveBeenCalled();
+  });
 });
