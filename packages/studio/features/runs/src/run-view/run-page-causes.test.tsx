@@ -136,6 +136,37 @@ verifies("runs.run-view.failure-banners", () => {
   });
 });
 
+verifies("runs.run-view.failure-banners", () => {
+  const stopped = summaryWith({
+    id: "run_d_8q3v5t",
+    status: "failed",
+    reason: "budget",
+    state: "draft",
+    error: "Run budget reached: 0.52 of 0.50 EUR spent.",
+    cause: {
+      kind: "limit_reached",
+      code: "budget.run",
+      detail: { limit: "0.5", spent: "0.52", currency: "EUR" },
+    },
+    endedAt: mondayMorning.toISOString(),
+  });
+  const button = (root: HTMLElement, name: string) =>
+    [...root.querySelectorAll("button")].find((candidate) => candidate.textContent === name);
+
+  it("opens the budget from a budget stop's banner", async () => {
+    let opened = 0;
+    const root = await openOn("desktop", stopped, { openModels: () => opened++ });
+    expect(root.textContent).toContain("Change the budget, then run again.");
+    await act(async () => button(root, "Change budget")?.click());
+    expect(opened).toBe(1);
+  });
+
+  it("leaves out Change budget where the page can't open Models", async () => {
+    const root = await openOn("desktop", stopped);
+    expect(button(root, "Change budget")).toBeUndefined();
+  });
+});
+
 verifies("runs.run-view.slow-step-line", () => {
   it("draws the line when the step turns 10 seconds quiet, without a new event", async () => {
     const run = summaryWith({ id: "run_b_01jd8q", state: "draft", statesVisited: ["draft"] });
