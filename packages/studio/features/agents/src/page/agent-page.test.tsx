@@ -32,7 +32,9 @@ verifies("agents.page.frame", () => {
 
     expect(page.textContent).toContain("AGENT");
     expect(page.querySelector("h1")?.textContent).toBe("Sorter");
-    expect(page.textContent).toContain("Runs aren't listed by agent yet. See them on the Runs page.");
+    expect(page.textContent).toContain(
+      "Runs aren't listed by agent yet. See them on the Runs page.",
+    );
     expect(page.querySelector("[role=status]")).toBeNull();
   });
 
