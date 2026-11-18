@@ -4,6 +4,7 @@
 - Task: HAL-12856, from the usability re-walk on HAL-12840 (C86)
 - Approval: a detail of an approved screen, so a team decision (HAL-2282); Liam approves this note in his review of this pull request on HAL-12856
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:sI/lT9AWkZ1UhESDV6l/EMCOPiWkmmFrYgsIMqc4dpeYJ1VDoe/EaI1+H7vxvTRYNBoBPvA2PivjOXJDhUZzAA==
 
 ## What changes
 
