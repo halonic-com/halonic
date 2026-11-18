@@ -3,6 +3,7 @@
 - Task: HAL-11253
 - Approval: Liam suggested both clean-ups in his review of the token commands pull request (#3541, HAL-12326, 18 Nov), and signs this note during review.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:eJjZP6vmi5D785+/qbJXeiCZWA/WwCKw5PKsUMrIdgU3NwwadFbcp61s62pFsUbYyaEJPgQWg/YMZZEqAySjCQ==
 
 ## What changes
 
