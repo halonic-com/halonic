@@ -1,5 +1,5 @@
 import { Button, Callout, Field, RadioGroup, type RadioOption } from "@halonicjs/studio-kit";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type AgentChange,
   type AgentHarnessId,
@@ -51,16 +51,39 @@ export function HarnessPage({ host, settings, save }: HarnessPageProps) {
   useEffect(() => setHarness(settings.harness), [settings.harness]);
   const [found, setFound] = useState<Readiness>({});
   const [checking, setChecking] = useState(false);
+  // Counts the checks, so only the newest one's answer is used: a slow answer for another agent,
+  // or one that arrives after the page is left, is dropped.
+  const newestCheck = useRef(0);
   const check = useCallback(async () => {
+    const mine = ++newestCheck.current;
     setChecking(true);
     const others = agentHarnessIds.filter((each) => each !== "halonic");
-    const answers = await Promise.all(
-      others.map((each) => host.harnessReadiness({ hubId, id }, each)),
-    );
-    setFound(Object.fromEntries(others.map((each, index) => [each, answers[index]])));
-    setChecking(false);
+    try {
+      const answers = await Promise.all(
+        others.map((each) => host.harnessReadiness({ hubId, id }, each)),
+      );
+      if (mine === newestCheck.current) {
+        setFound(Object.fromEntries(others.map((each, index) => [each, answers[index]])));
+      }
+    } catch (error) {
+      // The host says a check that didn't work with `failed`; a throw is the same, and the page stays usable.
+      if (mine === newestCheck.current) {
+        const failed: HarnessReadiness = {
+          status: "failed",
+          error: error instanceof Error ? error.message : String(error),
+        };
+        setFound(Object.fromEntries(others.map((each) => [each, failed])));
+      }
+    } finally {
+      if (mine === newestCheck.current) setChecking(false);
+    }
   }, [host, hubId, id]);
-  useEffect(() => void check(), [check]);
+  useEffect(() => {
+    void check();
+    return () => {
+      newestCheck.current += 1;
+    };
+  }, [check]);
 
   const options: RadioOption<AgentHarnessId>[] = agentHarnessIds.map((id) => {
     const line = optionLine(id, found[id]);
