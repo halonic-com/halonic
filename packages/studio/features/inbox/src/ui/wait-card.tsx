@@ -1,5 +1,5 @@
 import { markHiddenName } from "@halonicjs/std";
-import { Button, type CalloutHandle, Tooltip } from "@halonicjs/studio-kit";
+import { Button, type ButtonUnavailable, type CalloutHandle, Tooltip } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import type { InboxDecisions } from "../decide.ts";
 import type { WaitItem } from "../inbox-items.ts";
@@ -16,6 +16,7 @@ import {
   manualAnswerOf,
   type NextItem,
   NotAnsweringLine,
+  StaleBar,
   unavailableWhile,
   useEveryMinute,
   wasDecidedElsewhere,
@@ -36,6 +37,11 @@ export interface WaitCardProps extends EngineState {
   readonly back: BackLink | null;
   /** The clock, so a test can set it. */
   readonly now?: () => Date;
+  /**
+   * `false` once the run no longer waits at this step, answered from the command line, another
+   * window or a timer: a card not answered here turns stale (flow-inbox 5.4). `true` when left out.
+   */
+  readonly waiting?: boolean;
 }
 
 type CardState =
@@ -130,6 +136,11 @@ export function WaitCard(props: WaitCardProps) {
   useEffect(() => {
     if (state.kind === "answered") answered.current?.focus();
   }, [state.kind]);
+  // An answer in flight or recorded here is this card's own, so only an open card turns stale.
+  const stale = props.waiting === false && state.kind === "open";
+  const section = useRef<HTMLElement>(null);
+  const live = state.kind !== "answered" && !stale;
+  const openRun = props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId);
 
   async function answer(event: string) {
     if (!guard.allows() || state.kind !== "open") return;
@@ -148,42 +159,40 @@ export function WaitCard(props: WaitCardProps) {
   }
 
   return (
-    <section aria-labelledby={titleId} className={cardClasses}>
+    <section ref={section} aria-labelledby={titleId} className={cardClasses}>
       <div className={cardBodyClasses}>
         <CardHeader
           titleId={titleId}
           // Filled in from the run's context, so it can hold model output: mark what's hidden.
           title={markHiddenName(item.title)}
           heading={heading}
-          since={state.kind === "answered" ? null : waitingSince(new Date(item.since), now())}
+          since={live ? waitingSince(new Date(item.since), now()) : null}
           startedBy={props.startedBy}
-          onOpenRun={
-            props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId)
-          }
+          onOpenRun={openRun}
         />
         {item.body === "" ? null : (
           <div
             className={
-              state.kind === "answered"
-                ? "rounded-sm border border-dashed border-border p-3 text-fg-muted"
-                : "text-body"
+              live ? "text-body" : "rounded-sm border border-dashed border-border p-3 text-fg-muted"
             }
           >
             <PlainValue text={item.body} />
           </div>
         )}
-        {item.movesOnAt === null || state.kind === "answered" ? null : (
+        {item.movesOnAt === null || !live ? null : (
           <p className="text-small text-fg-muted">{movesOnLine(new Date(item.movesOnAt))}</p>
         )}
       </div>
-      {state.kind === "answered" ? (
+      {stale ? <StaleBar card={section} openRun={openRun} /> : null}
+      {!stale && state.kind === "answered" ? (
         <DecidedBar
           text={answeredText(state.event, state.at, ownLabel(item.answerLabels, state.event))}
           next={next}
           back={back}
           callout={answered}
         />
-      ) : (
+      ) : null}
+      {!stale && state.kind !== "answered" ? (
         <AnswerBar
           accepts={item.accepts}
           labels={item.answerLabels}
@@ -191,11 +200,9 @@ export function WaitCard(props: WaitCardProps) {
           guard={guard}
           engine={props}
           onAnswer={answer}
-          onOpenRun={
-            props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId)
-          }
+          onOpenRun={openRun}
         />
-      )}
+      ) : null}
     </section>
   );
 }
@@ -216,38 +223,26 @@ interface AnswerBarProps {
  * others ignore presses but keep focus.
  *
  * A step's label has no length limit, so a button keeps it on one line and ends it with an
- * ellipsis at its edge, with the whole label as its name and its tooltip (HAL-4050). Each button
- * sits in a `@container` as wide as the button, so the label can be capped at that width less
- * the button's widest padding and edges.
+ * ellipsis at its edge, with the whole label as its name, and as its tooltip only when cut off
+ * (HAL-4050, HAL-12721 L15). Each button sits in a `@container` as wide as the button, so the label can be
+ * capped at that width less the button's widest padding and edges.
  */
 function AnswerBar({ accepts, labels, state, guard, engine, onAnswer, onOpenRun }: AnswerBarProps) {
   const reasonId = useId();
   const unavailable = unavailableWhile(engine.answering ?? true, reasonId);
   const [first, ...others] = accepts;
   const failed = state.kind === "open" ? state.failed : null;
-  const answerButton = (event: string, primary: boolean) => {
-    const label = answerLabel(event, ownLabel(labels, event));
-    return (
-      // `[&>span]:flex` makes the tooltip's wrapper as wide as the container, as is the button.
-      <div key={event} className="@container min-w-0 flex-1 [&>span]:flex">
-        <Tooltip text={label} isName>
-          {(tooltip) => (
-            <Button
-              {...tooltip}
-              variant={primary ? "primary" : "secondary"}
-              block
-              unavailable={unavailable}
-              busy={state.kind === "answering" && state.event === event}
-              busyLabel={busyLabel(event, ownLabel(labels, event))}
-              onClick={() => onAnswer(event)}
-            >
-              <span className="max-w-[calc(100cqw-2rem-2px)] truncate">{label}</span>
-            </Button>
-          )}
-        </Tooltip>
-      </div>
-    );
-  };
+  const answerButton = (event: string, primary: boolean) => (
+    <AnswerButton
+      key={event}
+      label={answerLabel(event, ownLabel(labels, event))}
+      busyLabel={busyLabel(event, ownLabel(labels, event))}
+      primary={primary}
+      unavailable={unavailable}
+      busy={state.kind === "answering" && state.event === event}
+      onClick={() => onAnswer(event)}
+    />
+  );
   return (
     <div
       className="flex flex-col gap-2 border-t border-border p-4"
@@ -264,6 +259,55 @@ function AnswerBar({ accepts, labels, state, guard, engine, onAnswer, onOpenRun 
       {others.length === 0 ? null : (
         <div className="flex gap-2">{others.map((event) => answerButton(event, false))}</div>
       )}
+    </div>
+  );
+}
+
+interface AnswerButtonProps {
+  readonly label: string;
+  readonly busyLabel: string;
+  readonly primary: boolean;
+  readonly unavailable: ButtonUnavailable | undefined;
+  readonly busy: boolean;
+  readonly onClick: () => void;
+}
+
+/** One answer's button, whose tooltip shows the whole label only when the button cuts it off. */
+function AnswerButton({
+  label,
+  busyLabel,
+  primary,
+  unavailable,
+  busy,
+  onClick,
+}: AnswerButtonProps) {
+  const shown = useRef<HTMLSpanElement>(null);
+  return (
+    // `[&>span]:flex` makes the tooltip's wrapper as wide as the container, as is the button.
+    <div className="@container min-w-0 flex-1 [&>span]:flex">
+      <Tooltip
+        text={label}
+        isName
+        showIf={() =>
+          shown.current !== null && shown.current.scrollWidth > shown.current.clientWidth
+        }
+      >
+        {(tooltip) => (
+          <Button
+            {...tooltip}
+            variant={primary ? "primary" : "secondary"}
+            block
+            unavailable={unavailable}
+            busy={busy}
+            busyLabel={busyLabel}
+            onClick={onClick}
+          >
+            <span ref={shown} className="max-w-[calc(100cqw-2rem-2px)] truncate">
+              {label}
+            </span>
+          </Button>
+        )}
+      </Tooltip>
     </div>
   );
 }

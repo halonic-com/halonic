@@ -203,6 +203,8 @@ verifies("inbox.request", () => {
       const { requests } = fakeRequests([support]);
       const { root, runs } = await open(requests, { phone: true });
       await act(async () => {
+        // A tap focuses the row, so the sheet takes it as the place to go back to.
+        button(root, "New request").focus();
         button(root, "New request").click();
       });
       await type(message(root), "Hi, my order arrived damaged.");
@@ -216,6 +218,8 @@ verifies("inbox.request", () => {
       await settled();
       expect(root.querySelector("dialog")).toBeNull();
       expect(root.textContent).toContain("Approve");
+      // The sheet's own way back is New request, hidden under the card: the card's title has focus.
+      expect(document.activeElement).toBe(root.querySelector('[data-pane="item"] section h2'));
     });
 
     it("keeps only the row when Close is pressed before the card arrives", async () => {

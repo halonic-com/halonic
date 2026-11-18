@@ -72,6 +72,8 @@ export function useRequestPane(options: {
   readonly sheetOpen?: MutableRefObject<boolean> | undefined;
   /** A card is open: a phone's request sheet closes, since the card it waited for has arrived. */
   readonly cardOpen?: boolean | undefined;
+  /** Focuses the open card's title, once the sheet that covered it has closed. */
+  readonly focusCard?: (() => void) | undefined;
 }): RequestPane {
   const {
     inbox,
@@ -85,6 +87,7 @@ export function useRequestPane(options: {
     onStarted,
     sheetOpen: shared,
     cardOpen,
+    focusCard,
   } = options;
   const { list: offered, failed, retry } = useOffered(requests);
   const [draft, setDraft] = useState(emptyDraft);
@@ -100,6 +103,13 @@ export function useRequestPane(options: {
   useEffect(() => {
     if (cardOpen) setSheetOpen(false);
   }, [cardOpen]);
+  // The sheet gives focus back to New request, which the card hides on a phone: the card's title
+  // takes it instead (flow-first-run 4.3). This runs after the sheet's own clean-up has.
+  const sheetWasOpen = useRef(false);
+  useEffect(() => {
+    if (sheetWasOpen.current && !sheetOpen && cardOpen) focusCard?.();
+    sheetWasOpen.current = sheetOpen;
+  }, [sheetOpen, cardOpen, focusCard]);
   const closeLatest = useRef(closeItem);
   closeLatest.current = closeItem;
   useEffect(() => {
