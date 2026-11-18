@@ -294,6 +294,7 @@ export {
   type TooltipTriggerProps,
   useTooltip,
 } from "./tooltip/tooltip.tsx";
+export { TrashStrip, type TrashStripProps } from "./trash-strip/trash-strip.tsx";
 export { ViewOnlyLine, type ViewOnlyLineProps } from "./view-only-line/view-only-line.tsx";
 export { Window, WindowBar, type WindowBarProps, type WindowProps } from "./window/window.tsx";
 

@@ -1,4 +1,4 @@
-import { Callout } from "@halonicjs/studio-kit";
+import { TrashStrip } from "@halonicjs/studio-kit";
 import { useEffect, useRef } from "react";
 import { filesWords } from "../files-words.ts";
 
@@ -20,11 +20,5 @@ export function TrashedStrip({ announce, onUndo }: TrashedStripProps) {
   useEffect(() => {
     said.current(filesWords.trashed);
   }, []);
-  return (
-    <div className="px-4 pb-2">
-      <Callout tone="warning" action={[{ label: filesWords.undo, onClick: onUndo }]}>
-        {filesWords.trashed}
-      </Callout>
-    </div>
-  );
+  return <TrashStrip text={filesWords.trashed} undoLabel={filesWords.undo} onUndo={onUndo} />;
 }
