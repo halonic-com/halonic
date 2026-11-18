@@ -26,8 +26,13 @@ export type BridgeProviderAccess =
    * this agent's calls, and the key, to that one origin only; without it,
    * to the API's own host. The host has already checked that the key may
    * go there (the workspace's trust and the key's allowed addresses).
+   *
+   * `providerId` is the id of the provider file the key comes from, such
+   * as `zai`. The bridge names it as the call's `provider` in `llm.request`
+   * and `llm.response`, so the run log shows where the call went; without
+   * it, the API's own name (`anthropic`, `openai`).
    */
-  | { kind: "key"; secret: string; baseUrl?: string }
+  | { kind: "key"; secret: string; baseUrl?: string; providerId?: string }
   /**
    * With the person's own subscription: the bridge passes the program's own
    * sign-in to the provider unchanged and never reads, logs or stores it.
