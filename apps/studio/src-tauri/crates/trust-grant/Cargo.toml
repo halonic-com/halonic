@@ -8,6 +8,7 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+halonic-file-identity = { path = "../file-identity" }
 halonic-git-guard = { path = "../git-guard" }
 halonic-trust-store = { path = "../trust-store" }
 serde = { version = "1", features = ["derive"] }

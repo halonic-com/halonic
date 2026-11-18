@@ -60,8 +60,7 @@ impl TrustState {
     /// [`Self::reopen`] can open it after a restart. Its identity is taken
     /// from the canonical path that opened, so the folder remembered is the
     /// folder opened. A pick that can't be remembered, such as one whose
-    /// identity can't be read on Unix, still opens for now; why goes to the
-    /// log.
+    /// identity can't be read, still opens for now; why goes to the log.
     pub fn pick_remembered(
         &self,
         folders: &OpenedFolders,
@@ -221,15 +220,18 @@ impl TrustState {
 
     /// Opens a folder the person picked before, as a pick does, without the
     /// dialog. Only a location in the list opens, and only while it is
-    /// still the folder they picked: the same canonical path and, on Unix,
-    /// the same device and inode. Otherwise it is refused, and the entry
-    /// stays so they can pick the folder again:
+    /// still the folder they picked: the same canonical path and the same
+    /// identity (device and inode on Unix, volume and file index on
+    /// Windows). Otherwise it is refused, and the entry stays so they can
+    /// pick the folder again:
     ///
     /// - `not_picked`: the location isn't in the list;
     /// - `folder_missing`: nothing is at the path any more;
     /// - `folder_changed`: a link was swapped in, the folder was deleted and
-    ///   made again, or, on Unix, the entry or the folder has no identity
-    ///   (the shell never writes such an entry, so it fails closed);
+    ///   made again, or the folder has no identity now; on Unix also an
+    ///   entry without one (the shell never writes such an entry, so it
+    ///   fails closed). An older Windows entry without one opens, and its
+    ///   identity is recorded (see `still_picked`);
     /// - `folder_unreadable`: something else is at the path, or it can't be
     ///   read.
     pub fn reopen(
@@ -246,7 +248,7 @@ impl TrustState {
         };
         let canonical = folder_at(location)?;
         let identity = folder_identity(&canonical);
-        if !same_folder(entry.identity, identity) {
+        if !still_picked(entry.identity, identity) {
             return Err(TrustRefusal::new(
                 "folder_changed",
                 format!("{location:?} isn't the folder the person picked any more"),
@@ -381,32 +383,38 @@ fn checked_location(location: &str) -> Result<PathBuf, TrustRefusal> {
     Ok(canonical)
 }
 
-/// The identity to remember for a picked folder: on Unix it must have one,
-/// so a pick whose device and inode can't be read isn't remembered. Windows
-/// has none yet (see [`FolderIdentity`]).
+/// The identity to remember for a picked folder. It must have one, so a
+/// pick whose identity can't be read isn't remembered.
 fn known_identity(
     location: &str,
     canonical: &Path,
 ) -> Result<Option<FolderIdentity>, TrustRefusal> {
     let identity = folder_identity(canonical);
-    if cfg!(unix) && identity.is_none() {
+    if identity.is_none() {
         return Err(TrustRefusal::new(
             "folder_unreadable",
-            format!("{location:?} has no device and inode to remember it by"),
+            format!("{location:?} has no identity to remember it by"),
         ));
     }
     Ok(identity)
 }
 
-/// Whether a remembered identity matches the folder's now. On Unix both
-/// must be known and equal: an entry without one fails closed, because the
-/// shell never writes one. Elsewhere an entry without one passes, as the
-/// system gives none.
-fn same_folder(remembered: Option<FolderIdentity>, now: Option<FolderIdentity>) -> bool {
-    if cfg!(unix) {
-        remembered.is_some() && remembered == now
-    } else {
-        remembered.is_none() || remembered == now
+/// Whether the folder now is the one whose identity was read before: both
+/// must be known and equal.
+fn same_folder(before: Option<FolderIdentity>, now: Option<FolderIdentity>) -> bool {
+    before.is_some() && before == now
+}
+
+/// Whether a picked folder's entry still names the folder now, as
+/// [`same_folder`] says. One exception: an entry written on Windows before
+/// the shell read identities there has none. It passes while the folder's
+/// identity can be read, and reopening then writes that identity into the
+/// entry, so from then on it is checked like any other. On Unix an entry
+/// without one fails closed, because the shell never wrote one.
+fn still_picked(entry: Option<FolderIdentity>, now: Option<FolderIdentity>) -> bool {
+    match entry {
+        Some(_) => same_folder(entry, now),
+        None => cfg!(windows) && now.is_some(),
     }
 }
 
