@@ -979,7 +979,10 @@ again on the next mount, so **Reload page** can fix a page that couldn't load
 (`shell.view-loading-state`). The window also draws the features' dialog hosts
 (`FeatureDialogs`), and the context it gives views and commands has `openItem(item)`, which opens
 an item as Ctrl K opens a found one, its tab named by the kind's `tab.describe`, else the item's id
-(`shell.open-item`).
+(`shell.open-item`). On the desktop it also has `showSidebarView(viewId)`, which shows a sidebar view
+as picking its tab does (`studio` shows the places again; an id no feature added changes nothing).
+The window keeps the picked tab in memory only. A phone's context has none
+(`shell.sidebar-view-request`).
 
 `SettingsDialog` is the Settings dialog (`shell.settings-container`, `shell.settings-keyboard`):
 the kit's `lg` dialog with no footer, the sections listed by `settingsGroups` on the left and the

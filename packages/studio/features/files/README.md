@@ -12,6 +12,7 @@ The Files feature of the Studio: the workspace's file tree, and (in later change
 
 - `buildTree` turns the engine's file list into rows: folders first, sorted by name, without `.studio`, `.git` or `node_modules`, with errors, warnings and "changed outside Halonic" added up on each folder.
 - `visibleRows` lists the rows shown for a set of opened folders; `revealFile` opens the folders above a file.
+- `deepestRow` finds a path's row, else its deepest folder in the tree, and `revealRow` opens the folders down to it. Another feature asks the tree to show a path with `requestFilesReveal(path)` from `api.ts`; the path is read from the workspace folder, and an absolute path or one with `..` asks for nothing (`files.tree.reveal-request`).
 - `pressKey` is all of the tree's keyboard: arrows, Home, End, `*`, type-ahead, Enter, F2 and Delete. A key held with Ctrl, Meta or Alt is left unhandled, so copy and app shortcuts still work. It returns the new state and, for Enter, F2 and Delete, an intent for the Studio to act on.
 - `cutInMiddle` shortens a long name and keeps its ending.
 

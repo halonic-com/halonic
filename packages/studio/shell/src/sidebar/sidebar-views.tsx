@@ -5,7 +5,8 @@ import type { Registered } from "../points/point-store.ts";
 import { LoadedView } from "../view-loading.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 
-const studioTab = "studio";
+/** The switch's first tab, which shows the places. */
+export const studioTab = "studio";
 
 /** What the sidebar below the switch shows: the places, or one feature's view. */
 export interface SidebarViewsProps {
@@ -17,6 +18,10 @@ export interface SidebarViewsProps {
   readonly places: React.ReactNode;
   /** The Settings row, kept under a view too. */
   readonly settings: React.ReactNode;
+  /** The picked tab, when the window keeps it (so a feature can ask for a view); else the switch keeps its own. */
+  readonly selected?: string | undefined;
+  /** Called with the tab the user picks, when the window keeps the picked tab. */
+  readonly onSelect?: ((id: string) => void) | undefined;
 }
 
 /**
@@ -27,9 +32,11 @@ export interface SidebarViewsProps {
  * <SidebarViews views={contributions.sidebarViews.list()} contextFor={contextFor}
  *   places={<PlacesList … />} settings={<SettingsRow … />} />
  */
-export function SidebarViews({ views, contextFor, places, settings }: SidebarViewsProps) {
+export function SidebarViews({ views, contextFor, places, settings, ...props }: SidebarViewsProps) {
   const ids = useTabIds();
-  const [selected, setSelected] = useState<string>(studioTab);
+  const [own, setOwn] = useState<string>(studioTab);
+  const selected = props.selected ?? own;
+  const setSelected = props.onSelect ?? setOwn;
   const tabs = useMemo(
     () => [
       { id: studioTab, label: "Studio" },
