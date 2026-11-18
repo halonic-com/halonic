@@ -95,6 +95,13 @@ export interface WorkspaceContext {
    */
   readonly activeItem?: ActiveItemSource;
   /**
+   * The page the window shows now: the active tab's on the desktop, the phone's own page on a
+   * phone. A feature reads it to leave out what that page says already, such as the Inbox's
+   * "Waiting for you" while the Inbox shows. The window gives it to the views it draws; a context
+   * built without a window has none.
+   */
+  readonly shown?: () => ShownPage;
+  /**
    * The window's save state, so a page that saves an item itself shows "Saving…" and a failed
    * write's "Couldn't save · Try again" in the status bar, and its toast, as files do, and a page
    * that saves by itself field by field reports "1 field not saved" with `setFieldsNotSaved`. The
@@ -112,6 +119,15 @@ export interface ActiveItemSource {
    * that stops it.
    */
   subscribe(listener: () => void): () => void;
+}
+
+/**
+ * A page a window shows: a sidebar place's own page, such as the Inbox, or an item's page. Home's
+ * place is `home`; a search, Settings or a phone's list under a place has neither.
+ */
+export interface ShownPage {
+  readonly place?: SidebarPlace;
+  readonly item?: ItemRef;
 }
 
 /** A Settings section as Ctrl K names it: its id and the title its row shows. */

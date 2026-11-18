@@ -34,13 +34,13 @@ import type { WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
 import { usePageHeadingFocus, usePageHeadingFocusAfterDialog } from "../tabs/history-moves.ts";
 import { openLocation } from "../tabs/open-location.ts";
 import { TabPages } from "../tabs/tab-pages.tsx";
-import type { TabLocation } from "../tabs/tab-set.ts";
+import { currentLocation, type TabLocation } from "../tabs/tab-set.ts";
 import { useWindowKeys } from "../tabs/use-window-keys.ts";
 import { WindowTabStrip } from "../tabs/window-tab-strip.tsx";
 import { HistoryButtons } from "../title-bar/history-buttons.tsx";
 import { TitleBarBrand } from "../title-bar/title-bar-brand.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
-import { activeItemOf } from "./active-item.ts";
+import { activeItemOf, shownPageOf } from "./active-item.ts";
 import { useClosingGoneItemTabs } from "./gone-item-tabs.ts";
 import { useShownPlaces } from "./shown-places.ts";
 import { StudioPage } from "./studio-page.tsx";
@@ -219,6 +219,16 @@ function StudioWindowBody(props: StudioWindowProps) {
     ? (location) => openLocation(tabs, announcer, location, true)
     : (location) => phone.open(location);
   const activeItem = useMemo(() => activeItemOf(tabs), [tabs]);
+  // The phone's page, read when a feature asks what shows, so the context stays the same.
+  const phonePage = useRef(phone.page);
+  phonePage.current = phone.page;
+  const shownPage = useCallback(
+    () =>
+      shownPageOf(
+        onDesktop.current ? currentLocation(tabs.active).key : phonePage.current.location.key,
+      ),
+    [tabs],
+  );
   // The sidebar switch's tab, kept here in memory only so a view can ask for another one.
   const [sidebarView, setSidebarView] = useState<string>(studioTab);
   const showSidebarView = useCallback(
@@ -235,6 +245,7 @@ function StudioWindowBody(props: StudioWindowProps) {
       ...shell.services.contextFor(featureId, workspace.services),
       ...(onDesktop.current ? { activeItem, showSidebarView } : {}),
       host,
+      shown: shownPage,
       openPlace: (place) => openPlaceHere.current(place),
       openPlaceList: (place, sub, title) => {
         if (!onDesktop.current)
@@ -265,6 +276,7 @@ function StudioWindowBody(props: StudioWindowProps) {
       contributions,
       activeItem,
       showSidebarView,
+      shownPage,
     ],
   );
   const runCommand = (commandId: string): boolean => {

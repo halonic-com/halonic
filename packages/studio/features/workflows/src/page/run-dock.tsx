@@ -1,3 +1,4 @@
+import type { ShownRuns } from "@halonicjs/studio-feature-inbox/api";
 import type { RunRow, RunsSource } from "@halonicjs/studio-feature-runs/api";
 import { Button, CloseIcon } from "@halonicjs/studio-kit";
 import { useEffect, useMemo, useRef } from "react";
@@ -58,6 +59,8 @@ interface RunDockProps {
   readonly workflowName: string;
   readonly notAnswering: string;
   readonly shown: ReturnType<typeof useShownRun>;
+  /** Where the run card notes its run, so the Inbox leaves it out of its news; see `ShownRuns`. */
+  readonly shownRuns?: ShownRuns | undefined;
   readonly onDock: (next: Dock) => void;
   readonly onStarted: (runId: string) => void;
   readonly openRun: ((runId: string, step?: string) => void) | undefined;
@@ -118,6 +121,7 @@ export function RunDock({
   workflowName,
   notAnswering,
   shown,
+  shownRuns,
   onDock,
   onStarted,
   openRun,
@@ -132,6 +136,13 @@ export function RunDock({
     onStarted(runId);
     onDock({ runId });
   };
+  // The run card says when its run needs you, so the Inbox doesn't say it too while it shows.
+  const cardRunId =
+    typeof dock === "object" && shown && pickedStep === undefined ? shown.row.id : undefined;
+  useEffect(() => {
+    if (shownRuns === undefined || cardRunId === undefined) return undefined;
+    return shownRuns.add(cardRunId, { kind: "workflow", hub: workflow.hubId, id: workflow.id });
+  }, [shownRuns, cardRunId, workflow.hubId, workflow.id]);
   if (shown && pickedStep !== undefined && dock !== "start") {
     return (
       <StepInRunCard

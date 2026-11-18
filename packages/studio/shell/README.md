@@ -82,6 +82,11 @@ Contributions are app-wide and added once, in `register`. Their callbacks (an ex
 it with `shell.services.contextFor(featureId, registry)`. The layout reads everything back from
 `shell.contributions`, for example `shell.contributions.itemPage.sectionsFor("agent")`.
 
+The window's context also says what it shows: `context.shown()` is the page on view, the active
+tab's on the desktop and the phone's own page on a phone, as `{ place }` for a place's page, such as
+`{ place: "inbox" }`, `{ item }` for an item's page, or `{}` otherwise (`shell.shown-page`). A feature
+reads it to leave out what that page says already.
+
 ## Window tabs
 
 A `TabSet` holds one workspace's window tabs (design direction 2). Each tab has its own Back and
@@ -1096,7 +1101,7 @@ The rest of `src/index.ts`, by area; the types are what the parts above take and
 - **Errors:** `ErrorContext`, `ErrorMessage`, `ErrorAction`, `RulePlace`.
 - **Features:** `Feature`, `FeatureDefinition`, `Shell`, `ShellOptions`, `Studio`, `ServiceKey`,
   `ServiceTarget`, `ServiceFactory`, `ServiceLookup`, `FeatureServices`, `WorkspaceContext`,
-  `SettingsSectionName`, `ViewRef`, `ShellError`.
+  `ShownPage`, `SettingsSectionName`, `ViewRef`, `ShellError`.
 - **Points:** `FramePoints`, `FrameContributions`, `LayoutPoints`, `LayoutContributions`,
   `CommandPoints`, `CommandContributions`, `ContextFor`, `Point`, `Ordered`, `Contributed`, `Registered`,
   `KeyboardPlatform`, and the contribution types: `CardContribution`, `PanelWindowContribution`,

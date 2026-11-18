@@ -12,6 +12,7 @@ import {
   type SetupItem,
   setupKey,
 } from "./inbox-items.ts";
+import { ShownRuns } from "./needs-you-news.ts";
 import type { InboxNotices } from "./notices/inbox-notices.ts";
 
 /**
@@ -150,6 +151,8 @@ export class Inbox {
    * notice); the Notices section shows them with the app's. Set where the sources are added.
    */
   extraNotices: InboxNotices | undefined;
+  /** The runs other pages show and announce, so the Inbox's "Waiting for you" leaves them out. */
+  readonly shownRuns = new ShownRuns();
   #state: InboxState = { items: [], loaded: false, error: undefined };
   readonly #runs: InboxRuns;
   readonly #listeners = new Set<() => void>();

@@ -1,6 +1,7 @@
+import { isSidebarPlace } from "../points/frame.ts";
 import type { ItemRef } from "../points/item-kinds.ts";
 import { currentLocation, type TabSet } from "../tabs/tab-set.ts";
-import type { ActiveItemSource } from "../workspace-context.ts";
+import type { ActiveItemSource, ShownPage } from "../workspace-context.ts";
 import { itemOfLocationKey } from "./item-view.tsx";
 
 /** Whether two readings name the same item (or both name none). */
@@ -41,4 +42,14 @@ export function activeItemOf(tabs: TabSet): ActiveItemSource {
       });
     },
   };
+}
+
+/**
+ * The page a location's key shows, as `WorkspaceContext.shown` gives it: `inbox` is the Inbox's
+ * own page, `run/acme/r1` a run's page, and `library/agents` (a phone's list under a place) neither.
+ */
+export function shownPageOf(key: string): ShownPage {
+  if (isSidebarPlace(key)) return { place: key };
+  const item = itemOfLocationKey(key);
+  return item === undefined ? {} : { item };
 }
