@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { RunEventBody } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { RunsList } from "../runs-list.ts";
@@ -56,14 +56,17 @@ async function openRun(openOther?: (runId: string) => void, step?: string) {
   const list = new RunsList(
     fakeSource([summaryWith({ id: runId, lastSeq: log.length })], { [runId]: log }).source,
   );
+  // In StrictMode, as the Studio window mounts every page (`mountStudioWindow`).
   const root = render(
-    <RunView
-      list={list}
-      runId={runId}
-      now={() => mondayMorning}
-      {...(step === undefined ? {} : { step })}
-      {...(openOther === undefined ? {} : { openRun: openOther })}
-    />,
+    <StrictMode>
+      <RunView
+        list={list}
+        runId={runId}
+        now={() => mondayMorning}
+        {...(step === undefined ? {} : { step })}
+        {...(openOther === undefined ? {} : { openRun: openOther })}
+      />
+    </StrictMode>,
   );
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));

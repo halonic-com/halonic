@@ -3,7 +3,7 @@
 // draws what these return.
 
 import type { RunStanding } from "@halonicjs/app";
-import { emptyListWords } from "../run-words.ts";
+import { emptyListWords, pageWords } from "../run-words.ts";
 import { dayWords } from "../time-words.ts";
 import type { RunRow } from "./run-row.ts";
 
@@ -118,6 +118,25 @@ export function emptyList(rows: readonly RunRow[], filters: RunsFilters): EmptyL
   }
   // With All on, only finished test runs can be hidden.
   return { kind: "only-test-runs", line: emptyListWords.onlyTestRuns };
+}
+
+/**
+ * What the list says once a filter change settles (mc 19.3, revision 115): how many runs it shows,
+ * or the filter's own line when it shows none. `undefined` with no runs at all, where there are
+ * no filters to change.
+ *
+ * @example
+ * filterChangeText(rows, { ...startFilters, status: "failed" }); // "2 runs." or "No failed runs."
+ */
+export function filterChangeText(
+  rows: readonly RunRow[],
+  filters: RunsFilters,
+): string | undefined {
+  const empty = emptyList(rows, filters);
+  if (empty === undefined) {
+    return pageWords.shown(filterRuns(rows, filters).length);
+  }
+  return empty.kind === "no-runs" ? undefined : empty.line;
 }
 
 /** The runs of one day, under its heading. */

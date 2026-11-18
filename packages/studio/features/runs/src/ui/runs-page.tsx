@@ -19,6 +19,7 @@ import {
   dayGroups,
   type EmptyList,
   emptyList,
+  filterChangeText,
   filterRuns,
   type RunsFilters,
   type StatusFilter,
@@ -26,6 +27,7 @@ import {
   statusCounts,
   type WorkflowRef,
 } from "../list/runs-filter.ts";
+import { useAnnounceFilterChange } from "../list/use-filter-announcement.ts";
 import { FailureReason, RefreshFailedLine } from "../load-failure.tsx";
 import { emptyListWords, pageWords, runCommand } from "../run-words.ts";
 import { type RunsList, RunsListService, type RunsListState } from "../runs-list.ts";
@@ -38,6 +40,7 @@ export function RunsPage({ context }: PlaceViewProps) {
       list={context.services.get(RunsListService)}
       engine={engineWordsOf(context)}
       isSample={context.services.find(SampleHintService)?.isSample() === true}
+      announceState={(key, text) => context.announcer.announceState(key, text)}
       {...(openItem === undefined
         ? {}
         : {
@@ -58,6 +61,8 @@ export interface RunsViewProps {
   readonly engine?: EngineWords;
   /** Whether the workspace is the Acme sample, where a run starts from the Inbox. */
   readonly isSample?: boolean;
+  /** Reads how many runs a filter change left (`announcer.announceState`); absent in tests that don't listen. */
+  readonly announceState?: (key: string, text: string) => void;
 }
 
 /**
@@ -80,6 +85,7 @@ export function RunsView({
   now = () => new Date(),
   engine = engineWordsOf({}),
   isSample = false,
+  announceState,
 }: RunsViewProps) {
   const phone = usePresentation() === "phone";
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
@@ -102,6 +108,11 @@ export function RunsView({
   }, [list]);
   const retry = () => void list.refresh();
   const rows = listRows(list, now());
+  useAnnounceFilterChange(
+    filters,
+    state.loaded ? filterChangeText(rows, filters) : undefined,
+    announceState,
+  );
   const showTestRuns = () => setFilters({ ...filters, testRuns: true });
   const showEveryWorkflow = () => setFilters({ ...filters, workflow: undefined });
   const openRow =

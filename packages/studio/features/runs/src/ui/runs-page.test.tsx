@@ -421,3 +421,41 @@ verifies("runs.row-columns", () => {
     expect(danger).toContain("Support reply failed in the step Draft.");
   });
 });
+
+verifies("runs.list-announcements", () => {
+  async function openListening(fake: ReturnType<typeof fakeSource>) {
+    const announceState = vi.fn<(key: string, text: string) => void>();
+    const root = render(
+      <RunsView
+        list={new RunsList(fake.source)}
+        now={() => mondayMorning}
+        announceState={announceState}
+      />,
+    );
+    await settled();
+    return { root, announceState };
+  }
+
+  it("reads how many runs a filter leaves, or the filter's own line when it leaves none", async () => {
+    const { root, announceState } = await openListening(fakeSource([running, needsYou, done]));
+    expect(announceState).not.toHaveBeenCalled();
+
+    await click(control(root, "Live 2"));
+    expect(announceState).toHaveBeenLastCalledWith("runs-filter", "2 runs.");
+    await click(control(root, "Needs you 1"));
+    expect(announceState).toHaveBeenLastCalledWith("runs-filter", "1 run.");
+    await click(control(root, "Failed"));
+    expect(announceState).toHaveBeenLastCalledWith("runs-filter", "No failed runs.");
+    expect(announceState).toHaveBeenCalledTimes(3);
+  });
+
+  it("reads nothing when a run in the list changes status", async () => {
+    const fake = fakeSource([running]);
+    const { announceState } = await openListening(fake);
+
+    fake.change([{ ...running, approvals: [approvalAt(1)] }]);
+    await settled();
+
+    expect(announceState).not.toHaveBeenCalled();
+  });
+});
