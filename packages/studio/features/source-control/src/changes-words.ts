@@ -240,7 +240,7 @@ export const updatesWords = {
   failed: "Couldn't get versions",
   nothingChanged: "Nothing changed here.",
   /** Shown only when one side is ahead and the shared copy moved during the get; both moved goes to merging (HAL-12642). */
-  bothMoved: "The shared copy changed while getting updates. Try again.",
+  bothMoved: "Something changed while getting updates. Try again.",
   tryAgain: "Try again",
   alreadyWorking: "Halonic is already getting updates.",
 };

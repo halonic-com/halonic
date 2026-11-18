@@ -86,7 +86,7 @@ export const STILL_NEEDS_SETUP = "the check still says the sandbox needs setting
 
 /** The first line, and **New agents run** under the status (microcopy ST 9.1). */
 export const FIRST_LINE =
-  "Claude Code and Codex agents run in a sandbox. There they write only to their own folders and reach only the sites you allow.";
+  "Claude Code and Codex agents run in a sandbox. There they write only to their working folder and their own temp and settings folders, and reach only Halonic and the sites you allow.";
 export const NEW_AGENTS_RUN = "New agents run";
 export const RUN_IN_SANDBOX = "In a sandbox (recommended)";
 export const RUN_ON_THIS_COMPUTER = "On this computer";

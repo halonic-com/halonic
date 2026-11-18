@@ -213,7 +213,7 @@ verifies("source-control.get-updates-per-item", () => {
       const { fake, toasts } = await openPage();
       fake.setUpdates({ kind: "both-moved" });
       await press("Get updates");
-      expect(toasts.list()[0]?.text).toContain("The shared copy changed while getting updates.");
+      expect(toasts.list()[0]?.text).toContain("Something changed while getting updates.");
     });
 
     it("tells a merge left half done from one just started, and Continue brings the choices back", async () => {

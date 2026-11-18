@@ -11,7 +11,7 @@ import type { DeniedPathGroupCode } from "@halonicjs/events";
 export const sandboxWords = {
   "sandbox.line.sandbox": "In a sandbox",
   "sandbox.line.vm": "In a virtual machine",
-  "sandbox.line.writes": "writes only in its own folders",
+  "sandbox.line.writes": "writes only in its working folder and its own temp and settings folders",
   "sandbox.line.reaches.halonic": "reaches only Halonic",
   "sandbox.line.reaches.one": "reaches Halonic and 1 site",
   "sandbox.line.reaches.many": "reaches Halonic and {count} sites",
@@ -46,7 +46,8 @@ export const sandboxWords = {
   "sandbox.panel.kind.remote": "A sandbox on another machine.",
   "sandbox.panel.not-covered":
     "Not covered: if {agent} changes a build script in {folder}, that script runs without the sandbox the next time you build.",
-  "sandbox.panel.phone-fix": "Change this in {agent}'s file on your computer.",
+  "sandbox.panel.phone-fix":
+    "To change its folder or sites, edit workingFolder or allowedSites in {agent}'s file on your computer.",
   "sandbox.panel.action": "Change in {agent}'s settings",
   "sandbox.time.seconds.one": "1 second",
   "sandbox.time.seconds.many": "{count} seconds",

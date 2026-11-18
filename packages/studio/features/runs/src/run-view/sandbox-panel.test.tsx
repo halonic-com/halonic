@@ -62,10 +62,10 @@ describe("sandbox words", () => {
 verifies("runs.run-view.sandbox-panel", () => {
   it("builds the line from the event, in order, naming allowed sites by count", () => {
     expect(sandboxLineText({ ...view, allowedSites: [] })).toBe(
-      "In a sandbox · writes only in its own folders · reaches only Halonic",
+      "In a sandbox · writes only in its working folder and its own temp and settings folders · reaches only Halonic",
     );
     expect(sandboxLineText({ ...view, allowedSites: ["a.example"] })).toBe(
-      "In a sandbox · writes only in its own folders · reaches Halonic and 1 site",
+      "In a sandbox · writes only in its working folder and its own temp and settings folders · reaches Halonic and 1 site",
     );
     expect(sandboxLineText(view)).toContain("reaches Halonic and 2 sites");
     expect(sandboxLineText({ ...view, strength: "vm" })).toMatch(/^In a virtual machine/);
@@ -170,7 +170,9 @@ verifies("runs.run-view.sandbox-panel", () => {
       <SandboxPanel view={view} agent="Writer" live={false} place="phone" />,
     );
     expect(container.textContent).toContain("A process sandbox on your computer");
-    expect(container.textContent).toContain("Change this in Writer's file on your computer.");
+    expect(container.textContent).toContain(
+      "To change its folder or sites, edit workingFolder or allowedSites in Writer's file on your computer.",
+    );
     expect(container.querySelector("button[class*=accent]")).toBeNull();
   });
 

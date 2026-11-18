@@ -79,7 +79,7 @@ verifies("settings.about-section", () => {
       now,
     );
     expect(view.line).toBe(
-      "Couldn't download Halonic 0.1.1: something went wrong while downloading. Halonic tries again at the next check.",
+      "Couldn't download Halonic 0.1.1: something went wrong. Halonic tries again at the next check.",
     );
     expect(view.actions).toEqual(["try-again"]);
   });
@@ -92,9 +92,7 @@ verifies("settings.about-section", () => {
       ),
       now,
     );
-    expect(view.line).toBe(
-      "Couldn't download Halonic 0.1.1: you're offline. Try again or check later.",
-    );
+    expect(view.line).toBe("Couldn't download Halonic 0.1.1: you're offline. Try again.");
     expect(view.actions).toEqual(["try-again"]);
   });
 

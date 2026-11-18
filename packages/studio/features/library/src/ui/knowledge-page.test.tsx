@@ -141,7 +141,7 @@ verifies("library.knowledge-page", () => {
       });
       const root = render(<KnowledgePage {...props} />);
       await settled();
-      expect(root.textContent).toContain("Agents can keep notes here.");
+      expect(root.textContent).toContain("Marked for agents' notes. Agents can't write here yet.");
     });
 
     it("writes mode: auto at once when the second option is picked", async () => {

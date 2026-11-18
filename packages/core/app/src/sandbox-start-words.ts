@@ -47,7 +47,7 @@ const inSettings = "open Settings and set up the sandbox there.";
 const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   windows: {
     // Only MXC gives this code, on a machine that isn't Windows 11 or lacks its container tier.
-    reason: "This sandbox needs Windows 11.",
+    reason: "The sandbox can't start on this version of Windows.",
     fix: "pick another sandbox in Settings.",
     docsSection: "windows-preview",
   },

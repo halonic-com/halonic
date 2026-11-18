@@ -56,7 +56,7 @@ export const downloadButton = (version: string) => `Download Halonic ${version}`
 export const downloadFailed = (version: string, reason: string, automatic: boolean) =>
   automatic
     ? `Couldn't download Halonic ${version}: ${reason}. Halonic tries again at the next check.`
-    : `Couldn't download Halonic ${version}: ${reason}. Try again or check later.`;
+    : `Couldn't download Halonic ${version}: ${reason}. Try again.`;
 export const signatureMismatch = (version: string, current: string) =>
   `Halonic ${version} was downloaded, but its signature doesn't match Halonic's. It wasn't installed, and the download was deleted. Halonic ${current} keeps working.`;
 export const ready = (version: string) =>
@@ -75,7 +75,7 @@ export const downloadReasons = {
   "no-answer": "the update server didn't answer",
   stalled: "the download stalled",
   /** Every IO error maps to `disk`, and the download goes into memory (HAL-12642). */
-  disk: "something went wrong while downloading",
+  disk: "something went wrong",
 } as const;
 
 /** What the announcer says after Check now (mc 20.5): with the version, also when nothing changed. */
