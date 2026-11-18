@@ -81,6 +81,7 @@ export function RoutineScreen({
   const { load, retry } = useRoutine(host, { hubId, id }, focusTitle);
   const [view, setView] = useState<RoutineViewId>("schedule");
   const ids = useTabIds();
+  const phone = usePresentation() === "phone";
   const routine = load.kind === "ready" ? load.routine : undefined;
   const runs = useRoutineRuns(host, routine);
   const views = routineTabs(runs.load);
@@ -99,7 +100,6 @@ export function RoutineScreen({
     return <ItemGone kindName="routine" place="Routines" onGoTo={goToRoutines} />;
   }
   const name = load.kind === "ready" ? load.routine.name : id;
-  const phone = usePresentation() === "phone";
   return (
     <div className="flex size-full min-h-0 flex-col">
       <RoutineHeader
