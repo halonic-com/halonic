@@ -44,7 +44,7 @@ export function StatusBarSaveNote({ saving, timers = systemTimers }: StatusBarSa
     action === "compare" && note.kind === "items-not-saved" ? note.first.title : undefined;
   return (
     <div
-      className="flex items-center gap-1.5 whitespace-nowrap text-small text-fg-muted"
+      className="flex items-center gap-1.5 whitespace-nowrap text-small text-fg-muted phone:min-w-0 phone:flex-1"
       data-problem={isProblem(words.mark) ? words.mark : undefined}
     >
       {marks[words.mark]}
@@ -87,11 +87,11 @@ const marks: Readonly<Record<SaveNoteMark, ReactNode>> = {
 };
 
 /**
- * A problem's words stop at 240px and end in "…", so a long item title can't push the other status
+ * A problem's words stop at 240px (on a phone, at the width the action leaves) and end in "…", so a long item title can't push the other status
  * items away or hide the button, which keeps its width. The whole title stays in the text, so a screen reader reads all of it, and
  * the failed-save toast shows it in full.
  */
-const longWords = "min-w-0 max-w-60 truncate";
+const longWords = "min-w-0 max-w-60 truncate phone:max-w-none phone:flex-1";
 
 /** A problem's words read in the text colour; "Saving…" and "Saved" stay quiet in `fg-muted`. */
 function isProblem(mark: SaveNoteMark): boolean {
