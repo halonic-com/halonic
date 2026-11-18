@@ -3,6 +3,7 @@
 - Task: HAL-12460
 - Approval: Liam approves this change on HAL-12460 (https://paperclip.halonic.com/HAL/issues/HAL-12460), from the keyboard and screen-reader check on HAL-12426 (row A10). A team decision with no board card (HAL-2282 rule); the day names are in microcopy 19.8, revision 115.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wYxGh9lFyhM8B0inJanYDcHOqQ61uUzOapmadmLi+One3X83NMFxi7VkaCPiVEZ0bn0KLEwazanGZUaNrvAtCQ==
 
 ## What changes
 
