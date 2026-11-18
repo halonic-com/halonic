@@ -162,8 +162,9 @@ export function NewAgentDialog({
           />
         </Field>
         {note !== undefined && (
-          <p className="flex items-center gap-2 text-small text-fg-muted">
-            <span className="text-fg-subtle" aria-hidden>
+          <p className="flex items-start gap-2 text-small text-fg-muted">
+            {/* The icon has no size of its own, so in a flex row it needs one; it sits on the first line. */}
+            <span className="mt-0.5 size-4 shrink-0 text-fg-subtle" aria-hidden>
               <InfoIcon />
             </span>
             {note}

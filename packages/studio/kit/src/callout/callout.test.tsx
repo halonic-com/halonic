@@ -243,6 +243,30 @@ verifies("kit.callout", () => {
     expect(button.hasAttribute("aria-busy")).toBe(false);
   });
 
+  it("puts focus on an action that asks for it, described by the text", () => {
+    const { container } = render(
+      <Callout tone="warning" action={{ label: "Undo", onClick: () => undefined, focus: true }}>
+        This skill was moved to the trash
+      </Callout>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(document.activeElement).toBe(button);
+    expect(textOf(button.getAttribute("aria-describedby"))).toBe(
+      "This skill was moved to the trash",
+    );
+  });
+
+  it("leaves focus alone and adds no description without focus", () => {
+    const { container } = render(
+      <Callout tone="warning" action={{ label: "Undo", onClick: () => undefined }}>
+        This file was moved to the trash
+      </Callout>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(document.activeElement).not.toBe(button);
+    expect(button.hasAttribute("aria-describedby")).toBe(false);
+  });
+
   it("has no close button", () => {
     const { container } = render(<Callout tone="info">Keys stay on this computer.</Callout>);
     expect(container.querySelector("button")).toBeNull();

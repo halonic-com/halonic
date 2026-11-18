@@ -23,7 +23,9 @@ function bridgeStream(lines: unknown[], until: Promise<void>): AsyncIterable<unk
 }
 
 /** An agent host that offers Claude Code and an srt sandbox, and records the bridge's answers. */
-function fakeHost(more: Partial<Record<AgentHostRequestRoute, () => AgentHostAnswer>> = {}) {
+function fakeHost(
+  more: Partial<Record<AgentHostRequestRoute, (body: unknown) => AgentHostAnswer>> = {},
+) {
   const answers: unknown[] = [];
   const asked: string[] = [];
   const answered = Promise.withResolvers<void>();
@@ -82,9 +84,13 @@ function inputOn(
       "workspace.yaml": "id: acme\nname: Acme\n",
       "hubs/support/hub.yaml": "id: support\nname: Support\n",
       "hubs/support/agents/coder.agent.yaml": "id: coder\nname: Coder\nharness: claude-code\n",
+      "library/skills/tone/SKILL.md": "---\nname: Tone\ndescription: Shared.\n---\nShared tone.\n",
+      "hubs/support/library/skills/tone/SKILL.md":
+        "---\nname: Tone\ndescription: The hub's.\n---\nThe hub's tone.\n",
     }),
     digest: { sha256: async () => new Uint8Array(32) },
     clock: { now: () => new Date("2026-11-18T10:00:00.000Z") },
+    instructionTrust: { check: async () => ({ kind: "trusted" }) },
     approvalsOf: () => undefined,
     reportError: () => {},
     ...more,
@@ -143,6 +149,45 @@ verifies("studio.engine-service", () => {
       expect(answers).toEqual([
         { bridge: "b1", call: "c1", error: expect.stringContaining("needs a person's OK") },
       ]);
+    });
+
+    it("writes the agent's instructions in the host, with the hub's own skill", async () => {
+      const sent: unknown[] = [];
+      const digest = `sha256:${"a".repeat(64)}`;
+      const host = fakeHost({
+        "POST /v1/harnesses/instructions": (body) => {
+          sent.push(body);
+          return {
+            status: 200,
+            body: { folder: "/data/i-1", pin: { digest, files: { "AGENTS.md": digest } } },
+          };
+        },
+      });
+      const built = await openStudioHarnessHost(inputOn(host));
+      const withSkill = {
+        hubId: "support",
+        file: { instructions: "Be kind.\n", skills: ["tone"] },
+      } as unknown as HarnessAgent;
+      const open = await built.harnesses.instructions?.open(withSkill);
+      expect(sent).toEqual([
+        {
+          workspace: location,
+          files: [
+            { name: "AGENTS.md", text: "Be kind.\n" },
+            {
+              name: "skills/tone/SKILL.md",
+              text: "---\nname: Tone\ndescription: The hub's.\n---\nThe hub's tone.\n",
+            },
+          ],
+        },
+      ]);
+      expect(open?.folder).toBe("/data/i-1");
+    });
+
+    it("checks a run's instructions against the person's trust, for this workspace", async () => {
+      const instructionTrust = { check: async () => ({ kind: "trusted" as const }) };
+      const built = await openStudioHarnessHost(inputOn(fakeHost(), { instructionTrust }));
+      expect(built.harnesses.instructionTrust).toEqual({ service: instructionTrust, location });
     });
 
     it("reports a clean-up at the start that fails, and doesn't throw", async () => {

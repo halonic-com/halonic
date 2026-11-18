@@ -3,6 +3,8 @@
 // so the sandbox, the harness programs, the bridges, the profile builder, the
 // proposal folders and the placement choices all live in the agent host. The
 // engine, its recorder, the tools, the approvals and the keys stay here.
+// A run's instructions are written in the host too, but whether a person
+// trusted them is checked here, against the shell's own records.
 //
 // Only the fenced sandbox runs agents: the host has no unfenced session yet,
 // so an agent the person set to "On this computer" is refused before it
@@ -10,6 +12,7 @@
 
 import {
   AgentHostBridges,
+  AgentHostInstructions,
   AgentHostPlacementStore,
   AgentHostProfiles,
   AgentHostProposalFolders,
@@ -21,8 +24,8 @@ import {
 } from "@halonicjs/adapter-agent-host-client";
 import { claudeCodeEnvironment } from "@halonicjs/adapter-harness-claude-code/environment";
 import { codexEnvironment } from "@halonicjs/adapter-harness-codex/environment";
-import { AgentPlacement } from "@halonicjs/app";
-import type { HarnessRunsOptions, RunProposalFolders } from "@halonicjs/engine";
+import { AgentPlacement, type InstructionTrustService } from "@halonicjs/app";
+import type { HarnessAgent, HarnessRunsOptions, RunProposalFolders } from "@halonicjs/engine";
 import {
   type AgentFiles,
   FilePlacementPolicy,
@@ -47,6 +50,8 @@ export interface StudioHarnessInput {
   readonly definitions: DefinitionSource;
   readonly digest: Digest;
   readonly clock: Clock;
+  /** The person's trusted instructions, which the shell keeps; a run whose instructions aren't trusted doesn't start. */
+  readonly instructionTrust: Pick<InstructionTrustService, "check">;
   /**
    * The approvals of one run's bridge, asked when the bridge opens. Called
    * only once the engine is built; `refusingApprovals` until then.
@@ -106,6 +111,11 @@ export async function openStudioHarnessHost(input: StudioHarnessInput): Promise<
       harnesses: Object.fromEntries(listed.map((harness) => [harness.id, harness])),
       bridges,
       profiles: new AgentHostProfiles(transport, { workspace: location, bridgeIdOf }),
+      instructions: new AgentHostInstructions(transport, {
+        workspace: location,
+        skillTextOf: (agent, id) => skillTextOf(input.definitions, agent.hubId, id),
+      }),
+      instructionTrust: { service: input.instructionTrust, location },
       home: null,
     },
     proposalFolders,
@@ -152,6 +162,26 @@ function agentFilesOf(definitions: DefinitionSource): AgentFiles {
       return new TextEncoder().encode(text);
     },
   };
+}
+
+/**
+ * A skill's `SKILL.md` as it is saved now, as the agent's hub sees it: the
+ * hub's own, else the workspace's shared one, as the CLI reads it.
+ *
+ * @throws when the workspace has no such skill
+ */
+async function skillTextOf(
+  definitions: DefinitionSource,
+  hubId: HarnessAgent["hubId"],
+  skillId: string,
+): Promise<string> {
+  const named = filesOf(await loadWorkspace(definitions), "skill").filter(
+    (file) => file.value.id === skillId,
+  );
+  const file = named.find((each) => each.hub === hubId) ?? named.find((each) => each.hub === null);
+  const text = file === undefined ? null : await definitions.read(file.path);
+  if (text === null) throw new Error(`The workspace has no skill "${skillId}".`);
+  return text;
 }
 
 /** Why an agent set to "On this computer" doesn't start from the Studio. */

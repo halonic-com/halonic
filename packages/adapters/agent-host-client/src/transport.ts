@@ -21,6 +21,8 @@ export const agentHostRequestRoutes = [
   "POST /v1/harnesses/detect",
   "POST /v1/harnesses/sign-in",
   "POST /v1/harnesses/profile",
+  "POST /v1/harnesses/instructions",
+  "POST /v1/harnesses/instructions/release",
   "POST /v1/proposals/open",
   "POST /v1/proposals/folder-of",
   "POST /v1/proposals/end",
