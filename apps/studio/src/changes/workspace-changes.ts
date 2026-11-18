@@ -24,6 +24,7 @@ import { historyArgs, versionsFromLog } from "./history-log.ts";
 import { lastVersionDiffArgs, lastVersionFromDiff } from "./last-version.ts";
 import { SharedCopy } from "./shared-copy.ts";
 import { statusArgs } from "./status-args.ts";
+import { readFileAtVersion } from "./version-file.ts";
 import { type ChoicesMemory, UpdatesMerge } from "./workspace-merge.ts";
 
 /** What git said, as the shell's `git` command gives it back. */
@@ -150,6 +151,14 @@ export class WorkspaceChanges implements ChangesSource {
     for (const file of files) {
       await this.#options.copies.write(`${stamp}/${file.path}`, file.text);
     }
+  }
+
+  async readFile(path: string): Promise<string | null> {
+    return this.#options.files.read(path);
+  }
+
+  async readAtVersion(versionId: string, path: string): Promise<string | null> {
+    return readFileAtVersion((args) => this.#run(args), readableProblem, versionId, path);
   }
 
   async readHistory(limit: number): Promise<readonly Version[]> {
