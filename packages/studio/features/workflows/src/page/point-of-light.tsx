@@ -4,15 +4,17 @@ import {
   advance,
   goalOf,
   headTo,
+  LIGHT_CORE,
   LIGHT_FADE_MS,
+  LIGHT_GLOW,
+  LIGHT_GLOW_OPACITY_STILL,
   type LightFlight,
   restOn,
   restPose,
 } from "../canvas/light-flight.ts";
 
-/** The light's core and its glow, in pixels (`--point-of-light-core`, `--point-of-light-glow`). */
-const CORE = 8;
-const GLOW = 24;
+const CORE = LIGHT_CORE;
+const GLOW = LIGHT_GLOW;
 
 /** Props for {@link PointOfLight}. */
 export interface PointOfLightProps {
@@ -37,15 +39,19 @@ function usePrefersReducedMotion(): boolean {
   return reduced;
 }
 
-/** One light: a core with a soft glow, centred on its box. */
+/** One light: a core in exactly the status colour with a soft glow, centred on its box. */
 function Dot({
   color,
   style,
+  glowOpacity,
   ref,
+  glowRef,
 }: {
   readonly color: string;
   readonly style?: React.CSSProperties;
+  readonly glowOpacity: number;
   readonly ref?: React.Ref<HTMLSpanElement>;
+  readonly glowRef?: React.Ref<HTMLSpanElement>;
 }) {
   return (
     <span
@@ -56,8 +62,11 @@ function Dot({
       style={{ width: 0, height: 0, ...style }}
     >
       <span
+        ref={glowRef}
+        data-testid="point-of-light-glow"
         className="absolute rounded-full forced-colors:hidden"
         style={{
+          opacity: glowOpacity,
           width: GLOW,
           height: GLOW,
           left: -GLOW / 2,
@@ -87,7 +96,10 @@ function StillLight({ target, color }: { readonly target: Point; readonly color:
     const frame = requestAnimationFrame(() => setLit(true));
     const done = setTimeout(
       () => setShown((state) => ({ ...state, before: undefined })),
+      LIGHT_CORE,
       LIGHT_FADE_MS,
+      LIGHT_GLOW,
+      LIGHT_GLOW_OPACITY_STILL,
     );
     return () => {
       cancelAnimationFrame(frame);
@@ -104,12 +116,14 @@ function StillLight({ target, color }: { readonly target: Point; readonly color:
         <Dot
           key={`${shown.before.x},${shown.before.y}`}
           color={color}
+          glowOpacity={LIGHT_GLOW_OPACITY_STILL}
           style={{ transform: `translate(${shown.before.x}px, ${shown.before.y}px)`, ...fade(0) }}
         />
       )}
       <Dot
         key={`${shown.now.x},${shown.now.y}`}
         color={color}
+        glowOpacity={LIGHT_GLOW_OPACITY_STILL}
         style={{
           transform: `translate(${shown.now.x}px, ${shown.now.y}px)`,
           ...fade(lit || shown.before === undefined ? 1 : 0),
@@ -122,6 +136,7 @@ function StillLight({ target, color }: { readonly target: Point; readonly color:
 /** The flying, floating light, moved by `requestAnimationFrame` and not by React renders. */
 function FlyingLight({ target, color }: { readonly target: Point; readonly color: string }) {
   const dot = useRef<HTMLSpanElement>(null);
+  const glow = useRef<HTMLSpanElement>(null);
   const flight = useRef<LightFlight>(restOn(target));
   const restSince = useRef(0);
   const live = useRef({ visible: true, onScreen: true });
@@ -131,19 +146,19 @@ function FlyingLight({ target, color }: { readonly target: Point; readonly color
     const moved = advance(flight.current, now);
     flight.current = moved.flight;
     let { x, y } = moved.position;
-    let brightness = 1;
+    let glowOpacity = 1;
     if (moved.flight.kind === "rest") {
       const pose = restPose(now - restSince.current);
       x += pose.offset.x;
       y += pose.offset.y;
-      brightness = pose.brightness;
+      glowOpacity = pose.glow;
     } else {
       restSince.current = now;
     }
     const element = dot.current;
     if (element === null) return;
     element.style.transform = `translate(${x}px, ${y}px)`;
-    element.style.filter = `brightness(${brightness})`;
+    if (glow.current !== null) glow.current.style.opacity = `${glowOpacity}`;
   };
 
   const loop = (now: number) => {
@@ -200,7 +215,7 @@ function FlyingLight({ target, color }: { readonly target: Point; readonly color
   const [first] = useState<React.CSSProperties>(() => ({
     transform: `translate(${target.x}px, ${target.y}px)`,
   }));
-  return <Dot color={color} style={first} ref={dot} />;
+  return <Dot color={color} style={first} glowOpacity={1} ref={dot} glowRef={glow} />;
 }
 
 /**

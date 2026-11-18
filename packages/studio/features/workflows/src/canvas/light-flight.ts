@@ -8,13 +8,25 @@ import {
   smootherstep,
 } from "./light-motion.ts";
 
-/** How far the resting light floats from its dot, in pixels, and how long one turn takes. */
-export const LIGHT_FLOAT_RADIUS = 2;
+/** The status dot, the light's core and its glow, in pixels (`--point-of-light-core`, `--point-of-light-glow`). */
+export const LIGHT_DOT = 10;
+export const LIGHT_CORE = 8;
+export const LIGHT_GLOW = 24;
+/**
+ * How far the resting light floats from its dot, in pixels (`--point-of-light-float`), and how
+ * long one turn takes. The core stays inside the dot: radius is at most (dot - core) / 2, 1 px.
+ */
+export const LIGHT_FLOAT_RADIUS = (LIGHT_DOT - LIGHT_CORE) / 2;
 export const LIGHT_FLOAT_MS = 7000;
-/** One way of the breath, in milliseconds, and the brightness it moves between. */
+/**
+ * One way of the breath, in milliseconds, and the glow opacity it moves between
+ * (`--point-of-light-glow-opacity-min`, `--point-of-light-glow-opacity-max`). The core never changes.
+ */
 export const LIGHT_BREATH_MS = 3600;
-export const LIGHT_BREATH_MIN = 0.85;
-export const LIGHT_BREATH_MAX = 1.3;
+export const LIGHT_GLOW_OPACITY_MIN = 0.55;
+export const LIGHT_GLOW_OPACITY_MAX = 1;
+/** The glow's opacity for a still light under reduced motion. */
+export const LIGHT_GLOW_OPACITY_STILL = 0.8;
 /** How long the float and the breath take to ease in after a landing, in milliseconds. */
 export const LIGHT_REST_EASE_MS = 800;
 /** How long the cross-fade takes when the person asked for less motion (`--duration-fast`). */
@@ -83,20 +95,21 @@ export function goalOf(flight: LightFlight): Point {
 }
 
 /**
- * The float and the breath of a resting light `ms` after it landed: an offset and a brightness.
- * Both ease in over {@link LIGHT_REST_EASE_MS}: the light lands at full brightness exactly on its
- * dot, then the float grows to 2 px and the brightness settles into the breath, with no jump.
+ * The float and the breath of a resting light `ms` after it landed: an offset and the glow's opacity.
+ * Both ease in over {@link LIGHT_REST_EASE_MS}: the light lands with the glow at full opacity exactly on its
+ * dot, then the float grows to 1 px and the glow settles into the breath, with no jump.
  */
-export function restPose(ms: number): { readonly offset: Point; readonly brightness: number } {
+export function restPose(ms: number): { readonly offset: Point; readonly glow: number } {
   const turn = (2 * Math.PI * ms) / LIGHT_FLOAT_MS;
   const breath = 0.5 - 0.5 * Math.cos((Math.PI * ms) / LIGHT_BREATH_MS);
-  const settled = LIGHT_BREATH_MIN + (LIGHT_BREATH_MAX - LIGHT_BREATH_MIN) * breath;
+  const settled =
+    LIGHT_GLOW_OPACITY_MIN + (LIGHT_GLOW_OPACITY_MAX - LIGHT_GLOW_OPACITY_MIN) * breath;
   const weight = smootherstep(ms / LIGHT_REST_EASE_MS);
   return {
     offset: {
       x: weight * LIGHT_FLOAT_RADIUS * Math.cos(turn),
       y: weight * LIGHT_FLOAT_RADIUS * Math.sin(turn),
     },
-    brightness: 1 + (settled - 1) * weight,
+    glow: 1 + (settled - 1) * weight,
   };
 }

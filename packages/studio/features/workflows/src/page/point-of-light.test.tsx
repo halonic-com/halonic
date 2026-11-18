@@ -45,6 +45,17 @@ verifies("workflows.canvas.point-of-light-rest", () => {
     expect(lights[0]?.className).toContain("pointer-events-none");
   });
 
+  it("keeps the core in the status colour with no filter, and the still glow at 80 %", async () => {
+    const page = await show(<PointOfLight target={{ x: 10, y: 20 }} color="blue" reducedMotion />);
+    const light = page.querySelector<HTMLElement>("[data-testid=point-of-light]");
+    expect(light?.style.filter).toBe("");
+    expect(
+      light?.querySelector<HTMLElement>("[data-testid=point-of-light-glow]")?.style.opacity,
+    ).toBe("0.8");
+    expect(light?.lastElementChild?.getAttribute("style")).toContain("background: blue");
+    expect(light?.lastElementChild?.getAttribute("style")).not.toContain("filter");
+  });
+
   it("flies to a new target with the same single light", async () => {
     const { element, render, done } = await mount();
     await render({ x: 0, y: 0 }, false);
