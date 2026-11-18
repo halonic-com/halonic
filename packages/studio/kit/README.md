@@ -798,6 +798,7 @@ List draws them.
 | `current` | The row whose item shows beside the list, as the Inbox's open item: the selected look and `aria-current`, but not selected, and it still opens |
 | `dense` | 32px rows, for menus and pickers |
 | `flush` | No outer border or radius, lines from 16px. On by default on a phone |
+| `chevrons` | Each row opens a page of its own, as History's versions: on a phone each row ends in a 20px `fg-subtle` chevron, hidden from screen readers, and its `trailing` chip starts its meta line. Desktop rows don't change. Not with `columns` |
 | `empty` | An [`EmptyState`](#emptystate)'s props, shown in place of the box when there are no rows |
 | `loading` | Skeleton rows in place of the rows; see **Loading** below |
 | `skeleton` | `{ leading: "icon" \| "avatar", trailing }`: the shape of the rows that are coming |

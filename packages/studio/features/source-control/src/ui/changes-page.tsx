@@ -282,7 +282,13 @@ function ReadBody({
           phone={phone}
         />
       )}
-      <History list={list} history={state.history} phone={phone} versionPage={versionPage} />
+      <History
+        list={list}
+        history={state.history}
+        unshared={state.unsharedIds}
+        phone={phone}
+        versionPage={versionPage}
+      />
     </>
   );
 }

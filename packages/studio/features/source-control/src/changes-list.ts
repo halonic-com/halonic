@@ -61,6 +61,7 @@ export class ChangesList {
     identity: undefined,
     hasRemote: false,
     unshared: 0,
+    unsharedIds: new Set(),
     sharedCheck: { kind: "unknown" },
     sharing: false,
     gettingUpdates: false,
@@ -129,7 +130,7 @@ export class ChangesList {
       const answer = await this.source.read();
       const files =
         answer.kind === "ready" ? await describeChanges(this.source, answer.changes) : [];
-      const { hasRemote, unshared } = await readRemote(this.source, answer.kind === "ready");
+      const remote = await readRemote(this.source, answer.kind === "ready");
       if (read !== this.#reads || this.#disposed) return;
       const identity = answer.kind === "ready" ? await this.#identity() : undefined;
       const merge = await this.#readMerge(answer.kind === "ready");
@@ -138,15 +139,14 @@ export class ChangesList {
         ...this.#state,
         read: answer,
         files,
-        hasRemote,
-        unshared,
+        ...remote,
         identity,
         merge: merge ?? undefined,
         choosing: merge !== null && this.#state.choosing,
         error: undefined,
       });
       if (answer.kind === "ready") await this.#readHistory(this.#state.history.versions.length);
-      this.#sharing.checkOnce(hasRemote && merge === null);
+      this.#sharing.checkOnce(remote.hasRemote && merge === null);
     } catch (error) {
       if (read !== this.#reads || this.#disposed) return;
       this.#set({ ...this.#state, error });
