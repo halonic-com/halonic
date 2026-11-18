@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12353, a follow-up from Julian's review of the pairing codecs on HAL-12276, under the HAL-12235 note `decisions/liam/HAL-12235-pairing-codecs.md`; Liam wrote it, Julian reviews and signs this note as the security reviewer
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:uUbtzDTyJVt1V56ECYcoCuVMOEeSLOZvxPjwXODiugDubfqhUOgJwDdM8FbfNPOMCWSHgyhyUWmGT/Siz0dxDg==
 
 Two hardening changes to the pairing codecs. Nothing a user sees changes: the codes, the way they
 are shown and the QR payload stay the same, and a code typed with ordinary letters, digits and separators reads as before.
