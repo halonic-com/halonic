@@ -9,6 +9,7 @@ import {
   type TunnelStatus,
 } from "@halonicjs/ports";
 import type { ControlledClock } from "./clock.ts";
+import { Feed } from "./feed.ts";
 
 /**
  * Simulated time for a {@link FakeTunnelProvider}: a clock that only moves
@@ -59,60 +60,6 @@ export interface FakeTunnelProviderOptions {
   latencyMs?: number;
 }
 
-/** A stream of statuses with its own queue, so a slow reader never loses one. */
-class StatusFeed implements AsyncIterableIterator<TunnelStatus> {
-  private queued: TunnelStatus[] = [];
-  private waiting: ((result: IteratorResult<TunnelStatus>) => void) | undefined;
-  private ended = false;
-
-  private readonly onLeave: (feed: StatusFeed) => void;
-
-  constructor(onLeave: (feed: StatusFeed) => void) {
-    this.onLeave = onLeave;
-  }
-
-  push(status: TunnelStatus): void {
-    if (this.ended) return;
-    if (this.waiting === undefined) {
-      this.queued.push(status);
-      return;
-    }
-    const resolve = this.waiting;
-    this.waiting = undefined;
-    resolve({ done: false, value: status });
-  }
-
-  /** Ends the stream after the statuses already queued. */
-  end(): void {
-    this.ended = true;
-    if (this.waiting === undefined) return;
-    const resolve = this.waiting;
-    this.waiting = undefined;
-    resolve({ done: true, value: undefined });
-  }
-
-  next(): Promise<IteratorResult<TunnelStatus>> {
-    const status = this.queued.shift();
-    if (status !== undefined) return Promise.resolve({ done: false, value: status });
-    if (this.ended) return Promise.resolve({ done: true, value: undefined });
-    return new Promise((resolve) => {
-      this.waiting = resolve;
-    });
-  }
-
-  /** The reader left early, with `break` or `return`. */
-  return(): Promise<IteratorResult<TunnelStatus>> {
-    this.ended = true;
-    this.queued = [];
-    this.onLeave(this);
-    return Promise.resolve({ done: true, value: undefined });
-  }
-
-  [Symbol.asyncIterator](): AsyncIterableIterator<TunnelStatus> {
-    return this;
-  }
-}
-
 /**
  * A {@link TunnelProvider} that lives in the process and touches no network,
  * so tunnel phases B and C can be tested without a real tunnel. It follows the
@@ -143,7 +90,7 @@ export class FakeTunnelProvider implements TunnelProvider {
   private coming: Promise<TunnelEndpoint> | undefined;
   private runs = 0;
   private failure: TunnelReason | undefined;
-  private readers = new Set<StatusFeed>();
+  private readers = new Set<Feed<TunnelStatus>>();
 
   constructor(options: FakeTunnelProviderOptions = {}) {
     this.time = options.time ?? new FakeTunnelTime();
@@ -179,7 +126,7 @@ export class FakeTunnelProvider implements TunnelProvider {
   }
 
   status(): AsyncIterable<TunnelStatus> {
-    const feed = new StatusFeed((left) => this.readers.delete(left));
+    const feed = new Feed<TunnelStatus>((left) => this.readers.delete(left));
     feed.push(this.current);
     this.readers.add(feed);
     return feed;

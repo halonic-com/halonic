@@ -40,6 +40,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `PluginFolderWriter` | `plugin-folder-writer.ts` | 1 | places and removes whole plugin folders in the profile's plugins folder, never through a link | `plugin-folder-writer` |
 | `ProgramProbe` | `program-probe.ts` | 2 | finds a harness's program and asks it something short, such as its version | `program-probe` (with first adapter) |
 | `RecordStore` | `record-store.ts` | 2 | collection records as a change log; `compact` drops overwritten and removed values | `record-store` |
+| `RemoteControl` | `remote-control.ts` | 1 | how Studio turns remote on and off, pairs a phone as a stream of events, lists and revokes paired phones and sets the risky-approvals switch, on loopback to the host | `remote-control` |
 | `ResourceProbe` | `resource-probe.ts` | 1 | the engine's memory, the processes it started, a folder's size and free disk space | `resource-probe` |
 | `RunExecutor` | `run-executor.ts` | 2 | start, send events, stream them, cancel (optional), chat turns; replaces `Runtime` and `RunHost` | `run-executor` (with the engine) |
 | `RunStore` | `run-store.ts` | 1 | run event logs (append with a sequence check) and run summaries | `run-store` |
@@ -126,6 +127,7 @@ next to the ports:
 | `sandboxPackageManagers` | the package managers a `SandboxFix` can name, behind `SandboxPackageManager` | `sandbox-check-fix` |
 | `sandboxUnavailableReasons`, `adapterFailures`, `modelCallErrorReasons` | the lists behind `SandboxUnavailableReason`, `AdapterFailure` and `ModelCallErrorReason` | `sandbox-check-reason`, `run-failure-error`, `model-call-error` |
 | `tunnelStates`, `tunnelReasons` | the lists behind `TunnelState` and `TunnelReason` | `tunnel-provider` |
+| `pairingEndReasons`, `phonePlatforms` | the lists behind `PairingEndReason` and `PhonePlatform` | `remote-control` |
 | `assertTunnelConfig`, `assertGatewayTunnelConfig` | the runtime check of a `TunnelConfig`, and the host's check that it points at its own gateway port | `tunnel-provider` |
 | `tunnelReconnectDelayMs`, `tunnelBackoff` | how long a `TunnelTransport` waits before each reconnect: 0.5 s, doubling to a base of at most 30 s, ±20 % jitter | `tunnel-resolver` |
 

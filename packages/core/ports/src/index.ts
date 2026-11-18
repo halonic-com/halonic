@@ -204,6 +204,18 @@ export {
   recordStoreVersion,
 } from "./record-store.ts";
 export {
+  type PairedPhone,
+  type PairingEndReason,
+  type PairingEvent,
+  type PairingSession,
+  type PhonePlatform,
+  pairingEndReasons,
+  phonePlatforms,
+  type RemoteControl,
+  type RemoteState,
+  remoteControlVersion,
+} from "./remote-control.ts";
+export {
   type GatewayApproval,
   type GatewayClientMessage,
   type GatewayErrorCode,
