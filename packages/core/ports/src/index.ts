@@ -315,6 +315,7 @@ export {
 } from "./scheduler.ts";
 export {
   checkSecretValue,
+  chosenSecrets,
   describeSecretName,
   halonicSecretNames,
   isHalonicSecretName,

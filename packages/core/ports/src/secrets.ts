@@ -282,3 +282,37 @@ export function pluginSecrets(secrets: Secrets, pluginId: string): Secrets {
     },
   };
 }
+
+/**
+ * The secrets seen through the person's picks: the integration asks by the
+ * name its sheet gives and reads the secret picked for it, or nothing. This is
+ * the one place the sheet's name becomes the workspace's, so the loader and the
+ * host's sign-in read the same secret for the same name.
+ *
+ * A workspace chose the picked names, so they can't reach Halonic's own
+ * secrets, tokens or a plugin's ({@link workspaceSecrets}). A plugin's names
+ * come from its manifest and can reach only that plugin's own secrets
+ * ({@link pluginSecrets}), so pass `plugin` for one.
+ *
+ * @param secretNames - the picked secret's name for each name in the sheet; a name left out is not configured
+ * @param plugin - the plugin's id, when the picks are a plugin backend's
+ *
+ * @example
+ * const secrets = chosenSecrets(raw, { "client-secret": "acme-client" });
+ * await secrets.get("client-secret"); // what is stored as "acme-client", or null
+ * await secrets.get("other"); // null: nothing was picked for it
+ */
+export function chosenSecrets(
+  raw: Secrets,
+  secretNames: Readonly<Record<string, string>>,
+  plugin?: string,
+): Secrets {
+  const picks = new Map(Object.entries(secretNames));
+  const readable = plugin === undefined ? workspaceSecrets(raw) : pluginSecrets(raw, plugin);
+  return {
+    get: async (name) => {
+      const picked = picks.get(name);
+      return picked === undefined ? null : await readable.get(picked);
+    },
+  };
+}

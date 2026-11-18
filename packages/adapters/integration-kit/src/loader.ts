@@ -7,15 +7,14 @@ import {
   parseIntegrationSheet,
 } from "@halonicjs/format/integration";
 import {
+  chosenSecrets,
   type Integration,
   type IntegrationHost,
   type ProviderConfig,
-  pluginSecrets,
   type SecretPlacement,
   type Secrets,
   type SignInTokens,
   type TokenStore,
-  workspaceSecrets,
 } from "@halonicjs/ports";
 import { deepEqual, err, ok, type Result } from "@halonicjs/std";
 import { type CurrentSecretForms, currentSecretForms } from "./current-secret-forms.ts";
@@ -355,28 +354,6 @@ function requestLimits(limits: Readonly<Record<string, number | undefined>>): Re
   return Object.fromEntries(
     Object.entries(limits).filter((entry): entry is [string, number] => entry[1] !== undefined),
   );
-}
-
-/**
- * The raw secrets seen through the user's picks: the kit asks by the sheet's
- * name and reads the secret picked for it, or nothing. A workspace chose
- * those names, so they can't reach Halonic's own secrets, tokens or a
- * plugin's. A plugin's backend's names come from its manifest and can reach
- * only that plugin's own secrets (`plugin`).
- */
-function chosenSecrets(
-  raw: Secrets,
-  secretNames: Readonly<Record<string, string>>,
-  plugin: string | undefined,
-): Secrets {
-  const picks = new Map(Object.entries(secretNames));
-  const readable = plugin === undefined ? workspaceSecrets(raw) : pluginSecrets(raw, plugin);
-  return {
-    get: async (name) => {
-      const picked = picks.get(name);
-      return picked === undefined ? null : await readable.get(picked);
-    },
-  };
 }
 
 /**
