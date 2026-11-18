@@ -280,14 +280,21 @@ fn session_handshakes_read_handshake_failed_while_pairing_as_unreadable() {
 
 #[test]
 fn session_handshakes_read_a_host_name_that_is_not_plain_text_as_unreadable() {
-    // A line break, a right-to-left override, an isolate, a zero width space
-    // and a byte order mark.
+    // A line break, a right-to-left override, an isolate, a zero width space,
+    // a byte order mark, a soft hyphen, the Mongolian vowel separator, a
+    // deprecated shaping control, an interlinear annotation mark and a tag
+    // character.
     for name in [
         "Desk\nPrinter",
         "Desk\u{202E}kseD",
         "\u{2067}Desk",
         "De\u{200B}sk",
         "\u{FEFF}Desk",
+        "De\u{00AD}sk",
+        "De\u{180E}sk",
+        "Desk\u{206E}",
+        "\u{FFF9}Desk",
+        "Desk\u{E0041}",
     ] {
         assert_eq!(
             pair_typed_with(name).0.err(),

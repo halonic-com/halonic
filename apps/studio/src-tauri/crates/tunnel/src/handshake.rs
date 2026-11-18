@@ -242,13 +242,26 @@ fn is_plain_name(name: &str) -> bool {
     })
 }
 
-/// The format characters that show as nothing and join nothing: the zero
-/// width space, the word joiner, the invisible operators and the byte order
-/// mark, which can make two names that look alike differ. The zero width
-/// joiner and non-joiner stay allowed: Persian, the Indic scripts and emoji
-/// need them.
+/// The format characters that show as nothing and join nothing: the soft
+/// hyphen, the Mongolian vowel separator, the zero width space, the word
+/// joiner, the invisible operators, the deprecated shaping and mirroring
+/// controls, the byte order mark, the interlinear annotation marks and the
+/// tag characters, which can make two names that look alike differ or hide
+/// text. The zero width joiner and non-joiner stay allowed: Persian, the
+/// Indic scripts and emoji need them. Blocking the tags means a subdivision
+/// flag emoji (England, Scotland) can't be part of a computer name.
 fn is_invisible(character: char) -> bool {
-    matches!(character, '\u{200B}' | '\u{2060}'..='\u{2064}' | '\u{FEFF}')
+    matches!(
+        character,
+        '\u{00AD}'
+            | '\u{180E}'
+            | '\u{200B}'
+            | '\u{2060}'..='\u{2064}'
+            | '\u{206A}'..='\u{206F}'
+            | '\u{FEFF}'
+            | '\u{FFF9}'..='\u{FFFB}'
+            | '\u{E0000}'..='\u{E007F}'
+    )
 }
 
 /// The characters that lay text out rather than show as text: the line and
