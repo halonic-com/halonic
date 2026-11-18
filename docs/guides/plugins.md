@@ -27,8 +27,8 @@ Plugins arrive in steps, and not every step is in 0.1:
   in [Add and trust a plugin in Studio](https://halonic.dev/docs/guides/studio-plugins).
   A plugin's `ui` (settings, commands, cards, the panel) is drawn by those
   screens, so you can see your own settings and cards in a Studio build.
-- Security tests for local tools are still being built. A local tool is
-  fenced by the sandbox, but check for yourself that yours lists only the
+- The sandbox's attack tests for local tools are on `main`. A local tool is
+  fenced by the sandbox; still check for yourself that yours lists only the
   tools you declared.
 
 The [plugin sample](../../packages/testing/integration/examples/acme-orders-plugin/README.md)
@@ -187,7 +187,8 @@ localTools:
 
 Local tools run only in a session whose sandbox is proven: the desktop app,
 the CLI and `serve`. Windows is a preview: the sandbox there has limits, and
-a plugin's backend worker starts there, for now, only when MXC fences it, on Windows 11. On Android
+a plugin's backend worker starts there only when MXC fences it, on Windows
+11, and no app uses MXC yet, so for now it doesn't start on Windows. On Android
 and in the browser the plugin still loads, and its local tools show as needing
 the desktop app. Halonic builds the sandbox's rules; a plugin can't ask for
 more. See [the plugins page of the

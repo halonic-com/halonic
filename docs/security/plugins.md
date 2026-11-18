@@ -93,9 +93,11 @@ cloned workspace can't trust itself.
 - **The sandbox has limits.** It sets no CPU or memory limits, so a local
   tool's program has none. A backend worker brings its own memory limit: on
   its JavaScript heap, and on Linux, where `prlimit` is installed, on the
-  whole process. Windows is a preview: there a backend worker is fenced only
-  by MXC on Windows 11, with only its heap limited. Without MXC it doesn't
-  start, because a yes to run it without the sandbox isn't offered yet. And
+  whole process. Windows is a preview: there a backend worker may run only
+  when MXC fences it, on Windows 11, with only its heap limited, and no app
+  uses MXC yet. Without MXC it doesn't start, because a yes to run it without
+  the sandbox isn't offered yet. So for now a backend worker doesn't start on
+  Windows. And
   a program that is allowed a host can send anything there.
 - **Tool results are untrusted content.** A plugin's answer can try to steer a
   model, as any outside text can. See
