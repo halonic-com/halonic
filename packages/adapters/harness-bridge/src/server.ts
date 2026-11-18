@@ -47,6 +47,14 @@ export interface NodeHarnessBridgeServerOptions {
   /** Calls the providers: the `fetch` of an `HttpClient` that may reach their hosts and no others. */
   fetch: Fetch;
   /**
+   * Calls a compatible provider at the `baseUrl` a keyed access names
+   * (requirement `harness-bridge.provider-base-url`): the `fetch` of an
+   * `HttpClient` whose hosts are checked as a connector's are. Only a run
+   * whose access names a `baseUrl` uses it; each such call stays at that one
+   * origin. Left out, the bridge refuses those calls.
+   */
+  compatibleFetch?: Fetch;
+  /**
    * How long `close()` waits for requests still being handled, in
    * milliseconds: a whole number, 0 or more.
    */
@@ -91,6 +99,7 @@ export class NodeHarnessBridgeServer implements HarnessBridgeServer {
         : { kind: "socket", folder: options.socketFolder };
     const upstream = {
       fetch: options.fetch,
+      compatibleFetch: options.compatibleFetch,
       limits: { ...defaultUpstreamLimits, ...options.upstreamLimits },
     };
     this.#routes = [

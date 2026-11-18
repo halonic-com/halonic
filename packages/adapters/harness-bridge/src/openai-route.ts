@@ -3,7 +3,8 @@ import { isPlainObject } from "@halonicjs/std";
 import { OpenAiReplyReader } from "./openai-reply.ts";
 import { refuseStoredPrompt, refuseUrlInputs } from "./openai-sources.ts";
 import { type Fetch, passThrough, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
-import { providerAuthorization } from "./provider-key.ts";
+import { type ProviderApi, providerTarget } from "./provider-address.ts";
+import { providerAccess, providerAuthorization } from "./provider-key.ts";
 import {
   hasRemovedType,
   type ProviderReach,
@@ -17,6 +18,18 @@ import { readModelCall, recordModelCall } from "./spend.ts";
 
 /** The one host the bridge sends OpenAI requests to. */
 export const openAiOrigin = "https://api.openai.com";
+
+/**
+ * Where Responses calls go: `/v1/responses` at OpenAI, or `/responses`
+ * under a compatible provider's `baseUrl`, which names the API's version
+ * itself, as in `https://openrouter.ai/api/v1`.
+ */
+const openAiApi: ProviderApi = {
+  name: "OpenAI",
+  ownOrigin: openAiOrigin,
+  ownPath: "/v1/responses",
+  pathUnder: (baseUrl) => `${baseUrl}/responses`,
+};
 
 /**
  * The request headers that go on to OpenAI. The program's key, its
@@ -75,12 +88,15 @@ const openAiReach: ProviderReach = {
 export interface OpenAiRouteDependencies {
   secrets: Secrets;
   fetch: Fetch;
+  /** Reaches a compatible provider at its file's `baseUrl`; left out, such calls are refused. */
+  compatibleFetch?: Fetch | undefined;
   limits: UpstreamLimits;
 }
 
 /**
- * `POST /v1/responses`, as Codex sends it, passed on to `api.openai.com`
- * with the agent's key in place of the program's (requirement
+ * `POST /v1/responses`, as Codex sends it, passed on to `api.openai.com`,
+ * or to the one compatible provider the agent's key names (requirement
+ * `harness-bridge.provider-base-url`), with the agent's key in place of the program's (requirement
  * `harness-bridge.openai`), or with the program's own sign-in for an agent
  * on a subscription (requirement `harness-bridge.sign-in`). Streaming
  * replies stream through unchanged.
@@ -95,6 +111,10 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
     method: "POST",
     path: "/v1/responses",
     handle: async (context) => {
+      const access = providerAccess(context, "openai");
+      const { search } = new URL(context.request.url ?? "", openAiOrigin);
+      // Before the key is read, so an address the bridge refuses never reads it.
+      const target = providerTarget(access, openAiApi, search, dependencies);
       const authorization = await providerAuthorization(
         context,
         dependencies.secrets,
@@ -107,7 +127,6 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
       refuseUrlInputs(request);
       const call = readModelCall("openai", request, "input");
       const body = withoutProviderReach(sent, request, openAiReach);
-      const { search } = new URL(context.request.url ?? "", openAiOrigin);
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);
       const reply = new OpenAiReplyReader();
       await recordModelCall(context.run, call, reply, () =>
@@ -115,13 +134,13 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
           context,
           {
             provider: "OpenAI",
-            url: new URL(`/v1/responses${search}`, openAiOrigin),
+            url: target.url,
             headers: { ...headers, ...authorization },
             body,
             replyHeader: isForwardedReplyHeader,
             watch: reply,
           },
-          dependencies,
+          { fetch: target.fetch, limits: dependencies.limits },
         ),
       );
     },

@@ -1,5 +1,5 @@
 import type { IncomingHttpHeaders } from "node:http";
-import type { BridgeProvider, Secrets } from "@halonicjs/ports";
+import type { BridgeProvider, BridgeProviderAccess, Secrets } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { BridgeRequestContext } from "./route.ts";
 
@@ -33,12 +33,28 @@ export async function providerAuthorization(
   keyHeaders: KeyHeaders,
 ): Promise<Record<string, string>> {
   const name = providerNames[provider];
-  const access = context.run.providers[provider];
-  if (access === undefined) {
-    throw new KindedError("denied", `This agent isn't set up to use ${name} models.`);
-  }
+  const access = providerAccess(context, provider);
   if (access.kind === "sign-in") return programSignIn(context.request.headers, name);
   return keyHeaders(await providerKey(secrets, access.secret, name));
+}
+
+/**
+ * How this agent reaches `provider`.
+ *
+ * @throws KindedError `denied` when the agent doesn't use the provider
+ */
+export function providerAccess(
+  context: BridgeRequestContext,
+  provider: BridgeProvider,
+): BridgeProviderAccess {
+  const access = context.run.providers[provider];
+  if (access === undefined) {
+    throw new KindedError(
+      "denied",
+      `This agent isn't set up to use ${providerNames[provider]} models.`,
+    );
+  }
+  return access;
 }
 
 /**
