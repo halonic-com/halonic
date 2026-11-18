@@ -1,126 +1,25 @@
 // @vitest-environment jsdom
 
-import { KindedError } from "@halonicjs/std";
-import { createToastStore } from "@halonicjs/studio-kit";
-import {
-  createShell,
-  defineFeature,
-  type Feature,
-  type ResourceWatch,
-  type Shell,
-  StudioWorkspace,
-  watchResources,
-  workspaceContentAttribute,
-} from "@halonicjs/studio-shell";
+import { defineFeature, watchResources, workspaceContentAttribute } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { NewWorkspaceHost } from "../new-workspace/new-workspace-dialog.tsx";
-import { type MountedWorkspaceWindow, mountWorkspaceWindow } from "./mount-workspace-window.tsx";
-import { RecentWorkspaces } from "./recent-workspaces.ts";
 import type { WorkspaceSaving } from "./workspace-saving.ts";
-import { folderName, MENU_BUSY_AFTER_MS, WorkspaceSwitcher } from "./workspace-switcher.ts";
+import { MENU_BUSY_AFTER_MS } from "./workspace-switcher.ts";
+import {
+  createFromWelcome,
+  element,
+  newWorkspaceHost,
+  press,
+  setUpWindow,
+  start,
+  switcherButton,
+  tearDownWindow,
+} from "./workspace-window.test-helper.tsx";
 import { workspaceKeyPosition } from "./workspace-window.tsx";
 
-// Tells React this is a test, so it checks that updates happen inside act().
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-
-let element: HTMLElement;
-let mounted: MountedWorkspaceWindow | undefined;
-let restoreMedia: () => void = () => {};
-
-beforeEach(() => {
-  // jsdom has no matchMedia: every query fails, so the window is a desktop one.
-  const original = window.matchMedia;
-  window.matchMedia = (query) =>
-    ({
-      media: query,
-      matches: false,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-    }) as unknown as MediaQueryList;
-  restoreMedia = () => {
-    window.matchMedia = original;
-  };
-  element = document.createElement("div");
-  document.body.append(element);
-});
-
-afterEach(() => {
-  act(() => mounted?.unmount());
-  mounted = undefined;
-  element.remove();
-  restoreMedia();
-});
-
-/** A workspace's services for a shell with no features: nothing is ever provided or read. */
-function noServices() {
-  return {
-    provide: () => {
-      throw new Error("No feature provides services here.");
-    },
-    get: () => {
-      throw new Error("No feature reads services here.");
-    },
-    has: () => false,
-  };
-}
-
-/** Starts the window; a folder in `gone` fails to open as not found. */
-function start(
-  picks: string[],
-  gone: string[] = [],
-  saving?: WorkspaceSaving,
-  features: readonly Feature[] = [],
-  newWorkspace?: NewWorkspaceHost,
-  resources?: ResourceWatch,
-): { shell: Shell; switcher: WorkspaceSwitcher } {
-  const shell = createShell({ features, host: "desktop-app", platform: "windows" });
-  const storage = new Map<string, string>();
-  const switcher = new WorkspaceSwitcher({
-    pickFolder: async () => picks.shift(),
-    openFolder: async (location) => {
-      if (gone.includes(location)) {
-        throw new KindedError("not_found", `No folder ${location}`);
-      }
-      const name = folderName(location);
-      const workspace = new StudioWorkspace({
-        toasts: createToastStore(),
-        services: noServices(),
-        name,
-      });
-      return { name, workspace, saving, dispose: async () => {} };
-    },
-    recent: new RecentWorkspaces({
-      getItem: (key) => storage.get(key) ?? null,
-      setItem: (key, value) => {
-        storage.set(key, value);
-      },
-    }),
-    toasts: shell.toasts,
-  });
-  act(() => {
-    mounted = mountWorkspaceWindow(element, {
-      shell,
-      switcher,
-      platform: "windows",
-      language: "en",
-      ...(newWorkspace === undefined ? {} : { newWorkspace }),
-      resources,
-    });
-  });
-  return { shell, switcher };
-}
-
-function switcherButton(): HTMLButtonElement | null {
-  return element.querySelector<HTMLButtonElement>('button[aria-label^="Workspace: "]');
-}
-
-async function press(init: KeyboardEventInit): Promise<void> {
-  await act(async () => {
-    window.dispatchEvent(new KeyboardEvent("keydown", { ...init, bubbles: true }));
-  });
-}
+beforeEach(setUpWindow);
+afterEach(tearDownWindow);
 
 verifies("workspace.workspace-window", () => {
   it("shows Welcome with no switcher until a folder is open", () => {
@@ -149,38 +48,9 @@ verifies("workspace.workspace-window", () => {
   });
 
   it('creates a workspace from Welcome\'s New workspace… and opens it with "Created acme"', async () => {
-    const { shell } = start([], [], undefined, [], {
-      defaultParent: async () => "/docs",
-      folderOf: (parent, name) => `${parent}/${name}`,
-      probe: async () => "new",
-      create: async () => ({ kind: "trusted" }),
-    });
-    // jsdom has `<dialog>` but no `showModal()`; opening it is all this needs.
-    Object.assign(HTMLDialogElement.prototype, {
-      showModal(this: HTMLDialogElement) {
-        this.setAttribute("open", "");
-      },
-      close(this: HTMLDialogElement) {
-        this.removeAttribute("open");
-      },
-    });
-    const newButton = [...element.querySelectorAll("button")].find((each) =>
-      each.textContent?.includes("New workspace…"),
-    );
+    const { shell } = start([], [], undefined, [], newWorkspaceHost);
 
-    await act(async () => newButton?.click());
-    const name = document.querySelector<HTMLInputElement>("input");
-    await act(async () => {
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-      setter?.call(name, "acme");
-      name?.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    const create = [...document.querySelectorAll("button")].find((each) =>
-      each.textContent?.startsWith("Create"),
-    );
-    await act(async () => create?.click());
-    await act(async () => {});
-
+    await createFromWelcome("acme");
     expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: acme");
     expect(shell.toasts.list().map((toast) => toast.title)).toEqual(["Created acme"]);
   });
