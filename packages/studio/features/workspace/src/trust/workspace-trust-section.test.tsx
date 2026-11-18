@@ -158,7 +158,7 @@ verifies("workspace.trust-section", () => {
   it("offers Review for a workspace that isn't trusted yet", () => {
     show(control("not-trusted").value);
     expect(element.textContent).toContain(
-      "Not trusted yet. Its routines and connectors won't start, and keys won't go to non-standard model addresses.",
+      "Not trusted yet. Its routines and connectors won't start, and a provider won't send its key to another address.",
     );
     expect(button("Review")).toBeDefined();
   });

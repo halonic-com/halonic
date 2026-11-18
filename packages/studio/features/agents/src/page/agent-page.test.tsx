@@ -249,7 +249,7 @@ verifies("agents.page.menu", () => {
 
     await pick(page, "Delete");
 
-    expect(page.textContent).toContain("This agent was moved to the trash");
+    expect(page.textContent).toContain("This agent was deleted");
     expect(document.activeElement?.textContent).toBe("Undo");
     expect(toasts.list()).toEqual([]);
     expect(page.textContent).not.toContain("AGENT");
@@ -277,11 +277,11 @@ verifies("agents.page.menu", () => {
     const { page } = await open(host);
 
     await pick(page, "Delete");
-    expect(page.textContent).toContain("This agent was moved to the trash");
+    expect(page.textContent).toContain("This agent was deleted");
 
     await act(async () => kept.trashed?.undo());
     await settled();
-    expect(page.textContent).not.toContain("This agent was moved to the trash");
+    expect(page.textContent).not.toContain("This agent was deleted");
     expect(page.textContent).toContain("AGENT");
     expect(document.activeElement).toBe(page.querySelector("h1"));
   });
@@ -319,7 +319,7 @@ verifies("agents.page.menu", () => {
 
     await pick(page, "Delete");
 
-    expect(page.textContent).toContain("This agent was moved to the trash.");
+    expect(page.textContent).toContain("This agent was deleted.");
     expect(page.textContent).toContain(
       "1 workflow step now shows an error until you pick another agent.",
     );
@@ -336,7 +336,7 @@ verifies("agents.page.menu", () => {
 
     expect(toasts.list()[0]).toMatchObject({
       tone: "danger",
-      title: "Couldn't move Sorter to the trash: the disk is full.",
+      title: "Couldn't delete Sorter: the disk is full.",
       sticky: true,
       action: { label: "Try again" },
     });

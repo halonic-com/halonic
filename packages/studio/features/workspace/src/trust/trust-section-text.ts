@@ -4,7 +4,7 @@ export const TRUST_HEADING = "Trust";
 export const NOTHING_TO_TRUST_LINE = "Nothing to trust here.";
 /** Only what trust gates today: Studio runs don't check it yet (HAL-12409, C52 7.1). */
 export const NOT_TRUSTED_LINE =
-  "Not trusted yet. Its routines and connectors won't start, and keys won't go to non-standard model addresses.";
+  "Not trusted yet. Its routines and connectors won't start, and a provider won't send its key to another address.";
 /** The button of Settings › Trust that opens the workspace page at Trust. */
 export const OPEN_TRUST = "Open Trust";
 export const REVIEW = "Review";
