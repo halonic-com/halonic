@@ -61,7 +61,7 @@ function textColour(row: AnyListRow, normal: string): string {
 }
 
 /** The line under the title: an unavailable row's reason, an error's reason, or the meta text. */
-function metaOf(row: AnyListRow): { readonly text: string | undefined; readonly colour: string } {
+function metaOf(row: AnyListRow): { readonly text: ReactNode; readonly colour: string } {
   if (row.unavailable !== undefined) {
     // At full strength, so it can be read (VRK 0.6).
     return { text: row.unavailable.reason, colour: "text-fg-muted" };

@@ -101,38 +101,67 @@ export interface OverviewPageProps {
 /** Opens an item's ⋮ menu below the button that was pressed. */
 type OpenMenu = (item: OverviewItem, element: HTMLElement) => void;
 
+/** Where a row's used-by text goes: on its right, or at the end of the line under its name. */
+type UsedByPlace = "right" | "line";
+
+/**
+ * The line under an item's name: its detail, and on a phone its used-by text after a " · ", so the
+ * kit doesn't move that text to the line's start as it does a chip.
+ */
+function metaOf(item: OverviewItem, usedByPlace: UsedByPlace): ReactNode {
+  if (usedByPlace === "right" || item.usedBy === undefined) {
+    return item.detail;
+  }
+  if (item.detail === undefined) {
+    return item.usedBy;
+  }
+  return (
+    <>
+      {item.detail} · {item.usedBy}
+    </>
+  );
+}
+
+/** The row's right side: its chips, then its used-by text when that goes there. */
+function trailingOf(item: OverviewItem, usedByPlace: UsedByPlace): ReactNode {
+  const usedBy = usedByPlace === "right" ? item.usedBy : undefined;
+  if (item.chips === undefined && usedBy === undefined) {
+    return undefined;
+  }
+  return (
+    <span className="flex items-center gap-2">
+      {item.chips}
+      {usedBy === undefined ? null : <span className="text-small text-fg-muted">{usedBy}</span>}
+    </span>
+  );
+}
+
 function rowsOf(
   section: OverviewSection,
   words: OverviewWords,
   menuOf: ((item: OverviewItem) => readonly MenuEntry[]) | undefined,
   openMenu: OpenMenu,
+  usedByPlace: UsedByPlace,
 ): readonly ListRow[] {
-  return section.items.map((item) => ({
-    id: item.id,
-    title: item.name,
-    ...(item.detail === undefined ? {} : { meta: item.detail }),
-    ...(item.avatar === undefined ? {} : { avatar: item.avatar }),
-    ...(item.chips === undefined && item.usedBy === undefined
-      ? {}
-      : {
-          trailing: (
-            <span className="flex items-center gap-2">
-              {item.chips}
-              {item.usedBy === undefined ? null : (
-                <span className="text-small text-fg-muted">{item.usedBy}</span>
-              )}
-            </span>
-          ),
-        }),
-    ...(menuOf === undefined || menuOf(item).length === 0
-      ? {}
-      : {
-          more: {
-            label: words.moreLabel(item.name),
-            onClick: (event) => openMenu(item, event.currentTarget),
-          },
-        }),
-  }));
+  return section.items.map((item) => {
+    const meta = metaOf(item, usedByPlace);
+    const trailing = trailingOf(item, usedByPlace);
+    return {
+      id: item.id,
+      title: item.name,
+      ...(meta === undefined ? {} : { meta }),
+      ...(item.avatar === undefined ? {} : { avatar: item.avatar }),
+      ...(trailing === undefined ? {} : { trailing }),
+      ...(menuOf === undefined || menuOf(item).length === 0
+        ? {}
+        : {
+            more: {
+              label: words.moreLabel(item.name),
+              onClick: (event) => openMenu(item, event.currentTarget),
+            },
+          }),
+    };
+  });
 }
 
 /**
@@ -286,6 +315,7 @@ function OverviewBody({
   itemMenu,
   openMenu,
 }: OverviewBodyProps) {
+  const usedByPlace: UsedByPlace = usePresentation() === "phone" ? "line" : "right";
   if (failure !== undefined) {
     return (
       <EmptyState
@@ -322,7 +352,7 @@ function OverviewBody({
   return (
     <div className="flex flex-col gap-2">
       {sections.map((section) => {
-        const rows = rowsOf(section, words, itemMenu, openMenu);
+        const rows = rowsOf(section, words, itemMenu, openMenu, usedByPlace);
         const name = headingOf(section);
         return rows.length === 0 ? (
           <List
