@@ -244,6 +244,9 @@ from a folder you pick with **Choose folder…** or from a git address: the app 
 of the repository (files only, with no `.git`, no submodules and none of your git settings), checks it
 as `plugin add` does, and adds the plugin not trusted, so you review the check next.
 
+Both leave private names out of the copy, at any depth: `.git`, `.studio`, `.env`, `.env.*` and
+`.envrc`. Keep them out of your plugin's folder and they never reach anyone else's profile.
+
 The check lists what the plugin can do and reach:
 
 - **Tools for agents:** every tool, as **Reads**, **Changes things** or
