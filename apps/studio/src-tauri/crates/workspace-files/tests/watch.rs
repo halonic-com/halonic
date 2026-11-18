@@ -234,7 +234,7 @@ fn folder_poll_stops_at_its_file_limit() {
     FolderSnapshot::of_at_most(scratch.path(), &Fence::Outside, 3).expect("three files fit");
     let refused = FolderSnapshot::of_at_most(scratch.path(), &Fence::Outside, 2);
     assert_eq!(refused, Err(FileError::TooManyFiles { limit: 2 }));
-    assert!(MAX_WATCHED_FILES >= 10_000, "tens of thousands");
+    const { assert!(MAX_WATCHED_FILES >= 10_000, "tens of thousands") };
 }
 
 #[test]
