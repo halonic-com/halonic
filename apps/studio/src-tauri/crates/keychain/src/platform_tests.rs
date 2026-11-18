@@ -9,7 +9,9 @@ use halonic_secrets::{SecretBackend, SecretError, SecretName, check_backend_cont
 use keyring::Error;
 
 use crate::DesktopKeychain;
-use crate::platform::{MAX_STORED_BYTES, NO_ACCESS, PlatformCredential, entry, secret_error};
+use crate::platform::{
+    MAX_STORED_BYTES, NO_ACCESS, PlatformCredential, entry, origins_entry, secret_error,
+};
 
 fn name(name: &str) -> SecretName {
     SecretName::parse(name).expect("a valid name")
@@ -64,6 +66,42 @@ fn desktop_keychain_stores_under_the_service_and_the_canonical_name() {
         .downcast_ref::<PlatformCredential>()
         .expect("the platform's credential type");
     assert_eq!(credential.target_name, "acme_key.halonic");
+    assert_eq!(credential.username, "acme_key");
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn desktop_keychain_stores_origins_under_their_service_and_the_canonical_name() {
+    let entry = origins_entry(&name("Acme-Key")).expect("making an entry touches no keychain");
+    let credential = entry
+        .get_credential()
+        .downcast_ref::<PlatformCredential>()
+        .expect("the platform's credential type");
+    assert_eq!(credential.attributes["service"], "halonic-origins");
+    assert_eq!(credential.attributes["username"], "acme_key");
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn desktop_keychain_stores_origins_under_their_service_and_the_canonical_name() {
+    let entry = origins_entry(&name("Acme-Key")).expect("making an entry touches no keychain");
+    let credential = entry
+        .get_credential()
+        .downcast_ref::<PlatformCredential>()
+        .expect("the platform's credential type");
+    assert_eq!(credential.service, "halonic-origins");
+    assert_eq!(credential.account, "acme_key");
+}
+
+#[cfg(target_os = "windows")]
+#[test]
+fn desktop_keychain_stores_origins_under_their_service_and_the_canonical_name() {
+    let entry = origins_entry(&name("Acme-Key")).expect("making an entry touches no keychain");
+    let credential = entry
+        .get_credential()
+        .downcast_ref::<PlatformCredential>()
+        .expect("the platform's credential type");
+    assert_eq!(credential.target_name, "acme_key.halonic-origins");
     assert_eq!(credential.username, "acme_key");
 }
 

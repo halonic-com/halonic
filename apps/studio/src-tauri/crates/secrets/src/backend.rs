@@ -14,8 +14,8 @@ pub const SERVICE: &str = "halonic";
 ///
 /// A backend receives names that are already canonical and values that
 /// already passed [`check_value`]; the functions [`get_secret`],
-/// [`has_secret`], [`set_secret`] and [`delete_secret`], and the token ones,
-/// see to that. It holds no desktop
+/// [`has_secret`], [`set_secret`] and [`delete_secret`], the token ones and
+/// the origin ones see to that. It holds no desktop
 /// types, so the Android backend can implement it with only a plugin
 /// handle.
 pub trait SecretBackend: Send + Sync {
@@ -34,6 +34,21 @@ pub trait SecretBackend: Send + Sync {
 
     /// Removes the value. Removing a name that holds nothing succeeds.
     fn delete(&self, name: &SecretName) -> Result<(), SecretError>;
+
+    /// The stored list of origins the key may be sent to, as text, or `None`
+    /// when none is recorded. It is kept apart from the value, so
+    /// [`SecretBackend::set`] never changes it; [`crate::allowed_origins`]
+    /// reads it.
+    fn get_origins(&self, name: &SecretName) -> Result<Option<String>, SecretError>;
+
+    /// Stores the list of origins, replacing any list already there.
+    /// [`crate::allow_origin`] writes it, checked and no longer than
+    /// [`SecretBackend::max_value_bytes`].
+    fn set_origins(&self, name: &SecretName, origins: &str) -> Result<(), SecretError>;
+
+    /// Removes the list of origins. Removing a list that isn't there
+    /// succeeds.
+    fn delete_origins(&self, name: &SecretName) -> Result<(), SecretError>;
 
     /// The longest value this backend can keep, in bytes. A store that holds
     /// less than [`MAX_VALUE_BYTES`] (the Windows Credential Manager) says so
@@ -67,7 +82,7 @@ fn check_value_fits(backend: &dyn SecretBackend, value: &str) -> Result<(), Secr
 /// doesn't belong to Halonic. Halonic's own secrets and its tokens are
 /// refused here, in the shell, so a page that calls the commands directly
 /// can't read or change them; tokens go through the token commands.
-fn secret_name(name: &str) -> Result<SecretName, SecretError> {
+pub(crate) fn secret_name(name: &str) -> Result<SecretName, SecretError> {
     let name = SecretName::parse(name)?;
     if name.is_halonic() {
         return Err(SecretError::ReservedName);
@@ -86,16 +101,22 @@ pub fn has_secret(backend: &dyn SecretBackend, name: &str) -> Result<bool, Secre
     backend.has(&secret_name(name)?)
 }
 
-/// What `secret_set` does: checks the name and the value, then writes.
+/// What `secret_set` does: checks the name and the value, then writes. The
+/// key's allowed origins stay: a new value for a key must not unbind it.
 pub fn set_secret(backend: &dyn SecretBackend, name: &str, value: &str) -> Result<(), SecretError> {
     let name = secret_name(name)?;
     check_value_fits(backend, value)?;
     backend.set(&name, value)
 }
 
-/// What `secret_delete` does: checks the name, then removes.
+/// What `secret_delete` does: checks the name, then removes the key's
+/// allowed origins and then the value. In that order, a failure halfway
+/// leaves a key with no origins, which the older trust rule covers, and
+/// never a list that a new key under the same name would take over.
 pub fn delete_secret(backend: &dyn SecretBackend, name: &str) -> Result<(), SecretError> {
-    backend.delete(&secret_name(name)?)
+    let name = secret_name(name)?;
+    backend.delete_origins(&name)?;
+    backend.delete(&name)
 }
 
 /// What `token_get` does: reads the token `name`, stored under

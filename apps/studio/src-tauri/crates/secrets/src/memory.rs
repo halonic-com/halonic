@@ -10,6 +10,7 @@ use crate::name::SecretName;
 #[derive(Debug, Default)]
 pub struct MemoryBackend {
     values: Mutex<HashMap<String, String>>,
+    origins: Mutex<HashMap<String, String>>,
 }
 
 impl MemoryBackend {
@@ -34,6 +35,23 @@ impl SecretBackend for MemoryBackend {
     fn delete(&self, name: &SecretName) -> Result<(), SecretError> {
         let mut values = self.values.lock().unwrap_or_else(PoisonError::into_inner);
         values.remove(name.as_str());
+        Ok(())
+    }
+
+    fn get_origins(&self, name: &SecretName) -> Result<Option<String>, SecretError> {
+        let origins = self.origins.lock().unwrap_or_else(PoisonError::into_inner);
+        Ok(origins.get(name.as_str()).cloned())
+    }
+
+    fn set_origins(&self, name: &SecretName, list: &str) -> Result<(), SecretError> {
+        let mut origins = self.origins.lock().unwrap_or_else(PoisonError::into_inner);
+        origins.insert(name.as_str().to_owned(), list.to_owned());
+        Ok(())
+    }
+
+    fn delete_origins(&self, name: &SecretName) -> Result<(), SecretError> {
+        let mut origins = self.origins.lock().unwrap_or_else(PoisonError::into_inner);
+        origins.remove(name.as_str());
         Ok(())
     }
 }

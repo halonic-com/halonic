@@ -105,6 +105,8 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "secret_has",
         "secret_set",
         "secret_delete",
+        "secret_allowed_origins",
+        "secret_allow_origin",
         "token_get",
         "token_set",
         "token_delete",
@@ -268,6 +270,11 @@ fn served_page_test_sees_the_connect_page_allowed_the_secret_commands_on_desktop
         ("secret_has", json!({"name": "not a name"})),
         ("secret_set", json!({"name": "not a name", "value": "v"})),
         ("secret_delete", json!({"name": "not a name"})),
+        ("secret_allowed_origins", json!({"name": "not a name"})),
+        (
+            "secret_allow_origin",
+            json!({"name": "not a name", "address": "https://llm.example.com"}),
+        ),
         ("token_get", json!({"name": "not a name"})),
         ("token_set", json!({"name": "not a name", "value": "v"})),
         ("token_delete", json!({"name": "not a name"})),
@@ -294,6 +301,11 @@ fn served_page_test_sees_the_secret_commands_refuse_halonic_names_over_ipc() {
             ("secret_has", json!({"name": name})),
             ("secret_set", json!({"name": name, "value": "v"})),
             ("secret_delete", json!({"name": name})),
+            ("secret_allowed_origins", json!({"name": name})),
+            (
+                "secret_allow_origin",
+                json!({"name": name, "address": "https://llm.example.com"}),
+            ),
         ] {
             let answer = invoke(&window, CONNECT_PAGE, command, body);
             let refusal = answer.expect_err("the name belongs to Halonic");

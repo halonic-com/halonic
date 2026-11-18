@@ -158,6 +158,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             secrets::secret_has,
             secrets::secret_set,
             secrets::secret_delete,
+            secrets::secret_allowed_origins,
+            secrets::secret_allow_origin,
             secrets::token_get,
             secrets::token_set,
             secrets::token_delete,
