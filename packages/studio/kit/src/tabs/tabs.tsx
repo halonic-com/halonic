@@ -1,6 +1,7 @@
 import { type KeyboardEvent, type ReactNode, useId, useRef } from "react";
 import { usePresentation } from "../presentation/presentation.tsx";
 import { StatusChip } from "../status-chip/status-chip.tsx";
+import { keyTarget, type TabOrientation } from "./tab-keys.ts";
 
 /** The counter on a tab: how many things its view holds, or how many errors it has. */
 export interface TabCount {
@@ -59,9 +60,15 @@ export interface TabListProps<Id extends string = string> {
   readonly onSelect: (id: Id) => void;
   /**
    * Tabs share the page column in equal parts, at least 48px high, and labels wrap. On by default
-   * on a phone (the presentation context), off on desktop.
+   * on a phone (the presentation context), off on desktop. A vertical list ignores it.
    */
   readonly fill?: boolean;
+  /**
+   * `horizontal` (the default) is the segmented track, moved through with ← and →. `vertical` is a
+   * column of rows as wide as its container, beside its panel, moved through with ↑ and ↓: the
+   * page lays out the column itself, such as a Configuration page's list of pages.
+   */
+  readonly orientation?: TabOrientation;
   /** The same ids as the `TabPanel` that shows the selected view. */
   readonly ids: TabIds;
 }
@@ -80,20 +87,28 @@ export interface TabPanelProps<Id extends string = string> {
 
 /** The props of `Tabs`. */
 export interface TabsProps<Id extends string = string>
-  extends Omit<TabListProps<Id>, "ids">,
+  extends Omit<TabListProps<Id>, "ids" | "orientation">,
     Pick<TabPanelProps<Id>, "children"> {
   /** The tabs stay at the top of the scroll area while the page scrolls under them. */
   readonly sticky?: boolean;
 }
 
+/** The three looks: a track as wide as its tabs, a track across the column, and a column of rows. */
+type Layout = "inline" | "fill" | "vertical";
+
 const trackClasses = {
   inline: "inline-flex max-w-full gap-0.5 rounded-sm bg-surface-muted p-0.5",
   fill: "flex w-full gap-0.5 rounded-sm bg-surface-muted p-0.5",
+  vertical: "flex flex-col gap-1",
 } as const;
 
 const stickyClasses = "sticky top-0 z-(--layer-sticky) bg-surface";
 
-const tabClasses = "rounded-segment text-small transition-colors focus-ring";
+const tabClasses = {
+  inline: "rounded-segment text-small transition-colors focus-ring",
+  fill: "rounded-segment text-small transition-colors focus-ring",
+  vertical: "rounded-sm text-body transition-colors focus-ring",
+} as const;
 
 /**
  * On desktop a tab is as wide as its label. On a touch screen it renders at 40px with a 48px hit
@@ -110,17 +125,39 @@ const sizeClasses = {
   // The label wraps between words and the counter follows it like one more word. A word longer
   // than its tab breaks with a hyphen, or without one where there's no hyphenation dictionary.
   fill: "min-h-touch min-w-0 flex-1 basis-0 px-2 py-1 text-center hyphens-auto wrap-break-word",
+  // A nav row: 32px, 48px on a touch screen. A long label wraps and the row grows with it.
+  vertical: [
+    "flex min-h-control-md w-full items-center gap-2 px-3 py-1",
+    "text-start hyphens-auto wrap-break-word touch:min-h-touch",
+  ].join(" "),
 } as const;
 
 /** The selected label's weight. `InlineLabel`'s width copy uses it too, so the two never drift. */
 const selectedWeight = "font-medium";
 
-const stateClasses = {
+const disabledClasses = "cursor-not-allowed text-fg-disabled text-forced-disabled";
+
+const segmentStateClasses = {
   // selected-forced is the selected tab's edge in high contrast, which drops the fill and the
   // shadow (component specs 23 A11, 23.5). The focus ring's own outline wins on focus.
   selected: `bg-surface ${selectedWeight} text-fg shadow-1 selected-forced`,
   default: "text-fg-muted hover:text-fg",
-  disabled: "cursor-not-allowed text-fg-disabled text-forced-disabled",
+  disabled: disabledClasses,
+} as const;
+
+/** A vertical list's rows look like the kit's selected list rows: an accent tint, no shadow. */
+const rowStateClasses = {
+  selected: `bg-accent-soft ${selectedWeight} text-fg selected-forced`,
+  default: "text-fg-muted hover:bg-surface-subtle hover:text-fg",
+  disabled: disabledClasses,
+} as const;
+
+type TabState = keyof typeof segmentStateClasses;
+
+const stateClasses = {
+  inline: segmentStateClasses,
+  fill: segmentStateClasses,
+  vertical: rowStateClasses,
 } as const;
 
 const iconSlot = "inline-grid size-icon-sm shrink-0 place-items-center *:size-full";
@@ -132,11 +169,13 @@ const iconSlot = "inline-grid size-icon-sm shrink-0 place-items-center *:size-fu
 const iconClasses = {
   inline: iconSlot,
   fill: `${iconSlot} me-1.5 align-middle`,
+  vertical: iconSlot,
 } as const;
 
 /**
  * A page's own views: Flow / Configuration / Runs. Arrow keys move between the tabs and select
  * them, Home and End jump, and only the selected tab is in the Tab order. Switching is instant.
+ * For a column of pages beside the panel, use `TabList` with `orientation="vertical"`.
  * Not the window tabs in the title bar, which belong to the shell.
  *
  * @example
@@ -174,6 +213,13 @@ export function Tabs<Id extends string>({ sticky = false, children, ...listProps
  * const ids = useTabIds();
  * <header><TabList label="Workflow views" tabs={views} selected={view} onSelect={setView} ids={ids} /></header>
  * <TabPanel ids={ids} tabs={views} selected={view}>{content}</TabPanel>
+ *
+ * @example
+ * // A column of pages on the left, the page beside it.
+ * <div className="flex">
+ *   <nav className="w-52 px-2 py-4"><TabList orientation="vertical" … ids={ids} /></nav>
+ *   <TabPanel ids={ids} tabs={pages} selected={page}>{content}</TabPanel>
+ * </div>
  */
 export function TabList<Id extends string>({
   label,
@@ -181,11 +227,10 @@ export function TabList<Id extends string>({
   selected,
   onSelect,
   fill: fillProp,
+  orientation = "horizontal",
   ids,
 }: TabListProps<Id>) {
-  const presentation = usePresentation();
-  const fill = fillProp ?? presentation === "phone";
-  const layout = fill ? "fill" : "inline";
+  const layout = useLayout(orientation, fillProp);
   const tabElements = useRef(new Map<Id, HTMLButtonElement>());
 
   const enabled = tabs.filter((tab) => tab.disabled !== true);
@@ -199,7 +244,7 @@ export function TabList<Id extends string>({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const next = keyTarget(event.key, enabled, focusable);
+    const next = keyTarget(event.key, orientation, enabled, focusable);
     if (next === undefined) {
       return;
     }
@@ -209,7 +254,13 @@ export function TabList<Id extends string>({
   };
 
   return (
-    <div role="tablist" aria-label={label} className={trackClasses[layout]} onKeyDown={onKeyDown}>
+    <div
+      role="tablist"
+      aria-label={label}
+      aria-orientation={orientation}
+      className={trackClasses[layout]}
+      onKeyDown={onKeyDown}
+    >
       {tabs.map((tab) => {
         const isSelected = tab.id === selected;
         const isDisabled = tab.disabled === true;
@@ -233,8 +284,9 @@ export function TabList<Id extends string>({
             tabIndex={tab.id === focusable ? 0 : -1}
             // An unselected tab shows the muted track, so its counter takes the on-muted: look.
             // The selected tab is a raised surface segment, so its counter keeps the normal look.
-            data-fill={isSelected ? undefined : "muted"}
-            className={`${tabClasses} ${sizeClasses[layout]} ${stateClasses[state]}`}
+            // A vertical list has no track: its rows sit on the page.
+            data-fill={isSelected || layout === "vertical" ? undefined : "muted"}
+            className={`${tabClasses[layout]} ${sizeClasses[layout]} ${stateClasses[layout][state]}`}
             onClick={() => {
               if (!isDisabled) {
                 select(tab.id);
@@ -246,8 +298,8 @@ export function TabList<Id extends string>({
                 {tab.icon}
               </span>
             )}
-            {fill ? tab.label : <InlineLabel label={tab.label} />}
-            <TabSignal tab={tab} fill={fill} />
+            <TabLabel label={tab.label} layout={layout} />
+            <TabSignal tab={tab} fill={layout === "fill"} />
           </button>
         );
       })}
@@ -277,11 +329,34 @@ export function TabPanel<Id extends string>({
   );
 }
 
-function tabState(isSelected: boolean, isDisabled: boolean): keyof typeof stateClasses {
+/** The look a tab list takes: a vertical list is always rows; a row of tabs fills on a phone. */
+function useLayout(orientation: TabOrientation, fill: boolean | undefined): Layout {
+  const presentation = usePresentation();
+  if (orientation === "vertical") {
+    return "vertical";
+  }
+  return (fill ?? presentation === "phone") ? "fill" : "inline";
+}
+
+function tabState(isSelected: boolean, isDisabled: boolean): TabState {
   if (isSelected) {
     return "selected";
   }
   return isDisabled ? "disabled" : "default";
+}
+
+/**
+ * The label as each look needs it: plain text that wraps in `fill`, the width-keeping grid in
+ * `inline`, and in `vertical` a span that takes the row's free width, so a counter sits at its end.
+ */
+function TabLabel({ label, layout }: { readonly label: string; readonly layout: Layout }) {
+  if (layout === "fill") {
+    return label;
+  }
+  if (layout === "vertical") {
+    return <span className="min-w-0 flex-1">{label}</span>;
+  }
+  return <InlineLabel label={label} />;
 }
 
 /**
@@ -344,30 +419,4 @@ function TabCounter({ count, fill }: { readonly count: TabCount; readonly fill: 
       </span>
     </>
   );
-}
-
-/** The tab a key moves to, skipping disabled tabs and wrapping round; none for other keys. */
-function keyTarget<Id extends string>(
-  key: string,
-  enabled: readonly Tab<Id>[],
-  current: Id | undefined,
-): Id | undefined {
-  if (enabled.length === 0) {
-    return undefined;
-  }
-  // -1 when the current tab is disabled: then → goes to the first tab and ← to the last.
-  const at = enabled.findIndex((tab) => tab.id === current);
-  switch (key) {
-    case "ArrowRight":
-      return enabled[(at + 1) % enabled.length]?.id;
-    case "ArrowLeft":
-      return enabled[at === -1 ? enabled.length - 1 : (at - 1 + enabled.length) % enabled.length]
-        ?.id;
-    case "Home":
-      return enabled[0]?.id;
-    case "End":
-      return enabled[enabled.length - 1]?.id;
-    default:
-      return undefined;
-  }
 }

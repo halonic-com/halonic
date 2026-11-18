@@ -617,6 +617,40 @@ skipped. Switching is instant, with no sliding indicator, and never adds to Back
 | Disabled | `fg-disabled`, clicks ignored, skipped by the arrow keys (`aria-disabled`) |
 | Error | A `danger` counter on the tab whose view has errors |
 
+**A column of pages.** For a list of pages beside the page itself (an agent's or a workflow's
+Configuration), give `TabList` `orientation="vertical"`. The page lays out the column (its width,
+padding and edge); the list fills it with rows, and its `TabPanel` sits beside it:
+
+```tsx
+const ids = useTabIds();
+<div className="flex">
+  <div className="w-52 shrink-0 border-e border-border px-2 py-4">
+    <TabList
+      label="Pages"
+      orientation="vertical"
+      tabs={pages}
+      selected={page}
+      onSelect={setPage}
+      ids={ids}
+    />
+  </div>
+  <TabPanel ids={ids} tabs={pages} selected={page} className="min-w-0 flex-1">
+    {pageContent}
+  </TabPanel>
+</div>;
+```
+
+The up and down arrow keys move and select instead of left and right; Home, End and the one Tab
+stop work as above. A counter or running dot sits at the end of its row. `fill` doesn't apply.
+
+| State | What shows |
+| --- | --- |
+| Default | `fg-muted` text, a row at least 32px high (48px on a touch screen), labels wrap |
+| Selected | An `accent-soft` fill, `fg` text at weight 500; a 1px `CanvasText` outline in high contrast |
+| Hover | Text `fg` on a `surface-subtle` fill |
+| Focus | The standard focus ring |
+| Disabled | As above |
+
 **On a phone** (`fill`, from the presentation context) the track spans the page column and the
 tabs share it equally, each at least 48px high with 4px 8px padding. A label wraps between words
 and the counter follows it like one more word; a word longer than its tab breaks with a hyphen.
