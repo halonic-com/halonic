@@ -8,15 +8,20 @@
 //! between check and connect), follows redirects by hand and checks each hop
 //! again, and stops at the body and time limits. A refusal is a value with a
 //! stable `kind`; none holds a header value or the address's query.
+//!
+//! When `HTTPS_PROXY` names a proxy (HAL-12966), the guard's `route_for`
+//! decides for each hop, by the CLI's rules: a local host or one on
+//! `NO_PROXY` goes direct as above; any other host goes through a CONNECT
+//! tunnel to its name, and the shell checks its certificate itself.
 
 use std::collections::HashMap;
 use std::net::{SocketAddr, ToSocketAddrs};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use halonic_http_guard::{
-    CheckedRequest, MAX_REDIRECTS, MAX_RESPONSE_BYTES, PageRequest, Refusal, check_address,
-    check_redirect, check_request,
+    CheckedRequest, MAX_REDIRECTS, MAX_RESPONSE_BYTES, PageRequest, ProxyEndpoint, ProxySetting,
+    Refusal, Route, check_address, check_redirect, check_request, route_for,
 };
 use serde::Serialize;
 use tauri::{Manager, Runtime, Webview};
@@ -32,10 +37,11 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 /// Stops a call's task.
 type Abort = Box<dyn Fn() + Send>;
 
-/// The calls the pages have in flight, so a page can abort one.
-#[derive(Default)]
+/// The calls the pages have in flight, so a page can abort one, and the
+/// proxy setting, read once when the app starts, as the CLI reads it.
 pub struct HttpFetchState {
     calls: Mutex<HashMap<CallKey, Abort>>,
+    proxy: Arc<ProxySetting>,
 }
 
 /// A call, by the page that made it and the id that page gave it.
@@ -46,6 +52,18 @@ struct CallKey {
 }
 
 impl HttpFetchState {
+    /// Reads `HTTPS_PROXY` and `NO_PROXY` from the app's environment.
+    pub fn from_env() -> Self {
+        Self::with_proxy(ProxySetting::from_env(|name| std::env::var(name).ok()))
+    }
+
+    fn with_proxy(proxy: ProxySetting) -> Self {
+        Self {
+            calls: Mutex::default(),
+            proxy: Arc::new(proxy),
+        }
+    }
+
     fn add(&self, key: CallKey, abort: Abort) -> Result<(), FetchRefusal> {
         let mut calls = self.calls.lock().unwrap_or_else(|e| e.into_inner());
         if calls.contains_key(&key) {
@@ -81,7 +99,7 @@ impl HttpFetchState {
 
 /// Why a call failed: a stable `kind` and a message for the log. The guard's
 /// codes (`method_refused`, `url_refused`, `address_refused`, …) are kinds;
-/// the shell adds `call_in_use`, `aborted`, `timeout`, `network`,
+/// the shell adds `call_in_use`, `aborted`, `timeout`, `network`, `proxy`,
 /// `response_too_large`, `too_many_redirects` and `resolve_failed`.
 #[derive(Debug, Serialize)]
 pub struct FetchRefusal {
@@ -131,7 +149,8 @@ pub async fn http_fetch<R: Runtime>(
         call,
     };
     let app = webview.app_handle().clone();
-    let task = tauri::async_runtime::spawn(run(checked));
+    let proxy = Arc::clone(&app.state::<HttpFetchState>().proxy);
+    let task = tauri::async_runtime::spawn(async move { run(checked, &proxy).await });
     let handle = task.inner().abort_handle();
     app.state::<HttpFetchState>()
         .add(key.clone(), Box::new(move || handle.abort()))
@@ -155,12 +174,12 @@ pub fn end_page_calls<R: Runtime>(app: &tauri::AppHandle<R>, page: &str) {
     app.state::<HttpFetchState>().abort(|key| key.page == page);
 }
 
-async fn run(first: CheckedRequest) -> Result<FetchAnswer, FetchRefusal> {
+async fn run(first: CheckedRequest, proxy: &ProxySetting) -> Result<FetchAnswer, FetchRefusal> {
     let deadline = Instant::now() + CALL_TIMEOUT;
     let mut request = first;
     let mut hops = 0;
     loop {
-        let response = send(&request, deadline).await?;
+        let response = send(&request, route_for(&request.url, proxy)?, deadline).await?;
         let status = response.status();
         let location = response
             .headers()
@@ -222,22 +241,24 @@ fn next_hop(
     Ok(next)
 }
 
-/// Sends one hop, to the addresses the guard has accepted.
+/// Sends one hop: direct to the addresses the guard has accepted, or
+/// through the proxy's tunnel.
 async fn send(
     request: &CheckedRequest,
+    route: Route<'_>,
     deadline: Instant,
 ) -> Result<reqwest::Response, FetchRefusal> {
-    let mut builder = reqwest::Client::builder()
-        .no_proxy()
+    let builder = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .connect_timeout(CONNECT_TIMEOUT);
-    if let Some(Host::Domain(name)) = request.url.host() {
-        let addresses = resolve(&request.url, request.is_plain()).await?;
-        builder = builder.resolve_to_addrs(name, &addresses);
-    }
+    let builder = match route {
+        Route::Direct => direct(builder, request).await?,
+        Route::Tunnel(endpoint) => tunnelled(builder, endpoint)?,
+    };
     let client = builder
         .build()
         .map_err(|_| FetchRefusal::new("network", "the HTTP client couldn't be made"))?;
+    let via_proxy = matches!(route, Route::Tunnel(_));
     let method = reqwest::Method::from_bytes(request.method.as_bytes())
         .map_err(|_| FetchRefusal::new("method_refused", "that method is not allowed"))?;
     let mut call = client
@@ -249,7 +270,39 @@ async fn send(
     if let Some(body) = &request.body {
         call = call.body(body.clone());
     }
-    call.send().await.map_err(failed)
+    call.send().await.map_err(|error| failed(&error, via_proxy))
+}
+
+/// No proxy, and the host's name pinned to the addresses it was checked at,
+/// so it can't resolve elsewhere between check and connect.
+async fn direct(
+    builder: reqwest::ClientBuilder,
+    request: &CheckedRequest,
+) -> Result<reqwest::ClientBuilder, FetchRefusal> {
+    let builder = builder.no_proxy();
+    let Some(Host::Domain(name)) = request.url.host() else {
+        return Ok(builder);
+    };
+    let addresses = resolve(&request.url, request.is_plain()).await?;
+    Ok(builder.resolve_to_addrs(name, &addresses))
+}
+
+/// Exactly one proxy, for `https` only, so reqwest asks it for a CONNECT
+/// tunnel to the host's name and checks the host's certificate itself. The
+/// name isn't resolved here: the proxy, whose address the person chose,
+/// resolves it. Setting a proxy also stops reqwest reading the environment
+/// by its own rules (`HTTP_PROXY`, `ALL_PROXY`, upper case first).
+fn tunnelled(
+    builder: reqwest::ClientBuilder,
+    endpoint: &ProxyEndpoint,
+) -> Result<reqwest::ClientBuilder, FetchRefusal> {
+    let proxy = reqwest::Proxy::https(endpoint.url())
+        .map_err(|_| FetchRefusal::new("proxy", "the proxy setting couldn't be used"))?;
+    let proxy = match endpoint.credentials() {
+        Some((username, password)) => proxy.basic_auth(username, password),
+        None => proxy,
+    };
+    Ok(builder.proxy(proxy))
 }
 
 /// Resolves the host and checks every address it gives; a name with one
@@ -292,7 +345,11 @@ async fn answer(
     let mut bytes = Vec::new();
     loop {
         remaining(deadline)?;
-        let Some(chunk) = response.chunk().await.map_err(failed)? else {
+        let Some(chunk) = response
+            .chunk()
+            .await
+            .map_err(|error| failed(&error, false))?
+        else {
             break;
         };
         if bytes.len() + chunk.len() > MAX_RESPONSE_BYTES {
@@ -319,10 +376,16 @@ fn remaining(deadline: Instant) -> Result<Duration, FetchRefusal> {
 }
 
 /// A failed send or read. The message never holds the address: reqwest puts
-/// it in its errors, and its query may hold a key.
-fn failed(error: reqwest::Error) -> FetchRefusal {
+/// it in its errors, and its query may hold a key. Nor does it hold the
+/// proxy's reason, which may echo its user name.
+fn failed(error: &reqwest::Error, via_proxy: bool) -> FetchRefusal {
     if error.is_timeout() {
         FetchRefusal::new("timeout", "the call took too long")
+    } else if via_proxy && error.is_connect() {
+        FetchRefusal::new(
+            "proxy",
+            "couldn't reach the host through the proxy: check HTTPS_PROXY and the proxy",
+        )
     } else if error.is_connect() {
         FetchRefusal::new("network", "couldn't connect to the host")
     } else {

@@ -11,8 +11,8 @@ below instead.
 ## Steps
 
 1. Stop Halonic. It reads the setting once, when it starts.
-2. In the shell that starts Halonic (`halonic serve`, the CLI or the agent
-   host), set:
+2. In the shell that starts Halonic (`halonic serve`, the CLI, the agent
+   host or the Studio desktop app), set:
 
    ```sh
    export HTTPS_PROXY=http://<proxy-host>:<port>
@@ -62,6 +62,10 @@ proxy first. Fix the variable and restart Halonic.
 - **A proxy that re-signs HTTPS** only works if Halonic trusts your company's
   certificate (`NODE_EXTRA_CA_CERTS=<path-to-certificate>`). A re-signing proxy
   sees your provider key. Whether to allow that is your company's decision.
+- **The Studio desktop app reads the variables only if it can see them.** An
+  app started from the Start menu, the Dock or Finder usually doesn't get
+  variables set in a terminal. Start Studio from the shell where you set them,
+  or set them for your whole account.
 - **Programs the sandbox starts never get your proxy variables.** They get the
   sandbox's own, which lead to the sandbox's network fence and its list of
   allowed sites, not to your proxy.

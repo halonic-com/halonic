@@ -57,7 +57,9 @@ tauri = { version = "=2.12.5", features = [] }
 # The plugins are pinned with tauri, for the same reason. The http plugin
 # is used only from Rust, for its reqwest client (the hello call); it is
 # never registered, so no page can make HTTP calls through it. Only
-# rustls-tls: no system proxy and no cookie store.
+# rustls-tls: no proxy settings from the operating system, and no cookie
+# store. `http_fetch` sets each client's proxy itself (HAL-12966), which
+# also stops reqwest reading the proxy variables by its own rules.
 tauri-plugin-http = { version = "=2.8.3", default-features = false, features = ["rustls-tls"] }
 tauri-plugin-opener = "=2.7.2"
 url = "2"
@@ -74,8 +76,12 @@ rfd = { version = "=0.17.2", default-features = false, features = ["gtk3", "comm
 # checks latest.json on the release page, checks the installer's signature
 # against the key in tauri.conf.json, and runs the NSIS installer. Pinned
 # with tauri: 2.14.1 needs tauri ^2.12. Only rustls-tls, as for the http
-# plugin: no system proxy (a blocked check is fine, C58), and no zip, which
-# only old .zip update bundles need. Never granted to a page.
+# plugin: no proxy settings from the operating system (a blocked check is
+# fine, C58), and no zip, which only old .zip update bundles need. Its
+# reqwest does read HTTPS_PROXY, HTTP_PROXY, ALL_PROXY and NO_PROXY by its
+# own rules (upper case first). That is safe, as the installer's signature
+# is checked; moving it to Halonic's rules is HAL-12966's next step. Never
+# granted to a page.
 tauri-plugin-updater = { version = "=2.14.1", default-features = false, features = ["rustls-tls"] }
 
 # Tauri's mock runtime, for the test that every command is refused from the
