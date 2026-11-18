@@ -95,7 +95,7 @@ Var RollbackMode
 ; uninstaller's sandbox removal go, and nothing else moves.
 !define SANDBOX_STEP
 ; What the installer says it uses. CI fails when the real size is off by a quarter.
-!define SIZE_MB 130
+!define SIZE_MB 145
 Var SandboxState
 Var ShortcutState
 Var SandboxOutcome
