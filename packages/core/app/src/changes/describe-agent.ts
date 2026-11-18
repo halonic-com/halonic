@@ -33,6 +33,7 @@ const AGENT_FIELDS: Readonly<Record<string, string>> = {
   allowedSites: "Sites it can reach",
   output: "Reply format",
   maxSteps: "Most model calls",
+  harnessLimits: "Harness limits",
   character: "Character",
   version: "Format version",
   id: "Id",
