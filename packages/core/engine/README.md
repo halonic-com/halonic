@@ -18,6 +18,7 @@ loop of one model turn, which the local chat turn runs.
 | `runModelTurn` caller's tools | hands calls to the caller's tools back, ends at the round limit, and keeps the first of two tools with the same name | `engine.turn-round-limit`, `engine.turn-tool-names` |
 | `runModelTurn` results | returns refusals as data, gives the model a tool's error, and writes the model and tool calls to the run log when it has one | `engine.turn-refusals-as-data`, `engine.turn-tool-error`, `engine.turn-logs-events` |
 | `toolCallAsText` | marks an answer whose whole text, bare or in `<tool_call>` tags (the last may lack its closing tag), calls an offered tool with `toolCallAsText`, never running it; other text around the tags leaves it unmarked | `engine.turn-tool-call-as-text`, `engine.turn-tool-call-tag-as-text` |
+| provider notes | keeps the provider's `notes` on the call's `llm.response`, out of the conversation; `read_run` shows each once | `engine.turn-provider-notes`, `engine.run-log-tools` |
 | `ModelChain` busy provider | moves on at once from a model whose provider is busy, as from an offline one | `engine.busy-falls-back` |
 | `ModelChain` stops | stops the turn when the model is missing, can't use tools or runs out of memory, or the key, credit or call is refused | `engine.model-failure-stops` |
 | `llm.response` cost | each model's price and whether it is local, which give each `llm.response` its `cost` | `engine.turn-prices-calls` |

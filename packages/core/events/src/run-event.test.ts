@@ -208,6 +208,8 @@ verifies("events.run-log-contract", () => {
       cached?: boolean;
       // Added after the reference by events.tool-call-as-text (HAL-1880).
       toolCallAsText?: true;
+      // Added after the reference by events.provider-notes (HAL-12287).
+      notes?: string[];
     }>();
     expectTypeOf<EventOf<"llm.fallback">>().toEqualTypeOf<{
       type: "llm.fallback";
