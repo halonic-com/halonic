@@ -42,8 +42,9 @@ Read or report known problems in the [open issues](https://github.com/halonic-co
   this release.
 - Studio on macOS and Linux is in progress, with no date. On those, use the
   command line. Approving from your phone is in progress too.
-- No cost estimates for runs with a real model until 0.1.1, and no spending
-  limit: set one at your provider.
+- Cost estimates only for models with a price set in their file; none for
+  subscriptions, local models or the test model. Studio shows no tokens or
+  cost yet. No spending limit: set one at your provider.
 - Studio doesn't start connectors (MCP servers) yet.
 - Agents can't use your Claude or ChatGPT subscription. They use an API key or
   a local model. Agents that run Claude Code or Codex are in progress.
