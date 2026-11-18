@@ -19,7 +19,7 @@ export const REPAIR_HINT =
 export const VIEW_ONLY = "View only here. Set up the sandbox on the computer running Halonic.";
 
 export const NOT_AVAILABLE =
-  "The sandbox isn't available on this computer, so Claude Code and Codex agents can't run here yet. Agents in Halonic still run.";
+  "The sandbox isn't available on this computer, so Claude Code and Codex agents can't run here yet. Agents set to Halonic on their Harness page still run.";
 export const NEEDS_SETUP =
   "The sandbox needs a one-time setup with administrator rights. Until then, agents set to run in a sandbox don't start.";
 export const needsRepair = (reason: string) =>

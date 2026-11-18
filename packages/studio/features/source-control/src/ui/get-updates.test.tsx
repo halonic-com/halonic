@@ -62,7 +62,7 @@ verifies("source-control.get-updates", () => {
       await press(getUpdatesButton());
       const [toast] = toasts.list();
       expect(toast?.title).toBe("Couldn't get versions");
-      expect(toast?.text).toContain("Something changed while getting updates. Try again.");
+      expect(toast?.text).toContain("The shared copy or this workspace got a new version while Halonic was getting updates.");
       expect(toast?.text).toContain("Nothing changed here.");
       expect(toast?.action?.label).toBe("Try again");
     });

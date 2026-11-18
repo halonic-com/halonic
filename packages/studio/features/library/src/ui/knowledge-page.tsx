@@ -120,11 +120,7 @@ function LoadedKnowledgePage({
         {trash.menu}
       </div>
       <FormRows>
-        <Field
-          label={knowledgeWords.source}
-          align="text"
-          hint={parts.writable ? knowledgeWords.writableNote : undefined}
-        >
+        <Field label={knowledgeWords.source} align="text">
           <p className="[overflow-wrap:anywhere]">{source}</p>
         </Field>
         <SummaryField

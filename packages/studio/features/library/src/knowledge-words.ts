@@ -3,7 +3,6 @@ export const knowledgeWords = {
   kindName: "knowledge source",
   place: "Library",
   source: "Source",
-  writableNote: "Marked for agents' notes. Agents can't write here yet.",
   summary: "Summary",
   noSummary: "No summary yet.",
   summarize: "Summarize",
