@@ -77,13 +77,39 @@ verifies("models.providers.check", () => {
     );
   });
 
-  it("says when the provider isn't answering", async () => {
+  it("says when the provider isn't answering, and to start it and check again", async () => {
     const view = await show(checkAnswering(false), ollama);
 
     await act(async () => button(view).click());
     await settle();
 
-    expect(view.textContent).toContain("Not answering at localhost:11434 · checked 10:42");
+    expect(view.textContent).toContain(
+      "Not answering at localhost:11434 · checked 10:42. Start Ollama, then check again.",
+    );
+    expect(view.querySelector("[role=status]")?.textContent).toBe(
+      "Ollama is not answering at localhost:11434, checked 10:42. Start Ollama, then check again.",
+    );
+  });
+
+  it("names LM Studio, or else the provider's own name, as the program to start", async () => {
+    const check = { ...checkAnswering(false, false), addressOf: () => "localhost:1234" };
+    const lmStudio = await show(check, {
+      ...ollama,
+      id: "studio",
+      name: "My box",
+      type: "lmstudio",
+    });
+    await act(async () => button(lmStudio).click());
+    await settle();
+    expect(lmStudio.textContent).toContain("Start LM Studio, then check again.");
+    act(() => root?.unmount());
+    element?.remove();
+
+    const other = { ...ollama, id: "vllm", name: "vLLM", type: "openai-compatible" };
+    const compatible = await show(check, other);
+    await act(async () => button(compatible).click());
+    await settle();
+    expect(compatible.textContent).toContain("Start vLLM, then check again.");
   });
 
   it("keeps focus on a busy button and ignores a second click while it asks", async () => {
@@ -173,8 +199,13 @@ verifies("models.providers.check", () => {
       "Ollama is answering at localhost:11434, checked 10:42.",
     );
 
+    expect(view.textContent).not.toContain("Start Ollama");
+
     await act(async () => button(view).click());
     await settle();
     expect(view.textContent).toContain("Not answering");
+    expect(view.textContent).toContain(
+      "at localhost:11434 · checked 10:42. Start Ollama, then check again.",
+    );
   });
 });

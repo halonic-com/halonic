@@ -15,6 +15,15 @@ export const turnLimitCheck = (text: string): string | null => {
   return /^\d+$/.test(trimmed) && number >= 1 && number <= 200 ? null : words.turnLimitInvalid;
 };
 
+/**
+ * The sentence for a model the file names that the hub has no alias for; `null` when there is
+ * none, it is an alias, or it names a model directly (`provider/model`, which needs no alias).
+ */
+export const modelCheck = (model: string, aliases: readonly string[]): string | null => {
+  if (model === "" || model.includes("/") || aliases.includes(model)) return null;
+  return words.unknownAlias(model);
+};
+
 /** Props for {@link ModelPage}. */
 export interface ModelPageProps {
   readonly settings: AgentSettings;
@@ -38,12 +47,17 @@ export function ModelPage({ settings, aliases, defaultModel, save }: ModelPagePr
     (next) => save({ maxSteps: next.trim() === "" ? DEFAULT_TURN_LIMIT : Number(next) }),
     turnLimitCheck,
   );
-  // A model the file names that isn't an alias (`provider/model`) stays in the list, so it isn't lost.
+  // A model the file names that isn't an alias stays in the list, so it isn't lost. A
+  // `provider/model` name is fine as it is; an alias the hub doesn't have gets an error under it.
   const options: SelectOption[] = aliases.map((alias) => ({ value: alias, label: alias }));
   if (model !== "" && !aliases.includes(model)) options.push({ value: model, label: model });
   return (
     <div className="flex flex-col gap-6">
-      <Field label={words.model} hint={aliases.length === 0 ? words.noAliases : undefined}>
+      <Field
+        label={words.model}
+        hint={aliases.length === 0 ? words.noAliases : undefined}
+        error={modelCheck(model, aliases)}
+      >
         <Select
           options={options}
           value={model}
