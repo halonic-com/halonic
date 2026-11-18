@@ -128,6 +128,7 @@ next to the ports:
 | `tunnelStates`, `tunnelReasons` | the lists behind `TunnelState` and `TunnelReason` | `tunnel-provider` |
 | `assertTunnelConfig`, `assertGatewayTunnelConfig` | the runtime check of a `TunnelConfig`, and the host's check that it points at its own gateway port | `tunnel-provider` |
 | `tunnelReconnectDelayMs`, `tunnelBackoff` | how long a `TunnelTransport` waits before each reconnect: 0.5 s, doubling to a base of at most 30 s, ±20 % jitter | `tunnel-resolver` |
+| `newPairingCode`, `readPairingCode`, `formatPairingCode`, `pairingPskInput`, `checkCodeFromBytes`, `readCheckCode`, `formatCheckCode`, `encodePairingQr`, `decodePairingQr` | phone pairing's codes: the 12-symbol pairing code and its psk input, the 6-symbol check code from the handshake hash's HKDF bytes, and the QR payload of at most 150 bytes; the cases in `src/golden/pairing-vectors.json` are shared with the phone | `pairing-codes` |
 
 The types these use (`RunFilter`, `RecordChange`, `ToolCall` and the rest) are exported from
 `src/index.ts` and documented where they are declared.

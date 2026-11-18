@@ -15,6 +15,7 @@ const notPorts = new Set([
   "harness-sign-in-command.ts",
   "index.ts",
   "model-price.ts",
+  "pairing-codes.ts",
   "port-versions.ts",
   "provider-default-base-url.ts",
   "remote-gateway-protocol.ts",
