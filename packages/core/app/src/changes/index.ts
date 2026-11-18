@@ -1,5 +1,6 @@
 export { joinLinesThatNeedEachOther } from "./change-needs.ts";
 export { describeAgentChange } from "./describe-agent.ts";
+export { type SentenceChange, sentenceChanges } from "./describe-fields.ts";
 export { describeFileChange, type FileChange } from "./describe-file.ts";
 export { describeItemChange } from "./describe-item.ts";
 export { describeRoutineChange } from "./describe-routine.ts";
