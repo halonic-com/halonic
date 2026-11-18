@@ -76,7 +76,7 @@ verifies("routines.when.when-card", () => {
     const page = await show(<WhenCard host={host} routine={daily} announce={() => {}} />);
 
     expect(page.textContent).toContain(
-      "Starts on time only while halonic routines watch is running.",
+      "Starts on time only while halonic routines watch is running in a terminal.",
     );
     expect(page.querySelector("code")?.textContent).toBe("halonic routines watch");
   });

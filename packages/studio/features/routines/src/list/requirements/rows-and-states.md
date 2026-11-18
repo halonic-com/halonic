@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-1306 (T12 PR 3), HAL-12323; flow-routines 2.1; microcopy 12.1; states RT
 
-The Routines place shall list the workspace's routines under "Routines" and the sentence "A routine starts a workflow or an agent on its own: on a schedule or every so often. Routines start on time only while `halonic routines watch` is running." (the app has no scheduler of its own in 0.1 and `routines watch` checks no mail, HAL-12323) in one section per hub, each row with the routine's letter avatar, its name, the routine as one line, its next start time when it is on and runs on a clock, and one state chip (**Off**, else **Paused until trusted**, else **Needs sign-in**, else **Needs you**), open a routine in its tab when a row is chosen, and show the loading, empty, no-match and can't-load states in the approved words.
+The Routines place shall list the workspace's routines under "Routines" and the sentence "A routine starts a workflow or an agent on its own: on a schedule or every so often. Routines start on time only while `halonic routines watch` is running in a terminal." (the app has no scheduler of its own in 0.1 and `routines watch` checks no mail, HAL-12323) in one section per hub, each row with the routine's letter avatar, its name, the routine as one line, its next start time when it is on and runs on a clock, and one state chip (**Off**, else **Paused until trusted**, else **Needs sign-in**, else **Needs you**), open a routine in its tab when a row is chosen, and show the loading, empty, no-match and can't-load states in the approved words.
 
 ## Examples
 
