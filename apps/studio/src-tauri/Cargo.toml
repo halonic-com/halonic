@@ -107,3 +107,17 @@ all = { level = "warn", priority = -1 }
 # A release build on Windows has no console: what the shell prints to
 # stderr goes nowhere. It records through `halonic-shell-log` instead.
 print_stderr = "deny"
+
+# The agent host's Noise session, built to WebAssembly (HAL-12236):
+#   cargo rustc -p halonic-e2e-noise-wasm --profile noise-wasm --locked \
+#     --target wasm32-unknown-unknown --crate-type cdylib
+# One codegen unit, no debug info and stripped, so CI can build it again and
+# compare it with the committed file byte for byte. A panic aborts, which in
+# WebAssembly is a trap that ends the session.
+[profile.noise-wasm]
+inherits = "release"
+codegen-units = 1
+lto = true
+panic = "abort"
+debug = false
+strip = true

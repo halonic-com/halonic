@@ -6,12 +6,14 @@
 # tooling/check/advisories-ignored.json (see docs/guides/checks.md).
 
 [graph]
-# The shell's own targets: desktop and Android.
+# The shell's own targets: desktop and Android. WebAssembly is the agent
+# host's Noise session (crates/e2e-noise-wasm), which the host ships.
 targets = [
   "x86_64-pc-windows-msvc",
   "x86_64-unknown-linux-gnu",
   "aarch64-linux-android",
   "x86_64-linux-android",
+  "wasm32-unknown-unknown",
 ]
 
 [licenses]

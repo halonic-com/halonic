@@ -961,6 +961,24 @@ jobs:
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Tests
         run: cargo test --locked --workspace
+      # The agent host's Noise session in WebAssembly (HAL-12236): clippy
+      # for the target, since the exports only compile there, and the build
+      # @halonicjs/adapter-e2e-noise ships. Paths are remapped so the file
+      # doesn't depend on where the checkout is.
+      - name: Noise session in WebAssembly
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo clippy --locked -p halonic-e2e-noise-wasm --target wasm32-unknown-unknown -- -D warnings
+          export RUSTFLAGS="--remap-path-prefix=$GITHUB_WORKSPACE=. --remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo"
+          cargo rustc --locked -p halonic-e2e-noise-wasm --profile noise-wasm \
+            --target wasm32-unknown-unknown --crate-type cdylib
+          sha256sum target/wasm32-unknown-unknown/noise-wasm/halonic_e2e_noise_wasm.wasm
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: noise-wasm
+          path: apps/studio/src-tauri/target/wasm32-unknown-unknown/noise-wasm/halonic_e2e_noise_wasm.wasm
+          if-no-files-found: error
+          retention-days: 7
       # The keychain's contract test is ignored in plain `cargo test`: it
       # needs an unlocked keychain (HAL-4499). Here a GNOME Keyring on a
       # private D-Bus, unlocked with a password made for this run, is the
