@@ -1,5 +1,5 @@
 import { secretVariableName } from "@halonicjs/adapter-env-secrets";
-import { moneyAmount } from "@halonicjs/app";
+import { type MoneyAmountOptions, moneyAmount } from "@halonicjs/app";
 import type { ModelSkipReason } from "@halonicjs/events";
 import { counted, timesInWords } from "./counts.ts";
 import { defineMessages, type Message } from "./define.ts";
@@ -183,6 +183,9 @@ type ByReason = {
   ) => Phrase;
 };
 
+// A budget line puts the amount after "of" or "estimated", where "less than €0.001" reads better than "under" (HAL-12034).
+const afterOf: MoneyAmountOptions = { tiny: "less than" };
+
 /**
  * Line 1 by reason (cli-output 3.4, revisions 5 and 23): the Studio sentence
  * after "Support reply failed in the step Draft a reply:", without what line 2
@@ -229,8 +232,8 @@ const lineOne = {
   budget: (run, failure) =>
     phrase`${run.title} stopped in the step ${run.step}: ${
       failure.per === "run"
-        ? phrase`this run reached its budget of ${moneyAmount(failure.budget, failure.currency)} (estimated ${moneyAmount(failure.spent, failure.currency)} spent).`
-        : phrase`this month's estimated spend reached its budget of ${moneyAmount(failure.budget, failure.currency)}.`
+        ? phrase`this run reached its budget of ${moneyAmount(failure.budget, failure.currency, afterOf)} (estimated ${moneyAmount(failure.spent, failure.currency, afterOf)} spent).`
+        : phrase`this month's estimated spend reached its budget of ${moneyAmount(failure.budget, failure.currency, afterOf)}.`
     }`,
   "turn-limit": (run, failure) => {
     // "used all 1 turn" reads like a bug (HAL-2745).
