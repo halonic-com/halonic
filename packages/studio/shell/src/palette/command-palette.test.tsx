@@ -214,10 +214,16 @@ verifies("shell.palette-dialog", () => {
     expect(palette.view.textContent).not.toContain("Nothing matches");
   });
 
-  it("says nothing matches the words, with the actions still listed", () => {
+  it("says nothing matches the words when no row does", () => {
+    const palette = renderPalette();
+    palette.show({ words: "zzz" });
+    expect(palette.view.textContent).toContain("Nothing matches “zzz”.");
+  });
+
+  it("lists the actions that match, with no Nothing matches line above them", () => {
     const palette = renderPalette();
     palette.show({ words: "new" });
-    expect(palette.view.textContent).toContain("Nothing matches “new”.");
+    expect(palette.view.textContent).not.toContain("Nothing matches");
     expect(palette.activeName()).toBe("New tab");
   });
 
