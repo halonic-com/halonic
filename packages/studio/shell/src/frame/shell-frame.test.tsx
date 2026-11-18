@@ -91,6 +91,19 @@ verifies("shell.frame", () => {
     expect(statusBar?.lastElementChild?.className).toContain("ms-auto");
   });
 
+  it("gives the status bar the soft fill of a save note's problem, and none while it's calm", () => {
+    const { container } = renderFrame(undefined, {
+      saveNote: <span data-problem="danger">Couldn't save Support reply</span>,
+    });
+    const statusBar = container.querySelector("footer") as HTMLElement;
+    // The fill comes from the note inside, so the frame needn't know the save state.
+    expect(statusBar.className).toContain("bg-surface-subtle");
+    expect(statusBar.className).toContain("has-[[data-problem=danger]]:bg-danger-soft");
+    expect(statusBar.className).toContain("has-[[data-problem=warning]]:bg-warning-soft");
+    expect(statusBar.className).toContain("transition-colors");
+    expect(statusBar.querySelector('[data-problem="danger"]')).not.toBeNull();
+  });
+
   it("leaves the badge and save note slots out of the status bar when they are empty", () => {
     const { container } = renderFrame(undefined, { badges: null, saveNote: null, statusBar: null });
     expect(container.querySelector("footer")?.children).toHaveLength(0);

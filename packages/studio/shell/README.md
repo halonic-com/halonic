@@ -633,7 +633,9 @@ problems after a warning or danger mark named "Warning" or "Error", with **Compa
 again**. It isn't a live region: `announceSaveNotes(saving, announcer)` reads the note out
 politely, once, when it becomes items not saved, and never for Saving… or Saved. It stays quiet
 for a failure too, since the danger toast is an alert that already reads it, with its reason.
-`saveNoteWords` holds the words.
+`saveNoteWords` holds the words. While the note is a problem it carries `data-problem="warning"` or
+`"danger"`, and the status bar takes that tone's soft fill from it, so the frame doesn't need the
+save state. Its buttons are the kit's 20px `xs` size, which fits the bar.
 
 ```tsx
 announceSaveNotes(workspace.saving, shell.announcer);

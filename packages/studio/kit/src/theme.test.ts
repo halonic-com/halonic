@@ -73,6 +73,12 @@ const contrastPairs: ContrastPair[] = [
     ...onSurfaces(status, text),
     ...onSoftFill(status, `${status}-soft`),
   ]),
+  // The status bar while the save note is a problem: its words, the other items and the action
+  // on the note's soft fill (HAL-8692).
+  ...["fg", "fg-muted", "accent-text"].flatMap((foreground) => [
+    ...onSoftFill(foreground, "warning-soft"),
+    ...onSoftFill(foreground, "danger-soft"),
+  ]),
   // The switch's off track and a checkbox in a hovered menu item sit on surface-muted.
   ...onSurfaces("border-control", control, ["surface-muted"]),
   ...onSurfaces("accent", control),

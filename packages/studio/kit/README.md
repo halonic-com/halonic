@@ -223,7 +223,7 @@ The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 | Prop | What it is |
 | --- | --- |
 | `variant` | `primary` once per view, `secondary` (the default), `ghost` for Cancel, `danger` only to confirm |
-| `size` | `sm` 28px, `md` 32px (the default), `lg` 40px, `touch` 48px for a phone's bottom bar or sheet |
+| `size` | `xs` 20px in the caption type, only for the status bar; `sm` 28px, `md` 32px (the default), `lg` 40px, `touch` 48px for a phone's bottom bar or sheet |
 | `block` | Full width |
 | `icon` | A 16px icon before the label. With `label` and no children, the button is a square icon button |
 | `label` | An icon button's name, saying what and which: "Close Support reply", never just "Close" |
