@@ -9,7 +9,7 @@ import {
   useTabIds,
 } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type AgentChange,
   type AgentRef,
@@ -21,6 +21,7 @@ import { Configuration } from "../configuration/configuration.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
 import { Avatar } from "../list/agent-rows.tsx";
 import { pageWords } from "./page-words.ts";
+import { RenameField } from "./rename-field.tsx";
 import { useLoad } from "./use-load.ts";
 
 /** The agent's page in its tab: `item` names the agent, the host reads its row. */
@@ -67,6 +68,23 @@ export function AgentScreen({ host, hubId, id, goToAgents }: AgentScreenProps) {
     [host, hubId, id],
   );
   const settings = useLoad<AgentSettings>(settingsSource);
+  const [takenNames, setTakenNames] = useState<readonly string[]>([]);
+  // The other agents' names, for the rename check; read again when a file changes.
+  useEffect(() => {
+    const read = () =>
+      host
+        .list()
+        .then((agents) =>
+          setTakenNames(
+            agents
+              .filter((agent) => agent.hubId === hubId && agent.id !== id)
+              .map((agent) => agent.name),
+          ),
+        )
+        .catch(() => setTakenNames([]));
+    void read();
+    return host.subscribe(() => void read());
+  }, [host, hubId, id]);
   const [view, setView] = useState<AgentView>("runs");
   const [saveFailed, setSaveFailed] = useState<string>();
   const ids = useTabIds();
@@ -95,9 +113,16 @@ export function AgentScreen({ host, hubId, id, goToAgents }: AgentScreenProps) {
         <div className="flex flex-col">
           <p className="text-caption text-fg-muted">{pageWords.kind}</p>
           {/* On a phone the top bar already names the agent, so the page keeps only its type. */}
-          <h1 ref={title} tabIndex={-1} className={phone ? "sr-only" : "text-title outline-none"}>
+          <h1 ref={title} tabIndex={-1} className="sr-only">
             {name}
           </h1>
+          {!phone && load.kind === "ready" && (
+            <RenameField
+              name={name}
+              takenNames={takenNames}
+              onRename={(next) => void save({ name: next })}
+            />
+          )}
         </div>
         <TabList
           label={pageWords.views}

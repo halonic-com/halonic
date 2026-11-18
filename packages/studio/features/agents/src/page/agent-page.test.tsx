@@ -7,7 +7,7 @@ import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { AgentListing, AgentsHost } from "../api.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
-import { buttonNamed, show, unmount } from "../test-support.tsx";
+import { buttonNamed, show, typeInto, unmount } from "../test-support.tsx";
 import { AgentScreen } from "./agent-page.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -102,5 +102,53 @@ verifies("agents.page.frame", () => {
     });
     expect(page.querySelector("h1")?.textContent).toBe("Mail sorter");
     expect(page.querySelector("[role=status]")).toBeNull();
+  });
+});
+
+const nameInput = (page: HTMLElement) => page.querySelector("input") as HTMLInputElement;
+const press = (input: HTMLInputElement, key: string) =>
+  act(async () => void input.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true })));
+const leave = (input: HTMLInputElement) =>
+  act(async () => void input.dispatchEvent(new FocusEvent("focusout", { bubbles: true })));
+
+verifies("agents.page.rename", () => {
+  const writer: AgentListing = { hubId: "acme", id: "writer", name: "Writer" };
+  const twoAgents = () =>
+    memoryAgentsHost({ hubs: [{ id: "acme", name: "acme" }], agents: [sorter, writer] });
+  const nameInFile = async (host: AgentsHost) => (await host.read(sorter)).name;
+
+  it("applies the name when the person leaves the field, and keeps the id", async () => {
+    const host = twoAgents();
+    const page = await show(<AgentScreen host={host} hubId="acme" id="sorter" />);
+    await typeInto(nameInput(page), "Mail sorter");
+    expect(await nameInFile(host)).toBe("Sorter");
+
+    await leave(nameInput(page));
+    expect(await nameInFile(host)).toBe("Mail sorter");
+    expect((await host.list()).map((agent) => agent.id)).toEqual(["sorter", "writer"]);
+  });
+
+  it("says why a taken or empty name isn't applied, and puts the old one back", async () => {
+    const host = twoAgents();
+    const page = await show(<AgentScreen host={host} hubId="acme" id="sorter" />);
+    await typeInto(nameInput(page), "writer");
+    expect(page.textContent).toContain("An agent called writer already exists.");
+    await leave(nameInput(page));
+    expect(await nameInFile(host)).toBe("Sorter");
+    expect(nameInput(page).value).toBe("Sorter");
+
+    await typeInto(nameInput(page), "  ");
+    expect(page.textContent).toContain("Give it a name.");
+    await press(nameInput(page), "Enter");
+    expect(await nameInFile(host)).toBe("Sorter");
+  });
+
+  it("puts the old name back on Esc", async () => {
+    const host = twoAgents();
+    const page = await show(<AgentScreen host={host} hubId="acme" id="sorter" />);
+    await typeInto(nameInput(page), "Other");
+    await press(nameInput(page), "Escape");
+    expect(nameInput(page).value).toBe("Sorter");
+    expect(await nameInFile(host)).toBe("Sorter");
   });
 });
