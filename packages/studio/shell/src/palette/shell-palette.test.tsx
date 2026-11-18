@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { createToastStore } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
@@ -266,6 +267,35 @@ verifies("shell.palette-wiring", () => {
     expect(palette.toasts.list().map((toast) => [toast.tone, toast.title])).toEqual([
       ["danger", "Couldn't run New agent."],
     ]);
+  });
+
+  it("offers Try again on a failure that may pass, and it runs the command again", async () => {
+    let runs = 0;
+    const palette = renderPalette({
+      commands: [
+        {
+          featureId: "agents",
+          id: "agents.new",
+          title: "New agent",
+          run: () => {
+            runs += 1;
+            throw new KindedError("unavailable", "Halonic isn't answering.");
+          },
+        },
+      ],
+    });
+    palette.open();
+    palette.type("new");
+    await palette.answer(0, []);
+    await act(async () => palette.press("Enter"));
+    const [toast] = palette.toasts.list();
+    expect([toast?.title, toast?.text, toast?.action?.label]).toEqual([
+      "Couldn't run New agent.",
+      "Halonic isn't answering.",
+      "Try again",
+    ]);
+    await act(async () => toast?.action?.onClick());
+    expect(runs).toBe(2);
   });
 });
 

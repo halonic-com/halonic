@@ -1,7 +1,7 @@
 import { pendingSignInLifetimeMs } from "@halonicjs/google-setup";
 import { Button, Callout, Spinner, useOpenExternal } from "@halonicjs/studio-kit";
+import { failureLine } from "@halonicjs/studio-shell";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
-import { failureLine } from "./failure-line.ts";
 import { useNotAnswering } from "./not-answering.tsx";
 
 /** Props for {@link SignInPanel}. */

@@ -120,7 +120,7 @@ verifies("models.settings.settings-summary", () => {
     expect(line).toBe("No providers yet");
   });
 
-  it("leaves the aliases out while models.yaml can't be read", async () => {
+  it("says it couldn't read the settings while models.yaml can't be read", async () => {
     const line = await lineOf(
       filesWith({
         aliases: "unreadable",
@@ -128,12 +128,14 @@ verifies("models.settings.settings-summary", () => {
         workspace: "version: 1\nid: acme\nname: Acme\nbudget: { currency: USD, monthly: 50 }\n",
       }),
     );
-    expect(line).toBe("2 providers · budget $50.00 a month");
+    expect(line).toBe("Couldn't read the models settings.");
   });
 
-  it("leaves the providers out, not 'no providers yet', while the providers folder can't be read", async () => {
+  it("says it couldn't read the settings, not 'no providers yet', while the providers folder can't be read", async () => {
     const line = await lineOf(filesWith({ aliases: 2, providers: "unreadable" }));
-    expect(line).toBe("2 aliases");
+    expect(line).toBe("Couldn't read the models settings.");
+    const { view } = await show(filesWith({ aliases: 2, providers: "unreadable" }));
+    expect(view.querySelector("button")?.textContent).toBe("Open Models");
   });
 
   it("closes Settings, then opens Models", async () => {

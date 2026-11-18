@@ -1,6 +1,8 @@
 import { parseAmount } from "@halonicjs/std";
 import { Button, Field, FormRows, Input, useToastStore } from "@halonicjs/studio-kit";
+import { failureLine } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
+import { SaveFailed } from "../aliases/save-failed.tsx";
 import type { ModelsFiles } from "../api.ts";
 import { type BudgetFields, type BudgetProblem, editBudget } from "./budget-edits.ts";
 import {
@@ -29,7 +31,8 @@ export interface BudgetEditorProps {
 /**
  * The two budget fields in place, with focus on Per run. **Save** writes `workspace.yaml` as one
  * undo step and shows a toast with **Undo**; with both fields empty it reads **Remove budget**.
- * An amount that isn't above 0 writes nothing and is named under its field.
+ * An amount that isn't above 0 writes nothing and is named under its field. A save that fails says
+ * so with **Try again**, and the editor stays open.
  *
  * @example
  * <BudgetEditor files={files} currency="EUR" initial={{ monthly: 50 }} onClose={close} />
@@ -42,11 +45,21 @@ export function BudgetEditor({ files, currency, initial, onClose }: BudgetEditor
     monthly: initial.monthly === undefined ? "" : String(initial.monthly),
   });
   const [problem, setProblem] = useState<BudgetProblem>();
+  const [failed, setFailed] = useState<string>();
   useEffect(() => perRunInput.current?.focus(), []);
   const emptied = fields.perRun.trim() === "" && fields.monthly.trim() === "";
   const affix = currencyAffix(currency);
 
   const save = async () => {
+    setFailed(undefined);
+    try {
+      await write();
+    } catch (error) {
+      setFailed(failureLine("save the budget", error));
+    }
+  };
+
+  const write = async () => {
     const text = await files.readWorkspace();
     if (text === null) {
       setProblem({ field: "yaml", message: "workspace.yaml could not be found." });
@@ -113,6 +126,7 @@ export function BudgetEditor({ files, currency, initial, onClose }: BudgetEditor
         </Field>
       </FormRows>
       {problem?.field === "yaml" ? <p role="alert">{problem.message}</p> : null}
+      <SaveFailed line={failed} retry={save} />
       <div className="flex gap-2">
         <Button type="submit">{emptied ? REMOVE_BUDGET : SAVE_BUDGET}</Button>
         <Button variant="secondary" onClick={() => onClose(false)}>

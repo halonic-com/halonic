@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { type ItemRef, limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
@@ -194,6 +195,28 @@ verifies("models.budget.budget-settings", () => {
 
       await type(perRun as HTMLInputElement, "1");
       expect(section.textContent).not.toContain("Enter an amount above 0");
+    });
+
+    it("says a save that failed, with its reason, and Try again saves it", async () => {
+      const { files, changes } = setup(header, { anthropic: cloud });
+      const { section } = await show(files);
+      await act(async () => button(section, "Set budget").click());
+      const [perRun] = section.querySelectorAll("input");
+      await type(perRun as HTMLInputElement, "5");
+      const read = files.readWorkspace;
+      (files as { readWorkspace: ModelsFiles["readWorkspace"] }).readWorkspace = () =>
+        Promise.reject(new KindedError("unavailable", "The disk is full."));
+      await act(async () => button(section, "Save").click());
+
+      expect(changes).toHaveLength(0);
+      expect(section.querySelector('[role="status"]')?.textContent).toBe(
+        "Couldn't save the budget: the disk is full.Try again",
+      );
+
+      (files as { readWorkspace: ModelsFiles["readWorkspace"] }).readWorkspace = read;
+      await act(async () => button(section, "Try again").click());
+      expect(changes).toHaveLength(1);
+      expect(section.textContent).not.toContain("Couldn't save the budget");
     });
 
     it("does not offer Undo once the file changed meanwhile", async () => {

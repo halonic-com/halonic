@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { settlePendingSaves } from "@halonicjs/studio-kit";
 import { type ItemRef, limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
@@ -208,6 +209,31 @@ verifies("models.providers.list-and-show", () => {
     await settled;
 
     expect(saved).toHaveLength(1);
+  });
+
+  it("says a save that failed, with its reason, and Try again saves it", async () => {
+    const saved: string[] = [];
+    let fail = true;
+    const files = {
+      ...filesWith({ ollama }),
+      readProvider: async () =>
+        fail ? Promise.reject(new KindedError("unavailable", "The disk is full.")) : ollama,
+      changeProvider: (_path: string, _label: string, text: string) => saved.push(text),
+    };
+    const view = await page("ollama", files);
+
+    await typeAndLeave(
+      view.querySelectorAll("input")[1] as HTMLInputElement,
+      "http://gpu:11434/v1",
+    );
+    expect(saved).toEqual([]);
+    expect(view.textContent).toContain("Couldn't save the provider: the disk is full.");
+
+    fail = false;
+    const retry = [...view.querySelectorAll("button")].find((b) => b.textContent === "Try again");
+    await act(async () => retry?.click());
+    expect(saved[0]).toContain("baseUrl: http://gpu:11434/v1");
+    expect(view.textContent).not.toContain("Couldn't save the provider");
   });
 
   it("refuses a pasted key as the secret name without writing it or showing it", async () => {

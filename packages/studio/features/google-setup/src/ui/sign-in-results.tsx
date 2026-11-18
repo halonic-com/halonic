@@ -1,8 +1,8 @@
 import { Button, Callout, ExternalLink } from "@halonicjs/studio-kit";
+import { failureLine } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState } from "react";
 import type { CheckAgainAnswer } from "../api.ts";
 import { checkAgainText } from "./check-again.ts";
-import { failureLine } from "./failure-line.ts";
 import { useNotAnswering } from "./not-answering.tsx";
 import {
   allPassedText,

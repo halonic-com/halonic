@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-10 migration checklist U30 (Now; note: "Can be edited", new: the old provider page is read-only); changed by the save-model decision, HAL-1102 (req-models, HAL-110; flow-models, HAL-177)
 
-When the user changes a provider's name, type, base URL, secret name or local switch on its page, the models feature shall write the change to that provider's file, saved at once and undoable as one step (Ctrl Z), and if the base URL is not a valid URL, then it shall not write it and show the problem. In v0.1 only these fields are editable (HAL-119); other changes go through the raw file editor or the assistant.
+When the user changes a provider's name, type, base URL, secret name or local switch on its page, the models feature shall write the change to that provider's file, saved at once and undoable as one step (Ctrl Z), and if the base URL is not a valid URL, then it shall not write it and show the problem. When the provider's file can't be read for a save, it shall write nothing and say "Couldn't save the provider: *reason*." with **Try again**, which makes the same save (microcopy 1.1, HAL-11643). In v0.1 only these fields are editable (HAL-119); other changes go through the raw file editor or the assistant.
 
 ## Examples
 

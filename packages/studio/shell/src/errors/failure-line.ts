@@ -1,4 +1,4 @@
-import { errorReasonFor } from "@halonicjs/studio-shell";
+import { errorReasonFor } from "./error-message.ts";
 
 /** Words that start one of our own sentences, so their capital goes when a reason follows a colon. */
 const commonFirstWords = new Set(["The", "A", "An", "This", "That", "It", "There", "No", "Your"]);

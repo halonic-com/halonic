@@ -1,6 +1,8 @@
 import { type Provider, parseFile } from "@halonicjs/format";
 import { Field, FormRows, Input, Select, Switch, settleOnClose } from "@halonicjs/studio-kit";
+import { failureLine } from "@halonicjs/studio-shell";
 import { useState } from "react";
+import { SaveFailed } from "../aliases/save-failed.tsx";
 import { useDraft } from "../aliases/use-draft.ts";
 import type { ModelsFiles } from "../api.ts";
 import { editProvider, type ProviderField, type ProviderProblem } from "./provider-edits.ts";
@@ -33,7 +35,7 @@ function typeOptions(current: string) {
 /**
  * The editable fields of a provider's page (`models.providers.edit`): name, type, base URL, secret
  * name and the local switch. Each change is saved when the field is left (the switch at once), and
- * the status line says so.
+ * the status line says so. A save that fails says so with **Try again**.
  *
  * @example
  * <ProviderFields files={files} provider={provider} path="providers/ollama.yaml" />
@@ -41,12 +43,22 @@ function typeOptions(current: string) {
 export function ProviderFields({ files, provider, path, onEdited }: ProviderFieldsProps) {
   const [problem, setProblem] = useState<ProviderProblem>();
   const [status, setStatus] = useState("");
+  // The save that threw, with its line, so Try again makes it again.
+  const [failed, setFailed] = useState<{ line: string; retry: () => Promise<void> }>();
   const [name, setName] = useDraft(provider.name ?? "");
   const [baseUrl, setBaseUrl] = useDraft(provider.baseUrl ?? "");
   const [secret, setSecret] = useDraft(provider.secret ?? "");
 
-  const save = async (field: ProviderField, value: string | boolean) => {
-    const text = await files.readProvider(path);
+  const save = async (field: ProviderField, value: string | boolean): Promise<void> => {
+    setFailed(undefined);
+    let text: string | null;
+    try {
+      text = await files.readProvider(path);
+    } catch (error) {
+      setStatus("");
+      setFailed({ line: failureLine("save the provider", error), retry: () => save(field, value) });
+      return;
+    }
     const edited = text === null ? undefined : editProvider(text, field, value, provider.id);
     if (edited === undefined) return;
     if (!edited.ok) {
@@ -103,6 +115,7 @@ export function ProviderFields({ files, provider, path, onEdited }: ProviderFiel
       </Switch>
       {problem?.field === "yaml" ? <p role="alert">{problem.message}</p> : null}
       <p role="status">{status}</p>
+      <SaveFailed line={failed?.line} retry={() => failed?.retry()} />
     </div>
   );
 }

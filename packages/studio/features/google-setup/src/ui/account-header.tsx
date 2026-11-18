@@ -1,9 +1,9 @@
 import type { AccountType } from "@halonicjs/google-setup";
 import { Button, Callout, type CalloutHandle, StatusChip } from "@halonicjs/studio-kit";
+import { failureLine } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState } from "react";
 import { accountTypeNames, listNames } from "./account-labels.ts";
 import { AccountTypeQuestion } from "./account-type-question.tsx";
-import { failureLine } from "./failure-line.ts";
 import { OtherWays } from "./other-ways.tsx";
 
 /** Props for {@link AccountHeader}. */
