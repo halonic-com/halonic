@@ -91,18 +91,30 @@ verifies("routines.starts.starts-card", () => {
     expect((page.querySelector("textarea") as HTMLTextAreaElement).value).toBe('{"a":1}');
   });
 
-  it("writes an agent with the starter prompt when one is picked", async () => {
+  it("waits for a prompt before it writes a picked agent", async () => {
     const { page, saved } = await card(routineStarting(briefing));
     await choose(
       page.querySelector("select") as HTMLSelectElement,
       JSON.stringify(["agent", "acme", "helper"]),
     );
-    expect(saved[0]?.target).toEqual({
-      kind: "agent",
-      hubId: "acme",
-      id: "helper",
-      prompt: "Describe what to do.",
-    });
+    expect(saved).toHaveLength(0);
+    const field = page.querySelector("textarea") as HTMLTextAreaElement;
+    expect(field.value).toBe("");
+    expect(field.placeholder).toBe("Describe what to do.");
+    expect(page.textContent).toContain("Say what Helper should do.");
+    await typeInto(field, "Sum up the inbox");
+    expect(saved).toEqual([
+      { target: { kind: "agent", hubId: "acme", id: "helper", prompt: "Sum up the inbox" } },
+    ]);
+  });
+
+  it("writes nothing when the picked agent is left for the routine's own workflow", async () => {
+    const { page, saved } = await card(routineStarting({ ...briefing, input: '{"a":1}' }));
+    const select = page.querySelector("select") as HTMLSelectElement;
+    await choose(select, JSON.stringify(["agent", "acme", "helper"]));
+    await choose(select, JSON.stringify(["workflow", "acme", "briefing"]));
+    expect(saved).toHaveLength(0);
+    expect((page.querySelector("textarea") as HTMLTextAreaElement).value).toBe('{"a":1}');
   });
 
   it("writes an input that is JSON and nothing for text that isn't", async () => {
@@ -130,7 +142,7 @@ verifies("routines.starts.starts-card", () => {
     const count = saved.length;
     await typeInto(field, "");
     expect(saved).toHaveLength(count);
-    expect(page.textContent).toContain("Give the agent something to do.");
+    expect(page.textContent).toContain("Say what Helper should do.");
   });
 
   it("names the placeholders for the trigger", async () => {

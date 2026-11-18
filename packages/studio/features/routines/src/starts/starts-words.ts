@@ -9,7 +9,8 @@ export const startsWords = {
   inputHint: "The workflow's input, as a JSON object.",
   notObject: "The input has to be a JSON object, such as {}.",
   prompt: "Prompt",
-  promptNeeded: "Give the agent something to do.",
+  promptPlaceholder: "Describe what to do.",
+  promptNeeded: (name: string) => `Say what ${name} should do.`,
   notFound: "not found",
   neverLive: (name: string) => `${name} isn't live yet, so this routine can't start it.`,
   newTargetNotLive: (live: string) =>
