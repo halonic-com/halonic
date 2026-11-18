@@ -404,6 +404,18 @@ verifies("workflows.page.start-command", () => {
     expect(startCommand(page)).toBeUndefined();
   });
 
+  it("shows no command when the page has a Run button", async () => {
+    const { host } = memoryHost([], [], [reply], [settings], {
+      startRun: async () => ({ runId: "run_mfx3k2a1_01jd8q" }),
+    });
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
+    expect(buttonNamed(page, "Run")).toBeDefined();
+    expect(page.textContent).not.toContain("Start it from a terminal");
+    expect(startCommand(page)).toBeUndefined();
+  });
+
   it("names the hub when another hub has a workflow with the same id", async () => {
     const { host } = memoryHost(
       [],
