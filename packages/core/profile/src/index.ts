@@ -3,6 +3,7 @@ export {
   connectionSettingsFolder,
   type ProfileEnvironment,
   type ProfileFolder,
+  placementFolder,
   pluginRecordsFolder,
   pluginsFolder,
   profileFolder,

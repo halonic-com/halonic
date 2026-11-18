@@ -50,10 +50,14 @@ import type {
   HarnessBridgeServer,
   Secrets,
 } from "@halonicjs/ports";
-import type { ProfileEnvironment, ProfileFolder, WorkspaceFolders } from "@halonicjs/profile";
+import {
+  type ProfileEnvironment,
+  type ProfileFolder,
+  placementFolder,
+  type WorkspaceFolders,
+} from "@halonicjs/profile";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { proxySetting } from "./proxy-setting.ts";
-import { placementFolder } from "./sandbox-gate-machine.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import { skillFileOf } from "./skill-file.ts";
 import { halonicVersion } from "./version.ts";
