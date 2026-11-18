@@ -112,9 +112,9 @@ interface UnloadedRoutineFile {
 }
 
 /**
- * The routine files that didn't load, each with its first error. Only a
- * file's own problems keep it from loading; the checks across files run on
- * loaded files alone, so an error on a file no loaded file has is its own.
+ * The routine files that didn't load, each with its first error. The
+ * checks across files report only on files that loaded, so every error on a
+ * file that didn't load is one of its own.
  */
 function unloadedRoutineFiles(workspace: LoadedWorkspace): UnloadedRoutineFile[] {
   const loadedPaths = new Set(workspace.files.map((file) => file.path));
@@ -140,7 +140,7 @@ function unloadedRoutineFiles(workspace: LoadedWorkspace): UnloadedRoutineFile[]
  * A routine file that didn't load, listed by its file's routine id: off, as
  * the routine scheduler never sees it, with no next run, and its first error
  * where the trigger goes, such as `Invalid file, line 4: use a number and a
- * unit, e.g. "15m", …`. The other errors, if any, are `halonic check`'s.
+ * unit, e.g. "15m", …`. `halonic validate` gives every error of the file.
  */
 function unloadedRoutine(file: UnloadedRoutineFile): ListedWithoutRun {
   return {
