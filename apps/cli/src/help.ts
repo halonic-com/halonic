@@ -19,6 +19,7 @@ export const commandOrder: readonly string[] = [
   "test",
   "run",
   "runs",
+  "proposals",
   "routines",
   "serve",
   "trust",
