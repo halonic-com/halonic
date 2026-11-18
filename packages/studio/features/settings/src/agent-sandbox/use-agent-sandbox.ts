@@ -42,6 +42,7 @@ export function useAgentSandbox(
   const [running, setRunning] = useState<SandboxRunning | null>(null);
   const [outcome, setOutcome] = useState<SandboxOutcome | null>(null);
   const [updatesOverdue, setUpdatesOverdue] = useState(false);
+  const [defaultDistro, setDefaultDistro] = useState(false);
   const alive = useRef(true);
   const busy = useRef(false);
   // The container passes a new `announce` on every render; the effects must not restart for it.
@@ -108,10 +109,13 @@ export function useAgentSandbox(
       setCheck(facts);
       setRechecking(false);
     });
-    // Never blocks: a host that can't say, or a failure, shows no warning here.
+    // Never blocks: a host that can't say, or a failure, shows no warning here, about updates or
+    // the default distro.
     void host?.securityUpdates?.().then(
       (facts) => {
-        if (alive.current) setUpdatesOverdue(facts?.overdue === true);
+        if (!alive.current) return;
+        setUpdatesOverdue(facts?.overdue === true);
+        setDefaultDistro(facts?.isDefaultDistro === true);
       },
       (error: unknown) => {
         console.error("Couldn't read whether security updates are overdue.", error);
@@ -145,6 +149,7 @@ export function useAgentSandbox(
       outcome,
       rechecking,
       securityUpdatesOverdue: updatesOverdue,
+      defaultDistro,
     },
     setUp: () => void run(check.state === "needs-repair" ? "repair" : "setup"),
     remove: () => void run("remove"),

@@ -32,6 +32,15 @@ export const RESTART_NEEDED =
   "Windows needs to restart to finish setting up the sandbox. Restart Windows, then press Check again.";
 /** W2 (HAL-7373): a warning, never "vulnerable" or "unsafe". The section has no update button yet. */
 export const SECURITY_UPDATES_OVERDUE = "Security updates for the agent sandbox are overdue.";
+/**
+ * W6 (HAL-12445), both warnings, never failures; Noah's lines (HAL-12513). The person fixes them
+ * outside Halonic, so each says how. `/mnt/wsl` is shared by every WSL distro, so Docker Desktop
+ * shows whenever it runs: the line says "running next to", not "connected" (Liam, HAL-12512).
+ */
+export const DEFAULT_DISTRO =
+  "The agent sandbox is your default WSL distribution, so typing wsl in a terminal opens it. To change this, run wsl --set-default with the name of your own distribution, for example wsl --set-default Ubuntu.";
+export const DOCKER_DESKTOP_VISIBLE =
+  "Docker Desktop is running next to the agent sandbox. Make sure halonic is turned off in Docker Desktop's Settings › Resources › WSL integration.";
 export const CHECKING = "Checking the sandbox…";
 export const cannotCheck = (reason: string) => `Couldn't check the sandbox: ${reason}`;
 

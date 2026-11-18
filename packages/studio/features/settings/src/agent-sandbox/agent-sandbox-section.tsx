@@ -180,6 +180,13 @@ export function AgentSandboxView({
       {facts.securityUpdatesOverdue && facts.available ? (
         <Callout tone="warning">{text.SECURITY_UPDATES_OVERDUE}</Callout>
       ) : null}
+      {/* The default distro first: Docker Desktop connects to the default by itself (HAL-12513). */}
+      {facts.defaultDistro && facts.available ? (
+        <Callout tone="warning">{text.DEFAULT_DISTRO}</Callout>
+      ) : null}
+      {facts.check.state === "ready" && facts.check.dockerDesktopVisible && facts.available ? (
+        <Callout tone="warning">{text.DOCKER_DESKTOP_VISIBLE}</Callout>
+      ) : null}
       {view.callout ? (
         <Callout
           tone="warning"
