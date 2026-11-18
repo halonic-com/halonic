@@ -8,12 +8,14 @@ import {
 } from "@halonicjs/studio-kit";
 import { errorReasonFor, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { copyPath } from "../copy-path.ts";
 import { FILE_KIND, fileItem, fileName } from "../file-item.ts";
 import { FilesHostService, type FilesListing } from "../files-host.ts";
 import { filesWords } from "../files-words.ts";
 import { startingPath } from "../new-file.ts";
 import { removeFile } from "../remove-file.ts";
 import { renamedPath, renameFile, typedNameProblem } from "../rename-file.ts";
+import { subscribeRenameAsked, takeRenameAsked } from "../rename-request.ts";
 import { emptyTreeState, type TreeIntent, type TreeState } from "../tree/tree-keyboard.ts";
 import { buildTree } from "../tree/tree-model.ts";
 import { visibleRows } from "../tree/visible-rows.ts";
@@ -55,6 +57,16 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   const startAdding = useCallback(() => {
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setAdding(true);
+  }, []);
+
+  // A tab's ⋮ or F2 asks for its file's name to be edited here; the ask waits until this view is shown.
+  useEffect(() => {
+    const takeAsk = () => {
+      const path = takeRenameAsked();
+      if (path !== undefined) setRenaming(path);
+    };
+    takeAsk();
+    return subscribeRenameAsked(takeAsk);
   }, []);
 
   const latest = useRef(0);
@@ -186,15 +198,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
       if (intent.kind === "open") context.openItem?.(fileItem(intent.path));
       if (intent.kind === "open-in-new-tab") context.openItemInNewTab?.(fileItem(intent.path));
       if (intent.kind === "rename") setRenaming(intent.path);
-      if (intent.kind === "copy-path") {
-        void writeClipboard(intent.path).then((copied) =>
-          toasts?.show(
-            copied
-              ? { tone: "success", title: filesWords.pathCopied(intent.path) }
-              : { tone: "danger", title: filesWords.pathNotCopied },
-          ),
-        );
-      }
+      if (intent.kind === "copy-path") void copyPath(writeClipboard, toasts, intent.path);
       if (intent.kind === "trash") {
         pendingFocus.current = undefined;
         // Focus goes to the next row, else the previous one, else the folder.

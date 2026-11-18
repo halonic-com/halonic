@@ -10,6 +10,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { FilesHost } from "../files-host.ts";
+import { askRename } from "../rename-request.ts";
 import { installFakePopover } from "../test-support/popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { contextHost, contextOf, rowNamed, settled } from "../test-support/sidebar.ts";
@@ -151,5 +152,14 @@ verifies("files.ui.file-menu", () => {
     await act(async () => button?.click());
 
     expect(menuItems()).toHaveLength(5);
+  });
+});
+
+verifies("files.ui.file-tab-header", () => {
+  it("edits the name in the row of the file a tab asked to rename", async () => {
+    askRename("models.yaml");
+    const { page } = await show();
+
+    expect(rowNamed(page, "models.yaml").querySelector("input")?.value).toBe("models.yaml");
   });
 });
