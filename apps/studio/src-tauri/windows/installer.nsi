@@ -204,7 +204,8 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 !define MUI_LANGDLL_REGISTRY_VALUENAME "Installer Language"
 
 ; Halonic change (HAL-1202, flow 2.2): one page instead of Tauri's welcome,
-; licence, install mode, folder and Start menu pages. The Start menu entry is
+; install mode, folder and Start menu pages, after the licence page (HAL-12506).
+; The Start menu entry is
 ; always added, in the "Halonic" folder. The reinstall page below is
 ; Tauri's for passive and update installs, and our run-again page otherwise.
 !define MUI_ABORTWARNING
@@ -457,6 +458,20 @@ Function PageLeaveReinstall
     ${EndIf}
   reinst_done:
 FunctionEnd
+
+; Halonic change (HAL-12506): the licence page. Microsoft's terms for the
+; vcruntime140.dll the installer ships ask that people accept terms that
+; protect it before installing (windows/licence.txt, set as `licenseFile` in
+; tauri.installer.conf.json). Run again, passive and update installs skip it.
+!if "${LICENSE}" == ""
+  !error "No licence page: set bundle.licenseFile in tauri.installer.conf.json (HAL-12506)"
+!endif
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipLicence
+!define MUI_PAGE_HEADER_TEXT "Licence terms"
+!define MUI_PAGE_HEADER_SUBTEXT ""
+!define MUI_LICENSEPAGE_TEXT_TOP "${PRODUCTNAME} includes a Microsoft runtime file. Please read the terms."
+!define MUI_LICENSEPAGE_TEXT_BOTTOM "Press I Agree to accept the terms. ${PRODUCTNAME} can't be installed without them."
+!insertmacro MUI_PAGE_LICENSE "${LICENSE}"
 
 ; 5. Halonic's one page (flow 2.2)
 Var AppStartMenuFolder
@@ -1249,6 +1264,17 @@ FunctionEnd
 
 Function SkipIfPassive
   ${IfThen} $PassiveMode = 1  ${|} Abort ${|}
+FunctionEnd
+
+; Halonic change (HAL-12506): the licence page is for a first install and for
+; a newer version over an older one. Run again (flow 2.5) installs the version
+; whose terms were accepted, and passive and update installs have no pages.
+Function SkipLicence
+  ${If} $PassiveMode = 1
+  ${OrIf} $UpdateMode = 1
+  ${OrIf} $RunAgain = 1
+    Abort
+  ${EndIf}
 FunctionEnd
 
 Function CreateOrUpdateStartMenuShortcut
