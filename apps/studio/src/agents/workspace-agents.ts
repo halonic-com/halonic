@@ -1,5 +1,6 @@
+import { type AgentPlacement, type HostSettings, newAgentPlacement } from "@halonicjs/app";
 import type { DefinitionSource } from "@halonicjs/ports";
-import { KindedError, slugify, uniqueName } from "@halonicjs/std";
+import { encodeUtf8, KindedError, slugify, uniqueName } from "@halonicjs/std";
 import type {
   AgentChange,
   AgentHarnessId,
@@ -47,6 +48,23 @@ export interface WorkspaceAgentsParts {
    * host (the browser), which answers "couldn't check".
    */
   readonly detectHarness?: (ref: AgentRef, harness: AgentHarnessId) => Promise<HarnessReadiness>;
+  /**
+   * What Settings › New agents run needs to place each new agent. Absent where there is no agent
+   * host (the browser), so a new agent stays in its sandbox.
+   */
+  readonly newAgents?: NewAgentsParts;
+}
+
+/** What {@link WorkspaceAgents} applies Settings › New agents run (`sandbox.new-agents`) with. */
+export interface NewAgentsParts {
+  /** The host settings, where Settings saves the choice. */
+  readonly settings: HostSettings;
+  /** The "On this computer" choices, kept by the agent host in the person's profile. */
+  readonly placement: AgentPlacement;
+  /** The workspace's real path, which the choices are kept for. */
+  readonly location: string;
+  /** Gets a choice that couldn't be saved; the agent is made all the same, in its sandbox. */
+  readonly reportError: (error: unknown) => void;
 }
 
 /** Where the agent files of a hub are kept. */
@@ -316,11 +334,30 @@ export class WorkspaceAgents implements AgentsHost {
       .map((path) => path.slice(folder.length + 1, -agentSuffix.length))
       .filter((id) => !id.includes("/"));
     const id = uniqueName(slugify(name), taken);
-    this.#parts.files.change(`Created agent ${name}`, {
-      [`${folder}/${id}${agentSuffix}`]: newAgentText(id, name, instructions),
-    });
+    const text = newAgentText(id, name, instructions);
+    this.#parts.files.change(`Created agent ${name}`, { [`${folder}/${id}${agentSuffix}`]: text });
     this.#names.set(`${hubId}/${id}`, name);
+    await this.#placeNew(id, text);
     return { hubId, id };
+  }
+
+  /**
+   * Applies Settings › New agents run to the agent just made, for its file as written: "On this
+   * computer" records that choice for it, anything else leaves it in its sandbox. A choice that
+   * can't be saved goes to `reportError` and leaves it in its sandbox too.
+   */
+  async #placeNew(agent: string, text: string): Promise<void> {
+    const parts = this.#parts.newAgents;
+    if (parts === undefined) return;
+    const subject = { location: parts.location, agent, file: encodeUtf8(text) };
+    try {
+      const placed = await newAgentPlacement(parts.settings, parts.placement, subject);
+      if (!placed.ok) {
+        parts.reportError(new Error(`The new agent's file changed while it was placed: ${agent}.`));
+      }
+    } catch (error) {
+      parts.reportError(error);
+    }
   }
 
   /** Loads the workspace from its files as they are now, and keeps its hubs for {@link WorkspaceAgents.hubs}. */

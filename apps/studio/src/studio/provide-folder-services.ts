@@ -1,4 +1,4 @@
-import { AgentHostChat } from "@halonicjs/adapter-agent-host-client";
+import { AgentHostChat, AgentHostPlacementStore } from "@halonicjs/adapter-agent-host-client";
 import {
   TauriDefinitionStore,
   type TauriFileShell,
@@ -8,6 +8,7 @@ import {
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
 import {
+  AgentPlacement,
   InstructionTrustService,
   type ServiceRegistry,
   type WorkspaceScope,
@@ -46,6 +47,7 @@ import {
   RunStartHostService,
   RunsSourceService,
 } from "@halonicjs/studio-feature-runs/api";
+import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/api";
 import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
 import {
@@ -200,6 +202,16 @@ export function provideFolderServices(
         ? {}
         : {
             detectHarness: (_ref, harness) => agentHostHarnessDetect(transport)(harness),
+            newAgents: {
+              settings: services.get(HostSettingsService),
+              placement: new AgentPlacement({
+                store: new AgentHostPlacementStore(transport),
+                digest: webCryptoDigest,
+                clock: systemClock,
+              }),
+              location,
+              reportError: (error) => console.error("Placing a new agent", error),
+            },
           }),
     }),
   );
