@@ -78,6 +78,14 @@ rfd = { version = "=0.17.2", default-features = false, features = ["gtk3", "comm
 # only old .zip update bundles need. Never granted to a page.
 tauri-plugin-updater = { version = "=2.14.1", default-features = false, features = ["rustls-tls"] }
 
+# The pairing scanner (HAL-12246, build plan decision 16 on HAL-12232): the
+# official barcode-scanner plugin, approved in board decision 4c. The shell
+# loads only its Kotlin side and drives it from Rust (src/pair_scan.rs); the
+# plugin's own commands are never registered, so no page can call them.
+# Pinned with tauri: 2.5.3 needs tauri ^2.12. Android only; iOS comes later.
+[target.'cfg(target_os = "android")'.dependencies]
+tauri-plugin-barcode-scanner = "=2.5.3"
+
 # Tauri's mock runtime, for the test that every command is refused from the
 # served page.
 [dev-dependencies]
