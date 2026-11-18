@@ -3,6 +3,7 @@ import { readLocalIntegrations } from "@halonicjs/app";
 import type { AccountType, SetupEdit, SetupRecord, SetupRecords } from "@halonicjs/google-setup";
 import type { DefinitionStore, DefinitionWatch, Digest, FolderReader } from "@halonicjs/ports";
 import type {
+  CheckAgainEntry,
   DisconnectAnswer,
   GoogleSetupAccount,
   GoogleSetupAccounts,
@@ -63,9 +64,8 @@ export interface WorkspaceGoogleSetupAccountsOptions {
   readonly onWatchError?: (error: unknown) => void;
 }
 
-/** Said when a change is tried that the desktop app can't make yet, or has no agent host to make. */
-const notYet =
-  "This can't be saved in the Halonic app yet. Use the halonic google commands in a terminal for now.";
+/** Said when a change is tried that Studio can't make yet. */
+const notYet = "Studio can't save this change yet.";
 
 /**
  * Said when the agent host couldn't disconnect. It doesn't say nothing was removed: the answer
@@ -87,6 +87,9 @@ const desktopEntry: SecretEntry = { kind: "field", keptOn: "this-computer", plai
 /** The app runs on the computer that runs Halonic, so Google's answer comes back to it. */
 const desktopSignIn: SignInEntry = { kind: "here" };
 
+/** The app can't check the services again yet; signing in again in a terminal does (HAL-12363, L8). */
+const desktopCheckAgain: CheckAgainEntry = { kind: "sign-in-again", where: "terminal" };
+
 /**
  * The Google accounts of one open workspace as the Google setup feature reads them (requirement
  * `studio.workspace-google-setup-accounts`).
@@ -104,6 +107,7 @@ const desktopSignIn: SignInEntry = { kind: "here" };
 export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
   readonly secretEntry = desktopEntry;
   readonly signInEntry = desktopSignIn;
+  readonly checkAgainEntry = desktopCheckAgain;
   readonly #options: WorkspaceGoogleSetupAccountsOptions;
   readonly #listeners = new Set<() => void>();
   #stopWatching: (() => void) | undefined;

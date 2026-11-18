@@ -83,7 +83,7 @@ export class WorkspaceListedTools implements ListedToolsHost {
     const source = await this.#open(connectorId);
     const sourceName = source.connector.name ?? source.connector.id;
     // Neither way has tools Studio can list: Google's are built in, and an http server's can't be
-    // read here yet. The page opens quiet rather than with a failure line.
+    // read here yet. The connector's page gives `halonic tools review` for those instead of asking.
     if ("google" in source.connector.transport || "http" in source.connector.transport) {
       return nothingToReview(sourceName);
     }
@@ -177,7 +177,7 @@ export class WorkspaceListedTools implements ListedToolsHost {
   /** Starts the connector and checks what it lists against the approvals, as a run would. */
   async #check({ workspace, connector, location }: OpenedSource): Promise<ListedToolApprovalCheck> {
     if ("http" in connector.transport) {
-      throw new KindedError("unavailable", "Studio can't check the tools of an http server yet");
+      throw new KindedError("unavailable", "Studio can't list this server's tools yet");
     }
     const trusted = await this.#options.trust.checkLoaded(workspace);
     if (trusted.status !== "trusted") {

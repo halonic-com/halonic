@@ -1,5 +1,10 @@
 import { CopyButton } from "@halonicjs/studio-kit";
 
+/** The command that signs the account in from a terminal, with the setup record's ref. */
+export function signInCommand(accountRef: string): string {
+  return `halonic google sign-in ${accountRef}`;
+}
+
 /** Props for {@link SignInElsewhere}. */
 export interface SignInElsewhereProps {
   /** The setup record's ref, which the command signs in. It is never the connector's address. */
@@ -17,7 +22,7 @@ export interface SignInElsewhereProps {
  * "Finish this step there."
  */
 export function SignInElsewhere({ accountRef, commandExists, copyable }: SignInElsewhereProps) {
-  const command = `halonic google sign-in ${accountRef}`;
+  const command = signInCommand(accountRef);
   const sentence =
     "Google sends the sign-in back to the computer running Halonic. Finish this step ";
   return (

@@ -104,6 +104,14 @@ export const listedToolsWords = {
       : `Couldn't read your approval for ${tool}, so none of the tools ${source} lists are on. Remove it, then approve it again.`,
   unreadableUnavailable: "Halonic can't tell which tool it belongs to yet.",
   loadFailed: (reason: string) => `Couldn't list the tools: ${reason}.`,
+  /**
+   * The line on the page of an MCP server over HTTP, which Studio can't list yet (microcopy 11.4).
+   * The command follows it in a box; a phone says "on your computer" (rule N4, HAL-12363).
+   */
+  cantList: (where: "terminal" | "computer") =>
+    `Studio can't list this server's tools yet. To review them, run this ${where === "terminal" ? "in a terminal" : "on your computer"}:`,
+  /** The command under {@link listedToolsWords.cantList}. */
+  reviewCommand: (connectorId: string) => `halonic tools review ${connectorId}`,
   tryAgain: "Try again",
   connecting: "Connecting…",
   /** More tools than this on the screen turns the search field on. */

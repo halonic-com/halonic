@@ -310,6 +310,30 @@ verifies("google-setup.check-again", () => {
     await press(check);
     expect(fake.checks).toEqual([]);
   });
+
+  it("holds Check again where the host can't check, with the command to sign in again", async () => {
+    const { fake, container } = await open(signedInRecord(apiOff), {
+      checkAgainEntry: { kind: "sign-in-again", where: "terminal" },
+    });
+    const check = button(container, "Check again");
+    expect(check.getAttribute("aria-disabled")).toBe("true");
+    const reason = document.getElementById(check.getAttribute("aria-describedby") ?? "");
+    expect(reason?.textContent).toBe(
+      "Studio can't check these again yet. To check them, sign in again in a terminal:",
+    );
+    expect(container.textContent).toContain("halonic google sign-in gaccount_1");
+    expect(container.querySelector('button[aria-label="Copy command"]')).not.toBeNull();
+    await press(check);
+    expect(fake.checks).toEqual([]);
+    expect(container.textContent).not.toContain("Couldn't check again");
+  });
+
+  it("says on your computer where the window isn't on it", async () => {
+    const { container } = await open(signedInRecord(apiOff), {
+      checkAgainEntry: { kind: "sign-in-again", where: "computer" },
+    });
+    expect(container.textContent).toContain("To check them, sign in again on your computer:");
+  });
 });
 
 const wrongAt = "2026-11-12T02:30:00.000Z";
