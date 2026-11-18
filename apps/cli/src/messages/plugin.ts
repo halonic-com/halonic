@@ -1,4 +1,8 @@
-import { pluginTrustLocationHeadings, pluginTrustMoreFilesText } from "@halonicjs/app";
+import {
+  pluginTrustLocationHeadings,
+  pluginTrustMoreFilesText,
+  pluginTrustToolsIntro,
+} from "@halonicjs/app";
 import { defineMessages } from "./define.ts";
 import { markPart, phrase } from "./phrase.ts";
 
@@ -47,8 +51,8 @@ export const pluginMessages = defineMessages("plugin", {
   reads: () => phrase`Reads`,
   changesThings: () => phrase`Changes things`,
   sends: () => phrase`Sends`,
-  /** After a tool that waits for a person: "post_alert · asks a person first". */
-  asksFirst: () => phrase`asks a person first`,
+  /** The first line under Tools for agents, as the shared model words it: every tool asks first. */
+  toolsIntro: () => phrase`${pluginTrustToolsIntro}`,
   programsHeading: () => phrase`Programs`,
   secretsHeading: () => phrase`Secrets`,
   /** After a secret's name: "goes only to api.weather.example". */

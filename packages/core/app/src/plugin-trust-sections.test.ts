@@ -6,6 +6,7 @@ import {
   pluginTrustSectionHeadings,
   pluginTrustSectionOrder,
   pluginTrustSections,
+  pluginTrustToolsIntro,
 } from "./plugin-trust-sections.ts";
 import { pluginFrom, weatherFiles } from "./testing/plugin-fixtures.ts";
 
@@ -41,6 +42,12 @@ verifies("app.plugin-trust-sections", () => {
       "Addresses",
       "In Studio",
     ]);
+  });
+
+  it("says every tool asks a person first, a tool that reads too, because a connector counts it as changing things", () => {
+    expect(pluginTrustToolsIntro).toBe(
+      "Agents can use these through a connector. Each one asks a person first unless you change that.",
+    );
   });
 
   it("lists the files other than the manifest, with none more", () => {

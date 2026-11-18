@@ -43,9 +43,11 @@ integration. Its only way out is the `IntegrationHost`:
   program (Fence 2), and the check lists it.
 - A plugin backend **can't hold sign-in tokens** yet, so no token value ever
   enters the worker.
-- Every tool has a `risk`. Anything above `read` asks a person first before it
-  runs. Every result of a plugin's tool reaches a model fenced as outside
-  content, whether the tool is marked `untrusted` or not.
+- Every tool has a `risk`, which the trust check shows. Agents reach the tools
+  through a connector, and every call asks a person first, whatever the risk,
+  unless the connector file's `read` list names the tool; a plugin can't add a
+  tool to that list. Every result of a plugin's tool reaches a model fenced as
+  outside content, whether the tool is marked `untrusted` or not.
 
 ### Fence 2: the sandbox
 

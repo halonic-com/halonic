@@ -69,6 +69,15 @@ function addsToStudio(content: PluginTrustContent): boolean {
 }
 
 /**
+ * The first line under "Tools for agents". A plugin's tools reach agents through a connector,
+ * and the engine counts every connector tool as changing things, whatever risk the plugin gives
+ * it, until the connector file's `read` list names it (HAL-5583). So a tool the plugin says
+ * reads asks a person first too (HAL-12384).
+ */
+export const pluginTrustToolsIntro =
+  "Agents can use these through a connector. Each one asks a person first unless you change that.";
+
+/**
  * The headings of the two lines under the sections: where the plugin sits
  * on disk and the files its fingerprint covers. Studio adds nothing after them.
  */

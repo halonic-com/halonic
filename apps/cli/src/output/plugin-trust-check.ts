@@ -16,7 +16,7 @@ import {
 } from "@halonicjs/app";
 import { withHomeAsTilde } from "@halonicjs/profile";
 import type { Message } from "../messages/define.ts";
-import { markPart, type Phrase, phrase, plainText } from "../messages/phrase.ts";
+import { type Phrase, phrase, plainText } from "../messages/phrase.ts";
 import { pluginMessages } from "../messages/plugin.ts";
 import { trustMessages } from "../messages/trust.ts";
 import { nodeProfileEnvironment } from "../workspace-runs.ts";
@@ -38,7 +38,7 @@ const riskGroups: readonly { readonly risk: string; readonly heading: () => Mess
  * @example
  * pluginTrustCheckLines(entry.content, entry.location);
  * // ["Trust Weather and turn it on?", "", "Tools for agents",
- * //  "  Reads         get_forecast", …, "", "Plugin code runs apart from the rest of Halonic. …"]
+ * //  "  Agents can use these through a connector. …", "  Reads         get_forecast", …, "", "Plugin code runs apart from the rest of Halonic. …"]
  */
 export function pluginTrustCheckLines(content: PluginTrustContent, folder: string): Phrase[] {
   return [
@@ -124,18 +124,19 @@ function shownFolder(folder: string): string {
   return withHomeAsTilde(profile.platform, profile.homeFolder, folder);
 }
 
-/** Tools grouped by what they do; a tool that changes or sends something asks a person first. */
+/**
+ * The line that every tool asks a person first, then the tools grouped by what they do. The
+ * line covers every group: a tool reaches agents through a connector, which counts even a
+ * tool the plugin says reads as changing things until the connector file's `read` list names it.
+ */
 function toolRows(content: PluginTrustContent): Phrase[] {
-  return riskGroups.flatMap(({ risk, heading }) => {
+  const groups = riskGroups.flatMap(({ risk, heading }) => {
     const names = content.tools
       .filter((tool) => tool.risk === risk)
-      .map((tool) =>
-        risk === "read"
-          ? phrase`${printable(tool.name)}`
-          : phrase`${printable(tool.name)} ${markPart("separator")} ${pluginMessages.asksFirst().phrase}`,
-      );
+      .map((tool) => phrase`${printable(tool.name)}`);
     return names.map((name, index) => row(index === 0 ? plainHeading(heading()) : "", name));
   });
+  return [phrase`${rowIndent}${pluginMessages.toolsIntro().phrase}`, ...groups];
 }
 
 function programRows(content: PluginTrustContent): Phrase[] {
