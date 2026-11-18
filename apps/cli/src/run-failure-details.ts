@@ -6,11 +6,11 @@
 // printer removes every loaded secret from the whole text before it splits
 // it into lines, as it does for an error's `--debug` text.
 
+import type { RunFailedEvent } from "@halonicjs/app/run-failure";
 import type { ProviderText, RunEvent } from "@halonicjs/events";
 import type { Message } from "./messages/define.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runFailedDebugMessages } from "./messages/run-failures.ts";
-import type { RunFailedEvent } from "./run-failure-of.ts";
 
 /** One model call line, before repeats of the same call are counted. */
 type ModelCall = Extract<RunEvent, { type: "llm.request" | "llm.fallback" | "llm.skipped" }>;

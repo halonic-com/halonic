@@ -7,6 +7,7 @@
 // (`runsMessages`).
 
 import { type RunDetail, RunHistory, shortRunId } from "@halonicjs/app";
+import { workspaceModelsOf } from "@halonicjs/app/run-failure";
 import type { RunSummary } from "@halonicjs/events";
 import { loadWorkspace } from "@halonicjs/workspace";
 import {
@@ -16,12 +17,12 @@ import {
   OwnLineError,
   UsageError,
 } from "../../command.ts";
+import { providerAddress } from "../../doctor-workspace.ts";
 import { exitCode } from "../../exit-code.ts";
 import type { Phrase } from "../../messages/phrase.ts";
 import { runsMessages, type ShownEnd } from "../../messages/runs.ts";
 import { startedInWords } from "../../messages/runs-list.ts";
 import { printable } from "../../output/printable.ts";
-import { workspaceModelsOf } from "../../run-failure-of.ts";
 import { type RunClock, startedAt } from "../../run-times.ts";
 import { runViewDefinitions, stepLines, stepLinesWithOutput } from "../../run-view.ts";
 import { givenDir, openWorkspaceDir } from "../../workspace-dir.ts";
@@ -89,7 +90,7 @@ export async function showRun(
             run,
             title,
             definitions,
-            () => workspaceModelsOf(loaded, run.summary.hubId),
+            () => workspaceModelsOf(loaded, run.summary.hubId, providerAddress),
             dir,
             context.debugging,
           ),

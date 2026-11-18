@@ -1,10 +1,10 @@
+import { failedModelOf, runFailureOf } from "@halonicjs/app/run-failure";
 import type { RunFailureReason } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { plainText } from "./messages/phrase.ts";
 import { runFailedLines } from "./messages/run-failures.ts";
 import { sandboxMessages } from "./messages/sandbox.ts";
-import { failedModelOf, runFailureOf } from "./run-failure-of.ts";
 
 import {
   calledModel,
@@ -91,6 +91,7 @@ verifies("cli.run-failure", () => {
       const cloud = calledModel({
         ...openaiModel,
         provider: { ...openai, baseUrl: "https://api.openai.com/v1" },
+        address: "api.openai.com",
       });
       expect(runFailureOf(failedWith("model-unreachable"), cloud)).toMatchObject({
         address: "api.openai.com",
@@ -108,17 +109,18 @@ verifies("cli.run-failure", () => {
       expect(runFailureOf(failedWith("model-timeout", "localhost:11434"), calledModel())).toEqual({
         reason: "model-timeout",
         provider: "Ollama",
-        within: "5 minutes",
+        withinMs: 300_000,
         localAddress: "localhost:11434",
       });
       const cloud = calledModel({
         ...openaiModel,
         provider: { ...openai, baseUrl: "https://api.openai.com/v1" },
+        address: "api.openai.com",
       });
       expect(runFailureOf(failedWith("model-timeout"), cloud)).toEqual({
         reason: "model-timeout",
         provider: "OpenAI",
-        within: "5 minutes",
+        withinMs: 300_000,
       });
       expect(runFailureOf(failedWith("model-timeout"), undefined)).toEqual(general);
     });
@@ -170,7 +172,7 @@ verifies("cli.run-failure", () => {
         per: "month",
         budget: 0.5,
         currency: "USD",
-        resetsOn: "1 Jan",
+        resetsOn: "2027-01-01",
       });
       expect(fixLine(failure)).toBe(
         "Raise budget.monthly in workspace.yaml, or wait until it resets on 1 Jan.",
@@ -195,7 +197,7 @@ verifies("cli.run-failure", () => {
           per: "month",
           budget: 0.00001,
           currency: "EUR",
-          resetsOn: "1 Dec",
+          resetsOn: "2026-12-01",
         });
       });
 
@@ -284,7 +286,7 @@ verifies("cli.run-failure", () => {
     });
 
     it("gives model-unreachable the general lines when no address is known", () => {
-      const unknown = calledModel({ providerId: "gone", provider: undefined });
+      const unknown = calledModel({ providerId: "gone", provider: undefined, address: undefined });
       expect(runFailureOf(failedWith("model-unreachable"), unknown)).toEqual(general);
     });
   });
@@ -322,6 +324,7 @@ describe("the model a run called last", () => {
       model: "qwen3",
       providerId: "lmstudio",
       provider: lmStudio,
+      address: "localhost:1234",
       keyMissing: false,
     });
     const moved = log({

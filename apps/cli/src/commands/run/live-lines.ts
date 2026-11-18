@@ -7,12 +7,13 @@
 // from the same helpers `result.ts` uses.
 
 import { runSteps, type StepEnd } from "@halonicjs/app";
+import { type WorkspaceModels, workspaceModelsOf } from "@halonicjs/app/run-failure";
 import { type RunEvent, summarize } from "@halonicjs/events";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { CommandContext } from "../../command.ts";
+import { providerAddress } from "../../doctor-workspace.ts";
 import { printable } from "../../output/printable.ts";
 import type { Progress } from "../../output/progress.ts";
-import { type WorkspaceModels, workspaceModelsOf } from "../../run-failure-of.ts";
 import type { RunClock } from "../../run-times.ts";
 import {
   type RunDefinitions,
@@ -153,7 +154,7 @@ function knowRun(
   return {
     definitions,
     widths: stepColumns(definitions),
-    models: workspaceModelsOf(facts.workspace, summary.hubId),
+    models: workspaceModelsOf(facts.workspace, summary.hubId, providerAddress),
   };
 }
 

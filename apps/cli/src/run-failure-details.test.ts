@@ -1,3 +1,4 @@
+import type { RunFailedEvent } from "@halonicjs/app/run-failure";
 import type { RunEvent } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -7,7 +8,6 @@ import { defineMessages } from "./messages/define.ts";
 import { phrase } from "./messages/phrase.ts";
 import { runCli } from "./run-cli.ts";
 import { runFailureDetails } from "./run-failure-details.ts";
-import type { RunFailedEvent } from "./run-failure-of.ts";
 import { captureIo } from "./test/capture-io.ts";
 
 /** The parts of an event every log entry has, with `seq` counted by the caller. */
