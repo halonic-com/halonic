@@ -10,11 +10,19 @@ export function checkWorkspaceFile(context: CheckContext): WorkspaceIssue[] {
   return [context.error(settingsPath, [], "missing-workspace-file", `Missing ${settingsPath}`)];
 }
 
-/** A workflow test must test a workflow of its own hub (or of the root, for a test at the root). */
+/**
+ * A workflow test must test a workflow of its own hub (or of the root, for a
+ * test at the root). A test of a workflow whose own file failed isn't
+ * reported: that file's errors are the cause, and a second error on the test
+ * would hide them (HAL-12126).
+ */
 export function checkTestTargets(context: CheckContext): WorkspaceIssue[] {
   return context.filesOf("workflowTest").flatMap((test) => {
     const target = test.value.workflow;
-    if (context.idsOf("workflow", test.hub).has(target)) {
+    if (
+      context.idsOf("workflow", test.hub).has(target) ||
+      context.failedWithPlaceId("workflow", test.hub, target)
+    ) {
       return [];
     }
     const message = `Test targets unknown workflow "${target}"`;

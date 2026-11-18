@@ -81,6 +81,27 @@ export class CheckContext {
   }
 
   /**
+   * Whether a file of this kind whose name gives this id, in this hub (`null`:
+   * the root), was read but failed its own checks. Whatever names it would
+   * only repeat that file's own errors (HAL-12126).
+   */
+  failedWithPlaceId(kind: KindName, hub: string | null, id: string): boolean {
+    const parsed = new Set(this.filesOf(kind, hub).map((file) => file.path));
+    for (const file of this.read.values()) {
+      const place = placeOf(file.path);
+      if (
+        file.kind === kind &&
+        !parsed.has(file.path) &&
+        place?.hub === hub &&
+        place.placeId === id
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * An error at a key path of a file, with the line and column of the value
    * there, or of its nearest parent that exists.
    */
