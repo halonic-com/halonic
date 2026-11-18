@@ -61,6 +61,7 @@ function renderWindow(platform: KeyboardPlatform = "windows") {
             notAnswering="The engine isn't answering."
             platform={platform}
             onClose={palette.close}
+            onOpenedHere={() => {}}
           />
         ) : null}
       </>
