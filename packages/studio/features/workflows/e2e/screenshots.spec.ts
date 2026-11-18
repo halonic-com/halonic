@@ -300,6 +300,18 @@ for (const shown of canvasRuns) {
       await expect(page.locator("g[data-taken]")).toHaveCount(taken);
       const dots = { none: 0, mid: 2, done: 4, branch: 3, failed: 3 }[shown];
       await expect(page.getByTestId("status-dot")).toHaveCount(dots);
+      // The first card's Start chip clears its kind label; a long end card's title stays in its box.
+      const chip = await page.getByText("Start", { exact: true }).boundingBox();
+      const kind = await page.getByText("AGENT STEP").first().boundingBox();
+      expect((chip?.y ?? Infinity) + (chip?.height ?? 0)).toBeLessThanOrEqual(kind?.y ?? -Infinity);
+      const spilled = await page
+        .locator("button[aria-pressed]")
+        .evaluateAll((cards) =>
+          cards
+            .filter((card) => card.scrollHeight > card.clientHeight)
+            .map((card) => card.textContent),
+        );
+      expect(spilled).toEqual([]);
       await page.screenshot({
         path: `test-results/screenshots/canvas-${shown}-${scheme}.png`,
         fullPage: true,

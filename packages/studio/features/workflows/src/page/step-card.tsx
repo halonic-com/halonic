@@ -55,11 +55,16 @@ export function StepCard({
     >
       <span className="text-caption text-fg-muted">{pageWords.stepKind[step.type]}</span>
       {first && (
-        <span className="absolute -top-2.5 left-3 rounded-full border border-border bg-surface px-2 text-caption text-accent-text">
+        <span className="absolute -top-5 left-3 rounded-full border border-border bg-surface px-2 text-caption text-accent-text">
           {pageWords.startChip}
         </span>
       )}
-      <span className="text-small-strong text-fg">{step.title ?? step.id}</span>
+      <span
+        title={step.title ?? step.id}
+        className={`${step.type === "task" ? "truncate" : "line-clamp-2"} w-full min-w-0 break-words text-small-strong text-fg`}
+      >
+        {step.title ?? step.id}
+      </span>
       {mark !== undefined && (
         <span
           data-testid="status-dot"

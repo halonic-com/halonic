@@ -20,6 +20,11 @@ const workflow: WorkflowView = {
     { id: "publish", type: "task", title: "Publish the review", agent: "publisher" },
     { id: "rework", type: "task", title: "Rework the summary", agent: "summariser" },
     { id: "end", type: "final", title: "Done" },
+    {
+      id: "ignored",
+      type: "final",
+      title: "Finished without a reply, because nobody needs to answer spam",
+    },
   ],
   arrows: [
     { from: "summarise", to: "review" },
@@ -27,6 +32,7 @@ const workflow: WorkflowView = {
     { from: "review", to: "rework", label: "rejected" },
     { from: "rework", to: "review" },
     { from: "publish", to: "end" },
+    { from: "rework", to: "ignored", label: "spam" },
   ],
   layout: {},
 };

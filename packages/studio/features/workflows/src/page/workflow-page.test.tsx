@@ -265,6 +265,29 @@ verifies("workflows.page.step-cards", () => {
     expect(page.querySelector("svg text")?.textContent).toBe("ok");
   });
 
+  it("keeps a long title inside its card, and the Start chip above the kind label (HAL-12057)", async () => {
+    const long = "Finished without a reply, because nobody needs to answer spam";
+    const wordy = {
+      ...reply,
+      steps: [
+        { id: "start", type: "task" },
+        { id: "done", type: "final", title: long },
+      ],
+    } satisfies WorkflowView;
+    const { host } = memoryHost([], [], [wordy]);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
+
+    const title = [...page.querySelectorAll("button[aria-pressed] span")].find(
+      (span) => span.textContent === long,
+    );
+    expect(title?.className).toContain("line-clamp-2");
+    expect(title?.getAttribute("title")).toBe(long);
+    const chip = [...page.querySelectorAll("span")].find((span) => span.textContent === "Start");
+    expect(chip?.className).toContain("-top-5");
+  });
+
   it("names a card by its title, and by its id only when it has none", async () => {
     const titled = {
       ...reply,
