@@ -2,6 +2,7 @@
 
 - Approval: HAL-12171
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nlL3XOrd17LCa26SebVdPypyjYyxPbrOGrHFHYTpZPa0fk5plW2eOVKCc3dxVI7tQb20oDVJdFMd3nUtdiTfCQ==
 
 ## What changes
 
