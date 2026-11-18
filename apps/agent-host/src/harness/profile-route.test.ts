@@ -249,6 +249,19 @@ verifies("agent-host.profile-route", () => {
     expect(await exists(opened?.profile.tempFolder ?? "")).toBe(true);
     await session.close();
   });
+
+  it("doesn't make the temp folder again for a session that opens after it was removed", async () => {
+    const patient = hostProfiles(process.platform, { ...installedHere, unopenedAfterMs: 50 });
+    const bridge = { url: "http://127.0.0.1:4100", token: bridgeToken, close: async () => {} };
+    const late = await patient.profileOf(workspace, parsedWriter(), bridge, null);
+    const tempFolder = late?.profile.tempFolder ?? "";
+    await vi.waitFor(async () => expect(await exists(tempFolder)).toBe(false));
+    const session = await patient
+      .removingTempFolders(opening())
+      .open(late?.profile as SandboxProfile);
+    expect(await exists(tempFolder)).toBe(false);
+    await session.close();
+  });
 });
 
 function parsedWriter() {

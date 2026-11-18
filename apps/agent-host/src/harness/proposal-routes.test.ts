@@ -27,13 +27,14 @@ const run = {
 let root: string;
 let workspace: string;
 let server: HostServer | undefined;
+let proposals: HostProposalFolders;
 
 beforeEach(async () => {
   root = await realpath(await mkdtemp(join(tmpdir(), "halonic-proposal-route-")));
   workspace = join(root, "acme");
   await mkdir(workspace);
   await writeFile(join(workspace, "notes.md"), "hello");
-  const proposals = new HostProposalFolders({
+  proposals = new HostProposalFolders({
     profile: { platform: profilePlatform, root: join(root, "data") },
     workspaceRoots: [workspace],
     digest: webCryptoDigest,
@@ -96,6 +97,14 @@ verifies("agent-host.proposal-routes", () => {
 
   it("starts without git when nothing was kept, so a workspace that never ran an agent needs none", async () => {
     expect(await ask("start", { workspace, openRuns: [] })).toEqual({ status: 200, body: {} });
+  });
+
+  it("stops its git when the host stops, twice safely, and makes the folders again on the next ask", async () => {
+    expect((await ask("open", { workspace, run })).status).toBe(200);
+    await proposals.close();
+    await proposals.close();
+    const again = await ask("open", { workspace, run: { ...run, runId: "run_2" } });
+    expect(again.status).toBe(200);
   });
 
   it("refuses a body with a field it does not know", async () => {
