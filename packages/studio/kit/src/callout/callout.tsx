@@ -25,6 +25,11 @@ export interface CalloutAction {
    * ↗, the same words are its tooltip, and screen readers hear them after the label.
    */
   readonly opens?: string;
+  /**
+   * Takes focus when the Callout appears, and is described by the Callout's text: for a Callout
+   * that stands where focus was, such as the strip of a page whose item went to the trash.
+   */
+  readonly focus?: boolean;
 }
 
 /** What a Callout with `announce="focus"` gives its screen. */
@@ -140,7 +145,7 @@ export function Callout(props: CalloutProps) {
         {actions.length > 0 ? (
           <div className={`${actionRow} flex flex-wrap`}>
             {actions.map((action) => (
-              <CalloutButton key={action.label} action={action} />
+              <CalloutButton key={action.label} action={action} textId={ids.text} />
             ))}
           </div>
         ) : null}
@@ -185,8 +190,20 @@ function FileList({ id, files }: { readonly id: string; readonly files: readonly
   );
 }
 
+/** Puts focus on an action that asks for it when it is drawn. */
+function focusOnMount(button: HTMLButtonElement | null): void {
+  button?.focus();
+}
+
 /** The ghost action, busy while a returned promise runs, so it keeps focus (17.5). */
-function CalloutButton({ action }: { readonly action: CalloutAction }) {
+function CalloutButton({
+  action,
+  textId,
+}: {
+  readonly action: CalloutAction;
+  readonly textId: string;
+}) {
+  const focused = action.focus === true;
   const [busy, setBusy] = useState(false);
 
   function run() {
@@ -206,6 +223,7 @@ function CalloutButton({ action }: { readonly action: CalloutAction }) {
       busy={busy}
       busyLabel={action.busyLabel}
       onClick={run}
+      {...(focused ? { ref: focusOnMount, "aria-describedby": textId } : {})}
       {...trigger}
     >
       {action.label}

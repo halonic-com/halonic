@@ -1,7 +1,14 @@
 import type { ItemUsage, LibraryItemKind } from "@halonicjs/app";
-import { Button, Menu, MoreIcon, usePresentation, useToastStore } from "@halonicjs/studio-kit";
+import {
+  Button,
+  Menu,
+  MoreIcon,
+  TrashStrip,
+  usePresentation,
+  useToastStore,
+} from "@halonicjs/studio-kit";
 import type { ItemViewProps } from "@halonicjs/studio-shell";
-import { useCallback, useId, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { deleteWords, phoneCanDelete } from "../delete-words.ts";
 import { itemFileRef } from "../item-file.ts";
 import { LibraryItemsHostService, type RemovedLibraryItem } from "../library-items-host.ts";
@@ -30,11 +37,6 @@ export interface ItemTrash {
   readonly strip: React.ReactNode;
 }
 
-/** Puts focus on Undo when the strip appears: the page and its ⋮ button, where focus was, are gone. */
-function focusOnMount(button: HTMLButtonElement | null): void {
-  button?.focus();
-}
-
 const noUsage: ItemUsage = { agents: [], hubs: [], routines: [], collections: [] };
 
 /**
@@ -49,7 +51,6 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
   const [removed, setRemoved] = useState<RemovedLibraryItem>();
   const [showingFile, setShowingFile] = useState(false);
   const { kind, hub, id, name, usage } = item;
-  const stripTextId = useId();
   const movedLine = usedByLine(usage ?? noUsage);
   // Set by Undo; the page's title takes focus when it is drawn again.
   const focusTitle = useRef(false);
@@ -127,27 +128,16 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
         )}
       </>
     );
+  // Undo takes focus: the page and its ⋮ button, where focus was, are gone.
   const strip =
     removed === undefined ? null : (
-      <p className="flex flex-wrap items-center gap-2 px-4 py-5">
-        <span id={stripTextId}>
-          {deleteWords.pageMoved(kind, movedLine !== undefined)}
-          {movedLine === undefined ? null : (
-            <>
-              {" "}
-              <span className="block">{movedLine}</span>
-            </>
-          )}
-        </span>
-        <Button
-          ref={focusOnMount}
-          variant="ghost"
-          aria-describedby={stripTextId}
-          onClick={() => void onUndo()}
-        >
-          {deleteWords.undo}
-        </Button>
-      </p>
+      <TrashStrip
+        text={deleteWords.pageMoved(kind, movedLine !== undefined)}
+        detail={movedLine}
+        undoLabel={deleteWords.undo}
+        onUndo={onUndo}
+        focusUndo
+      />
     );
   return { menu, titleRef, strip };
 }

@@ -207,6 +207,8 @@ verifies("library.library-delete", () => {
     expect(page.textContent).not.toContain("isn't in this workspace any more");
     const undoButton = [...page.querySelectorAll("button")].find((b) => b.textContent === "Undo");
     expect(document.activeElement).toBe(undoButton);
+    // The kit's trash strip: the same warning Callout as a deleted file's tab.
+    expect(undoButton?.closest(".bg-warning-soft")).not.toBeNull();
     // Undo's description is the strip's text, so the move and the "used by" line are heard once.
     const description = document.getElementById(
       undoButton?.getAttribute("aria-describedby") ?? "",
