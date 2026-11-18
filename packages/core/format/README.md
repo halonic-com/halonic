@@ -194,3 +194,11 @@ Three optional agent fields say how an agent runs in another program
   Punycode, each once. A stdio connector's optional `transport.stdio.sites`, the sites its
   program may reach in a sandbox, follows the same rules (requirement `connector-sites`); no
   other transport takes it.
+
+An optional `harnessLimits` block bounds one step of a harness agent
+(requirement `agent-harness-limits`): `maxSteps` (model calls, 1 to 10000),
+`maxMinutes` (1 to 1440, not counting waits for a person's answer) and
+`maxCost` (in the budget's currency, above 0; calls a subscription pays for
+count as 0). A limit left out doesn't apply. The agent's own `maxSteps`, 6 by
+default, is sized for Halonic's own loop and doesn't bound a harness step: a
+coding program makes hundreds of model calls in one.
