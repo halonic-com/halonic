@@ -184,5 +184,7 @@ verifies("studio.installer-licence-page", () => {
     expect(agree).toBeGreaterThan(-1);
     expect(walk.indexOf("Save-Picture $h '0-licence'")).toBeGreaterThan(agree);
     expect(walk.indexOf("Wait-Button $h '&Install'")).toBeGreaterThan(agree);
+    // A sent press would block on the Install page's own message loop.
+    expect(walk.slice(agree, walk.indexOf("Wait-Button $h '&Install'"))).toContain("PostMessage");
   });
 });
