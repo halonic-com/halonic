@@ -465,6 +465,8 @@ function hostServices(
     await plugins?.stop();
     await sessions.closeAll();
     await bridges.closeAll();
+    // Last: no run uses a proposal folder any more, so their git can stop.
+    await proposals?.close();
   };
   const startGateway = async (log: (text: string) => void) => {
     const port = await remoteGateway.start(log);

@@ -34,6 +34,8 @@ export interface HostProposalFoldersOptions {
 interface WorkspaceProposals {
   readonly folders: ProposalFolders;
   readonly kept: readonly string[];
+  /** Stops the workspace's git, if it started. */
+  readonly close: () => Promise<void>;
 }
 
 /**
@@ -85,6 +87,19 @@ export class HostProposalFolders {
     return true;
   }
 
+  /**
+   * Stops every workspace's git that started. Call it when the host stops,
+   * once no run uses a folder any more. Safe to call twice.
+   */
+  async close(): Promise<void> {
+    const made = [...this.#byWorkspace.values()];
+    this.#byWorkspace.clear();
+    for (const proposals of made) {
+      // A make that failed started no git.
+      await (await proposals.catch(() => undefined))?.close();
+    }
+  }
+
   async #of(workspace: string): Promise<WorkspaceProposals | undefined> {
     const real = await namedWorkspace(this.#options.workspaceRoots, workspace);
     if (real === undefined) return undefined;
@@ -103,8 +118,9 @@ export class HostProposalFolders {
     const folders = await workspaceFolders(profile, workspace, digest);
     await makePrivateFolder(folders.proposalRecordsFolder());
     const store = new FolderDefinitionStore(workspace);
+    const git = lazyGitVcs({ location: workspace, worktrees: folders.proposalWorktreesFolder() });
     const proposals = new RunProposals({
-      vcs: lazyGitVcs({ location: workspace, worktrees: folders.proposalWorktreesFolder() }).vcs,
+      vcs: git.vcs,
       // With history off, a run that writes files works in a plain copy of the saved files.
       copies: new FolderRunCopies(folders.runCopiesFolder()),
       records: new FolderDefinitionStore(folders.proposalRecordsFolder()),
@@ -114,7 +130,11 @@ export class HostProposalFolders {
       clock: systemClock,
       onEndFailed,
     });
-    return { folders: new ProposalFolders({ proposals }), kept: keptFoldersOf(folders) };
+    return {
+      folders: new ProposalFolders({ proposals }),
+      kept: keptFoldersOf(folders),
+      close: git.close,
+    };
   }
 }
 
