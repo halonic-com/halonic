@@ -3,6 +3,7 @@
 - Task: HAL-12448
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12448 (a bug fix the team decides; Liam approves and signs this note in review). The new field line builds on the approved Add plugin dialog (HAL-2282: a small wording that builds on an approved screen is the team's).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bYoSsmVfswvNaNbPHyaZjjFZVV9s6v4ZbJqbyw0IlsAMEDidmLeoyXewv9NlxzXdp0d/R0+PEHH17HgjftfgBA==
 
 ## What changes
 
