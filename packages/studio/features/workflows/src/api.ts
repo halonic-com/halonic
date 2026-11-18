@@ -209,7 +209,7 @@ export interface WorkflowsHost {
   nameOf(ref: WorkflowRef): string | undefined;
   /**
    * Calls `listener` each time the list may have changed (a file saved, a run started or
-   * finished); returns the way to stop.
+   * finished, or `nameOf` knows a new name); returns the way to stop.
    */
   subscribe(listener: () => void): () => void;
   /**

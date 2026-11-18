@@ -8,7 +8,12 @@ import { listing, memoryHost } from "./test-support.tsx";
 function registered() {
   const providers: SearchProviderContribution[] = [];
   const commands: { id: string; title: string; run: (context: never) => void }[] = [];
-  const kinds: { tab?: { describe: (item: never, context: never) => { label: string } } }[] = [];
+  const kinds: {
+    tab?: {
+      describe: (item: never, context: never) => { label: string };
+      subscribe?: (listener: () => void, context: never) => () => void;
+    };
+  }[] = [];
   const studio = {
     places: { add: () => undefined },
     itemKinds: { add: (kind: (typeof kinds)[number]) => kinds.push(kind) },
@@ -24,10 +29,9 @@ const rows = [
   listing("acme", "mail-triage", "Mail triage", { description: "Sorts the inbox" }),
   listing("acme", "invoice-intake", "Invoice intake"),
 ];
-const contextOf = () => {
-  const { host } = memoryHost(hubs, rows);
-  return { services: { get: (key: unknown) => (key === WorkflowsHostService ? host : undefined) } };
-};
+const contextOf = (memory = memoryHost(hubs, rows)) => ({
+  services: { get: (key: unknown) => (key === WorkflowsHostService ? memory.host : undefined) },
+});
 
 describe("workflowsFeature", () => {
   it("is registered under its folder name", () => {
@@ -73,5 +77,18 @@ describe("workflowsFeature", () => {
     expect(tab?.describe({ kind: "workflow", hub: "acme", id: "gone" } as never, context)).toEqual({
       label: "gone",
     });
+  });
+
+  it("tells the window when the host's workflows change, so a tab named by its id follows (L14, HAL-12730)", () => {
+    const tab = registered().kinds[0]?.tab;
+    const memory = memoryHost(hubs, []);
+    const listener = vi.fn();
+
+    const stop = tab?.subscribe?.(listener, contextOf(memory) as never);
+    memory.change(rows);
+    stop?.();
+    memory.change([]);
+
+    expect(listener).toHaveBeenCalledOnce();
   });
 });

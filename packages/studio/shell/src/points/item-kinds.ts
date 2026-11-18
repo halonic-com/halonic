@@ -41,8 +41,9 @@ export interface TabBehaviour {
    */
   exists(item: ItemRef, context: WorkspaceContext): boolean;
   /**
-   * Calls `listener` each time items of this kind may have come or gone; returns the way to stop.
-   * Without it the window never asks `exists`, so a gone item's tab stays open.
+   * Calls `listener` each time items of this kind may have come, gone or been named; returns the
+   * way to stop. Without it the window never asks `exists`, so a gone item's tab stays open, and
+   * never asks `describe` again, so a tab keeps the name it opened with (`shell.item-tab-names`).
    */
   subscribe?(listener: () => void, context: WorkspaceContext): () => void;
 }
