@@ -112,11 +112,36 @@ verifies("source-control.changes-phone", () => {
       const fake = changedModels();
       fake.setHistory(manyVersions(25));
       const root = await openPhonePage(fake);
-      const more = [...root.querySelectorAll("button")].find(
-        (element) => element.textContent?.trim() === "Show more",
-      );
+      const buttonNamed = (name: string) =>
+        [...root.querySelectorAll("button")].find(
+          (element) => element.textContent?.trim() === name,
+        );
+      act(() => buttonNamed("See all history")?.click());
+      const more = buttonNamed("Show more");
       expect(more?.className).toContain("w-full");
       expect(more?.className).toContain("min-h-touch");
+    });
+
+    it("shows the newest 5 versions and See all history as a full-width touch button", async () => {
+      const fake = changedModels();
+      fake.setHistory(manyVersions(25));
+      const root = await openPhonePage(fake);
+      const seeAll = [...root.querySelectorAll("button")].find(
+        (element) => element.textContent?.trim() === "See all history",
+      );
+      expect(seeAll?.className).toContain("w-full");
+      expect(seeAll?.className).toContain("min-h-touch");
+      expect(root.textContent).toContain("Version 21");
+      expect(root.textContent).not.toContain("Version 20");
+      expect(root.textContent).not.toContain("Show more");
+    });
+
+    it("shows all of a short History with no See all history", async () => {
+      const fake = changedModels();
+      fake.setHistory(manyVersions(5));
+      const root = await openPhonePage(fake);
+      expect(root.textContent).toContain("Version 1");
+      expect(root.textContent).not.toContain("See all history");
     });
 
     it("says Halonic on the computer isn't answering when History can't load", async () => {
