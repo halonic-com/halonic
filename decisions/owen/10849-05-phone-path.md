@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-10849 (board's yes on HAL-11378: the Studio runs harness agents in 0.1)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zao/hjPjsuIuOs8qIk0v0Bbcyh5Sm/aWcXM6qVQQzg1IOOpTI3XU4LYp7/fZ+HTp3r7MCENwMXHJhZxR74FcDQ==
 - Task: HAL-10849
 
 `studio.engine-service` changes in one place: a phone's decision on a question Claude Code asks
