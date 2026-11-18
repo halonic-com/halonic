@@ -3,6 +3,7 @@
 - Task: HAL-11253
 - Approval: Liam approved this change on HAL-11253 (comment of 18 Nov): the token commands ship in the same pull request as the refusal, with a decision note for him to sign.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ToFtTkECP4Xb35f10rLZ/ZlmILSYXqKnjVpRDziGptsH8yF7HU9xEYeBKQupRdLCZ2jBww0ay0tMP/fSj866Dw==
 
 ## What changes
 
