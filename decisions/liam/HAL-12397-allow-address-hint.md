@@ -3,6 +3,7 @@
 - Task: HAL-12397
 - Approval: team decision on HAL-12397 (small wording on an approved command's error line); Julian reviews the pull request on HAL-12397 and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:A+O2xSxgZrLpxxIvemtxYFjPfl1RCogyMG/hgkLM2YYlpYqoEIiwHaKmMsu2CEuazy4c2Ntaf34XJeDgN3jKCA==
 
 ## What changes
 
