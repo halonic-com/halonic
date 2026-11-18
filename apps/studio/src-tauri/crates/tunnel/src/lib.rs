@@ -16,6 +16,7 @@ mod error;
 mod frames;
 mod handshake;
 mod keys;
+mod phone;
 mod session;
 mod transport;
 
@@ -37,5 +38,8 @@ pub use handshake::{
     PhoneDetails, Platform, RECONNECT_PATTERN, Reconnect,
 };
 pub use keys::{KEY_BYTES, PhoneKeys};
+pub use phone::{
+    HANDSHAKE_TIMEOUT, PairedComputer, PhoneConnection, PhoneEvent, PhoneOptions, PhoneStatus,
+};
 pub use session::{MAX_MESSAGE_BYTES, Opened, REKEY_AFTER, REKEY_AFTER_MESSAGES, Session};
 pub use transport::{ConnectionId, SendError, Timeouts, Transport, TransportEvent, TransportState};
