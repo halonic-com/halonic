@@ -386,4 +386,18 @@ verifies("workflows.list.rows-and-states", () => {
       unmount();
     }
   });
+
+  it("opens no New workflow dialog on a phone when Ctrl K asks for it, then or later on a desktop", async () => {
+    requestNewWorkflow();
+    await show(
+      <PresentationProvider presentation="phone">
+        <WorkflowsView host={memoryHost(hubs, workflows).host} />
+      </PresentationProvider>,
+    );
+    expect(document.querySelector("dialog")).toBeNull();
+
+    unmount();
+    await show(<WorkflowsView host={memoryHost(hubs, workflows).host} />);
+    expect(document.querySelector("dialog")).toBeNull();
+  });
 });

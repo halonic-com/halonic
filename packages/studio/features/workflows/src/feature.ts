@@ -68,6 +68,8 @@ export const workflowsFeature = defineFeature({
     studio.commands.add({
       id: "workflows.new",
       title: searchWords.newCommand,
+      // A phone doesn't edit workflows (UX 10.15), so its Search sheet doesn't offer it.
+      phone: false,
       run: (context) => {
         if (context.openPlace === undefined) return;
         requestNewWorkflow();

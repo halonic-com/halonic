@@ -2,7 +2,7 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-9747 (T7 PR 2); flow-workflows 2.1; microcopy 9.1; states C1, C5; kit T7-F22, F25 to F28; HAL-12278
+- Source: HAL-9747 (T7 PR 2); flow-workflows 2.1; microcopy 9.1; states C1, C5; kit T7-F22, F25 to F28; HAL-12278; HAL-12751
 
 The Workflows place shall list the workspace's workflows under "Workflows" in one section per hub, each row with the workflow's letter avatar, its name, its description under the name, its chips and its **Last run** (**N needs you** when runs wait for a person, else **N running**, then **△ N warnings**, or **✕ N problems** when any is an error), open a workflow in its tab when a row is chosen, and show the loading, empty, no-match and can't-load states in the approved words.
 
@@ -24,6 +24,7 @@ The Workflows place shall list the workspace's workflows under "Workflows" in on
 - Given the window is a phone, then the heading and sentence are there for screen readers only, because the top bar names the page.
 - Given the window is a phone, then the page has no **New workflow**, in the list or in its empty state, because a phone doesn't edit workflows (UX 10.15).
 - Given the user runs **New workflow** from Ctrl K, then the Workflows page opens with the New workflow dialog.
+- Given the window is a phone, then its Search sheet doesn't offer **New workflow**, and a request for it opens no dialog, then or later on a desktop (UX 10.15).
 - Given the user searches Ctrl K for a workflow's name, id or description, then it is offered as "Workflow · hub name".
 - Given a workflow was created or read, then its tab and page title show its name, not its id.
 - Given the host says the workflows changed, then the list reads them again and shows the new rows.
