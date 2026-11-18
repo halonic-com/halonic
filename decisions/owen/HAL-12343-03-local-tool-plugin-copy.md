@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12343; Liam's review on HAL-12670 asked for the named-pipe test; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wvRAF2jY21ygOEY+Xu2Ko6gvkY8wGnFPqBBFSiKUPKXGERPLd+xZsEvt/fYS+bHr6Y728Tt4SypkTK2mvzbtAA==
 
 ## What changes
 
