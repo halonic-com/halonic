@@ -24,7 +24,7 @@ Settings › Trust says "Halonic won't start programs or call real models from t
 ## Decided by the team
 
 - The engine's refusal reuses the Studio's existing sentence for an untrusted start ("this workspace isn't trusted yet, so nothing was started", from the listed-tools check), so no new wording is needed there.
-- The resolver's new error says "provider {id} is a real model, and this workspace isn't trusted on this computer, so nothing was sent." with the fix "Review the workspace, then trust it, or use the test model (type: mock)." Sofia confirms the words on HAL-12409.
+- The resolver's new error says "provider {id} calls a real model, and this workspace isn't trusted on this computer, so nothing was sent." with the fix "Check the workspace, then trust it, or set type: mock in providers/{id}.yaml to use the test model." Sofia confirms the words on HAL-12409 and HAL-12871.
 - A Review action on the Run now refusal (the Routines host's `askTrust`) isn't wired yet; the header badge's Review stays the way in. It is a follow-up task, not part of this security change.
 
 ## Covers

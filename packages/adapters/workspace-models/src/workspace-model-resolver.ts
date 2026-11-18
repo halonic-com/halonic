@@ -230,7 +230,7 @@ async function requireMayCall(
     throw new WorkspaceModelError(
       "untrusted-workspace",
       modelTexts.untrustedWorkspace(file.id),
-      modelTexts.untrustedWorkspaceFix(),
+      modelTexts.untrustedWorkspaceFix(file.id),
     );
   }
 }

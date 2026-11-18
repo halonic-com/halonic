@@ -29,9 +29,9 @@ export const modelTexts = {
   notOnThisMachineFix: (): ModelText =>
     "Use a model on this computer, or turn off privacy.localOnly in workspace.yaml.",
   untrustedWorkspace: (provider: string): ModelText =>
-    `provider ${provider} is a real model, and this workspace isn't trusted on this computer, so nothing was sent.`,
-  untrustedWorkspaceFix: (): ModelText =>
-    "Review the workspace, then trust it, or use the test model (type: mock).",
+    `provider ${provider} calls a real model, and this workspace isn't trusted on this computer, so nothing was sent.`,
+  untrustedWorkspaceFix: (provider: string): ModelText =>
+    `Check the workspace, then trust it, or set type: mock in providers/${provider}.yaml to use the test model.`,
   untrustedAddress: (provider: string, origin: string): ModelText =>
     `provider ${provider} would send its key to ${origin}, and this workspace isn't trusted on this computer.`,
   untrustedAddressFix: (provider: string): ModelText =>

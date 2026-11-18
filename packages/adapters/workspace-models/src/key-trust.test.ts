@@ -353,8 +353,8 @@ verifies("cli.workspace-provider-key-trust", () => {
           code: "untrusted-workspace",
           kind: "denied",
           message:
-            "provider ollama is a real model, and this workspace isn't trusted on this computer, so nothing was sent.",
-          fix: "Review the workspace, then trust it, or use the test model (type: mock).",
+            "provider ollama calls a real model, and this workspace isn't trusted on this computer, so nothing was sent.",
+          fix: "Check the workspace, then trust it, or set type: mock in providers/ollama.yaml to use the test model.",
         });
         expect(sent).toEqual([]);
       });
