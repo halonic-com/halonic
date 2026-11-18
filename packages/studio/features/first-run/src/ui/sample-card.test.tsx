@@ -155,6 +155,30 @@ verifies("first-run.sample-card", () => {
     }
   });
 
+  it("on a phone insets the finished line and both link rows like the section heading", () => {
+    const insetOf = (element: Element | null | undefined) =>
+      element?.className.match(/(?:^|\s)(p[xs]-\S+)/)?.[1];
+    const heading = render(<ListHeading name="Try the sample" />).querySelector("h2");
+    const root = render(
+      <PresentationProvider presentation="phone">
+        <SampleSteps
+          progress={progressWith(["start", "decide", "see"], { hub: "support" } as never, {
+            startOwnWorkspace: () => {},
+          })}
+          openers={noOpeners}
+          openTests={() => {}}
+        />
+      </PresentationProvider>,
+    );
+    const finishedLine = [...root.querySelectorAll("p")].find((line) =>
+      line.textContent?.includes("You've seen it work."),
+    );
+    expect(insetOf(finishedLine)).toBe(insetOf(heading));
+    const rows = [...root.querySelectorAll("button")];
+    expect(rows).toHaveLength(2);
+    for (const row of rows) expect(insetOf(row), row.textContent ?? "").toBe(insetOf(heading));
+  });
+
   it("draws the finished card's tick at icon size, on the desktop and on a phone", () => {
     const all = ["start", "decide", "see"] as const;
     for (const presentation of ["desktop", "phone"] as const) {

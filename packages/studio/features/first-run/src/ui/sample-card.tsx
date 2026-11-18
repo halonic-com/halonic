@@ -27,9 +27,12 @@ export function SampleCard({ context }: HomeCardProps) {
   );
 }
 
-/** A phone's finished-card row: 48px, a chevron at the right, a `border` line under it. */
+/**
+ * A phone's finished-card row: 48px, a chevron at the right, a `border` line under it. Its `px-4`
+ * starts the label where the section heading starts, as Home's See all runs does.
+ */
 const linkRowClasses = [
-  "flex w-full min-h-touch items-center gap-3 border-b border-border text-left text-body",
+  "flex w-full min-h-touch items-center gap-3 border-b border-border px-4 text-left text-body",
   "transition-colors focus-ring-inset hover:bg-surface-subtle active:bg-surface-subtle",
 ].join(" ");
 
