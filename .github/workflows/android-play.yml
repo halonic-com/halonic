@@ -13,7 +13,8 @@
 # - play-apk: downloads the universal APK Play signed with its app signing
 #   key and checks that key's fingerprint. That APK is the one GitHub
 #   releases ship, so GitHub and Play installs can update each other
-#   (HAL-6852, HAL-1203).
+#   (HAL-6852, HAL-1203). It also takes the third-party notices out of that
+#   APK, for the release to attach as THIRD-PARTY-NOTICES-android.txt.
 # Both Play jobs run in the `release` environment, which also holds the
 # upload key; they don't see it only because they never read its secrets.
 #
@@ -21,7 +22,8 @@
 # release (workflow_call). A pull request that changes this workflow,
 # the signing action or what decides the bundle's cleartext setting (the
 # manifest, the app's Gradle file, its res/xml files, the Android Tauri
-# config, the check itself) runs it too, always as a dry run. A dry run
+# config, the check itself) or what writes and checks the third-party notices
+# runs it too, always as a dry run. A dry run
 # never reaches Play: Play never takes a version code twice.
 
 name: Android Play build
@@ -32,10 +34,14 @@ on:
       - .github/workflows/android-play.yml
       - .github/actions/sign-aab/**
       - apps/studio/src-tauri/android/check-cleartext.mjs
+      - apps/studio/src-tauri/android/check-notices.mjs
       - apps/studio/src-tauri/gen/android/app/build.gradle.kts
       - apps/studio/src-tauri/gen/android/app/src/main/AndroidManifest.xml
       - apps/studio/src-tauri/gen/android/app/src/main/res/xml/**
       - apps/studio/src-tauri/tauri.android.conf.json
+      - tooling/check/licences.json
+      - tooling/check/src/cli/sbom.ts
+      - tooling/check/src/lib/gradle-notices.ts
   workflow_dispatch:
     inputs:
       dry_run:
@@ -130,11 +136,17 @@ jobs:
         run: |
           rustup toolchain install
           rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+      # HALONIC_THIRD_PARTY_NOTICES makes the app's Gradle build run
+      # `pnpm check:sbom` and ship its THIRD-PARTY-NOTICES.txt as an asset:
+      # our LICENSE and NOTICE, the npm packages, the Rust crates of these
+      # three targets and the Gradle libraries (HAL-12585). A licence we
+      # don't allow fails the build.
       - name: Build the release bundle
         working-directory: apps/studio
         env:
           VERSION_CODE: ${{ steps.plan.outputs.version_code }}
           BUNDLE: ${{ steps.plan.outputs.bundle }}
+          HALONIC_THIRD_PARTY_NOTICES: "1"
         run: |
           export JAVA_HOME="$JAVA_HOME_17_X64"
           export NDK_HOME="$ANDROID_NDK_LATEST_HOME"
@@ -156,6 +168,15 @@ jobs:
           unzip -p "$RUNNER_TEMP/bundle/$BUNDLE" base/manifest/AndroidManifest.xml \
             > "$RUNNER_TEMP/manifest.pb"
           node apps/studio/src-tauri/android/check-cleartext.mjs "$RUNNER_TEMP/manifest.pb"
+      # The bundle must carry the notices with all their parts (HAL-12585).
+      # unzip fails when the asset is missing.
+      - name: Check the bundle's third-party notices
+        env:
+          BUNDLE: ${{ steps.plan.outputs.bundle }}
+        run: |
+          unzip -p "$RUNNER_TEMP/bundle/$BUNDLE" base/assets/THIRD-PARTY-NOTICES.txt \
+            > "$RUNNER_TEMP/THIRD-PARTY-NOTICES.txt"
+          node apps/studio/src-tauri/android/check-notices.mjs "$RUNNER_TEMP/THIRD-PARTY-NOTICES.txt"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: android-aab-unsigned
@@ -345,11 +366,13 @@ jobs:
     outputs:
       apk: ${{ steps.names.outputs.apk }}
     steps:
-      # Only the cleartext check script, for the manifest check below.
+      # Only the cleartext and notices check scripts, for the checks below.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: apps/studio/src-tauri/android/check-cleartext.mjs
+          sparse-checkout: |
+            apps/studio/src-tauri/android/check-cleartext.mjs
+            apps/studio/src-tauri/android/check-notices.mjs
           sparse-checkout-cone-mode: false
       # play-upload already checked that this is the code the build set; a
       # re-run of this job alone must still fetch that same version.
@@ -450,6 +473,21 @@ jobs:
           # from the APK's binary XML manifest (HAL-7561).
           unzip -p "$APK" AndroidManifest.xml > "$RUNNER_TEMP/manifest.xml"
           node "$GITHUB_WORKSPACE/apps/studio/src-tauri/android/check-cleartext.mjs" --apk "$RUNNER_TEMP/manifest.xml"
+      # The notices the APK ships, as the release attaches them: taken out
+      # of the APK Play signed, so the attachment is the file people get.
+      - name: Take out and check the APK's third-party notices
+        env:
+          APK: apk/${{ steps.names.outputs.apk }}
+        run: |
+          mkdir -p notices
+          unzip -p "$APK" assets/THIRD-PARTY-NOTICES.txt > notices/THIRD-PARTY-NOTICES-android.txt
+          node "$GITHUB_WORKSPACE/apps/studio/src-tauri/android/check-notices.mjs" notices/THIRD-PARTY-NOTICES-android.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-third-party-notices
+          path: notices/THIRD-PARTY-NOTICES-android.txt
+          if-no-files-found: error
+          retention-days: 14
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: android-apk-play-signed

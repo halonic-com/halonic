@@ -1187,6 +1187,17 @@ jobs:
           pnpm check:sbom --name halonic-studio --version 0.0.0-ci
           --out "$RUNNER_TEMP/notices" --notices
           --cargo apps/studio/src-tauri --cargo-target x86_64-pc-windows-msvc
+      # The same for the Android app's targets (HAL-12585), whose crates
+      # (jni, ndk and others) the Windows file doesn't list. The Gradle
+      # libraries are only known inside the Android build, so the Android
+      # Play build checks them.
+      - name: Licence notices (Rust crates, Android)
+        working-directory: .
+        run: >-
+          pnpm check:sbom --name halonic-studio-android --version 0.0.0-ci
+          --out "$RUNNER_TEMP/notices-android" --notices
+          --cargo apps/studio/src-tauri --cargo-target aarch64-linux-android
+          --cargo-target armv7-linux-androideabi --cargo-target x86_64-linux-android
       # snow and its crates are compiled into the noise.wasm the agent host
       # ships (HAL-12451). The notices above walk every workspace member, so
       # they list them through the Windows target. A crate that only the
