@@ -237,6 +237,11 @@ export {
 } from "./phone/phone-search-button.tsx";
 export { PhoneTopBar, type PhoneTopBarProps } from "./phone/phone-top-bar.tsx";
 export {
+  PhoneTopBarActions,
+  type PhoneTopBarActionsProps,
+  useInPhoneTopBar,
+} from "./phone/phone-top-bar-actions.tsx";
+export {
   currentPhonePage,
   goBackOnPhone,
   isAtPlaceTop,

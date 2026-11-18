@@ -13,6 +13,7 @@ import { runWithToast, ShellPalette } from "../palette/shell-palette.tsx";
 import { BottomNavigation } from "../phone/bottom-navigation.tsx";
 import type { MorePageSwitcher } from "../phone/more-page.tsx";
 import { usePhoneBackButton } from "../phone/phone-back.ts";
+import { PhoneTopBarSlot } from "../phone/phone-top-bar-actions.tsx";
 import { settingsLocation } from "../phone/place-stacks.ts";
 import { sectionLocation } from "../phone/settings-list-page.tsx";
 import { usePhonePlaces } from "../phone/use-phone-places.ts";
@@ -135,6 +136,8 @@ export function StudioWindow(props: StudioWindowProps) {
   );
   const desktop = usePresentationFromWidth() === "desktop";
   const phone = usePhonePlaces();
+  // The phone top bar's slot for the page's own buttons; `null` on the desktop, which has none.
+  const [topBarSlot, setTopBarSlot] = useState<HTMLElement | null>(null);
   const { open: openPhone } = phone;
   // Settings is a dialog on the desktop and a page on the More stack below 600px (flow-settings 13).
   // Read when it opens, so the context stays the same as the window narrows or widens.
@@ -323,6 +326,7 @@ export function StudioWindow(props: StudioWindowProps) {
       phoneTopBar={
         <StudioPhoneTopBar
           places={phone}
+          slot={setTopBarSlot}
           search={{
             recent: workspace.recent,
             providers: contributions.search.providers(),
@@ -359,21 +363,23 @@ export function StudioWindow(props: StudioWindowProps) {
           )}
         />
       ) : (
-        <StudioPhonePage
-          places={phone}
-          shown={shown}
-          switcher={props.phoneSwitcher}
-          badge={props.phoneBadge}
-          onSettings={() => openSettings()}
-          settingsPlace={host === "desktop-app" ? "app" : "served"}
-          regionFormat={props.regionFormat}
-          settingsScroll={settingsScroll}
-          workspaceName={workspace.name}
-          shell={shell}
-          tabs={tabs}
-          announcer={announcer}
-          contextFor={contextFor}
-        />
+        <PhoneTopBarSlot value={topBarSlot}>
+          <StudioPhonePage
+            places={phone}
+            shown={shown}
+            switcher={props.phoneSwitcher}
+            badge={props.phoneBadge}
+            onSettings={() => openSettings()}
+            settingsPlace={host === "desktop-app" ? "app" : "served"}
+            regionFormat={props.regionFormat}
+            settingsScroll={settingsScroll}
+            workspaceName={workspace.name}
+            shell={shell}
+            tabs={tabs}
+            announcer={announcer}
+            contextFor={contextFor}
+          />
+        </PhoneTopBarSlot>
       )}
       {/* A phone searches in its Search sheet; Ctrl K's palette is the desktop's. */}
       {palette.open && desktop ? (
