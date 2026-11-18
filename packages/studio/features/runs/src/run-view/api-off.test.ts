@@ -1,8 +1,9 @@
 import type { RunFailureCause, RunSummary } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { summaryWith } from "../summary.test-helper.ts";
-import { apiOffOf, googleConsoleAddress } from "./api-off.ts";
+import type { SourcedRun } from "../api.ts";
+import { minutesLater, summaryWith } from "../summary.test-helper.ts";
+import { apiOffOf, currentApiOffs, googleConsoleAddress } from "./api-off.ts";
 
 const enableUrl = "https://console.cloud.google.com/apis/library/gmail.googleapis.com";
 
@@ -98,6 +99,47 @@ verifies("runs.run-view.api-off", () => {
       "javascript:alert(1)",
     ])("refuses %s", (address) => {
       expect(googleConsoleAddress(address)).toBeUndefined();
+    });
+  });
+
+  describe("currentApiOffs", () => {
+    const off = (id: string, minutes: number, api = "gmail.googleapis.com") =>
+      ({
+        summary: {
+          ...failedWith(apiDisabled({ api })),
+          id,
+          startedAt: minutesLater(minutes),
+        },
+      }) as SourcedRun;
+    const later = (id: string, minutes: number, changes: Partial<RunSummary> = {}) =>
+      ({
+        summary: summaryWith({
+          id,
+          status: "completed",
+          startedAt: minutesLater(minutes),
+          endedAt: minutesLater(minutes + 1),
+          ...changes,
+        }),
+      }) as SourcedRun;
+
+    it("gives one entry for each API, from its newest failed run", () => {
+      const found = currentApiOffs([off("a", 0), off("b", 3), off("c", 1, "drive.googleapis.com")]);
+      expect(found.map((entry) => [entry.api, entry.run.id])).toEqual([
+        ["gmail", "b"],
+        ["drive", "c"],
+      ]);
+    });
+
+    it("clears when a later run of the same workflow ended without the cause (A8)", () => {
+      expect(currentApiOffs([off("a", 0), later("b", 5)])).toEqual([]);
+    });
+
+    it("stays while the later run is still going, for another workflow, a test run or older", () => {
+      const keeps = (other: SourcedRun) => currentApiOffs([off("a", 5), other]).length === 1;
+      expect(keeps(later("b", 8, { status: "running", endedAt: null }))).toBe(true);
+      expect(keeps(later("b", 8, { workflowId: "other" }))).toBe(true);
+      expect(keeps(later("b", 8, { kind: "test" }))).toBe(true);
+      expect(keeps(later("b", 1))).toBe(true);
     });
   });
 });

@@ -1,4 +1,5 @@
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
+import { RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { defineFeature } from "@halonicjs/studio-shell";
 import { GoogleSetupAccountsService, GoogleSetupSourceService } from "./api.ts";
 import { googleSetupSource } from "./google-setup-source.ts";
@@ -6,13 +7,13 @@ import { googleSetupSource } from "./google-setup-source.ts";
 /**
  * The Google setup feature. When a workspace opens, it adds the Google setup source to that
  * workspace's Inbox, built from the accounts the app provides, shows a header badge for each
- * account that needs a sign-in again or a new secret, and adds the Google block to the page of
+ * account that needs a sign-in again or a new secret and for each Google API a run found switched off, and adds the Google block to the page of
  * the connector each account belongs to.
  */
 export const googleSetupFeature = defineFeature({
   id: "google-setup",
   title: "Google setup",
-  needs: [GoogleSetupAccountsService, InboxService],
+  needs: [GoogleSetupAccountsService, InboxService, RunsListService],
   provides: [GoogleSetupSourceService],
   register(studio) {
     studio.services.provide(GoogleSetupSourceService, (services) => {
