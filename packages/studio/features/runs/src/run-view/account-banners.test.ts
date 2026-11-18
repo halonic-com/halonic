@@ -102,6 +102,23 @@ verifies("runs.run-view.account-banners", () => {
       expect(linesOf(banner)?.[1]).toBe("Fix this on your computer: Models");
       expect(fixesOf(banner)).toBeUndefined();
     });
+
+    // The shared facts name a provider without a `name` by its id ("openai"); the banner keeps the
+    // run page's one rule (R8) and says "OpenAI", as the other banners do.
+    it("names a provider whose file has no name by its known name, not its id", () => {
+      const { name: _name, ...unnamed } = openai;
+      const unnamedModels: WorkspaceModels = {
+        ...models,
+        providers: new Map([[openai.id, unnamed]]),
+      };
+      const banner = causeBanner(
+        failed("key-refused"),
+        [call("openai", "gpt-4o"), failedWith("key-refused")],
+        { ...context, models: unnamedModels, providerName: () => undefined },
+        false,
+      );
+      expect(linesOf(banner)?.[0]).toMatch(/^OpenAI didn't accept the key/);
+    });
   });
 
   it("says a busy provider stopped the step, and that nothing the person set caused it", () => {
