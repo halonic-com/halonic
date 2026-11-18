@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12643 (team decision on the C52 Studio claims check, HAL-12644: change the words, not the flow)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HU7s4xt6d7mBK54aUdQGU63m33CD8NoEABLTy8MBUweKVn+KJOxVLDahxHms0OmvakpelJK5dB+FbHxbdSMFBA==
 
 There is no trash: saving a delete runs `fs::remove_file`, and Undo works only while the delete is the
 newest step. So deleting a Library item, a file, an agent or a routine now says "Deleted *name*", "This
