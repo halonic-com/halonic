@@ -247,6 +247,22 @@ verifies("workspace.unreadable-file", () => {
   );
 });
 
+verifies("workspace.misplaced-files", () => {
+  it("warns about an agent file it skips for its name, and passes", async () => {
+    writeFiles(acme, { "agents/clerk.yaml": "id: clerk\nname: Clerk\nmodel: fast\n" });
+
+    const { code, io } = await validateIn(acme);
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout).toEqual([
+      `agents${sep}clerk.yaml`,
+      "  1:1  ! Halonic reads files in agents/ only when they're named <id>.agent.yaml: rename it to clerk.agent.yaml  (misplaced-file)",
+      "",
+      "✓ Checked 4 files in acme. 1 warning.",
+    ]);
+  });
+});
+
 verifies("cli.workspace-dir", () => {
   // Windows has no read permission bits, and root reads any folder.
   it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(

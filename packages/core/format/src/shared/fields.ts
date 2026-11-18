@@ -9,7 +9,10 @@ export const SCHEMA_VERSION = 1 as const;
 export const id = s
   .string()
   .min(1)
-  .regex(/^[a-z0-9][a-z0-9-_]*$/, "use lowercase letters, digits, '-' or '_'");
+  .regex(
+    /^[a-z0-9][a-z0-9-_]*$/,
+    "use lowercase letters, digits, '-' or '_', starting with a letter or digit",
+  );
 
 /**
  * The most characters an id that names a folder may have. A deployment's runs
@@ -67,7 +70,10 @@ export const agentId = folderId("agent");
  */
 export const collectionId = s
   .string()
-  .regex(/^[a-z0-9][a-z0-9-]*$/, "use lowercase letters, digits or '-'");
+  .regex(
+    /^[a-z0-9][a-z0-9-]*$/,
+    "use lowercase letters, digits or '-', starting with a letter or digit",
+  );
 
 /** The `version` key: `1`, and `1` when the file leaves it out. */
 export const version = s.literal(SCHEMA_VERSION).default(SCHEMA_VERSION);
