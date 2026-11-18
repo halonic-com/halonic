@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12246, from the tunnel phase B build plan on HAL-12232 (decision 16: the official Tauri barcode-scanner plugin, approved in board decision 4c); Julian, then Liam, review this PR as a security PR
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QIJVTKN4DXOsXbocwMvYuI2rqQ8UjRvRHAb8xtchlzadDN7qxwvef0p5eJd6oooAYkVo9HKanOPsxdBWxe/8CQ==
 
 The phone scans the pairing QR code with `tauri-plugin-barcode-scanner`, pinned to `=2.5.3` (it
 needs tauri ^2.12, which we pin to 2.12.5), on Android only. Its Rust side has no API of its own,
