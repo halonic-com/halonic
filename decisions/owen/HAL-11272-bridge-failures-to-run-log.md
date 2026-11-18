@@ -2,6 +2,7 @@
 
 - Approval: HAL-11313, plan approved by the CTO (maintainer) on HAL-11272
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:g+oEIsEynHVc5esPoMFCFHq6hB0FrnsWUER/Ak7iQlDSQfOBS3bEa5arKkcMuGB/SDnbx2pAgANLbRUXv3XTCg==
 
 ## What changes
 
