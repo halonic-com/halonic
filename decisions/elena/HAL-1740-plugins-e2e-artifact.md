@@ -3,6 +3,7 @@
 - Task: HAL-1740
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12181#comment-1273ccb2-50d2-49b1-bbb6-e04e1ab6ef56 (Liam approved the plugins test-results path in the failure-only e2e upload)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:G+oFvp9+NOewz/vyhcNh6ESjUNxAyNz46Lr2nwWU4NL2wLgNc90VAMY5Xy4M7sw4Mg1H0MEf6muqpCGa6/zMDQ==
 
 ## What changes
 
