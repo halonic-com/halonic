@@ -1,0 +1,82 @@
+{
+  "//": "Test vectors for pairing-codes.ts, read by its tests and by the phone's Rust transport (D1, D3). HKDF is HKDF-SHA256 with an empty salt. A change to the codes changes this file, and both sides must pass it.",
+  "pairingCodes": [
+    {
+      "randomBytes": "b75aa046e0533f9f8d89853fd14fe4d2",
+      "code": "XX7A9Q36KFB3",
+      "shown": "XX7A 9Q36 KFB3",
+      "psk": "7f1fba3fa3e8cfc153fc69be7bd0eda74f3de38550f4d0d3acc3bcabfabba714"
+    },
+    {
+      "randomBytes": "fb07ce97bd3a9656610c33ddbf472cf8",
+      "code": "9PW5WVT6EP67",
+      "shown": "9PW5 WVT6 EP67",
+      "psk": "2f2c6527b9d9dd1824a1ec50914902c3c6041b2a7989250b56dd1dbdfa5cc7ac"
+    },
+    {
+      "randomBytes": "0eb62bbcf0e45ff3fc20d13d31127b56",
+      "code": "GWE4SD4V3SZM",
+      "shown": "GWE4 SD4V 3SZM",
+      "psk": "8b819ac5005c640e62c822a4686e4cc54787329b6924ff2b53360be7b6aa2a16"
+    }
+  ],
+  "checkCodes": [
+    {
+      "handshakeHash": "400075069c197bbcb0114c66fdcaefa53e224de63bbe58f67f9af54691c996fa",
+      "hkdf": "7e597f4f999fdbb2",
+      "checkCode": "2BUXKW",
+      "shown": "2BU · XKW"
+    },
+    {
+      "handshakeHash": "580e36de86fe5fde24c0d67de903eacf0531bedc5c7e15020580624bf3fbd2f5",
+      "hkdf": "e00ad0bf85259c73",
+      "checkCode": "22TA2E",
+      "shown": "22T · A2E"
+    },
+    {
+      "handshakeHash": "f1b639bcb63b3e122acdbf8a2efbe99e45c0491a75767dfaef1d83623bae6b30",
+      "hkdf": "627522f23084b789",
+      "checkCode": "93T39T",
+      "shown": "93T · 39T"
+    },
+    {
+      "handshakeHash": "",
+      "hkdf": "0000000000000000",
+      "checkCode": "222222",
+      "shown": "222 · 222"
+    },
+    {
+      "handshakeHash": "",
+      "hkdf": "ffffffffffffffff",
+      "checkCode": "67PA8H",
+      "shown": "67P · A8H"
+    }
+  ],
+  "qrPayloads": [
+    {
+      "hostPublic": "09f10e4bdc37a471382a5aa37101705b258c9b246fbcfa1e8727723214f1a738",
+      "code": "XX7A9Q36KFB3",
+      "hostName": "Tim's laptop",
+      "given": [
+        "tcp:192.168.1.20:4100",
+        "wss:tims-laptop.tail1234.ts.net:4100"
+      ],
+      "endpoints": [
+        "tcp:192.168.1.20:4100"
+      ],
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgMVGltJ3MgbGFwdG9wARV0Y3A6MTkyLjE2OC4xLjIwOjQxMDA"
+    },
+    {
+      "hostPublic": "09f10e4bdc37a471382a5aa37101705b258c9b246fbcfa1e8727723214f1a738",
+      "code": "9PW5WVT6EP67",
+      "hostName": "Büro-Rechner",
+      "given": [
+        "tcp:10.0.0.2:4100"
+      ],
+      "endpoints": [
+        "tcp:10.0.0.2:4100"
+      ],
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4ArSrXNWZ5QkNQsO8cm8tUmVjaG5lcgERdGNwOjEwLjAuMC4yOjQxMDA"
+    }
+  ]
+}

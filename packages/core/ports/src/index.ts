@@ -175,6 +175,28 @@ export {
   VendorErrorText,
 } from "./llm-provider.ts";
 export { type ModelPrice, priceOf } from "./model-price.ts";
+export {
+  checkCodeFromBytes,
+  checkCodeInfo,
+  checkCodeInputBytes,
+  checkCodeLength,
+  decodePairingQr,
+  encodePairingQr,
+  formatCheckCode,
+  formatPairingCode,
+  newPairingCode,
+  type PairingQrPayload,
+  pairingAlphabet,
+  pairingCodeLength,
+  pairingPskInfo,
+  pairingPskInput,
+  pairingQrMaxBytes,
+  pairingQrMaxEndpoints,
+  pairingQrMaxHostNameBytes,
+  pairingQrPrefix,
+  readCheckCode,
+  readPairingCode,
+} from "./pairing-codes.ts";
 export { type PasswordHasher, passwordHasherVersion } from "./password-hasher.ts";
 export {
   checkPluginFiles,
