@@ -2,7 +2,7 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-5396; design HAL-3779 section 5.1; security review HAL-5407 (W7)
+- Source: HAL-5396; design HAL-3779 section 5.1; security review HAL-5407 (W7); HAL-12444
 
 When the shell starts a program in Halonic's WSL distro, it shall start `wsl.exe` by its full path in the `System32` folder of `%SystemRoot%`, never through `PATH`, and only when `%SystemRoot%` is a full path on a drive with no `..` in it. It shall always pass `-d halonic`, an explicit user with `-u`, `--cd /` and `--exec` with the program's full path in the distro, so no shell reads the arguments, and only fixed arguments after it: the agent host runs as `halonic` (`-u halonic`), never as the distro's default user, and gets `--profile-folder` with the `halonic` user's `~/.local/share/halonic`, and the runtime updater runs as root (`-u root`) with one step and, to install, a version and a SHA-256 in the form the updater accepts. A version or SHA-256 in any other form shall be refused before `wsl.exe` starts. Project names and paths shall never be arguments. It shall remove `WSLENV` from the command's environment, so no Windows variable crosses into the distro.
 
@@ -21,3 +21,8 @@ When the shell starts a program in Halonic's WSL distro, it shall start `wsl.exe
   when it first cleans up the import mounts a crash left behind,
   then it runs the runtime updater as root with the one step `cleanup-import-mounts` and no other argument, within a time limit,
   and starts the host whether that step succeeded, failed or ran out of time.
+- Given the shell starts the agent host in the distro,
+  when it runs the distro's security updates before the host, so no sandbox session can hold them off,
+  then it runs the runtime updater as root with the one step `security-update` and no other argument, within a time limit,
+  and starts the host whether that step installed updates, skipped them, failed or ran out of time,
+  and then reads the updater's `status` within a time limit.

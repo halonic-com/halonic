@@ -13,7 +13,7 @@ use halonic_host_settings::SandboxSetting;
 use tauri::{AppHandle, Manager, Runtime};
 
 use super::choice::{HostKind, host_for, saved_setting};
-use super::updates::{clean_import_mounts, read_in_distro};
+use super::updates::{clean_import_mounts, read_in_distro, run_security_update};
 use super::{
     AgentHostState, DistroCommand, HostRefusal, Launch, START_WAIT, poisoned, unavailable,
 };
@@ -44,6 +44,7 @@ pub(super) async fn running_host<R: Runtime>(app: &AppHandle<R>) -> Result<Hands
                     let (wsl, command) = distro_host_command_for_real_wsl()?;
                     clean_import_mounts(&wsl);
                     copy_into_distro(&wsl, setting.as_ref())?;
+                    run_security_update(&wsl);
                     let started = start_in_distro(&command)?;
                     (started, Some(read_in_distro(&wsl)))
                 }
