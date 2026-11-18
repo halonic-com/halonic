@@ -21,7 +21,7 @@ export interface CheckedPluginFile {
 
 /** What {@link copyCheckedPlugin} reads and writes. */
 export interface PluginCopyDisk {
-  /** A plain file's bytes; throws when it is a link, a folder or something else, or can't be read. */
+  /** A plain file's bytes; throws, without waiting, when it is a link, a folder, a named pipe or anything else, or can't be read. */
   readPlainFile(path: string): Promise<Uint8Array>;
   /** Creates a folder whose parent exists; throws when the folder already exists. */
   makeFolder(path: string): Promise<void>;
@@ -45,11 +45,18 @@ export class PluginFileChangedError extends Error {
   }
 }
 
-/** The disk the plugin is really on. A link is refused where the system can tell, so only a plain file is read. */
+/**
+ * The disk the plugin is really on. A link, a named pipe or anything else
+ * that isn't a plain file is refused, so only a plain file is read.
+ */
 export const pluginCopyOnThisMachine: PluginCopyDisk = {
   readPlainFile: async (path) => {
-    // `O_NOFOLLOW` is 0 on Windows, where the check after opening refuses what isn't a file.
-    const file = await open(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+    // `O_NOFOLLOW` refuses a link where the system can tell. `O_NONBLOCK` lets
+    // the open of a named pipe return at once instead of waiting for a writer,
+    // and changes nothing for a plain file. Both are missing on Windows, where
+    // the check after opening refuses what isn't a file.
+    const flags = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0);
+    const file = await open(path, flags);
     try {
       if (!(await file.stat()).isFile()) throw new Error("not a plain file");
       return await file.readFile();

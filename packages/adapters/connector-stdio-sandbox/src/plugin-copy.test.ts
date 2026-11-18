@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -73,6 +74,20 @@ verifies("connector-stdio-sandbox.local-tool-plugin-copy", () => {
         path: "tools/server.js",
       });
     },
+  );
+
+  it.skipIf(process.platform === "win32")(
+    "refuses a checked file that is now a named pipe, without waiting for a writer",
+    async () => {
+      await rm(join(plugin, "tools", "server.js"));
+      execFileSync("mkfifo", [join(plugin, "tools", "server.js")]);
+
+      await expect(copyCheckedPlugin(plugin, checked, into)).rejects.toMatchObject({
+        name: "PluginFileChangedError",
+        path: "tools/server.js",
+      });
+    },
+    5_000,
   );
 
   it("leaves out a file added after the check", async () => {
