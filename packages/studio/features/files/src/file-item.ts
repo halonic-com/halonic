@@ -3,6 +3,9 @@ import type { ItemRef } from "@halonicjs/studio-shell";
 /** The item kind of a file in a tab; its place is `file/workspace/<path>`. */
 export const FILE_KIND = "file";
 
+/** The id of the file tree's view on the sidebar's switch. */
+export const FILES_VIEW = "files";
+
 /** The hub part of a file's place: files belong to the workspace folder, not to a hub. */
 export const FILE_HUB = "workspace";
 

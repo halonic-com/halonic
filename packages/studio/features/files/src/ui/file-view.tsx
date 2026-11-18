@@ -9,7 +9,7 @@ import {
 import { errorReasonFor, type ItemViewProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { copyPath } from "../copy-path.ts";
-import { fileItem, fileName } from "../file-item.ts";
+import { FILES_VIEW, fileItem, fileName } from "../file-item.ts";
 import { sizeOf, textKindOf } from "../file-size.ts";
 import {
   type CompareChoice,
@@ -357,6 +357,12 @@ export function FileView({ item, context }: ItemViewProps) {
     }
   }
 
+  /** Asks the tree to edit the file's name in its row, and shows the tree so the user sees it. */
+  function renameInTree(): void {
+    askRename(path);
+    context.showSidebarView?.(FILES_VIEW);
+  }
+
   return (
     <section
       className="flex h-full min-h-0 flex-col"
@@ -365,13 +371,13 @@ export function FileView({ item, context }: ItemViewProps) {
         // F2 renames from anywhere in the tab, the editor included, as it does on a tree row.
         if (event.key !== "F2" || event.ctrlKey || event.metaKey || event.altKey) return;
         event.preventDefault();
-        askRename(path);
+        renameInTree();
       }}
     >
       <FileHeader
         path={path}
         actions={{
-          rename: () => askRename(path),
+          rename: renameInTree,
           remove: () => void removeFile(host, toasts, path),
           copyPath: () => void copyPath(writeClipboard, toasts, path),
         }}
