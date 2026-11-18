@@ -88,6 +88,7 @@ export {
   ExternalLink,
   type ExternalLinkProps,
   inlineLinkClasses,
+  isWebAddress,
 } from "./external-link/external-link.tsx";
 export {
   type ExternalAddress,
