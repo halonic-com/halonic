@@ -26,8 +26,15 @@ draws it as text.
 A plugin backend runs in a separate process, the worker, that holds one
 integration. Its only way out is the `IntegrationHost`:
 
-- It can call **declared hosts** over `https`, and nothing else. A redirect is
-  followed (up to five hops) and each hop is checked against the declared hosts again. No global `fetch`, file system, `process` or timers.
+- It can call only **declared hosts**, over `https`. Plain `http` is
+  allowed only to this machine or a private network address, never to a
+  link-local or cloud metadata address. A host can also come from a setting:
+  the manifest names the setting and the kind of address it must hold
+  (this machine, a private network or the internet), and the address you set
+  must match it. A redirect is followed (up to five hops) and each hop is
+  checked against the declared hosts again.
+- It can't import Node's modules, and the fence gives it no network of its
+  own, so the kit is its only way out.
 - The backend **never sees a secret.** It names the secret and where it goes,
   and Halonic puts the value into the request, only for the hosts that secret is
   declared for. Results, errors and logs pass through a filter for secret
@@ -37,7 +44,8 @@ integration. Its only way out is the `IntegrationHost`:
 - A plugin backend **can't hold sign-in tokens** yet, so no token value ever
   enters the worker.
 - Every tool has a `risk`. Anything above `read` asks a person first before it
-  runs, and results marked `untrusted` are fenced as outside content.
+  runs. Every result of a plugin's tool reaches a model fenced as outside
+  content, whether the tool is marked `untrusted` or not.
 
 ### Fence 2: the sandbox
 
@@ -59,7 +67,9 @@ No plugin script or web page is loaded into the window. By design, a plugin's
 `ui` has no way to read the rest of Studio, skip a theme or keyboard rule, or
 send Studio messages, because there is no frame and no message interface. Everything a plugin
 shows is untrusted text: it is drawn as text or sanitised Markdown, never as
-HTML or script, and its links go through Studio's external-link handling. Studio's plugin screens are on `main` and draw `ui` by these rules, but Studio
+HTML or script, and its links go through Studio's external-link handling. A
+command or a card may only call a tool whose `risk` is `read`: a manifest
+whose `ui` calls a `write` or `send` tool is refused. Studio's plugin screens are on `main` and draw `ui` by these rules, but Studio
 isn't released yet. A broken plugin fails with an error that
 names it, and the rest of Studio keeps working. A secret setting goes straight to Secrets under the plugin's own name,
 and the plugin reads only the secrets stored for it.
@@ -80,8 +90,15 @@ cloned workspace can't trust itself.
 - **A backend can still misuse what it is given.** A declared host receives
   whatever the plugin sends it, including text from your tools. Halonic
   doesn't check what a plugin does with what it's given.
-- **The sandbox has limits.** It has no CPU or memory limits, Windows is a
-  preview (a plugin's backend worker has no operating-system fence there), and a program that is allowed a host can send anything there.
+- **The sandbox has limits.** It sets no CPU or memory limits, so a local
+  tool's program has none. A backend worker brings its own memory limit: on
+  its JavaScript heap, and on Linux, where `prlimit` is installed, on the
+  whole process. Windows is a preview: there a backend worker may run only
+  when MXC fences it, on Windows 11, with only its heap limited, and no app
+  uses MXC yet. Without MXC it doesn't start, because a yes to run it without
+  the sandbox isn't offered yet. So for now a backend worker doesn't start on
+  Windows. And
+  a program that is allowed a host can send anything there.
 - **Tool results are untrusted content.** A plugin's answer can try to steer a
   model, as any outside text can. See
   [model output](threat-model.md#42-model-output-and-content-b2).
@@ -91,8 +108,8 @@ cloned workspace can't trust itself.
 ## What works in 0.1
 
 The plugin file kind, the trust check, the `halonic plugin` and
-`halonic trust --plugin` commands and the conformance suite work. The
-security tests for local tools are still being built. Studio's screens for
+`halonic trust --plugin` commands and the conformance suite work, and the
+sandbox's attack tests for local tools are on `main`. Studio's screens for
 plugins (Settings → Plugins, the trust check, Review changes) are on `main`
 but not released; see
 [Add and trust a plugin in Studio](https://halonic.dev/docs/guides/studio-plugins).
