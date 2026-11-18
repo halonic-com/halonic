@@ -3,6 +3,7 @@
 - Task: HAL-1302 (T9, phone, audit item 8, third part)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-1302 (checklist part 2, 2.14 and 2.12, from the board-approved phone design of source control)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oQIlaBHf+O8+Rvc/R56rp6pyF0KqtCBXtWqMkIPJRBPznai/4VeFh8JnZnRtdvPun24twk8FXSvQkAEff7otBQ==
 
 ## What changes
 
