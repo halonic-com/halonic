@@ -3,6 +3,7 @@
 - Task: HAL-12607
 - Approval: Liam reviews this change on HAL-12607 (a team decision with no board card, HAL-2282 rule for small wording on an approved screen). He signs this note.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ldTOCY5vW7kWBjEWdt4JVLJ2QosTjSsfEGFw2J8OqeKy3JtAqr3QsGilQib89K6lTbLeJKo6FAdOPU3oEOc4Bw==
 
 ## What changes
 
