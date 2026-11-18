@@ -1,9 +1,8 @@
 # Decision: run the plugins Playwright flow in the CI e2e job
 
 - Task: HAL-1740
-- Approval: Liam approves this change on HAL-1740 (pending: link the approving comment here before signing).
+- Approval: https://paperclip.halonic.com/HAL/issues/HAL-12150#comment-0cf2cf4d-d6fc-4d56-9d39-745e3f359e4f (Liam approved the Plugins flow step in the Studio end-to-end job)
 - Kind: internal
-- Signature: pending
 
 ## What changes
 
