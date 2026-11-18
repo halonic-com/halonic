@@ -2,6 +2,7 @@ import { type Clock, ModelCallError, type Secrets, VendorErrorText } from "@halo
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it, vi } from "vitest";
 import { LocalExecutor } from "../local-executor.ts";
+import { failureCauseOf } from "../run/failure-cause-of.ts";
 import { runFailureReasonOf } from "../run/run-failure-reason-of.ts";
 import {
   call,
@@ -235,7 +236,7 @@ verifies("engine.offline-falls-back", () => {
     expect(failure).toBeInstanceOf(ModelCallError);
     expect(failure).toMatchObject({
       reason: "offline",
-      message: "no model reachable (tried smart, local)",
+      message: "no model reachable (tried smart, local): acme-cloud can't be reached",
     });
     expect(smart.requests).toHaveLength(1);
     expect(local.requests).toHaveLength(1);
@@ -260,7 +261,8 @@ verifies("engine.offline-falls-back", () => {
     expect(failure).toMatchObject({
       reason: "timeout",
       host: "localhost:11434",
-      message: "no model answered in time (tried local)",
+      message:
+        "no model answered in time (tried local): acme-local didn't answer within 600 seconds",
     });
     expect(runFailureReasonOf(failure)).toEqual({
       reason: "model-timeout",
@@ -291,6 +293,34 @@ verifies("engine.offline-falls-back", () => {
     );
 
     expect(log.events[1]).toMatchObject({ from: "acme-cloud/big", to: "acme-local/small" });
+  });
+
+  it("keeps the last model's typed cause, such as a proxy that refused, for run.failed", async () => {
+    const proxyRefused = new ModelCallError(
+      "offline",
+      "Halonic couldn't reach acme-cloud at api.acme.test: Your proxy refused to connect to api.acme.test (status 403).",
+      {
+        host: "api.acme.test",
+        failureCause: { kind: "denied", code: "proxy.refused", detail: { status: "403" } },
+      },
+    );
+    const smart = new ScriptedModel([proxyRefused], "acme-cloud");
+
+    const failure = await runTurnOn(alias("smart", smart)).catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({
+      reason: "offline",
+      host: "api.acme.test",
+      kind: "denied",
+      failureCause: { code: "proxy.refused", detail: { status: "403" } },
+      cause: proxyRefused,
+    });
+    expect((failure as Error).message).toMatch(/\(tried smart\): .*Your proxy refused/);
+    expect(failureCauseOf(failure)).toEqual({
+      kind: "denied",
+      code: "proxy.refused",
+      detail: { status: "403" },
+    });
   });
 });
 
@@ -335,7 +365,8 @@ verifies("engine.busy-falls-back", () => {
     expect(failure).toBeInstanceOf(ModelCallError);
     expect(failure).toMatchObject({
       reason: "provider-busy",
-      message: "no model free: the last one's provider was busy (tried smart, backup)",
+      message:
+        "no model free: the last one's provider was busy (tried smart, backup): acme-cloud was busy (HTTP 529)",
     });
     expect(smart.requests).toHaveLength(1);
     expect(backup.requests).toHaveLength(1);

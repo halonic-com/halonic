@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1061 "Providers and fallback" (HAL-1444 §4); plan approved with changes on HAL-1880; a timeout (HAL-1308, HAL-902) and a busy provider move on the same way since HAL-3178 (requirement `engine.busy-falls-back`)
+- Source: HAL-1061 "Providers and fallback" (HAL-1444 §4); plan approved with changes on HAL-1880; a timeout (HAL-1308, HAL-902) and a busy provider move on the same way since HAL-3178 (requirement `engine.busy-falls-back`); the last model's message and typed cause kept since HAL-12606
 
-When a model call fails because the provider is offline or gave no first answer in time (`timeout`), the engine shall hand the call to the next model of the turn at once, with no wait and no retry, write an `llm.fallback` naming both models, and send the turn's later calls to that model too. A turn's models shall be the one its request resolved to, then that alias's own `fallback` entries in order, one level deep, each alias once. When no model is left, the turn shall fail with a `ModelCallError` whose reason is the last cause, `offline`, `timeout`, `no-key` or `provider-busy`, and whose message says so; a run that fails this way has the reason `runFailureReasonOf` gives (requirement `engine.run-failure-reason-of`).
+When a model call fails because the provider is offline or gave no first answer in time (`timeout`), the engine shall hand the call to the next model of the turn at once, with no wait and no retry, write an `llm.fallback` naming both models, and send the turn's later calls to that model too. A turn's models shall be the one its request resolved to, then that alias's own `fallback` entries in order, one level deep, each alias once. When no model is left, the turn shall fail with a `ModelCallError` whose reason is the last cause, `offline`, `timeout`, `no-key` or `provider-busy`, and whose message says so, followed by the last model's own message. After a call that moved on, it shall keep that call's error as its `cause`, with its host and its typed cause (`kind` and `failureCause`, requirement `ports.model-call-cause`), so `run.failed` can say a proxy refused rather than that nothing answered; a run that fails this way has the reason `runFailureReasonOf` gives (requirement `engine.run-failure-reason-of`).
 
 ## Examples
 
@@ -23,3 +23,6 @@ When a model call fails because the provider is offline or gave no first answer 
 - Given `smart` that gave no first answer in time, falling back to `local`,
   when a chat turn runs,
   then `local` answers and the log holds an `llm.fallback` from `smart` to `local`.
+- Given the alias `smart`, whose call failed `offline` with the typed cause `proxy.refused`, and no fallback,
+  when a chat turn runs,
+  then it fails with a `ModelCallError` that keeps that cause, that host and that error as its `cause`, and its message ends with the proxy's own message.

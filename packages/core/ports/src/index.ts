@@ -170,6 +170,7 @@ export {
   ModelCallError,
   type ModelCallErrorReason,
   modelCallErrorReasons,
+  networkCauseOf,
   type ProviderConfig,
   type ProviderFactoryContext,
   VendorErrorText,

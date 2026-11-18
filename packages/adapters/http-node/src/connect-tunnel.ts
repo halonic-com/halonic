@@ -2,7 +2,7 @@ import * as http from "node:http";
 import { isIP, type LookupFunction, type Socket } from "node:net";
 import * as tls from "node:tls";
 import type { ProxyEndpoint } from "./proxy-endpoint.ts";
-import { ProxyError } from "./proxy-error.ts";
+import { ProxyError, type ProxyProblem } from "./proxy-error.ts";
 
 /** The longest header block we read from the proxy's answer to CONNECT. */
 const maxConnectHeaderBytes = 8 * 1024;
@@ -16,6 +16,8 @@ export interface TunnelTarget {
 
 export interface TunnelOptions {
   readonly proxy: ProxyEndpoint;
+  /** The variable the proxy came from, such as `HTTPS_PROXY`, for the errors to name. */
+  readonly variable: string;
   /** Hands out the proxy's own address; the proxy is the user's, so it may be private. */
   readonly lookup: LookupFunction;
   readonly target: TunnelTarget;
@@ -35,12 +37,14 @@ export interface TunnelOptions {
  * @throws ProxyError when the proxy refuses or fails
  */
 export async function openTunnel(options: TunnelOptions): Promise<tls.TLSSocket> {
+  const fail = failing(options);
   // One clock covers CONNECT and the TLS handshake, so a proxy that answers
   // 200 and then goes silent can't hold the request for good.
   const timeout = new AbortController();
   const timer = setTimeout(() => {
     timeout.abort(
-      new ProxyError(
+      fail(
+        "timeout",
         `Your proxy ${options.proxy} didn't answer for ${options.target.hostname} in time.`,
       ),
     );
@@ -50,7 +54,7 @@ export async function openTunnel(options: TunnelOptions): Promise<tls.TLSSocket>
       ? timeout.signal
       : AbortSignal.any([options.signal, timeout.signal]);
   try {
-    const socket = await connectThroughProxy(options, signal);
+    const socket = await connectThroughProxy(options, signal, fail);
     try {
       return await secure(socket, options.target, signal);
     } catch (error) {
@@ -64,7 +68,8 @@ export async function openTunnel(options: TunnelOptions): Promise<tls.TLSSocket>
     }
     throw error instanceof ProxyError
       ? error
-      : new ProxyError(
+      : fail(
+          "insecure",
           `The connection to ${options.target.hostname} through your proxy failed its ` +
             `security check: ${describe(error)}`,
         );
@@ -73,9 +78,26 @@ export async function openTunnel(options: TunnelOptions): Promise<tls.TLSSocket>
   }
 }
 
-function connectThroughProxy(options: TunnelOptions, signal: AbortSignal): Promise<Socket> {
+/** A {@link ProxyError} for this tunnel, naming its proxy, variable and target host. */
+type Fail = (problem: ProxyProblem, message: string, status?: number) => ProxyError;
+
+function failing(options: TunnelOptions): Fail {
+  const facts = {
+    variable: options.variable,
+    proxy: options.proxy.toString(),
+    host: options.target.hostname,
+  };
+  return (problem, message, status) =>
+    new ProxyError(message, problem, status === undefined ? facts : { ...facts, status });
+}
+
+function connectThroughProxy(
+  options: TunnelOptions,
+  signal: AbortSignal,
+  fail: Fail,
+): Promise<Socket> {
   const { proxy, target } = options;
-  const authority = authorityOf(target);
+  const authority = authorityOf(target, fail);
   const shown = target.hostname;
   return new Promise((resolve, reject) => {
     const proxyAuthorization = proxy.proxyAuthorization();
@@ -97,14 +119,17 @@ function connectThroughProxy(options: TunnelOptions, signal: AbortSignal): Promi
       reject(
         error instanceof ProxyError
           ? error
-          : new ProxyError(`Could not reach your proxy ${proxy} for ${shown}: ${describe(error)}`),
+          : fail(
+              "unreachable",
+              `Could not reach your proxy ${proxy} for ${shown}: ${describe(error)}`,
+            ),
       );
     });
     request.on("connect", (response, socket, head) => {
-      const refusal = refusalOf(response.statusCode ?? 0, head, shown);
+      const refusal = refusalOf(response.statusCode ?? 0, head, shown, fail);
       if (refusal !== undefined) {
         socket.destroy();
-        reject(new ProxyError(refusal));
+        reject(refusal);
         return;
       }
       resolve(socket);
@@ -114,15 +139,23 @@ function connectThroughProxy(options: TunnelOptions, signal: AbortSignal): Promi
 }
 
 /** Why the proxy's answer to CONNECT can't be used, or undefined when it is a clean 200. */
-function refusalOf(status: number, head: Buffer, shown: string): string | undefined {
+function refusalOf(
+  status: number,
+  head: Buffer,
+  shown: string,
+  fail: Fail,
+): ProxyError | undefined {
   if (status === 407) {
-    return "Your proxy refused the user name and password.";
+    return fail("credentials", "Your proxy refused the user name and password.", status);
   }
   if (status !== 200) {
-    return `Your proxy refused to connect to ${shown} (status ${status}).`;
+    return fail("refused", `Your proxy refused to connect to ${shown} (status ${status}).`, status);
   }
   if (head.length > 0) {
-    return `Your proxy sent data before the connection to ${shown} was secure, so it was dropped.`;
+    return fail(
+      "insecure",
+      `Your proxy sent data before the connection to ${shown} was secure, so it was dropped.`,
+    );
   }
   return undefined;
 }
@@ -151,11 +184,12 @@ function secure(socket: Socket, target: TunnelTarget, signal: AbortSignal) {
 }
 
 /** `name:port`, with brackets for IPv6. A name that isn't a plain host never reaches the proxy. */
-function authorityOf(target: TunnelTarget): string {
+function authorityOf(target: TunnelTarget, fail: Fail): string {
   const isIpv6 = target.hostname.includes(":");
   const host = isIpv6 ? `[${target.hostname}]` : target.hostname;
   if (!/^(?:[a-z0-9._-]+|\[[0-9a-f:.]+\])$/i.test(host)) {
-    throw new ProxyError(
+    throw fail(
+      "bad-host",
       `${JSON.stringify(target.hostname)} is not a host name a proxy can be asked for.`,
     );
   }
