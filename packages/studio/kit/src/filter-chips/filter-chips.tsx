@@ -14,6 +14,11 @@ export interface FilterOption<Value extends string = string> {
 /** An on/off chip in a row of filters: Runs' "Test runs". */
 export interface FilterToggle {
   readonly label: string;
+  /**
+   * Its name for screen readers when the label is a short form of it: "Monday" for "Mo". It
+   * starts with the label, so the words on the chip stay in its name (2.5.3).
+   */
+  readonly name?: string;
   readonly pressed: boolean;
   readonly onChange: (pressed: boolean) => void;
   /**
@@ -178,6 +183,7 @@ function ToggleChip({ toggle }: { readonly toggle: FilterToggle }) {
   return (
     <button
       type="button"
+      aria-label={toggle.name}
       aria-pressed={toggle.pressed}
       aria-disabled={unavailable || undefined}
       aria-describedby={toggle.unavailable?.reason}
