@@ -235,9 +235,13 @@ export {
   gatewayReconnectPattern,
   gatewaySessionLimits,
   noiseMaxMessageBytes,
+  type PairCommitPayload,
   type PairHostPayload,
   type PairPhonePayload,
   type PairRefusedReason,
+  pairCommitInput,
+  pairCommitLabel,
+  pairCommitNonceBytes,
   pairingRules,
   pairRefusedReasons,
 } from "./remote-gateway-session.ts";

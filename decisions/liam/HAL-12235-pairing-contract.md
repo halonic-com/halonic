@@ -18,7 +18,9 @@ B8, so nothing changes for a user yet.
   wording follows the new limit. The behaviour is otherwise unchanged, and the gateway still opens
   no port in a launch.
 - The new requirement `ports.remote-gateway-session` holds the handshakes, the frames, the
-  cleartext refusals, the pairing rules and the rekeying constants.
+  cleartext refusals, the pairing rules and the rekeying constants. After Julian's review it also
+  holds the phone's commitment to pairing message 3, sent in message 1, so that someone who knows
+  a leaked code can't search for a message 3 that makes the two check codes match.
 
 ## Covers
 

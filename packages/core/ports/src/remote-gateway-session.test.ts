@@ -12,6 +12,8 @@ import {
   gatewayPairingPattern,
   gatewayReconnectPattern,
   gatewaySessionLimits,
+  pairCommitInput,
+  pairCommitNonceBytes,
   pairingRules,
 } from "./remote-gateway-session.ts";
 
@@ -33,9 +35,27 @@ verifies("ports.remote-gateway-session", () => {
     expect(gatewayMaxFrameBytes).toBe(65_536);
     expect(gatewayMaxHandshakeBytes).toBe(1_024);
     expect(gatewayMaxNameBytes).toBe(64);
-    // Pairing message 3: the phone's key and its tag, and a payload with the longest name.
-    const payload = JSON.stringify({ name: "n".repeat(gatewayMaxNameBytes), platform: "android" });
+    // Pairing message 3: the phone's key and its tag, and a payload with the longest name and the nonce.
+    const payload = JSON.stringify({
+      name: "n".repeat(gatewayMaxNameBytes),
+      platform: "android",
+      nonce: "x".repeat(22),
+    });
     expect(32 + 16 + payload.length + 16).toBeLessThan(gatewayMaxHandshakeBytes);
+    // Pairing message 1: the phone's ephemeral key and the commitment in cleartext.
+    const commit = JSON.stringify({ commit: "x".repeat(43) });
+    expect(32 + commit.length).toBeLessThan(gatewayMaxHandshakeBytes);
+  });
+
+  it("builds the commitment's input from the label, the phone's key and message 3's payload", () => {
+    const key = new Uint8Array(32).fill(7);
+    const payload = new TextEncoder().encode('{"name":"Pixel","platform":"android","nonce":"AA"}');
+    const input = pairCommitInput(key, payload);
+    const label = new TextEncoder().encode("halonic pair commit v1");
+    expect([...input]).toEqual([...label, ...key, ...payload]);
+    expect(pairCommitNonceBytes).toBe(16);
+    expect(() => pairCommitInput(new Uint8Array(31), payload)).toThrow(RangeError);
+    expect(() => pairCommitInput(new Uint8Array(33), payload)).toThrow(RangeError);
   });
 
   it("keeps the pairing rules of the build plan", () => {

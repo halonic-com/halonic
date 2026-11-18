@@ -58,12 +58,47 @@ export const gatewayMaxFrameBytes = 1 + noiseMaxMessageBytes;
 /**
  * The largest handshake message, without its kind byte. The longest, pairing
  * message 3, is 32 + 16 bytes of key and tag and a payload with a name of at
- * most {@link gatewayMaxNameBytes}, so a larger one is an attack.
+ * most {@link gatewayMaxNameBytes} and a nonce, so a larger one is an attack.
  */
 export const gatewayMaxHandshakeBytes = 1_024;
 
 /** The longest name in a handshake payload, the host's or the phone's, in bytes of UTF-8. */
 export const gatewayMaxNameBytes = 64;
+
+/**
+ * The payload of pairing message 1, from the phone, in cleartext: its
+ * commitment to message 3, the SHA-256 of {@link pairCommitInput}, in base64url
+ * without padding (43 characters). JSON, UTF-8. The host recomputes it once
+ * message 3 decrypts, and a mismatch is a wrong try, so an attacker who knows
+ * the code can't search for a message 3 that makes the check codes match.
+ */
+export interface PairCommitPayload {
+  readonly commit: string;
+}
+
+/** What the phone's commitment starts with, in ASCII: it names the use and its version. */
+export const pairCommitLabel = "halonic pair commit v1";
+
+/** The length of the fresh nonce in pairing message 3's payload, in bytes. */
+export const pairCommitNonceBytes = 16;
+
+/**
+ * The bytes the phone's commitment hashes: {@link pairCommitLabel} in ASCII,
+ * the phone's static public key, and the exact bytes of its message 3 payload.
+ * Throws a `RangeError` for a key that isn't 32 bytes. The hash itself is the
+ * adapter's, like every other primitive.
+ */
+export function pairCommitInput(phoneStaticKey: Uint8Array, payload3: Uint8Array): Uint8Array {
+  if (phoneStaticKey.length !== 32) {
+    throw new RangeError("a phone's static key is 32 bytes");
+  }
+  const label = Uint8Array.from(pairCommitLabel, (c) => c.charCodeAt(0));
+  const input = new Uint8Array(label.length + 32 + payload3.length);
+  input.set(label, 0);
+  input.set(phoneStaticKey, label.length);
+  input.set(payload3, label.length + 32);
+  return input;
+}
 
 /**
  * The payload of pairing message 2, from the host, encrypted: the name the
@@ -75,12 +110,16 @@ export interface PairHostPayload {
 
 /**
  * The payload of pairing message 3, from the phone, encrypted: the name and
- * platform the host shows with the check code and keeps for the phone. JSON,
- * UTF-8. The reconnect handshake's payloads are empty.
+ * platform the host shows with the check code and keeps for the phone, and a
+ * fresh nonce of {@link pairCommitNonceBytes} bytes in base64url without
+ * padding (22 characters). The nonce makes message 3 unpredictable to anyone
+ * who sees the commitment, and keeps the commitment from linking a phone across
+ * pairings. JSON, UTF-8. The reconnect handshake's payloads are empty.
  */
 export interface PairPhonePayload {
   readonly name: string;
   readonly platform: "android" | "ios";
+  readonly nonce: string;
 }
 
 /**
@@ -103,7 +142,8 @@ export const gatewaySessionLimits = {
  * The host's pairing rules, kept in memory only (build plan decision 6). A
  * code lives `codeLifetimeMs` and pairs at most one phone: the first pairing
  * message 3 that decrypts with it uses it up. The host then waits
- * `allowWaitMs` for Allow. A message 3 that doesn't decrypt is a wrong try;
+ * `allowWaitMs` for Allow. A message 3 that doesn't decrypt, or whose
+commitment doesn't match, is a wrong try and doesn't use the code up;
  * `wrongTriesPerCode` of them end the code, and the host takes at most
  * `failedTriesPerMinute` failed tries across all codes before it refuses
  * pairing message 1 until the minute is over.
