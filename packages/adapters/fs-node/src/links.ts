@@ -1,4 +1,4 @@
-import type { Stats } from "node:fs";
+import type { BigIntStats, Stats } from "node:fs";
 import { lstat } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -12,14 +12,27 @@ import { join } from "node:path";
  * program could swap a folder for a link. The store keeps its own files
  * safe; it doesn't defend against a program that writes into its root.
  *
+ * With `bigint`, the stats hold every bit of the file id: as a plain number
+ * a Windows file id past 2^53 loses its low bits, so two files can look the same.
+ *
  * @throws RangeError when a segment is a link
  */
-export async function entryAt(root: string, path: string): Promise<Stats | null> {
+export async function entryAt(root: string, path: string): Promise<Stats | null>;
+export async function entryAt(
+  root: string,
+  path: string,
+  options: { readonly bigint: true },
+): Promise<BigIntStats | null>;
+export async function entryAt(
+  root: string,
+  path: string,
+  options?: { readonly bigint: true },
+): Promise<Stats | BigIntStats | null> {
   let current = root;
-  let stats: Stats | null = null;
+  let stats: Stats | BigIntStats | null = null;
   for (const segment of path.split("/")) {
     current = join(current, segment);
-    stats = await lstatOrNull(current);
+    stats = await lstatOrNull(current, options);
     if (stats === null) {
       return null;
     }
@@ -33,9 +46,17 @@ export async function entryAt(root: string, path: string): Promise<Stats | null>
 }
 
 /** `lstat`, with `null` for an entry that isn't there, or whose parent is a file. */
-export async function lstatOrNull(path: string): Promise<Stats | null> {
+export async function lstatOrNull(path: string): Promise<Stats | null>;
+export async function lstatOrNull(
+  path: string,
+  options?: { readonly bigint: true },
+): Promise<Stats | BigIntStats | null>;
+export async function lstatOrNull(
+  path: string,
+  options?: { readonly bigint: true },
+): Promise<Stats | BigIntStats | null> {
   try {
-    return await lstat(path);
+    return await lstat(path, options);
   } catch (error) {
     if (isMissing(error)) {
       return null;
