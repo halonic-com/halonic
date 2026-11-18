@@ -8,6 +8,11 @@ export const whenWords = {
   next: "Next",
   manualOnly: "Starts only with Run now.",
   atNextCheck: "At the next check (it hasn't run yet)",
+  /** Under the trigger while the saved one isn't in the live version; `live` is what still runs. */
+  newScheduleNotLive: (live: string) =>
+    `Your new schedule isn't live yet. Until it is, the routine runs ${live}.`,
+  newTriggerNotLive: (live: string) =>
+    `Your new trigger isn't live yet. Until it is, the routine runs ${live}.`,
   makeLiveFirst: "Make this routine live first to turn it on.",
   isOff: (name: string) => `${name} is off. It only runs with Run now.`,
   isOn: (name: string, next: string | undefined) =>

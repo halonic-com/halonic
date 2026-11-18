@@ -3,7 +3,13 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it } from "vitest";
-import type { RoutineChanges, RoutinesHost, RoutineTrigger, RoutineView } from "../api.ts";
+import type {
+  RoutineChanges,
+  RoutineLiveValues,
+  RoutinesHost,
+  RoutineTrigger,
+  RoutineView,
+} from "../api.ts";
 import { show, unmount } from "../test-support.tsx";
 import { RulesSection } from "./rules-section.tsx";
 
@@ -73,5 +79,25 @@ verifies("routines.rules.busy-and-missed", () => {
     unmount();
     const manual = await rules({ kind: "manual" });
     expect(manual.page.textContent).not.toContain("Rules");
+  });
+
+  it("says the rules aren't live while a rule that shows differs from the live one", async () => {
+    const live: RoutineLiveValues = {
+      triggerSentence: "Weekdays at 07:30",
+      targetName: "Briefing",
+      overlap: "skip",
+      catchUp: "last",
+    };
+    const show_ = async (trigger: RoutineTrigger, overlap: RoutineView["overlap"]) => {
+      unmount();
+      const routine = { ...routineOn(trigger), overlap, live };
+      return show(<RulesSection host={{} as RoutinesHost} routine={routine} />);
+    };
+    expect((await show_(schedule, "queue")).textContent).toContain(
+      "Your new rules aren't live yet.",
+    );
+    // A mail routine has no busy rule, so a differing one isn't a change anyone can see.
+    const mail: RoutineTrigger = { kind: "mail", connector: "g", query: "in:inbox", every: "2m" };
+    expect((await show_(mail, "queue")).textContent).not.toContain("aren't live yet");
   });
 });
