@@ -46,6 +46,19 @@ verifies("cli.commands.tools.blocks", () => {
     ]);
   });
 
+  it("says a tool asks before each use unless the connector's read list marks it, as a run does", async () => {
+    await kit
+      .notes()
+      .rewriteConnector(
+        "name: Notes server\ntransport:\n  stdio:\n    command: notes-mcp\ntools:\n  read: [archive]\n",
+      );
+    const { archive, search } = await blocksNow();
+    expect(archive?.at(-2)).toMatch(
+      /^  Doesn't ask before each use: .+ marks it as only reading\.$/u,
+    );
+    expect(search).toContain("  Asks you before each use.");
+  });
+
   it("shows only what changed in a Changed tool, with before and now", async () => {
     const { lookup } = await blocksNow();
     expect(lookup?.slice(0, 4)).toEqual([

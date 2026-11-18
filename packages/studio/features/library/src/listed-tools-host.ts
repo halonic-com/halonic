@@ -43,7 +43,7 @@ export interface ListedToolRow {
   readonly serverChanged: boolean;
   /** One reason for each part of its arguments Halonic left out. */
   readonly leftOutArguments: readonly string[];
-  /** The connector asks before each use of it. `false` when the workspace lowered its risk. */
+  /** The connector asks before each use of it. `false` only when the connector's `read` list marks it as only reading. */
   readonly asksBeforeUse: boolean;
 }
 
@@ -57,7 +57,7 @@ export interface RefusedListedToolRow {
 export interface ListedToolsSnapshot {
   /** The connector's name, as on its card. */
   readonly sourceName: string;
-  /** The workspace's name, for "Acme lowered its risk." */
+  /** The workspace's name, for "Acme marks it as only reading." */
   readonly workspaceName: string;
   /** The tools to ask about: Changed first, then Not approved. */
   readonly toReview: readonly ListedToolRow[];

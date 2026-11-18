@@ -60,8 +60,9 @@ export const listedToolsWords = {
   approvedHeading: (count: number) => `Approved (${count})`,
   removeApproval: "Remove approval",
   askedBeforeEachUse: "Asks you before each use.",
-  /** Instead of {@link askedBeforeEachUse}, when the workspace lowered the tool's risk. */
-  doesntAsk: (workspace: string) => `Doesn't ask before each use: ${workspace} lowered its risk.`,
+  /** Instead of {@link askedBeforeEachUse}, when the connector's `read` list marks the tool. */
+  doesntAsk: (workspace: string) =>
+    `Doesn't ask before each use: ${workspace} marks it as only reading.`,
   /** The line under a tool the person approved. Never "safe" or "trusted": approving doesn't vouch for the tool. */
   approvedAsks: "Approved. It still asks before each use.",
   /** The button next to the waiting line on the connector's page; it opens the review. */
