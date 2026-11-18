@@ -84,7 +84,9 @@ export function DetailsRow(props: DetailsProps) {
         onClick={() => setOpen(true)}
       >
         {detailsWords.heading}
-        <ChevronRightIcon />
+        <span className="size-icon-md shrink-0 text-fg-subtle *:size-full" aria-hidden="true">
+          <ChevronRightIcon />
+        </span>
       </button>
       {open ? (
         <SheetFrame
