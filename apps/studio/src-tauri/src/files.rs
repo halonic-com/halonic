@@ -425,7 +425,9 @@ pub async fn folder_location<R: Runtime>(
 
 /// Watches the workspace's files, sending batches of paths to `channel`
 /// until the page calls `fs_unwatch`, reloads or closes. It stops with a
-/// failure once the folder is no longer open, as when its trust is revoked.
+/// failure once the folder is no longer open, as when its trust is revoked,
+/// or when it holds more files than a watch looks at. Every watch of one
+/// folder shares one look at it.
 #[tauri::command]
 pub async fn fs_watch<R: Runtime>(
     webview: Webview<R>,
@@ -439,10 +441,14 @@ pub async fn fs_watch<R: Runtime>(
         let root = workspace_root(&opened, &workspace)?;
         let profile = cli_profile(&app).map_err(FileRefusal::io)?;
         let fence = profile_fence(&profile, &root);
+        // The page's watches of one folder share one look at it.
+        let folder = root.to_string_lossy().into_owned();
         let scan = move || look_while_open(&opened, &root, &fence);
         let send = move |message: WatchMessage| channel.send(WatchEvent::from(message)).is_ok();
         let state = app.state::<FileState>();
-        let watch_id = state.watches.start(&page, WATCH_INTERVAL, scan, send)?;
+        let watch_id = state
+            .watches
+            .start(&page, &folder, WATCH_INTERVAL, scan, send)?;
         Ok(WatchStart { watch_id })
     })
     .await
