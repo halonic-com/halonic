@@ -1,5 +1,6 @@
-import { createContext, type ReactNode, useContext, useId } from "react";
+import { createContext, type ReactNode, type Ref, useContext, useId, useRef } from "react";
 import { AlertIcon } from "../icons/alert-icon.tsx";
+import { useFieldErrorAnnouncement } from "./field-announce.tsx";
 import { type FormRowsKind, useFormRows } from "./form-rows.tsx";
 
 /** What a Field tells the control inside it, so screens never wire ids by hand. */
@@ -76,7 +77,8 @@ export interface FieldProps {
 
 /**
  * A label, a control and a hint or an error under it. The Field gives the control its `id`,
- * `aria-describedby` and `aria-invalid`, so a screen never writes them itself.
+ * `aria-describedby` and `aria-invalid`, so a screen never writes them itself. Inside a
+ * `FieldAnnounceProvider`, an error that appears after focus has left the Field is announced.
  *
  * @example
  * <Field label="Name" hint="Shown in the sidebar." error={nameError} required>
@@ -102,6 +104,8 @@ export function Field({
   const lineId = `${id}-line`;
   const invalid = isShown(error);
   const hasLine = invalid || isShown(hint);
+  const wrapper = useRef<HTMLDivElement>(null);
+  useFieldErrorAnnouncement(wrapper, label, invalid ? (error ?? undefined) : undefined);
 
   const control: FieldControl = {
     id: controlId,
@@ -144,13 +148,13 @@ export function Field({
 
   if (look === undefined) {
     return (
-      <div className="flex flex-col gap-1">
+      <div ref={wrapper} className="flex flex-col gap-1">
         {fieldLabel}
         {value}
       </div>
     );
   }
-  return <SideRow look={look} wide={wide} label={fieldLabel} value={value} />;
+  return <SideRow ref={wrapper} look={look} wide={wide} label={fieldLabel} value={value} />;
 }
 
 /**
@@ -158,18 +162,20 @@ export function Field({
  * its own width and nothing reads the window's.
  */
 function SideRow({
+  ref,
   look,
   wide,
   label,
   value,
 }: {
+  ref: Ref<HTMLDivElement>;
   look: SideLook;
   wide: boolean;
   label: ReactNode;
   value: ReactNode;
 }) {
   return (
-    <div className="@container">
+    <div ref={ref} className="@container">
       <div className={`flex flex-col gap-1 ${look.row}`}>
         {label}
         <div className={wide ? VALUE : `${VALUE} ${look.value}`.trimEnd()}>{value}</div>

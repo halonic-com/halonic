@@ -1,4 +1,5 @@
 import {
+  FieldAnnounceProvider,
   ModalRegionsProvider,
   type Presentation,
   PresentationProvider,
@@ -79,7 +80,8 @@ export interface ShellFrameProps {
  * the panel on the desktop and under the top bar on a phone.
  *
  * Everything inside learns the layout through the kit's `PresentationProvider`, and every kit
- * Dialog sends its announcements through the window's announcer. The window's one `ToastRegion`
+ * Dialog sends its announcements through the window's announcer, as does every kit Field whose
+ * error appears after focus has left it. The window's one `ToastRegion`
  * sits over the sidebar and the page (on a phone, the page), so a toast never covers the status
  * bar, and kit parts that confirm with a toast find the store through `ToastStoreProvider`.
  *
@@ -104,10 +106,12 @@ export function ShellFrame(props: ShellFrameProps) {
   return (
     <PresentationProvider presentation={presentation}>
       <ModalRegionsProvider pushModalRegions={(regions) => announcer.pushModalRegions(regions)}>
-        <ToastStoreProvider store={toasts}>
-          <FrameLayers presentation={presentation} {...props} />
-          <FrameRegions announcer={announcer} />
-        </ToastStoreProvider>
+        <FieldAnnounceProvider announce={(text) => announcer.announce(text)}>
+          <ToastStoreProvider store={toasts}>
+            <FrameLayers presentation={presentation} {...props} />
+            <FrameRegions announcer={announcer} />
+          </ToastStoreProvider>
+        </FieldAnnounceProvider>
       </ModalRegionsProvider>
     </PresentationProvider>
   );
