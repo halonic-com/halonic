@@ -160,7 +160,9 @@ verifies("cli.commands.trust.plugin", () => {
     ]);
 
     expect(code).toBe(exitCode.notTrusted);
-    expect(io.stderr.join("\n")).toContain("it changed since that fingerprint was made.");
+    expect(io.stderr.join("\n")).toContain(
+      "✕ That fingerprint doesn't match Weather as it is now.",
+    );
     expect(await plugins()).toEqual(["new"]);
   });
 
@@ -245,7 +247,9 @@ verifies("cli.commands.trust.plugin", () => {
     const [now] = await openPluginService(setup).load();
     const current = now?.status === "new" ? now.fingerprint : "";
     expect(code).toBe(exitCode.notTrusted);
-    expect(io.stderr.join("\n")).toContain("it changed since that fingerprint was made.");
+    expect(io.stderr.join("\n")).toContain(
+      "✕ That fingerprint doesn't match Weather as it is now.",
+    );
     expect(current).toMatch(fullFingerprint);
     expect(current).not.toBe(shown);
     expect(io.stdout.at(-1)).toBe(current);
@@ -287,7 +291,9 @@ verifies("cli.commands.trust.plugin", () => {
     ]);
 
     expect(code).toBe(exitCode.notTrusted);
-    expect(io.stderr.join("\n")).toContain("it changed since that fingerprint was made.");
+    expect(io.stderr.join("\n")).toContain(
+      "✕ That fingerprint doesn't match Weather as it is now.",
+    );
     expect(io.stdout.at(-1)).toBe(fingerprint);
     expect(await plugins()).toEqual(["trusted"]);
   });
