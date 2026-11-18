@@ -149,10 +149,23 @@ the gateway's id rule).
 **QR payload.** `halonic-pair:` followed by base64url (no padding) of a binary
 record: the version (1), the host's static key (32 bytes), the code (8 bytes,
 the 12 symbols as one base-31 number), the host's name (a length byte and at
-most 32 bytes of UTF-8) and up to 3 endpoints (a count, then a length byte and
-the URL of each). The whole text is at most 150 bytes, so it fits a version 8
-QR code at error correction level M (152 bytes in byte mode). An endpoint that
+most 32 bytes of UTF-8) and up to 3 endpoints (a count, then a short binary
+entry each). The whole text is at most 150 bytes, so it fits a version 8 QR
+code at error correction level M (152 bytes in byte mode). An endpoint that
 doesn't fit is left out, so the LAN endpoint goes first.
+
+An endpoint's entry is a kind byte (the scheme, `tcp`, `wss` or `https`; an
+IPv4 address or a host name; a bit for a name ending in `.ts.net`, which is
+then left off; a bit for a port), then 4 bytes of IPv4 or a length byte and
+the lower-case name, then 2 bytes of port when it isn't the scheme's default.
+Written as URL text, the endpoints left about 26 bytes, so only one address
+ever fitted; as entries, a LAN and a Tailscale IPv4 address take 7 bytes each
+and always fit together, and a Tailscale name fits after them while the host
+name is at most about 22 bytes (decision 14, HAL-12353). The API still speaks
+URLs, such as `tcp://192.168.1.20:4100`, in one canonical form, so reading
+gives back exactly what was written. IPv6 addresses and public tunnel names
+are left out for now; when a public provider needs the room, the next step is
+the QR code's alphanumeric mode with base45 (RFC 9285) in the same version.
 
 **The known limit.** With psk3, an active attacker who plays the computer can
 take one message 3 and test guesses for the code offline. This is on the typed

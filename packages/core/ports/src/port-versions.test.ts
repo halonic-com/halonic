@@ -16,6 +16,7 @@ const notPorts = new Set([
   "index.ts",
   "model-price.ts",
   "pairing-codes.ts",
+  "pairing-qr-bytes.ts",
   "port-versions.ts",
   "provider-default-base-url.ts",
   "remote-gateway-protocol.ts",
