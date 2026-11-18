@@ -16,7 +16,7 @@ export function useDiscardToasts(): DiscardToasts {
   const toasts = useToastStore();
   return {
     run: async (outcome, { title, text }) => {
-      if (outcome.kind === "failed") return outcome.reason;
+      if (outcome.kind === "failed" || outcome.kind === "partial") return outcome.reason;
       if (outcome.kind === "noCopy") return discardWords.noCopy;
       if (outcome.kind === "discarded") {
         toasts?.show({ tone: "success", title, ...(text === undefined ? {} : { text }) });

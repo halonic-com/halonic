@@ -193,21 +193,23 @@ verifies("source-control.discard", () => {
     });
 
     it("writes nothing when the file changed since the page read it", async () => {
-      const { fake, root } = await openPage();
+      const { fake, root, toasts } = await openPage();
       fake.setTexts(hub, { before, after: `${after}# edited elsewhere\n` });
       await press(buttons(section(root, hub), "Undo these changes")[0]);
-      expect(section(root, hub).querySelector('[role="alert"]')?.textContent).toContain(
-        "Couldn't discard these changes. The file changed while you were looking.",
-      );
+      expect(toasts.list()[0]).toMatchObject({
+        tone: "danger",
+        title: "Couldn't discard these changes",
+        text: expect.stringContaining("The file changed while you were looking."),
+      });
+      expect(toasts.list()[0]?.action).toBeUndefined();
+      expect(section(root, hub).querySelector('[role="alert"]')).toBeNull();
     });
 
     it("says a file another program added to a version can't be discarded here", async () => {
-      const { fake, root } = await openPage({ staged: true });
+      const { fake, root, toasts } = await openPage({ staged: true });
       await press(buttons(section(root, hub), "Undo these changes")[0]);
       expect(fake.replaced).toHaveLength(0);
-      expect(section(root, hub).querySelector('[role="alert"]')?.textContent).toContain(
-        "Another program added this file to a version.",
-      );
+      expect(toasts.list()[0]?.text).toContain("Another program added this file to a version.");
     });
 
     it("shows why the toast's Undo didn't work when the file changed in the meantime", async () => {

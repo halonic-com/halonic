@@ -8,7 +8,6 @@ import {
   type ListRow,
   type MenuEntry,
   PlaceIcon,
-  useToastStore,
 } from "@halonicjs/studio-kit";
 import type { ItemRef } from "@halonicjs/studio-shell";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
@@ -16,6 +15,7 @@ import type { ChangeItem } from "../change-items.ts";
 import { groupIntoItems, isOpenable } from "../change-items.ts";
 import type { ChangedFile, ChangesList } from "../changes-list.ts";
 import { discardWords, itemWords, mergeWords, versionWords } from "../changes-words.ts";
+import { UndoPartialCallout } from "./undo-partial-callout.tsx";
 import { UndoWithoutCopyDialog } from "./undo-without-copy-dialog.tsx";
 import type { ReturnFocus } from "./use-open-item.ts";
 import { useUndoItem } from "./use-undo-item.ts";
@@ -114,22 +114,12 @@ export function ChangeList({
   }, []);
 
   const [menu, setMenu] = useState<{ readonly id: string; readonly target: ContextMenuTarget }>();
-  const toasts = useToastStore();
   const undoing = useUndoItem(list);
   const openMore =
     (id: string): MoreHandler =>
     (event) =>
       setMenu({ id, target: { element: event.currentTarget } });
   const menuItem = items.find((item) => item.id === menu?.id);
-
-  function sayFailed(reason: string) {
-    toasts?.show({ tone: "danger", title: discardWords.failed, text: reason });
-  }
-
-  async function undoFromMenu(item: ChangeItem) {
-    const reason = await undoing.undo(item);
-    if (reason !== undefined) sayFailed(reason);
-  }
 
   const shown = items.slice(0, rowLimit);
   const itemRows = shown.filter(isItem).map((item) => rowOf(item, openMore));
@@ -184,16 +174,17 @@ export function ChangeList({
         ]}
         onOpen={onOpen}
       />
+      <UndoPartialCallout undoing={undoing} />
       {hidden > 0 ? <p className="text-small text-fg-muted">{itemWords.andMore(hidden)}</p> : null}
       <ContextMenu
         label={menuItem === undefined ? versionWords.sinceLastVersion : menuItem.name}
         entries={
-          menuItem === undefined ? [] : menuEntries(menuItem, openItem, undoFromMenu, waiting)
+          menuItem === undefined ? [] : menuEntries(menuItem, openItem, undoing.undo, waiting)
         }
         target={menu?.target}
         onClose={() => setMenu(undefined)}
       />
-      <UndoWithoutCopyDialog undoing={undoing} onFailed={sayFailed} />
+      <UndoWithoutCopyDialog undoing={undoing} />
     </section>
   );
 }

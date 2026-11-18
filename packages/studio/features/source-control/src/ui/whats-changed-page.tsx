@@ -5,6 +5,7 @@ import { type ChangeItem, isOpenable } from "../change-items.ts";
 import type { ChangesList } from "../changes-list.ts";
 import { discardWords, pageWords } from "../changes-words.ts";
 import { ItemChanges, WaitingNote } from "./item-changes.tsx";
+import { UndoPartialCallout } from "./undo-partial-callout.tsx";
 import { UndoWithoutCopyDialog } from "./undo-without-copy-dialog.tsx";
 import { useUndoItem } from "./use-undo-item.ts";
 
@@ -28,7 +29,7 @@ export function WhatChangedPage({ list, item, developer, openItem, onBack }: Wha
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
   const undoing = useUndoItem(list);
-  const { busy, failure, undo } = undoing;
+  const { busy, undo } = undoing;
   const waitingId = useId();
   const headingId = useId();
 
@@ -70,14 +71,9 @@ export function WhatChangedPage({ list, item, developer, openItem, onBack }: Wha
         </Button>
       </header>
       <WaitingNote list={list} id={waitingId} />
-      {failure === undefined ? null : (
-        <span role="alert" className="text-small text-danger">
-          {discardWords.failed}. {failure}
-        </span>
-      )}
+      <UndoPartialCallout undoing={undoing} />
       <ItemChanges list={list} item={item} developer={developer} />
-      {/* A failure after the question shows where every failure of this page shows. */}
-      <UndoWithoutCopyDialog undoing={undoing} onFailed={() => undefined} />
+      <UndoWithoutCopyDialog undoing={undoing} />
     </section>
   );
 }

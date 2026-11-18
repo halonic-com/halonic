@@ -25,5 +25,18 @@ verifies("source-control.discard", () => {
       expect(putBack).toHaveBeenCalledTimes(1);
       expect(outcome).toEqual({ kind: "failed", reason: "It changed while you were looking." });
     });
+
+    it("names the files not put back when the roll-back fails too", async () => {
+      const list = listGiving(
+        { kind: "undone", undo: async () => "The file is locked." },
+        { kind: "failed", reason: "It changed while you were looking." },
+      );
+      const outcome = await discardItem(list, [first, second]);
+      expect(outcome).toEqual({
+        kind: "partial",
+        reason: "It changed while you were looking. The file is locked.",
+        paths: [first.path],
+      });
+    });
   });
 });

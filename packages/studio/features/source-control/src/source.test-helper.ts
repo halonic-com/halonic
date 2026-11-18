@@ -43,6 +43,7 @@ export function fakeSource(initial: ChangesRead) {
   const texts = new Map<string, FileTexts>();
   const replaced: { path: string; text: string; expected: string | null }[] = [];
   const removed: { path: string; expected: string }[] = [];
+  const putBack = new Set<string>();
   const kept: KeptFile[][] = [];
   let keepFailure: unknown;
   const versions: VersionInput[] = [];
@@ -50,7 +51,9 @@ export function fakeSource(initial: ChangesRead) {
   const source: ChangesSource = {
     read: async () => {
       if (readFailure !== undefined) throw readFailure;
-      return answer;
+      if (answer.kind !== "ready") return answer;
+      // A file put back as its last version is no longer changed.
+      return { kind: "ready", changes: answer.changes.filter((c) => !putBack.has(c.path)) };
     },
     readTexts: async (change) => {
       const found = texts.get(change.path);
@@ -62,6 +65,7 @@ export function fakeSource(initial: ChangesRead) {
       const current = texts.get(path);
       if ((current?.after ?? null) !== expected) return "changed-on-disk";
       texts.set(path, { before: current?.before ?? null, after: text });
+      if (text === current?.before) putBack.add(path);
       return "replaced";
     },
     removeFile: async (path, expected) => {
