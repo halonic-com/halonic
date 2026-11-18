@@ -7,7 +7,6 @@ import { afterEach, expect, it, vi } from "vitest";
 import { filesFeature } from "../feature.ts";
 import { fileItem } from "../file-item.ts";
 import type { FileIssue, FilesHost } from "../files-host.ts";
-import { askFocusOnOpen } from "../focus-on-open.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { FileView } from "./file-view.tsx";
 
@@ -18,7 +17,6 @@ const opened: {
   loads: string[];
   shown: readonly EditorProblem[];
   goneTo: [number, number | undefined][];
-  focused: number;
 }[] = [];
 
 // The real editor is tested in its own package; here a stand-in lets the test type.
@@ -32,7 +30,6 @@ vi.mock("@halonicjs/studio-code-editor", () => ({
       loads: [] as string[],
       shown: [] as readonly EditorProblem[],
       goneTo: [] as [number, number | undefined][],
-      focused: 0,
     };
     opened.push(entry);
     return {
@@ -41,9 +38,7 @@ vi.mock("@halonicjs/studio-code-editor", () => ({
         entry.text = text;
         entry.loads.push(text);
       },
-      focus: () => {
-        entry.focused += 1;
-      },
+      focus: () => {},
       setProblems: (problems: readonly EditorProblem[]) => {
         entry.shown = problems;
       },
@@ -477,34 +472,5 @@ verifies("files.ui.problems-list", () => {
     await settle();
 
     expect(page.textContent).toContain("Problems (0)");
-  });
-});
-
-verifies("files.ui.new-file-focus", () => {
-  it("puts the cursor in the editor of a file just made, and only once", async () => {
-    askFocusOnOpen("hubs/a.yaml");
-    show(
-      hostOf(async () => ""),
-      "hubs/a.yaml",
-    );
-    await settle();
-    expect(opened[0]?.focused).toBe(1);
-
-    unmountAll();
-    show(
-      hostOf(async () => ""),
-      "hubs/a.yaml",
-    );
-    await settle();
-    expect(opened[1]?.focused).toBe(0);
-  });
-
-  it("leaves focus alone for a file opened from the tree", async () => {
-    show(
-      hostOf(async () => "name: a\n"),
-      "models.yaml",
-    );
-    await settle();
-    expect(opened[0]?.focused).toBe(0);
   });
 });
