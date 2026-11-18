@@ -44,7 +44,7 @@ Read or report known problems in the [open issues](https://github.com/halonic-co
   command line. Approving from your phone is in progress too.
 - Cost estimates only for models with a price set in their file; none for
   subscriptions, local models or the test model. Studio shows no tokens or
-  cost yet. No spending limit: set one at your provider.
+  cost yet. A run stops when it reaches the workspace budget you set.
 - Studio doesn't start connectors (MCP servers) yet.
 - Agents can't use your Claude or ChatGPT subscription. They use an API key or
   a local model. Agents that run Claude Code or Codex are in progress.
@@ -190,8 +190,8 @@ real model, `halonic trust` asks you to confirm that this computer may run it
 terminal, use
 `halonic trust --yes --fingerprint <fingerprint>`. If the provider refuses,
 [the provider says no](https://docs.halonic.dev/guides/provider-says-no) shows
-what each message means. There is no spending limit yet: set one at your
-provider.
+what each message means. A run stops when it reaches the workspace budget
+you set.
 
 ## Next steps
 
