@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-1301 (T8 PR 3a, read side), HAL-6602 (where the desktop engine runs); states K5 (HAL-5896); a11y check Q4 (HAL-12905)
 
-When the desktop app opens a folder, it shall give the Runs feature and the Inbox the folder's run logs, the ones the CLI writes, as their runs. The Runs list shall name each run's workflow, its steps and its hub from the workspace's files, which it shall read again after a file changed outside the app, and write money in the workspace's `budget.currency`. While anything listens, the app shall read the runs again every 10 seconds and when the window comes to the front, and tell its listeners only when a run started, moved on or ended. A list that fails shall not stop the polls. Until the window has an engine of its own, answering a run shall fail as `unavailable`.
+When the desktop app opens a folder, it shall give the Runs feature and the Inbox the folder's run logs, the ones the CLI writes, as their runs. The Runs list shall name each run's workflow, its steps and its hub from the workspace's files, which it shall read again after a file changed outside the app, and write money in the workspace's `budget.currency`. It shall give each model provider's kind (on this computer or elsewhere) and the `name` its file gives, so a run's banner names the provider as a person knows it. While anything listens, the app shall read the runs again every 10 seconds and when the window comes to the front, and tell its listeners only when a run started, moved on or ended. A list that fails shall not stop the polls. Until the window has an engine of its own, answering a run shall fail as `unavailable`.
 
 ## Examples
 
