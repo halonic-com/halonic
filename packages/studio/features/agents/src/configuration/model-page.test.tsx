@@ -182,6 +182,21 @@ verifies("agents.configuration.model", () => {
     expect(counts.at(-1)).toBe(0);
   });
 
+  it("stops counting a turn limit whose save failed once it says what the file holds again", async () => {
+    const { counts, saving } = fieldCounts();
+    const { limit } = await openModel(undefined, undefined, undefined, {
+      saving,
+      failSaves: true,
+    });
+    await typeInto(limit, "25");
+    await blur(limit);
+    expect(counts.at(-1)).toBe(1);
+
+    await typeInto(limit, "6");
+    await blur(limit);
+    expect(counts.at(-1)).toBe(0);
+  });
+
   it("doesn't save a turn limit outside 1 to 200, and says why", async () => {
     const { page, agents, limit } = await openModel();
     for (const bad of ["500", "0", "2.5", "many"]) {

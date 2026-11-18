@@ -54,7 +54,11 @@ export function useAutoSaved(
       setRevealed(true);
       return;
     }
-    if (text === lastSaved.current) return;
+    // The box holds what the file holds, so an earlier failed save no longer matters.
+    if (text === lastSaved.current) {
+      setFailed(false);
+      return;
+    }
     const before = lastSaved.current;
     lastSaved.current = text;
     void save(text).then((written) => {
