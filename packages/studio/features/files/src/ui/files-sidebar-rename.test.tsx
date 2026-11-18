@@ -123,6 +123,8 @@ verifies("files.ui.rename-file", () => {
     expect(input?.getAttribute("aria-invalid")).toBe("true");
     expect(input?.getAttribute("aria-describedby")).toBe(alert?.id);
     expect(rowNamed(page, "models.yaml").getAttribute("aria-description")).toBeNull();
+    // The row is named by its name field while it is edited, not by the old name.
+    expect(rowNamed(page, "models.yaml").hasAttribute("aria-label")).toBe(false);
   });
 
   it("keeps the typed name in its row, with a toast that has Try again, when the row was left while Enter's rename ran and the host refuses", async () => {
