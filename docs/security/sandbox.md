@@ -125,8 +125,9 @@ and Halonic's own data, change any file you can and reach any address. The
 choice lives in your profile folder, never in the workspace. It is bound to the
 exact bytes of the agent's file, so a changed file goes back to the sandbox, and
 it doesn't carry to another computer. The CLI reads these choices:
-`halonic serve` and `halonic routines watch` print a `!` line for such an
-agent before its run, and `halonic run` still stops it with exit 9.
+`halonic serve` prints a `!` line for such an agent before its run.
+`halonic run` still stops it with exit 9, and `halonic routines watch`
+refuses its routine.
 
 ## Related decisions
 
