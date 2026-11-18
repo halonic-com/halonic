@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12342 (Liam, CTO; decided in the task)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DZ5wL7NnabJIiJwh81cvmbBYnX0+rMRo2NRhBjkSS0yoaBHhzaSSuMbB5NZdq6DCOr8dWuWx3Q6ieiKkabDMAQ==
 - Task: HAL-12342
 
 Two failures had a cause the CLI already knew but didn't say.
