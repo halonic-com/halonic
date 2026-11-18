@@ -15,6 +15,8 @@ import {
   type RunStartHost,
   RunStartHostService,
   type SourcedRun,
+  type VersionHistoryHost,
+  VersionHistoryHostService,
 } from "../api.ts";
 import { FailureReason } from "../load-failure.tsx";
 import { runPageWords } from "../run-words.ts";
@@ -23,6 +25,7 @@ import { Details, type DetailsProps, DetailsRow } from "./details.tsx";
 import { detailRows } from "./details-model.ts";
 import { EveryStep, useRunLog } from "./every-step.tsx";
 import { entryIdOfStep, everyStep, type StepEntry } from "./every-step-model.ts";
+import { useHasVersions } from "./has-versions.ts";
 import { PageBanner } from "./page-banner.tsx";
 import { AgentSays, Receipt } from "./receipt.tsx";
 import {
@@ -51,6 +54,7 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
   const sandboxStartCheck = context.services.find(sandboxStartCheckKey);
   const runStart = context.services.find(RunStartHostService);
   const list = context.services.get(RunsListService);
+  const versionHistory = context.services.find(VersionHistoryHostService);
   return (
     <RunView
       list={list}
@@ -66,6 +70,7 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
         ? {}
         : { openModels: () => void context.runCommand?.(openModelsCommand) })}
       {...(runStart === undefined ? {} : { runStart })}
+      {...(versionHistory === undefined ? {} : { versionHistory })}
       {...(openPlace === undefined
         ? {}
         : {
@@ -108,6 +113,8 @@ export interface RunViewProps {
   readonly announceState?: (key: string, text: string) => void;
   /** Starts a run, for Run again; absent where there is no engine, and the button isn't there. */
   readonly runStart?: RunStartHost;
+  /** Whether the workspace keeps versions; without it, the Details' Ran on shows as before. */
+  readonly versionHistory?: VersionHistoryHost;
   /** Opens the workspace page at Models, for **Open Models** on a failed banner; without it the button isn't there. */
   readonly openModels?: () => void;
   /** Opens the Runs list, for a run that isn't there any more. */
@@ -152,6 +159,7 @@ export function RunView({
   announce,
   announceState,
   runStart,
+  versionHistory,
   openModels,
   goToRuns,
   reviewInInbox,
@@ -177,6 +185,7 @@ export function RunView({
     (shown) => pageContext(list, state.runs, shown, now()),
     announceState,
   );
+  const hasVersions = useHasVersions(versionHistory);
 
   if (run !== undefined) {
     const context = pageContext(list, state.runs, run, now());
@@ -236,6 +245,7 @@ export function RunView({
               rows={detailRows(run, context, routineOf(list, run))}
               version={startedVersion(log)}
               logRead={log !== undefined}
+              hasVersions={hasVersions}
               runId={run.summary.id}
               now={context.now}
             />

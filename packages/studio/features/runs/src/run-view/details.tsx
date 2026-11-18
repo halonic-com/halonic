@@ -12,6 +12,11 @@ export interface DetailsProps {
   readonly version: RunVersion | undefined;
   /** Whether the log has been read: Ran on waits for it rather than saying "Version not recorded." */
   readonly logRead: boolean;
+  /**
+   * Whether the workspace has a version history: Ran on is left out without one, and waits while
+   * it isn't known yet (`undefined`), so it doesn't show and then go away.
+   */
+  readonly hasVersions: boolean | undefined;
   readonly runId: string;
   readonly now: Date;
 }
@@ -21,9 +26,9 @@ export interface DetailsProps {
  * card, Ran on in words, then the run id in subtle text, last.
  *
  * @example
- * <Details rows={detailRows(run, context, routine)} version={started?.version} logRead runId={run.id} now={now} />
+ * <Details rows={detailRows(run, context, routine)} version={started?.version} logRead hasVersions runId={run.id} now={now} />
  */
-export function Details({ rows, version, logRead, runId, now }: DetailsProps) {
+export function Details({ rows, version, logRead, hasVersions, runId, now }: DetailsProps) {
   return (
     <section aria-labelledby="run-details" className="flex flex-col gap-3">
       <h2 id="run-details" className="text-label uppercase text-fg-muted">
@@ -47,7 +52,7 @@ export function Details({ rows, version, logRead, runId, now }: DetailsProps) {
             )}
           </Row>
         ))}
-        {logRead ? (
+        {logRead && hasVersions === true ? (
           <Row label={detailsWords.ranOn}>
             <RunVersionLine version={version} now={now} />
           </Row>

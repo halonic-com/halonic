@@ -133,20 +133,23 @@ export interface ApprovalLine {
   readonly text: string;
 }
 
+type RunEventOf<Type extends RunEvent["type"]> = Extract<RunEvent, { type: Type }>;
+
 /**
  * The receipt's Approvals section (RCPT-2.4): each approval the run asked
- * for in the order asked, with the answer, who gave it and when; one still
- * waiting says so, and one left open on a run that has ended (cancelled, or
- * a child ended with its parent) says it was not answered, since the run can
- * no longer take an answer. Empty when the run asked for none, which hides
- * the section.
+ * for in the order asked, a tool call's or a wait step's, with the answer,
+ * who gave it and when; one still waiting says so, and one left open on a
+ * run that has ended (cancelled, or a child ended with its parent) says it
+ * was not answered, since the run can no longer take an answer. Empty when
+ * the run asked for none, which hides the section.
  *
  * @example
  * approvalLines(events);
- * // [{ callId: "call-1", text: "Send an email with Gmail: approved by you at 10:42" }]
+ * // [{ callId: "call-1", text: "Send an email with Gmail: approved by you at 10:42" },
+ * //  { callId: "wait-9", text: "Approve this reply?: approved by you at 10:44" }]
  */
 export function approvalLines(events: readonly RunEvent[]): ApprovalLine[] {
-  const answers = new Map<string, Extract<RunEvent, { type: "approval.resolved" }>>();
+  const answers = new Map<string, RunEventOf<"approval.resolved">>();
   for (const event of events) {
     if (event.type === "approval.resolved") answers.set(event.callId, event);
   }
@@ -154,32 +157,75 @@ export function approvalLines(events: readonly RunEvent[]): ApprovalLine[] {
     (event) => event.type === "run.completed" || event.type === "run.failed",
   );
   const lines: ApprovalLine[] = [];
-  for (const event of events) {
-    if (event.type !== "approval.requested") continue;
-    const answer = answers.get(event.callId);
-    const action = toolAction(event.tool);
-    let text: string;
-    if (answer !== undefined) {
-      text = receiptWords.approvalLine(
-        action,
-        answer.approved ? "approved" : "rejected",
-        resolver(answer.by),
-        clockTime(new Date(answer.at)),
-      );
-    } else if (ended) {
-      text = receiptWords.approvalNotAnswered(action);
-    } else {
-      text = receiptWords.approvalWaiting(action);
+  for (const [index, event] of events.entries()) {
+    if (event.type === "approval.requested") {
+      lines.push({ callId: event.callId, text: toolApprovalText(event, answers, ended) });
+    } else if (event.type === "run.waiting" && isWaitStep(event, events[index - 1])) {
+      const text = waitStepText(event, events.slice(index + 1), ended);
+      lines.push({ callId: `wait-${event.seq}`, text });
     }
-    lines.push({ callId: event.callId, text });
   }
   return lines;
+}
+
+function toolApprovalText(
+  event: RunEventOf<"approval.requested">,
+  answers: ReadonlyMap<string, RunEventOf<"approval.resolved">>,
+  ended: boolean,
+): string {
+  const answer = answers.get(event.callId);
+  const action = toolAction(event.tool);
+  if (answer !== undefined) {
+    return receiptWords.approvalLine(
+      action,
+      answer.approved ? "approved" : "rejected",
+      resolver(answer.by),
+      clockTime(new Date(answer.at)),
+    );
+  }
+  return ended ? receiptWords.approvalNotAnswered(action) : receiptWords.approvalWaiting(action);
 }
 
 /** Who answered; an older log doesn't say, so no "by". */
 function resolver(by: ApprovalResolver | undefined): string {
   if (by === undefined) return "";
   return by === "rule" ? receiptWords.approvalByRule : receiptWords.approvalByPerson;
+}
+
+/**
+ * Whether the run waits for a wait step's answer. A tool approval and a call
+ * whose outcome is unknown write their wait right after what asked, and a
+ * run that waits for a child run names it; neither is the user's to answer here.
+ */
+function isWaitStep(waiting: RunEventOf<"run.waiting">, before: RunEvent | undefined): boolean {
+  if (waiting.child !== undefined || waiting.events.length === 0) return false;
+  if (before?.type === "approval.requested") return false;
+  return !(before?.type === "tool.result" && before.outcome === "unknown");
+}
+
+/**
+ * A wait step's line, named by its title, else its state: answered by the
+ * user's event, or not answered when a timer moved it on or the run ended.
+ * Only a person sends a wait step its answer, so it is "by you".
+ */
+function waitStepText(
+  waiting: RunEventOf<"run.waiting">,
+  after: readonly RunEvent[],
+  ended: boolean,
+): string {
+  const step = waiting.title ?? waiting.state;
+  const end = after.find(
+    (event) =>
+      event.type === "event.received" ||
+      event.type === "timer.fired" ||
+      event.type === "run.waiting",
+  );
+  if (end?.type === "event.received") {
+    return receiptWords.waitAnswerLine(step, end.event, clockTime(new Date(end.at)));
+  }
+  return end?.type === "timer.fired" || ended
+    ? receiptWords.approvalNotAnswered(step)
+    : receiptWords.approvalWaiting(step);
 }
 
 /**
@@ -277,8 +323,10 @@ export function modelLines(
   const models = new Map<string, ModelTotals>();
   for (const event of events) {
     if (event.type !== "llm.response") continue;
-    const totals = models.get(event.model) ?? emptyTotals();
-    models.set(event.model, totals);
+    // The test model's ids ("echo", "scripted") mean nothing to the person: one line names it.
+    const name = event.provider === testModelProvider ? receiptWords.testModel : event.model;
+    const totals = models.get(name) ?? emptyTotals();
+    models.set(name, totals);
     addCall(totals, event);
   }
   if (models.size === 0) return [];
@@ -301,7 +349,6 @@ function addCall(totals: ModelTotals, event: Extract<RunEvent, { type: "llm.resp
   else if (event.cost === 0) {
     // A price of 0 is a call that cost nothing (the test model), never an amount.
     totals.free++;
-    if (event.provider === testModelProvider) totals.testModel++;
   } else totals.cost += event.cost;
 }
 
@@ -310,9 +357,8 @@ interface ModelTotals {
   cached: number;
   subscription: number;
   unpriced: number;
-  /** Calls with a price of 0, and how many of them the built-in test model answered. */
+  /** Calls with a price of 0, such as the built-in test model's. */
   free: number;
-  testModel: number;
   input: number;
   output: number;
   cost: number;
@@ -328,7 +374,6 @@ function emptyTotals(): ModelTotals {
     subscription: 0,
     unpriced: 0,
     free: 0,
-    testModel: 0,
     input: 0,
     output: 0,
     cost: 0,
@@ -343,11 +388,7 @@ function modelLine(model: string, totals: ModelTotals, currency: string): string
   const priced = totals.calls - totals.cached - totals.subscription - totals.unpriced - totals.free;
   if (priced > 0) parts.push(moneyAmount(totals.cost, currency));
   if (totals.unpriced > 0) parts.push(receiptWords.modelNoPrice);
-  if (totals.free > 0) {
-    parts.push(
-      totals.testModel === totals.free ? receiptWords.modelTestNoCost : receiptWords.modelNoCost,
-    );
-  }
+  if (totals.free > 0) parts.push(receiptWords.modelNoCost);
   if (totals.subscription > 0) parts.push(receiptWords.modelSubscription);
   if (totals.cached > 0) parts.push(receiptWords.modelCachedCalls(totals.cached));
   return parts.join(lineSeparator);

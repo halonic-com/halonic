@@ -16,6 +16,7 @@ verifies("runs.run-view.details", () => {
         rows={rows}
         version={{ reads: "saved-files" }}
         logRead
+        hasVersions
         runId="run_mfx3k2a1_01jd8q"
         now={mondayMorning}
       />,
@@ -34,7 +35,14 @@ verifies("runs.run-view.details", () => {
 
   it("has no Ran on row until the log is read", () => {
     const root = render(
-      <Details rows={rows} version={undefined} logRead={false} runId="run_a" now={mondayMorning} />,
+      <Details
+        rows={rows}
+        version={undefined}
+        logRead={false}
+        hasVersions
+        runId="run_a"
+        now={mondayMorning}
+      />,
     );
     expect(root.textContent).not.toContain("Ran on");
   });
@@ -45,6 +53,7 @@ verifies("runs.run-view.details", () => {
         rows={[{ label: "Started by", value: "Morning brief", tooltip: "Weekdays at 08:00" }]}
         version={undefined}
         logRead={false}
+        hasVersions
         runId="run_a"
         now={mondayMorning}
       />,
