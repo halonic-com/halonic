@@ -208,6 +208,22 @@ export async function runHarnessCall(
 }
 
 /**
+ * The model the program is asked for (requirement `engine.harness-model-alias`):
+ * the provider's model id for an alias the host knows, else the agent
+ * file's `model` as written. `undefined` when the file names none.
+ *
+ * @throws what the host's `providerModelOf` throws
+ */
+async function programModelOf(
+  options: HarnessRunsOptions,
+  call: HarnessCall,
+): Promise<string | undefined> {
+  const written = call.agent.model;
+  if (written === undefined || options.models === undefined) return written;
+  return (await options.models.providerModelOf(call.hubId, written)) ?? written;
+}
+
+/**
  * Opens the call's bridge and sandbox, runs the harness in them, and closes
  * everything again, as {@link runHarnessCall} says.
  *
@@ -222,6 +238,7 @@ async function runInBridge(
 ): Promise<unknown> {
   const { options, call, agent, harness, log, stop } = started;
   const { effect } = call;
+  const model = await programModelOf(options, call);
   const bridge = await unlessStopped(stop, options.bridges.open(agent, recorder), (late) =>
     late.close(),
   );
@@ -260,7 +277,7 @@ async function runInBridge(
         instructions: call.agent.instructions,
         prompt: effect.prompt,
         ...(instructions === null ? {} : { instructionsFolder: instructions.folder }),
-        ...(call.agent.model === undefined ? {} : { model: call.agent.model }),
+        ...(model === undefined ? {} : { model }),
       };
       await started.stepLimits.startClock(started.limits);
       // From here the clock stops however the step ends, even when the harness fails to start.
