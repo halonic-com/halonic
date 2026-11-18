@@ -17,6 +17,12 @@ const backend = (
   residuals: [],
   ...over,
 });
+const chosenAt = "2026-11-17T09:00:00.000Z";
+const settingFor = (saved: SandboxBackendId | "none" | null): SandboxChoice["setting"] => {
+  if (saved === null) return null;
+  if (saved === "none") return { backend: "none", chosenAt, appVersion: "1.0.0" };
+  return { backend: saved, chosenAt };
+};
 const answered = (
   saved: SandboxBackendId | "none" | null,
   backends: SandboxBackendStatus[],
@@ -25,7 +31,7 @@ const answered = (
   kind: "answered",
   choice: {
     active: null,
-    setting: saved === null ? null : { backend: saved, chosenAt: "2026-11-17T09:00:00.000Z" },
+    setting: settingFor(saved),
     backends,
   } satisfies SandboxChoice,
   platform: "win32",
