@@ -2,6 +2,7 @@
 
 - Approval: HAL-12287, the follow-up to HAL-12285 point 2; Liam reviews core ports and events
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8z/iW8R74ohAda7e2JTcc7V1giDLjshTwzG1yKuiAKkR9UPqS+CufFZOT60rZ+jUPOASqAWzzyffTb/29OY9CA==
 
 model-anthropic leaves `temperature`, `top_p` and `top_k` out of a call to a
 model that refuses them (HAL-12285). The person should read once per run
