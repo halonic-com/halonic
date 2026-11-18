@@ -1,10 +1,10 @@
 # studio.desktop-plugins-host
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9377 (design check A4, HAL-9316)
 
-The desktop app shall give the plugins feature a host built on core's `PluginService` over the shell's plugins folder, the profile's plugin records, the trust records the CLI shares and the keychain. Its feed shall list every plugin folder, a plugin that can't load by its folder's name with its problems, and shall tell its listeners only when a read finds something different. A read that fails shall keep the plugins the feed had. Trusting only the plugin as the page showed it, removing trust, removing a plugin and Check again shall each read the folder again. The host shall add no plugin: adding stays a CLI action.
+The desktop app shall give the plugins feature a host built on core's `PluginService` over the shell's plugins folder, the profile's plugin records, the trust records the CLI shares and the keychain. Its feed shall list every plugin folder, a plugin that can't load by its folder's name with its problems, and shall tell its listeners only when a read finds something different. A read that fails shall keep the plugins the feed had. Trusting only the plugin as the page showed it, removing trust, removing a plugin and Check again shall each read the folder again.
 
 ## Examples
 

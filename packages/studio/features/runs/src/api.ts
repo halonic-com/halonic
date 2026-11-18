@@ -8,7 +8,7 @@
 import type { LoggedInstructionPin, RunEvent, RunSummary } from "@halonicjs/events";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
-export { type RunChip, type RunRow, runRow } from "./list/run-row.ts";
+export { type RunChip, type RunRow, runRow, startedBy } from "./list/run-row.ts";
 export type { WorkflowRef } from "./list/runs-filter.ts";
 export { RunCardReceipt, type RunCardReceiptProps } from "./run-view/card-receipt.tsx";
 export { type RunLogRead, useRunLog } from "./run-view/every-step.tsx";
@@ -77,6 +77,8 @@ export interface RunsSource {
   readonly log: (runId: string) => Promise<RunEvent[]>;
   /** The run's workflow; `undefined` when it's no longer in the workspace. */
   readonly workflow: (hubId: string, workflowId: string) => RunWorkflow | undefined;
+  /** An agent's name as its file says; `undefined` when the workspace has no such agent. */
+  readonly agentName?: (agentId: string) => string | undefined;
   /**
    * The routine with the key a run's `trigger.routineId` holds; `undefined`
    * when it's no longer in the workspace.

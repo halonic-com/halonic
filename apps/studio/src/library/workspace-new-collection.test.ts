@@ -52,6 +52,7 @@ verifies("library.new-collection", () => {
   it("refuses an empty name in a sentence and writes nothing", async () => {
     const { host, changes } = setup();
     await expect(host.create({ name: "  " })).rejects.toThrow("Give it a name.");
+    await expect(host.create({ name: "  " })).rejects.toMatchObject({ kind: "invalid_input" });
     expect(changes).toEqual([]);
   });
 });

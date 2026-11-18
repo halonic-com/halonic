@@ -4,7 +4,7 @@
 // and provider file, name the rest. `halonic run` and `halonic runs show`
 // both print a failed run through here.
 
-import type { RunEvent } from "@halonicjs/events";
+import type { RunEvent, RunFailureCause } from "@halonicjs/events";
 import type { ModelAlias, Provider } from "@halonicjs/format";
 import { assertNever } from "@halonicjs/std";
 import { filesOf, type LoadedWorkspace, modelAliases } from "@halonicjs/workspace";
@@ -157,11 +157,13 @@ export function failedStartOf(
  * The facts of a failed run's two lines, from its `run.failed` event and
  * the model it called last (requirement `cli.run-failure`).
  *
- * A reason whose lines need a fact the run log doesn't hold yet gets the
- * general lines, with the engine's own message: `budget` (the budget and
- * the spend), as do `harness-unavailable` (cli-output 3.4 has no line for
- * it), and a reason whose model, provider file or started step can't be
- * found. Of those, `disk-full`, `interrupted` and `answer-not-an-option` have a known
+ * `budget` reads the budget, the spend and the currency from the engine's
+ * cause (requirement `engine.budget-stops`), or from its error text in a log
+ * written before the cause (`engine.budget-stop-message`). A reason whose lines need
+ * a fact the run log doesn't hold gets the general lines, with the engine's
+ * own message: `harness-unavailable` (cli-output 3.4 has no line for it), a
+ * budget stop whose error doesn't read as the engine writes it, and a reason
+ * whose model, provider file or started step can't be found. Of those, `disk-full`, `interrupted` and `answer-not-an-option` have a known
  * cause, so they leave out the "report it" line 2 (HAL-6451).
  *
  * @param model - from {@link failedModelOf}; `undefined` when the run called no model
@@ -235,6 +237,7 @@ export function runFailureOf(
     case "harness-start-failed":
       return harnessFailure(failed, started);
     case "budget":
+      return budgetFailure(failed);
     case "harness-unavailable":
     case "instructions-not-trusted":
     case "error":
@@ -242,6 +245,81 @@ export function runFailureOf(
     default:
       return assertNever(reason, "run failure reason");
   }
+}
+
+/** The figures of a budget stop, from the engine's cause or from its error text. */
+interface BudgetStop {
+  readonly per: "run" | "month";
+  readonly currency: string;
+  readonly budget: number;
+  readonly spent: number;
+}
+
+/** Which budget the engine's cause codes name. */
+const budgetCodes: Readonly<Record<string, BudgetStop["per"]>> = {
+  "budget.run": "run",
+  "budget.month": "month",
+};
+
+/**
+ * `budget` with the figures of the engine's cause (requirement
+ * `engine.budget-stops`); a log from before the engine wrote the cause gets
+ * them from its error text instead. A monthly budget resets on the first of
+ * the next month (UTC).
+ */
+function budgetFailure(failed: RunFailedEvent): RunFailure {
+  const stop = budgetStopOfCause(failed.cause) ?? budgetStopOfError(failed.error);
+  if (stop === undefined) {
+    return generalFailure(failed);
+  }
+  const { currency, budget, spent } = stop;
+  return stop.per === "run"
+    ? { reason: "budget", per: "run", budget, spent, currency }
+    : { reason: "budget", per: "month", budget, currency, resetsOn: nextMonthStart(failed.at) };
+}
+
+/** What a `budget.run` or `budget.month` cause says, or `undefined` for any other cause or one that is missing a figure. */
+function budgetStopOfCause(cause: RunFailureCause | undefined): BudgetStop | undefined {
+  const per = budgetCodes[cause?.code ?? ""];
+  const { limit, spent, currency } = cause?.detail ?? {};
+  if (per === undefined || limit === undefined || spent === undefined || currency === undefined) {
+    return undefined;
+  }
+  const budget = Number(limit);
+  const spentAmount = Number(spent);
+  if (!Number.isFinite(budget) || !Number.isFinite(spentAmount)) {
+    return undefined;
+  }
+  return { per, currency, budget, spent: spentAmount };
+}
+
+/**
+ * The engine's budget stop, at the end of its error, since a parent run wraps
+ * its child's: "Run budget reached: 5.08 of 5.00 EUR spent." or "Monthly
+ * budget reached: 50.10 of 50.00 EUR spent this month."
+ */
+const budgetStopText =
+  /(Run|Monthly) budget reached: (\d+(?:\.\d+)?) of (\d+(?:\.\d+)?) ([A-Z]{3}) spent(?: this month)?\.$/;
+
+/** The figures of the engine's error text, for a log written before it had the cause. */
+function budgetStopOfError(error: string): BudgetStop | undefined {
+  const [, per, spent, limit, currency] = budgetStopText.exec(error) ?? [];
+  if (per === undefined || spent === undefined || limit === undefined || currency === undefined) {
+    return undefined;
+  }
+  return {
+    per: per === "Run" ? "run" : "month",
+    currency,
+    budget: Number(limit),
+    spent: Number(spent),
+  };
+}
+
+/** The first of the month after `at` (UTC), as "1 Dec". */
+function nextMonthStart(at: string): string {
+  const stopped = new Date(at);
+  const next = new Date(Date.UTC(stopped.getUTCFullYear(), stopped.getUTCMonth() + 1, 1));
+  return next.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 }
 
 /** `model-out-of-memory` at the model the run called last. */

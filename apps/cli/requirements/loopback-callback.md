@@ -1,7 +1,7 @@
 # cli.loopback-callback
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-717 (D1); Google setup flow design 3.5
 
 The sign-in's local server shall listen on `127.0.0.1` only, on a port the system picks. It shall answer `GET` on `/google/callback` only, and any other path or method with 404. A request on the callback path without `state` shall be answered with 400 and ignored. Waiting shall go on until a request arrives whose `state` is the pending sign-in's, so a request with another `state` cannot end the sign-in. A request with another `state`, or one that arrives when nothing waits, shall be answered with a neutral page that does not say the sign-in worked, and shall not be kept. The request with the pending sign-in's `state` shall be kept as the answer, and the server shall show the person a page that holds nothing from the request, sent with `cache-control: no-store` and `referrer-policy: no-referrer`. Waiting for the answer shall end when the signal ends. The server shall never print or log a query.

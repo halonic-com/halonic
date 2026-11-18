@@ -1,7 +1,7 @@
 # code-editor.tab-key
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-329 files flow 3.3 (new, accessibility); UX checklist part 2 (F-D12, F-D13); component specs 24.7; HAL-1293
 
 The code editor shall make the Tab key indent with spaces (never a tab character) and shall never trap a keyboard user: pressing Esc and then Tab, or pressing Ctrl M, lets Tab move focus out of the editor, and the editor tells its owner when Tab starts or stops moving focus.

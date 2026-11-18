@@ -76,7 +76,7 @@ function start(made: CreatedSample, remembered: readonly RememberedWorkspace[] =
       sample: { create },
     });
   });
-  return { shell, create };
+  return { shell, create, switcher };
 }
 
 function chip(): HTMLButtonElement | undefined {
@@ -106,6 +106,20 @@ verifies("workspace.try-sample", () => {
       element.querySelector('button[aria-label^="Workspace: "]')?.getAttribute("aria-label"),
     ).toBe("Workspace: Acme sample");
     expect(shell.toasts.list().map((toast) => toast.title)).toEqual(["Created Acme sample"]);
+  });
+
+  it("takes the Created toast away when the workspace is closed", async () => {
+    const { shell, switcher } = start({
+      kind: "created",
+      folder: "/docs/Acme sample",
+      name: "Acme sample",
+      trust: { kind: "trusted" },
+    });
+    await act(async () => trySample()?.click());
+
+    await act(async () => switcher.closeShown());
+
+    expect(shell.toasts.list()).toEqual([]);
   });
 
   it("says why on Welcome and opens nothing when it can't", async () => {

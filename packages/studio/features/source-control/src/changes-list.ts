@@ -13,6 +13,7 @@ import {
   type UndoOutcome,
   type UpdatesOutcome,
 } from "./changes-list-state.ts";
+import { MergeSteps } from "./changes-merge.ts";
 import {
   discardWords,
   pageWords,
@@ -22,6 +23,7 @@ import {
   versionWords,
 } from "./changes-words.ts";
 import { describeChanges } from "./describe-changes.ts";
+import { discardWithCopy } from "./discard-with-copy.ts";
 import { isIdentityComplete } from "./identity.ts";
 import { type IdentityOutcome, saveIdentity } from "./identity-save.ts";
 import { loadFailureReason } from "./load-failure.ts";
@@ -33,6 +35,7 @@ export type {
   ChangesListState,
   DiscardOutcome,
   HistoryState,
+  MergeOutcome,
   UndoOutcome,
   UpdatesOutcome,
 } from "./changes-list-state.ts";
@@ -58,6 +61,9 @@ export class ChangesList {
     identity: undefined,
     hasRemote: false,
     gettingUpdates: false,
+    merge: undefined,
+    choosing: false,
+    mergeBusy: false,
     version: undefined,
     history: { versions: [], more: false, loaded: false, error: undefined },
   };
@@ -66,9 +72,18 @@ export class ChangesList {
   #reads = 0;
   #historyReads = 0;
   #disposed = false;
+  /** The steps of a merge of both sides: choose per item, Undo, Finish and Cancel. */
+  readonly merge: MergeSteps;
 
   constructor(source: ChangesSource) {
     this.source = source;
+    this.merge = new MergeSteps({
+      source,
+      state: () => this.#state,
+      disposed: () => this.#disposed,
+      set: (state) => this.#set(state),
+      refresh: () => this.refresh(),
+    });
     this.#stopWatching = source.subscribe(() => void this.refresh());
     void this.refresh();
   }
@@ -94,6 +109,9 @@ export class ChangesList {
     return { mark: "count", value: count, spoken: pageWords.spokenCount(count) };
   }
 
+  /** The merge left open: none, or the folder has no history, is `null`. */
+  #readMerge = async (ready: boolean) => (ready ? await this.source.readMerge() : null);
+
   /**
    * Reads the changes again. When reads overlap, only the last one started counts, so an older
    * answer never overwrites a newer one. Once the workspace has closed it does nothing.
@@ -108,8 +126,18 @@ export class ChangesList {
       const hasRemote = answer.kind === "ready" && (await this.source.hasRemote());
       if (read !== this.#reads || this.#disposed) return;
       const identity = answer.kind === "ready" ? await this.#identity() : undefined;
+      const merge = await this.#readMerge(answer.kind === "ready");
       if (read !== this.#reads || this.#disposed) return;
-      this.#set({ ...this.#state, read: answer, files, hasRemote, identity, error: undefined });
+      this.#set({
+        ...this.#state,
+        read: answer,
+        files,
+        hasRemote,
+        identity,
+        merge: merge ?? undefined,
+        choosing: merge !== null && this.#state.choosing,
+        error: undefined,
+      });
       if (answer.kind === "ready") await this.#readHistory(this.#state.history.versions.length);
     } catch (error) {
       if (read !== this.#reads || this.#disposed) return;
@@ -189,9 +217,13 @@ export class ChangesList {
   /**
    * Puts a whole file back as the last version has it: a changed or deleted file gets its text
    * back, a new file is deleted. A copy of what is thrown away is kept first, and the outcome's
-   * `undo` brings it all back.
+   * `undo` brings it all back. When the copy can't be kept nothing is discarded and the outcome is
+   * `noCopy`, unless `withoutCopy` says to go on without it.
    */
-  async discardFile(file: ChangedFile): Promise<DiscardOutcome> {
+  async discardFile(
+    file: ChangedFile,
+    options: { readonly withoutCopy?: boolean } = {},
+  ): Promise<DiscardOutcome> {
     const status = this.#discardStatus(file);
     if (typeof status !== "string") return { kind: "failed", reason: status.reason };
     const { texts } = file;
@@ -199,24 +231,30 @@ export class ChangesList {
     const { path } = file;
     const { before, after } = texts;
     if (status === "untracked" && after !== null) {
-      return this.#discard(
+      return discardWithCopy(
+        this.source,
         [{ path, text: after }],
         () => this.#remove(path, after),
         () => this.#replace(path, after, null),
+        options,
       );
     }
     if (status === "modified" && before !== null && after !== null) {
-      return this.#discard(
+      return discardWithCopy(
+        this.source,
         [{ path, text: after }],
         () => this.#replace(path, before, after),
         () => this.#replace(path, after, before),
+        options,
       );
     }
     if (status === "deleted" && before !== null && after === null) {
-      return this.#discard(
+      return discardWithCopy(
+        this.source,
         [],
         () => this.#replace(path, before, null),
         () => this.#remove(path, before),
+        options,
       );
     }
     return { kind: "failed", reason: discardWords.cantDiscard };
@@ -241,7 +279,8 @@ export class ChangesList {
       return { kind: "failed", reason: discardWords.cantDiscard };
     }
     const { path } = file;
-    return this.#discard(
+    return discardWithCopy(
+      this.source,
       [{ path, text: after }],
       () => this.#replace(path, text, after),
       () => this.#replace(path, after, text),
@@ -350,26 +389,6 @@ export class ChangesList {
   }
 
   /**
-   * Keeps a copy of `thrown`, then runs the discard. Nothing is discarded when the copy can't be
-   * kept. `undo` is what the toast's Undo runs.
-   */
-  async #discard(
-    thrown: readonly KeptFile[],
-    run: () => Promise<string | undefined>,
-    undo: () => Promise<string | undefined>,
-  ): Promise<DiscardOutcome> {
-    if (thrown.length > 0) {
-      try {
-        await this.source.keepCopy(thrown);
-      } catch {
-        return { kind: "failed", reason: discardWords.noCopy };
-      }
-    }
-    const reason = await run();
-    return reason === undefined ? { kind: "undone", undo } : { kind: "failed", reason };
-  }
-
-  /**
    * How git has the file's change: its status, or why it can't be discarded here. Git's index is
    * not Halonic's: a file added to a version by another program is left to that program.
    */
@@ -409,15 +428,25 @@ export class ChangesList {
     }
     this.#set({ ...this.#state, gettingUpdates: true });
     try {
-      const outcome = await this.source.getUpdates();
+      let outcome: UpdatesOutcome = await this.source.getUpdates();
+      if (outcome.kind === "both-moved") {
+        const start = await this.source.startMerge();
+        // Only when both sides moved is it chosen item by item; if that changed, the answer stays.
+        if (start.kind === "started") outcome = { kind: "choosing" };
+      }
       if (this.#disposed) return outcome;
-      this.#set({ ...this.#state, gettingUpdates: false });
-      if (outcome.kind === "got") await this.refresh();
+      this.#set({ ...this.#state, gettingUpdates: false, choosing: outcome.kind === "choosing" });
+      if (outcome.kind === "got" || outcome.kind === "choosing") await this.refresh();
       return outcome;
     } catch (error) {
       if (!this.#disposed) this.#set({ ...this.#state, gettingUpdates: false });
       return { kind: "failed", reason: loadFailureReason(error) };
     }
+  }
+
+  /** Whether a merge of both sides' versions is started: what waits for it is unavailable. */
+  get merging(): boolean {
+    return this.#state.merge !== undefined;
   }
 
   /**

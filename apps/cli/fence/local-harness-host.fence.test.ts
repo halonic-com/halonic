@@ -6,7 +6,7 @@ import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { testGit } from "@halonicjs/adapter-git/testing";
 import { WorkflowRuns } from "@halonicjs/app";
-import type { Harness, SandboxSession } from "@halonicjs/ports";
+import { type Harness, noKeyOrigins, type SandboxSession } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -165,6 +165,7 @@ describe("a harness run in the real srt sandbox", () => {
       const root = profileFolder(profile).root;
       const seen: { attempts: Attempts | null } = { attempts: null };
       const engine = await openLocalEngine({
+        keyOrigins: noKeyOrigins,
         workspace: await loadWorkspace(new FolderDefinitionStore(acme, "./acme")),
         workspaceRoot: acme,
         trusted: true,

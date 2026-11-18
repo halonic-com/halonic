@@ -1,6 +1,7 @@
 import { Button, useToastStore } from "@halonicjs/studio-kit";
+import { useId } from "react";
 import type { ChangesList } from "../changes-list.ts";
-import { updatesWords } from "../changes-words.ts";
+import { mergeWords, updatesWords } from "../changes-words.ts";
 
 /**
  * Get updates (checklist part 2, 2.8): brings in the shared copy's newer versions when this
@@ -15,10 +16,13 @@ export function GetUpdates({
   readonly phone?: boolean;
 }) {
   const toasts = useToastStore();
+  const reasonId = useId();
   const getUpdates = async (): Promise<void> => {
     const outcome = await list.getUpdates();
     if (outcome.kind === "got") {
       toasts?.show({ tone: "success", title: updatesWords.got(outcome.count) });
+    } else if (outcome.kind === "choosing") {
+      // The choices open on the page; nothing to say here.
     } else if (outcome.kind === "up-to-date") {
       toasts?.show({ tone: "success", title: updatesWords.upToDate });
     } else {
@@ -31,15 +35,24 @@ export function GetUpdates({
       });
     }
   };
+  const merging = list.merging;
   return (
-    <Button
-      variant="secondary"
-      size={phone ? "touch" : "sm"}
-      busy={list.state.gettingUpdates}
-      busyLabel={updatesWords.gettingUpdates}
-      onClick={() => void getUpdates()}
-    >
-      {updatesWords.getUpdates}
-    </Button>
+    <>
+      <Button
+        variant="secondary"
+        size={phone ? "touch" : "sm"}
+        busy={list.state.gettingUpdates}
+        busyLabel={updatesWords.gettingUpdates}
+        unavailable={merging ? { reason: reasonId } : undefined}
+        onClick={() => void getUpdates()}
+      >
+        {updatesWords.getUpdates}
+      </Button>
+      {merging ? (
+        <span id={reasonId} className="text-small text-fg-muted">
+          {mergeWords.finishFirst}
+        </span>
+      ) : null}
+    </>
   );
 }

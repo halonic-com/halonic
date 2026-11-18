@@ -6,6 +6,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { filesFeature } from "../feature.ts";
 import { fileItem } from "../file-item.ts";
 import type { CompareChoice, FileCompare, FilesHost, OutsideChange } from "../files-host.ts";
+import { kinded } from "../test-support/kinded.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { FileView } from "./file-view.tsx";
 
@@ -197,7 +198,7 @@ verifies("files.ui.outside-strip", () => {
 
   it("keeps Compare open and says why when a choice can't be saved", async () => {
     const { page, settle } = fixture("changed", { combined: "both" });
-    settle.mockRejectedValueOnce(new Error("the texts changed again"));
+    settle.mockRejectedValueOnce(kinded("conflict", "the texts changed again"));
     await flush();
     await press(page, "Compare");
     await press(page, "Combine both");
@@ -218,7 +219,7 @@ verifies("files.ui.outside-strip", () => {
 
   it("shows the reason in Compare when a choice made in the strip can't be saved", async () => {
     const { page, settle } = fixture("deleted");
-    settle.mockRejectedValueOnce(new Error("the folder is read-only"));
+    settle.mockRejectedValueOnce(kinded("unavailable", "the folder is read-only"));
     await flush();
     await press(page, "Keep mine");
     expect(page.textContent).toContain("the folder is read-only");

@@ -1,12 +1,14 @@
 import type { TauriFileShell, WorkspaceFolderProbe } from "@halonicjs/adapter-fs-tauri";
 import { TauriDefinitionStore, workspaceFolderCommands } from "@halonicjs/adapter-fs-tauri";
 import type { DefinitionStore } from "@halonicjs/ports";
+import { type ErrorKind, KindedError } from "@halonicjs/std";
 import {
   type CreatedTrust,
   type FolderState,
   type NewWorkspaceHost,
   NewWorkspaceRefusal,
 } from "@halonicjs/studio-feature-workspace";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import { createWorkspace } from "@halonicjs/workspace";
 
 /** The shell's commands for a new workspace's folder (`create_workspace_folder`, its two helpers, and the probe and open of a folder that is there). */
@@ -54,7 +56,10 @@ export function newWorkspaceHostOf(parts: NewWorkspaceHostParts): NewWorkspaceHo
     defaultParent: async () => {
       const documents = await shell.invoke(commands.documents);
       if (typeof documents !== "string") {
-        throw new Error("This computer has no Documents folder; choose a folder.");
+        throw new KindedError(
+          "not_found",
+          "This computer has no Documents folder; choose a folder.",
+        );
       }
       return documents;
     },
@@ -164,7 +169,8 @@ async function openedFolder(
   try {
     const opened = await shell.invoke(commands.open, { parent, name });
     if (opened === null) return null;
-    if (typeof opened !== "string") throw new Error("the desktop shell gave no answer");
+    if (typeof opened !== "string")
+      throw new KindedError("unavailable", "the desktop shell gave no answer");
     return opened;
   } catch (reason) {
     throw refusalOf(reason);
@@ -179,21 +185,45 @@ export async function madeFolder(
 ): Promise<string> {
   try {
     const made = await shell.invoke(commands.create, { parent, name });
-    if (typeof made !== "string") throw new Error("the desktop shell gave no answer");
+    if (typeof made !== "string")
+      throw new KindedError("unavailable", "the desktop shell gave no answer");
     return made;
   } catch (reason) {
     throw refusalOf(reason);
   }
 }
 
-/** The refusal the dialog shows: a name problem goes under Name, the rest under Folder. */
+/** The kind of each refusal of the shell's folder commands that has words of its own. */
+const refusalKinds: Readonly<Record<string, ErrorKind>> = {
+  exists: "conflict",
+  parent_not_chosen: "denied",
+  parent_private: "denied",
+  folder_missing: "not_found",
+  folder_changed: "conflict",
+  busy: "conflict",
+  name_invalid: "invalid_input",
+};
+
+/**
+ * The refusal the dialog shows: a name problem goes under Name, the rest under Folder. A refusal
+ * without words of its own, such as an `io` error with the system's text, is not kinded, so the
+ * dialog gives the generic sentence and the shell's text stays in the cause, for the log.
+ */
 function refusalOf(reason: unknown): Error {
+  if (reason instanceof KindedError && reason.kind === "unavailable") return reason;
   const kind =
     typeof reason === "object" && reason !== null ? (reason as { kind?: unknown }).kind : undefined;
-  return new NewWorkspaceRefusal(reasonOf(reason), kind === "name_invalid" ? "name" : "folder");
+  const known =
+    typeof kind === "string" && Object.hasOwn(refusalKinds, kind) ? refusalKinds[kind] : undefined;
+  if (known === undefined) return new Error(reasonOf(reason), { cause: reason });
+  return new NewWorkspaceRefusal(
+    reasonOf(reason),
+    kind === "name_invalid" ? "name" : "folder",
+    known,
+  );
 }
 
-/** The words for a refusal of `create_workspace_folder`; any other refusal is shown as given. */
+/** The words for a refusal of `create_workspace_folder`; any other refusal keeps its own text, for the log. */
 export function reasonOf(reason: unknown): string {
   if (reason instanceof Error) return reason.message;
   if (typeof reason !== "object" || reason === null) return "the desktop shell refused";
@@ -218,7 +248,8 @@ export function reasonOf(reason: unknown): string {
     case "name_invalid":
       return why === "empty" ? "the name is empty" : "that isn't a name a folder can have";
     default:
-      // Any other refusal is shown as the shell gave it, never guessed to be a permission problem.
+      // Any other refusal keeps the shell's text, never guessed to be a permission problem; it is
+      // not kinded, so it goes to the log and the dialog shows the generic sentence.
       return typeof message === "string" && message !== "" ? message : "the desktop shell refused";
   }
 }
@@ -234,6 +265,6 @@ export async function trustOf(
     await parts.trust(folder);
     return { kind: "trusted" };
   } catch (error) {
-    return { kind: "not-saved", reason: error instanceof Error ? error.message : String(error) };
+    return { kind: "not-saved", reason: errorReasonFor(error) };
   }
 }

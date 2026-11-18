@@ -27,7 +27,9 @@
 # token is used, and GitHub starts no workflow for what that token makes:
 # CI does not run on the pull request until a person closes and reopens
 # it, and the tag does not start the release workflow. Only the steps that
-# push or call gh get a token.
+# push or call gh get a token. The secret lives in the environment
+# `release-bot`, which only `main` may use (deployment branch rule), so a
+# manual run from another branch is refused (HAL-11232).
 
 name: Version packages
 
@@ -48,6 +50,7 @@ jobs:
     if: github.repository == 'halonic-com/halonic'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    environment: release-bot
     permissions:
       contents: write
       pull-requests: write

@@ -13,18 +13,25 @@
 // scheduler delivers their timers, and those missed while nothing ran as
 // soon as it opens (docs/specs/workflow-semantics.md, "Timers").
 
+import { startsAProgram } from "@halonicjs/adapter-workspace-models";
 import { workspaceRoutineScheduler } from "@halonicjs/app";
 import type { RoutineScheduler } from "@halonicjs/app/routines";
 import type { RunStore } from "@halonicjs/ports";
 import { DEFAULT_TICK_POLICY, type PlacedRoutine } from "@halonicjs/routines";
-import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import { KindedError } from "@halonicjs/std";
+import { filesOf, type LoadedFileOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import type { CommandContext, CommandInput, StoppedResult } from "../../command.ts";
 import type { RoutineEngine } from "../../local-engine-host.ts";
+import { plainText } from "../../messages/phrase.ts";
 import { routinesMessages } from "../../messages/routines.ts";
 import { runMessages } from "../../messages/run.ts";
 import { printable } from "../../output/printable.ts";
-import type { SandboxGateRun, UnsandboxedAgent } from "../../sandbox-gate.ts";
-import { unsandboxedWarning } from "../../sandbox-gate.ts";
+import {
+  programAgentsOf,
+  type SandboxGateRun,
+  type UnsandboxedAgent,
+  unsandboxedWarning,
+} from "../../sandbox-gate.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import {
   checkEngineRuns,
@@ -80,9 +87,11 @@ async function watchVersions(
 ): Promise<StoppedResult> {
   const workspace = versions.latest();
   const typedDir = givenDir(input, dir);
-  const trust = await checkRunTrust(dir, workspace, setup.trust(), typedDir);
   // The routines as the last tick listed them, for the names the lines give.
   let routines: readonly PlacedRoutine[] = await versions.routines.listLoaded();
+  // Before trust, as `run` does: a routine this engine can't start has nothing to trust (HAL-6580).
+  await refuseHarnessRoutines(setup, dir, workspace, routines);
+  const trust = await checkRunTrust(dir, workspace, setup.trust(), typedDir);
   const listed = () => routines;
   const report = watchReport(context, () => setup.clock(), listed);
   const warnings = unsandboxedWarnings(context);
@@ -167,8 +176,11 @@ function laterVersionChecks(
   const ending = runMessages.nothingRan();
   return {
     trust: async (workspace) => await checkRunTrust(dir, workspace, setup.trust(), typedDir),
+    harnessAgent: (agent) => refuseHarnessAgent(agent),
     sandbox: async (workspace, run) => {
+      // The sandbox first, as `run` checks it, then the harness it can't start (HAL-5219).
       warnings.print(await checkEngineRuns(setup, { dir, workspace, runs: [run], ending }));
+      refuseHarnessAgent(programAgentsOf(workspace, run)[0]);
     },
   };
 }
@@ -225,8 +237,8 @@ function routineScheduler(
 /**
  * The workflows the routines start, for the sandbox check: each enabled
  * routine's workflow in its hub, once. A routine that runs one agent has no
- * workflow to check; the local engine has no harnesses in 0.1, so such an
- * agent starts no program.
+ * workflow to check; {@link refuseHarnessRoutines} refuses it when that agent
+ * is in a harness, and the local engine starts no other program for it.
  */
 function workflowsOf(routines: readonly PlacedRoutine[]): SandboxGateRun[] {
   const runs = new Map<string, SandboxGateRun>();
@@ -236,6 +248,60 @@ function workflowsOf(routines: readonly PlacedRoutine[]): SandboxGateRun[] {
     runs.set(`${hubId}/${routine.run.workflow}`, { hubId, workflowId: routine.run.workflow });
   }
   return [...runs.values()];
+}
+
+/**
+ * Refuses a watch whose enabled routine runs an agent in a harness, before
+ * anything starts, as `run` refuses such a workflow: until HAL-6477 lets a
+ * person review what a harness run changed, its changes would sit as a
+ * proposal nobody can review from the CLI. A routine that runs a workflow is
+ * checked for the sandbox first, so a computer that can't start it says so
+ * first (HAL-5219). The engine isn't opened.
+ *
+ * @throws SandboxRefusedError when such a workflow's agent needs the sandbox and it can't start here (exit 9)
+ * @throws KindedError `unavailable` when an enabled routine's agent, or an agent of its workflow, is in a harness
+ */
+async function refuseHarnessRoutines(
+  setup: RunSetup,
+  dir: OpenWorkspaceDir,
+  workspace: LoadedWorkspace,
+  routines: readonly PlacedRoutine[],
+): Promise<void> {
+  const ending = runMessages.nothingRan();
+  for (const placed of routines) {
+    if (!placed.routine.enabled) continue;
+    const hubId = placed.routine.run.hub ?? placed.hub;
+    if (hubId === null) continue;
+    const { run } = placed.routine;
+    if ("agent" in run) {
+      const agent = filesOf(workspace, "agent").find(
+        (each) => each.hub === hubId && each.value.id === run.agent,
+      );
+      if (agent !== undefined && startsAProgram(agent.value.harness)) refuseHarnessAgent(agent);
+      continue;
+    }
+    const workflow = { hubId, workflowId: run.workflow };
+    const [agent] = programAgentsOf(workspace, workflow);
+    if (agent === undefined) continue;
+    await checkEngineRuns(setup, { dir, workspace, runs: [workflow], ending });
+    refuseHarnessAgent(agent);
+  }
+}
+
+/**
+ * Throws `run`'s line for an agent in a harness; nothing when there is none.
+ *
+ * @throws KindedError `unavailable` when `agent` is given
+ */
+function refuseHarnessAgent(agent: LoadedFileOf<"agent"> | undefined): void {
+  if (agent === undefined) return;
+  const reason = runMessages.harnessNotAvailable(
+    printable(agent.value.name),
+    printable(agent.value.harness ?? ""),
+  );
+  throw new KindedError("unavailable", plainText(reason.phrase), {
+    fix: plainText(routinesMessages.harnessNotAvailableFix().phrase),
+  });
 }
 
 function isOnAClock(routine: PlacedRoutine["routine"]): boolean {

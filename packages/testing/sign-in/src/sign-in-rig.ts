@@ -1,5 +1,11 @@
 import type { AddressCheckingHttpClient } from "@halonicjs/adapter-integration-kit";
-import { type LoadedIntegration, loadIntegration } from "@halonicjs/adapter-integration-kit";
+import {
+  choiceSettings,
+  chosenSecrets,
+  type LoadedIntegration,
+  loadIntegration,
+  type WorkspaceChoices,
+} from "@halonicjs/adapter-integration-kit";
 import { type IntegrationSheet, parseIntegrationSheet } from "@halonicjs/format/integration";
 import {
   createIntegrationSignIns,
@@ -7,7 +13,6 @@ import {
   type IntegrationSignIns,
   type SignInFlow,
   type SignInOutcome,
-  type SignInSource,
 } from "@halonicjs/host-integration-sign-in";
 import { createSignInGrants, type SignInGrants } from "@halonicjs/oauth-sign-in";
 import type {
@@ -26,6 +31,8 @@ import {
 } from "./fake-oauth-server.ts";
 
 const loopbackPort = 4711;
+/** What the workspace calls the client secret the sheet calls `clientSecretName`, so a translation that is missing shows. */
+const workspaceSecretName = "workspace-example-client";
 
 /** What a test changes about the rig. */
 export interface SignInRigOptions {
@@ -95,9 +102,11 @@ export function createSignInRig(options: SignInRigOptions = {}): SignInRig {
   if (!hasClientSecret) removeClientSecret(sheetRecord);
   setSignInFields(sheetRecord, options.signIn ?? {});
   options.editSheet?.(sheetRecord);
-  let source: SignInSource = {
-    sheet: parseSheet(sheetRecord),
+  let sheet = parseSheet(sheetRecord);
+  // The one place the settings and the secret picks live: the loader and the host both read them.
+  let choices: WorkspaceChoices = {
     settings: options.settings ?? { clientId: server.clientId },
+    secretNames: hasClientSecret ? { [clientSecretName]: workspaceSecretName } : {},
   };
 
   const store = new Map<string, string>();
@@ -109,16 +118,17 @@ export function createSignInRig(options: SignInRigOptions = {}): SignInRig {
   const grants = createSignInGrants(tokenStore, webDigest);
   const secrets = new Map<string, string>();
   if (hasClientSecret && server.clientSecret !== undefined) {
-    secrets.set(clientSecretName, server.clientSecret);
+    secrets.set(workspaceSecretName, server.clientSecret);
   }
-  const secretPort: Secrets = { get: async (name) => secrets.get(name) ?? null };
+  const workspaceSecrets: Secrets = { get: async (name) => secrets.get(name) ?? null };
+  const secretPort = chosenSecrets(workspaceSecrets, choices);
   const requestSignal = () => new AbortController().signal;
   const outcomes: SignInOutcome[] = [];
   const signInHttp = options.signInHttp?.(server.http) ?? server.http;
 
   const signIns = createIntegrationSignIns({
     integration: "example",
-    current: async () => source,
+    current: async () => ({ sheet, settings: choiceSettings(choices) }),
     grants,
     http: signInHttp,
     secrets: secretPort,
@@ -137,15 +147,7 @@ export function createSignInRig(options: SignInRigOptions = {}): SignInRig {
     requestSignal,
     onOutcome: (outcome) => void outcomes.push(outcome),
   });
-  const loaded = loadExample(
-    sheetRecord,
-    source.settings,
-    server,
-    secretPort,
-    tokenStore,
-    signIns,
-    hasClientSecret,
-  );
+  const loaded = loadExample(sheetRecord, choices, server, workspaceSecrets, tokenStore, signIns);
 
   return {
     server,
@@ -161,13 +163,13 @@ export function createSignInRig(options: SignInRigOptions = {}): SignInRig {
     },
     editSheet(edit) {
       edit(sheetRecord);
-      source = { ...source, sheet: parseSheet(sheetRecord) };
+      sheet = parseSheet(sheetRecord);
     },
     editSignIn(fields) {
       this.editSheet((sheet) => setSignInFields(sheet, fields));
     },
     changeSettings(settings) {
-      source = { ...source, settings };
+      choices = { ...choices, settings };
     },
     async signIn(choice) {
       const started = await flow.start(signInName, loopbackPort);
@@ -187,12 +189,11 @@ export function createSignInRig(options: SignInRigOptions = {}): SignInRig {
 /** The kit's real loader, with the server as its transport. */
 function loadExample(
   sheet: Record<string, unknown>,
-  settings: Readonly<Record<string, unknown>>,
+  choices: WorkspaceChoices,
   server: FakeOAuthServer,
   secrets: Secrets,
   tokens: TokenStore,
   signIns: IntegrationSignIns,
-  hasClientSecret: boolean,
 ): LoadedIntegration {
   const result = loadIntegration({
     source: {
@@ -205,10 +206,7 @@ function loadExample(
         connect: () => ({ callTool: async () => "", close: async () => {} }),
       },
     },
-    choices: {
-      settings,
-      secretNames: hasClientSecret ? { [clientSecretName]: clientSecretName } : {},
-    },
+    choices,
     // The server answers without a network, so there is no address to check.
     transport: server.http as AddressCheckingHttpClient,
     secrets,

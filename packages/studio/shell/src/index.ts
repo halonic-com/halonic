@@ -59,6 +59,7 @@ export {
   type JustUpdated,
 } from "./engine/engine-failed-window.tsx";
 export { EngineLine, type EngineLineProps } from "./engine/engine-line.tsx";
+export { EngineNotAnswering } from "./engine/engine-not-answering.ts";
 export {
   type EngineRestartOptions,
   stoppedRunsText,
@@ -134,6 +135,12 @@ export {
   type OverviewPageProps,
   type OverviewWords,
 } from "./overview/overview-page.tsx";
+export {
+  type FocusTarget,
+  focusRow,
+  targetAfterRemoving,
+  visibleRowIds,
+} from "./overview/row-focus.ts";
 export { PageBackLinkSlot } from "./page/back-link-slot.tsx";
 export { copyDetails, useCopyDetails } from "./page/copy-details.ts";
 export { ItemGone, type ItemGoneProps } from "./page/item-gone.tsx";
@@ -378,7 +385,7 @@ export {
   type ServiceTarget,
 } from "./service-catalog.ts";
 export { type ServiceKey, serviceKey } from "./service-key.ts";
-export { focusSectionHeading } from "./settings/section-heading.ts";
+export { focusSectionHeading, sectionHeading } from "./settings/section-heading.ts";
 export {
   SettingsDialog,
   type SettingsDialogProps,
@@ -435,6 +442,7 @@ export {
   cantOpenProblem,
   cantOpenWords,
   cantReopenProblem,
+  engineWaitMs,
   type WelcomeOpenProblem,
 } from "./welcome/cant-open.ts";
 export {

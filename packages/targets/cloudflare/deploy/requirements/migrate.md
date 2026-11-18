@@ -1,7 +1,7 @@
 # deploy.migrate
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6704, HAL-6804; build plan 3a (HAL-198); multi-cloud ADR 5.6
 
 The deploy shall apply each migration the database hasn't applied yet, oldest first, and record each one in the same D1 batch as its statements, so a migration and its record happen together or not at all. It shall stop with a typed error, before changing anything, when the database holds a migration this version doesn't know. In `plan` mode it shall list the migrations it would apply and make no change.

@@ -1,7 +1,7 @@
 # files.ui.large-or-not-text
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-329 files flow 4.5 (limit 1,000,000 characters); HAL-10534, HAL-11169; HAL-11383
 
 The file tab shall open a file of more than 1,000,000 characters in the code editor, read-only, under the line "This file is large, so it opens read-only.", and send no edit to the workspace's files for it. When the first 8 KB of a file hold a zero byte, the tab shall say "This file can't be shown here." with the file's size, and show no editor.

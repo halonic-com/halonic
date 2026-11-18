@@ -4,7 +4,7 @@ import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
 import type { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import type { ProfileFolder } from "@halonicjs/profile";
-
+import { proxySetting } from "../proxy-setting.ts";
 import { hostPluginBackends, unavailablePluginBackends } from "./host-plugin-backends.ts";
 import { hostPluginMachine } from "./host-plugin-machine.ts";
 import { PluginTable } from "./plugin-table.ts";
@@ -27,7 +27,7 @@ export function hostPlugins(
   const context = {
     secrets: { get: async () => null },
     tokens: new MemoryTokenStore(),
-    http: createNodeHttpClient({ hostClass: () => "public" }),
+    http: createNodeHttpClient({ hostClass: () => "public", proxy: proxySetting }),
     trust: null,
   };
   const table = new PluginTable(hostPluginBackends(machine, context, logToError));

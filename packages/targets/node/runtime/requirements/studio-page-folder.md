@@ -1,7 +1,7 @@
 # runtime.studio-page-folder
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9489, decided on HAL-9482
 
 The Node runtime shall give the server the built Studio page from a folder on disk. A read shall answer the file's bytes, and `null` when the file doesn't exist, when the path names a folder, when the whole folder doesn't exist, and when the file's real path, with links resolved, lies outside the folder. It shall read nothing outside the folder, and a failure that isn't a missing file, such as a disk error, shall reach the server as a failure and not as a missing file.

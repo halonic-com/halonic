@@ -3,6 +3,7 @@ import { Button, OnTintContext } from "../button/button.tsx";
 import { AlertIcon } from "../icons/alert-icon.tsx";
 import { InfoIcon } from "../icons/info-icon.tsx";
 import { WarningIcon } from "../icons/warning-icon.tsx";
+import { Tooltip, type TooltipTriggerProps } from "../tooltip/tooltip.tsx";
 
 /**
  * `info` for a fact and maybe a next step (also the "neutral" notices). `warning` when part of
@@ -19,6 +20,11 @@ export interface CalloutAction {
   readonly busyLabel?: string;
   /** When it returns a promise, the button is busy until the promise settles. */
   readonly onClick: () => void | Promise<void>;
+  /**
+   * Where the action takes you when it leaves Studio: "Opens Google Cloud". The label then gets a
+   * ↗, the same words are its tooltip, and screen readers hear them after the label.
+   */
+  readonly opens?: string;
 }
 
 /** What a Callout with `announce="focus"` gives its screen. */
@@ -193,11 +199,34 @@ function CalloutButton({ action }: { readonly action: CalloutAction }) {
     return result.finally(() => setBusy(false));
   }
 
+  const button = (trigger: TooltipTriggerProps) => (
+    <Button
+      variant="ghost"
+      size="sm"
+      busy={busy}
+      busyLabel={action.busyLabel}
+      onClick={run}
+      {...trigger}
+    >
+      {action.label}
+      {action.opens === undefined ? null : (
+        <>
+          <span aria-hidden="true"> ↗</span>
+          <span className="sr-only">. {action.opens}</span>
+        </>
+      )}
+    </Button>
+  );
+
   return (
     <OnTintContext value={true}>
-      <Button variant="ghost" size="sm" busy={busy} busyLabel={action.busyLabel} onClick={run}>
-        {action.label}
-      </Button>
+      {action.opens === undefined ? (
+        button({})
+      ) : (
+        <Tooltip text={action.opens} isName>
+          {button}
+        </Tooltip>
+      )}
     </OnTintContext>
   );
 }

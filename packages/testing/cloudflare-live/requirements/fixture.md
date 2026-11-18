@@ -1,7 +1,7 @@
 # cloudflare-live.fixture
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9962 (for HAL-9955); build plan 3c (HAL-6706); multi-cloud ADR 5.9
 
 The live suite shall deploy its own Worker with one enabled webhook routine into the live test account, name every resource it makes with the run's `hlt-` prefix, and delete all of it when the suite ends or when a step of the deploy fails. The Worker's workers.dev host shall be the only host the Worker answers to. A fixture whose prefix doesn't start with `hlt-` shall be refused before anything is created.

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import { engineWords, limitedLookup } from "@halonicjs/studio-shell";
+import { KindedError } from "@halonicjs/std";
+import { EngineNotAnswering, engineWords, limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -155,18 +156,35 @@ verifies("workflows.list.rows-and-states", () => {
     const page = await show(<WorkflowsView host={{ ...host, list }} />);
 
     expect(page.textContent).toContain("Couldn't load workflows");
-    expect(page.textContent).toContain("The engine isn't answering. It may still be starting.");
+    expect(page.textContent).toContain("Halonic ran into a problem it can't explain yet.");
+    expect(buttonNamed(page, "Copy details")).toBeDefined();
+    expect(page.textContent).not.toContain("isn't answering");
     expect(page.textContent).not.toContain("The disk can't be read");
 
     await act(async () => buttonNamed(page, "Try again")?.click());
     expect(page.textContent).toContain("Mail triage");
   });
 
-  it("words the failure for the phone's host", async () => {
+  it("gives a kinded error's own reason, without Copy details", async () => {
     const { host } = memoryHost(hubs, workflows);
     const page = await show(
       <WorkflowsView
-        host={{ ...host, list: () => Promise.reject(new Error("x")) }}
+        host={{
+          ...host,
+          list: () => Promise.reject(new KindedError("not_found", "The workspace folder is gone.")),
+        }}
+      />,
+    );
+
+    expect(page.textContent).toContain("The workspace folder is gone.");
+    expect(buttonNamed(page, "Copy details")).toBeUndefined();
+  });
+
+  it("says the engine isn't answering, in the phone's words, only when the host says so", async () => {
+    const { host } = memoryHost(hubs, workflows);
+    const page = await show(
+      <WorkflowsView
+        host={{ ...host, list: () => Promise.reject(new EngineNotAnswering()) }}
         engine={engineWords.phone}
       />,
     );
@@ -206,11 +224,14 @@ verifies("workflows.list.rows-and-states", () => {
 
     expect(page.textContent).toContain("Mail triage");
     expect(page.textContent).not.toContain("Couldn't load workflows");
-    expect(page.textContent).toContain("The engine isn't answering. Showing what it said last.");
+    expect(page.textContent).toContain(
+      "Couldn't refresh workflows. Halonic ran into a problem it can't explain yet.",
+    );
+    expect(buttonNamed(page, "Copy details")).toBeDefined();
 
     failing = false;
     await act(async () => buttonNamed(page, "Try again")?.click());
-    expect(page.textContent).not.toContain("Showing what it said last");
+    expect(page.textContent).not.toContain("Couldn't refresh workflows");
     expect(page.textContent).toContain("Mail triage");
   });
 

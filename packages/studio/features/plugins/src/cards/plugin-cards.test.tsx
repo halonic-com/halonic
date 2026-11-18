@@ -195,13 +195,18 @@ verifies("plugins.plugin-cards", () => {
 
   it("has a ⋮ menu with Open plugin, and Hide on Home only where the card is on Home", () => {
     const { caller } = callerWithAnswers();
+    const menuItem = (view: HTMLElement, index: number) => {
+      const found = view.querySelectorAll<HTMLElement>('[role="menuitem"]')[index];
+      if (found === undefined) throw new Error(`No menu item ${index}`);
+      return found;
+    };
     const items = (view: HTMLElement) =>
       [...view.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent?.trim());
 
     const panel = showCard(caller);
     act(() => button(panel.view, "More actions for Today's weather").click());
     expect(items(panel.view)).toEqual(["Open plugin"]);
-    act(() => panel.view.querySelector<HTMLElement>('[role="menuitem"]')?.click());
+    act(() => menuItem(panel.view, 0).click());
     expect(panel.details).toHaveBeenCalledOnce();
     unmountAll();
 
@@ -209,7 +214,7 @@ verifies("plugins.plugin-cards", () => {
     const home = showCard(caller, "on", hide);
     act(() => button(home.view, "More actions for Today's weather").click());
     expect(items(home.view)).toEqual(["Open plugin", "Hide on Home"]);
-    act(() => home.view.querySelectorAll<HTMLElement>('[role="menuitem"]')[1]?.click());
+    act(() => menuItem(home.view, 1).click());
     expect(hide).toHaveBeenCalledOnce();
   });
 

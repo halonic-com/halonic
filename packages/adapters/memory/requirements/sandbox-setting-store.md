@@ -1,7 +1,7 @@
 # memory.sandbox-setting-store
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: `SandboxSettingStore` port v1; HAL-5392
 
 The memory sandbox setting store shall keep the choice as JSON text, so that every read gives a fresh copy. It shall refuse to save a choice that isn't exactly a valid one, and keep nothing then. For tests, `damage()` shall make the saved choice unreadable, after which `get` throws. `damage` without a saved choice shall throw and create nothing.

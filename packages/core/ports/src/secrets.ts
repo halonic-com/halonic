@@ -282,3 +282,36 @@ export function pluginSecrets(secrets: Secrets, pluginId: string): Secrets {
     },
   };
 }
+
+// The addresses a stored key may be sent to (HAL-11871, step B of HAL-11343). The key store
+// keeps them next to the key; the model resolver reads them on every call.
+
+/** The most origins one key may be allowed to go to. A short list on purpose: each one is a place the key can leak to. */
+export const maxAllowedOrigins = 8;
+
+/**
+ * Where the keys in a {@link Secrets} store may be sent. A key has either a
+ * list of allowed origins, or none recorded (a key saved before origins
+ * existed), which the caller treats by the older rules.
+ *
+ * Names match as `secretKey` matches them. An origin is the scheme, host and
+ * port, as {@link originOf} writes it, and is compared as a whole string,
+ * never by prefix.
+ */
+export interface KeyOrigins {
+  /**
+   * The origins the key may go to, or `undefined` when none is recorded.
+   * Never an empty list, and never the key.
+   *
+   * @throws RangeError when the name breaks the secret name rule
+   */
+  allowedOrigins(name: string): Promise<readonly string[] | undefined>;
+}
+
+/**
+ * The key origins of a host that has no list yet, so every key has none
+ * recorded. A host passes it on purpose, to say its key store can't hold them.
+ */
+export const noKeyOrigins: KeyOrigins = {
+  allowedOrigins: async () => undefined,
+};

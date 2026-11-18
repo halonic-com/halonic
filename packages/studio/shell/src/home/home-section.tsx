@@ -15,7 +15,9 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { detailsOf } from "../errors/copy-details-words.ts";
 import { errorMessageFor } from "../errors/error-message.ts";
+import { useCopyDetails } from "../page/copy-details.ts";
 import { type HomeCardContribution, type HomeSection, homeSectionTitles } from "../points/home.ts";
 import type { Registered } from "../points/point-store.ts";
 import { loadView } from "../view.ts";
@@ -186,7 +188,9 @@ function SectionError({
 }) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const title = homeSectionErrors[section];
-  const reason = errorMessageFor(error, { title }).body.trim();
+  const message = errorMessageFor(error, { title });
+  const reason = message.body.trim();
+  const copyDetails = useCopyDetails();
   // The error isn't a live region: the page says the reason once for every section (a11y 1.5).
   // A kinded error without a message, or with only spaces, has no reason to say; reporting it
   // would only hide "Loading Home" while other sections still load, or say a lone full stop.
@@ -202,6 +206,13 @@ function SectionError({
         title={title}
         description={reason}
         action={{ label: "Try again", onClick: onRetry }}
+        {...(message.action?.id === "copy-details" && {
+          // An error Halonic can't explain: its own text goes only to the clipboard (F13).
+          link: {
+            label: message.action.label,
+            onClick: () => void copyDetails(detailsOf(title, error)),
+          },
+        })}
       />
       {focus ? <FocusOnShow target={titleRef} onFocused={onFocused} /> : null}
     </>

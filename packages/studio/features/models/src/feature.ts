@@ -1,5 +1,5 @@
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
-import { defineFeature } from "@halonicjs/studio-shell";
+import { defineFeature, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { ALIAS_KIND, ALIAS_KIND_LABEL, aliasTitle } from "./aliases/alias-text.ts";
 import { readModels } from "./aliases/read-models.ts";
 import {
@@ -11,6 +11,11 @@ import {
 import { PROVIDER_KIND, PROVIDER_KIND_LABEL, providerTabLabel } from "./providers/provider-text.ts";
 import { modelsSummary } from "./settings/settings-text.ts";
 import { hasProblems } from "./settings/use-problems.ts";
+
+/** The one line the Models section shows under its name, here and on the phone. */
+async function modelsLine(context: WorkspaceContext) {
+  return modelsSummary(await readModels(context.services.get(ModelsFilesService)));
+}
 
 /**
  * The Models feature: providers, aliases, API keys, budget, the "Prices and
@@ -34,9 +39,9 @@ export const modelsFeature = defineFeature({
       title: "Models",
       scope: "workspace",
       order: 10,
-      async summary(context) {
-        return modelsSummary(await readModels(context.services.get(ModelsFilesService)));
-      },
+      // The line under the name is the summary the phone's list shows too.
+      description: modelsLine,
+      summary: modelsLine,
       attention: hasProblems,
       view: "ModelsSettingsSection",
       load: () => import("./settings/models-settings-section.tsx"),

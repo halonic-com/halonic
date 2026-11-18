@@ -1,9 +1,9 @@
-import { type ComponentType, Suspense, useMemo, useRef } from "react";
-import { lazyView } from "../lazy-view.ts";
+import { type ComponentType, useMemo, useRef } from "react";
 import type { ItemRef } from "../points/item-kinds.ts";
 import type { ItemPageSectionContribution } from "../points/layout.ts";
 import type { Registered } from "../points/point-store.ts";
 import { ViewErrorBoundary } from "../view-error-boundary.tsx";
+import { LoadedView } from "../view-loading.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 
 /** What an item page section's view gets: the item and the context of the feature that added the section. */
@@ -57,12 +57,10 @@ function ItemPageSection({
   readonly item: ItemRef;
   readonly context: WorkspaceContext;
 }) {
-  const View = lazyView<ItemPageSectionViewProps>(section);
+  // The page's own heading names it, so the section's rows say nothing until "Still loading".
   return (
     <ViewErrorBoundary>
-      <Suspense fallback={null}>
-        <View item={item} context={context} />
-      </Suspense>
+      <LoadedView<ItemPageSectionViewProps> view={section} props={{ item, context }} />
     </ViewErrorBoundary>
   );
 }

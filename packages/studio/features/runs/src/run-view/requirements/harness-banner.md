@@ -1,7 +1,7 @@
 # runs.run-view.harness-banner
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1845 part 2b; microcopy 22 F21 (HAL-751, approved on HAL-2264 P1, 11 Nov); Julian's QA notes 1 and 3 on #3131 (HAL-10908)
 
 When a run failed with `harness-start-failed`, the run page's banner shall say which program didn't start, in the danger tone: "*Reporter* didn't start: Claude Code didn't start on this computer, or didn't answer within 60 seconds. Nothing ran in the step *Draft*.". The program comes from the log's last `harness.started` (Claude Code, Codex, or its id with a capital), the seconds from that event's `timeoutMs`, and the agent it names. The banner waits for the log, and until then the page's general banner shows. The engine's own error text shall never be on it.

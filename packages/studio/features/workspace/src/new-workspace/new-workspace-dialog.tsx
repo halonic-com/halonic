@@ -1,5 +1,7 @@
+import { type ErrorKind, KindedError } from "@halonicjs/std";
 import { Button, Dialog, Field, Input } from "@halonicjs/studio-kit";
-import { useEffect, useRef, useState } from "react";
+import { errorReasonFor } from "@halonicjs/studio-shell";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   ALREADY_WORKSPACE_NOTE,
   CHANGE_FOLDER,
@@ -22,14 +24,19 @@ import {
 
 /**
  * A refusal the host puts on the field it is about: `name` shows under **Name**, anything else
- * under **Folder**. The message is the reason, as the host gives it.
+ * under **Folder**. It is kinded, so its message is the reason the dialog shows; a name refusal is
+ * `invalid_input` and a folder one `denied` unless the host says otherwise. Any other error shows
+ * the generic sentence, never its own text (microcopy 1.4, F13).
  */
-export class NewWorkspaceRefusal extends Error {
+export class NewWorkspaceRefusal extends KindedError {
   readonly field: "name" | "folder";
 
-  constructor(message: string, field: "name" | "folder" = "folder") {
-    super(message);
-    this.name = "NewWorkspaceRefusal";
+  constructor(
+    message: string,
+    field: "name" | "folder" = "folder",
+    kind: ErrorKind = field === "name" ? "invalid_input" : "denied",
+  ) {
+    super(kind, message);
     this.field = field;
   }
 }
@@ -87,6 +94,8 @@ export interface NewWorkspaceDialogProps {
   /** **Open it**, when the folder is a workspace already. */
   readonly onOpen: (folder: string) => void;
   readonly onCancel: () => void;
+  /** Says a line to screen readers: the new mode when the folder holds files or a workspace. */
+  readonly announce?: (line: string) => void;
 }
 
 /**
@@ -98,7 +107,13 @@ export interface NewWorkspaceDialogProps {
  * @example
  * <NewWorkspaceDialog host={host} onCreated={openBeside} onOpen={open} onCancel={close} />
  */
-export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWorkspaceDialogProps) {
+export function NewWorkspaceDialog({
+  host,
+  onCreated,
+  onOpen,
+  onCancel,
+  announce,
+}: NewWorkspaceDialogProps) {
   const [name, setName] = useState("");
   const [parent, setParent] = useState<string | undefined>(undefined);
   const [state, setState] = useState<FolderState>("new");
@@ -109,8 +124,11 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
   const [busy, setBusy] = useState(false);
   const nameField = useRef<HTMLInputElement>(null);
   const changeButton = useRef<HTMLButtonElement>(null);
+  const folderLineId = useId();
   const trimmed = name.trim();
   const folder = parent === undefined ? undefined : host.folderOf(parent, trimmed);
+
+  const shownFolder = trimmed === "" ? parent : folder;
 
   useEffect(() => {
     let current = true;
@@ -138,6 +156,15 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
       current = false;
     };
   }, [host, folder, trimmed]);
+
+  // A folder that holds files or a workspace changes the note and the button; say so once, with
+  // the button's new name. Back to a new folder says nothing.
+  const announcedState = useRef<FolderState>("new");
+  useEffect(() => {
+    if (state === announcedState.current) return;
+    announcedState.current = state;
+    if (state !== "new") announce?.(`${NOTE[state]} ${BUTTON[state]}.`);
+  }, [state, announce]);
 
   /** Puts a refusal where it belongs: a name problem under Name, the rest under Folder. */
   function refused(error: unknown, line: (reason: string) => string) {
@@ -222,7 +249,8 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
           <Input
             ref={nameField}
             autoFocus
-            disabled={busy}
+            readOnly={busy}
+            describedBy={folderLineId}
             value={name}
             onChange={(event) => {
               setNameError(undefined);
@@ -233,7 +261,9 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
         </Field>
         <Field label={FOLDER_FIELD} error={writeError ?? parentError ?? null}>
           <div className="flex items-center gap-2">
-            <span className="min-w-0 flex-1 truncate">{trimmed === "" ? parent : folder}</span>
+            <span className="min-w-0 flex-1 truncate">{shownFolder}</span>
+            {/* Name's description, read when Name is focused: "Folder: ~/Documents/Acme". */}
+            <span id={folderLineId} hidden>{`${FOLDER_FIELD}: ${shownFolder ?? ""}`}</span>
             {host.pickParent === undefined ? null : (
               <Button ref={changeButton} variant="secondary" onClick={() => void change()}>
                 {CHANGE_FOLDER}
@@ -248,5 +278,5 @@ export function NewWorkspaceDialog({ host, onCreated, onOpen, onCancel }: NewWor
 }
 
 function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return errorReasonFor(error);
 }

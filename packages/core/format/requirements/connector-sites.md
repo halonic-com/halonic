@@ -1,7 +1,7 @@
 # format.connector-sites
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-2310 (D45: workspace stdio connectors run in the agent sandbox, board on HAL-2257 Q3; decided by Liam on HAL-2303)
 
 When `parseFile` reads a connector file, the format shall accept `transport.stdio.sites`, an optional list of at most 50 sites the local program may reach when it runs in a sandbox, each checked by the same rule as the agent file's `allowedSites` (`format.agent-sandbox-fields`): a host name with at least two labels, or `*.` and such a domain, and no bare `*`, address, port, scheme, path or local-network name. A refused entry shall fail at its own path. A connector without `sites` shall read as before, and `sites` shall not be accepted on any other transport.

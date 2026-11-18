@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { RunHistory } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
-import type { HttpClient, Secrets } from "@halonicjs/ports";
+import { type HttpClient, noKeyOrigins, type Secrets } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
@@ -56,6 +56,7 @@ async function openEngine(
   versions: Omit<WorkspaceVersions, "trustedVersionOf" | "agentFileOf" | "skillTextOf" | "forget">,
 ): Promise<LocalEngine> {
   const engine = await openLocalEngine({
+    keyOrigins: noKeyOrigins,
     workspace,
     versions: {
       ...versions,

@@ -1,3 +1,4 @@
+import { errorKindOf } from "@halonicjs/std";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { failureReason } from "../list/list-words.ts";
 
@@ -6,10 +7,18 @@ export const SKELETON_AFTER_MS = 300;
 /** After this long, "Still loading" and **Try again** show. */
 export const STILL_LOADING_AFTER_MS = 10_000;
 
-/** Whether something has loaded: waiting for it, the reason it didn't, or the value. */
+/**
+ * Whether something has loaded: waiting for it, the reason it didn't, or the value. `gone` marks a
+ * failure because the thing isn't there any more, so the screen can show the item-gone state.
+ */
 export type Load<Value> =
   | { readonly kind: "loading"; readonly skeleton: boolean; readonly slow: boolean }
-  | { readonly kind: "failed"; readonly reason: string; readonly retrying: boolean }
+  | {
+      readonly kind: "failed";
+      readonly reason: string;
+      readonly retrying: boolean;
+      readonly gone?: true;
+    }
   | { readonly kind: "ready"; readonly value: Value };
 
 /**
@@ -38,7 +47,7 @@ export function useLoad<Value>(
   readonly retry: () => void;
 } {
   const [result, setResult] = useState<
-    | { readonly kind: "failed"; readonly reason: string; readonly retrying: boolean }
+    | Extract<Load<Value>, { readonly kind: "failed" }>
     | { readonly kind: "ready"; readonly value: Value }
     | undefined
   >();
@@ -68,7 +77,12 @@ export function useLoad<Value>(
         setResult((was) =>
           was?.kind === "ready"
             ? was
-            : { kind: "failed", reason: failureReason(error), retrying: false },
+            : {
+                kind: "failed",
+                reason: failureReason(error),
+                retrying: false,
+                ...(errorKindOf(error) === "not_found" && { gone: true }),
+              },
         );
       },
     );

@@ -1,7 +1,7 @@
 # fs-tauri.plugin-records-scope
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9377; `studio.src-tauri.plugin-records-scope`; `pluginRecordsFolder` in `@halonicjs/profile`
 
 The Tauri record store shall, when it is made for the `plugins` scope, name that scope and no workspace in every `record_*` call, so it keeps the plugins' settings and install records in the folder the CLI uses. When it is made for a workspace, its calls shall name the workspace and no scope, as before.

@@ -1,7 +1,7 @@
 # contracts.run-executor-not-found
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8281, from the #2396 review (HAL-8252, item 3); `RunExecutor` port v1, `RunTargetNotFound`
 
 Where an adapter implements `RunExecutor`, it shall reject `start` and `startAgent` with a `RunTargetNotFound` (`isRunTargetNotFound` is true) whose `kind` and `id` say what is missing, when the request names a hub, a workflow or an agent that doesn't exist, and it shall record nothing. A hub that doesn't exist is `hub`, whatever else the request names.

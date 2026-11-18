@@ -1,10 +1,10 @@
 # files.ui.new-file
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-329 files flow 5 (T5-F8, T5-F9); microcopy 7; HAL-1293; HAL-11383
 
-The Files view shall have a **+** button named "New file" that opens a dialog with one Path field starting with `hubs/`, or with the focused folder, and the cursor at its end. **Create** shall stay pressable; a path with no file name, outside the workspace or in the local data, and a path the host refuses as a path problem (`FilePathError`), such as one that exists, shall show their sentence under the field with the text selected and the dialog open. A write that fails for another reason shall show "Couldn't create *path*: *reason*." in a Callout above the field with **Try again**, which asks the host again and puts focus back in the field; typing in the field clears it. A path that works shall create the file, close the dialog, show the toast "New file *path*" and open the file.
+The Files view shall have a **+** button named "New file" that opens a dialog with one Path field starting with `hubs/`, or with the focused folder, and the cursor at its end. **Create** shall stay pressable; a path with no file name, outside the workspace or in the local data, and a path the host refuses as a path problem (`FilePathError`), such as one that exists, shall show their sentence under the field with the text selected and the dialog open. A write that fails for another reason shall show "Couldn't create *path*: *reason*." in a Callout last in the dialog body with **Try again**, which asks the host again and keeps focus on **Create**; typing in the field clears it. A path that works shall create the file, close the dialog, show the toast "New file *path*" and open the file.
 
 ## Examples
 

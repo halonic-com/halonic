@@ -1,3 +1,4 @@
+import { Button, usePresentation } from "@halonicjs/studio-kit";
 import {
   engineWordsOf,
   ItemGone,
@@ -8,9 +9,10 @@ import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "r
 import { takeConnectorTitleFocus } from "../connector-focus-request.ts";
 import { ConnectorStatusHostService } from "../connector-status-host.ts";
 import { ConnectorStatusModel } from "../connector-status-model.ts";
+import { itemFileRef } from "../item-file.ts";
 import { ListedToolsHostService } from "../listed-tools-host.ts";
 import { ListedToolsReviewModel } from "../listed-tools-review-model.ts";
-import { asksFirstWords, connectorPageWords } from "../new-connector-words.ts";
+import { asksFirstWords, connectorPageWords, connectorToolsWords } from "../new-connector-words.ts";
 import { ConnectorConnectionSummary } from "./connector-connection-summary.tsx";
 import { ConnectorStatusSection } from "./connector-status-section.tsx";
 import { useItemTrash } from "./item-trash.tsx";
@@ -33,6 +35,9 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
       listedTools === undefined ? undefined : new ListedToolsReviewModel(listedTools, item.id),
     [listedTools, item.id],
   );
+  const { openItem } = context;
+  // A phone has no tabs to open the file in, so the sentence stays and the link goes.
+  const desktop = usePresentation() !== "phone";
   const title = useRef<HTMLHeadingElement | null>(null);
   const trash = useItemTrash(context, {
     kind: "connector",
@@ -79,7 +84,31 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
         {trash.menu}
       </div>
       {connector?.asks === undefined ? null : (
-        <p className="text-body text-fg-muted">{asksFirstWords[connector.asks]}</p>
+        <div className="flex flex-col gap-1">
+          <p className="text-body text-fg-muted">
+            {connector.asks === "every-tool"
+              ? connectorToolsWords.line
+              : asksFirstWords[connector.asks]}
+          </p>
+          {connector.asks === "every-tool" && desktop && openItem !== undefined && (
+            <div className="self-start">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  openItem(
+                    itemFileRef("connector", {
+                      hub: item.hub === sharedHubKey ? null : item.hub,
+                      id: item.id,
+                    }),
+                  )
+                }
+              >
+                {connectorToolsWords.changeInFile}
+              </Button>
+            </div>
+          )}
+        </div>
       )}
       {toolsModel === undefined ? null : (
         <ListedToolsWaiting model={toolsModel} sourceName={connector?.name ?? item.id} />

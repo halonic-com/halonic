@@ -1,8 +1,8 @@
 import { sandboxStartWords } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
+import { markHiddenName } from "@halonicjs/std";
 import { Button, Callout, ExternalLink, usePresentation } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
-import { markedName } from "../plain/hidden-characters.ts";
 import type { SandboxViewProps } from "../sandbox/sandbox-setup-source.ts";
 import { sandboxDocsBase, sandboxInboxWords } from "../sandbox/sandbox-words.ts";
 import { CardHeader } from "./card-parts.tsx";
@@ -72,7 +72,7 @@ export function SandboxSetupView({ item, control, openRun, announce }: SandboxVi
     <section aria-labelledby={titleId} className="flex flex-col gap-4 p-4">
       <CardHeader
         titleId={titleId}
-        title={markedName(item.title)}
+        title={markHiddenName(item.title)}
         heading={heading}
         since={fixed ? sandboxInboxWords.fixed : null}
       />
@@ -134,7 +134,7 @@ function RunLine({
   return (
     <li className="flex items-center gap-2 border-b border-border py-2">
       <p id={nameId} className="min-w-0 flex-1 text-body">
-        {markedName(name)}
+        {markHiddenName(name)}
       </p>
       {openRun === undefined ? null : (
         <Button

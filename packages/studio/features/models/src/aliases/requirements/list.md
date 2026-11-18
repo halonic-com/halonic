@@ -1,7 +1,7 @@
 # models.aliases.list
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10 migration checklist U29 (Now) (req-models, HAL-110; flow-models, HAL-177)
 
 The Models section of the workspace page shall list the aliases in `models.yaml`, sorted by name, each with "provider / model", and each shall open its alias editor as a tab.

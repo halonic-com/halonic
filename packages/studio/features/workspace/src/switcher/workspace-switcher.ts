@@ -4,6 +4,7 @@ import {
   cantReopenProblem,
   copyDetails,
   copyDetailsWords,
+  engineWaitMs,
   removeFromRecentLabel,
   type SaveReason,
   type StudioWorkspace,
@@ -13,6 +14,9 @@ import type { WorkspaceTrustControl } from "../trust/workspace-trust-control.ts"
 import { OpenWorkspaces } from "./open-workspaces.ts";
 import type { RecentWorkspaces } from "./recent-workspaces.ts";
 import type { WorkspaceSaving } from "./workspace-saving.ts";
+
+/** How long the switcher waits between two tries while the engine doesn't answer. */
+const engineRetryMs = 1_000;
 
 /** A workspace the app opened in a folder: what the window shows and how to let it go. */
 export interface OpenedWorkspace {
@@ -81,6 +85,8 @@ export class WorkspaceSwitcher {
   #closeRequest: CloseRequest | undefined;
   /** The folder whose save {@link saveAllForWindowClose} is waiting for. */
   #savingForClose: string | undefined;
+  /** The "Opened Acme" or "Created Acme" toast of each open workspace, closed with it. */
+  readonly #openedToasts = new Map<string, string>();
 
   constructor(options: WorkspaceSwitcherOptions) {
     this.#options = options;
@@ -115,11 +121,26 @@ export class WorkspaceSwitcher {
     this.#busy = true;
     try {
       const location = await this.#options.pickFolder();
-      return location === undefined ? undefined : await this.#open(location);
+      return location === undefined ? undefined : await this.#openUntilAnswered(location);
     } catch (error) {
       return cantOpenProblem("the folder", error);
     } finally {
       this.#busy = false;
+    }
+  }
+
+  /**
+   * Opens the picked folder, trying again by itself every second while the engine doesn't answer,
+   * for up to {@link engineWaitMs}. Only the opening is repeated: the folder is asked for once.
+   */
+  async #openUntilAnswered(location: string): Promise<WelcomeOpenProblem | undefined> {
+    const until = Date.now() + engineWaitMs;
+    for (;;) {
+      const problem = await this.#open(location);
+      if (problem?.kind !== "unavailable" || Date.now() + engineRetryMs > until) {
+        return problem;
+      }
+      await new Promise((resolve) => setTimeout(resolve, engineRetryMs));
     }
   }
 
@@ -234,7 +255,7 @@ export class WorkspaceSwitcher {
     return this.#closeRequest;
   }
 
-  /** **Keep open** in "Close Acme?": the workspace stays open. */
+  /** **Cancel** in "Close Acme?": the workspace stays open. */
   cancelClose(): void {
     this.#setCloseRequest(undefined);
   }
@@ -289,6 +310,11 @@ export class WorkspaceSwitcher {
     const closed = this.open.close(location);
     if (closed === undefined) {
       return;
+    }
+    const toast = this.#openedToasts.get(location);
+    if (toast !== undefined) {
+      this.#openedToasts.delete(location);
+      this.#options.toasts.close(toast);
     }
     closed.value.saving?.dispose();
     closed.value.workspace.dispose();
@@ -406,7 +432,10 @@ export class WorkspaceSwitcher {
     if (asSample) this.recent.remember({ location, name: opened.name, sample: true });
     this.open.add(location, opened);
     this.#remember();
-    this.#options.toasts.show({ tone: "success", title: toast ?? `Opened ${opened.name}` });
+    this.#openedToasts.set(
+      location,
+      this.#options.toasts.show({ tone: "success", title: toast ?? `Opened ${opened.name}` }),
+    );
     return undefined;
   }
 

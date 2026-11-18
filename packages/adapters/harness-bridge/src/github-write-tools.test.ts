@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { noOutsideCall } from "./fakes.test-helper.ts";
 import { GitHubWriteTools } from "./github-write-tools.ts";
 import type { Fetch } from "./pass-through.ts";
 
@@ -163,6 +164,7 @@ verifies("harness-bridge.github-write", () => {
             repository: "../x",
             secret: "S",
             secrets: { get: async () => null },
+            fetch: noOutsideCall,
           }),
       ).toThrow(RangeError);
     });

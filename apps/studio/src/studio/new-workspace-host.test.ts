@@ -1,4 +1,5 @@
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
+import { errorKindOf, KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { newWorkspaceHostOf, reasonOf } from "./new-workspace-host.ts";
@@ -60,7 +61,7 @@ verifies("studio.new-workspace", () => {
     const { host, store } = hostOf(
       { create_workspace_folder: "/work/Acme" },
       vi.fn(async () => {
-        throw new Error("disk full");
+        throw new KindedError("unavailable", "disk full");
       }),
     );
     expect(await host.create("/work/Acme", "Acme")).toEqual({
@@ -195,6 +196,33 @@ verifies("studio.new-workspace", () => {
     });
     await expect(other.host.create("/work/Acme", "Acme")).rejects.toMatchObject({
       field: "folder",
+    });
+  });
+
+  it("kinds the refusals it has words for, and gives no system text for the rest", async () => {
+    const exists = hostOf({ create_workspace_folder: { reject: { kind: "exists" } } });
+    const refused = await exists.host.create("/work/Acme", "Acme").catch((error) => error);
+    expect(errorKindOf(refused)).toBe("conflict");
+    const io = hostOf({
+      create_workspace_folder: {
+        reject: { kind: "io", message: "Permission denied (os error 13)" },
+      },
+    });
+    const failed = await io.host.create("/work/Acme", "Acme").catch((error) => error);
+    expect(errorKindOf(failed)).toBe("internal");
+    expect(failed).not.toHaveProperty("field");
+  });
+
+  it("gives the generic sentence when the trust record fails without a kind", async () => {
+    const { host } = hostOf(
+      { create_workspace_folder: "/work/Acme" },
+      vi.fn(async () => {
+        throw new Error("EACCES: permission denied");
+      }),
+    );
+    expect(await host.create("/work/Acme", "Acme")).toEqual({
+      kind: "not-saved",
+      reason: "Halonic ran into a problem it can't explain yet.",
     });
   });
 

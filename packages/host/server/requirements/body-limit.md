@@ -1,7 +1,7 @@
 # server.body-limit
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9 plan phase 4; HAL-6 finding 5; build plan on HAL-195 (PR 2)
 
 The server shall answer status 413 with the code `body_too_large` to a request whose body is over `maxBodyBytes`. When `Content-Length` says the body is too large, the server shall refuse it without reading any of it. Otherwise it shall count the bytes while the body streams and, at the first byte over the limit, stop reading and cancel the stream, so a body with no or a false `Content-Length` can't fill memory.

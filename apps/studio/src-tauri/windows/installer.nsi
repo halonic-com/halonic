@@ -812,6 +812,10 @@ Section Install
     Call WaitUntilHalonicIsClosed
   ${EndIf}
 
+  ; Halonic change (HAL-11048): the helpers of the old version may still be
+  ; closing when the installer starts.
+  Call WaitUntilHelpersAreClosed
+
   ; Keep NSIS's own file lines (Extract, Create folder) out of the list so
   ; our step lines stay in view.
   SetDetailsPrint none
@@ -1409,6 +1413,51 @@ Function WaitUntilHalonicIsClosed
     SetErrorLevel 1
     Quit
   ${Loop}
+  Pop $0
+FunctionEnd
+
+; Halonic change (HAL-11048): on an update, Studio quits and the installer
+; starts at once, while the agent host and the other helpers of the old
+; version may still be closing. A file still in use makes NSIS ask Abort,
+; Retry or Ignore in a window nobody sees, so the installer waited for ever
+; with the new version half copied and Halonic never reopened. Waits up to
+; 30 s for each helper's file to be free; if one still isn't, goes on as before.
+Function WaitUntilHelpersAreClosed
+  Push $0
+  Push $1
+  Push $2
+  Push $R8
+  Push $R9
+  StrCpy $2 0
+  ${Do}
+    StrCpy $1 0
+    ${ForEach} $0 1 3 + 1
+      ${If} $0 = 1
+        StrCpy $R9 "$INSTDIR\halonic-agent-host.exe"
+      ${ElseIf} $0 = 2
+        StrCpy $R9 "$INSTDIR\halonic-sandbox-elevate.exe"
+      ${Else}
+        StrCpy $R9 "$INSTDIR\srt-win.exe"
+      ${EndIf}
+      ${If} ${FileExists} $R9
+        ClearErrors
+        FileOpen $R8 $R9 a
+        ${If} ${Errors}
+          StrCpy $1 1
+        ${Else}
+          FileClose $R8
+        ${EndIf}
+      ${EndIf}
+    ${Next}
+    ${IfThen} $1 = 0 ${|} ${Break} ${|}
+    ${IfThen} $2 >= 60 ${|} ${Break} ${|}
+    Sleep 500
+    IntOp $2 $2 + 1
+  ${Loop}
+  Pop $R9
+  Pop $R8
+  Pop $2
+  Pop $1
   Pop $0
 FunctionEnd
 

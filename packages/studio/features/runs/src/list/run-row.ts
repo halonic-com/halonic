@@ -200,7 +200,7 @@ function rowLine(run: SourcedRun, standing: RunStanding, context: RowContext): s
     case "waiting":
       return waitingLine(runWait(summary), step, context.now);
     case "done":
-      return doneLine(run, step, context.currency);
+      return doneLine(run, context.currency);
     case "failed": {
       const workflow = context.workflow?.name ?? summary.workflowId;
       return enteredAStep(summary)
@@ -239,13 +239,12 @@ export function waitingLine(wait: RunWait, step: string, now: Date): string {
 }
 
 /**
- * A finished run, never an empty line: its cost, or with no cost the step it
- * finished in. A run without a tool call has no sent part, never "Sent".
+ * A finished run, never an empty line: its cost, or with no cost just "Finished". A run without a tool call has no sent part, never "Sent".
  */
-function doneLine(run: SourcedRun, step: string, currency: string): string {
+function doneLine(run: SourcedRun, currency: string): string {
   const line = costParts(run.summary, currency).join(lineSeparator);
   if (line === "") {
-    return rowLineWords.finishedIn(step);
+    return rowLineWords.finished;
   }
   return line.charAt(0).toUpperCase() + line.slice(1);
 }

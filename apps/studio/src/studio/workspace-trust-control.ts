@@ -31,8 +31,13 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
     const check = this.#trust.check;
     if (check === undefined) return this.#trust.failure === undefined ? "none" : "failed";
     if (check.status === "trusted") return "none";
+    if (this.needsNoTrust) return "none";
     if (check.status === "changed") return "changed";
     return check.status === "unreadable" ? "list-unreadable" : "not-trusted";
+  }
+
+  get needsNoTrust(): boolean {
+    return this.#trust.needsNoTrust;
   }
 
   get status(): WorkspaceTrustControl["status"] {
@@ -60,7 +65,7 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
     if (check !== this.#builtFor) {
       this.#builtFor = check;
       this.#built =
-        check === undefined
+        check === undefined || this.needsNoTrust
           ? undefined
           : trustReviewOf(check, {
               name: this.#trust.name ?? this.#folder,

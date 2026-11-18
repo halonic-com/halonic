@@ -1,3 +1,5 @@
+import { agentsFeature } from "@halonicjs/studio-feature-agents";
+import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
 import { filesFeature } from "@halonicjs/studio-feature-files";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { firstRunFeature } from "@halonicjs/studio-feature-first-run";
@@ -27,6 +29,8 @@ import {
 } from "@halonicjs/studio-feature-models/api";
 import { pluginsFeature } from "@halonicjs/studio-feature-plugins";
 import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
+import { routinesFeature } from "@halonicjs/studio-feature-routines";
+import { RoutinesHostService } from "@halonicjs/studio-feature-routines/api";
 import { runsFeature } from "@halonicjs/studio-feature-runs";
 import { RunsSourceService, SampleHintService } from "@halonicjs/studio-feature-runs/api";
 import { settingsFeature } from "@halonicjs/studio-feature-settings";
@@ -61,7 +65,9 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     runsFeature,
     settingsFeature,
     sourceControlFeature,
+    agentsFeature,
     workflowsFeature,
+    routinesFeature,
     workspaceFeature,
   ],
   hostServices: [
@@ -81,7 +87,9 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     InboxRequestsService,
     RunsSourceService,
     ChangesSourceService,
+    AgentsHostService,
     WorkflowsHostService,
+    RoutinesHostService,
     ModelsFilesService,
     ModelKeysService,
     NoLimitMemoryService,

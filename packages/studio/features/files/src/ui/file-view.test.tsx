@@ -224,7 +224,8 @@ verifies("files.ui.file-tab", () => {
   it("says why a file can't be read", async () => {
     const page = show(
       hostOf(async () => {
-        throw new Error("Access was denied.");
+        // A kinded error, as the host sends one: its message is safe to show.
+        throw Object.assign(new Error("Access was denied."), { kind: "denied" });
       }),
       "locked.md",
     );

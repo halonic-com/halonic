@@ -31,7 +31,7 @@ export interface PaperclipWriteToolsOptions {
    */
   secret: string;
   secrets: Secrets;
-  fetch?: Fetch;
+  fetch: Fetch;
   limits?: PaperclipWriteLimits;
 }
 
@@ -69,7 +69,7 @@ interface ToolSpec {
  * GitHub token does in {@link GitHubWriteTools}.
  *
  * @example
- * const tools = new PaperclipWriteTools({ baseUrl, taskId, secret: "PAPERCLIP_TASK_KEY", secrets });
+ * const tools = new PaperclipWriteTools({ baseUrl, taskId, secret: "PAPERCLIP_TASK_KEY", secrets, fetch });
  * await tools.check("paperclip_post_comment", { body: "Done." }); // { kind: "ask" }
  */
 export class PaperclipWriteTools implements BridgeTools {
@@ -86,7 +86,7 @@ export class PaperclipWriteTools implements BridgeTools {
       throw new RangeError("The task id must be letters, digits and dashes.");
     }
     this.#options = options;
-    this.#fetch = options.fetch ?? globalThis.fetch;
+    this.#fetch = options.fetch;
     this.#limits = options.limits ?? defaultPaperclipWriteLimits;
     this.#specs = toolSpecs(options.taskId);
   }

@@ -1,7 +1,7 @@
 # app.collection-text
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1303, P7f; flow-library 5.3 header (the name as a rename field), checklist 3.4
 
 When the collection page shows or renames a collection, `readCollectionName` shall return the name in the collection file, and `renameCollectionText` shall return the file's text with only the name changed. The id, the fields, the views, the seed records and the comments shall keep their values and order. A name that is given unchanged (after trimming) shall leave the text exactly as it was, so a rename field left without editing writes nothing. If the new name is empty after trimming, then it shall return `name_missing` and no text, so the caller keeps the old one. If the file is not valid YAML or not a map, then it shall return `unreadable`.

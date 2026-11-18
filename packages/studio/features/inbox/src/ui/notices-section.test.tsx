@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
 import { Inbox } from "../inbox.ts";
 import type { FailedRunNotice } from "../notices/failed-run-notices.ts";
-import type { InboxNotices } from "../notices/inbox-notices.ts";
+import type { InboxNotice, InboxNotices } from "../notices/inbox-notices.ts";
 import { pendingApproval, waitingRun } from "../test-runs.test-helper.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -41,17 +41,23 @@ async function settled(): Promise<void> {
   });
 }
 
-async function open(source: InboxNotices | undefined, openRun = vi.fn()) {
+async function open(
+  source: InboxNotices | undefined,
+  openRun = vi.fn(),
+  openBudget: (() => void) | undefined = undefined,
+) {
   const waiting = waitingRun("r1", {
     approvals: [pendingApproval("call-1", "notes-mcp__create_note", new Date().toISOString())],
   });
   const inbox = new Inbox(fakeRuns([waiting]).runs);
-  const root = render(<InboxView inbox={inbox} notices={source} openRun={openRun} />);
+  const root = render(
+    <InboxView inbox={inbox} notices={source} openRun={openRun} openBudget={openBudget} />,
+  );
   await settled();
   return { root, openRun };
 }
 
-function fakeNotices(list: () => Promise<readonly FailedRunNotice[]>) {
+function fakeNotices(list: () => Promise<readonly InboxNotice[]>) {
   const dismiss = vi.fn();
   const source: InboxNotices = { list, subscribe: () => () => {}, dismiss };
   return { source, dismiss };
@@ -75,6 +81,36 @@ verifies("inbox.notices-section", () => {
     expect(root.querySelector("#inbox-notices")?.textContent).toContain("Notices");
     await act(async () => button(root, "Open run").click());
     expect(openRun).toHaveBeenCalledWith("acme", "r7");
+  });
+
+  it("opens the budget from the monthly budget notice, which has no Open run", async () => {
+    const month: InboxNotice = {
+      kind: "budget-month",
+      key: "budget-month:2026-11:50",
+      at: "2026-11-16T06:00:00.000Z",
+      title: "This month's estimated spend reached its budget of €50.00.",
+    };
+    const { source } = fakeNotices(async () => [month]);
+    const openBudget = vi.fn();
+    const { root } = await open(source, vi.fn(), openBudget);
+    expect(() => button(root, "Open run")).toThrow();
+    await act(async () => button(root, "Change budget").click());
+    expect(openBudget).toHaveBeenCalledOnce();
+  });
+
+  it("opens a run the run budget stopped", async () => {
+    const stopped: InboxNotice = {
+      kind: "budget-run",
+      key: "budget-run:r5",
+      runId: "r5",
+      hubId: "acme",
+      at: "2026-11-16T06:00:00.000Z",
+      title: "Support replies stopped at its estimated budget",
+    };
+    const { source } = fakeNotices(async () => [stopped]);
+    const { root, openRun } = await open(source);
+    await act(async () => button(root, "Open run").click());
+    expect(openRun).toHaveBeenCalledWith("acme", "r5");
   });
 
   it("dismisses a notice and moves focus to the next one's ×", async () => {

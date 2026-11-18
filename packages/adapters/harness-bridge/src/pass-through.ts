@@ -1,10 +1,15 @@
 import { once } from "node:events";
 import type { IncomingHttpHeaders } from "node:http";
+import type { HttpClient } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { BridgeRequestContext } from "./route.ts";
 
-/** The `fetch` the bridge calls providers with; tests give a fake one. */
-export type Fetch = typeof globalThis.fetch;
+/**
+ * The `fetch` the bridge calls providers and tools with: an `HttpClient`'s,
+ * so the app decides which hosts it may reach and how (the address check,
+ * a proxy). The bridge never reaches for Node's own `fetch`. Tests give a fake.
+ */
+export type Fetch = HttpClient["fetch"];
 
 /** How long the bridge waits for a provider (failure-path rule 1: every wait ends). */
 export interface UpstreamLimits {
@@ -167,7 +172,7 @@ async function callProvider(
   signal: AbortSignal,
 ): Promise<Response> {
   try {
-    return await fetch(upstream.url, {
+    return await fetch(upstream.url.href, {
       method: "POST",
       headers: upstream.headers,
       body: upstream.body,

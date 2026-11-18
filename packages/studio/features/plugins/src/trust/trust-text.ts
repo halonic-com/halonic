@@ -2,7 +2,11 @@
 // T6 to T10 and the UX acceptance checklist 4 (HAL-1739, HAL-751, HAL-1952). The plugin's name,
 // version, tool names and addresses are only ever a value in these lines.
 
-import type { LocalToolState } from "@halonicjs/app";
+import {
+  type LocalToolState,
+  pluginTrustLocationHeadings,
+  pluginTrustMoreFilesText,
+} from "@halonicjs/app";
 import { hostFromSetting } from "../settings/settings-text.ts";
 
 /** Why the trust check opens: right after Add, or from **Review** on the plugin's page. */
@@ -104,6 +108,12 @@ export const PROGRAMS_SECTION = "Programs";
 export const SECRETS_SECTION = "Secrets";
 export const ADDRESSES_SECTION = "Addresses";
 export const IN_STUDIO_SECTION = "In Studio";
+/** The headings of the folder and its files, from core, which the CLI reads too. */
+export const FOLDER_HEADING = pluginTrustLocationHeadings.folder;
+export const FILES_HEADING = pluginTrustLocationHeadings.files;
+
+/** The last row of the file list, worded in core, which the CLI reads too. */
+export const moreFilesRow = pluginTrustMoreFilesText;
 
 /** A section's row: its title and how many things it holds, "Tools for agents (2)". */
 export function sectionRow(title: string, count: number): string {

@@ -1,7 +1,7 @@
 # runtime.import-data
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9486 (part 9b of HAL-197); multi-cloud ADR on HAL-35, 5.6; format `format.runtime-export`; decided on HAL-9480
 
 The Worker shall, with the admin key, answer `PUT /admin/import/files/<path>` by staging the request body under a path of the export layout (`runs/<run id>.jsonl`, `records/<sha256>.jsonl` or `blobs/<xx>/<sha256>`) and answering 204, and `POST /admin/import` with a manifest of `@halonicjs/format/runtime-export` by applying the staged files only when every file the manifest lists is staged with exactly the manifest's size and SHA-256. A path outside the layout shall answer 400, a body over 50 MiB (a manifest over 16 MiB) 413 and a body that isn't a manifest 400.

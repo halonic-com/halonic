@@ -3,6 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { FilePathError } from "../files-host.ts";
+import { kinded } from "../test-support/kinded.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { NewFileDialog } from "./new-file-dialog.tsx";
@@ -89,10 +90,14 @@ verifies("files.ui.new-file", () => {
     let attempts = 0;
     const { page, host, onCreated } = setup(async () => {
       attempts += 1;
-      if (attempts === 1) throw new Error("The disk is full.");
+      if (attempts === 1) throw kinded("unavailable", "The disk is full.");
     });
     await type(page, "hubs/a.yaml");
     await create(page);
+    // The Dialog's alert slot fills a frame after the request ends.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
     expect(text(page)).toContain("Couldn't create hubs/a.yaml: The disk is full.");
     expect(field(page).disabled).toBe(false);
     const again = [...page.ownerDocument.querySelectorAll("button")].find((each) =>

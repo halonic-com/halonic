@@ -1,4 +1,5 @@
 import { Callout, Dialog, Field, Input, RadioGroup, Select } from "@halonicjs/studio-kit";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useRef, useState } from "react";
 import { newConnectorErrors } from "../new-connector-check.ts";
 import type { ConnectorRef, NewConnectorHost, NewConnectorWay } from "../new-connector-host.ts";
@@ -17,10 +18,12 @@ export interface NewConnectorDialogProps {
   readonly returnFocus?: () => HTMLElement | null;
 }
 
-/** The reason without its closing full stop, so the sentence around it has one. */
+/**
+ * The reason without its closing full stop, so the sentence around it has one. Only a kinded
+ * refusal's own words show; anything else gives the generic sentence (microcopy 1.4, F13).
+ */
 function reasonOf(error: unknown): string {
-  const reason = error instanceof Error ? error.message : String(error);
-  return reason.trim().replace(/\.$/, "");
+  return errorReasonFor(error).replace(/\.$/, "");
 }
 
 /**

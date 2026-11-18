@@ -1,7 +1,7 @@
 # integration-kit.sign-in-placement
 
 - Status: active
-- Since: 0.2.0
+- Since: unreleased
 - Source: HAL-8279 (pull request 2 of HAL-984, design section 3, 4 and 8: attack cases T2, T3 and T14)
 
 The kit shall place the access token of a sign-in the permission sheet declares, for an integration that asks with `auth: { signIn, as }`, and only that way. It shall ask `SignInTokens.access` for the token on each hop that may carry it, put it in the header the sheet's `access` block says (`authorization: Bearer <value>`, or the header and prefix of the sheet), and never give the integration the value.

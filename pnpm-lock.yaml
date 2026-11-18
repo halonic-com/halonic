@@ -579,12 +579,18 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../packages/core/ports
+      '@halonicjs/routines':
+        specifier: workspace:*
+        version: link:../../packages/core/routines
       '@halonicjs/schema-kit':
         specifier: workspace:*
         version: link:../../packages/core/schema-kit
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../packages/core/std
+      '@halonicjs/studio-feature-agents':
+        specifier: workspace:*
+        version: link:../../packages/studio/features/agents
       '@halonicjs/studio-feature-files':
         specifier: workspace:*
         version: link:../../packages/studio/features/files
@@ -606,6 +612,9 @@ importers:
       '@halonicjs/studio-feature-plugins':
         specifier: workspace:*
         version: link:../../packages/studio/features/plugins
+      '@halonicjs/studio-feature-routines':
+        specifier: workspace:*
+        version: link:../../packages/studio/features/routines
       '@halonicjs/studio-feature-runs':
         specifier: workspace:*
         version: link:../../packages/studio/features/runs
@@ -1778,6 +1787,31 @@ importers:
         specifier: 'catalog:'
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
 
+  packages/adapters/sign-in-loopback:
+    dependencies:
+      '@halonicjs/oauth-sign-in':
+        specifier: workspace:*
+        version: link:../../core/oauth-sign-in
+    devDependencies:
+      '@halonicjs/testing-sign-in':
+        specifier: workspace:*
+        version: link:../../testing/sign-in
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../testing/spec
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
   packages/adapters/system-node:
     dependencies:
       '@halonicjs/ports':
@@ -2575,6 +2609,49 @@ importers:
         specifier: 'catalog:'
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
 
+  packages/studio/features/agents:
+    dependencies:
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../../core/std
+      '@halonicjs/studio-kit':
+        specifier: workspace:*
+        version: link:../../kit
+      '@halonicjs/studio-shell':
+        specifier: workspace:*
+        version: link:../../shell
+      react:
+        specifier: 'catalog:'
+        version: 19.3.1
+    devDependencies:
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../../testing/spec
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.3.0(@types/react@19.3.0)
+      jsdom:
+        specifier: 'catalog:'
+        version: 30.1.3(@noble/hashes@2.4.0)
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.3.1(react@19.3.1)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
   packages/studio/features/files:
     dependencies:
       '@halonicjs/studio-code-editor':
@@ -2733,6 +2810,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
+      '@halonicjs/studio-feature-runs':
+        specifier: workspace:*
+        version: link:../runs
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../kit
@@ -2886,6 +2966,55 @@ importers:
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../../core/format
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../../core/std
+      '@halonicjs/studio-kit':
+        specifier: workspace:*
+        version: link:../../kit
+      '@halonicjs/studio-shell':
+        specifier: workspace:*
+        version: link:../../shell
+      react:
+        specifier: 'catalog:'
+        version: 19.3.1
+    devDependencies:
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../../testing/spec
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.3.0(@types/react@19.3.0)
+      jsdom:
+        specifier: 'catalog:'
+        version: 30.1.3(@noble/hashes@2.4.0)
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.3.1(react@19.3.1)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/studio/features/routines:
+    dependencies:
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../../core/format
+      '@halonicjs/routines':
+        specifier: workspace:*
+        version: link:../../../core/routines
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
@@ -3082,12 +3211,24 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
+      '@halonicjs/studio-feature-agents':
+        specifier: workspace:*
+        version: link:../agents
+      '@halonicjs/studio-feature-models':
+        specifier: workspace:*
+        version: link:../models
+      '@halonicjs/studio-feature-plugins':
+        specifier: workspace:*
+        version: link:../plugins
       '@halonicjs/studio-feature-runs':
         specifier: workspace:*
         version: link:../runs
       '@halonicjs/studio-feature-settings':
         specifier: workspace:*
         version: link:../settings
+      '@halonicjs/studio-feature-workspace':
+        specifier: workspace:*
+        version: link:../workspace
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../kit
@@ -3720,6 +3861,37 @@ importers:
 
   packages/testing/spec:
     devDependencies:
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/testing/tunnel-attacks:
+    dependencies:
+      '@halonicjs/adapter-harness-bridge':
+        specifier: workspace:*
+        version: link:../../adapters/harness-bridge
+      '@halonicjs/adapter-remote-gateway':
+        specifier: workspace:*
+        version: link:../../adapters/remote-gateway
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../core/ports
+      '@halonicjs/testing-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../spec
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../../../tooling/config

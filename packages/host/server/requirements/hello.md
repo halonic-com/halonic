@@ -1,7 +1,7 @@
 # server.hello
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1128 (install and update flow, A1 to A3); build plan on HAL-195 (PR 4)
 
 The server shall answer `GET /api/hello` without a sign-in with a JSON body that has exactly four keys: `product`, always `halonic`; `version`, the server's version; `minAppVersion`, the oldest Android app this server works with; and `runExecutorVersion`, the version of the `RunExecutor` port the server honors, so a remote executor can tell whether it takes what a version 2 `send` names. It shall tell nothing else: no workspace name, host name or user. The route sits behind the same `Host` and `Origin` checks and the same daily request ceiling as every other route, so a server with no password still answers it only on loopback names.

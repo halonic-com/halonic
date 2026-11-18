@@ -1,7 +1,7 @@
 # studio.pages-not-framed
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5218
 
 The app's pages shall not be shown inside a frame of another page: the content security policy the shell gives them shall say `frame-ancestors 'none'`, on desktop and on Android.

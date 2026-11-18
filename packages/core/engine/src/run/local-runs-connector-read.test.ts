@@ -100,6 +100,9 @@ verifies("engine.run-connector-read", () => {
     expect(tracker.calls).toEqual([]);
     const log = runs.logs.get("run_1");
     expect(typesOf(log)).toContain("approval.requested");
+    expect(eventsOf(log, "approval.requested")).toMatchObject([
+      { tool: "create_issue", connector: "tracker" },
+    ]);
     expect(eventsOf(log, "tool.unasked")).toEqual([]);
     expect(await runs.get("run_1")).toMatchObject({ status: "waiting" });
   });

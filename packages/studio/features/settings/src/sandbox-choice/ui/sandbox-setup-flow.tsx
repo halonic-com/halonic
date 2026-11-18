@@ -4,7 +4,7 @@ import * as text from "../sandbox-choice-text.ts";
 import { SandboxModal } from "./sandbox-modal.tsx";
 
 /** How far one setup step or test check has got. */
-export type SandboxStepStatus = "done" | "working" | "waiting";
+export type SandboxStepStatus = "done" | "working" | "stopped" | "waiting";
 
 /** The result of one quick-test check: `pending` until it has run. */
 export type SandboxCheckResult = "pending" | "passed" | "failed";
@@ -38,7 +38,12 @@ export type SandboxSetupState =
   /** S4: `checks` are the probes the real check runs, in its order, with the result so far. */
   | {
       readonly kind: "testing";
-      readonly checks: readonly { readonly label: string; readonly result: SandboxCheckResult }[];
+      readonly checks: readonly {
+        /** Stable key of the check, such as the engine's probe id. */
+        readonly id: string;
+        readonly label: string;
+        readonly result: SandboxCheckResult;
+      }[];
     }
   /** S4b: `failedCheck` is the failed check in plain words, such as "Agents could still read files outside your project". */
   | { readonly kind: "test-failed"; readonly failedCheck: string }
@@ -130,7 +135,7 @@ function SetupScreen(props: SandboxSetupFlowProps) {
           <p>{text.TEST_INTRO}</p>
           <ul className="flex flex-col gap-2" aria-live="polite">
             {state.checks.map((check) => (
-              <li key={check.label} className="flex items-center gap-2">
+              <li key={check.id} className="flex items-center gap-2">
                 <ResultMark result={check.result} />
                 <span>{check.label}</span>
               </li>
@@ -145,8 +150,13 @@ function SetupScreen(props: SandboxSetupFlowProps) {
           title={text.TEST_FAILED_TITLE}
           focusTitle
           footer={
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex gap-2">
+            <>
+              <div className="flex justify-end">
+                <Button variant="primary" onClick={props.onTryAgain}>
+                  {text.TRY_AGAIN}
+                </Button>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <Button variant="ghost" size="sm" onClick={props.onChooseAnother}>
                   {text.CHOOSE_ANOTHER}
                 </Button>
@@ -154,10 +164,7 @@ function SetupScreen(props: SandboxSetupFlowProps) {
                   {text.CONTINUE_WITHOUT}
                 </Button>
               </div>
-              <Button variant="primary" onClick={props.onTryAgain}>
-                {text.TRY_AGAIN}
-              </Button>
-            </div>
+            </>
           }
         >
           <p role="alert">{text.testFailedBody(state.failedCheck)}</p>
@@ -217,7 +224,7 @@ function SettingUp({
     >
       <ol className="flex flex-col gap-2">
         {steps.map((label, index) => {
-          const status = statusOf(index, state.stepsDone);
+          const status = statusOf(index, state.stepsDone, state.offline === true);
           return (
             <li key={label} className="flex items-center gap-2">
               <StatusMark status={status} />
@@ -237,7 +244,7 @@ function SettingUp({
       {state.offline === true ? (
         <div role="alert" className="flex flex-col gap-2">
           <p>{text.OFFLINE}</p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="primary" onClick={onTryAgain}>
               {text.TRY_AGAIN}
             </Button>
@@ -251,14 +258,16 @@ function SettingUp({
   );
 }
 
-function statusOf(index: number, done: number): SandboxStepStatus {
+function statusOf(index: number, done: number, offline: boolean): SandboxStepStatus {
   if (index < done) return "done";
-  return index === done ? "working" : "waiting";
+  if (index === done) return offline ? "stopped" : "working";
+  return "waiting";
 }
 
 function statusWord(status: SandboxStepStatus): string {
   if (status === "done") return text.STEP_DONE;
-  return status === "working" ? text.STEP_WORKING : text.STEP_WAITING;
+  if (status === "working") return text.STEP_WORKING;
+  return status === "stopped" ? text.STEP_STOPPED : text.STEP_WAITING;
 }
 
 function StatusMark({ status }: { readonly status: SandboxStepStatus }) {
@@ -319,11 +328,11 @@ function ToolMissing({
         </div>
       }
     >
-      <p>{text.checkBody(missing.join(" and "))}</p>
+      <p>{text.checkBody(missing)}</p>
       {state.ubuntu2404 === true ? <p className="text-small">{text.UBUNTU_2404}</p> : null}
       <div className="flex items-center gap-2 rounded-md border border-border bg-surface-subtle p-2">
         <code className="min-w-0 flex-1 break-all font-mono text-small">{state.command}</code>
-        <CopyButton text={state.command} label="Copy the command" />
+        <CopyButton text={state.command} label={text.COPY_COMMAND} />
       </div>
       <ul className="flex flex-col gap-1 text-small">
         {state.tools.map((tool) => (

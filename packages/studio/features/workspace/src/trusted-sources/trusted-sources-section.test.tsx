@@ -138,7 +138,7 @@ verifies("workspace.trusted-sources", () => {
   it("is read-only when served, with the server's words", async () => {
     await show(hostOf([inbox]), true);
     expect(element.textContent).toContain("View only here.");
-    expect(element.textContent).toContain("on the computer running Halonic");
+    expect(element.textContent).not.toContain("Workspaces, hubs and skills");
     expect(button("Remove")).toBeUndefined();
     expect(element.textContent).not.toContain("kept separately");
   });

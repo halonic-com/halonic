@@ -1,7 +1,7 @@
 # cloudflare-storage.routine-index
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-11277, built on the decision of HAL-11270 (option 1); the plan Liam approved on HAL-11277
 
 The snapshot writer shall upload the routine index, `routines.index.json`, together with the workspace files: the placed routines (each routine with the hub its file sits in) of the same loaded workspace the files come from, so the two never differ. The index is listed in the manifest with its hash like a file, so it is checked as any file is, and it is left out of `list`. It shall hold nothing the routine files don't hold: a webhook's secret stays its name, never a value. The writer shall refuse a workspace file at the index's own path with a `RangeError`. `readRoutineIndex` shall check the index against the routine schema of `@halonicjs/format/routine` and fail with a `DefinitionSnapshotError` when the index is missing, isn't JSON or doesn't fit, so the Worker finds the routines a webhook can start without reading YAML. The manifest's format is 2: a snapshot in format 1 shall fail with a message that says to run `halonic deploy` again, and a newer one with a message that says to update Halonic.

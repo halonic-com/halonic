@@ -1,7 +1,7 @@
 # runs.run-view.sandbox-panel
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1707 (board, HAL-1601 proposal 1); sandbox-screens (HAL-1747) 1; microcopy 23.1; ux-checklists-sandbox (HAL-1833) Part 1; Julian's conditions (HAL-1673); `events.sandbox-opened`, `events.sandbox-off`
 
 The run view shall show what each sandboxed step could do, read only from the step's `sandbox.opened` event, never from the agent's current settings:

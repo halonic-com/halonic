@@ -36,6 +36,7 @@ import {
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { findCommand, nodeCommandSearch } from "./command-paths.ts";
+import { engineHttp } from "./engine-http.ts";
 import { nodeHarnessPrograms } from "./harness-programs.ts";
 import {
   isOnThisComputer,
@@ -115,7 +116,7 @@ export function nodeDoctorMachine(): DoctorMachine {
     sandboxKind: sandboxKinds[system] ?? system,
     probe: new NodeResourceProbe(),
     harnesses: nodeHarnessPrograms(),
-    http: { fetch: (url, init) => fetch(url, init) },
+    http: engineHttp(),
     system: `${systemNames[system] ?? system} ${arch()}`,
     ...(nodeIsWsl() ? { windowsDrive: windowsDriveOf } : {}),
     node: () =>

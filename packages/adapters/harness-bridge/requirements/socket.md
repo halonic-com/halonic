@@ -1,7 +1,7 @@
 # harness-bridge.socket
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6316 (W9: no port of ours open to the user's other WSL distros), plan approved on HAL-6340, srt rule checked on HAL-6341
 
 When the Node bridge server is given a socket folder, it shall serve each run on a Unix socket instead of a loopback port: in a new folder of its own inside the socket folder, created for that run, a real folder owned by this user with mode 0700, never one that already existed, and never an abstract socket. It shall check before it creates anything that the socket's path fits in 107 bytes, and when the socket can't be made it shall fail rather than fall back to a port. Its `url` shall be `http://bridge.halonic.invalid` and it shall give the socket's path. It shall answer only requests whose `Host` is `bridge.halonic.invalid`, with or without port 80, and whose target, when it is a whole URL, names the same, with the `Origin` and token checks of `harness-bridge.server`. It shall open a tunnel only for `CONNECT bridge.halonic.invalid:80` and apply all three checks to every request inside it; any other `CONNECT` shall get a 421 and its connection shall close. Once a request on a connection is refused or fails, the bridge shall serve nothing more on that connection. When it closes, it shall remove the socket and the run's folder, and nothing else.

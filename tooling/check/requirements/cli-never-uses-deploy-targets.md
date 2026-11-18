@@ -1,7 +1,7 @@
 # check.cli-never-uses-deploy-targets
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-7114 (board decision, 12 Nov: each deploy target is its own package, and the CLI core never imports one)
 
 If the `halonic` CLI package (`apps/cli`) lists a target package other than `@halonicjs/target-node-runtime` or a target's `testing` package in any dependency field, or imports one, then the `layers` check shall fail and say that the CLI loads a deploy target by name, so users install only the targets they use.

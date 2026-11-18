@@ -1,7 +1,7 @@
 # check.guard-base-is-built-on-commit
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5568
 
 When CI runs the requirement guard on a pull request, the guard's base side shall be the main commit the pull request's merge ref was built on, so the guard reports only the pull request's own changes and nothing that main changed after the branch point.

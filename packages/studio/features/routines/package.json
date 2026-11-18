@@ -1,0 +1,41 @@
+{
+  "name": "@halonicjs/studio-feature-routines",
+  "private": true,
+  "type": "module",
+  "description": "The Routines feature of the Studio.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./api": "./src/api.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/routines": "workspace:*",
+    "@halonicjs/std": "workspace:*",
+    "@halonicjs/studio-kit": "workspace:*",
+    "@halonicjs/studio-shell": "workspace:*",
+    "react": "catalog:"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "studio",
+    "owner": "tomas",
+    "coverage": {
+      "lines": 85
+    }
+  }
+}

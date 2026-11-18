@@ -83,6 +83,39 @@ verifies("sandbox-srt.session", () => {
     });
   });
 
+  describe("the app's own proxy setting (HAL-6640, C7)", () => {
+    const proxySettings = {
+      HTTPS_PROXY: "http://proxy.corp:3128",
+      https_proxy: "http://proxy.corp:3128",
+      HTTP_PROXY: "http://proxy.corp:3128",
+      NO_PROXY: "localhost",
+      ALL_PROXY: "http://proxy.corp:3128",
+    };
+
+    it("never reaches the launcher or the program, from the host or from the profile", () => {
+      const host = { PATH: "/usr/bin", ...proxySettings };
+      const fromProfile = programEnv(profile({ env: proxySettings }), host);
+      for (const env of [launcherEnv(profile(), host), programEnv(profile(), host), fromProfile]) {
+        expect(Object.keys(env).filter((name) => /proxy/i.test(name))).toEqual([]);
+      }
+    });
+
+    it("is not in any request of a session started while the app has it set", async () => {
+      for (const [name, value] of Object.entries(proxySettings)) vi.stubEnv(name, value);
+      const { runner, runs, probes } = fakeRunner();
+      const session = await new SrtSandbox(linux, runner).open(profile({ env: proxySettings }));
+      await session.start(command);
+      const requests = [...probes, ...runs.map((run) => run.request)];
+      expect(requests.length).toBeGreaterThan(0);
+      for (const request of requests) {
+        for (const env of [request.launcherEnv, request.programEnv]) {
+          expect(Object.keys(env).filter((name) => /proxy/i.test(name))).toEqual([]);
+        }
+      }
+      await session.close();
+    });
+  });
+
   describe("the profile's variable names", () => {
     it.each(["--unset=HTTP_PROXY", "-i", "1A", "A=B", "A B", "", "A-B"])(
       "rejects the name %j before anything runs",

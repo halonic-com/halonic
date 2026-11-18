@@ -10,7 +10,7 @@ import {
   Tooltip,
   usePresentation,
 } from "@halonicjs/studio-kit";
-import type { PlaceViewProps } from "@halonicjs/studio-shell";
+import { type EngineWords, engineWordsOf, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { listRows } from "../list/list-rows.ts";
 import type { RunRow } from "../list/run-row.ts";
@@ -25,7 +25,7 @@ import {
   statusCounts,
   type WorkflowRef,
 } from "../list/runs-filter.ts";
-import { loadFailureReason } from "../load-failure.ts";
+import { FailureReason, RefreshFailedLine } from "../load-failure.tsx";
 import { emptyListWords, pageWords, runCommand } from "../run-words.ts";
 import { type RunsList, RunsListService, type RunsListState } from "../runs-list.ts";
 
@@ -35,6 +35,7 @@ export function RunsPage({ context }: PlaceViewProps) {
   return (
     <RunsView
       list={context.services.get(RunsListService)}
+      engine={engineWordsOf(context)}
       {...(openItem === undefined
         ? {}
         : {
@@ -51,6 +52,8 @@ export interface RunsViewProps {
   readonly openRun?: (run: RunSummary) => void;
   /** The clock for the day headings and due times; tests pass a fixed one. */
   readonly now?: () => Date;
+  /** What the page calls the engine when it isn't answering, for this window's host; the desktop app's by default. */
+  readonly engine?: EngineWords;
 }
 
 /**
@@ -67,7 +70,12 @@ export interface RunsViewProps {
  * Not here yet: the spend line (T4), opening a run in a new tab, the text
  * and hub filters (and so the phone's Search and hub picker), and the row's ⋮.
  */
-export function RunsView({ list, openRun, now = () => new Date() }: RunsViewProps) {
+export function RunsView({
+  list,
+  openRun,
+  now = () => new Date(),
+  engine = engineWordsOf({}),
+}: RunsViewProps) {
   const phone = usePresentation() === "phone";
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
@@ -107,10 +115,15 @@ export function RunsView({ list, openRun, now = () => new Date() }: RunsViewProp
         <p className="text-body text-fg-muted">{pageWords.sentence}</p>
       </header>
       {state.loaded && state.error !== undefined ? (
-        <p className="text-small text-fg-muted">{emptyListWords.showingLast}</p>
+        <RefreshFailedLine
+          what={emptyListWords.refreshFailed}
+          error={state.error}
+          engine={engine}
+        />
       ) : null}
       <PageBody
         state={state}
+        engine={engine}
         rows={rows}
         filters={filters}
         onFilters={setFilters}
@@ -128,6 +141,7 @@ export function RunsView({ list, openRun, now = () => new Date() }: RunsViewProp
 /** What comes under the sentence: the load error, the no-runs state, or the filters and the runs. */
 function PageBody({
   state,
+  engine,
   rows,
   filters,
   onFilters,
@@ -139,6 +153,7 @@ function PageBody({
   phone,
 }: {
   readonly state: RunsListState;
+  readonly engine: EngineWords;
   readonly rows: readonly RunRow[];
   readonly filters: RunsFilters;
   readonly onFilters: (filters: RunsFilters) => void;
@@ -155,7 +170,9 @@ function PageBody({
         tone="error"
         align="start"
         title={emptyListWords.loadFailed}
-        description={loadFailureReason(state.error)}
+        description={
+          <FailureReason what={emptyListWords.loadFailed} error={state.error} engine={engine} />
+        }
         action={{ label: "Try again", onClick: retry }}
       />
     );

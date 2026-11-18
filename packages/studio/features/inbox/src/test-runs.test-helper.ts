@@ -37,15 +37,20 @@ export function waitingRun(id: string, fields: Partial<RunSummary> = {}): RunSum
   };
 }
 
-/** A tool call waiting for approval, asked at `at`. */
+/**
+ * A tool call waiting for approval, asked at `at`. A `connector__tool` name
+ * stands for the engine's log: the bare tool with its `connector`.
+ */
 export function pendingApproval(
   callId: string,
   tool: string,
   at: string,
 ): RunSummary["approvals"][number] {
+  const separator = tool.indexOf("__");
   return {
     agent: "sorter",
-    tool,
+    tool: separator > 0 ? tool.slice(separator + 2) : tool,
+    ...(separator > 0 ? { connector: tool.slice(0, separator) } : {}),
     args: { title: "Refund for order 1042" },
     callId,
     at,

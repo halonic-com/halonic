@@ -1,7 +1,7 @@
 # app.workspace-reload-outside
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10534, HAL-10832; save model 1.7, flow-files 4.6
 
 When files changed outside Halonic and have no unsaved changes, the kernel shall take in their new text as one undo step labelled "Changed outside Halonic", so they read the new text and a save expects it. It shall leave a file with unsaved changes alone and list it as held, and it shall leave out a file Halonic never read and a file whose text did not change. When the user undoes the step, then each file shall read its older text as an unsaved change, and the next save shall write it over the outside text. A file that is gone outside Halonic shall be taken in as a delete the same way. A file that Halonic read or wrote again while the kernel took it in shall keep that newer text, and a save that is running shall finish before the kernel takes files in.

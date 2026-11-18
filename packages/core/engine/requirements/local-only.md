@@ -1,7 +1,7 @@
 # engine.local-only
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5922 (HAL-5921, ADR `docs/adr/2026-11-08-local-first.md`); harness agents HAL-6125
 
 When `LocalExecutorOptions.localOnly` is true, as for a workspace with `privacy.localOnly: true`, the engine shall refuse every model that isn't `local` in Halonic's own loop, and every connector that isn't `local`. Every model of a turn that isn't `local` shall be skipped before any call to it, as a model without its key is: one `llm.skipped` with reason `local-only` and the next model's alias as `next`, or no `next` when none is left, and the same skip in a chat turn's `skipped`. A model that is `local` shall be called as before. When no model is left, the turn shall fail with a `ModelCallError` whose reason is `local-only` and whose message says no model is local, and a run that fails this way shall have the reason `local-only`. The engine shall use only the connectors that are `local`, for the tools it offers and for the connector calls it makes. Without `localOnly`, nothing changes. An agent that runs in a harness program (`runs.harnesses`: a chat turn through `ChatHarnessTurns`, or a run step through `runHarnessCall`, whether its file or the run names the harness) shall be refused before its bridge, sandbox or harness starts, because the program sends the work to its own cloud model: the call fails with a `ModelCallError` whose reason is `local-only` and whose message names the agent and its harness, so a chat turn throws it and a run fails with the reason `local-only`.

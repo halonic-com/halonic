@@ -52,7 +52,7 @@ verifies("inbox.approval-card", () => {
       expect(text).toContain("Waiting since 10:42 (1 min)");
       expect(root.querySelector("h3")?.textContent).toBe("create_note · notes-mcp");
       expect(text).toContain("External connector (MCP)");
-      expect(root.querySelector("code")?.textContent).toBe("notes-mcp__create_note");
+      expect(root.querySelector("code")?.textContent).toBe("create_note");
       const fields = [...root.querySelectorAll("dl > div")].map((field) => [
         field.querySelector("dt")?.textContent,
         field.querySelector("dd")?.textContent,
@@ -122,7 +122,7 @@ verifies("inbox.approval-card", () => {
       expect(root.querySelector("h2")?.textContent).toBe(
         "Sorter wants to use create⟦U+200B⟧note (notes-mcp)",
       );
-      expect(root.querySelector("code")?.textContent).toBe("notes-mcp__create⟦U+200B⟧note");
+      expect(root.querySelector("code")?.textContent).toBe("create⟦U+200B⟧note");
       expect(root.querySelector("dt")?.textContent).toBe("ti⟦U+200B⟧tle");
     });
 

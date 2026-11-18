@@ -1,7 +1,7 @@
 # recording.pacing
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6422; the shot table of the README recording's storyboard on HAL-6395 (section 2)
 
 When a capture is paced, the pacing shall change only when things appear: each command is typed over its `typing` seconds, the prompt rests for its `hold` seconds, and a wait before a command's first output longer than its `maxWaitForOutput` is cut to it, while every output text and the gaps inside a command's output stay as captured.

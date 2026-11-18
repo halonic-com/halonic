@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1218; card requirements (HAL-64) INBOX-CARD-01, 05, 13, 15 to 18, 31; flow-inbox (HAL-877) 5.3; ux-checklists-approvals (HAL-1250) 2.1 to 2.4 and 2.6; ux-checklists (HAL-1069) 2.5 to 2.7; microcopy (HAL-751) 10.2 and 19; the way back on the decided card (HAL-4008)
 
-The approval card shall be a region named by its title, "_Agent_ wants to use _tool_ (_connector_)", and opening it shall focus the title, never Approve. The header says since when it waits, counting on every minute while the card is open, and has **Open run**. The action shows the summary as its heading, the neutral tag "External connector (MCP)" for a tool from a connector, the raw name, and every argument with **Show raw JSON**. A tool approval shows no timer.
+The approval card shall be a region named by its title, "_Agent_ wants to use _tool_ (_connector_)", and opening it shall focus the title, never Approve. The header says since when it waits, counting on every minute while the card is open, "Started by" what started the run, and has **Open run**, which opens the run's page and leaves the Inbox as it is. The action shows the summary as its heading, the neutral tag "External connector (MCP)" for a tool from a connector, the raw name, and every argument with **Show raw JSON**. A tool approval shows no timer.
 
 The bar under the card holds **Reject**, **Ask for changes** and **Approve**. For 1 s after the card opens, a press that started in that second, or a key that is held or repeats, does nothing; a screen reader's click, with no press before it, goes through. No key decides. While a decision is sent its button reads "Approving…" or "Rejecting…" and is busy, and the others ignore presses. If it fails, "Couldn't record your decision." shows with **Try again** in the bar's alert slot and the card stays as it was. When Studio can't send the answer itself, the alert slot shows the executor's sentence and the command line that sends it in code style, with **Copy command**, and no **Try again**: a retry can't work. The card stays waiting.
 
@@ -14,7 +14,7 @@ After a decision the card shall be replaced in place: the header keeps **Open ru
 
 ## Examples
 
-- Given Sorter's call to `notes-mcp__create_note` with `{ title: "Refund for Sam", body: "" }`, asked at 10:42,
+- Given Sorter's call to `create_note` from the connector `notes-mcp` with `{ title: "Refund for Sam", body: "" }`, asked at 10:42,
   when the card opens at 10:43,
   then the title "Sorter wants to use create_note (notes-mcp)" has focus, the header reads "Waiting since 10:42 (1 min)", the tag reads "External connector (MCP)", and the arguments read `title: Refund for Sam` and `body: (empty)`.
 - Given the card has been open for 1 s,

@@ -191,6 +191,52 @@ verifies("cli.commands.routines.watch", () => {
     expect(await watching).toBe(143);
   });
 
+  it("refuses a routine whose one agent is in a harness, and writes nothing to the run log", async () => {
+    await writeFiles(acmeRuns.acme, {
+      "hubs/support/agents/writer.agent.yaml":
+        "id: writer\nname: Writer\ninstructions: Reply.\nharness: claude-code\n",
+      "hubs/support/workflows/routines/hourly-follow-up.routine.yaml": hourly.replace(
+        "run: { workflow: follow-up }",
+        "run: { agent: writer, prompt: Follow up on the open emails. }",
+      ),
+    });
+    const io = captureIo(acmeRuns.acme);
+
+    const code = await runCli(["routines", "watch"], io, [watchCommand(fakeTime(engineStart))]);
+
+    expect(code).toBe(exitCode.unavailable);
+    expect(io.stderr.join("\n")).toContain("Writer is in Claude Code. Nothing ran.");
+    expect(await storedRuns()).toEqual([]);
+  });
+
+  it("refuses a routine whose workflow has an agent in a harness", async () => {
+    await writeFiles(acmeRuns.acme, {
+      "hubs/support/agents/writer.agent.yaml":
+        "id: writer\nname: Writer\ninstructions: Reply.\nharness: claude-code\n",
+      "hubs/support/workflows/follow-up.workflow.yaml": [
+        "id: follow-up",
+        "name: Follow up",
+        "initial: write",
+        "states:",
+        "  write:",
+        "    description: Write the follow-up",
+        "    agent: writer",
+        "    input: Follow up on the open emails.",
+        "    on:",
+        "      - to: done",
+        "  done:",
+        "    type: final",
+        "",
+      ].join("\n"),
+    });
+    const io = captureIo(acmeRuns.acme);
+
+    const code = await runCli(["routines", "watch"], io, [watchCommand(fakeTime(engineStart))]);
+
+    expect(code).toBe(exitCode.unavailable);
+    expect(await storedRuns()).toEqual([]);
+  });
+
   it("refuses an untrusted workspace that reaches a real model, and writes nothing to the run log", async () => {
     await writeFiles(acmeRuns.acme, {
       "providers/ollama.yaml": "id: ollama\ntype: ollama\nlocal: true\n",

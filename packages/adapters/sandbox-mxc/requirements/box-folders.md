@@ -1,7 +1,7 @@
 # sandbox-mxc.box-folders
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-3305, HAL-3503 (grant rule 6), HAL-7514
 
 The sandbox-mxc adapter shall make a new, empty box folder for every box, under one base folder inside Halonic's data folder, and never reuse one. Removing a box folder shall remove everything in it, and removing it twice shall do nothing more. The first box folder a process makes shall first remove the box folders that processes no longer running left behind, such as after a crash, and shall keep those of processes that still run. When a leftover can't be removed because a program still holds it, it shall skip that folder and make the new one, and try again the next time a process clears leftovers.

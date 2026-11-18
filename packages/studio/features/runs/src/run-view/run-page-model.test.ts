@@ -108,6 +108,25 @@ verifies("runs.run-page", () => {
       });
     });
 
+    it("names the agent as its file does, not by its id", () => {
+      const run = { summary: summaryWith({ approvals: [approvalAt(1)] }) };
+      const named = {
+        ...context,
+        agentName: (id: string) => (id === "reporter" ? "News desk" : id),
+      };
+      expect(runBanner(run, named)).toMatchObject({
+        lines: [expect.stringContaining("News desk wants to send an email with Gmail")],
+      });
+    });
+
+    it("writes a hidden character in the agent's name as an escape", () => {
+      const run = { summary: summaryWith({ approvals: [approvalAt(1)] }) };
+      const named = { ...context, agentName: () => "News\u202Edesk" };
+      expect(runBanner(run, named)).toMatchObject({
+        lines: [expect.stringContaining("News\\u202edesk wants")],
+      });
+    });
+
     it("writes a hidden character in a wait title as an escape", () => {
       const atReview = { status: "waiting" as const, state: "review", accepts: ["approve"] };
       expect(
@@ -148,18 +167,22 @@ verifies("runs.run-page", () => {
       });
     });
 
-    it("gives a failed run R24's general banner, with the engine's message", () => {
+    it("gives a failed run R24's general banner; the engine's message goes to Copy details only", () => {
       const failed = { status: "failed" as const, endedAt: minutesLater(1) };
-      expect(page({ ...failed, error: "Model refused" }).banner).toEqual({
+      const { banner } = page({ ...failed, error: "Model refused" });
+      expect(banner).toEqual({
         kind: "callout",
         tone: "danger",
         name: "Run failed",
-        lines: [
-          "Support reply failed in the step Draft. Halonic can't tell the cause yet: Model refused.",
-        ],
+        lines: ["Support reply failed in the step Draft. Halonic can't tell the cause yet."],
+        details: expect.stringContaining("Model refused"),
       });
+      expect(banner?.kind === "callout" && banner.details).toMatch(
+        /^Support reply failed.*\nRun \S+\nModel refused$/,
+      );
       expect(page({ ...failed, error: null }).banner).toMatchObject({
         lines: ["Support reply failed in the step Draft. Halonic can't tell the cause yet."],
+        details: expect.not.stringContaining("null"),
       });
     });
 
@@ -167,7 +190,7 @@ verifies("runs.run-page", () => {
       const { banner } = page({
         status: "failed",
         reason: "budget",
-        error: "The run's budget of €5.00 is reached",
+        error: "Run budget reached: 5.08 of 5.00 EUR spent.",
       });
       expect(banner).toEqual({
         kind: "callout",
@@ -175,9 +198,12 @@ verifies("runs.run-page", () => {
         name: "Stopped at its budget",
         title: "Stopped at its estimated budget",
         lines: [
-          "Support reply stopped in the step Draft: The run's budget of €5.00 is reached.",
+          "Support reply stopped in the step Draft.",
           "Halonic checks the budget before each model call, so calls already under way can take a run over it.",
         ],
+        details: expect.stringMatching(
+          /^Support reply stopped in the step Draft\.\nRun \S+\nRun budget reached: 5\.08 of 5\.00 EUR spent\.$/,
+        ),
       });
     });
 

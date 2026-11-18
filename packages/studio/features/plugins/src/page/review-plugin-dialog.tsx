@@ -73,6 +73,8 @@ export function ReviewPluginDialog({
       manifest={manifest}
       origin={plugin.origin}
       reason={reason}
+      folder={plugin.location}
+      files={plugin.backendFiles}
       changes={changes !== undefined ? changeSummary(manifest, changes) : undefined}
       trustedOn={trustedDay(plugin.trustedAt, new Date())}
       programsRun={programsRun}

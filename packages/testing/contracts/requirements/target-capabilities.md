@@ -1,7 +1,7 @@
 # contracts.target-capabilities
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6803; multi-cloud ADR 5.5 and 5.9
 
 Where a deployment target declares that it can't start programs, use git, edit its workspace files or set secrets, it shall wire no port for starting programs or for git, shall hand out definitions without `write`, `remove` or `watch`, and shall hand out secrets without `set`, `remove` or `names`, so that nothing a stolen session can call changes what runs.

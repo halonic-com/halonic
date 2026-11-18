@@ -42,6 +42,11 @@ export class CodexLog {
       | Record<string, unknown>
       | undefined;
   }
+
+  /** The methods Halonic requested, in order. */
+  methodsInOrder(): string[] {
+    return this.requests.map((request) => request.method);
+  }
 }
 
 /** What the turn of a fake Codex can do: tell Halonic about the turn, and ask it things. */

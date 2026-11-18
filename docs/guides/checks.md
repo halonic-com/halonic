@@ -221,6 +221,7 @@ covers it:
 | a lower coverage floor in `package.json`, a new `v8`/`c8`/`istanbul ignore` comment, or changed `coverage` settings | the changed file |
 | a file under the guard's own paths changed, added or deleted: `.github/`, `packages/testing/parity/allowed-differences.json`, `packages/testing/spec/`, `tooling/check/`, `tooling/config/src/vitest-preset.ts`, `turbo.json` | that path, as written here |
 | `tooling/check/policy.json` changed in `extraExports` only (a note of either kind is enough, so the CTO can sign it as `internal`) | `tooling/check/policy.json` |
+| the lines for `@typescript/typescript6` (the parser the guard runs) changed in `pnpm-workspace.yaml` or `pnpm-lock.yaml` (a note of either kind is enough) | that file |
 
 A package with tests but no readable result file on either side always
 fails: no note can stand in for a comparison the guard couldn't make.
@@ -313,7 +314,7 @@ trail; the guard doesn't call Paperclip. It checks the **signature line**
 instead, offline, with no token and no network, so fork pull requests are
 checked the same way. The approver signs with their Ed25519 key, and the
 guard accepts the signature only from a key that the base branch's
-`tooling/check/approvers.json` pins for the note's kind (today the CTO's key for both). A pull request
+`tooling/check/approvers.json` pins for the note's kind (today the CTO's key and the security reviewer's for both, so that neither signs a pull request they wrote and the other can). A pull request
 can't add its own key: the guard reads that file from the base branch's
 commit (`pull_request.base.sha`), never from the pull request.
 
@@ -342,8 +343,8 @@ base branch already has the note: a branch name that was used before needs
 a new name. Both guards fail the pull request when they find an error. A
 change to a requirement needs an approved note of either kind. A change to
 the guard's own paths needs a `user-visible` note, except routine changes
-under `.github/`, `tooling/check/` and `.gitattributes`, where the CTO's
-signed `internal` note is enough, unless the change reaches a trust root
+under `.github/`, `tooling/check/` and `.gitattributes`, where a signed
+`internal` note is enough, unless the change reaches a trust root
 (see the two guardians above).
 
 **Notes on `main` are append-only.** A pull request that edits or deletes a
@@ -435,7 +436,13 @@ more exception: a change to `tooling/check/policy.json` that touches
 nothing but `extraExports` (a package's deliberate extra entry point) needs
 a note that lists `tooling/check/policy.json`, and an `internal` note the
 CTO signs is enough. Any other change to `policy.json`, even in the same
-pull request, is a trust-root change. The check also
+pull request, is a trust-root change. The same goes for the npm package the guard
+runs: the `check.guard-dependency` rule counts a change to the catalog entry of
+`@typescript/typescript6` in `pnpm-workspace.yaml`, or to the lockfile lines that resolve it
+(its `tooling/check` importer entry, its package and snapshot entries and those of its own
+dependencies). Other changes to those two files, such as another dev dependency, are not
+reported. A lockfile layout the reader doesn't know counts any difference as a change. A note of
+either kind that lists the file under Covers is enough. The check also
 checks any note's approval again in the merge queue, against the queue
 base's `approvers.json`. The merge queue is different: there GitHub runs
 the file from the merge group's commit, which holds the pull request's own
@@ -570,6 +577,13 @@ package's own run still runs its tests, without a floor. `pnpm check` allows
 `measuredIn` only in the testing layer, with at least 80% of lines, and only
 when the named package lists this one in `dependencies` or `devDependencies`
 and runs its tests through the shared preset.
+
+**Code that runs in workerd.** Node's coverage can't see code running in
+workerd, so a package that declares `"runtime": "workers"` is measured another
+way: the preset gives it a coverage provider that adds what workerd counted to
+the Node run's report. The contract suites run through
+`@halonicjs/target-cloudflare-testing` count this way, with no stand-in Node
+test beside them. How it works is in that package's README.
 
 In a pull request, CI compares the floor of every package whose `package.json`
 the pull request changes with its floor at the merge base (where the branch left

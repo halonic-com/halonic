@@ -1,4 +1,5 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
+import { RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { defineFeature } from "@halonicjs/studio-shell";
 import {
   InboxNoticesService,
@@ -28,6 +29,8 @@ export const inboxFeature = defineFeature({
     SandboxRefusalsService,
     sandboxStartCheckKey,
     SandboxPassesService,
+    // The page reads each run's workflow and starter from the Runs list for the card and row.
+    RunsListService,
   ],
   provides: [InboxService],
   register(studio) {

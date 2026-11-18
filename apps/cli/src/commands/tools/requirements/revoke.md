@@ -1,7 +1,7 @@
 # cli.commands.tools.revoke
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-2827 (HAL-850 step 5); cli-output 3.10 (revision 33)
 
 The `halonic tools revoke <source> <tool>…` command shall remove the approval of each tool named, in order, one line each, an approval that can't be read included, so the tool is Not approved again. It shall check every name first: when one of them isn't approved, it shall remove none and stop with that tool's error, exit 4. It reads only the approvals, so it shall start no connector. With `--json` it shall give the tools whose approval it removed.

@@ -1,7 +1,7 @@
 # cli.open-local-integration
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8089 (start local integrations and plugin backends from the run host); the factory is `cli.integration-connector-factory`
 
 When the `halonic` command opens a local integration for a run, it shall start its runner only after the workspace's trust check, made again at every start, covers the integration's folder as it is on disk then, and the start gate allows a sandbox; the check shall never be reused from an earlier start, the restart after an idle stop included. The runner shall run `backend/index.js` in the integration's folder and use its `default` export. When the check or the gate refuses, or the built runner is missing, no runner shall start and the call that needed the integration shall fail with the reason. Nothing of the integration's code shall load in the command's own process.

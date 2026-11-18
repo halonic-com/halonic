@@ -14,12 +14,14 @@ import {
   workspaceFilesKey,
 } from "@halonicjs/app";
 import { randomIds, systemClock } from "@halonicjs/std";
+import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import {
   InboxNoticesService,
   InboxRequestsService,
   InboxRunsService,
+  monthBudgetUse,
   SandboxRefusalsService,
 } from "@halonicjs/studio-feature-inbox/api";
 import {
@@ -38,6 +40,7 @@ import {
   NoLimitMemoryService,
   ProviderCheckService,
 } from "@halonicjs/studio-feature-models/api";
+import { RoutinesHostService } from "@halonicjs/studio-feature-routines/api";
 import {
   InstructionTrustHostService,
   RunStartHostService,
@@ -51,7 +54,9 @@ import {
   type TauriIpc,
   tauriAgentHostTransport,
 } from "@halonicjs/studio-services";
+import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
+import { choicesMemory } from "../changes/workspace-merge.ts";
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import { WorkspaceFilesHost } from "../files/workspace-files-host.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
@@ -72,6 +77,7 @@ import { WorkspaceModelsFiles } from "../models/workspace-models-files.ts";
 import { WorkspaceNoLimit } from "../models/workspace-no-limit.ts";
 import { WorkspaceProviderCheck } from "../models/workspace-provider-check.ts";
 import { providePlugins } from "../plugins/provide-plugins.ts";
+import { WorkspaceRoutines } from "../routines/workspace-routines.ts";
 import { WorkspaceRuns } from "../runs/workspace-runs.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
 import { WorkspaceInstructionTrust } from "./workspace-instruction-trust.ts";
@@ -143,6 +149,7 @@ export function provideFolderServices(
       files: new TauriDefinitionStore(files, location),
       // `.studio/discarded`, which the folder's own store refuses as private.
       copies: new TauriDefinitionStore(files, location, { folder: "discarded" }),
+      choices: choicesMemory(storageOf(window), location),
       digest: webCryptoDigest,
       onFocus: (listener) => focusOf(window, listener),
       onFilesChanged: (listener) => scope.events.on("files.changed", listener),
@@ -167,6 +174,13 @@ export function provideFolderServices(
       reportError: (error) => console.error("The engine", error),
     }),
   );
+  services.provide(
+    AgentsHostService,
+    new WorkspaceAgents({
+      files: services.get(workspaceFilesKey),
+      onChange: (listener) => scope.events.on("files.changed", listener),
+    }),
+  );
   const workflows = services.provide(
     WorkflowsHostService,
     new WorkspaceWorkflows({
@@ -175,6 +189,16 @@ export function provideFolderServices(
       runs: services.get(RunsSourceService),
       ...(settle === undefined ? {} : { settle }),
       engine,
+    }),
+  );
+  services.provide(
+    RoutinesHostService,
+    new WorkspaceRoutines({
+      files: services.get(workspaceFilesKey),
+      onChange: (listener) => scope.events.on("files.changed", listener),
+      runs: services.get(RunsSourceService),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      now: () => new Date(),
     }),
   );
   // Run again on the run page starts a run the way the workflow page's Run does.
@@ -190,6 +214,16 @@ export function provideFolderServices(
     new WorkspaceRequests({
       files: services.get(workspaceFilesKey),
       onChange: (listener) => scope.events.on("files.changed", listener),
+      monthBudget: async () => {
+        const runs = services.get(RunsSourceService);
+        const summaries = (await runs.list()).map((run) => run.summary);
+        const limit = runs.monthlyBudget();
+        return monthBudgetUse(
+          summaries,
+          limit === undefined ? undefined : { limit, currency: runs.currency() },
+          new Date(),
+        );
+      },
       engine,
     }),
   );

@@ -52,6 +52,7 @@ createRoot(root).render(
       <SandboxChoiceFlow
         view={view}
         platform="win32"
+        promise={true}
         initialScreen={screen}
         onSetUp={() => undefined}
         onContinueWithout={() => undefined}

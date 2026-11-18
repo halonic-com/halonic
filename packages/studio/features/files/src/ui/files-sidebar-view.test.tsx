@@ -5,6 +5,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { FilesHost, FilesListing } from "../files-host.ts";
+import { kinded } from "../test-support/kinded.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { contextHost, contextOf, listing, rowNamed, settled } from "../test-support/sidebar.ts";
@@ -116,7 +117,7 @@ verifies("files.ui.tree-view", () => {
   it("says it couldn't load, and shows the tree after Try again works", async () => {
     const list = vi
       .fn<FilesHost["list"]>()
-      .mockRejectedValueOnce(new Error("The folder is not readable."))
+      .mockRejectedValueOnce(kinded("unavailable", "The folder is not readable."))
       .mockResolvedValue(listing(files));
     const page = await show({ ...hostOf(listing([])), list });
     expect(page.textContent).toContain("Couldn't load files");
@@ -129,19 +130,33 @@ verifies("files.ui.tree-view", () => {
     expect(page.querySelector('[role="tree"]')).not.toBeNull();
   });
 
+  it("never shows a system error's own text, only the general reason", async () => {
+    const list = vi.fn<FilesHost["list"]>().mockRejectedValue(new Error("EIO: i/o error, scandir"));
+    const page = await show({ ...hostOf(listing([])), list });
+    expect(page.textContent).toContain("Couldn't load files");
+    expect(page.textContent).toContain("Halonic ran into a problem it can't explain yet.");
+    expect(page.textContent).not.toContain("EIO");
+  });
+
   it("says there are no files", async () => {
     const page = await show(hostOf(listing([])));
     expect(page.textContent).toContain("Everything in this workspace is a file.");
     expect(page.textContent).toContain("Add one with +.");
   });
 
-  it("offers New file in the empty state, which opens the dialog and gets focus back", async () => {
+  it("keeps workspace.yaml as a row with a quiet line and no button when it is the only file", async () => {
+    const page = await show(hostOf(listing(["workspace.yaml"])));
+    expect(rowNamed(page, "workspace.yaml")).toBeDefined();
+    expect(page.textContent).toContain("Everything in this workspace is a file. Add one with +.");
+    const buttons = [...page.querySelectorAll("button")].map((button) => button.textContent);
+    expect(buttons).not.toContain("New file");
+  });
+
+  it("opens the New file dialog from the + button and gets focus back", async () => {
     fakeModal();
     try {
       const page = await show(hostOf(listing([])));
-      const inEmpty = [...page.querySelectorAll("button")].find(
-        (button) => button.textContent === "New file",
-      );
+      const inEmpty = page.querySelector<HTMLElement>('button[aria-label="New file"]');
       expect(inEmpty).toBeDefined();
       await act(async () => {
         inEmpty?.focus();

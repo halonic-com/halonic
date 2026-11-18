@@ -102,6 +102,40 @@ verifies("inbox.page", () => {
     });
   });
 
+  describe("the run behind an item", () => {
+    const facts = { hubId: "acme", workflow: "Support reply", startedBy: "a message" };
+
+    it("says the workflow on the row, and the card says who started it and has Open run", async () => {
+      const openRun = vi.fn();
+      const inbox = new Inbox(fakeRuns([review]).runs);
+      const root = render(
+        <InboxView
+          inbox={inbox}
+          now={() => new Date(2026, 10, 8, 10, 43)}
+          runFacts={(runId) => (runId === "r2" ? facts : undefined)}
+          openRun={openRun}
+        />,
+      );
+      await settled();
+      expect(rowCell(root, 0).textContent).toBe(
+        "Approve this reply?Support reply · a person step · Waiting 1 h · moves on Sun 14:00",
+      );
+      await click(rowCell(root, 0));
+      expect(root.querySelector("section header")?.textContent).toContain("Started by a message");
+      await click(button(root, "Open run"));
+      expect(openRun).toHaveBeenCalledWith("acme", "r2");
+      // The Inbox keeps its selection.
+      expect(root.querySelector("[aria-current]")).not.toBeNull();
+    });
+
+    it("has no Open run and no Started by line without the run's facts", async () => {
+      const { root } = await openPage(fakeRuns([review]).runs);
+      await click(rowCell(root, 0));
+      expect(root.textContent).not.toContain("Open run");
+      expect(root.textContent).not.toContain("Started by");
+    });
+  });
+
   describe("the list", () => {
     it("names Needs you with its count, lists newest first and opens nothing", async () => {
       const { root } = await openPage(fakeRuns([review, notes]).runs);

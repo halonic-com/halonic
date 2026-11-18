@@ -1,7 +1,7 @@
 # settings.ai-agent-key-line
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8123 (T11 PR 8); req-settings `settings.ai-agent.local-only-warning`, `workspace.settings.session-ai`; flow-settings 7 and 13 (HAL-646); HAL-119 (keys are entered in one place only)
 
 The Settings feature shall show, under Model once a provider is set, a Key line that says whether a key is stored under the Assistant's secret name, and shall never offer a field for the key. With no secret name it shall read "No key needed." With a key stored: "● Key set · Replace it in Models ›". With none stored: "○ No key · Add it in Models ›" when a provider of the open workspace uses the secret name, else "○ No key. Add a provider that uses `secret-name` to *Workspace* ›" with the name in code font; with no workspace open: "○ No key. Open a workspace to add it." The dots shall be hidden from screen readers. A link shall close Settings and then open the Models page (the words name Models until the provider page is the target), or start Add provider with the type and the secret name filled in. Served, the line shall read "Set on the computer running Halonic" or "No key on the computer running Halonic", without a link. While the workspace answers, a skeleton bar shall stand in the line; if it can't answer, the line shall read "Couldn't check for a key."

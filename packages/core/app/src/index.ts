@@ -155,7 +155,7 @@ export {
   liveVersionOf,
 } from "./live-version.ts";
 export { integrationsFolder, readLocalIntegrations } from "./local-integrations.ts";
-export { defaultCurrency, moneyAmount } from "./money-amount.ts";
+export { defaultCurrency, type MoneyAmountOptions, moneyAmount } from "./money-amount.ts";
 export { lastMonths, type MonthSpend, monthOf, monthStartOf, spendByMonth } from "./month-spend.ts";
 export {
   type NewAgentsRun,
@@ -280,7 +280,12 @@ export {
   pluginTrustFingerprintPrefix,
 } from "./plugin-trust-content.ts";
 export {
+  type PluginTrustFiles,
   type PluginTrustSection,
+  pluginTrustFileCap,
+  pluginTrustFiles,
+  pluginTrustLocationHeadings,
+  pluginTrustMoreFilesText,
   pluginTrustSectionHeadings,
   pluginTrustSectionOrder,
   pluginTrustSections,

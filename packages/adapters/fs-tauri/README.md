@@ -22,8 +22,14 @@ The `TrustStore`, `RunStore`, `BlobStore`, `RecordStore`, `DefinitionStore`, `Fo
   `fs-node` lays it out, so a blob one of them stored is there for the other.
 - `TauriPluginFolderReader` and `TauriPluginFolderWriter`: the `FolderReader` and `PluginFolderWriter`
   ports over the shell's `plugin_folder_*` commands, which work in the profile's plugins folder and
-  never follow a link. No call names a folder. The writer can `remove` a plugin; `place` always
-  refuses, because adding a plugin is a CLI action (`halonic plugin add`).
+  never follow a link. No call names a folder. The writer can `remove` a plugin and `place` one, whole
+  or not at all and never over a name in use in any case (`plugin_folder_place`).
+- `TauriPluginInstallSource` and `TauriPluginSourceReader`: where the Add plugin dialog gets a plugin.
+  A folder the person picks with the shell's folder picker, or one commit of a git repository the
+  shell exports (files only, no `.git`, limits, cancelled when the dialog closes), is a `location`
+  the reader reads through `plugin_source_*`. The page never names a path, and the shell refuses a
+  location it didn't give. Core's `PluginService.add` checks the bytes it read and the writer
+  places exactly those, not trusted.
 - `TauriRecordStore`: every call goes to the shell's `record_append`, `record_read` or
   `record_replace` command. The shell keeps the collections in the profile's record folder for the
   workspace, laid out as `FileRecordStore` in `fs-node` lays it out, under the same write lock, so a

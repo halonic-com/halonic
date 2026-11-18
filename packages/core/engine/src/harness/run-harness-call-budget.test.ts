@@ -1,8 +1,8 @@
 import { isRunFailureError } from "@halonicjs/ports";
-import { errorKindOf, KindedError } from "@halonicjs/std";
+import { errorKindOf } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { BudgetReachedError, type CallBudget } from "../budget/call-budget.ts";
+import { BudgetReachedError, BudgetStopError, type CallBudget } from "../budget/call-budget.ts";
 import { runCallOn, writerCall } from "./harness-call-test-kit.test-helper.ts";
 import { harnessPorts, stillOpen } from "./harness-test-kit.test-helper.ts";
 
@@ -15,7 +15,14 @@ function budgetOf(calls: number): CallBudget {
         left -= 1;
         return;
       }
-      throw new KindedError("limit_reached", "Run budget reached: 1.00 of 1.00 EUR spent.");
+      throw new BudgetStopError({
+        error: "Run budget reached: 1.00 of 1.00 EUR spent.",
+        cause: {
+          kind: "limit_reached",
+          code: "budget.run",
+          detail: { limit: "1", spent: "1", currency: "EUR" },
+        },
+      });
     },
   };
 }
@@ -47,6 +54,10 @@ verifies("engine.budget-stops", () => {
     });
 
     expect(error).toBeInstanceOf(BudgetReachedError);
+    expect((error as BudgetReachedError).failureCause).toMatchObject({
+      kind: "limit_reached",
+      code: "budget.run",
+    });
     expect(errorKindOf(await refused.promise)).toBe("limit_reached");
     expect(written.map((event) => event.type).slice(-2)).toEqual(["llm.request", "tool.called"]);
     expect(ports.steps.slice(-3)).toEqual(["harness.cancel", "session.close", "bridge.close"]);

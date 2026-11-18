@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { noOutsideCall } from "./fakes.test-helper.ts";
 import { GitHubReadTools } from "./github-read-tools.ts";
 import type { Fetch } from "./pass-through.ts";
 
@@ -288,7 +289,12 @@ verifies("harness-bridge.github-read", () => {
       for (const repository of ["halonic", "a/b/c", "a b/c", "../x"]) {
         expect(
           () =>
-            new GitHubReadTools({ repository, secret: "S", secrets: { get: async () => null } }),
+            new GitHubReadTools({
+              repository,
+              secret: "S",
+              secrets: { get: async () => null },
+              fetch: noOutsideCall,
+            }),
         ).toThrow(RangeError);
       }
     });

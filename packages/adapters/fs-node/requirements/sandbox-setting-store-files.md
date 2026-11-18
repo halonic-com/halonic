@@ -1,7 +1,7 @@
 # fs-node.sandbox-setting-store-files
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: `SandboxSettingStore` port v1; HAL-5392; the file rules of `fs-node.agent-placement-store-files`
 
 The fs-node sandbox setting store shall keep the person's sandbox choice as one JSON file, `sandbox-setting.json`, in a folder given to it, with the backend first. A save shall write a flushed temporary file and rename it over the choice, make the folder and file private to the user on systems with modes, and leave no temporary file behind when it fails. A folder that isn't there yet shall read as no choice.

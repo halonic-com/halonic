@@ -1,7 +1,7 @@
 # check.live-sweep
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6701
 
 If a resource on the live test account is named `hlt-<run>-<attempt>-<what>` and is older than 2 hours, then the sweeper shall delete it through its target's own `destroy`; it shall never touch a resource with any other name. With `--fail-on-delete` (the nightly run), it shall fail when it deleted anything, and it shall always fail when a delete failed (ADR 5.9).

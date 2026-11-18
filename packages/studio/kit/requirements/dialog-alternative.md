@@ -1,7 +1,7 @@
 # kit.dialog-alternative
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1291; UX checklist 1.3 ("Close Acme?": Cancel · Close anyway · Try again)
 
 When a `Dialog` with a footer has an `alternative`, the kit shall draw it as a ghost button between Cancel and the confirming button, on a phone stacked between them too, and run its `onClick` when it is pressed. While the Dialog is `busy` it shall be unavailable, because the request is running and a second choice could clash with it, as with Cancel. A Dialog without an `alternative` has no such button.

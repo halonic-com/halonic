@@ -318,6 +318,19 @@ verifies("studio.engine-service", () => {
       await service.close();
     });
 
+    it("starts the run with a manual trigger, so the Runs list doesn't say the terminal started it", async () => {
+      const service = serviceOn(fakeShell());
+      const { executor } = await service.open();
+      const start = vi.spyOn(executor, "start");
+
+      await service.startRun(reply, {});
+
+      expect(start).toHaveBeenCalledWith(
+        expect.objectContaining({ trigger: { type: "manual", at: "2026-11-15T10:00:00.000Z" } }),
+      );
+      await service.close();
+    });
+
     it("refuses as `conflict` when another engine holds the lock", async () => {
       const service = serviceOn(fakeShell({ pid: 7 }));
 

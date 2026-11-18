@@ -100,7 +100,12 @@ export class ClaudeCodeRun implements HarnessRun {
     const own = session.fence.state === "off" && (await ownSandbox());
     if (this.#cancelled) throw cancelledError();
     const process = await session.start(
-      claudeCodeCommand(this.#task, { settingsFolder: folder, instructionsFile, ownSandbox: own }),
+      claudeCodeCommand(this.#task, {
+        settingsFolder: folder,
+        instructionsFile,
+        skillsFolder: this.#task.instructionsFolder ?? null,
+        ownSandbox: own,
+      }),
     );
     const input = process.stdin.getWriter();
     const errorTail = outputTail(process.stderr, keptErrorCharacters).catch(() => "");

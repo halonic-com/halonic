@@ -8,7 +8,10 @@ import {
 } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import { type RefObject, useEffect, useState } from "react";
+import { wasDecidedElsewhere } from "../decide.ts";
 import { PlainValue } from "./plain-value.tsx";
+
+export { wasDecidedElsewhere };
 
 /** The line above the bar when an answer wasn't recorded (mc 10.2). */
 export const failedText = "Couldn't record your decision.";
@@ -16,22 +19,6 @@ export const failedText = "Couldn't record your decision.";
 /** The line when the engine refused an answer because the run isn't waiting for it any more (mc 10.2). */
 export const decidedElsewhereText =
   "This is no longer waiting for you. It was answered somewhere else or the run moved on.";
-
-/** The engine's refusals that mean "not waiting for this answer any more", so trying again can't work. */
-const staleAnswerCodes: ReadonlySet<string> = new Set([
-  "engine.decision-callid-must-match",
-  "engine.decision-wait-must-match",
-]);
-
-/**
- * Whether an answer was refused because its tool call or wait step isn't the run's current one.
- * The refusal's `code` is read, and its message too: it may reach Studio as a plain `Error`.
- */
-export function wasDecidedElsewhere(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const { code, message } = error as { code?: unknown; message?: unknown };
-  return [code, message].some((each) => typeof each === "string" && staleAnswerCodes.has(each));
-}
 
 /** The item after this one, for the decided card's **Next** (flow-inbox 5.3). */
 export interface NextItem {
@@ -73,6 +60,8 @@ interface CardHeaderProps {
   readonly heading: RefObject<HTMLHeadingElement | null>;
   /** "Waiting since 10:42 (1 min)", or `null` once decided: the card no longer waits. */
   readonly since: string | null;
+  /** What started the run, after "Started by": "you, with Run"; left out, the line isn't shown. */
+  readonly startedBy?: string | undefined;
   /** Opens the run; leave it out while the Studio has no run page, and the button isn't shown. */
   readonly onOpenRun?: (() => void) | undefined;
 }
@@ -91,9 +80,16 @@ export function useEveryMinute(): void {
 
 /**
  * A card's header: its title, which takes focus when it opens, since when it waits while it
- * does, and **Open run** (flow-inbox 5.3).
+ * does, what started the run, and **Open run** (flow-inbox 5.3).
  */
-export function CardHeader({ titleId, title, heading, since, onOpenRun }: CardHeaderProps) {
+export function CardHeader({
+  titleId,
+  title,
+  heading,
+  since,
+  startedBy,
+  onOpenRun,
+}: CardHeaderProps) {
   return (
     <header className="flex items-start gap-3">
       <div className="min-w-0 flex-1">
@@ -106,6 +102,9 @@ export function CardHeader({ titleId, title, heading, since, onOpenRun }: CardHe
           {title}
         </h2>
         {since === null ? null : <p className="text-small text-fg-muted">{since}</p>}
+        {startedBy === undefined ? null : (
+          <p className="text-small text-fg-muted">Started by {startedBy}</p>
+        )}
       </div>
       {onOpenRun === undefined ? null : (
         <Button size="sm" onClick={onOpenRun}>

@@ -1,7 +1,7 @@
 # settings.agent-sandbox-state
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1451 (S1); ux-checklists-s1-s2 1.2 to 1.6 (HAL-1444); flow-install-update 13 (HAL-1151)
 
 The Studio shall decide what Settings › Agent sandbox shows from the host's check, what runs now and how the last setup or removal ended. It shall show the chip **Needs setting up** with **Set up the sandbox**, **Needs repair** with **Repair the sandbox**, **Ready** with **Check again** and **Remove the sandbox…**, and **Setting up** with a busy button and the steps while one runs. A failed setup shall show a Callout with the reason as a sentence and **Try again**: for a refused administrator prompt, for a failure, for a failed check (the state then reads Needs repair) and for a setup that took 3 minutes without ending, which Studio shall not stop. A repair that takes 3 minutes shall say so in the words of a repair. A removal that fails shall say why with no **Try again**, and while sandboxed runs go on it shall say how many runs use the sandbox, in the plural when there are several. A build without the sandbox shall show Not available and no button. A check that ran and found the sandbox can't run shall read "The sandbox isn't ready: …"; a check that couldn't run shall read "Couldn't check the sandbox: …". Served Studio shall show the state and **Check again** only, with "View only here." Nothing in this state shall start a setup.

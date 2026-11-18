@@ -15,8 +15,12 @@ export interface ChangeItem {
   readonly id: string;
   /** What the row is called: the item's name, or a friendly name for an other file. */
   readonly name: string;
+  /** The item's id in its kind (what the Open button needs); the same as `name` for an other file. */
+  readonly itemId: string;
   /** The item's kind, or `undefined` for an other file. */
   readonly kind: KindName | undefined;
+  /** The hub the item is in; empty for an item that sits in the workspace itself. */
+  readonly hub: string;
   /** The changed files of the item; at least one. */
   readonly files: readonly ChangedFile[];
   /** The one sentence of the row: what changed first, or that the item was renamed. */
@@ -27,6 +31,7 @@ export interface ChangeItem {
 const friendlyNames: Readonly<Record<string, string>> = {
   [settingsPath]: itemWords.workspaceSettings,
   "models.yaml": itemWords.models,
+  ".gitignore": itemWords.historyLeavesOut,
 };
 
 /** A file inside a skill's folder, other than SKILL.md, still belongs to that skill. */
@@ -38,21 +43,27 @@ function baseName(path: string): string {
 }
 
 /** Which item a path belongs to: its kind, hub and name; `undefined` for a file that is no item. */
-function itemOf(
-  path: string,
-): { readonly kind: KindName; readonly name: string; readonly key: string } | undefined {
+function itemOf(path: string):
+  | {
+      readonly kind: KindName;
+      readonly name: string;
+      readonly hub: string;
+      readonly key: string;
+    }
+  | undefined {
   const place = placeOf(path);
   if (place?.placeId !== undefined) {
     return {
       kind: place.kind,
       name: place.placeId,
+      hub: place.hub ?? "",
       key: `${place.kind}:${place.hub ?? ""}:${place.placeId}`,
     };
   }
   const skill = skillFolderFile.exec(path)?.[1];
   if (skill === undefined) return undefined;
   const hub = /^hubs\/([^/]+)\//u.exec(path)?.[1] ?? "";
-  return { kind: "skill", name: skill, key: `skill:${hub}:${skill}` };
+  return { kind: "skill", name: skill, hub, key: `skill:${hub}:${skill}` };
 }
 
 /** The name an item had before it moved: "Support" for `agents/support.agent.yaml`. */
@@ -76,18 +87,46 @@ function sentenceOf(files: readonly ChangedFile[]): string {
 export function groupIntoItems(files: readonly ChangedFile[]): ChangeItem[] {
   const byId = new Map<
     string,
-    { name: string; kind: KindName | undefined; files: ChangedFile[] }
+    {
+      name: string;
+      itemId: string;
+      kind: KindName | undefined;
+      hub: string;
+      files: ChangedFile[];
+    }
   >();
   for (const file of files) {
     const item = itemOf(file.path);
     const id = item?.key ?? `file:${file.path}`;
     const found = byId.get(id);
     if (found === undefined) {
-      const name = item?.name ?? friendlyNames[file.path] ?? baseName(file.path);
-      byId.set(id, { name, kind: item?.kind, files: [file] });
+      const name =
+        file.description.name ?? item?.name ?? friendlyNames[file.path] ?? baseName(file.path);
+      byId.set(id, {
+        name,
+        itemId: item?.name ?? name,
+        kind: item?.kind,
+        hub: item?.hub ?? "",
+        files: [file],
+      });
     } else {
+      // A skill's name is in its SKILL.md; the other files of its folder carry none.
+      if (file.description.name !== undefined && item !== undefined)
+        found.name = file.description.name;
       found.files.push(file);
     }
   }
-  return [...byId].map(([id, item]) => ({ id, ...item, sentence: sentenceOf(item.files) }));
+  return [...byId].map(([id, item]) => ({
+    id,
+    ...item,
+    sentence: sentenceOf(item.files),
+  }));
+}
+
+/** The kinds that have a page of their own to open from the Changes page. */
+const openableKinds: readonly string[] = ["agent", "workflow", "routine"];
+
+/** Whether the item has a page to open: an agent, a workflow or a routine. */
+export function isOpenable(item: ChangeItem): boolean {
+  return item.kind !== undefined && openableKinds.includes(item.kind);
 }

@@ -155,6 +155,27 @@ export interface CommandResult {
    * nowhere, and it is never part of stdout or `--json`.
    */
   readonly debugText?: string;
+  /**
+   * Warnings for stderr after the result lines, such as "! 2 tools from
+   * notes-mcp stay off: there's no terminal to ask you." (cli-output
+   * section 2: warnings go to stderr). Not printed with `--json`, whose
+   * document holds the result.
+   */
+  readonly warnings?: readonly Phrase[];
+  /**
+   * Why the command exits with a code other than 0 although it ran to its
+   * end, such as a review that nobody could answer. `--json` shows it as the
+   * document's `error`, so a script reads `error.kind` as it does for any
+   * failed command (cli-output 1.8). The lines and warnings are as for a result.
+   */
+  readonly failure?: CommandFailure;
+}
+
+/** The `error` of a failed command's `--json` document, as text. */
+export interface CommandFailure {
+  readonly kind: ErrorKind;
+  readonly message: string;
+  readonly fix?: string;
 }
 
 /**

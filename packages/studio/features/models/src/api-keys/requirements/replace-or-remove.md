@@ -1,7 +1,7 @@
 # models.api-keys.replace-or-remove
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10 migration checklist U31 (Now, decided; new); changed by the save-model decision, HAL-1102 (req-models, HAL-110; flow-models, HAL-177)
 
 When the user saves a new key or presses "Remove key" on a provider page, the models feature shall first ask, and on confirmation replace or delete the key under that secret name in this device's secret store, taking effect right away.

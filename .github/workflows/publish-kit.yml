@@ -18,8 +18,11 @@
 # dependencies or the description stops in the `pack` job, before any build,
 # and stages nothing. So does a push that adds a new layer package: its first
 # version is staged by a run by hand, once its trusted publisher is set up on
-# npm. A run by hand works on `main` only, where `dry_run` is on by default:
-# it builds and checks the tarballs and stops short of `npm publish`. A run by
+# npm. A run by hand works on `main` and on a `release/*` branch, where
+# `dry_run` is on by default: it builds and checks the tarballs and stops
+# short of `npm publish`. A release branch holds a reviewed commit plus only
+# its fixes, so a patch can ship without what `main` gained since (HAL-11856);
+# it is published only by a run by hand, never by a push. A run by
 # hand always builds every layer package. It never runs on pull requests. A
 # version already on npm is skipped, so a run can be repeated after a partial
 # failure.
@@ -66,7 +69,7 @@ env:
 jobs:
   pack:
     name: Build and check the tarballs
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/release/'))
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:

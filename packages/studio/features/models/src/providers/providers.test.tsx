@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { settlePendingSaves } from "@halonicjs/studio-kit";
 import { type ItemRef, limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import type { ReactElement } from "react";
@@ -187,6 +188,26 @@ verifies("models.providers.list-and-show", () => {
     await typeAndLeave(baseUrl, "http://localhost:11434/v1");
     expect(saved.map(({ label }) => label)).toEqual(["Updated provider Ollama"]);
     expect(saved[0]?.text).toContain("baseUrl: http://localhost:11434/v1");
+  });
+
+  it("registers a field's save with the window close while the file is still being read", async () => {
+    let release: (text: string) => void = () => undefined;
+    const saved: string[] = [];
+    const files = {
+      ...filesWith({ ollama }),
+      readProvider: () => new Promise<string>((resolve) => (release = resolve)),
+      changeProvider: (_path: string, _label: string, text: string) => saved.push(text),
+    };
+    const view = await page("ollama", files);
+    const baseUrl = view.querySelectorAll("input")[1] as HTMLInputElement;
+    await typeAndLeave(baseUrl, "http://localhost:11434/v1");
+    expect(saved).toEqual([]);
+
+    const settled = settlePendingSaves();
+    await act(async () => release(ollama));
+    await settled;
+
+    expect(saved).toHaveLength(1);
   });
 
   it("refuses a pasted key as the secret name without writing it or showing it", async () => {

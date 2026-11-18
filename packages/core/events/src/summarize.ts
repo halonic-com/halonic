@@ -150,6 +150,7 @@ function pendingApproval(
     agent: event.agent,
     ...(event.subagent === undefined ? {} : { subagent: event.subagent }),
     tool: event.tool,
+    ...(event.connector === undefined ? {} : { connector: event.connector }),
     args: event.args,
     callId: event.callId,
     at: event.at,

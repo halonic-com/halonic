@@ -83,6 +83,19 @@ verifies("studio.workspace-runs", () => {
     expect(runs.currency()).toBe("USD");
   });
 
+  it("names an agent as its file does, and not one the workspace doesn't have", async () => {
+    const { engine } = await waitingRun();
+    const definitions = new MemoryDefinitionStore({
+      "workspace.yaml": "id: acme\nname: Acme\n",
+      "agents/handbook-reader.agent.yaml":
+        "id: handbook-reader\nname: Handbook reader\nmodel: mock\ninstructions: Read.\n",
+    });
+    const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions });
+    await runs.list();
+    expect(runs.agentName("handbook-reader")).toBe("Handbook reader");
+    expect(runs.agentName("gone")).toBeUndefined();
+  });
+
   it("names the workflows as `halonic run` takes them, in the Workflows list's order", async () => {
     const { engine } = await waitingRun();
     const workflow = (id: string, name: string) =>

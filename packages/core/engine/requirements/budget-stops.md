@@ -4,13 +4,13 @@
 - Since: 0.1.0
 - Source: HAL-186 implementation plan, step 6; task HAL-3788; the kernel sets `budget` itself (HAL-1728); subscription calls never count (HAL-2311, HAL-2461); a harness run keeps to it call by call (HAL-5206)
 
-When a step decides on a model call or a harness run and the workspace has a budget, the kernel shall first work out what the run and the month have spent, from the run store's summaries: the run spend is the `cost` of its top-level run and of every child run under it, and the month spend is the `cost` of every run that started in the same calendar month (UTC). A call paid for by the person's subscription is never in a summary's `cost`, so it never counts. When the run spend is at or over `perRun`, or the month spend is at or over `monthly`, the kernel shall store the decided events followed by a `run.failed` with the reason `budget`, ask for no call, and tell the run's parent, if it has one. When a child run fails with the reason `budget`, its parent's `run.failed` shall have the reason `budget` too. Without a budget, or below it, the decision is stored as it is. A harness run shall also keep to the budget call by call: before each model call its bridge passes on, the engine shall work out the run and month spend the same way, and at or over a limit the bridge shall refuse that call with 429 `limit_reached` and send nothing to the provider, the harness run shall be stopped, and the run shall fail in that state with the reason `budget`.
+When a step decides on a model call or a harness run and the workspace has a budget, the kernel shall first work out what the run and the month have spent, from the run store's summaries: the run spend is the `cost` of its top-level run and of every child run under it, and the month spend is the `cost` of every run that started in the same calendar month (UTC). A call paid for by the person's subscription is never in a summary's `cost`, so it never counts. When the run spend is at or over `perRun`, or the month spend is at or over `monthly`, the kernel shall store the decided events followed by a `run.failed` with the reason `budget` and the cause `{ kind: "limit_reached", code, detail }`, ask for no call, and tell the run's parent, if it has one. The `code` is `budget.run` for the run budget or `budget.month` for the monthly one, and `detail` holds the `limit`, the `spent` amount and the `currency` as strings, with the numbers unrounded, so a screen words the stop without reading `error`. When a child run fails with the reason `budget`, its parent's `run.failed` shall have the reason `budget` and the child's cause too. Without a budget, or below it, the decision is stored as it is. A harness run shall also keep to the budget call by call: before each model call its bridge passes on, the engine shall work out the run and month spend the same way, and at or over a limit the bridge shall refuse that call with 429 `limit_reached` and send nothing to the provider, the harness run shall be stopped, and the run shall fail in that state with the reason `budget`.
 
 ## Examples
 
 - Given a monthly budget of 0.50 EUR and an earlier run this month that cost 0.60 EUR,
   when a `reply` run starts,
-  then it fails in `draft` with the reason `budget` before its model call is made.
+  then it fails in `draft` with the reason `budget` and the cause `{ kind: "limit_reached", code: "budget.month", detail: { limit: "0.5", spent: "0.6", currency: "EUR" } }` before its model call is made.
 - Given the same budget and an earlier run that cost 0.60 EUR last month, or this month but paid by the person's subscription,
   when a `reply` run starts,
   then it completes.
@@ -19,10 +19,10 @@ When a step decides on a model call or a harness run and the workspace has a bud
   then it fails there with the reason `budget`.
 - Given a child run whose first call cost 0.60 EUR and a run budget of 0.50 EUR,
   when the child reaches its second task state,
-  then the child and its parent fail with the reason `budget`.
+  then the child and its parent fail with the reason `budget`, and the parent's `run.failed` has the child's cause.
 - Given a run budget of 1.50 EUR and a harness run whose model calls cost 0.60 EUR each,
   when the harness makes its fourth model call,
-  then the bridge refuses it with 429 `limit_reached`, the harness run is stopped, and the run fails in that state with the reason `budget` and the error `Run budget reached: 1.80 of 1.50 EUR spent.`
+  then the bridge refuses it with 429 `limit_reached`, the harness run is stopped, and the run fails in that state with the reason `budget`, the error `Run budget reached: 1.80 of 1.50 EUR spent.` and the cause code `budget.run`
 - Given a parent that cost 0.25 EUR and two child runs under it that cost 0.25 EUR and 0.125 EUR,
   when the run spend of a child is worked out,
   then it is 0.625 EUR.

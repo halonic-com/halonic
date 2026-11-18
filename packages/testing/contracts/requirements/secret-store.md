@@ -1,7 +1,7 @@
 # contracts.secret-store
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-195 (PR 9a-1, approved by Liam on HAL-8325); `SecretStore` in the `Secrets` port family
 
 Where an adapter implements `SecretStore`, it shall save a value under a name, replace the value stored under the same name, give it back exactly as saved (spaces, newlines and non-ASCII included, up to 65,536 UTF-16 code units), and remove it; removing a name that isn't stored shall succeed and change nothing else. `names()` shall list the stored names, sorted, as each was last written, and never a value. It shall treat names that differ only in case or in `-` versus `_` as the same secret, and refuse a name that breaks the name rule, or only looks like a valid one, with a `RangeError` before it touches storage, in `get`, `set` and `remove` alike. It shall refuse an empty value or one over the limit with a `RangeError` and keep the old value. No error shall repeat a value, or a name that is long or isn't printable ASCII. Parallel `set` calls shall all be kept. A reopened store shall have the secrets the last one saved.

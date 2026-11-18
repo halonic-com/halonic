@@ -1,7 +1,7 @@
 # workflows.runs.save-as-test
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10228 (T7 PR 5c); flow-workflows 8 (`workflows.tests.save-run-as-test`); microcopy 9.5 and 9.7
 
 When the host can write test cases, the workflows feature shall show **Save as test** on the card of a finished real run, in the Runs view and in the card docked after a run starts; it shall show none for a run that is still going or when the host can't write test cases. **Save as test** shall open a dialog titled "Save as test" with one field, **Name**, that starts as "Run *id*" with its text selected, and the buttons **Cancel** and **Create test**. **Create test** shall stay pressable with a problem: an empty name shall say "Give it a name." and a name another test of the workflow has shall say "There's already a test called “*name*”.", under the field, and nothing shall be written. Otherwise **Create test** shall ask the host to save the run as a test with that name and, once it has, open Configuration on Tests with the new case picked. When the host can't, the dialog shall stay open and say "Couldn't create the test: *reason*." with **Try again**.

@@ -1,5 +1,6 @@
 import type { RunSummary } from "@halonicjs/events";
 import type { RunExecutor, SendOptions } from "@halonicjs/ports";
+import { errorKindOf } from "@halonicjs/std";
 import type { RunItem, WaitItem } from "./inbox-items.ts";
 
 /** Your answers to the Inbox's run items, sent to the runs that wait for them. A setup item takes none. */
@@ -40,4 +41,23 @@ export function inboxDecisions(executor: Pick<RunExecutor, "send">): InboxDecisi
     askForChanges: (item, note) => send(item, "reject", { comment: note }),
     answer: (item, event) => send(item, event),
   };
+}
+
+/** The engine's refusals that mean "not waiting for this answer any more", so trying again can't work. */
+const staleAnswerCodes: ReadonlySet<string> = new Set([
+  "engine.decision-callid-must-match",
+  "engine.decision-wait-must-match",
+  "engine.run-ended",
+]);
+
+/**
+ * Whether an answer was refused because its tool call or wait step isn't the run's current one,
+ * or the run has ended. The refusal's `code` is read, and its message too: it may reach Studio as
+ * a plain `Error`. The served computer's refusal reaches Studio as a `conflict`.
+ */
+export function wasDecidedElsewhere(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  if (errorKindOf(error) === "conflict") return true;
+  const { code, message } = error as { code?: unknown; message?: unknown };
+  return [code, message].some((each) => typeof each === "string" && staleAnswerCodes.has(each));
 }

@@ -1,7 +1,7 @@
 # contracts.tunnel-provider
 
 - Status: active
-- Since: 0.2.0
+- Since: unreleased
 - Source: tunnel phase A3 of the plan "phone reaches a runtime host through pluggable tunnels", approved by the board on 11 Nov; task HAL-5686; requirement `ports.tunnel-provider`
 
 Where an adapter implements `TunnelProvider`, it shall pass this suite without network access of its own. It shall report an id and whether it is public and encrypts its path. Its `start` shall give an endpoint whose URL uses `https:`, `wss:` or `tcp:`, whose `providerId` is the capabilities' id and whose `public` is the capabilities' `public`, and the tunnel shall be `ready` when `start` resolves. It shall reject with a `RangeError` a config that is not the gateway on a loopback address, and a second config while a tunnel is up, and shall give the same endpoint for the same config again. Its status streams shall each begin with the current state, give a reason from the list exactly when the state is `degraded` or `down`, never repeat the same state and reason in a row, and end after `down` with reason `stopped`. Its `stop` shall do nothing when no tunnel is up.

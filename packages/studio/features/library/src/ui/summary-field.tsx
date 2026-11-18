@@ -12,6 +12,8 @@ interface SummaryFieldProps {
   readonly announce: (text: string) => void;
   /** Opens Models, where a local model is set up; absent when the window has no way to. */
   readonly openModels: (() => void) | undefined;
+  /** The words for "the engine isn't answering" in this window (desktop app, served browser or phone). */
+  readonly notAnswering: string;
 }
 
 /**
@@ -26,6 +28,7 @@ export function SummaryField({
   summarize,
   announce,
   openModels,
+  notAnswering,
 }: SummaryFieldProps) {
   const ask = useRef<HTMLButtonElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
@@ -69,6 +72,7 @@ export function SummaryField({
           reason={summarize.reason}
           name={name}
           openModels={openModels}
+          notAnswering={notAnswering}
           tryAgain={() => void model.summarize()}
         />
       ) : null}
@@ -107,11 +111,13 @@ function Problem({
   name,
   openModels,
   tryAgain,
+  notAnswering,
 }: {
   readonly reason: Exclude<SummarizeState, { phase: "idle" | "working" | "draft" }>["reason"];
   readonly name: string;
   readonly openModels: (() => void) | undefined;
   readonly tryAgain: () => void;
+  readonly notAnswering: string;
 }) {
   if (reason === "no-local-model") {
     return (
@@ -136,7 +142,9 @@ function Problem({
     );
   }
   const why =
-    reason === "host-unreachable" ? knowledgeWords.hostUnreachable : knowledgeWords.modelFailed;
+    reason === "host-unreachable"
+      ? knowledgeWords.hostUnreachable(notAnswering)
+      : knowledgeWords.modelFailed;
   return (
     <Callout tone="danger" action={{ label: knowledgeWords.tryAgain, onClick: tryAgain }}>
       {knowledgeWords.summarizeFailed(name, why)}

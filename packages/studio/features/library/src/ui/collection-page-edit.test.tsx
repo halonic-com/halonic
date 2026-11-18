@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { settlePendingSaves } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -32,6 +33,26 @@ verifies("library.collection-page", () => {
       await typeInto(root, 0, 1, "65");
       expect(change).toHaveBeenCalledTimes(1);
       expect(change).toHaveBeenCalledWith({ hub: null, id: "claims" }, "swim-oct", { amount: 65 });
+    });
+
+    it("registers a cell's save with the window close until the change is written", async () => {
+      let release: (outcome: "saved") => void = () => undefined;
+      const change = vi.fn(() => new Promise<"saved">((resolve) => (release = resolve)));
+      const { root } = await opened(sourceOf([swim], false, { editCell: amountEdit }), undefined, {
+        change,
+      });
+      await typeInto(root, 0, 1, "65");
+      let done = false;
+      const waiting = settlePendingSaves().then(() => {
+        done = true;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      expect(done).toBe(false);
+
+      release("saved");
+      await waiting;
+
+      expect(done).toBe(true);
     });
 
     it("saves an emptied cell as null", async () => {

@@ -1,7 +1,7 @@
 # code-editor.problems
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-329 files flow 4.1 (squiggles, gutter icons ✕ and △); accessibility pass 5.2 (F8, Shift F8); HAL-10534
 
 The code editor shall underline each problem it is given from its line and column to the end of the word, mark its line in the gutter with ✕ for an error or △ for a warning (an error wins on a line with both), keep both on the right text while the user types, and tell its owner when the gutter icon is clicked. F8 and Shift F8 shall move the cursor to the next and previous problem, wrapping at the ends, and tell the owner which one. It shall also move the cursor to a line and column on request.

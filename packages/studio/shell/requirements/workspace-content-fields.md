@@ -1,7 +1,7 @@
 # shell.workspace-content-fields
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: `shell.keybindings.one-undo-in-editors` (req-shell rev 8); save model 4.1 and HAL-396 1.1; HAL-1293
 
 The shell shall let an editor or the form around its fields mark itself as showing workspace content, with `workspaceContentProps`, and shall tell whether a key press happened inside such a mark, with `isInWorkspaceContent`. A field outside a mark, such as the chat message box, is not workspace content.

@@ -9,6 +9,11 @@ export const defaultCurrency = "EUR";
 /** From here up, three decimals would round to €0.010, so the amount reads €0.01. */
 const threeDecimalsEnd = 0.0095;
 
+/** How a tiny amount is introduced: "under €0.001" reads fine alone, "budget of less than €0.001" reads better after "of". */
+export interface MoneyAmountOptions {
+  readonly tiny?: "under" | "less than";
+}
+
 /**
  * An amount of money as a person reads it: two decimals, or three below one
  * cent, up to €0.0095: from there to a cent it reads €0.01, never "€0.010".
@@ -21,19 +26,27 @@ const threeDecimalsEnd = 0.0095;
  * non-finite amount is a bug in the caller, and throws rather than reading
  * "€-0.50" or "€NaN".
  *
+ * Pass `{ tiny: "less than" }` where the amount follows "of" ("a budget of
+ * less than €0.001"); the default is "under".
+ *
  * @example
  * moneyAmount(5.08); // "€5.08"
  * moneyAmount(0.004); // "€0.004"
  * moneyAmount(0.0004); // "under €0.001"
+ * moneyAmount(0.0004, "EUR", { tiny: "less than" }); // "less than €0.001"
  * moneyAmount(2, "USD"); // "$2.00"
  */
-export function moneyAmount(amount: number, currency: string = defaultCurrency): string {
+export function moneyAmount(
+  amount: number,
+  currency: string = defaultCurrency,
+  options: MoneyAmountOptions = {},
+): string {
   if (!Number.isFinite(amount) || amount < 0) {
     throw new RangeError(`An amount of money must be zero or more, not ${amount}.`);
   }
   const decimals = amount > 0 && amount < threeDecimalsEnd ? 3 : 2;
   if (amount > 0 && amount.toFixed(3) === "0.000") {
-    return `under ${inCurrency(0.001, currency, 3)}`;
+    return `${options.tiny ?? "under"} ${inCurrency(0.001, currency, 3)}`;
   }
   return inCurrency(amount, currency, decimals);
 }

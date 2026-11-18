@@ -1,7 +1,7 @@
 # server.origin-check
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9 plan phase 4; HAL-6 finding 1; build plan on HAL-195 (PR 2)
 
 The server shall refuse a request that has an `Origin` header unless that header equals the server's own origin exactly (the request's scheme, then `//`, then its `Host`), with status 403 and the code `origin_not_allowed`. `Origin: null` shall be refused. A request with no `Origin` header shall go on.

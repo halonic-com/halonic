@@ -50,7 +50,7 @@ export type SendingVerdict =
 export type CallStep =
   | { readonly kind: "answered"; readonly message: ChatMessage }
   /** The check asks a person first; the turn stops before this call. */
-  | { readonly kind: "ask" }
+  | { readonly kind: "ask"; readonly connector?: string }
   /** The call changes things on the connector `connector`; the engine makes it. */
   | { readonly kind: "effect"; readonly connector: string }
   /** The call is a `delegate_*` call whose subagent's turn stopped; the turn stops at it too. */
@@ -78,7 +78,7 @@ export async function runToolCall(
   }
   if (check.kind === "ask") {
     // A person isn't asked about a send that would be refused anyway.
-    return (await refuseUnsent(context, tool, call)) ?? { kind: "ask" };
+    return (await refuseUnsent(context, tool, call)) ?? askStepOf(tool);
   }
   return makeOrHandOver(context, tool, call);
 }
@@ -130,7 +130,7 @@ export type CallsStep =
  * make it, or because the subagent the call delegates to stopped.
  */
 export type StopKind =
-  | { readonly type: "approval" }
+  | { readonly type: "approval"; readonly connector?: string }
   | { readonly type: "effect"; readonly connector: string }
   | { readonly type: "subagent"; readonly inner: SubagentStopped };
 
@@ -163,11 +163,18 @@ export async function runCalls(
   return { kind: "done", callerCalls };
 }
 
+/** The stop before a call that needs a person's OK, naming the connector when the tool comes from one. */
+function askStepOf(tool: TurnTool): CallStep {
+  return tool.kind === "server" ? { kind: "ask", connector: tool.source } : { kind: "ask" };
+}
+
 /** Why the turn stops at a call that wasn't answered. */
 export function stopKindOf(step: Exclude<CallStep, { kind: "answered" }>): StopKind {
   switch (step.kind) {
     case "ask":
-      return { type: "approval" };
+      return step.connector === undefined
+        ? { type: "approval" }
+        : { type: "approval", connector: step.connector };
     case "effect":
       return { type: "effect", connector: step.connector };
     case "subagent-stopped":

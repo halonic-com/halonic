@@ -1,7 +1,7 @@
 # shell.feature-dialogs
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1740; plugins design 8.1 (HAL-1739); review of halonic#1831
 
 The shell shall let a feature add a view that draws its dialogs through `dialogs.add`, such as the dialog of a plugin command picked in Ctrl K. The window shall draw each one once, on the desktop and on a phone, with the context of the feature that added it, in the order of `order`, then `id`. If two share an id, then the shell shall throw a `ShellError` naming both features. If a view fails to load or to draw, then the window shall show nothing in its place, report the error to the console, and keep the other views and the rest of the window.

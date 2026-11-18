@@ -1,7 +1,7 @@
 # models.providers.edit
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10 migration checklist U30 (Now; note: "Can be edited", new: the old provider page is read-only); changed by the save-model decision, HAL-1102 (req-models, HAL-110; flow-models, HAL-177)
 
 When the user changes a provider's name, type, base URL, secret name or local switch on its page, the models feature shall write the change to that provider's file, saved at once and undoable as one step (Ctrl Z), and if the base URL is not a valid URL, then it shall not write it and show the problem. In v0.1 only these fields are editable (HAL-119); other changes go through the raw file editor or the assistant.

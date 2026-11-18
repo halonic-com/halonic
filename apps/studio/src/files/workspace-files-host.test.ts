@@ -1,3 +1,5 @@
+import { UnreadableWorkspaceFolderError } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { setup } from "./workspace-files-host-fixture.ts";
@@ -31,9 +33,19 @@ verifies("studio.workspace-files-host", () => {
   });
 
   it("rejects an unreadable folder with a one-sentence reason", async () => {
-    const { host } = setup(new Error("The folder hubs can't be read"));
+    const { host } = setup(new UnreadableWorkspaceFolderError("hubs", "permission denied"));
 
-    await expect(host.list()).rejects.toThrow("The folder hubs can't be read.");
+    await expect(host.list()).rejects.toThrow(
+      new KindedError("unavailable", "hubs can't be read."),
+    );
+  });
+
+  it("keeps the store's kinded error, and an unknown one stays unkinded", async () => {
+    const kinded = new KindedError("denied", "This folder isn't open in Halonic.");
+    await expect(setup(kinded).host.list()).rejects.toBe(kinded);
+
+    const unknown = new Error("EIO: i/o error, scandir");
+    await expect(setup(unknown).host.list()).rejects.toBe(unknown);
   });
 
   it("reads a file with its unsaved text, and null when it has none", async () => {

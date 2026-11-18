@@ -1,7 +1,7 @@
 # cli.commands.google.allow-sending
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9044 (PR 9c); phase 4 plan on HAL-9, approved on HAL-8311; `app.connection-settings`
 
 The `halonic google allow-sending <connection> on|off` command shall switch sending on or off for the Google connection `<connection>` of the workspace in `--dir` (the current folder without it), through `ConnectionSettings.setAllowSending`, keyed by the workspace's resolved real path and the connection's id. It shall print "✓ Sending is on for <connection> in <workspace>." or "✓ Sending is off for <connection> in <workspace>." and exit 0, also when the setting already had that value. With `--json` it shall add `connection`, `workspace` and `allowSending`. It never switches sending on by itself: without this command, or with `off`, sending stays off. It shall refuse a workspace that has no connection by that id with "not found" and exit 4, adding "Did you mean" when one id is close, and a connection that isn't a Google one with exit 2, saving nothing in both cases. Without a connection and a word `on` or `off`, or with anything else, it shall exit 2 with its usage and save nothing.

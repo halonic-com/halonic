@@ -14,6 +14,14 @@ export const startWords = {
   couldntStart: (reason: string) => `Couldn't start the run: ${reason}`,
   clearStrip: "Stop showing this run",
   failedChip: "Failed",
+  /** The status dot's text for assistive technology, one per mark. */
+  mark: {
+    done: "Done",
+    running: "Running",
+    waiting: "Waiting",
+    failed: "Failed",
+    stopped: "Stopped",
+  },
   strip: (shortId: string, how: string) => `Showing run ${shortId} · ${how}`,
   /** How a shown run ended, in the Runs row's words (D8). */
   ended: {

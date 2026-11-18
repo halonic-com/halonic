@@ -1,7 +1,7 @@
 # engine.month-spend
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: task HAL-8552 (the Bills tile on Studio Home); month rule of `engine.budget-stops`
 
 When asked for the spend of the last `count` months (six by default), the engine shall list the run store once, from the start of the earliest month, and answer one entry for each calendar month (UTC) up to and including the month of the given time, oldest first. A month's `spent` is the `cost` of every run that started in that month, the same sum the monthly budget stops on, so a call paid for by the person's subscription never counts. A month without runs has `spent` 0.

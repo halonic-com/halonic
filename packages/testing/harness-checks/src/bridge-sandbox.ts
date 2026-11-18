@@ -37,7 +37,7 @@ export interface BridgeSandboxOptions {
   extraEnv?: Readonly<Record<string, string>>;
   /** The sandbox, given the runner that reads refused hosts; srt unless a test gives another. */
   sandbox?: (runner: Runner) => Sandbox;
-  /** How the bridge calls the provider; Node's own `fetch` unless a test gives another. */
+  /** How the bridge calls the provider; a check that makes no model call leaves it out and any call fails. */
   fetch?: Fetch;
 }
 
@@ -72,6 +72,11 @@ export interface BridgeSandbox {
 }
 
 /** How long the sandbox may stay open for one check. */
+/** For a check that makes no model call: a call is a bug in the check. */
+async function noModelCalls(): Promise<never> {
+  throw new Error("This check makes no model call, so the bridge has no provider to reach.");
+}
+
 const sessionTimeLimitMs = 15 * 60_000;
 
 /**
@@ -87,7 +92,7 @@ export async function openBridgeSandbox(options: BridgeSandboxOptions): Promise<
   const server = new NodeHarnessBridgeServer({
     // A subscription never needs a key, so the bridge finds none.
     secrets: { get: async () => null },
-    ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+    fetch: options.fetch ?? noModelCalls,
   });
   const bridge = await server.open(subscriptionRun(options.provider, recorded));
   const closing: (() => Promise<void>)[] = [() => bridge.close()];

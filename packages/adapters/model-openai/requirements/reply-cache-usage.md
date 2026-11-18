@@ -1,7 +1,7 @@
 # model-openai.reply-cache-usage
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5216; the cache token fields of `Usage` (#789); the harness bridge's OpenAI usage (HAL-3229)
 
 The OpenAI-compatible provider shall give `prompt_tokens_details.cached_tokens` as `cacheReadTokens` and leave those tokens out of `inputTokens`, since the API's `prompt_tokens` counts them too. It shall count no more cache reads than `prompt_tokens`, and leave the cache count out when it is zero, missing or not a count.

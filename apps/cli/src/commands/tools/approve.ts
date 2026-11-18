@@ -93,7 +93,10 @@ function checkCommandLine(names: readonly string[], all: boolean, fingerprint: s
 
 /**
  * `--all`, the command line's Approve all (C2): exactly the tools waiting in
- * this check, each at the fingerprint it prints. A tool its server keeps
+ * this check that the connector's `tools.allow` offers to agents (all of
+ * them when it has no `allow`), each at the fingerprint it prints. A tool
+ * `allow` leaves out is never offered, so `--all` doesn't approve it; naming
+ * it still does. A tool its server keeps
  * changing is left out, and named with the command that approves it.
  */
 async function approveAll(
@@ -101,9 +104,10 @@ async function approveAll(
   source: ToolSource,
   machine: ToolsMachine,
 ): Promise<CommandResult> {
+  const offered = check.waiting.filter((waiting) => isOffered(source, waiting.listedName));
   const { approved, leftOut } = await approveAllShown(
     check,
-    check.waiting,
+    offered,
     machine.approvals,
     machine.clock,
   );
@@ -120,9 +124,15 @@ async function approveAll(
   });
   return {
     exitCode: exitCode.ok,
-    lines: [...rows, ...leftOutLines, allSummary(approved.length, check.waiting.length, source)],
+    lines: [...rows, ...leftOutLines, allSummary(approved.length, offered.length, source)],
     json: { approved: approved.map(approvedEntry), leftOut: leftOut.map(leftOutEntry) },
   };
+}
+
+/** Whether the connector's `tools.allow` offers the tool, or it has no `allow`. */
+function isOffered(source: ToolSource, listedName: string): boolean {
+  const { allow } = source.connector.tools;
+  return allow === undefined || allow.includes(listedName);
 }
 
 /**

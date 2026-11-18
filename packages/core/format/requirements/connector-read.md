@@ -1,7 +1,7 @@
 # format.connector-read
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5583 (board decision on HAL-5522, option A; wording by Sofia on HAL-5582 and HAL-5762); name rule from the review on HAL-5673
 
 When `parseFile` reads a connector file, the format shall accept `tools.read` as a list of exact tool names, refuse a name that looks like a pattern with `read-tool-pattern`, refuse a name that breaks the listed-tool name rule of `ports.untrusted-tool-listings` (1 to 64 ASCII letters, digits, `_` or `-`) with `read-tool-name`, and warn with `read-tool-not-allowed`, without failing the file, for a name that `tools.allow` leaves out; and `marksRead` shall say that a tool only reads when `tools.read` names it exactly and `tools.approve` doesn't make it ask first.

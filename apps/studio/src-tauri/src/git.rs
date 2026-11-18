@@ -34,7 +34,10 @@ impl GitState {
 
     /// The runner, made on the first call. A failure is not kept, so git
     /// installed while the app is open is found on the next call.
-    fn runner<R: Runtime>(&self, app: &AppHandle<R>) -> Result<Arc<GitRunner>, GitError> {
+    pub(crate) fn runner<R: Runtime>(
+        &self,
+        app: &AppHandle<R>,
+    ) -> Result<Arc<GitRunner>, GitError> {
         let mut runner = self.runner.lock().unwrap_or_else(PoisonError::into_inner);
         if let Some(runner) = runner.as_ref() {
             return Ok(Arc::clone(runner));

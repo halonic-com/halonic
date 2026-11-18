@@ -27,7 +27,9 @@ export const rowLineWords = {
   waitingUntil: (time: string) => `Waiting until ${time}`,
   waitingForChildRun: (shortId: string) => `Waiting for child run ${shortId}`,
   waitingIn: (step: string) => `Waiting in ${step}`,
-  finishedIn: (step: string) => `Finished in ${step}`,
+  /** A run that ended: a final state is where the flow ends, not a step, so no "in Done" (HAL-11693). */
+  finished: "Finished",
+  finishedInTime: (took: string) => `Finished in ${took}`,
   /** The failed banner's first sentence, until the banners by cause (HAL-1845). */
   failedIn: (workflow: string, step: string) => `${workflow} failed in the step ${step}.`,
   /** A failed run that never entered a step, as a refused run's banner says it (HAL-11190). */
@@ -159,8 +161,8 @@ export const emptyListWords = {
   },
   loading: "Loading runs",
   loadFailed: "Couldn't load runs",
-  notAnswering: "The engine isn't answering. It may still be starting.",
-  showingLast: "The engine isn't answering. Showing what it said last.",
+  /** Over the rows the list kept, when a later read failed for a reason that isn't the engine. */
+  refreshFailed: "Couldn't refresh runs",
 };
 
 /** The Runs page's own words (checklist part 1, 1.2, 1.3 and R-D1). */
@@ -208,6 +210,8 @@ export const runPageWords = {
   },
   loading: (shortId: string) => `Loading run ${shortId}`,
   loadFailed: (shortId: string) => `Couldn't load run ${shortId}`,
+  /** Over the run the page kept, when a later read failed for a reason that isn't the engine. */
+  refreshFailed: (shortId: string) => `Couldn't refresh run ${shortId}`,
   /** The skeleton under the banner while the run's log is read (mc 15.2). */
   loadingLog: "Loading the run",
   logFailed: "Couldn't read this run's log",
@@ -219,6 +223,7 @@ export const runPageWords = {
   reviewInInbox: "Review in Inbox",
   runAgain: "Run again",
   runAgainFailedName: "Run didn't start",
+  runAgainFailedTitle: "Couldn't start the run",
   runAgainFailed: (reason: string) => `Couldn't start the run: ${reason}`,
   openRun: (shortId: string) => `Open run ${shortId}`,
   waitingForYouName: "Waiting for you",
@@ -267,16 +272,27 @@ export const runPageWords = {
   childRun: (shortId: string, workflow: string) =>
     `Waiting for child run ${shortId} (${workflow}).`,
   childRunOnly: (shortId: string) => `Waiting for child run ${shortId}.`,
-  /** R24's general banner, until the banners by cause (HAL-1845). */
-  failed: (workflow: string, step: string, message: string) =>
-    message === ""
-      ? `${workflow} failed in the step ${step}. Halonic can't tell the cause yet.`
-      : `${workflow} failed in the step ${step}. Halonic can't tell the cause yet: ${asSentence(message)}`,
+  /** R24's general banner, for a cause Halonic doesn't know: the engine's message goes to Copy details only (F13). */
+  failed: (workflow: string, step: string) =>
+    `${workflow} failed in the step ${step}. Halonic can't tell the cause yet.`,
   budgetTitle: "Stopped at its estimated budget",
-  budget: (workflow: string, step: string, message: string) =>
-    message === ""
-      ? `${workflow} stopped in the step ${step}.`
-      : `${workflow} stopped in the step ${step}: ${asSentence(message)}`,
+  budget: (workflow: string, step: string) => `${workflow} stopped in the step ${step}.`,
+  /**
+   * A budget stop's first line, as `halonic run` says it (cli-output 3.4, HAL-12035), from the
+   * figures of `run.failed`'s cause. The amounts come in the money rule's words.
+   */
+  budgetPerRun: (workflow: string, step: string, budget: string, spent: string) =>
+    `${workflow} stopped in the step ${step}: this run reached its budget of ${budget} (estimated ${spent} spent).`,
+  budgetPerMonth: (workflow: string, step: string, budget: string) =>
+    `${workflow} stopped in the step ${step}: this month's estimated spend reached its budget of ${budget}.`,
+  /**
+   * The second line, without the CLI's key names (Studio's users change the budget in Settings;
+   * HAL-12069). A per-run budget doesn't reset, so only the monthly one can be waited out.
+   */
+  budgetChangePerRun: "Change the budget, then run again.",
+  budgetChangeMonthly: (resetsOn: string) =>
+    `Change the budget, or wait until it resets on ${resetsOn} (UTC).`,
+  changeBudget: "Change budget",
   budgetChecks:
     "Halonic checks the budget before each model call, so calls already under way can take a run over it.",
   cancelledIn: (workflow: string, step: string) =>
@@ -364,11 +380,6 @@ export const stepEventsWords = {
   /** Before the child run's link: "Started Verify → Run 7k2m9p" (checklist 1.10, RUNS 3). */
   startedChild: (workflow: string) => `Started ${workflow}`,
 };
-
-/** The text as a sentence: it keeps its own ".", "?" or "!", and gets a full stop if it has none. */
-function asSentence(text: string): string {
-  return /[.?!]$/.test(text) ? text : `${text}.`;
-}
 
 /**
  * How a step is named (cli-output 3.4): the first line of its description,

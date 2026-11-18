@@ -1,9 +1,9 @@
+import { markHiddenName } from "@halonicjs/std";
 import { Button, type CalloutHandle, StatusChip } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import type { InboxDecisions } from "../decide.ts";
 import type { ApprovalItem } from "../inbox-items.ts";
 import { actionSummary, approvalTitle } from "../plain/approval-text.ts";
-import { markedName } from "../plain/hidden-characters.ts";
 import { decidedAt, waitingSince } from "../plain/waiting-time.ts";
 import { ArgumentList } from "./argument-list.tsx";
 import { AskForChangesDialog } from "./ask-for-changes-dialog.tsx";
@@ -36,6 +36,8 @@ export interface ApprovalCardProps extends EngineState {
   readonly decisions: Pick<InboxDecisions, "approve" | "reject" | "askForChanges">;
   /** Opens the run; without it the card has no **Open run**. */
   readonly onOpenRun?: ((runId: string) => void) | undefined;
+  /** What started the run, after "Started by" in the header; without it the card has no such line. */
+  readonly startedBy?: string | undefined;
   /** The next item, or `null` when nothing else is waiting. */
   readonly next: NextItem | null;
   /** Where you came from, for **Back to run** or **Back to the chat**; `null` from the Inbox itself. */
@@ -176,6 +178,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
           title={title}
           heading={heading}
           since={state.kind === "decided" ? null : waitingSince(new Date(item.since), now())}
+          startedBy={props.startedBy}
           onOpenRun={
             props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId)
           }
@@ -232,7 +235,7 @@ function Action({ item }: { readonly item: ApprovalItem }) {
         )}
       </div>
       <code className="font-mono text-code text-fg-muted wrap-anywhere">
-        {markedName(item.rawTool)}
+        {markHiddenName(item.rawTool)}
       </code>
       <ArgumentList args={item.args} tool={item.tool} />
     </div>

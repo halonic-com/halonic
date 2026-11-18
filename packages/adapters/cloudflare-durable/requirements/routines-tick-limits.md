@@ -1,7 +1,7 @@
 # cloudflare-durable.routines-tick-limits
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6802; part 7 review (HAL-6797, Liam, HAL-8315); build plan part 7 (HAL-197)
 
 The routines object shall give up on a tick that has not ended after 2 minutes: the tick rejects with a time limit error, the backup alarm is set as after any tick, and the next tick starts without waiting for the hung one. A failed backup tick shall not be thrown, but shall be reported to the object's log with its name and message only.

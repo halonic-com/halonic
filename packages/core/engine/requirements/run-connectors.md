@@ -1,7 +1,7 @@
 # engine.run-connectors
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6277 and HAL-6290 (per-run connector port, modelled on `engine.run-proposal-folder`)
 
 Where the host gives the local executor the connectors of top-level runs, when a step of a run needs a connector, the engine shall ask the host to open the connectors of the run's top-level run, with the version of the workspace that run's definitions were read from, and shall use only those for the step; a child run and a `foreach` item shall use their top-level run's. The engine shall open them lazily: not when the run starts, and not for a model call whose agent's file lists no connector, so a run that calls no connector opens none, and a run resumed after the host started again opens them again at its next step that needs one. When the host can't start them, the step that needed them shall fail: a model call fails the run with an error that names the agent, and a recorded connector call ends with the outcome `error` and the text that the connector isn't connected, without the call being made; neither shall stop the host or another run. When a top-level run ends, whether completed, failed, cancelled or interrupted when an engine next starts, the engine shall end its connectors after its harness calls have stopped and its proposal folder has ended; a child run's end shall not end them. When they open after their top-level run has ended, the engine shall end them again and not use them. Where the host gives no connectors of runs, every run shall use the executor's `connectors`, as before. In a local-only workspace (`engine.local-only`), the engine shall ask the host to start only the run's connectors that are `local`, and shall use none it is given that isn't.

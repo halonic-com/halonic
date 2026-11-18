@@ -22,6 +22,8 @@ export interface RequestFormProps {
   readonly busy: boolean;
   /** The "Not started: …" line, or empty. */
   readonly notStarted: string;
+  /** With a refusal for the month's budget: **Change budget**, after the line. */
+  readonly onChangeBudget?: (() => void) | undefined;
   /** Starts the run; clears the message once it has started. Never rejects. */
   readonly onSend: (workflow: RequestWorkflow, message: string) => Promise<void>;
   /** Esc: goes back to the list. The text stays. */
@@ -45,6 +47,7 @@ export function RequestForm({
   onDraft,
   busy,
   notStarted,
+  onChangeBudget,
   onSend,
   onEscape,
   messageRef,
@@ -102,6 +105,14 @@ export function RequestForm({
       </div>
       <p role="alert" className="text-small text-fg-muted">
         {notStarted}
+        {notStarted !== "" && onChangeBudget !== undefined ? (
+          <>
+            {" · "}
+            <Button variant="ghost" size="sm" onClick={onChangeBudget}>
+              Change budget
+            </Button>
+          </>
+        ) : null}
       </p>
     </form>
   );

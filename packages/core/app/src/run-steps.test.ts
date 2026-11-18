@@ -64,6 +64,45 @@ const upToReview = [
 ] as const;
 
 verifies("app.run-steps", () => {
+  it("gives a step the output its own agent finished with, not a subagent's or a failed branch's", () => {
+    const steps = stepsOf([
+      ["14:00:00", entered("read")],
+      ["14:00:00", agentStarted("read", "writer")],
+      [
+        "14:00:00",
+        { type: "agent.finished", state: "read", agent: "helper", output: "x", parent: "writer" },
+      ],
+      [
+        "14:00:01",
+        { type: "agent.finished", state: "read", agent: "writer", output: { topic: "refund" } },
+      ],
+      ...finishedAt("14:00:02"),
+    ]);
+
+    expect(steps.map((step) => step.finished)).toEqual([{ output: { topic: "refund" } }]);
+  });
+
+  it("gives a step whose agent never finished no output", () => {
+    const steps = stepsOf([
+      ["14:00:00", entered("read")],
+      ["14:00:00", agentStarted("read", "writer")],
+      [
+        "14:00:01",
+        {
+          type: "agent.finished",
+          state: "read",
+          agent: "writer",
+          output: null,
+          error: "boom",
+          reason: "error",
+        },
+      ],
+      ...finishedAt("14:00:02"),
+    ]);
+
+    expect(steps[0]).not.toHaveProperty("finished");
+  });
+
   it("reads each step a finished run reached, and not the end state", () => {
     const steps = stepsOf([
       ...upToReview,

@@ -1,0 +1,16 @@
+{
+  "extends": "@halonicjs/tooling-config/tsconfig/node.json",
+  "//": "Tests run in Node. They read the shell, which brings the kit's DOM types and JSX.",
+  "compilerOptions": {
+    "lib": [
+      "es2024",
+      "dom",
+      "dom.iterable"
+    ],
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "src",
+    "vitest.config.ts"
+  ]
+}

@@ -1,7 +1,7 @@
 # harness-kit.exit-within
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5216; `docs/guides/failure-path.md` rule 1; the approach agreed on HAL-5231
 
 When a harness waits for its program to exit, after the program's output has ended or its input was closed, the harness shall wait at most 10 seconds. When the program hasn't exited by then, the harness shall kill it and end the run with a plain error that names the program.

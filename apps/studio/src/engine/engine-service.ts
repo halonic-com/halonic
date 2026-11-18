@@ -27,7 +27,14 @@ import {
   workspaceExecutorOptions,
 } from "@halonicjs/adapter-workspace-models";
 import { type AssembledEngine, assembleEngine, noListedToolApproval } from "@halonicjs/engine";
-import type { Clock, DefinitionStore, HttpClient, IdGenerator, Secrets } from "@halonicjs/ports";
+import {
+  type Clock,
+  type DefinitionStore,
+  type HttpClient,
+  type IdGenerator,
+  noKeyOrigins,
+  type Secrets,
+} from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { TauriIpc } from "@halonicjs/studio-services";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
@@ -113,7 +120,7 @@ export class EngineService {
   /**
    * Starts a run of the workflow with `input`, on the workspace's files as they are saved: refuses
    * what the page can't run ({@link EngineService.check}), opens the engine, and returns once the
-   * run has started, not when it ends.
+   * run has started, not when it ends. The run records a manual trigger.
    *
    * @returns the new run's id
    * @throws what {@link EngineService.check} and {@link EngineService.open} throw, or the
@@ -125,7 +132,10 @@ export class EngineService {
   ): Promise<{ readonly id: string }> {
     await this.check(run);
     const engine = await this.open();
-    const { id } = await engine.executor.start({ ...run, input });
+    // A run started from the window is the person's own, so it names a manual trigger: with none,
+    // the Runs list says it was started in the terminal.
+    const trigger = { type: "manual" as const, at: this.#options.clock.now().toISOString() };
+    const { id } = await engine.executor.start({ ...run, input, trigger });
     return { id };
   }
 
@@ -166,6 +176,8 @@ export class EngineService {
             http: this.#options.http,
             clock,
             isTrusted: () => this.#options.isTrusted(workspace),
+            // The desktop keychain keeps no origin list yet, so its keys stay on the trust rule.
+            keyOrigins: noKeyOrigins,
             // Until Studio has its approval store (HAL-850 step 6), no listed tool is offered.
             listedToolApproval: noListedToolApproval,
           }),

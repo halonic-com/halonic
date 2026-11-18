@@ -1,25 +1,21 @@
-import { startsAProgram } from "@halonicjs/adapter-workspace-models";
 // The trust check before `halonic run` starts anything (cli-output 3.4,
 // "Untrusted workspace"). A run runs the workspace's models, programs and
 // connectors, so the workspace must be trusted on this computer first,
 // unless the run can only reach the built-in test model (Liam, HAL-1984;
 // the rule is `reachesOnlyTheTestModel` in the workspace package, so
-// Studio can use it too): then nothing outside Halonic starts, and
-// `init --example acme` runs straight away. The service that starts the run
-// doesn't check trust; each surface asks in its own way (Liam, HAL-3895).
+// Studio can use it too, and `needsNoTrust` in `workspace-trust.ts` asks it
+// for `run`, `routines watch`, `serve` and the serve trust gate): then
+// nothing outside Halonic starts, and `init --example acme` runs straight
+// away. The service that starts the run doesn't check trust; each surface
+// asks in its own way (Liam, HAL-3895).
 
-import { trustContentInputOf } from "@halonicjs/app";
 import type { TrustGrant } from "@halonicjs/ports";
-import { type LoadedWorkspace, reachesOnlyTheTestModel } from "@halonicjs/workspace";
+import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { Message } from "../../messages/define.ts";
 import { runMessages } from "../../messages/run.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
 import { refuseFileProblems } from "../../workspace-problems.ts";
-import {
-  trustedGrant,
-  type WorkspaceTrustMachine,
-  workspaceIntegrations,
-} from "../../workspace-trust.ts";
+import { needsNoTrust, trustedGrant, type WorkspaceTrustMachine } from "../../workspace-trust.ts";
 
 /** What the trust check reads on this computer, so tests can hand it a memory store. */
 export type RunTrustMachine = WorkspaceTrustMachine;
@@ -54,12 +50,6 @@ export async function checkRunTrust(
   harness?: string,
 ): Promise<TrustGrant | null> {
   refuseFileProblems(dir, workspace, nothingDone, typedDir);
-  const integrations = await workspaceIntegrations(dir.root, dir.shown);
-  if (
-    !startsAProgram(harness) &&
-    reachesOnlyTheTestModel(trustContentInputOf(workspace, integrations))
-  ) {
-    return null;
-  }
+  if (await needsNoTrust(dir, workspace, harness)) return null;
   return await trustedGrant(dir, machine, typedDir, nothingDone, workspace);
 }

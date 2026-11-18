@@ -51,6 +51,8 @@ interface WorkspaceFacts {
   readonly routines: ReadonlyMap<string, RoutineClock>;
   /** By id, where each provider the workspace has runs. */
   readonly providers: ReadonlyMap<string, ProviderKind>;
+  /** By id, each agent's name as its file says. */
+  readonly agentNames: ReadonlyMap<string, string>;
   readonly currency: string;
   readonly monthly: number | undefined;
 }
@@ -114,6 +116,10 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
       name: workflow.name,
       stepDescription: (stateId) => workflow.states[stateId]?.description,
     };
+  }
+
+  agentName(agentId: string): string | undefined {
+    return this.#facts?.agentNames.get(agentId);
   }
 
   routine(key: string): RunRoutine | undefined {
@@ -195,6 +201,11 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
           value.id,
           providerIsLocal(value) ? "local" : "cloud",
         ]),
+      ),
+      agentNames: new Map(
+        filesOf(workspace, "agent")
+          .toReversed()
+          .map(({ value }) => [value.id, value.name]),
       ),
       currency: settings?.budget?.currency ?? defaultCurrency,
       monthly: settings?.budget?.monthly,

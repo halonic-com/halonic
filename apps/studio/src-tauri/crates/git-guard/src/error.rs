@@ -62,6 +62,20 @@ pub enum GitError {
     OutputTooLarge,
     /// The git process could not be started or read.
     Io { message: String },
+    /// An export's git address is not an `https://` or `ssh://` one, or has
+    /// a password, an option-like start or an odd character in it. The
+    /// reason never repeats the address, which may hold a secret.
+    AddressNotAllowed { reason: &'static str },
+    /// An export's branch, tag or commit is not a plain name or full id.
+    ReferenceNotAllowed,
+    /// An export would be larger than its limits: fetched data, files or
+    /// bytes.
+    ExportTooLarge,
+    /// The caller stopped the export, and its folders were removed.
+    Cancelled,
+    /// An export step ran and git said no, or gave an answer the export
+    /// can't use. `step` says which step, and `message` is git's own words.
+    ExportFailed { step: &'static str, message: String },
 }
 
 impl GitError {
@@ -90,6 +104,11 @@ impl GitError {
             GitError::TimedOut => "timed_out",
             GitError::OutputTooLarge => "output_too_large",
             GitError::Io { .. } => "io",
+            GitError::AddressNotAllowed { .. } => "address_not_allowed",
+            GitError::ReferenceNotAllowed => "reference_not_allowed",
+            GitError::ExportTooLarge => "export_too_large",
+            GitError::Cancelled => "cancelled",
+            GitError::ExportFailed { .. } => "export_failed",
         }
     }
 }
@@ -167,6 +186,20 @@ impl fmt::Display for GitError {
             GitError::TimedOut => write!(formatter, "git ran past its time limit"),
             GitError::OutputTooLarge => write!(formatter, "git wrote more than the output limit"),
             GitError::Io { message } => write!(formatter, "git could not run: {message}"),
+            GitError::AddressNotAllowed { reason } => {
+                write!(formatter, "can't use that git address: {reason}")
+            }
+            GitError::ReferenceNotAllowed => write!(
+                formatter,
+                "can't use that as a commit: use a branch, a tag or a full commit id"
+            ),
+            GitError::ExportTooLarge => {
+                write!(formatter, "the repository is larger than a plugin may be")
+            }
+            GitError::Cancelled => write!(formatter, "the export was stopped"),
+            GitError::ExportFailed { step, message } => {
+                write!(formatter, "couldn't {step}: {message}")
+            }
         }
     }
 }

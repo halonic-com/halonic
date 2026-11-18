@@ -218,7 +218,7 @@ verifies("library.new-connector", () => {
 
     it("says why it couldn't create the connector and keeps what was typed", async () => {
       const { root, onCreated } = setup(["acme"], async () => {
-        throw new Error("The disk is full.");
+        throw Object.assign(new Error("The disk is full."), { kind: "unavailable" });
       });
       await type(root, "Name", "Notes");
       await pick(root, "Local program");
@@ -228,6 +228,21 @@ verifies("library.new-connector", () => {
       await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
       expect(page(root)).toContain("Couldn't create the connector: The disk is full.");
       expect(onCreated).not.toHaveBeenCalled();
+    });
+
+    it("shows the generic sentence, not the system's text, for an error without a kind", async () => {
+      const { root } = setup(["acme"], async () => {
+        throw new Error("EACCES: permission denied, open '/x'");
+      });
+      await type(root, "Name", "Notes");
+      await pick(root, "Local program");
+      await type(root, "Command", "notes-server");
+      await press(root, "Create");
+      await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+      expect(page(root)).toContain(
+        "Couldn't create the connector: Halonic ran into a problem it can't explain yet.",
+      );
+      expect(page(root)).not.toContain("EACCES");
     });
   });
 });

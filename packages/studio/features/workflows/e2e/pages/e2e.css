@@ -11,5 +11,10 @@
 @source "../../../runs/src";
 @source "../../../settings/src";
 @source "../../../inbox/src";
+@source "../../../models/src";
+@source "../../../plugins/src";
+@source "../../../workspace/src";
+@source "../../../agents/src";
+@source "../../../../shell/src";
 @source ".";
 @source not "../../../../**/*.md";

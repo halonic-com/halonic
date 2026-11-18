@@ -18,7 +18,9 @@ export const knowledgeWords = {
     `${name} has no documents to summarize, or Halonic can't list them.`,
   summarizeFailed: (name: string, reason: string) => `Couldn't summarize ${name}: ${reason}.`,
   modelFailed: "the local model didn't answer",
-  hostUnreachable: "Halonic on your computer isn't answering",
+  /** After "Couldn't summarize *name*:" in lower case, from the host's own "isn't answering" words (microcopy 1.2). */
+  hostUnreachable: (notAnswering: string) =>
+    notAnswering.replace(/\.$/, "").replace(/^The /, "the "),
   tooLarge: "it has more text than one summary can take",
   tryAgain: "Try again",
   removeSummary: "Remove summary",
@@ -27,8 +29,7 @@ export const knowledgeWords = {
   lookupAuto: "Also search with the task before the first model call (auto)",
   usedBy: "Used by",
   notUsed: "No agent uses this source yet.",
-  loading: "Loading the knowledge source",
-  saveFailed: "Couldn't save the knowledge source",
-  couldntLoad: "Couldn't load this knowledge source",
+  loading: (name: string) => `Loading ${name}`,
+  couldntLoad: (name: string) => `Couldn't load ${name}`,
   unreadable: "This source's file can't be read here. Open it as a file to fix it.",
 } as const;

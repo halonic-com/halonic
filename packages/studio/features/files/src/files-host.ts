@@ -63,15 +63,20 @@ export type CompareChoice = "keep-mine" | "use-other" | "combine-both";
 
 /**
  * What `FilesHost.create` rejects with when the path itself is the problem
- * ("workspace.yaml already exists."). Any other rejection is a write that failed.
+ * ("workspace.yaml already exists."). Any other rejection is a write that failed. Its kind
+ * marks its message as safe to show, as rename also rejects with it for a name that's taken.
  */
 export class FilePathError extends Error {
   override readonly name = "FilePathError";
+  readonly kind = "invalid_input";
 }
 
 /** The workspace's files. The app provides it for each open workspace. */
 export interface FilesHost {
-  /** Lists the files. Rejects with an `Error` whose message is one sentence when the folder can't be read. */
+  /**
+   * Lists the files. Rejects with a kinded error, whose one-sentence message the tree shows, when
+   * the folder can't be read; an unkinded error gives only the general reason.
+   */
   list(): Promise<FilesListing>;
   /** A file's text with the unsaved changes applied, or `null` when there is no such file. */
   read(path: string): Promise<string | null>;

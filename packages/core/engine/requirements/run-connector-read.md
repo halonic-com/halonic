@@ -1,7 +1,7 @@
 # engine.run-connector-read
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5583 (board decision on HAL-5522, option A, after HAL-5199 made every connector tool ask first)
 
 When a run's model, or a subagent's model in a run, calls a connector's tool that the `read` list of that connector's file in the run's kept definitions names exactly, under the name its server lists it under, and that the file's `approve` list doesn't name and doesn't make `all`, the engine shall count the tool as `read`: it shall make the call without asking a person and without recording `effect.requested`, and shall record `tool.unasked` with the connector, the tool and `reason: "read-list"` before it makes the call (`events.tool-unasked`). A `parallel` branch, and a subagent under one, shall be offered such a tool. Nothing in the server's listing shall make a tool count as `read`: not its `risk`, not any other field, and not a tool's name that another connector's `read` list names. A tool the server lists as `send` shall stay `send`, whatever the file's `read` list says. Every other connector tool counts as `write` or `send`, as `engine.run-tool-calls` says.

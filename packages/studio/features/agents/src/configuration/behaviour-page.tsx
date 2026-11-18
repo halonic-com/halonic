@@ -1,0 +1,56 @@
+import { findSecretShape } from "@halonicjs/std";
+import { Field, Input, TextArea } from "@halonicjs/studio-kit";
+import type { AgentChange, AgentSettings } from "../api.ts";
+import { configurationWords as words } from "./configuration-words.ts";
+import { useAutoSaved } from "./use-auto-saved.ts";
+
+/** Props for {@link BehaviourPage}. */
+export interface BehaviourPageProps {
+  readonly settings: AgentSettings;
+  /** Saves one change; rejects with the reason it couldn't write. */
+  readonly save: (change: AgentChange) => Promise<void>;
+}
+
+const keyCheck = (text: string): string | null =>
+  findSecretShape(text) === undefined ? null : words.looksLikeKey;
+
+/**
+ * The Behaviour page (`agents.configuration.behaviour`): Description and Instructions. Each saves by
+ * itself and there is no Save button. A key in either is caught before it's saved.
+ */
+export function BehaviourPage({ settings, save }: BehaviourPageProps) {
+  const description = useAutoSaved(
+    settings.description ?? "",
+    (next) => save({ description: next }),
+    keyCheck,
+  );
+  const instructions = useAutoSaved(
+    settings.instructions,
+    (next) => save({ instructions: next }),
+    keyCheck,
+  );
+  return (
+    <div className="flex flex-col gap-6">
+      <Field label={words.description} error={description.error}>
+        <Input
+          value={description.value}
+          onChange={(event) => description.onChange(event.target.value)}
+          onBlur={description.flush}
+        />
+      </Field>
+      <Field
+        label={words.instructions}
+        hint={instructions.value === "" ? words.instructionsHint : undefined}
+        error={instructions.error}
+      >
+        <TextArea
+          minRows={4}
+          maxRows={12}
+          value={instructions.value}
+          onChange={(event) => instructions.onChange(event.target.value)}
+          onBlur={instructions.flush}
+        />
+      </Field>
+    </div>
+  );
+}

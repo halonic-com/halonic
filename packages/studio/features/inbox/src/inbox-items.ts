@@ -12,11 +12,15 @@ export interface ApprovalItem {
   readonly agent: string;
   /** The subagent that asked for `agent`, by its id, or `null` when `agent` asked itself. */
   readonly subagent: string | null;
+  /** The agent's name as its file says; its id when the file can't be read. */
+  readonly agentName: string;
+  /** The subagent's name, likewise; `null` when `agent` asked itself. */
+  readonly subagentName: string | null;
   /** The tool's name, such as `create_note`. */
   readonly tool: string;
   /** The connector the tool comes from, such as `notes-mcp`, or `null` for a built-in tool. */
   readonly connector: string | null;
-  /** The name the agent called, such as `notes-mcp__create_note`. */
+  /** The tool name as the engine logged it, without the connector. */
   readonly rawTool: string;
   /** The arguments the agent sent, as it sent them. */
   readonly args: unknown;
@@ -92,9 +96,6 @@ export function isRunItem(item: InboxItem): item is RunItem {
   return item.kind !== "setup";
 }
 
-/** The separator between a connector's name and its tool's name in the name an agent calls. */
-const connectorSeparator = "__";
-
 /**
  * What waits for you in these runs, newest first: one item for each tool
  * call waiting for your OK, and one for each run at a `wait` step. A run
@@ -102,15 +103,20 @@ const connectorSeparator = "__";
  * the one to answer. A `wait` step that only has timers takes no answer, so
  * it has none either. Test runs (Try it) never ask, so they have none.
  *
+ * @param nameOfAgent an agent's name as its file says; its id when the file can't be read
+ *
  * @example
- * inboxItems(await store.list({ status: ["waiting"] }));
+ * inboxItems(await store.list({ status: ["waiting"] }), (id) => agentNames.get(id) ?? id);
  */
-export function inboxItems(runs: readonly RunSummary[]): RunItem[] {
+export function inboxItems(
+  runs: readonly RunSummary[],
+  nameOfAgent: (agentId: string) => string = (id) => id,
+): RunItem[] {
   const items: RunItem[] = [];
   for (const run of runs) {
     if (run.status !== "waiting" || run.kind === "test") continue;
     if (run.approvals.length > 0) {
-      for (const approval of run.approvals) items.push(approvalItem(run.id, approval));
+      for (const approval of run.approvals) items.push(approvalItem(run.id, approval, nameOfAgent));
     } else if (
       run.waitingOn === null &&
       run.state !== null &&
@@ -123,10 +129,11 @@ export function inboxItems(runs: readonly RunSummary[]): RunItem[] {
   return items.sort(newestFirst);
 }
 
-function approvalItem(runId: string, approval: RunSummary["approvals"][number]): ApprovalItem {
-  // A name that starts with the separator has no connector before it.
-  const separator = approval.tool.indexOf(connectorSeparator);
-  const hasConnector = separator > 0;
+function approvalItem(
+  runId: string,
+  approval: RunSummary["approvals"][number],
+  nameOfAgent: (agentId: string) => string,
+): ApprovalItem {
   return {
     kind: "approval",
     key: `${runId}:${approval.callId}`,
@@ -134,8 +141,10 @@ function approvalItem(runId: string, approval: RunSummary["approvals"][number]):
     callId: approval.callId,
     agent: approval.agent,
     subagent: approval.subagent ?? null,
-    tool: hasConnector ? approval.tool.slice(separator + connectorSeparator.length) : approval.tool,
-    connector: hasConnector ? approval.tool.slice(0, separator) : null,
+    agentName: nameOfAgent(approval.agent),
+    subagentName: approval.subagent === undefined ? null : nameOfAgent(approval.subagent),
+    tool: approval.tool,
+    connector: approval.connector ?? null,
     rawTool: approval.tool,
     args: approval.args,
     since: approval.at,

@@ -1,0 +1,17 @@
+{
+  "identifier": "desktop-plugin-git-export",
+  "description": "On desktop, the app's own page may export one commit of a git repository, files only, to add a plugin from, through the plugin_git_export and plugin_git_export_end commands (src/plugin_git.rs). It reaches the network and writes a new folder in the app's own data folder, never an opened folder. Only https:// and ssh:// addresses are taken, one commit is fetched into an empty repository, nothing runs from it (no hook, script, install, submodule or filter, and none of the user's git config), and the files are limited as a plugin is, with no .git. The page reads the files only through the plugin_source_* commands, and the dialog ends the export when it closes, which stops git and removes the folder. It is its own capability, apart from the one that writes the plugin, and local only, so the Studio the computer serves cannot fetch from the network this way.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-plugin-git-export",
+    "allow-plugin-git-export-end"
+  ]
+}

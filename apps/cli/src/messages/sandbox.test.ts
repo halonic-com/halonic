@@ -188,7 +188,7 @@ describe("the sandbox sentences", () => {
   });
 
   it("links each reason's section of the sandbox page, as agreed on HAL-6524", () => {
-    const section = (anchor: string) => `https://docs.halonic.dev/sandbox${anchor}`;
+    const section = (anchor: string) => `https://docs.halonic.dev/security/sandbox/${anchor}`;
     expect(
       Object.fromEntries(sandboxUnavailableReasons.map((code) => [code, sandboxDocsLink(code)])),
     ).toEqual({

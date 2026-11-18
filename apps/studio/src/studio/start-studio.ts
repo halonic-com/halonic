@@ -73,7 +73,12 @@ export { servedServices } from "./served-studio.ts";
 
 import { followSystemRegion } from "./system-region.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
-import { closeLimitMs, windowCloseHandler, withinLimit } from "./window-close.ts";
+import {
+  closeLimitMs,
+  leaveFocusedField,
+  windowCloseHandler,
+  withinLimit,
+} from "./window-close.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
 
@@ -96,7 +101,7 @@ export interface StudioPage {
   /** Where the desktop app keeps Recent on this device: the page's `localStorage`. */
   readonly storage?: RecentStorage | undefined;
   /** Asks the page's own address, for the served Studio's `GET /api/workspace`: the page's `fetch`. */
-  readonly fetch?: ((path: string) => Promise<Response>) | undefined;
+  readonly fetch?: ((path: string, init?: RequestInit) => Promise<Response>) | undefined;
 }
 
 /** A started Studio. */
@@ -206,6 +211,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
       stop: () => stopped(),
       limitMs: closeLimitMs,
       within: withinLimit,
+      settleDrafts: () => leaveFocusedField(page.element.ownerDocument),
     }),
   );
   const stopped = once(async () => {

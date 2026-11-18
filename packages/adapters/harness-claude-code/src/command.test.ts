@@ -7,6 +7,7 @@ import { claudeCodeCommand, hasInstructions, userMessageLine } from "./command.t
 const files = {
   settingsFolder: join("agents", "writer", "settings"),
   instructionsFile: join("sessions", "one", "temp", "halonic-instructions.md"),
+  skillsFolder: null,
   ownSandbox: false,
 };
 
@@ -83,6 +84,18 @@ verifies("harness-claude-code.command", () => {
 
       expect(args).not.toContain("--model");
       expect(args).not.toContain("--append-system-prompt-file");
+    });
+  });
+
+  describe("skills", () => {
+    it("loads the run's instructions folder as a plugin, and not without one", () => {
+      const folder = join("data", "instructions", "instructions-1");
+
+      expect(claudeCodeCommand(task, { ...files, skillsFolder: folder }).args.slice(-2)).toEqual([
+        "--plugin-dir",
+        folder,
+      ]);
+      expect(claudeCodeCommand(task, files).args).not.toContain("--plugin-dir");
     });
   });
 

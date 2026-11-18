@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { ClipboardProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
@@ -7,7 +8,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { createShell } from "../shell.ts";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import type { WelcomeOpenProblem } from "./cant-open.ts";
+import { cantOpenProblem, type WelcomeOpenProblem } from "./cant-open.ts";
 import { Welcome } from "./welcome.tsx";
 import { WelcomeWindow } from "./welcome-window.tsx";
 
@@ -116,6 +117,23 @@ verifies("shell.welcome-cant-open", () => {
       "Can't open /work/old: the folder is gone.",
     );
     expect(openButton(root).getAttribute("aria-busy")).not.toBe("true");
+  });
+
+  it("asks the picker once and doesn't retry it, as the folder's opening is retried elsewhere", async () => {
+    vi.useFakeTimers();
+    try {
+      const onOpenFolder = vi.fn(async () =>
+        cantOpenProblem("/work/odd", new KindedError("unavailable", "no answer")),
+      );
+      const root = render(<Welcome onOpenFolder={onOpenFolder} />);
+
+      await act(async () => openButton(root).click());
+      await act(async () => vi.advanceTimersByTimeAsync(11_000));
+
+      expect(onOpenFolder).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("clears the message on the next press", async () => {
@@ -233,6 +251,134 @@ verifies("shell.welcome-recent", () => {
 
     await act(async () => finish());
     expect(recentRow(root, "beta")?.hasAttribute("aria-busy")).toBe(false);
+  });
+
+  it("a busy Recent row exposes a polite Opening… status, and clears it when done", async () => {
+    let finish: () => void = () => {};
+    const onOpen = vi.fn(
+      () =>
+        new Promise<undefined>((resolve) => {
+          finish = () => resolve(undefined);
+        }),
+    );
+    const root = render(
+      <Welcome
+        onOpenFolder={async () => undefined}
+        recent={{ workspaces, onOpen, onRemove: () => {} }}
+      />,
+    );
+    const status = () => root.querySelector<HTMLElement>('section [role="status"]');
+    expect(status()?.textContent).toBe("");
+
+    await act(async () => recentRow(root, "beta")?.click());
+    expect(status()?.getAttribute("aria-live")).toBe("polite");
+    expect(status()?.textContent).toBe("Opening…");
+
+    await act(async () => finish());
+    expect(status()?.textContent).toBe("");
+  });
+
+  it("a Recent row stays busy and tries again for 10 seconds, then says the engine isn't answering", async () => {
+    vi.useFakeTimers();
+    try {
+      const onOpen = vi.fn(async () =>
+        cantOpenProblem(
+          "~/Documents/Acme",
+          new KindedError("unavailable", "The desktop shell gave no answer"),
+        ),
+      );
+      const root = render(
+        <Welcome
+          onOpenFolder={async () => undefined}
+          recent={{ workspaces, onOpen, onRemove: () => {} }}
+        />,
+      );
+
+      const row = recentRow(root, "acme");
+      await act(async () => row?.click());
+      await act(async () => vi.advanceTimersByTimeAsync(5_000));
+      expect(row?.getAttribute("aria-busy")).toBe("true");
+      expect(root.querySelector('[role="alert"]')?.textContent).toBe("");
+
+      await act(async () => vi.advanceTimersByTimeAsync(6_000));
+      const line = root.querySelector('[role="alert"]')?.textContent;
+      expect(line).toBe(
+        "Can't open ~/Documents/Acme: the engine isn't answering. It may still be starting.",
+      );
+      expect(line).not.toMatch(/shell/i);
+      expect(row?.getAttribute("aria-busy")).not.toBe("true");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("marks the row that failed and describes it by the alert line", async () => {
+    const root = render(
+      <Welcome
+        onOpenFolder={async () => undefined}
+        recent={{
+          workspaces,
+          onOpen: async (location) => ({
+            folder: location,
+            kind: "not_found",
+            reason: "the folder is gone.",
+          }),
+          onRemove: () => {},
+        }}
+      />,
+    );
+
+    await act(async () => recentRow(root, "beta")?.click());
+    const alertId = root.querySelector('[role="alert"]')?.id;
+    expect(alertId).toBeTruthy();
+    expect(recentRow(root, "beta")?.getAttribute("aria-describedby")).toBe(alertId);
+    expect(recentRow(root, "beta")?.className).toContain("border-danger");
+    expect(recentRow(root, "acme")?.hasAttribute("aria-describedby")).toBe(false);
+    expect(recentRow(root, "acme")?.className).not.toContain("border-danger");
+    // Room above and below, so scrolling the failed row into view leaves its outline clear of the window edge.
+    expect(recentRow(root, "beta")?.className.split(" ")).toContain("scroll-my-4");
+  });
+
+  it("scrolls the row that failed into view", async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    const root = render(
+      <Welcome
+        onOpenFolder={async () => undefined}
+        recent={{
+          workspaces,
+          onOpen: async () => ({
+            folder: "/work/beta",
+            kind: "not_found",
+            reason: "the folder is gone.",
+          }),
+          onRemove: () => {},
+        }}
+      />,
+    );
+
+    await act(async () => recentRow(root, "beta")?.click());
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+    delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+  });
+
+  it("cuts a long folder in the middle and keeps its end", () => {
+    const location = "/work/projects/Customer Support/Halonic Workspaces/Q3 Renewals";
+    const root = render(
+      <Welcome
+        onOpenFolder={async () => undefined}
+        recent={{
+          workspaces: [{ location, name: "Q3" }],
+          onOpen: async () => undefined,
+          onRemove: () => {},
+        }}
+      />,
+    );
+
+    const row = root.querySelector("li button");
+    expect(row?.getAttribute("aria-label")).toBe(`Q3, ${location}`);
+    expect(row?.textContent).toContain(location);
+    expect(row?.querySelector(".shrink-0")?.textContent).toBe("/Halonic Workspaces/Q3 Renewals");
   });
 
   it("says a row's folder is gone, offers Remove from Recent and keeps the row", async () => {

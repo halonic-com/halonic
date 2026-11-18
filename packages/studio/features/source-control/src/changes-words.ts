@@ -4,6 +4,10 @@
 /** The page's heading and the states that replace its content. */
 export const pageWords = {
   title: "Changes",
+  /** The What changed page's way back to the list. */
+  back: "Back to Changes",
+  /** The page's other button: "Open workflow", "Open agent". */
+  openItem: (kind: string) => `Open ${kind}`,
   /** The sidebar's Changes, read after its name: "Changes, 3 changes". */
   spokenCount: (count: number) => (count === 1 ? "1 change" : `${count} changes`),
 };
@@ -11,8 +15,7 @@ export const pageWords = {
 /** What the page says when there is nothing to list. */
 export const stateWords = {
   notARepositoryTitle: "Keep a history of your work",
-  notARepositoryBody:
-    "Halonic saves versions of this workspace so you can see what changed and go back.",
+  notARepositoryBody: "Halonic saves versions of this workspace so you can see what changed.",
   turnOnHistory: "Turn on history",
   /** Under "Keep a history of your work": what a folder without history means for saving (save model 2.8). */
   historyIsOff: "History is off. Everything you save is used right away.",
@@ -59,8 +62,48 @@ export const itemWords = {
   otherFiles: "Other files",
   workspaceSettings: "Workspace settings",
   models: "Models",
+  /** The small word before a row's sentence: "Workflow · New". */
+  kind: {
+    agent: "Agent",
+    workflow: "Workflow",
+    workflowTest: "Workflow test",
+    routine: "Routine",
+    skill: "Skill",
+    hub: "Hub",
+    provider: "Provider",
+    runtime: "Runtime",
+    knowledge: "Knowledge",
+    collection: "Collection",
+    connector: "Connector",
+    integration: "Integration",
+    plugin: "Plugin",
+    workspace: "Workspace settings",
+    deployments: "Deployments",
+    models: "Models",
+  } as const,
+  /** A row's second line: its kind word, then what changed. */
+  kindAndSentence: (kind: string, sentence: string) =>
+    sentence === "" ? kind : `${kind} · ${sentence}`,
+  /** `.gitignore`: the file Halonic writes when history is turned on. */
+  historyLeavesOut: "Files history leaves out",
   /** The sentence of an item that moved: "Renamed from Support". */
   renamedFrom: (name: string) => `Renamed from ${name}`,
+  /** The row's ⋮, named by its item so a screen reader says which row it is on. */
+  moreActionsFor: (name: string) => `More actions for ${name}`,
+  /** The ⋮'s first entry. */
+  openNamed: (name: string) => `Open ${name}`,
+  /** Under the last row when more items changed than the list draws. */
+  andMore: (count: number) => `and ${count} more`,
+};
+
+/** A change's parts in words (checklist part 2, 2.4): a neutral label, then the value before and after. */
+export const partChangeWords = {
+  changed: "CHANGED",
+  added: "ADDED",
+  removed: "REMOVED",
+  /** Read before the old and the new value, since the strike-through is not a word. */
+  before: "Before:",
+  after: "After:",
 };
 
 /** What Undo this change says when it is done or can't be done. */
@@ -80,13 +123,28 @@ export const discardWords = {
   undoTheseChanges: "Undo these changes",
   discard: "Discard",
   discardThisPart: "Discard this part",
-  showLines: "Show lines",
-  hideLines: "Hide lines",
+  /** The disclosure that opens the line diff of a file. */
+  advanced: "Advanced",
+  /** Said once for a file whose change Halonic can't put in words. */
+  cantDescribe: "Halonic can't describe this change.",
+  /** The label beside that file's name, by what happened to it. */
+  fileLabel: { changed: "CHANGED", new: "NEW", deleted: "DELETED" },
   /** The line diff's heading, read by a screen reader. */
   lines: (path: string) => `Changed lines in ${path}`,
-  /** The toast after a discard: "Discarded changes in 1 file". */
-  discarded: (count: number) =>
-    count === 1 ? "Discarded changes in 1 file" : `Discarded changes in ${count} files`,
+  /** The toast after Undo these changes: "Undid changes to Sorter." */
+  undid: (name: string) => `Undid changes to ${name}.`,
+  /** The toast after the developer view's Discard of one file; the path follows. */
+  fileDiscarded: "Discarded this file",
+  /** The toast's link: puts back what the toast says was discarded. */
+  undo: "Undo",
+  /** Over the first lines of a new file, read by a screen reader. */
+  firstLines: (path: string) => `First lines of ${path}`,
+  /** A part's heading: "Line 12" or "Lines 12 to 18"; `first` and `last` count from 1. */
+  partLines: (first: number, last: number) =>
+    first === last ? `Line ${first}` : `Lines ${first} to ${last}`,
+  /** Read before a line of a part, since its + or − glyph and its tint are not words. */
+  addedLine: "Added line:",
+  removedLine: "Removed line:",
   partDiscarded: "Discarded this part",
   failed: "Couldn't discard these changes",
   partFailed: "Couldn't discard this part",
@@ -96,6 +154,11 @@ export const discardWords = {
   addedOutside:
     "Another program added this file to a version. Discard it there, or create the version here.",
   noCopy: "Halonic couldn't keep a copy, so nothing was discarded.",
+  /** The one question Undo these changes ever asks: when no copy can be kept (checklist 2.5). */
+  noCopyTitle: (name: string) => `Undo changes to ${name}?`,
+  noCopyBody: "Halonic couldn't keep a copy, so this can't be undone.",
+  noCopyConfirm: "Undo changes",
+  noCopyBusy: "Undoing…",
 };
 
 /** Create version (checklist part 2, 2.6; microcopy revision 94, 16). */
@@ -121,6 +184,10 @@ export const versionWords = {
   tryAgain: "Try again",
   nothingToCreate: "Nothing has changed since your last version.",
   created: (name: string) => `Created version "${name}"`,
+  /** Under the list of the first version: Halonic made the file, not the person. */
+  addedByHistory: "Halonic added this when you turned on history.",
+  /** The name offered for the first version of a workspace. */
+  firstVersion: "First version",
   /** The name offered for a version of one or more items. */
   suggestedName: (items: readonly string[]) => {
     const [first, second] = items;
@@ -165,6 +232,61 @@ export const updatesWords = {
     "The shared copy and this workspace both have new versions, so they can't be combined here yet.",
   tryAgain: "Try again",
   alreadyWorking: "Halonic is already getting updates.",
+};
+
+/** Choosing per item when both sides changed (checklist part 2, 2.8; microcopy revision 94, 16). */
+export const mergeWords = {
+  /** Whose updates: "Sam's" for one person, "the shared" for more (the tile says "the shared one"). */
+  whose: (people: readonly string[]) =>
+    people.length === 1 && people[0] !== undefined ? `${people[0]}'s` : "the shared",
+  /** The other side's name for the page: "Sam", or "the team" when more than one person's versions came. */
+  who: (people: readonly string[]) =>
+    people.length === 1 && people[0] !== undefined ? people[0] : "the team",
+  /** "Sam's" or "The shared one", the start of "…: not used". */
+  theirsName: (people: readonly string[]) =>
+    people.length === 1 && people[0] !== undefined ? `${people[0]}'s` : "The shared one",
+  heading: "Getting updates",
+  intro: (people: readonly string[], count: number) =>
+    `You and ${mergeWords.who(people)} both changed ${count === 1 ? "1 item" : `${count} items`}. Choose which one to keep. Your version is kept in History either way.`,
+  /** The strip over the page while a merge is left open. */
+  inTheMiddle: (people: readonly string[]) =>
+    `You're in the middle of getting ${mergeWords.whose(people)} updates.`,
+  continue: "Continue",
+  yours: "Yours",
+  keepMine: "Keep mine",
+  useTheirs: (people: readonly string[]) =>
+    people.length === 1 && people[0] !== undefined ? `Use ${people[0]}'s` : "Use the shared one",
+  keepBoth: "Keep both",
+  keepingYours: "Keeping yours",
+  keepingTheirs: (people: readonly string[]) =>
+    people.length === 1 && people[0] !== undefined
+      ? `Keeping ${people[0]}'s`
+      : "Keeping the shared one",
+  keepingBoth: "Keeping both",
+  notUsed: (people: readonly string[]) => `${mergeWords.theirsName(people)}: not used`,
+  /** Under "Keeping both": where the other side's copy went. */
+  copySavedAs: (path: string) => `Saved next to yours as ${path}.`,
+  undo: "Undo",
+  /** What a tile shows for a side that deleted the item. */
+  deleted: "Deleted",
+  /** A side's text, cut after a few lines. */
+  moreLines: (count: number) => (count === 1 ? "1 more line" : `${count} more lines`),
+  finish: "Finish getting updates",
+  /** Finish's visible description until every item is chosen. */
+  chooseForMore: (count: number) =>
+    count === 1 ? "Choose for 1 more item." : `Choose for ${count} more items.`,
+  cancel: "Cancel getting updates",
+  working: "Working…",
+  /** The message of the version that completes the merge. */
+  merged: (people: readonly string[]) => `Merged ${mergeWords.whose(people)} updates`,
+  cancelled: "Cancelled getting updates",
+  /** The reason under Create version and Get updates, and the tooltip and description of what waits. */
+  finishFirst: "Finish getting updates first.",
+  /** A choice that didn't work; the reason follows. */
+  choiceFailed: "Couldn't make that choice",
+  finishFailed: "Couldn't finish getting updates",
+  cancelFailed: "Couldn't cancel getting updates",
+  tryAgain: "Try again",
 };
 
 /** History (checklist part 2, 2.9 and 2.10; microcopy revision 94, 16). */

@@ -95,6 +95,8 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '47 4 * * 1'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    # The terms secret lives in this environment; only main may use it (HAL-11232).
+    environment: leak-terms
     permissions:
       contents: read
     steps:

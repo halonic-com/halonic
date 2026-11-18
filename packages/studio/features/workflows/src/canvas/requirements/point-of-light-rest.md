@@ -1,7 +1,7 @@
 # workflows.canvas.point-of-light-rest
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8419; Noah's spec on HAL-8428 (rest, hand-off, reduced motion)
 
 When the active step of a run is shown, the workflows feature shall draw one point of light on that step's status dot in the step's status colour, floating on a 2 px circle once every 7 s and breathing between 85 % and 130 % brightness over 3.6 s each way, both eased in over the first 800 ms after it lands; when the active step changes while it is flying, it shall finish the hop and then go straight on to the newest step; and when the person prefers reduced motion, it shall draw one still dot that cross-fades to the new step's dot over 120 ms, with no flight, float or breath.
@@ -17,4 +17,4 @@ When the active step of a run is shown, the workflows feature shall draw one poi
 
 ## Notes
 
-Nothing is drawn on the canvas yet: the canvas has no run mode or status dots, so this component is not placed on it until they exist.
+The canvas places the light on the active step's dot (`workflows.canvas.status-dots`).

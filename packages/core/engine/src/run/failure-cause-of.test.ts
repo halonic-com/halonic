@@ -2,6 +2,7 @@ import type { RunFailureKind } from "@halonicjs/events";
 import { type ErrorKind, KindedError } from "@halonicjs/std";
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
+import { BudgetReachedError } from "../budget/call-budget.ts";
 import { failedCallInput } from "./failed-call-input.ts";
 import { failureCauseOf } from "./failure-cause-of.ts";
 
@@ -81,5 +82,19 @@ verifies("engine.run-failure-cause-of", () => {
     expect(
       failedCallInput(new Error("boom"), { callId: "c", at: "t", step: "s" }),
     ).not.toHaveProperty("cause");
+  });
+
+  it("passes a budget stop's cause on with the reason budget", () => {
+    const cause = {
+      kind: "limit_reached",
+      code: "budget.run",
+      detail: { limit: "1", spent: "1.5", currency: "EUR" },
+    } as const;
+    const input = failedCallInput(new BudgetReachedError("Run budget reached.", cause), {
+      callId: "call-3",
+      at: "2026-11-17T09:00:00.000Z",
+      step: "draft",
+    });
+    expect(input).toMatchObject({ reason: "budget", cause });
   });
 });

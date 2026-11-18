@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { fakeRun, send } from "./fakes.test-helper.ts";
+import { fakeRun, noOutsideCall, send } from "./fakes.test-helper.ts";
 import { socketBridgeName } from "./listener.ts";
 import { sendToSocket } from "./raw-client.test-helper.ts";
 import { NodeHarnessBridgeServer } from "./server.ts";
@@ -11,7 +11,11 @@ import { NodeHarnessBridgeServer } from "./server.ts";
 verifies("harness-bridge.server", () => {
   it("opens a bridge per run that serves only requests with its token", async () => {
     const secrets = { get: async () => null };
-    const server = new NodeHarnessBridgeServer({ secrets, limits: { maxBytes: 1024 } });
+    const server = new NodeHarnessBridgeServer({
+      secrets,
+      fetch: noOutsideCall,
+      limits: { maxBytes: 1024 },
+    });
     const bridge = await server.open(fakeRun());
     try {
       expect((await send(bridge, "/v1/messages")).status).toBe(401);
@@ -27,9 +31,9 @@ verifies("harness-bridge.server", () => {
     "refuses %s as the close time limit",
     (closeTimeoutMs) => {
       const secrets = { get: async () => null };
-      expect(() => new NodeHarnessBridgeServer({ secrets, closeTimeoutMs })).toThrow(
-        expect.objectContaining({ kind: "invalid_input" }),
-      );
+      expect(
+        () => new NodeHarnessBridgeServer({ secrets, fetch: noOutsideCall, closeTimeoutMs }),
+      ).toThrow(expect.objectContaining({ kind: "invalid_input" }));
     },
   );
 });
@@ -38,7 +42,11 @@ verifies("harness-bridge.socket", () => {
   it("serves each run on a socket of its own when given a socket folder", async () => {
     const folder = await mkdtemp(join(tmpdir(), "bridges-"));
     const secrets = { get: async () => null };
-    const server = new NodeHarnessBridgeServer({ secrets, socketFolder: folder });
+    const server = new NodeHarnessBridgeServer({
+      secrets,
+      fetch: noOutsideCall,
+      socketFolder: folder,
+    });
     try {
       const bridge = await server.open(fakeRun());
       const reply = await sendToSocket(bridge.socketPath ?? "", {
@@ -58,7 +66,7 @@ verifies("harness-bridge.socket", () => {
 verifies("harness-bridge.anthropic", () => {
   it("serves Anthropic's messages path", async () => {
     const secrets = { get: async () => null };
-    const server = new NodeHarnessBridgeServer({ secrets });
+    const server = new NodeHarnessBridgeServer({ secrets, fetch: noOutsideCall });
     const bridge = await server.open(fakeRun());
     try {
       // The run's agent doesn't use Anthropic: the route is there and refuses it.
@@ -73,7 +81,7 @@ verifies("harness-bridge.anthropic", () => {
 verifies("harness-bridge.openai", () => {
   it("serves OpenAI's responses path", async () => {
     const secrets = { get: async () => null };
-    const server = new NodeHarnessBridgeServer({ secrets });
+    const server = new NodeHarnessBridgeServer({ secrets, fetch: noOutsideCall });
     const bridge = await server.open(fakeRun());
     try {
       // The run's agent doesn't use OpenAI: the route is there and refuses it.

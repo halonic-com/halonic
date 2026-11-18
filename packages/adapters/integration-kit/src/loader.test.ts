@@ -11,8 +11,8 @@ import {
   loadIntegration,
   prepareIntegration,
   providerChoices,
-  type WorkspaceChoices,
 } from "./loader.ts";
+import type { WorkspaceChoices } from "./workspace-choices.ts";
 
 /** The weather sheet as the build writes it: data, defaults left out. */
 function sheet(): Record<string, unknown> {

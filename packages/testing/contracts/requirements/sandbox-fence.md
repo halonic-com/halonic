@@ -1,7 +1,7 @@
 # contracts.sandbox-fence
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: `Sandbox` port v3 (the fence proof); code review of 11 Nov (HAL-5219)
 
 Where an adapter implements `Sandbox`, a session whose fence proof is `not-fenced` shall say why in words, and its `start` shall throw and start no program.

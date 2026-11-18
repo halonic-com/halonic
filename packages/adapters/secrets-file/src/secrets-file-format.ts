@@ -1,15 +1,48 @@
-import { maxSecretValueLength, secretKey } from "@halonicjs/ports";
+import { maxAllowedOrigins, maxSecretValueLength, secretKey } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 
-/** One stored secret: the name as it was last written, and its value. */
+/**
+ * One stored secret: the name as it was last written, its value, and the
+ * origins the value may be sent to. A secret saved before origins existed has
+ * none, which is not the same as an empty list: the field is left out.
+ */
 export interface SecretEntry {
   readonly name: string;
   readonly value: string;
+  readonly allowedOrigins?: readonly string[];
 }
 
 const formatVersion = 1;
 
-/** The file's text: `{ "version": 1, "secrets": { "<KEY>": { "name", "value" } } }`, keyed by `secretKey`. */
+/** Why an address can't be an allowed origin: it isn't an `http` or `https` address, or it holds a user name or password. */
+export type AddressProblem = "not-an-address" | "has-user-info";
+
+/**
+ * The origin of an address, written as `new URL(…).origin` writes it, or the
+ * reason it has none. The model resolver compares an address' origin with the
+ * list as a whole string, so both sides must agree on this form.
+ */
+export function originOfAddress(address: string): { origin: string } | { problem: AddressProblem } {
+  const url = URL.parse(address);
+  if (url === null || (url.protocol !== "https:" && url.protocol !== "http:")) {
+    return { problem: "not-an-address" };
+  }
+  if (url.username !== "" || url.password !== "") {
+    return { problem: "has-user-info" };
+  }
+  return { origin: url.origin };
+}
+
+/**
+ * The origin of an address, or `undefined` for an address that doesn't parse,
+ * isn't `http` or `https`, or holds a user name or password.
+ */
+export function originOf(address: string): string | undefined {
+  const found = originOfAddress(address);
+  return "origin" in found ? found.origin : undefined;
+}
+
+/** The file's text: `{ "version": 1, "secrets": { "<KEY>": { "name", "value", "allowedOrigins"? } } }`, keyed by `secretKey`. */
 export function secretsFileText(entries: ReadonlyMap<string, SecretEntry>): string {
   const secrets = Object.fromEntries(
     [...entries.keys()].sort().map((key) => [key, entries.get(key)]),
@@ -44,7 +77,11 @@ export function parseSecretsFile(text: string, file: string): Map<string, Secret
     if (!isEntryFor(key, entry)) {
       throw damaged(file);
     }
-    entries.set(key, { name: entry.name, value: entry.value });
+    entries.set(key, {
+      name: entry.name,
+      value: entry.value,
+      ...(entry.allowedOrigins === undefined ? {} : { allowedOrigins: [...entry.allowedOrigins] }),
+    });
   }
   return entries;
 }
@@ -66,7 +103,26 @@ function isEntryFor(key: string, entry: unknown): entry is SecretEntry {
     return false;
   }
   const { name, value } = entry as { name: string; value: string };
-  return value !== "" && value.length <= maxSecretValueLength && keyOf(name) === key;
+  return (
+    value !== "" &&
+    value.length <= maxSecretValueLength &&
+    keyOf(name) === key &&
+    hasValidOrigins(entry)
+  );
+}
+
+/** Whether the entry's origins are left out, or a short list of origins exactly as `originOf` writes them. */
+function hasValidOrigins(entry: Record<string, unknown>): boolean {
+  const origins = entry["allowedOrigins"];
+  if (origins === undefined) {
+    return true;
+  }
+  return (
+    Array.isArray(origins) &&
+    origins.length >= 1 &&
+    origins.length <= maxAllowedOrigins &&
+    origins.every((origin) => typeof origin === "string" && originOf(origin) === origin)
+  );
 }
 
 function keyOf(name: string): string | undefined {

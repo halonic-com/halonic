@@ -8,6 +8,7 @@ import type {
   HarnessAgent,
   HarnessInstructionSource,
   HarnessInstructionsPin,
+  OpenInstructions,
 } from "@halonicjs/engine";
 import type { InstructionPin } from "@halonicjs/ports";
 import {
@@ -27,11 +28,13 @@ export interface RunInstructionsOptions {
 }
 
 /**
- * Copies a run's instructions into a new read-only folder and gives their pin.
+ * Copies a run's instructions into a new read-only folder, and gives their
+ * pin and the folder. Releasing removes the folder.
  *
  * @example
  * const source = new RunInstructions({ skillTextOf, root });
- * const pin = await source.pinOf(agent); // null when the agent has no instructions and no skills
+ * const open = await source.open(agent); // null when the agent has no instructions and no skills
+ * try { start(open?.folder); } finally { await open?.release(); }
  */
 export class RunInstructions implements HarnessInstructionSource {
   readonly #options: RunInstructionsOptions;
@@ -41,13 +44,18 @@ export class RunInstructions implements HarnessInstructionSource {
   }
 
   /** @throws when a skill has no text, a name is refused, or the files can't be written */
-  async pinOf(agent: HarnessAgent): Promise<HarnessInstructionsPin | null> {
+  async open(agent: HarnessAgent): Promise<OpenInstructions | null> {
     const files = await this.#filesOf(agent);
     if (files.length === 0) return null;
     const disk = this.#options.disk ?? instructionDiskOnThisComputer;
     await mkdir(this.#options.root, { recursive: true, mode: 0o700 });
-    const snapshot = await snapshotInstructions(this.#options.root, files, disk);
-    return engineFormOf(snapshot.pin);
+    const { folder, pin } = await snapshotInstructions(this.#options.root, files, disk);
+    return {
+      pin: engineFormOf(pin),
+      folder,
+      // A folder that can't be removed is left for the next engine open to clear.
+      release: () => disk.removeFolder(folder).catch(() => undefined),
+    };
   }
 
   async #filesOf(agent: HarnessAgent): Promise<InstructionFile[]> {

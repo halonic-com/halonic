@@ -203,7 +203,7 @@ verifies("library.library-delete", () => {
     await settled();
     await pick(page, "More actions for Tone", "Delete");
     expect(remove).toHaveBeenCalledWith("skill", { hub: null, id: "tone" });
-    expect(page.textContent).toContain("The skill Tone was moved to the trash");
+    expect(page.textContent).toContain("This skill was moved to the trash");
     expect(page.textContent).not.toContain("isn't in this workspace any more");
     const undoButton = [...page.querySelectorAll("button")].find((b) => b.textContent === "Undo");
     expect(document.activeElement).toBe(undoButton);
@@ -212,7 +212,7 @@ verifies("library.library-delete", () => {
       undoButton?.getAttribute("aria-describedby") ?? "",
     )?.textContent;
     expect(description).toBe(
-      "The skill Tone was moved to the trash. 1 agent now shows an error until you take it off its Tools page.",
+      "This skill was moved to the trash. 1 agent now shows an error until you take it off its Tools page.",
     );
     expect(announce).not.toHaveBeenCalled();
     await act(async () => undoButton?.click());
@@ -220,7 +220,7 @@ verifies("library.library-delete", () => {
     expect(undo).toHaveBeenCalledOnce();
     expect(page.querySelector("h1")?.textContent).toBe("Tone");
     expect(document.activeElement).toBe(page.querySelector("h1"));
-    expect(announce).toHaveBeenCalledWith("Restored Tone");
+    expect(announce).not.toHaveBeenCalled();
     expect(page.textContent).not.toContain("was moved to the trash");
   });
 });

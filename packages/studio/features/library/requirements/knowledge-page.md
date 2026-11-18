@@ -1,10 +1,10 @@
 # library.knowledge-page
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1303 (T10, P6b); flow-library 5.2; `library.knowledge.lookup-mode`, `library.knowledge.summarize-on-request` (remove step) (HAL-119)
 
-When a knowledge source opens, its page shall show where its documents are ("Source"), its summary or "No summary yet." with **Remove summary** when there is one, "How agents look things up" as two options ("Agents search when they decide to (tools)" and "Also search with the task before the first model call (auto)"), and "Used by" with the agents that use it, or "No agent uses this source yet." when none does. A writable source shall also say "Agents keep notes here. They show on each agent's Memory page." under Source. When an option is picked, the page shall save it at once through the knowledge host as one change, writing `mode: auto` for the second and removing `mode` for the first. **Remove summary** shall remove `summary` from the file. If a save fails, then the page shall keep the draft and show "Couldn't save the knowledge source" with the reason and **Try again**, until the next successful save. The page has no name field. If the host has no such source, then the page shall say "This knowledge source isn't in this workspace any more." with **Go to Library**.
+When a knowledge source opens, its page shall show where its documents are ("Source"), its summary or "No summary yet." with **Remove summary** when there is one, "How agents look things up" as two options ("Agents search when they decide to (tools)" and "Also search with the task before the first model call (auto)"), and "Used by" with the agents that use it, or "No agent uses this source yet." when none does. A writable source shall also say "Agents keep notes here. They show on each agent's Memory page." under Source. When an option is picked, the page shall save it at once through the knowledge host as one change, writing `mode: auto` for the second and removing `mode` for the first. **Remove summary** shall remove `summary` from the file. If a save fails, then the page shall keep the draft and say so through the window's save state (the status bar's "Couldn't save · Try again" and the toast "Couldn't save *name*: *reason*." with **Try again**, microcopy 2), with no box of its own on the page. The page has no name field. If the host has no such source, then the page shall say "This knowledge source isn't in this workspace any more." with **Go to Library**.
 
 ## Examples
 
@@ -15,6 +15,6 @@ When a knowledge source opens, its page shall show where its documents are ("Sou
 - Given a writable source, then the page shows "Agents keep notes here. They show on each agent's Memory page."
 - Given a source nobody uses, then "Used by" says "No agent uses this source yet."
 - Given a source the host doesn't have, then the page says "This knowledge source isn't in this workspace any more."
-- Given a save that fails, when an option is picked, then the page shows "Couldn't save the knowledge source" with the reason and **Try again**.
-- Given that failure, when **Try again** is clicked and the save works, then the host writes the file and the line is gone.
-- Given a draft summary whose save failed, when **Try again** is clicked and the save works, then the draft box closes.
+- Given a save that fails, when an option is picked, then the window's save state says it couldn't save, with **Try again**; the page has no box.
+- Given that failure, when **Try again** is run and the save works, then the host writes the file.
+- Given a draft summary whose save failed, when **Try again** is run and the save works, then the draft box closes.

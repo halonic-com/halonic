@@ -1,7 +1,7 @@
 # cloudflare-live.adapters
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6703 (step 2a of the HAL-198 build plan); multi-cloud ADR 5.9
 
 The live suite shall run the Cloudflare adapters' own contract suites inside a test Worker deployed to the live test account, over real R2 buckets and a real D1 database, and show every case as its own test. The test Worker shall answer only a request that carries its bearer token, and a Worker deployed without a token shall refuse everything. The runner shall name every resource it makes with the run's `hlt-` prefix and delete all of it when the suite ends or when a step of the deploy fails.

@@ -15,8 +15,8 @@ import {
   usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
-import { engineWordsOf, type ItemViewProps } from "@halonicjs/studio-shell";
-import { useCallback, useRef, useState } from "react";
+import { engineWordsOf, ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
+import { type ReactNode, useCallback, useRef, useState } from "react";
 import { type WorkflowsHost, WorkflowsHostService } from "../api.ts";
 import type { View } from "../canvas/geometry.ts";
 import { Configuration } from "../configuration/configuration-page.tsx";
@@ -67,6 +67,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
           openItem({ kind: "run", hub: item.hub, id: runId }, step === undefined ? {} : { step }),
       })}
       {...(openPlace && {
+        goToWorkflows: () => openPlace("workflows"),
         reviewInInbox: () => openPlace("inbox"),
         seeAllRuns: () => {
           runsList.showWorkflow({ hubId: item.hub, id: item.id });
@@ -90,6 +91,7 @@ export function WorkflowScreen({
   notAnswering = engineWordsOf({}).notAnswering,
   openRun,
   seeAllRuns,
+  goToWorkflows,
   reviewInInbox,
   startOnTests,
   testsAsked = 0,
@@ -154,6 +156,8 @@ export function WorkflowScreen({
     setDock(undefined);
     setView("configuration");
   });
+  const gone = goneState(load, goToWorkflows);
+  if (gone !== undefined) return gone;
   return (
     <div className="flex size-full min-h-0 flex-col">
       <header
@@ -204,16 +208,7 @@ export function WorkflowScreen({
         </div>
       )}
       <div className="flex min-h-0 flex-1">
-        <TabPanel
-          ids={ids}
-          tabs={views}
-          selected={view}
-          className={
-            view === "flow"
-              ? "flex min-h-0 min-w-0 flex-1 flex-col"
-              : "min-w-0 flex-1 overflow-auto"
-          }
-        >
+        <TabPanel ids={ids} tabs={views} selected={view} className={panelClass(view)}>
           {view === "configuration" && (
             <Configuration
               key={madeTest?.n ?? 0}
@@ -293,6 +288,23 @@ export function WorkflowScreen({
   );
 }
 
+/** The tab panel's layout: Flow fills it with the canvas, the other views scroll. */
+function panelClass(view: WorkflowView): string {
+  return view === "flow" ? "flex min-h-0 min-w-0 flex-1 flex-col" : "min-w-0 flex-1 overflow-auto";
+}
+
+/**
+ * A workflow deleted or renamed outside, or a link to one that never was: the item-gone state
+ * instead of an error, since Try again can't bring it back (microcopy 2 "Item gone").
+ */
+function goneState(
+  load: ReturnType<typeof useWorkflow>["load"],
+  goToWorkflows: (() => void) | undefined,
+): ReactNode {
+  if (load.kind !== "failed" || load.gone !== true || goToWorkflows === undefined) return undefined;
+  return <ItemGone kindName="workflow" place="Workflows" onGoTo={goToWorkflows} />;
+}
+
 interface FlowViewProps {
   readonly load: ReturnType<typeof useWorkflow>["load"];
   readonly retry: () => void;
@@ -343,6 +355,9 @@ function FlowView({
           workflow={load.value}
           selectedStep={openStep}
           failedStep={strip?.failedStep}
+          route={strip?.route}
+          marks={strip?.marks}
+          active={strip?.active}
           saved={kept?.of === workflowKey ? kept.view : undefined}
           onView={onView}
           onSelectStep={onSelectStep}

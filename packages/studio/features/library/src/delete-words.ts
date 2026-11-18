@@ -18,11 +18,9 @@ export const deleteWords = {
   pageMenuLabel: (name: string) => `More actions for ${name}`,
   /** The toast's title: with a second line it is a sentence and ends with a full stop. */
   moved: (name: string, withLine: boolean) => `Moved ${name} to the trash${withLine ? "." : ""}`,
-  /** The page strip's text, where the item stays under it: it names the item, as Undo's description. */
-  pageMoved: (kind: LibraryItemKind, name: string) =>
-    `The ${kindNouns[kind]} ${name} was moved to the trash`,
-  /** Said when Undo has put the item back; the page's title takes focus but doesn't say it. */
-  restored: (name: string) => `Restored ${name}`,
+  /** The page strip's text: one phrase with no full stop, or a sentence when a second line follows (microcopy 2, 11.3). */
+  pageMoved: (kind: LibraryItemKind, withLine: boolean) =>
+    `This ${kindNouns[kind]} was moved to the trash${withLine ? "." : ""}`,
   /** The toast when the item couldn't be moved; `reason` is a kinded error's sentence. */
   couldntMove: (name: string, reason: string | undefined) =>
     reason === undefined
@@ -33,8 +31,11 @@ export const deleteWords = {
 
 /** The Open as file sheet's wording on a phone: the item pages' own loading and can't-load lines, for the kind. */
 export const openAsFileWords = {
-  loading: (kind: LibraryItemKind) => `Loading the ${kindNouns[kind]}`,
-  couldntLoad: (kind: LibraryItemKind) => `Couldn't load the ${kindNouns[kind]}`,
+  kindName: (kind: LibraryItemKind) => kindNouns[kind],
+  loading: (kind: LibraryItemKind, name: string) => `Loading ${name}`,
+  /** A skill, a collection and a connector say "this *kind*"; a knowledge source names its item (microcopy 11.3). */
+  couldntLoad: (kind: LibraryItemKind, name: string) =>
+    kind === "knowledge" ? `Couldn't load ${name}` : `Couldn't load this ${kindNouns[kind]}`,
   tryAgain: deleteWords.tryAgain,
 } as const;
 

@@ -10,7 +10,11 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 import type { Inbox } from "../inbox.ts";
-import type { InboxRequests, RequestWorkflow } from "../request/inbox-requests.ts";
+import {
+  BudgetUsedUp,
+  type InboxRequests,
+  type RequestWorkflow,
+} from "../request/inbox-requests.ts";
 import { notStartedLine } from "../request/not-started.ts";
 import { useOffered } from "../request/use-offered.ts";
 import { QuietLine } from "./quiet-line.tsx";
@@ -54,6 +58,8 @@ export function useRequestPane(options: {
   readonly words: EngineWords;
   /** Opens a run's page, for **Open run** on the toast; without it the toast has no button. */
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
+  /** Opens the budget, for **Change budget** under a request the month's budget refused. */
+  readonly openBudget?: (() => void) | undefined;
   /** Hears the run a sent request started, so its card can open by itself. */
   readonly onStarted?: ((runId: string) => void) | undefined;
   /** Kept true while a phone's request sheet is open, so the card that arrives counts it as the form. */
@@ -69,6 +75,7 @@ export function useRequestPane(options: {
     closeItem,
     words,
     openRun,
+    openBudget,
     onStarted,
     sheetOpen: shared,
     cardOpen,
@@ -77,6 +84,7 @@ export function useRequestPane(options: {
   const [draft, setDraft] = useState(emptyDraft);
   const [busy, setBusy] = useState(false);
   const [notStarted, setNotStarted] = useState("");
+  const [budgetStop, setBudgetStop] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const toasts = useToastStore();
   const message = useRef<HTMLTextAreaElement>(null);
@@ -91,6 +99,9 @@ export function useRequestPane(options: {
   useEffect(() => {
     const take = () => {
       if (!inbox.takeNewRequest()) return;
+      const text = inbox.takeNewRequestText();
+      if (text !== undefined)
+        setDraft((d) => (d.message.trim() === "" ? { ...d, message: text } : d));
       formAsked.current = true;
       closeLatest.current();
       setSheetOpen(true);
@@ -120,6 +131,7 @@ export function useRequestPane(options: {
   const send = async (workflow: RequestWorkflow, text: string) => {
     if (busy) return;
     setNotStarted("");
+    setBudgetStop(false);
     setBusy(true);
     try {
       const started = await requests.start(workflow.key, text);
@@ -134,6 +146,7 @@ export function useRequestPane(options: {
       });
     } catch (error) {
       setNotStarted(notStartedLine(error, words));
+      setBudgetStop(error instanceof BudgetUsedUp);
     } finally {
       setBusy(false);
     }
@@ -169,6 +182,7 @@ export function useRequestPane(options: {
         onDraft={setDraft}
         busy={busy}
         notStarted={notStarted}
+        {...(budgetStop && openBudget !== undefined && { onChangeBudget: openBudget })}
         onSend={send}
         onEscape={onEscape}
         messageRef={message}
@@ -182,6 +196,7 @@ export function useRequestPane(options: {
           onDraft={setDraft}
           busy={busy}
           notStarted={notStarted}
+          {...(budgetStop && openBudget !== undefined && { onChangeBudget: openBudget })}
           onSend={send}
           onClose={() => setSheetOpen(false)}
           messageRef={message}

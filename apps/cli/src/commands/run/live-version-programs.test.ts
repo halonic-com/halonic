@@ -10,6 +10,7 @@ import { MemorySecrets, MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { liveVersionOf, WorkflowRuns } from "@halonicjs/app";
 import { approveAllShown, checkConnectorTools } from "@halonicjs/app/listed-tools";
 import type { RunEvent } from "@halonicjs/events";
+import { noKeyOrigins } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder, toolApprovalFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { contractGrant } from "@halonicjs/testing-contracts";
@@ -171,6 +172,7 @@ async function askNotesFromALiveRun(): Promise<{ answer: string; copiesLeft: str
   };
   await approveNotesTools(loaded.workspace, profile);
   const engine = await openLocalEngine({
+    keyOrigins: noKeyOrigins,
     workspace: loaded.workspace,
     workspaceRoot: acme,
     trusted: true,

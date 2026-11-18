@@ -21,6 +21,13 @@ verifies("app.change-file-lines", () => {
     expect(change.lines.map((line) => line.parts)).toEqual([[["instructions"]], [["model"]]]);
   });
 
+  it("carries the item's name, from the new text or else the deleted one", () => {
+    const after = lines("id: triage", "name: Sorter", "model: gpt", "instructions: Sort mail.");
+    expect(describeFileChange(agentPath, agentBefore, after).name).toBe("Sorter");
+    expect(describeFileChange(agentPath, agentBefore, null).name).toBe("Triage");
+    expect(describeFileChange("README.md", "a\n", "b\n").name).toBeUndefined();
+  });
+
   it("gives one line without parts for a file no kind places", () => {
     expect(describeFileChange("README.md", "a\n", "b\n")).toEqual({
       path: "README.md",

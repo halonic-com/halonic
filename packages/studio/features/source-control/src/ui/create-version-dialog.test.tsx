@@ -3,6 +3,7 @@ import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { Version } from "../api.ts";
 import { ChangesList } from "../changes-list.ts";
 import { fakeSource, settle } from "../source.test-helper.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
@@ -20,7 +21,17 @@ const agentPath = "agents/triage.agent.yaml";
 const before = lines("id: triage", "name: Triage", "model: claude", "instructions: Sort mail.");
 const after = lines("id: triage", "name: Triage", "model: gpt", "instructions: Sort all mail.");
 
-async function openPage() {
+const earlier: Version = {
+  id: "a1",
+  name: "Earlier",
+  notes: "",
+  author: "Ana",
+  at: Date.now(),
+  files: [],
+};
+
+/** The page with two changed files and one earlier version, unless it is the first version. */
+async function openPage({ first = false }: { readonly first?: boolean } = {}) {
   const fake = fakeSource({
     kind: "ready",
     changes: [
@@ -28,6 +39,7 @@ async function openPage() {
       { path: "README.md", status: "modified", staged: false },
     ],
   });
+  if (!first) fake.setHistory([earlier]);
   fake.setTexts(agentPath, { before, after });
   fake.setTexts("README.md", { before: "a\n", after: "b\n" });
   const toasts = createToastStore();
@@ -72,8 +84,8 @@ async function press(field: HTMLElement | null, init: KeyboardEventInit) {
   });
 }
 
-async function openDialog() {
-  const page = await openPage();
+async function openDialog(options?: { readonly first?: boolean }) {
+  const page = await openPage(options);
   await act(async () =>
     [...document.querySelectorAll("button")]
       .find((element) => element.textContent?.trim() === "Create version")
@@ -86,12 +98,13 @@ verifies("source-control.create-version", () => {
   describe("Create version", () => {
     it("opens with the offered name selected and everything that changed in it", async () => {
       await openDialog();
-      expect(nameField()?.value).toBe("Changes to triage and README");
+      expect(nameField()?.value).toBe("Changes to Triage and README.md");
       expect(nameField()?.selectionStart).toBe(0);
       expect(nameField()?.selectionEnd).toBe(nameField()?.value.length);
       const contents = dialog()?.querySelector("section")?.textContent ?? "";
-      expect(contents).toContain(agentPath);
+      expect(contents).toContain("Triage");
       expect(contents).toContain("README.md");
+      expect(contents).not.toContain(agentPath);
       expect(dialog()?.textContent).not.toContain("Save first");
     });
 
@@ -131,7 +144,7 @@ verifies("source-control.create-version", () => {
       await act(settle);
       await act(async () => list.startVersion());
       const rows = [...(dialog()?.querySelectorAll("section > ul > li") ?? [])];
-      expect(rows[0]?.textContent).toContain(agentPath);
+      expect(rows[0]?.textContent).toContain("Triage");
       expect(rows[0]?.querySelector("div > span.rounded-full")?.textContent).toBe("Important");
       expect(rows[1]?.querySelector("span.rounded-full")).toBeNull();
     });
@@ -159,10 +172,47 @@ verifies("source-control.create-version", () => {
         ...(dialog()?.querySelectorAll<HTMLInputElement>("input[type=checkbox]") ?? []),
       ];
       await act(async () => boxes()[0]?.click());
-      expect(nameField()?.value).toBe("Changes to README");
+      expect(nameField()?.value).toBe("Changes to README.md");
       await type(nameField(), "My own");
       await act(async () => boxes()[0]?.click());
       expect(nameField()?.value).toBe("My own");
+    });
+
+    it("offers First version while the workspace has no version", async () => {
+      await openDialog({ first: true });
+      expect(nameField()?.value).toBe("First version");
+    });
+
+    it("counts the items the page counts, however many files they hold", async () => {
+      const fake = fakeSource({
+        kind: "ready",
+        changes: ["a", "b", "c"].flatMap((name) => [
+          { path: `agents/${name}.agent.yaml`, status: "added" as const, staged: false },
+          { path: `agents/${name}.md`, status: "added" as const, staged: false },
+        ]),
+      });
+      fake.setHistory([earlier]);
+      const list = new ChangesList(fake.source);
+      render(<ChangesView list={list} />);
+      await act(settle);
+      await act(async () => list.startVersion());
+      const rows = dialog()?.querySelectorAll("section > ul > li") ?? [];
+      expect(nameField()?.value).toBe(`Changes to ${rows.length} items`);
+    });
+
+    it("says Halonic made .gitignore in the first version, by a name and not a path", async () => {
+      const fake = fakeSource({
+        kind: "ready",
+        changes: [{ path: ".gitignore", status: "added", staged: false }],
+      });
+      const list = new ChangesList(fake.source);
+      render(<ChangesView list={list} />);
+      await act(settle);
+      await act(async () => list.startVersion());
+      const contents = dialog()?.querySelector("section")?.textContent ?? "";
+      expect(contents).toContain("Files history leaves out");
+      expect(contents).toContain("Halonic added this when you turned on history.");
+      expect(contents).not.toContain(".gitignore");
     });
 
     it("gives the count beside the heading a word", async () => {
@@ -173,7 +223,7 @@ verifies("source-control.create-version", () => {
     it("opens with one item when a screen asks for it", async () => {
       const { list } = await openPage();
       await act(async () => list.startVersion([agentPath]));
-      expect(nameField()?.value).toBe("Changes to triage");
+      expect(nameField()?.value).toBe("Changes to Triage");
       expect(dialog()?.querySelector("section")?.textContent).not.toContain("README.md");
     });
 

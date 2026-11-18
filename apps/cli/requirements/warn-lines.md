@@ -1,7 +1,7 @@
 # cli.warn-lines
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-2212, approved on HAL-2212: tools that wait for approval are a warning, not only a `--debug` line
 
 When a command passes a warning while it runs, such as tools that wait for a person's approval, the `halonic` command shall write it to stderr straight away, with or without `--debug`, with every secret value the command loaded through the CLI's `Secrets` replaced by "[secret removed]". A live line on the screen shall be erased first and drawn again below it. A warning shall never be part of the command's result: stdout shall be the same with and without it, and with `--json` stdout shall stay one JSON document while the warning goes to stderr.

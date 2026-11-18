@@ -16,7 +16,6 @@ import {
   AssistantWorkspaceService,
   HostSettingsService,
 } from "../api.ts";
-import { openModelsCommand } from "../links/workspace-links.tsx";
 import { checkModel, checkTurnLimit } from "./assistant-checks.ts";
 import { LocalOnlyWarning, SetsItsOwn, ViewOnlyNotes } from "./assistant-notes.tsx";
 import { assistantPrefs, turnLimitRange } from "./assistant-prefs.ts";
@@ -37,6 +36,9 @@ const providerOptions = assistantProviders.map((provider) => ({
   value: provider,
   label: providerDefaults[provider].label,
 }));
+
+/** The command that opens the workspace page at Models, as Ctrl K does. */
+const openModelsCommand = "workspace.open-models";
 
 /** Settings → Assistant as the settings container shows it. */
 export function AssistantSection({ context, closeSettings, place, surface }: SettingsSectionProps) {
@@ -104,7 +106,7 @@ function NotLoaded(props: {
   readonly onTryAgain: () => void;
 }) {
   return (
-    <div className="mt-5 max-w-90">
+    <div className="max-w-90">
       <EmptyState
         tone="error"
         align="start"
@@ -246,8 +248,7 @@ function AssistantViewOnly({ settings, workspace, surface }: AssistantViewProps)
     [text.INSTRUCTIONS, orNone(instructions)],
   );
   return (
-    <div className="mt-5 flex max-w-90 flex-col gap-4">
-      <p className="text-small text-fg-muted">{text.FIRST_LINE.served}</p>
+    <div className="flex max-w-90 flex-col gap-4">
       <ViewOnlyNotes surface={surface} provider={provider} open={open} local={local} />
       <SetsItsOwn open={open} link={null} />
       <dl className="flex flex-col gap-3">
@@ -266,7 +267,6 @@ function AssistantViewOnly({ settings, workspace, surface }: AssistantViewProps)
 function AssistantEditor({
   settings,
   announce,
-  place,
   workspace,
   navigate,
   closeSettings,
@@ -353,8 +353,7 @@ function AssistantEditor({
   const chosen: AssistantProvider = provider.value;
   const turnLimitText = turnLimit.value === turnLimitRange.fallback ? "" : String(turnLimit.value);
   return (
-    <div className="mt-5 flex max-w-90 flex-col gap-4">
-      <p className="text-small text-fg-muted">{text.FIRST_LINE[place]}</p>
+    <div className="flex max-w-90 flex-col gap-4">
       <LocalOnlyWarning open={open} provider={chosen} local={local.value} />
       {open === null || workspace === undefined ? null : (
         <SetsItsOwn

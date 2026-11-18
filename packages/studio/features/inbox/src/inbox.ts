@@ -1,7 +1,8 @@
 import type { RunSummary } from "@halonicjs/events";
 import type { RunExecutor } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import type { EngineWords, PlaceSignal, ViewRef } from "@halonicjs/studio-shell";
-import { type InboxDecisions, inboxDecisions } from "./decide.ts";
+import { type InboxDecisions, inboxDecisions, wasDecidedElsewhere } from "./decide.ts";
 import { inboxSignal } from "./inbox-count.ts";
 import {
   type InboxItem,
@@ -26,9 +27,20 @@ export interface InboxRuns {
    * here or on another device. Returns a function that stops the calls.
    */
   subscribe(listener: () => void): () => void;
+  /**
+   * An agent's name as its file says; `undefined` when the workspace has no such agent or can't
+   * be read, and the Inbox then shows the id.
+   */
+  agentName?(agentId: string): string | undefined;
   /** Sends an answer to a run; see `RunExecutor.send`. */
   send: RunExecutor["send"];
 }
+
+/**
+ * How long an answer may take before the Inbox gives up on it, so a hanging engine ends in an
+ * error on the card and not in a spinner that never stops.
+ */
+export const answerTimeoutMs = 30_000;
 
 /** One account's setup, as a setup source gives it. The Inbox makes it a {@link SetupItem}. */
 export interface SetupEntry {
@@ -156,6 +168,7 @@ export class Inbox {
   #toOpen: string | undefined;
   #toFocus: SetupFocus | undefined;
   #newRequestAsked = false;
+  #newRequestText: string | undefined;
   /** Notes set aside by item key while their writer goes elsewhere. They are in memory only. */
   readonly #setAside = new Map<string, string>();
 
@@ -232,7 +245,7 @@ export class Inbox {
       error ??= list?.reason;
       return this.#setupItems.get(source) ?? [];
     });
-    const items = inboxItems(runs.value);
+    const items = inboxItems(runs.value, (id) => this.#runs.agentName?.(id) ?? id);
     const listed = new Set(items.map(answerId));
     for (const id of this.#answered) if (!listed.has(id)) this.#answered.delete(id);
     this.#set({
@@ -258,10 +271,12 @@ export class Inbox {
   /**
    * Asks the Inbox page to show the request form with focus in Message, as **New request** does,
    * such as the Try the sample card's first step. The page takes the request when it shows, or at
-   * once if it's showing.
+   * once if it's showing. With `message`, the form opens with it in Message, unless something is
+   * typed there already.
    */
-  requestNewRequest(): void {
+  requestNewRequest(message?: string): void {
     this.#newRequestAsked = true;
+    this.#newRequestText = message;
     for (const listener of [...this.#listeners]) listener();
   }
 
@@ -270,6 +285,13 @@ export class Inbox {
     const asked = this.#newRequestAsked;
     this.#newRequestAsked = false;
     return asked;
+  }
+
+  /** The message {@link requestNewRequest} came with, once. Call it right after {@link takeNewRequest}. */
+  takeNewRequestText(): string | undefined {
+    const text = this.#newRequestText;
+    this.#newRequestText = undefined;
+    return text;
   }
 
   /**
@@ -368,7 +390,15 @@ export class Inbox {
    */
   #answering(decisions: InboxDecisions): InboxDecisions {
     const settle = async (item: RunItem, sent: Promise<RunSummary>) => {
-      const summary = await sent;
+      let summary: RunSummary;
+      try {
+        summary = await withTimeout(sent);
+      } catch (error) {
+        // The run may have moved on, or the answer may have gone through late: read the list again,
+        // so the item leaves if nothing waits on it. A failed answer still leaves it in until then.
+        if (wasDecidedElsewhere(error) || error instanceof AnswerTimedOut) void this.refresh();
+        throw error;
+      }
       this.#answered.add(answerId(item));
       this.#set({
         ...this.#state,
@@ -402,4 +432,22 @@ function setupItem(provider: string, entry: SetupEntry): SetupItem {
     needsSecret: entry.needsSecret === true,
     ...(entry.fixed === true ? { fixed: true } : {}),
   };
+}
+
+/** The answer didn't come back in time; the card shows it as a failed answer, with **Try again**. */
+class AnswerTimedOut extends KindedError {
+  constructor() {
+    super(
+      "unavailable",
+      "The engine didn't answer in time. Your answer may not have been recorded.",
+    );
+  }
+}
+
+function withTimeout<T>(work: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new AnswerTimedOut()), answerTimeoutMs);
+  });
+  return Promise.race([work, late]).finally(() => clearTimeout(timer));
 }

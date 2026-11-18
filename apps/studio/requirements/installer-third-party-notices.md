@@ -1,7 +1,7 @@
 # studio.installer-third-party-notices
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-6225 (part 2 of HAL-6177; MPL-2.0 section 3.2(a), HAL-6165), HAL-6962 (Rust crates), HAL-8151 (Microsoft runtime)
 
 When `windows/build-installer.ps1` builds the Windows installer, the script shall first write `THIRD-PARTY-NOTICES.txt` with `pnpm check:sbom --notices`, listing the npm libraries and the Rust crates of `src-tauri` for the installer's target, into the folder the installer config takes it from, then append the notice for the Microsoft Visual C++ runtime the installer ships (`windows/vcruntime-notice.txt`), and the installer shall install it next to the app.

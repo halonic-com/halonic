@@ -5,7 +5,8 @@
 // on-disk request count and the sign-in password hash into the server and
 // its Node listener.
 //
-// It starts only in a workspace that is trusted here. The server asks the
+// It starts only in a workspace that is trusted here, or that reaches only
+// the test model and needs no trust. The server asks the
 // read-only trust gate again before every request that starts a run, so an
 // edit after this check stops the runs until a person trusts it again with
 // `halonic trust`. Later versions are checked as `routines watch` checks them.
@@ -45,7 +46,7 @@ import { halonicVersion } from "../../version.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { checkEngineRuns, openWorkspaceEngine } from "../../workspace-engine.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts";
-import { trustedGrant, workspaceNameOf } from "../../workspace-trust.ts";
+import { needsNoTrust, trustedGrant, workspaceNameOf } from "../../workspace-trust.ts";
 import { type VersionChecks, WatchedVersions } from "../routines/watch-versions.ts";
 import type { RunSetup } from "../run/run.ts";
 import { workspaceGoogleRead } from "./google-read.ts";
@@ -127,9 +128,12 @@ async function serveVersions(
 ): Promise<StoppedResult> {
   const workspace = versions.latest();
   const typedDir = givenDir(input, dir);
-  const trusted = (loaded: LoadedWorkspace): Promise<TrustGrant> =>
-    trustedGrant(dir, setup.trust(), typedDir, serveMessages.nothingServed(), loaded);
-  // Before anything opens: a workspace that isn't trusted here serves nothing.
+  // No grant for a workspace that reaches only the test model, as `run` has none (HAL-12011).
+  const trusted = async (loaded: LoadedWorkspace): Promise<TrustGrant | null> =>
+    (await needsNoTrust(dir, loaded))
+      ? null
+      : await trustedGrant(dir, setup.trust(), typedDir, serveMessages.nothingServed(), loaded);
+  // Before anything opens: a workspace that needs trust and isn't trusted here serves nothing.
   const grant = await trusted(workspace);
   const warned = new Set<string>();
   versions.checkWith({

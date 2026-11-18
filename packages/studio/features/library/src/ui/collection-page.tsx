@@ -1,4 +1,4 @@
-import { Callout, FilterChips, FormRows } from "@halonicjs/studio-kit";
+import { Callout, FilterChips, FormRows, settleOnClose } from "@halonicjs/studio-kit";
 import {
   engineWordsOf,
   ItemGone,
@@ -91,7 +91,7 @@ function LoadedCollectionPage({
     );
   }
   if (!loaded || grid === undefined) {
-    return <p className="px-4 py-5 text-small text-fg-muted">{collectionWords.loading}</p>;
+    return <p className="px-4 py-5 text-small text-fg-muted">{collectionWords.loading(item.id)}</p>;
   }
 
   return (
@@ -104,7 +104,7 @@ function LoadedCollectionPage({
             label={`${collectionWords.kindName} name`}
             onRename={(next) => {
               setRenameFailed(false);
-              void model.rename(next).then((written) => setRenameFailed(!written));
+              void settleOnClose(model.rename(next).then((written) => setRenameFailed(!written)));
             }}
           />
         </h1>

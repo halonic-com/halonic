@@ -1,8 +1,10 @@
 import type { ToastStore } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
-import type { RenamedFile } from "./files-host.ts";
-import { renameFile } from "./rename-file.ts";
+import { FilePathError, type RenamedFile } from "./files-host.ts";
+import { filesWords } from "./files-words.ts";
+import { renameFile, typedNameProblem } from "./rename-file.ts";
+import { kinded } from "./test-support/kinded.ts";
 
 function toastsOf() {
   const show = vi.fn();
@@ -37,34 +39,40 @@ verifies("files.ui.rename-file", () => {
     expect(undo).toHaveBeenCalledOnce();
   });
 
-  it("names the places that also update", async () => {
+  it("says only the new path in the toast: the places that also update are said under the field", async () => {
     const { show, store } = toastsOf();
     const host = {
       rename: async () => renamed({ places: 3, owners: ["Daily digest", "Support triage"] }),
     };
     await renameFile(host, store, "c.yaml", "d.yaml", effects());
-    expect(show.mock.calls[0]?.[0].title).toBe("Renamed to d.yaml.");
-    expect(show.mock.calls[0]?.[0].text).toBe(
-      "Also updated 3 places: Daily digest, Support triage.",
+    expect(show.mock.calls[0]?.[0].title).toBe("Renamed to d.yaml");
+    expect(show.mock.calls[0]?.[0].text).toBeUndefined();
+  });
+
+  it("says the places that also update under the field: up to five names, then four and how many more", () => {
+    expect(filesWords.alsoUpdates(3, ["Daily digest (routine)", "Support triage (step 2)"])).toBe(
+      "Also updates 3 places: Daily digest (routine), Support triage (step 2)",
+    );
+    expect(filesWords.alsoUpdates(1, ["A"])).toBe("Also updates 1 place: A");
+    expect(filesWords.alsoUpdates(7, ["A", "B", "C", "D", "E", "F"])).toBe(
+      "Also updates 7 places: A, B, C, D and 2 more",
     );
   });
 
-  it("shows at most three names, then how many more", async () => {
-    const { show, store } = toastsOf();
-    const host = {
-      rename: async () =>
-        renamed({ places: 5, owners: ["Support agent", "Billing hub", "Triage", "A", "B"] }),
-    };
-    await renameFile(host, store, "c.yaml", "d.yaml", effects());
-    expect(show.mock.calls[0]?.[0].text).toBe(
-      "Also updated 5 places: Support agent, Billing hub, Triage and 2 more.",
-    );
+  it("checks the typed name: empty, a slash, taken by a file or by a folder, and nothing for its own name", () => {
+    const paths = ["agents/a.yaml", "agents/b.yaml", "agents/c/d.yaml"];
+    expect(typedNameProblem("agents/a.yaml", "", paths)).toBeDefined();
+    expect(typedNameProblem("agents/a.yaml", "x/y.yaml", paths)).toBeDefined();
+    expect(typedNameProblem("agents/a.yaml", "b.yaml", paths)).toContain("agents/b.yaml");
+    expect(typedNameProblem("agents/a.yaml", "c", paths)).toContain("agents/c");
+    expect(typedNameProblem("agents/a.yaml", "a.yaml", paths)).toBeUndefined();
+    expect(typedNameProblem("agents/a.yaml", "e.yaml", paths)).toBeUndefined();
   });
 
   it("gives the host's sentence for a refused name and shows no toast", async () => {
     const { show, store } = toastsOf();
     const rename = async () => {
-      throw new Error("b.yaml already exists.");
+      throw new FilePathError("b.yaml already exists.");
     };
     expect(await renameFile({ rename }, store, "a.yaml", "b.yaml", effects())).toBe(
       "b.yaml already exists.",
@@ -87,7 +95,7 @@ verifies("files.ui.rename-file", () => {
     const { show, store } = toastsOf();
     const seen = effects();
     const undo = async () => {
-      throw new Error("b.yaml can't be moved back, because the workspace changed.");
+      throw kinded("conflict", "b.yaml can't be moved back, because the workspace changed.");
     };
     await renameFile({ rename: async () => renamed({ undo }) }, store, "a.yaml", "b.yaml", seen);
     show.mock.calls[0]?.[0].action.onClick();

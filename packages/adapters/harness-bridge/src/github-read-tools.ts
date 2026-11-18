@@ -47,7 +47,7 @@ export interface GitHubReadToolsOptions {
   /** The name of the secret that holds the GitHub token, read from {@link secrets} on each call. */
   secret: string;
   secrets: Secrets;
-  fetch?: Fetch;
+  fetch: Fetch;
   limits?: GitHubReadLimits;
 }
 
@@ -83,7 +83,7 @@ const numberParameter = {
  * an event. Every call is a `GET`, so nothing is ever changed on GitHub.
  *
  * @example
- * const tools = new GitHubReadTools({ repository: "halonic-com/halonic", secret: "GITHUB_READ_TOKEN", secrets });
+ * const tools = new GitHubReadTools({ repository: "halonic-com/halonic", secret: "GITHUB_READ_TOKEN", secrets, fetch });
  * await tools.call("github_get_pull_request", { number: 12 }, { signal });
  */
 export class GitHubReadTools implements BridgeTools {
@@ -98,7 +98,7 @@ export class GitHubReadTools implements BridgeTools {
       throw new RangeError("The repository must be written as owner/name.");
     }
     this.#options = options;
-    this.#fetch = options.fetch ?? globalThis.fetch;
+    this.#fetch = options.fetch;
     this.#limits = options.limits ?? defaultGitHubReadLimits;
     this.#specs = this.#toolSpecs();
   }

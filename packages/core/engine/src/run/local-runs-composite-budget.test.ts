@@ -197,6 +197,7 @@ verifies("engine.budget-composite-stops", () => {
       error:
         'Workflow "draft-twice" failed in item 0 of for-each state "work": ' +
         "Monthly budget reached: 0.60 of 0.50 EUR spent this month.",
+      cause: { code: "budget.month", detail: { limit: "0.5", spent: "0.6", currency: "EUR" } },
     });
   });
 });

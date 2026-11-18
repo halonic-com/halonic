@@ -1,7 +1,7 @@
 # agent-host.google-routes
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9911; Liam's decision on HAL-9902
 
 When Studio disconnects a Google account on the agent host, the agent host shall run the Google setup's own disconnect itself, with the setup records and the sealed tokens of the profile it serves: it asks Google to end the sign-in, then removes the refresh token, the record and the client secret, and not the client secret while another account uses its client. The request names the account by its ref only, and the agent host shall refuse a ref that isn't a ref, before it reads anything. The agent host shall never answer a token, a client secret or a client ref. If the account has no setup, then the agent host shall answer 404. If the agent host can't finish, then it shall answer 502 `google_failed` with a fixed message and keep the detail in its own log. Without a profile folder, the agent host shall serve no Google route.

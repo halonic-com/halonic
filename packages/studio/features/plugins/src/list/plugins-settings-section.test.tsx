@@ -10,7 +10,7 @@ import {
 } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ComponentType } from "react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { PluginsHostService } from "../api.ts";
 import { pluginsFeature } from "../feature.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
@@ -23,6 +23,28 @@ import {
 } from "../test-support/plugins.ts";
 import { installFakePopover } from "../test-support/popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
+
+// The section loads lazily. On a busy CI machine the first import (transforming the section, its
+// dialogs and the kit behind them) can take longer than a test's own 5 s, and tests run in random
+// order, so any test can be first. One that times out keeps running and leaves the next tests an
+// empty page (HAL-11721). Do it up front under the hook's longer limit; each test then only waits
+// for the already loaded section to draw.
+beforeAll(async () => {
+  await import("./plugins-settings-section.tsx");
+}, 60_000);
+
+/** Waits, inside act, until `read` finds the element, so a test never clicks before the UI settles. */
+async function findElement<T extends Element>(read: () => T | null | undefined): Promise<T> {
+  return vi.waitFor(
+    async () => {
+      await act(async () => {});
+      const found = read();
+      if (found === null || found === undefined) throw new Error("Not on screen yet");
+      return found;
+    },
+    { timeout: 4_000, interval: 20 },
+  );
+}
 
 let removePopover = () => {};
 let toasts = createToastStore();
@@ -76,7 +98,8 @@ async function showAdding(trust: (plugin: string) => Promise<void>) {
       const found =
         buttons.find((candidate) => candidate.textContent?.trim() === name) ??
         buttons.find((candidate) => candidate.textContent?.startsWith(name) === true);
-      found?.click();
+      if (found === undefined) throw new Error(`No button ${name}`);
+      found.click();
     });
   await press("Add plugin");
   const input = document.querySelector<HTMLInputElement>("dialog input:not([type=radio])");
@@ -124,16 +147,18 @@ verifies("plugins.plugin-settings-list", () => {
     );
     expect(view.textContent).toContain("Weather");
 
-    await act(async () =>
-      document.querySelector<HTMLElement>('[aria-label="More actions for Weather"]')?.click(),
+    const more = await findElement(() =>
+      document.querySelector<HTMLElement>('[aria-label="More actions for Weather"]'),
     );
-    await act(async () =>
-      [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
-        .find((item) => item.textContent?.trim() === "Open")
-        ?.click(),
+    await act(async () => more.click());
+    const open = await findElement(() =>
+      [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+        (item) => item.textContent?.trim() === "Open",
+      ),
     );
+    await act(async () => open.click());
 
-    expect(closed).toBe(1);
+    await vi.waitFor(() => expect(closed).toBe(1));
     expect(opened).toEqual([{ kind: "plugin", hub: "this-computer", id: "weather" }]);
   });
 
@@ -242,7 +267,7 @@ verifies("plugins.plugin-settings-list", () => {
         surface="window"
       />,
     );
-    expect(view.textContent).toContain("Weather");
+    await vi.waitFor(() => expect(view.textContent).toContain("Weather"));
     expect(view.textContent).toContain(
       "View only here. Add, trust and remove plugins on the computer that runs Halonic:",
     );

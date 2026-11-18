@@ -97,6 +97,28 @@ verifies("workflows.page.frame-and-states", () => {
     expect(page.querySelector("h1")?.textContent).toBe("Support reply");
   });
 
+  it("says a workflow that isn't there any more is gone, with Go to Workflows", async () => {
+    const { host } = memoryHost([], [], [reply]);
+    const goToWorkflows = vi.fn();
+    const page = await show(
+      <WorkflowScreen
+        host={host}
+        runs={memoryRuns().source}
+        hubId="acme"
+        id="gone"
+        goToWorkflows={goToWorkflows}
+      />,
+    );
+
+    expect(page.textContent).toContain("This workflow isn't in this workspace any more.");
+    expect(page.textContent).not.toContain("Couldn't load this workflow");
+    expect(page.textContent).not.toContain("gone");
+    expect(buttonNamed(page, "Try again")).toBeUndefined();
+
+    await act(async () => buttonNamed(page, "Go to Workflows")?.click());
+    expect(goToWorkflows).toHaveBeenCalledOnce();
+  });
+
   it("keeps the error with a busy button while Try again reads, then focuses the name", async () => {
     let answer: (view: WorkflowView) => void = () => undefined;
     const { host } = memoryHost([], [], [reply]);
@@ -238,9 +260,50 @@ verifies("workflows.page.step-cards", () => {
       card.textContent?.replace(/\s+/g, " "),
     );
 
-    expect(cards).toEqual(["AGENT STEPstartStartNo agent", "AGENT STEPwritewriter", "ENDdone"]);
+    expect(cards).toEqual(["AGENT STEPStartstartNo agent", "AGENT STEPwritewriter", "ENDdone"]);
     expect(page.querySelectorAll("svg path")).toHaveLength(2);
     expect(page.querySelector("svg text")?.textContent).toBe("ok");
+  });
+
+  it("keeps a long title inside its card, and the Start chip above the kind label (HAL-12057)", async () => {
+    const long = "Finished without a reply, because nobody needs to answer spam";
+    const wordy = {
+      ...reply,
+      steps: [
+        { id: "start", type: "task" },
+        { id: "done", type: "final", title: long },
+      ],
+    } satisfies WorkflowView;
+    const { host } = memoryHost([], [], [wordy]);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
+
+    const title = [...page.querySelectorAll("button[aria-pressed] span")].find(
+      (span) => span.textContent === long,
+    );
+    expect(title?.className).toContain("line-clamp-2");
+    expect(title?.getAttribute("title")).toBe(long);
+    const chip = [...page.querySelectorAll("span")].find((span) => span.textContent === "Start");
+    expect(chip?.className).toContain("-top-5");
+  });
+
+  it("names a card by its title, and by its id only when it has none", async () => {
+    const titled = {
+      ...reply,
+      steps: [{ id: "start", type: "task", title: "Read the email" }, ...reply.steps.slice(1)],
+    } satisfies WorkflowView;
+    const { host } = memoryHost([], [], [titled]);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
+    const cards = [...page.querySelectorAll("button[aria-pressed]")].map(
+      (card) => card.textContent,
+    );
+
+    expect(cards[0]).toContain("Read the email");
+    expect(cards[0]).not.toContain("start");
+    expect(cards[1]).toContain("write");
   });
 
   it("selects the pressed card and moves the selection to the next", async () => {

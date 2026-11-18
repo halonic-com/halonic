@@ -118,6 +118,8 @@ export interface ToolResult {
 export interface ApprovalNeeded {
   readonly type: "approval";
   readonly tool: string;
+  /** The connector the tool comes from, for the log; absent for a tool that comes from no connector. */
+  readonly connector?: string;
   readonly args: unknown;
   /** Where the agent stopped; the call that waits for the OK is `resume.calls[0]`. */
   readonly resume: AgentResume;
@@ -212,6 +214,8 @@ export type ChildRunNow =
       readonly error: string;
       /** Why the child failed, from its `run.failed`; absent when it gave none. */
       readonly reason?: RunFailureReason;
+      /** The child's typed cause, from its `run.failed`, kept for a budget stop that goes up. */
+      readonly cause?: RunFailureCause;
     }
   | {
       readonly status: "cant-try";

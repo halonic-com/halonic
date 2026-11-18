@@ -7,7 +7,7 @@ import {
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it } from "vitest";
-import { fakeRun } from "./fakes.test-helper.ts";
+import { fakeRun, noOutsideCall } from "./fakes.test-helper.ts";
 import { NodeHarnessBridgeServer } from "./server.ts";
 
 const opened: OpenHarnessBridge[] = [];
@@ -27,7 +27,10 @@ interface RunWith {
 async function openWithTools(run: RunWith = {}) {
   const recorded: BridgeEvent[] = [];
   const ran: string[] = [];
-  const server = new NodeHarnessBridgeServer({ secrets: { get: async () => null } });
+  const server = new NodeHarnessBridgeServer({
+    secrets: { get: async () => null },
+    fetch: noOutsideCall,
+  });
   const bridge = await server.open({
     ...fakeRun(run.signal),
     recorder: { record: async (event) => void recorded.push(event) },

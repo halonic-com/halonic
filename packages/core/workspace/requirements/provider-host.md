@@ -1,7 +1,7 @@
 # workspace.provider-host
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: flow-models 4.2 (HAL-177), HAL-63 (B5), for the Prices and budget step (HAL-1292)
 
 The workspace package shall give the host of a provider's address as text, in lower case: the key a remembered "No limit" is kept under. The address is the provider's `baseUrl`, or else the default of its type; an address that can't be read has no host.

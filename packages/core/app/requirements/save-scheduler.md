@@ -1,7 +1,7 @@
 # app.save-scheduler
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1293, save model 1.1
 
 The kernel shall save a workspace's unsaved changes 1 second after the last change, so a run of typing is one save. When the user leaves a field, switches tabs, closes the window or presses Ctrl S, the kernel shall save at once and not wait for the pause. If nothing is unsaved, then it shall not ask for a save. If a save is still writing, then the kernel shall not start another until it ends, and shall then save only what is still unsaved. If a save that the pause started fails, then the kernel shall report the error, and the changes stay unsaved; if a save asked for at once fails, then its caller shall get the error.

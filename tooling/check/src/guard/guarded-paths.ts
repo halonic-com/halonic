@@ -1,5 +1,6 @@
 import type { CheckContext } from "../lib/context.ts";
 import { type Checkouts, changeOf, type GuardFinding } from "./finding.ts";
+import { guardDependencyChanged, guardDependencyFiles } from "./guard-dependencies.ts";
 
 /**
  * The guard's own paths. CI runs the guard from the
@@ -86,6 +87,15 @@ export function checkGuardedPaths({ base, head }: Checkouts): GuardFinding[] {
           path === policyFile
             ? `${file} was changed in extraExports only, which needs a note that lists ${path}.`
             : `${file} was ${change}, and ${path} is part of the requirement guard.`,
+      });
+    }
+  }
+  for (const file of guardDependencyFiles) {
+    if (guardDependencyChanged(file, optionalRead(base, file), optionalRead(head, file))) {
+      findings.push({
+        subject: file,
+        file,
+        message: `${file} was changed in the entries for the npm package the guard runs, which needs a note that lists ${file}.`,
       });
     }
   }

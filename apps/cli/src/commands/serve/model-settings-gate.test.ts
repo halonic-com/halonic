@@ -4,7 +4,12 @@ import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { workspaceModelResolver } from "@halonicjs/adapter-workspace-models";
 import { createServer } from "@halonicjs/host-server";
-import type { ChatAgentSettings, HttpClient, Secrets } from "@halonicjs/ports";
+import {
+  type ChatAgentSettings,
+  type HttpClient,
+  noKeyOrigins,
+  type Secrets,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -85,7 +90,13 @@ describe("the model settings of a served chat turn", () => {
       const secrets: Secrets = {
         get: async (name) => (name === "openai-key" ? "sk-stored" : null),
       };
-      const resolve = workspaceModelResolver({ workspace, secrets, http, isTrusted: () => true });
+      const resolve = workspaceModelResolver({
+        workspace,
+        secrets,
+        http,
+        isTrusted: () => true,
+        keyOrigins: noKeyOrigins,
+      });
       const server = createServer({
         config: {
           deploymentId: "t",

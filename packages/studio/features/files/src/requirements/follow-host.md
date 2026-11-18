@@ -1,7 +1,7 @@
 # files.follow-host
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-329 files flow 4.6, save model 1.5 and 1.7; HAL-10534, HAL-11169
 
 While a workspace is open, the Files feature shall say what happens to its files outside Halonic wherever the user is: one toast for each batch of files taken in because they had no unsaved changes, and the toolbar's save note for each file held for Compare, "1 item not saved · Compare", which opens the file's tab. A note shall stop naming a file once the file is no longer held.

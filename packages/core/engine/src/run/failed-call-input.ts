@@ -31,6 +31,7 @@ export function failedCallInput(
       callId: call.callId,
       error: error.message,
       reason: "budget",
+      ...(error.failureCause === undefined ? {} : { cause: error.failureCause }),
     };
   }
   const providerText = providerTextOf(error);

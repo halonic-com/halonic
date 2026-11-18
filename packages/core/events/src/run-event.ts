@@ -311,6 +311,8 @@ export type RunEventBody =
       resume: AgentResume;
       /** The subagent whose call it is (requirement `events.agent-resume-inner`); absent for the state's own agent. */
       subagent?: string;
+      /** The connector the tool comes from (requirement `events.approval-requested-connector`); absent in older logs. `tool` stays the bare name. */
+      connector?: string;
     }
   | {
       type: "approval.resolved";

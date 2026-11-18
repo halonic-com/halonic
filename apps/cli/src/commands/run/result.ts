@@ -8,14 +8,14 @@ import { type RunDetail, shortRunId } from "@halonicjs/app";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { CommandResult } from "../../command.ts";
-import { exitCode } from "../../exit-code.ts";
+import { type ExitCode, exitCode } from "../../exit-code.ts";
 import { dimmed, markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
 import { workspaceModelsOf } from "../../run-failure-of.ts";
 import type { RunClock } from "../../run-times.ts";
 import { type RunDefinitions, runViewDefinitions, stepColumns, stepLines } from "../../run-view.ts";
 import { workflowTitle } from "../runs/listed-run.ts";
-import { failedRunDebugText, showEnding } from "../runs/show-ending.ts";
+import { failedRunDebugText, outputHintLines, showEnding } from "../runs/show-ending.ts";
 
 /** What the result is about besides the run. */
 export interface RunResultFacts {
@@ -33,7 +33,7 @@ export interface RunResultFacts {
 
 /**
  * The run's lines and exit code: 0 for a finished run and for one that waits
- * for the user, 1 for a failed one. `--json` gets the run's summary and its
+ * for the user, 8 for one its budget stopped, 1 for any other failed one. `--json` gets the run's summary and its
  * events, oldest first, with full ids.
  *
  * @example
@@ -61,9 +61,7 @@ export function runProgress(run: RunDetail, facts: RunResultFacts): CommandResul
   const debugText = failedRunDebugText(run);
   return {
     ...(debugText === undefined ? {} : { debugText }),
-    // A run that couldn't try every step didn't pass, so a script must not take it as done.
-    exitCode:
-      summary.status === "failed" || summary.status === "cant-try" ? exitCode.failed : exitCode.ok,
+    exitCode: runExitCode(summary),
     lines: [
       ...(steps.length === 0 ? [] : [[], ...steps]),
       ...ending(run, title, definitions, facts),
@@ -71,6 +69,19 @@ export function runProgress(run: RunDetail, facts: RunResultFacts): CommandResul
     ],
     json: { run: summary, events },
   };
+}
+
+/**
+ * 8 (`limitReached`) for a run its budget stopped, so a script can tell a
+ * spent budget from a broken run (HAL-12007); 1 for any other failed run.
+ * A run that couldn't try every step didn't pass, so a script must not take
+ * it as done.
+ */
+function runExitCode(summary: RunSummary): ExitCode {
+  if (summary.status === "failed") {
+    return summary.reason === "budget" ? exitCode.limitReached : exitCode.failed;
+  }
+  return summary.status === "cant-try" ? exitCode.failed : exitCode.ok;
 }
 
 /** "Running Support reply in Acme · run 01jd8q": the first line, printed as soon as the run starts. */
@@ -121,5 +132,5 @@ function ending(
     return lines;
   }
   const runLog = runMessages.runLog(shortRunId(run.summary.id), facts.dir).phrase;
-  return [...lines, phrase`  ${runLog}`];
+  return [...lines, phrase`  ${runLog}`, ...outputHintLines(run, facts.dir)];
 }

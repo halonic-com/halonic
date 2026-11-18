@@ -1,21 +1,45 @@
-import { Button, List, ListHeading, PlaceIcon, SettingsIcon } from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  Button,
+  ContextMenu,
+  type ContextMenuTarget,
+  FileIcon,
+  List,
+  ListHeading,
+  type ListRow,
+  type MenuEntry,
+  PlaceIcon,
+  useToastStore,
+} from "@halonicjs/studio-kit";
+import type { ItemRef } from "@halonicjs/studio-shell";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type { ChangeItem } from "../change-items.ts";
-import { groupIntoItems } from "../change-items.ts";
+import { groupIntoItems, isOpenable } from "../change-items.ts";
 import type { ChangedFile, ChangesList } from "../changes-list.ts";
-import { itemWords, versionWords } from "../changes-words.ts";
-import { ItemChanges } from "./item-changes.tsx";
+import { discardWords, itemWords, mergeWords, versionWords } from "../changes-words.ts";
+import { UndoWithoutCopyDialog } from "./undo-without-copy-dialog.tsx";
+import type { ReturnFocus } from "./use-open-item.ts";
+import { useUndoItem } from "./use-undo-item.ts";
+
+/** The most rows the list draws; the rest are counted under it, and the developer view lists them all. */
+export const ROW_LIMIT = 200;
 
 /** Props for {@link ChangeList}. */
 export interface ChangeListProps {
   readonly list: ChangesList;
-  readonly files: readonly ChangedFile[];
-  /** Whether the developer view is on: it adds Discard and "Discard this part". */
-  readonly developer?: boolean;
+  /** The items to show, in the order {@link orderItems} gives. */
+  readonly items: readonly ChangeItem[];
+  /** Opens the item's What changed page. */
+  readonly onOpen: (id: string) => void;
+  /** Opens the item itself, from the row's ⋮; without it the ⋮ has no Open entry. */
+  readonly openItem?: ((item: ItemRef) => void) | undefined;
+  /** Where focus goes when the list comes back from a page; `undefined` leaves it alone. */
+  readonly returnFocus?: ReturnFocus | undefined;
+  /** Called once focus is placed from `returnFocus`, so the caller can forget it. */
+  readonly onFocusPlaced?: (() => void) | undefined;
   /** On a phone Create version is a full-width touch button under the heading and count (2.12). */
   readonly phone?: boolean;
-  /** Moves focus to the page's heading, for when the last item goes and the whole list with it. */
-  readonly focusHeading?: () => void;
+  /** The most rows to draw; a test gives a small number to prove the rule without drawing {@link ROW_LIMIT} rows. */
+  readonly rowLimit?: number;
 }
 
 /** Whether a kind places the entry; otherwise it is one of the "Other files". */
@@ -23,7 +47,7 @@ const isItem = (item: ChangeItem) => item.kind !== undefined;
 
 /** The sidebar's place icon that says most about an item's kind. */
 function iconOf(item: ChangeItem): ReactNode {
-  if (item.kind === undefined) return <SettingsIcon />;
+  if (item.kind === undefined) return <FileIcon />;
   const place =
     item.kind === "agent" || item.kind === "workflow" || item.kind === "routine"
       ? (`${item.kind}s` as const)
@@ -31,88 +55,120 @@ function iconOf(item: ChangeItem): ReactNode {
   return <PlaceIcon name={place} />;
 }
 
-/** What a list of rows needs to say about each item: its icon, name and one sentence. */
-function rowOf(item: ChangeItem) {
-  return { id: item.id, title: item.name, meta: item.sentence, icon: iconOf(item) };
+/** What a list of rows needs to say about each item: its icon, name, and kind with one sentence, and its ⋮. */
+function rowOf(item: ChangeItem, openMore: (id: string) => MoreHandler): ListRow {
+  const meta =
+    item.kind === undefined
+      ? item.sentence
+      : itemWords.kindAndSentence(itemWords.kind[item.kind], item.sentence);
+  return {
+    id: item.id,
+    title: item.name,
+    meta,
+    icon: iconOf(item),
+    more: { label: itemWords.moreActionsFor(item.name), onClick: openMore(item.id) },
+  };
+}
+
+/** What the list's ⋮ button gives: the element the menu opens below. */
+type MoreHandler = (event: { readonly currentTarget: HTMLElement }) => void;
+
+/** The order the rows are drawn in: items, then the files no kind places. */
+export function orderItems(files: readonly ChangedFile[]): ChangeItem[] {
+  const grouped = groupIntoItems(files);
+  return [...grouped.filter(isItem), ...grouped.filter((item) => !isItem(item))];
 }
 
 /**
  * What changed, one row for each item (checklist part 2, 2.2), under "Since your last version" with
  * its count and Create version; files no kind places are under "Other files". The rows are the
- * kit List: one Tab stop, ↑ ↓ move, Enter opens the item, which shows what changed in it with
- * Undo this change. When an open item is gone, as after Undo these changes, focus moves to the row
- * that took its place, or else to the heading.
+ * kit List: one Tab stop, ↑ ↓ move, Enter opens the item's What changed page. When the list comes
+ * back from that page, focus goes to the row it was opened from, or the one that took its place.
  */
 export function ChangeList({
   list,
-  files,
-  developer = false,
+  items,
+  onOpen,
+  openItem,
+  returnFocus,
+  onFocusPlaced,
   phone = false,
-  focusHeading,
+  rowLimit = ROW_LIMIT,
 }: ChangeListProps) {
-  const grouped = groupIntoItems(files);
-  // The order the rows are drawn in: items, then the files no kind places.
-  const items = [...grouped.filter(isItem), ...grouped.filter((item) => !isItem(item))];
-  const [openId, setOpenId] = useState<string>();
-  const panelHeading = useRef<HTMLHeadingElement>(null);
-  const region = useRef<HTMLDivElement>(null);
-  const openIndex = useRef(-1);
-  const focusInside = useRef(false);
-  const heading = useRef(focusHeading);
-  heading.current = focusHeading;
-  // With the last item gone the list goes too; focus it had inside goes to the page's heading.
-  useEffect(
-    () => () => {
-      if (focusInside.current) heading.current?.();
-    },
-    [],
-  );
+  const waitingId = useId();
+  const waiting = list.merging;
+  const region = useRef<HTMLElement>(null);
+  const placeFocus = useRef(returnFocus);
+  const focusPlaced = useRef(onFocusPlaced);
+  focusPlaced.current = onFocusPlaced;
   const latestItems = useRef(items);
   latestItems.current = items;
-  const open = items.find((item) => item.id === openId);
-  if (open !== undefined) openIndex.current = items.indexOf(open);
-  // `items` is a new array on every render; the effect below follows the open item being there.
-  const isOpenPresent = open !== undefined;
-
   useEffect(() => {
-    const focusLost = !document.activeElement || document.activeElement === document.body;
-    if (isOpenPresent) {
-      // The last change an Undo button belonged to is gone, and the button with it.
-      if (focusLost) panelHeading.current?.focus();
-      return;
-    }
-    if (openId === undefined) return;
-    // The open item is gone, as after Undo these changes: the row that took its place, else the heading.
-    setOpenId(undefined);
-    if (focusLost) focusRowOrHeading(region.current, latestItems.current[openIndex.current]);
-  }, [openId, isOpenPresent]);
+    const target = placeFocus.current;
+    if (target === undefined) return;
+    const next =
+      latestItems.current.find((item) => item.id === target.id) ??
+      latestItems.current[target.index];
+    focusRowOrHeading(region.current, next);
+    focusPlaced.current?.();
+  }, []);
 
-  const itemRows = items.filter(isItem).map(rowOf);
-  const otherRows = items.filter((item) => !isItem(item)).map(rowOf);
+  const [menu, setMenu] = useState<{ readonly id: string; readonly target: ContextMenuTarget }>();
+  const toasts = useToastStore();
+  const undoing = useUndoItem(list);
+  const openMore =
+    (id: string): MoreHandler =>
+    (event) =>
+      setMenu({ id, target: { element: event.currentTarget } });
+  const menuItem = items.find((item) => item.id === menu?.id);
+
+  function sayFailed(reason: string) {
+    toasts?.show({ tone: "danger", title: discardWords.failed, text: reason });
+  }
+
+  async function undoFromMenu(item: ChangeItem) {
+    const reason = await undoing.undo(item);
+    if (reason !== undefined) sayFailed(reason);
+  }
+
+  const shown = items.slice(0, rowLimit);
+  const itemRows = shown.filter(isItem).map((item) => rowOf(item, openMore));
+  const otherRows = shown.filter((item) => !isItem(item)).map((item) => rowOf(item, openMore));
+  const hidden = items.length - shown.length;
   const sinceHeading = { name: versionWords.sinceLastVersion, detail: countChip(items.length) };
   return (
     <section
       aria-label={versionWords.sinceLastVersion}
       ref={region}
       className="flex flex-col gap-3"
-      onFocus={() => {
-        focusInside.current = true;
-      }}
-      onBlur={(event) => {
-        focusInside.current = event.currentTarget.contains(event.relatedTarget);
-      }}
     >
       {phone ? (
-        <Button variant="secondary" size="touch" block onClick={() => list.startVersion()}>
+        <Button
+          variant="secondary"
+          size="touch"
+          block
+          unavailable={waiting ? { reason: waitingId } : undefined}
+          onClick={() => list.startVersion()}
+        >
           {versionWords.createVersion}
         </Button>
       ) : (
         <div className="flex justify-end">
-          <Button variant="primary" size="sm" onClick={() => list.startVersion()}>
+          <Button
+            variant="primary"
+            size="sm"
+            unavailable={waiting ? { reason: waitingId } : undefined}
+            onClick={() => list.startVersion()}
+          >
             {versionWords.createVersion}
           </Button>
         </div>
       )}
+      {waiting ? (
+        <span id={waitingId} className="text-small text-fg-muted">
+          {mergeWords.finishFirst}
+        </span>
+      ) : null}
       {/* The List drops a group with no rows, heading and count with it; with only Other files changed, this heading stands in. */}
       {itemRows.length === 0 ? <ListHeading {...sinceHeading} headingLevel={2} /> : null}
       <List
@@ -126,14 +182,52 @@ export function ChangeList({
           },
           { id: "other", heading: { name: itemWords.otherFiles }, rows: otherRows },
         ]}
-        {...(openId === undefined ? {} : { current: openId })}
-        onOpen={(id) => setOpenId(id === openId ? undefined : id)}
+        onOpen={onOpen}
       />
-      {open === undefined ? null : (
-        <ItemChanges list={list} item={open} developer={developer} headingRef={panelHeading} />
-      )}
+      {hidden > 0 ? <p className="text-small text-fg-muted">{itemWords.andMore(hidden)}</p> : null}
+      <ContextMenu
+        label={menuItem === undefined ? versionWords.sinceLastVersion : menuItem.name}
+        entries={
+          menuItem === undefined ? [] : menuEntries(menuItem, openItem, undoFromMenu, waiting)
+        }
+        target={menu?.target}
+        onClose={() => setMenu(undefined)}
+      />
+      <UndoWithoutCopyDialog undoing={undoing} onFailed={sayFailed} />
     </section>
   );
+}
+
+/**
+ * An item's ⋮: Open it (an agent, a workflow or a routine), a divider, then Undo these changes. Neither
+ * is in `danger`: the undo keeps a copy and offers Undo.
+ */
+function menuEntries(
+  item: ChangeItem,
+  openItem: ((item: ItemRef) => void) | undefined,
+  undo: (item: ChangeItem) => Promise<void>,
+  waiting: boolean,
+): MenuEntry[] {
+  const open: MenuEntry[] =
+    openItem !== undefined && isOpenable(item)
+      ? [
+          {
+            id: "open",
+            label: itemWords.openNamed(item.name),
+            onSelect: () => openItem({ kind: item.kind ?? "", hub: item.hub, id: item.itemId }),
+          },
+          "divider",
+        ]
+      : [];
+  return [
+    ...open,
+    {
+      id: "undo",
+      label: discardWords.undoTheseChanges,
+      unavailable: waiting ? { reason: mergeWords.finishFirst } : undefined,
+      onSelect: () => void undo(item),
+    },
+  ];
 }
 
 /** The count beside the heading, with its word so a screen reader says what it counts. */

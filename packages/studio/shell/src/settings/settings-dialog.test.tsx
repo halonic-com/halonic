@@ -208,6 +208,19 @@ verifies("shell.settings-workspace-line", () => {
     const host = await open({ requested: "assistant" });
     expect(lineUnder(host.container) ?? "").not.toContain("Part of");
   });
+
+  it("leaves the line out of a workspace section that opts out, and keeps its description", async () => {
+    const trust = {
+      ...section("trust", "Trust", "workspace", 20),
+      workspaceLine: false as const,
+      description: "Whether Halonic may run programs here.",
+    };
+    const { container } = await open({ sections: [trust], requested: "trust" });
+    expect(container.querySelector("section h3 + p")?.textContent).toBe(
+      "Whether Halonic may run programs here.",
+    );
+    expect(container.textContent).not.toContain("Part of Acme");
+  });
 });
 
 verifies("shell.settings-attention-mark", () => {
@@ -235,5 +248,52 @@ verifies("shell.settings-attention-mark", () => {
     expect(marked(container, "Formats")).toBe(false);
     expect(marked(container, "Models")).toBe(false);
     expect(marked(container, "Appearance")).toBe(false);
+  });
+});
+
+verifies("shell.settings-section-rhythm", () => {
+  it("draws the description 8px under the name and owns the 20px before the view", async () => {
+    const described = { ...assistant, description: "One line about it." };
+    const { container } = await open({ sections: [described], requested: "assistant" });
+    const heading = container.querySelector("section h3");
+    const line = heading?.nextElementSibling;
+    expect(line?.textContent).toBe("One line about it.");
+    expect(line?.className).toContain("mt-2");
+    expect(line?.className).toContain("text-fg-muted");
+    const body = line?.nextElementSibling;
+    expect(body?.className).toContain("mt-5");
+    expect(body?.textContent).toContain("Assistant view");
+  });
+
+  it("waits for a description that answers later, and leaves it out when it fails", async () => {
+    const later = { ...assistant, description: async () => "Answered later." };
+    const shown = await open({ sections: [later], requested: "assistant" });
+    expect(shown.container.querySelector("section h3 + p")?.textContent).toBe("Answered later.");
+    unmountAll();
+    const failing = {
+      ...assistant,
+      description: async () => {
+        throw new Error("no answer");
+      },
+    };
+    const failed = await open({ sections: [failing], requested: "assistant" });
+    expect(failed.container.querySelector("section h3 + p")).toBeNull();
+    expect(failed.container.querySelector("section h3 + div")?.className).toContain("mt-5");
+  });
+
+  it("asks for the description once, however often the dialog draws again", async () => {
+    const description = vi.fn(async () => "Asked once.");
+    const asking = { ...assistant, description, attention: async () => true };
+    // `contextFor` answers with a new object each call, as the shell's does.
+    const { container } = await open({ sections: [asking], requested: "assistant" });
+    await settle();
+    await settle();
+    expect(container.querySelector("section h3 + p")?.textContent).toBe("Asked once.");
+    expect(description).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the same 8px under the saved and workspace lines", async () => {
+    const { container } = await open({ requested: "models" });
+    expect(container.querySelector("section h3 + p")?.className).toContain("mt-2");
   });
 });

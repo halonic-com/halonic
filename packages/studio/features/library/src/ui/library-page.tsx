@@ -7,8 +7,15 @@ import {
   useTabIds,
   useToastStore,
 } from "@halonicjs/studio-kit";
-import { errorMessageFor, OverviewPage } from "@halonicjs/studio-shell";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  errorMessageFor,
+  type FocusTarget,
+  focusRow,
+  OverviewPage,
+  targetAfterRemoving,
+  visibleRowIds,
+} from "@halonicjs/studio-shell";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { deleteWords, phoneCanDelete } from "../delete-words.ts";
 import type { LibraryEntry, LibraryItemsHost, LibraryListing } from "../library-items-host.ts";
 import { entryOfRow, type LibraryEntryPlace, libraryOverview } from "../library-overview.ts";
@@ -23,7 +30,6 @@ import {
   tryingAgain,
 } from "../library-words.ts";
 import { removeItem } from "../remove-item.ts";
-import { type FocusTarget, focusRow, targetAfterRemoving, visibleRowIds } from "../row-focus.ts";
 
 /** The props of {@link LibraryPage}. */
 export interface LibraryPageProps {
@@ -35,7 +41,7 @@ export interface LibraryPageProps {
   readonly onOpen: (kind: LibraryItemKind, entry: LibraryEntryPlace) => void;
   readonly onOpenInNewTab: (kind: LibraryItemKind, entry: LibraryEntryPlace) => void;
   /** Opens the item's file in a tab. Without it, a row's menu has no Open as file. */
-  readonly onOpenAsFile?: (kind: LibraryItemKind, entry: LibraryEntryPlace) => void;
+  readonly onOpenAsFile?: (kind: LibraryItemKind, entry: LibraryEntryPlace, name: string) => void;
   /** The New button of a tab that has one. Without it, no tab shows the button. */
   readonly onNew?: (kind: LibraryItemKind) => void;
   /** The Knowledge empty state's button. Without it, the empty state has no button. */
@@ -245,7 +251,7 @@ export function LibraryPage({
                 {
                   id: "open-as-file",
                   label: deleteWords.openAsFile,
-                  onSelect: () => onOpenAsFile(kind, entryOfRow(row.id)),
+                  onSelect: () => onOpenAsFile(kind, entryOfRow(row.id), row.name),
                 },
               ]),
           // A phone can't remove what it can't make again, so only some kinds keep Delete.

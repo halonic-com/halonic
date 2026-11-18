@@ -38,6 +38,8 @@ export const serveMessages = defineMessages("serve", {
   requestFailed: (reason: string) => phrase`A request failed: ${reason}`,
   /** The workspace is trusted on this computer, as it is now. */
   trusted: () => phrase`This workspace is trusted on this computer.`,
+  /** The workspace reaches only the test model, so trust doesn't apply to it. */
+  trustNotNeeded: () => phrase`This workspace needs no trust: it reaches only the test model.`,
   /** The workspace was never trusted here. */
   trustNew: () => phrase`This workspace isn't trusted on this computer yet.`,
   /** The workspace was trusted, then changed. */

@@ -1,0 +1,34 @@
+{
+  "name": "@halonicjs/testing-tunnel-attacks",
+  "private": true,
+  "type": "module",
+  "description": "Attack tests against the remote gateway as a tunnel reaches it, run against the fake TunnelProvider: a direct hit, Host and Origin, oversize and malformed frames, messages outside the protocol and a fuzz pass.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "testing",
+    "owner": "julian",
+    "coverage": {
+      "lines": 80
+    }
+  },
+  "dependencies": {
+    "@halonicjs/adapter-harness-bridge": "workspace:*",
+    "@halonicjs/adapter-remote-gateway": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/testing-contracts": "workspace:*"
+  }
+}

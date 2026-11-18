@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -49,6 +50,7 @@ async function show(
     create?: NewWorkspaceHost["create"];
     open?: NewWorkspaceHost["open"];
     defaultParent?: NewWorkspaceHost["defaultParent"];
+    announced?: string[];
   } = {},
 ): Promise<Seen> {
   const seen: Seen = { created: [], opened: [], trust: [] };
@@ -73,6 +75,7 @@ async function show(
         }}
         onOpen={(folder) => seen.opened.push(folder)}
         onCancel={() => {}}
+        announce={(line) => options.announced?.push(line)}
       />,
     ),
   );
@@ -158,7 +161,7 @@ verifies("workspace.new-workspace-dialog", () => {
   it("shows why a write failed under the folder and stays open", async () => {
     const seen = await show({
       create: async () => {
-        throw new Error("you don't have permission");
+        throw new NewWorkspaceRefusal("you don't have permission");
       },
     });
     await type("Acme");
@@ -169,11 +172,25 @@ verifies("workspace.new-workspace-dialog", () => {
     expect(seen.created).toEqual([]);
   });
 
+  it("shows the generic sentence, not the system's text, for an error without a kind", async () => {
+    await show({
+      create: async () => {
+        throw new Error("EACCES: permission denied, mkdir '/x'");
+      },
+    });
+    await type("Acme");
+    await click("Create");
+    expect(document.body.textContent).toContain(
+      "Can't write to this folder: Halonic ran into a problem it can't explain yet.",
+    );
+    expect(document.body.textContent).not.toContain("EACCES");
+  });
+
   it("words a failed Open as Can't open, not as a write error", async () => {
     await show({
       state: "workspace",
       open: async () => {
-        throw new Error("the folder isn't there any more");
+        throw new NewWorkspaceRefusal("the folder isn't there any more", "folder", "not_found");
       },
     });
     await type("Acme");
@@ -199,7 +216,10 @@ verifies("workspace.new-workspace-dialog", () => {
   it("shows why there is no folder, and asks to choose one with Change… focused", async () => {
     const seen = await show({
       defaultParent: async () => {
-        throw new Error("This computer has no Documents folder; choose a folder.");
+        throw new KindedError(
+          "not_found",
+          "This computer has no Documents folder; choose a folder.",
+        );
       },
     });
     expect(document.body.textContent).toContain("This computer has no Documents folder");
@@ -219,5 +239,58 @@ verifies("workspace.new-workspace-dialog", () => {
     expect(createdLine("Acme Support", "the keychain is locked")).toBe(
       "Created Acme Support. Couldn't save trust: the keychain is locked.",
     );
+  });
+
+  it("moves focus to Name when the shell refuses the name", async () => {
+    await show({
+      create: async () => {
+        throw new NewWorkspaceRefusal("that isn't a name a folder can have", "name");
+      },
+    });
+    await type("Q3/Support");
+    await click("Create");
+    expect(document.activeElement).toBe(document.querySelector("input"));
+  });
+
+  it("keeps Name read-only, never disabled, while creating", async () => {
+    let release: () => void = () => {};
+    await show({
+      create: () =>
+        new Promise((resolve) => {
+          release = () => resolve({ kind: "trusted" });
+        }),
+    });
+    await type("Acme");
+    await click("Create");
+    const input = document.querySelector("input");
+    expect(input?.disabled).toBe(false);
+    expect(input?.readOnly).toBe(true);
+    await act(async () => release());
+  });
+
+  it("describes Name by the folder line", async () => {
+    await show();
+    const description = () => {
+      const id = document.querySelector("input")?.getAttribute("aria-describedby");
+      return id === null || id === undefined ? undefined : document.getElementById(id)?.textContent;
+    };
+    expect(description()).toBe("Folder: ~/Documents");
+    await type("Acme Support");
+    expect(description()).toBe("Folder: ~/Documents/Acme Support");
+  });
+
+  it("announces the new mode once, with the button's name", async () => {
+    const announced: string[] = [];
+    await show({ state: "workspace", announced });
+    await type("Acme");
+    await type("Acme2");
+    expect(announced).toEqual(["This folder is already a workspace. Open it."]);
+    act(() => root?.unmount());
+    container?.remove();
+    const files: string[] = [];
+    await show({ state: "not-empty", announced: files });
+    await type("Acme");
+    expect(files).toHaveLength(1);
+    expect(files[0]).toMatch(/^This folder isn't empty\..* Create here\.$/);
   });
 });

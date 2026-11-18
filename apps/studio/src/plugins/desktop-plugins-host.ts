@@ -11,6 +11,7 @@ import { PluginService, TrustService } from "@halonicjs/app";
 import { systemClock } from "@halonicjs/std";
 import type { PluginsHost } from "@halonicjs/studio-feature-plugins/api";
 import { halonicVersion } from "../studio/open-trusts.ts";
+import { desktopPluginInstaller } from "./desktop-plugin-installer.ts";
 import { desktopPluginActions } from "./plugin-actions.ts";
 import { PluginFeed } from "./plugin-feed.ts";
 
@@ -38,8 +39,8 @@ export interface DesktopPluginsHost {
  * The plugins feature's host for the desktop app (`studio.desktop-plugins-host`): core's
  * `PluginService` over the shell's plugins folder, the profile's plugin records and the trust
  * records the CLI shares, the keychain for secrets (given in `secrets`), and one feed that every action reads again.
- * Adding a plugin stays a CLI action, so this host has no add. It never runs plugin code: tool
- * calls go through `caller`.
+ * Its installer adds a plugin from a folder the person picks or a git repository, not trusted
+ * (`desktopPluginInstaller`). It never runs plugin code: tool calls go through `caller`.
  *
  * @example
  * const { host, reload } = desktopPluginsHost({ ipc, secrets, caller, onReloadFailed });
@@ -74,6 +75,13 @@ export function desktopPluginsHost({
   });
   return {
     reload: actions.reload,
-    host: { feed, caller, settings: service, secrets, actions },
+    host: {
+      feed,
+      caller,
+      settings: service,
+      secrets,
+      actions,
+      installer: desktopPluginInstaller({ ipc, service, reload: actions.reload, onReloadFailed }),
+    },
   };
 }

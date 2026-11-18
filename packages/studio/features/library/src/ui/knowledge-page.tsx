@@ -1,10 +1,16 @@
 import type { KnowledgeLookupMode } from "@halonicjs/app";
-import { Callout, EmptyState, Field, FormRows, RadioGroup } from "@halonicjs/studio-kit";
-import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
+import { EmptyState, Field, FormRows, RadioGroup } from "@halonicjs/studio-kit";
+import {
+  engineWordsOf,
+  ItemGone,
+  type ItemViewProps,
+  PageBackLinkSlot,
+} from "@halonicjs/studio-shell";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { KnowledgeHostService, type KnowledgeRef } from "../knowledge-host.ts";
 import { KnowledgeModel } from "../knowledge-model.ts";
 import { knowledgeWords } from "../knowledge-words.ts";
+import { savingFor } from "../saving.ts";
 import { useItemTrash } from "./item-trash.tsx";
 import { sharedHubKey } from "./library-place.tsx";
 import { LoadFailed } from "./load-failed.tsx";
@@ -26,8 +32,15 @@ function refOf(hub: string, id: string): KnowledgeRef {
 export function KnowledgePage({ item, context }: ItemViewProps) {
   const host = context.services.find(KnowledgeHostService);
   const model = useMemo(
-    () => (host === undefined ? undefined : new KnowledgeModel(host, refOf(item.hub, item.id))),
-    [host, item.hub, item.id],
+    () =>
+      host === undefined
+        ? undefined
+        : new KnowledgeModel(
+            host,
+            refOf(item.hub, item.id),
+            savingFor(context.saving, `knowledge/${item.hub}/${item.id}`),
+          ),
+    [host, context.saving, item.hub, item.id],
   );
   if (model === undefined) {
     return <Gone context={context} />;
@@ -58,18 +71,8 @@ function LoadedKnowledgePage({
   model,
 }: Pick<ItemViewProps, "item" | "context"> & { readonly model: KnowledgeModel }) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
-  const {
-    loaded,
-    failed,
-    failureReason,
-    gone,
-    unreadable,
-    parts,
-    source,
-    usage,
-    summarize,
-    saveFailure,
-  } = useSyncExternalStore(subscribe, () => model.state);
+  const { loaded, failed, failureReason, gone, unreadable, parts, source, usage, summarize } =
+    useSyncExternalStore(subscribe, () => model.state);
 
   const trash = useItemTrash(context, {
     kind: "knowledge",
@@ -92,7 +95,7 @@ function LoadedKnowledgePage({
   if (failed && !loaded) {
     return (
       <LoadFailed
-        title={knowledgeWords.couldntLoad}
+        title={knowledgeWords.couldntLoad(item.id)}
         reason={failureReason}
         retryLabel={knowledgeWords.tryAgain}
         context={context}
@@ -101,7 +104,7 @@ function LoadedKnowledgePage({
     );
   }
   if (!loaded) {
-    return <p className="px-4 py-5 text-small text-fg-muted">{knowledgeWords.loading}</p>;
+    return <p className="px-4 py-5 text-small text-fg-muted">{knowledgeWords.loading(item.id)}</p>;
   }
   if (unreadable || parts === undefined) {
     return <EmptyState title={knowledgeWords.unreadable} />;
@@ -116,15 +119,6 @@ function LoadedKnowledgePage({
         </h1>
         {trash.menu}
       </div>
-      {saveFailure === undefined ? null : (
-        <Callout
-          tone="danger"
-          title={knowledgeWords.saveFailed}
-          action={{ label: knowledgeWords.tryAgain, onClick: () => void model.retrySave() }}
-        >
-          {saveFailure.reason}
-        </Callout>
-      )}
       <FormRows>
         <Field
           label={knowledgeWords.source}
@@ -140,6 +134,7 @@ function LoadedKnowledgePage({
           summarize={summarize}
           announce={announce}
           openModels={openModels}
+          notAnswering={engineWordsOf(context).notAnswering}
         />
         <Field label={knowledgeWords.lookup}>
           <RadioGroup<KnowledgeLookupMode>

@@ -1,0 +1,92 @@
+import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
+import { useState } from "react";
+import type { AgentChange, AgentSettings, AgentsHost } from "../api.ts";
+import type { Load } from "../page/use-load.ts";
+import { BehaviourPage } from "./behaviour-page.tsx";
+import { configurationWords as words } from "./configuration-words.ts";
+import { HarnessPage } from "./harness-page.tsx";
+import { ModelPage } from "./model-page.tsx";
+
+/** Props for {@link Configuration}. */
+export interface ConfigurationProps {
+  /** The host, for the Harness page's check of the programs on this computer. */
+  readonly host: AgentsHost;
+  readonly name: string;
+  readonly load: Load<AgentSettings>;
+  /** The model aliases the agent's hub can use, for the Model page. */
+  readonly aliases: readonly string[];
+  readonly retry: () => void;
+  readonly save: (change: AgentChange) => Promise<void>;
+}
+
+type PageId = "behaviour" | "model" | "harness";
+
+/** The pages that are built, in the order of flow-agents 5.1. */
+const pageIds: readonly PageId[] = ["behaviour", "model", "harness"];
+
+/**
+ * The agent's Configuration (`agents.configuration.pages`): a list of pages on the left and the
+ * picked page beside it. A page that isn't built is absent, not empty (flow-agents 5.1).
+ */
+export function Configuration({ host, name, load, aliases, retry, save }: ConfigurationProps) {
+  const [page, setPage] = useState<PageId>("behaviour");
+  if (load.kind === "failed") {
+    return (
+      <EmptyState
+        tone="error"
+        title={words.loadFailedTitle(name)}
+        description={load.reason}
+        action={{ label: words.tryAgain, onClick: retry, busy: load.retrying }}
+      />
+    );
+  }
+  return (
+    <div className="flex min-h-0 flex-1">
+      <div
+        role="tablist"
+        aria-orientation="vertical"
+        aria-label={words.pages}
+        className="flex w-52 shrink-0 flex-col gap-1 border-e border-border px-2 py-4"
+      >
+        {pageIds.map((id) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            id={`agent-config-${id}`}
+            aria-selected={id === page}
+            aria-controls="agent-config-panel"
+            onClick={() => setPage(id)}
+            className={`focus-ring flex h-control-md items-center rounded-sm px-3 text-start text-body ${
+              id === page
+                ? "bg-accent-soft font-medium text-fg"
+                : "text-fg-muted hover:bg-surface-subtle"
+            }`}
+          >
+            {words.pageNames[id]}
+          </button>
+        ))}
+      </div>
+      <div
+        role="tabpanel"
+        id="agent-config-panel"
+        aria-labelledby={`agent-config-${page}`}
+        className="min-w-0 flex-1 overflow-auto p-6"
+      >
+        {load.kind === "ready" ? (
+          <div className="max-w-column">
+            {page === "behaviour" && <BehaviourPage settings={load.value} save={save} />}
+            {page === "model" && <ModelPage settings={load.value} aliases={aliases} save={save} />}
+            {page === "harness" && <HarnessPage host={host} settings={load.value} save={save} />}
+          </div>
+        ) : (
+          <div role="status" className="flex flex-col gap-4">
+            <span className="sr-only">{words.loading(name)}</span>
+            <SkeletonBar kind="value" />
+            <SkeletonBar kind="value" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

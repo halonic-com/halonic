@@ -67,6 +67,19 @@ export interface SettingsSectionContribution extends Ordered, ViewRef {
    */
   summary?(context: WorkspaceContext): string | undefined | Promise<string | undefined>;
   /**
+   * The one line the container draws under the section's name (and its saved or workspace line),
+   * 8px below it, in the muted small text, or `undefined` for none. The container owns this gap
+   * and the 20px before the section's view, so a view puts no top margin of its own and writes
+   * no description paragraph. A function may answer later, as `summary` does, and sees the
+   * `place` the dialog shows: the line is left out until it does.
+   */
+  description?:
+    | string
+    | ((
+        context: WorkspaceContext,
+        place: "app" | "served",
+      ) => string | undefined | Promise<string | undefined>);
+  /**
    * Whether the section has a problem to look at. The dialog's list then marks its row with a
    * warning triangle (flow-settings 3.1), so a problem isn't hidden until someone opens the
    * section. It may answer later; the row has no mark until then.
@@ -74,6 +87,11 @@ export interface SettingsSectionContribution extends Ordered, ViewRef {
   attention?(context: WorkspaceContext): boolean | Promise<boolean>;
   /** `false` leaves the section out on a phone, as Developer does. */
   readonly phone?: false;
+  /**
+   * `false` leaves out the line "Part of Acme. Changes here show in Changes and can be undone." under
+   * a workspace section's name, for a section whose values aren't files in the workspace, as Trust's.
+   */
+  readonly workspaceLine?: false;
 }
 
 /**

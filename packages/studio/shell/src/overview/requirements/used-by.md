@@ -1,7 +1,7 @@
 # shell.overview.used-by
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1303 (T10, P4a); flow-library 3.1
 
 The overview page shall show an item's `usedBy` text on the right of its row, after the item's chips when it has both, in the feature's words, and shall show nothing there for an item without one. The search shall not read it.

@@ -1,4 +1,5 @@
 import { newLibraryFile } from "@halonicjs/app";
+import { KindedError } from "@halonicjs/std";
 import type {
   CollectionRef,
   NewCollectionDraft,
@@ -43,7 +44,7 @@ export class WorkspaceNewCollection implements NewCollectionHost {
 
   async create({ name }: NewCollectionDraft): Promise<CollectionRef> {
     const made = newLibraryFile(await this.#load(), { kind: "collection", name });
-    if (!made.ok) throw new Error("Give it a name.");
+    if (!made.ok) throw new KindedError("invalid_input", "Give it a name.");
     const { id, path, text } = made.value;
     this.#parts.files.change(`Added collection ${id}`, { [path]: text });
     return { hub: null, id };

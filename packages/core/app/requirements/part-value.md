@@ -1,7 +1,7 @@
 # app.part-value
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-1302 (T9) Create version; save model 2.6 (HAL-1102): Important settings are always shown as before → after
 
 When the part-value function reads a part of an item's YAML text, it shall give the value at that part, or say that there is none when the text is missing, doesn't read, or has no such part.

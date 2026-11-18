@@ -1,5 +1,5 @@
 import { type Provider, parseFile } from "@halonicjs/format";
-import { Field, FormRows, Input, Select, Switch } from "@halonicjs/studio-kit";
+import { Field, FormRows, Input, Select, Switch, settleOnClose } from "@halonicjs/studio-kit";
 import { useState } from "react";
 import { useDraft } from "../aliases/use-draft.ts";
 import type { ModelsFiles } from "../api.ts";
@@ -63,7 +63,7 @@ export function ProviderFields({ files, provider, path, onEdited }: ProviderFiel
   };
   const problemFor = (field: ProviderField) => (problem?.field === field ? problem.message : null);
   const onBlur = (field: ProviderField, draft: string, saved: string | undefined) =>
-    draft.trim() !== (saved ?? "") ? void save(field, draft) : undefined;
+    draft.trim() !== (saved ?? "") ? void settleOnClose(save(field, draft)) : undefined;
 
   return (
     <div className="flex flex-col gap-4">

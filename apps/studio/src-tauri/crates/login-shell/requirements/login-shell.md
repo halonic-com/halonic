@@ -1,7 +1,7 @@
 # studio.src-tauri.crates.login-shell.login-shell
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-5545 (code review 11 Nov, line 818)
 
 When the Studio, on macOS or Linux, finds the profile folder and wasn't started with `HALONIC_HOME`, `LOCALAPPDATA` or `XDG_DATA_HOME`, the shell shall read that variable from the person's login shell, started interactive and as a login shell, once per app run, so that the Studio and the CLI in the person's terminal find the same profile. The login shell shall get no input and `HALONIC_RESOLVING_ENVIRONMENT=1`, and shall be stopped, with every program its rc files started, when it hasn't printed its environment within five seconds; the app's own variables are then used. A program the rc files leave running after the environment is printed shall be left running. What the rc files print themselves shall be ignored. A Studio that has a terminal itself shall read the login shell's variables as quickly as one that doesn't.

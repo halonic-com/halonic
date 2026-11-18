@@ -1,7 +1,7 @@
 # code-editor.language-and-read-only
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: component specs 24.7; req-files (HAL-110); HAL-1293; HAL-10536
 
 The code editor shall choose YAML, Markdown or plain text from the file name, shall name its text area for screen readers after the file, and shall refuse every edit while it is read-only without losing the text or the cursor.

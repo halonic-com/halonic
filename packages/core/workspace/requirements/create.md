@@ -1,7 +1,7 @@
 # workspace.create
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8714 (T3 New workspace dialog; flow-workspace 2.3: "Elena moves the template into one `core` function that CLI and Studio both call"; HAL-65 decision 1, [J11]); builds on `workspace.init`
 
 When `createWorkspace` lays out a new workspace through a `DefinitionStore`, the workspace package shall write the same `.gitignore` and `workspace.yaml` as `initWorkspace`, write only the template files the store doesn't already have, add the `.env` lines a `.gitignore` there lacks at its end, and return the paths it wrote, skipped and amended as data. If the store already holds a `workspace.yaml`, or the settings fail the workspace kind's checks, or `ifNotEmpty` is `"refuse"` and the store lists any file, then it shall write nothing and say why. If a write fails, then it shall remove the files it wrote, put back the `.gitignore` it amended and throw the write's error. `initWorkspace` shall be `createWorkspace` with `ifNotEmpty: "refuse"`.

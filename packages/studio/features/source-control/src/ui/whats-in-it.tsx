@@ -1,60 +1,83 @@
 import { type ChangeLine, type PartValue, partValueIn } from "@halonicjs/app";
 import { Checkbox } from "@halonicjs/studio-kit";
 import { useId } from "react";
+import type { ChangeItem } from "../change-items.ts";
 import type { ChangedFile } from "../changes-list.ts";
 import { versionWords } from "../changes-words.ts";
+import { shownValue } from "./part-change.tsx";
 
 /** Props for {@link WhatsInIt}. */
 export interface WhatsInItProps {
-  readonly files: readonly ChangedFile[];
-  /** The paths of the items that go into the version. */
+  /** The items of the version, as the page lists them. */
+  readonly items: readonly ChangeItem[];
+  /** Whether this is the first version, which the history file was made for. */
+  readonly first?: boolean;
+  /** The ids of the items that go into the version. */
   readonly ticked: ReadonlySet<string>;
-  readonly onTick: (path: string, on: boolean) => void;
+  readonly onTick: (id: string, on: boolean) => void;
 }
 
 const hasImportant = (file: ChangedFile) => file.description.lines.some((line) => line.important);
 
 /**
- * What's in the version (save model 2.6): a row for each item with a checkbox, ticked unless the
- * person leaves it out. An item with an Important setting comes first and has the Important chip
- * at the right of its row; its Important changes are always shown as before → after.
+ * What's in the version (save model 2.6): a row for each item, named as the page names it, with a
+ * checkbox, ticked unless the person leaves it out. An item with an Important setting comes first
+ * and has the Important chip at the right of its row; its Important changes are always shown as
+ * before → after. An item with one plain change says it beside its name, so a short list is short.
  */
-export function WhatsInIt({ files, ticked, onTick }: WhatsInItProps) {
+export function WhatsInIt({ items, first = false, ticked, onTick }: WhatsInItProps) {
   const headingId = useId();
   // Array.sort is stable, so the items keep their order within each group.
-  const ordered = [...files].sort((a, b) => Number(hasImportant(b)) - Number(hasImportant(a)));
+  const ordered = [...items].sort(
+    (a, b) => Number(b.files.some(hasImportant)) - Number(a.files.some(hasImportant)),
+  );
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
       <h2 id={headingId} className="text-heading">
         {versionWords.whatsInIt}
       </h2>
       <ul className="flex flex-col gap-3">
-        {ordered.map((file) => (
-          <li key={file.path} className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <Checkbox checked={ticked.has(file.path)} onChange={(on) => onTick(file.path, on)}>
-                <span className="text-label break-all">{file.path}</span>
-              </Checkbox>
-              <span className="flex-1" />
-              {hasImportant(file) ? (
-                <span className="text-small shrink-0 rounded-full border border-border px-2 text-fg-muted">
-                  {versionWords.important}
-                </span>
+        {ordered.map((item) => {
+          const lines = item.files.flatMap((file) =>
+            file.description.lines.map((line) => ({ file, line })),
+          );
+          const [only] = lines;
+          const inline = lines.length === 1 && only?.line.important !== true;
+          return (
+            <li key={item.id} className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <Checkbox checked={ticked.has(item.id)} onChange={(on) => onTick(item.id, on)}>
+                  <span className="text-label break-words">{item.name}</span>
+                </Checkbox>
+                {inline ? (
+                  <span className="text-body text-fg-muted">{only?.line.sentence}</span>
+                ) : null}
+                <span className="flex-1" />
+                {item.files.some(hasImportant) ? (
+                  <span className="text-small shrink-0 rounded-full border border-border px-2 text-fg-muted">
+                    {versionWords.important}
+                  </span>
+                ) : null}
+              </div>
+              {first && item.id === "file:.gitignore" ? (
+                <p className="text-small text-fg-muted">{versionWords.addedByHistory}</p>
               ) : null}
-            </div>
-            <ul className="flex flex-col gap-1">
-              {file.description.lines.map((line) => (
-                <li key={line.id}>
-                  {line.important === true ? (
-                    <ImportantChange file={file} line={line} />
-                  ) : (
-                    <span className="text-body">{line.sentence}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
+              {inline ? null : (
+                <ul className="flex flex-col gap-1">
+                  {lines.map(({ file, line }) => (
+                    <li key={`${file.path}:${line.id}`}>
+                      {line.important === true ? (
+                        <ImportantChange file={file} line={line} />
+                      ) : (
+                        <span className="text-body">{line.sentence}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
@@ -109,15 +132,10 @@ function Value({
       <pre
         className={`text-small whitespace-pre-wrap break-words${old ? " text-fg-muted line-through" : ""}`}
       >
-        {value.found ? shown(value.value) : versionWords.notSet}
+        {shownValue(value)}
       </pre>
     </div>
   );
-}
-
-/** A value as the person would write it: text as it is, anything else as indented JSON. */
-function shown(value: unknown): string {
-  return typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
 /** A part's name over its before and after: its path, the first letter capital. */

@@ -1,7 +1,7 @@
 # studio.workspace-files-delete
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-329 files flow 5; HAL-10902
 
 The app's files host shall delete one file as one undo step that goes to the trash when saved, and say how many places in other files name a deleted Library item (a skill, knowledge source, collection or connector) by its id. Its way back shall put the file back only while the delete is still the newest step, and otherwise reject and undo nothing. It shall refuse a file that isn't there and a `SKILL.md` whose folder has other files (the whole folder doesn't go yet).

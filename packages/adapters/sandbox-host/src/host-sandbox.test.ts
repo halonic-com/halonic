@@ -19,7 +19,15 @@ beforeAll(async () => {
   work = await realpath(await mkdtemp(join(tmpdir(), "hs-start-")));
   await mkdir(join(work, "inner"));
 });
-afterAll(() => rm(work, { recursive: true, force: true }));
+afterAll(() => removeFolder(work));
+
+/** Removes a folder, retrying while Windows still counts a program that was just killed as holding it (EBUSY). */
+function removeFolder(folder: string): Promise<void> {
+  return rm(folder, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
+}
+
+/** A case that waits for a killed process tree is given more time on Windows, where tearing one down is slow. */
+const treeTimeout = windows ? 30_000 : 5_000;
 
 function profile(overrides: Partial<SandboxProfile> = {}): SandboxProfile {
   return {
@@ -76,7 +84,7 @@ const addedBySystem = windows
 async function gone(pid: number): Promise<void> {
   // `kill(0)` would signal our own process group, which never goes.
   expect(pid).toBeGreaterThan(0);
-  for (let tries = 0; tries < 100; tries++) {
+  for (let tries = 0; tries < (windows ? 400 : 100); tries++) {
     try {
       process.kill(pid, 0);
     } catch {
@@ -186,7 +194,7 @@ verifies("sandbox-host.start", () => {
         ).rejects.toThrow("denied to it");
         await session.close();
       } finally {
-        await rm(workspace, { recursive: true, force: true });
+        await removeFolder(workspace);
       }
     });
 
@@ -204,15 +212,19 @@ verifies("sandbox-host.start", () => {
       await session.close();
     });
 
-    it("stops a killed program and the child it started", async () => {
-      const session = await createHostSandbox().open(profile());
-      const program = await session.start({ program: node, args: ["-e", parentOfChild] });
-      const child = Number(await firstLine(program));
-      await program.kill();
-      expect((await program.exited).reason).toBe("stopped");
-      await gone(child);
-      await session.close();
-    });
+    it(
+      "stops a killed program and the child it started",
+      async () => {
+        const session = await createHostSandbox().open(profile());
+        const program = await session.start({ program: node, args: ["-e", parentOfChild] });
+        const child = Number(await firstLine(program));
+        await program.kill();
+        expect((await program.exited).reason).toBe("stopped");
+        await gone(child);
+        await session.close();
+      },
+      treeTimeout,
+    );
 
     // Windows ties no tree to a program that has ended, so there the child keeps it open (README).
     it.skipIf(windows)(

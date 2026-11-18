@@ -1,7 +1,7 @@
 # google-setup.connector-facts
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-715; google-setup-flow (HAL-621) section 5.2; HAL-1063
 
 The Google setup feature shall turn an account's setup record into the library's connector-neutral facts, so the library's connector status view shows the same state as the setup item: "Not connected" before the first sign-in, "Connected" after a sign-in nobody refused, "Needs sign-in again" when Google refused the sign-in, and "Needs new secret" when Google refused the client secret or no longer knows the client. An API switched off during a run is not in the record, so the facts keep the API on; the API-off chip and banner moved to their own task (the follow-ups note on HAL-715).

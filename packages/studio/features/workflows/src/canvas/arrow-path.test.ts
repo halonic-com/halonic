@@ -25,7 +25,8 @@ verifies("workflows.canvas.arrows", () => {
     expect(right.path.startsWith("M 200 36 ")).toBe(true);
     expect(right.head).toEqual({ x: 300, y: 36 });
     expect(right.headAngle).toBe(0);
-    expect(right.label).toEqual({ x: 250, y: 36 });
+    expect(right.label).toEqual({ x: 250, y: 17 });
+    expect(right.labelAnchor).toBe("middle");
     const left = arrowShape(card(300, 0), card(0, 0));
     expect(left.path.startsWith("M 300 36 ")).toBe(true);
     expect(left.head).toEqual({ x: 200, y: 36 });
@@ -38,11 +39,24 @@ verifies("workflows.canvas.arrows", () => {
     expect(shape.label.x).toBeGreaterThan(CARD_SIZE.width);
   });
 
-  it("puts the label of a loop on the curve", () => {
-    expect(arrowShape(card(0, 0), card(0, 0)).label.x).toBe(236);
+  it("puts the label of a loop just right of the curve", () => {
+    const shape = arrowShape(card(0, 0), card(0, 0));
+    expect(shape.label.x).toBe(246);
+    expect(shape.labelAnchor).toBe("start");
   });
 
-  it("puts the label halfway along an arrow to the card below", () => {
-    expect(arrowShape(card(0, 0), card(0, 136)).label).toEqual({ x: 100, y: 104 });
+  it("puts the label beside an arrow to the card below, level with its middle", () => {
+    const shape = arrowShape(card(0, 0), card(0, 136));
+    expect(shape.label).toEqual({ x: 110, y: 104 });
+    expect(shape.labelAnchor).toBe("start");
+  });
+
+  it("puts the label on the outer side of an arrow that bends away, clear of the slant", () => {
+    const left = arrowShape(card(300, 0), card(0, 136));
+    const right = arrowShape(card(0, 0), card(300, 136));
+    expect(left.labelAnchor).toBe("end");
+    expect(left.label.x).toBeLessThan(250 - 10);
+    expect(right.labelAnchor).toBe("start");
+    expect(right.label.x).toBeGreaterThan(150 + 10);
   });
 });

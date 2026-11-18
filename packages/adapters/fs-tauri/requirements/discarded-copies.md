@@ -1,7 +1,7 @@
 # fs-tauri.discarded-copies
 
 - Status: draft
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-10581 (Changes page: Undo these changes and Discard), review of PR #3020; `source-control.discard`; private entries of the `DefinitionStore` port (`ports.definition-store-private-entries`)
 
 The desktop app shall keep a copy of what a discard throws away in `.studio/discarded` of the open workspace, a folder the workspace's own store refuses as private.

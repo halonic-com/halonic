@@ -1,0 +1,33 @@
+{
+  "name": "@halonicjs/adapter-sign-in-loopback",
+  "private": true,
+  "type": "module",
+  "description": "The app's side of a sign-in: a loopback server on 127.0.0.1 for the flow's callback, and a launcher that starts a sign-in and opens the browser through a small port.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-sign-in": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "ravi",
+    "coverage": {
+      "lines": 80
+    },
+    "runtime": "node"
+  },
+  "dependencies": {
+    "@halonicjs/oauth-sign-in": "workspace:*"
+  }
+}

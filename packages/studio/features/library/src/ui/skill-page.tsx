@@ -1,23 +1,16 @@
 import type { SkillChange } from "@halonicjs/app";
 import {
   Button,
-  Callout,
   EmptyState,
   Field,
   FormRows,
   Input,
+  settleOnClose,
   TextArea,
 } from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps, PageBackLinkSlot } from "@halonicjs/studio-shell";
-import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { savingFor } from "../saving.ts";
 import { takeSkillInstructionsFocus } from "../skill-focus-request.ts";
 import { SkillHostService, type SkillRef } from "../skill-host.ts";
 import { type SkillField, SkillModel } from "../skill-model.ts";
@@ -29,6 +22,9 @@ import { UsedByField } from "./used-by-field.tsx";
 
 type Edited = keyof SkillChange;
 type Drafts = Partial<Record<Edited, string>>;
+/** Instructions are saved this long after the last key, so a pause saves without waiting for Tab. */
+const INSTRUCTIONS_SAVE_AFTER_MS = 800;
+const editedFields: readonly Edited[] = ["name", "description", "instructions"];
 
 function refOf(hub: string, id: string): SkillRef {
   return { hub: hub === sharedHubKey ? null : hub, id };
@@ -36,15 +32,22 @@ function refOf(hub: string, id: string): SkillRef {
 
 /**
  * The `skill` item kind's page: Name, When to use it and Instructions, each saved when you leave
- * it; the header fields the page doesn't edit, read-only; the other files in the skill's folder;
- * and who uses it (flow-library 5.1). An emptied Name or When to use it keeps its old value with
- * a hint that stays until the next edit.
+ * it (Instructions also after a short pause in typing); the header fields the page doesn't edit,
+ * read-only; the other files in the skill's folder; and who uses it (flow-library 5.1). An emptied
+ * Name or When to use it keeps its old value with a hint that stays until the next edit.
  */
 export function SkillPage({ item, context }: ItemViewProps) {
   const host = context.services.find(SkillHostService);
   const model = useMemo(
-    () => (host === undefined ? undefined : new SkillModel(host, refOf(item.hub, item.id))),
-    [host, item.hub, item.id],
+    () =>
+      host === undefined
+        ? undefined
+        : new SkillModel(
+            host,
+            refOf(item.hub, item.id),
+            savingFor(context.saving, `skill/${item.hub}/${item.id}`),
+          ),
+    [host, context.saving, item.hub, item.id],
   );
   if (model === undefined) {
     return <Gone context={context} />;
@@ -69,43 +72,14 @@ function Gone({ context }: Pick<ItemViewProps, "context">) {
   );
 }
 
-function SaveFailureLine({
-  failure,
-  onRetry,
-}: {
-  readonly failure: { readonly reason: string } | undefined;
-  readonly onRetry: () => void;
-}) {
-  if (failure === undefined) return null;
-  return (
-    <Callout
-      tone="danger"
-      title={skillWords.saveFailed}
-      action={{ label: skillWords.tryAgain, onClick: onRetry }}
-    >
-      {failure.reason}
-    </Callout>
-  );
-}
-
 function LoadedSkillPage({
   item,
   context,
   model,
 }: Pick<ItemViewProps, "item" | "context"> & { readonly model: SkillModel }) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
-  const {
-    loaded,
-    failed,
-    failureReason,
-    gone,
-    unreadable,
-    parts,
-    files,
-    usage,
-    kept,
-    saveFailure,
-  } = useSyncExternalStore(subscribe, () => model.state);
+  const { loaded, failed, failureReason, gone, unreadable, parts, files, usage, kept } =
+    useSyncExternalStore(subscribe, () => model.state);
   const trash = useItemTrash(context, {
     kind: "skill",
     hub: item.hub === sharedHubKey ? null : item.hub,
@@ -115,6 +89,21 @@ function LoadedSkillPage({
   });
   const [drafts, setDrafts] = useState<Drafts>({});
   const instructions = useRef<HTMLTextAreaElement>(null);
+  const draftsNow = useRef<Drafts>(drafts);
+  draftsNow.current = drafts;
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // The latest `leave`, so the pause timer and leaving the page save what is typed now.
+  const saveInstructions = useRef<() => void>(() => undefined);
+  useEffect(
+    () => () => {
+      // Leaving the page with the cursor in Instructions saves what was typed.
+      if (saveTimer.current !== undefined) {
+        clearTimeout(saveTimer.current);
+        saveInstructions.current();
+      }
+    },
+    [],
+  );
   const ready = loaded && !gone && !unreadable && parts !== undefined;
   // A skill just made in New skill opens with the cursor in Instructions, ready to write.
   useEffect(() => {
@@ -122,6 +111,18 @@ function LoadedSkillPage({
       instructions.current?.focus();
     }
   }, [ready, item.hub, item.id]);
+
+  // A write that the window's Try again runs later never reaches `leave`, so a draft that now equals
+  // the saved text is dropped here, and the field follows the file again (a change from outside shows).
+  useEffect(() => {
+    if (parts === undefined) return;
+    setDrafts((current) => {
+      const settled = editedFields.filter((field) => current[field] === parts[field]);
+      return settled.length === 0
+        ? current
+        : settled.reduce((rest, field) => without(field)(rest), current);
+    });
+  }, [parts]);
 
   if (gone) {
     return trash.strip ?? <Gone context={context} />;
@@ -138,7 +139,7 @@ function LoadedSkillPage({
     );
   }
   if (!loaded) {
-    return <p className="px-4 py-5 text-small text-fg-muted">{skillWords.loading}</p>;
+    return <p className="px-4 py-5 text-small text-fg-muted">{skillWords.loading(item.id)}</p>;
   }
   if (unreadable || parts === undefined) {
     return <EmptyState title={skillWords.unreadable} />;
@@ -152,18 +153,28 @@ function LoadedSkillPage({
   const shown = (field: Edited) => drafts[field] ?? stored[field];
   const change = (field: Edited, value: string) => {
     setDrafts((current) => ({ ...current, [field]: value }));
-    if (field !== "instructions") model.edited(field);
+    draftsNow.current = { ...draftsNow.current, [field]: value };
+    if (field !== "instructions") {
+      model.edited(field);
+      return;
+    }
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => saveInstructions.current(), INSTRUCTIONS_SAVE_AFTER_MS);
   };
-  const leave = async (field: Edited) => {
-    const draft = drafts[field];
+  const leaveField = async (field: Edited) => {
+    if (field === "instructions") {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = undefined;
+    }
+    const draft = draftsNow.current[field];
     if (draft === undefined) return;
     if (await model.leave({ [field]: draft })) {
-      setDrafts(without(field));
+      // Keys typed while the write ran keep their draft.
+      if (draftsNow.current[field] === draft) setDrafts(without(field));
     }
   };
-  const retrySave = async () => {
-    for (const field of Object.keys(drafts) as Edited[]) await leave(field);
-  };
+  const leave = (field: Edited) => settleOnClose(leaveField(field));
+  saveInstructions.current = () => void leave("instructions");
   const keptHint = (field: SkillField, text: string) => (kept.includes(field) ? text : undefined);
 
   return (
@@ -175,7 +186,6 @@ function LoadedSkillPage({
         </h1>
         {trash.menu}
       </div>
-      <SaveFailureLine failure={saveFailure} onRetry={() => void retrySave()} />
       <FormRows>
         <Field label={skillWords.name} hint={keptHint("name", skillWords.nameKept)}>
           <Input
@@ -208,7 +218,9 @@ function LoadedSkillPage({
           <TextArea
             ref={instructions}
             value={shown("instructions")}
+            minRows={8}
             maxRows={24}
+            placeholder={skillWords.instructionsPlaceholder}
             onChange={(event) => change("instructions", event.target.value)}
             onBlur={() => void leave("instructions")}
           />

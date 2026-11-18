@@ -3,8 +3,10 @@ import {
   checkWorkspacePath,
   type DefinitionWatch,
   isPrivateWorkspacePath,
+  UnreadableWorkspaceFolderError,
   type WorkspaceFileChange,
 } from "@halonicjs/ports";
+import { errorKindOf, KindedError } from "@halonicjs/std";
 import {
   type CompareChoice,
   type FileCompare,
@@ -160,8 +162,7 @@ export class WorkspaceFilesHost implements FilesHost {
     try {
       saved = await this.#parts.store.list();
     } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      throw new Error(reason.endsWith(".") ? reason : `${reason}.`);
+      throw listFailure(error);
     }
     const paths = new Set(saved);
     for (const [path, text] of Object.entries(this.#parts.files.pending)) {
@@ -249,7 +250,7 @@ export class WorkspaceFilesHost implements FilesHost {
   }
 
   async rename(from: string, to: string): Promise<RenamedFile> {
-    if (from === to) throw new Error(`${to} already has that name.`);
+    if (from === to) throw new KindedError("conflict", `${to} already has that name.`);
     await this.#checkFreePath(to);
     await this.#refuseSkillSplit(from, to);
     const { rewrites, places, owners } = await this.#renamePlan(from, to);
@@ -261,7 +262,8 @@ export class WorkspaceFilesHost implements FilesHost {
       owners,
       undo: async () => {
         if (files.step !== afterRename || !files.undo()) {
-          throw new Error(
+          throw new KindedError(
+            "conflict",
             `${to} can't be moved back, because the workspace changed after it was renamed.`,
           );
         }
@@ -271,7 +273,8 @@ export class WorkspaceFilesHost implements FilesHost {
 
   async remove(path: string): Promise<RemovedFile> {
     const files = this.#parts.files;
-    if ((await files.read(path)) === null) throw new Error(`${path} isn't here any more.`);
+    if ((await files.read(path)) === null)
+      throw new KindedError("not_found", `${path} isn't here any more.`);
     await this.#refuseSkillSplit(path, undefined);
     const old = placeOf(path);
     const places =
@@ -285,7 +288,8 @@ export class WorkspaceFilesHost implements FilesHost {
       places: places.length,
       undo: async () => {
         if (files.step !== afterDelete || !files.undo()) {
-          throw new Error(
+          throw new KindedError(
+            "conflict",
             `${path} can't be put back, because the workspace changed after it was deleted.`,
           );
         }
@@ -305,7 +309,10 @@ export class WorkspaceFilesHost implements FilesHost {
     const others = (await this.#parts.files.list(folder)).filter((path) => path !== from);
     if (others.length > 0) {
       const verb = to === undefined ? "deleted" : "renamed";
-      throw new Error(`This skill has other files in its folder, so it can't be ${verb} here yet.`);
+      throw new KindedError(
+        "conflict",
+        `This skill has other files in its folder, so it can't be ${verb} here yet.`,
+      );
     }
   }
 
@@ -339,7 +346,17 @@ export class WorkspaceFilesHost implements FilesHost {
       if (!edited.ok) throw new Error(`Couldn't update ${place.file}.`);
       rewrites[place.file] = edited.value.text;
     }
-    return { rewrites, places: places.length, owners: [...new Set(places.map((p) => p.owner))] };
+    return {
+      rewrites,
+      places: places.length,
+      owners: [
+        ...new Set(
+          places.map((p) =>
+            placeOf(p.file)?.kind === "routine" ? filesWords.ownerRoutine(p.owner) : p.owner,
+          ),
+        ),
+      ],
+    };
   }
 
   /** The places that name the item in `from` by its id, or `undefined` when the rename gives it no new id. */
@@ -387,4 +404,18 @@ export class WorkspaceFilesHost implements FilesHost {
       stop();
     };
   }
+}
+
+/**
+ * What a failed folder read rejects with. The store's kinded errors are kept, so the sidebar
+ * shows their reason; an unreadable folder becomes `unavailable` naming it. Anything else keeps
+ * no kind, so its text goes only into the log (rule 1.4).
+ */
+function listFailure(error: unknown): unknown {
+  if (errorKindOf(error) !== "internal") return error;
+  if (error instanceof UnreadableWorkspaceFolderError) {
+    const folder = error.path === "" ? "The workspace folder" : error.path;
+    return new KindedError("unavailable", `${folder} can't be read.`, { cause: error });
+  }
+  return error;
 }

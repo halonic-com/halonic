@@ -2,13 +2,14 @@
 // summary (checklist part 1, 1.5, 1.6 and 1.8; mc 15.2 revision 94). The
 // page only draws what these return.
 
-import { runWait, shortRunId } from "@halonicjs/app";
+import { moneyAmount, runWait, shortRunId } from "@halonicjs/app";
 import type { PendingApproval, RunSummary } from "@halonicjs/events";
 import { escapeHidden } from "@halonicjs/std";
 import type { ProviderKind, RunWorkflow, SourcedRun } from "../api.ts";
 import { currentStepName, type RunChip, runRow } from "../list/run-row.ts";
 import { lineSeparator, runPageWords } from "../run-words.ts";
 import { clockTime, dayAndMonth, dayWords, dueWords, tookWords } from "../time-words.ts";
+import { type BudgetStop, budgetResetsOn, budgetStopOf } from "./budget-stop.ts";
 
 /** The top of the run page. */
 export interface RunHeader {
@@ -40,6 +41,11 @@ export type RunBanner =
       readonly action?: BannerAction;
       /** The buttons that mend the cause, before **Run again**; the page leaves out one it can't do. */
       readonly fixes?: readonly BannerFix[];
+      /**
+       * What **Copy details** puts on the clipboard, after **Run again**: the engine's own message,
+       * which never shows on screen (microcopy 22 F13). Absent: no Copy details.
+       */
+      readonly details?: string;
     }
   /** A cancelled run's plain note, without a Callout's colour: nothing needs fixing. */
   | { readonly kind: "note"; readonly text: string };
@@ -49,10 +55,21 @@ export type BannerAction =
   | { readonly kind: "review-in-inbox" }
   | { readonly kind: "open-run"; readonly runId: string; readonly label: string };
 
-/** A button that mends a failed run's cause: copy the command that does it, or go to Models. */
+/**
+ * A button that mends a failed run's cause: copy the command that does it, go to Models, or open
+ * a page outside Studio (`address` is already checked: see `googleConsoleAddress`).
+ */
 export type BannerFix =
   | { readonly kind: "copy-command"; readonly command: string }
-  | { readonly kind: "open-models" };
+  | { readonly kind: "open-models" }
+  /** **Change budget**: Settings › Models › Budget, which is where Models opens. */
+  | { readonly kind: "change-budget" }
+  | {
+      readonly kind: "open-external";
+      readonly label: string;
+      readonly address: string;
+      readonly opens: string;
+    };
 
 /** What the page needs besides the run. */
 export interface RunPageContext {
@@ -61,6 +78,8 @@ export interface RunPageContext {
   readonly workflowOfRun: (runId: string) => string | undefined;
   /** Whether a model provider runs on this computer or elsewhere; `undefined` when it isn't in the workspace. */
   readonly providerKind: (providerId: string) => ProviderKind | undefined;
+  /** An agent's name as its file says; `undefined` when the workspace has no such agent. */
+  readonly agentName?: (agentId: string) => string | undefined;
   readonly currency: string;
   readonly now: Date;
 }
@@ -133,7 +152,7 @@ export function runBanner(run: SourcedRun, context: RunPageContext): RunBanner |
   const wait = runWait(summary);
   switch (wait.kind) {
     case "approvals":
-      return needsYou(approvalText(wait.oldest, wait.count));
+      return needsYou(approvalText(wait.oldest, wait.count, context));
     case "step":
       return needsYou(
         wait.title === null
@@ -150,14 +169,21 @@ export function runBanner(run: SourcedRun, context: RunPageContext): RunBanner |
 }
 
 /** The approval banner's sentence, built from the oldest approval (mc 15.2); the Inbox card has the rest. */
-function approvalText(oldest: PendingApproval, count: number): string {
-  const what = runPageWords.approvalAsk(oldest.subagent ?? oldest.agent, oldest.tool);
+function approvalText(oldest: PendingApproval, count: number, context: RunPageContext): string {
+  const asker = oldest.subagent ?? oldest.agent;
+  const what = runPageWords.approvalAsk(
+    escapeHidden(context.agentName?.(asker) ?? asker),
+    oldest.tool,
+  );
   return count === 1
     ? runPageWords.approval(what, oldest.tool === "gmail_send")
     : runPageWords.approvals(count, what);
 }
 
-/** A failed run: the budget stop, the cancelled note, or R24's general banner. */
+/**
+ * A failed run: the budget stop, the cancelled note, or R24's general banner. The engine's
+ * message goes only into Copy details (F13).
+ */
 function endedBanner(summary: RunSummary, workflow: string, step: string): RunBanner {
   const message = summary.error?.trim() ?? "";
   if (summary.reason === "cancelled") {
@@ -170,20 +196,46 @@ function endedBanner(summary: RunSummary, workflow: string, step: string): RunBa
     };
   }
   if (summary.reason === "budget") {
+    const stop = budgetStopOf(summary);
+    const line =
+      stop === undefined ? runPageWords.budget(workflow, step) : budgetLine(stop, workflow, step);
     return {
       kind: "callout",
       tone: "attention",
       name: runPageWords.budgetName,
       title: runPageWords.budgetTitle,
-      lines: [runPageWords.budget(workflow, step, message), runPageWords.budgetChecks],
+      lines: [
+        line,
+        ...(stop === undefined ? [] : [budgetFix(stop, summary)]),
+        runPageWords.budgetChecks,
+      ],
+      ...(stop === undefined ? {} : { fixes: [{ kind: "change-budget" }] }),
+      details: [line, `Run ${summary.id}`, message].filter((part) => part !== "").join("\n"),
     };
   }
+  const line = runPageWords.failed(workflow, step);
   return {
     kind: "callout",
     tone: "danger",
     name: runPageWords.failedName,
-    lines: [runPageWords.failed(workflow, step, message)],
+    lines: [line],
+    details: [line, `Run ${summary.id}`, message].filter((part) => part !== "").join("\n"),
   };
+}
+
+/** The CLI's first line for a budget stop, in the budget's currency. */
+function budgetLine(stop: BudgetStop, workflow: string, step: string): string {
+  const budget = moneyAmount(stop.budget, stop.currency);
+  return stop.per === "run"
+    ? runPageWords.budgetPerRun(workflow, step, budget, moneyAmount(stop.spent, stop.currency))
+    : runPageWords.budgetPerMonth(workflow, step, budget);
+}
+
+/** The second line: change the budget, and for a monthly budget when it resets. */
+function budgetFix(stop: BudgetStop, summary: RunSummary): string {
+  return stop.per === "run"
+    ? runPageWords.budgetChangePerRun
+    : runPageWords.budgetChangeMonthly(budgetResetsOn(summary.endedAt ?? summary.startedAt));
 }
 
 function needsYou(text: string): RunBanner {

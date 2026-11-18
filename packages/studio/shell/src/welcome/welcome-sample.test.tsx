@@ -119,6 +119,59 @@ verifies("shell.welcome-sample", () => {
     expect(sampleButton(root)?.getAttribute("aria-busy")).not.toBe("true");
   });
 
+  it("tries again by itself, then says the engine isn't answering after 10 seconds", async () => {
+    vi.useFakeTimers();
+    try {
+      const onTrySample = vi.fn(async () => ({
+        folder: "~/Documents",
+        reason: "The desktop shell gave no answer",
+        unavailable: true as const,
+      }));
+      const root = render(
+        <Welcome onOpenFolder={async () => undefined} onTrySample={onTrySample} />,
+      );
+
+      await act(async () => sampleButton(root)?.click());
+      await act(async () => vi.advanceTimersByTimeAsync(5_000));
+
+      expect(sampleButton(root)?.getAttribute("aria-busy")).toBe("true");
+      expect(root.querySelector('[role="alert"]')?.textContent).toBe("");
+
+      await act(async () => vi.advanceTimersByTimeAsync(6_000));
+
+      const line = root.querySelector('[role="alert"]')?.textContent;
+      expect(line).toBe(
+        "Can't create the sample in ~/Documents: the engine isn't answering. It may still be starting.",
+      );
+      expect(line).not.toMatch(/shell/i);
+      expect(sampleButton(root)?.getAttribute("aria-busy")).not.toBe("true");
+      expect(onTrySample.mock.calls.length).toBeGreaterThan(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("carries on by itself when the engine answers during the wait", async () => {
+    vi.useFakeTimers();
+    try {
+      const onTrySample = vi
+        .fn<() => Promise<WelcomeSampleProblem | undefined>>()
+        .mockResolvedValueOnce({ folder: "~/Documents", reason: "x", unavailable: true })
+        .mockResolvedValue(undefined);
+      const root = render(
+        <Welcome onOpenFolder={async () => undefined} onTrySample={onTrySample} />,
+      );
+
+      await act(async () => sampleButton(root)?.click());
+      await act(async () => vi.advanceTimersByTimeAsync(1_500));
+
+      expect(onTrySample).toHaveBeenCalledTimes(2);
+      expect(root.querySelector('[role="alert"]')?.textContent).toBe("");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("ends a sample's Recent row in a Sample tag, and names it in the row's label", () => {
     const root = render(
       <Welcome

@@ -1,7 +1,7 @@
 # sandbox-srt.windows-command-line
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-9774, HAL-196
 
 The sandbox-srt adapter shall build the command line it runs through `cmd.exe` on Windows so that it never starts with a double quote, whatever variables the program has, because `cmd.exe /c` removes the first and last quote of a line that starts with one.

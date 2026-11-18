@@ -109,7 +109,13 @@ export function WorkspaceWindow({
       ? undefined
       : async (): Promise<WelcomeSampleProblem | undefined> => {
           const made = await sample.create(knownSamples());
-          if (made.kind === "cant") return { folder: made.folder, reason: made.reason };
+          if (made.kind === "cant") {
+            return {
+              folder: made.folder,
+              reason: made.reason,
+              ...(made.unavailable === true ? { unavailable: true as const } : {}),
+            };
+          }
           await openSample(made, createdLine);
           return undefined;
         };
@@ -184,6 +190,7 @@ export function WorkspaceWindow({
     creating && newWorkspace !== undefined ? (
       <NewWorkspaceDialog
         host={newWorkspace}
+        announce={(line) => shell.announcer.announce(line)}
         onCancel={() => setCreating(false)}
         onOpen={(folder) => {
           setCreating(false);

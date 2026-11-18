@@ -1,7 +1,7 @@
 # sign-in.kit-attacks
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-8618 (HAL-984 design, section 8: attack cases T1 to T3, T12, T14 and T16)
 
 The kit, loaded with the real sign-in tokens against a hostile provider and integration, shall place a sign-in's access token only the way and only on the hosts its sheet says, never place or reveal a client secret, never let an integration reach a sign-in's stored grant, and send the client secret only to the sign-in's token and revoke endpoints.
