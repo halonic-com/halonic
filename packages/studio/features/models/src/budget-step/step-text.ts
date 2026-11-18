@@ -21,7 +21,7 @@ export const HONEST_LINE =
   "Runs stop at an estimated budget. Costs are estimated from the prices you enter.";
 export const HOW_THE_BUDGET_WORKS = "How the budget works";
 export const BUDGET_DETAILS = [
-  "Halonic checks the budget before each model call, so calls already under way can take a run over it.",
+  "Halonic checks the budget before each agent step, so the last step can take a run over it.",
   "Calls without a price don't count towards the budget.",
   "Budgets apply to runs. Chats and the assistant aren't counted yet.",
   "Per run, each child run counts on its own.",

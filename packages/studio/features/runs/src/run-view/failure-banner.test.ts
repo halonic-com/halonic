@@ -292,7 +292,7 @@ verifies("runs.run-view.failure-banners", () => {
     const linesOf = (banner: ReturnType<typeof stopped>) =>
       banner?.kind === "callout" ? banner.lines : undefined;
     const checks =
-      "Halonic checks the budget before each model call, so calls already under way can take a run over it.";
+      "Halonic checks the budget before each agent step, so the last step can take a run over it.";
 
     it("says the CLI's first line and Studio's second for a run's budget", () => {
       const banner = stopped("budget.run", { limit: "5", spent: "5.08", currency: "EUR" });
