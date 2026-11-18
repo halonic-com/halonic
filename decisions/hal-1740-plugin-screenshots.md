@@ -1,9 +1,8 @@
 # Decision: upload the plugin screens' screenshots with the studio screenshots
 
 - Task: HAL-1740
-- Approval: Liam approves this change on HAL-1740 (pending: link the approving comment here before signing).
+- Approval: https://paperclip.halonic.com/HAL/issues/HAL-12251#comment-00271915-7da5-40c7-87b8-10ba46aecdb5 (Liam approved the plugins screenshots path in the studio-screenshots upload)
 - Kind: internal
-- Signature: pending
 
 ## What changes
 
