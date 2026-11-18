@@ -99,7 +99,9 @@ export class NoiseSession {
       (remotePublicKey !== undefined) === wantsRemote &&
       keys.every((key) => key.length === keyBytes);
     this.#call((noise) => {
-      if (!fits) return -1;
+      // `#input` and `#output` trust the buffers to hold one Noise message:
+      // check that once, before the first byte goes in.
+      if (!fits || noise.noise_buffer_bytes() !== noiseMaxMessageBytes) return -1;
       const input = this.#input(noise, keys.length * keyBytes + prologue.length);
       let at = 0;
       for (const bytes of [...keys, prologue]) {

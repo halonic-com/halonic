@@ -18,3 +18,4 @@ copied.
 - Given a 65,535-byte transport message, then it goes through; given 65,536 bytes, then the
   session ends.
 - Given an instance that traps, then the session ends and its memory is zeroed.
+- Given an instance whose buffers don't hold 65,535 bytes, then the session doesn't start.

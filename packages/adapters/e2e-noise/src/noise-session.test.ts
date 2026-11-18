@@ -158,6 +158,20 @@ verifies("e2e-noise.fails-for-good", () => {
     expect(memoryIsZero(instance)).toBe(true);
   });
 
+  it("refuses an instance whose buffers don't hold one Noise message", () => {
+    const { instantiate, instances } = keepingInstances();
+    const smaller: InstantiateNoise = (randomFill) => ({
+      ...instantiate(randomFill),
+      noise_buffer_bytes: () => noiseMaxMessageBytes - 1,
+    });
+    expect(() => NoiseSession.start(pairingOptions("responder"), smaller)).toThrow(
+      NoiseSessionError,
+    );
+    const [instance] = instances;
+    if (instance === undefined) throw new Error("no instance");
+    expect(memoryIsZero(instance)).toBe(true);
+  });
+
   it("refuses keys that don't fit the handshake or the role", () => {
     const remotePublicKey = publicKeyOf(hostKey);
     const refused: NoiseSessionOptions[] = [

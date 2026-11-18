@@ -3,5 +3,4 @@
 *.ico binary
 *.icns binary
 *.woff2 binary
-*.wasm binary
 pnpm-lock.yaml linguist-generated=true -diff
