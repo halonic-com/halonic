@@ -1,4 +1,4 @@
-import type { SandboxBlock, SandboxProfile } from "@halonicjs/ports";
+import { type SandboxBlock, type SandboxProfile, sandboxResiduals } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { FakeHost, ok, refused } from "./fake-host.test-helper.ts";
@@ -54,6 +54,13 @@ verifies("agent-host-client.sandbox", () => {
       expect(await sandbox.check()).toEqual(check);
       host.answer("GET /v1/sandbox/check", ok({ ...check, residuals: ["somewhere-else"] }));
       await expect(sandbox.check()).rejects.toMatchObject({ kind: "answer_invalid" });
+    });
+
+    it("answers a passing check with every residual the port names", async () => {
+      const check = { ok: true, reason: null, missing: [], residuals: [...sandboxResiduals] };
+      const host = hostWithSession().answer("GET /v1/sandbox/check", ok(check));
+      const sandbox = await AgentHostSandbox.connect(host);
+      expect(await sandbox.check()).toEqual(check);
     });
 
     it("opens a session in the host with the profile unchanged", async () => {
