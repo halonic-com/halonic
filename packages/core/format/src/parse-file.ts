@@ -4,6 +4,7 @@ import type { YamlProblem } from "@halonicjs/yaml";
 import type { FileKind, KindCheckProblem } from "./kind.ts";
 import { fileKinds, type KindName, type KindValues } from "./registry.ts";
 import { isMap } from "./shared/legacy-keys.ts";
+import { wordIssues } from "./shared/missing-keys.ts";
 import { readSource, type Source } from "./source.ts";
 
 /**
@@ -77,7 +78,8 @@ export function parseFile<Name extends KindName>(
   const prepared = prepare(fileKind, source.data, options.id);
   const parsed = parse(fileKind.schema, prepared.data);
   if (!parsed.ok) {
-    const problems = parsed.error.map((issue) => schemaProblem(issue, source));
+    const issues = wordIssues(parsed.error, prepared.data);
+    const problems = issues.map((issue) => schemaProblem(issue, source));
     return err(
       prepared.idFromPlace ? problems.map((problem) => namePlaceId(problem, options.id)) : problems,
     );
