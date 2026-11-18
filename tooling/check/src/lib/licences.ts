@@ -2,6 +2,7 @@
  * The licence check: exact SPDX IDs, with `OR`, `AND`, `WITH` and
  * parentheses understood. Shipped code and dev tooling have separate lists.
  */
+import type { GradlePolicy } from "./gradle-notices.ts";
 
 /** The contents of `tooling/check/licences.json`. */
 export interface LicencePolicy {
@@ -13,6 +14,8 @@ export interface LicencePolicy {
   readonly corrections: Readonly<Record<string, string>>;
   /** Third-party files copied into `packages/` or `apps/`, each reviewed by Julian. */
   readonly vendored?: readonly VendoredFile[];
+  /** The Android app's Gradle libraries (HAL-12585). */
+  readonly gradle?: GradlePolicy;
 }
 
 /** One third-party file checked in as source, with where it came from. */

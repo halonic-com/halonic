@@ -218,3 +218,22 @@ export function renderNotices(product: string, sections: readonly NoticeSection[
   const header = `${product} includes the third-party software listed below.\n`;
   return `${[header, ...parts].join(`\n${rule}\n\n`)}\n`;
 }
+
+/**
+ * Puts our own `LICENSE` and `NOTICE` above the third-party notices, for a
+ * build that ships one file with all of them, such as the Android app's
+ * asset (HAL-12585). The Windows installer installs the two files on their own.
+ */
+export function withOwnLicence(
+  product: string,
+  licence: string,
+  notice: string,
+  notices: string,
+): string {
+  const own = [
+    `${product} is licensed under the following licence.`,
+    licence.replaceAll("\r\n", "\n").trim(),
+    notice.replaceAll("\r\n", "\n").trim(),
+  ];
+  return `${own.join(`\n\n${rule}\n\n`)}\n\n${rule}\n\n${notices}`;
+}
