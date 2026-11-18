@@ -17,6 +17,7 @@ import {
   unmount,
 } from "../test-support.tsx";
 import { AgentScreen } from "./agent-page.tsx";
+import { markFreshAgent } from "./fresh-agents.ts";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
 afterEach(() => {
@@ -427,5 +428,45 @@ verifies("agents.page.menu", () => {
       action: { label: "Try again" },
     });
     expect(page.textContent).toContain("AGENT");
+  });
+});
+
+verifies("agents.page.new-agent", () => {
+  const instructionsBox = (page: HTMLElement) => page.querySelector("textarea");
+
+  it("opens a just-made agent on Behaviour with Instructions focused, and later opens on Runs", async () => {
+    markFreshAgent("acme", "sorter");
+    const first = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
+
+    const box = instructionsBox(first);
+    expect(box).not.toBeNull();
+    expect(document.activeElement).toBe(box);
+    expect(first.textContent).not.toContain("No runs with this agent yet.");
+    unmount();
+
+    const later = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
+    expect(later.textContent).toContain("No runs with this agent yet.");
+    expect(instructionsBox(later)).toBeNull();
+  });
+
+  it("leaves other agents on Runs", async () => {
+    markFreshAgent("acme", "someone-else");
+    const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
+
+    expect(page.textContent).toContain("No runs with this agent yet.");
+  });
+
+  it("doesn't take the focus again when the person leaves Behaviour and comes back", async () => {
+    markFreshAgent("acme", "sorter");
+    const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
+    const tab = (name: string) =>
+      [...page.querySelectorAll<HTMLElement>("[role=tab]")].find(
+        (each) => each.textContent === name,
+      );
+    await act(async () => tab("Model")?.click());
+    await act(async () => tab("Behaviour")?.click());
+
+    expect(instructionsBox(page)).not.toBeNull();
+    expect(document.activeElement).not.toBe(instructionsBox(page));
   });
 });

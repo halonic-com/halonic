@@ -13,6 +13,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type AgentListing, type AgentRef, type AgentsHost, AgentsHostService } from "../api.ts";
 import { NewAgentDialog } from "../new/new-agent-dialog.tsx";
+import { markFreshAgent } from "../page/fresh-agents.ts";
 import { deleteWords } from "../trash/delete-words.ts";
 import { fileItemOf } from "../trash/file-item.ts";
 import { trashAgent } from "../trash/trash-agent.ts";
@@ -315,7 +316,14 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
             listings.filter((listing) => listing.hubId === hubId).map((listing) => listing.id)
           }
           defaultModelOf={(hubId) => host.defaultModel(hubId)}
-          create={(newAgent) => host.create(newAgent)}
+          create={async (newAgent) => {
+            const ref = await host.create(newAgent);
+            // With nothing written, the page opens ready for the instructions (`agents.page.new-agent`).
+            if (newAgent.instructions === undefined || newAgent.instructions === "") {
+              markFreshAgent(ref.hubId, ref.id);
+            }
+            return ref;
+          }}
           onCreated={(ref) => {
             setCreating(false);
             read();
