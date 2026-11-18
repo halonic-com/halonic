@@ -114,9 +114,10 @@ export const toolsMessages = defineMessages("tools", {
     phrase`Approved ${tool} from ${source}, as it is now.`,
   approvedAlready: (tool: string, source: string) =>
     phrase`${tool} from ${source} is approved already.`,
-  changedSinceFingerprint: (tool: string, fingerprint: string) =>
-    phrase`Couldn't approve ${tool}: it changed since that fingerprint. It's now ${fingerprint}.`,
-  readNewVersionFirst: (command: string) => phrase`Read the new version first: ${command}`,
+  /** An old fingerprint and a made-up one look the same, so it never claims a change (HAL-12596). */
+  fingerprintNotCurrent: (tool: string, fingerprint: string) =>
+    phrase`That fingerprint doesn't match ${tool} as it is now: ${fingerprint}.`,
+  reviewItFirst: (command: string) => phrase`Review it first: ${command}`,
   refused: (tool: string, reason: string) =>
     phrase`Couldn't approve ${tool}: Halonic refused it: ${reason}.`,
   notListed: (tool: string, source: string) =>

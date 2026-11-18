@@ -193,10 +193,15 @@ export const trustMessages = defineMessages("trust", {
     phrase`--yes needs --fingerprint, so you trust exactly what you reviewed.`,
   yesNeedsFingerprintFix: (dir?: string) =>
     phrase`Run ${suggestedCommand("trust", dir)} to see it; the fingerprint is in the check, above the question.`,
-  /** `--fingerprint` doesn't match: exit 3, and never a question, also in a terminal (F5). */
-  fingerprintChanged: () => phrase`it changed since that fingerprint was made.`,
-  fingerprintChangedFix: (dir?: string) =>
-    phrase`Run ${suggestedCommand("trust", dir)} again to see what changed.`,
+  /**
+   * `--fingerprint` doesn't match: exit 3, and never a question, also in a
+   * terminal (F5). Line 1 on its own: an old fingerprint and a made-up one
+   * look the same, so it never claims the workspace changed (HAL-12596).
+   */
+  fingerprintNotCurrent: (name: string) =>
+    phrase`That fingerprint doesn't match ${name} as it is now.`,
+  fingerprintNotCurrentFix: (dir?: string) =>
+    phrase`Run ${suggestedCommand("trust", dir)} again to review it as it is now.`,
   /** No terminal, or `CI` set, and no flags that answer: exit 3 (F6), in F16's two lines (D4). */
   noTerminal: (name: string) =>
     phrase`${name} isn't trusted on this computer yet, and there's no terminal to ask you.`,
