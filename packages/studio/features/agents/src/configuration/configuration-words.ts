@@ -20,6 +20,9 @@ export const configurationWords = {
   turnLimitHint: "The most model calls in one run. Empty means 6.",
   /** Microcopy 8.5. */
   turnLimitInvalid: "Enter a whole number from 1 to 200.",
+  /** Microcopy 1.6: the field error for a model the file names that is no alias (HAL-12390 S8). */
+  unknownAlias: (name: string) =>
+    `${name} isn't a model alias in this workspace. Choose one, or add it in Models.`,
   harness: "Harness",
   harnessNames: { halonic: "Halonic", "claude-code": "Claude Code", codex: "Codex" },
   /** Microcopy 8.5, the line under a harness option. */
