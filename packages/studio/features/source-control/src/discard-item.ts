@@ -4,7 +4,8 @@ import { discardWords } from "./changes-words.ts";
 /**
  * Puts every file of an item back, one after the other, and gives one `undo` for all of them. When
  * a file can't go back, the files already put back are undone again, so the item is left as it was
- * and no discard is left without its Undo; the outcome says why the file failed. When a copy can't
+ * and no discard is left without its Undo, also a file that went back without a copy; the outcome
+ * says why the file failed. When a copy can't
  * be kept the outcome is `noCopy`, and `withoutCopy` goes on anyway, with nothing to undo.
  */
 export async function discardItem(
@@ -22,10 +23,16 @@ export async function discardItem(
       const reason = outcome.kind === "failed" ? outcome.reason : discardWords.noCopy;
       return { kind: "failed", reason: `${reason} ${rollbackFailure}` };
     }
-    if (outcome.kind === "discarded") copiesKept = false;
-    else undos.push(outcome.undo);
+    if (outcome.kind === "discarded") {
+      copiesKept = false;
+      undos.push(outcome.putBack);
+    } else {
+      undos.push(outcome.undo);
+    }
   }
-  return copiesKept ? { kind: "undone", undo: () => runUndos(undos) } : { kind: "discarded" };
+  return copiesKept
+    ? { kind: "undone", undo: () => runUndos(undos) }
+    : { kind: "discarded", putBack: () => runUndos(undos) };
 }
 
 /** Runs the undos, the last discard first; stops at the first one that fails and gives its reason. */

@@ -23,5 +23,5 @@ export async function discardWithCopy(
   }
   const reason = await run();
   if (reason !== undefined) return { kind: "failed", reason };
-  return kept ? { kind: "undone", undo } : { kind: "discarded" };
+  return kept ? { kind: "undone", undo } : { kind: "discarded", putBack: undo };
 }
