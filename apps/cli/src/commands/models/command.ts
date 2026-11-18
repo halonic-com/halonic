@@ -17,6 +17,7 @@ export function modelsCommandWith(setup: SecretSetup): CliCommand {
       {
         name: "allow-address",
         usage: "<key-name> <address>",
+        takesArguments: true,
         summary: modelsMessages.allowAddressSummary(),
         options: {},
         run: (input, context) => allowAddress(input, context, setup),

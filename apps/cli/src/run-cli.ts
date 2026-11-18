@@ -18,6 +18,7 @@ import { usageMessages } from "./messages/general.ts";
 import { helpMessages } from "./messages/help.ts";
 import type { Phrase } from "./messages/phrase.ts";
 import { nearMatch } from "./near-match.ts";
+import { printable } from "./output/printable.ts";
 import { type Printer, printerFor } from "./output/printer.ts";
 import { type Clock, terminalLine } from "./output/progress.ts";
 import { canAsk, type QuestionTerminal } from "./output/question.ts";
@@ -316,10 +317,7 @@ async function runCommand(
     if (!options.json && input.options[command.jsonLinesOption ?? ""] === true) {
       throw new UsageError(usageMessages.needsJson(`--${command.jsonLinesOption}`));
     }
-    const misplaced = misplacedWord(path, input.positionals[0]);
-    if (misplaced !== undefined) {
-      throw misplaced;
-    }
+    checkArguments(path, input.positionals);
     if (command.run === undefined) {
       return exitCode.usage;
     }
@@ -410,6 +408,56 @@ function unknownSubcommand(path: CommandPath, word: string): UsageError {
       ? usageMessages.unknownCommand(`${words} ${word}`)
       : usageMessages.unknownCommandNear(`${words} ${word}`, `${words} ${near}`);
   return new UsageError(problem, usageMessages.seeSubcommands(words));
+}
+
+/**
+ * Refuses the arguments the command doesn't read, rather than run without them.
+ *
+ * @throws UsageError for a word after the options of a command with
+ *   subcommands that isn't its own argument, or any argument to a command
+ *   that takes none
+ */
+function checkArguments(path: CommandPath, positionals: readonly string[]): void {
+  const command = lastOf(path);
+  const [word] = positionals;
+  if (word === undefined || command.takesArguments === true) {
+    return;
+  }
+  // A word after the options of a command with subcommands names a subcommand, unless the
+  // command takes arguments beside them (`deploy web`).
+  if (command.subcommands !== undefined) {
+    const misplaced = misplacedWord(path, word);
+    if (misplaced !== undefined) {
+      throw misplaced;
+    }
+    return;
+  }
+  // Any other would drop them unread, so `validate ./lt` would check the current folder.
+  throw strayArguments(path, positionals);
+}
+
+/**
+ * The usage error for arguments given to a command that takes none. One
+ * argument gets the command's own fix, or else `--dir` with it when the
+ * command has that option; several get the usage line, as there's no one
+ * folder to suggest.
+ */
+function strayArguments(path: CommandPath, given: readonly string[]): UsageError {
+  const command = lastOf(path);
+  const words = commandWords(path);
+  const shown = given.map(printable);
+  const problem = usageMessages.takesNoArguments(words, shown);
+  const [argument] = shown;
+  if (shown.length !== 1 || argument === undefined) {
+    return new UsageError(problem);
+  }
+  if (command.strayArgumentFix !== undefined) {
+    return new UsageError(problem, command.strayArgumentFix(argument));
+  }
+  if (Object.hasOwn(command.options, "dir")) {
+    return new UsageError(problem, usageMessages.useDirOption(words, argument));
+  }
+  return new UsageError(problem);
 }
 
 /**

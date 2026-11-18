@@ -206,6 +206,21 @@ export interface CliCommand {
   readonly name: string;
   /** The arguments after the name, for the help, such as `<dir> [--hub <id>]`. */
   readonly usage: string;
+  /**
+   * Whether the command reads arguments that aren't options, such as `run`'s
+   * `<workflow>`; it then checks how many itself. Left out, it takes none,
+   * and `runCli` refuses one with a usage error before the command runs, so
+   * `halonic validate ./lt` never quietly checks the current folder instead
+   * (HAL-12639).
+   */
+  readonly takesArguments?: boolean;
+  /**
+   * The fix for an argument given to a command that takes none, such as
+   * `validate`'s pointer to `halonic plugin add` for a plugin folder. Left
+   * out, a command with `--dir` suggests it for the argument, and any other
+   * shows its usage line.
+   */
+  strayArgumentFix?(argument: string): Message;
   /** One line for the command list, from the command's area of the catalogue (cli-output 1.9). */
   readonly summary: Message;
   /**

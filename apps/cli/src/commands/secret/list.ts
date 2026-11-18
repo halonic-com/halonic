@@ -1,12 +1,7 @@
 // `halonic secret list`: the names of the saved secrets, never a value. A
 // thin command over `SecretService.list`.
 
-import {
-  type CommandContext,
-  type CommandInput,
-  type CommandResult,
-  UsageError,
-} from "../../command.ts";
+import type { CommandContext, CommandInput, CommandResult } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
 import { phrase } from "../../messages/phrase.ts";
 import { secretMessages } from "../../messages/secret.ts";
@@ -15,18 +10,14 @@ import { openSecretService, type SecretSetup } from "../../secret-host.ts";
 
 /**
  * Lists the saved secrets' names, one per line, in name order. No secrets
- * says so, and exits 0.
- *
- * @throws UsageError when given an argument
+ * says so, and exits 0. An argument never reaches it: `runCli` refuses
+ * one, as for every command that takes none.
  */
 export async function listSecrets(
-  input: CommandInput,
+  _input: CommandInput,
   _context: CommandContext,
   setup: SecretSetup,
 ): Promise<CommandResult> {
-  if (input.positionals.length > 0) {
-    throw new UsageError(secretMessages.listTakesNone(), secretMessages.listUsage());
-  }
   const names = await openSecretService(setup).list();
   return {
     exitCode: exitCode.ok,

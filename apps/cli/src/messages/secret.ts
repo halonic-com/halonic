@@ -30,9 +30,6 @@ export const secretMessages = defineMessages("secret", {
   valueAsArgument: () => phrase`A secret's value can't be given as an argument.`,
   valueAsArgumentFix: (name: string) =>
     phrase`Type it at the prompt, or pipe it in: halonic secret set ${name} < file`,
-  /** `list` takes no arguments. */
-  listTakesNone: () => phrase`halonic secret list takes no arguments.`,
-  listUsage: () => phrase`halonic secret list`,
 
   /** The service's own refusal, such as a name that isn't allowed; nothing was saved or removed. */
   refused: (reason: string) => phrase`${reason}`,

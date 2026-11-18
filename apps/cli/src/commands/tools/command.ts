@@ -22,6 +22,7 @@ export function toolsCommandWith(machine: () => ToolsMachine): CliCommand {
       {
         name: "review",
         usage: "<source> [--dir <folder>]",
+        takesArguments: true,
         summary: toolsMessages.reviewSummary(),
         action: listAction,
         options: { dir: dirOption },
@@ -30,6 +31,7 @@ export function toolsCommandWith(machine: () => ToolsMachine): CliCommand {
       {
         name: "approve",
         usage: "<source> <tool>... [--fingerprint <fingerprint>] | <source> --all [--dir <folder>]",
+        takesArguments: true,
         summary: toolsMessages.approveSummary(),
         action: listAction,
         options: {
@@ -42,6 +44,7 @@ export function toolsCommandWith(machine: () => ToolsMachine): CliCommand {
       {
         name: "revoke",
         usage: "<source> <tool>... [--dir <folder>]",
+        takesArguments: true,
         summary: toolsMessages.revokeSummary(),
         action: revokeAction,
         options: { dir: dirOption },
