@@ -114,9 +114,9 @@ function RowMarks({ node }: { node: TreeNode }) {
   const warnings = warningsShown(node);
   return (
     <span className="ml-auto flex shrink-0 items-center gap-1" aria-hidden="true">
-      {outside && <span className="text-xs text-fg-muted">✎</span>}
-      {warnings > 0 && <span className="text-xs text-warning">△ {warnings}</span>}
-      {errors > 0 && <span className="text-xs text-danger">✕ {errors}</span>}
+      {outside && <span className="text-caption text-fg-muted">✎</span>}
+      {warnings > 0 && <span className="text-caption text-warning">△ {warnings}</span>}
+      {errors > 0 && <span className="text-caption text-danger">✕ {errors}</span>}
     </span>
   );
 }
@@ -260,7 +260,7 @@ export function FilesTree({
               // The marks are not read along with the name field while it is edited.
               aria-description={descriptionOf(node, label, renaming?.path)}
               title={node.name.length > nameLimit ? node.name : undefined}
-              className={`group flex min-h-8 cursor-pointer items-center gap-1 rounded-sm pr-2 text-sm text-fg outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-accent aria-selected:bg-accent-soft`}
+              className={`group flex min-h-8 cursor-pointer items-center gap-1 rounded-sm pr-2 text-body text-fg outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-accent aria-selected:bg-accent-soft`}
               style={{ paddingLeft: `${row.depth * 16 + 4}px` }}
               onClick={(event) => {
                 event.stopPropagation();
