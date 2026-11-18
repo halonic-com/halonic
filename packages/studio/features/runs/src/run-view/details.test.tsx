@@ -26,7 +26,7 @@ verifies("runs.run-view.details", () => {
       "Started by",
       "Ran on",
     ]);
-    expect(root.querySelectorAll("dd")[1]?.textContent).toBe("Ran the saved files.");
+    expect(root.querySelectorAll("dd")[1]?.textContent).toBe("The saved files.");
     expect(root.querySelector("section")?.lastElementChild?.textContent).toBe(
       "run_mfx3k2a1_01jd8q",
     );

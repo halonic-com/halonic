@@ -85,7 +85,7 @@ verifies("runs.run-page", () => {
 
     expect(root.querySelector("h1")?.textContent).toBe("Run 7k2m9p");
     expect(root.querySelector("header")?.textContent).toBe(
-      "Run · Support replyRun 7k2m9pRunningtoday 10:40 · updates live",
+      "Support replyRun 7k2m9pRunningtoday 10:40 · updates live",
     );
     expect(root.querySelector("section[aria-label]")).toBeNull();
   });

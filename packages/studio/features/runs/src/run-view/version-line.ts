@@ -33,8 +33,8 @@ export interface VersionLine {
  *
  * @example
  * versionLine({ reads: "live-version", commit: "3f2a1c9e…", versionDate: "2026-11-10T10:42:00Z" }, now);
- * // { text: "Ran the live version from 10 Nov, 10:42.", tooltip: "Commit 3f2a1c9" }
- * versionLine({ reads: "saved-files" }, now); // { text: "Ran the saved files." }
+ * // { text: "The live version from 10 Nov, 10:42.", tooltip: "Commit 3f2a1c9" }
+ * versionLine({ reads: "saved-files" }, now); // { text: "The saved files." }
  * versionLine(undefined, now); // { text: "Version not recorded." }
  */
 export function versionLine(version: RunVersion | undefined, now: Date): VersionLine {
@@ -42,10 +42,10 @@ export function versionLine(version: RunVersion | undefined, now: Date): Version
     return { text: "Version not recorded." };
   }
   if (version.reads === "saved-files") {
-    return { text: "Ran the saved files." };
+    return { text: "The saved files." };
   }
   return {
-    text: `Ran the live version from ${versionTime(new Date(version.versionDate), now)}.`,
+    text: `The live version from ${versionTime(new Date(version.versionDate), now)}.`,
     tooltip: `Commit ${version.commit.slice(0, shortCommitLength)}`,
   };
 }

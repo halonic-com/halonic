@@ -51,7 +51,7 @@ The run page says under its title what the run ran, from the version its run.sta
 import { RunVersionLine } from "./run-view/run-version-line.tsx";
 
 <RunVersionLine version={started.version} now={new Date()} />;
-// "Ran the live version from 10:42." (commit in the tooltip), "Ran the saved files."
+// "The live version from 10:42." (commit in the tooltip), "The saved files."
 // or, for a run from before the log recorded it, "Version not recorded."
 ```
 
@@ -103,7 +103,7 @@ A run is its own item kind, `run`, one run per tab. A row of the Runs list, or a
 ```ts
 import { runBanner, runHeader } from "./run-view/run-page-model.ts";
 
-runHeader(run, context); // { title: "Run 01jd8q", kindLabel: "Run · Support reply", line: "today 10:40 · updates live", … }
+runHeader(run, context); // { title: "Run 01jd8q", kindLabel: "Support reply", line: "today 10:40 · updates live", … }
 runBanner(run, context); // { kind: "callout", tone: "warning", name: "Waiting for you", action: { kind: "review-in-inbox" }, … }
 ```
 

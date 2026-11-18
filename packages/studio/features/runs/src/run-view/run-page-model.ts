@@ -15,7 +15,7 @@ import { type BudgetStop, budgetResetsOn, budgetStopOf } from "./budget-stop.ts"
 export interface RunHeader {
   /** "Run 01jd8q", the page's `h1` and the tab's name. */
   readonly title: string;
-  /** "Run · Support reply". */
+  /** "Support reply". */
   readonly kindLabel: string;
   readonly chip: RunChip;
   /** "today 10:40 · took 2 min 10 s", or "today 10:40 · updates live" while the run is live. */
@@ -89,7 +89,7 @@ export interface RunPageContext {
  *
  * @example
  * runHeader(run, context);
- * // { title: "Run 01jd8q", kindLabel: "Run · Support reply", line: "today 10:40 · updates live", … }
+ * // { title: "Run 01jd8q", kindLabel: "Support reply", line: "today 10:40 · updates live", … }
  */
 export function runHeader(run: SourcedRun, context: RunPageContext): RunHeader {
   // The header doesn't say what started the run yet, so it needs no routine.
