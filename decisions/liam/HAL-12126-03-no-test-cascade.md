@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-12126 asks for this change, from the new-user flow check on HAL-12121; Liam decided it as maintainer and wrote it, so Julian signs.
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:8pbMfjkj5Ly3n8TxTiyB9mxJ3tN34mID6j58P8qQJFOI3g0K36QQzY7Xac1kVD3kLNc8Zq7V94HTLC9b86ODCA==
 
 ## What changes
 
