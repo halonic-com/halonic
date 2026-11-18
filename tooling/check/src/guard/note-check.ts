@@ -6,6 +6,7 @@ import {
   decisionNoteFile,
   parseDecisionNote,
 } from "./decision-notes.ts";
+import { guardDependencyChanged, guardDependencyFiles } from "./guard-dependencies.ts";
 import { guardedPaths, onlyExtraExportsChanged, policyFile } from "./guarded-paths.ts";
 import { approversFile, type GitObjects } from "./signatures.ts";
 
@@ -87,22 +88,17 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
     );
   }
   const { touched, exports, changed } = touchedPaths(run);
+  const ownChanges = ownChangeList(touched, exports, guardDependencyFilesChanged(run));
   const text = run.git.readFile(run.pull.head, file);
   const rewritten = rewrittenNotes(run);
   if (text === undefined) {
     for (const path of rewritten) {
       report.error(path, rewrittenWithoutNote(path, file));
     }
-    for (const path of touched) {
+    for (const { path, what, need } of ownChanges) {
       report.error(
         path,
-        `Changes the guard's own path ${path}. That needs a signed decision note: add ${file} and list "${path}" under Covers.`,
-      );
-    }
-    for (const path of exports) {
-      report.error(
-        path,
-        `Changes extraExports in ${path}. That needs a signed note (internal is enough): add ${file} and list "${path}" under Covers.`,
+        `${what}. That needs ${need}: add ${file} and list "${path}" under Covers.`,
       );
     }
     return report;
@@ -123,18 +119,10 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
   for (const message of rewrittenNoteProblems(rewritten, parsed.note)) {
     report.error(file, message);
   }
-  const unlisted = (path: string): boolean => !parsed.note.covers.includes(path);
-  for (const path of touched.filter(unlisted)) {
-    report.error(
-      file,
-      `Changes the guard's own path ${path}, but the note doesn't list "${path}" under Covers.`,
-    );
-  }
-  for (const path of exports.filter(unlisted)) {
-    report.error(
-      file,
-      `Changes extraExports in ${path}, but the note doesn't list "${path}" under Covers.`,
-    );
+  for (const { path, what } of ownChanges) {
+    if (!parsed.note.covers.includes(path)) {
+      report.error(file, `${what}, but the note doesn't list "${path}" under Covers.`);
+    }
   }
   const verdict = await signedApprovals(run.pull, run.git).check({
     note: parsed.note,
@@ -144,6 +132,35 @@ export async function checkNotes(run: NoteCheckRun): Promise<Report> {
     report.error(file, `The note's approval isn't verified: ${verdict.reason}.`);
   }
   return report;
+}
+
+/** One own-path change the note must cover: the path, what changed, and what kind of note it needs. */
+interface OwnChange {
+  readonly path: string;
+  readonly what: string;
+  readonly need: string;
+}
+
+/** The paths the guard watches, in report order: own paths, `extraExports`, then the npm package's entries. */
+function ownChangeList(
+  touched: readonly string[],
+  exports: readonly string[],
+  dependencies: readonly string[],
+): OwnChange[] {
+  const internal = "a signed note (internal is enough)";
+  return [
+    ...touched.map((path) => ({
+      path,
+      what: `Changes the guard's own path ${path}`,
+      need: "a signed decision note",
+    })),
+    ...exports.map((path) => ({ path, what: `Changes extraExports in ${path}`, need: internal })),
+    ...dependencies.map((path) => ({
+      path,
+      what: `Changes the entries for the npm package the guard runs in ${path}`,
+      need: internal,
+    })),
+  ];
 }
 
 /** The folder of decision notes. */
@@ -265,6 +282,22 @@ export function reachesTrustRoot(
 /** Whether `file` is a trust root, or under one that ends in `/`. */
 export function isTrustRoot(file: string): boolean {
   return matches(trustRoots, file);
+}
+
+/**
+ * The files whose lines for the npm package the guard runs changed, which
+ * need a note of either kind (HAL-7719), compared at the merge base.
+ */
+function guardDependencyFilesChanged(run: NoteCheckRun): string[] {
+  return guardDependencyFiles.filter(
+    (file) =>
+      run.changed.includes(file) &&
+      guardDependencyChanged(
+        file,
+        run.git.readFile(run.mergeBase, file),
+        run.git.readFile(run.pull.head, file),
+      ),
+  );
 }
 
 /** Whether `file` is one of `paths`, or under one that ends in `/`. */

@@ -1,9 +1,27 @@
-import { Button, EmptyState, SkeletonBar, usePresentation } from "@halonicjs/studio-kit";
+import {
+  Button,
+  EmptyState,
+  SkeletonBar,
+  type Tab,
+  TabList,
+  TabPanel,
+  usePresentation,
+  useTabIds,
+} from "@halonicjs/studio-kit";
 import { ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
-import { useMemo, useRef } from "react";
-import { type AgentRef, type AgentsHost, AgentsHostService } from "../api.ts";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type AgentChange,
+  type AgentRef,
+  type AgentSettings,
+  type AgentsHost,
+  AgentsHostService,
+} from "../api.ts";
+import { Configuration } from "../configuration/configuration.tsx";
+import { configurationWords } from "../configuration/configuration-words.ts";
 import { Avatar } from "../list/agent-rows.tsx";
 import { pageWords } from "./page-words.ts";
+import { RenameField } from "./rename-field.tsx";
 import { useLoad } from "./use-load.ts";
 
 /** The agent's page in its tab: `item` names the agent, the host reads its row. */
@@ -42,6 +60,53 @@ export function AgentScreen({ host, hubId, id, goToAgents }: AgentScreenProps) {
   );
   const phone = usePresentation() === "phone";
   const { load, retry } = useLoad(source, () => title.current?.focus());
+  const settingsSource = useMemo(
+    () => ({
+      fetch: () => host.settings({ hubId, id }),
+      subscribe: (onChange: () => void) => host.subscribe(onChange),
+    }),
+    [host, hubId, id],
+  );
+  const settings = useLoad<AgentSettings>(settingsSource);
+  const [takenNames, setTakenNames] = useState<readonly string[]>([]);
+  // The other agents' names, for the rename check; read again when a file changes.
+  useEffect(() => {
+    const read = () =>
+      host
+        .list()
+        .then((agents) =>
+          setTakenNames(
+            agents
+              .filter((agent) => agent.hubId === hubId && agent.id !== id)
+              .map((agent) => agent.name),
+          ),
+        )
+        .catch(() => setTakenNames([]));
+    void read();
+    return host.subscribe(() => void read());
+  }, [host, hubId, id]);
+  const [aliases, setAliases] = useState<readonly string[]>([]);
+  // The hub's model aliases for the Model page; read again when a file changes.
+  useEffect(() => {
+    const read = () =>
+      host
+        .modelAliases({ hubId, id })
+        .then(setAliases)
+        .catch(() => setAliases([]));
+    void read();
+    return host.subscribe(() => void read());
+  }, [host, hubId, id]);
+  const [view, setView] = useState<AgentView>("runs");
+  const [saveFailed, setSaveFailed] = useState<string>();
+  const ids = useTabIds();
+  const save = async (change: AgentChange) => {
+    try {
+      await host.update({ hubId, id }, change);
+      setSaveFailed(undefined);
+    } catch (error) {
+      setSaveFailed(error instanceof Error ? error.message : pageWords.saveFailed);
+    }
+  };
   if (load.kind === "failed" && load.gone === true && goToAgents !== undefined) {
     return <ItemGone kindName="agent" place="Agents" onGoTo={goToAgents} />;
   }
@@ -59,42 +124,82 @@ export function AgentScreen({ host, hubId, id, goToAgents }: AgentScreenProps) {
         <div className="flex flex-col">
           <p className="text-caption text-fg-muted">{pageWords.kind}</p>
           {/* On a phone the top bar already names the agent, so the page keeps only its type. */}
-          <h1 ref={title} tabIndex={-1} className={phone ? "sr-only" : "text-title outline-none"}>
+          <h1 ref={title} tabIndex={-1} className="sr-only">
             {name}
           </h1>
+          {!phone && load.kind === "ready" && (
+            <RenameField
+              name={name}
+              takenNames={takenNames}
+              onRename={(next) => void save({ name: next })}
+            />
+          )}
         </div>
+        <TabList
+          label={pageWords.views}
+          tabs={agentTabs}
+          selected={view}
+          onSelect={setView}
+          ids={ids}
+        />
       </header>
-      <div className="min-w-0 flex-1 overflow-auto p-6">
-        {load.kind === "ready" && (
-          <section aria-label={pageWords.runsHeading} className="flex flex-col gap-2">
-            <h2 className="text-caption text-fg-muted">{pageWords.runsHeading}</h2>
-            <p className="text-small text-fg-muted">{pageWords.noRuns}</p>
-          </section>
-        )}
-        {load.kind === "failed" && (
-          <EmptyState
-            tone="error"
-            title={pageWords.loadFailedTitle}
-            description={load.reason}
-            action={{ label: pageWords.tryAgain, onClick: retry, busy: load.retrying }}
+      {saveFailed !== undefined && (
+        <p role="alert" className="border-b border-border px-6 py-2 text-small text-danger">
+          {pageWords.couldntSave(saveFailed)}
+        </p>
+      )}
+      <TabPanel ids={ids} tabs={agentTabs} selected={view} className="flex min-h-0 flex-1 flex-col">
+        {view === "configuration" ? (
+          <Configuration
+            host={host}
+            name={name}
+            load={settings.load}
+            aliases={aliases}
+            retry={settings.retry}
+            save={save}
           />
-        )}
-        {load.kind === "loading" && load.skeleton && (
-          <div role="status" className="flex flex-col gap-4">
-            <span className="sr-only">{pageWords.loading(name)}</span>
-            <SkeletonBar kind="value" />
-            <SkeletonBar kind="value" />
-            {load.slow && (
-              <p className="flex items-center gap-3 text-small text-fg-muted">
-                {pageWords.stillLoading}
-                <Button variant="secondary" size="sm" onClick={retry}>
-                  {pageWords.tryAgain}
-                </Button>
-              </p>
+        ) : (
+          <div className="min-w-0 flex-1 overflow-auto p-6">
+            {load.kind === "ready" && (
+              <section aria-label={pageWords.runsHeading} className="flex flex-col gap-2">
+                <h2 className="text-caption text-fg-muted">{pageWords.runsHeading}</h2>
+                <p className="text-small text-fg-muted">{pageWords.noRuns}</p>
+              </section>
+            )}
+            {load.kind === "failed" && (
+              <EmptyState
+                tone="error"
+                title={pageWords.loadFailedTitle}
+                description={load.reason}
+                action={{ label: pageWords.tryAgain, onClick: retry, busy: load.retrying }}
+              />
+            )}
+            {load.kind === "loading" && load.skeleton && (
+              <div role="status" className="flex flex-col gap-4">
+                <span className="sr-only">{pageWords.loading(name)}</span>
+                <SkeletonBar kind="value" />
+                <SkeletonBar kind="value" />
+                {load.slow && (
+                  <p className="flex items-center gap-3 text-small text-fg-muted">
+                    {pageWords.stillLoading}
+                    <Button variant="secondary" size="sm" onClick={retry}>
+                      {pageWords.tryAgain}
+                    </Button>
+                  </p>
+                )}
+              </div>
             )}
           </div>
         )}
-      </div>
+      </TabPanel>
     </div>
   );
 }
+
+type AgentView = "configuration" | "runs";
+
+/** The page's views, as far as they are built: Flow and the Try it chat join them later. */
+const agentTabs: readonly Tab<AgentView>[] = [
+  { id: "runs", label: pageWords.runsHeading },
+  { id: "configuration", label: configurationWords.tab },
+];

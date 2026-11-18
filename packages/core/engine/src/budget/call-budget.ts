@@ -3,10 +3,11 @@
 // (requirement `engine.budget-stops`). A harness run can last an hour and
 // make hundreds of model calls, so one check at its start can't bound it.
 
+import type { RunFailureCause } from "@halonicjs/events";
 import type { Clock } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { RunState } from "../kernel/run-state.ts";
-import { budgetStopOf } from "./budget.ts";
+import { type BudgetStop, budgetStopOf } from "./budget.ts";
 import type { BudgetCheck } from "./keep-to-budget.ts";
 
 /**
@@ -17,6 +18,26 @@ import type { BudgetCheck } from "./keep-to-budget.ts";
  */
 export class BudgetReachedError extends Error {
   override readonly name = "BudgetReachedError";
+  /** The typed cause the call's `run.failed` carries; absent when the refusal gave none. */
+  readonly failureCause: RunFailureCause | undefined;
+
+  constructor(message: string, failureCause?: RunFailureCause) {
+    super(message);
+    this.failureCause = failureCause;
+  }
+}
+
+/**
+ * The `limit_reached` error {@link CallBudget.keep} throws, which also holds
+ * the stop, so the engine can log its cause while the bridge answers 429.
+ */
+export class BudgetStopError extends KindedError {
+  readonly stop: BudgetStop;
+
+  constructor(stop: BudgetStop) {
+    super("limit_reached", stop.error);
+    this.stop = stop;
+  }
 }
 
 /** What a harness call asks before each model call it makes. */
@@ -58,7 +79,7 @@ export class RunCallBudget implements CallBudget {
     const budget = await this.#check.budget();
     if (budget === undefined) return;
     const spend = await this.#check.spend(this.#run, this.#clock.now().toISOString());
-    const error = budgetStopOf(budget, spend);
-    if (error !== null) throw new KindedError("limit_reached", error);
+    const stop = budgetStopOf(budget, spend);
+    if (stop !== null) throw new BudgetStopError(stop);
   }
 }

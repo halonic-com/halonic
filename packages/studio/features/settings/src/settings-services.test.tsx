@@ -156,6 +156,6 @@ verifies("settings.formats-section", () => {
       />,
     );
     expect(view.textContent).toContain("Follow this computer: Dutch (Netherlands)");
-    expect(view.textContent).toContain("45,00");
+    expect(view.textContent).toContain("12.345,60");
   });
 });

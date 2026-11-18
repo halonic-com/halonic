@@ -11,9 +11,9 @@ The Inbox shall list what waits for you in the runs it is given, newest first: o
 - Given a run waiting on two tool calls, `call-1` asked at 10:42 and `call-2` at 10:43,
   when the Inbox lists it,
   then it has two items, `call-2` first.
-- Given a tool call to `notes-mcp__create_note`,
+- Given a tool call logged as `create_note` with the connector `notes-mcp`,
   when the Inbox lists it,
-  then the item's tool is `create_note` and its connector is `notes-mcp`; a call to `search` has the connector `null`, and so has a call to `__search`.
+  then the item's tool is `create_note` and its connector is `notes-mcp`; a call to `search` logged without a connector has the connector `null`, and so has an older call logged as `mail__search`: the name is never split.
 - Given a tool call that the subagent `checker` asked for the agent `sorter`,
   when the Inbox lists it,
   then the item's agent is `sorter` and its subagent `checker`; an agent's own call has the subagent `null`.

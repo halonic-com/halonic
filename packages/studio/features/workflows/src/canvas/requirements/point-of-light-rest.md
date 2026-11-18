@@ -17,4 +17,4 @@ When the active step of a run is shown, the workflows feature shall draw one poi
 
 ## Notes
 
-Nothing is drawn on the canvas yet: the canvas has no run mode or status dots, so this component is not placed on it until they exist.
+The canvas places the light on the active step's dot (`workflows.canvas.status-dots`).

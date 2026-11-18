@@ -95,6 +95,7 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
         state={state}
         items={items}
         nav={nav}
+        openItem={openItem}
         phone={phone}
         focusHeading={() => heading.current?.focus()}
       />
@@ -126,6 +127,7 @@ function PageBody({
   state,
   items,
   nav,
+  openItem,
   phone,
   focusHeading,
 }: {
@@ -133,6 +135,7 @@ function PageBody({
   readonly state: ChangesListState;
   readonly items: readonly ChangeItem[];
   readonly nav: OpenItem;
+  readonly openItem: ((item: ItemRef) => void) | undefined;
   readonly phone: boolean;
   readonly focusHeading: () => void;
 }) {
@@ -152,6 +155,7 @@ function PageBody({
         read={read}
         items={items}
         nav={nav}
+        openItem={openItem}
         phone={phone}
         focusHeading={focusHeading}
       />
@@ -166,6 +170,7 @@ function ReadBody({
   read,
   items,
   nav,
+  openItem,
   phone,
   focusHeading,
 }: {
@@ -174,6 +179,7 @@ function ReadBody({
   readonly read: ChangesRead;
   readonly items: readonly ChangeItem[];
   readonly nav: OpenItem;
+  readonly openItem: ((item: ItemRef) => void) | undefined;
   readonly phone: boolean;
   readonly focusHeading: () => void;
 }) {
@@ -200,6 +206,7 @@ function ReadBody({
           list={list}
           items={items}
           onOpen={nav.show}
+          openItem={openItem}
           returnFocus={nav.returnFocus}
           onFocusPlaced={nav.focusPlaced}
           phone={phone}

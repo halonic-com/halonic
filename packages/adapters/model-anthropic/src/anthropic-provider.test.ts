@@ -1,4 +1,5 @@
 import {
+  type HttpClient,
   isModelCallError,
   isVendorErrorText,
   ModelCallError,
@@ -46,6 +47,29 @@ const keyShapedText = `sk-ant-${"Xy1".repeat(8)}`;
 
 const chat = (provider: AnthropicProvider) => provider.chat(chatRequest());
 
+/**
+ * A server that answers every call with a redirect to another origin. It
+ * behaves as `fetch` does: it follows the redirect, headers and all, unless
+ * the caller asked for `redirect: "error"`. It records every request it
+ * receives, so a test sees whether the key reached the other origin.
+ */
+function redirectingServer() {
+  const received: Array<{ url: string; headers: Headers }> = [];
+  const http: HttpClient = {
+    fetch: async (url, init = {}) => {
+      received.push({ url, headers: new Headers(init.headers) });
+      if (new URL(url).host !== "other.example.com") {
+        if (init.redirect === "error") {
+          throw new TypeError("the server redirected, and the request doesn't allow redirects");
+        }
+        return http.fetch("https://other.example.com/v1", init);
+      }
+      return Response.json({});
+    },
+  };
+  return { http, received };
+}
+
 llmProviderContract(
   "anthropic",
   async () => {
@@ -78,6 +102,20 @@ verifies("model-anthropic.endpoint", () => {
       headers: { "anthropic-version": "2023-06-01", "content-type": "application/json" },
     });
     expect(provider.type).toBe("anthropic");
+  });
+
+  it("never carries the key to another origin when the address redirects", async () => {
+    const { http, received } = redirectingServer();
+    const provider = new AnthropicProvider({
+      id: "acme",
+      http,
+      key: async () => "test-key-1",
+      baseUrl: "https://llm.example.com",
+    });
+
+    await expect(provider.chat(chatRequest())).rejects.toThrow();
+
+    expect(received.map((call) => new URL(call.url).host)).toEqual(["llm.example.com"]);
   });
 
   it("accepts a base URL that already ends in /v1", async () => {

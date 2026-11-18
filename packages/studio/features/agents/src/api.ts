@@ -21,6 +21,47 @@ export interface AgentListing extends AgentRef {
   readonly model?: string | undefined;
 }
 
+/** The programs an agent can run in: Halonic's own loop, Claude Code or Codex (the file's `harness`). */
+export type AgentHarnessId = "halonic" | "claude-code" | "codex";
+
+/** The harnesses in the order the Harness page lists them. */
+export const agentHarnessIds: readonly AgentHarnessId[] = ["halonic", "claude-code", "codex"];
+
+/**
+ * Whether a harness can run on this computer, as the agent host's `detect()` finds it. `signed-out`
+ * is for the agent's own settings folder; `failed` means the check itself didn't work.
+ */
+export type HarnessReadiness =
+  | { readonly status: "ready"; readonly version: string }
+  | { readonly status: "signed-out"; readonly version: string }
+  | { readonly status: "missing" }
+  | { readonly status: "unsupported"; readonly version: string; readonly supported: string }
+  | { readonly status: "failed"; readonly error: string };
+
+/** What the Configuration pages show of an agent. */
+export interface AgentSettings extends AgentListing {
+  /** What the agent is told to do; empty before anyone writes it. */
+  readonly instructions: string;
+  /** The most model calls for one run of the agent (its turn limit); 6 when the file says none. */
+  readonly maxSteps: number;
+  /** The program the agent runs in; `halonic` when its file names none. */
+  readonly harness: AgentHarnessId;
+}
+
+/** A change to an agent's settings; a field left out stays as it is. */
+export interface AgentChange {
+  /** The new display name. The id stays, and no other file changes. */
+  readonly name?: string | undefined;
+  readonly description?: string | undefined;
+  readonly instructions?: string | undefined;
+  /** The model alias, or `provider/model`. */
+  readonly model?: string | undefined;
+  /** The turn limit, a whole number from 1 to 200. */
+  readonly maxSteps?: number | undefined;
+  /** The program the agent runs in. */
+  readonly harness?: AgentHarnessId | undefined;
+}
+
 /** A hub a new agent can go in. */
 export interface AgentHub {
   readonly id: string;
@@ -31,6 +72,8 @@ export interface AgentHub {
 export interface NewAgent {
   readonly name: string;
   readonly hubId: string;
+  /** What it should do, written in the dialog; it becomes the agent's instructions. Absent or empty: none yet. */
+  readonly instructions?: string | undefined;
 }
 
 /** A workflow that runs an agent in one of its task steps. */
@@ -53,6 +96,21 @@ export interface AgentsHost {
   list(): Promise<readonly AgentListing[]>;
   /** One agent's row. Rejects with the reason it couldn't be read, or with `not_found` when it isn't there. */
   read(ref: AgentRef): Promise<AgentListing>;
+  /** One agent's settings. Rejects like {@link AgentsHost.read}. */
+  settings(ref: AgentRef): Promise<AgentSettings>;
+  /**
+   * Saves a change to an agent's file and keeps every comment and line of it that the change
+   * doesn't touch. Typing in one field is one undo step. Rejects with `not_found` when the agent
+   * isn't there, with `invalid_input` when the name is empty, and with the reason it couldn't write.
+   */
+  update(ref: AgentRef, change: AgentChange): Promise<void>;
+  /** The model aliases the agent's hub can use, by name, in the order the Models pages list them; empty when there are none. */
+  modelAliases(ref: AgentRef): Promise<readonly string[]>;
+  /**
+   * Whether `harness` can run on this computer, for this agent (its sign-in is the agent's own).
+   * Never rejects: a check that didn't work answers `failed`. `halonic` is always `ready`.
+   */
+  harnessReadiness(ref: AgentRef, harness: AgentHarnessId): Promise<HarnessReadiness>;
   /**
    * The name of an agent the host has read or made, for a tab or a page title, or `undefined`
    * before it has read it. Sync, because a tab is named the moment it opens.
@@ -76,3 +134,9 @@ export interface AgentsHost {
 
 /** The open workspace's agents, provided by the app (`agents.host`). */
 export const AgentsHostService: ServiceKey<AgentsHost> = serviceKey<AgentsHost>("agents.host");
+
+/**
+ * Loads the Agents list, for the CI screenshots (`docs/guides/e2e-screenshots.md`), which draw it
+ * with made-up data. The app never calls it: the feature registers the page itself.
+ */
+export const loadAgentsPage = () => import("./list/agents-page.tsx");

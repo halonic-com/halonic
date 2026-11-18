@@ -71,6 +71,7 @@ verifies("settings.sandbox-choice-flow", () => {
       platform="win32"
       onSetUp={() => {}}
       onContinueWithout={() => {}}
+      promise={true}
       {...over}
     />
   );
@@ -117,7 +118,7 @@ verifies("settings.sandbox-choice-flow", () => {
   it("shows a backend that can't run with its reason and doesn't let it be set up", () => {
     const onSetUp = vi.fn();
     const root = render(flow({ onSetUp, initialScreen: "options" }));
-    expect(root.textContent).toContain("Virtualization is turned off on this computer.");
+    expect(root.textContent).toContain("Virtualisation is turned off on this computer.");
     const docker = root.querySelector<HTMLInputElement>('input[type="radio"][value="docker-sbx"]');
     act(() => docker?.click());
     press(root, "Set up Sandbox in WSL");
@@ -147,6 +148,17 @@ verifies("settings.sandbox-choice-flow", () => {
     expect(onContinueWithout).toHaveBeenCalledOnce();
   });
 
+  it("says the harness still asks on the confirmation only when it really does", () => {
+    const asks = "Halonic still asks before an agent runs a command";
+    const on = render(flow({ initialScreen: "confirm-none", promise: true }));
+    expect(on.textContent).toContain(asks);
+    expect(on.textContent).toContain("A sandbox makes that a hard limit");
+    const off = render(flow({ initialScreen: "confirm-none", promise: false }));
+    expect(off.textContent).not.toContain(asks);
+    expect(off.textContent).toContain("your SSH keys");
+    expect(off.textContent).toContain("A sandbox makes that a hard limit");
+  });
+
   it("says it is checking, and says when it couldn't check, with no Other options to press", () => {
     const checking = render(flow({ view: "checking" }));
     expect(checking.textContent).toContain("Checking your computer…");
@@ -173,7 +185,7 @@ verifies("settings.sandbox-choice-flow", () => {
     expect(root.textContent).not.toContain("Recommended");
     expect(root.querySelector("h3")).toBeNull();
     press(root, "Other options");
-    expect(root.textContent).toContain("Virtualization is turned off on this computer.");
+    expect(root.textContent).toContain("Virtualisation is turned off on this computer.");
     press(root, "Back");
     press(root, "Continue without sandbox");
     press(root, "Set up a sandbox");
@@ -196,9 +208,12 @@ verifies("settings.sandbox-choice-flow", () => {
     expect(document.activeElement?.textContent).toBe("Keep agents inside your project");
   });
 
-  it("caps the card's height in a window that is short, not narrow", () => {
+  it("lets the card grow with its content up to 85% of the window", () => {
     const root = render(flow());
-    expect(root.querySelector("section")?.className).toContain("[@media(max-height:560px)]:");
+    expect(root.querySelector("section")?.className).toContain("max-h-[85vh]");
+    expect(root.querySelector("section")?.className).toContain(
+      "[@media(max-height:560px)]:max-h-[90vh]",
+    );
   });
 
   it("pins the action row below a body that scrolls, so Set up is always reachable", () => {
@@ -206,7 +221,19 @@ verifies("settings.sandbox-choice-flow", () => {
     const section = root.querySelector("section");
     const footer = section?.querySelector("footer");
     expect(footer?.textContent).toContain("Set up");
-    expect(footer?.previousElementSibling?.className).toContain("overflow-y-auto");
+    expect(footer?.previousElementSibling?.querySelector(".overflow-y-auto")).not.toBeNull();
     expect(section?.className).toContain("overflow-hidden");
+  });
+
+  it("fades the cut only while the body has more below", () => {
+    expect(render(flow()).querySelector("[data-testid=sandbox-fade]")).toBeNull();
+    const heights = vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(900);
+    const client = vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(400);
+    try {
+      expect(render(flow()).querySelector("[data-testid=sandbox-fade]")).not.toBeNull();
+    } finally {
+      heights.mockRestore();
+      client.mockRestore();
+    }
   });
 });

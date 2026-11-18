@@ -18,7 +18,7 @@ import type { KindValues } from "@halonicjs/format";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { columns, columnsAs, columnWidths, paddingAfter } from "./messages/columns.ts";
 import { duration } from "./messages/duration.ts";
-import { type Phrase, phrase } from "./messages/phrase.ts";
+import { dimmed, type Phrase, phrase } from "./messages/phrase.ts";
 import { type RunReceipt, runMessages } from "./messages/run.ts";
 import { runsMessages } from "./messages/runs.ts";
 import { runsListMessages, startedInWords } from "./messages/runs-list.ts";
@@ -79,6 +79,55 @@ export function stepLines(
 ): Phrase[] {
   const rows = runSteps(events, summary).map((step) => stepRow(step, definitions, clock));
   return widths === undefined ? columns(rows) : columnsAs(rows, widths.rows);
+}
+
+/**
+ * The step lines of {@link stepLines}, each agent step that finished with
+ * its output under it, indented two spaces (HAL-12073). A string is printed
+ * line by line, any other value as pretty-printed JSON; a step that wrote
+ * nothing says so. The output comes from the step's `agent.finished`, which
+ * is what the run went on with, not from one of the model's answers on the
+ * way. All of it is outside text, made printable (cli-output section 5).
+ */
+export function stepLinesWithOutput(
+  events: readonly RunEvent[],
+  summary: RunSummary,
+  definitions: RunDefinitions,
+  clock: RunClock,
+): Phrase[] {
+  const steps = runSteps(events, summary);
+  // One line for each step, in the same order.
+  return stepLines(events, summary, definitions, clock).flatMap((line, index) => {
+    const step = steps[index];
+    return step === undefined ? [line] : [line, ...outputLines(step)];
+  });
+}
+
+/** Whether the run has an agent step that finished with something to read. */
+export function hasAgentOutput(events: readonly RunEvent[], summary: RunSummary): boolean {
+  return runSteps(events, summary).some((step) => outputText(step) !== undefined);
+}
+
+/** The lines under an agent step that finished; none for any other step. */
+function outputLines(step: RunStep): Phrase[] {
+  if (step.agentId === undefined || step.end.kind !== "done") {
+    return [];
+  }
+  const text = outputText(step);
+  if (text === undefined) {
+    return [dimmed(phrase`  ${runsMessages.noOutput().phrase}`)];
+  }
+  return text.split(/\r?\n/).map((line) => (line === "" ? [] : [`  ${printable(line)}`]));
+}
+
+/** What the step's agent wrote, as text; `undefined` when it wrote nothing. */
+function outputText(step: RunStep): string | undefined {
+  const output = step.finished?.output;
+  if (output === undefined || output === null) {
+    return undefined;
+  }
+  const text = typeof output === "string" ? output : JSON.stringify(output, null, 2);
+  return text.trim() === "" ? undefined : text;
 }
 
 /**

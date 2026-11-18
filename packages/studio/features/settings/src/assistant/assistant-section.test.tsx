@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { HostSettings } from "@halonicjs/app";
+import { settlePendingSaves } from "@halonicjs/studio-kit";
 import {
   limitedLookup,
   type SettingsSectionProps,
@@ -113,6 +114,25 @@ verifies("settings.ai-agent-section", () => {
   it("saves the instructions when you leave them", async () => {
     const { view, settings } = await setup();
     await typeInTextArea(control<HTMLTextAreaElement>(view, "textarea"), "Answer briefly.");
+    expect(settings.get(assistantPrefs.instructions)).toBe("Answer briefly.");
+  });
+
+  it("registers the save of a field you leave with the window close until the store has it", async () => {
+    const { view, store, settings } = await setup();
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const set = store.set.bind(store);
+    store.set = async (key, value) => {
+      await held;
+      await set(key, value);
+    };
+    await typeInTextArea(control<HTMLTextAreaElement>(view, "textarea"), "Answer briefly.");
+    expect(store.stored.size).toBe(0);
+
+    const waiting = settlePendingSaves();
+    release();
+    await waiting;
+
     expect(settings.get(assistantPrefs.instructions)).toBe("Answer briefly.");
   });
 

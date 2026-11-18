@@ -7,6 +7,7 @@ import {
   Select,
   StatusChip,
   Switch,
+  settleOnClose,
 } from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
@@ -145,7 +146,7 @@ export function PluginSettingsSection({
   ): Promise<boolean> {
     const done = queue.current.then(() => saveNow(setting, value, secret));
     queue.current = done.catch(() => undefined);
-    return done;
+    return settleOnClose(done);
   }
 
   async function saveNow(setting: string, value: PluginSettingValue | undefined, secret?: string) {

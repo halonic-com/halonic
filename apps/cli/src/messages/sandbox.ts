@@ -283,7 +283,7 @@ function doctorFix(fix: string, note?: string): Phrase {
 }
 
 /** The sandbox page of the docs, which `More:` links under a sandbox that can't start. */
-const sandboxDocs = `${docsBase}/sandbox`;
+const sandboxDocs = `${docsBase}/security/sandbox/`;
 
 /**
  * The section of {@link sandboxDocs} for each reason that has one, as agreed
@@ -306,9 +306,9 @@ const docsSections: Readonly<Partial<Record<WordedReason, string>>> = {
  * The docs link for `More:` under a sandbox that can't start.
  *
  * @example
- * sandboxDocsLink("bubblewrap-missing"); // "https://docs.halonic.dev/sandbox#bubblewrap"
- * sandboxDocsLink("not-supported"); // "https://docs.halonic.dev/sandbox#wsl1"
- * sandboxDocsLink("setup-needed"); // "https://docs.halonic.dev/sandbox"
+ * sandboxDocsLink("bubblewrap-missing"); // "https://docs.halonic.dev/security/sandbox/#bubblewrap"
+ * sandboxDocsLink("not-supported"); // "https://docs.halonic.dev/security/sandbox/#wsl1"
+ * sandboxDocsLink("setup-needed"); // "https://docs.halonic.dev/security/sandbox/"
  */
 export function sandboxDocsLink(code: string): string {
   const section = docsSections[known(code)];

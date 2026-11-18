@@ -40,8 +40,21 @@ export type UndoOutcome =
   | { readonly kind: "undone"; readonly undo: () => Promise<string | undefined> }
   | { readonly kind: "failed"; readonly reason: string };
 
-/** What {@link ChangesList.discardFile} did; the toast's Undo is `undo`, as for an undone change. */
-export type DiscardOutcome = UndoOutcome;
+/**
+ * What {@link ChangesList.discardFile} did; the toast's Undo is `undo`, as for an undone change.
+ * `noCopy` is a refusal: the copy couldn't be kept, so nothing was changed and the person is asked
+ * first. `discarded` is a discard they went on with anyway, which has no Undo for the person;
+ * `putBack` is for Halonic only, to roll it back when a later file of the same item fails.
+ */
+export type DiscardOutcome =
+  | UndoOutcome
+  | { readonly kind: "noCopy" }
+  | { readonly kind: "discarded"; readonly putBack: () => Promise<string | undefined> }
+  /**
+   * An item's undo failed and so did the roll-back: `paths` are the files not put back as they
+   * were, and `reason` says what went wrong. Only an item's undo gives this, never one file's.
+   */
+  | { readonly kind: "partial"; readonly reason: string; readonly paths: readonly string[] };
 
 /** What {@link ChangesList.getUpdates} did. */
 export type UpdatesOutcome =

@@ -44,6 +44,8 @@ export interface RoutineListing extends RoutineRef {
   readonly enabled: boolean;
   /** The routine as one line, as it is live: "Weekdays at 07:30 (Europe/Amsterdam) → Briefing". */
   readonly summary: string;
+  /** The name of the workflow or agent it starts, for the line that says what deleting it stops. */
+  readonly targetName: string;
   /** ISO time it next starts on its own; absent when it is off or its trigger isn't a clock. */
   readonly nextRun?: string | undefined;
   /** Held for a Google sign-in, which the row shows as "Needs sign-in". */
@@ -69,6 +71,15 @@ export type RoutineTrigger =
   | { readonly kind: "signal"; readonly name: string; readonly when?: Guard | undefined }
   | { readonly kind: "webhook" };
 
+/** A Google connector a mail trigger can watch, which the Mailbox picker lists. */
+export interface RoutineMailbox {
+  /** The connector's id, which the trigger's `connector` holds. */
+  readonly connector: string;
+  readonly name: string;
+  /** The Google account it acts as, which the picker shows next to the name. */
+  readonly account: string;
+}
+
 /** What to do when a time comes while the previous run is still going. */
 export type RoutineOverlap = "skip" | "queue" | "allow";
 
@@ -84,6 +95,8 @@ export interface RoutineView extends RoutineRef {
   readonly triggerSentence: string;
   /** The routine as one line, as {@link RoutineListing.summary} has it: "Weekdays at 07:30 → Briefing". */
   readonly summary: string;
+  /** The name of the workflow or agent it starts, for the line that says what deleting it stops. */
+  readonly targetName: string;
   readonly target: RoutineTarget;
   readonly targetState: RoutineTargetState;
   readonly overlap: RoutineOverlap;
@@ -149,6 +162,8 @@ export type RoutineRunStart =
 /** One run a routine started, as a row of the Runs view. */
 export interface RoutineRun {
   readonly runId: string;
+  /** The id a person sees and types back, as in the Runs list. */
+  readonly shortId: string;
   readonly startedAt: string;
   readonly outcome: "running" | "waiting" | "completed" | "failed" | "cant-try";
   readonly startedBy: RoutineRunStart;
@@ -210,8 +225,14 @@ export type RunNowRefusal =
 
 /** What Run now answers: the run it started, or why there is none. */
 export type RunNowResult =
-  | { readonly started: true; readonly runId: string }
+  | { readonly started: true; readonly runId: string; readonly shortId: string }
   | { readonly started: false; readonly refusal: RunNowRefusal };
+
+/** A routine that was moved to the trash, and the way to bring it back. */
+export interface TrashedRoutine {
+  /** Puts the routine back as it was. Rejects with an `Error` whose message is one sentence when it can't. */
+  undo(): Promise<void>;
+}
 
 /**
  * The workspace's routines, as the app reads and changes them. Changes are written to the routine
@@ -227,6 +248,8 @@ export interface RoutinesHost {
   read(ref: RoutineRef): Promise<RoutineView>;
   /** The workflows and agents the routine's hub lets it start. */
   targets(ref: RoutineRef): Promise<readonly RoutineTargetChoice[]>;
+  /** The Google connectors the routine can watch for mail: its hub's own first, then the shared ones. */
+  mailboxes(ref: RoutineRef): Promise<readonly RoutineMailbox[]>;
   /** Writes `changes` to the routine's file; rejects with the reason it couldn't be written. */
   save(ref: RoutineRef, changes: RoutineChanges): Promise<void>;
   /** The next `count` times the routine starts on its own, from its live version. */
@@ -239,8 +262,11 @@ export interface RoutinesHost {
    * when the engine can't be reached; a refusal the person can act on is a result, not a rejection.
    */
   runNow?(ref: RoutineRef): Promise<RunNowResult>;
-  /** Moves the routine's file to the trash; undoing the change brings it back as it was. */
-  trash(ref: RoutineRef): Promise<void>;
+  /**
+   * Moves the routine's file to the trash as one change. Rejects with the reason it couldn't, such
+   * as when the routine is gone.
+   */
+  trash(ref: RoutineRef): Promise<TrashedRoutine>;
   /**
    * The name of a routine the host has read or made, for a tab or a page title, or `undefined`
    * before it has read it. Sync, because a tab is named the moment it opens.

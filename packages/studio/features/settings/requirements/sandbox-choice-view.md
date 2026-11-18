@@ -14,7 +14,7 @@ The Studio shall turn the engine's typed sandbox choice into the cards of the fi
 - Given Linux and bubblewrap is missing for srt,
   when the cards are made,
   then the Sandbox card is selectable (its setup shows the fix) and reads "You may need to run one command"
-- Given Docker Sandboxes can't run because virtualization is off,
+- Given Docker Sandboxes can't run because virtualisation is off,
   when the cards are made,
   then its card is disabled with "Virtualization is turned off on this computer."
 - Given the engine doesn't offer MXC,

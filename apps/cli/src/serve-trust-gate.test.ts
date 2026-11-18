@@ -27,6 +27,10 @@ beforeEach(async () => {
   folder = await mkdtemp(join(tmpdir(), "halonic-serve-trust-gate-"));
   acme = join(folder, "acme");
   await cp(acmeExample, acme, { recursive: true });
+  // Acme reaches only the test model and needs no trust, so most tests give it
+  // a connector that starts a program, which does (HAL-12011).
+  await turnOffLocalOnly(acme);
+  await writeConnector("server.js");
   machine = {
     trustStore: new FileTrustStore(join(folder, "trust")),
     clock: fixedClock(Date.UTC(2026, 10, 10, 14, 1)),
@@ -35,6 +39,15 @@ beforeEach(async () => {
 });
 
 afterEach(() => rm(folder, { recursive: true, force: true }));
+
+/** The edit trust must notice: a connector that starts a program. */
+async function writeConnector(script: string): Promise<void> {
+  await mkdir(join(acme, "library", "connectors"), { recursive: true });
+  await writeFile(
+    join(acme, "library", "connectors", "files.connector.yaml"),
+    JSON.stringify({ transport: { stdio: { command: "node", args: [script] } } }),
+  );
+}
 
 async function gate() {
   const dir = await openWorkspaceDir({ positionals: [], options: { dir: acme } }, { cwd: folder });
@@ -66,15 +79,42 @@ verifies("cli.serve-trust-gate", () => {
     const { gate: g } = await gate();
     expect((await g.check()).state).toBe("trusted");
 
-    await turnOffLocalOnly(acme);
-    // The edit trust must notice: a connector that starts a program.
-    await mkdir(join(acme, "library", "connectors"), { recursive: true });
-    await writeFile(
-      join(acme, "library", "connectors", "files.connector.yaml"),
-      JSON.stringify({ transport: { stdio: { command: "node", args: ["server.js"] } } }),
-    );
+    await writeConnector("other.js");
 
     expect((await g.check()).state).toBe("changed");
+  });
+
+  it("answers trusted with its own sentence for a workspace that reaches only the test model", async () => {
+    await rm(join(acme, "library"), { recursive: true, force: true });
+    const { gate: g } = await gate();
+
+    expect(await g.check()).toEqual({
+      state: "trusted",
+      message: plainText(serveMessages.trustNotNeeded().phrase),
+    });
+  });
+
+  it("turns from trusted to new at once when a connector is added to such a workspace", async () => {
+    await rm(join(acme, "library"), { recursive: true, force: true });
+    const { gate: g } = await gate();
+    expect((await g.check()).state).toBe("trusted");
+
+    await writeConnector("server.js");
+
+    expect((await g.check()).state).toBe("new");
+  });
+
+  it("turns from trusted to new at once when a real provider is added to such a workspace", async () => {
+    await rm(join(acme, "library"), { recursive: true, force: true });
+    const { gate: g } = await gate();
+    expect((await g.check()).state).toBe("trusted");
+
+    await writeFile(
+      join(acme, "providers", "claude.yaml"),
+      "id: claude\nname: Claude\ntype: anthropic\n",
+    );
+
+    expect((await g.check()).state).toBe("new");
   });
 
   it("counts a trust record it can't read as unreadable, never trusted", async () => {

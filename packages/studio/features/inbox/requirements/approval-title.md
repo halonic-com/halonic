@@ -8,13 +8,13 @@ The row and the card of a tool call waiting for an OK shall be titled "_Agent_ w
 
 ## Examples
 
-- Given Sorter's call to `notes-mcp__create_note`,
+- Given Sorter's call to `create_note` from the connector `notes-mcp`,
   when the Inbox shows it,
   then the title reads "Sorter wants to use create_note (notes-mcp)" and the summary "create_note · notes-mcp".
 - Given a call to Halonic's own `publish`,
   when the Inbox shows it,
   then the title reads "Sorter wants to use publish" and the summary "publish".
-- Given a call to `notes-mcp__create_note` that the subagent Checker asked for Sorter,
+- Given a call to `create_note` from the connector `notes-mcp` that the subagent Checker asked for Sorter,
   when the Inbox shows it,
   then the title reads "Checker, for Sorter, wants to use create_note (notes-mcp)".
 - Given Sorter's agent file says `name: Mail sorter`,

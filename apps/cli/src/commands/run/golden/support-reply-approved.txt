@@ -11,6 +11,7 @@ stdout:
   \e[32m✓\e[39m Support reply finished in 1 s.
     Sent nothing \e[2m·\e[22m asked you once
     Run log: halonic runs show 01jd8q
+    Output: halonic runs show 01jd8q --output
 stderr:
 
 ## NO_COLOR: halonic run support-reply --input examples/refund-question.json --event approve
@@ -26,6 +27,7 @@ stdout:
   ✓ Support reply finished in 1 s.
     Sent nothing · asked you once
     Run log: halonic runs show 01jd8q
+    Output: halonic runs show 01jd8q --output
 stderr:
 
 ## --json: halonic run support-reply --input examples/refund-question.json --event approve

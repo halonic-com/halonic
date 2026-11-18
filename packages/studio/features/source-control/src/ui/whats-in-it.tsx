@@ -4,6 +4,7 @@ import { useId } from "react";
 import type { ChangeItem } from "../change-items.ts";
 import type { ChangedFile } from "../changes-list.ts";
 import { versionWords } from "../changes-words.ts";
+import { shownValue } from "./part-change.tsx";
 
 /** Props for {@link WhatsInIt}. */
 export interface WhatsInItProps {
@@ -131,15 +132,10 @@ function Value({
       <pre
         className={`text-small whitespace-pre-wrap break-words${old ? " text-fg-muted line-through" : ""}`}
       >
-        {value.found ? shown(value.value) : versionWords.notSet}
+        {shownValue(value)}
       </pre>
     </div>
   );
-}
-
-/** A value as the person would write it: text as it is, anything else as indented JSON. */
-function shown(value: unknown): string {
-  return typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
 /** A part's name over its before and after: its path, the first letter capital. */

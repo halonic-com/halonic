@@ -27,7 +27,14 @@ import {
   workspaceExecutorOptions,
 } from "@halonicjs/adapter-workspace-models";
 import { type AssembledEngine, assembleEngine, noListedToolApproval } from "@halonicjs/engine";
-import type { Clock, DefinitionStore, HttpClient, IdGenerator, Secrets } from "@halonicjs/ports";
+import {
+  type Clock,
+  type DefinitionStore,
+  type HttpClient,
+  type IdGenerator,
+  noKeyOrigins,
+  type Secrets,
+} from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { TauriIpc } from "@halonicjs/studio-services";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
@@ -169,6 +176,8 @@ export class EngineService {
             http: this.#options.http,
             clock,
             isTrusted: () => this.#options.isTrusted(workspace),
+            // The desktop keychain keeps no origin list yet, so its keys stay on the trust rule.
+            keyOrigins: noKeyOrigins,
             // Until Studio has its approval store (HAL-850 step 6), no listed tool is offered.
             listedToolApproval: noListedToolApproval,
           }),

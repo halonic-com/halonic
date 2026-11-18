@@ -259,7 +259,7 @@ verifies("harness-kit.profile-host", () => {
       });
       const bridge = { url: "http://127.0.0.1:41817", token: "run-token" };
 
-      const { profile } = await profiles.profileOf(writerAgent(null), bridge);
+      const { profile } = await profiles.profileOf(writerAgent(null), bridge, null);
       const session = await host.removingTempFolders(new FakeSandbox()).open(profile);
       await session.close();
 

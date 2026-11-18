@@ -133,8 +133,11 @@ function takeChildNews(context: StateContext, input: ChildInput): StateStep {
     const finished: DecidedEvent = { ...base, status: "failed", error: input.error };
     const error = `Workflow "${workflow}" failed in ${where}: ${input.error}`;
     // As in a `workflow` state, only a budget stop goes up as it is.
-    const reason = input.reason === "budget" ? { reason: input.reason } : {};
-    return { events: [finished], effects: [], outcome: { type: "fail", error, ...reason } };
+    const budgetStop =
+      input.reason === "budget"
+        ? { reason: input.reason, ...(input.cause === undefined ? {} : { cause: input.cause }) }
+        : {};
+    return { events: [finished], effects: [], outcome: { type: "fail", error, ...budgetStop } };
   }
   if (input.status === "cant-try") {
     const finished: DecidedEvent = { ...base, status: "cant-try" };

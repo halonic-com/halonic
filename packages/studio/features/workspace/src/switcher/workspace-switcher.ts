@@ -4,6 +4,7 @@ import {
   cantReopenProblem,
   copyDetails,
   copyDetailsWords,
+  engineWaitMs,
   removeFromRecentLabel,
   type SaveReason,
   type StudioWorkspace,
@@ -13,6 +14,9 @@ import type { WorkspaceTrustControl } from "../trust/workspace-trust-control.ts"
 import { OpenWorkspaces } from "./open-workspaces.ts";
 import type { RecentWorkspaces } from "./recent-workspaces.ts";
 import type { WorkspaceSaving } from "./workspace-saving.ts";
+
+/** How long the switcher waits between two tries while the engine doesn't answer. */
+const engineRetryMs = 1_000;
 
 /** A workspace the app opened in a folder: what the window shows and how to let it go. */
 export interface OpenedWorkspace {
@@ -117,11 +121,26 @@ export class WorkspaceSwitcher {
     this.#busy = true;
     try {
       const location = await this.#options.pickFolder();
-      return location === undefined ? undefined : await this.#open(location);
+      return location === undefined ? undefined : await this.#openUntilAnswered(location);
     } catch (error) {
       return cantOpenProblem("the folder", error);
     } finally {
       this.#busy = false;
+    }
+  }
+
+  /**
+   * Opens the picked folder, trying again by itself every second while the engine doesn't answer,
+   * for up to {@link engineWaitMs}. Only the opening is repeated: the folder is asked for once.
+   */
+  async #openUntilAnswered(location: string): Promise<WelcomeOpenProblem | undefined> {
+    const until = Date.now() + engineWaitMs;
+    for (;;) {
+      const problem = await this.#open(location);
+      if (problem?.kind !== "unavailable" || Date.now() + engineRetryMs > until) {
+        return problem;
+      }
+      await new Promise((resolve) => setTimeout(resolve, engineRetryMs));
     }
   }
 

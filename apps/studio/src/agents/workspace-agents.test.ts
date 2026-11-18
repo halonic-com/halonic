@@ -8,6 +8,8 @@ const replyFile =
 
 function setup() {
   const store: Record<string, string> = {
+    "models.yaml":
+      "aliases:\n  fast:\n    provider: anthropic\n    model: claude-haiku\n  smart:\n    provider: anthropic\n    model: claude-sonnet\n",
     "hubs/acme/hub.yaml": "id: acme\nname: Acme\n",
     "hubs/beta/hub.yaml": "id: beta\nname: Beta\n",
     "hubs/acme/agents/writer.agent.yaml": writerFile,
@@ -54,6 +56,16 @@ verifies("studio.workspace-agents", () => {
       ]);
       expect(host.hubs().map((hub) => hub.id)).toEqual(["acme", "beta"]);
       expect(host.nameOf({ hubId: "acme", id: "writer" })).toBe("Writer");
+    });
+
+    it("writes the instructions given with a new agent, quoted so any text is safe", async () => {
+      const { host } = setup();
+      const ref = await host.create({
+        name: "Refund checker",
+        hubId: "acme",
+        instructions: 'Say "no": it\'s policy.\nBe brief.',
+      });
+      expect((await host.settings(ref)).instructions).toBe('Say "no": it\'s policy.\nBe brief.');
     });
 
     it("creates an agent as one change, listed at once, with the id taken from the name", async () => {
@@ -104,6 +116,79 @@ verifies("studio.workspace-agents", () => {
       stop();
       await host.create({ name: "Two", hubId: "acme" });
       expect(heard).toBe(1);
+    });
+
+    it("edits an agent's file in place as one coalescing change and keeps its comments", async () => {
+      const { host, store, changes } = setup();
+      store["hubs/acme/agents/writer.agent.yaml"] =
+        "# The reply writer\nid: writer\nname: Writer # shown in lists\nmodel: fast\n";
+      const ref = { hubId: "acme", id: "writer" };
+      await host.update(ref, { instructions: "Be brief.", name: "Reply writer" });
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toContain("# The reply writer");
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toContain("# shown in lists");
+      expect(await host.settings(ref)).toMatchObject({
+        name: "Reply writer",
+        instructions: "Be brief.",
+        model: "fast",
+      });
+      expect(changes).toHaveLength(1);
+      expect(host.nameOf(ref)).toBe("Reply writer");
+    });
+
+    it("refuses an empty name and an agent that isn't there, and writes nothing", async () => {
+      const { host, changes } = setup();
+      await expect(
+        host.update({ hubId: "acme", id: "writer" }, { name: "" }),
+      ).rejects.toMatchObject({ kind: "invalid_input" });
+      await expect(host.update({ hubId: "acme", id: "gone" }, { name: "X" })).rejects.toMatchObject(
+        {
+          kind: "not_found",
+        },
+      );
+      expect(changes).toEqual([]);
+    });
+
+    it("reads the turn limit and the model aliases, and saves a model and a turn limit in place", async () => {
+      const { host, store } = setup();
+      const ref = { hubId: "acme", id: "writer" };
+      expect(await host.settings(ref)).toMatchObject({ model: "fast", maxSteps: 6 });
+      expect(await host.modelAliases(ref)).toEqual(["fast", "smart"]);
+
+      await host.update(ref, { model: "smart", maxSteps: 25 });
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toContain("model: smart");
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toContain("maxSteps: 25");
+      expect(await host.settings(ref)).toMatchObject({ model: "smart", maxSteps: 25 });
+      await expect(host.modelAliases({ hubId: "acme", id: "nobody" })).rejects.toMatchObject({
+        kind: "not_found",
+      });
+    });
+
+    it("saves the harness and the turn limit only when they're valid, and writes nothing otherwise", async () => {
+      const { host, store, changes } = setup();
+      const ref = { hubId: "acme", id: "writer" };
+      expect((await host.settings(ref)).harness).toBe("halonic");
+      await host.update(ref, { harness: "codex" });
+      expect(store["hubs/acme/agents/writer.agent.yaml"]).toContain("harness: codex");
+      expect((await host.settings(ref)).harness).toBe("codex");
+      const written = changes.length;
+      for (const maxSteps of [0, 201, 2.5]) {
+        await expect(host.update(ref, { maxSteps })).rejects.toMatchObject({
+          kind: "invalid_input",
+        });
+      }
+      expect(changes).toHaveLength(written);
+    });
+
+    it("answers whether a harness can run: Halonic always, the others as the host finds, a failed check as failed", async () => {
+      const { host } = setup();
+      const ref = { hubId: "acme", id: "writer" };
+      expect(await host.harnessReadiness(ref, "halonic")).toMatchObject({ status: "ready" });
+      expect(await host.harnessReadiness(ref, "codex")).toMatchObject({ status: "failed" });
+      await expect(
+        host.harnessReadiness({ hubId: "acme", id: "gone" }, "codex"),
+      ).rejects.toMatchObject({
+        kind: "not_found",
+      });
     });
   });
 });

@@ -36,3 +36,8 @@ export const Guard: Schema<Guard> = s.lazy(() =>
     s.object({ any: s.array(Guard) }).strict(),
   ]),
 ) as Schema<Guard>;
+
+/** Whether a value is a condition the engine accepts, so callers can check before they write one. */
+export function isGuard(value: unknown): value is Guard {
+  return Guard.safeParse(value).success;
+}

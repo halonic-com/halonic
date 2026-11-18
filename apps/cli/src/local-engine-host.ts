@@ -64,6 +64,7 @@ import type {
   Coordination,
   HttpClient,
   IdGenerator,
+  KeyOrigins,
   RunStore,
   ScheduledTimer,
   Secrets,
@@ -124,6 +125,8 @@ export interface LocalEngineInput {
   readonly workspaceRoot: string;
   /** The CLI's remembered secrets, never a raw adapter (`apps/cli/AGENTS.md`). */
   readonly secrets: Secrets;
+  /** The origins each stored key may be sent to, from the profile's secrets file. */
+  readonly keyOrigins: KeyOrigins;
   /** What the model providers call their servers with. */
   readonly http: HttpClient;
   /**
@@ -340,6 +343,7 @@ function engineOn(
         http: input.http,
         clock,
         isTrusted: () => input.trusted,
+        keyOrigins: input.keyOrigins,
         // The approvals a person gave with `halonic tools`, read at the start of every turn.
         listedToolApproval: cliListedToolApproval({
           location,

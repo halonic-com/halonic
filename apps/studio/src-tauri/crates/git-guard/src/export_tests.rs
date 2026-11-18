@@ -1,16 +1,12 @@
 //! Tests for `export.rs`. Each test's name starts with `git_export_`, the
 //! last part of its requirement. The address and reference checks need no
 //! git; the exports run a real git against a repository on this computer,
-//! reached through a stand-in `ssh` (Unix only), since no test can reach a
-//! real server.
+//! reached through a stand-in `ssh` (a shell script on Unix, a `.cmd` that
+//! runs the same script on Windows), since no test can reach a real server.
 
 use std::path::{Path, PathBuf};
-#[cfg(unix)]
 use std::process::Command;
-use std::sync::atomic::AtomicBool;
-#[cfg(unix)]
-use std::sync::atomic::Ordering;
-#[cfg(unix)]
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use super::ExportLimits;
@@ -47,7 +43,6 @@ fn runner(root: &Path) -> GitRunner {
 }
 
 /// Runs git with no hardening, to set a test up.
-#[cfg(unix)]
 fn plain_git(folder: &Path, args: &[&str]) -> String {
     let mut command = Command::new(git_program());
     for (name, _) in std::env::vars_os() {
@@ -75,15 +70,22 @@ fn plain_git(folder: &Path, args: &[&str]) -> String {
     String::from_utf8_lossy(&output.stdout).trim().to_owned()
 }
 
+/// `path` with forward slashes, which sh reads on every system.
+fn posix(path: &Path) -> String {
+    crate::opened_folders::plain_path(path)
+        .to_string_lossy()
+        .replace('\\', "/")
+}
+
 /// The address of the server repository `folder`, as the stand-in ssh reaches it.
-#[cfg(unix)]
 fn address_of(folder: &Path) -> String {
-    format!("ssh://git.acme.invalid{}", folder.display())
+    let path = posix(folder);
+    let slash = if path.starts_with('/') { "" } else { "/" };
+    format!("ssh://git.acme.invalid{slash}{path}")
 }
 
 /// A server repository with a plugin in it, tagged `v1`, and a second
 /// commit after the tag.
-#[cfg(unix)]
 fn server(root: &Path) -> PathBuf {
     let server = root.join("server");
     std::fs::create_dir_all(server.join("src")).expect("the folder is created");
@@ -99,18 +101,30 @@ fn server(root: &Path) -> PathBuf {
     server
 }
 
-#[cfg(unix)]
+/// A stand-in ssh that runs `script_body`, a sh script, with the ssh
+/// arguments. On Windows git starts a `.cmd`, which hands them to sh.
 fn local_ssh(root: &Path, script_body: &str) -> PathBuf {
-    use std::os::unix::fs::PermissionsExt;
-    let ssh = root.join("local-ssh");
-    std::fs::write(&ssh, format!("#!/bin/sh\n{script_body}\n")).expect("the ssh writes");
-    std::fs::set_permissions(&ssh, std::fs::Permissions::from_mode(0o755))
-        .expect("the ssh is executable");
-    ssh
+    let script = root.join("local-ssh.sh");
+    std::fs::write(&script, format!("#!/bin/sh\n{script_body}\n")).expect("the ssh writes");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
+            .expect("the ssh is executable");
+        script
+    }
+    #[cfg(windows)]
+    {
+        let ssh = root.join("local-ssh.cmd");
+        let line = format!("@sh \"{}\" %*\r\n", posix(&script));
+        std::fs::write(&ssh, line).expect("the ssh writes");
+        // git hands GIT_SSH_COMMAND to sh, which eats backslashes and
+        // can't read the `\\?\` prefix, so name the .cmd with forward slashes.
+        PathBuf::from(posix(&ssh))
+    }
 }
 
 /// An ssh that runs the command it is given (its last argument) here.
-#[cfg(unix)]
 fn running_ssh(root: &Path) -> PathBuf {
     local_ssh(root, "for last; do :; done\nexec sh -c \"$last\"")
 }
@@ -130,7 +144,6 @@ fn entries_of(folder: &Path) -> Vec<String> {
     names
 }
 
-#[cfg(unix)]
 #[test]
 fn git_export_writes_the_default_branch_files_and_no_git_folder() {
     let scratch = Scratch::new("default-branch");
@@ -160,7 +173,6 @@ fn git_export_writes_the_default_branch_files_and_no_git_folder() {
     assert_eq!(entries_of(&parent).len(), 1);
 }
 
-#[cfg(unix)]
 #[test]
 fn git_export_writes_the_commit_a_tag_names() {
     let scratch = Scratch::new("tag");
@@ -188,7 +200,6 @@ fn git_export_writes_the_commit_a_tag_names() {
     );
 }
 
-#[cfg(unix)]
 #[test]
 fn git_export_refuses_a_commit_over_the_limits_before_writing_a_file() {
     let scratch = Scratch::new("limits");
@@ -225,7 +236,6 @@ fn git_export_refuses_a_commit_over_the_limits_before_writing_a_file() {
     }
 }
 
-#[cfg(unix)]
 #[test]
 fn git_export_removes_its_folders_when_git_fails() {
     let scratch = Scratch::new("fails");
@@ -311,7 +321,6 @@ fn git_export_stops_before_git_when_already_cancelled() {
     );
 }
 
-#[cfg(unix)]
 #[test]
 fn git_export_stops_git_and_removes_its_folders_when_cancelled_mid_fetch() {
     let scratch = Scratch::new("cancelled-mid");
@@ -319,7 +328,7 @@ fn git_export_stops_git_and_removes_its_folders_when_cancelled_mid_fetch() {
     let server = server(root);
     // An ssh that never answers, and marks that it started.
     let started = root.join("ssh.started");
-    let ssh = local_ssh(root, &format!("touch '{}'\nsleep 60", started.display()));
+    let ssh = local_ssh(root, &format!("touch '{}'\nsleep 60", posix(&started)));
     let parent = root.join("exports");
     let cancel = AtomicBool::new(false);
     let runner = runner(root);
@@ -378,7 +387,7 @@ fn git_export_reads_no_user_config_and_asks_no_question() {
     );
     assert_eq!(
         environment("GIT_SSH_COMMAND").as_deref(),
-        Some("ssh -o BatchMode=yes")
+        Some("ssh -o BatchMode=yes -o ForwardAgent=no -o ClearAllForwardings=yes")
     );
     let keys: Vec<String> = (0..)
         .map_while(|index| environment(&format!("GIT_CONFIG_KEY_{index}")))
@@ -387,7 +396,12 @@ fn git_export_reads_no_user_config_and_asks_no_question() {
         "credential.helper",
         "core.attributesFile",
         "core.excludesFile",
+        "fetch.unpackLimit",
+        "transfer.fsckObjects",
     ] {
         assert!(keys.iter().any(|known| known == key), "{key} isn't blanked");
     }
 }
+
+#[path = "export_hostile_tests.rs"]
+mod hostile;

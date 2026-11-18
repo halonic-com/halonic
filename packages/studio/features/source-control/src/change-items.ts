@@ -122,3 +122,11 @@ export function groupIntoItems(files: readonly ChangedFile[]): ChangeItem[] {
     sentence: sentenceOf(item.files),
   }));
 }
+
+/** The kinds that have a page of their own to open from the Changes page. */
+const openableKinds: readonly string[] = ["agent", "workflow", "routine"];
+
+/** Whether the item has a page to open: an agent, a workflow or a routine. */
+export function isOpenable(item: ChangeItem): boolean {
+  return item.kind !== undefined && openableKinds.includes(item.kind);
+}

@@ -1,6 +1,6 @@
 import type { ModelAlias, Models, Provider } from "@halonicjs/format";
 import { parseAmount, type Result } from "@halonicjs/std";
-import { Field, FormRows, Input, Select } from "@halonicjs/studio-kit";
+import { Field, FormRows, Input, Select, settleOnClose } from "@halonicjs/studio-kit";
 import { useId, useState } from "react";
 import type { ModelsFiles } from "../api.ts";
 import {
@@ -66,12 +66,14 @@ export function AliasFields({ files, models, providers, name, currency }: AliasF
   const [output, setOutput] = useDraft(priceText(alias?.price?.output));
   if (alias === undefined) return null;
 
-  const save = async (edit: (text: string) => Result<string, FieldProblem>) => {
+  const saveEdit = async (edit: (text: string) => Result<string, FieldProblem>) => {
     const { problem: found, wrote } = await saveModelsEdit(files, aliasUpdatedLine(name), edit);
     setProblem(found);
     if (found !== undefined) setStatus("");
     else if (wrote) setStatus(aliasUpdatedLine(name));
   };
+  const save = (edit: (text: string) => Result<string, FieldProblem>) =>
+    settleOnClose(saveEdit(edit));
   const saveTarget = (provider: string, modelName: string) =>
     save((text) => editAliasTarget(text, name, { provider, model: modelName }, alias.model));
   const saveFallbacks = () =>

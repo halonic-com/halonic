@@ -1,7 +1,7 @@
 import { TauriPluginInstallSource, type TauriShell } from "@halonicjs/adapter-fs-tauri";
 import type { PluginAddRefusal, PluginService, PluginSource } from "@halonicjs/app";
 import type { FolderReader } from "@halonicjs/ports";
-import { errorKindOf } from "@halonicjs/std";
+import { errorKindOf, KindedError } from "@halonicjs/std";
 import type { PluginsHost } from "@halonicjs/studio-feature-plugins/api";
 
 /** The Add plugin dialog's installer, as the plugins host gives it. */
@@ -49,8 +49,13 @@ export function desktopPluginInstaller({
 }: DesktopPluginInstallerParts): PluginInstaller {
   const source = new TauriPluginInstallSource(ipc);
 
-  async function addFrom(reader: FolderReader, from: PluginSource): Promise<PluginAddOutcome> {
-    const added = await service.add(reader, { from, replace: false });
+  async function addFrom(
+    reader: FolderReader,
+    from: PluginSource,
+    signal: AbortSignal,
+  ): Promise<PluginAddOutcome> {
+    stopIfAborted(signal);
+    const added = await service.add(stoppable(reader, signal), { from, replace: false });
     if (!added.ok) return refusedOutcome(added.error);
     // The plugin is in place; a failed re-read doesn't undo it, and the next reload shows it.
     await reload().catch(onReloadFailed);
@@ -71,11 +76,11 @@ export function desktopPluginInstaller({
       throw error;
     }
     try {
-      return await addFrom(exported.reader, {
-        kind: "git",
-        address,
-        commit: exported.commit,
-      });
+      return await addFrom(
+        exported.reader,
+        { kind: "git", address, commit: exported.commit },
+        signal,
+      );
     } finally {
       await exported.end();
     }
@@ -85,8 +90,32 @@ export function desktopPluginInstaller({
     chooseFolder: () => source.pick(),
     add: async (from: PluginAddSource, signal: AbortSignal) =>
       from.kind === "folder"
-        ? await addFrom(source.reader(from.path), { kind: "folder", path: from.path })
+        ? await addFrom(source.reader(from.path), { kind: "folder", path: from.path }, signal)
         : await addFromGit(from.address, from.ref, signal),
+  };
+}
+
+/** Rejects with the `conflict` error of an add that was stopped, the same as a stopped git export. */
+function stopIfAborted(signal: AbortSignal): void {
+  if (signal.aborted) throw new KindedError("conflict", "Adding the plugin was stopped.");
+}
+
+/** `reader` that refuses every read once `signal` aborts, so a closed dialog stops a folder add before it is placed. */
+function stoppable(reader: FolderReader, signal: AbortSignal): FolderReader {
+  return {
+    location: reader.location,
+    entries: async (dir, options) => {
+      stopIfAborted(signal);
+      return await reader.entries(dir, options);
+    },
+    read: async (path) => {
+      stopIfAborted(signal);
+      return await reader.read(path);
+    },
+    locationOf: async (path) => {
+      stopIfAborted(signal);
+      return await reader.locationOf(path);
+    },
   };
 }
 

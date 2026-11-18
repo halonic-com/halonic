@@ -4,6 +4,8 @@ export const TRUST_HEADING = "Trust";
 export const NOTHING_TO_TRUST_LINE = "Nothing to trust here.";
 export const NOT_TRUSTED_LINE =
   "Not trusted yet. Halonic won't start programs or call real models from this workspace.";
+/** The button of Settings › Trust that opens the workspace page at Trust. */
+export const OPEN_TRUST = "Open Trust";
 export const REVIEW = "Review";
 export const REVIEW_CHANGES = "Review changes";
 export const REMOVE_TRUST = "Remove trust";

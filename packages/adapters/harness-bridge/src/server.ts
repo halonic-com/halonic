@@ -44,8 +44,8 @@ export interface NodeHarnessBridgeServerOptions {
   limits?: Partial<BodyLimits>;
   /** How long to wait for a provider; each one left out keeps its default. */
   upstreamLimits?: Partial<UpstreamLimits>;
-  /** Calls the providers; Node's own `fetch` unless a test gives another. */
-  fetch?: Fetch;
+  /** Calls the providers: the `fetch` of an `HttpClient` that may reach their hosts and no others. */
+  fetch: Fetch;
   /**
    * How long `close()` waits for requests still being handled, in
    * milliseconds: a whole number, 0 or more.
@@ -90,7 +90,7 @@ export class NodeHarnessBridgeServer implements HarnessBridgeServer {
         ? { kind: "loopback" }
         : { kind: "socket", folder: options.socketFolder };
     const upstream = {
-      fetch: options.fetch ?? globalThis.fetch,
+      fetch: options.fetch,
       limits: { ...defaultUpstreamLimits, ...options.upstreamLimits },
     };
     this.#routes = [

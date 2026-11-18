@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { type RunDetail, WorkflowRuns } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
+import { noKeyOrigins } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { afterAll, beforeAll, expect, it } from "vitest";
@@ -34,6 +35,7 @@ beforeAll(async () => {
   await cp(acmeExample, acme, { recursive: true });
   workspace = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
   const engine = await openLocalEngine({
+    keyOrigins: noKeyOrigins,
     workspace,
     workspaceRoot: acme,
     trusted: true,
@@ -123,6 +125,22 @@ verifies("cli.run", () => {
 
     expect(runResult(cantTry, facts).exitCode).toBe(exitCode.failed);
     expect(runResult(run, facts).exitCode).toBe(exitCode.ok);
+  });
+
+  it("exits 8 for a run its budget stopped, and 1 for any other failure (HAL-12007)", () => {
+    const facts = {
+      workspace,
+      workspaceName: "acme",
+      dir: undefined,
+      clock: { now: new Date(run.summary.startedAt), timeZone: "UTC" },
+    };
+    const failed = (reason: "budget" | "error") => ({
+      ...run,
+      summary: { ...run.summary, status: "failed" as const, reason },
+    });
+
+    expect(runResult(failed("budget"), facts).exitCode).toBe(exitCode.limitReached);
+    expect(runResult(failed("error"), facts).exitCode).toBe(exitCode.failed);
   });
 
   it("shows an escape code in the workflow's name as its code", async () => {

@@ -355,6 +355,9 @@ function FlowView({
           workflow={load.value}
           selectedStep={openStep}
           failedStep={strip?.failedStep}
+          route={strip?.route}
+          marks={strip?.marks}
+          active={strip?.active}
           saved={kept?.of === workflowKey ? kept.view : undefined}
           onView={onView}
           onSelectStep={onSelectStep}

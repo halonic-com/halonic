@@ -31,14 +31,38 @@ verifies("cli.messages", () => {
     ]);
   });
 
-  it("says a run budget stopped the run, and only a monthly one resets (revision 23)", () => {
-    expect(lines({ reason: "budget", per: "run", budget: 5, spent: 5.08 })).toEqual([
-      "Support reply stopped in the step Draft a reply: this run reached its budget of €5.00 (estimated €5.08 spent).",
-      "Raise the budget in workspace.yaml.",
+  it("says less than €0.001 in the budget lines for a tiny limit (HAL-12034)", () => {
+    expect(
+      lines({ reason: "budget", per: "run", budget: 0.00001, spent: 0.0004, currency: "EUR" }),
+    ).toEqual([
+      "Support reply stopped in the step Draft a reply: this run reached its budget of less than €0.001 (estimated less than €0.001 spent).",
+      "Raise budget.perRun in workspace.yaml.",
     ]);
-    expect(lines({ reason: "budget", per: "month", budget: 50, resetsOn: "1 Dec" })).toEqual([
-      "Support reply stopped in the step Draft a reply: this month's estimated spend reached its budget of €50.00.",
-      "Raise the budget in workspace.yaml, or wait until it resets on 1 Dec.",
+    expect(
+      lines({
+        reason: "budget",
+        per: "month",
+        budget: 0.00001,
+        currency: "EUR",
+        resetsOn: "1 Dec",
+      })[0],
+    ).toBe(
+      "Support reply stopped in the step Draft a reply: this month's estimated spend reached its budget of less than €0.001.",
+    );
+  });
+
+  it("says a run budget stopped the run, and only a monthly one resets (revision 23)", () => {
+    expect(
+      lines({ reason: "budget", per: "run", budget: 5, spent: 5.08, currency: "EUR" }),
+    ).toEqual([
+      "Support reply stopped in the step Draft a reply: this run reached its budget of €5.00 (estimated €5.08 spent).",
+      "Raise budget.perRun in workspace.yaml.",
+    ]);
+    expect(
+      lines({ reason: "budget", per: "month", budget: 50, currency: "USD", resetsOn: "1 Dec" }),
+    ).toEqual([
+      "Support reply stopped in the step Draft a reply: this month's estimated spend reached its budget of $50.00.",
+      "Raise budget.monthly in workspace.yaml, or wait until it resets on 1 Dec.",
     ]);
   });
 });
@@ -281,6 +305,16 @@ describe("moneyAmount", () => {
       moneyAmount(0.0005),
       moneyAmount(0.001),
     ]).toEqual(["under €0.001", "under €0.001", "€0.001", "€0.001"]);
+  });
+
+  it("says less than €0.001 when asked to, and leaves other amounts alone", () => {
+    const lessThan = { tiny: "less than" } as const;
+    expect([
+      moneyAmount(0.0004, "EUR", lessThan),
+      moneyAmount(0.00001, "USD", lessThan),
+      moneyAmount(0.004, "EUR", lessThan),
+      moneyAmount(5, "EUR", lessThan),
+    ]).toEqual(["less than €0.001", "less than $0.001", "€0.004", "€5.00"]);
   });
 
   it("throws for an amount no spend or budget can have", () => {

@@ -23,6 +23,7 @@ import {
   versionWords,
 } from "./changes-words.ts";
 import { describeChanges } from "./describe-changes.ts";
+import { discardWithCopy } from "./discard-with-copy.ts";
 import { isIdentityComplete } from "./identity.ts";
 import { type IdentityOutcome, saveIdentity } from "./identity-save.ts";
 import { loadFailureReason } from "./load-failure.ts";
@@ -216,9 +217,13 @@ export class ChangesList {
   /**
    * Puts a whole file back as the last version has it: a changed or deleted file gets its text
    * back, a new file is deleted. A copy of what is thrown away is kept first, and the outcome's
-   * `undo` brings it all back.
+   * `undo` brings it all back. When the copy can't be kept nothing is discarded and the outcome is
+   * `noCopy`, unless `withoutCopy` says to go on without it.
    */
-  async discardFile(file: ChangedFile): Promise<DiscardOutcome> {
+  async discardFile(
+    file: ChangedFile,
+    options: { readonly withoutCopy?: boolean } = {},
+  ): Promise<DiscardOutcome> {
     const status = this.#discardStatus(file);
     if (typeof status !== "string") return { kind: "failed", reason: status.reason };
     const { texts } = file;
@@ -226,24 +231,30 @@ export class ChangesList {
     const { path } = file;
     const { before, after } = texts;
     if (status === "untracked" && after !== null) {
-      return this.#discard(
+      return discardWithCopy(
+        this.source,
         [{ path, text: after }],
         () => this.#remove(path, after),
         () => this.#replace(path, after, null),
+        options,
       );
     }
     if (status === "modified" && before !== null && after !== null) {
-      return this.#discard(
+      return discardWithCopy(
+        this.source,
         [{ path, text: after }],
         () => this.#replace(path, before, after),
         () => this.#replace(path, after, before),
+        options,
       );
     }
     if (status === "deleted" && before !== null && after === null) {
-      return this.#discard(
+      return discardWithCopy(
+        this.source,
         [],
         () => this.#replace(path, before, null),
         () => this.#remove(path, before),
+        options,
       );
     }
     return { kind: "failed", reason: discardWords.cantDiscard };
@@ -268,7 +279,8 @@ export class ChangesList {
       return { kind: "failed", reason: discardWords.cantDiscard };
     }
     const { path } = file;
-    return this.#discard(
+    return discardWithCopy(
+      this.source,
       [{ path, text: after }],
       () => this.#replace(path, text, after),
       () => this.#replace(path, after, text),
@@ -374,26 +386,6 @@ export class ChangesList {
     } catch (error) {
       return loadFailureReason(error);
     }
-  }
-
-  /**
-   * Keeps a copy of `thrown`, then runs the discard. Nothing is discarded when the copy can't be
-   * kept. `undo` is what the toast's Undo runs.
-   */
-  async #discard(
-    thrown: readonly KeptFile[],
-    run: () => Promise<string | undefined>,
-    undo: () => Promise<string | undefined>,
-  ): Promise<DiscardOutcome> {
-    if (thrown.length > 0) {
-      try {
-        await this.source.keepCopy(thrown);
-      } catch {
-        return { kind: "failed", reason: discardWords.noCopy };
-      }
-    }
-    const reason = await run();
-    return reason === undefined ? { kind: "undone", undo } : { kind: "failed", reason };
   }
 
   /**

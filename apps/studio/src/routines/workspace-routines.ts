@@ -1,3 +1,4 @@
+import { shortRunId } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
 import type { DefinitionSource } from "@halonicjs/ports";
 import {
@@ -16,6 +17,7 @@ import {
   type RoutineChanges,
   type RoutineHub,
   type RoutineListing,
+  type RoutineMailbox,
   type RoutineNextTimes,
   type RoutineRef,
   type RoutineRun,
@@ -25,6 +27,7 @@ import {
   type RoutineTargetChoice,
   type RoutineView,
   type RunNowResult,
+  type TrashedRoutine,
   type TriggerOwner,
   type TriggerRow,
 } from "@halonicjs/studio-feature-routines/api";
@@ -41,6 +44,7 @@ import {
 } from "./routine-files.ts";
 import {
   idOf,
+  mailboxesOf,
   nameKey,
   type PlacedFile,
   routineFiles,
@@ -54,6 +58,7 @@ import {
   summaryOf,
   targetFor,
   targetFound,
+  targetName,
   targetsOf,
 } from "./routine-reads.ts";
 
@@ -64,6 +69,10 @@ export interface WorkspaceRoutinesParts {
     read(path: string): Promise<string | null>;
     list(dir: string): Promise<string[]>;
     change(label: string, changes: Record<string, string | null>): void;
+    /** The kernel's `WorkspaceFiles.undo`: `false` when there was nothing to undo. */
+    undo(): boolean;
+    /** The kernel's `WorkspaceFiles.step`: moves on every change, so it tells a step is still the newest. */
+    readonly step: number;
   };
   /** Calls `listener` after every change of the workspace's files; returns the way to stop. */
   readonly onChange: (listener: () => void) => () => void;
@@ -156,6 +165,7 @@ export class WorkspaceRoutines implements RoutinesHost {
         name: file.value.name,
         enabled: file.value.enabled,
         summary: summaryOf(workspace, file),
+        targetName: targetName(workspace, file),
         nextRun: file.value.enabled ? this.#nextRunOf(file, now) : undefined,
         needsSignIn: false,
         needsYou: own.filter((run) => run.status === "waiting").length,
@@ -183,6 +193,7 @@ export class WorkspaceRoutines implements RoutinesHost {
       trigger: triggerOfFile(value.trigger),
       triggerSentence: describeTrigger(value.trigger),
       summary: summaryOf(workspace, file),
+      targetName: targetName(workspace, file),
       target,
       targetState: targetFound(workspace, target) ? "ready" : "not-found",
       overlap: value.overlap,
@@ -202,6 +213,12 @@ export class WorkspaceRoutines implements RoutinesHost {
     const workspace = await this.#load();
     this.#find(workspace, ref);
     return targetsOf(workspace, ref.hubId);
+  }
+
+  async mailboxes(ref: RoutineRef): Promise<readonly RoutineMailbox[]> {
+    const workspace = await this.#load();
+    this.#find(workspace, ref);
+    return mailboxesOf(workspace, ref.hubId);
   }
 
   /** Writes the fields present as edits of the routine's file, which keep its comments and layout. */
@@ -262,6 +279,7 @@ export class WorkspaceRoutines implements RoutinesHost {
       .map(
         (summary): RoutineRun => ({
           runId: summary.id,
+          shortId: shortRunId(summary.id),
           startedAt: summary.startedAt,
           outcome: summary.status,
           startedBy: startedByOf(summary),
@@ -271,10 +289,26 @@ export class WorkspaceRoutines implements RoutinesHost {
     return { runs, skips: stored.map(skipOf) };
   }
 
-  async trash(ref: RoutineRef): Promise<void> {
+  /**
+   * Undo is the workspace's undo, so it puts the routine back only while the delete is still the
+   * newest step: after any other change it rejects and undoes nothing.
+   */
+  async trash(ref: RoutineRef): Promise<TrashedRoutine> {
+    const { files } = this.#parts;
     const workspace = await this.#load();
     const { value } = this.#find(workspace, ref);
-    this.#parts.files.change(`Deleted routine ${value.name}`, { [routinePath(ref)]: null });
+    files.change(`Deleted routine ${value.name}`, { [routinePath(ref)]: null });
+    const afterDelete = files.step;
+    return {
+      undo: async () => {
+        if (files.step !== afterDelete || !files.undo()) {
+          throw new KindedError(
+            "conflict",
+            `${value.name} can't be put back, because the workspace changed after it was deleted.`,
+          );
+        }
+      },
+    };
   }
 
   async starterTarget(hubId: string): Promise<RoutineTargetChoice | undefined> {
@@ -354,7 +388,7 @@ export class WorkspaceRoutines implements RoutinesHost {
         routineKey: routineKey({ hub: ref.hubId, routine: value }),
         at: this.#parts.now().toISOString(),
       });
-      return { started: true, runId: id };
+      return { started: true, runId: id, shortId: shortRunId(id) };
     } catch (error) {
       if (error instanceof KindedError && error.kind === "unavailable")
         throw new EngineNotAnswering();
@@ -403,12 +437,16 @@ export class WorkspaceRoutines implements RoutinesHost {
     return workspace;
   }
 
-  /** The workspace's hubs and its root `workflows` folder, where routines live, with unsaved changes applied. */
+  /** The workspace's hubs, its root `workflows` folder, where routines live, and its root `library`, where shared connectors are, with unsaved changes applied. */
   #source(): DefinitionSource {
     const { files } = this.#parts;
     return {
       location: "workspace:unsaved",
-      list: async () => [...(await files.list("hubs")), ...(await files.list("workflows"))],
+      list: async () => [
+        ...(await files.list("hubs")),
+        ...(await files.list("workflows")),
+        ...(await files.list("library")),
+      ],
       read: (path) => files.read(path),
       version: async () => "unsaved",
     };

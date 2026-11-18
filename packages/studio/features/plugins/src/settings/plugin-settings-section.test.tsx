@@ -2,6 +2,7 @@
 
 import { type Plugin, type PluginSettingValue, parseFile } from "@halonicjs/format";
 import { KindedError } from "@halonicjs/std";
+import { settlePendingSaves } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -218,6 +219,18 @@ verifies("plugins.plugin-settings", () => {
       act(() => alerts?.click());
       await settle();
       expect(saved[0]).toMatchObject({ alerts: true });
+    });
+
+    it("registers a setting's save with the window close until the host has it", async () => {
+      const { view, saved, release } = await show({ held: true });
+      await typeAndLeave(fieldNamed(view, "City"), "Bergen");
+      expect(saved).toEqual([]);
+
+      const waiting = settlePendingSaves();
+      await release();
+      await waiting;
+
+      expect(saved).toEqual([{ city: "Bergen", units: "metric", alerts: false }]);
     });
 
     it("runs quick saves one after the other, so the last keeps both values", async () => {

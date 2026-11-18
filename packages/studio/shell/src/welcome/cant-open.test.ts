@@ -19,9 +19,21 @@ verifies("shell.welcome-cant-open", () => {
   });
 
   it("says the engine's own reason for any other kind, as a sentence", () => {
-    const problem = cantOpenProblem("/work/acme", new KindedError("unavailable", "Disk is busy"));
+    const problem = cantOpenProblem("/work/acme", new KindedError("invalid_input", "Disk is busy"));
     expect(problem.reason).toBe("Disk is busy.");
     expect(problem.details).toBeUndefined();
+  });
+
+  it("says the engine isn't answering when it doesn't, never in the shell's words", () => {
+    const problem = cantOpenProblem(
+      "/work/odd",
+      new KindedError("unavailable", "The desktop shell gave no answer about the folder."),
+    );
+    expect(problem).toEqual({
+      folder: "/work/odd",
+      kind: "unavailable",
+      reason: "the engine isn't answering. It may still be starting.",
+    });
   });
 
   it("hides a reason without a kind and keeps it for Copy details", () => {

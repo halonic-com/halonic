@@ -95,7 +95,7 @@ verifies("cli.doctor-report", () => {
       "✕ Sandbox     can't start on this computer",
       "              bubblewrap isn't installed, and the sandbox needs it.",
       "              Fix: install it, for example on Ubuntu or Debian with sudo apt install bubblewrap. Then run halonic doctor again.",
-      "              More: https://docs.halonic.dev/sandbox#bubblewrap (bubblewrap-missing)",
+      "              More: https://docs.halonic.dev/security/sandbox/#bubblewrap (bubblewrap-missing)",
       "✓ Disk        48 GB free · Halonic uses 1.4 GB (run logs 1.1 GB)",
       "",
       "1 problem. Agents set to run in a sandbox won't start until it's fixed.",
@@ -175,7 +175,7 @@ verifies("cli.doctor-report", () => {
       "✕ Sandbox     can't start on this computer",
       "              What failed: bubblewrap can't start: bwrap: setting up uid map: Permission denied",
       "              Fix: see what the sandbox needs on this computer. Then run halonic doctor again.",
-      "              More: https://docs.halonic.dev/sandbox#other (other)",
+      "              More: https://docs.halonic.dev/security/sandbox/#other (other)",
     ]);
   });
 
@@ -189,7 +189,7 @@ verifies("cli.doctor-report", () => {
       "✕ Sandbox     can't start on this computer",
       "              socat isn't installed, and the sandbox needs it.",
       "              Fix: install it, for example on Ubuntu or Debian with sudo apt install socat. Then run halonic doctor again.",
-      "              More: https://docs.halonic.dev/sandbox#linux-tools (linux-tools-missing)",
+      "              More: https://docs.halonic.dev/security/sandbox/#linux-tools (linux-tools-missing)",
     ]);
   });
 
@@ -203,7 +203,7 @@ verifies("cli.doctor-report", () => {
       "✕ Sandbox     can't start on this computer",
       "              This distro runs on WSL 1, and the sandbox needs WSL 2.",
       "              Fix: switch it to WSL 2 with wsl --set-version Ubuntu 2 in PowerShell on Windows. Then run halonic doctor again.",
-      "              More: https://docs.halonic.dev/sandbox#wsl1 (not-supported)",
+      "              More: https://docs.halonic.dev/security/sandbox/#wsl1 (not-supported)",
     ]);
   });
 });
@@ -217,7 +217,7 @@ verifies("cli.doctor-windows-drive", () => {
       "! Workspace   acme · trusted on this computer",
       "              The workspace is on the Windows drive /mnt/c, so runs are slow and Halonic doesn't notice edits made in Windows.",
       "              Fix: move it into your Linux home folder (~), then run halonic doctor again.",
-      "              More: https://docs.halonic.dev/sandbox#wsl2-folder",
+      "              More: https://docs.halonic.dev/security/sandbox/#wsl2-folder",
     ]);
     expect(lines.at(-1)).toBe("No problems. 1 warning.");
   });
@@ -250,7 +250,7 @@ verifies("cli.doctor-node", () => {
       "✕ Sandbox     can't start on this computer",
       "              Windows' Node.js can't start the sandbox in a WSL folder.",
       "              Fix: install Node.js inside WSL and open a WSL terminal. Then run halonic doctor again.",
-      "              More: https://docs.halonic.dev/sandbox (windows-node-in-wsl)",
+      "              More: https://docs.halonic.dev/security/sandbox/ (windows-node-in-wsl)",
     ]);
   });
 
@@ -387,7 +387,7 @@ describe("doctorReportLines", () => {
     const windows: SandboxLine = { ...bubblewrapMissing, reason: "windows" };
     const lines = check(printed(reportOf({ sandbox: windows, disk: diskFree })), "Sandbox");
     expect(lines.at(-1)).toBe(
-      "              More: https://docs.halonic.dev/sandbox#windows-preview (windows)",
+      "              More: https://docs.halonic.dev/security/sandbox/#windows-preview (windows)",
     );
   });
 

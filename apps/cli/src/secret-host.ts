@@ -8,7 +8,12 @@ import { EnvSecrets, firstSecret } from "@halonicjs/adapter-env-secrets";
 import { createScryptHasher } from "@halonicjs/adapter-password-scrypt";
 import { FileSecretStore } from "@halonicjs/adapter-secrets-file";
 import { SecretService } from "@halonicjs/app";
-import { maxSecretValueLength, type PasswordHasher, type Secrets } from "@halonicjs/ports";
+import {
+  type KeyOrigins,
+  maxSecretValueLength,
+  type PasswordHasher,
+  type Secrets,
+} from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder, secretsFile } from "@halonicjs/profile";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 
@@ -86,6 +91,18 @@ export function chainedSecrets(
 ): Secrets {
   const file = lazily(() => openSecretStore(profile()));
   return firstSecret(new EnvSecrets(env), { get: (name) => file().get(name) });
+}
+
+/**
+ * The origins the profile's secrets file records for each key. The file is
+ * opened on the first key a model call asks about, like {@link chainedSecrets},
+ * so a command that never calls a model with a key never touches it.
+ */
+export function profileKeyOrigins(
+  profile: () => ProfileEnvironment = nodeProfileEnvironment,
+): KeyOrigins {
+  const file = lazily(() => openSecretStore(profile()));
+  return { allowedOrigins: (name) => file().allowedOrigins(name) };
 }
 
 function lazily<T>(make: () => T): () => T {

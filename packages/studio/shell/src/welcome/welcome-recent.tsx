@@ -11,6 +11,9 @@ export interface WelcomeRecentWorkspace {
   readonly sample?: boolean | undefined;
 }
 
+/** What a screen reader hears while a row is busy: the same word as the Open folder button (microcopy 3.2). */
+export const openingStatus = "Opening…";
+
 /** The tag at the end of a sample's row: a fact, so an outline tag and not a tone chip (flow-first-run 2.1). */
 export const sampleTag = "Sample";
 
@@ -29,19 +32,38 @@ export interface WelcomeRecentProps {
   readonly onOpen: (location: string) => void;
   /** Takes each row's button, by location, so focus can move to a row. */
   readonly rowRef: (location: string) => Ref<HTMLButtonElement>;
+  /** The row whose folder failed to open: it gets the danger outline and is described by the alert line. */
+  readonly failed?: { readonly location: string; readonly alertId: string } | undefined;
+}
+
+/** How much of a folder's end always shows when its line is cut in the middle. */
+const TAIL_LENGTH = 24;
+
+/** A folder that, when too long, is cut in the middle so its end, which tells folders apart, stays; the cut lands on a "/" when it can. */
+function MiddleCut({ text }: { readonly text: string }) {
+  const cut = Math.max(0, text.length - TAIL_LENGTH);
+  // Cut at a "/" so the end starts on a whole folder name, when there is one to cut at.
+  const slash = text.lastIndexOf("/", cut);
+  const at = slash > 0 ? slash : cut;
+  return (
+    <span className="flex min-w-0 text-caption text-fg-subtle">
+      <span className="truncate">{text.slice(0, at)}</span>
+      <span className="shrink-0 whitespace-pre">{text.slice(at)}</span>
+    </span>
+  );
 }
 
 /**
  * The Welcome screen's Recent list (states-flow-map W2): the heading **Recent** and up to five
  * rows, each a button with the workspace's name over its folder, read "*Acme Support*,
  * *~/Documents/Acme Support*" (microcopy 19.6). One press opens it. The row whose folder is
- * opening is busy: a spinner at its end, `aria-busy`, and presses ignored. Hidden while nothing is
+ * opening is busy: a spinner at its end, `aria-busy`, presses ignored, and a polite "Opening…" status for screen readers. Hidden while nothing is
  * remembered, with no "No recent workspaces" sentence.
  *
  * @example
  * <WelcomeRecent workspaces={recent} opening={undefined} onOpen={open} rowRef={rowRef} />
  */
-export function WelcomeRecent({ workspaces, opening, onOpen, rowRef }: WelcomeRecentProps) {
+export function WelcomeRecent({ workspaces, opening, onOpen, rowRef, failed }: WelcomeRecentProps) {
   const headingId = useId();
   const shown = workspaces.slice(0, WELCOME_RECENT_ROWS);
   if (shown.length === 0) {
@@ -55,6 +77,7 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef }: WelcomeRe
       <ul className="flex flex-col">
         {shown.map((workspace) => {
           const busy = workspace.location === opening;
+          const failedRow = workspace.location === failed?.location;
           return (
             <li key={workspace.location}>
               <button
@@ -62,7 +85,8 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef }: WelcomeRe
                 type="button"
                 aria-label={`${workspace.name}, ${workspace.location}${workspace.sample === true ? `, ${sampleTag}` : ""}`}
                 aria-busy={busy || undefined}
-                className={rowClasses}
+                aria-describedby={failedRow ? failed?.alertId : undefined}
+                className={`${rowClasses} ${failedRow ? failedBorder : idleBorder}`}
                 onClick={() => {
                   if (!busy) {
                     onOpen(workspace.location);
@@ -71,7 +95,7 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef }: WelcomeRe
               >
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-body text-fg">{workspace.name}</span>
-                  <span className="truncate text-caption text-fg-subtle">{workspace.location}</span>
+                  <MiddleCut text={workspace.location} />
                 </span>
                 {workspace.sample === true ? (
                   <span aria-hidden="true" className={tagClasses}>
@@ -88,12 +112,21 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef }: WelcomeRe
           );
         })}
       </ul>
+      <span role="status" aria-live="polite" className="sr-only">
+        {opening !== undefined && shown.some((workspace) => workspace.location === opening)
+          ? openingStatus
+          : ""}
+      </span>
     </section>
   );
 }
 
+// One border colour per state: both on a row would fight, and the transparent one could win.
+const idleBorder = "border-transparent";
+const failedBorder = "border-danger";
+
 // The sidebar switcher's padding and radius, so a workspace row looks the same in both places.
 const rowClasses = [
-  "flex w-full min-w-0 items-center gap-2.5 rounded-sm px-2 py-1.5 text-start outline-none focus-ring",
+  "flex w-full min-w-0 items-center gap-2.5 rounded-sm border px-2 py-1.5 scroll-my-4 text-start outline-none focus-ring",
   "hover:bg-surface-muted active:bg-surface-muted",
 ].join(" ");

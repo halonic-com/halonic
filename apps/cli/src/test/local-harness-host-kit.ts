@@ -9,13 +9,14 @@ import { testGit } from "@halonicjs/adapter-git/testing";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { ConnectorFactories, WorkflowRuns } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
-import type {
-  ConnectorFactory,
-  Harness,
-  HarnessBridgeServer,
-  Sandbox,
-  SandboxProfile,
-  TrustGrant,
+import {
+  type ConnectorFactory,
+  type Harness,
+  type HarnessBridgeServer,
+  noKeyOrigins,
+  type Sandbox,
+  type SandboxProfile,
+  type TrustGrant,
 } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
@@ -240,6 +241,7 @@ export async function openEngine(
     workspace,
     workspaceRoot: acme,
     secrets: { get: async () => null },
+    keyOrigins: noKeyOrigins,
     http: { fetch: () => Promise.reject(new TypeError("The test model calls no server.")) },
     trusted: true,
     environment: profile,

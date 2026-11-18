@@ -1,4 +1,5 @@
 import type { WorkspaceSwitcher } from "@halonicjs/studio-feature-workspace";
+import { settlePendingSaves } from "@halonicjs/studio-kit";
 
 /**
  * How long a closing window waits for the open workspaces to save before it asks, so a
@@ -26,6 +27,21 @@ export type ClosingWorkspaces = Pick<
   "saveAllForWindowClose" | "askStillSaving" | "withdrawStillSaving"
 >;
 
+/**
+ * Hands in what the person has typed but not yet left: the field with the cursor in it saves on
+ * blur, so blurring it starts that save. Then waits for every save a field has registered with
+ * `settleOnClose` (the kit), so the workspaces are asked to finish theirs only once the blur
+ * saves have staged their changes.
+ */
+export async function leaveFocusedField(
+  page: Pick<Document, "activeElement">,
+  settle: () => Promise<void> = settlePendingSaves,
+): Promise<void> {
+  const field = page.activeElement;
+  if (field instanceof HTMLElement) field.blur();
+  await settle();
+}
+
 /** What {@link windowCloseHandler} is given. */
 export interface WindowCloseOptions {
   readonly workspaces: ClosingWorkspaces;
@@ -35,6 +51,8 @@ export interface WindowCloseOptions {
   readonly limitMs: number;
   /** Settles with the task's result or, after `ms`, with `fallback`. */
   readonly within: <T>(task: Promise<T>, ms: number, fallback: T) => Promise<T>;
+  /** Runs before the workspaces save, to hand in drafts a page keeps until a field is left. */
+  readonly settleDrafts?: () => Promise<void>;
 }
 
 /**
@@ -50,12 +68,18 @@ export interface WindowCloseOptions {
 export function windowCloseHandler(
   options: WindowCloseOptions,
 ): (destroy: () => Promise<void>) => Promise<boolean> {
-  const { workspaces, stop, limitMs, within } = options;
+  const { workspaces, stop, limitMs, within, settleDrafts } = options;
   const closeWindow = async (destroy: () => Promise<void>) => {
     await within(stop(), limitMs, undefined);
     await destroy();
   };
   return async (destroy) => {
+    if (settleDrafts !== undefined) {
+      // A draft save that hangs falls through to the saves below and the "still saving" question.
+      await within(settleDrafts(), limitMs, undefined).catch((error: unknown) =>
+        console.error(error),
+      );
+    }
     const saving = workspaces.saveAllForWindowClose();
     const saved = await within<boolean | "still-saving">(saving, limitMs, "still-saving");
     if (saved === false) return false;

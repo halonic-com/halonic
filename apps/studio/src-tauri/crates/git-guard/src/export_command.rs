@@ -16,6 +16,10 @@ pub(crate) struct ExportPlace<'a> {
     pub index: Option<&'a Path>,
 }
 
+/// What git starts for `ssh://`: no question, and nothing forwarded to the
+/// remote (no agent, no port, no socket).
+const SSH_COMMAND: &str = "ssh -o BatchMode=yes -o ForwardAgent=no -o ClearAllForwardings=yes";
+
 impl GitRunner {
     /// The command for one step of an export (`export.rs`): the base
     /// command with the hardening, in `cwd`, which is a folder of the
@@ -36,6 +40,10 @@ impl GitRunner {
             ("credential.helper", ""),
             ("core.excludesFile", ""),
             ("core.attributesFile", ""),
+            // A hostile pack is checked object by object and kept as loose
+            // objects when it is small, so a bad object stops the fetch.
+            ("fetch.unpackLimit", "1"),
+            ("transfer.fsckObjects", "true"),
         ]
         .iter()
         .map(|(key, value)| ((*key).to_owned(), (*value).to_owned()))
@@ -49,7 +57,7 @@ impl GitRunner {
             Some(program) => command
                 .env("GIT_SSH_COMMAND", program)
                 .env("GIT_SSH_VARIANT", "simple"),
-            None => command.env("GIT_SSH_COMMAND", "ssh -o BatchMode=yes"),
+            None => command.env("GIT_SSH_COMMAND", SSH_COMMAND),
         };
         if let Some(git_dir) = place.git_dir {
             let mut argument = OsString::from("--git-dir=");
@@ -62,7 +70,7 @@ impl GitRunner {
             command.arg(argument);
         }
         if let Some(index) = place.index {
-            command.env("GIT_INDEX_FILE", index);
+            command.env("GIT_INDEX_FILE", plain_path(index));
         }
         command
     }

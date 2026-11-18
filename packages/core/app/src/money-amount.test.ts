@@ -47,6 +47,7 @@ verifies("app.money-amount", () => {
     it("writes the workspace's currency", () => {
       expect(moneyAmount(2, "USD")).toBe("$2.00");
       expect(moneyAmount(0.0001, "USD")).toBe("under $0.001");
+      expect(moneyAmount(0.0001, "USD", { tiny: "less than" })).toBe("less than $0.001");
     });
 
     it("refuses a negative or non-finite amount", () => {

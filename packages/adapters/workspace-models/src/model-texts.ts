@@ -32,7 +32,23 @@ export const modelTexts = {
     `provider ${provider} would send its key to ${origin}, and this workspace isn't trusted on this computer.`,
   untrustedAddressFix: (provider: string): ModelText =>
     `Check providers/${provider}.yaml, then trust the workspace, or point it at the type's own address.`,
+  /**
+   * Line 1 of the error for a key that isn't allowed to go to an address. The
+   * CLI, a scheduled run's result and the Studio run log all show this one
+   * text, so a person gets the same words wherever it ends (HAL-11873). The
+   * key is named, never its value.
+   */
+  originNotAllowed: (provider: string, keyName: string, origin: string): ModelText =>
+    `Provider "${provider}" can't send key "${keyName}" to ${origin}. That address isn't allowed for this key. Only allow an address you recognise.`,
+  /** The fix, with the command to paste: the key name is quoted, and the address is quoted when a shell would read it. */
+  originNotAllowedFix: (keyName: string, origin: string): ModelText =>
+    `To allow it, open Models in Halonic Studio, or run: halonic models allow-address "${keyName}" ${shellWord(origin)}`,
   unknownAlias: (alias: string, hubId: string): ModelText =>
     `hub ${hubId} has no model alias ${alias}.`,
   unknownAliasFix: (): ModelText => "Add the alias to models.yaml, or pick one it has.",
 } as const;
+
+/** The address as one safe word for a shell: left as it is when it holds only plain characters, else in double quotes. */
+function shellWord(address: string): string {
+  return /^[A-Za-z0-9:/._-]+$/u.test(address) ? address : `"${address}"`;
+}

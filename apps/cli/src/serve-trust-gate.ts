@@ -12,6 +12,7 @@ import { serveMessages } from "./messages/serve.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import {
   cliTrustService,
+  needsNoTrust,
   readWorkspaceTrust,
   type WorkspaceTrustMachine,
 } from "./workspace-trust.ts";
@@ -36,27 +37,29 @@ export function workspaceTrustGate(
 ): TrustGate {
   return {
     async check(): Promise<TrustDecision> {
-      const state = await trustStateOf(dir, machine);
-      return { state, message: plainText(sentenceOf[state]().phrase) };
+      const { state, sentence } = await trustAnswerOf(dir, machine);
+      return { state, message: plainText(sentence.phrase) };
     },
   };
 }
 
-async function trustStateOf(
+async function trustAnswerOf(
   dir: OpenWorkspaceDir,
   machine: WorkspaceTrustMachine,
-): Promise<TrustState> {
+): Promise<{ readonly state: TrustState; readonly sentence: Message }> {
   try {
-    const workspace = await readWorkspaceTrust(
-      dir,
-      machine.commandSearch,
-      await loadWorkspace(dir.store),
-    );
+    const loaded = await loadWorkspace(dir.store);
+    // A workspace that reaches only the test model starts nothing that
+    // needs trust, so it answers `trusted` with its own sentence (HAL-12011).
+    if (await needsNoTrust(dir, loaded)) {
+      return { state: "trusted", sentence: serveMessages.trustNotNeeded() };
+    }
+    const workspace = await readWorkspaceTrust(dir, machine.commandSearch, loaded);
     const { status } = await cliTrustService(machine.trustStore, machine.clock).check(
       workspace.subject,
     );
-    return status;
+    return { state: status, sentence: sentenceOf[status]() };
   } catch {
-    return "unreadable";
+    return { state: "unreadable", sentence: sentenceOf.unreadable() };
   }
 }

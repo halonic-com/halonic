@@ -27,6 +27,21 @@ card is the first: `packages/studio/features/workflows/e2e`.
    then call `page.screenshot` with `fullPage: true` and a path
    `test-results/screenshots/<screen>-<state>-<light|dark>.png`.
 
+## Settings and the Agents list
+
+`settings-<section>-<light|dark>.png` shows Settings open on Models, Trusted sources, Agent sandbox,
+Formats or Plugins (HAL-11861). It is the shell's real Settings dialog with the real section views,
+fed made-up data, so the spacing under each section's name is the app's. The Agents list is
+`agents-list-two-groups-<light|dark>.png`. Other features' views reach the pages through a
+`load…` function in their `api.ts`, which loads the view only when called. The phone's Settings
+sheet isn't taken yet.
+
+## Welcome
+
+`welcome-<new|recent|failed>-<1440|360>-<light|dark>.png` shows the shell's real Welcome screen
+brand-new, with five Recent rows, and after a Recent row failed to open (HAL-11985). The spec also
+checks that the title and **Open folder** sit at the same y in all three states.
+
 ## Pictures for halonic.dev
 
 `e2e/site-screenshots.spec.ts` takes the pictures the website shows (HAL-10732): the run page of a

@@ -18,6 +18,7 @@ import type {
   TokenStore,
   TrustStore,
 } from "@halonicjs/ports";
+import { proxySetting } from "../proxy-setting.ts";
 import type { ConnectorRouteDeps } from "./connector-routes.ts";
 import { ConnectorTable } from "./connector-table.ts";
 import { NoInheritedEnvFactory } from "./no-inherited-env-factory.ts";
@@ -91,7 +92,10 @@ export function hostConnectorRoutes(
   connectors: ConnectorTable = new ConnectorTable(),
   log?: (text: string) => void,
 ): ConnectorRouteDeps {
-  const http: HttpClient = createNodeHttpClient({ hostClass: connectorHostClass });
+  const http: HttpClient = createNodeHttpClient({
+    hostClass: connectorHostClass,
+    proxy: proxySetting,
+  });
   // A `stdio` connector reads no sign-in token.
   const tokens: TokenStore = new MemoryTokenStore();
   return {

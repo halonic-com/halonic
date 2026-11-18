@@ -469,3 +469,22 @@ verifies("cli.run-failure-debug", () => {
     expect(io.stderr).toEqual([]);
   });
 });
+
+verifies("cli.commands.trust.review-and-trust", () => {
+  it("escapes control characters in the workspace's name in the refusal", async () => {
+    await writeFile(join(acme, "providers/ollama.yaml"), "id: ollama\ntype: ollama\nlocal: true\n");
+    const workspace = join(acme, "workspace.yaml");
+    const text = await readFile(workspace, "utf8");
+    await writeFile(workspace, text.replace("name: Acme", 'name: "Acme\\u001b[6A\\r"'));
+    const io = captureIo(acme);
+
+    const code = await runCli(["run", "support-reply", ...samsEmail], io, [runCommand()]);
+
+    expect(code).toBe(exitCode.notTrusted);
+    expect(io.stderr).toContain(
+      "✕ Couldn't run support-reply: Acme\\u001b[6A\\u000d isn't trusted on this computer yet. Nothing ran.",
+    );
+    expect(io.stderr.join("\n")).not.toContain("\u001b");
+    expect(io.stderr.join("\n")).not.toContain("\r");
+  });
+});

@@ -88,6 +88,17 @@ verifies("workspace.references", () => {
     parityLoadLimitMs,
   );
 
+  it.each(["workflow/missing-required", "workflow/bad-indent"])(
+    "doesn't report the test of a workflow whose file failed, in %s",
+    async (caseId) => {
+      const workspace = await loadWorkspace(readParityCase(caseId).source);
+      const messages = workspace.issues.map((issue) => issue.message);
+      expect(messages.filter((message) => message.startsWith("Test targets"))).toEqual([]);
+      expect(workspace.issues.some((issue) => issue.file.endsWith(".workflow.yaml"))).toBe(true);
+    },
+    parityLoadLimitMs,
+  );
+
   describe("in small workspaces", () => {
     const settings = { "workspace.yaml": "id: acme\nname: Acme\n" };
     const errorsIn = async (files: Record<string, string>): Promise<string[]> => {

@@ -54,6 +54,7 @@ import {
   type TauriIpc,
   tauriAgentHostTransport,
 } from "@halonicjs/studio-services";
+import { agentHostHarnessDetect } from "../agents/agent-host-harness-detect.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
@@ -174,11 +175,17 @@ export function provideFolderServices(
       reportError: (error) => console.error("The engine", error),
     }),
   );
+  const transport = tauriAgentHostTransport(window);
   services.provide(
     AgentsHostService,
     new WorkspaceAgents({
       files: services.get(workspaceFilesKey),
       onChange: (listener) => scope.events.on("files.changed", listener),
+      ...(transport === undefined
+        ? {}
+        : {
+            detectHarness: (_ref, harness) => agentHostHarnessDetect(transport)(harness),
+          }),
     }),
   );
   const workflows = services.provide(
@@ -227,7 +234,6 @@ export function provideFolderServices(
       engine,
     }),
   );
-  const transport = tauriAgentHostTransport(window);
   services.provide(
     LibraryItemsHostService,
     new WorkspaceLibraryItems({

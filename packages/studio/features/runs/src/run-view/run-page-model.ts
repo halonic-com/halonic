@@ -2,13 +2,14 @@
 // summary (checklist part 1, 1.5, 1.6 and 1.8; mc 15.2 revision 94). The
 // page only draws what these return.
 
-import { runWait, shortRunId } from "@halonicjs/app";
+import { moneyAmount, runWait, shortRunId } from "@halonicjs/app";
 import type { PendingApproval, RunSummary } from "@halonicjs/events";
 import { escapeHidden } from "@halonicjs/std";
 import type { ProviderKind, RunWorkflow, SourcedRun } from "../api.ts";
 import { currentStepName, type RunChip, runRow } from "../list/run-row.ts";
 import { lineSeparator, runPageWords } from "../run-words.ts";
 import { clockTime, dayAndMonth, dayWords, dueWords, tookWords } from "../time-words.ts";
+import { type BudgetStop, budgetResetsOn, budgetStopOf } from "./budget-stop.ts";
 
 /** The top of the run page. */
 export interface RunHeader {
@@ -54,10 +55,21 @@ export type BannerAction =
   | { readonly kind: "review-in-inbox" }
   | { readonly kind: "open-run"; readonly runId: string; readonly label: string };
 
-/** A button that mends a failed run's cause: copy the command that does it, or go to Models. */
+/**
+ * A button that mends a failed run's cause: copy the command that does it, go to Models, or open
+ * a page outside Studio (`address` is already checked: see `googleConsoleAddress`).
+ */
 export type BannerFix =
   | { readonly kind: "copy-command"; readonly command: string }
-  | { readonly kind: "open-models" };
+  | { readonly kind: "open-models" }
+  /** **Change budget**: Settings › Models › Budget, which is where Models opens. */
+  | { readonly kind: "change-budget" }
+  | {
+      readonly kind: "open-external";
+      readonly label: string;
+      readonly address: string;
+      readonly opens: string;
+    };
 
 /** What the page needs besides the run. */
 export interface RunPageContext {
@@ -184,13 +196,20 @@ function endedBanner(summary: RunSummary, workflow: string, step: string): RunBa
     };
   }
   if (summary.reason === "budget") {
-    const line = runPageWords.budget(workflow, step);
+    const stop = budgetStopOf(summary);
+    const line =
+      stop === undefined ? runPageWords.budget(workflow, step) : budgetLine(stop, workflow, step);
     return {
       kind: "callout",
       tone: "attention",
       name: runPageWords.budgetName,
       title: runPageWords.budgetTitle,
-      lines: [line, runPageWords.budgetChecks],
+      lines: [
+        line,
+        ...(stop === undefined ? [] : [budgetFix(stop, summary)]),
+        runPageWords.budgetChecks,
+      ],
+      ...(stop === undefined ? {} : { fixes: [{ kind: "change-budget" }] }),
       details: [line, `Run ${summary.id}`, message].filter((part) => part !== "").join("\n"),
     };
   }
@@ -202,6 +221,21 @@ function endedBanner(summary: RunSummary, workflow: string, step: string): RunBa
     lines: [line],
     details: [line, `Run ${summary.id}`, message].filter((part) => part !== "").join("\n"),
   };
+}
+
+/** The CLI's first line for a budget stop, in the budget's currency. */
+function budgetLine(stop: BudgetStop, workflow: string, step: string): string {
+  const budget = moneyAmount(stop.budget, stop.currency);
+  return stop.per === "run"
+    ? runPageWords.budgetPerRun(workflow, step, budget, moneyAmount(stop.spent, stop.currency))
+    : runPageWords.budgetPerMonth(workflow, step, budget);
+}
+
+/** The second line: change the budget, and for a monthly budget when it resets. */
+function budgetFix(stop: BudgetStop, summary: RunSummary): string {
+  return stop.per === "run"
+    ? runPageWords.budgetChangePerRun
+    : runPageWords.budgetChangeMonthly(budgetResetsOn(summary.endedAt ?? summary.startedAt));
 }
 
 function needsYou(text: string): RunBanner {

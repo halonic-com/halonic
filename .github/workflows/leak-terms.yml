@@ -3,11 +3,11 @@ name: Leak terms
 # The personal-terms part of the leak guard for a pull request, in a
 # workflow the pull request can't change (HAL-11232). The terms are real
 # people's names, so they live in the environment `leak-terms`, which only
-# `main` and the merge queue may use; CI's Leak guard job gets them only
-# there. On pull_request_target, GitHub runs this file from the base
-# branch, and the job runs only the base's code: the pull request's head is
-# fetched as git objects and only read. No install, no cache, a read-only
-# token. It prints locations, never a term.
+# `main`, `release/*` and the merge queue may use; CI's Leak guard job
+# gets them only there. On pull_request_target, GitHub runs this file from
+# the base branch, and the job runs only the base's code: the pull
+# request's head is fetched as git objects and only read. No install, no
+# cache, a read-only token. It prints locations, never a term.
 #
 # Not a required check: the merge queue runs ci.yml's Leak guard with the
 # terms before anything merges. This run tells the author sooner, also after
@@ -17,7 +17,7 @@ on:
   # zizmor: ignore[dangerous-triggers] runs only the base branch's code; the pull request is read as data
   pull_request_target:
     types: [opened, synchronize, reopened, edited]
-    branches: [main]
+    branches: [main, "release/**"]
 
 permissions: {}
 

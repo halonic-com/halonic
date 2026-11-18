@@ -26,12 +26,33 @@ Only `http` and `https` URLs are sent; any other scheme throws a `TypeError`. A 
 
 **The URL decides the host, never a header.** The transport drops a caller's `host` header and
 sends the URL's; for `https` to a name it checks the certificate against the URL's host. It also
-drops `connection`, `keep-alive`, `transfer-encoding`, `te`, `upgrade`, `expect` and
-`content-length`, and sets the framing itself.
+drops `connection`, `keep-alive`, `transfer-encoding`, `te`, `upgrade`, `expect`,
+`content-length` and `proxy-authorization`, and sets the framing itself.
 
 `ownPorts` is checked on `loopback` hosts only. That holds while Halonic's own servers listen on
 `127.0.0.1` alone: one that listened on the LAN address would be reachable through a `private`
 host with this computer's LAN IP.
+
+## With a proxy
+
+`createNodeHttpClient({ proxy })` takes what `proxyFromEnv(process.env)` read: an `http://` proxy
+from `HTTPS_PROXY` and the `NO_PROXY` list (design on HAL-6640). Per request and per redirect hop,
+by the host's class and name:
+
+| Host | What happens |
+| --- | --- |
+| `loopback` or `private` | direct, full address check (the proxy never sees the name) |
+| on `NO_PROXY` | direct, full address check |
+| public `https` | CONNECT tunnel to the **name** and port, TLS on the tunnel, certificate checked for the name before any request byte is sent |
+| public `http` | refused with a `ProxyError` that says to use `https://` or `NO_PROXY` |
+| any request, when the setting is unusable | `ProxyError` with the plain message |
+
+**Through a proxy the address can't be checked,** because the proxy resolves the name. What stays is
+the allowed name and port, TLS, and the certificate for that name. An IP literal is still checked as
+itself. The proxy may be on a private address, but not on one of Halonic's own ports. A failure never
+falls back to a direct connection. Proxy credentials go only on the CONNECT line; a caller's
+`proxy-authorization` is always dropped. `ProxyError` has `code: "proxy-failed"` and never holds the
+user name or password.
 
 ## What it does like `fetch`
 

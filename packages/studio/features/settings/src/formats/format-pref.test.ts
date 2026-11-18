@@ -11,6 +11,8 @@ import {
   usableTag,
 } from "./format-pref.ts";
 
+const NOW = new Date(2026, 10, 17, 8, 0);
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -26,7 +28,7 @@ verifies("settings.formats-format", () => {
     const [first] = formatOptions({ followTag: "en-GB", place: "app" });
     expect(first).toEqual({
       value: "follow",
-      label: "Follow this computer: English (United Kingdom)",
+      label: "Follow this computer: English (UK)",
     });
   });
 
@@ -56,9 +58,9 @@ verifies("settings.formats-format", () => {
     expect(values).toContain("nl-NL");
   });
 
-  it("shows a number and a date in the format, with no currency", () => {
-    expect(formatExample("en-GB")).toBe("45.00 · Mon 9 Nov, 08:00");
-    expect(formatExample("nl-NL")).toBe("45,00 · ma 9 nov, 08:00");
+  it("shows a number and today's date in the format, with no currency", () => {
+    expect(formatExample("en-GB", NOW)).toBe("12,345.60 · Tue 17 Nov, 08:00");
+    expect(formatExample("nl-NL", NOW)).toBe("12.345,60 · di 17 nov, 08:00");
   });
 
   it("formats with the followed tag, or the chosen one", () => {
@@ -71,9 +73,9 @@ verifies("settings.formats-format", () => {
     expect(usableTag("en_GB")).toBe("en-GB");
     expect(usableTag("en-GB-u-ca-buddhist")).toBe("en-GB");
     expect(formatOptions({ followTag: "en_GB", place: "app" })[0]?.label).toBe(
-      "Follow this computer: English (United Kingdom)",
+      "Follow this computer: English (UK)",
     );
-    expect(formatExample("en-GB-u-ca-buddhist")).toBe("45.00 · Mon 9 Nov, 08:00");
+    expect(formatExample("en-GB-u-ca-buddhist", NOW)).toBe("12,345.60 · Tue 17 Nov, 08:00");
     expect(formatLocale("follow", "nl_NL.UTF-8")).toBe("nl-NL");
   });
 
@@ -85,9 +87,9 @@ verifies("settings.formats-format", () => {
     expect(usableTag("")).toBe("en-GB");
     expect(usableTag("C")).toBe("en-GB");
     expect(formatOptions({ followTag: "", place: "app" })[0]?.label).toBe(
-      "Follow this computer: English (United Kingdom)",
+      "Follow this computer: English (UK)",
     );
-    expect(formatExample("")).toBe("45.00 · Mon 9 Nov, 08:00");
+    expect(formatExample("", NOW)).toBe("12,345.60 · Tue 17 Nov, 08:00");
   });
 
   it("stores the tag, and follows the computer for anything else", () => {

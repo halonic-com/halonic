@@ -95,12 +95,13 @@ export function usableTag(tag: string): string {
 }
 
 /**
- * The Format select's options: first "Follow this computer: English (United Kingdom)" ("Follow
+ * The Format select's options: first "Follow this computer: English (UK)" ("Follow
  * this browser: …" when served, "Follow this phone: …" on the phone's page), then each tag this window can format, by name, sorted by name.
+ * The followed name is the short one, so the line fits the select in Settings' 360px column.
  *
  * @example
  * formatOptions({ followTag: "en-GB", place: "app" })[0];
- * // { value: "follow", label: "Follow this computer: English (United Kingdom)" }
+ * // { value: "follow", label: "Follow this computer: English (UK)" }
  */
 export function formatOptions(where: FormatPlace): FormatOption[] {
   const names = new Intl.DisplayNames([studioLanguage], {
@@ -115,7 +116,13 @@ export function formatOptions(where: FormatPlace): FormatOption[] {
     .map((tag) => ({ value: tag, label: nameOf(tag) }))
     .sort((left, right) => collator.compare(left.label, right.label));
   const follows = `this ${settingsWhere(where.place, where.surface ?? "window")}`;
-  const followed = nameOf(usableTag(where.followTag));
+  const shortNames = new Intl.DisplayNames([studioLanguage], {
+    type: "language",
+    languageDisplay: "standard",
+    style: "short",
+  });
+  const followTag = usableTag(where.followTag);
+  const followed = shortNames.of(followTag) ?? followTag;
   return [{ value: "follow", label: `Follow ${follows}: ${followed}` }, ...tags];
 }
 
@@ -124,25 +131,23 @@ export function formatLocale(choice: FormatChoice, followTag: string): string {
   return choice === "follow" ? usableTag(followTag) : choice;
 }
 
-/** The example under the Format select: 9 Nov 2026 at 08:00, a Monday, in local time. */
-const exampleDate = new Date(2026, 10, 9, 8, 0);
-
 /**
- * The example line under the Format select, a number and a date with no currency:
- * "45.00 · Mon 9 Nov, 08:00" for `en-GB`, "45,00 · ma 9 nov, 08:00" for `nl-NL`.
+ * The example line under the Format select: a number with a thousands separator and decimals,
+ * and today's date and time, "12,345.60 · Tue 17 Nov, 08:00" for `en-GB`, "12.345,60 · di 17 nov,
+ * 08:00" for `nl-NL`. `now` is today unless a test gives a fixed time.
  */
-export function formatExample(locale: string): string {
+export function formatExample(locale: string, now: Date = new Date()): string {
   const tag = usableTag(locale);
   const number = new Intl.NumberFormat(tag, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(45);
+  }).format(12345.6);
   const date = new Intl.DateTimeFormat(tag, {
     weekday: "short",
     day: "numeric",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(exampleDate);
+  }).format(now);
   return `${number} · ${date}`;
 }

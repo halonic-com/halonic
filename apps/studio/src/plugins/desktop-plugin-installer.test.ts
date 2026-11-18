@@ -109,6 +109,20 @@ verifies("studio.desktop-plugin-installer", () => {
       expect(reloads.failures).toHaveLength(1);
     });
 
+    it("adds nothing when the dialog closed before the add, and rejects with conflict", async () => {
+      const controller = new AbortController();
+      controller.abort();
+      const { service, added } = fakeService(addedPlugin);
+      const error = await installerOver(fakeShell().shell, service)
+        .add({ kind: "folder", path: "pick:acme" }, controller.signal)
+        .then(
+          () => expect.unreachable("the add should have failed"),
+          (reason: unknown) => reason,
+        );
+      expect(errorKindOf(error)).toBe("conflict");
+      expect(added).toHaveLength(0);
+    });
+
     it("says taken for a name in use", async () => {
       const outcome = await installerOver(
         fakeShell().shell,

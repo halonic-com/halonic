@@ -194,12 +194,25 @@ verifies("workspace.failed-open-leaves-no-slot", () => {
   it("says the engine's own reason for any other kind", async () => {
     const { switcher, toasts } = setup({
       openFolder: async () => {
-        throw new KindedError("unavailable", "The engine isn't answering");
+        throw new KindedError("invalid_input", "The folder name is odd");
       },
     });
 
     await switcher.fromMenu(() => switcher.openLocation("/work/acme"));
-    expect(toasts.list().at(-1)?.title).toBe("Can't open /work/acme: The engine isn't answering.");
+    expect(toasts.list().at(-1)?.title).toBe("Can't open /work/acme: The folder name is odd.");
+  });
+
+  it("says the engine isn't answering when it doesn't, in the approved words", async () => {
+    const { switcher, toasts } = setup({
+      openFolder: async () => {
+        throw new KindedError("unavailable", "The desktop shell gave no answer");
+      },
+    });
+
+    await switcher.fromMenu(() => switcher.openLocation("/work/acme"));
+    expect(toasts.list().at(-1)?.title).toBe(
+      "Can't open /work/acme: the engine isn't answering. It may still be starting.",
+    );
   });
 
   it("offers Copy details when it can't explain the failure", async () => {

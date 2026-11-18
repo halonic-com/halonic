@@ -163,6 +163,24 @@ verifies("kit.callout", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
+  it("marks an action that leaves Studio with ↗ and says where it goes", async () => {
+    const onClick = vi.fn();
+    const { container } = render(
+      <Callout
+        tone="danger"
+        action={{ label: "Switch it on", opens: "Opens Google Cloud", onClick }}
+      >
+        The Gmail API is off.
+      </Callout>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.textContent).toBe("Switch it on ↗. Opens Google Cloud");
+    expect(button.querySelector("[aria-hidden]")?.textContent).toBe(" ↗");
+    expect(button.querySelector(".sr-only")?.textContent).toBe(". Opens Google Cloud");
+    await click(button);
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
   it("draws several actions side by side, each running its own click", async () => {
     const first = vi.fn();
     const second = vi.fn();

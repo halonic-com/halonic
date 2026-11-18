@@ -96,6 +96,87 @@ verifies("secrets-file.store", () => {
     await expect(lstat(file)).rejects.toThrow();
   });
 
+  describe("allowed origins", () => {
+    async function withKey(): Promise<{ file: string; store: FileSecretStore }> {
+      const file = await freshFile();
+      const store = new FileSecretStore(file);
+      await store.set("openai-key", "sk-test");
+      return { file, store };
+    }
+
+    it("reads none for a key that never had any, and writes none", async () => {
+      const { file, store } = await withKey();
+      expect(await store.allowedOrigins("openai-key")).toBeUndefined();
+      expect(await store.allowedOrigins("other-key")).toBeUndefined();
+      expect(await readFile(file, "utf8")).not.toContain("allowedOrigins");
+    });
+
+    it("records origins without the path, and without repeats", async () => {
+      const { file, store } = await withKey();
+      await store.setAllowedOrigins("OPENAI_KEY", [
+        "https://llm.example.com/v1",
+        "https://LLM.example.com:443/other",
+        "http://localhost:8080",
+      ]);
+      expect(await store.allowedOrigins("openai-key")).toEqual([
+        "https://llm.example.com",
+        "http://localhost:8080",
+      ]);
+      expect(await new FileSecretStore(file).allowedOrigins("openai-key")).toEqual([
+        "https://llm.example.com",
+        "http://localhost:8080",
+      ]);
+    });
+
+    it("keeps them when the key gets a new value, and drops them with the key", async () => {
+      const { store } = await withKey();
+      await store.setAllowedOrigins("openai-key", ["https://llm.example.com"]);
+      await store.set("openai-key", "sk-test-2");
+      expect(await store.allowedOrigins("openai-key")).toEqual(["https://llm.example.com"]);
+      await store.remove("openai-key");
+      await store.set("openai-key", "sk-test-3");
+      expect(await store.allowedOrigins("openai-key")).toBeUndefined();
+    });
+
+    it.each([
+      ["an empty list", []],
+      ["user info", ["http://user:pw@llm.example.com"]],
+      ["another scheme", ["ftp://llm.example.com"]],
+      ["an address that doesn't parse", ["llm.example.com"]],
+      ["nine origins", Array.from({ length: 9 }, (_, i) => `https://h${i}.example.com`)],
+    ])("refuses %s, changes nothing and doesn't repeat the address", async (_label, list) => {
+      const { file, store } = await withKey();
+      const before = await readFile(file, "utf8");
+      const error = await store.setAllowedOrigins("openai-key", list).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(RangeError);
+      expect((error as Error).message).not.toContain("example.com");
+      expect(await readFile(file, "utf8")).toBe(before);
+    });
+
+    it("refuses a key that isn't stored", async () => {
+      const { store } = await withKey();
+      await expect(
+        store.setAllowedOrigins("other-key", ["https://llm.example.com"]),
+      ).rejects.toBeInstanceOf(RangeError);
+    });
+
+    it.each([
+      ["an empty list", '"allowedOrigins":[]'],
+      ["a list that isn't one", '"allowedOrigins":"https://llm.example.com"'],
+      ["an origin with a path", '"allowedOrigins":["https://llm.example.com/v1"]'],
+      ["a spelling an origin doesn't have", '"allowedOrigins":["HTTPS://llm.example.com"]'],
+    ])("refuses a file with %s", async (_label, field) => {
+      const file = await freshFile();
+      await mkdir(join(file, ".."), { recursive: true, mode: 0o700 });
+      await writeFile(file, `{"version":1,"secrets":{"A":{"name":"a","value":"x",${field}}}}`, {
+        mode: 0o600,
+      });
+      await expect(new FileSecretStore(file).allowedOrigins("a")).rejects.toMatchObject({
+        kind: "unavailable",
+      });
+    });
+  });
+
   describe("a file it doesn't understand", () => {
     const refused = [
       ["not JSON", "{nope"],

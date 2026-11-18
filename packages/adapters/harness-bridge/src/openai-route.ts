@@ -16,7 +16,7 @@ import type { BridgeRoute } from "./route.ts";
 import { readModelCall, recordModelCall } from "./spend.ts";
 
 /** The one host the bridge sends OpenAI requests to. */
-const openAiOrigin = "https://api.openai.com";
+export const openAiOrigin = "https://api.openai.com";
 
 /**
  * The request headers that go on to OpenAI. The program's key, its

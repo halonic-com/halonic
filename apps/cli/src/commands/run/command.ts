@@ -3,6 +3,7 @@ import { profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { CliCommand } from "../../command.ts";
 import { nodeCommandSearch } from "../../command-paths.ts";
+import { engineHttp } from "../../engine-http.ts";
 import { nodeHarnessPrograms } from "../../harness-programs.ts";
 import { inputValueName, runMessages } from "../../messages/run.ts";
 import { nodeSandboxWorks } from "../../sandbox-works.ts";
@@ -12,7 +13,7 @@ import { type RunSetup, runWorkflow } from "./run.ts";
 
 /**
  * This computer: its clock and time zone, its trust records, `PATH`, its
- * harness programs and `fetch`. `halonic runs send` moves a run on with the
+ * harness programs and its proxied `fetch`. `halonic runs send` moves a run on with the
  * same.
  */
 export const computerRunSetup: RunSetup = {
@@ -23,7 +24,7 @@ export const computerRunSetup: RunSetup = {
     commandSearch: nodeCommandSearch(),
     sandboxWorks: nodeSandboxWorks,
   }),
-  http: { fetch: (url, init) => fetch(url, init) },
+  http: engineHttp(),
   harnesses: nodeHarnessPrograms,
 };
 

@@ -96,6 +96,28 @@ verifies("harness-codex.start", () => {
       expect(log.paramsOf("thread/start")).toEqual({ cwd: "/agents/writer/work", ephemeral: true });
     });
 
+    it("adds the skills of the run's instructions folder as an extra root before the thread starts", async () => {
+      const log = new CodexLog();
+      const session = openSession(fakeCodex((codex) => answer(codex, "Teal."), log));
+      const folder = join("/data", "instructions", "instructions-1");
+      await readAll(newHarness().start({ ...task, instructionsFolder: folder }, session, bridge));
+
+      expect(log.paramsOf("skills/extraRoots/set")).toEqual({
+        extraRoots: [join(folder, "skills")],
+      });
+      expect(log.methodsInOrder().indexOf("skills/extraRoots/set")).toBeLessThan(
+        log.methodsInOrder().indexOf("thread/start"),
+      );
+    });
+
+    it("adds no extra root when the run has no instructions folder", async () => {
+      const log = new CodexLog();
+      const session = openSession(fakeCodex((codex) => answer(codex, "Teal."), log));
+      await readAll(newHarness().start(task, session, bridge));
+
+      expect(log.methodsInOrder()).not.toContain("skills/extraRoots/set");
+    });
+
     it("ends with the agent's answer once Codex has stopped", async () => {
       const session = openSession(codexFinishing);
       const { events, error } = await readAll(newHarness().start(task, session, bridge));

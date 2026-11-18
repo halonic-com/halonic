@@ -976,5 +976,137 @@
     "cliRules": [
       "llm-request-alias"
     ]
+  },
+  {
+    "id": "test-of-failed-workflow-not-reported",
+    "requirement": "workspace.references",
+    "area": "workspace loader: a workflow test whose workflow file failed",
+    "old": "A workflow file that failed its own checks counted as missing, so the workflow test next to it also got Test targets unknown workflow \"<id>\", listed before the workflow file and its real errors.",
+    "new": "A workflow test is not reported when a workflow file of its hub, named after the workflow it targets, failed its own checks. A test of a workflow that no file names still gets Test targets unknown workflow \"<id>\".",
+    "why": "The second error only repeats the workflow file failing, and in the new-user flow check on HAL-12121 it came first and hid the cause (a misspelled name:). It follows the failed hub.yaml rule, whose agents aren't checked either (HAL-12126).",
+    "status": "signed-off",
+    "checks": [
+      {
+        "case": "workflow/bad-enum",
+        "file": "hubs/billing/workflows/approval.test.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Test targets unknown workflow \"approval\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/bad-gets",
+        "file": "hubs/billing/workflows/invoice.test.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Test targets unknown workflow \"invoice\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/bad-indent",
+        "file": "hubs/billing/workflows/approval.test.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Test targets unknown workflow \"approval\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/bad-join",
+        "file": "hubs/billing/workflows/invoice.test.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Test targets unknown workflow \"invoice\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/bad-timer",
+        "file": "hubs/billing/workflows/approval.test.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Test targets unknown workflow \"approval\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/deep-guard",
+        "file": "hubs/billing/workflows/invoice.test.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Test targets unknown workflow \"invoice\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/duplicate-key",
+        "file": "hubs/billing/workflows/approval.test.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Test targets unknown workflow \"approval\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/foreach-concurrency",
+        "file": "hubs/billing/workflows/batch.test.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Test targets unknown workflow \"batch\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/missing-required",
+        "file": "hubs/billing/workflows/approval.test.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Test targets unknown workflow \"approval\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/unknown-key",
+        "file": "hubs/billing/workflows/invoice.test.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Test targets unknown workflow \"invoice\""
+          }
+        ],
+        "new": []
+      },
+      {
+        "case": "workflow/wrong-type",
+        "file": "hubs/billing/workflows/invoice.test.yaml",
+        "old": [
+          {
+            "severity": "error",
+            "message": "Test targets unknown workflow \"invoice\""
+          }
+        ],
+        "new": []
+      }
+    ]
   }
 ]

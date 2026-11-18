@@ -279,6 +279,13 @@ verifies("events.summary-approvals-and-signals", () => {
     ]);
   });
 
+  it("carries the connector the event names, and none when it names none", () => {
+    expect(summaryOf({ ...requested, connector: "mail" }).approvals).toEqual([
+      expect.objectContaining({ tool: "send", connector: "mail" }),
+    ]);
+    expect(summaryOf(requested).approvals[0]).not.toHaveProperty("connector");
+  });
+
   it("names the subagent when a subagent's call waits for approval", () => {
     const fromSubagent = { ...requested, agent: "writer", subagent: "checker" };
     expect(summaryOf(fromSubagent).approvals).toEqual([

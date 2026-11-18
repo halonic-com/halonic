@@ -107,6 +107,8 @@ pub(crate) fn check_address(address: &str) -> Result<(), GitError> {
 /// which may be a token: git echoes the address in many of its errors.
 pub(crate) fn redact(message: &str, address: &str) -> String {
     let mut message = message.trim().to_owned();
+    // Git often prints the address without a trailing `/`, or with one more.
+    let address = address.trim_end_matches('/');
     message = message.replace(address, "the address");
     let authority = address.split_once("://").map_or("", |(_, rest)| {
         rest.split(['/', '?', '#']).next().unwrap_or_default()
@@ -115,7 +117,8 @@ pub(crate) fn redact(message: &str, address: &str) -> String {
         // `git@` is the name of the account, not a secret, and would
         // be replaced in every word that holds it.
         && user != "git"
-        && !user.is_empty()
+        // A short user would be replaced in every word that holds it.
+        && user.chars().count() >= 4
     {
         message = message.replace(user, "the user");
     }

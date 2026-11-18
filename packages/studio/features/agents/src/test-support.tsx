@@ -36,6 +36,14 @@ export async function typeInto(input: HTMLInputElement, value: string): Promise<
   });
 }
 
+/** Types into a multi-line box the way a person does, so React sees the change. */
+export async function typeIntoArea(area: HTMLTextAreaElement, value: string): Promise<void> {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(area, value);
+    area.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
 /** jsdom has `<dialog>` but no `showModal()`; opening it is all the dialog tests need. */
 export function openDialogsInJsdom(): void {
   Object.assign(HTMLDialogElement.prototype, {

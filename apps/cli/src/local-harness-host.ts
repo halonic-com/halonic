@@ -21,7 +21,7 @@ import {
   makePrivateFolder,
 } from "@halonicjs/adapter-fs-node";
 import type { GitRunnerOptions } from "@halonicjs/adapter-git";
-import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
+import { NodeHarnessBridgeServer, providerHostClass } from "@halonicjs/adapter-harness-bridge";
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
 import {
@@ -31,6 +31,7 @@ import {
   RunInstructions,
   WorkspaceHarnessHost,
 } from "@halonicjs/adapter-harness-kit";
+import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { createHostSandbox, createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import { keptGrantsRecordFolder, SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { InstructionTrustService } from "@halonicjs/app";
@@ -52,6 +53,7 @@ import type {
 import type { ProfileEnvironment, ProfileFolder, WorkspaceFolders } from "@halonicjs/profile";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { lazyProposalGit } from "./lazy-proposal-git.ts";
+import { proxySetting } from "./proxy-setting.ts";
 import { placementFolder } from "./sandbox-gate-machine.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import { skillFileOf } from "./skill-file.ts";
@@ -309,8 +311,10 @@ async function nodeBridgeServer(input: LocalHarnessInput): Promise<HarnessBridge
   const sockets = platform === "linux" || platform === "darwin";
   const socketFolder = join(input.profile.root, bridgeSocketsFolder);
   if (sockets) await makePrivateFolder(socketFolder);
+  const providers = createNodeHttpClient({ hostClass: providerHostClass, proxy: proxySetting });
   return new NodeHarnessBridgeServer({
     secrets: noSecrets,
+    fetch: (url, init) => providers.fetch(url, init),
     ...(sockets ? { socketFolder } : {}),
   });
 }

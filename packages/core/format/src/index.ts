@@ -120,6 +120,6 @@ export {
 export { fileKinds, isKindName, type KindName, type KindValues, kindNames } from "./registry.ts";
 export { isReservedPath, RESERVED_FOLDER } from "./reserved.ts";
 export { SCHEMA_VERSION } from "./shared/fields.ts";
-export type { Guard } from "./shared/guard.ts";
+export { type Guard, isGuard } from "./shared/guard.ts";
 export { type NamedPath, type ProgramStart, pathsNamedBy } from "./shared/program-start.ts";
 export { foldName } from "./shared/relative-path.ts";

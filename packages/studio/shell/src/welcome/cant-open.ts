@@ -22,12 +22,18 @@ export const cantOpenWords = {
   denied: "you don't have permission to read it.",
   pickAgain: "pick the folder again.",
   unexplained: "Halonic ran into a problem it can't explain yet.",
+  /** Said for a folder and for the sample alike once the engine has been silent for {@link engineWaitMs}. */
+  silent: "the engine isn't answering. It may still be starting.",
 } as const;
+
+/** How long a press stays busy, trying again by itself, before Welcome says the engine isn't answering. */
+export const engineWaitMs = 10_000;
 
 /**
  * The problem to show when a folder fails to open (`shell.welcome.cant-open`, states-flow-map D7):
  * a folder that isn't there is "gone", one the user can't read is "you don't have permission",
- * an error without a kind is the F13 sentence with its details for **Copy details**, and any
+ * an engine that doesn't answer (`unavailable`) says so, never in the error's own words, an error
+ * without a kind is the F13 sentence with its details for **Copy details**, and any
  * other kind says the engine's own message, which is safe to show.
  *
  * @example
@@ -41,6 +47,8 @@ export function cantOpenProblem(folder: string, error: unknown): WelcomeOpenProb
       return { folder, kind, reason: cantOpenWords.gone };
     case "denied":
       return { folder, kind, reason: cantOpenWords.denied };
+    case "unavailable":
+      return { folder, kind, reason: cantOpenWords.silent };
     case "internal":
       return {
         folder,

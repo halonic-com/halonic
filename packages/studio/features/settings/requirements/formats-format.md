@@ -10,19 +10,19 @@ The Studio shall keep one format for numbers, dates and money, following the com
 
 - Given the computer's region format is English (United Kingdom),
   when the Format options are listed in the desktop app,
-  then the first reads "Follow this computer: English (United Kingdom)".
+  then the first reads "Follow this computer: English (UK)".
 - Given the browser's language is Dutch (Netherlands),
   when the Format options are listed in a browser,
   then the first reads "Follow this browser: Dutch (Netherlands)".
 - Given the format is English (United Kingdom),
   when the example shows,
-  then it reads "45.00 · Mon 9 Nov, 08:00".
+  then it reads "12,345.60 · Tue 17 Nov, 08:00" (today).
 - Given the format is Dutch (Netherlands),
   when the example shows,
-  then it reads "45,00 · ma 9 nov, 08:00".
+  then it reads "12.345,60 · di 17 nov, 08:00".
 - Given the computer's region format is `en_GB.UTF-8`,
   when the Format options are listed in the desktop app,
-  then the first reads "Follow this computer: English (United Kingdom)".
+  then the first reads "Follow this computer: English (UK)".
 - Given the stored format is "Dutch (Netherlands)",
   when the window opens,
   then the format follows the computer.

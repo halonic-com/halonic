@@ -3024,6 +3024,9 @@ importers:
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../../core/format
+      '@halonicjs/routines':
+        specifier: workspace:*
+        version: link:../../../core/routines
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
@@ -3220,12 +3223,24 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
+      '@halonicjs/studio-feature-agents':
+        specifier: workspace:*
+        version: link:../agents
+      '@halonicjs/studio-feature-models':
+        specifier: workspace:*
+        version: link:../models
+      '@halonicjs/studio-feature-plugins':
+        specifier: workspace:*
+        version: link:../plugins
       '@halonicjs/studio-feature-runs':
         specifier: workspace:*
         version: link:../runs
       '@halonicjs/studio-feature-settings':
         specifier: workspace:*
         version: link:../settings
+      '@halonicjs/studio-feature-workspace':
+        specifier: workspace:*
+        version: link:../workspace
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../kit

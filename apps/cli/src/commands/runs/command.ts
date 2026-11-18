@@ -43,10 +43,13 @@ export function runsCommandWith(setup: RunSetup): CliCommand {
 function showCommandWith(setup: RunSetup): CliCommand {
   return {
     name: "show",
-    usage: "<run-id> [--dir <folder>]",
+    usage: "<run-id> [--output] [--dir <folder>]",
     summary: runsMessages.showSummary(),
     action: (input) => runsMessages.showAction(printable(input.positionals[0] ?? "")),
-    options: { dir: dirOption },
+    options: {
+      output: { type: "boolean", description: runsMessages.outputOption() },
+      dir: dirOption,
+    },
     run: (input, context) => showRun(input, context, setup),
   };
 }

@@ -58,7 +58,7 @@ verifies("inbox.sandbox-row", () => {
     expect(card.textContent).toContain("bubblewrap isn't installed, and the sandbox needs it.");
     expect(card.textContent).toContain("Install it, for example on Ubuntu or Debian");
     expect(card.querySelector("a")?.getAttribute("href")).toBe(
-      "https://docs.halonic.dev/sandbox#bubblewrap",
+      "https://docs.halonic.dev/security/sandbox/#bubblewrap",
     );
     expect(card.textContent).toContain("Didn't run because of this");
     expect(card.textContent).toContain("Weekly report");

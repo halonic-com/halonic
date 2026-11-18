@@ -9,6 +9,14 @@ export const pageWords = {
   tryAgain: "Try again",
   off: "Off",
   changesNotLive: "Changes not live yet",
+  nameLabel: "Routine name",
+  more: (name: string) => `More actions for ${name}`,
+  delete: "Delete",
+  couldntRename: (name: string, reason: string | undefined) =>
+    reason === undefined
+      ? `Couldn't rename ${name}.`
+      : `Couldn't rename ${name}: ${reason.replace(/\.$/, "")}.`,
+  runNow: "Run now",
   neverLive: "This routine isn't live yet, so it doesn't run.",
 } as const;
 
@@ -23,3 +31,15 @@ export function failureReason(
   const message = errorReasonFor(error, notAnswering);
   return message.endsWith(".") ? message : `${message}.`;
 }
+
+/** The toasts of Run now (flow-routines 3.8, microcopy 12.3). */
+export const runNowWords = {
+  started: (name: string, shortId: string) => `Run started · ${name} · Run ${shortId}`,
+  openRun: "Open run",
+  signedOut: (account: string) => `Not started: ${account} is signed out.`,
+  notTrusted: (name: string) => `Not started: ${name} isn't trusted yet.`,
+  targetNotFound: (target: string) => `Not started: ${target} isn't in this hub any more.`,
+  targetNeverLive: (target: string) => `Not started: ${target} isn't live yet.`,
+  targetInTrash: (target: string) => `Not started: ${target} is in the trash.`,
+  couldntStart: (name: string) => `Couldn't start ${name}.`,
+} as const;

@@ -71,7 +71,12 @@ export async function childNow(
   const summary = await runs.get(childRunId);
   const error = summary?.error ?? `Run "${childRunId}" failed.`;
   const reason = summary?.reason ?? null;
-  return { status: "failed", error, ...(reason === null ? {} : { reason }) };
+  return {
+    status: "failed",
+    error,
+    ...(reason === null ? {} : { reason }),
+    ...(summary?.cause === undefined ? {} : { cause: summary.cause }),
+  };
 }
 
 /**

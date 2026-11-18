@@ -1,4 +1,9 @@
-import type { CantTryStep, InstructionsRefusal, RunFailureReason } from "@halonicjs/events";
+import type {
+  CantTryStep,
+  InstructionsRefusal,
+  RunFailureCause,
+  RunFailureReason,
+} from "@halonicjs/events";
 import type { Agent, StateType, Workflow, WorkflowState } from "@halonicjs/format";
 import type { Scope } from "@halonicjs/workflow";
 import type { DecidedEvent, DecideInput, Effect } from "./decide-types.ts";
@@ -46,6 +51,8 @@ export type StateOutcome =
       readonly type: "fail";
       readonly error: string;
       readonly reason?: RunFailureReason;
+      /** The typed cause of a budget stop that came up from a child run. */
+      readonly cause?: RunFailureCause;
       /** The agent whose instructions weren't trusted, with what the check saw in `refusal`. */
       readonly agent?: string;
       readonly refusal?: InstructionsRefusal;

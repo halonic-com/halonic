@@ -1,6 +1,7 @@
 import type {
   CantTryStep,
   InstructionsRefusal,
+  RunFailureCause,
   RunFailureReason,
   RunStatus,
 } from "@halonicjs/events";
@@ -287,6 +288,7 @@ function fail(
   reason: RunFailureReason = "error",
   agent?: string,
   refusal?: InstructionsRefusal,
+  cause?: RunFailureCause,
 ): void {
   emit(draft, {
     type: "run.failed",
@@ -295,6 +297,7 @@ function fail(
     reason,
     ...(agent === undefined ? {} : { agent }),
     ...refusal,
+    ...(cause === undefined ? {} : { cause }),
   });
 }
 
@@ -326,8 +329,8 @@ function settle(draft: Draft, stateId: string, step: StateStep): void {
   }
   draft.effects.push(...step.effects);
   if (step.outcome?.type === "fail") {
-    const { error, reason, agent, refusal } = step.outcome;
-    fail(draft, stateId, error, reason, agent, refusal);
+    const { error, reason, agent, refusal, cause } = step.outcome;
+    fail(draft, stateId, error, reason, agent, refusal, cause);
   }
   if (step.outcome?.type === "cant-try") {
     endCantTry(draft, stateId, step.outcome.found);

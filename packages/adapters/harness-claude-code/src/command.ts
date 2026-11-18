@@ -12,6 +12,8 @@ export interface ClaudeCodeFiles {
   settingsFolder: string;
   /** The file that holds this run's instructions, or `null` when the agent's file sets none. */
   instructionsFile: string | null;
+  /** The run's folder of pinned instruction files, whose `skills/` Claude Code loads as a plugin; `null` when the run has none. */
+  skillsFolder: string | null;
   /** Whether Claude Code's own sandbox is on: only outside Halonic's fence, where it works. */
   ownSandbox: boolean;
 }
@@ -52,6 +54,10 @@ export function hasInstructions(task: HarnessTask): boolean {
  * - `--model` from the agent's file, when it sets one.
  * - `--append-system-prompt-file` with the agent's instructions, when its
  *   file sets them.
+ * - `--plugin-dir` with the run's instructions folder, when it has one:
+ *   Claude Code reads its `skills/<id>/SKILL.md` as the agent's skills (under
+ *   the folder's name, such as `instructions-ab12:review`), and ignores
+ *   `AGENTS.md`, which the instructions file already carries.
  *
  * Neither the prompt nor the instructions go in the arguments: a process's
  * arguments are visible to every program on the computer, and Windows caps
@@ -79,6 +85,7 @@ export function claudeCodeCommand(task: HarnessTask, files: ClaudeCodeFiles): Sa
   if (task.model !== undefined) args.push("--model", task.model);
   if (files.instructionsFile !== null)
     args.push("--append-system-prompt-file", files.instructionsFile);
+  if (files.skillsFolder !== null) args.push("--plugin-dir", files.skillsFolder);
   return { program: claudeProgram, args };
 }
 

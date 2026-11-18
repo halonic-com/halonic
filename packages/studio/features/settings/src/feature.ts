@@ -24,15 +24,6 @@ import { updateCommands } from "./updater/update-commands.ts";
  */
 export const settingsSections: readonly SettingsSectionContribution[] = [
   {
-    id: "trust",
-    icon: "trust",
-    title: "Trust",
-    scope: "workspace",
-    order: 20,
-    view: "TrustLinkSection",
-    load: () => import("./links/workspace-links.tsx"),
-  },
-  {
     id: "appearance",
     icon: "appearance",
     title: "Appearance",

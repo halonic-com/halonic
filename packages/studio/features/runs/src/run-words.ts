@@ -277,6 +277,22 @@ export const runPageWords = {
     `${workflow} failed in the step ${step}. Halonic can't tell the cause yet.`,
   budgetTitle: "Stopped at its estimated budget",
   budget: (workflow: string, step: string) => `${workflow} stopped in the step ${step}.`,
+  /**
+   * A budget stop's first line, as `halonic run` says it (cli-output 3.4, HAL-12035), from the
+   * figures of `run.failed`'s cause. The amounts come in the money rule's words.
+   */
+  budgetPerRun: (workflow: string, step: string, budget: string, spent: string) =>
+    `${workflow} stopped in the step ${step}: this run reached its budget of ${budget} (estimated ${spent} spent).`,
+  budgetPerMonth: (workflow: string, step: string, budget: string) =>
+    `${workflow} stopped in the step ${step}: this month's estimated spend reached its budget of ${budget}.`,
+  /**
+   * The second line, without the CLI's key names (Studio's users change the budget in Settings;
+   * HAL-12069). A per-run budget doesn't reset, so only the monthly one can be waited out.
+   */
+  budgetChangePerRun: "Change the budget, then run again.",
+  budgetChangeMonthly: (resetsOn: string) =>
+    `Change the budget, or wait until it resets on ${resetsOn} (UTC).`,
+  changeBudget: "Change budget",
   budgetChecks:
     "Halonic checks the budget before each model call, so calls already under way can take a run over it.",
   cancelledIn: (workflow: string, step: string) =>

@@ -23,6 +23,25 @@ export const listWords = {
   pausedUntilTrusted: "Paused until trusted",
 } as const;
 
+/** The words of a routine's ⋮ menu and of deleting it: no dialog, the trash and Undo (flow-routines 2.4, microcopy 12.3). */
+export const rowMenuWords = {
+  open: "Open",
+  openInNewTab: "Open in new tab",
+  delete: "Delete",
+  undo: "Undo",
+  /** The toast's title; it ends with a full stop because a second line follows. */
+  moved: (name: string) => `Moved ${name} to the trash.`,
+  /** The toast's second line: what deleting stops, and what it leaves alone. */
+  movedLine: (targetName: string) =>
+    `It won't start ${targetName} any more. Runs it already started keep going.`,
+  couldntMove: (name: string, reason: string | undefined) =>
+    reason === undefined
+      ? `Couldn't move ${name} to the trash.`
+      : `Couldn't move ${name} to the trash: ${reason.replace(/\.$/, "")}.`,
+  couldntUndo: (name: string) => `Couldn't put ${name} back`,
+  tryAgain: "Try again",
+} as const;
+
 /** The search and command words (microcopy 12.1). */
 export const searchWords = {
   title: "Routines",

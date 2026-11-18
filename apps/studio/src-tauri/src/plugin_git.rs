@@ -15,7 +15,8 @@
 //! it started, or removes the folder of one that has finished. Either way no
 //! folder of the export is left, and the page's dialog calls it when it is
 //! closed, so a closed dialog leaves nothing behind. Folders left by a
-//! crash are removed by the first export after the app starts.
+//! crash are removed by the first export after the app starts, when they are
+//! older than an export may run, so another app's running export stays.
 //!
 //! Nothing runs from the repository: no hook, no script, no install, no
 //! submodule, no filter, and none of the user's own git config.
@@ -25,6 +26,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
+use std::time::{Duration, SystemTime};
 
 use halonic_git_guard::{ExportLimits, GitError, plain_path};
 use serde::Serialize;
@@ -35,6 +37,11 @@ use crate::plugin_source::{InstallRefusal, MAX_BYTES, MAX_ENTRIES, PluginSources
 
 /// How many exports may be running or kept at once.
 const MAX_EXPORTS: usize = 4;
+
+/// How old an `export-*` folder must be before the sweep removes it: past
+/// the network deadline (5 minutes) plus the time to write the files, so
+/// the running export of a second app process is never swept.
+const SWEEP_AFTER: Duration = Duration::from_secs(15 * 60);
 
 /// The longest token the page may name an export by.
 const MAX_TOKEN: usize = 64;
@@ -57,6 +64,8 @@ enum Export {
 #[derive(Debug, Default)]
 pub struct PluginGitExports {
     exports: Mutex<HashMap<String, Export>>,
+    /// Whether this process has swept the exports folder.
+    swept: AtomicBool,
 }
 
 /// What the end of an export has to undo.
@@ -73,9 +82,9 @@ pub(crate) enum Ended {
 impl PluginGitExports {
     /// Registers a running export under `token` and answers the flag that
     /// stops it. Refuses a token that is in use or one that isn't plain, and
-    /// refuses a fifth export. When nothing is running or kept, the folders
-    /// in `parent` are left over from an earlier run of the app, and are
-    /// removed.
+    /// refuses a fifth export. The first export of the process removes the
+    /// old `export-*` folders in `parent`, which an earlier run of the app
+    /// left.
     pub(crate) fn begin(
         &self,
         token: &str,
@@ -105,8 +114,8 @@ impl PluginGitExports {
                 "Too many git exports are open; close one first.",
             ));
         }
-        if exports.is_empty() {
-            sweep(parent);
+        if !self.swept.swap(true, Ordering::SeqCst) {
+            sweep(parent, SWEEP_AFTER);
         }
         let cancel = Arc::new(AtomicBool::new(false));
         exports.insert(token.to_owned(), Export::Running(Arc::clone(&cancel)));
@@ -157,15 +166,25 @@ impl PluginGitExports {
     }
 }
 
-/// Removes what an earlier run of the app left in `parent`. Errors are
-/// ignored on purpose: a folder that stays only costs disk space, and the
-/// next export tries again.
-fn sweep(parent: &Path) {
+/// Removes the `export-*` folders in `parent` that were last changed more
+/// than `older_than` ago, which an earlier run of the app left. Anything
+/// else stays. Errors are ignored on purpose: a folder that stays only costs
+/// disk space, and the next run of the app tries again.
+fn sweep(parent: &Path, older_than: Duration) {
     let Ok(entries) = fs::read_dir(parent) else {
         return;
     };
     for entry in entries.flatten() {
-        let _ = fs::remove_dir_all(entry.path());
+        let old = entry.file_name().to_string_lossy().starts_with("export-")
+            && entry
+                .metadata()
+                .and_then(|seen| seen.modified())
+                .ok()
+                .and_then(|changed| SystemTime::now().duration_since(changed).ok())
+                .is_some_and(|age| age > older_than);
+        if old {
+            let _ = fs::remove_dir_all(entry.path());
+        }
     }
 }
 
@@ -180,6 +199,22 @@ fn exports_folder<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, InstallRefu
 /// Why git or the export said no, as a refusal with git's own kind.
 fn refusal(error: &GitError) -> InstallRefusal {
     InstallRefusal::new(error.kind(), error.to_string())
+}
+
+/// Forgets a running export when dropped while armed, which is when the
+/// export panicked.
+struct FailGuard<'a> {
+    exports: &'a PluginGitExports,
+    token: &'a str,
+    armed: bool,
+}
+
+impl Drop for FailGuard<'_> {
+    fn drop(&mut self) {
+        if self.armed {
+            self.exports.failed(self.token);
+        }
+    }
 }
 
 /// What a finished export gives the page.
@@ -210,7 +245,14 @@ pub async fn plugin_git_export<R: Runtime>(
         let parent = exports_folder(app)?;
         let exports = app.state::<PluginGitExports>();
         let cancel = exports.begin(&token, &parent)?;
+        // A panic in the export must not leave its token taken.
+        let mut guard = FailGuard {
+            exports: &exports,
+            token: &token,
+            armed: true,
+        };
         let result = export(app, &address, reference.as_deref(), &parent, &cancel);
+        guard.armed = false;
         match result {
             Ok(exported) => {
                 let location = plain_path(&exported.files)

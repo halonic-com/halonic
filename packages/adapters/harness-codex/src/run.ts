@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import {
   exitWithin,
   type OwnSandboxCheck,
@@ -160,6 +161,11 @@ export class CodexRun implements HarnessRun {
     this.#client = client;
     void client.closed.then((cause) => this.#codexStopped(process, errorTail, cause));
     await client.initialize(clientInfo);
+    const skills = this.#task.instructionsFolder;
+    // Codex reads each folder of `<id>/SKILL.md` in an extra root as a skill.
+    if (skills !== undefined) {
+      await client.request("skills/extraRoots/set", { extraRoots: [join(skills, "skills")] });
+    }
     const thread = await client.request("thread/start", this.#threadParams(workingFolder, askMode));
     const threadId = idOf(thread, "thread");
     this.#reader = new AppServerEventReader({

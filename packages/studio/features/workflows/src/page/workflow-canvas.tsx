@@ -3,9 +3,11 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowView } from "../api.ts";
 import { boxesFor } from "../canvas/auto-layout.ts";
 import { boundsOf, fitView, panBy, type View, zoomAround } from "../canvas/geometry.ts";
+import type { StepMark } from "../start/run-strip.ts";
 import { Arrows } from "./arrows.tsx";
 import { pageWords } from "./page-words.ts";
-import { StepCard } from "./step-card.tsx";
+import { PointOfLight } from "./point-of-light.tsx";
+import { DOT_VAR, dotCentre, StepCard } from "./step-card.tsx";
 
 /** What a viewport is taken to measure where the browser can't say (a test, a hidden tab). */
 const FALLBACK_VIEWPORT = { width: 800, height: 600 };
@@ -22,6 +24,9 @@ export function WorkflowCanvas({
   workflow,
   selectedStep,
   failedStep,
+  route,
+  marks,
+  active,
   saved,
   onView,
   onSelectStep,
@@ -35,6 +40,12 @@ export function WorkflowCanvas({
   readonly selectedStep?: string | undefined;
   /** The step the shown run failed in, ringed with its Failed chip. */
   readonly failedStep?: string | undefined;
+  /** The steps the shown run went through, in order; the arrows it went along are drawn blue. */
+  readonly route?: readonly string[] | undefined;
+  /** How each step the shown run reached stands: its status dot. */
+  readonly marks?: Readonly<Record<string, StepMark>> | undefined;
+  /** The step the shown run is in now: the point of light rests on its dot. */
+  readonly active?: string | undefined;
   /** Told when a card is picked, so the page can dock what it has to say about the step. */
   readonly onSelectStep?: ((stepId: string) => void) | undefined;
 }) {
@@ -54,6 +65,13 @@ export function WorkflowCanvas({
       ),
     [workflow],
   );
+
+  const activeBox = active === undefined ? undefined : boxes.get(active);
+  const activeMark = active === undefined ? undefined : marks?.[active];
+  const activeDot =
+    activeBox === undefined || activeMark === undefined
+      ? undefined
+      : { box: activeBox, mark: activeMark };
 
   const size = () => ({
     width: viewport.current?.clientWidth || FALLBACK_VIEWPORT.width,
@@ -105,7 +123,7 @@ export function WorkflowCanvas({
         }}
         className="absolute left-0 top-0"
       >
-        <Arrows arrows={workflow.arrows} boxes={boxes} />
+        <Arrows arrows={workflow.arrows} boxes={boxes} route={route} />
         {workflow.steps.map((step) => {
           const box = boxes.get(step.id);
           return box === undefined ? null : (
@@ -116,6 +134,7 @@ export function WorkflowCanvas({
               first={step.id === workflow.initial}
               selected={selected === step.id}
               failed={failedStep === step.id}
+              mark={marks?.[step.id]}
               focusOnMount={selectedStep === step.id}
               onSelect={() => {
                 setSelected(step.id);
@@ -124,6 +143,10 @@ export function WorkflowCanvas({
             />
           );
         })}
+        <PointOfLight
+          target={activeDot === undefined ? undefined : dotCentre(activeDot.box)}
+          color={activeDot === undefined ? "" : DOT_VAR[activeDot.mark]}
+        />
       </div>
       <div className="absolute bottom-3 left-3 flex gap-1">
         <Button

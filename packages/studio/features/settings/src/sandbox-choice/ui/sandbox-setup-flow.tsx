@@ -150,8 +150,13 @@ function SetupScreen(props: SandboxSetupFlowProps) {
           title={text.TEST_FAILED_TITLE}
           focusTitle
           footer={
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex gap-2">
+            <>
+              <div className="flex justify-end">
+                <Button variant="primary" onClick={props.onTryAgain}>
+                  {text.TRY_AGAIN}
+                </Button>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <Button variant="ghost" size="sm" onClick={props.onChooseAnother}>
                   {text.CHOOSE_ANOTHER}
                 </Button>
@@ -159,10 +164,7 @@ function SetupScreen(props: SandboxSetupFlowProps) {
                   {text.CONTINUE_WITHOUT}
                 </Button>
               </div>
-              <Button variant="primary" onClick={props.onTryAgain}>
-                {text.TRY_AGAIN}
-              </Button>
-            </div>
+            </>
           }
         >
           <p role="alert">{text.testFailedBody(state.failedCheck)}</p>
@@ -242,7 +244,7 @@ function SettingUp({
       {state.offline === true ? (
         <div role="alert" className="flex flex-col gap-2">
           <p>{text.OFFLINE}</p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="primary" onClick={onTryAgain}>
               {text.TRY_AGAIN}
             </Button>

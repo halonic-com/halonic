@@ -82,7 +82,11 @@ verifies("harness-kit.harness-profile", () => {
     it("builds a profile in the workspace when the agent has no proposal folder", async () => {
       const { data, home, workspace } = computer;
 
-      const { profile, deniedGroups } = await profilesWith().profileOf(writerAgent(null), bridge);
+      const { profile, deniedGroups } = await profilesWith().profileOf(
+        writerAgent(null),
+        bridge,
+        null,
+      );
 
       expect(profile.workingFolder).toBe(join(workspace, "files", "agents", "writer"));
       expect(profile.readOnlyPaths).toEqual([join(workspace, ".git"), join(workspace, "agents")]);
@@ -114,7 +118,11 @@ verifies("harness-kit.harness-profile", () => {
       await mkdir(join(home, ".local", "share", "fish"), { recursive: true });
       await writeFile(join(home, ".local", "share", "fish", "fish_history"), "");
 
-      const { profile, deniedGroups } = await profilesWith().profileOf(writerAgent(null), bridge);
+      const { profile, deniedGroups } = await profilesWith().profileOf(
+        writerAgent(null),
+        bridge,
+        null,
+      );
 
       expect(deniedGroups.find(({ code }) => code === "registry-tokens")?.paths).toEqual([
         join(home, ".npmrc"),
@@ -132,7 +140,7 @@ verifies("harness-kit.harness-profile", () => {
       const socketPath = join(computer.data, "bridges", "r1", "bridge.sock");
       const onSocket = { url: "http://bridge.halonic.invalid", token: "run-token", socketPath };
 
-      const { profile } = await profilesWith().profileOf(writerAgent(null), onSocket);
+      const { profile } = await profilesWith().profileOf(writerAgent(null), onSocket, null);
 
       expect(profile.network.bridge).toEqual({
         kind: "socket",
@@ -140,9 +148,9 @@ verifies("harness-kit.harness-profile", () => {
         socketPath,
       });
       const onAnotherPort = { ...onSocket, url: "http://bridge.halonic.invalid:8080" };
-      await expect(profilesWith().profileOf(writerAgent(null), onAnotherPort)).rejects.toThrow(
-        "must be plain http on port 80",
-      );
+      await expect(
+        profilesWith().profileOf(writerAgent(null), onAnotherPort, null),
+      ).rejects.toThrow("must be plain http on port 80");
     });
 
     it("works in the proposal folder, writes nowhere in the workspace, and denies the rest of the data", async () => {
@@ -151,6 +159,7 @@ verifies("harness-kit.harness-profile", () => {
       const { profile, deniedGroups } = await profilesWith().profileOf(
         writerAgent(proposal),
         bridge,
+        null,
       );
 
       expect(profile.workingFolder).toBe(join(proposal, "files", "agents", "writer"));
@@ -173,7 +182,7 @@ verifies("harness-kit.harness-profile", () => {
 
     it("denies a folder another run makes after the profile is built", async () => {
       const { data, proposal } = computer;
-      const { profile } = await profilesWith().profileOf(writerAgent(proposal), bridge);
+      const { profile } = await profilesWith().profileOf(writerAgent(proposal), bridge, null);
 
       const later = [
         join(data, "workspaces", "k1", "proposals", "run_3"),
@@ -192,7 +201,7 @@ verifies("harness-kit.harness-profile", () => {
       const { data, proposal } = computer;
       await symlink(join(data, "agent-host"), join(proposal, "host"), "junction");
 
-      const { profile } = await profilesWith().profileOf(writerAgent(proposal), bridge);
+      const { profile } = await profilesWith().profileOf(writerAgent(proposal), bridge, null);
 
       expect(profile.reopenedPaths).not.toContain(join(data, "agent-host"));
       expect(profile.reopenedPaths).not.toContain(join(proposal, "host"));
@@ -206,6 +215,7 @@ verifies("harness-kit.harness-profile", () => {
       const { profile, deniedGroups } = await profilesWith({}, { platform: "win32" }).profileOf(
         writerAgent(proposal),
         bridge,
+        null,
       );
 
       // A deny on the data folder itself would keep Node from resolving a path in a run folder.
@@ -224,7 +234,7 @@ verifies("harness-kit.harness-profile", () => {
       const tempFolder = async () => join(computer.data, "tmp", "run_9");
 
       await expect(
-        profilesWith({}, {}, { tempFolder }).profileOf(writerAgent(null), bridge),
+        profilesWith({}, {}, { tempFolder }).profileOf(writerAgent(null), bridge, null),
       ).rejects.toThrow(/The temp folder .* isn't there/);
     });
 
@@ -232,7 +242,7 @@ verifies("harness-kit.harness-profile", () => {
       const { proposal, workspace } = computer;
       await symlink(workspace, join(proposal, "files"), "junction");
 
-      await expect(profilesWith().profileOf(writerAgent(proposal), bridge)).rejects.toThrow(
+      await expect(profilesWith().profileOf(writerAgent(proposal), bridge, null)).rejects.toThrow(
         /leads out of/,
       );
     });
@@ -241,7 +251,7 @@ verifies("harness-kit.harness-profile", () => {
       const { workspace } = computer;
       await symlink(join(workspace, ".git", "hooks"), join(workspace, "files"), "junction");
 
-      await expect(profilesWith().profileOf(writerAgent(null), bridge)).rejects.toThrow(
+      await expect(profilesWith().profileOf(writerAgent(null), bridge, null)).rejects.toThrow(
         /is really .*where it can't work/,
       );
     });
@@ -254,6 +264,7 @@ verifies("harness-kit.harness-profile", () => {
         profilesWith({ workingFolder: "files/hooks/post-checkout" }).profileOf(
           writerAgent(null),
           bridge,
+          null,
         ),
       ).rejects.toThrow(/is really .*where it can't work/);
       await expect(readdir(join(workspace, ".git", "hooks"))).resolves.toEqual([]);
@@ -265,23 +276,58 @@ verifies("harness-kit.harness-profile", () => {
       await symlink(workspace, join(workspace, "files"), "junction");
 
       await expect(
-        profilesWith({ workingFolder: "files/agents/writer" }).profileOf(writerAgent(null), bridge),
+        profilesWith({ workingFolder: "files/agents/writer" }).profileOf(
+          writerAgent(null),
+          bridge,
+          null,
+        ),
       ).rejects.toThrow(/is really .*where it can't work/);
       expect(await readdir(workspace)).not.toContain("agents");
+    });
+
+    it("opens the run's instructions folder read-only, never writable", async () => {
+      const { data } = computer;
+      const instructions = join(data, "instructions", "instructions-1");
+      await mkdir(instructions, { recursive: true });
+
+      const { profile } = await profilesWith().profileOf(writerAgent(null), bridge, instructions);
+
+      expect(profile.readOnlyPaths).toContain(instructions);
+      expect(profile.reopenedPaths).toContain(instructions);
+      expect(profile.workingFolder).not.toBe(instructions);
+      expect(profile.tempFolder).not.toBe(instructions);
+    });
+
+    it("refuses an instructions folder outside Halonic's data folder", async () => {
+      const outside = join(computer.workspace, "files", "instructions");
+      await mkdir(outside, { recursive: true });
+
+      await expect(profilesWith().profileOf(writerAgent(null), bridge, outside)).rejects.toThrow(
+        /instructions folder .* must be in Halonic's data folder/,
+      );
+    });
+
+    it("refuses an instructions folder that is a top-level folder of the data folder", async () => {
+      const topLevel = join(computer.data, "instructions");
+      await mkdir(topLevel, { recursive: true });
+
+      await expect(profilesWith().profileOf(writerAgent(null), bridge, topLevel)).rejects.toThrow(
+        /top-level folder/,
+      );
     });
 
     it("refuses a working folder through a link to a folder that isn't there", async () => {
       const { workspace } = computer;
       await symlink(join(workspace, "missing"), join(workspace, "files"), "junction");
 
-      await expect(profilesWith().profileOf(writerAgent(null), bridge)).rejects.toThrow(
+      await expect(profilesWith().profileOf(writerAgent(null), bridge, null)).rejects.toThrow(
         /can't be made at/,
       );
     });
 
     it("refuses a working folder named into .git", async () => {
       await expect(
-        profilesWith({ workingFolder: ".git/hooks" }).profileOf(writerAgent(null), bridge),
+        profilesWith({ workingFolder: ".git/hooks" }).profileOf(writerAgent(null), bridge, null),
       ).rejects.toThrow(/can't write in '.git'/);
     });
 
@@ -294,7 +340,7 @@ verifies("harness-kit.harness-profile", () => {
       };
 
       await expect(
-        profilesWith({}, { halonicData: data }, host).profileOf(writerAgent(null), bridge),
+        profilesWith({}, { halonicData: data }, host).profileOf(writerAgent(null), bridge, null),
       ).rejects.toThrow(/overlaps Halonic's data folder/);
     });
 
@@ -316,7 +362,7 @@ verifies("harness-kit.harness-profile", () => {
         {},
         { workspace, halonicData: data },
         host,
-      ).profileOf(writerAgent(null), bridge);
+      ).profileOf(writerAgent(null), bridge, null);
 
       expect(deniedGroups.at(-1)).toEqual({ code: "halonic-data", paths: [data] });
       expect(profile.reopenedPaths).toEqual([
@@ -331,16 +377,16 @@ verifies("harness-kit.harness-profile", () => {
       const inWorkspace = join(computer.workspace, "proposal");
       await mkdir(inWorkspace);
 
-      await expect(profilesWith().profileOf(writerAgent(inWorkspace), bridge)).rejects.toThrow(
-        /must be in Halonic's data folder and outside the workspace/,
-      );
+      await expect(
+        profilesWith().profileOf(writerAgent(inWorkspace), bridge, null),
+      ).rejects.toThrow(/must be in Halonic's data folder and outside the workspace/);
     });
 
     it("refuses a temp folder outside Halonic's data folder", async () => {
       const tempFolder = async () => join(computer.workspace, "agents");
 
       await expect(
-        profilesWith({}, {}, { tempFolder }).profileOf(writerAgent(null), bridge),
+        profilesWith({}, {}, { tempFolder }).profileOf(writerAgent(null), bridge, null),
       ).rejects.toThrow(/The temp folder .* must be in Halonic's data folder/);
     });
 
@@ -349,7 +395,7 @@ verifies("harness-kit.harness-profile", () => {
       await mkdir(workspace);
 
       await expect(
-        profilesWith({}, { workspace }).profileOf(writerAgent(null), bridge),
+        profilesWith({}, { workspace }).profileOf(writerAgent(null), bridge, null),
       ).rejects.toThrow(/which the sandbox denies \(cloud-sign-ins\)/);
     });
 
@@ -361,6 +407,7 @@ verifies("harness-kit.harness-profile", () => {
       const { profile } = await profilesWith({}, { platform: "win32" }).profileOf(
         writerAgent(null),
         bridge,
+        null,
       );
 
       expect(profile.readOnlyPaths).toContain(bin);
@@ -374,7 +421,7 @@ verifies("harness-kit.harness-profile", () => {
       const install = { program: join(local, "claude"), packageFolder: null };
 
       await expect(
-        profilesWith({ install }, { platform: "win32" }).profileOf(writerAgent(null), bridge),
+        profilesWith({ install }, { platform: "win32" }).profileOf(writerAgent(null), bridge, null),
       ).rejects.toThrow(
         /can't start the harness from `.*local`\. That folder is inside `.*\.claude`, which the sandbox hides from every agent because it holds your own Claude Code .*Install the harness somewhere else.*native installer.*\nSandbox group: agent-settings$/,
       );
@@ -388,7 +435,9 @@ verifies("harness-kit.run-folders", () => {
       ["temp folder", { tempFolder: async () => join(computer.data, "tmp") }],
       ["settings folder", { settingsFolder: async () => join(computer.data, "settings") }],
     ])("refuses a %s that is a top-level folder of Halonic's data folder", async (name, host) => {
-      await expect(profilesWith({}, {}, host).profileOf(writerAgent(null), bridge)).rejects.toThrow(
+      await expect(
+        profilesWith({}, {}, host).profileOf(writerAgent(null), bridge, null),
+      ).rejects.toThrow(
         new RegExp(`The ${name} .* is a top-level folder of Halonic's data folder`),
       );
     });
@@ -397,7 +446,7 @@ verifies("harness-kit.run-folders", () => {
       const settingsFolder = async () => join(computer.data, "tmp", "run_1");
 
       await expect(
-        profilesWith({}, {}, { settingsFolder }).profileOf(writerAgent(null), bridge),
+        profilesWith({}, {}, { settingsFolder }).profileOf(writerAgent(null), bridge, null),
       ).rejects.toThrow(/The temp folder .* overlaps the settings folder/);
     });
 
@@ -410,7 +459,7 @@ verifies("harness-kit.run-folders", () => {
       const host = { [key]: async () => inProposal };
 
       await expect(
-        profilesWith({}, {}, host).profileOf(writerAgent(computer.proposal), bridge),
+        profilesWith({}, {}, host).profileOf(writerAgent(computer.proposal), bridge, null),
       ).rejects.toThrow(new RegExp(`The ${name} .* overlaps the proposal folder`));
     });
 
@@ -418,7 +467,11 @@ verifies("harness-kit.run-folders", () => {
       const tempFolder = async () => join(computer.data, "workspaces", "k1");
 
       await expect(
-        profilesWith({}, {}, { tempFolder }).profileOf(writerAgent(computer.proposal), bridge),
+        profilesWith({}, {}, { tempFolder }).profileOf(
+          writerAgent(computer.proposal),
+          bridge,
+          null,
+        ),
       ).rejects.toThrow(/The temp folder .* overlaps the proposal folder/);
     });
   });

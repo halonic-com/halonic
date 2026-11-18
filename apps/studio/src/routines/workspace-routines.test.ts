@@ -34,6 +34,7 @@ function setup(
     "hubs/acme/workflows/routines/weekly-report.routine.yaml": weeklyFile,
     ...hub,
   };
+  const undoSteps: Record<string, string>[] = [];
   const changes: { label: string; changes: Record<string, string | null> }[] = [];
   const fileListeners = new Set<() => void>();
   const runListeners = new Set<() => void>();
@@ -45,11 +46,23 @@ function setup(
           .filter((path) => path.startsWith(`${dir}/`))
           .sort(),
       change: (label, made) => {
+        const before = { ...store };
+        undoSteps.push(before);
         changes.push({ label, changes: made });
         for (const [path, text] of Object.entries(made)) {
           if (text === null) delete store[path];
           else store[path] = text;
         }
+      },
+      undo: () => {
+        const before = undoSteps.pop();
+        if (before === undefined) return false;
+        for (const path of Object.keys(store)) delete store[path];
+        Object.assign(store, before);
+        return true;
+      },
+      get step() {
+        return undoSteps.length;
       },
     },
     onChange: (listener) => {
@@ -125,6 +138,7 @@ verifies("studio.workspace-routines", () => {
     const view = await host.read(weekly);
     expect(view).toMatchObject({
       summary: "Mondays at 09:00 (Europe/Amsterdam) → Analyst",
+      targetName: "Analyst",
       trigger: { kind: "schedule", cron: "0 9 * * 1", timeZone: "Europe/Amsterdam" },
       target: { kind: "agent", hubId: "acme", id: "analyst", prompt: "Write the report." },
       targetState: "ready",
@@ -243,6 +257,26 @@ verifies("studio.workspace-routines", () => {
     ]);
   });
 
+  it("puts a deleted routine back with Undo, but only while the delete is the newest change", async () => {
+    const { host, store } = setup();
+    const path = "hubs/acme/workflows/routines/weekly-report.routine.yaml";
+    const before = store[path];
+
+    await (await host.trash(weekly)).undo();
+    expect(store[path]).toBe(before);
+
+    const trashed = await host.trash(weekly);
+    await host.create({ name: "Morning check", hubId: "acme" });
+    await expect(trashed.undo()).rejects.toThrow("can't be put back");
+    expect(store[path]).toBeUndefined();
+  });
+
+  it("names what a routine starts, for the line that says what deleting it stops", async () => {
+    const { host } = setup();
+    const [row] = await host.list();
+    expect(row?.targetName).toBe("Analyst");
+  });
+
   it("creates a manual routine that runs the hub's first workflow", async () => {
     const { host, store } = setup();
     const ref = await host.create({ name: "Morning check", hubId: "acme" });
@@ -280,6 +314,29 @@ verifies("studio.workspace-routines", () => {
     expect(changes).toEqual([]);
   });
 
+  it("lists the Google connectors a routine can watch, the hub's own first, then the shared ones", async () => {
+    const google = (name: string, account: string) =>
+      `name: ${name}\ntransport:\n  google:\n    account: ${account}\n`;
+    const { host } = setup({}, [], {
+      "workspace.yaml": "id: team\nname: Team\n",
+      "library/connectors/shared-mail.connector.yaml": google("Shared mail", "team@example.com"),
+      "hubs/acme/library/connectors/acme-gmail.connector.yaml": google(
+        "Acme Gmail",
+        "me@example.com",
+      ),
+      "hubs/acme/library/connectors/notes.connector.yaml":
+        "name: Notes\ntransport:\n  http:\n    url: https://mcp.example.com\n",
+      "hubs/beta/library/connectors/beta-gmail.connector.yaml": google(
+        "Beta Gmail",
+        "b@example.com",
+      ),
+    });
+    expect(await host.mailboxes(weekly)).toEqual([
+      { connector: "acme-gmail", name: "Acme Gmail", account: "me@example.com" },
+      { connector: "shared-mail", name: "Shared mail", account: "team@example.com" },
+    ]);
+  });
+
   it("lists the routines that start an owner, and adds one named after it", async () => {
     const { host } = setup();
     expect(
@@ -307,7 +364,11 @@ verifies("studio.workspace-routines", () => {
         },
       },
     });
-    expect(await host.runNow?.(weekly)).toEqual({ started: true, runId: "run-1" });
+    expect(await host.runNow?.(weekly)).toEqual({
+      started: true,
+      runId: "run-1",
+      shortId: "run-1",
+    });
     expect(started).toEqual([["analyst", "acme/weekly-report"]]);
 
     const gone = setup({ engine: { start: async () => ({ id: "x" }) } }, [], {

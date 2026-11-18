@@ -17,7 +17,10 @@ export interface PendingApproval {
    * `events.agent-resume-inner`); absent when `agent` asked itself.
    */
   subagent?: string;
+  /** The bare tool name, as the model was offered it. */
   tool: string;
+  /** The connector the tool comes from (requirement `events.approval-requested-connector`); absent for a built-in tool and in older logs. */
+  connector?: string;
   args: unknown;
   callId: string;
   /** ISO time the approval was asked for. */

@@ -6,23 +6,31 @@ import type { Box } from "../canvas/geometry.ts";
 export interface ArrowsProps {
   readonly arrows: readonly WorkflowArrow[];
   readonly boxes: ReadonlyMap<string, Box>;
+  /** The steps a shown run went through, in order; an arrow it went along is blue. */
+  readonly route?: readonly string[] | undefined;
 }
 
 /** The arrows between the step cards as one SVG layer; an arrow to a step that isn't there is left out. */
-export function Arrows({ arrows, boxes }: ArrowsProps) {
+export function Arrows({ arrows, boxes, route }: ArrowsProps) {
   return (
     <svg
       aria-hidden="true"
-      className="pointer-events-none absolute left-0 top-0 size-px overflow-visible text-fg-muted"
+      className="pointer-events-none absolute left-0 top-0 size-px overflow-visible"
     >
       {arrows.map((arrow, index) => {
         const from = boxes.get(arrow.from);
         const to = boxes.get(arrow.to);
         if (from === undefined || to === undefined) return null;
         const shape = arrowShape(from, to);
+        const taken = wentAlong(route, arrow);
         return (
           // The same two steps can have several arrows, so the position is part of the key.
-          <g key={`${arrow.from}>${arrow.to}#${index}`}>
+          <g
+            key={`${arrow.from}>${arrow.to}#${index}`}
+            data-taken={taken ? "" : undefined}
+            // The head uses currentColor too, so line and head change together; forced colours fall back to a system colour.
+            className={taken ? "text-accent-text forced-colors:text-[Highlight]" : "text-fg-muted"}
+          >
             <path d={shape.path} fill="none" stroke="currentColor" strokeWidth={1.5} />
             <polygon
               points="-6,-4 0,0 -6,4"
@@ -71,4 +79,9 @@ function ArrowLabel({ shape, label }: { readonly shape: ArrowShape; readonly lab
       </text>
     </g>
   );
+}
+
+/** Whether the run went straight from the arrow's first step to its second. */
+function wentAlong(route: readonly string[] | undefined, arrow: WorkflowArrow): boolean {
+  return route?.some((id, at) => id === arrow.from && route[at + 1] === arrow.to) === true;
 }

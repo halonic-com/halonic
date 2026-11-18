@@ -1,15 +1,13 @@
 import { Button } from "@halonicjs/studio-kit";
 import type { ItemRef } from "@halonicjs/studio-shell";
-import { useEffect, useId, useRef, useState } from "react";
-import type { ChangeItem } from "../change-items.ts";
+import { useEffect, useId, useRef } from "react";
+import { type ChangeItem, isOpenable } from "../change-items.ts";
 import type { ChangesList } from "../changes-list.ts";
 import { discardWords, pageWords } from "../changes-words.ts";
-import { discardItem } from "../discard-item.ts";
 import { ItemChanges, WaitingNote } from "./item-changes.tsx";
-import { useDiscardToasts } from "./use-discard-toasts.ts";
-
-/** The kinds a page can open from here: the ones the Changes list shows with a place icon. */
-const openableKinds: readonly string[] = ["agent", "workflow", "routine"];
+import { UndoPartialCallout } from "./undo-partial-callout.tsx";
+import { UndoWithoutCopyDialog } from "./undo-without-copy-dialog.tsx";
+import { useUndoItem } from "./use-undo-item.ts";
 
 /** Props for {@link WhatChangedPage}. */
 export interface WhatChangedPageProps {
@@ -30,24 +28,12 @@ export interface WhatChangedPageProps {
 export function WhatChangedPage({ list, item, developer, openItem, onBack }: WhatChangedPageProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
-  const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<string>();
-  const discarding = useDiscardToasts();
+  const undoing = useUndoItem(list);
+  const { busy, undo } = undoing;
   const waitingId = useId();
   const headingId = useId();
 
-  async function undoTheseChanges() {
-    setBusy(true);
-    setFailure(undefined);
-    const reason = await discarding.run(await discardItem(list, item.files), {
-      title: discardWords.discarded(item.name),
-    });
-    setBusy(false);
-    setFailure(reason);
-  }
-
-  const canOpen =
-    openItem !== undefined && item.kind !== undefined && openableKinds.includes(item.kind);
+  const canOpen = openItem !== undefined && isOpenable(item);
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
       <span className="self-start">
@@ -79,18 +65,15 @@ export function WhatChangedPage({ list, item, developer, openItem, onBack }: Wha
           size="sm"
           busy={busy}
           unavailable={list.merging ? { reason: waitingId } : undefined}
-          onClick={() => void undoTheseChanges()}
+          onClick={() => void undo(item)}
         >
           {discardWords.undoTheseChanges}
         </Button>
       </header>
       <WaitingNote list={list} id={waitingId} />
-      {failure === undefined ? null : (
-        <span role="alert" className="text-small text-danger">
-          {discardWords.failed}. {failure}
-        </span>
-      )}
+      <UndoPartialCallout undoing={undoing} />
       <ItemChanges list={list} item={item} developer={developer} />
+      <UndoWithoutCopyDialog undoing={undoing} />
     </section>
   );
 }
