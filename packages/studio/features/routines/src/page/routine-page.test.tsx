@@ -28,12 +28,11 @@ import {
 import {
   daily,
   hostReading,
-  hostRunning,
   runNowButton,
   screenOf,
   settle,
   showWithToasts,
-} from "./page-test-support.tsx";
+} from "./page.test-helper.tsx";
 import { RoutinePage, RoutineScreen } from "./routine-page.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -357,6 +356,16 @@ verifies("routines.page.rename-and-delete", () => {
     expect(document.activeElement?.tagName).toBe("H1");
   });
 });
+
+/** A host that reads "Daily" and answers Run now with `answer`, or rejects with it when it is an error. */
+function hostRunning(answer: RunNowResult | Error, view: RoutineView = daily) {
+  const { host } = hostReading(() => view);
+  const runNow = vi.fn(async () => {
+    if (answer instanceof Error) throw answer;
+    return answer;
+  });
+  return { host: { ...host, runNow } as RoutinesHost, runNow };
+}
 
 verifies("routines.page.run-now", () => {
   it("shows no Run now while the host has no engine", async () => {

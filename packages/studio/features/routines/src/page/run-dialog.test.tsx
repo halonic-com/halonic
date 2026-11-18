@@ -7,20 +7,23 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { RoutinesHost, RoutineView, RunNowResult } from "../api.ts";
 import { buttonNamed, openDialogsInJsdom, unmount } from "../test-support.tsx";
 import { nextTime } from "../when/when-words.ts";
-import {
-  daily,
-  hostReading,
-  hostRunning,
-  runNowButton,
-  settle,
-  showWithToasts,
-} from "./page-test-support.tsx";
+import { daily, hostReading, runNowButton, settle, showWithToasts } from "./page.test-helper.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
 afterEach(() => {
   unmount();
   vi.useRealTimers();
 });
+
+/** A host that reads "Daily" and answers Run now with `answer`, or rejects with it when it is an error. */
+function hostRunning(answer: RunNowResult | Error, view: RoutineView = daily) {
+  const { host } = hostReading(() => view);
+  const runNow = vi.fn(async () => {
+    if (answer instanceof Error) throw answer;
+    return answer;
+  });
+  return { host: { ...host, runNow } as RoutinesHost, runNow };
+}
 
 const dialogButton = (text: string) =>
   buttonNamed(document.querySelector("dialog") as HTMLElement, text);
