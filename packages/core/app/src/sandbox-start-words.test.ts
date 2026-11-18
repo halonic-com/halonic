@@ -12,7 +12,7 @@ verifies("app.sandbox-start-words", () => {
       "Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap.",
     );
     expect(words.phoneFix).toBe(`On the computer Halonic runs on: ${words.fix}`);
-    expect(words.docsKey).toBe("sandbox#bubblewrap");
+    expect(words.docsKey).toBe("security/sandbox/#bubblewrap");
   });
 
   it("has all five parts for every reason code, under a key of its own", () => {
@@ -22,7 +22,7 @@ verifies("app.sandbox-start-words", () => {
       for (const part of [words.reason, words.fix, words.calloutFix, words.phoneFix]) {
         expect(part.length).toBeGreaterThan(0);
       }
-      expect(words.docsKey.startsWith("sandbox")).toBe(true);
+      expect(words.docsKey.startsWith("security/sandbox/")).toBe(true);
       expect(words.key).toBe(`sandbox-start.${code}`);
       keys.add(words.key);
     }
@@ -46,7 +46,7 @@ verifies("app.sandbox-start-words", () => {
   });
 
   it("links the docs page itself for a reason with no section of its own", () => {
-    expect(sandboxStartWords("setup-needed").docsKey).toBe("sandbox");
-    expect(sandboxStartWords("not-supported").docsKey).toBe("sandbox#wsl1");
+    expect(sandboxStartWords("setup-needed").docsKey).toBe("security/sandbox/");
+    expect(sandboxStartWords("not-supported").docsKey).toBe("security/sandbox/#wsl1");
   });
 });

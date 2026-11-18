@@ -63,13 +63,13 @@ verifies("cli.print-error", () => {
       kind: "unavailable",
       message: "the sandbox can't start on this computer. Nothing ran.",
       fix: "bubblewrap isn't installed. Install it, then run it again.",
-      docs: "https://docs.halonic.dev/sandbox#bubblewrap",
+      docs: "https://docs.halonic.dev/security/sandbox/#bubblewrap",
       code: "bubblewrap-missing",
     };
     expect(printed(error, run)).toEqual([
       "✕ Couldn't run support-reply: the sandbox can't start on this computer. Nothing ran.",
       "  bubblewrap isn't installed. Install it, then run it again.",
-      "  More: https://docs.halonic.dev/sandbox#bubblewrap (bubblewrap-missing)",
+      "  More: https://docs.halonic.dev/security/sandbox/#bubblewrap (bubblewrap-missing)",
     ]);
   });
 

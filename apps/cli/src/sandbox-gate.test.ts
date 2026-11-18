@@ -244,7 +244,7 @@ verifies("cli.sandbox-gate", () => {
       expect(printed(error)).toEqual([
         "✕ Couldn't run support-reply: the sandbox can't start on this computer. Nothing ran.",
         "  bubblewrap isn't installed. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap, then run it again.",
-        "  More: https://docs.halonic.dev/sandbox#bubblewrap (bubblewrap-missing)",
+        "  More: https://docs.halonic.dev/security/sandbox/#bubblewrap (bubblewrap-missing)",
       ]);
     });
 
@@ -262,7 +262,7 @@ verifies("cli.sandbox-gate", () => {
       expect(printed(error)).toEqual([
         "✕ Couldn't run support-reply: the sandbox can't start on this computer. Nothing ran.",
         "  The sandbox's one-time setup isn't done for this version of Halonic. Use Halonic inside WSL 2 on this computer, then run it again.",
-        "  More: https://docs.halonic.dev/sandbox (setup-needed)",
+        "  More: https://docs.halonic.dev/security/sandbox/ (setup-needed)",
       ]);
     });
 
@@ -374,7 +374,7 @@ verifies("cli.run-windows-node-in-wsl", () => {
     expect(printed(error)).toEqual([
       "✕ Couldn't run support-reply: the sandbox can't start on this computer. Nothing ran.",
       "  This is Windows' Node.js, running in a WSL folder, and the sandbox can't start with it. Install Node.js inside WSL and run halonic from a WSL terminal.",
-      "  More: https://docs.halonic.dev/sandbox (windows-node-in-wsl)",
+      "  More: https://docs.halonic.dev/security/sandbox/ (windows-node-in-wsl)",
     ]);
   });
 

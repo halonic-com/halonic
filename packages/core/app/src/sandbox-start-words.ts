@@ -143,6 +143,6 @@ export function sandboxStartWords(code: string): SandboxStartWords {
     fix,
     calloutFix: capitalised(fix),
     phoneFix: `On the computer Halonic runs on: ${fix}`,
-    docsKey: docsSection === undefined ? "sandbox" : `sandbox#${docsSection}`,
+    docsKey: docsSection === undefined ? "security/sandbox/" : `security/sandbox/#${docsSection}`,
   };
 }
