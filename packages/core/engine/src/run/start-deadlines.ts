@@ -1,14 +1,18 @@
-// Enforces the start limits of harness calls, and the time limit of a
-// connector call a run makes, with the `Scheduler` port: each wait sets a
+// Enforces the start limits of harness calls, their running time once
+// started, and the time limit of a connector call a run makes, with the
+// `Scheduler` port: each wait sets a
 // timer for when its time is up, and the timer ends the wait if it is
 // still going. Core has no timers of its own, and the
 // scheduler delivers timers while a harness call runs, so this works the
 // same on every runtime.
 
 import type { Clock, ScheduledTimer, Scheduler } from "@halonicjs/ports";
-import type { StartLimit, StartLimits } from "../harness/start-limits.ts";
+import type { RunningLimit, StartLimit, StartLimits } from "../harness/start-limits.ts";
 
-/** The prefix of a limit's timer id: `start:<phase>:<callId>`, or `start:connector:<callId>`. */
+/**
+ * The prefix of a limit's timer id: `start:<phase>:<callId>`, `start:step:<callId>` for a
+ * harness call's running time, or `start:connector:<callId>`.
+ */
 const startTimer = "start:";
 
 /** A wait with a time limit that isn't one of a harness call's starts. */
@@ -35,6 +39,8 @@ export class StartDeadlines {
   of(runId: string, callId: string): StartLimits {
     return {
       within: (limit) => this.#within(runId, `${startTimer}${limit.phase}:${callId}`, limit),
+      running: (timeoutMs, timeUp) =>
+        this.#running(runId, `${startTimer}step:${callId}`, timeoutMs, timeUp),
     };
   }
 
@@ -56,6 +62,52 @@ export class StartDeadlines {
    */
   expire(timer: ScheduledTimer): void {
     this.#waiting.get(slot(timer.key, timer.timerId))?.();
+  }
+
+  /**
+   * A call's running-time limit: one timer, cancelled on `pause()` and set
+   * again on `resume()` for the time that was left. `timeUp` runs at most
+   * once, and never after `pause()` or `end()`.
+   */
+  async #running(
+    runId: string,
+    timerId: string,
+    timeoutMs: number,
+    timeUp: () => void,
+  ): Promise<RunningLimit> {
+    const timerSlot = slot(runId, timerId);
+    let leftMs = timeoutMs;
+    /** When the stretch being counted began, in milliseconds; `null` while nothing is counted. */
+    let since: number | null = null;
+    let over = false;
+    const count = async () => {
+      if (since !== null || over) return;
+      since = this.#clock.now().getTime();
+      this.#waiting.set(timerSlot, () => {
+        over = true;
+        this.#waiting.delete(timerSlot);
+        timeUp();
+      });
+      await this.#scheduler.schedule(runId, timerId, new Date(since + leftMs).toISOString());
+    };
+    const stopCounting = async () => {
+      if (since === null) return;
+      leftMs = Math.max(0, leftMs - (this.#clock.now().getTime() - since));
+      since = null;
+      this.#waiting.delete(timerSlot);
+      await this.#scheduler.cancel(runId, timerId).catch(() => {
+        // A timer left set finds no wait when it arrives, and changes nothing.
+      });
+    };
+    await count();
+    return {
+      pause: stopCounting,
+      resume: count,
+      end: async () => {
+        over = true;
+        await stopCounting();
+      },
+    };
   }
 
   async #within<T>(runId: string, timerId: string, limit: TimeLimit<T>): Promise<T> {
