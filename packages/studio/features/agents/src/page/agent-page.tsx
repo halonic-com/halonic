@@ -17,6 +17,7 @@ import {
   type AgentSettings,
   type AgentsHost,
   AgentsHostService,
+  type AgentToolList,
 } from "../api.ts";
 import { Configuration } from "../configuration/configuration.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
@@ -26,9 +27,19 @@ import { pageWords } from "./page-words.ts";
 import { RenameField } from "./rename-field.tsx";
 import { useLoad } from "./use-load.ts";
 
+/**
+ * The Library's commands that open it on a tab (`library.skill` and so on); the Agents feature
+ * can't import the Library, so it runs them by id.
+ */
+const libraryTabCommands: Readonly<Record<AgentToolList, string>> = {
+  skills: "library.skill",
+  knowledge: "library.knowledge",
+  connectors: "library.connector",
+};
+
 /** The agent's page in its tab: `item` names the agent, the host reads its row. */
 export function AgentPage({ item, context }: ItemViewProps) {
-  const { openPlace, openItem } = context;
+  const { openPlace, openItem, runCommand } = context;
   return (
     <AgentScreen
       host={context.services.get(AgentsHostService)}
@@ -36,6 +47,9 @@ export function AgentPage({ item, context }: ItemViewProps) {
       id={item.id}
       {...(openPlace && { goToAgents: () => openPlace("agents") })}
       {...(openItem && { openFile: (path: string) => openItem(fileItemOf(path)) })}
+      {...(runCommand && {
+        openLibrary: (list: AgentToolList) => runCommand(libraryTabCommands[list]),
+      })}
     />
   );
 }
@@ -46,6 +60,8 @@ export interface AgentScreenProps extends AgentRef {
   readonly goToAgents?: (() => void) | undefined;
   /** Opens a workspace file in a tab, for **Open as file**; absent where the app can't, which leaves it out of the menu. */
   readonly openFile?: ((path: string) => void) | undefined;
+  /** Opens Library on a Tools list's tab, for **Open Library ›**; absent where the app can't. */
+  readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
 }
 
 /**
@@ -53,7 +69,14 @@ export interface AgentScreenProps extends AgentRef {
  * agent's Runs. The page is a skeleton when the read takes over 300 ms, and says why when the
  * agent can't be read. Flow, Configuration and the Try it chat join it in the next pull requests.
  */
-export function AgentScreen({ host, hubId, id, goToAgents, openFile }: AgentScreenProps) {
+export function AgentScreen({
+  host,
+  hubId,
+  id,
+  goToAgents,
+  openFile,
+  openLibrary,
+}: AgentScreenProps) {
   // After a Try again reads, the agent's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
   const source = useMemo(
@@ -189,6 +212,7 @@ export function AgentScreen({ host, hubId, id, goToAgents, openFile }: AgentScre
             retryAliases={aliases.retry}
             retry={settings.retry}
             save={save}
+            openLibrary={openLibrary}
           />
         ) : (
           <div className="min-w-0 flex-1 overflow-auto p-6">

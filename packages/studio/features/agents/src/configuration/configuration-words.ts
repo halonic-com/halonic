@@ -2,7 +2,7 @@
 export const configurationWords = {
   tab: "Configuration",
   pages: "Configuration pages",
-  pageNames: { behaviour: "Behaviour", model: "Model", harness: "Harness" },
+  pageNames: { behaviour: "Behaviour", model: "Model", harness: "Harness", tools: "Tools" },
   description: "Description",
   instructions: "Instructions",
   /** Shown only while Instructions is empty (microcopy 8.5). */
@@ -40,6 +40,32 @@ export const configurationWords = {
     `${agent} can't run until ${program} is installed.`,
   stripTooOld: (agent: string, program: string) =>
     `${agent} can't run until ${program} is updated.`,
+  /** The Tools page's lists (flow-agents 5.2). */
+  toolLists: { skills: "Skills", knowledge: "Knowledge", connectors: "Connectors" },
+  /** The picker's button under each list; an empty list shows only this (microcopy 8.5, MA16). */
+  addTool: { skills: "Add skill", knowledge: "Add knowledge", connectors: "Add connector" },
+  /** In place of the button when the hub's Library has none of the kind (microcopy 8.5). */
+  noneInLibrary: {
+    skills: "No skills yet.",
+    knowledge: "No knowledge yet.",
+    connectors: "No connectors yet.",
+  },
+  /** In place of the button when the agent has them all already (microcopy 8.5). */
+  allAdded: {
+    skills: "No more skills to add.",
+    knowledge: "No more knowledge to add.",
+    connectors: "No more connectors to add.",
+  },
+  /** After either line; it opens Library on that list's tab. */
+  openLibrary: "Open Library ›",
+  /** Under a list, for each item its file names that the Library doesn't have (microcopy 8.5, MA16). */
+  missingTool: {
+    skills: (name: string) => `There's no skill called ${name}.`,
+    knowledge: (name: string) => `There's no knowledge source called ${name}.`,
+    connectors: (name: string) => `There's no connector called ${name}.`,
+  },
+  removeTool: (name: string) => `Remove ${name}`,
+  toolsLoadFailedTitle: "Couldn't load the Library",
   loading: (name: string) => `Loading ${name}'s settings`,
   loadFailedTitle: (name: string) => `Couldn't load ${name}'s settings`,
   modelsLoadFailedTitle: "Couldn't load the models",
