@@ -3,6 +3,7 @@
 - Task: HAL-11755 (two Low findings of the attack tests on HAL-5687)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11755 (Liam's review of the pull request; Liam signs this note as the CTO)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Q7YNv1zuAfFGeHEoVQ6Fe38KwpGlj1qNaJAkYSi10SKUs8ovFQP3fSy6E5y7VHsebGlX288CmGo7OSJZ6gA5Dw==
 
 ## What changes
 
