@@ -862,7 +862,8 @@ the title, and a `label`: the sentence screen readers hear in place of the colum
 `trailing`; an error row's chip takes the first `status` column's place. When a row's main cell is
 narrower than 800px (`--container-list-wide`, measured on the cell, not the window), or on a phone,
 each row stacks its columns on three lines: the title and tag with the `status` chips, the meta
-line, then the other columns joined with " · ". The List throws unless there is exactly one `main`
+line, then the other columns joined with " · ", where only a `text` column is cut, never the short
+id or the time. The List throws unless there is exactly one `main`
 column and each other key is used once. While it loads at 800px or more, each skeleton row has a
 bar in each column.
 
