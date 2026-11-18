@@ -3,6 +3,7 @@
 - Task: HAL-10084
 - Approval: Liam approves this change on HAL-10093 (https://paperclip.halonic.com/HAL/issues/HAL-10093#comment-2a843de2-9822-4a79-a3c9-1f77d6afb4b0), for HAL-10084. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:U0CXVMUkAjrfUsY6F/bSN9GqT/o8IJkYj/GXh8kPbdNtR6Pe4vK3Ih/a0p2IFoPg3Wq/B4b5P+hYOwv95imRCw==
 
 ## What changes
 
