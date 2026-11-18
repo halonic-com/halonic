@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { ProfilePlatform } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
@@ -10,6 +11,12 @@ import { HostProposalFolders } from "./host-proposals.ts";
 import { proposalRoutes } from "./proposal-routes.ts";
 
 const token = randomLaunchToken();
+const profilePlatform = profilePlatformOf(process.platform);
+
+function profilePlatformOf(platform: NodeJS.Platform): ProfilePlatform {
+  if (platform === "win32") return "windows";
+  return platform === "darwin" ? "macos" : "linux";
+}
 const run = {
   runId: "run_1",
   hubId: "hub_1",
@@ -27,7 +34,7 @@ beforeEach(async () => {
   await mkdir(workspace);
   await writeFile(join(workspace, "notes.md"), "hello");
   const proposals = new HostProposalFolders({
-    profile: { platform: "linux", root: join(root, "data") },
+    profile: { platform: profilePlatform, root: join(root, "data") },
     workspaceRoots: [workspace],
     digest: webCryptoDigest,
     onEndFailed: () => {},
