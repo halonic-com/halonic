@@ -11,6 +11,7 @@ export const pageWords = {
   changesNotLive: "Changes not live yet",
   nameLabel: "Routine name",
   more: (name: string) => `More actions for ${name}`,
+  openAsFile: "Open as file",
   delete: "Delete",
   rename: "Rename",
   renameTitle: "Rename routine",

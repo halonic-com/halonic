@@ -32,6 +32,10 @@ import { RunDialog, runDialogReason } from "./run-dialog.tsx";
 import { runRoutineNow } from "./run-now.ts";
 import { useRoutine } from "./use-routine.ts";
 
+/** The file tab's item kind and hub part (the Files feature's `FILE_KIND` and `FILE_HUB`): files belong to the workspace folder. */
+const fileKind = "file";
+const fileHub = "workspace";
+
 /** The routine's page in its tab: `item` names the routine, the host gives its fields. */
 export function RoutinePage({ item, context }: ItemViewProps) {
   const { openPlace, openItem, runCommand } = context;
@@ -45,6 +49,7 @@ export function RoutinePage({ item, context }: ItemViewProps) {
       {...(runCommand && { addConnector: () => void runCommand("library.new-connector") })}
       {...(openItem && {
         openRun: (runId: string) => openItem({ kind: "run", hub: item.hub, id: runId }),
+        openFile: (path: string) => openItem({ kind: fileKind, hub: fileHub, id: path }),
       })}
     />
   );
@@ -63,6 +68,8 @@ export interface RoutineScreenProps {
   readonly openRun?: (runId: string) => void;
   /** Opens New connector, for the When card's **Add a Google connector**; without it the card has no such link. */
   readonly addConnector?: () => void;
+  /** Opens a file in the code editor in a tab; without it the ⋮ menu has no **Open as file**. */
+  readonly openFile?: (path: string) => void;
 }
 
 /**
@@ -79,6 +86,7 @@ export function RoutineScreen({
   goToRoutines,
   openRun,
   addConnector,
+  openFile,
 }: RoutineScreenProps) {
   // After a Try again reads, the routine's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -115,6 +123,7 @@ export function RoutineScreen({
         title={title}
         onRestored={restored}
         openRun={openRun}
+        openFile={openFile}
       />
       {load.kind === "ready" ? (
         <TabPanel
@@ -245,7 +254,7 @@ function Summary({ routine }: { readonly routine: RoutineView }) {
 
 /**
  * The page's header: the avatar, "ROUTINE" and the name, which is a rename field once the routine
- * is read, then its ⋮ menu with Delete and **Run now** at the right (only where the host can start a run). On a phone the top bar already names the routine, so the
+ * is read, then its ⋮ menu with Open as file (where tabs open) and Delete, and **Run now** at the right (only where the host can start a run). On a phone the top bar already names the routine, so the
  * page keeps only its type.
  */
 function RoutineHeader({
@@ -256,6 +265,7 @@ function RoutineHeader({
   tabs,
   onRestored,
   openRun,
+  openFile,
 }: {
   readonly host: RoutinesHost;
   /** The routine, once it is read; before that the header shows the id and has no menu. */
@@ -272,6 +282,7 @@ function RoutineHeader({
   /** Called once Undo has put a deleted routine back. */
   readonly onRestored: () => void;
   readonly openRun: ((runId: string) => void) | undefined;
+  readonly openFile: ((path: string) => void) | undefined;
 }) {
   const phone = usePresentation() === "phone";
   const toasts = useToastStore();
@@ -333,6 +344,15 @@ function RoutineHeader({
               ...(phone
                 ? [{ id: "rename", label: pageWords.rename, onSelect: () => setRenaming(true) }]
                 : []),
+              ...(openFile === undefined || phone
+                ? []
+                : [
+                    {
+                      id: "open-as-file",
+                      label: pageWords.openAsFile,
+                      onSelect: () => openFile(routine.file),
+                    },
+                  ]),
               {
                 id: "delete",
                 label: pageWords.delete,
