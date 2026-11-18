@@ -1,10 +1,11 @@
 // An entry's events in the side panel (checklist part 1, 1.10; design-runs
 // 3, Every step): the step's model calls with their model and tokens, and
 // its tool calls with their arguments. The panel only draws what this
-// returns.
+// returns. A tool call that failed gets a quiet "✕ Didn't work" line
+// (HAL-12415, option a; microcopy 1.6, E1).
 
 import { shortRunId } from "@halonicjs/app";
-import { blockedSites, type RunEvent, type StepBlockedSites } from "@halonicjs/events";
+import { blockedSites, entryOf, type RunEvent, type StepBlockedSites } from "@halonicjs/events";
 import { escapeHidden } from "@halonicjs/std";
 import { runPageWords, stepEventsWords, stepName } from "../run-words.ts";
 import { entrySiteLimit } from "./blocked-sites.tsx";
@@ -27,6 +28,24 @@ export interface ToolCall {
   readonly tool: string;
   /** Its arguments as indented JSON, folded until the person opens them. */
   readonly args: string;
+  /** How it failed, for the line under it; absent for a call that worked or has no result yet. */
+  readonly failed?: FailedCall;
+}
+
+/**
+ * A tool call whose `tool.result` has the outcome `error` or `unknown`. Only
+ * typed fields of the log fill it: the result's text is the engine's or the
+ * tool's own words, which a screen never shows (microcopy 1.6, E3).
+ */
+export interface FailedCall {
+  /**
+   * Why, when the log says: `no-answer` when the call broke off without an
+   * answer (outcome `unknown`), so it may or may not have done its work.
+   * Absent for `error`, whose reason is only in the result's text.
+   */
+  readonly reason?: "no-answer";
+  /** The connector the tool came from, "notes-mcp", when the log names it right before the call. */
+  readonly connector?: string;
 }
 
 /** What a step's entry shows in the side panel. */
@@ -49,6 +68,7 @@ export interface StepEvents {
 export function stepEvents(events: readonly RunEvent[], entryId: string): StepEvents {
   const modelCalls: ModelCall[] = [];
   const toolCalls: ToolCall[] = [];
+  const failures = failedCalls(events);
   for (const event of eventsOfStep(events, entryId)) {
     if (event.type === "llm.response") {
       modelCalls.push({
@@ -60,14 +80,54 @@ export function stepEvents(events: readonly RunEvent[], entryId: string): StepEv
             : stepEventsWords.tokens(event.usage.inputTokens, event.usage.outputTokens),
       });
     } else if (event.type === "tool.called") {
+      const failed = failures.get(event.seq);
       toolCalls.push({
         id: event.seq,
         tool: escapeHidden(event.tool),
         args: escapeHidden(JSON.stringify(event.args ?? {}, null, 2)),
+        ...(failed === undefined ? {} : { failed }),
       });
     }
   }
   return { modelCalls, toolCalls };
+}
+
+/**
+ * The tool calls of the whole log that failed, by the `seq` of their
+ * `tool.called`. A `tool.result` finds its call the way the timeline does
+ * (`entryOf`); a result from an older log, without `outcome`, counts as
+ * one that worked.
+ */
+function failedCalls(events: readonly RunEvent[]): Map<number, FailedCall> {
+  const entries = entryOf(events);
+  const indexBySeq = new Map(events.map((event, index) => [event.seq, index]));
+  const failures = new Map<number, FailedCall>();
+  events.forEach((event, index) => {
+    if (event.type !== "tool.result") return;
+    if (event.outcome !== "error" && event.outcome !== "unknown") return;
+    const calledIndex = indexBySeq.get(entries[index] ?? event.seq);
+    if (calledIndex === undefined) return;
+    const called = events[calledIndex];
+    if (called?.type !== "tool.called") return;
+    const connector = connectorBefore(events[calledIndex - 1], called.tool);
+    failures.set(called.seq, {
+      ...(event.outcome === "unknown" ? { reason: "no-answer" as const } : {}),
+      ...(connector === undefined ? {} : { connector: escapeHidden(connector) }),
+    });
+  });
+  return failures;
+}
+
+/**
+ * The connector of a call to `tool`, from the event the engine logs right
+ * before its `tool.called`: `connector.started` for a call that can change
+ * things, `tool.unasked` for one the connector's `read` list lets through.
+ * Other calls don't say which connector they went to.
+ */
+function connectorBefore(before: RunEvent | undefined, tool: string): string | undefined {
+  if (before?.type === "connector.started") return before.connector;
+  if (before?.type === "tool.unasked" && before.tool === tool) return before.connector;
+  return undefined;
 }
 
 /** The sites one agent's sandbox refused in a step, with the agent's name. */
