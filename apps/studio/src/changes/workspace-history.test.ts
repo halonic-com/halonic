@@ -3,20 +3,26 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type GitAnswer, WorkspaceChanges } from "./workspace-changes.ts";
 import { choicesMemory } from "./workspace-merge.ts";
 
 const answer = (stdout: string, code = 0, stderr = ""): GitAnswer => ({ code, stdout, stderr });
 
-/** A source that reads the workspace's history through `git`; nothing else of it is used. */
-function history(git: (args: readonly string[]) => Promise<GitAnswer>) {
+/**
+ * A source that reads the workspace's history through `git`, and its files from `files` for the
+ * names of a version's items; nothing else of it is used.
+ */
+function history(
+  git: (args: readonly string[]) => Promise<GitAnswer>,
+  files: Readonly<Record<string, string>> = {},
+) {
   const never = async () => {
     throw new Error("not used");
   };
   const changes = new WorkspaceChanges({
     git,
-    files: { read: never, write: never, remove: never },
+    files: { read: async (path) => files[path] ?? null, write: never, remove: never },
     copies: { write: never },
     choices: choicesMemory(undefined, "test"),
     digest: { sha256: never },
@@ -36,6 +42,14 @@ verifies("source-control.history", () => {
       );
       return { code: run.status, stdout: run.stdout, stderr: run.stderr };
     };
+
+    it("reads a file as it is now without asking git, and nothing for a file that isn't there", async () => {
+      const git = vi.fn(async () => answer(""));
+      const { changes } = history(git, { "a.yaml": "now\n" });
+      expect(await changes.readFile("a.yaml")).toBe("now\n");
+      expect(await changes.readFile("gone.yaml")).toBeNull();
+      expect(git).not.toHaveBeenCalled();
+    });
 
     it("reads the newest versions of a real repository, newest first, without Halonic's folders", async () => {
       const dir = mkdtempSync(join(tmpdir(), "history-"));
