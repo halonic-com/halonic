@@ -4,6 +4,8 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { runnerNodeFolder, runnerProfile } from "@halonicjs/adapter-integration-runner";
+import { MemoryUnfencedRunConsentStore } from "@halonicjs/adapter-memory";
+import { RunnerStartGate, UnfencedRuns } from "@halonicjs/app";
 import type { Sandbox } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -31,7 +33,16 @@ const unusedSandbox: Sandbox = {
 function machineOf(extra: Partial<HostPluginMachineOptions> = {}) {
   return hostPluginMachine({
     ...extra,
-    fenced: unusedSandbox,
+    gate: new RunnerStartGate({
+      platform: process.platform,
+      fenced: unusedSandbox,
+      launcher: unusedSandbox,
+      runs: new UnfencedRuns({
+        store: new MemoryUnfencedRunConsentStore(),
+        clock: { now: () => new Date(0) },
+        timers: { set: () => undefined, clear: () => undefined },
+      }),
+    }),
     // On Windows the runner's temp folder goes in the profile's shared data folder: a folder of this test's own, not the machine's %ProgramData%.
     profile: {
       platform: process.platform === "win32" ? "windows" : "linux",

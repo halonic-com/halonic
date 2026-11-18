@@ -16,7 +16,7 @@ import type { PluginBackends } from "./plugin-table.ts";
  * `halonic run`, behind the trust check and the start gate. Nothing here
  * loads a plugin's code: it runs only in the runner the gate started.
  *
- * @param machine - what a start uses; its gate must never allow a run without the sandbox
+ * @param machine - what a start uses; its gate allows a run without the sandbox only with the user's saved yes for the reason at that start
  * @param context - the secrets and tokens a backend may use
  * @param log - where the detail of a refusal goes; the answer carries a fixed message only
  */

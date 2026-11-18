@@ -27,8 +27,7 @@ import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
 import { hostModelRoutes } from "./model/host-model-routes.ts";
 import { modelRoutes } from "./model/model-routes.ts";
-import { hostPlugins } from "./plugin/host-plugins.ts";
-import { pluginRoutes } from "./plugin/plugin-routes.ts";
+import { hostPluginRoutes, hostPlugins } from "./plugin/host-plugins.ts";
 import { optionalProfileOf, profileGoogleSetup, profileTrustStore } from "./profile-folder.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { hostSandboxChoice } from "./sandbox/choice-host.ts";
@@ -425,7 +424,7 @@ function hostServices(
           log: (text) => process.stderr.write(text),
           ...(relayPort === undefined ? {} : { relayPort }),
         })),
-    ...(plugins === undefined ? [] : pluginRoutes({ plugins: plugins.table, log: logToError })),
+    ...hostPluginRoutes(plugins, logToError),
     ...hostIntegrationSignInRoutes({
       profile,
       relayPort,

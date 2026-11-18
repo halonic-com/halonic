@@ -15,17 +15,8 @@ import {
   startRunner,
   systemFiles,
 } from "@halonicjs/adapter-integration-runner";
-import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
 import { makeRunnerTempFolder, sandboxRuntimeFolder } from "@halonicjs/adapter-sandbox-srt";
-import {
-  noUnfencedRunConsent,
-  PluginSettings,
-  RunnerStartGate,
-  type SaveTimers,
-  TrustService,
-  UnfencedRuns,
-} from "@halonicjs/app";
-import type { Sandbox } from "@halonicjs/ports";
+import { PluginSettings, type RunnerStartGate, TrustService } from "@halonicjs/app";
 import {
   type ProfileFolder,
   pluginRecordsFolder,
@@ -40,26 +31,10 @@ import { proxySetting } from "../proxy-setting.ts";
 /** How long one runner may live, in milliseconds; a start after it asks the trust check and the gate again. */
 const runnerTimeLimitMs = 10 * 60 * 1000;
 
-/** Node's timers for reading the saved yes again; with {@link noUnfencedRunConsent} no run ever needs them. */
-const unfencedRunTimers: SaveTimers = {
-  set: (callback, delayMs) => setTimeout(callback, delayMs).unref(),
-  clear: (handle) => clearTimeout(handle as NodeJS.Timeout),
-};
-
-/** The launcher's sandbox in name only: the gate only reaches it on the confirmed unfenced path, which the host never allows. */
-function refusingLauncher(): Sandbox {
-  return {
-    ...createHostSandbox(),
-    open: async () => {
-      throw new Error("the agent host never runs a plugin without the sandbox");
-    },
-  };
-}
-
-/** What the host's plugin machine needs: the sandbox its sessions use, and where its files are. */
+/** What the host's plugin machine needs: the gate its starts go through, and where its files are. */
 export interface HostPluginMachineOptions {
-  /** The host's own fenced sandbox. */
-  readonly fenced: Sandbox;
+  /** The host's one start gate, shared with the routes that read the status and save the yes (see `hostUnfencedRuns`). */
+  readonly gate: RunnerStartGate;
   readonly profile: ProfileFolder;
   readonly version: string;
   /** Removes a folder and everything in it; the host's own is `rm`. A test passes one that fails. */
@@ -78,11 +53,12 @@ export interface HostPluginMachine {
 }
 
 /**
- * The CLI's plugin machine (`computerPluginMachine`) for the host, with the
- * differences that matter: the gate has no saved yes and no launcher that
- * opens, so a computer without the fenced sandbox starts nothing, and the
- * runner's read-only folder is the host executable's own folder, which stands
- * in for Node, not the wider folder two levels above it.
+ * The CLI's plugin machine (`computerPluginMachine`) for the host. Its gate
+ * reads the same saved yes as the CLI, so a computer without the fenced
+ * sandbox starts a plugin only with the user's yes for the reason at that
+ * start. The difference that matters: the runner's read-only folder is the
+ * host executable's own folder, which stands in for Node, not the wider
+ * folder two levels above it.
  */
 export function hostPluginMachine(options: HostPluginMachineOptions): HostPluginMachine {
   const { profile } = options;
@@ -98,17 +74,7 @@ export function hostPluginMachine(options: HostPluginMachineOptions): HostPlugin
     systemClock,
   );
   const machine: PluginBackendMachine = {
-    gate: new RunnerStartGate({
-      platform: process.platform,
-      fenced: options.fenced,
-      launcher: refusingLauncher(),
-      // The host has no way to ask for a yes to run without the sandbox, so it never holds one.
-      runs: new UnfencedRuns({
-        store: noUnfencedRunConsent,
-        clock: systemClock,
-        timers: unfencedRunTimers,
-      }),
-    }),
+    gate: options.gate,
     runtime: {
       node: process.execPath,
       nodeFolder: runnerNodeFolder(process.execPath),
