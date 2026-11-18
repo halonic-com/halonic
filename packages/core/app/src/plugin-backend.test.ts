@@ -17,6 +17,9 @@ import { TestUnfencedRunConsentStore } from "./testing/test-unfenced-run-consent
 import { TrustService } from "./trust-service.ts";
 import { UnfencedRuns } from "./unfenced-runs.ts";
 
+/** These tests never take a yes back in another process, so the saved yes is never read again. */
+const noSavedYesChecks = { set: () => undefined, clear: () => undefined };
+
 /** SHA-256 from Web Crypto, as the platforms' `Digest` adapters give it. */
 const digest: Digest = {
   async sha256(data) {
@@ -110,7 +113,11 @@ async function setup({
     clock,
     appVersion: "0.1.0",
   });
-  const runs = new UnfencedRuns({ store: new TestUnfencedRunConsentStore(), clock });
+  const runs = new UnfencedRuns({
+    store: new TestUnfencedRunConsentStore(),
+    clock,
+    timers: noSavedYesChecks,
+  });
   const gate = new RunnerStartGate({
     platform,
     fenced: sandbox("fenced", check),
