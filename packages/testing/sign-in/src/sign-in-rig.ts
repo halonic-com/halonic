@@ -12,6 +12,7 @@ import {
   createSignInFlow,
   type IntegrationSignIns,
   type SignInFlow,
+  type SignInHost,
   type SignInOutcome,
 } from "@halonicjs/host-integration-sign-in";
 import { createSignInGrants, type SignInGrants } from "@halonicjs/oauth-sign-in";
@@ -65,6 +66,8 @@ export interface FinishedSignIn {
  */
 export interface SignInRig {
   readonly server: FakeOAuthServer;
+  /** The host every integration's sign-ins run in; the rig has one integration, `example`. */
+  readonly host: SignInHost;
   readonly flow: SignInFlow;
   readonly signIns: IntegrationSignIns;
   readonly grants: SignInGrants;
@@ -151,6 +154,7 @@ export function createSignInRig(options: SignInRigOptions = {}): SignInRig {
 
   return {
     server,
+    host,
     flow,
     signIns,
     grants,

@@ -376,6 +376,9 @@ importers:
       '@halonicjs/host-google-sign-in':
         specifier: workspace:*
         version: link:../../packages/host/google-sign-in
+      '@halonicjs/host-integration-sign-in':
+        specifier: workspace:*
+        version: link:../../packages/host/integration-sign-in
       '@halonicjs/host-server':
         specifier: workspace:*
         version: link:../../packages/host/server
@@ -395,6 +398,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core/workspace
     devDependencies:
+      '@halonicjs/testing-sign-in':
+        specifier: workspace:*
+        version: link:../../packages/testing/sign-in
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../packages/testing/spec
