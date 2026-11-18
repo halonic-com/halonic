@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12857 (a detail of the approved What changed screen, so a team decision under HAL-2282; found in the re-walk HAL-12840, C86)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:icuAfHHC6LvlNkPq5xM/HbZEfhCtrLkZsb2C1v/6x5luwHZimo9q48nvck3wxKVlZREHScLN85Tq39XmJQPxDg==
 
 A new item whose file reads as its kind shows "New <kind>" ("New skill") and each field it sets,
 labelled as an edited item's changes are ("Name", "When to use it", "Instructions"), with its whole
