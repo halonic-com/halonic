@@ -1,8 +1,10 @@
 import type {
+  Clock,
   ConnectorClient,
   ConnectorConfig,
   ConnectorFactory,
   ConnectorFactoryContext,
+  Digest,
   Sandbox,
   SandboxCheck,
   SandboxFence,
@@ -12,16 +14,64 @@ import { FakeSandboxSession, idleProgram } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { PluginToolSet } from "./plugin-contributions.ts";
+import { readPluginFolder } from "./plugin-folder.ts";
 import {
   isLocalToolSet,
   type LocalToolMxc,
   type LocalToolSet,
   LocalToolUnavailableError,
   localToolConnectorId,
+  PluginLocalToolNotTrustedError,
   PluginLocalTools,
 } from "./plugin-local-tools.ts";
+import type { PluginStartTrustOptions } from "./plugin-start-trust.ts";
+import type { PluginTrustCheck } from "./plugin-trust.ts";
+import { TestFolderReader } from "./testing/test-folder-reader.ts";
+import { TestTrustStore } from "./testing/test-trust-store.ts";
+import { TrustService } from "./trust-service.ts";
 
 const trust = { location: "/profile/plugins/files", fingerprint: "hfp1:files" };
+
+/** SHA-256 from Web Crypto, as the platforms' `Digest` adapters give it. */
+const digest: Digest = {
+  async sha256(data) {
+    return new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
+  },
+};
+
+const clock: Clock = { now: () => new Date("2026-11-18T09:00:00.000Z") };
+
+const filesManifest = `id: files
+version: 1.0.0
+sdk: 1
+name: Files
+description: Lists files.
+localTools:
+  - id: lister
+    start: { script: { program: node, path: tools/server.js } }
+    tools:
+      - { name: list-files, description: Lists the files., risk: read, untrusted: true }
+`;
+
+/** The plugin folder with the `files` plugin in it. */
+function filesFolder(): TestFolderReader {
+  return new TestFolderReader().putFiles({
+    "files/plugin.yaml": filesManifest,
+    "files/tools/server.js": "console.log('lister');\n",
+  });
+}
+
+/** A trust check that finds the `files` plugin trusted with the grant `trust`, as loaded. */
+function trustedAsLoaded(): PluginStartTrustOptions {
+  return {
+    plugins: filesFolder(),
+    digest,
+    trust: {
+      checkPlugin: async () =>
+        ({ status: "trusted", fingerprint: trust.fingerprint }) as PluginTrustCheck,
+    },
+  };
+}
 
 const lister: LocalToolSet = {
   plugin: "files",
@@ -111,7 +161,11 @@ function profileWithSites(n: number, sites: readonly string[]): SandboxProfile {
 
 function setUp(
   sandbox: TestSandbox | null = new TestSandbox(),
-  options: { mxc?: LocalToolMxc; sites?: readonly string[] } = {},
+  options: {
+    mxc?: LocalToolMxc;
+    sites?: readonly string[];
+    startTrust?: PluginStartTrustOptions;
+  } = {},
 ) {
   const factory = new TestFactory();
   let prepared = 0;
@@ -120,6 +174,7 @@ function setUp(
     ...(options.mxc === undefined ? {} : { mxc: options.mxc }),
     factory,
     context: {} as Omit<ConnectorFactoryContext, "trust" | "sandbox">,
+    startTrust: options.startTrust ?? trustedAsLoaded(),
     prepare: async () => {
       prepared += 1;
       return { config, profile: profileWithSites(prepared, options.sites ?? []) };
@@ -233,6 +288,7 @@ verifies("app.plugin-local-tools", () => {
       sandbox,
       factory: new TestFactory(),
       context: {} as Omit<ConnectorFactoryContext, "trust" | "sandbox">,
+      startTrust: trustedAsLoaded(),
       prepare: async () => ({ config: { ...config, id: "other" }, profile: profileNumber(1) }),
     });
     await expect(local.connector(lister).listTools()).rejects.toThrow(
@@ -280,6 +336,7 @@ verifies("app.plugin-local-tools", () => {
         mxc,
         factory,
         context: {} as Omit<ConnectorFactoryContext, "trust" | "sandbox">,
+        startTrust: trustedAsLoaded(),
         prepare: async () => {
           const profile = profileNumber(1);
           const bridge = { kind: "loopback", host: "127.0.0.1", port: 41817 } as const;
@@ -315,6 +372,103 @@ verifies("app.plugin-local-tools", () => {
       await expect(local.connector(lister).callTool("list-files", {})).rejects.toMatchObject({
         state: { kind: "sandbox-not-fenced", fence: "not-fenced" },
       });
+    });
+  });
+
+  describe("checks the plugin's trust again before every session", () => {
+    /** The `files` plugin in a real trust service, trusted as a person would. */
+    async function trusted() {
+      const plugins = filesFolder();
+      const service = new TrustService({
+        store: new TestTrustStore(),
+        digest,
+        clock,
+        appVersion: "0.1.0",
+      });
+      const read = await readPluginFolder(plugins, digest, "files");
+      if (!read.ok) throw new Error(JSON.stringify(read.error));
+      const shown = await service.checkPlugin(read.value);
+      expect((await service.grantPlugin(read.value, shown.fingerprint, "cli")).ok).toBe(true);
+      const grant = { location: read.value.location, fingerprint: shown.fingerprint };
+      const set: LocalToolSet = { ...lister, trust: grant };
+      return { plugins, service, set, startTrust: { plugins, digest, trust: service } };
+    }
+
+    async function notTrusted(promise: Promise<unknown>): Promise<PluginLocalToolNotTrustedError> {
+      const error = await promise.then(
+        () => undefined,
+        (thrown: unknown) => thrown,
+      );
+      expect(error).toBeInstanceOf(PluginLocalToolNotTrustedError);
+      return error as PluginLocalToolNotTrustedError;
+    }
+
+    it("opens the session when the plugin is trusted as it is now", async () => {
+      const { set, startTrust } = await trusted();
+      const sandbox = new TestSandbox();
+      const { local } = setUp(sandbox, { startTrust });
+      await local.connector(set).callTool("list-files", {});
+      expect(sandbox.sessions).toHaveLength(1);
+    });
+
+    it("opens nothing when the script changed after the plugin loaded", async () => {
+      const { plugins, set, startTrust } = await trusted();
+      const sandbox = new TestSandbox();
+      const { local, factory } = setUp(sandbox, { startTrust });
+      plugins.putFiles({ "files/tools/server.js": "console.log('changed');\n" });
+      const error = await notTrusted(local.connector(set).callTool("list-files", {}));
+      expect(error.reason).toBe("changed");
+      expect(error.message).toContain("halonic trust --plugin files");
+      expect(sandbox.sessions).toEqual([]);
+      expect(factory.contexts).toEqual([]);
+    });
+
+    it("checks again for the session after one ended, not only for the first", async () => {
+      const { plugins, set, startTrust } = await trusted();
+      const sandbox = new TestSandbox();
+      const { local } = setUp(sandbox, { startTrust });
+      const connector = local.connector(set);
+      await expect(connector.callTool("outlast", {})).rejects.toThrow();
+      plugins.putFiles({ "files/tools/server.js": "console.log('changed');\n" });
+      expect((await notTrusted(connector.callTool("list-files", {}))).reason).toBe("changed");
+      expect(sandbox.sessions).toHaveLength(1);
+    });
+
+    it("opens nothing once the person took the trust back", async () => {
+      const { service, set, startTrust } = await trusted();
+      const sandbox = new TestSandbox();
+      const { local } = setUp(sandbox, { startTrust });
+      await service.revoke(set.trust.location);
+      const error = await notTrusted(local.connector(set).callTool("list-files", {}));
+      expect(error.reason).toBe("not-trusted");
+      expect(sandbox.sessions).toEqual([]);
+    });
+
+    it("opens nothing when the plugin was trusted again since it loaded", async () => {
+      const sandbox = new TestSandbox();
+      const { local } = setUp(sandbox);
+      const loadedEarlier = { ...lister, trust: { ...trust, fingerprint: "hfp1:earlier" } };
+      const error = await notTrusted(local.connector(loadedEarlier).callTool("list-files", {}));
+      expect(error.reason).toBe("changed");
+      expect(sandbox.sessions).toEqual([]);
+    });
+
+    it("hands the plugin as it was checked to prepare", async () => {
+      const { set, startTrust } = await trusted();
+      const handed: string[] = [];
+      const local = new PluginLocalTools({
+        sandbox: new TestSandbox(),
+        factory: new TestFactory(),
+        context: {} as Omit<ConnectorFactoryContext, "trust" | "sandbox">,
+        startTrust,
+        prepare: async (_set, checked) => {
+          handed.push(checked.fingerprint, ...checked.files.map((file) => file.path));
+          return { config, profile: profileNumber(1) };
+        },
+      });
+      await local.connector(set).callTool("list-files", {});
+      expect(handed[0]).toBe(set.trust.fingerprint);
+      expect(handed).toContain("tools/server.js");
     });
   });
 });
