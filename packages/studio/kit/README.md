@@ -1549,6 +1549,12 @@ items follow as 48px link rows, edge to edge, a `border` line under each and a c
 danger items last. Dividers fall away. A tap calls the item's `onSelect`; a disabled or unavailable
 item stays listed and does nothing, an unavailable one with its reason under its label.
 
+A screen with no page stack to put the sheet on, such as More in a desktop window as narrow as a
+phone, mounts **`HeaderBadgeSheetDialog`** instead, with the same props. It shows the sheet over the
+whole window in a `<dialog>` opened with `showModal()`, so everything behind it is inert and Tab
+never reaches a control hidden under it (WCAG 2.4.11). Focus moves to the title, Escape calls
+`onClose`, and unmounting it closes it and gives focus back to the opener.
+
 ## Tooltip
 
 A short label for a control: an icon button's name, a disabled control's reason, a shortcut.

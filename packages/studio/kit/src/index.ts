@@ -141,6 +141,7 @@ export {
   HeaderBadgeSheet,
   type HeaderBadgeSheetProps,
 } from "./header-badge/header-badge-sheet.tsx";
+export { HeaderBadgeSheetDialog } from "./header-badge/header-badge-sheet-dialog.tsx";
 export { IconTile, type IconTileProps } from "./icon-tile/icon-tile.tsx";
 export { AlertIcon } from "./icons/alert-icon.tsx";
 export { BackIcon } from "./icons/back-icon.tsx";
