@@ -481,4 +481,17 @@ export const receiptWords = {
   approvalNotAnswered: (action: string) => `${capitalised(action)}: not answered`,
   approvalByPerson: "you",
   approvalByRule: "a rule",
+  itemsHeading: "Items",
+  /** The Items section's line for the files a run saved (RCPT-2.1): "Created 1 file: weekly-report.md". */
+  createdFiles: (names: readonly string[]) =>
+    `Created ${names.length === 1 ? "1 file" : `${names.length} files`}: ${namesInWords(names)}`,
+  /** The heading of the agent's own words after the receipt (RCPT-3.4). */
+  agentSaysHeading: "What the agent says it did (not from the run log)",
 };
+
+/** "a.md", or "a.md and b.md", or "a.md, b.md and c.md". */
+function namesInWords(names: readonly string[]): string {
+  return names.length <= 1
+    ? names.join("")
+    : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}

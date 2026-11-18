@@ -9,6 +9,7 @@ import { RunsList } from "../runs-list.ts";
 import { fakeSource } from "../source.test-helper.ts";
 import { approvalAt, mondayMorning, summaryWith } from "../summary.test-helper.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
+import { entered, logOf } from "./run-log.test-helper.ts";
 import { RunView, type RunViewProps } from "./run-page.tsx";
 
 afterEach(() => {
@@ -272,5 +273,43 @@ verifies("runs.run-page", () => {
       "Part of this run's log can't be read. Line 212 is damaged. Everything before it is shown, so the receipt may be incomplete.",
     );
     expect(root.textContent).toContain("Receipt");
+  });
+});
+
+verifies("runs.run-view.agent-says", () => {
+  it("shows what the agent says after the receipt and before Every step", async () => {
+    const done = summaryWith({ id: "run_d_9w3k5t", status: "completed" });
+    const log = logOf(done.id, [
+      [1, entered("draft")],
+      [
+        2,
+        {
+          type: "agent.finished",
+          state: "draft",
+          agent: "reporter",
+          output: "This week: 12 emails.",
+        },
+      ],
+      [
+        2,
+        {
+          type: "artifact.created",
+          state: "draft",
+          name: "weekly-report.md",
+          hash: "a".repeat(64),
+          mediaType: "text/markdown",
+          size: 21,
+        },
+      ],
+      [2, { type: "run.completed", state: "done", context: {} }],
+    ]);
+    const { root } = await openRun(fakeSource([done], { [done.id]: log }).source, done.id);
+    const text = root.textContent ?? "";
+    expect(text).toContain("Created 1 file: weekly-report.md");
+    const frame = text.indexOf(
+      "What the agent says it did (not from the run log)This week: 12 emails.",
+    );
+    expect(frame).toBeGreaterThan(text.indexOf("Created 1 file"));
+    expect(text.indexOf("Every step")).toBeGreaterThan(frame);
   });
 });

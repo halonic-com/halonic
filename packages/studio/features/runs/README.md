@@ -116,6 +116,15 @@ everyStep(events, summary, workflow, new Date());
 // [{ id: "step-0", name: "Read", mark: "done", line: "Took 1 min", time: "10:40", label: "Read, done, 10:40, Took 1 min" }, …]
 ```
 
+Above Every step, the receipt's Items section names the files the run saved (requirement `runs.run-view.receipt-items`), and a dashed frame, "What the agent says it did (not from the run log)", holds the last answer an agent of the run gave, as plain text (requirement `runs.run-view.agent-says`). The frame is model output: the receipt's lines never come from it.
+
+```ts
+import { agentSays, itemLines } from "./run-view/receipt-model.ts";
+
+itemLines(events); // ["Created 1 file: weekly-report.md"]
+agentSays(events); // "This week: 12 emails…"
+```
+
 Under the timeline, **Show the run log** shows the run's events in its place, numbered by `seq`, the same events `halonic runs show --json` returns, and **Show every step** brings the timeline back (requirement `runs.run-view.run-log`). Each line's fields are one line of JSON with hidden characters escaped (`escapeHidden` in `@halonicjs/std`), and a step's blocked sites read "Blocked: registry.npmjs.org (12 tries)" once:
 
 ```ts
