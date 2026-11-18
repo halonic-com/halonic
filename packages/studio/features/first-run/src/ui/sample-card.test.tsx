@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { PresentationProvider } from "@halonicjs/studio-kit";
+import { ListHeading, PresentationProvider } from "@halonicjs/studio-kit";
 import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ReactNode } from "react";
@@ -129,6 +129,44 @@ verifies("first-run.sample-card", () => {
     );
     expect(root.textContent).toContain("You've seen it work.");
     expect(root.textContent).toContain("3 of 3 done");
+  });
+
+  it("insets '0 of 3 done' like the section heading, small and muted, in all three states", () => {
+    // jsdom draws nothing, so the left edges are compared by the inset class they come from.
+    const insetOf = (element: Element | null | undefined) =>
+      element?.className.match(/(?:^|\s)(p[xs]-\S+)/)?.[1];
+    const heading = render(<ListHeading name="Try the sample" />).querySelector("h2");
+    const all = ["start", "decide", "see"] as const;
+    const states = {
+      steps: <SampleSteps progress={progressWith([])} openers={noOpeners} />,
+      finished: <SampleSteps progress={progressWith(all)} openers={noOpeners} />,
+      phone: (
+        <PresentationProvider presentation="phone">
+          <SampleSteps progress={progressWith(all)} openers={noOpeners} />
+        </PresentationProvider>
+      ),
+    };
+    for (const [state, card] of Object.entries(states)) {
+      const caption = [...render(card).querySelectorAll("p")].find((line) =>
+        line.textContent?.endsWith("of 3 done"),
+      );
+      expect(insetOf(caption), state).toBe(insetOf(heading));
+      expect(caption?.className, state).toContain("text-small text-fg-muted");
+    }
+  });
+
+  it("draws the finished card's tick at icon size, on the desktop and on a phone", () => {
+    const all = ["start", "decide", "see"] as const;
+    for (const presentation of ["desktop", "phone"] as const) {
+      const root = render(
+        <PresentationProvider presentation={presentation}>
+          <SampleSteps progress={progressWith(all)} openers={noOpeners} />
+        </PresentationProvider>,
+      );
+      const box = root.querySelector("svg")?.parentElement;
+      expect(box?.className, presentation).toContain("size-icon-sm");
+      expect(box?.className, presentation).toContain("*:size-full");
+    }
   });
 
   it("offers Start your own workspace when finished, and saves that the card was shown", () => {
