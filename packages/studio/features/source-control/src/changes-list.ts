@@ -14,6 +14,7 @@ import {
   type UpdatesOutcome,
 } from "./changes-list-state.ts";
 import { MergeSteps } from "./changes-merge.ts";
+import { readRemote, ShareSteps } from "./changes-share.ts";
 import {
   discardWords,
   pageWords,
@@ -27,7 +28,6 @@ import { discardWithCopy } from "./discard-with-copy.ts";
 import { isIdentityComplete } from "./identity.ts";
 import { type IdentityOutcome, saveIdentity } from "./identity-save.ts";
 import { loadFailureReason } from "./load-failure.ts";
-import { isShareAddress } from "./share-address.ts";
 import { versionMessage } from "./version-name.ts";
 
 export type {
@@ -60,6 +60,8 @@ export class ChangesList {
     turningOn: false,
     identity: undefined,
     hasRemote: false,
+    unshared: 0,
+    sharing: false,
     gettingUpdates: false,
     merge: undefined,
     choosing: false,
@@ -74,16 +76,19 @@ export class ChangesList {
   #disposed = false;
   /** The steps of a merge of both sides: choose per item, Undo, Finish and Cancel. */
   readonly merge: MergeSteps;
+  readonly #sharing: ShareSteps;
 
   constructor(source: ChangesSource) {
     this.source = source;
-    this.merge = new MergeSteps({
+    const host = {
       source,
       state: () => this.#state,
       disposed: () => this.#disposed,
-      set: (state) => this.#set(state),
+      set: (state: ChangesListState) => this.#set(state),
       refresh: () => this.refresh(),
-    });
+    };
+    this.merge = new MergeSteps(host);
+    this.#sharing = new ShareSteps(host);
     this.#stopWatching = source.subscribe(() => void this.refresh());
     void this.refresh();
   }
@@ -123,7 +128,7 @@ export class ChangesList {
       const answer = await this.source.read();
       const files =
         answer.kind === "ready" ? await describeChanges(this.source, answer.changes) : [];
-      const hasRemote = answer.kind === "ready" && (await this.source.hasRemote());
+      const { hasRemote, unshared } = await readRemote(this.source, answer.kind === "ready");
       if (read !== this.#reads || this.#disposed) return;
       const identity = answer.kind === "ready" ? await this.#identity() : undefined;
       const merge = await this.#readMerge(answer.kind === "ready");
@@ -133,6 +138,7 @@ export class ChangesList {
         read: answer,
         files,
         hasRemote,
+        unshared,
         identity,
         merge: merge ?? undefined,
         choosing: merge !== null && this.#state.choosing,
@@ -449,23 +455,14 @@ export class ChangesList {
     return this.#state.merge !== undefined;
   }
 
-  /**
-   * Makes `address` the place to share to and get updates from, then reads again so the page
-   * shows Get updates. Gives why it didn't work, or `undefined`; nothing reaches git for an
-   * address that isn't one of the three forms.
-   */
-  async addShareAddress(address: string): Promise<string | undefined> {
-    const trimmed = address.trim();
-    if (!isShareAddress(trimmed)) return shareWords.badAddress;
-    try {
-      await this.source.addRemote(trimmed);
-    } catch (error) {
-      // An address may have been added outside Halonic while the dialog was open.
-      await this.refresh();
-      return loadFailureReason(error);
-    }
-    await this.refresh();
-    return undefined;
+  /** Makes `address` the place to share to; gives why it didn't work, or `undefined`. */
+  addShareAddress(address: string): Promise<string | undefined> {
+    return this.#sharing.addAddress(address);
+  }
+
+  /** Sends the versions the shared copy lacks: how many were sent, or why it didn't work. */
+  share(): ReturnType<ShareSteps["share"]> {
+    return this.#sharing.share();
   }
 
   /** Calls `listener` after every change of {@link state}. Returns a function that stops the calls. */

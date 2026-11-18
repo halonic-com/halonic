@@ -325,4 +325,16 @@ export const shareWords = {
     "Enter a git address, like https://github.com/acme/agents.git or git@github.com:acme/agents.git.",
   failed: "Couldn't add this address",
   tryAgain: "Try again",
+  /** The strip: "1 version isn't shared yet", "3 versions aren't shared yet". */
+  notShared: (count: number) =>
+    count === 1 ? "1 version isn't shared yet" : `${count} versions aren't shared yet`,
+  /** The button: "Share 1 version", "Share 3 versions". */
+  share: (count: number) => (count === 1 ? "Share 1 version" : `Share ${count} versions`),
+  sharing: "Sharing…",
+  /** The toast: "Shared 3 versions". One phrase, no full stop. */
+  shared: (count: number) => (count === 1 ? "Shared 1 version" : `Shared ${count} versions`),
+  /** The toast's title when sharing failed; the reason and "Nothing was sent." follow. */
+  shareFailed: "Couldn't share",
+  nothingSent: "Nothing was sent.",
+  alreadySharing: "Halonic is already sharing.",
 };

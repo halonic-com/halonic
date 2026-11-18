@@ -13,7 +13,7 @@ import { GetUpdates } from "./get-updates.tsx";
 import { History } from "./history.tsx";
 import { IdentityDialog } from "./identity-dialog.tsx";
 import { MergeChoices, MergeStrip } from "./merge-choices.tsx";
-import { SharingStrip } from "./sharing-strip.tsx";
+import { NotSharedStrip, SharingStrip } from "./sharing-strip.tsx";
 import { type OpenItem, useOpenItem } from "./use-open-item.ts";
 import { WhatChangedPage } from "./whats-changed-page.tsx";
 
@@ -46,7 +46,7 @@ export interface ChangesViewProps {
  * On a phone (2.12) it is the same page in one column with a 16px inset: the top bar says
  * "Changes", so the heading is for screen readers only, and git's words say "your computer".
  *
- * Not here yet: the sharing strip's other states.
+ * Not here yet: the sharing strip's states after Share (teammate's versions, up to date).
  */
 export function ChangesView({ list, developerView, openItem }: ChangesViewProps) {
   const phone = usePresentation() === "phone";
@@ -87,9 +87,7 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
       {state.merge !== undefined && state.choosing ? (
         <MergeChoices list={list} phone={phone} />
       ) : null}
-      {state.read?.kind === "ready" && !state.hasRemote ? (
-        <SharingStrip onAdd={() => setAddingAddress(true)} phone={phone} />
-      ) : null}
+      <SharingLine list={list} phone={phone} onAdd={() => setAddingAddress(true)} />
       <PageBody
         list={list}
         state={state}
@@ -119,6 +117,24 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
       )}
     </div>
   );
+}
+
+/** The sharing strip's state now: no address, or versions the shared copy lacks; else none. */
+function SharingLine({
+  list,
+  phone,
+  onAdd,
+}: {
+  readonly list: ChangesList;
+  readonly phone: boolean;
+  readonly onAdd: () => void;
+}) {
+  const { read, hasRemote, merge, unshared, sharing } = list.state;
+  if (read?.kind === "ready" && !hasRemote) return <SharingStrip onAdd={onAdd} phone={phone} />;
+  const notShared = unshared > 0 || sharing;
+  if (hasRemote && merge === undefined && !phone && notShared)
+    return <NotSharedStrip list={list} />;
+  return null;
 }
 
 /** What comes under the heading, by what the last read said. */

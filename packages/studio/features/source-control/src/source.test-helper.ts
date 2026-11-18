@@ -34,6 +34,9 @@ export function fakeSource(initial: ChangesRead) {
   let updates: UpdatesResult = { kind: "up-to-date" };
   let updatesFailure: unknown;
   let remoteFailure: unknown;
+  let unshared = 0;
+  let shareFailure: unknown;
+  let shareCalls = 0;
   const remotes: string[] = [];
   let updatesAsked = 0;
   let merge: UpdateMerge | null = null;
@@ -111,6 +114,12 @@ export function fakeSource(initial: ChangesRead) {
       if (remoteFailure !== undefined) throw remoteFailure;
       remotes.push(address);
       remote = true;
+    },
+    countUnshared: async () => unshared,
+    share: async () => {
+      shareCalls += 1;
+      if (shareFailure !== undefined) throw shareFailure;
+      unshared = 0;
     },
     getUpdates: async () => {
       updatesAsked += 1;
@@ -225,6 +234,16 @@ export function fakeSource(initial: ChangesRead) {
     setRemote: (has: boolean) => {
       remote = has;
     },
+    /** How many versions the shared copy lacks. */
+    setUnshared: (count: number) => {
+      unshared = count;
+    },
+    /** Makes Share fail with `error`; `undefined` makes it work again. */
+    failShare: (error: unknown) => {
+      shareFailure = error;
+    },
+    /** How many times Share ran. */
+    shareCalls: () => shareCalls,
     /** What the next Get updates finds. */
     setUpdates: (next: UpdatesResult) => {
       updates = next;

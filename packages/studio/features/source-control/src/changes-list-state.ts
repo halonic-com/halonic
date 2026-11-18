@@ -82,6 +82,10 @@ export interface ChangesListState {
   readonly turningOn: boolean;
   /** Whether the folder has a place to get updates from, as of the last read that worked. */
   readonly hasRemote: boolean;
+  /** How many versions the shared copy lacks, as of the last read; zero without a shared copy. */
+  readonly unshared: number;
+  /** Whether Share is working. */
+  readonly sharing: boolean;
   /** Whether Get updates is working. */
   readonly gettingUpdates: boolean;
   /** The merge of both sides' versions that is started and not finished; `undefined` when none is. */

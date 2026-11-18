@@ -214,6 +214,24 @@ export class WorkspaceChanges implements ChangesSource {
     if (add.code !== 0) throw new KindedError("unavailable", addressReason(add));
   }
 
+  async countUnshared(): Promise<number> {
+    // Before the first share there is no tracking branch: every version is unshared.
+    const upstream = await this.#run(["rev-parse", "--verify", "--quiet", "@{upstream}"]);
+    if (upstream === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+    if (upstream.code !== 0 && (await this.#head()) === null) return 0;
+    const range = upstream.code === 0 ? "@{upstream}..HEAD" : "HEAD";
+    const log = await this.#run(["log", "--oneline", range]);
+    if (log === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+    if (log.code !== 0) throw new KindedError("unavailable", readableProblem(log));
+    return log.stdout.split("\n").filter((line) => line.trim() !== "").length;
+  }
+
+  async share(): Promise<void> {
+    const push = await this.#run(["push", "--quiet", "--set-upstream", shareRemoteName, "HEAD"]);
+    if (push === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
+    if (push.code !== 0) throw new KindedError("unavailable", shareReason(push));
+  }
+
   async getUpdates(): Promise<UpdatesResult> {
     const before = await this.#head();
     const pull = await this.#run(["pull", "--ff-only", "--quiet"]);
@@ -410,6 +428,25 @@ function updatesReason(answer: GitAnswer): string {
     return "updates would overwrite changes you haven't put in a version. Create a version first.";
   }
   return knownGitProblem(answer) ?? "Git didn't get the updates.";
+}
+
+/** Why sharing failed, as one plain sentence: git's own output is never shown. */
+function shareReason(answer: GitAnswer): string {
+  const said = `${answer.stderr}\n${answer.stdout}`;
+  if (/non-fast-forward|fetch first|\[rejected\]|failed to push some refs/i.test(said)) {
+    return "the shared copy has versions you don't have yet. Get updates first.";
+  }
+  if (
+    /could not resolve host|unable to access|could not read from remote|connection (refused|timed out)|network is unreachable/i.test(
+      said,
+    )
+  ) {
+    return "you can't reach the shared copy right now.";
+  }
+  if (/authentication failed|permission denied|could not read username/i.test(said)) {
+    return "the shared copy didn't accept your sign-in.";
+  }
+  return knownGitProblem(answer) ?? "Git didn't share the versions.";
 }
 
 /** Whether the shell refused because it found no git program (`GitRefusal.kind`). */
