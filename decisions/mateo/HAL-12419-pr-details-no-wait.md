@@ -1,6 +1,6 @@
 # Decision: PR details no longer holds a runner while CI runs
 
-- Approval: [HAL-12419](/HAL/issues/HAL-12419)
+- Approval: the task asks for this change (HAL-12419); Liam approves this note in review
 - Kind: internal
 
 ## What changes
