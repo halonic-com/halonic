@@ -48,12 +48,13 @@ export interface BridgeRecorder {
  * What to do with a tool call before it runs, by the same rules as the
  * built-in loop: the agent's `allow` and `approve` lists, the connection's
  * "allow sending" setting and the workspace's trust. `ask`: run it only once
- * a person says yes. `refused`: don't run it; `reason` goes back to the
+ * a person says yes; `connector` names the connector the tool comes from,
+ * when it comes from one, for the approval's record. `refused`: don't run it; `reason` goes back to the
  * program as the call's result.
  */
 export type BridgeToolCheck =
   | { kind: "run" }
-  | { kind: "ask" }
+  | { kind: "ask"; connector?: string }
   | { kind: "refused"; reason: string };
 
 /** How a tool call ended: its text result, and whether the tool answered or failed. */
@@ -88,6 +89,8 @@ export interface BridgeApprovalRequest {
   /** Unique in the run; the bridge makes it up. */
   callId: string;
   tool: string;
+  /** The connector the tool comes from, when it comes from one; `tool` stays the bare name. */
+  connector?: string;
   args: unknown;
 }
 

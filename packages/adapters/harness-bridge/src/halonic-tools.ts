@@ -52,7 +52,8 @@ export class HalonicTools implements McpToolSet {
       return { text: `Refused: ${check.reason}`, isError: true };
     }
     if (check.kind === "ask") {
-      const answer = await askForApproval(this.#options.approvals, { tool: name, args }, signal);
+      const question = { tool: name, args, ...connectorOf(check) };
+      const answer = await askForApproval(this.#options.approvals, question, signal);
       if (answer.kind !== "approved") {
         return { text: `Refused: ${refusalReason(answer)}`, isError: true };
       }
@@ -100,4 +101,9 @@ function mcpTool(tool: ToolDefinition): McpTool {
     description: tool.description,
     inputSchema: { type: "object", ...tool.parameters },
   };
+}
+
+/** The connector an `ask` check names, as the field of the question, or no field. */
+function connectorOf(check: { connector?: string }): { connector?: string } {
+  return check.connector === undefined ? {} : { connector: check.connector };
 }

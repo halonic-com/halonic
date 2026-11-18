@@ -44,7 +44,12 @@ export interface BridgeCallServices {
 const toolArgs = s.record(s.string(), s.unknown());
 const toolParams = s.object({ name: s.string().min(1), args: toolArgs }).strict();
 const approvalParams = s
-  .object({ callId: s.string().min(1), tool: s.string().min(1), args: s.unknown() })
+  .object({
+    callId: s.string().min(1),
+    tool: s.string().min(1),
+    connector: s.string().min(1).optional(),
+    args: s.unknown(),
+  })
   .strict();
 const remoteDecisionParams = s
   .object({

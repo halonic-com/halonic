@@ -100,7 +100,10 @@ export class RunBridgeApprovals {
    */
   of(runId: string): BridgeApprovals {
     return {
-      request: async ({ callId, tool, args }, { signal }): Promise<BridgeApprovalDecision> => {
+      request: async (
+        { callId, tool, connector, args },
+        { signal },
+      ): Promise<BridgeApprovalDecision> => {
         const call = this.#onlyCallOf(runId);
         if (call === undefined) return { approved: false, comment: bridgeNoCallComment };
         signal.throwIfAborted();
@@ -110,7 +113,14 @@ export class RunBridgeApprovals {
             call.log.whileHeld(() => {
               // Waiting its turn is not asking yet: a request withdrawn by now is never put to a person.
               signal.throwIfAborted();
-              return unlessStopped(call.stop, this.#ask(runId, callId, call, { tool, args }));
+              return unlessStopped(
+                call.stop,
+                this.#ask(runId, callId, call, {
+                  tool,
+                  ...(connector === undefined ? {} : { connector }),
+                  args,
+                }),
+              );
             }),
           );
           // Only the answer goes to the bridge: what the run's answer carries besides is the engine's.

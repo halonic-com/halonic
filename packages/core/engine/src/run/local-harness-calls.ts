@@ -180,13 +180,14 @@ export class LocalHarnessCalls {
     stop: StopSignal,
   ): HarnessApprovals {
     return {
-      ask: async ({ tool, args }, onRecorded) => {
+      ask: async ({ tool, connector, args }, onRecorded) => {
         const answer = await this.#answers.waitFor(runId, stop, async () => {
           const events = await this.#options.record(runId, {
             type: "harness-asked",
             at: this.#options.clock.now().toISOString(),
             callId: waitedOn.callId,
             tool,
+            ...(connector === undefined ? {} : { connector }),
             args,
           });
           const requested = events.find(({ type }) => type === "approval.requested");

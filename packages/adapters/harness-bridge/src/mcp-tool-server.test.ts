@@ -216,6 +216,21 @@ verifies("harness-bridge.approvals", () => {
       expect(recorded.map((event) => event.type)).toEqual(["tool.called", "tool.result"]);
     });
 
+    it("names the connector the check names in the question", async () => {
+      const { ask, asked } = serverWith({
+        check: (): BridgeToolCheck => ({ kind: "ask", connector: "paperclip" }),
+      });
+      await ask(callTool("post_comment", { body: "hi" }));
+      expect(asked).toEqual([
+        {
+          callId: expect.stringMatching(/^bridge-/),
+          tool: "post_comment",
+          connector: "paperclip",
+          args: { body: "hi" },
+        },
+      ]);
+    });
+
     it("gives every question its own call id", async () => {
       const { ask, asked } = serverWith(needsOk);
       await ask(callTool("post_comment"));

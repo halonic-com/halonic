@@ -143,7 +143,7 @@ verifies("engine.subagent-connector-reads", () => {
       textAnswer("Dear support"),
     ]);
     expect(eventsOf(runs, "approval.requested")).toMatchObject([
-      { agent: "writer", subagent: "checker", tool: "archive" },
+      { agent: "writer", subagent: "checker", connector: "mail", tool: "archive" },
     ]);
 
     await executor.send("run_1", "approve");
@@ -169,7 +169,7 @@ verifies("engine.subagent-connector-reads", () => {
     ]);
 
     expect(eventsOf(runs, "approval.requested")).toMatchObject([
-      { agent: "writer", subagent: "checker", tool: "list_folders" },
+      { agent: "writer", subagent: "checker", connector: "mail", tool: "list_folders" },
     ]);
     expect(mail.calls).toEqual([]);
 

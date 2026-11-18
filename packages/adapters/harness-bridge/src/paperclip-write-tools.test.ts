@@ -47,9 +47,13 @@ verifies("harness-bridge.paperclip-write", () => {
 
     it("sends acceptable calls to a person and refuses any other name", async () => {
       const { tools } = toolsWith(commented);
-      expect(await tools.check("paperclip_post_comment", { body: "Hi" })).toEqual({ kind: "ask" });
+      expect(await tools.check("paperclip_post_comment", { body: "Hi" })).toEqual({
+        kind: "ask",
+        connector: "paperclip",
+      });
       expect(await tools.check("paperclip_set_status", { status: "in_review" })).toEqual({
         kind: "ask",
+        connector: "paperclip",
       });
       expect(await tools.check("paperclip_reassign", { agent: "x" })).toMatchObject({
         kind: "refused",
