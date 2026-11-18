@@ -3,6 +3,7 @@
 - Task: HAL-12621 (keyboard and screen-reader check HAL-12584, row F1)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12621 (fix placed by Liam; team decision under HAL-2282, no new words)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:o2tbtj4ziudOi3uqYEhiSQ/Be8KtN/U/uM0g2LeJjLfn5WcC2ItczNHNZaZHX6qFSaogiqxZtNVnnNFpck2GCQ==
 
 ## What changes
 
