@@ -235,7 +235,9 @@ export type RunNowRefusal =
   | { readonly reason: "not-trusted" }
   | { readonly reason: "target-not-found" }
   | { readonly reason: "target-never-live" }
-  | { readonly reason: "target-in-trash" };
+  | { readonly reason: "target-in-trash" }
+  /** The routine starts an agent, and Run now can't start one until agent runs are built. */
+  | { readonly reason: "agent-runs-not-built" };
 
 /** What Run now answers: the run it started, or why there is none. */
 export type RunNowResult =

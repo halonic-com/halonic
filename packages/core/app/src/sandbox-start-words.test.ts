@@ -49,4 +49,13 @@ verifies("app.sandbox-start-words", () => {
     expect(sandboxStartWords("setup-needed").docsKey).toBe("security/sandbox/");
     expect(sandboxStartWords("not-supported").docsKey).toBe("security/sandbox/#wsl1");
   });
+
+  it("says an agent set to this computer runs only in the sandbox, not that something is missing", () => {
+    const words = sandboxStartWords("not-offered");
+    expect(words.key).toBe("sandbox-start.not-offered");
+    expect(words.reason).toBe(
+      "Halonic runs Claude Code and Codex agents only in the sandbox for now.",
+    );
+    expect(words.calloutFix).toBe("Set this agent back to the sandbox.");
+  });
 });

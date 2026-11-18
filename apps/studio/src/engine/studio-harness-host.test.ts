@@ -116,7 +116,7 @@ verifies("studio.engine-service", () => {
     it("refuses an agent set to run on this computer, before its program starts", async () => {
       const built = await openStudioHarnessHost(inputOn(fakeHost()));
       const unfenced = built.harnesses.sandboxes["this-computer"];
-      expect((await unfenced.check()).ok).toBe(false);
+      expect(await unfenced.check()).toMatchObject({ ok: false, reason: "not-offered" });
       await expect(unfenced.open({} as SandboxProfile)).rejects.toThrow(/only in the sandbox/);
     });
 

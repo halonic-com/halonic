@@ -163,7 +163,7 @@ const noUnfencedReason =
  * opening a session throws, so the run fails before the program starts.
  */
 const noUnfencedSandbox: Sandbox = {
-  check: async () => ({ ok: false, reason: "other", missing: [noUnfencedReason] }),
+  check: async () => ({ ok: false, reason: "not-offered", missing: [noUnfencedReason] }),
   capabilities: () => ({ files: "shared", strength: "none" }),
   open: async (): Promise<SandboxSession> => {
     throw new Error(noUnfencedReason);

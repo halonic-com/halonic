@@ -449,6 +449,7 @@ verifies("ports.sandbox-check-reason", () => {
       "linux-tools-missing",
       "ripgrep-missing",
       "sign-in-needed",
+      "not-offered",
       "other",
     ]);
   });
@@ -476,6 +477,15 @@ verifies("ports.sandbox-check-reason", () => {
       "blocked-by-policy",
       "sign-in-needed",
     ]);
+  });
+
+  it("takes version 8's code for a backend the app doesn't offer here", () => {
+    const refused: SandboxCheck = {
+      ok: false,
+      reason: "not-offered",
+      missing: ["this app has no session outside the sandbox"],
+    };
+    expect(refused.reason).toBe("not-offered");
   });
 
   it("doesn't compile with a reason that isn't listed", () => {

@@ -30,6 +30,7 @@ export const runnerUnfencedReasons = [
   "linux-tools-missing",
   "ripgrep-missing",
   "sign-in-needed",
+  "not-offered",
   "other",
 ] as const;
 

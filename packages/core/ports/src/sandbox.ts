@@ -15,8 +15,10 @@
  * 7: {@link SandboxNetwork.bridge} says its kind: a loopback port, or a name
  * the sandbox's proxy serves on a Unix socket
  * (docs/adr/2026-11-11-sandbox-bridge-on-a-socket.md).
+ * 8: the reason code `not-offered`, for a backend the app doesn't offer here
+ * (docs/adr/2026-11-18-sandbox-reason-not-offered.md).
  */
-export const sandboxVersion = 7;
+export const sandboxVersion = 8;
 
 /**
  * How files reach the sandbox. `shared`: the program sees the same folders as
@@ -63,6 +65,8 @@ export interface SandboxCapabilities {
  * - `linux-tools-missing`: `socat` or ripgrep (`rg`), which srt starts next to bubblewrap, is not installed.
  * - `ripgrep-missing`: ripgrep (`rg`), which srt starts next to Seatbelt on macOS, is not installed.
  * - `sign-in-needed`: the backend needs an account sign-in.
+ * - `not-offered`: the app doesn't offer this backend here, such as Studio's "on this computer",
+ *   which has no session outside the sandbox; setting the agent back to the sandbox fixes it.
  * - `other`: none of the above; `SandboxCheck.missing` says what.
  *
  * The order is the order of the fixes: what Halonic can't fix comes before
@@ -85,6 +89,7 @@ export const sandboxUnavailableReasons = [
   "linux-tools-missing",
   "ripgrep-missing",
   "sign-in-needed",
+  "not-offered",
   "other",
 ] as const;
 

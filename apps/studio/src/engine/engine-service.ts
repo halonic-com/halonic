@@ -42,7 +42,6 @@ import {
   type DefinitionStore,
   type HttpClient,
   type IdGenerator,
-  isAgentRunsNotAvailable,
   noKeyOrigins,
   type RunExecutor,
   type Secrets,
@@ -195,8 +194,9 @@ export class EngineService {
    *
    * @param trigger the routine's key and the time the person asked for the run
    * @returns the new run's id
-   * @throws KindedError `unavailable` when the target is an agent, because agent runs aren't built yet
-   *   (`ports.agent-runs-not-available`), or what {@link EngineService.startRun} throws
+   * @throws AgentRunsNotAvailable when the target is an agent, because agent runs aren't built yet
+   *   (`ports.agent-runs-not-available`): the executor's own refusal, so the routine can say so
+   * @throws what {@link EngineService.startRun} throws
    */
   async startRoutine(
     start: RoutineRunStart,
@@ -213,15 +213,8 @@ export class EngineService {
     await this.checkAgent(start.agent);
     // As the port: the local executor's own `startAgent` takes no request until agent runs are built.
     const executor: RunExecutor = (await this.open()).executor;
-    try {
-      const { id } = await executor.startAgent({ ...start.agent, trigger: runTrigger });
-      return { id };
-    } catch (error) {
-      if (!isAgentRunsNotAvailable(error)) throw error;
-      throw new KindedError("unavailable", "This window can't start an agent yet.", {
-        fix: "Run this routine from the command line.",
-      });
-    }
+    const { id } = await executor.startAgent({ ...start.agent, trigger: runTrigger });
+    return { id };
   }
 
   /**
@@ -247,10 +240,10 @@ export class EngineService {
    */
   #refuseWhatThePageCantStart(agent: Agent): void {
     if (startsAProgram(agent.harness) && this.#options.openHarnessHost === undefined) {
-      throw unavailable(agent.name, "runs in a harness program");
+      throw new WindowCantStart(agent.name, "runs in a harness program");
     }
     if (agent.connectors.length > 0) {
-      throw unavailable(agent.name, "uses a connector");
+      throw new WindowCantStart(agent.name, "uses a connector");
     }
   }
 
@@ -381,8 +374,15 @@ function refusalOf(refusal: unknown): { kind?: string; message?: string; pid?: n
   };
 }
 
-function unavailable(agentName: string, why: string): KindedError {
-  return new KindedError("unavailable", `${agentName} ${why}, which this window can't start yet.`, {
-    fix: "Run this workflow from the command line.",
-  });
+/**
+ * The page's refusal of an agent it can't start: `unavailable`, like an engine that can't be
+ * reached, but its own class, so a caller tells "this window can't start it" from "the engine
+ * isn't answering" and shows its words.
+ */
+export class WindowCantStart extends KindedError {
+  constructor(agentName: string, why: string) {
+    super("unavailable", `${agentName} ${why}, which this window can't start yet.`, {
+      fix: "Run this workflow from the command line.",
+    });
+  }
 }

@@ -1,8 +1,10 @@
 import type { RunSummary } from "@halonicjs/events";
+import { AgentRunsNotAvailable } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { EngineNotAnswering, NothingToRun } from "@halonicjs/studio-feature-routines/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import { WindowCantStart } from "../engine/engine-service.ts";
 import { WorkspaceRoutines, type WorkspaceRoutinesParts } from "./workspace-routines.ts";
 
 const analystFile = "id: analyst\nname: Analyst\nmodel: fast\ninstructions: Report.\n";
@@ -399,6 +401,33 @@ verifies("studio.workspace-routines", () => {
     });
     await expect(down.host.runNow?.(weekly)).rejects.toThrow(EngineNotAnswering);
     expect(setup().host.runNow).toBeUndefined();
+  });
+
+  it("says Run now can't start an agent yet, not that the engine isn't answering", async () => {
+    const agentRuns = setup({
+      engine: {
+        start: async () => {
+          throw new AgentRunsNotAvailable("Not yet.");
+        },
+      },
+    });
+    expect(await agentRuns.host.runNow?.(weekly)).toEqual({
+      started: false,
+      refusal: { reason: "agent-runs-not-built" },
+    });
+  });
+
+  it("keeps the window's own reason for an agent it can't start", async () => {
+    const connector = setup({
+      engine: {
+        start: async () => {
+          throw new WindowCantStart("Analyst", "uses a connector");
+        },
+      },
+    });
+    const refusal = await connector.host.runNow?.(weekly).catch((error: unknown) => error);
+    expect(refusal).toBeInstanceOf(WindowCantStart);
+    expect(refusal).not.toBeInstanceOf(EngineNotAnswering);
   });
 
   it("tells a subscriber when a file changed or a run started, and not after it stopped", () => {
