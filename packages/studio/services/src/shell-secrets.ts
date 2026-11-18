@@ -1,13 +1,11 @@
-import { type SecretPresence, TauriSecrets } from "@halonicjs/adapter-secrets-tauri";
-import { type ServiceRegistry, serviceKey } from "@halonicjs/app";
 import {
-  maxSecretNameLength,
-  type Secrets,
-  secretKey,
-  type TokenStore,
-  tokenNamePrefix,
-  workspaceSecrets,
-} from "@halonicjs/ports";
+  maxTokenNameLength,
+  type SecretPresence,
+  TauriSecrets,
+  TauriTokens,
+} from "@halonicjs/adapter-secrets-tauri";
+import { type ServiceRegistry, serviceKey } from "@halonicjs/app";
+import { type Secrets, type TokenStore, workspaceSecrets } from "@halonicjs/ports";
 import { type TauriIpc, tauriIpc } from "./tauri-ipc.ts";
 
 /** The configured secrets, such as provider API keys. */
@@ -17,16 +15,18 @@ export const secretsKey = serviceKey<Secrets>("platform.secrets");
 export const tokenStoreKey = serviceKey<TokenStore>("platform.tokens");
 
 /** The longest token name that still fits the keychain's name rule once prefixed. */
-export const maxShellTokenNameLength = maxSecretNameLength - tokenNamePrefix.length;
+export const maxShellTokenNameLength = maxTokenNameLength;
 
 /**
  * Gives a workspace's services the OS keychain as their `Secrets` and
- * `TokenStore`, when the Studio runs in the desktop shell. Both use one
- * {@link TauriSecrets} (the keychain service `halonic`), but in separate
- * namespaces: every token is stored under `tokenNamePrefix`, and `Secrets`
- * is the keychain seen through `workspaceSecrets` (both from
- * `@halonicjs/ports`), which refuses that prefix and Halonic's own
- * `token-key` and `serve-password`. So a token can not be read as a secret.
+ * `TokenStore`, when the Studio runs in the desktop shell. Both use the
+ * keychain service `halonic`, but in separate namespaces: tokens go through
+ * the shell's token commands ({@link TauriTokens}), which keep each one under
+ * `tokenNamePrefix`, and `Secrets` is {@link TauriSecrets} seen through
+ * `workspaceSecrets` (both from `@halonicjs/ports`), which refuses that prefix
+ * and Halonic's own `token-key` and `serve-password`. The shell refuses those
+ * names to its secret commands as well, so a token can not be read as a
+ * secret, not even by code that calls the commands directly.
  *
  * Outside the shell it provides nothing and returns `false`, so the caller
  * can provide the browser's or the server's stores instead.
@@ -48,44 +48,20 @@ export function provideShellSecrets(
   if (ipc === undefined) {
     return false;
   }
-  const keychain = new TauriSecrets(ipc);
-  services.provide(secretsKey, workspaceSecrets(keychain));
-  services.provide(tokenStoreKey, prefixedTokens(keychain));
+  services.provide(secretsKey, workspaceSecrets(new TauriSecrets(ipc)));
+  services.provide(tokenStoreKey, new TauriTokens(ipc));
   return true;
 }
 
 /**
- * The OS keychain (the service `halonic`) as it is, with no name rule beyond the keychain's own.
+ * The OS keychain (the service `halonic`) as it is, with no name rule beyond the shell's own:
+ * the shell refuses Halonic's own names and tokens.
  * `has` asks whether a name is stored without reading it.
- * A caller that lets a workspace pick the name must refuse Halonic's and a plugin's names itself,
+ * A caller that lets a workspace pick the name must refuse a plugin's names itself,
  * as `workspaceSecrets` does for reading.
  *
  * @param ipc - the shell's IPC, from `tauriIpc`
  */
 export function shellKeychain(ipc: TauriIpc): Secrets & TokenStore & SecretPresence {
   return new TauriSecrets(ipc);
-}
-
-/**
- * The keychain as a `TokenStore` whose tokens all live under
- * `tokenNamePrefix`.
- *
- * @throws RangeError for a name that breaks the rule, or is longer than
- *   {@link maxShellTokenNameLength}; the message never repeats it
- */
-function prefixedTokens(keychain: TokenStore): TokenStore {
-  const stored = (name: string): string => {
-    secretKey(name);
-    if (name.length > maxShellTokenNameLength) {
-      throw new RangeError(
-        `A token name may be at most ${maxShellTokenNameLength} characters in the desktop keychain.`,
-      );
-    }
-    return tokenNamePrefix + name;
-  };
-  return {
-    get: async (name) => keychain.get(stored(name)),
-    set: async (name, value) => keychain.set(stored(name), value),
-    remove: async (name) => keychain.remove(stored(name)),
-  };
 }

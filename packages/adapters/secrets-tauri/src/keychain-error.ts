@@ -2,7 +2,10 @@ import type { ErrorKind } from "@halonicjs/std";
 import { isShellRefusal, type RefusalKind } from "./shell.ts";
 
 /** The refusals that are the keychain's doing, not the caller's. */
-export type KeychainRefusalKind = Exclude<RefusalKind, "invalid_name" | "invalid_value">;
+export type KeychainRefusalKind = Exclude<
+  RefusalKind,
+  "invalid_name" | "reserved_name" | "invalid_value"
+>;
 
 /** How a surface should respond to each keychain refusal. */
 const errorKinds: Readonly<Record<KeychainRefusalKind, ErrorKind>> = {
@@ -44,14 +47,15 @@ export class KeychainError extends Error {
 }
 
 /**
- * The error a rejected `secret_*` command becomes. A bad name or value is the
- * caller's mistake, so it is a `RangeError`, as the ports ask for a bad name.
+ * The error a rejected `secret_*` or `token_*` command becomes. A bad name, a
+ * name that belongs to Halonic, or a bad value is the caller's mistake, so it
+ * is a `RangeError`, as the ports ask for a bad name.
  * Anything that isn't the shell's refusal shape (a missing capability, a
  * broken IPC call) becomes a `backend` refusal. Its text is dropped, because
  * the adapter can't vouch that it holds no value.
  *
  * @param reason - what the command rejected with
- * @param value - the value sent with `secret_set`; a refusal whose message
+ * @param value - the value sent with `secret_set` or `token_set`; a refusal whose message
  *   holds it keeps its kind but loses its message
  */
 export function keychainFailure(reason: unknown, value?: string): Error {
@@ -61,6 +65,7 @@ export function keychainFailure(reason: unknown, value?: string): Error {
   const message = holdsValue(reason.message, value) ? withheldMessage : reason.message;
   switch (reason.kind) {
     case "invalid_name":
+    case "reserved_name":
     case "invalid_value":
       return new RangeError(`The keychain refused the call (${reason.kind}): ${message}`);
     default:

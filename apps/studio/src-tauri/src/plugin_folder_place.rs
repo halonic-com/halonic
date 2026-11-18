@@ -23,7 +23,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, PoisonError};
 
 use halonic_blob_store::base64url;
-use halonic_workspace_files::{check_workspace_path, segment_as_opened};
+use halonic_workspace_files::{check_workspace_path, is_private_workspace_path, segment_as_opened};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Runtime};
 
@@ -108,7 +108,7 @@ fn check_plugin_name(plugin: &str) -> Result<(), InstallRefusal> {
     }
 }
 
-/// The files, decoded and checked: a safe path each, no `.git`, none the same
+/// The files, decoded and checked: a safe path each, no private name (`.git`, `.studio`, `.env*`), none the same
 /// file as another on a disk that ignores case, none both a file and a
 /// folder, and not more entries or bytes than a plugin may have.
 fn decode_files(files: Vec<PlacedFile>) -> Result<Vec<(String, Vec<u8>)>, InstallRefusal> {
@@ -130,8 +130,11 @@ fn decode_files(files: Vec<PlacedFile>) -> Result<Vec<(String, Vec<u8>)>, Instal
             }
             opened.push(segment_as_opened(segment));
         }
-        if opened.first().is_some_and(|first| first == ".git") {
-            return Err(unsafe_name(&file.path, "a plugin has no `.git` folder"));
+        if is_private_workspace_path(&file.path) {
+            return Err(unsafe_name(
+                &file.path,
+                "a plugin has no `.git`, `.studio` or `.env` file or folder",
+            ));
         }
         if !seen.insert(opened.join("/")) {
             return Err(unsafe_name(

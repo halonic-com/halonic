@@ -159,6 +159,8 @@ export interface RowShared<Id extends string> {
   readonly look: ListLook;
   readonly phone: boolean;
   readonly dense: boolean;
+  /** The List's `chevrons`: on a phone the rows end in a chevron. */
+  readonly chevrons: boolean | undefined;
   readonly hasMore: boolean;
   readonly hasCheck: boolean;
   readonly grid: GridNavigation;
@@ -260,6 +262,7 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
           row={row}
           phone={phone}
           dense={dense}
+          chevron={phone && shared.chevrons === true}
           reasonId={reasonId}
           afterCheck={hasCheck}
           columns={shared.columns}

@@ -230,6 +230,11 @@ interface WithoutColumns {
   readonly columns?: never;
   /** 32px rows, for menus and pickers; 48px on a phone. */
   readonly dense?: boolean;
+  /**
+   * Each row opens a page of its own, as History's versions. On a phone each row then ends in a
+   * chevron, and its trailing chip starts its meta line. Desktop rows don't change.
+   */
+  readonly chevrons?: boolean;
 }
 
 /** A List with columns: its rows are `ListColumnsRow`s, with `cells` in place of `trailing`. */
@@ -242,6 +247,8 @@ interface WithColumns {
   readonly columns: readonly ListColumn[];
   /** A columned row is never 32px: it holds a title over a meta line. */
   readonly dense?: never;
+  /** A columned row's right edge holds its chips. */
+  readonly chevrons?: never;
 }
 
 /**

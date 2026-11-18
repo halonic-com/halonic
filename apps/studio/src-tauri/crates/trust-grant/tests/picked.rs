@@ -150,12 +150,11 @@ fn trust_grants_refuse_to_reopen_a_picked_folder_a_link_was_swapped_into() {
     assert_eq!(scratch.list().locations(), [acme]);
 }
 
-#[cfg(unix)]
 #[test]
 fn trust_grants_refuse_to_reopen_a_folder_deleted_and_made_again() {
     let scratch = Scratch::new("made-again");
     let acme = Shell::start().pick(&scratch, "work/acme");
-    // Hold the old folder's inode elsewhere, so the new one can't reuse it.
+    // Hold the old folder elsewhere, so the new one can't reuse its identity.
     fs::rename(scratch.path("work/acme"), scratch.path("work/old-acme"))
         .expect("the folder can be moved");
     fs::create_dir(scratch.path("work/acme")).expect("the folder can be made again");
@@ -234,6 +233,33 @@ fn trust_grants_refuse_to_reopen_an_entry_without_an_identity_on_unix() {
     assert_eq!(shell.reopen(&scratch, &acme), Err("folder_changed"));
     assert!(!shell.is_open(&acme));
     assert_eq!(scratch.list().locations(), [acme]);
+}
+
+#[cfg(windows)]
+#[test]
+fn trust_grants_record_the_identity_of_an_older_windows_entry_when_it_reopens() {
+    let scratch = Scratch::new("older-entry");
+    let acme = scratch.location("work/acme");
+    // As the shell wrote it on Windows before it read identities there.
+    let list = json!({"version": 1, "folders": [{"location": acme}]});
+    fs::create_dir_all(scratch.path("profile/studio")).expect("the folder can be made");
+    fs::write(scratch.list_file(), list.to_string()).expect("the file can be written");
+
+    assert_eq!(Shell::start().reopen(&scratch, &acme), Ok(()));
+    let text = fs::read_to_string(scratch.list_file()).expect("the list was written");
+    let written: serde_json::Value = serde_json::from_str(&text).expect("the list is JSON");
+    assert!(
+        written["folders"][0]["identity"].is_object(),
+        "the identity is recorded: {text}"
+    );
+
+    // From then on the entry is checked like any other.
+    fs::rename(scratch.path("work/acme"), scratch.path("work/old-acme"))
+        .expect("the folder can be moved");
+    fs::create_dir(scratch.path("work/acme")).expect("the folder can be made again");
+    let shell = Shell::start();
+    assert_eq!(shell.reopen(&scratch, &acme), Err("folder_changed"));
+    assert!(!shell.is_open(&acme));
 }
 
 #[test]

@@ -7,15 +7,32 @@ const maxValueText = 200;
 /**
  * A run's events as `read_run` shows them: one line per event that says
  * something to a model reading the history, indented under the state and
- * the agent. Other events, and the full texts and context, are left out.
+ * the agent, and each provider note once, under the first model call that
+ * had it. Other events, and the full texts and context, are left out.
  */
 export function runLines(events: readonly RunEvent[]): string[] {
   const lines: string[] = [];
+  const shownNotes = new Set<string>();
   for (const stored of events) {
-    const line = eventLine(upgradeEvent(stored));
+    const event = upgradeEvent(stored);
+    const line = eventLine(event);
     if (line !== null) {
       lines.push(line);
     }
+    if (event.type === "llm.response") {
+      lines.push(...newNoteLines(event.notes ?? [], shownNotes));
+    }
+  }
+  return lines;
+}
+
+/** The lines of the notes not shown yet, which it then counts as shown. */
+function newNoteLines(notes: readonly string[], shownNotes: Set<string>): string[] {
+  const lines: string[] = [];
+  for (const note of notes) {
+    if (shownNotes.has(note)) continue;
+    shownNotes.add(note);
+    lines.push(`    note: ${note}`);
   }
   return lines;
 }

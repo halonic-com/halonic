@@ -25,7 +25,7 @@ export function createNoteItem(
 export const manual = () =>
   new KindedError(
     "unavailable",
-    "Studio can't answer runs yet. Answer this one from the command line.",
+    "Studio can't answer runs yet. To answer this one, run this in a terminal:",
     {
       fix: "halonic runs send 7k2m9p approve",
     },

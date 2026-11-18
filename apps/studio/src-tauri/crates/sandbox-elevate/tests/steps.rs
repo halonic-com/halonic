@@ -268,15 +268,51 @@ fn sandbox_elevate_refuses_a_swapped_helper_copy_and_writes_no_entry() {
 }
 
 #[test]
-fn sandbox_elevate_skips_the_helper_check_only_in_an_unsigned_build() {
+fn sandbox_elevate_leaves_no_copy_and_no_entry_in_an_unsigned_build() {
+    // An unsigned build can't tell its own file from one swapped in while
+    // it ran, so nothing is left for Installed apps to run elevated.
     let mut machine = Pretend::new(app(), Some(SHIPPED));
     machine
         .files
         .borrow_mut()
-        .insert(app().join(PROGRAM), b"a dev build".to_vec());
+        .insert(app().join(PROGRAM), b"helper from someone else".to_vec());
     machine.signer = None;
     assert_eq!(machine.run(Verb::SetUp), code::OK);
-    assert!(machine.entry.borrow().is_some());
+    assert_eq!(
+        machine.ran(),
+        vec![(folder().join(SRT_WIN), vec!["install".into()], system())]
+    );
+    assert_eq!(machine.file(folder().join(PROGRAM)), None);
+    assert!(!machine.written.borrow().contains(&folder().join(PROGRAM)));
+    assert_eq!(*machine.entry.borrow(), None);
+}
+
+#[test]
+fn sandbox_elevate_takes_away_an_earlier_copy_and_entry_in_an_unsigned_build() {
+    let machine = Pretend::new(app(), Some(SHIPPED));
+    assert_eq!(machine.run(Verb::SetUp), code::OK);
+    // An unsigned setup over one that left a copy and an entry.
+    let mut unsigned = Pretend::new(app(), Some(SHIPPED));
+    unsigned.files = machine.files;
+    unsigned.entry = machine.entry;
+    unsigned.signer = None;
+    assert_eq!(unsigned.run(Verb::SetUp), code::OK);
+    assert_eq!(unsigned.file(folder().join(PROGRAM)), None);
+    assert_eq!(*unsigned.entry.borrow(), None);
+}
+
+#[test]
+fn sandbox_elevate_removes_with_the_helper_next_to_halonic_in_an_unsigned_build() {
+    let mut machine = Pretend::new(app(), Some(SHIPPED));
+    machine.signer = None;
+    assert_eq!(machine.run(Verb::SetUp), code::OK);
+    assert_eq!(machine.run(Verb::Remove), code::OK);
+    assert_eq!(
+        machine.ran().last(),
+        Some(&(folder().join(SRT_WIN), uninstall_step(), system()))
+    );
+    assert_eq!(machine.file(folder().join(SRT_WIN)), None);
+    assert!(machine.deleted.borrow().contains(&folder()));
 }
 
 #[test]

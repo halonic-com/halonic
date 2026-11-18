@@ -16,6 +16,9 @@ optional and come with a requirement.
   and which alias comes next (`ModelSkipReason`, requirement `llm-skipped`).
   `llm.response.toolCallAsText` marks an answer that wrote a tool call as text
   instead of making it (requirement `tool-call-as-text`).
+  `llm.response.notes` keeps the provider's plain sentences on how it changed
+  the call, such as a setting the model doesn't take; `providerNotes` lists
+  a run's notes, each once (requirement `provider-notes`).
 - `run.failed` and `RunFailureReason`: `reason` says why a run failed
   (requirement `run-failed-reason`), for example `model-missing`,
   `model-no-tools`, `harness-unavailable` or `sandbox-start-failed`.

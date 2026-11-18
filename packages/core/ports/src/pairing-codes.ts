@@ -39,25 +39,38 @@ const alphabetSize = BigInt(pairingAlphabet.length);
 const symbols = new Set(pairingAlphabet);
 
 /**
+ * How many times {@link newPairingCode} draws 16 bytes. A good source fails to
+ * give 12 symbols in 8 draws with a chance far under 2⁻¹⁰⁰.
+ */
+const pairingCodeMaxDraws = 8;
+
+/**
  * A new pairing code from `randomBytes`, which gives that many bytes from a
  * cryptographic source, such as `crypto.getRandomValues`. A byte of 248 or more
- * is skipped, so each symbol is equally likely.
+ * is skipped, so each symbol is equally likely. Throws an `Error` when
+ * {@link pairingCodeMaxDraws} draws don't give 12 symbols: the source is broken.
  */
 export function newPairingCode(randomBytes: (length: number) => Uint8Array): string {
   let code = "";
-  while (code.length < pairingCodeLength) {
+  for (let draw = 0; draw < pairingCodeMaxDraws && code.length < pairingCodeLength; draw += 1) {
     for (const byte of randomBytes(16)) {
       if (byte >= 248 || code.length === pairingCodeLength) continue;
       code += pairingAlphabet.charAt(byte % pairingAlphabet.length);
     }
   }
+  if (code.length < pairingCodeLength) {
+    throw new Error(
+      `no pairing code after ${pairingCodeMaxDraws} draws: the random source is broken`,
+    );
+  }
   return code;
 }
 
 /**
- * A pairing code as a person typed it: in any case, with spaces, dots or
- * dashes anywhere. Gives the code in its plain form, or `undefined` when it
- * isn't 12 symbols of the alphabet.
+ * A pairing code as a person typed it: in any case, with spaces, dots,
+ * dashes or middle dots anywhere. Gives the code in its plain form, or
+ * `undefined` when it isn't 12 symbols of the alphabet. Only ASCII is
+ * uppercased, so a character such as `ſ` can't turn into an `S`.
  */
 export function readPairingCode(typed: string): string | undefined {
   return readCode(typed, pairingCodeLength);
@@ -68,8 +81,17 @@ export function readCheckCode(typed: string): string | undefined {
   return readCode(typed, checkCodeLength);
 }
 
+/**
+ * The separators a typed code may hold: ASCII whitespace as Rust's
+ * `is_ascii_whitespace` has it, dots, dashes and the middle dot of a shown
+ * check code. Everything left must be printable ASCII before it is uppercased.
+ */
+const separators = /[ \t\n\f\r.\-·]/g;
+
 function readCode(typed: string, length: number): string | undefined {
-  const code = typed.replace(/[\s.\-·]/g, "").toUpperCase();
+  const plain = typed.replace(separators, "");
+  if (!/^[\x21-\x7e]*$/.test(plain)) return undefined;
+  const code = plain.toUpperCase();
   if (code.length !== length || ![...code].every((symbol) => symbols.has(symbol))) {
     return undefined;
   }

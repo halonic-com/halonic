@@ -119,7 +119,7 @@ verifies("studio.workspace-agents", () => {
     it("names the workflows that run an agent, and rejects an agent that isn't there", async () => {
       const { host } = setup();
       expect(await host.referencesTo({ hubId: "acme", id: "writer" })).toEqual([
-        { hubId: "acme", id: "reply", name: "Reply" },
+        { hubId: "acme", id: "reply", name: "Reply", steps: 1 },
       ]);
       await expect(host.referencesTo({ hubId: "acme", id: "gone" })).rejects.toMatchObject({
         kind: "not_found",
@@ -127,6 +127,15 @@ verifies("studio.workspace-agents", () => {
       await expect(host.read({ hubId: "acme", id: "gone" })).rejects.toMatchObject({
         kind: "not_found",
       });
+    });
+
+    it("counts each step of a workflow that runs the agent", async () => {
+      const { host, store } = setup();
+      store["hubs/acme/workflows/reply.workflow.yaml"] =
+        "id: reply\nname: Reply\ninitial: first\nstates:\n  first:\n    agent: writer\n    on:\n      - to: second\n  second:\n    agent: writer\n    on:\n      - to: done\n  done:\n    type: final\n";
+      expect(await host.referencesTo({ hubId: "acme", id: "writer" })).toEqual([
+        { hubId: "acme", id: "reply", name: "Reply", steps: 2 },
+      ]);
     });
 
     it("tells a subscriber about a change, and not after it stopped", async () => {
@@ -213,6 +222,54 @@ verifies("studio.workspace-agents", () => {
         });
       }
       expect(changes).toHaveLength(written);
+    });
+
+    it("offers the hub's own skills, knowledge and connectors and the shared ones its uses lists", async () => {
+      const { host, store } = setup();
+      const ref = { hubId: "acme", id: "writer" };
+      store["hubs/acme/library/skills/refunds/SKILL.md"] =
+        "---\nname: Refund policy\ndescription: When money goes back\n---\nAsk first.\n";
+      store["library/skills/tone/SKILL.md"] =
+        "---\nname: Tone\ndescription: How we write\n---\nPlain.\n";
+      store["library/skills/legal/SKILL.md"] =
+        "---\nname: Legal\ndescription: Contracts\n---\nCareful.\n";
+      store["library/connectors/search.connector.yaml"] =
+        "version: 1\nid: search\nname: Web search\ntransport: { http: { url: https://search.acme.example/mcp } }\n";
+      expect(await host.toolOptions(ref)).toEqual({
+        skills: [
+          { id: "refunds", name: "Refund policy" },
+          { id: "legal", name: "Legal" },
+          { id: "tone", name: "Tone" },
+        ],
+        knowledge: [],
+        connectors: [{ id: "search", name: "Web search" }],
+      });
+
+      store["hubs/acme/hub.yaml"] = "id: acme\nname: Acme\nuses:\n  skills: [tone]\n";
+      const limited = await host.toolOptions(ref);
+      expect(limited.skills.map((skill) => skill.id)).toEqual(["refunds", "tone"]);
+      expect(limited.connectors).toEqual([]);
+      await expect(host.toolOptions({ hubId: "acme", id: "gone" })).rejects.toMatchObject({
+        kind: "not_found",
+      });
+    });
+
+    it("reads and saves the agent's skills, knowledge and connectors in place", async () => {
+      const { host, store } = setup();
+      const ref = { hubId: "acme", id: "writer" };
+      expect(await host.settings(ref)).toMatchObject({ skills: [], knowledge: [], connectors: [] });
+
+      await host.update(ref, { skills: ["refunds"], connectors: ["search"] });
+      const text = store["hubs/acme/agents/writer.agent.yaml"];
+      expect(text).toContain("description: Drafts replies.");
+      expect(await host.settings(ref)).toMatchObject({
+        skills: ["refunds"],
+        knowledge: [],
+        connectors: ["search"],
+      });
+
+      await host.update(ref, { skills: [] });
+      expect((await host.settings(ref)).skills).toEqual([]);
     });
 
     it("answers whether a harness can run: Halonic always, the others as the host finds, a failed check as failed", async () => {

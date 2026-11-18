@@ -86,6 +86,16 @@ export type RoutineOverlap = "skip" | "queue" | "allow";
 /** What to do with the times missed while Halonic was closed or asleep. */
 export type RoutineCatchUp = "none" | "last" | "all";
 
+/** What a routine's live version holds, for the lines that say what is still live while a change isn't. */
+export interface RoutineLiveValues {
+  /** The live trigger in words: "Weekdays at 07:30". */
+  readonly triggerSentence: string;
+  /** The name of the workflow or agent the live version starts. */
+  readonly targetName: string;
+  readonly overlap: RoutineOverlap;
+  readonly catchUp: RoutineCatchUp;
+}
+
 /** One routine as its page draws it: what is saved, which is what the fields show. */
 export interface RoutineView extends RoutineRef {
   readonly name: string;
@@ -109,6 +119,8 @@ export interface RoutineView extends RoutineRef {
   readonly changesNotLive: boolean;
   /** ISO time its live version was made; absent before it has one or while the host can't say. */
   readonly liveSince?: string | undefined;
+  /** What the live version holds; absent when the routine was never live or the host can't say. */
+  readonly live?: RoutineLiveValues | undefined;
   /** Mistakes the checks found, such as a bad cron or an unknown time zone, in the engine's words. */
   readonly problems: readonly string[];
 }

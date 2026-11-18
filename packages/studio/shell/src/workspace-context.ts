@@ -43,6 +43,12 @@ export interface WorkspaceContext {
    */
   readonly badges?: BadgeRegistry;
   /**
+   * Shows one of the sidebar's views by its id, such as `files`, as picking its tab in the
+   * sidebar's switch does (`shell.sidebar-switch`); an id no feature added changes nothing. The
+   * window gives it to the views it draws on the desktop only: a phone has no sidebar views.
+   */
+  readonly showSidebarView?: (viewId: string) => void;
+  /**
    * Opens an item as Ctrl K opens a found one: in the active tab on the desktop, or the tab that
    * shows it already, asking for focus on its page's `h1`, and as a page on a phone. The tab is
    * named as the item's kind names it (`tab.describe`), else by the item's id. The window gives

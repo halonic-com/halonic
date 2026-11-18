@@ -5,7 +5,7 @@ export const sampleCardWords = {
   heading: "Try the sample",
   caption: (done: number) => `${done} of 3 done`,
   finished: "You've seen it work.",
-  runTests: "Run its tests",
+  seeTests: "See its tests",
   startOwnWorkspace: "Start your own workspace",
   /** What a screen reader hears for a step's row (microcopy 19.2): "Step 2 of 3: See what it did, not done". */
   stepLabel: (position: number, title: string, done: boolean) =>

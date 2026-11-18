@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, PoisonError};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use halonic_file_identity::file_identity;
 use serde::{Deserialize, Serialize};
 
 use crate::refusal::TrustRefusal;
@@ -45,9 +46,10 @@ pub(crate) struct PickedFolder {
     pub identity: Option<FolderIdentity>,
 }
 
-/// A folder's device and inode on Unix, where every entry must have one.
-/// Windows has no stable call for its file ID in the standard library yet,
-/// so a Windows entry has none (follow-up on HAL-6637).
+/// A folder's identity (`halonic-file-identity`): its device and inode on
+/// Unix, its volume serial number and file index on Windows. The shell
+/// writes one for every entry; a Windows entry from before it read them
+/// there has none until it is reopened.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct FolderIdentity {
     pub device: u64,
@@ -168,22 +170,14 @@ impl PickedFolders {
     }
 }
 
-/// The identity of the folder at `canonical`, where the system gives one.
+/// The identity of the folder at `canonical`, or `None` when the system
+/// can't give one.
 pub(crate) fn folder_identity(canonical: &Path) -> Option<FolderIdentity> {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::MetadataExt;
-        let metadata = fs::metadata(canonical).ok()?;
-        Some(FolderIdentity {
-            device: metadata.dev(),
-            inode: metadata.ino(),
-        })
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = canonical;
-        None
-    }
+    let identity = file_identity(canonical).ok()?;
+    Some(FolderIdentity {
+        device: identity.volume,
+        inode: identity.index,
+    })
 }
 
 fn write_then_rename(temporary: &Path, file: &Path, text: &str) -> std::io::Result<()> {

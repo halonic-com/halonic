@@ -15,6 +15,10 @@ export interface WhenCardProps {
   readonly announce: (text: string) => void;
   /** Opens New connector, for the link shown when a mail trigger has no Google connector to watch; without it there is no link. */
   readonly addConnector?: () => void;
+  /** Whether the Trigger picker should take the focus now. */
+  readonly focusTrigger?: boolean;
+  /** Called once the picker has taken the focus. */
+  readonly onTriggerFocused?: () => void;
 }
 
 /**
@@ -23,7 +27,14 @@ export interface WhenCardProps {
  * can't be turned on here yet, and says so; a change that can't be saved is shown in the card and
  * the switch goes back to what is saved.
  */
-export function WhenCard({ host, routine, announce, addConnector }: WhenCardProps) {
+export function WhenCard({
+  host,
+  routine,
+  announce,
+  addConnector,
+  focusTrigger,
+  onTriggerFocused,
+}: WhenCardProps) {
   const reasonId = useId();
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | undefined>();
@@ -33,6 +44,8 @@ export function WhenCard({ host, routine, announce, addConnector }: WhenCardProp
   const times = useNextTimes(host, routine, routine.enabled && !neverLive && !manual, routine);
   const timeZone = routine.trigger.kind === "schedule" ? routine.trigger.timeZone : undefined;
   const shown = times?.times.map((iso) => nextTime(iso, timeZone, deviceTimeZone()));
+
+  const newTriggerNotLive = notLiveLine(routine);
 
   const turn = async (enabled: boolean) => {
     if (saving) return;
@@ -90,12 +103,17 @@ export function WhenCard({ host, routine, announce, addConnector }: WhenCardProp
           enabled={routine.enabled}
           mailboxes={mailboxes}
           {...(addConnector && { addConnector })}
+          focusTrigger={focusTrigger ?? false}
+          onTriggerFocused={onTriggerFocused}
           onChange={(trigger) => void changeTrigger(trigger)}
         />
         {blocked && (
           <p id={reasonId} className="text-small text-fg-muted">
             {words.makeLiveFirst}
           </p>
+        )}
+        {newTriggerNotLive !== undefined && (
+          <p className="text-small text-fg-muted">{newTriggerNotLive}</p>
         )}
         {manual && <p className="text-small text-fg-muted">{words.manualOnly}</p>}
         {shown !== undefined && shown.length > 0 && (
@@ -112,4 +130,12 @@ export function WhenCard({ host, routine, announce, addConnector }: WhenCardProp
       </div>
     </Card>
   );
+}
+
+/** The line that says what still runs while the saved trigger isn't live; nothing when they agree. */
+function notLiveLine(routine: RoutineView): string | undefined {
+  const live = routine.live?.triggerSentence;
+  if (live === undefined || live === routine.triggerSentence) return undefined;
+  const scheduled = routine.trigger.kind === "schedule" || routine.trigger.kind === "every";
+  return (scheduled ? words.newScheduleNotLive : words.newTriggerNotLive)(live);
 }

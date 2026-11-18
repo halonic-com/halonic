@@ -21,6 +21,7 @@ import {
 
 interface Vectors {
   pairingCodes: { randomBytes: string; code: string; shown: string; psk: string }[];
+  typedCodes: { kind: "pairing" | "check"; typed: string; code: string | null; why: string }[];
   checkCodes: { handshakeHash: string; hkdf: string; checkCode: string; shown: string }[];
   qrPayloads: {
     /** The host key, hex; named so a secret scanner doesn't take a public key for a secret. */
@@ -67,9 +68,24 @@ verifies("ports.pairing-codes", () => {
       expect(draws).toHaveLength(0);
     });
 
+    it("stops with an error when 8 draws don't give 12 symbols", () => {
+      let draws = 0;
+      const broken = () => {
+        draws += 1;
+        return new Uint8Array(16).fill(255);
+      };
+      expect(() => newPairingCode(broken)).toThrow("the random source is broken");
+      expect(draws).toBe(8);
+    });
+
     it("reads a typed code in any case, with spaces, dots and dashes", () => {
       expect(readPairingCode(" xx7a-9q36.kfb3 ")).toBe("XX7A9Q36KFB3");
       expect(readPairingCode("XX7A · 9Q36 · KFB3")).toBe("XX7A9Q36KFB3");
+    });
+
+    it.each(vectors.typedCodes)("reads the $kind code $typed: $why", (vector) => {
+      const read = vector.kind === "pairing" ? readPairingCode : readCheckCode;
+      expect(read(vector.typed) ?? null).toBe(vector.code);
     });
 
     it.each(["XX7A9Q36KFB", "XX7A9Q36KFB33", "XX7A9Q36KFB0", "XX7A9Q36KFBO", "XX7A9Q36KFB1", ""])(

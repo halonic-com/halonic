@@ -356,8 +356,7 @@ fn trust_grants_open_refuses_a_folder_that_changed_while_the_question_showed() {
     }
 
     // Deleted and made again under the same name. The new folder is made
-    // before the old one goes, so the two can't share an inode.
-    #[cfg(unix)]
+    // before the old one goes, so the two can't share an identity.
     {
         fs::remove_file(scratch.path("documents/Mine")).ok();
         let _ = fs::remove_dir(scratch.path("documents/Mine"));

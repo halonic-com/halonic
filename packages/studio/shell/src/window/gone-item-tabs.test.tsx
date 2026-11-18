@@ -58,7 +58,7 @@ function renderWindow(plugins: ReturnType<typeof pluginList>) {
         icon: "plugin",
         open: { view: "PanelView", load: async () => ({ PanelView: () => null }) },
         tab: {
-          describe: (item) => ({ label: item.id }),
+          describe: (item) => ({ label: item.id.charAt(0).toUpperCase() + item.id.slice(1) }),
           exists: (item) => plugins.has(item.id),
           subscribe: (listener) => plugins.subscribe(listener),
         },

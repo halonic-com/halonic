@@ -90,6 +90,49 @@ fn plugin_source_test_lists_and_reads_a_folder_without_its_git_folder() {
 }
 
 #[test]
+fn plugin_source_test_leaves_out_private_names_at_any_depth() {
+    let scratch = Scratch::new("private");
+    scratch.write("plugin.yaml", "id: acme-weather\n");
+    scratch.write("src/index.js", "export {};\n");
+    scratch.write(".env", "KEY=1");
+    scratch.write(".envrc", "x");
+    scratch.write(".studio/state", "x");
+    scratch.write("src/.env.local", "KEY=2");
+    scratch.write("vendor/dep/.git/HEAD", "ref: x\n");
+    scratch.write("vendor/dep/lib.js", "1");
+
+    let expected = [
+        "plugin.yaml",
+        "src",
+        "src/index.js",
+        "vendor",
+        "vendor/dep",
+        "vendor/dep/lib.js",
+    ];
+    assert_eq!(paths(&scratch, None, None), expected);
+    assert_eq!(
+        paths(&scratch, Some("vendor/dep/.git"), None),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        paths(&scratch, Some("vendor/dep"), None),
+        ["vendor/dep/lib.js"]
+    );
+    for private in [
+        ".env",
+        ".studio/state",
+        "src/.env.local",
+        "vendor/dep/.git/HEAD",
+    ] {
+        assert_eq!(
+            source_read(&scratch.reader(), &scratch.source(), private).expect("a read"),
+            None,
+            "{private}"
+        );
+    }
+}
+
+#[test]
 fn plugin_source_test_refuses_a_path_outside_the_source() {
     let scratch = Scratch::new("dots");
     scratch.write("plugin.yaml", "id: a\n");

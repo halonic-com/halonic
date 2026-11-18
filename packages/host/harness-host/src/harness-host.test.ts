@@ -13,7 +13,7 @@ import {
   noTools,
   RecordingBridgeServer,
 } from "./fakes.test-helper.ts";
-import { type HarnessHostInput, harnessHostOf } from "./harness-host.ts";
+import { type HarnessHostInput, harnessHostOf, runProposalsOf } from "./harness-host.ts";
 import { ProposalsNeedHistoryError } from "./history-proposal-folders.ts";
 import { refusingTrash } from "./not-wired.ts";
 
@@ -129,5 +129,24 @@ verifies("harness-host.builder", () => {
 
   it("starts with nothing to clear", async () => {
     await expect(harnessHostOf(inputOf().input).start(new Set())).resolves.toBeUndefined();
+  });
+});
+
+verifies("harness-host.proposal-service", () => {
+  it("builds the proposal service on the host's records", async () => {
+    const { input } = inputOf();
+
+    expect(await runProposalsOf(input.proposals, digest, clock).list()).toEqual([]);
+  });
+
+  it("fails with the store's error when the records can't be listed", async () => {
+    const { input, records } = inputOf();
+    records.list = async () => {
+      throw new Error("The records can't be listed.");
+    };
+
+    await expect(runProposalsOf(input.proposals, digest, clock).list()).rejects.toThrow(
+      "The records can't be listed.",
+    );
   });
 });

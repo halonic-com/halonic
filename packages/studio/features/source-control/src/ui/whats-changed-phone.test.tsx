@@ -7,6 +7,7 @@ import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChangesList } from "../changes-list.ts";
 import { fakeSource, settle } from "../source.test-helper.ts";
+import { buttonsNamed } from "../test-support/buttons.ts";
 import { openItem } from "../test-support/open-item.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ChangesView } from "./changes-page.tsx";
@@ -58,9 +59,9 @@ function bottomBar(page: HTMLElement): HTMLElement {
   return bar;
 }
 
-/** Undo these changes; the kit keeps its busy label "Undoing…" in the button too. */
+/** Undo these changes, found by the name a screen reader hears. */
 function undoButtons(root: ParentNode): HTMLElement[] {
-  return buttons(root, "Undo these changesUndoing…");
+  return buttonsNamed(root, "Undo these changes");
 }
 
 verifies("source-control.whats-changed-phone", () => {

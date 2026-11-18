@@ -205,12 +205,19 @@ verifies("shell.phone-search", () => {
     expect(status()?.textContent).toBe("");
   });
 
-  it("says Nothing matches with no Enter hint, then the actions that fit", async () => {
+  it("says Nothing matches with no Enter hint when no row matches", async () => {
+    const sheet = renderSheet({ commands: [newAgent] });
+    sheet.type("zzz");
+    await sheet.answer(0, []);
+    expect(sheet.text()).toContain("Nothing matches “zzz”.");
+    expect(sheet.text()).not.toContain("Press Enter");
+  });
+
+  it("lists the actions that fit with no Nothing matches line above them", async () => {
     const sheet = renderSheet({ commands: [newAgent] });
     sheet.type("new");
     await sheet.answer(0, []);
-    expect(sheet.text()).toContain("Nothing matches “new”.");
-    expect(sheet.text()).not.toContain("Press Enter");
+    expect(sheet.text()).not.toContain("Nothing matches");
     expect(sheet.rowNames()).toEqual(["New agent"]);
   });
 

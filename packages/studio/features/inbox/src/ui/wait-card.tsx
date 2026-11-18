@@ -7,6 +7,8 @@ import { decidedAt, movesOnLine, waitingSince } from "../plain/waiting-time.ts";
 import {
   type BackLink,
   CardHeader,
+  cardBodyClasses,
+  cardClasses,
   DecidedBar,
   type EngineState,
   FailedLine,
@@ -146,8 +148,8 @@ export function WaitCard(props: WaitCardProps) {
   }
 
   return (
-    <section aria-labelledby={titleId} className="flex min-h-0 flex-col">
-      <div className="flex flex-col gap-4 overflow-y-auto p-4">
+    <section aria-labelledby={titleId} className={cardClasses}>
+      <div className={cardBodyClasses}>
         <CardHeader
           titleId={titleId}
           // Filled in from the run's context, so it can hold model output: mark what's hidden.

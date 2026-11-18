@@ -30,14 +30,16 @@ import { WhenCard } from "../when/when-card.tsx";
 import { failureReason, pageWords } from "./page-words.ts";
 import { RunDialog, runDialogReason } from "./run-dialog.tsx";
 import { runRoutineNow } from "./run-now.ts";
+import { TRIGGER_STEP } from "./trigger-step.ts";
 import { useRoutine } from "./use-routine.ts";
+import { useTriggerFocus } from "./use-trigger-focus.ts";
 
 /** The file tab's item kind and hub part (the Files feature's `FILE_KIND` and `FILE_HUB`): files belong to the workspace folder. */
 const fileKind = "file";
 const fileHub = "workspace";
 
 /** The routine's page in its tab: `item` names the routine, the host gives its fields. */
-export function RoutinePage({ item, context }: ItemViewProps) {
+export function RoutinePage({ item, context, step, asked }: ItemViewProps) {
   const { openPlace, openItem, runCommand } = context;
   return (
     <RoutineScreen
@@ -45,6 +47,7 @@ export function RoutinePage({ item, context }: ItemViewProps) {
       hubId={item.hub}
       id={item.id}
       announce={(text) => context.announcer.announce(text)}
+      {...(step === TRIGGER_STEP && { triggerAsked: asked ?? 0 })}
       {...(openPlace && { goToRoutines: () => openPlace("routines") })}
       {...(runCommand && { addConnector: () => void runCommand("library.new-connector") })}
       {...(openItem && {
@@ -70,6 +73,11 @@ export interface RoutineScreenProps {
   readonly addConnector?: () => void;
   /** Opens a file in the code editor in a tab; without it the ⋮ menu has no **Open as file**. */
   readonly openFile?: (path: string) => void;
+  /**
+   * How many times the page was asked for its Trigger picker (`openItem`'s `step`); absent when it
+   * wasn't. The picker takes the focus once it is drawn, again each time this changes.
+   */
+  readonly triggerAsked?: number;
 }
 
 /**
@@ -87,12 +95,16 @@ export function RoutineScreen({
   openRun,
   addConnector,
   openFile,
+  triggerAsked,
 }: RoutineScreenProps) {
   // After a Try again reads, the routine's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
   const focusTitle = useCallback(() => title.current?.focus(), []);
   const { load, retry } = useRoutine(host, { hubId, id }, focusTitle);
   const [view, setView] = useState<RoutineViewId>("schedule");
+  // Asked for its Trigger picker, the page shows the Schedule view and the picker takes the focus
+  // once the card is drawn, whether the page was just opened or already open.
+  const trigger = useTriggerFocus(triggerAsked, () => setView("schedule"));
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
   const routine = load.kind === "ready" ? load.routine : undefined;
@@ -138,6 +150,8 @@ export function RoutineScreen({
               routine={load.routine}
               announce={announce}
               addConnector={addConnector}
+              focusTrigger={trigger.focusTrigger}
+              onTriggerFocused={trigger.done}
             />
           )}
           {view === "runs" && (
@@ -186,11 +200,15 @@ function ScheduleView({
   routine,
   announce,
   addConnector,
+  focusTrigger,
+  onTriggerFocused,
 }: {
   readonly host: RoutinesHost;
   readonly routine: RoutineView;
   readonly announce: (text: string) => void;
   readonly addConnector: (() => void) | undefined;
+  readonly focusTrigger: boolean;
+  readonly onTriggerFocused: () => void;
 }) {
   return (
     <>
@@ -200,6 +218,8 @@ function ScheduleView({
         routine={routine}
         announce={announce}
         {...(addConnector && { addConnector })}
+        focusTrigger={focusTrigger}
+        onTriggerFocused={onTriggerFocused}
       />
       <StartsCard host={host} routine={routine} />
       <RulesSection host={host} routine={routine} />

@@ -3,7 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { expect, it, vi } from "vitest";
 import { click, render } from "../test/render.tsx";
-import { ExternalLink } from "./external-link.tsx";
+import { ExternalLink, isWebAddress } from "./external-link.tsx";
 import { type OpenExternal, OpenExternalProvider } from "./open-external.tsx";
 
 const audiencePage = "https://console.cloud.google.com/auth/audience?project=halonic-x";
@@ -88,12 +88,14 @@ verifies("kit.external-link-web-only", () => {
     "not an address",
   ])("refuses %s", (href) => {
     const props = { href, children: "Somewhere" };
+    expect(isWebAddress(href)).toBe(false);
     expect(() => ExternalLink(props)).toThrow(
       `ExternalLink opens web pages only, with an http or https address. It got "${href}".`,
     );
   });
 
   it.each([audiencePage, "http://localhost:4173/"])("accepts %s", (href) => {
+    expect(isWebAddress(href)).toBe(true);
     const { container } = render(<ExternalLink href={href}>Somewhere</ExternalLink>);
     expect(container.querySelector("a")?.getAttribute("href")).toBe(href);
   });

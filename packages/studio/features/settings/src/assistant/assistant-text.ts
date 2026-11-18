@@ -6,11 +6,14 @@ import type { SettingsPlace } from "@halonicjs/studio-shell";
  * HAL-1294).
  */
 
-/** The first line under the section's name (`settings.ai-agent-section`). */
+/**
+ * The first line under the section's name (`settings.ai-agent-section`). It says first that no
+ * chat uses these settings yet, until the Assistant lands (HAL-12400, rule N1 of HAL-12363).
+ */
 export const FIRST_LINE: Readonly<Record<SettingsPlace, string>> = {
-  app: "Used for new assistant chats in every workspace on this computer. Never saved in a workspace.",
+  app: "Halonic can't open assistant chats yet. These settings are kept for when it can, for every workspace on this computer. Never saved in a workspace.",
   served:
-    "Used for new assistant chats in every workspace on the computer running Halonic. Never saved in a workspace.",
+    "Halonic can't open assistant chats yet. These settings are kept for when it can, for every workspace on the computer running Halonic. Never saved in a workspace.",
 };
 
 export const MODEL_GROUP = "Assistant model";

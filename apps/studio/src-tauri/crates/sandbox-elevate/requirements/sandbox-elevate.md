@@ -2,15 +2,21 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-1451, HAL-1415, HAL-7385, HAL-7386
+- Source: HAL-1451, HAL-1415, HAL-7385, HAL-7386, HAL-11253
 
-When the agent sandbox is set up or removed on Windows, the only program that runs with administrator rights shall be the helper, given one fixed verb (`setup` or `remove`) and no options. The helper shall run srt-win only from a copy in an admin-only folder under Program Files whose SHA-256 matches the one built into the helper, with fixed arguments, from System32. It shall write nothing into that folder that Users can read before it is checked. It shall not ask for administrator rights a second time. For a removal it shall run only srt-win's machine-wide step (`uninstall --elevated-step`), and it shall give srt-win an admin-only folder as `LOCALAPPDATA`, so that nothing it runs opens or changes the user's own session folder. After a setup that passes it shall list "Halonic agent sandbox" in Installed apps, and a removal that passes shall take that entry and its folder away. A signed release shall list it only when the helper's copy in that folder is signed by the same publisher as the helper itself.
+When the agent sandbox is set up or removed on Windows, the only program that runs with administrator rights shall be the helper, given one fixed verb (`setup` or `remove`) and no options. The helper shall run srt-win only from a copy in an admin-only folder under Program Files whose SHA-256 matches the one built into the helper, with fixed arguments, from System32. It shall write nothing into that folder that Users can read before it is checked. It shall not ask for administrator rights a second time. For a removal it shall run only srt-win's machine-wide step (`uninstall --elevated-step`), and it shall give srt-win an admin-only folder as `LOCALAPPDATA`, so that nothing it runs opens or changes the user's own session folder. After a setup that passes, a signed build shall list "Halonic agent sandbox" in Installed apps, and only when the helper's copy in that folder is signed by the same publisher as the helper itself. An unsigned build shall leave no copy of the helper in that folder and no Installed apps entry, and shall take away a copy and an entry an earlier setup left; its sandbox is removed with the helper next to Halonic. A removal that passes shall take the entry and the folder away.
 
 ## Examples
 
-- Given a helper in the user's app folder with the shipped srt-win.exe next to it,
+- Given a signed helper in the user's app folder with the shipped srt-win.exe next to it,
   when it runs `setup` with administrator rights,
   then srt-win's copy in `Program Files\Halonic Sandbox` runs `install` from System32, and Installed apps lists "Halonic agent sandbox".
+- Given an unsigned helper whose file in the app folder was swapped for another program while it ran,
+  when it runs `setup`,
+  then srt-win runs, and no copy of the helper and no Installed apps entry are left, including those an earlier setup left.
+- Given a sandbox set up by an unsigned helper,
+  when the helper next to Halonic runs `remove`,
+  then srt-win runs `uninstall --elevated-step`, and the copies and the folder are gone.
 - Given an srt-win.exe that someone swapped,
   when the helper runs `setup`,
   then it exits 33, writes none of it into the folder, deletes an earlier copy and runs nothing.

@@ -40,7 +40,6 @@ function followUp(after: string): string {
     "    description: Wait for an answer",
     "    on:",
     "      - to: done",
-    "        event: no-answer",
     `        after: ${after}`,
     "  done:",
     "    type: final",

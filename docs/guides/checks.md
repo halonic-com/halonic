@@ -806,8 +806,19 @@ ruleset requires it on `main`. Jobs that only run for some
 changes (such as the scaffold check, which proves `pnpm new` still
 produces packages that pass) are then skipped without blocking the merge.
 
-CI starts when a pull request is opened, reopened or gets new commits, not
-when its title, body or labels change: that would cancel the run in progress
+**Drafts get a light run.** A draft pull request runs the fast gates, the
+leak and secret scans, the workflow lint, the policy rules, the coverage
+floors, the build with its tests (Turbo runs only what changed) and the Linux
+Tauri and bubblewrap jobs. The merge base's tests, the requirement guard, the
+scaffold check, Studio's end-to-end tests, Android and every macOS and Windows
+job wait until it is marked ready for review. The hosted runners are shared
+with the merge queue, and drafts get new commits often. So: open the pull
+request as a draft and wait for its `ci-ok`. Then mark it ready
+(`gh pr ready`), which starts the full run, and ask for review once that
+run's `ci-ok` is green. That `ci-ok` is the one the merge queue needs.
+
+CI starts when a pull request is opened, reopened, gets new commits or is
+marked ready for review, not when its title, body or labels change: that would cancel the run in progress
 and build everything again. `.github/workflows/pr-details.yml` handles those
 changes. It checks the new title and, if CI's title, leak or coverage-floor
 job failed, re-runs CI's failed jobs, which read the pull request's current

@@ -84,7 +84,7 @@ export class FileSystemPluginFolder implements PluginFolderWriter {
   ): Promise<PluginPlacement> {
     checkPluginFiles(id, files);
     await this.#sweepStagingOnce();
-    await mkdir(this.#root, { recursive: true });
+    await makePlainFolder(this.#root);
     const existing = await this.#topEntry(id);
     if (existing !== undefined && !(options.replace && existing.name === id && existing.isFolder)) {
       return "taken";
@@ -137,6 +137,8 @@ export class FileSystemPluginFolder implements PluginFolderWriter {
     this.#stagingSwept = true;
     let names: string[];
     try {
+      // A staging folder that is a link is never swept: what it points to isn't ours.
+      if ((await lstatOrNull(this.#staging))?.isDirectory() !== true) return;
       names = await readdir(this.#staging);
     } catch {
       return;
@@ -177,7 +179,7 @@ export class FileSystemPluginFolder implements PluginFolderWriter {
 
   /** Writes every file into a new folder in the staging folder; on failure, deletes it. */
   async #writeStaged(id: string, files: ReadonlyMap<string, Uint8Array>): Promise<string> {
-    await mkdir(this.#staging, { recursive: true });
+    await makePlainFolder(this.#staging);
     const folder = join(this.#staging, `${id}.${randomUUID()}`);
     await mkdir(folder);
     try {
@@ -205,10 +207,29 @@ export class FileSystemPluginFolder implements PluginFolderWriter {
 
   /** Moves a plugin folder out of the plugins folder, so it is gone at once, and gives where it went. */
   async #moveOut(target: string): Promise<string> {
-    await mkdir(this.#staging, { recursive: true });
+    await makePlainFolder(this.#staging);
     const old = join(this.#staging, `removed.${randomUUID()}`);
     await renameOver(target, old);
     return old;
+  }
+}
+
+/**
+ * Makes `folder` when it isn't there, and refuses it when it is a symbolic
+ * link, a Windows junction or not a folder: `mkdir` would go through a link
+ * without a word, and the plugins would be written wherever it points, such
+ * as into a workspace. The profile's own folders are never links.
+ *
+ * @throws Error when `folder` is a link or not a folder
+ */
+async function makePlainFolder(folder: string): Promise<void> {
+  await mkdir(folder, { recursive: true });
+  const stats = await lstatOrNull(folder);
+  if (stats?.isSymbolicLink() === true) {
+    throw new Error(`${folder} is a link; plugins are written only into a plain folder.`);
+  }
+  if (stats?.isDirectory() !== true) {
+    throw new Error(`${folder} isn't a folder; plugins are written only into a plain folder.`);
   }
 }
 

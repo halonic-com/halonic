@@ -23,13 +23,8 @@ import { RemoteGateway } from "./gateway/remote-gateway.ts";
 import { RunLedger } from "./gateway/run-ledger.ts";
 import { googleRoutes } from "./google/google-routes.ts";
 import { openGoogleSetup } from "./google/google-setup.ts";
+import { harnessFolders } from "./harness/harness-folders.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
-import { hostPlacements } from "./harness/host-placements.ts";
-import { hostHarnessProfiles } from "./harness/host-profiles.ts";
-import { hostProposalFolders } from "./harness/host-proposals.ts";
-import { placementRoutes } from "./harness/placement-routes.ts";
-import { profileRoute } from "./harness/profile-route.ts";
-import { proposalRoutes } from "./harness/proposal-routes.ts";
 import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
 import { hostModelRoutes } from "./model/host-model-routes.ts";
@@ -409,13 +404,17 @@ function hostServices(
     (text) => process.stderr.write(text),
   );
   const plugins = hostPlugins(version, sandbox, profile);
-  const profiles = hostHarnessProfiles(profile, connectors.workspaceRoots, harnesses, logToError);
-  const proposals = hostProposalFolders(profile, connectors.workspaceRoots, logToError);
-  const placements = hostPlacements(profile, connectors.workspaceRoots);
+  const folders = harnessFolders(
+    profile,
+    connectors.workspaceRoots,
+    harnesses,
+    bridges,
+    logToError,
+  );
   const routes = [
     healthRoute(version),
     // A session's temp folder, made with its harness profile, goes when the session closes.
-    ...sandboxRoutes(profiles?.removingTempFolders(sandbox) ?? sandbox, sessions),
+    ...sandboxRoutes(folders.profiles?.removingTempFolders(sandbox) ?? sandbox, sessions),
     ...(choice === undefined ? [] : sandboxChoiceRoutes(choice)),
     ...setupRoutes(new SetupJobs(sandbox, undefined, wslRemover), sessions),
     ...bridgeRoutes(
@@ -435,9 +434,7 @@ function hostServices(
           }),
     ),
     ...harnessRoutes({ harnesses, sessions, bridges, runs }),
-    ...(profiles === undefined ? [] : [profileRoute(profiles, bridges)]),
-    ...(proposals === undefined ? [] : proposalRoutes(proposals)),
-    ...(placements === undefined ? [] : placementRoutes(placements)),
+    ...folders.routes,
     ...connectorRoutes(connectorDeps),
     ...modelRoutes(
       hostModelRoutes({
@@ -469,8 +466,8 @@ function hostServices(
     await plugins?.stop();
     await sessions.closeAll();
     await bridges.closeAll();
-    // Last: no run uses a proposal folder any more, so their git can stop.
-    await proposals?.close();
+    // No program runs any more, so what the runs left can go.
+    await folders.stop();
   };
   const startGateway = async (log: (text: string) => void) => {
     const port = await remoteGateway.start(log);

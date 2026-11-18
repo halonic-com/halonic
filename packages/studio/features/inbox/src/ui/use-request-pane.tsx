@@ -17,6 +17,7 @@ import {
 } from "../request/inbox-requests.ts";
 import { notStartedLine } from "../request/not-started.ts";
 import { useOffered } from "../request/use-offered.ts";
+import { QuietLine } from "./quiet-line.tsx";
 import { emptyDraft, RequestForm } from "./request-form.tsx";
 import { RequestSheet } from "./request-sheet.tsx";
 
@@ -26,6 +27,9 @@ const newRequestRowClasses = [
   "transition-colors focus-ring-inset hover:bg-surface-subtle active:bg-surface-subtle",
 ].join(" ");
 
+/** Said in place of the form while the workflows you can start can't be read (states audit gap 5). */
+export const OFFERED_FAILED = "Couldn't load the workflows you can start.";
+
 /** What the Inbox page needs from the request form, or nothing when there is none to offer. */
 export interface RequestPane {
   /** **New request**, for the list's header; `null` with no form. */
@@ -34,6 +38,12 @@ export interface RequestPane {
   readonly form: ReactNode;
   /** The phone's request sheet while it is open; `null` otherwise and on a desktop. */
   readonly sheet: ReactNode;
+}
+
+/** Said where the form would be, so a failed read doesn't look like a workspace with none. */
+function failedPane(phone: boolean, retry: () => void): RequestPane {
+  const line = <QuietLine line={OFFERED_FAILED} retry={retry} />;
+  return { newRequest: phone ? line : null, form: phone ? null : line, sheet: null };
 }
 
 /**
@@ -76,7 +86,7 @@ export function useRequestPane(options: {
     sheetOpen: shared,
     cardOpen,
   } = options;
-  const offered = useOffered(requests);
+  const { list: offered, failed, retry } = useOffered(requests);
   const [draft, setDraft] = useState(emptyDraft);
   const [busy, setBusy] = useState(false);
   const [notStarted, setNotStarted] = useState("");
@@ -116,6 +126,7 @@ export function useRequestPane(options: {
       formAsked.current = false;
     }
   }, [asks, offered.length, requests, sheetOpen]);
+  if (requests !== undefined && failed) return failedPane(phone, retry);
   if (requests === undefined || offered.length === 0) {
     return { newRequest: null, form: null, sheet: null };
   }

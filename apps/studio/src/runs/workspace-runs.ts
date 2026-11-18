@@ -174,7 +174,7 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
   async send(runId: string, event: string): Promise<RunSummary> {
     throw new KindedError(
       "unavailable",
-      "Studio can't answer runs yet. Answer this one from the command line.",
+      "Studio can't answer runs yet. To answer this one, run this in a terminal:",
       { fix: `halonic runs send ${shortRunId(runId)} ${event}` },
     );
   }

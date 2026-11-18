@@ -41,8 +41,12 @@ below instead.
 
 Halonic never goes around a proxy it can't use. If the setting is unusable
 (for example `socks5://…`, or no `http://` in front), or the proxy refuses or
-drops the tunnel, each request that needs it fails and says why. Fix the
-variable and restart Halonic.
+drops the tunnel, each request that needs it fails, and nothing goes
+directly instead. For now the command line doesn't give the proxy's reason: a
+model call that fails this way says only that Halonic couldn't reach the
+provider and to check your internet connection, in the run log and with
+`--debug` too. If you see that with a proxy set, check the variable and the
+proxy first. Fix the variable and restart Halonic.
 
 ## Good to know
 
@@ -54,9 +58,14 @@ variable and restart Halonic.
   That is normal for company proxies, but know it. Halonic never prints the
   user name or password, and never sends them to anything but the proxy.
 - **`NO_PROXY` takes names, subdomains and `host:port`.** It has no address
-  ranges such as `10.0.0.0/8`.
+  ranges such as `10.0.0.0/8`. `NO_PROXY=*` sends every host directly.
 - **A proxy that re-signs HTTPS** only works if Halonic trusts your company's
   certificate (`NODE_EXTRA_CA_CERTS=<path-to-certificate>`). A re-signing proxy
   sees your provider key. Whether to allow that is your company's decision.
-- **Programs the sandbox starts get no proxy variable.** The sandbox has its own
-  network rules and ignores yours.
+- **Programs the sandbox starts never get your proxy variables.** They get the
+  sandbox's own, which lead to the sandbox's network fence and its list of
+  allowed sites, not to your proxy.
+- **A run's dependency install uses your proxy its own way.** When a run
+  installs a program's dependencies before the sandbox starts, it hands
+  `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` (the upper-case names only) to
+  pnpm, which reads them by its own rules, not Halonic's.

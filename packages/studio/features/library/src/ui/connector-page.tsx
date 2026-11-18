@@ -10,6 +10,7 @@ import { takeConnectorTitleFocus } from "../connector-focus-request.ts";
 import { ConnectorStatusHostService } from "../connector-status-host.ts";
 import { ConnectorStatusModel } from "../connector-status-model.ts";
 import { itemFileRef } from "../item-file.ts";
+import { LibraryItemsHostService } from "../library-items-host.ts";
 import { ListedToolsHostService } from "../listed-tools-host.ts";
 import { ListedToolsReviewModel } from "../listed-tools-review-model.ts";
 import { asksFirstWords, connectorPageWords, connectorToolsWords } from "../new-connector-words.ts";
@@ -39,11 +40,17 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
   // A phone has no tabs to open the file in, so the sentence stays and the link goes.
   const desktop = usePresentation() !== "phone";
   const title = useRef<HTMLHeadingElement | null>(null);
+  const place = { hub: item.hub === sharedHubKey ? null : item.hub, id: item.id };
+  // The status host can be out of reach (no engine); the list's name still stands, not the id.
+  const name =
+    connector?.name ??
+    context.services.find(LibraryItemsHostService)?.nameOf?.("connector", place) ??
+    item.id;
   const trash = useItemTrash(context, {
     kind: "connector",
     hub: item.hub === sharedHubKey ? null : item.hub,
     id: item.id,
-    name: connector?.name ?? item.id,
+    name,
   });
   const titleRef = useCallback(
     (element: HTMLHeadingElement | null) => {
@@ -79,7 +86,7 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
       <PageBackLinkSlot />
       <div className="flex items-start justify-between gap-2">
         <h1 ref={titleRef} tabIndex={-1} className="text-title [overflow-wrap:anywhere]">
-          {connector?.name ?? item.id}
+          {name}
         </h1>
         {trash.menu}
       </div>
@@ -111,7 +118,7 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
         </div>
       )}
       {toolsModel === undefined ? null : (
-        <ListedToolsWaiting model={toolsModel} sourceName={connector?.name ?? item.id} />
+        <ListedToolsWaiting model={toolsModel} sourceName={name} />
       )}
       {connector?.connection === undefined ? null : (
         <ConnectorConnectionSummary connection={connector.connection} />

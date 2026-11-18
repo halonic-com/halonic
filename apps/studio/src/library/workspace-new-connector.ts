@@ -2,6 +2,7 @@ import { type NewConnectorTransport, newLibraryFile } from "@halonicjs/app";
 import { KindedError } from "@halonicjs/std";
 import type {
   ConnectorRef,
+  LibraryItemPlace,
   NewConnectorDraft,
   NewConnectorHost,
   NewConnectorHub,
@@ -62,8 +63,12 @@ export class WorkspaceNewConnector implements NewConnectorHost {
   readonly #parts: WorkspaceSkillsParts;
   #snapshot: LoadedWorkspace | undefined;
 
-  constructor(parts: WorkspaceSkillsParts) {
+  /** Told the name of each item made, so its tab can show it before the Library reads it again. */
+  readonly #made: ((place: LibraryItemPlace, name: string) => void) | undefined;
+
+  constructor(parts: WorkspaceSkillsParts, made?: (place: LibraryItemPlace, name: string) => void) {
     this.#parts = parts;
+    this.#made = made;
   }
 
   async prepare(): Promise<void> {
@@ -108,6 +113,7 @@ export class WorkspaceNewConnector implements NewConnectorHost {
     if (!made.ok) throw new KindedError("invalid_input", refusals[made.error]);
     const { id, path, text } = made.value;
     this.#parts.files.change(`Added connector ${id}`, { [path]: text });
+    this.#made?.({ hub: draft.hub, id }, draft.name.trim());
     return { hub: draft.hub, id };
   }
 

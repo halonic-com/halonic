@@ -59,6 +59,7 @@ import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
+import { openStudioHarnessHost } from "../engine/studio-harness-host.ts";
 import { WorkspaceFilesHost } from "../files/workspace-files-host.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
 import { WorkspaceNotices } from "../inbox/workspace-notices.ts";
@@ -132,15 +133,14 @@ export function provideFolderServices(
   services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
   services.provide(ProviderCheckService, new WorkspaceProviderCheck(new ShellHttpClient(ipc)));
   provideWorkspaceRuns(services, { ipc, files, window }, location);
+  // One service for both ends: the run page saves a person's trust, and the engine checks it.
+  const instructionTrust = new InstructionTrustService({
+    store: new TauriInstructionTrustStore(ipc),
+    clock: systemClock,
+  });
   services.provide(
     InstructionTrustHostService,
-    new WorkspaceInstructionTrust(
-      new InstructionTrustService({
-        store: new TauriInstructionTrustStore(ipc),
-        clock: systemClock,
-      }),
-      location,
-    ),
+    new WorkspaceInstructionTrust(instructionTrust, location),
   );
   services.provide(
     ChangesSourceService,
@@ -156,6 +156,7 @@ export function provideFolderServices(
       onFilesChanged: (listener) => scope.events.on("files.changed", listener),
     }),
   );
+  const transport = tauriAgentHostTransport(window);
   const engine = services.provide(
     engineServiceKey,
     new EngineService({
@@ -173,9 +174,23 @@ export function provideFolderServices(
       },
       newToken: () => crypto.randomUUID(),
       reportError: (error) => console.error("The engine", error),
+      ...(transport === undefined
+        ? {}
+        : {
+            openHarnessHost: (approvalsOf) =>
+              openStudioHarnessHost({
+                transport,
+                location,
+                definitions: new TauriDefinitionStore(files, location),
+                digest: webCryptoDigest,
+                clock: systemClock,
+                instructionTrust,
+                approvalsOf,
+                reportError: (error) => console.error("The harness host", error),
+              }),
+          }),
     }),
   );
-  const transport = tauriAgentHostTransport(window);
   services.provide(
     AgentsHostService,
     new WorkspaceAgents({
@@ -235,13 +250,11 @@ export function provideFolderServices(
       engine,
     }),
   );
-  services.provide(
-    LibraryItemsHostService,
-    new WorkspaceLibraryItems({
-      files: services.get(workspaceFilesKey),
-      onChange: (listener) => scope.events.on("files.changed", listener),
-    }),
-  );
+  const libraryItems = new WorkspaceLibraryItems({
+    files: services.get(workspaceFilesKey),
+    onChange: (listener) => scope.events.on("files.changed", listener),
+  });
+  services.provide(LibraryItemsHostService, libraryItems);
   services.provide(
     SkillHostService,
     new WorkspaceSkills({
@@ -279,17 +292,23 @@ export function provideFolderServices(
   );
   services.provide(
     NewConnectorHostService,
-    new WorkspaceNewConnector({
-      files: services.get(workspaceFilesKey),
-      onChange: (listener) => scope.events.on("files.changed", listener),
-    }),
+    new WorkspaceNewConnector(
+      {
+        files: services.get(workspaceFilesKey),
+        onChange: (listener) => scope.events.on("files.changed", listener),
+      },
+      (place, name) => libraryItems.remember("connector", place, name),
+    ),
   );
   services.provide(
     NewSkillHostService,
-    new WorkspaceNewSkill({
-      files: services.get(workspaceFilesKey),
-      onChange: (listener) => scope.events.on("files.changed", listener),
-    }),
+    new WorkspaceNewSkill(
+      {
+        files: services.get(workspaceFilesKey),
+        onChange: (listener) => scope.events.on("files.changed", listener),
+      },
+      (place, name) => libraryItems.remember("skill", place, name),
+    ),
   );
   services.provide(LibraryTabMemoryService, new WorkspaceLibraryTab(storageOf(window), location));
   provideGoogleSetup(services, {

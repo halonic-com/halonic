@@ -77,6 +77,14 @@ export interface ChatResponse {
   finishReason: "stop" | "tool_calls" | "length" | "error" | "other";
   /** The provider's record of this turn; the engine copies it onto the assistant message unchanged. */
   replay?: ProviderReplay;
+  /**
+   * Plain sentences from the provider on how it changed the call, for the
+   * person who reads the run log, such as "Left out temperature:
+   * claude-sonnet-5-5 doesn't take it." The provider's own words: never the
+   * vendor's text, never a key. The engine keeps them on the call's
+   * `llm.response`, out of the conversation. Absent when it changed nothing.
+   */
+  notes?: string[];
 }
 
 /**

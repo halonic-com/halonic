@@ -56,6 +56,11 @@ export interface LibraryItemsHost {
    * Rejects with an `Error` whose message is one sentence when it can't, such as when the item is gone.
    */
   readFile(kind: LibraryItemKind, place: LibraryItemPlace): Promise<string>;
+  /**
+   * The item's name as the list shows it, for a tab or heading that can't wait for `list`; `undefined`
+   * until the host has read or made the item. Optional: without it the id stands in.
+   */
+  nameOf?(kind: LibraryItemKind, place: LibraryItemPlace): string | undefined;
   /** Calls `listener` whenever a Library item may have changed. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
 }

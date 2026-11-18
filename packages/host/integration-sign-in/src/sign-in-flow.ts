@@ -126,6 +126,8 @@ export interface SignInFlow {
   handleCallback(request: Request): Promise<Response>;
   /** Drops a pending sign-in, for "Cancel". Its callback then gets the 400. */
   cancel(signIn: string): void;
+  /** Whether `pathname` is the callback path of a sign-in that may still be answered, so a server with several flows can pick the one that owns a request. */
+  handlesPath(pathname: string): boolean;
 }
 
 /**
@@ -297,7 +299,12 @@ export function createSignInFlow(given: SignInFlowSettings): SignInFlow {
     };
   }
 
-  return { start, handleCallback, cancel: forget };
+  function handlesPath(pathname: string): boolean {
+    forgetExpired();
+    return paths.has(pathname);
+  }
+
+  return { start, handleCallback, cancel: forget, handlesPath };
 }
 
 /**

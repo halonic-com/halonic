@@ -39,6 +39,12 @@ export {
 export { AgentHostPlacementStore } from "./placement-store.ts";
 export { AgentHostPluginToolCaller, type PluginToolArgs } from "./plugins.ts";
 export { AgentHostProposalFolders, type ProposalFolderRun } from "./proposal-folders.ts";
+export {
+  AgentHostInstructions,
+  type AgentHostInstructionsOptions,
+  type HostInstructions,
+  type InstructionsAgent,
+} from "./run-instructions.ts";
 export { AgentHostSandbox, AgentHostSession } from "./sandbox.ts";
 export {
   AgentHostSandboxSetup,

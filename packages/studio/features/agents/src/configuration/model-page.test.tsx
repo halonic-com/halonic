@@ -66,6 +66,12 @@ verifies("agents.configuration.model", () => {
     expect(select.textContent).not.toContain("Choose a model");
   });
 
+  it("shows the workspace default without its name when the alias is called default", async () => {
+    const { select } = await openModel(undefined, {}, "default");
+    expect(select.textContent).toContain("Workspace default");
+    expect(select.textContent).not.toContain("(default)");
+  });
+
   it("asks to choose a model when the file names none and the workspace has no default", async () => {
     const { select } = await openModel(undefined, {});
     expect(select.textContent).toContain("Choose a model");

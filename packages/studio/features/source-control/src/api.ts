@@ -169,6 +169,13 @@ export interface ChangesSource {
    */
   readonly countUnshared: () => Promise<number>;
   /**
+   * The ids of the versions in History (those that touch the workspace folder) that the shared
+   * copy lacks, newest first, by what git last knew of the shared copy (nothing is fetched). Before
+   * the first share it is every version in History, at most a thousand. Throws when git answers
+   * with an error.
+   */
+  readonly listUnshared: () => Promise<readonly string[]>;
+  /**
    * Asks the shared copy what it has now and gives how many versions it holds that this
    * workspace lacks (a bigger count than a thousand reads as a thousand). Throws, with a reason a
    * person can read, when the shared copy can't be reached or doesn't accept the sign-in.

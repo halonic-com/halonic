@@ -9,6 +9,6 @@ The agents feature shall give the agent page a Configuration view with a list of
 ## Examples
 
 - Given Configuration is open, then the list holds Behaviour only, and Description and Instructions show what the file holds.
-- Given Instructions is empty, then it shows the hint "What it should do and how, in plain words. It follows this in every run and chat."
+- Given Instructions is empty, then it shows the hint "What it should do and how, in plain words. It follows this every time it runs."
 - Given the person types in Instructions and pauses, then the new text is saved as one change.
 - Given the person pastes a key into Instructions, then nothing is saved and the field shows "This looks like a key. Keep it as a secret instead?".

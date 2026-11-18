@@ -1,5 +1,5 @@
 import { Button, Field, FilterChips, Input, Select } from "@halonicjs/studio-kit";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RoutineMailbox, RoutineTrigger } from "../api.ts";
 import { ScheduleAdvanced, SignalFields } from "./advanced-fields.tsx";
 import {
@@ -31,6 +31,10 @@ export interface TriggerFieldsProps {
   readonly addConnector?: () => void;
   /** Called with the whole new trigger as soon as a field changes to a value that can be written. */
   readonly onChange: (trigger: RoutineTrigger) => void;
+  /** Whether the Trigger picker should take the focus now. */
+  readonly focusTrigger?: boolean;
+  /** Called once the picker has taken the focus. */
+  readonly onTriggerFocused?: (() => void) | undefined;
 }
 
 /**
@@ -45,7 +49,15 @@ export function TriggerFields({
   mailboxes,
   addConnector,
   onChange,
+  focusTrigger,
+  onTriggerFocused,
 }: TriggerFieldsProps) {
+  const picker = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!focusTrigger) return;
+    picker.current?.focus();
+    onTriggerFocused?.();
+  }, [focusTrigger, onTriggerFocused]);
   const [triedMail, setTriedMail] = useState(false);
   // The error belongs to the list it was shown for: connectors that arrive take it away.
   const triggerError = triedMail ? mailboxProblem(mailboxes) : null;
@@ -69,6 +81,7 @@ export function TriggerFields({
     <div className="flex flex-col gap-3">
       <Field label={words.trigger} error={triggerError}>
         <Select
+          ref={picker}
           options={kinds.map((kind) => ({ value: kind, label: words.kinds[kind] }))}
           value={trigger.kind}
           onChange={pick}

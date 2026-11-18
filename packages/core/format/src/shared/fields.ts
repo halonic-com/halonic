@@ -69,8 +69,13 @@ export const collectionId = s
   .string()
   .regex(/^[a-z0-9][a-z0-9-]*$/, "use lowercase letters, digits or '-'");
 
-/** The `version` key: `1`, and `1` when the file leaves it out. */
-export const version = s.literal(SCHEMA_VERSION).default(SCHEMA_VERSION);
+/**
+ * The `version` key: `1`, and `1` when the file leaves it out. The message
+ * names the one allowed value instead of Zod's "Invalid input: expected 1".
+ */
+export const version = s
+  .literal(SCHEMA_VERSION, { error: `version must be ${SCHEMA_VERSION}` })
+  .default(SCHEMA_VERSION);
 
 /**
  * A whole number of up to five digits and a unit: minutes, hours or days

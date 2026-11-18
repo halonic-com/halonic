@@ -14,6 +14,7 @@ import { NewCollectionHostService } from "../new-collection-host.ts";
 import { type ConnectorRef, NewConnectorHostService } from "../new-connector-host.ts";
 import { type NewConnectorRequest, takeNewConnectorRequests } from "../new-connector-request.ts";
 import { NewSkillHostService } from "../new-skill-host.ts";
+import { sharedHubKey } from "../shared-hub-key.ts";
 import { requestSkillInstructionsFocus } from "../skill-focus-request.ts";
 import type { SkillRef } from "../skill-host.ts";
 import { LibraryKindList } from "./library-kind-list.tsx";
@@ -23,11 +24,7 @@ import { NewConnectorDialog } from "./new-connector-dialog.tsx";
 import { NewSkillDialog } from "./new-skill-dialog.tsx";
 import { OpenAsFileSheet, type OpenedFile } from "./open-as-file-sheet.tsx";
 
-/**
- * The hub in an item's tab key (`kind/hub/id`), which has to name one: what the workspace shares
- * has no hub, so it opens under this name, which no hub id can be (ids start with a letter).
- */
-export const sharedHubKey = "~workspace";
+export { sharedHubKey };
 
 function refOf(kind: LibraryItemKind, { hub, id }: LibraryEntryPlace) {
   return { kind, hub: hub ?? sharedHubKey, id };

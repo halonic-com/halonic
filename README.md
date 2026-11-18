@@ -85,10 +85,12 @@ The last command should print `Halonic 0.1.0`.
 `pnpm install` downloads about 150 MB, so it can take a while on a slow
 connection.
 
-If you set up pnpm with Corepack, the first `pnpm` command may stop with
-"Corepack is about to download ..." and ask "Do you want to continue?".
-Answer `y` (or press Enter): this repository pins the pnpm version it needs.
-To skip the question, set `COREPACK_ENABLE_DOWNLOAD_PROMPT=0` first.
+If you set up pnpm with Corepack, the first `pnpm` command may download the
+pnpm version this repository needs. Sometimes it just prints "Corepack is about
+to download ..." and goes on. Sometimes it asks "Do you want to continue?":
+answer `y` (or press Enter). To skip the question, set
+`COREPACK_ENABLE_DOWNLOAD_PROMPT=0` first. It may fetch a newer pnpm than the
+version in the lockfile. That is fine: any pnpm 12.18 or later works.
 
 `pnpm add -g ./apps/cli` doesn't copy the CLI: it links your clone, so
 `halonic` always runs the code in that folder.
@@ -161,12 +163,13 @@ halonic routines
 ```
 
 ```text
-Weekly report   Mondays at 09:00   Next 16 Nov 09:00   Never ran
+Weekly report   Mondays at 09:00   Next 23 Nov 09:00   Never ran
+Routines start on time only while `halonic routines watch` is running.
 ```
 
 Acme has one routine, the weekly report, set for Monday at 9:00. This command
 lists your routines and when each runs next. It starts nothing. Your "Next"
-date will differ. To run routines at their set times, keep
+date will differ: it is the next Monday at 09:00. To run routines at their set times, keep
 `halonic routines watch` open in a terminal, and stop it with Ctrl C.
 
 ## Use a real model

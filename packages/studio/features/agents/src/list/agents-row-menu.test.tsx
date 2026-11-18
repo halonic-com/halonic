@@ -5,7 +5,7 @@ import { createToastStore, PresentationProvider, ToastStoreProvider } from "@hal
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { AgentsHost } from "../api.ts";
+import type { AgentsHost, AgentUser } from "../api.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { installFakePopover, show, unmount } from "../test-support.tsx";
 import { AgentsView } from "./agents-page.tsx";
@@ -22,7 +22,7 @@ afterEach(() => {
 const sorter = { hubId: "acme", id: "sorter", name: "Sorter" };
 const writer = { hubId: "acme", id: "writer", name: "Writer" };
 
-const hostWith = (users: Record<string, { hubId: string; id: string; name: string }[]> = {}) =>
+const hostWith = (users: Record<string, AgentUser[]> = {}) =>
   memoryAgentsHost({
     hubs: [{ id: "acme", name: "acme" }],
     agents: [sorter, writer],
@@ -72,15 +72,16 @@ verifies("agents.list.row-menu", () => {
     expect(entries()).toEqual(["Open", "Open in new tab", "Open as file", "Delete"]);
   });
 
-  it("has no Open as file on a phone, or where the app can't open a file", async () => {
-    const phone = await showList(hostWith(), true, () => undefined);
-    act(() => menuButton(phone.page, "Sorter")?.click());
+  it("has no Open as file where the app can't open a file", async () => {
+    const { page } = await showList(hostWith());
+    act(() => menuButton(page, "Sorter")?.click());
     expect(entries()).toEqual(["Open", "Open in new tab", "Delete"]);
-    unmount();
+  });
 
-    const desktop = await showList(hostWith());
-    act(() => menuButton(desktop.page, "Sorter")?.click());
-    expect(entries()).toEqual(["Open", "Open in new tab", "Delete"]);
+  it("has only Delete on a phone, where a tap on the row opens the agent", async () => {
+    const { page } = await showList(hostWith(), true, () => undefined);
+    act(() => menuButton(page, "Sorter")?.click());
+    expect(entries()).toEqual(["Delete"]);
   });
 
   it("opens the agent's file in a tab", async () => {
@@ -112,16 +113,56 @@ verifies("agents.list.row-menu", () => {
     expect(page.textContent).toContain("Sorter");
   });
 
-  it("says which workflows now show an error, as the toast's second line", async () => {
-    const host = hostWith({ "acme/sorter": [{ hubId: "acme", id: "reply", name: "Reply" }] });
+  it("gives the focus to the next row, else the one before", async () => {
+    const { page } = await showList(hostWith());
+
+    await pick(page, "Sorter", "Delete");
+    expect(document.activeElement?.closest("[data-row-id]")?.getAttribute("data-row-id")).toBe(
+      "acme/writer",
+    );
+
+    await pick(page, "Writer", "Delete");
+    expect(document.activeElement?.textContent).toBe("No agents yet");
+  });
+
+  it("counts the workflow steps that now show an error, as the toast's second line", async () => {
+    const host = hostWith({
+      "acme/sorter": [{ hubId: "acme", id: "reply", name: "Reply", steps: 1 }],
+      "acme/writer": [{ hubId: "acme", id: "reply", name: "Reply", steps: 2 }],
+    });
     const { page, toasts } = await showList(host);
 
     await pick(page, "Sorter", "Delete");
-
     expect(toasts.list()[0]).toMatchObject({
       title: "Moved Sorter to the trash.",
-      text: "1 workflow now shows an error until you pick another agent for its step.",
+      text: "1 workflow step now shows an error until you pick another agent.",
     });
+
+    await pick(page, "Writer", "Delete");
+    expect(toasts.list()[1]?.text).toBe(
+      "2 workflow steps now show an error until you pick another agent.",
+    );
+  });
+
+  it("closes the toast when the workspace's undo brings the agent back", async () => {
+    const host = hostWith();
+    const trash = host.trash.bind(host);
+    let undo: (() => Promise<void>) | undefined;
+    host.trash = async (ref) => {
+      const trashed = await trash(ref);
+      undo = trashed.undo;
+      return trashed;
+    };
+    const { page, toasts } = await showList(host);
+    await pick(page, "Sorter", "Delete");
+    expect(toasts.list()).toHaveLength(1);
+
+    // Ctrl Z: the workspace's undo, not the toast's.
+    await act(async () => undo?.());
+    await settled();
+
+    expect(page.textContent).toContain("Sorter");
+    expect(toasts.list()).toEqual([]);
   });
 
   it("still deletes when the workflows can't be read", async () => {

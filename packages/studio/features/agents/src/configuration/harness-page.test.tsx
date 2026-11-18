@@ -43,6 +43,9 @@ function Switchable({ host }: { host: Parameters<typeof HarnessPage>[0]["host"] 
     harness: "codex",
     instructions: "",
     maxSteps: 6,
+    skills: [],
+    knowledge: [],
+    connectors: [],
   } as const;
   return (
     <>

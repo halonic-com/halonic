@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Version } from "../api.ts";
 import { ChangesList } from "../changes-list.ts";
 import { fakeSource, settle } from "../source.test-helper.ts";
+import { buttonsNamed } from "../test-support/buttons.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ChangesView } from "./changes-page.tsx";
@@ -49,6 +50,14 @@ function createVersionButton(root: HTMLElement): HTMLButtonElement | undefined {
   return [...root.querySelectorAll("button")].find(
     (element) => element.textContent?.trim() === "Create version",
   );
+}
+
+function historyRow(root: HTMLElement, name: string): HTMLElement {
+  const found = [...root.querySelectorAll<HTMLElement>('[role="gridcell"]')].find((row) =>
+    row.textContent?.includes(name),
+  );
+  if (found === undefined) throw new Error(`no row ${name}`);
+  return found;
 }
 
 verifies("source-control.changes-phone", () => {
@@ -120,12 +129,8 @@ verifies("source-control.changes-phone", () => {
       const fake = changedModels();
       fake.setHistory(manyVersions(25));
       const root = await openPhonePage(fake);
-      const buttonNamed = (name: string) =>
-        [...root.querySelectorAll("button")].find(
-          (element) => element.textContent?.trim() === name,
-        );
-      act(() => buttonNamed("See all history")?.click());
-      const more = buttonNamed("Show more");
+      act(() => buttonsNamed(root, "See all history")[0]?.click());
+      const more = buttonsNamed(root, "Show more")[0];
       expect(more?.className).toContain("w-full");
       expect(more?.className).toContain("min-h-touch");
     });
@@ -156,6 +161,61 @@ verifies("source-control.changes-phone", () => {
       const focusedRow = document.activeElement?.closest("[data-row-id]");
       expect(focusedRow?.getAttribute("data-row-id")).toBe("v20");
       expect(document.activeElement?.textContent).toContain("Version 20");
+    });
+
+    it("opens a version as its own page and goes back to its row in History", async () => {
+      const fake = changedModels();
+      const versions = manyVersions(3).map((version) =>
+        version.id === "v2"
+          ? { ...version, notes: "Sorter replies in Dutch", files: ["agents/sorter.yaml"] }
+          : version,
+      );
+      fake.setHistory(versions);
+      const root = await openPhonePage(fake);
+      act(() => historyRow(root, "Version 2").click());
+      const heading = root.querySelector("h1");
+      expect(heading?.textContent).toBe("Version 2");
+      expect(document.activeElement).toBe(heading);
+      expect(root.textContent).toContain("Sam Lee · ");
+      expect(root.textContent).toContain("Sorter replies in Dutch");
+      expect(root.textContent).toContain("What's in it · 1 file");
+      expect(root.textContent).toContain("agents/sorter.yaml");
+      expect(root.textContent).not.toContain("Create version");
+      act(() => buttonsNamed(root, "Back to History")[0]?.click());
+      expect(root.querySelector("h1")?.textContent).toBe("Changes");
+      expect(document.activeElement?.closest("[data-row-id]")?.getAttribute("data-row-id")).toBe(
+        "v2",
+      );
+    });
+
+    it("shows the Changes page when a later read no longer has the open version, and stays there", async () => {
+      const fake = changedModels();
+      const versions = manyVersions(3);
+      fake.setHistory(versions);
+      const root = await openPhonePage(fake);
+      act(() => historyRow(root, "Version 2").click());
+      expect(root.querySelector("h1")?.textContent).toBe("Version 2");
+      fake.setHistory(versions.filter((version) => version.id !== "v2"));
+      fake.wake();
+      await act(settle);
+      expect(root.querySelector("h1")?.textContent).toBe("Changes");
+      fake.setHistory(versions);
+      fake.wake();
+      await act(settle);
+      expect(root.querySelector("h1")?.textContent).toBe("Changes");
+    });
+
+    it("unfolds History when going back to a version past the newest 5", async () => {
+      const fake = changedModels();
+      fake.setHistory(manyVersions(25));
+      const root = await openPhonePage(fake);
+      act(() => buttonsNamed(root, "See all history")[0]?.click());
+      act(() => historyRow(root, "Version 18").click());
+      act(() => buttonsNamed(root, "Back to History")[0]?.click());
+      expect(root.textContent).not.toContain("See all history");
+      expect(document.activeElement?.closest("[data-row-id]")?.getAttribute("data-row-id")).toBe(
+        "v18",
+      );
     });
 
     it("shows all of a short History with no See all history", async () => {

@@ -171,7 +171,7 @@ verifies("studio.workspace-runs", () => {
     expect((await runs.waiting()).map((run) => run.id)).toEqual([runId]);
     await expect(runs.send(runId, "approve")).rejects.toMatchObject({
       kind: "unavailable",
-      message: "Studio can't answer runs yet. Answer this one from the command line.",
+      message: "Studio can't answer runs yet. To answer this one, run this in a terminal:",
       fix: `halonic runs send ${shortRunId(runId)} approve`,
     });
   });

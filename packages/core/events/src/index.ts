@@ -6,6 +6,7 @@ export {
   blockedSites,
   type StepBlockedSites,
 } from "./blocked-sites.ts";
+export { providerNotes } from "./provider-notes.ts";
 export type {
   ApprovalResolver,
   CantTryReason,

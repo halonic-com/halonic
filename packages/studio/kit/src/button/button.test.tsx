@@ -59,6 +59,7 @@ verifies("kit.button", () => {
   );
 
   it.each([
+    ["xs", "min-h-5 px-2 text-caption"],
     ["sm", "min-h-control-sm px-2.5"],
     ["md", "min-h-control-md px-3"],
     ["lg", "min-h-control-lg px-4"],
@@ -69,11 +70,22 @@ verifies("kit.button", () => {
     expect(className).toContain("touch:hit-touch");
   });
 
-  it("renders sm and md at lg on a phone and a touch screen", () => {
-    for (const size of ["sm", "md"] as const) {
+  it("renders xs, sm and md at lg on a phone and a touch screen", () => {
+    for (const size of ["xs", "sm", "md"] as const) {
       const { className } = renderButton({ size, children: "Save" });
       expect(className).toContain("phone:min-h-control-lg");
       expect(className).toContain("touch:min-h-control-lg");
+    }
+  });
+
+  it("writes xs in the status bar's caption type and the other sizes in the body's strong type", () => {
+    expect(renderButton({ size: "xs", children: "Try again" }).className).not.toContain(
+      "text-body-strong",
+    );
+    for (const size of ["sm", "md", "lg", "touch"] as const) {
+      const { className } = renderButton({ size, children: "Save" });
+      expect(className).toContain("text-body-strong");
+      expect(className).not.toContain("text-caption");
     }
   });
 

@@ -1,10 +1,11 @@
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import type { SetTimer } from "@halonicjs/adapter-scheduler-node";
-import type { Clock, IdGenerator, Secrets } from "@halonicjs/ports";
+import type { BridgeApprovals, Clock, IdGenerator, Secrets } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { EngineService, type EngineServiceOptions } from "./engine-service.ts";
+import type { StudioHarnessHost } from "./studio-harness-host.ts";
 
 const location = "/acme";
 
@@ -211,7 +212,11 @@ verifies("studio.engine-service", () => {
 
       const refusal = await service.check(reply).catch((error: unknown) => error);
 
-      expect(refusal).toMatchObject({ kind: "unavailable" });
+      // The command line refuses Claude Code and Codex agents too, so the fix is the Harness page.
+      expect(refusal).toMatchObject({
+        kind: "unavailable",
+        fix: "Set writer to Halonic on its Harness page to run it now.",
+      });
       expect((refusal as Error).message).toContain("writer");
       expect(shell.calls).toEqual([]);
     });
@@ -219,7 +224,10 @@ verifies("studio.engine-service", () => {
     it("refuses an agent that lists a connector as `unavailable`", async () => {
       const service = serviceOn(fakeShell(), acmeFiles({ writer: "connectors: [mail]\n" }));
 
-      await expect(service.check(reply)).rejects.toMatchObject({ kind: "unavailable" });
+      await expect(service.check(reply)).rejects.toMatchObject({
+        kind: "unavailable",
+        fix: "Run this workflow from the command line.",
+      });
     });
 
     describe("with a model provider", () => {
@@ -365,7 +373,7 @@ verifies("studio.engine-service", () => {
           { agent: { hubId: "support", agentId: "writer", prompt: "Go." } },
           { routineKey: "support/weekly", at: "2026-11-15T10:00:00.000Z" },
         ),
-      ).rejects.toMatchObject({ kind: "unavailable" });
+      ).rejects.toMatchObject({ kind: "unavailable", fix: undefined });
       await service.close();
     });
 
@@ -399,6 +407,91 @@ verifies("studio.engine-service", () => {
         ),
       ).rejects.toThrow(RangeError);
       expect(lockCalls(shell)).toEqual([]);
+    });
+  });
+
+  describe("with an agent host", () => {
+    const reply = { hubId: "support", workflowId: "reply" };
+    const coder = acmeFiles({ writer: "harness: claude-code\n" });
+
+    /** A harness host that records its start, and keeps the approvals it was given. */
+    function fakeHarnessHost() {
+      const started: ReadonlySet<string>[] = [];
+      let approvalsOf: ((runId: string) => BridgeApprovals | undefined) | undefined;
+      const host: StudioHarnessHost = {
+        harnesses: {} as StudioHarnessHost["harnesses"],
+        proposalFolders: {
+          open: async () => "/acme-proposal",
+          folderOf: async () => null,
+          end: async () => {},
+        },
+        start: async (openRuns) => {
+          started.push(openRuns);
+        },
+      };
+      const openHarnessHost = async (given: typeof approvalsOf) => {
+        approvalsOf = given;
+        return host;
+      };
+      return { started, openHarnessHost, approvalsOf: (runId: string) => approvalsOf?.(runId) };
+    }
+
+    it("passes an agent in a harness, and still refuses one that lists a connector", async () => {
+      const { openHarnessHost } = fakeHarnessHost();
+      await expect(serviceOn(fakeShell(), coder, { openHarnessHost }).check(reply)).resolves.toBe(
+        undefined,
+      );
+      const mail = acmeFiles({ writer: "harness: claude-code\nconnectors: [mail]\n" });
+      await expect(
+        serviceOn(fakeShell(), mail, { openHarnessHost }).check(reply),
+      ).rejects.toMatchObject({ kind: "unavailable" });
+    });
+
+    it("passes a routine's agent in a harness, then refuses it as `unavailable` while agent runs aren't built", async () => {
+      const { openHarnessHost } = fakeHarnessHost();
+      const service = serviceOn(fakeShell(), coder, { openHarnessHost });
+
+      await expect(service.checkAgent({ hubId: "support", agentId: "writer" })).resolves.toBe(
+        undefined,
+      );
+      await expect(
+        service.startRoutine(
+          { agent: { hubId: "support", agentId: "writer", prompt: "Go." } },
+          { routineKey: "support/weekly", at: "2026-11-15T10:00:00.000Z" },
+        ),
+      ).rejects.toMatchObject({ kind: "unavailable" });
+      await service.close();
+    });
+
+    it("starts the harness host with the open runs before the engine, and serves the engine's approvals", async () => {
+      const harness = fakeHarnessHost();
+      const service = serviceOn(fakeShell(), coder, { openHarnessHost: harness.openHarnessHost });
+      await service.open();
+
+      expect(harness.started).toEqual([new Set()]);
+      // The engine's own approvals: with no harness call going on in the run, not approved.
+      const approvals = harness.approvalsOf("run_1");
+      const request = { callId: "toolu_1", tool: "Bash", args: {} };
+      const signal = new AbortController().signal;
+      await expect(approvals?.request(request, { signal })).resolves.toMatchObject({
+        approved: false,
+      });
+      await service.close();
+    });
+
+    it("opens the engine without harnesses when the agent host can't be reached, and says why", async () => {
+      const reported: unknown[] = [];
+      const unreachable = new Error("The agent host isn't running.");
+      const service = serviceOn(fakeShell(), coder, {
+        openHarnessHost: async () => {
+          throw unreachable;
+        },
+        reportError: (error) => reported.push(error),
+      });
+
+      await expect(service.open()).resolves.toBeDefined();
+      expect(reported).toEqual([unreachable]);
+      await service.close();
     });
   });
 });

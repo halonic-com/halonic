@@ -16,7 +16,8 @@ import {
   PluginSettingsSection,
   type SettingsSaveState,
 } from "../settings/plugin-settings-section.tsx";
-import { OPEN_PANEL, PLUGIN, quoted } from "./page-text.ts";
+import { Quoted } from "../ui/quoted.tsx";
+import { OPEN_PANEL, PLUGIN } from "./page-text.ts";
 import {
   CHECK_FOR_UPDATES,
   moreActionsFor,
@@ -122,9 +123,9 @@ export function PluginPage({
           <span className="shrink-0 text-label uppercase text-fg-subtle">{PLUGIN}</span>
           {/* A space for screen readers, so the heading reads "Plugin Weather". */}
           <span className="sr-only"> </span>
-          <span className="truncate text-body-strong" title={plugin.name}>
+          <bdi className="truncate text-body-strong" title={plugin.name}>
             {plugin.name}
-          </span>
+          </bdi>
         </h1>
         <SaveNote state={saveState} />
         {plugin.panel === undefined ? null : (
@@ -184,7 +185,9 @@ export function PluginPage({
       ) : null}
       <div className="flex max-w-reading flex-col gap-6 p-4">
         {manifest === undefined || manifest.description === "" ? null : (
-          <p className="text-body text-fg-muted wrap-anywhere">{quoted(manifest.description)}</p>
+          <p className="text-body text-fg-muted wrap-anywhere">
+            <Quoted text={manifest.description} />
+          </p>
         )}
         <StatusBox
           id={statusId}

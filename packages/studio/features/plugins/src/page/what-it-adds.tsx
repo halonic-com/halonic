@@ -1,6 +1,7 @@
 import type { Plugin } from "@halonicjs/format";
 import { StatusChip } from "@halonicjs/studio-kit";
 import { type ReactNode, useId } from "react";
+import { Quoted } from "../ui/quoted.tsx";
 import {
   ADDS_CARD,
   ADDS_CARDS,
@@ -10,7 +11,6 @@ import {
   IN_CTRL_K,
   ON_HOME,
   OPENS_IN_A_TAB,
-  quoted,
   RISK_WORDS,
   TOOLS_FOR_AGENTS,
   TOOLS_LINE,
@@ -61,7 +61,7 @@ export function WhatItAdds({ manifest }: { readonly manifest: Plugin }) {
                   <StatusChip tone="neutral">{RISK_WORDS[tool.risk]}</StatusChip>
                 </span>
                 <span className="text-small text-fg-muted wrap-anywhere">
-                  {quoted(tool.description)}
+                  <Quoted text={tool.description} />
                 </span>
               </li>
             ))}
@@ -107,7 +107,7 @@ function Titles({ titles, where }: { readonly titles: readonly string[]; readonl
       {titles.map((title, index) => (
         // Two commands may share a title; the manifest's order never changes while it shows.
         <li key={index} className="text-small wrap-anywhere">
-          {title} <span className="text-fg-subtle">· {where}</span>
+          <bdi>{title}</bdi> <span className="text-fg-subtle">· {where}</span>
         </li>
       ))}
     </ul>
