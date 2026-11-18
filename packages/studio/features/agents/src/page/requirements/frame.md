@@ -8,7 +8,7 @@ The agents feature shall open an agent in its tab as a page with the letter avat
 
 ## Examples
 
-- Given the agent "Sorter", then the page shows "AGENT", "Sorter" and "Runs aren't listed by agent yet. See them in Runs.".
+- Given the agent "Sorter", then the page shows "AGENT", "Sorter" and "Runs aren't listed by agent yet. See them on the Runs page.".
 - Given the read takes over 300 ms, then screen readers hear "Loading sorter"; after 10 s the page adds "Still loading" and **Try again**.
 - Given the read failed, then the page shows "Couldn't load this agent", the reason and **Try again**; when the read then works, the name takes the focus.
 - Given the agent isn't in the workspace, then the page says the agent is gone and offers the Agents list.

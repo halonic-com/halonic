@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-1299 (T6 PR 5a); flow-agents 5.1 and 5.2; microcopy 8.5
 
-The agents feature shall give the agent's Configuration a Model page that lists the model aliases of the agent's hub in a picker and saves the choice when it is made and, while the agent's file names no model, shows the default as "Workspace default (*name*)", or "Workspace default" when the alias is called `default`, instead of "Choose a model", and that shows the model call limit ("The most model calls in one step. Empty means 6. Claude Code and Codex set their own."), saves it after a pause in typing and when the person leaves the field, saves 6 when it is empty, and, when the aliases can't be read, says "Couldn't load the models" with **Try again** instead of an empty picker, and, for anything that is not a whole number from 1 to 200, saves nothing and says "Enter a whole number from 1 to 200.".
+The agents feature shall give the agent's Configuration a Model page that lists the model aliases of the agent's hub in a picker and saves the choice when it is made and, while the agent's file names no model, shows the default as "Workspace default (*name*)", or "Workspace default" when the alias is called `default`, instead of "Choose a model", and that shows the model call limit ("The most model calls in one step. Empty means 6. Claude Code and Codex agents don't use it."), saves it after a pause in typing and when the person leaves the field, saves 6 when it is empty, and, when the aliases can't be read, says "Couldn't load the models" with **Try again** instead of an empty picker, and, for anything that is not a whole number from 1 to 200, saves nothing and says "Enter a whole number from 1 to 200.".
 
 ## Examples
 

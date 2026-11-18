@@ -42,7 +42,7 @@ export function aliasUpdatedLine(name: string): string {
 
 /** The hint under "Fallbacks": the order they are tried in, and which aliases can be named. */
 export function fallbacksHint(otherAliases: readonly string[]): string {
-  const base = "Tried in order when this one is down, slow or busy.";
+  const base = "Tried in order when this one is down, slow or busy, or has no key set.";
   return otherAliases.length === 0 ? base : `${base} Other aliases: ${otherAliases.join(", ")}`;
 }
 

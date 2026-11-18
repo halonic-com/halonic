@@ -13,5 +13,5 @@ export const pageWords = {
   couldntSave: (reason: string) => `Couldn't save: ${reason}`,
   runsHeading: "Runs",
   /** R9: the Runs list can't show one agent's runs yet, so this points there (HAL-12642). */
-  noRuns: "Runs aren't listed by agent yet. See them in Runs.",
+  noRuns: "Runs aren't listed by agent yet. See them on the Runs page.",
 } as const;

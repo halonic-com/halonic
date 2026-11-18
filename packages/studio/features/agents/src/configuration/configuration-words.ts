@@ -23,7 +23,7 @@ export const configurationWords = {
   /** `maxSteps` counts per step, and Claude Code and Codex don't read it (HAL-12642). */
   turnLimit: "Model call limit",
   turnLimitHint:
-    "The most model calls in one step. Empty means 6. Claude Code and Codex set their own.",
+    "The most model calls in one step. Empty means 6. Claude Code and Codex agents don't use it.",
   /** Microcopy 8.5. */
   turnLimitInvalid: "Enter a whole number from 1 to 200.",
   harness: "Harness",
