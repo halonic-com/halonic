@@ -98,13 +98,19 @@ async fn download<R: Runtime>(app: &AppHandle<R>, found: &Update) {
         }
         Ok(None) => inner.state = Some(UpdateState::UpToDate),
         Err(error) if bad_signature(&error) => {
-            eprintln!("updates: the download of {version} was deleted: {error}");
+            halonic_shell_log::record(
+                "updates",
+                format!("the download of {version} was deleted: {error}"),
+            );
             let attempts = inner.record.count_bad_signature(&version);
             inner.state = Some(UpdateState::SignatureMismatch { version, attempts });
             inner.save();
         }
         Err(error) => {
-            eprintln!("updates: the download of {version} failed: {error}");
+            halonic_shell_log::record(
+                "updates",
+                format!("the download of {version} failed: {error}"),
+            );
             inner.state = Some(UpdateState::DownloadFailed {
                 reason: download_failure(&error),
                 version,

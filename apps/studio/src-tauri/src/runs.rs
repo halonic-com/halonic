@@ -93,7 +93,10 @@ impl AppendAnswer {
                 release_error,
             } => {
                 if let Some(error) = release_error {
-                    eprintln!("run_append: the lock of run {run_id} wasn't released: {error}");
+                    halonic_shell_log::record(
+                        "run_append",
+                        format!("the lock of run {run_id} wasn't released: {error}"),
+                    );
                 }
                 Self {
                     ok: true,

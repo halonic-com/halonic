@@ -48,7 +48,7 @@ const CLEANUP_LIMIT: Duration = Duration::from_secs(20);
 pub(super) fn clean_import_mounts(wsl: &Path) {
     let result = runtime_command(wsl, RuntimeStep::CleanupImportMounts)
         .and_then(|command| run_runtime_step_within(command, CLEANUP_LIMIT));
-    eprintln!("{}", cleanup_log(result));
+    halonic_shell_log::record("wsl", cleanup_log(result));
 }
 
 /// The log line for the clean-up's ending.

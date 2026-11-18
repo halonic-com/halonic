@@ -1535,6 +1535,7 @@ dependencies = [
 name = "halonic-agent-host"
 version = "0.1.0"
 dependencies = [
+ "halonic-shell-log",
  "serde",
  "serde_json",
  "sha2",
@@ -1666,6 +1667,10 @@ name = "halonic-secrets"
 version = "0.1.0"
 
 [[package]]
+name = "halonic-shell-log"
+version = "0.1.0"
+
+[[package]]
 name = "halonic-studio"
 version = "0.1.0"
 dependencies = [
@@ -1685,6 +1690,7 @@ dependencies = [
  "halonic-run-lock",
  "halonic-run-store",
  "halonic-secrets",
+ "halonic-shell-log",
  "halonic-trust-grant",
  "halonic-trust-store",
  "halonic-update-state",
@@ -1707,6 +1713,7 @@ version = "0.1.0"
 dependencies = [
  "halonic-file-identity",
  "halonic-git-guard",
+ "halonic-shell-log",
  "halonic-trust-store",
  "serde",
  "serde_json",
