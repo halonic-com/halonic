@@ -221,6 +221,7 @@ verifies("routines.page.frame-and-states", () => {
       places: { add: () => {} },
       commands: { add: () => {} },
       itemKinds: { add: () => {} },
+      itemPage: { addSection: () => {} },
       search: { addProvider: (provider: never) => providers.push(provider) },
     } as never);
     const context = {

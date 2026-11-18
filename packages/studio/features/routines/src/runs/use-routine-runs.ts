@@ -10,9 +10,10 @@ export type RoutineRunsLoad =
 
 /**
  * Reads the routine's runs, skipped times and queued times from the host, and again each time
- * `routine` is a new read of the routine; before it is read nothing is asked (the host tells the page about every run that starts or
- * ends). A read after the first keeps what is shown, so a refresh never blanks the view, and a
- * failed refresh keeps it too.
+ * `routine` is a new read of the routine; before it is read nothing is asked (the host tells the
+ * page about every run that starts or ends). A read after the first keeps what is shown, so a
+ * refresh never blanks the view, and a failed refresh keeps it too. A different routine starts
+ * from loading, so it never shows another routine's runs.
  */
 export function useRoutineRuns(
   host: RoutinesHost,
@@ -22,6 +23,10 @@ export function useRoutineRuns(
   const [attempt, setAttempt] = useState(0);
   const hubId = routine?.hubId;
   const id = routine?.id;
+
+  useEffect(() => {
+    setLoad({ kind: "loading" });
+  }, [hubId, id]);
 
   useEffect(() => {
     if (hubId === undefined || id === undefined) return;
