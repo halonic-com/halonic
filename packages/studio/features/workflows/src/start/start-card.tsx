@@ -13,6 +13,10 @@ import { startWords as words } from "./start-words.ts";
 
 /** Props for {@link StartRunCard}. */
 export interface StartRunCardProps {
+  /** The workflow's name, which the card's title carries. */
+  readonly workflowName: string;
+  /** The input of the workflow's first test as JSON text, or `undefined` when there is none. */
+  readonly firstTestInput: () => Promise<string | undefined>;
   /** Starts the run with the parsed input; resolves with the new run's id. */
   readonly start: (input: Record<string, unknown>) => Promise<{ readonly runId: string }>;
   /** The reason of an engine that can't be reached, in the words for where Studio runs. */
@@ -67,14 +71,38 @@ interface StartFailure {
  * **Start run**. A failed start stays in the card with the input kept, in a danger Callout that
  * takes focus, with **Try again** (D7), unless the refusal names a next step: then the step is the second line and there is no **Try again**.
  */
-export function StartRunCard({ start, notAnswering, onStarted, onClose }: StartRunCardProps) {
+export function StartRunCard({
+  workflowName,
+  firstTestInput,
+  start,
+  notAnswering,
+  onStarted,
+  onClose,
+}: StartRunCardProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   const callout = useRef<CalloutHandle>(null);
   const [text, setText] = useState("{}");
+  // Set while the input still holds what the first test gave, so the note says where it came from.
+  const [filled, setFilled] = useState(false);
+  const typed = useRef(false);
+  // Read once, when the card opens: a later render hands over a new function, not a new question.
+  const readFirstInput = useRef(firstTestInput);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | undefined>();
   const [failure, setFailure] = useState<StartFailure | undefined>();
   useEffect(() => heading.current?.focus(), []);
+  // The input starts from the first test's; typing before it has been read wins over it.
+  useEffect(() => {
+    let stopped = false;
+    void readFirstInput.current().then((input) => {
+      if (stopped || typed.current || input === undefined) return;
+      setText(input);
+      setFilled(true);
+    });
+    return () => {
+      stopped = true;
+    };
+  }, []);
   useEffect(() => {
     if (failure !== undefined) callout.current?.focus();
   }, [failure]);
@@ -110,7 +138,7 @@ export function StartRunCard({ start, notAnswering, onStarted, onClose }: StartR
         <div>
           <p className="text-caption text-fg-muted">{words.cardKind}</p>
           <h2 ref={heading} tabIndex={-1} className="text-title">
-            {words.run}
+            {words.runNamed(workflowName)}
           </h2>
         </div>
         <Button
@@ -121,12 +149,18 @@ export function StartRunCard({ start, notAnswering, onStarted, onClose }: StartR
           onClick={onClose}
         />
       </div>
-      <Field label={words.inputField} error={problem ?? null}>
+      <Field
+        label={words.inputField}
+        error={problem ?? null}
+        {...(filled ? { hint: words.filledFromFirstTest } : {})}
+      >
         <TextArea
           value={text}
           readOnly={busy}
           submitOnCtrlEnter
           onChange={(event) => {
+            typed.current = true;
+            setFilled(false);
             setProblem(undefined);
             setText(event.target.value);
           }}
@@ -145,8 +179,8 @@ export function StartRunCard({ start, notAnswering, onStarted, onClose }: StartR
           {failure.fix !== undefined && <p>{withFullStop(failure.fix)}</p>}
         </Callout>
       )}
-      {failure === undefined && (
-        <div>
+      <div className="flex gap-2">
+        {failure === undefined && (
           <Button
             variant="primary"
             size="sm"
@@ -156,8 +190,11 @@ export function StartRunCard({ start, notAnswering, onStarted, onClose }: StartR
           >
             {words.startRun}
           </Button>
-        </div>
-      )}
+        )}
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          {words.cancel}
+        </Button>
+      </div>
     </aside>
   );
 }

@@ -1,6 +1,10 @@
 /** The words of starting a run and of the strip that shows one (microcopy 9.6 and 9.7; states C18, C19, C25, C26, D7, D8). */
 export const startWords = {
   run: "Run",
+  /** The card's title: the workflow's name follows (checklist 10.13). */
+  runNamed: (name: string) => `Run ${name}`,
+  filledFromFirstTest: "Filled from the first test.",
+  cancel: "Cancel",
   cardKind: "START A RUN",
   closeCard: "Close",
   inputField: "Input (JSON)",
