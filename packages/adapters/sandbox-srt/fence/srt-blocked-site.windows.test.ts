@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer, type Server, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { SandboxSession } from "@halonicjs/ports";
+import type { SandboxBlock, SandboxSession } from "@halonicjs/ports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { SrtSandbox } from "../src/srt-sandbox.ts";
 
@@ -101,6 +101,7 @@ describe("a site the profile doesn't allow, on Windows", () => {
   let port: number;
   let connections = 0;
   const open = new Set<Socket>();
+  const blocks: SandboxBlock[] = [];
 
   /** Runs the probe inside the fence for one way to `host` and returns its outcome. */
   async function attempt(way: string, host: string): Promise<unknown> {
@@ -152,6 +153,7 @@ describe("a site the profile doesn't allow, on Windows", () => {
       },
       timeLimitMs: 120_000,
     });
+    session.onBlocked((block) => blocks.push(block));
   });
 
   afterAll(async () => {
@@ -191,5 +193,13 @@ describe("a site the profile doesn't allow, on Windows", () => {
     expect(await attempt("connect", "allowed.example")).toBe(200);
     expect(await attempt("socks", "allowed.example")).toBe(0);
     expect(connections).toBe(2);
+  });
+
+  // Last, as it makes a connection to the allowed site, which the test above counts.
+  it("is reported to the session's listeners, while the allowed site isn't (HAL-12648)", async () => {
+    blocks.length = 0;
+    expect(await attempt("connect", "blocked.example")).toBe(403);
+    expect(await attempt("connect", "allowed.example")).toBe(200);
+    expect(blocks).toEqual([{ kind: "network", host: "blocked.example", port }]);
   });
 });

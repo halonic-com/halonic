@@ -4,6 +4,7 @@ import { basename, join } from "node:path";
 import { startFolder } from "@halonicjs/adapter-system-node";
 import { skillScriptsRefusal, touchesSkillScripts } from "@halonicjs/format";
 import type {
+  SandboxBlock,
   SandboxBlockListener,
   SandboxCommand,
   SandboxExit,
@@ -249,6 +250,7 @@ export class SrtSession implements SandboxSession {
       launcherEnv: this.#launcherEnv,
       programEnv: this.#programEnv,
       withoutSrtEnv: reachesNoNetwork(this.profile),
+      onNetworkBlock: (block) => this.#report(block),
     });
     const started: Started = { program, stopped: false, timedOut: false };
     this.#started.add(started);
@@ -274,6 +276,11 @@ export class SrtSession implements SandboxSession {
     return () => {
       this.#listeners.delete(listener);
     };
+  }
+
+  /** Tells every listener about one refused access. */
+  #report(block: SandboxBlock): void {
+    for (const listener of this.#listeners) listener(block);
   }
 
   close(): Promise<void> {
@@ -336,7 +343,7 @@ export class SrtSession implements SandboxSession {
   async #checkGitFolder(): Promise<string[]> {
     const { undone, failed } = await this.#undoGitChanges();
     for (const path of [...undone, ...failed]) {
-      for (const listener of this.#listeners) listener({ kind: "file", path, access: "write" });
+      this.#report({ kind: "file", path, access: "write" });
     }
     return failed;
   }

@@ -31,6 +31,14 @@ session's own private folders refuse it. When a session ends, it undoes any `com
 file the program changed in the working folder's git folders and moves aside any `.git` the program
 planted at a gitlink, reporting each as a refused write.
 
+Each network request srt's proxy refuses a program is reported to `onBlocked` as a `network` block
+with the host and port it asked for, which the run page shows as Blocked sites. srt's command line
+keeps these to itself, so our patch of srt (`patches/`) adds `--report-fd`: srt writes each refusal's
+line to a pipe the runner reads outside the fence, and the program gets `/dev/null` in its place (on
+Windows, only its three standard streams). A connection the fence stops below the proxy, such as one
+straight at an address on Windows, is refused all the same but not reported: only the proxy knows the
+name that was asked for.
+
 On Linux and macOS the launcher gets its own temp folder, private to the user, directly under
 `/tmp` and removed when the session ends. Its name holds the host's process id
 (`hsrt-<pid>-…`): it isn't in the journal, so when a session opens it first removes the user's
