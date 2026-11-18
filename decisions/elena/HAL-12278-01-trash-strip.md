@@ -3,6 +3,7 @@
 - Task: HAL-12278
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12278 (Liam's design check on HAL-12234 against the approved microcopy 2, row "Open tab whose item was deleted"; a team decision with no board card, HAL-2282 rule, because it builds on approved screens)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:i8uvxsdmQb1Hhkg56eEWvZiZ2Bhb/MEb/Mzz4L51HGhn1nraBfR0RDzyyhII22mJex7hWtmWfRvmlHhUvNZhCA==
 
 ## What changes
 
