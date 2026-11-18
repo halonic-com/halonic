@@ -3,6 +3,7 @@
 - Task: HAL-12370
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12363 (Sofia's UX check, rows L9 to L12: small wording and fallbacks on the approved plugin screens, a team decision under HAL-2282; same words as microcopy revision 109 on HAL-751)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+b8nr9pPa7i4GPWWT9TByfvqFNCc5VH7mOdZtG0JPAteZDuF+13YEBfPp0jpzBbHs1sPADkwfUjBLHbOsd8vDA==
 
 ## What changes
 
