@@ -216,7 +216,7 @@ verifies("cli.doctor-windows-drive", () => {
     expect(check(lines, "Workspace")).toEqual([
       "! Workspace   acme · trusted on this computer",
       "              The workspace is on the Windows drive /mnt/c, so runs are slower. If Studio on Windows opens this folder, keep it there.",
-      "              Fix: otherwise, move it into your Linux home folder (~), then run halonic doctor again.",
+      "              Fix: if you use it only from the command line, move it into your Linux home folder (~), then run halonic doctor again.",
       "              More: https://docs.halonic.dev/security/sandbox/#wsl2-folder",
     ]);
     expect(lines.at(-1)).toBe("No problems. 1 warning.");

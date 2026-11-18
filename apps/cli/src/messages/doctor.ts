@@ -65,7 +65,7 @@ export const doctorMessages = defineMessages("doctor", {
     phrase`The workspace is on the Windows drive ${drive}, so runs are slower. If Studio on Windows opens this folder, keep it there.`,
   /** Under {@link onWindowsDrive}, for a folder only the CLI uses (HAL-12873). */
   moveToLinuxHome: () =>
-    phrase`Fix: otherwise, move it into your Linux home folder (~), then run halonic doctor again.`,
+    phrase`Fix: if you use it only from the command line, move it into your Linux home folder (~), then run halonic doctor again.`,
 
   /** Models ✓ for a model server on this computer; `loaded` is left out when no model is loaded. */
   answering: (server: string, address: string, loaded?: Phrase) =>
