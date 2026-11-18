@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-12244; requirement `ports.tunnel-resolver`; HAL-12354 (the WebSocket client and its limits)
 
-The phone's transport shall give a connection only when its first try opens, and shall otherwise say why the try failed: the phone's own network is down, it timed out after 10 seconds, the computer refused it, or the computer was unreachable. Once open, it shall reconnect by itself after a drop, waiting by the shared backoff rule, without a limit on tries, and shall report each failed try with its reason. A frame sent while the state isn't open shall be refused, and no frame shall be queued or sent again on a later connection. It shall accept binary WebSocket frames of at most 65,536 bytes; a text frame or a larger frame shall drop the connection. When the session layer drops a connection, the transport shall reconnect after the backoff delay as after a drop. Pausing shall close the connection and stop every timer; resuming shall connect at once and start the backoff from the first try. Closing shall end its events.
+The phone's transport shall give a connection only when its first try opens, and shall otherwise say why the try failed: the phone's own network is down, it timed out after 10 seconds, the computer refused it, or the computer was unreachable. Once open, it shall reconnect by itself after a drop, waiting by the shared backoff rule, without a limit on tries, and shall report each failed try with its reason. A frame sent while the state isn't open, or meant for an earlier connection, shall be refused, and no frame shall be queued or sent again on a later connection. A frame that doesn't go out within 10 seconds shall drop the connection, so a peer that stops reading can't hold up a pause or a close. It shall accept binary WebSocket frames of at most 65,536 bytes; a text frame or a larger frame shall drop the connection. When the session layer drops a connection that is still open, the transport shall reconnect after the backoff delay as after a drop. Pausing shall close the connection and stop every timer; resuming shall connect at once and start the backoff from the first try. Closing shall end its events.
 
 ## Examples
 
@@ -20,3 +20,9 @@ The phone's transport shall give a connection only when its first try opens, and
 - Given a gateway that sends a text frame or a frame of 65,537 bytes,
   when it arrives,
   then the transport drops the connection and reconnects.
+- Given a transport that reconnected after a drop,
+  when a frame meant for the dropped connection is sent,
+  then it is refused and the new connection never receives it.
+- Given a gateway that stops reading,
+  when the socket's buffers are full and a frame can't go out in time,
+  then the transport drops the connection, reconnects, and still takes a pause.

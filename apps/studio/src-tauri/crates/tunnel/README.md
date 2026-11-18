@@ -6,7 +6,7 @@ The phone's end of the end-to-end session with the computer's remote gateway (tu
 - `FrameKind`, `read_frame` and `read_refusal`: the binary frames, their size limits and the two cleartext refusals, `handshake-failed` and `pair-refused`, read exactly as the host writes them and nothing else.
 
 - `Endpoint`: a `wss:`, `https:` or `tcp:` endpoint from a pairing, and the gateway's WebSocket URL there.
-- `Transport`: the byte pipe to one gateway, the `TunnelTransport` port's rules in Rust. It reconnects with `Backoff::TUNNEL`, refuses frames while not open and never resends, and pauses and resumes. Each `Open` is a new connection for the session layer to handshake on. `tokio-tungstenite` does only the upgrade and the frames, capped at one session frame. TLS comes from the `Dialer`'s rustls config, which the shell builds with the platform verifier.
+- `Transport`: the byte pipe to one gateway, the `TunnelTransport` port's rules in Rust. It reconnects with `Backoff::TUNNEL`, refuses frames while not open and never resends, and pauses and resumes. Each `Opened` event is a new connection for the session layer to handshake on, with an id that its frames and drops carry, so nothing meant for one connection reaches the next. Sends and closes have time limits (`Timeouts::TUNNEL`), so a peer that stops reading can't hold up a pause. `tokio-tungstenite` does only the upgrade and the frames, capped at one session frame. TLS comes from the `Dialer`'s rustls config, which the shell builds with the platform verifier.
 
 Still to come in this crate: the Noise handshakes with `snow` (XXpsk3 to pair, IK to reconnect), rekeying, and the phone's connection states on top of the transport.
 

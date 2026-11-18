@@ -27,4 +27,4 @@ pub use frames::{
     FrameKind, MAX_FRAME_BYTES, MAX_HANDSHAKE_BYTES, MAX_NAME_BYTES, NOISE_MAX_MESSAGE_BYTES,
     PairRefusedReason, Refusal, frame, read_frame, read_refusal,
 };
-pub use transport::{SendError, Transport, TransportEvent, TransportState};
+pub use transport::{ConnectionId, SendError, Timeouts, Transport, TransportEvent, TransportState};

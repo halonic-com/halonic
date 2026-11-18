@@ -52,9 +52,15 @@ pub struct Dialer {
 }
 
 impl Dialer {
-    /// Dials TLS endpoints with `tls`, and `tcp:` endpoints in plain.
+    /// Dials TLS endpoints with `tls`, and `tcp:` endpoints in plain. The
+    /// WebSocket upgrade is HTTP/1.1, so it offers only that in ALPN, even
+    /// when the shell's config also offers `h2` for its other requests.
     pub fn new(tls: Arc<ClientConfig>) -> Self {
-        Self { tls: Some(tls) }
+        let mut tls = ClientConfig::clone(&tls);
+        tls.alpn_protocols = vec![b"http/1.1".to_vec()];
+        Self {
+            tls: Some(Arc::new(tls)),
+        }
     }
 
     /// Dials `tcp:` endpoints only; a TLS endpoint is unreachable. For
