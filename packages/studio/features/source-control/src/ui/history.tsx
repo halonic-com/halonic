@@ -5,6 +5,8 @@ import type { ChangesList, HistoryState } from "../changes-list.ts";
 import { historyWords } from "../changes-words.ts";
 import { groupByDay, timeOfDay } from "../history-days.ts";
 import { loadFailureReason } from "../load-failure.ts";
+import { GoBackButton, GoBackPartialCallout } from "./go-back.tsx";
+import { useGoBack } from "./use-go-back.ts";
 import type { OpenVersion } from "./use-open-version.ts";
 import { VersionFacts } from "./version-page.tsx";
 
@@ -39,7 +41,7 @@ export interface HistoryProps {
  * focus on its row, unfolding See all history if the row is past the newest 5. There (2.12) each
  * row ends in a chevron, and a version the shared copy lacks carries "Not shared yet".
  *
- * Each item of a version has Restore just this in its ⋮. Not here yet: Go back.
+ * Each item of a version has Restore just this in its ⋮, and a version has Go back to this version.
  */
 export function History({
   list,
@@ -292,7 +294,7 @@ function HistoryFooter({
 }
 
 /**
- * The picked version: who, when, its notes and what's in it. Never only on hover. Its title takes
+ * The picked version: who, when, its notes, what's in it and Go back. Never only on hover. Its title takes
  * focus when it opens, and Escape puts focus back on the version's row.
  */
 function Details({
@@ -311,6 +313,7 @@ function Details({
     event.preventDefault();
     onEscape();
   };
+  const going = useGoBack(list);
   return (
     <section
       aria-label={historyWords.detailsLabel(version.name)}
@@ -321,6 +324,8 @@ function Details({
         {version.name}
       </h3>
       <VersionFacts version={version} list={list} level="details" />
+      <GoBackPartialCallout going={going} />
+      <GoBackButton version={version} list={list} going={going} />
     </section>
   );
 }

@@ -4,6 +4,8 @@ import type { Version } from "../api.ts";
 import type { ChangesList } from "../changes-list.ts";
 import { historyWords } from "../changes-words.ts";
 import { fullDate } from "../history-days.ts";
+import { GoBackBar, GoBackPartialCallout } from "./go-back.tsx";
+import { useGoBack } from "./use-go-back.ts";
 import { VersionItems } from "./version-items.tsx";
 
 /** Props for {@link VersionPage}. */
@@ -15,26 +17,30 @@ export interface VersionPageProps {
 
 /**
  * A version on a phone, as its own page (checklist part 2, 2.14): Back to History, the version's
- * name as the `h1`, who and when, the notes and what's in it, each item with Restore just this.
- * Focus starts on the heading, so a screen reader says where it is.
- *
- * Not here yet: the bottom bar's Go back to this version.
+ * name as the `h1`, who and when, the notes and what's in it, each item with Restore just this,
+ * and the bottom bar's Go back to this version. Focus starts on the heading, so a screen reader
+ * says where it is.
  */
 export function VersionPage({ version, list, onBack }: VersionPageProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
   const headingId = useId();
+  const going = useGoBack(list);
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-4">
-      <span className="self-start">
-        <Button variant="ghost" size="touch" onClick={onBack}>
-          {historyWords.back}
-        </Button>
-      </span>
-      <h1 id={headingId} ref={heading} tabIndex={-1} className="text-title outline-none">
-        {version.name}
-      </h1>
-      <VersionFacts version={version} list={list} level="page" />
+    <section aria-labelledby={headingId} className="flex min-h-full flex-col">
+      <div className="flex flex-1 flex-col gap-4 p-4">
+        <span className="self-start">
+          <Button variant="ghost" size="touch" onClick={onBack}>
+            {historyWords.back}
+          </Button>
+        </span>
+        <GoBackPartialCallout going={going} />
+        <h1 id={headingId} ref={heading} tabIndex={-1} className="text-title outline-none">
+          {version.name}
+        </h1>
+        <VersionFacts version={version} list={list} level="page" />
+      </div>
+      <GoBackBar version={version} list={list} going={going} />
     </section>
   );
 }

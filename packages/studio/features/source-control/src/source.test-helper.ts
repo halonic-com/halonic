@@ -94,6 +94,17 @@ export function fakeSource(initial: ChangesRead) {
       if (atVersionFailure !== undefined) throw atVersionFailure;
       return atVersion.get(`${versionId}:${path}`) ?? null;
     },
+    listChangedSince: async (versionId) => {
+      if (atVersionFailure !== undefined) throw atVersionFailure;
+      const inVersion = [...atVersion.keys()]
+        .filter((key) => key.startsWith(`${versionId}:`))
+        .map((key) => key.slice(versionId.length + 1));
+      const paths = [...new Set([...texts.keys(), ...inVersion])];
+      return paths.filter(
+        (path) =>
+          (texts.get(path)?.after ?? null) !== (atVersion.get(`${versionId}:${path}`) ?? null),
+      );
+    },
     readHistory: async (limit) => {
       historyLimits.push(limit);
       if (historyFailure !== undefined) throw historyFailure;
@@ -207,7 +218,10 @@ export function fakeSource(initial: ChangesRead) {
     setAtVersion: (versionId: string, path: string, text: string) => {
       atVersion.set(`${versionId}:${path}`, text);
     },
-    /** Makes reading a file in a version fail with `error`; `undefined` makes it work again. */
+    /**
+     * Makes reading a file in a version, or what changed since one, fail with `error`; `undefined`
+     * makes it work again.
+     */
     failAtVersion: (error: unknown) => {
       atVersionFailure = error;
     },

@@ -1,9 +1,8 @@
-import type { VcsChange } from "@halonicjs/ports";
 import type { VersionDialogOutcome } from "./api.ts";
 import type { ChangedFile, ChangesListState, ListHost } from "./changes-list-state.ts";
 import { versionWords } from "./changes-words.ts";
 import { loadFailureReason } from "./load-failure.ts";
-import { versionMessage } from "./version-name.ts";
+import { versionMessage, versionPaths } from "./version-name.ts";
 
 /**
  * The steps of Create version: opening it from the Changes page or from another feature,
@@ -78,7 +77,8 @@ export class VersionSteps {
     const left = only === undefined ? undefined : new Set(only);
     const files = this.files.filter((file) => left === undefined || left.has(file.path));
     if (read?.kind !== "ready" || files.length === 0) return versionWords.nothingToCreate;
-    const paths = versionPaths(read.changes, new Set(files.map((file) => file.path)));
+    const chosen = new Set(files.map((file) => file.path));
+    const paths = versionPaths(read.changes.filter((change) => chosen.has(change.path)));
     try {
       await this.#host.source.createVersion({ message: versionMessage(name, notes), paths });
     } catch (error) {
@@ -101,17 +101,4 @@ export class VersionSteps {
     this.#answer = undefined;
     answer?.(outcome);
   }
-}
-
-/**
- * The paths git records for a version of the `chosen` files. A renamed file is two paths to git:
- * the old one goes away, the new one comes in. Each path is listed once.
- */
-function versionPaths(changes: readonly VcsChange[], chosen: ReadonlySet<string>): string[] {
-  const paths = changes.flatMap((change) =>
-    chosen.has(change.path)
-      ? [change.path, ...(change.from === undefined ? [] : [change.from])]
-      : [],
-  );
-  return [...new Set(paths)];
 }
