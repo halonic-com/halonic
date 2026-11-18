@@ -1,4 +1,4 @@
-import { Button } from "@halonicjs/studio-kit";
+import { Button, MaximiseIcon, PlusIcon } from "@halonicjs/studio-kit";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowView } from "../api.ts";
 import { boxesFor } from "../canvas/auto-layout.ts";
@@ -8,6 +8,13 @@ import { Arrows } from "./arrows.tsx";
 import { pageWords } from "./page-words.ts";
 import { PointOfLight } from "./point-of-light.tsx";
 import { DOT_VAR, dotCentre, StepCard } from "./step-card.tsx";
+import { MinusIcon } from "./zoom-icons.tsx";
+
+/**
+ * The room the zoom buttons take at the left edge of the canvas, in pixels: their width and the
+ * margin round them. A fit leaves it free, so no card sits under them.
+ */
+const ZOOM_GUTTER = 56;
 
 /** What a viewport is taken to measure where the browser can't say (a test, a hidden tab). */
 const FALLBACK_VIEWPORT = { width: 800, height: 600 };
@@ -77,7 +84,11 @@ export function WorkflowCanvas({
     width: viewport.current?.clientWidth || FALLBACK_VIEWPORT.width,
     height: viewport.current?.clientHeight || FALLBACK_VIEWPORT.height,
   });
-  const fitAll = () => setView(fitView(boundsOf([...boxes.values()]), size()));
+  const fitAll = () => {
+    const { width, height } = size();
+    const fitted = fitView(boundsOf([...boxes.values()]), { width: width - ZOOM_GUTTER, height });
+    setView({ ...fitted, pan: { x: fitted.pan.x + ZOOM_GUTTER, y: fitted.pan.y } });
+  };
   // Fit once, before the first paint, so the canvas never shows its steps in the wrong place. A
   // view the page kept stays as it was.
   useLayoutEffect(() => {
@@ -148,24 +159,28 @@ export function WorkflowCanvas({
           color={activeDot === undefined ? "" : DOT_VAR[activeDot.mark]}
         />
       </div>
-      <div className="absolute bottom-3 left-3 flex gap-1">
+      <div className="absolute bottom-3 left-3 flex flex-col gap-1">
         <Button
           variant="secondary"
           size="sm"
+          icon={<PlusIcon />}
+          label={pageWords.zoomIn}
           onClick={() => setView((now) => zoomAround(now, 1.25, centre()))}
-        >
-          {pageWords.zoomIn}
-        </Button>
+        />
         <Button
           variant="secondary"
           size="sm"
+          icon={<MinusIcon />}
+          label={pageWords.zoomOut}
           onClick={() => setView((now) => zoomAround(now, 0.8, centre()))}
-        >
-          {pageWords.zoomOut}
-        </Button>
-        <Button variant="secondary" size="sm" onClick={fitAll}>
-          {pageWords.fit}
-        </Button>
+        />
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<MaximiseIcon />}
+          label={pageWords.fit}
+          onClick={fitAll}
+        />
       </div>
     </div>
   );

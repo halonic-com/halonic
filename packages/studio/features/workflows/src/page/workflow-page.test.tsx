@@ -30,6 +30,10 @@ afterEach(() => {
 const surface = (page: HTMLElement) =>
   page.querySelector<HTMLElement>("[data-testid=canvas-surface]");
 
+/** A button that has only an icon, by its name. */
+const buttonLabelled = (page: HTMLElement, name: string) =>
+  page.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`) ?? undefined;
+
 verifies("workflows.page.frame-and-states", () => {
   it("shows the name and the cards at once, with no skeleton and no ⤢ or ✕", async () => {
     const { host } = memoryHost([], [], [reply]);
@@ -166,7 +170,7 @@ verifies("workflows.page.frame-and-states", () => {
     const page = await show(
       <WorkflowScreen host={changing} runs={memoryRuns().source} hubId="acme" id="reply" />,
     );
-    await act(async () => buttonNamed(page, "Zoom in")?.click());
+    await act(async () => buttonLabelled(page, "Zoom in")?.click());
     const zoomed = surface(page)?.style.transform;
 
     current = { ...reply, steps: [...reply.steps, { id: "extra", type: "task" }] };
@@ -180,8 +184,8 @@ verifies("workflows.page.frame-and-states", () => {
     const page = await show(
       <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
     );
-    await act(async () => buttonNamed(page, "Zoom in")?.click());
-    await act(async () => buttonNamed(page, "Zoom in")?.click());
+    await act(async () => buttonLabelled(page, "Zoom in")?.click());
+    await act(async () => buttonLabelled(page, "Zoom in")?.click());
     const zoomed = surface(page)?.style.transform;
 
     await act(async () => buttonNamed(page, "Configuration")?.click());
@@ -206,8 +210,8 @@ verifies("workflows.page.frame-and-states", () => {
     };
     const page = await show(<Switch />);
     const fitted = surface(page)?.style.transform;
-    await act(async () => buttonNamed(page, "Zoom in")?.click());
-    await act(async () => buttonNamed(page, "Zoom in")?.click());
+    await act(async () => buttonLabelled(page, "Zoom in")?.click());
+    await act(async () => buttonLabelled(page, "Zoom in")?.click());
     expect(surface(page)?.style.transform).not.toBe(fitted);
 
     await act(async () => buttonNamed(page, "Switch")?.click());
@@ -240,7 +244,7 @@ verifies("workflows.page.frame-and-states", () => {
     const page = await show(
       <WorkflowScreen host={flaky} runs={memoryRuns().source} hubId="acme" id="reply" />,
     );
-    await act(async () => buttonNamed(page, "Zoom in")?.click());
+    await act(async () => buttonLabelled(page, "Zoom in")?.click());
     const zoomed = surface(page)?.style.transform;
 
     failing = true;
@@ -261,7 +265,7 @@ verifies("workflows.page.step-cards", () => {
     );
 
     expect(cards).toEqual(["AGENT STEPStartstartNo agent", "AGENT STEPwritewriter", "ENDdone"]);
-    expect(page.querySelectorAll("svg path")).toHaveLength(2);
+    expect(page.querySelectorAll("[data-testid=canvas-surface] svg path")).toHaveLength(2);
     expect(page.querySelector("svg text")?.textContent).toBe("ok");
   });
 
@@ -321,6 +325,37 @@ verifies("workflows.page.step-cards", () => {
     expect(card(1)?.getAttribute("aria-pressed")).toBe("true");
   });
 
+  it("groups the zoom buttons as named icons in a column at the bottom left", async () => {
+    const { host } = memoryHost([], [], [reply]);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
+    const group = buttonLabelled(page, "Zoom in")?.parentElement;
+
+    expect(group?.className).toContain("flex-col");
+    expect(group?.className).toContain("bottom-3 left-3");
+    expect([...(group?.querySelectorAll("button") ?? [])].map((b) => b.textContent)).toEqual([
+      "",
+      "",
+      "",
+    ]);
+    expect([...(group?.querySelectorAll("button") ?? [])].map((b) => b.ariaLabel)).toEqual([
+      "Zoom in",
+      "Zoom out",
+      "Fit to screen",
+    ]);
+  });
+
+  it("fits the steps clear of the zoom buttons", async () => {
+    const { host } = memoryHost([], [], [reply]);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
+    const panX = Number(/translate\((-?[\d.]+)px/.exec(surface(page)?.style.transform ?? "")?.[1]);
+
+    expect(panX).toBeGreaterThanOrEqual(56);
+  });
+
   it("fits all steps again on Fit to screen", async () => {
     const { host } = memoryHost([], [], [reply]);
     const page = await show(
@@ -328,9 +363,9 @@ verifies("workflows.page.step-cards", () => {
     );
     const fitted = surface(page)?.style.transform;
 
-    await act(async () => buttonNamed(page, "Zoom in")?.click());
+    await act(async () => buttonLabelled(page, "Zoom in")?.click());
     expect(surface(page)?.style.transform).not.toBe(fitted);
-    await act(async () => buttonNamed(page, "Fit to screen")?.click());
+    await act(async () => buttonLabelled(page, "Fit to screen")?.click());
     expect(surface(page)?.style.transform).toBe(fitted);
   });
 });
