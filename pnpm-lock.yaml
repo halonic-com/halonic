@@ -2901,6 +2901,9 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../../core/ports
+      '@halonicjs/studio-feature-files':
+        specifier: workspace:*
+        version: link:../files
       '@halonicjs/studio-feature-inbox':
         specifier: workspace:*
         version: link:../inbox
