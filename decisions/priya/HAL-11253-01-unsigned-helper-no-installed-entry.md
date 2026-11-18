@@ -18,3 +18,4 @@ Installed apps runs the helper's copy with administrator rights, for every user 
 
 - studio.src-tauri.crates.sandbox-elevate.sandbox-elevate
 - apps/studio/src-tauri/crates/sandbox-elevate/tests/steps.rs
+- .github/
