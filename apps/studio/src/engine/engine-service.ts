@@ -26,19 +26,25 @@ import {
   workspaceBudget,
   workspaceExecutorOptions,
 } from "@halonicjs/adapter-workspace-models";
+import type { startOfDueRun } from "@halonicjs/app";
 import { type AssembledEngine, assembleEngine, noListedToolApproval } from "@halonicjs/engine";
 import {
   type Clock,
   type DefinitionStore,
   type HttpClient,
   type IdGenerator,
+  isAgentRunsNotAvailable,
   noKeyOrigins,
+  type RunExecutor,
   type Secrets,
 } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { TauriIpc } from "@halonicjs/studio-services";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import { type LoadedWorkspace, loadWorkspace, runDefinitionsOf } from "@halonicjs/workspace";
+
+/** What a routine starts, with its placeholders filled in: what the routine scheduler would start. */
+export type RoutineRunStart = ReturnType<typeof startOfDueRun>;
 
 /** The open workspace's engine service, provided by the app. */
 export const engineServiceKey: ServiceKey<EngineService> =
@@ -137,6 +143,41 @@ export class EngineService {
     const trigger = { type: "manual" as const, at: this.#options.clock.now().toISOString() };
     const { id } = await engine.executor.start({ ...run, input, trigger });
     return { id };
+  }
+
+  /**
+   * Starts what a routine runs, for its Run now: a workflow is checked as {@link EngineService.startRun}
+   * checks it. The run records a manual trigger that names the routine, so the routine finds its own
+   * runs again.
+   *
+   * @param trigger the routine's key and the time the person asked for the run
+   * @returns the new run's id
+   * @throws KindedError `unavailable` when the target is an agent, because agent runs aren't built yet
+   *   (`ports.agent-runs-not-available`), or what {@link EngineService.startRun} throws
+   */
+  async startRoutine(
+    start: RoutineRunStart,
+    trigger: { readonly routineKey: string; readonly at: string },
+  ): Promise<{ readonly id: string }> {
+    const runTrigger = { type: "manual" as const, routineId: trigger.routineKey, at: trigger.at };
+    if ("workflow" in start) {
+      const { hubId, workflowId } = start.workflow;
+      await this.check({ hubId, workflowId });
+      const { executor } = await this.open();
+      const { id } = await executor.start({ ...start.workflow, trigger: runTrigger });
+      return { id };
+    }
+    // As the port: the local executor's own `startAgent` takes no request until agent runs are built.
+    const executor: RunExecutor = (await this.open()).executor;
+    try {
+      const { id } = await executor.startAgent({ ...start.agent, trigger: runTrigger });
+      return { id };
+    } catch (error) {
+      if (!isAgentRunsNotAvailable(error)) throw error;
+      throw new KindedError("unavailable", "This window can't start an agent yet.", {
+        fix: "Run this routine from the command line.",
+      });
+    }
   }
 
   /**

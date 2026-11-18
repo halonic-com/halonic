@@ -8,6 +8,7 @@ import {
   nextRun,
   occurrences,
   routineKey,
+  routineStart,
 } from "@halonicjs/routines";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import {
@@ -33,6 +34,7 @@ import {
 } from "@halonicjs/studio-feature-routines/api";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { editYaml } from "@halonicjs/yaml";
+import type { RoutineRunStart } from "../engine/engine-service.ts";
 import {
   editsOf,
   newRoutineText,
@@ -95,10 +97,13 @@ export interface WorkspaceRoutinesParts {
   readonly liveness?: (
     ref: RoutineRef,
   ) => Promise<{ readonly everLive: boolean; readonly changesNotLive: boolean }>;
-  /** Starts the target of a routine now. Absent where the app has no engine, so there is no `runNow`. */
+  /**
+   * Starts what a routine runs, as the scheduler would start it. Absent where the app has no
+   * engine, so there is no `runNow`.
+   */
   readonly engine?: {
     start(
-      target: RoutineTarget,
+      start: RoutineRunStart,
       trigger: { readonly routineKey: string; readonly at: string },
     ): Promise<{ readonly id: string }>;
   };
@@ -384,10 +389,18 @@ export class WorkspaceRoutines implements RoutinesHost {
       return { started: false, refusal: { reason: "target-not-found" } };
     }
     try {
-      const { id } = await engine.start(view.target, {
-        routineKey: routineKey({ hub: ref.hubId, routine: value }),
-        at: this.#parts.now().toISOString(),
-      });
+      const placed = { hub: ref.hubId, routine: value };
+      const key = routineKey(placed);
+      const at = this.#parts.now();
+      // A manual start has no earlier run to name, so `{{trigger.lastRun}}` is null.
+      const what = routineStart(placed, { at, lastRun: null });
+      if (what.hub === null)
+        throw new Error(`Routine ${key} runs outside a hub, so it must name one.`);
+      const start: RoutineRunStart =
+        "workflow" in what
+          ? { workflow: { hubId: what.hub, workflowId: what.workflow, input: what.input } }
+          : { agent: { hubId: what.hub, agentId: what.agent, prompt: what.prompt } };
+      const { id } = await engine.start(start, { routineKey: key, at: at.toISOString() });
       return { started: true, runId: id, shortId: shortRunId(id) };
     } catch (error) {
       if (error instanceof KindedError && error.kind === "unavailable")

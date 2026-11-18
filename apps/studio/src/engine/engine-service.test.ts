@@ -336,5 +336,37 @@ verifies("studio.engine-service", () => {
 
       await expect(service.startRun(reply, {})).rejects.toMatchObject({ kind: "conflict" });
     });
+
+    it("starts a routine's workflow with a manual trigger that names the routine", async () => {
+      const service = serviceOn(fakeShell());
+      const { executor } = await service.open();
+      const start = vi.spyOn(executor, "start");
+
+      const started = await service.startRoutine(
+        { workflow: { ...reply, input: { day: "x" } } },
+        { routineKey: "support/weekly", at: "2026-11-15T10:00:00.000Z" },
+      );
+
+      expect(started.id).toBe("run1");
+      expect(start).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: { day: "x" },
+          trigger: { type: "manual", routineId: "support/weekly", at: "2026-11-15T10:00:00.000Z" },
+        }),
+      );
+      await service.close();
+    });
+
+    it("refuses a routine's agent as `unavailable` while agent runs aren't built", async () => {
+      const service = serviceOn(fakeShell());
+
+      await expect(
+        service.startRoutine(
+          { agent: { hubId: "support", agentId: "analyst", prompt: "Go." } },
+          { routineKey: "support/weekly", at: "2026-11-15T10:00:00.000Z" },
+        ),
+      ).rejects.toMatchObject({ kind: "unavailable" });
+      await service.close();
+    });
   });
 });

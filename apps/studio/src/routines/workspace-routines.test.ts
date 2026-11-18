@@ -358,8 +358,8 @@ verifies("studio.workspace-routines", () => {
     const started: unknown[] = [];
     const { host } = setup({
       engine: {
-        start: async (target, trigger) => {
-          started.push([target.id, trigger.routineKey]);
+        start: async (start, trigger) => {
+          started.push(["agent" in start ? start.agent.agentId : "", trigger.routineKey]);
           return { id: "run-1" };
         },
       },
