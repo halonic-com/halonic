@@ -168,6 +168,10 @@ verifies("models.api-keys.key-status", () => {
     expect(set.querySelector('[role="status"] [aria-hidden="true"]')?.className).toContain(
       "bg-success",
     );
+    // In high contrast the fill would vanish and Key set would show less than No key (HAL-12946).
+    expect(set.querySelector('[role="status"] [aria-hidden="true"]')?.className).toContain(
+      "forced-colors:bg-[CanvasText]",
+    );
     expect(set.querySelector("input")?.placeholder).toContain("replace");
     act(() => root?.unmount());
     set.remove();

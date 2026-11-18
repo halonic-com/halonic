@@ -2027,8 +2027,8 @@ The promise `openExternal` returns rejects only when a pending address fails; th
 
 | State | What shows |
 | --- | --- |
-| Default | `accent-text`, like every inline link |
-| Hover | Underlined |
+| Default | `accent-text`, like every inline link, underlined in a softer line (`accent-text` at 50%) |
+| Hover | The underline in full `accent-text` |
 | Focus | The standard focus ring |
 | Phone | At least 48px high (`min-h-touch`), so the whole line is the target |
 
@@ -2160,8 +2160,8 @@ The icons `AlertIcon`, `BackIcon`, `ForwardIcon`, `InfoIcon`, `MaximiseIcon` (â¤
 the place icons) and `WarningIcon` are outline icons in `currentColor`, hidden from screen readers; the slot
 they sit in gives them their size.
 `useOpenExternal()` reads the `openExternal` service in force, and `placeIconNames` lists the
-names a `PlaceIcon` knows. `inlineLinkClasses` is the inline link style (accent text, underlined on
-hover), for a button that must look like a link, such as Welcome's **Copy details**. `packageName` is `"@halonicjs/studio-kit"`. The timings and counts the
+names a `PlaceIcon` knows. `inlineLinkClasses` is the inline link style (accent text, underlined: a
+softer line at rest so a link in a sentence isn't told by colour alone, a full one on hover), for a button that must look like a link, such as Welcome's **Copy details**. `packageName` is `"@halonicjs/studio-kit"`. The timings and counts the
 components share are exported, so a test reads them instead of copying the number:
 
 | Export | Value | What it is |

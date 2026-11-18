@@ -257,7 +257,12 @@ interface KeyStatusProps {
 
 /** The words for the stored key, a filled dot or hollow ring beside them, and Try again. */
 function KeyStatus({ stored, onTryAgain }: KeyStatusProps) {
-  const dot = stored === "set" ? "bg-success" : "border border-fg-muted";
+  // In high contrast a fill turns into the background, so the filled dot is drawn in the text
+  // colour there; the hollow ring's edge is kept by the system (HAL-12946).
+  const dot =
+    stored === "set"
+      ? "bg-success forced-color-adjust-none forced-colors:bg-[CanvasText]"
+      : "border border-fg-muted";
   return (
     <p role="status" className="flex items-center gap-2">
       {stored === "set" || stored === "none" ? (

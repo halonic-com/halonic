@@ -29,9 +29,14 @@ interface ExternalLinkToRequestedAddress {
 /** The props of `ExternalLink`. */
 export type ExternalLinkProps = ExternalLinkToAddress | ExternalLinkToRequestedAddress;
 
-/** The inline link style: accent text, underlined on hover (base component specs, 17.1). */
+/**
+ * The inline link style (base component specs, 17.1): accent text, underlined in a softer line at
+ * rest and a full one on hover. The line at rest is what tells a link inside a sentence from the
+ * words around it, which colour alone doesn't do (WCAG 1.4.1, HAL-12946).
+ */
 export const inlineLinkClasses = [
-  "rounded-xs text-accent-text underline-offset-2 hover:underline focus-ring",
+  "rounded-xs text-accent-text underline decoration-accent-text/50 underline-offset-2",
+  "hover:decoration-current focus-ring",
   "touch:hit-touch phone:inline-flex phone:min-h-touch phone:items-center",
 ].join(" ");
 

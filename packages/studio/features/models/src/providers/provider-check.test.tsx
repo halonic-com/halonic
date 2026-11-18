@@ -75,6 +75,10 @@ verifies("models.providers.check", () => {
     expect(view.querySelector("[role=status]")?.textContent).toBe(
       "Ollama is answering at localhost:11434, checked 10:42.",
     );
+    // The filled dot stays in high contrast, in the text colour (HAL-12946).
+    expect(view.querySelector(".rounded-full.size-2")?.className).toContain(
+      "forced-colors:bg-[CanvasText]",
+    );
   });
 
   it("says when the provider isn't answering, and to start it and check again", async () => {

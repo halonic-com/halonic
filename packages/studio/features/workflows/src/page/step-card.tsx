@@ -5,6 +5,7 @@ import type { Box } from "../canvas/geometry.ts";
 import type { StepMark } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import { pageWords } from "./page-words.ts";
+import { StatusDot } from "./status-dot.tsx";
 
 /** Props for {@link StepCard}. */
 export interface StepCardProps {
@@ -66,19 +67,15 @@ export function StepCard({
         {step.title ?? step.id}
       </span>
       {mark !== undefined && (
-        <span
-          data-testid="status-dot"
-          data-mark={mark}
+        <StatusDot
+          mark={mark}
           style={{
             left: box.width - DOT_INSET - DOT / 2 - CARD_BORDER,
             top: DOT_INSET - DOT / 2 - CARD_BORDER,
             width: DOT,
             height: DOT,
           }}
-          className={`absolute rounded-full ${DOT_COLOUR[mark]}`}
-        >
-          <span className="sr-only">{startWords.mark[mark]}</span>
-        </span>
+        />
       )}
       {failed && <StatusChip tone="danger">{startWords.failedChip}</StatusChip>}
       {step.type === "task" && (
@@ -93,14 +90,6 @@ export const DOT = 10;
 const DOT_INSET = 14;
 /** The card's border width: an absolute child is placed from inside it, `dotCentre` from the outer edge. */
 export const CARD_BORDER = 1;
-
-const DOT_COLOUR: Record<StepMark, string> = {
-  done: "bg-success",
-  running: "bg-accent",
-  waiting: "bg-warning",
-  failed: "bg-danger",
-  stopped: "bg-fg-muted",
-};
 
 /** The colour the point of light takes on a step's dot: the dot's own. */
 export const DOT_VAR: Record<StepMark, string> = {

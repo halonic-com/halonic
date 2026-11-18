@@ -164,6 +164,10 @@ verifies("inbox.page", () => {
       expect([...chips].map((chip) => chip.textContent)).toEqual(["Late"]);
       expect(rows(root)[1]?.textContent).toContain("Late");
       expect(rows(root)[0]?.textContent).not.toContain("Late");
+      // The late dot stays in high contrast, in the text colour (HAL-12946).
+      expect(root.querySelector(".bg-attention-fill")?.className).toContain(
+        "forced-colors:bg-[CanvasText]",
+      );
     });
 
     it("says nothing about late when nothing is", async () => {

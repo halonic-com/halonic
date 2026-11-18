@@ -48,6 +48,14 @@ verifies("kit.header-badge-status", () => {
     expect(dotOf(removed).className).toContain("bg-danger");
   });
 
+  it("keeps its dot in high contrast, in the text colour (HAL-12946)", () => {
+    for (const tone of ["success", "waiting", "attention", "danger"] as const) {
+      const dot = dotOf(buttonIn(render(label(tone, "Connected")).container));
+      expect(dot.className).toContain("forced-color-adjust-none");
+      expect(dot.className).toContain("forced-colors:bg-[CanvasText]");
+    }
+  });
+
   it("calls onClick when tapped on a phone, in the top bar rather than on a line of its own", async () => {
     const onClick = vi.fn();
     const { container } = render(

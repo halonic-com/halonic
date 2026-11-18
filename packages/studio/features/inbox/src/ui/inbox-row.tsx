@@ -70,7 +70,7 @@ export function countDetail(waiting: number, late = 0): { detail?: ReactNode } {
             <span className="text-attention">
               <span
                 aria-hidden="true"
-                className="me-1 inline-block size-1.5 rounded-full bg-attention-fill"
+                className="me-1 inline-block size-1.5 rounded-full bg-attention-fill forced-color-adjust-none forced-colors:bg-[CanvasText]"
               />
               {late} late
             </span>

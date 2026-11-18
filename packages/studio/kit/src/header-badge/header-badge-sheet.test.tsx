@@ -101,6 +101,21 @@ verifies("kit.header-badge-sheet", () => {
     expect(wait).not.toHaveBeenCalled();
   });
 
+  it("greys a disabled row out in high contrast too, as Button does (HAL-12946)", () => {
+    const { container } = render(
+      <PresentationProvider presentation="phone">
+        <HeaderBadgeSheet
+          title="Sample · test model"
+          description={costLine}
+          entries={[{ id: "tests", label: "Run its tests", disabled: true, onSelect: wait }]}
+          onClose={vi.fn()}
+        />
+      </PresentationProvider>,
+    );
+    const row = container.querySelector("li > button") as HTMLButtonElement;
+    expect(row.className).toContain("text-fg-disabled text-forced-disabled");
+  });
+
   it("shows a note after the description in body type, and no list when it has no items", () => {
     const note = "To start your own workspace, use Halonic on your computer.";
     const { container } = render(

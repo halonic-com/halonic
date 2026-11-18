@@ -13,9 +13,13 @@ verifies("workflows.list.rows-and-states", () => {
   });
 
   it("gives a finished run a glyph and the words a screen reader hears, and a run still going neither", () => {
-    expect(lastRunOutcome.completed).toEqual({ glyph: "✓", spoken: "completed" });
-    expect(lastRunOutcome.failed).toEqual({ glyph: "✕", spoken: "failed" });
-    expect(lastRunOutcome["cant-try"]).toEqual({ glyph: "✕", spoken: "couldn't start" });
+    expect(lastRunOutcome.completed).toEqual({ glyph: "✓", spoken: "completed", danger: false });
+    expect(lastRunOutcome.failed).toEqual({ glyph: "✕", spoken: "failed", danger: true });
+    expect(lastRunOutcome["cant-try"]).toEqual({
+      glyph: "✕",
+      spoken: "couldn't start",
+      danger: true,
+    });
     expect(lastRunOutcome.running).toBeNull();
     expect(lastRunOutcome.waiting).toBeNull();
   });

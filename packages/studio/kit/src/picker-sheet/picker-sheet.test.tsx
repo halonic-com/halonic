@@ -170,6 +170,8 @@ verifies("kit.picker-sheet", () => {
     const { container } = render(picker({ onPick }));
     const opus = radioNamed(container, "Opus");
     expect(opus.disabled).toBe(true);
+    // Its words grey out in high contrast too, as Radio's do (HAL-12946).
+    expect(opus.nextElementSibling?.className).toContain("text-fg-disabled text-forced-disabled");
     expect(document.getElementById(opus.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
       "Needs an Anthropic key.",
     );

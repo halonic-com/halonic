@@ -209,7 +209,9 @@ verifies("kit.empty-state", () => {
     expect(reload.textContent).toBe("Reload page");
     expect(copy.textContent).toBe("Copy details");
     expect(copy.className).toContain("text-body");
-    expect(copy.className).toContain("text-accent-text underline-offset-2 hover:underline");
+    expect(copy.className).toContain(
+      "text-accent-text underline decoration-accent-text/50 underline-offset-2",
+    );
     expect(copy.parentElement?.className).toContain("items-center");
     await click(copy);
     expect(onCopy).toHaveBeenCalledTimes(1);

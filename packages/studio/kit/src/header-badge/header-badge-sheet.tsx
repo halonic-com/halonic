@@ -30,6 +30,9 @@ const rowClasses = [
   "aria-disabled:cursor-not-allowed",
 ].join(" ");
 
+/** A disabled row's words: `GrayText` in forced colours, as Button's, so it doesn't look usable there (HAL-12946). */
+const DISABLED_ROW = "text-fg-disabled text-forced-disabled";
+
 /**
  * What the header badge's menu becomes on a phone (component specs 20.1, 20.2): a panel sheet
  * titled with the badge's words, the Menu's description line as its first body line, then its
@@ -84,7 +87,7 @@ function LinkRow({ item }: { readonly item: MenuItem }) {
   return (
     <button
       type="button"
-      className={`${rowClasses} ${item.disabled === true ? "text-fg-disabled" : tone}`}
+      className={`${rowClasses} ${item.disabled === true ? DISABLED_ROW : tone}`}
       aria-disabled={unusable ? true : undefined}
       aria-describedby={describedBy([
         item.detail === undefined ? undefined : detailId,
