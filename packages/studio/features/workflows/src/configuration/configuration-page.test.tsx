@@ -171,4 +171,12 @@ verifies("workflows.configuration.pages", () => {
 
     expect(tab(page, "Request form")?.getAttribute("aria-selected")).toBe("true");
   });
+
+  it("outlines the picked page in high contrast, where its soft fill doesn't show", async () => {
+    const page = await open([configuration]);
+    await act(async () => tab(page, "Tests")?.click());
+
+    expect(tab(page, "Tests")?.className).toContain("selected-forced");
+    expect(tab(page, "General")?.className).not.toContain("selected-forced");
+  });
 });

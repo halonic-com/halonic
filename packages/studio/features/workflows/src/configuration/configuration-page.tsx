@@ -83,7 +83,7 @@ export function Configuration({
                 onClick={() => setPage(one)}
                 className={`focus-ring flex h-control-md items-center justify-between rounded-sm px-3 text-start text-body ${
                   page === one
-                    ? "bg-accent-soft font-medium text-fg"
+                    ? "bg-accent-soft font-medium text-fg selected-forced"
                     : "text-fg-muted hover:text-fg"
                 }`}
               >
