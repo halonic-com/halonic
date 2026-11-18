@@ -127,6 +127,6 @@ const failedBorder = "border-danger";
 
 // The sidebar switcher's padding and radius, so a workspace row looks the same in both places.
 const rowClasses = [
-  "flex w-full min-w-0 items-center gap-2.5 rounded-sm border px-2 py-1.5 text-start outline-none focus-ring",
+  "flex w-full min-w-0 items-center gap-2.5 rounded-sm border px-2 py-1.5 scroll-my-4 text-start outline-none focus-ring",
   "hover:bg-surface-muted active:bg-surface-muted",
 ].join(" ");

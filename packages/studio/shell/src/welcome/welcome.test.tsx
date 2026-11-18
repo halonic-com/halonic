@@ -335,6 +335,8 @@ verifies("shell.welcome-recent", () => {
     expect(recentRow(root, "beta")?.className).toContain("border-danger");
     expect(recentRow(root, "acme")?.hasAttribute("aria-describedby")).toBe(false);
     expect(recentRow(root, "acme")?.className).not.toContain("border-danger");
+    // Room above and below, so scrolling the failed row into view leaves its outline clear of the window edge.
+    expect(recentRow(root, "beta")?.className.split(" ")).toContain("scroll-my-4");
   });
 
   it("scrolls the row that failed into view", async () => {
