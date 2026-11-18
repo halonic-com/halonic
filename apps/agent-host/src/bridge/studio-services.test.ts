@@ -4,6 +4,7 @@ import type { NdjsonStream } from "../server/ndjson-stream.ts";
 import {
   type DecideRemotely,
   quickCallLimitMs,
+  studioFailureReport,
   studioSecrets,
   studioServices,
 } from "./studio-services.ts";
@@ -152,6 +153,39 @@ describe("studioServices", () => {
     await vi.advanceTimersByTimeAsync(quickCallLimitMs);
     await Promise.all(quick);
     expect(slowSettled).toBe(false);
+  });
+});
+
+describe("studioFailureReport", () => {
+  const failure = { kind: "internal", message: "bad reply header [run token]" };
+
+  it("sends a failure to Studio's recorder as bridge.failed", async () => {
+    const { channel, lines } = answeringChannel(null);
+    const logged: string[] = [];
+
+    studioFailureReport(channel, "writer", (text) => logged.push(text))(failure);
+
+    await vi.waitFor(() => expect(lines).toHaveLength(1));
+    expect(lines[0]).toMatchObject({
+      type: "call",
+      method: "recorder.record",
+      params: { type: "bridge.failed", agent: "writer", ...failure },
+    });
+    expect(logged).toEqual([]);
+  });
+
+  it("writes the failure to the log when Studio doesn't take it, and doesn't throw", async () => {
+    const { channel } = answeringChannel(null);
+    channel.close();
+    const logged = Promise.withResolvers<string>();
+
+    expect(() => studioFailureReport(channel, "writer", logged.resolve)(failure)).not.toThrow();
+
+    const text = await logged.promise;
+    expect(text).toContain(
+      "The run log couldn't record a failure of the harness bridge (internal): bad reply header [run token]",
+    );
+    expect(text.endsWith("\n")).toBe(true);
   });
 });
 
