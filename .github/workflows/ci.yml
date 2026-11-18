@@ -1210,8 +1210,10 @@ jobs:
           if (-not $tempAcl.AreAccessRulesProtected) { throw 'the tmp folder inherits its access list' }
           & net.exe user srt-sandbox *> $null
           if ($LASTEXITCODE -ne 0) { throw 'setup made no srt-sandbox account' }
-          $entry = Get-ItemProperty $key
-          if ($entry.DisplayName -ne 'Halonic agent sandbox') { throw "Installed apps shows '$($entry.DisplayName)'" }
+          # This build is unsigned, so it can't check the copy of itself it
+          # would leave for Installed apps: it leaves none, and no entry.
+          if (Test-Path $key) { throw 'an unsigned build added an Installed apps entry' }
+          if (Test-Path (Join-Path $folder 'halonic-sandbox-elevate.exe')) { throw 'an unsigned build left a copy of the helper' }
           $acl = Get-Acl $folder
           if (-not $acl.AreAccessRulesProtected) { throw 'the folder inherits its access list' }
           if ($acl.Owner -ne 'BUILTIN\Administrators') { throw "the folder is owned by $($acl.Owner)" }
@@ -1234,10 +1236,9 @@ jobs:
           $code = Invoke-Helper $helper 'setup'
           if ($code -ne 0) { throw "setup after the swap exited $code" }
 
-          # Remove the way Installed apps does: the copy in the folder.
-          $code = Invoke-Helper (Join-Path $folder 'halonic-sandbox-elevate.exe') 'remove'
+          # Remove the way an unsigned build does: the helper next to Halonic.
+          $code = Invoke-Helper $helper 'remove'
           if ($code -ne 0) { throw "remove exited $code" }
-          if (Test-Path $key) { throw 'remove left the Installed apps entry' }
           & net.exe user srt-sandbox *> $null
           if ($LASTEXITCODE -eq 0) { throw 'remove left the srt-sandbox account' }
           if (Test-Path (Join-Path $folder 'srt-win.exe')) { throw 'remove left srt-win.exe' }
