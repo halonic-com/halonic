@@ -71,15 +71,13 @@ const callbackPageHeaders = {
  */
 export function integrationSignInRoutes(deps: IntegrationSignInRouteDeps): HostRoute[] {
   /**
-   * The port the provider must send the browser back to. A connected socket
-   * always has one; without it the request fails (502) rather than send the
-   * browser to a wrong port.
+   * The port the provider must send the browser back to: the one the request
+   * came in on. A connected socket always has one; without it, or behind the
+   * relay (whose port forwards only Google's callback), a start is refused
+   * with `callback_unavailable` rather than send the browser to a wrong port.
    */
-  const portOf = (request: IncomingMessage): number => {
-    const port = request.socket.localPort;
-    if (port === undefined) throw new Error("the request's socket has no local port");
-    return port;
-  };
+  const callbackPortOf = (request: IncomingMessage): number | undefined =>
+    deps.relayPort === undefined ? request.socket.localPort : undefined;
 
   function logFailure(error: unknown): void {
     const name = error instanceof Error ? error.name : "Error";
@@ -92,8 +90,10 @@ export function integrationSignInRoutes(deps: IntegrationSignInRouteDeps): HostR
     prefix: true,
     tokenFree: true,
     handle: async (request, response) => {
-      const host = `127.0.0.1:${portOf(request)}`;
       try {
+        const port = request.socket.localPort;
+        if (port === undefined) throw new Error("the request's socket has no local port");
+        const host = `127.0.0.1:${port}`;
         const answer = await deps.signIns.handleCallback(
           new Request(`http://${host}${request.url ?? ""}`, { headers: { host } }),
         );
@@ -113,7 +113,8 @@ export function integrationSignInRoutes(deps: IntegrationSignInRouteDeps): HostR
     handle: async (request, response) => {
       const body = await readCheckedBody(request, response, signInBody);
       if (body === undefined) return;
-      if (deps.relayPort !== undefined) {
+      const port = callbackPortOf(request);
+      if (port === undefined) {
         return sendError(
           response,
           501,
@@ -124,7 +125,7 @@ export function integrationSignInRoutes(deps: IntegrationSignInRouteDeps): HostR
       const parts = deps.signIns.integration(body.integration);
       if (parts === undefined) return unknownIntegration(response);
       try {
-        const started = await parts.flow.start(body.signIn, portOf(request));
+        const started = await parts.flow.start(body.signIn, port);
         switch (started.kind) {
           case "started":
             return sendJson(response, 200, { authorizeUrl: started.authorizeUrl });

@@ -380,6 +380,36 @@ describe("run --stdio", () => {
     },
   );
 
+  it("refuses an integration's sign-in start, since the relay can't pass its callback", async () => {
+    const profile = await mkdtemp(join(tmpdir(), "halonic-host-profile-"));
+    try {
+      const { relay, running } = relayed([
+        "--stdio",
+        "--relay-host",
+        `127.0.0.1:${relayPort}`,
+        "--profile-folder",
+        profile,
+      ]);
+      const handshake = JSON.parse(await relay.handshakeLine()) as FramedHandshake;
+      const start = await relay.request("/v1/integrations/sign-in/start", {
+        method: "POST",
+        headers: {
+          host: `127.0.0.1:${relayPort}`,
+          authorization: `Bearer ${handshake.token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ integration: "example", signIn: "example" }),
+      });
+      relay.streams.input.end();
+      expect(await running).toBe(0);
+
+      expect(start.status).toBe(501);
+      expect(JSON.parse(start.body)).toMatchObject({ error: { kind: "callback_unavailable" } });
+    } finally {
+      await rm(profile, { recursive: true, force: true });
+    }
+  });
+
   it("stops with 1, and says why on standard error, when the frame stream breaks", async () => {
     const { relay, errors, running } = relayed([
       "--stdio",

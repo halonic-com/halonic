@@ -11,8 +11,9 @@ export interface HostRoute {
   /** The path without a query, such as "/v1/health". */
   path: string;
   /**
-   * The route serves every path that starts with `path` (which then ends in
-   * `/`), not only `path`: for a callback whose path is new for each sign-in.
+   * The route serves every path that starts with `path` (which must end in
+   * `/`, or the server won't start), not only `path`: for a callback whose
+   * path is new for each sign-in.
    * The route's handler must check the rest of the path. An exact route that
    * matches the whole path is preferred.
    */
@@ -152,6 +153,7 @@ function createHostServer(
   limits: HostServerLimits,
   port: () => number,
 ): Server {
+  checkPrefixRoutes(routes);
   const options = {
     headersTimeout: limits.headersTimeoutMs,
     requestTimeout: limits.requestTimeoutMs,
@@ -175,6 +177,18 @@ function createHostServer(
         else response.destroy();
       });
   });
+}
+
+/**
+ * Throws for a prefix route whose path doesn't end in `/`: "/sign-in" would
+ * also serve "/sign-inside", which is likely to be a token-free mistake.
+ */
+function checkPrefixRoutes(routes: readonly HostRoute[]): void {
+  for (const route of routes) {
+    if (route.prefix === true && !route.path.endsWith("/")) {
+      throw new Error(`The prefix route ${route.method} ${route.path} must end in "/".`);
+    }
+  }
 }
 
 /** Why a request may not reach any route, or `undefined` when it may. `token` is `undefined` for a route that is served without one. */
