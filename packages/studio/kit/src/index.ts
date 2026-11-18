@@ -216,6 +216,7 @@ export {
   type MenuProps,
   type MenuTriggerProps,
 } from "./menu/menu.tsx";
+export { NoteLines, type NoteLinesProps } from "./note-lines/note-lines.tsx";
 export { settleOnClose, settlePendingSaves } from "./pending-saves/pending-saves.ts";
 export {
   PICKER_SEARCH_FROM,
