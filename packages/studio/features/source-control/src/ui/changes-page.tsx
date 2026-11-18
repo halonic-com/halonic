@@ -60,7 +60,7 @@ export interface ChangesViewProps {
  *
  * On a phone (2.12) it is the same page in one column with a 16px inset: the top bar says
  * "Changes", so the heading is for screen readers only, and git's words say "your computer".
- * A version in History opens as its own page (2.14).
+ * A version in History, and the Get updates choices, open as their own pages (2.14).
  *
  * Not here yet: the sharing strip's teammate-versions state.
  */
@@ -76,6 +76,7 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
   const items = orderItems(state.files);
   const nav = useOpenItem(items, () => heading.current?.focus());
   const versionNav = useOpenVersion(state.history.versions);
+  useFocusAfterChoices(phone && state.choosing, () => heading.current?.focus());
   const pageClass = `flex w-full flex-col gap-4 ${phone ? "p-4" : "px-6 py-5"}`;
   const pushed = pushedPage({ list, nav, versionNav, developer, openItem, phone, pageClass });
   if (pushed !== undefined) return pushed;
@@ -92,8 +93,8 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
         ) : null}
       </header>
       {state.merge !== undefined && !state.choosing ? <MergeStrip list={list} /> : null}
-      {state.merge !== undefined && state.choosing ? (
-        <MergeChoices list={list} phone={phone} />
+      {state.merge !== undefined && state.choosing && !phone ? (
+        <MergeChoices list={list} phone={false} />
       ) : null}
       <SharingLine list={list} phone={phone} onAdd={() => setAddingAddress(true)} />
       <PageBody
@@ -129,7 +130,22 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
   );
 }
 
-/** The page pushed over the Changes page, if one is open: an item's What changed, or a phone's version page. */
+/**
+ * On a phone, the Get updates choices are a page of their own; when it closes (Back, Finish or
+ * Cancel) focus goes to the Changes page's heading rather than being lost with the page.
+ */
+function useFocusAfterChoices(pushed: boolean, focus: () => void) {
+  const wasPushed = useRef(pushed);
+  useEffect(() => {
+    if (wasPushed.current && !pushed) focus();
+    wasPushed.current = pushed;
+  }, [pushed, focus]);
+}
+
+/**
+ * The page pushed over the Changes page, if one is open: an item's What changed, or on a phone
+ * the Get updates choices or a version's page.
+ */
 function pushedPage({
   list,
   nav,
@@ -159,6 +175,14 @@ function pushedPage({
           onBack={nav.back}
           phone={phone}
         />
+      </div>
+    );
+  }
+  if (phone && list.state.merge !== undefined && list.state.choosing) {
+    return (
+      // The page draws its own inset, so its bottom bar can run edge to edge.
+      <div className="flex min-h-full w-full flex-col">
+        <MergeChoices list={list} phone />
       </div>
     );
   }
