@@ -39,7 +39,7 @@ import { WaitCard } from "./wait-card.tsx";
 
 /** The Library's command that opens New connector; the Inbox can't import the Library, so it runs it by id. */
 const newConnectorCommand = "library.new-connector";
-const openModelsCommand = "workspace.open-models";
+const openBudgetCommand = "workspace.open-budget";
 
 const loadFailed = "Couldn't load the Inbox";
 
@@ -76,7 +76,7 @@ export function InboxPage({ context }: PlaceViewProps) {
         ? {}
         : {
             openNewConnector: () => context.runCommand?.(newConnectorCommand),
-            openBudget: () => context.runCommand?.(openModelsCommand),
+            openBudget: () => context.runCommand?.(openBudgetCommand),
           })}
       {...(openItem && {
         openRun: (hubId: string, runId: string) => openItem({ kind: "run", hub: hubId, id: runId }),
@@ -101,7 +101,7 @@ export interface InboxViewProps {
   readonly notices?: InboxNotices | undefined;
   /** Opens New connector, for a secret pasted when no account is there to take it. */
   readonly openNewConnector?: () => void;
-  /** Opens Settings › Models, for **Change budget** on the monthly budget notice and the refused request. */
+  /** Opens Workspace settings at Budget, for **Change budget** on the monthly budget notice and the refused request. */
   readonly openBudget?: (() => void) | undefined;
   /** Opens a run's page, for **Open run** on the toast that says a request started. */
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
