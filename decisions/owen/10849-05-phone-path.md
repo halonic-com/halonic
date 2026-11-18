@@ -17,6 +17,11 @@ nothing is approved by default.
 No test is weakened or removed. New tests cover the phone's decision reaching the run, being
 refused without one, and the engine's own remote decisions answering `unknown` when no question waits.
 
+`engine-service.test.ts` went over the 500-line limit, so its four agent host tests moved, unchanged,
+to `engine-service-harness.test.ts`, and its fakes to `engine-service.testing.ts`. That is why the
+file runs four tests fewer than on the merge base.
+
 ## Covers
 
 - studio.engine-service
+- apps/studio/src/engine/engine-service.test.ts
