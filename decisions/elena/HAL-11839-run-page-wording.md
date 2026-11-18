@@ -3,6 +3,7 @@
 - Task: HAL-11839
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11839 (wording decisions in the task, found in the UX re-check HAL-11832; small wording of an approved screen, team decision, HAL-2282 rule; Liam's code review of #3388)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:UCHRg3UEELaJb3WULIXRoIWCxBBr2wWKVX1KdAd1jiKSw43dVwSLGVsNnTdZIDfEDzCMI59MqekiQIHrszwfCg==
 
 ## What changes
 
