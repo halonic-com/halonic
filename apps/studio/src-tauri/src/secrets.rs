@@ -49,8 +49,13 @@ impl From<SecretError> for SecretRefusal {
 }
 
 /// Runs one keychain call on a worker thread: the keychain may ask the user
-/// to unlock it, and that must not hold up the UI.
-async fn on_worker<R, T, F>(app: &AppHandle<R>, call: F) -> Result<T, SecretRefusal>
+/// to unlock it, and that must not hold up the UI. A failure goes to the
+/// shell's log by `command` and kind, never with the value.
+async fn on_worker<R, T, F>(
+    app: &AppHandle<R>,
+    command: &'static str,
+    call: F,
+) -> Result<T, SecretRefusal>
 where
     R: Runtime,
     T: Send + 'static,
@@ -59,10 +64,15 @@ where
     let backend = Arc::clone(&app.state::<SecretsState>().backend);
     let answer = tauri::async_runtime::spawn_blocking(move || call(backend.as_ref()))
         .await
-        .map_err(|error| SecretError::Backend {
-            message: error.to_string(),
-        })?;
-    Ok(answer?)
+        .unwrap_or_else(|error| {
+            Err(SecretError::Backend {
+                message: error.to_string(),
+            })
+        });
+    answer.map_err(|error| {
+        halonic_shell_log::record("keychain", error.log_message(command));
+        SecretRefusal::from(error)
+    })
 }
 
 /// The secret's value, or `null` when nothing is stored under the name.
@@ -71,7 +81,10 @@ pub async fn secret_get<R: Runtime>(
     app: AppHandle<R>,
     name: String,
 ) -> Result<Option<String>, SecretRefusal> {
-    on_worker(&app, move |backend| get_secret(backend, &name)).await
+    on_worker(&app, "secret_get", move |backend| {
+        get_secret(backend, &name)
+    })
+    .await
 }
 
 /// Whether a value is stored under the name. The page asks this to show
@@ -81,7 +94,10 @@ pub async fn secret_has<R: Runtime>(
     app: AppHandle<R>,
     name: String,
 ) -> Result<bool, SecretRefusal> {
-    on_worker(&app, move |backend| has_secret(backend, &name)).await
+    on_worker(&app, "secret_has", move |backend| {
+        has_secret(backend, &name)
+    })
+    .await
 }
 
 /// Stores the value under the name, replacing any value already there.
@@ -91,7 +107,10 @@ pub async fn secret_set<R: Runtime>(
     name: String,
     value: String,
 ) -> Result<(), SecretRefusal> {
-    on_worker(&app, move |backend| set_secret(backend, &name, &value)).await
+    on_worker(&app, "secret_set", move |backend| {
+        set_secret(backend, &name, &value)
+    })
+    .await
 }
 
 /// Removes the value. Removing a name that holds nothing succeeds.
@@ -100,7 +119,10 @@ pub async fn secret_delete<R: Runtime>(
     app: AppHandle<R>,
     name: String,
 ) -> Result<(), SecretRefusal> {
-    on_worker(&app, move |backend| delete_secret(backend, &name)).await
+    on_worker(&app, "secret_delete", move |backend| {
+        delete_secret(backend, &name)
+    })
+    .await
 }
 
 /// The token, or `null` when nothing is stored under the name. The shell

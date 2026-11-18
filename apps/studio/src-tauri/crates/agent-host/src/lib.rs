@@ -143,11 +143,12 @@ impl AgentHost {
         command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit());
+            .stderr(Stdio::piped());
         without_console_window(&mut command);
         let mut child = command.spawn().map_err(|error| {
             AgentHostError::Start(format!("The agent host could not start: {error}."))
         })?;
+        log_stderr(&mut child, "agent host");
         let stdin = child.stdin.take();
         let first_line = child.stdout.take().map(read_first_line);
         let answer = match first_line {
@@ -197,11 +198,12 @@ impl AgentHost {
         command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit());
+            .stderr(Stdio::piped());
         without_console_window(&mut command);
         let mut child = command.spawn().map_err(|error| {
             AgentHostError::Start(format!("The agent host could not start: {error}."))
         })?;
+        log_stderr(&mut child, "agent host");
         let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
             kill(&mut child);
             return Err(AgentHostError::Exited);
@@ -295,6 +297,38 @@ enum FirstLine {
 
 /// Reads the first line of `output` on a thread of its own, then keeps
 /// reading and dropping the rest until the host closes it.
+/// The longest stderr line [`log_stderr`] reads at once; the rest of a
+/// longer one comes as the next line.
+const STDERR_LINE_LIMIT: u64 = 64 * 1024;
+
+/// Writes what `child` prints on stderr into the shell's log, a line at a
+/// time, as `source`. A release build on Windows has no console, so stderr
+/// passed on would go nowhere; and a pipe nobody reads would stall the
+/// child once it is full, so a thread reads it until the child closes it.
+pub(crate) fn log_stderr(child: &mut Child, source: &'static str) {
+    let Some(stderr) = child.stderr.take() else {
+        return;
+    };
+    std::thread::spawn(move || {
+        let mut reader = BufReader::new(stderr);
+        let mut line = Vec::new();
+        loop {
+            line.clear();
+            match reader
+                .by_ref()
+                .take(STDERR_LINE_LIMIT)
+                .read_until(b'\n', &mut line)
+            {
+                Ok(0) | Err(_) => return,
+                Ok(_) => {
+                    let text = String::from_utf8_lossy(&line);
+                    halonic_shell_log::record(source, text.trim_end());
+                }
+            }
+        }
+    });
+}
+
 fn read_first_line(output: impl Read + Send + 'static) -> mpsc::Receiver<FirstLine> {
     let (sender, receiver) = mpsc::channel();
     std::thread::spawn(move || {

@@ -25,7 +25,7 @@ use std::time::{Duration, Instant};
 
 use sha2::{Digest, Sha256};
 
-use crate::without_console_window;
+use crate::{log_stderr, without_console_window};
 
 /// The name Halonic's distro is imported under.
 pub const DISTRO: &str = "halonic";
@@ -331,11 +331,12 @@ fn run_within(mut command: Command, input: Stdio, limit: Duration) -> Result<Str
     command
         .stdin(input)
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit());
+        .stderr(Stdio::piped());
     without_console_window(&mut command);
     let mut child = command
         .spawn()
         .map_err(|error| WslError::Start(format!("wsl.exe could not start: {error}.")))?;
+    log_stderr(&mut child, "wsl");
     let mut stdout = child.stdout.take().expect("stdout is piped");
     // Read on another thread, so a step that fills the pipe can't stall the wait.
     let reader = std::thread::spawn(move || {

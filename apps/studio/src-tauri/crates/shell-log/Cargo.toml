@@ -1,0 +1,11 @@
+[package]
+name = "halonic-shell-log"
+description = "The Studio shell's own log: a size-capped file in the profile, so errors a release build can't print still reach the person and the doctor."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

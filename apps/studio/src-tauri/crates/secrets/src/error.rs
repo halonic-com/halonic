@@ -42,6 +42,14 @@ impl SecretError {
     }
 }
 
+impl SecretError {
+    /// What the shell's log says when `command` fails with this error: the
+    /// command, the kind and the message, none of which holds the value.
+    pub fn log_message(&self, command: &str) -> String {
+        format!("{command} failed ({}): {self}", self.kind())
+    }
+}
+
 impl fmt::Display for SecretError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

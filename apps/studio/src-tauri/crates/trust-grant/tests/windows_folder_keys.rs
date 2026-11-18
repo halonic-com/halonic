@@ -76,6 +76,8 @@ impl Root {
                 "no 8.3 short names under {}: the volume has them off (`fsutil 8dot3name query`)",
                 self.0.display()
             );
+            // A note for whoever reads the test run, not the shell's log.
+            #[allow(clippy::print_stderr)]
             eprintln!(
                 "note: no 8.3 short names under {}, so the 8.3 cases are left out",
                 self.0.display()
