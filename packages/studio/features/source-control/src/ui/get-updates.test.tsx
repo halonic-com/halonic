@@ -56,15 +56,16 @@ verifies("source-control.get-updates", () => {
       expect(toasts.list()[0]?.title).toBe("Already up to date");
     });
 
-    it("says nothing changed when both sides have new versions, with Try again", async () => {
+    it("says nothing changed when both sides have new versions, without Try again", async () => {
       const { fake, toasts } = await openPage({ remote: true });
       fake.setUpdates({ kind: "both-moved" });
       await press(getUpdatesButton());
       const [toast] = toasts.list();
       expect(toast?.title).toBe("Couldn't get versions");
-      expect(toast?.text).toContain("both have new versions");
-      expect(toast?.text).toContain("Nothing changed here.");
-      expect(toast?.action?.label).toBe("Try again");
+      expect(toast?.text).toBe(
+        "The shared copy and this workspace both have new versions, and Halonic can't combine them yet. Nothing changed here.",
+      );
+      expect(toast?.action).toBeUndefined();
     });
 
     it("says why when the shared copy can't be reached, and Try again asks again", async () => {
