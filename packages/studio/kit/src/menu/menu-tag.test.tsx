@@ -26,8 +26,10 @@ const entries: readonly MenuEntry[] = [
   { id: "beta", label: "Beta", detail: "~/Work/beta", onSelect: vi.fn() },
 ];
 
-/** What a screen reader takes from a row's content: its text without the hidden parts. */
+/** A row's name for a screen reader: its label, or else its text without the hidden parts. */
 function spoken(element: HTMLElement): string {
+  const label = element.getAttribute("aria-label");
+  if (label !== null) return label;
   const copy = element.cloneNode(true) as HTMLElement;
   for (const hidden of copy.querySelectorAll("[aria-hidden=true]")) hidden.remove();
   return copy.textContent ?? "";
@@ -48,11 +50,12 @@ verifies("kit.menu-tag", () => {
     expect(spoken(sample as HTMLElement)).toBe("Acme sample, Sample");
   });
 
-  it("reads the tag in the label's own element, so no space comes before the comma", () => {
-    // A browser puts a space between flex items when it names the row: "Acme sample , Sample".
-    const [sample] = rows();
-    const words = sample?.querySelector(".sr-only");
-    expect(words?.parentElement?.textContent).toBe("Acme sample, Sample");
+  it('names the item "Acme sample, Sample" itself, so no browser adds a space before the comma', () => {
+    // Chromium puts a space around a hidden, positioned span when it builds a name from content.
+    const [sample, beta] = rows();
+    expect(sample?.getAttribute("aria-label")).toBe("Acme sample, Sample");
+    expect(sample?.querySelector(".sr-only")).toBeNull();
+    expect(beta?.hasAttribute("aria-label")).toBe(false);
   });
 
   it("gives an item with no tag none", () => {

@@ -61,6 +61,18 @@ export function isMenuItem(entry: MenuEntry): entry is MenuItem {
   return entry !== "divider" && !("heading" in entry);
 }
 
+/**
+ * The name of a tagged item, "Acme, Sample", or none when its content names it. Set as its
+ * `aria-label`: Chromium puts a space around a hidden, positioned `sr-only` span when it builds a
+ * name from content, which reads "Acme , Sample".
+ */
+export function taggedItemName(item: MenuItem, extra?: string): string | undefined {
+  if (item.tag === undefined) {
+    return undefined;
+  }
+  return [item.label, item.tag, extra].filter((part) => part !== undefined).join(", ");
+}
+
 /** What the menu's `trigger` spreads on its button: a kit `Button` takes all of them. */
 export interface MenuTriggerProps {
   readonly id: string;

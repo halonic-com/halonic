@@ -2,7 +2,7 @@ import { useId } from "react";
 import { TickIcon } from "../icons/tick-icon.tsx";
 import { Kbd } from "../kbd/kbd.tsx";
 import { StatusChip } from "../status-chip/status-chip.tsx";
-import type { MenuItem } from "./menu.tsx";
+import { type MenuItem, taggedItemName } from "./menu.tsx";
 
 /**
  * 32px on desktop, 48px on a phone and under a coarse pointer (component specs 14, 23.5). The
@@ -60,6 +60,8 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
       type="button"
       {...roleOf(item)}
       tabIndex={-1}
+      // A tagged item's name carries its attention words too, which the label replaces.
+      aria-label={taggedItemName(item, item.attention)}
       aria-disabled={disabled || unavailable ? true : undefined}
       aria-describedby={describedBy([
         item.detail === undefined ? undefined : detailId,
@@ -89,7 +91,7 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
         </span>
       )}
       <span className="flex min-w-0 flex-1 flex-col">
-        <ItemLabel label={item.label} tag={item.tag} className={faded} />
+        <span className={faded}>{item.label}</span>
         {item.detail === undefined ? null : (
           // Out of the item's name, which stays the label: a screen reader reads it as its description.
           <span
@@ -138,28 +140,7 @@ function AttentionDot({ words }: { readonly words: string }) {
   );
 }
 
-/** The item's label, and its tag's words for a screen reader, which the outline tag hides. */
-function ItemLabel({
-  label,
-  tag,
-  className,
-}: {
-  readonly label: string;
-  readonly tag: string | undefined;
-  readonly className: string;
-}) {
-  return (
-    <span className={className}>
-      {label}
-      {tag === undefined ? null : <span className="sr-only">, {tag}</span>}
-    </span>
-  );
-}
-
-/**
- * The outline tag after the label. A screen reader hears its words from inside the label's span
- * instead: the label is a flex item, so words in a sibling would be read as "Acme , Sample".
- */
+/** The outline tag after the label. A screen reader hears its words in the item's `aria-label`. */
 function ItemTag({ words }: { readonly words: string }) {
   return (
     <span aria-hidden="true" className="inline-flex shrink-0">

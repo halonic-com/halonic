@@ -1,7 +1,7 @@
 import { useId } from "react";
 import { ChevronRightIcon } from "../icons/chevron-right-icon.tsx";
 import { TickIcon } from "../icons/tick-icon.tsx";
-import { isMenuItem, type MenuEntry, type MenuItem } from "../menu/menu.tsx";
+import { isMenuItem, type MenuEntry, type MenuItem, taggedItemName } from "../menu/menu.tsx";
 import { SidePanel } from "../side-panel/side-panel.tsx";
 import { StatusChip } from "../status-chip/status-chip.tsx";
 
@@ -90,14 +90,13 @@ function LinkRow({ item }: { readonly item: MenuItem }) {
         item.detail === undefined ? undefined : detailId,
         item.unavailable === undefined ? undefined : reasonId,
       ])}
+      aria-label={taggedItemName(item)}
       aria-current={item.checked === true ? true : undefined}
       onClick={unusable ? undefined : item.onSelect}
     >
       <span className="flex min-w-0 flex-1 flex-col">
         <span className={`wrap-break-word ${item.unavailable === undefined ? "" : "opacity-45"}`}>
           {item.label}
-          {/* In the label's own span: in a sibling flex item it would be read as "Acme , Sample". */}
-          {item.tag === undefined ? null : <span className="sr-only">, {item.tag}</span>}
         </span>
         {item.detail === undefined ? null : (
           <span id={detailId} aria-hidden="true" className="truncate text-small text-fg-muted">
