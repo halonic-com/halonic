@@ -1,11 +1,8 @@
 # Decision: on a phone, a save problem shows in a strip under the top bar
 
-- Approval: decided by the team on HAL-8692 (Noah's spec, after Sofia's UX check on HAL-8421); it builds on the layout the board approved on HAL-8416
-- Kind: internal
+- Approval: https://paperclip.halonic.com/HAL/issues/HAL-8692 (Noah's spec after Sofia's UX check on HAL-8421, building on the layout the board approved on HAL-8416; a team decision with no board card, HAL-2282 rule)
+- Kind: user-visible
 - Task: HAL-8421
-
-Users see this change. The note is `internal` because no key is pinned for
-`user-visible` notes yet, and a requirement change takes a signed note of either kind.
 
 ## What changes
 
