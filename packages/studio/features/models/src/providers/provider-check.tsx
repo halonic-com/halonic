@@ -11,6 +11,7 @@ import {
   checkChipDetail,
   checkChipWords,
   checkResultLine,
+  localProgramName,
 } from "./provider-text.ts";
 
 /** The props of {@link CheckProvider}. */
@@ -36,8 +37,19 @@ function clockTime(date: Date): string {
   return `${two(date.getHours())}:${two(date.getMinutes())}`;
 }
 
-/** The last result: a status line with a dot on the desktop, a tone chip with its line on a phone. */
-function ResultLine({ result, phone }: { readonly result: Result; readonly phone: boolean }) {
+/** The props of {@link ResultLine}. */
+interface ResultLineProps {
+  readonly result: Result;
+  readonly phone: boolean;
+  /** The program to start when the provider isn't answering: "Ollama", "LM Studio". */
+  readonly program: string;
+}
+
+/**
+ * The last result: a status line with a dot on the desktop, a tone chip with its line on a phone.
+ * Not answering adds what to do: start the program, then check again.
+ */
+function ResultLine({ result, phone, program }: ResultLineProps) {
   if (phone) {
     return (
       <div className="flex flex-col items-start gap-1">
@@ -45,7 +57,7 @@ function ResultLine({ result, phone }: { readonly result: Result; readonly phone
           {checkChipWords(result.answering)}
         </StatusChip>
         <p className="text-small text-fg-muted">
-          {checkChipDetail(result.address, result.checkedAt)}
+          {checkChipDetail(result.answering, result.address, result.checkedAt, program)}
         </p>
       </div>
     );
@@ -56,7 +68,7 @@ function ResultLine({ result, phone }: { readonly result: Result; readonly phone
         aria-hidden="true"
         className={`size-2 shrink-0 rounded-full ${result.answering ? "bg-success" : "border border-fg-muted"}`}
       />
-      {checkResultLine(result.answering, result.address, result.checkedAt)}
+      {checkResultLine(result.answering, result.address, result.checkedAt, program)}
     </p>
   );
 }
@@ -87,6 +99,7 @@ export function CheckProvider({ check, provider, now = () => new Date() }: Check
   // A result for another address (the base URL was edited since) is no longer the answer.
   const current = result?.address === address ? result : undefined;
   if (check === undefined || !provider.local || address === undefined) return null;
+  const program = localProgramName(provider.type, providerName(provider));
 
   async function run(asked: ProviderCheck, where: string) {
     setBusy(true);
@@ -110,7 +123,9 @@ export function CheckProvider({ check, provider, now = () => new Date() }: Check
           {CHECK}
         </Button>
       </div>
-      {current === undefined ? null : <ResultLine result={current} phone={phone} />}
+      {current === undefined ? null : (
+        <ResultLine result={current} phone={phone} program={program} />
+      )}
       {/* Mounted from the start, so a screen reader hears its text change; the span inside is new
           for each check, so a result that is the same as before is announced again. */}
       <p role="status" className="sr-only">
@@ -121,6 +136,7 @@ export function CheckProvider({ check, provider, now = () => new Date() }: Check
               current.answering,
               current.address,
               current.checkedAt,
+              program,
             )}
           </span>
         )}
