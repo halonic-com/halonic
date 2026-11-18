@@ -3,6 +3,7 @@
 - Task: HAL-12829
 - Approval: team decision on an approved screen under the HAL-2282 rule (Sofia, on HAL-12829); the reviewer of the pull request on HAL-12829 signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:W2gBnKRC+W3j7A2+Ov36LcZwpQhJseG7gCCxNZVaGrkfs1ynpMYyZRpj0Aw+D1mVhnvolHMmFNJLFBsw67ecCw==
 
 ## What changes
 
