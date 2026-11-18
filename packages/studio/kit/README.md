@@ -1489,6 +1489,19 @@ items follow as 48px link rows, edge to edge, a `border` line under each and a c
 danger items last. Dividers fall away. A tap calls the item's `onSelect`; a disabled or unavailable
 item stays listed and does nothing, an unavailable one with its reason under its label.
 
+**In a desktop window as narrow as a phone** there is no page stack, so More's workspace row and
+the sample chip open **`HeaderBadgeWindowSheet`** instead, with the same props. It puts the sheet
+in a `<dialog>` opened with `showModal()`, so it holds the keyboard as the form and picker sheets
+do: the page under it is inert, Tab and Shift+Tab stay in the sheet, and Escape closes it as Back
+does. Focus goes to the title on open and back to the row or chip on close. Mount it to open it,
+unmount it to close it:
+
+```tsx
+{open ? (
+  <HeaderBadgeWindowSheet title="Workspace" entries={entries} onClose={() => setOpen(false)} />
+) : null}
+```
+
 ## Tooltip
 
 A short label for a control: an icon button's name, a disabled control's reason, a shortcut.

@@ -167,7 +167,12 @@ function usePanelFocus(
 
   // Only on open: a later change of the ref must not pull focus back.
   useLayoutEffect(() => {
-    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const active = document.activeElement;
+    // React's strict mode runs this twice; the second time focus is already in the panel, and
+    // what opened it is the one from the first time.
+    if (title.current?.closest("aside")?.contains(active) !== true) {
+      opener.current = active instanceof HTMLElement ? active : null;
+    }
     (initialFocus?.current ?? title.current)?.focus();
   }, []);
 

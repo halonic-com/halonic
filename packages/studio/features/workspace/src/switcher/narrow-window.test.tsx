@@ -15,12 +15,37 @@ import { folderName, WorkspaceSwitcher } from "./workspace-switcher.ts";
 let element: HTMLElement;
 let mounted: MountedWorkspaceWindow | undefined;
 let restore: () => void = () => {};
+/** How many times a `<dialog>` opened as a modal, which makes the page under it inert. Strict mode opens one twice. */
+let modalOpens = 0;
 
-/** A desktop window as narrow as a phone: every `(width < Npx)` query matches. */
+const dialogPrototype = HTMLDialogElement.prototype;
+const nativeDialog = {
+  showModal: Object.getOwnPropertyDescriptor(dialogPrototype, "showModal"),
+  close: Object.getOwnPropertyDescriptor(dialogPrototype, "close"),
+};
+
+/**
+ * A desktop window as narrow as a phone: every `(width < Npx)` query matches. jsdom has
+ * `<dialog>` but no `showModal()`; opening it as a modal, counted, is all these tests need.
+ */
 beforeEach(() => {
   const media = window.matchMedia;
   // jsdom has no popovers, which a menu closes itself with.
   HTMLElement.prototype.hidePopover ??= () => {};
+  modalOpens = 0;
+  Object.defineProperty(dialogPrototype, "showModal", {
+    configurable: true,
+    value(this: HTMLDialogElement) {
+      modalOpens += 1;
+      this.setAttribute("open", "");
+    },
+  });
+  Object.defineProperty(dialogPrototype, "close", {
+    configurable: true,
+    value(this: HTMLDialogElement) {
+      this.removeAttribute("open");
+    },
+  });
   window.matchMedia = (query) =>
     ({
       media: query,
@@ -30,6 +55,13 @@ beforeEach(() => {
     }) as unknown as MediaQueryList;
   restore = () => {
     window.matchMedia = media;
+    for (const [name, descriptor] of Object.entries(nativeDialog)) {
+      if (descriptor === undefined) {
+        Reflect.deleteProperty(dialogPrototype, name);
+      } else {
+        Object.defineProperty(dialogPrototype, name, descriptor);
+      }
+    }
   };
   element = document.createElement("div");
   document.body.append(element);
@@ -108,13 +140,27 @@ const workspaceRow = () =>
   element.querySelector<HTMLButtonElement>('button[aria-label^="Workspace: "]');
 const chip = () =>
   element.querySelector<HTMLButtonElement>('button[aria-label="Sample, test model"]');
-const sheetTitle = () => element.querySelector(".fixed h2")?.textContent;
+const sheet = () => element.querySelector<HTMLDialogElement>("dialog[open]");
+const sheetTitle = () => sheet()?.querySelector("h2")?.textContent;
 
 async function pressSheetRow(label: string): Promise<void> {
-  const row = [...element.querySelectorAll<HTMLButtonElement>(".fixed li > button")].find((each) =>
+  const row = [...element.querySelectorAll<HTMLButtonElement>("dialog li > button")].find((each) =>
     each.textContent?.startsWith(label),
   );
   await act(async () => row?.click());
+}
+
+/** Escape on an open modal `<dialog>`: the browser fires `cancel` on it. */
+function pressEscape(): void {
+  act(() => {
+    sheet()?.dispatchEvent(new Event("cancel", { cancelable: true }));
+  });
+}
+
+/** Opens a sheet from `opener` with the keyboard's focus on it, as Enter does. */
+async function openSheetFrom(opener: HTMLButtonElement | null): Promise<void> {
+  opener?.focus();
+  await act(async () => opener?.click());
 }
 
 verifies("workspace.narrow-window", () => {
@@ -143,10 +189,32 @@ verifies("workspace.narrow-window", () => {
 
     await act(async () => chip()?.click());
     expect(sheetTitle()).toBe("Sample · test model");
-    expect(element.querySelector(".fixed")?.textContent).toContain("New workspace…");
+    expect(sheet()?.textContent).toContain("New workspace…");
     await pressSheetRow("Fresh copy of the sample");
 
     expect(sheetTitle()).toBeUndefined();
     expect(create).toHaveBeenCalledWith([]);
+  });
+
+  it("holds the keyboard in each sheet: modal, and Escape closes it with focus back on its opener", async () => {
+    await start();
+
+    for (const [opener, title] of [
+      [workspaceRow, "Workspace"],
+      [chip, "Sample · test model"],
+    ] as const) {
+      modalOpens = 0;
+      await openSheetFrom(opener());
+      // A modal dialog makes the page under it inert, so Tab from the last row stays in the sheet.
+      expect(modalOpens).toBeGreaterThan(0);
+      expect(sheetTitle()).toBe(title);
+      expect(sheet()?.getAttribute("aria-label")).toBe(title);
+      expect(document.activeElement).toBe(sheet()?.querySelector("h2"));
+
+      pressEscape();
+
+      expect(sheet()).toBeNull();
+      expect(document.activeElement).toBe(opener());
+    }
   });
 });
