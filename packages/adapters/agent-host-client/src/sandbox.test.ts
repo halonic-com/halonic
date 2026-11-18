@@ -42,6 +42,20 @@ verifies("agent-host-client.sandbox", () => {
       expect(await sandbox.check()).toEqual(check);
     });
 
+    it("answers a passing check with its residuals, and refuses one it doesn't know", async () => {
+      const check = {
+        ok: true,
+        reason: null,
+        missing: [],
+        residuals: ["kept-roots-readable"],
+      };
+      const host = hostWithSession().answer("GET /v1/sandbox/check", ok(check));
+      const sandbox = await AgentHostSandbox.connect(host);
+      expect(await sandbox.check()).toEqual(check);
+      host.answer("GET /v1/sandbox/check", ok({ ...check, residuals: ["somewhere-else"] }));
+      await expect(sandbox.check()).rejects.toMatchObject({ kind: "answer_invalid" });
+    });
+
     it("opens a session in the host with the profile unchanged", async () => {
       const host = hostWithSession();
       const session = await (await AgentHostSandbox.connect(host)).open(profile);
