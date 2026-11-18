@@ -52,6 +52,17 @@ call keeps `fetch`, which reaches only the two fixed hosts
 Whether the key may go to that address at all (the workspace's trust and the
 key's allowed addresses) is the host's check, made before it opens the bridge.
 
+At a compatible provider the bridge sends only what it knows. A compatible
+provider has its own ways to reach the network from its side, such as
+OpenRouter's `plugins: [{ "id": "web" }]`, so removing the web tools Anthropic
+and OpenAI name isn't enough. The bridge refuses, with `denied`, a request
+with a top-level field the API's own reference doesn't name (and, for
+Messages, `container`), a tool or a `tool_choice` the
+program doesn't run itself, and a `model` that ends in `:online`. The
+program's own tools are, for Messages, a tool without a `type`, `custom`,
+`bash_*`, `text_editor_*`, `computer_*` and `memory_*`, and for Responses
+`function`, `custom` and `local_shell`.
+
 ## GitHub read tools
 
 `GitHubReadTools` is a `BridgeTools` with four read-only tools on one repository fixed when it is made
@@ -154,7 +165,7 @@ Its key should be short-lived and for that task alone, and is read from `Secrets
   twice is safe.
 
 The rules are in `requirements/`: `server.md`, `socket.md`, `pass-through.md`,
-`anthropic.md`, `openai.md`, `provider-base-url.md`, `sign-in.md`, `spend.md`, `mcp.md` and `approvals.md`.
+`anthropic.md`, `openai.md`, `provider-base-url.md`, `compatible-request.md`, `sign-in.md`, `spend.md`, `mcp.md` and `approvals.md`.
 
 ## Options
 
