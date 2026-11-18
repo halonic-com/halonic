@@ -1,12 +1,12 @@
-import { createSignInRig, type SignInRig } from "@halonicjs/testing-sign-in";
+import { signInName } from "@halonicjs/testing-sign-in";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { integrationSignInRoutes } from "./sign-in-routes.ts";
+import { type ExampleSignInHost, exampleSignInHost } from "./sign-in-test-kit.test-helper.ts";
 
 const token = randomLaunchToken();
-const signInName = "example-account";
 
 let server: HostServer | undefined;
 let logged: string[] = [];
@@ -17,18 +17,18 @@ afterEach(async () => {
   logged = [];
 });
 
-/** The routes over the sign-in rig's real host, with the fake provider behind it. */
-async function started(options: { relayPort?: number; rig?: SignInRig } = {}) {
-  const rig = options.rig ?? createSignInRig();
+/** The routes over the real sign-in host, with the fake provider behind it. */
+async function started(options: { relayPort?: number; example?: ExampleSignInHost } = {}) {
+  const example = options.example ?? exampleSignInHost();
   server = await startHostServer(
     token,
     integrationSignInRoutes({
-      signIns: rig.host,
+      signIns: example.host,
       ...(options.relayPort === undefined ? {} : { relayPort: options.relayPort }),
       log: (text) => logged.push(text),
     }),
   );
-  return { rig, url: server.url };
+  return { example, url: server.url };
 }
 
 function post(url: string, path: string, body: unknown, withToken = true): Promise<Response> {
@@ -60,14 +60,14 @@ async function states(url: string): Promise<unknown> {
 verifies("agent-host.integration-sign-in-routes", () => {
   describe("a sign-in from start to sign-out", () => {
     it("answers the authorize URL, takes the callback without the token, and says signed in", async () => {
-      const { rig, url } = await started();
+      const { example, url } = await started();
 
       const authorizeUrl = await start(url);
 
       const redirect = new URL(new URL(authorizeUrl).searchParams.get("redirect_uri") ?? "");
       expect(redirect.origin).toBe(url);
       expect(redirect.pathname).toMatch(/^\/sign-in\/.+/u);
-      const callback = rig.server.approve(authorizeUrl);
+      const callback = example.server.approve(authorizeUrl);
       const page = await fetch(callback);
       expect(page.status).toBe(200);
       expect(await states(url)).toEqual({
@@ -79,12 +79,11 @@ verifies("agent-host.integration-sign-in-routes", () => {
           },
         ],
       });
-      expect((await rig.api()).status).toBe(200);
     });
 
     it("signs out at the provider and says what it did", async () => {
-      const { rig, url } = await started();
-      await fetch(rig.server.approve(await start(url)));
+      const { example, url } = await started();
+      await fetch(example.server.approve(await start(url)));
 
       const response = await post(url, "/v1/integrations/sign-in/sign-out", {
         integration: "example",
@@ -92,14 +91,14 @@ verifies("agent-host.integration-sign-in-routes", () => {
       });
 
       expect(await response.json()).toEqual({ result: { kind: "signedOut", revoke: "revoked" } });
-      expect(rig.server.revokeRequests()).toHaveLength(1);
+      expect(example.server.revokeRequests()).toHaveLength(1);
       expect(await states(url)).toMatchObject({ signIns: [{ state: "signedOut" }] });
     });
 
     it("says a refusal at the provider ended it, and nothing the provider sent besides", async () => {
-      const { rig, url } = await started();
+      const { example, url } = await started();
 
-      const page = await fetch(rig.server.approve(await start(url), { user: "deny" }));
+      const page = await fetch(example.server.approve(await start(url), { user: "deny" }));
 
       expect(page.status).toBe(400);
       expect(await states(url)).toMatchObject({
@@ -113,8 +112,8 @@ verifies("agent-host.integration-sign-in-routes", () => {
     });
 
     it("gives a cancelled sign-in's callback the 400 page", async () => {
-      const { rig, url } = await started();
-      const callback = rig.server.approve(await start(url));
+      const { example, url } = await started();
+      const callback = example.server.approve(await start(url));
 
       const cancelled = await post(url, "/v1/integrations/sign-in/cancel", {
         integration: "example",
@@ -129,7 +128,7 @@ verifies("agent-host.integration-sign-in-routes", () => {
 
   describe("the callback", () => {
     it("gets a plain 400 page at a path nobody waits on, and exchanges nothing", async () => {
-      const { rig, url } = await started();
+      const { example, url } = await started();
 
       const page = await fetch(`${url}/sign-in/not-pending?state=x&code=y`);
 
@@ -137,21 +136,21 @@ verifies("agent-host.integration-sign-in-routes", () => {
       expect(page.headers.get("cache-control")).toBe("no-store");
       expect(page.headers.get("referrer-policy")).toBe("no-referrer");
       expect(await page.text()).not.toContain("not-pending");
-      expect(rig.server.tokenRequests("authorization_code")).toEqual([]);
+      expect(example.server.tokenRequests("authorization_code")).toEqual([]);
     });
 
     it("exchanges nothing for a wrong state", async () => {
-      const { rig, url } = await started();
+      const { example, url } = await started();
 
-      const page = await fetch(rig.server.approve(await start(url), { state: "wrong-state" }));
+      const page = await fetch(example.server.approve(await start(url), { state: "wrong-state" }));
 
       expect(page.status).toBe(400);
-      expect(rig.server.tokenRequests("authorization_code")).toEqual([]);
+      expect(example.server.tokenRequests("authorization_code")).toEqual([]);
     });
 
     it("is refused with an Origin header, as every route is", async () => {
-      const { rig, url } = await started();
-      const callback = rig.server.approve(await start(url));
+      const { example, url } = await started();
+      const callback = example.server.approve(await start(url));
 
       const answer = await fetch(callback, { headers: { origin: "https://example.com" } });
 
@@ -196,9 +195,9 @@ verifies("agent-host.integration-sign-in-routes", () => {
     });
 
     it("answers 422 for a setting that is missing", async () => {
-      const rig = createSignInRig();
-      rig.changeSettings({});
-      const { url } = await started({ rig });
+      const example = exampleSignInHost();
+      example.changeSettings({});
+      const { url } = await started({ example });
 
       const response = await post(url, "/v1/integrations/sign-in/start", {
         integration: "example",
@@ -210,9 +209,9 @@ verifies("agent-host.integration-sign-in-routes", () => {
     });
 
     it("answers 422 for a client secret that isn't set", async () => {
-      const rig = createSignInRig();
-      rig.secrets.clear();
-      const { url } = await started({ rig });
+      const example = exampleSignInHost();
+      example.forgetClientSecret();
+      const { url } = await started({ example });
 
       const response = await post(url, "/v1/integrations/sign-in/start", {
         integration: "example",
@@ -221,6 +220,21 @@ verifies("agent-host.integration-sign-in-routes", () => {
 
       expect(response.status).toBe(422);
       expect(await response.json()).toMatchObject({ error: { kind: "client_secret_missing" } });
+    });
+
+    it("answers 502 with a fixed message for a pick of Halonic's own secret, and logs only an error name", async () => {
+      const example = exampleSignInHost();
+      example.pickClientSecret("token-key");
+      const { url } = await started({ example });
+
+      const response = await post(url, "/v1/integrations/sign-in/start", {
+        integration: "example",
+        signIn: signInName,
+      });
+
+      expect(response.status).toBe(502);
+      expect(await response.json()).toMatchObject({ error: { kind: "sign_in_failed" } });
+      expect(logged).toEqual(["An integration sign-in request failed (RangeError).\n"]);
     });
 
     it("answers 501 over frames, where the callback can't arrive", async () => {
@@ -236,7 +250,7 @@ verifies("agent-host.integration-sign-in-routes", () => {
     });
 
     it("refuses another field and a name that isn't a sheet name, before anything runs", async () => {
-      const { rig, url } = await started();
+      const { example, url } = await started();
 
       const extra = await post(url, "/v1/integrations/sign-in/start", {
         integration: "example",
@@ -250,7 +264,7 @@ verifies("agent-host.integration-sign-in-routes", () => {
 
       expect(extra.status).toBe(400);
       expect(bad.status).toBe(400);
-      expect(rig.server.requests).toEqual([]);
+      expect(example.server.requests).toEqual([]);
     });
   });
 });

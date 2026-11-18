@@ -325,6 +325,9 @@ importers:
       '@halonicjs/adapter-http-node':
         specifier: workspace:*
         version: link:../../packages/adapters/http-node
+      '@halonicjs/adapter-integration-kit':
+        specifier: workspace:*
+        version: link:../../packages/adapters/integration-kit
       '@halonicjs/adapter-integration-runner':
         specifier: workspace:*
         version: link:../../packages/adapters/integration-runner
@@ -382,6 +385,9 @@ importers:
       '@halonicjs/host-server':
         specifier: workspace:*
         version: link:../../packages/host/server
+      '@halonicjs/oauth-sign-in':
+        specifier: workspace:*
+        version: link:../../packages/core/oauth-sign-in
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../packages/core/ports
