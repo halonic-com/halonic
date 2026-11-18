@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -41,7 +42,7 @@ const menuItems = () => [...document.querySelectorAll<HTMLElement>('[role="menui
 const menuLabels = () => menuItems().map((each) => each.textContent);
 
 /** Shows "Daily" with its ⋮ menu open; `openFile` is what the app gives the page, if it can open tabs. */
-async function openMenu(openFile?: (path: string) => void) {
+async function openMenu(openFile?: (path: string) => void, presentation?: "phone") {
   const host = {
     ...memoryHost([], []).host,
     mailboxes: async () => [],
@@ -49,14 +50,21 @@ async function openMenu(openFile?: (path: string) => void) {
     nextTimes: async () => ({ times: [], atNextCheck: false }),
     read: async () => daily,
   } as RoutinesHost;
-  const page = await show(
+  const screen = (
     <RoutineScreen
       host={host}
       hubId="acme"
       id="daily"
       announce={() => {}}
       {...(openFile && { openFile })}
-    />,
+    />
+  );
+  const page = await show(
+    presentation === undefined ? (
+      screen
+    ) : (
+      <PresentationProvider presentation={presentation}>{screen}</PresentationProvider>
+    ),
   );
   act(() =>
     page.querySelector<HTMLElement>('button[aria-label="More actions for Daily"]')?.click(),
@@ -80,5 +88,11 @@ verifies("routines.page.open-as-file", () => {
     await openMenu();
 
     expect(menuLabels()).toEqual(["Delete"]);
+  });
+
+  it("offers none on a phone, even though the app passes openFile there", async () => {
+    await openMenu(vi.fn(), "phone");
+
+    expect(menuLabels()).toEqual(["Rename", "Delete"]);
   });
 });

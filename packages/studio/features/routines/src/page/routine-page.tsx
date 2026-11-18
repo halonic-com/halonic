@@ -344,7 +344,7 @@ function RoutineHeader({
               ...(phone
                 ? [{ id: "rename", label: pageWords.rename, onSelect: () => setRenaming(true) }]
                 : []),
-              ...(openFile === undefined
+              ...(openFile === undefined || phone
                 ? []
                 : [
                     {
