@@ -244,19 +244,21 @@ export class WorkspaceAgents implements AgentsHost {
       : undefined;
   }
 
-  /** The workflows of the agent's hub that run it in a step; throws `not_found` when the agent isn't there. */
+  /** The workflows of the agent's hub that run it in a step, with how many steps; throws `not_found` when the agent isn't there. */
   async referencesTo({ hubId, id }: AgentRef): Promise<readonly AgentUser[]> {
     const workspace = await this.#load();
     if (!filesOf(workspace, "agent").some((one) => one.hub === hubId && one.value.id === id)) {
       throw agentGone();
     }
     return filesOf(workspace, "workflow")
-      .filter(
-        (file) =>
-          file.hub === hubId &&
-          Object.values(file.value.states).some((state) => state.agent === id),
-      )
-      .map((file) => ({ hubId, id: file.value.id, name: file.value.name }));
+      .filter((file) => file.hub === hubId)
+      .map((file) => ({
+        hubId,
+        id: file.value.id,
+        name: file.value.name,
+        steps: Object.values(file.value.states).filter((state) => state.agent === id).length,
+      }))
+      .filter((user) => user.steps > 0);
   }
 
   subscribe(listener: () => void): () => void {

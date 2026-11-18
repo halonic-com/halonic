@@ -27,16 +27,40 @@ export interface TrashOptions {
 }
 
 /**
- * The second line of the move: how many workflows run the agent in a step and now show an error,
- * or `undefined` when none does or the workflows can't be read (the move doesn't wait on that).
+ * The second line of the move: how many workflow steps run the agent and now show an error, or
+ * `undefined` when none does or the workflows can't be read (the move doesn't wait on that).
  */
 async function warningLine(host: AgentsHost, ref: AgentRef): Promise<string | undefined> {
   try {
     const users = await host.referencesTo(ref);
-    return users.length === 0 ? undefined : deleteWords.movedLine(users.length);
+    const steps = users.reduce((sum, user) => sum + user.steps, 0);
+    return steps === 0 ? undefined : deleteWords.movedLine(steps);
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Closes the toast once the agent is back some other way, such as the workspace's undo (Ctrl Z):
+ * its Undo could only fail then. Stops listening when the toast goes by itself.
+ */
+function closeWhenBack(host: AgentsHost, toasts: ToastStore, ref: AgentRef, toastId: string): void {
+  const stopAll = () => {
+    stopHost();
+    stopToasts();
+  };
+  const stopHost = host.subscribe(() => {
+    host.read(ref).then(
+      () => {
+        stopAll();
+        toasts.close(toastId);
+      },
+      () => undefined,
+    );
+  });
+  const stopToasts = toasts.subscribe(() => {
+    if (!toasts.list().some((toast) => toast.id === toastId)) stopAll();
+  });
 }
 
 /**
@@ -77,8 +101,8 @@ export async function trashAgent(
     const line = await warningLine(host, { hubId, id });
     const trashed = await host.trash({ hubId, id });
     options.onTrashed?.(trashed, line);
-    if (options.quiet !== true) {
-      toasts?.show({
+    if (options.quiet !== true && toasts !== null) {
+      const toastId = toasts.show({
         tone: "success",
         title: deleteWords.moved(name, line !== undefined),
         ...(line === undefined ? {} : { text: line }),
@@ -90,6 +114,7 @@ export async function trashAgent(
             }),
         },
       });
+      closeWhenBack(host, toasts, { hubId, id }, toastId);
     }
     return true;
   } catch (error) {

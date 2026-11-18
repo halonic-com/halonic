@@ -15,11 +15,14 @@ export const deleteWords = {
   moved: (name: string, withLine: boolean) => `Moved ${name} to the trash${withLine ? "." : ""}`,
   /** The page strip's text; a sentence when a second line follows. */
   pageMoved: (withLine: boolean) => `This agent was moved to the trash${withLine ? "." : ""}`,
-  /** The second line, when workflows run the agent in a step: what breaks, and how to fix it. */
-  movedLine: (workflows: number) =>
-    workflows === 1
-      ? "1 workflow now shows an error until you pick another agent for its step."
-      : `${workflows} workflows now show an error until you pick another agent for their steps.`,
+  /**
+   * The second line, when workflow steps run the agent: what breaks, and how to fix it (microcopy
+   * 8.1). It counts steps, not workflows, and names only the parts that apply (HAL-3276).
+   */
+  movedLine: (steps: number) =>
+    steps === 1
+      ? "1 workflow step now shows an error until you pick another agent."
+      : `${steps} workflow steps now show an error until you pick another agent.`,
   couldntMove: (name: string, reason: string | undefined) =>
     reason === undefined
       ? `Couldn't move ${name} to the trash.`
