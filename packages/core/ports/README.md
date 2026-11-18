@@ -95,9 +95,13 @@ with `isCantTryError`.
 `remote-gateway-protocol.ts` isn't a port either: it holds the messages a phone
 and the host's remote gateway exchange (sessions, their events, approvals and
 prompt input, nothing else), with their own version, `gatewayProtocolVersion`,
-and a limit of `gatewayMaxMessageBytes` (64 KiB) per message (requirement
+and a limit of `gatewayMaxMessageBytes` (65,519 bytes) per message (requirement
 `remote-gateway-protocol`). Why only the gateway is ever reachable by a tunnel
 is in the ADR "Only the remote gateway is reachable by a tunnel" in `docs/adr`.
+`remote-gateway-session.ts` holds the end-to-end session those messages run in:
+the Noise handshakes that pair and reconnect a phone, the binary frames, the two
+cleartext refusals, and the pairing rules, limits and times (requirement
+`remote-gateway-session`, ADR "Pairing and the end-to-end session").
 
 ## Rules that ship with the ports
 
@@ -123,7 +127,10 @@ next to the ports:
 | `bridgeCallCharge` | what a bridged call costs and who paid (`paidBy: "subscription"` for a sign-in call); `bridgeCallCost` is deprecated in its favour | `harness-bridge-server` |
 | `maxIntegrationWaitMs` | the longest `IntegrationHost.wait`, 30 seconds | `integration-host` |
 | `gatewayErrorCodes`, `gatewayClosingErrorCodes`, `gatewayRefusalCodes` | the remote gateway's error codes: those that close the connection and those that leave it open | `remote-gateway-protocol` |
-| `gatewayMaxMessageBytes`, `gatewayMaxPromptLength`, `gatewayMaxIdLength`, `gatewayMaxWatches`, `gatewayMaxBufferedBytes` | the remote gateway's limits: 64 KiB per message, 10,000-unit prompts, 128-character ids, 16 watches and 1 MiB unsent per connection | `remote-gateway-protocol` |
+| `gatewayMaxMessageBytes`, `gatewayMaxPromptLength`, `gatewayMaxIdLength`, `gatewayMaxWatches`, `gatewayMaxBufferedBytes` | the remote gateway's limits: 65,519 bytes per message, 10,000-unit prompts, 128-character ids, 16 watches and 1 MiB unsent per connection | `remote-gateway-protocol` |
+| `encodeCleartextFrame`, `decodeCleartextFrame`, `gatewayFrameKinds` | the session's frame kinds, and the two cleartext refusals (`handshake-failed`, `pair-refused`) as bytes | `remote-gateway-session` |
+| `pairCommitInput`, `pairCommitLabel`, `pairCommitNonceBytes` | the bytes the phone's commitment to pairing message 3 hashes, and the size of the nonce that keeps message 3 unpredictable | `remote-gateway-session` |
+| `pairingRules`, `gatewaySessionLimits`, `gatewayMaxFrameBytes`, `gatewayMaxHandshakeBytes`, `gatewayMaxNameBytes` | the pairing rules (5-minute code, 2 minutes for Allow, 5 wrong tries, 10 failed tries a minute), the handshake timeout, rekeying, the session's length and the frame sizes | `remote-gateway-session` |
 | `sandboxPackageManagers` | the package managers a `SandboxFix` can name, behind `SandboxPackageManager` | `sandbox-check-fix` |
 | `sandboxUnavailableReasons`, `adapterFailures`, `modelCallErrorReasons` | the lists behind `SandboxUnavailableReason`, `AdapterFailure` and `ModelCallErrorReason` | `sandbox-check-reason`, `run-failure-error`, `model-call-error` |
 | `tunnelStates`, `tunnelReasons` | the lists behind `TunnelState` and `TunnelReason` | `tunnel-provider` |

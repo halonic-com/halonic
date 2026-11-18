@@ -81,7 +81,7 @@ verifies("tunnel-attacks.protocol-escape", () => {
         { type: "list-sessions", id: "l", all: true },
         { type: "list-sessions", id: "l", filter: "*" },
         { type: "unwatch", id: "u", sessionId: "s1", force: true },
-        { type: "hello", id: "h", version: 1, token: "x" },
+        { type: "hello", id: "h", version: 2, token: "x" },
       ];
       for (const message of extra) {
         expect(await attempt(message), JSON.stringify(message)).toEqual(malformed);

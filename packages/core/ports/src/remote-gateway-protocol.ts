@@ -2,24 +2,28 @@
  * The remote gateway protocol: what a phone and the desktop host's remote
  * gateway say to each other, inside the end-to-end session (requirement
  * `ports.remote-gateway-protocol`). It covers sessions, their events,
- * approvals and prompt input, and nothing else. Each message is one JSON
- * object in one session frame.
+ * approvals and prompt input, the end of a pairing, and nothing else. Each
+ * message is one JSON object in one Noise transport message; nothing here is
+ * ever sent in cleartext. The session around it is in
+ * `remote-gateway-session.ts` (ADR "Pairing and the end-to-end session").
  */
 
 /**
- * The protocol version. Both sides send it in `hello` and `welcome`; a host
- * speaks exactly one and there is no negotiation. The host answers a `hello`
- * with another version with `unsupported-version` and closes; the phone
- * closes on a `welcome` with another version.
+ * The protocol version. Both sides send it in `hello` and `welcome`, and the
+ * Noise prologue names it too, so a peer of another version fails the
+ * handshake. A host speaks exactly one and there is no negotiation. The host
+ * answers a `hello` with another version with `unsupported-version` and
+ * closes; the phone closes on a `welcome` with another version.
  */
-export const gatewayProtocolVersion = 1;
+export const gatewayProtocolVersion = 2;
 
 /**
- * The largest message either side accepts, in bytes of its UTF-8 JSON. A
- * larger one is refused: the host sends `error` with `too-large` and closes.
- * The host checks the size before it parses.
+ * The largest message either side accepts, in bytes of its UTF-8 JSON: one
+ * Noise transport message (65,535 bytes) less its 16-byte tag. A larger one is
+ * refused: the host sends `error` with `too-large` and closes. The host checks
+ * the size before it parses.
  */
-export const gatewayMaxMessageBytes = 64 * 1024;
+export const gatewayMaxMessageBytes = 65_535 - 16;
 
 /**
  * The longest prompt text, in UTF-16 code units. It is set from the worst
@@ -157,7 +161,22 @@ export type GatewayClientMessage =
     };
 
 /**
+ * Why the host ended a pairing after the phone's message 3 decrypted: the
+ * person pressed Don't allow, or didn't press Allow in time. Refusals before
+ * that are cleartext frames (`PairRefusedReason` in `remote-gateway-session.ts`).
+ */
+export type GatewayPairDeniedReason = "denied" | "timed-out";
+
+/**
  * What the host sends.
+ *
+ * **Pairing and reconnecting.** At the end of a pairing the host sends
+ * `paired` once the person pressed Allow, or `pair-refused` and closes; the
+ * phone sends nothing before either. After a reconnect the host sends
+ * `not-paired` and closes when it doesn't know the phone's key; it sends it
+ * only after its handshake message has proved who it is, and also at once
+ * when the phone is revoked while connected. Then, and after `paired`, the
+ * phone's first message is `hello`.
  *
  * **Error and close.** The host sends one `error` with a code from
  * {@link gatewayClosingErrorCodes}, without `replyTo`, then closes the
@@ -166,12 +185,12 @@ export type GatewayClientMessage =
  * - `unsupported-version`: a `hello` whose `version` isn't
  *   {@link gatewayProtocolVersion};
  * - `malformed`: anything else that isn't exactly one listed message. That is
- *   a binary frame, bytes that aren't valid UTF-8, text that isn't one JSON
- *   object, an unlisted `type`, a missing, extra or wrongly typed field, an
- *   id that breaks {@link gatewayMaxIdLength}, an `afterSeq` that isn't a whole
- *   number from 0 up to the session's `lastSeq`, a prompt `text` that is
- *   empty or longer than {@link gatewayMaxPromptLength}, any message before
- *   `hello`, and a second `hello`.
+ *   bytes that aren't valid UTF-8, text that isn't one JSON object, an
+ *   unlisted `type`, a missing, extra or wrongly typed field, an id that
+ *   breaks {@link gatewayMaxIdLength}, an `afterSeq` that isn't a whole number
+ *   from 0 up to the session's `lastSeq`, a prompt `text` that is empty or
+ *   longer than {@link gatewayMaxPromptLength}, any message before `hello`,
+ *   and a second `hello`.
  *
  * A well-formed message the host won't carry out gets an `error` with a code
  * from {@link gatewayRefusalCodes} and its `replyTo`, and the connection
@@ -197,6 +216,9 @@ export type GatewayHostMessage =
       readonly body: GatewayEventBody;
     }
   | { readonly type: "ok"; readonly replyTo: string }
+  | { readonly type: "paired" }
+  | { readonly type: "pair-refused"; readonly reason: GatewayPairDeniedReason }
+  | { readonly type: "not-paired" }
   | {
       readonly type: "error";
       readonly code: (typeof gatewayClosingErrorCodes)[number];
