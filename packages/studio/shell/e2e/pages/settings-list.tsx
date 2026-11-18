@@ -10,7 +10,8 @@ import type { WorkspaceContext } from "../../src/workspace-context.ts";
  * The phone's Settings list in a short, scrolling `main`, for Back: "Open" draws another page in
  * its place, and "Back" draws the list again and moves focus to its heading, as the window does.
  * The list must come back at the scroll it had, which only a real browser shows (a focused heading
- * is scrolled into view there).
+ * is scrolled into view there). In a short window (`short:`) the whole column scrolls instead of
+ * `main`, bars included, as the window's phone column does (HAL-12665).
  */
 const load = async () => ({ View: () => null });
 const sections: Registered<SettingsSectionContribution>[] = Array.from(
@@ -30,7 +31,7 @@ function Page() {
   const [open, setOpen] = useState(false);
   const scroll = useRef(0);
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="flex h-dvh flex-col short:overflow-y-auto">
       <header className="flex gap-2">
         <button type="button" onClick={() => setOpen(true)}>
           Open
@@ -45,7 +46,7 @@ function Page() {
           Back
         </button>
       </header>
-      <main className="min-h-0 flex-1 overflow-y-auto">
+      <main className="min-h-0 flex-1 overflow-y-auto short:flex-[1_0_auto] short:overflow-visible">
         {open ? (
           <h1 tabIndex={-1}>A section</h1>
         ) : (
