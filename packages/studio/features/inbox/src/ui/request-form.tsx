@@ -1,4 +1,5 @@
 import { Button, Field, Select, TextArea } from "@halonicjs/studio-kit";
+import { copyDetailsWords } from "@halonicjs/studio-shell";
 import { type FormEvent, type Ref, useState } from "react";
 import type { RequestWorkflow } from "../request/inbox-requests.ts";
 
@@ -24,6 +25,8 @@ export interface RequestFormProps {
   readonly notStarted: string;
   /** With a refusal for the month's budget: **Change budget**, after the line. */
   readonly onChangeBudget?: (() => void) | undefined;
+  /** With a failure Halonic can't explain: **Copy details**, after the line (22 F13). */
+  readonly onCopyDetails?: (() => void) | undefined;
   /** Starts the run; clears the message once it has started. Never rejects. */
   readonly onSend: (workflow: RequestWorkflow, message: string) => Promise<void>;
   /** Esc: goes back to the list. The text stays. */
@@ -48,6 +51,7 @@ export function RequestForm({
   busy,
   notStarted,
   onChangeBudget,
+  onCopyDetails,
   onSend,
   onEscape,
   messageRef,
@@ -110,6 +114,14 @@ export function RequestForm({
             {" · "}
             <Button variant="ghost" size="sm" onClick={onChangeBudget}>
               Change budget
+            </Button>
+          </>
+        ) : null}
+        {notStarted !== "" && onCopyDetails !== undefined ? (
+          <>
+            {" · "}
+            <Button variant="ghost" size="sm" onClick={onCopyDetails}>
+              {copyDetailsWords.label}
             </Button>
           </>
         ) : null}

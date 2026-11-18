@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+
+import { KindedError } from "@halonicjs/std";
 import { EngineNotAnswering, type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -193,6 +195,48 @@ verifies("runs.run-view.run-again", () => {
     );
     expect(root.textContent).not.toContain("isn't answering");
     expect(copyDetailsCount(root)).toBe(before + 1);
+  });
+
+  it("words a refusal as the Run panel does: its next step, its command, and Try again only for a conflict", async () => {
+    const harness = Object.assign(
+      new KindedError(
+        "unavailable",
+        "Reporter runs in Claude Code, which Halonic can't start yet.",
+        {
+          fix: "To run it in Halonic's own loop instead, run this in a terminal:",
+        },
+      ),
+      { command: "halonic run support-reply --harness halonic" },
+    );
+    const busy = new KindedError(
+      "conflict",
+      "Halonic is already running this workspace somewhere else, in a terminal or in another Studio window.",
+      { fix: "Wait until it has finished or stop it there, then try again." },
+    );
+    const startRun = vi.fn<RunStartHost["startRun"]>().mockRejectedValueOnce(harness);
+    const root = await open(failed, { startRun });
+    await act(async () => button(root, "Run again")?.click());
+    const lineOf = () => root.querySelector('section[aria-label="Run didn\'t start"]');
+    let line = lineOf();
+    expect(line?.textContent).toContain(
+      "To run it in Halonic's own loop instead, run this in a terminal:",
+    );
+    expect(line?.querySelector("code")?.textContent).toBe(
+      "halonic run support-reply --harness halonic",
+    );
+    expect(line?.textContent).not.toContain("Try again");
+
+    startRun.mockRejectedValueOnce(busy).mockResolvedValueOnce({ runId: "run_b_new" });
+    await act(async () => button(root, "Run again")?.click());
+    line = lineOf();
+    expect(line?.textContent).toContain(
+      "Couldn't start the run: Halonic is already running this workspace somewhere else",
+    );
+    expect(line?.textContent).toContain(
+      "Wait until it has finished or stop it there, then try again.",
+    );
+    await act(async () => button(root, "Try again")?.click());
+    expect(startRun).toHaveBeenCalledTimes(3);
   });
 
   it("says each failed start once", async () => {

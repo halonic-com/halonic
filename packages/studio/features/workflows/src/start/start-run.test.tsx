@@ -3,6 +3,7 @@
 import { KindedError } from "@halonicjs/std";
 import { ShownRuns } from "@halonicjs/studio-feature-inbox/api";
 import { PresentationProvider } from "@halonicjs/studio-kit";
+import { ErrorWithDetails } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -252,9 +253,11 @@ verifies("workflows.start.start-run", () => {
       "Couldn't start the run: Halonic ran into a problem it can't explain yet.",
     );
     expect(page.textContent).not.toContain("ENOENT");
+    expect(buttonNamed(page, "Copy details")).toBeDefined();
+    expect(page.textContent).not.toContain("Try again");
   });
 
-  it("says another reason as the host gave it, with a full stop", async () => {
+  it("says another reason lower case after the colon, with a full stop", async () => {
     const { page } = await open(async () => {
       throw new KindedError("unavailable", "The disk is full");
     });
@@ -263,6 +266,26 @@ verifies("workflows.start.start-run", () => {
     await click(buttonNamed(page, "Start run"));
 
     expect(page.textContent).toContain("Couldn't start the run: the disk is full.");
+  });
+
+  it("offers Try again and Copy details when Halonic can't write to its data folder", async () => {
+    const { page } = await open(async () => {
+      throw new ErrorWithDetails(
+        "unavailable",
+        "Halonic can't write to its data folder.",
+        "Permission denied (os error 13)",
+      );
+    });
+
+    await click(runButton(page));
+    await click(buttonNamed(page, "Start run"));
+
+    expect(page.textContent).toContain(
+      "Couldn't start the run: Halonic can't write to its data folder.",
+    );
+    expect(page.textContent).not.toContain("os error");
+    expect(buttonNamed(page, "Try again")).toBeDefined();
+    expect(buttonNamed(page, "Copy details")).toBeDefined();
   });
 
   it("shows the next step of a refusal in place of Try again", async () => {

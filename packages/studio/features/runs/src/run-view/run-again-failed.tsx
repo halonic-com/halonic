@@ -1,12 +1,11 @@
-import { Callout } from "@halonicjs/studio-kit";
-import type { EngineWords } from "@halonicjs/studio-shell";
-import { FailureReason } from "../load-failure.tsx";
+import { type EngineWords, StartFailedCallout } from "@halonicjs/studio-shell";
 import { runPageWords } from "../run-words.ts";
 import type { RunAgain } from "./run-again.ts";
 
 /**
- * Why the last **Run again** didn't start, in a danger Callout named "Run didn't start", with
- * **Try again** (microcopy 9.6); nothing while it hasn't failed. The run page shows it under its header, the run card over its banner.
+ * Why the last **Run again** didn't start, in the shell's start-failure Callout under a section
+ * named "Run didn't start", with **Try again** starting it again; nothing while it hasn't failed.
+ * The run page shows it under its header, the run card over its banner.
  * A refusal because the workspace isn't trusted yet has **Review** instead, which opens the trust
  * check; once the person trusts it, the Callout goes and `onTrusted` gives focus to **Run again**,
  * as **Review** is gone (C144 RT1).
@@ -24,28 +23,19 @@ export function RunAgainFailed({
   const { review } = runAgain;
   return (
     <section aria-label={runPageWords.runAgainFailedName}>
-      <Callout
-        tone="danger"
-        action={
+      <StartFailedCallout
+        error={runAgain.problem.error}
+        notAnswering={engine.notAnswering}
+        tryAgain={runAgain.start}
+        review={
           review === undefined
-            ? { label: runPageWords.tryAgain, onClick: runAgain.start }
-            : {
-                label: runPageWords.review,
-                onClick: () =>
-                  void review().then((answer) => {
-                    if (answer === "trusted") onTrusted();
-                  }),
-              }
+            ? undefined
+            : () =>
+                void review().then((answer) => {
+                  if (answer === "trusted") onTrusted();
+                })
         }
-      >
-        {runPageWords.runAgainFailedTitle}:{" "}
-        <FailureReason
-          what={runPageWords.runAgainFailedTitle}
-          error={runAgain.problem.error}
-          engine={engine}
-          afterColon
-        />
-      </Callout>
+      />
     </section>
   );
 }

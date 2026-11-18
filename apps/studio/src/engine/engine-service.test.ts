@@ -46,8 +46,9 @@ verifies("studio.engine-service", () => {
       await service.close();
     });
 
-    it("refuses as `conflict` naming the other process when another engine holds it", async () => {
-      const service = serviceOn(fakeShell({ pid: 4242 }));
+    it("refuses as `conflict` in plain words when another engine holds it, and logs the process", async () => {
+      const reportError = vi.fn();
+      const service = serviceOn(fakeShell({ pid: 4242 }), acmeFiles(), { reportError });
 
       const refusal = await service.open().catch((error: unknown) => error);
 
@@ -91,6 +92,31 @@ verifies("studio.engine-service", () => {
         "engine_lock_hold",
       ]);
       await service.close();
+    });
+
+    it("refuses a lock it can't write as `unavailable`, keeping the shell's words for Copy details", async () => {
+      const denied = { kind: "io", message: "Permission denied (os error 13)" };
+      const service = serviceOn(fakeShell({ refusal: denied }));
+
+      const refusal = await service.open().catch((error: unknown) => error);
+
+      expect(refusal).toMatchObject({
+        kind: "unavailable",
+        message: "Halonic can't write to its data folder.",
+        details: "Permission denied (os error 13)",
+      });
+    });
+
+    it("refuses a folder the window hasn't open as a failure it can't explain", async () => {
+      const notOpen = { kind: "folder_not_open", message: "This folder isn't open in the window." };
+      const service = serviceOn(fakeShell({ refusal: notOpen }));
+
+      const refusal = await service.open().catch((error: unknown) => error);
+
+      expect(refusal).toMatchObject({
+        kind: "internal",
+        details: "This folder isn't open in the window.",
+      });
     });
 
     it("is given back when the workspace's files can't be read", async () => {

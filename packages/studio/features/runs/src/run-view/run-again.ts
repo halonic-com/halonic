@@ -1,9 +1,8 @@
 import type { RunEvent } from "@halonicjs/events";
 import { errorKindOf } from "@halonicjs/std";
-import type { EngineWords } from "@halonicjs/studio-shell";
+import { type EngineWords, startFailureOf } from "@halonicjs/studio-shell";
 import { useRef, useState } from "react";
 import type { RunStartHost, SourcedRun } from "../api.ts";
-import { loadFailureReason } from "../load-failure.tsx";
 import { runPageWords } from "../run-words.ts";
 
 /**
@@ -71,7 +70,7 @@ export function useRunAgain(
       openRun(started.runId);
     } catch (error) {
       setProblem({ error });
-      announce?.(runPageWords.runAgainFailed(loadFailureReason(error, engine, true)));
+      announce?.(runPageWords.runAgainFailed(startFailureOf(error, engine.notAnswering).reason));
     } finally {
       pending.current = false;
       setBusy(false);

@@ -230,7 +230,6 @@ export const runPageWords = {
   reviewInInbox: "Review in Inbox",
   runAgain: "Run again",
   runAgainFailedName: "Run didn't start",
-  runAgainFailedTitle: "Couldn't start the run",
   runAgainFailed: (reason: string) => `Couldn't start the run: ${reason}`,
   tryAgain: "Try again",
   review: "Review",

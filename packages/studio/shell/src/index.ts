@@ -89,7 +89,12 @@ export {
   engineWordsOf,
   type StudioHost,
 } from "./engine/engine-words.ts";
-export { copyDetailsWords, detailsOf } from "./errors/copy-details-words.ts";
+export {
+  copyDetailsWords,
+  detailsOf,
+  ErrorWithDetails,
+  rawDetailsOf,
+} from "./errors/copy-details-words.ts";
 export {
   type ErrorAction,
   type ErrorContext,
@@ -102,6 +107,12 @@ export {
   type RulePlace,
 } from "./errors/error-message.ts";
 export { failureLine, lowerAfterColon, reasonAfterColon } from "./errors/failure-line.ts";
+export {
+  StartFailedCallout,
+  type StartFailedCalloutProps,
+  startFailedWords,
+} from "./errors/start-failed-callout.tsx";
+export { type StartFailure, startFailureOf, withFullStop } from "./errors/start-failure.ts";
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
 export {
   narrowQuery,

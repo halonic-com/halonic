@@ -89,9 +89,12 @@ function shellStores(): Record<string, Handler> {
 
 /**
  * A shell that holds the engine lock for this window, or refuses it when `holder` holds it (with
- * its `pid`, when the shell names one), and records each call. `loseLock` plays another process taking the lock over.
+ * its `pid`, when the shell names one) or with the shell's own `refusal`, and records each call.
+ * `loseLock` plays another process taking the lock over.
  */
-export function fakeShell(holder?: { pid?: number }) {
+export function fakeShell(
+  holder?: { pid?: number } | { refusal: { kind: string; message: string } },
+) {
   const calls: string[] = [];
   const stores = shellStores();
   let onLost: ((message: unknown) => void) | undefined;
@@ -99,7 +102,7 @@ export function fakeShell(holder?: { pid?: number }) {
     invoke: async (command: string, args?: Record<string, unknown>) => {
       calls.push(command);
       if (command === "engine_lock_hold" && holder !== undefined) {
-        throw { kind: "conflict", message: "held", ...holder };
+        throw "refusal" in holder ? holder.refusal : { kind: "conflict", message: "held", ...holder };
       }
       return stores[command]?.(args ?? {});
     },
