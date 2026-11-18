@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { Harness, Sandbox, SandboxProfile, SandboxSession } from "@halonicjs/ports";
 import type { ProfilePlatform } from "@halonicjs/profile";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { BridgeTable } from "../bridge/bridge-routes.ts";
 import { CallChannel } from "../server/call-channel.ts";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
@@ -82,7 +82,9 @@ afterEach(async () => {
  */
 function hostProfiles(
   platform: NodeJS.Platform,
-  withInstall: Partial<Pick<HostHarnessProfilesOptions, "installOf">> = installedHere,
+  withInstall: Partial<
+    Pick<HostHarnessProfilesOptions, "installOf" | "unopenedAfterMs">
+  > = installedHere,
 ): HostHarnessProfiles {
   return new HostHarnessProfiles({
     ...withInstall,
@@ -232,7 +234,26 @@ verifies("agent-host.profile-route", () => {
     expect(await exists(profile.tempFolder)).toBe(false);
     expect(await exists(stranger)).toBe(true);
   });
+
+  it("removes the temp folder of a profile whose session never opens, and keeps one that opens", async () => {
+    const patient = hostProfiles(process.platform, { ...installedHere, unopenedAfterMs: 50 });
+    const bridge = { url: "http://127.0.0.1:4100", token: bridgeToken, close: async () => {} };
+    const unopened = await patient.profileOf(workspace, parsedWriter(), bridge, null);
+    const opened = await patient.profileOf(workspace, parsedWriter(), bridge, null);
+    const session = await patient
+      .removingTempFolders(opening())
+      .open(opened?.profile as SandboxProfile);
+    await vi.waitFor(async () =>
+      expect(await exists(unopened?.profile.tempFolder ?? "")).toBe(false),
+    );
+    expect(await exists(opened?.profile.tempFolder ?? "")).toBe(true);
+    await session.close();
+  });
 });
+
+function parsedWriter() {
+  return { ...writer, harness: "claude-code" as const };
+}
 
 /** A sandbox that opens sessions which only close. */
 function opening(): Sandbox {

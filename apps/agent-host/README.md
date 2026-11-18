@@ -102,6 +102,7 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `POST /v1/harnesses/detect` with `{"harness"}`, and `"settingsFolder"` for one agent | the `HarnessDetection` |
 | `POST /v1/harnesses/sign-in` with `{"harness","settingsFolder"}` | `{"opened":true}`, or `{"opened":false,"reason","command"}` (below) |
 | `POST /v1/harnesses/profile` with `{"workspace","agent","bridge"}` (only with a profile folder) | the `HarnessProfile`: `{"profile","deniedGroups"}` (below); `404 unknown_workspace`, `unknown_harness` or `unknown_bridge`; `422 profile_refused` with the builder's reason |
+| `POST /v1/proposals/open` with `{"workspace","run":{"runId","hubId","workflowId","version"}}`, `…/folder-of` and `…/end` with `{"workspace","runId"}`, `…/start` with `{"workspace","openRuns"}` (only with a profile folder) | `{"folder"}` (`null` from `folder-of` when the run has none), `{"folder"}`, `{}`, `{}`; `404 unknown_workspace`; `422 proposal_refused` with the reason when a folder can't be made |
 | `POST /v1/harnesses/runs/start` | an NDJSON stream: the run's id, then its events (below) |
 | `POST /v1/harnesses/runs/send` with `{"run","input"}` | `{"sent":true}`, or `409 send_failed` when the run refuses the input |
 | `POST /v1/harnesses/runs/cancel` with `{"run"}` | `{"cancelled":true}` |
@@ -196,3 +197,9 @@ An agent that uses a Claude Code or Codex subscription signs in once, in its own
 - **Linux:** it uses the first of `x-terminal-emulator`, `gnome-terminal`, `konsole`, `xfce4-terminal` and `xterm` it finds on the `PATH`, with the variables in its environment.
 
 It answers `{ opened: false, reason }` when no window could open: no terminal or desktop session, or a start that failed. The caller then shows the command to run by hand. It throws, as a mistake in the caller, for a program that isn't an absolute path, an argument that isn't a plain word, a variable name that isn't one, and a program or variable under a skill's `scripts/` folder.
+
+## Proposal folders
+
+`POST /v1/proposals/*` is the engine's `RunProposalFolders` run next to the sandbox (HAL-10849): a worktree or a copy is made on disk and git needs Node, which Studio's page doesn't have. The host keeps worktrees, copies and proposal records in Halonic's data folder for a `workspace` the launcher named (`--sweep-root`; compared by real path), never in the workspace. A run with a live version gets a git worktree at its commit; a run that reads the saved files gets a plain copy, so a workspace without git works until a run needs a worktree. Git starts at the first such run, and `start` starts none for a workspace with nothing kept. A body with any other field is `400`.
+
+Temp folders of profiles: a profile whose session doesn't open within ten minutes (its run was cancelled in between, say) has its temp folder removed too.

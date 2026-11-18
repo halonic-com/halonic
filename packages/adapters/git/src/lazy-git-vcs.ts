@@ -3,11 +3,24 @@
 // git that failed to start is tried again by the next call, not held against
 // every call after it.
 
-import { GitRunner, type GitRunnerOptions, GitVcs } from "@halonicjs/adapter-git";
-import type { ProposalVcs } from "@halonicjs/app";
+import { GitRunner, type GitRunnerOptions } from "./git-runner.ts";
+import { GitVcs } from "./vcs.ts";
 
-/** What {@link lazyProposalGit} starts git with. */
-export interface LazyProposalGitInput {
+/** The calls of git the proposal service makes. */
+export type ProposalGitCalls = Pick<
+  GitVcs,
+  | "addWorktree"
+  | "removeWorktree"
+  | "listWorktrees"
+  | "diffBetween"
+  | "readAt"
+  | "commitWorktreeTo"
+  | "readRef"
+  | "deleteRef"
+>;
+
+/** What {@link lazyGitVcs} starts git with. */
+export interface LazyGitVcsInput {
   /** The workspace folder's real path. */
   readonly location: string;
   /** The folder the worktrees go in, in the workspace's folder in the profile. */
@@ -17,8 +30,8 @@ export interface LazyProposalGitInput {
 }
 
 /** The git the proposal service calls, started at its first call. `close` stops it, if it started; call it once no call is going. */
-export function lazyProposalGit(input: LazyProposalGitInput): {
-  vcs: ProposalVcs;
+export function lazyGitVcs(input: LazyGitVcsInput): {
+  vcs: ProposalGitCalls;
   close(): Promise<void>;
 } {
   let opened: Promise<{ vcs: GitVcs; runner: GitRunner }> | undefined;
