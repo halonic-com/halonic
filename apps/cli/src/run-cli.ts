@@ -309,7 +309,7 @@ async function runCommand(
       // Before anything is read, so a wrong command line is a line too.
       printer.useJsonLines();
     }
-    input = readInput(command, args);
+    input = readInput(path, args);
     if (!options.json && input.options[command.jsonLinesOption ?? ""] === true) {
       throw new UsageError(usageMessages.needsJson(`--${command.jsonLinesOption}`));
     }
