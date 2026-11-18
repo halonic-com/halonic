@@ -3,6 +3,7 @@
 - Task: HAL-12596
 - Approval: HAL-12596 (Liam's task from the C44 docs check, HAL-12580 section 8; team decision under the HAL-2282 rule for small wording on an approved flow)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hImz5lBFN/bS9frpHY1sCVcE7ZpR55YivZCbWiB8UYhwe94wLrc8/vk1d2pi7Ois5yEoPksfTyz0bhKMjGFrBQ==
 
 ## What changes
 
