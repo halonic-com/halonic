@@ -72,7 +72,16 @@ verifies("shell.phone-bars", () => {
     expect(column.querySelector("main")?.textContent).toBe("Needs you");
     expect(container.textContent).not.toContain("Forward");
 
+    // In a short window the column scrolls as one, so the bars scroll away with the page, and
+    // the content still fills the room between them (HAL-12665). The desktop keeps its scroller.
+    expect(column.className).toContain("short:overflow-y-auto");
+    expect(column.querySelector("main")?.parentElement?.className).toContain(
+      "short:flex-[1_0_auto]",
+    );
+    expect(column.querySelector("main")?.className).toContain("short:overflow-visible");
+
     act(() => media.resize(1440));
+    expect(container.querySelector("main")?.className).not.toContain("short:");
     expect(container.querySelector("nav")).toBeNull();
     expect(container.textContent).not.toContain("Inbox");
     expect(container.textContent).toContain("Forward");

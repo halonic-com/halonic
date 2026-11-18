@@ -25,6 +25,16 @@ afterEach(() => {
 
 verifies("inbox.approval-card", () => {
   describe("waiting", () => {
+    it("lets Approve and Reject follow the request in a short window (HAL-12665)", () => {
+      const { root } = openCard();
+      const card = root.querySelector("section") as HTMLElement;
+      const [body, bar] = [...card.children] as HTMLElement[];
+      expect(card.className).toContain("min-h-0 flex-col short:min-h-auto");
+      expect(body?.className).toContain("overflow-y-auto p-4 short:overflow-visible");
+      expect(body?.querySelector("h2")).not.toBeNull();
+      expect(bar?.textContent).toContain("Approve");
+    });
+
     it("is a region named by its title, which has focus", () => {
       const { root } = openCard();
       const region = root.querySelector("section");
