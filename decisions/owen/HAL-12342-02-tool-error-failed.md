@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12342 (Liam, CTO; decided in the task)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kv7gocFf2XGxtmVSYbFf9hXVh+kk7ds010zBQZOsbpo9ZhBqqkoKnEGmodiHHbIBTo/G1QTb63h9YII2uZ3MBQ==
 - Task: HAL-12342
 
 A connector's tool that answers with an error of its own, such as a file tool that finds no file,
