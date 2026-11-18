@@ -3,6 +3,7 @@
 - Task: HAL-12728
 - Approval: Sofia (design) decides on HAL-12728 (https://paperclip.halonic.com/HAL/issues/HAL-12728#comment-a6ee5482-a7de-4496-a726-1fd2db63d926) that a done row does nothing, in the sample as in Get set up; Liam signs on the same task. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:dkApEJdyYH9MoNUaf+jmZPvmonuFxqk9xWQZlKRewljzZnFd2IVdEO6AgrRKOomF2alqdwVHTQUHnf/nYpp5Ag==
 
 ## What changes
 
