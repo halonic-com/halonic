@@ -331,6 +331,43 @@ verifies("shell.overview.used-by", () => {
     expect(text.indexOf("1 running")).toBeLessThan(text.indexOf("Used by 1 agent"));
   });
 
+  it("ends the line under the name with the used-by text on a phone", () => {
+    const routines: readonly OverviewHub[] = [
+      {
+        id: "acme",
+        name: "acme",
+        items: [
+          {
+            id: "weekly",
+            name: "Weekly report",
+            detail: "Mondays at 09:00 → Weekly report",
+            usedBy: "next Mon 09:00",
+            chips: <span>Needs you</span>,
+          },
+        ],
+      },
+    ];
+    const page = render(
+      <PresentationProvider presentation="phone">
+        <OverviewPage
+          hubs={routines}
+          words={words}
+          onOpen={() => undefined}
+          onOpenInNewTab={() => undefined}
+          itemMenu={() => [{ id: "delete", label: "Delete", onSelect: () => undefined }]}
+        />
+      </PresentationProvider>,
+    );
+    const line = [...page.querySelectorAll("span.truncate")].find((span) =>
+      span.textContent?.startsWith("Mondays at 09:00"),
+    );
+    expect(line?.textContent).toBe("Mondays at 09:00 → Weekly report · next Mon 09:00");
+    const row = [...page.querySelectorAll("tr")].find((each) =>
+      each.textContent?.includes("Weekly report"),
+    );
+    expect(row?.textContent?.match(/next Mon 09:00/g)).toHaveLength(1);
+  });
+
   it("doesn't search the used-by text", () => {
     const page = show({ hubs: used });
     type(search(page), "agents");

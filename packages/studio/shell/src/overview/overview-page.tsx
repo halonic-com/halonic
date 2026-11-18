@@ -101,38 +101,66 @@ export interface OverviewPageProps {
 /** Opens an item's ⋮ menu below the button that was pressed. */
 type OpenMenu = (item: OverviewItem, element: HTMLElement) => void;
 
+/**
+ * Whether the item's used-by text ends its line under the name instead of sitting on the row's
+ * right: on a phone, when it is text. There the detail reads first and the used-by text is what
+ * gets cut: "Mondays at 09:00 → Weekly report · next Mon 09:00" (a11y-check-2 P3).
+ */
+function usedByInMeta(
+  item: OverviewItem,
+  phone: boolean,
+): item is OverviewItem & { usedBy: string } {
+  return phone && typeof item.usedBy === "string";
+}
+
+/** The row's line under the name: the detail, and on a phone the used-by text after " · ". */
+function metaOf(item: OverviewItem, phone: boolean): string | undefined {
+  if (!usedByInMeta(item, phone)) {
+    return item.detail;
+  }
+  return item.detail === undefined ? item.usedBy : `${item.detail} · ${item.usedBy}`;
+}
+
+/** The row's right part (on a phone with a ⋮ button, the start of its meta line): the chips, then the used-by text. */
+function trailingOf(item: OverviewItem, phone: boolean): ReactNode {
+  const usedBy = usedByInMeta(item, phone) ? undefined : item.usedBy;
+  if (item.chips === undefined && usedBy === undefined) {
+    return undefined;
+  }
+  return (
+    <span className="flex items-center gap-2">
+      {item.chips}
+      {usedBy === undefined ? null : <span className="text-small text-fg-muted">{usedBy}</span>}
+    </span>
+  );
+}
+
 function rowsOf(
   section: OverviewSection,
   words: OverviewWords,
+  phone: boolean,
   menuOf: ((item: OverviewItem) => readonly MenuEntry[]) | undefined,
   openMenu: OpenMenu,
 ): readonly ListRow[] {
-  return section.items.map((item) => ({
-    id: item.id,
-    title: item.name,
-    ...(item.detail === undefined ? {} : { meta: item.detail }),
-    ...(item.avatar === undefined ? {} : { avatar: item.avatar }),
-    ...(item.chips === undefined && item.usedBy === undefined
-      ? {}
-      : {
-          trailing: (
-            <span className="flex items-center gap-2">
-              {item.chips}
-              {item.usedBy === undefined ? null : (
-                <span className="text-small text-fg-muted">{item.usedBy}</span>
-              )}
-            </span>
-          ),
-        }),
-    ...(menuOf === undefined || menuOf(item).length === 0
-      ? {}
-      : {
-          more: {
-            label: words.moreLabel(item.name),
-            onClick: (event) => openMenu(item, event.currentTarget),
-          },
-        }),
-  }));
+  return section.items.map((item) => {
+    const meta = metaOf(item, phone);
+    const trailing = trailingOf(item, phone);
+    return {
+      id: item.id,
+      title: item.name,
+      ...(meta === undefined ? {} : { meta }),
+      ...(item.avatar === undefined ? {} : { avatar: item.avatar }),
+      ...(trailing === undefined ? {} : { trailing }),
+      ...(menuOf === undefined || menuOf(item).length === 0
+        ? {}
+        : {
+            more: {
+              label: words.moreLabel(item.name),
+              onClick: (event) => openMenu(item, event.currentTarget),
+            },
+          }),
+    };
+  });
 }
 
 /**
@@ -286,6 +314,7 @@ function OverviewBody({
   itemMenu,
   openMenu,
 }: OverviewBodyProps) {
+  const phone = usePresentation() === "phone";
   if (failure !== undefined) {
     return (
       <EmptyState
@@ -322,7 +351,7 @@ function OverviewBody({
   return (
     <div className="flex flex-col gap-2">
       {sections.map((section) => {
-        const rows = rowsOf(section, words, itemMenu, openMenu);
+        const rows = rowsOf(section, words, phone, itemMenu, openMenu);
         const name = headingOf(section);
         return rows.length === 0 ? (
           <List
