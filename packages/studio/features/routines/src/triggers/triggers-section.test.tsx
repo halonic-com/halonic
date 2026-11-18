@@ -108,11 +108,11 @@ verifies("routines.triggers.add-trigger-creates-routine", () => {
       <TriggersView
         host={hostWith([])}
         owner={agent}
-        openRoutine={(hubId, id) => opened.push(`${hubId}/${id}`)}
+        openRoutine={(hubId, id, step) => opened.push(`${hubId}/${id}/${step}`)}
       />,
     );
     await press([...page.querySelectorAll("button")].find((b) => b.textContent === "Add trigger"));
-    expect(opened).toEqual(["acme/writer-2"]);
+    expect(opened).toEqual(["acme/writer-2/trigger"]);
   });
 
   it("says why when the host can't, and keeps the rows", async () => {

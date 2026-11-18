@@ -9,6 +9,7 @@ import {
 } from "../api.ts";
 import { nextWhen } from "../list/list-words.ts";
 import { failureReason } from "../page/page-words.ts";
+import { TRIGGER_STEP } from "../page/trigger-step.ts";
 import { triggersWords } from "./triggers-words.ts";
 import { useTriggerRows } from "./use-trigger-rows.ts";
 
@@ -21,7 +22,8 @@ export function TriggersSection({ item, context }: ItemPageSectionViewProps) {
       host={context.services.get(RoutinesHostService)}
       owner={{ kind, hubId: item.hub, id: item.id }}
       {...(openItem && {
-        openRoutine: (hubId: string, id: string) => openItem({ kind: "routine", hub: hubId, id }),
+        openRoutine: (hubId: string, id: string, step?: string) =>
+          openItem({ kind: "routine", hub: hubId, id }, step === undefined ? {} : { step }),
       })}
     />
   );
@@ -31,14 +33,18 @@ export function TriggersSection({ item, context }: ItemPageSectionViewProps) {
 export interface TriggersViewProps {
   readonly host: RoutinesHost;
   readonly owner: TriggerOwner;
-  /** Opens a routine's page; without it the rows aren't buttons. */
-  readonly openRoutine?: (hubId: string, id: string) => void;
+  /**
+   * Opens a routine's page, on `step` when given (see {@link TRIGGER_STEP}); without it the rows
+   * aren't buttons.
+   */
+  readonly openRoutine?: (hubId: string, id: string, step?: string) => void;
 }
 
 /**
  * The section's body (`routines.triggers.lists-routines-that-start-it`,
  * `routines.triggers.empty-state`, `routines.triggers.add-trigger-creates-routine`): a row per
- * routine in the owner's hub that starts it, sorted by name, then **Add trigger**.
+ * routine in the owner's hub that starts it, sorted by name, then **Add trigger**, which opens the
+ * new routine with its Trigger picker focused.
  */
 export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
   const { load, retry } = useTriggerRows(host, owner);
@@ -51,7 +57,7 @@ export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
     setAddError(undefined);
     try {
       const ref = await host.addTrigger(owner);
-      openRoutine?.(ref.hubId ?? owner.hubId, ref.id);
+      openRoutine?.(ref.hubId ?? owner.hubId, ref.id, TRIGGER_STEP);
     } catch (error) {
       setAddError(triggersWords.addFailed(failureReason(error)));
     } finally {

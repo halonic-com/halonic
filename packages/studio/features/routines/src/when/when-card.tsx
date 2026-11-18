@@ -15,6 +15,10 @@ export interface WhenCardProps {
   readonly announce: (text: string) => void;
   /** Opens New connector, for the link shown when a mail trigger has no Google connector to watch; without it there is no link. */
   readonly addConnector?: () => void;
+  /** Whether the Trigger picker should take the focus now. */
+  readonly focusTrigger?: boolean;
+  /** Called once the picker has taken the focus. */
+  readonly onTriggerFocused?: () => void;
 }
 
 /**
@@ -23,7 +27,14 @@ export interface WhenCardProps {
  * can't be turned on here yet, and says so; a change that can't be saved is shown in the card and
  * the switch goes back to what is saved.
  */
-export function WhenCard({ host, routine, announce, addConnector }: WhenCardProps) {
+export function WhenCard({
+  host,
+  routine,
+  announce,
+  addConnector,
+  focusTrigger,
+  onTriggerFocused,
+}: WhenCardProps) {
   const reasonId = useId();
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | undefined>();
@@ -90,6 +101,8 @@ export function WhenCard({ host, routine, announce, addConnector }: WhenCardProp
           enabled={routine.enabled}
           mailboxes={mailboxes}
           {...(addConnector && { addConnector })}
+          focusTrigger={focusTrigger ?? false}
+          onTriggerFocused={onTriggerFocused}
           onChange={(trigger) => void changeTrigger(trigger)}
         />
         {blocked && (
