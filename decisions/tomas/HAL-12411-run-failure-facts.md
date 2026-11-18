@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12464 (Liam: yes, provided the facts carry data rather than wording and the CLI's output stays the same)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+wsVMnI7+KkoFbsc9bbtMWcM+2vG0bbxCQvPdx57cMBa6t6PBgw3UG1jzsRaG6mNeTBKmDLK7dDfs1EtDdt9Cg==
 - Task: HAL-12411
 
 The CLI worked out a failed run's facts (the provider and its name, the secret, the alias, the
