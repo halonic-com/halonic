@@ -3,6 +3,7 @@
 - Task: HAL-12616 (a11y check C1)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12616 (row C1 of the keyboard and screen-reader check on HAL-12584, placed by Liam; a team decision with no board card, HAL-2282 rule, because it fixes focus on an approved screen and adds no words)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oGhiQ14dLjrt/s+nz+AtYTNAYSqc0NqsE998jleA6ioA3LHttb/vk3DsAMgYScoRrkghFoX0nlbsQxgnNtj1BA==
 
 ## What changes
 
