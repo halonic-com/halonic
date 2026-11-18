@@ -1,6 +1,14 @@
 import { EmptyState, ExternalLink, List, usePresentation } from "@halonicjs/studio-kit";
 import type { ItemRef, PlaceViewProps } from "@halonicjs/studio-shell";
-import { type ReactNode, useCallback, useRef, useState, useSyncExternalStore } from "react";
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { type ChangesRead, type DeveloperView, DeveloperViewService } from "../api.ts";
 import type { ChangeItem } from "../change-items.ts";
 import { type ChangesList, ChangesListService, type ChangesListState } from "../changes-list.ts";
@@ -62,6 +70,8 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
   const state = useSyncExternalStore(subscribe, () => list.state);
   const developer = useDeveloperView(developerView);
   const heading = useRef<HTMLHeadingElement>(null);
+  const page = useRef<HTMLDivElement>(null);
+  const focusNewVersion = useFocusNewVersion(list, page);
   const [addingAddress, setAddingAddress] = useState(false);
   const items = orderItems(state.files);
   const nav = useOpenItem(items, () => heading.current?.focus());
@@ -70,7 +80,7 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
   const pushed = pushedPage({ list, nav, versionNav, developer, openItem, phone, pageClass });
   if (pushed !== undefined) return pushed;
   return (
-    <div className={pageClass}>
+    <div ref={page} className={pageClass}>
       <header className="flex items-center gap-3">
         <h1 ref={heading} tabIndex={-1} className={phone ? "sr-only flex-1" : "text-title flex-1"}>
           {pageWords.title}
@@ -112,6 +122,7 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
           files={list.versionFiles}
           first={hasNoVersions(state.history)}
           returnFocus={() => heading.current}
+          onCreated={focusNewVersion}
         />
       )}
     </div>
@@ -285,6 +296,28 @@ function ReadBody({
       <History list={list} history={state.history} phone={phone} versionPage={versionPage} />
     </>
   );
+}
+
+/**
+ * Creating a version closes its dialog, and focus goes back to the Create version button. With
+ * nothing left to version that button is gone a moment later, and focus would drop to the page
+ * (WCAG 2.4.3). So focus moves on to what the person just made: History's first row, the new
+ * version, once the page has read again. When that read failed, the first row isn't the new
+ * version, so focus stays where the dialog put it, and the failure's alert says why.
+ */
+function useFocusNewVersion(list: ChangesList, page: RefObject<HTMLElement | null>): () => void {
+  const [pending, setPending] = useState(false);
+  useEffect(() => {
+    if (!pending) return;
+    setPending(false);
+    page.current
+      ?.querySelector<HTMLElement>('[data-part="history-list"] [data-row-id] [role="gridcell"]')
+      ?.focus();
+  }, [pending, page]);
+  return () => {
+    const { error, history } = list.state;
+    if (error === undefined && history.error === undefined) setPending(true);
+  };
 }
 
 /** Whether the developer view is on, read again when it is turned on or off. */

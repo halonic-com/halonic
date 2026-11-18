@@ -30,6 +30,13 @@ const earlier: Version = {
   files: [],
 };
 
+/** The version a test makes, as History reads it back. */
+const made: Version = { ...earlier, id: "b2", name: "First reply flow" };
+
+/** The focusable cell of a version's row in History. */
+const historyCell = (id: string) =>
+  document.querySelector(`[data-part="history-list"] [data-row-id="${id}"] [role="gridcell"]`);
+
 /** The page with two changed files and one earlier version, unless it is the first version. */
 async function openPage({ first = false }: { readonly first?: boolean } = {}) {
   const fake = fakeSource({
@@ -256,8 +263,9 @@ verifies("source-control.create-version", () => {
       expect(fake.versions[0]?.message).toBe("Quick one");
     });
 
-    it("shows the toast, closes, empties the list and moves focus to the heading", async () => {
-      const { toasts, root } = await openDialog();
+    it("shows the toast, closes, empties the list and moves focus to the new version", async () => {
+      const { fake, toasts, root } = await openDialog();
+      fake.setHistory([made, earlier]);
       await type(nameField(), "First reply flow");
       await act(async () => {
         button("Create version").click();
@@ -266,7 +274,53 @@ verifies("source-control.create-version", () => {
       expect(dialog()).toBeNull();
       expect(toasts.list()[0]?.title).toBe('Created version "First reply flow"');
       expect(root.textContent).toContain("Nothing has changed since your last version.");
-      expect(document.activeElement).toBe(root.querySelector("h1"));
+      expect(document.activeElement).toBe(historyCell("b2"));
+    });
+
+    it("moves focus from the button that opened it to the new version's row (C1)", async () => {
+      const { fake } = await openPage();
+      fake.setHistory([made, earlier]);
+      const opener = button("Create version");
+      opener.focus();
+      await act(async () => opener.click());
+      await act(async () => {
+        button("Create version").click();
+        await settle();
+      });
+      // Every change is in the version, so the button that opened the dialog is gone.
+      expect(opener.isConnected).toBe(false);
+      expect(document.activeElement).toBe(historyCell("b2"));
+    });
+
+    it("moves focus to the new version's row even when changes are left", async () => {
+      const { fake } = await openPage();
+      fake.setHistory([made, earlier]);
+      const opener = button("Create version");
+      opener.focus();
+      await act(async () => opener.click());
+      const boxes = dialog()?.querySelectorAll<HTMLInputElement>("input[type=checkbox]");
+      await act(async () => boxes?.[0]?.click());
+      await act(async () => {
+        button("Create version").click();
+        await settle();
+      });
+      expect(button("Create version").isConnected).toBe(true);
+      expect(document.activeElement).toBe(historyCell("b2"));
+    });
+
+    it("leaves focus on the button when History can't be read after the version", async () => {
+      const { fake } = await openPage();
+      const opener = button("Create version");
+      opener.focus();
+      await act(async () => opener.click());
+      fake.failHistory(new Error("boom"));
+      const boxes = dialog()?.querySelectorAll<HTMLInputElement>("input[type=checkbox]");
+      await act(async () => boxes?.[0]?.click());
+      await act(async () => {
+        button("Create version").click();
+        await settle();
+      });
+      expect(document.activeElement).toBe(opener);
     });
 
     it("stays open with git's reason and keeps the name and notes when git refuses", async () => {
@@ -286,11 +340,15 @@ verifies("source-control.create-version", () => {
       expect(button("Try again")).toBeDefined();
     });
 
-    it("closes with Cancel and changes nothing", async () => {
-      const { fake } = await openDialog();
+    it("closes with Cancel, changes nothing and gives focus back to Create version", async () => {
+      const { fake } = await openPage();
+      const opener = button("Create version");
+      opener.focus();
+      await act(async () => opener.click());
       await act(async () => button("Cancel").click());
       expect(dialog()).toBeNull();
       expect(fake.versions).toEqual([]);
+      expect(document.activeElement).toBe(opener);
     });
   });
 });
