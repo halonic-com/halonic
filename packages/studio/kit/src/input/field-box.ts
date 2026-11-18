@@ -12,8 +12,14 @@ export type FieldBoxState = "default" | "invalid" | "read-only" | "disabled";
 /** `md` is 32px, the default; `sm` 28px. Both are 48px on a phone. */
 export type FieldSize = "sm" | "md";
 
+/**
+ * How wide the box is: `full`, the default, fills its column; `short` fits about 6 characters of
+ * text, for a small number such as a turn limit.
+ */
+export type FieldWidth = "full" | "short";
+
 const shared = [
-  "flex w-full gap-2 rounded-sm border px-2.5 transition-colors",
+  "flex gap-2 rounded-sm border px-2.5 transition-colors",
   "phone:min-h-touch phone:px-3",
   // A tablet's coarse pointer gets lg, like the Buttons beside it (component specs 23.5). The box
   // takes the whole tap, so it needs no hit area of its own. A phone is also coarse; not-phone:
@@ -33,6 +39,19 @@ const sizeClasses: Record<FieldSize, string> = {
   sm: "min-h-control-sm",
   md: "min-h-control-md",
 };
+
+// A short box fits its content, and never gets narrower than the 48px touch target.
+const widthClasses: Record<FieldWidth, string> = {
+  full: "w-full",
+  short: "w-fit min-w-touch",
+};
+
+/**
+ * The width of the text inside a short box, in its own font, so it holds about 6 characters at
+ * 14px and at the 16px of a phone alike. It still grows to fill the box, so a press anywhere in
+ * the box lands on it.
+ */
+export const shortTextClasses = "w-input-short";
 
 /**
  * The text inside the box: the value, the placeholder, and 16px on a phone or under a touch
@@ -77,13 +96,14 @@ const alignClasses: Record<FieldBoxAlign, string> = {
   start: "items-start",
 };
 
-/** The box's classes for a state, a size and an alignment. */
+/** The box's classes for a state, a size, an alignment and a width. */
 export function fieldBoxClasses(
   state: FieldBoxState,
   size: FieldSize,
   align: FieldBoxAlign = "center",
+  width: FieldWidth = "full",
 ): string {
-  return `${shared} ${alignClasses[align]} ${stateClasses[state]} ${sizeClasses[size]}`;
+  return `${shared} ${widthClasses[width]} ${alignClasses[align]} ${stateClasses[state]} ${sizeClasses[size]}`;
 }
 
 /** Which look a field has, from its props and its Field. Disabled wins, then an error. */

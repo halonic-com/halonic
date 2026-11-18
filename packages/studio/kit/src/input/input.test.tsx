@@ -4,6 +4,7 @@ import { act, type ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { Button } from "../button/button.tsx";
 import { Field } from "../field/field.tsx";
+import { buildCss } from "../test/build-css.spec.ts";
 import { render, unmountAll } from "../test/render.tsx";
 import { Input } from "./input.tsx";
 
@@ -225,5 +226,47 @@ verifies("kit.enter-while-composing", () => {
     const ids = container.querySelector("input")?.getAttribute("aria-describedby")?.split(" ");
     expect(ids).toHaveLength(2);
     expect(ids?.[1]).toBe("extra");
+  });
+});
+
+verifies("kit.input-short", () => {
+  it("fills its column by default", () => {
+    const { container } = render(<Input aria-label="Name" />);
+    const input = container.querySelector("input") as HTMLInputElement;
+    expect(boxOf(input).split(" ")).toContain("w-full");
+    expect(input.className).not.toContain("w-input-short");
+  });
+
+  it("fits about 6 characters of its own text when short, and never less than 48px", () => {
+    const { container } = render(
+      <Field label="Turn limit" hint="1 to 200" error="Enter a whole number">
+        <Input width="short" inputMode="numeric" defaultValue="40" />
+      </Field>,
+    );
+    const input = container.querySelector("input") as HTMLInputElement;
+    const box = boxOf(input).split(" ");
+    expect(box).toEqual(expect.arrayContaining(["w-fit", "min-w-touch"]));
+    expect(box).not.toContain("w-full");
+    // On the text, not the box, so the characters are measured in the text's own 14px or 16px.
+    expect(input.className.split(" ")).toEqual(expect.arrayContaining(["w-input-short", "flex-1"]));
+    // The error is the Field's line under the box, not inside it, so it starts at the Field's edge.
+    const boxElement = input.parentElement as HTMLElement;
+    expect(boxElement.textContent).not.toContain("Enter a whole number");
+    expect(boxElement.parentElement?.textContent).toContain("Enter a whole number");
+  });
+
+  it("keeps the default box's looks and sizes when short", () => {
+    const { container } = render(<Input aria-label="Turn limit" width="short" size="sm" />);
+    const box = boxOf(container.querySelector("input") as HTMLInputElement);
+    expect(box).toContain("border-border-control bg-surface hover:border-fg-muted focus-field");
+    expect(box).toContain("min-h-control-sm");
+    expect(box).toContain("phone:min-h-touch phone:px-3");
+  });
+
+  it("builds the short width from the 6ch token and the 48px touch target", async () => {
+    const css = await buildCss(["w-input-short", "min-w-touch", "w-fit"]);
+    expect(css).toMatch(/\.w-input-short \{\s*width: var\(--spacing-input-short\);/);
+    expect(css).toMatch(/\.min-w-touch \{\s*min-width: var\(--spacing-touch\);/);
+    expect(css).toMatch(/\.w-fit \{\s*width: fit-content;/);
   });
 });

@@ -1802,6 +1802,18 @@ A one-line text field.
 you can tell it from the text. A press anywhere in the box, padding and icon included, puts the
 caret in the text; a press on the trailing button doesn't.
 
+**Width.** The box fills its column (`width="full"`, the default). For a small number, such as a
+turn limit or a count, use `width="short"`: the box fits about 6 characters of its text
+(`input-short`, 6ch, measured in the text's own 14px or 16px) plus its padding, and is never
+narrower than the 48px touch target. A wide box suggests a long value and leaves the hint and the
+error far from it.
+
+```tsx
+<Field label="Turn limit" hint="1 to 200" error={turnLimitError}>
+  <Input width="short" inputMode="numeric" value={turnLimit} onChange={…} />
+</Field>
+```
+
 **Keys.** Enter submits its form, **except while an input method is composing**: the Enter that
 picks a Japanese or Chinese word must never send. `Input` and `TextArea` don't pass a composing
 Enter to your `onKeyDown`; a key handler on any other element uses the same check,
