@@ -70,8 +70,16 @@ const callbackPageHeaders = {
  * error's own name goes to the log, never its text, which can hold a URL.
  */
 export function integrationSignInRoutes(deps: IntegrationSignInRouteDeps): HostRoute[] {
-  /** The port the provider must send the browser back to. */
-  const portOf = (request: IncomingMessage): number => request.socket.localPort ?? 80;
+  /**
+   * The port the provider must send the browser back to. A connected socket
+   * always has one; without it the request fails (502) rather than send the
+   * browser to a wrong port.
+   */
+  const portOf = (request: IncomingMessage): number => {
+    const port = request.socket.localPort;
+    if (port === undefined) throw new Error("the request's socket has no local port");
+    return port;
+  };
 
   function logFailure(error: unknown): void {
     const name = error instanceof Error ? error.name : "Error";

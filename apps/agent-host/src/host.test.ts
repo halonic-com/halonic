@@ -216,6 +216,50 @@ describe("run with the Google routes", () => {
   });
 });
 
+describe("run with the integration sign-in routes", () => {
+  /** Serves with `args`, asks for an integration's sign-in status and a callback nobody waits on, and stops. */
+  async function signInAnswers(
+    args: readonly string[],
+  ): Promise<{ status: string; callback: number }> {
+    const { io, input, lines, nextLine } = starter();
+    const running = run(args, "1.2.3", io);
+    await nextLine();
+    const handshake = JSON.parse(lines[0] ?? "") as Handshake;
+    const status = await fetch(`${handshake.url}/v1/integrations/sign-in/status`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${handshake.token}`, "content-type": "application/json" },
+      body: JSON.stringify({ integration: "example" }),
+    });
+    const callback = await fetch(`${handshake.url}/sign-in/nobody-waits-here`);
+    const answers = {
+      status: `${status.status} ${await status.text()}`,
+      callback: callback.status,
+    };
+    input.end();
+    await running;
+    return answers;
+  }
+
+  it("serves them for the profile folder it was given, with no integration's sign-ins yet", async () => {
+    const profile = await mkdtemp(join(tmpdir(), "halonic-host-profile-"));
+    try {
+      expect(await signInAnswers(["--profile-folder", profile])).toEqual({
+        status: expect.stringMatching(/^404 .*"kind":"unknown_integration"/u),
+        callback: 400,
+      });
+    } finally {
+      await rm(profile, { recursive: true, force: true });
+    }
+  });
+
+  it("serves none of them without a profile folder, so the callback path needs the token", async () => {
+    expect(await signInAnswers([])).toEqual({
+      status: expect.stringMatching(/^404 .*"not_found"/u),
+      callback: 401,
+    });
+  });
+});
+
 verifies("agent-host.profile-route", () => {
   /** Serves with `args`, asks for a harness profile with a bridge nobody opened, and stops. */
   async function profileAnswer(args: readonly string[]): Promise<string> {
