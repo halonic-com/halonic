@@ -1,6 +1,6 @@
 import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
 import { useState } from "react";
-import type { AgentChange, AgentSettings, AgentsHost } from "../api.ts";
+import type { AgentChange, AgentSettings, AgentsHost, AgentToolList } from "../api.ts";
 import type { Load } from "../page/use-load.ts";
 import { BehaviourPage } from "./behaviour-page.tsx";
 import { configurationWords as words } from "./configuration-words.ts";
@@ -21,6 +21,8 @@ export interface ConfigurationProps {
   readonly retryAliases: () => void;
   readonly retry: () => void;
   readonly save: (change: AgentChange) => Promise<void>;
+  /** Opens Library on a Tools list's tab, for **Open Library ›**; absent where the app can't. */
+  readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
 }
 
 type PageId = "behaviour" | "model" | "harness" | "tools";
@@ -41,6 +43,7 @@ export function Configuration({
   retryAliases,
   retry,
   save,
+  openLibrary,
 }: ConfigurationProps) {
   const [page, setPage] = useState<PageId>("behaviour");
   if (load.kind === "failed") {
@@ -106,7 +109,9 @@ export function Configuration({
                 />
               ))}
             {page === "harness" && <HarnessPage host={host} settings={load.value} save={save} />}
-            {page === "tools" && <ToolsPage host={host} settings={load.value} save={save} />}
+            {page === "tools" && (
+              <ToolsPage host={host} settings={load.value} save={save} openLibrary={openLibrary} />
+            )}
           </div>
         ) : (
           <div role="status" className="flex flex-col gap-4">

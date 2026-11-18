@@ -32,8 +32,13 @@ const host = (agent: { skills?: string[]; knowledge?: string[] } = {}) =>
     },
   });
 
-async function openTools(agents: AgentsHost = host()) {
-  const page = await show(<AgentScreen host={agents} hubId={ref.hubId} id={ref.id} />);
+async function openTools(
+  agents: AgentsHost = host(),
+  openLibrary?: (list: "skills" | "knowledge" | "connectors") => void,
+) {
+  const page = await show(
+    <AgentScreen host={agents} hubId={ref.hubId} id={ref.id} openLibrary={openLibrary} />,
+  );
   await act(async () => buttonNamed(page, "Configuration")?.click());
   await act(async () =>
     [...page.querySelectorAll<HTMLElement>("[role=tab]")]
@@ -67,7 +72,11 @@ verifies("agents.configuration.tools", () => {
       "Knowledge",
       "Connectors",
     ]);
-    expect(listNamed(page, "Skills").textContent).toContain("It uses no skills yet.");
+    // An empty list shows only its Add button (microcopy 8.5).
+    const skills = listNamed(page, "Skills");
+    expect(chips(skills)).toEqual([]);
+    expect(skills.querySelector("p")).toBeNull();
+    expect(buttonNamed(skills, "Add skill")).toBeDefined();
   });
 
   it("adds a skill from the picker and saves it at once", async () => {
@@ -83,32 +92,50 @@ verifies("agents.configuration.tools", () => {
     expect(chips(listNamed(page, "Skills"))).toEqual(["Refund policy"]);
   });
 
-  it("removes a skill with its ✕ and says the list is empty", async () => {
+  it("removes a skill with its ✕, leaving only the Add button", async () => {
     const agents = host({ skills: ["refunds"] });
     const page = await openTools(agents);
     const remove = page.querySelector<HTMLButtonElement>('[aria-label="Remove Refund policy"]');
     await act(async () => remove?.click());
 
     expect((await agents.settings(ref)).skills).toEqual([]);
-    expect(listNamed(page, "Skills").textContent).toContain("It uses no skills yet.");
+    expect(chips(listNamed(page, "Skills"))).toEqual([]);
+    expect(buttonNamed(listNamed(page, "Skills"), "Add skill")).toBeDefined();
   });
 
-  it("shows an item the hub can't use by its id, so it can be removed", async () => {
+  it("shows an item the Library doesn't have by its id, says so, and lets ✕ remove it", async () => {
     const page = await openTools(host({ knowledge: ["old-notes"] }));
-    expect(chips(listNamed(page, "Knowledge"))).toEqual(["old-notes"]);
+    const knowledge = listNamed(page, "Knowledge");
+    expect(chips(knowledge)).toEqual(["old-notes"]);
+    expect(knowledge.querySelector("li")?.className).toContain("border-danger");
+    expect(knowledge.textContent).toContain("There's no knowledge source called old-notes.");
     expect(page.querySelector('[aria-label="Remove old-notes"]')).not.toBeNull();
   });
 
-  it("says where to make one when there is nothing to add", async () => {
-    const page = await openTools(host({ knowledge: ["handbook"] }));
+  it("says when the Library has none, or all are added, with Open Library", async () => {
+    const opened: string[] = [];
+    const page = await openTools(host({ knowledge: ["handbook"] }), (list) => opened.push(list));
     const connectors = listNamed(page, "Connectors");
-    expect(connectors.textContent).toContain("Make a connector in Library to add it here.");
+    expect(connectors.textContent).toContain("No connectors yet. Open Library ›");
     expect(buttonNamed(connectors, "Add connector")).toBeUndefined();
-    expect(buttonNamed(listNamed(page, "Knowledge"), "Add knowledge")).toBeUndefined();
+    const knowledge = listNamed(page, "Knowledge");
+    expect(knowledge.textContent).toContain("No more knowledge to add. Open Library ›");
+    expect(buttonNamed(knowledge, "Add knowledge")).toBeUndefined();
+
+    await act(async () => buttonNamed(connectors, "Open Library ›")?.click());
+    await act(async () => buttonNamed(knowledge, "Open Library ›")?.click());
+    expect(opened).toEqual(["connectors", "knowledge"]);
   });
 
-  it("says it couldn't load the Library, and shows the lists on Try again", async () => {
-    const memory = host();
+  it("leaves out Open Library where the app can't open it", async () => {
+    const page = await openTools(host());
+    const connectors = listNamed(page, "Connectors");
+    expect(connectors.textContent).toContain("No connectors yet.");
+    expect(buttonNamed(connectors, "Open Library ›")).toBeUndefined();
+  });
+
+  it("says it couldn't load the Library above the lists, keeping the chips and their ✕", async () => {
+    const memory = host({ skills: ["refunds", "gone"] });
     let works = false;
     const page = await openTools({
       ...memory,
@@ -118,9 +145,20 @@ verifies("agents.configuration.tools", () => {
       },
     });
     expect(page.textContent).toContain("Couldn't load the Library");
+    const skills = listNamed(page, "Skills");
+    expect(chips(skills)).toEqual(["refunds", "gone"]);
+    expect(buttonNamed(skills, "Add skill")).toBeUndefined();
+    expect(skills.textContent).not.toContain("There's no skill called");
+
+    await act(async () =>
+      page.querySelector<HTMLButtonElement>('[aria-label="Remove gone"]')?.click(),
+    );
+    expect((await memory.settings(ref)).skills).toEqual(["refunds"]);
 
     works = true;
     await act(async () => buttonNamed(page, "Try again")?.click());
-    expect(listNamed(page, "Skills")).toBeDefined();
+    expect(page.textContent).not.toContain("Couldn't load the Library");
+    expect(chips(listNamed(page, "Skills"))).toEqual(["Refund policy"]);
+    expect(buttonNamed(listNamed(page, "Skills"), "Add skill")).toBeDefined();
   });
 });
