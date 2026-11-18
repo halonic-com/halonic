@@ -116,6 +116,18 @@ function switcherButton(): HTMLButtonElement | null {
   return element.querySelector<HTMLButtonElement>('button[aria-label^="Workspace: "]');
 }
 
+/** The workspace menu's row that reads `label`. */
+function menuRow(label: string): HTMLElement | undefined {
+  return [...element.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+    (each) => each.textContent === label,
+  );
+}
+
+/** The `h1` of the page the shown workspace shows. */
+function shownHeading(): HTMLElement | null {
+  return element.querySelector<HTMLElement>("main h1");
+}
+
 async function press(init: KeyboardEventInit): Promise<void> {
   await act(async () => {
     window.dispatchEvent(new KeyboardEvent("keydown", { ...init, bubbles: true }));
@@ -252,6 +264,49 @@ verifies("workspace.workspace-window", () => {
     );
     await act(async () => row?.click());
     expect(opened).toHaveBeenCalledOnce();
+  });
+
+  it("moves focus to Home's title after the menu's Open a folder… (a11y W1)", async () => {
+    // jsdom has no popovers, which the menu closes itself with.
+    HTMLElement.prototype.hidePopover ??= () => {};
+    const { switcher } = start(["/work/beta"]);
+    await act(() => switcher.openLocation("/work/acme"));
+
+    await act(async () => menuRow("Open a folder…")?.click());
+    await act(async () => {});
+    expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: beta");
+    expect(document.activeElement).toBe(shownHeading());
+  });
+
+  it("moves focus to the shown workspace's title on Ctrl 2 (a11y W1)", async () => {
+    const { switcher } = start([]);
+    await act(() => switcher.openLocation("/work/acme"));
+    await act(() => switcher.openLocation("/work/beta"));
+    await press({ key: "1", ctrlKey: true });
+    switcherButton()?.focus();
+
+    await press({ key: "2", ctrlKey: true });
+    expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: beta");
+    expect(document.activeElement).toBe(shownHeading());
+  });
+
+  it("moves focus to the title of the workspace left after Close workspace (a11y W1)", async () => {
+    HTMLElement.prototype.hidePopover ??= () => {};
+    const { switcher } = start([]);
+    await act(() => switcher.openLocation("/work/acme"));
+    await act(() => switcher.openLocation("/work/beta"));
+
+    await act(async () => menuRow("Close workspace")?.click());
+    expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: acme");
+    expect(document.activeElement).toBe(shownHeading());
+  });
+
+  it("leaves focus alone when a workspace is shown without the person asking", async () => {
+    const { switcher } = start([]);
+
+    // As the app's restore at start does: straight on the switcher, not through the window.
+    await act(() => switcher.openLocation("/work/acme"));
+    expect(document.activeElement).toBe(document.body);
   });
 
   it("goes back to Welcome when the last workspace closes", async () => {
