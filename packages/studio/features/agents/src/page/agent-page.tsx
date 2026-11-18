@@ -26,14 +26,21 @@ import { pageWords } from "./page-words.ts";
 import { RenameField } from "./rename-field.tsx";
 import { useLoad } from "./use-load.ts";
 
-/** The agent's page in its tab: `item` names the agent, the host reads its row. */
-export function AgentPage({ item, context }: ItemViewProps) {
+/** The step that opens an agent's page at its model, as `openItem(agent, { step: "model" })`. */
+export const MODEL_STEP = "model";
+
+/**
+ * The agent's page in its tab: `item` names the agent, the host reads its row. Opened with the
+ * step `model`, it opens at the model picker (`agents.configuration.open-at-model`).
+ */
+export function AgentPage({ item, context, step, asked }: ItemViewProps) {
   const { openPlace, openItem } = context;
   return (
     <AgentScreen
       host={context.services.get(AgentsHostService)}
       hubId={item.hub}
       id={item.id}
+      {...(step === MODEL_STEP && { modelRequest: `${item.id}/${asked ?? 0}` })}
       {...(openPlace && { goToAgents: () => openPlace("agents") })}
       {...(openItem && { openFile: (path: string) => openItem(fileItemOf(path)) })}
     />
@@ -46,6 +53,11 @@ export interface AgentScreenProps extends AgentRef {
   readonly goToAgents?: (() => void) | undefined;
   /** Opens a workspace file in a tab, for **Open as file**; absent where the app can't, which leaves it out of the menu. */
   readonly openFile?: ((path: string) => void) | undefined;
+  /**
+   * Set when the page was asked to open at the model, and changed each time it is asked again:
+   * Configuration then shows its Model page with the picker focused.
+   */
+  readonly modelRequest?: string | undefined;
 }
 
 /**
@@ -53,7 +65,14 @@ export interface AgentScreenProps extends AgentRef {
  * agent's Runs. The page is a skeleton when the read takes over 300 ms, and says why when the
  * agent can't be read. Flow, Configuration and the Try it chat join it in the next pull requests.
  */
-export function AgentScreen({ host, hubId, id, goToAgents, openFile }: AgentScreenProps) {
+export function AgentScreen({
+  host,
+  hubId,
+  id,
+  goToAgents,
+  openFile,
+  modelRequest,
+}: AgentScreenProps) {
   // After a Try again reads, the agent's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
   const source = useMemo(
@@ -108,7 +127,7 @@ export function AgentScreen({ host, hubId, id, goToAgents, openFile }: AgentScre
     [host, hubId],
   );
   const defaultModel = useLoad<string | undefined>(defaultModelSource);
-  const [view, setView] = useState<AgentView>("runs");
+  const { view, setView, modelWaiting, modelShown } = useAgentView(modelRequest);
   const [saveFailed, setSaveFailed] = useState<string>();
   const ids = useTabIds();
   const save = async (change: AgentChange) => {
@@ -189,6 +208,8 @@ export function AgentScreen({ host, hubId, id, goToAgents, openFile }: AgentScre
             retryAliases={aliases.retry}
             retry={settings.retry}
             save={save}
+            showModel={modelWaiting}
+            onModelShown={modelShown}
           />
         ) : (
           <div className="min-w-0 flex-1 overflow-auto p-6">
@@ -229,6 +250,24 @@ export function AgentScreen({ host, hubId, id, goToAgents, openFile }: AgentScre
 }
 
 type AgentView = "configuration" | "runs";
+
+/**
+ * The view the page shows: Runs at first, and Configuration once for each request to open at the
+ * model, which the person can leave after. The request waits until Configuration has shown its
+ * Model page, so coming back to Configuration by hand later opens it as usual.
+ */
+function useAgentView(modelRequest: string | undefined) {
+  const [view, setView] = useState<AgentView>("runs");
+  const [shownFor, setShownFor] = useState<string>();
+  const [modelWaiting, setModelWaiting] = useState(false);
+  if (modelRequest !== undefined && modelRequest !== shownFor) {
+    setShownFor(modelRequest);
+    setView("configuration");
+    setModelWaiting(true);
+  }
+  const modelShown = useCallback(() => setModelWaiting(false), []);
+  return { view, setView, modelWaiting, modelShown };
+}
 
 /** The page's views, as far as they are built: Flow and the Try it chat join them later. */
 const agentTabs: readonly Tab<AgentView>[] = [

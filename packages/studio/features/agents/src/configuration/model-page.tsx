@@ -1,5 +1,5 @@
 import { Field, Input, Select, type SelectOption } from "@halonicjs/studio-kit";
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { AgentChange, AgentSettings } from "../api.ts";
 import { configurationWords as words } from "./configuration-words.ts";
 import { useAutoSaved } from "./use-auto-saved.ts";
@@ -24,14 +24,36 @@ export interface ModelPageProps {
   readonly defaultModel?: string | undefined;
   /** Saves one change; rejects with the reason it couldn't write. */
   readonly save: (change: AgentChange) => Promise<void>;
+  /** Whether the picker should take the focus, as when the page was opened at the model. */
+  readonly focus?: boolean;
+  /** Called once the picker took the focus. */
+  readonly onFocused?: () => void;
 }
 
 /**
  * The Model page (`agents.configuration.model`): the model, picked from the workspace's aliases,
  * and the turn limit. Both save by themselves. A turn limit with a mistake isn't saved.
  */
-export function ModelPage({ settings, aliases, defaultModel, save }: ModelPageProps) {
+export function ModelPage({
+  settings,
+  aliases,
+  defaultModel,
+  save,
+  focus = false,
+  onFocused,
+}: ModelPageProps) {
   const [model, setModel] = useState(settings.model ?? "");
+  const picker = useRef<HTMLElement>(null);
+  const focusPicker = useEffectEvent(() => {
+    picker.current?.focus();
+    onFocused?.();
+  });
+  useEffect(() => {
+    if (!focus) return;
+    // A moment later, after the shell focuses the page's heading as the tab is shown.
+    const timer = window.setTimeout(focusPicker, 0);
+    return () => window.clearTimeout(timer);
+  }, [focus]);
   useEffect(() => setModel(settings.model ?? ""), [settings.model]);
   const turnLimit = useAutoSaved(
     String(settings.maxSteps),
@@ -45,6 +67,7 @@ export function ModelPage({ settings, aliases, defaultModel, save }: ModelPagePr
     <div className="flex flex-col gap-6">
       <Field label={words.model} hint={aliases.length === 0 ? words.noAliases : undefined}>
         <Select
+          ref={picker}
           options={options}
           value={model}
           placeholder={

@@ -1,5 +1,5 @@
 import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
-import { useState } from "react";
+import { useEffectEvent, useLayoutEffect, useState } from "react";
 import type { AgentChange, AgentSettings, AgentsHost } from "../api.ts";
 import type { Load } from "../page/use-load.ts";
 import { BehaviourPage } from "./behaviour-page.tsx";
@@ -20,6 +20,13 @@ export interface ConfigurationProps {
   readonly retryAliases: () => void;
   readonly retry: () => void;
   readonly save: (change: AgentChange) => Promise<void>;
+  /**
+   * Whether a request to open at the model (`agents.configuration.open-at-model`) is waiting: the
+   * Model page is then shown with its picker focused, and `onModelShown` called.
+   */
+  readonly showModel?: boolean;
+  /** Called once the Model page was shown for the waiting request, which then stops waiting. */
+  readonly onModelShown?: () => void;
 }
 
 type PageId = "behaviour" | "model" | "harness";
@@ -40,8 +47,20 @@ export function Configuration({
   retryAliases,
   retry,
   save,
+  showModel = false,
+  onModelShown,
 }: ConfigurationProps) {
   const [page, setPage] = useState<PageId>("behaviour");
+  // The picker takes the focus once for each request, so a later click on Model doesn't move it.
+  const [focusModel, setFocusModel] = useState(false);
+  const modelShown = useEffectEvent(() => onModelShown?.());
+  // Before the page is drawn, so Behaviour doesn't flash first.
+  useLayoutEffect(() => {
+    if (!showModel) return;
+    setPage("model");
+    setFocusModel(true);
+    modelShown();
+  }, [showModel]);
   if (load.kind === "failed") {
     return (
       <EmptyState
@@ -102,6 +121,8 @@ export function Configuration({
                   aliases={aliases.kind === "ready" ? aliases.value : []}
                   defaultModel={defaultModel}
                   save={save}
+                  focus={focusModel}
+                  onFocused={() => setFocusModel(false)}
                 />
               ))}
             {page === "harness" && <HarnessPage host={host} settings={load.value} save={save} />}
