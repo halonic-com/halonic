@@ -28,6 +28,7 @@ import { type RoutineRunsLoad, useRoutineRuns } from "../runs/use-routine-runs.t
 import { StartsCard } from "../starts/starts-card.tsx";
 import { WhenCard } from "../when/when-card.tsx";
 import { failureReason, pageWords } from "./page-words.ts";
+import { RunDialog, runDialogReason } from "./run-dialog.tsx";
 import { runRoutineNow } from "./run-now.ts";
 import { useRoutine } from "./use-routine.ts";
 
@@ -244,10 +245,18 @@ function RoutineHeader({
   const [renaming, setRenaming] = useState(false);
   // A second press while the host still starts the first run would start a second run.
   const [starting, setStarting] = useState(false);
+  // Run now on a routine that isn't fully live asks first, in the run dialog.
+  const [asking, setAsking] = useState(false);
   const start = () => {
     if (routine === undefined || starting) return;
+    setAsking(false);
     setStarting(true);
     void runRoutineNow(host, toasts, routine, openRun).finally(() => setStarting(false));
+  };
+  const pressRunNow = () => {
+    if (routine === undefined || starting) return;
+    if (runDialogReason(host, routine) === undefined) start();
+    else setAsking(true);
   };
   const rename = ({ hubId, id }: RoutineView, next: string) => {
     host.save({ hubId, id }, { name: next }).catch((error: unknown) => {
@@ -321,7 +330,7 @@ function RoutineHeader({
       )}
       {routine !== undefined && host.runNow !== undefined && (
         <div className="ml-auto">
-          <Button variant="secondary" size="sm" busy={starting} onClick={start}>
+          <Button variant="secondary" size="sm" busy={starting} onClick={pressRunNow}>
             {pageWords.runNow}
           </Button>
         </div>
@@ -332,6 +341,9 @@ function RoutineHeader({
           onRename={(next) => rename(routine, next)}
           onClose={() => setRenaming(false)}
         />
+      )}
+      {asking && routine !== undefined && (
+        <RunDialog host={host} routine={routine} onRun={start} onCancel={() => setAsking(false)} />
       )}
     </header>
   );

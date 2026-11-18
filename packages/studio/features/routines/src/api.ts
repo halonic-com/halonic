@@ -107,6 +107,8 @@ export interface RoutineView extends RoutineRef {
   readonly everLive: boolean;
   /** True while the saved routine differs from its live version. */
   readonly changesNotLive: boolean;
+  /** ISO time its live version was made; absent before it has one or while the host can't say. */
+  readonly liveSince?: string | undefined;
   /** Mistakes the checks found, such as a bad cron or an unknown time zone, in the engine's words. */
   readonly problems: readonly string[];
 }
@@ -262,6 +264,25 @@ export interface RoutinesHost {
    * when the engine can't be reached; a refusal the person can act on is a result, not a rejection.
    */
   runNow?(ref: RoutineRef): Promise<RunNowResult>;
+  /**
+   * Makes the routine live: opens Create version with only this routine's file, and answers
+   * `"made"` once the version is created, `"cancelled"` when the person closed it. Absent while
+   * the app can't offer that, so Run now's dialog has no **Make live first**. Rejects with the
+   * reason the version couldn't be made.
+   */
+  makeLive?(ref: RoutineRef): Promise<"made" | "cancelled">;
+  /**
+   * Starts the Google sign-in for the account a Run now refused as signed out. Absent where the
+   * sign-in can't run, so the toast has no **Sign in with Google**. Rejects with the reason it
+   * couldn't start.
+   */
+  signIn?(account: string): Promise<void>;
+  /**
+   * Opens the workspace's one trust gate, and answers `"trusted"` once the person trusted the
+   * workspace, `"declined"` on Not now. Absent where there is no folder to trust, so a not-trusted
+   * refusal only says so.
+   */
+  askTrust?(): Promise<"trusted" | "declined">;
   /**
    * Moves the routine's file to the trash as one change. Rejects with the reason it couldn't, such
    * as when the routine is gone.

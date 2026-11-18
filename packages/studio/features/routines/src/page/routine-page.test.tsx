@@ -1,19 +1,12 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
-import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import {
-  EngineNotAnswering,
-  type RoutinesHost,
-  RoutinesHostService,
-  type RoutineView,
-  type RunNowRefusal,
-  type RunNowResult,
-} from "../api.ts";
+import { type RoutinesHost, RoutinesHostService, type RoutineView } from "../api.ts";
 import { routinesFeature } from "../feature.ts";
 import {
   buttonNamed,
@@ -25,6 +18,7 @@ import {
   typeInto,
   unmount,
 } from "../test-support.tsx";
+import { daily, hostReading, screenOf, settle, showWithToasts } from "./page-test-support.tsx";
 import { RoutinePage, RoutineScreen } from "./routine-page.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -33,45 +27,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const daily: RoutineView = {
-  hubId: "acme",
-  id: "daily",
-  name: "Daily",
-  enabled: true,
-  trigger: { kind: "schedule", cron: "30 7 * * 1-5" },
-  triggerSentence: "Weekdays at 07:30",
-  summary: "Weekdays at 07:30 → Briefing",
-  targetName: "Briefing",
-  target: { kind: "workflow", hubId: "acme", id: "briefing", input: "{}" },
-  targetState: "ready",
-  overlap: "skip",
-  catchUp: "last",
-  file: "hubs/acme/workflows/routines/daily.routine.yaml",
-  everLive: true,
-  changesNotLive: false,
-  problems: [],
-};
-
-/** A host that reads `routine`, or rejects with `fail`, and tells its listeners about a change. */
-function hostReading(routine: () => RoutineView, fail?: () => Error | undefined) {
-  const { host, change } = memoryHost([], []);
-  const reading = {
-    ...host,
-    mailboxes: async () => [],
-    targets: async () => [],
-    nextTimes: async () => ({ times: [], atNextCheck: false }),
-    read: async () => {
-      const error = fail?.();
-      if (error) throw error;
-      return routine();
-    },
-  } as RoutinesHost;
-  return { host: reading, change: () => change([]) };
-}
-
-const screenOf = (host: RoutinesHost, id = "daily") => (
-  <RoutineScreen host={host} hubId="acme" id={id} announce={() => {}} />
-);
+const nameField = (page: HTMLElement) =>
+  page.querySelector<HTMLInputElement>('input[aria-label="Routine name"]') as HTMLInputElement;
 
 verifies("routines.page.frame-and-states", () => {
   it("shows the avatar, the kind, the name and the summary", async () => {
@@ -268,28 +225,6 @@ function hostWithTrash() {
   return { host: withTrash, save };
 }
 
-async function showWithToasts(host: RoutinesHost, openRun?: (runId: string) => void) {
-  const toasts = createToastStore();
-  const page = await show(
-    <ToastStoreProvider store={toasts}>
-      <RoutineScreen
-        host={host}
-        hubId="acme"
-        id="daily"
-        announce={() => {}}
-        goToRoutines={() => {}}
-        {...(openRun && { openRun })}
-      />
-    </ToastStoreProvider>,
-  );
-  return { page, toasts };
-}
-
-const nameField = (page: HTMLElement) =>
-  page.querySelector<HTMLInputElement>('input[aria-label="Routine name"]') as HTMLInputElement;
-
-const settle = () => act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
-
 verifies("routines.page.rename-and-delete", () => {
   let restorePopover: () => void;
   beforeEach(() => {
@@ -405,95 +340,5 @@ verifies("routines.page.rename-and-delete", () => {
 
     expect(nameField(page).value).toBe("Daily");
     expect(document.activeElement?.tagName).toBe("H1");
-  });
-});
-
-/** A host that reads "Daily" and answers Run now with `answer`, or rejects with it when it is an error. */
-function hostRunning(answer: RunNowResult | Error, view: RoutineView = daily) {
-  const { host } = hostReading(() => view);
-  const runNow = vi.fn(async () => {
-    if (answer instanceof Error) throw answer;
-    return answer;
-  });
-  return { host: { ...host, runNow } as RoutinesHost, runNow };
-}
-
-const runNowButton = (page: HTMLElement) => buttonNamed(page, "Run now");
-
-verifies("routines.page.run-now", () => {
-  it("shows no Run now while the host has no engine", async () => {
-    const page = await show(screenOf(hostReading(() => daily).host));
-
-    expect(runNowButton(page)).toBeUndefined();
-  });
-
-  it("starts the run, also while the routine is off, and offers Open run", async () => {
-    const opened: string[] = [];
-    const { host, runNow } = hostRunning(
-      { started: true, runId: "run_1", shortId: "abc123" },
-      { ...daily, enabled: false },
-    );
-    const { page, toasts } = await showWithToasts(host, (runId) => opened.push(runId));
-
-    await act(async () => runNowButton(page)?.click());
-
-    expect(runNow).toHaveBeenCalledWith(expect.objectContaining({ hubId: "acme", id: "daily" }));
-    expect(toasts.list()[0]).toMatchObject({
-      title: "Run started · Daily · Run abc123",
-      action: { label: "Open run" },
-    });
-    toasts.list()[0]?.action?.onClick();
-    expect(opened).toEqual(["run_1"]);
-  });
-
-  it("starts one run for two presses while the host is still starting the first", async () => {
-    const { host } = hostRunning({ started: true, runId: "run_1", shortId: "abc123" });
-    let answer: (result: RunNowResult) => void = () => {};
-    const runNow = vi.fn(() => new Promise<RunNowResult>((resolve) => (answer = resolve)));
-    const { page } = await showWithToasts({ ...host, runNow } as RoutinesHost);
-
-    await act(async () => runNowButton(page)?.click());
-    await act(async () => runNowButton(page)?.click());
-    expect(runNow).toHaveBeenCalledTimes(1);
-    expect(runNowButton(page)?.getAttribute("aria-busy")).toBe("true");
-
-    await act(async () => answer({ started: true, runId: "run_1", shortId: "abc123" }));
-    await act(async () => runNowButton(page)?.click());
-    expect(runNow).toHaveBeenCalledTimes(2);
-  });
-
-  it("says the one reason a refusal gives, and the toast stays", async () => {
-    const refusals: [RunNowRefusal, string][] = [
-      [{ reason: "target-never-live" }, "Not started: Briefing isn't live yet."],
-      [{ reason: "target-in-trash" }, "Not started: Briefing is in the trash."],
-      [{ reason: "target-not-found" }, "Not started: Briefing isn't in this hub any more."],
-      [{ reason: "not-trusted" }, "Not started: Daily isn't trusted yet."],
-      [
-        { reason: "signed-out", account: "fin@acme.example" },
-        "Not started: fin@acme.example is signed out.",
-      ],
-    ];
-    for (const [refusal, title] of refusals) {
-      const { host } = hostRunning({ started: false, refusal });
-      const { page, toasts } = await showWithToasts(host);
-
-      await act(async () => runNowButton(page)?.click());
-
-      expect(toasts.list()[0]).toMatchObject({ title, sticky: true });
-      unmount();
-    }
-  });
-
-  it("says when the engine isn't answering", async () => {
-    const { host } = hostRunning(new EngineNotAnswering());
-    const { page, toasts } = await showWithToasts(host);
-
-    await act(async () => runNowButton(page)?.click());
-
-    expect(toasts.list()[0]).toMatchObject({
-      title: "Couldn't start Daily.",
-      text: "The engine isn't answering.",
-      sticky: true,
-    });
   });
 });
