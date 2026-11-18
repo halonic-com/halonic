@@ -25,7 +25,8 @@ use std::time::{Duration, Instant};
 
 use sha2::{Digest, Sha256};
 
-use crate::{log_stderr, without_console_window};
+use crate::stderr_log::log_stderr;
+use crate::without_console_window;
 
 /// The name Halonic's distro is imported under.
 pub const DISTRO: &str = "halonic";
