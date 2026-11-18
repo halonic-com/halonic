@@ -3,6 +3,7 @@
 - Task: HAL-12570
 - Approval: Liam reviews it on HAL-12570 and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+ypOn39+R/3Nxw4RLd0TT0yrwd75B+C8W1RsiGzMfPL1SugnfK7238LJIRwAHqRG4LTYeNd3aD6G5MFI1nBNBg==
 
 ## What changes
 
