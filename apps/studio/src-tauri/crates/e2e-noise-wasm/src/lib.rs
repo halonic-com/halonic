@@ -241,7 +241,7 @@ impl Session {
         let State::Handshake(handshake) = std::mem::replace(&mut self.state, State::Failed) else {
             return Err(Failure::State);
         };
-        let handshake_hash = handshake
+        let handshake_hash: [u8; KEY_BYTES] = handshake
             .get_handshake_hash()
             .try_into()
             .map_err(|_| Failure::Noise)?;

@@ -34,7 +34,7 @@ impl CryptoResolver for SeededOnly {
     }
 }
 
-fn snow_builder(handshake: Handshake, seed: u64) -> Builder<'static> {
+fn snow_builder<'a>(handshake: Handshake, seed: u64) -> Builder<'a> {
     let resolver = FallbackResolver::new(Box::new(SeededOnly(seed)), Box::new(DefaultResolver));
     Builder::with_resolver(
         handshake.protocol_name().parse().expect("params"),
@@ -225,7 +225,7 @@ fn theirs(
 fn run_session(initiator: &mut dyn Party, responder: &mut dyn Party, handshake_messages: usize) {
     for index in 0..handshake_messages {
         let payload = format!("handshake {index}").into_bytes();
-        if index % 2 == 0 {
+        if index.is_multiple_of(2) {
             send(initiator, responder, &payload);
         } else {
             send(responder, initiator, &payload);

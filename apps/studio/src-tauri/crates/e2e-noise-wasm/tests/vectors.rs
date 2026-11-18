@@ -120,7 +120,7 @@ fn every_message_matches_the_vectors() {
         let mut sent = vec![0; MAX_MESSAGE_BYTES];
         let mut received = vec![0; MAX_MESSAGE_BYTES];
         for (index, message) in vector.messages.iter().enumerate() {
-            let (sender, reader) = if index % 2 == 0 {
+            let (sender, reader) = if index.is_multiple_of(2) {
                 (&mut initiator, &mut responder)
             } else {
                 (&mut responder, &mut initiator)

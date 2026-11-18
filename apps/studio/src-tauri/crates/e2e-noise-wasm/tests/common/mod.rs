@@ -6,7 +6,10 @@ use halonic_e2e_noise_wasm::RandomSource;
 
 /// Bytes from a hex string, as the vectors write them.
 pub fn hex(text: &str) -> Vec<u8> {
-    assert!(text.len() % 2 == 0, "hex needs an even length: {text}");
+    assert!(
+        text.len().is_multiple_of(2),
+        "hex needs an even length: {text}"
+    );
     (0..text.len())
         .step_by(2)
         .map(|at| u8::from_str_radix(&text[at..at + 2], 16).expect("hex digits"))
