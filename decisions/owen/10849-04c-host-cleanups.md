@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-10849 (Liam, CTO; review notes on #3491)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Wx97tOTR74NWVYpdkoTq66Ggi6Bv/R6RdBwLiMlK2hqUsuD7WPybFmUCLONXHHGsRglyL+GbxmeAF4tNRfSKAg==
 - Task: HAL-10849
 
 Two notes from the review of #3491, both in the agent host:
