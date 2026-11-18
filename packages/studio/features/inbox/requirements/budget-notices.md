@@ -12,6 +12,8 @@ When the month's budget is used up, a request from the Inbox shall not start a r
 
 - Given a run of "Support replies" that failed with "Run budget reached: 5.08 of 5.00 EUR spent." two hours ago,
   then Notices has "Support replies stopped at its estimated budget · Reached €5.00 per run (estimated €5.08) · 2 hours ago" with **Open run**.
+- Given a run that failed with "Run budget reached: 0.0004 of 0.0003 EUR spent.",
+  then the row reads "…· Reached its budget of less than €0.001 per run (estimated less than €0.001) · …", and a monthly budget that tiny reads "…reached its budget of less than €0.001.", never "of under".
 - Given a monthly budget of 50.00 EUR and 50.02 EUR spent by runs that started this month, on 16 Nov,
   then Notices has "This month's estimated spend reached its budget of €50.00. Runs won't start until 1 December (UTC) or until you change the budget." with **Change budget**.
 - Given 49.99 EUR spent, or 60.00 EUR spent last month, or by test runs,

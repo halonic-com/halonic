@@ -308,6 +308,13 @@ verifies("runs.run-view.failure-banners", () => {
       });
     });
 
+    it("says a tiny budget as less than, never as under", () => {
+      const banner = stopped("budget.run", { limit: "0.0003", spent: "0.0004", currency: "EUR" });
+      expect(linesOf(banner)?.[0]).toBe(
+        "Support reply stopped in the step Draft: this run reached its budget of less than €0.001 (estimated less than €0.001 spent).",
+      );
+    });
+
     it("says the CLI's first line and Studio's second for the month's budget, with when it resets, in the budget's currency", () => {
       const banner = stopped(
         "budget.month",

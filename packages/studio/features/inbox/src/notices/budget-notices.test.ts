@@ -36,6 +36,14 @@ verifies("inbox.budget-notices", () => {
     });
   });
 
+  it("says a tiny run budget as less than, never as under", () => {
+    const tiny = budgetRun("r1", { error: "Run budget reached: 0.0004 of 0.0003 EUR spent." });
+    const [notice] = budgetNotices([tiny], { monthly: undefined, workflowName, now });
+    expect(notice?.title).toBe(
+      "Support replies stopped at its estimated budget · Reached its budget of less than €0.001 per run (estimated less than €0.001) · 2 hours ago",
+    );
+  });
+
   it("makes no row for a child run, last month's run, a test run or a monthly stop", () => {
     const runs = [
       budgetRun("child", { parentRunId: "r1" }),
@@ -55,6 +63,15 @@ verifies("inbox.budget-notices", () => {
       key: "budget-month:2026-11:50",
       title:
         "This month's estimated spend reached its budget of €50.00. Runs won't start until 1 December (UTC) or until you change the budget.",
+    });
+  });
+
+  it("says a tiny monthly budget as less than, never as under", () => {
+    const tinyMonthly = { limit: 0.0004, currency: "EUR" };
+    const spent = waitingRun("r2", { status: "completed", cost: 0.0005, endedAt: null });
+    const [notice] = budgetNotices([spent], { monthly: tinyMonthly, workflowName, now });
+    expect(notice).toMatchObject({
+      title: expect.stringContaining("reached its budget of less than €0.001. Runs won't start"),
     });
   });
 

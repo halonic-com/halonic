@@ -28,6 +28,8 @@ Limits, for the docs: the banners have no **Copy details** yet. The provider is 
 - Given a run that stopped with the cause `budget.run`, a limit of 5, a spend of 5.08 and the currency EUR, in the step Draft,
   when its page is shown,
   then the budget banner reads "Support reply stopped in the step Draft: this run reached its budget of €5.00 (estimated €5.08 spent).", then "Change the budget, then run again.".
+- Given a run that stopped with the cause `budget.run`, a limit of 0.0003 and a spend of 0.0004,
+  then the first line reads "…: this run reached its budget of less than €0.001 (estimated less than €0.001 spent).", never "of under".
 - Given a run that stopped with the cause `budget.month` on 31 December,
   when its page is shown,
   then the second line reads "Change the budget, or wait until it resets on 1 January (UTC).".

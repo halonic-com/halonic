@@ -69,9 +69,26 @@ export function monthBudgetUsedUp(use: MonthBudgetUse | undefined): use is Month
   return use !== undefined && use.spent >= use.limit;
 }
 
+/** A tiny amount reads "less than €0.001", so "a budget of less than €0.001" never reads "of under". */
+const tinyAmount = { tiny: "less than" } as const;
+
+/**
+ * "Reached €5.00 per run (estimated €5.08)". A tiny budget reads "Reached its budget of less than
+ * €0.001 per run (estimated less than €0.001)": "Reached less than €0.001" would read as a run that
+ * got to a smaller amount than it had.
+ */
+function reachedPerRun(limit: number, spent: number, currency: string | undefined): string {
+  const budget = moneyAmount(limit, currency, tinyAmount);
+  const estimated = moneyAmount(spent, currency, tinyAmount);
+  const reached = budget.startsWith("less than")
+    ? `Reached its budget of ${budget}`
+    : `Reached ${budget}`;
+  return `${reached} per run (estimated ${estimated})`;
+}
+
 /** "This month's estimated spend reached its budget of €50.00." (microcopy 10.3, the line a request gets). */
 export function monthBudgetReached(use: MonthBudgetUse): string {
-  return `This month's estimated spend reached its budget of ${moneyAmount(use.limit, use.currency)}.`;
+  return `This month's estimated spend reached its budget of ${moneyAmount(use.limit, use.currency, tinyAmount)}.`;
 }
 
 /** The first of next month, "1 December". */
@@ -108,7 +125,7 @@ export function budgetNotices(
       runId: run.id,
       hubId: run.hubId,
       at: run.endedAt,
-      title: `${facts.workflowName(run)} stopped at its estimated budget · Reached ${moneyAmount(Number(limit), currency)} per run (estimated ${moneyAmount(Number(spent), currency)}) · ${ago(run.endedAt, now)}`,
+      title: `${facts.workflowName(run)} stopped at its estimated budget · ${reachedPerRun(Number(limit), Number(spent), currency)} · ${ago(run.endedAt, now)}`,
     });
   }
   const use = monthBudgetUse(runs, facts.monthly, now);
