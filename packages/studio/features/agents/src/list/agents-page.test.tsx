@@ -169,6 +169,26 @@ verifies("agents.list.rows-and-states", () => {
     expect(page.textContent).toContain("Fresh one");
   });
 
+  it("leaves the focus where it is when the host's change comes with a payload", async () => {
+    let changed: (payload: unknown) => void = () => {};
+    const host = {
+      ...hostWith(),
+      // Like the Studio's files.changed event, which hands its listeners the changed paths.
+      subscribe: (listener: (payload: unknown) => void) => {
+        changed = listener;
+        return () => {};
+      },
+    };
+    const page = await show(<AgentsView host={host} />);
+    const search = page.querySelector<HTMLInputElement>('input[type="search"]');
+    if (search === null) throw new Error("no search field");
+    search.focus();
+
+    await act(async () => changed({ paths: ["acme/agents/sorter.md"] }));
+
+    expect(document.activeElement).toBe(search);
+  });
+
   it("keeps the newest read when an older read settles after it", async () => {
     const reads: ((rows: readonly AgentListing[]) => void)[] = [];
     let changed = () => {};

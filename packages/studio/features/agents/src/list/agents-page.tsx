@@ -140,7 +140,9 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
 
   useEffect(() => {
     read();
-    const unsubscribe = host.subscribe(read);
+    // The Studio's host passes the change's payload to its listeners: drop it, so a change is read
+    // quietly and never taken for Try again, which moves the focus to the heading.
+    const unsubscribe = host.subscribe(() => read());
     return () => {
       unsubscribe();
       newestRead.current += 1;
