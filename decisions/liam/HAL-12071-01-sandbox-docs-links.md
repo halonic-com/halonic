@@ -3,6 +3,7 @@
 - Task: HAL-12071
 - Approval: Liam decided this on HAL-12071, from Nina's docs walk on HAL-12063; a team decision with no board card (HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2O0sGECMVK79Jomxm8kUGA1jFCuy+whddiOyFDp33LXg03cDpUG/0VKp1mA4OZcHaoK85GBsC6yGPRGQXNlVAw==
 
 ## What changes
 
