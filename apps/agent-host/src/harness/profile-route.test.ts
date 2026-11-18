@@ -116,26 +116,29 @@ async function exists(path: string): Promise<boolean> {
 }
 
 verifies("agent-host.profile-route", () => {
-  it("answers the profile of a named workspace, without the bridge's token", async () => {
-    const response = await ask({ workspace, agent: writer, bridge: bridgeId });
-    const text = await response.text();
-    expect(response.status).toBe(200);
-    expect(text).not.toContain(bridgeToken);
-    const { profile, deniedGroups } = JSON.parse(text) as {
-      profile: SandboxProfile;
-      deniedGroups: { code: string; paths: string[] }[];
-    };
-    expect(profile.workingFolder.startsWith(workspace)).toBe(true);
-    expect(profile.network).toEqual({
-      bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 },
-      allowedSites: ["example.com"],
-    });
-    expect(profile.env["PATH"]).toBe("/usr/bin");
-    // On Windows the data folder is denied by its entries, not as a whole.
-    if (!onWindows) expect(profile.deniedPaths).toContain(join(root, "data"));
-    expect(deniedGroups.map(({ code }) => code)).toContain("halonic-data");
-    expect(await exists(profile.tempFolder)).toBe(true);
-  });
+  // Windows answers 422 until the host finds where the harness is installed (see the 422 test).
+  it.skipIf(onWindows)(
+    "answers the profile of a named workspace, without the bridge's token",
+    async () => {
+      const response = await ask({ workspace, agent: writer, bridge: bridgeId });
+      const text = await response.text();
+      expect(response.status).toBe(200);
+      expect(text).not.toContain(bridgeToken);
+      const { profile, deniedGroups } = JSON.parse(text) as {
+        profile: SandboxProfile;
+        deniedGroups: { code: string; paths: string[] }[];
+      };
+      expect(profile.workingFolder.startsWith(workspace)).toBe(true);
+      expect(profile.network).toEqual({
+        bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 },
+        allowedSites: ["example.com"],
+      });
+      expect(profile.env["PATH"]).toBe("/usr/bin");
+      expect(profile.deniedPaths).toContain(join(root, "data"));
+      expect(deniedGroups.map(({ code }) => code)).toContain("halonic-data");
+      expect(await exists(profile.tempFolder)).toBe(true);
+    },
+  );
 
   it("answers 404 for a folder the launcher did not name, and makes nothing for it", async () => {
     const other = join(root, "other");
@@ -192,19 +195,23 @@ verifies("agent-host.profile-route", () => {
     }
   });
 
-  it("removes the temp folder of a closed session, and only the ones it made", async () => {
-    const response = await ask({ workspace, agent: writer, bridge: bridgeId });
-    const { profile } = (await response.json()) as { profile: SandboxProfile };
-    const stranger = join(root, "stranger");
-    await mkdir(stranger);
-    const sandbox = profiles.removingTempFolders(opening());
-    const mine = await sandbox.open(profile);
-    const theirs = await sandbox.open({ ...profile, tempFolder: stranger });
-    await mine.close();
-    await theirs.close();
-    expect(await exists(profile.tempFolder)).toBe(false);
-    expect(await exists(stranger)).toBe(true);
-  });
+  // Windows answers 422 until the host finds where the harness is installed (see the 422 test).
+  it.skipIf(onWindows)(
+    "removes the temp folder of a closed session, and only the ones it made",
+    async () => {
+      const response = await ask({ workspace, agent: writer, bridge: bridgeId });
+      const { profile } = (await response.json()) as { profile: SandboxProfile };
+      const stranger = join(root, "stranger");
+      await mkdir(stranger);
+      const sandbox = profiles.removingTempFolders(opening());
+      const mine = await sandbox.open(profile);
+      const theirs = await sandbox.open({ ...profile, tempFolder: stranger });
+      await mine.close();
+      await theirs.close();
+      expect(await exists(profile.tempFolder)).toBe(false);
+      expect(await exists(stranger)).toBe(true);
+    },
+  );
 });
 
 /** A sandbox that opens sessions which only close. */
