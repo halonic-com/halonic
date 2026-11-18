@@ -274,3 +274,63 @@ verifies("plugins.plugin-settings-list", () => {
     expect(view.textContent).not.toContain("Add plugin");
   });
 });
+
+verifies("plugins.plugin-built-in", () => {
+  async function showSettings(runCommand: WorkspaceContext["runCommand"]) {
+    const { feed } = feedOf([]);
+    const shell = createShell({ features: [pluginsFeature], hostServices: [PluginsHostService] });
+    const workspace = new WorkspaceServices();
+    workspace.provide(PluginsHostService, {
+      feed,
+      caller: { call: async () => "" },
+      ...noSettings(),
+      ...noActions(),
+    });
+    shell.services.instantiate(workspace);
+    const context: WorkspaceContext = {
+      ...shell.services.contextFor("plugins", workspace),
+      ...(runCommand === undefined ? {} : { runCommand }),
+    };
+    const section = shell.contributions.settings.list().find(({ id }) => id === "plugins");
+    if (section === undefined) throw new Error("No Plugins section");
+    const View = await loadView<ComponentType<SettingsSectionProps>>(section);
+    const events: string[] = [];
+    const view = render(
+      <View
+        context={context}
+        closeSettings={() => events.push("closed")}
+        place="app"
+        surface="window"
+      />,
+    );
+    return { view, events };
+  }
+
+  it("lists Gmail and Google Drive as built in, and Open closes Settings and runs the connectors command", async () => {
+    const commands: string[] = [];
+    const { view, events } = await showSettings((id) => {
+      commands.push(id);
+      return true;
+    });
+    expect(view.textContent).toContain("Gmail and Google Drive");
+    expect(view.textContent).toContain("Comes with Halonic");
+    expect(view.textContent).toContain("Built in");
+    const more = await findElement(() =>
+      document.querySelector<HTMLElement>('[aria-label="More actions for Gmail and Google Drive"]'),
+    );
+    await act(async () => more.click());
+    const entries = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    expect(entries.map((entry) => entry.textContent?.trim())).toEqual(["Open"]);
+    await act(async () => entries[0]?.click());
+    expect(events).toEqual(["closed"]);
+    expect(commands).toEqual(["library.connector"]);
+  });
+
+  it("has no ⋮ on the row when the context can't run commands", async () => {
+    const { view } = await showSettings(undefined);
+    expect(view.textContent).toContain("Gmail and Google Drive");
+    expect(
+      document.querySelector('[aria-label="More actions for Gmail and Google Drive"]'),
+    ).toBeNull();
+  });
+});

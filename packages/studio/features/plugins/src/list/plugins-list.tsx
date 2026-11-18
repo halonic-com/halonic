@@ -53,6 +53,11 @@ export interface BuiltInPlugin {
   readonly name: string;
 }
 
+/** What comes with Halonic: one row for the Google connectors, which Library › Connectors shows per account. */
+export const BUILT_IN_PLUGINS: readonly BuiltInPlugin[] = [
+  { id: "google", name: "Gmail and Google Drive" },
+];
+
 /** Whether the installed plugins have loaded, so the list can show a skeleton or why not. */
 export type PluginsLoad =
   | { readonly kind: "loading" }
