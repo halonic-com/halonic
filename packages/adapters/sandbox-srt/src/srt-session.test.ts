@@ -153,7 +153,9 @@ verifies("sandbox-srt.session", () => {
     it("creates the temp folder and leaves nothing of the proof in it", async () => {
       const { runner } = fakeRunner();
       const session = await new SrtSandbox(linux, runner).open(profile());
-      expect(readdirSync(join(base, "temp"))).toEqual([]);
+      // On Windows the folder holds srt's JVM agent, copied there for the program (windows-program-env).
+      const expected = process.platform === "win32" ? ["srt-proxy-agent.jar"] : [];
+      expect(readdirSync(join(base, "temp"))).toEqual(expected);
       await session.close();
     });
   });
@@ -259,11 +261,20 @@ verifies("sandbox-srt.session", () => {
       }
       // The probe gets none of the profile's variables; the program gets all of them.
       expect(probes[0]?.programEnv).toEqual({ PATH: "/usr/bin", TMPDIR: join(base, "temp") });
+      // On Windows the program also gets npm's cache and Java's proxy agent (windows-program-env).
+      const windowsTools =
+        process.platform === "win32"
+          ? {
+              npm_config_cache: join(base, "temp", "npm-cache"),
+              JAVA_TOOL_OPTIONS: `-javaagent:${join(base, "temp", "srt-proxy-agent.jar")}`,
+            }
+          : {};
       expect(runs[0]?.request.programEnv).toEqual({
         TMPDIR: join(base, "temp"),
         HOME: "/h",
         PATH: "node_modules/.bin",
         LD_PRELOAD: "/x.so",
+        ...windowsTools,
       });
       await session.close();
     });
