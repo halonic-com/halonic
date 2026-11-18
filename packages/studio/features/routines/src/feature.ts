@@ -5,7 +5,8 @@ import { requestNewRoutine } from "./list/new-request.ts";
 
 /**
  * The Routines feature: the Routines list with its New routine dialog, and the `routine` item kind
- * with its page and Ctrl K search. The Triggers sections on agents and workflows are added to their pages; the interface other features use is in `api.ts`.
+ * with its page and Ctrl K search. The Triggers sections on agents and workflows are added to
+ * their pages; the interface other features use is in `api.ts`.
  */
 export const routinesFeature = defineFeature({
   id: "routines",

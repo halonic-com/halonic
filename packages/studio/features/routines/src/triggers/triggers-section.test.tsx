@@ -59,6 +59,21 @@ verifies("routines.triggers.lists-routines-that-start-it", () => {
   });
 });
 
+verifies("routines.triggers.lists-routines-that-start-it", () => {
+  it("opens a row without a hub in the owner's hub", async () => {
+    const opened: string[] = [];
+    const page = await show(
+      <TriggersView
+        host={hostWith([row("daily", "Daily", { hubId: null })])}
+        owner={agent}
+        openRoutine={(hubId, id) => opened.push(`${hubId}/${id}`)}
+      />,
+    );
+    await press(page.querySelector("li button") ?? undefined);
+    expect(opened).toEqual(["acme/daily"]);
+  });
+});
+
 verifies("routines.triggers.empty-state", () => {
   it("says what the owner does with no routine, by kind", async () => {
     const page = await show(<TriggersView host={hostWith([])} owner={agent} />);
