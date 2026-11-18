@@ -1,7 +1,10 @@
 import {
   Button,
   Callout,
+  Dialog,
   EmptyState,
+  Field,
+  Input,
   Menu,
   MoreIcon,
   SkeletonBar,
@@ -78,6 +81,7 @@ export function RoutineScreen({
   const { load, retry } = useRoutine(host, { hubId, id }, focusTitle);
   const [view, setView] = useState<RoutineViewId>("schedule");
   const ids = useTabIds();
+  const phone = usePresentation() === "phone";
   const routine = load.kind === "ready" ? load.routine : undefined;
   const runs = useRoutineRuns(host, routine);
   const views = routineTabs(runs.load);
@@ -112,7 +116,7 @@ export function RoutineScreen({
           ids={ids}
           tabs={views}
           selected={view}
-          className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-6 py-4"
+          className={`flex min-h-0 flex-1 flex-col gap-3 overflow-auto py-4 ${phone ? "px-4" : "px-6"}`}
         >
           {view === "schedule" && <Summary routine={load.routine} />}
           {view === "schedule" && (
@@ -237,6 +241,7 @@ function RoutineHeader({
 }) {
   const phone = usePresentation() === "phone";
   const toasts = useToastStore();
+  const [renaming, setRenaming] = useState(false);
   // A second press while the host still starts the first run would start a second run.
   const [starting, setStarting] = useState(false);
   const start = () => {
@@ -282,6 +287,10 @@ function RoutineHeader({
         {routine !== undefined && (
           <Menu
             entries={[
+              // The phone has no name field in the header, so renaming is a sheet from ⋮.
+              ...(phone
+                ? [{ id: "rename", label: pageWords.rename, onSelect: () => setRenaming(true) }]
+                : []),
               {
                 id: "delete",
                 label: pageWords.delete,
@@ -317,6 +326,60 @@ function RoutineHeader({
           </Button>
         </div>
       )}
+      {routine !== undefined && renaming && (
+        <RenameDialog
+          name={name}
+          onRename={(next) => rename(routine, next)}
+          onClose={() => setRenaming(false)}
+        />
+      )}
     </header>
+  );
+}
+
+/**
+ * The phone's rename sheet (`routines.page.rename-and-delete`): the name in one field and
+ * **Rename**. An empty name or the same name saves nothing; the first says what is wrong.
+ */
+function RenameDialog({
+  name,
+  onRename,
+  onClose,
+}: {
+  readonly name: string;
+  readonly onRename: (name: string) => void;
+  readonly onClose: () => void;
+}) {
+  const [draft, setDraft] = useState(name);
+  const [problem, setProblem] = useState<string>();
+  const confirm = () => {
+    const trimmed = draft.trim();
+    if (trimmed === "") {
+      setProblem(pageWords.renameNameMissing);
+      return;
+    }
+    if (trimmed !== name) onRename(trimmed);
+    onClose();
+  };
+  return (
+    <Dialog
+      title={pageWords.renameTitle}
+      size="md"
+      form
+      confirm={{ label: pageWords.rename, busyLabel: pageWords.rename }}
+      onConfirm={confirm}
+      onCancel={onClose}
+    >
+      <Field label={pageWords.renameNameField} error={problem ?? null}>
+        <Input
+          autoFocus
+          value={draft}
+          onChange={(event) => {
+            setProblem(undefined);
+            setDraft(event.target.value);
+          }}
+        />
+      </Field>
+    </Dialog>
   );
 }

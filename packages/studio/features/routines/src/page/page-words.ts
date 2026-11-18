@@ -12,6 +12,10 @@ export const pageWords = {
   nameLabel: "Routine name",
   more: (name: string) => `More actions for ${name}`,
   delete: "Delete",
+  rename: "Rename",
+  renameTitle: "Rename routine",
+  renameNameField: "Name",
+  renameNameMissing: "Give it a name.",
   couldntRename: (name: string, reason: string | undefined) =>
     reason === undefined
       ? `Couldn't rename ${name}.`

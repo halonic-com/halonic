@@ -1,4 +1,4 @@
-import { EmptyState, SkeletonBar, StatusChip } from "@halonicjs/studio-kit";
+import { EmptyState, SkeletonBar, StatusChip, usePresentation } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import type { RoutineRun, RoutineRuns, RoutinesHost, RoutineView } from "../api.ts";
 import { useNextTimes } from "../when/use-next-times.ts";
@@ -151,19 +151,39 @@ function RunRow({
   readonly now: Date;
 }) {
   const { tone, dot } = outcomeTone[run.outcome];
-  const content = (
-    <>
-      <StatusChip tone={tone} dot={dot}>
-        {outcomeWords[run.outcome]}
-      </StatusChip>
-      <span className="font-mono text-small">{run.shortId}</span>
-      <span className="min-w-0 flex-1 truncate text-small text-fg-muted">
-        {startedByWords[run.startedBy]}
+  const phone = usePresentation() === "phone";
+  const chip = (
+    <StatusChip tone={tone} dot={dot}>
+      {outcomeWords[run.outcome]}
+    </StatusChip>
+  );
+  const by = (
+    <span className="min-w-0 flex-1 truncate text-small text-fg-muted">
+      {startedByWords[run.startedBy]}
+    </span>
+  );
+  const when = <span className="text-small text-fg-muted">{runTime(run.startedAt, now)}</span>;
+  // On a phone the row has two lines: chip, id and time, then what started it.
+  const content = phone ? (
+    <span className="flex min-w-0 flex-1 flex-col gap-1">
+      <span className="flex items-center gap-3">
+        {chip}
+        <span className="flex-1 font-mono text-small">{run.shortId}</span>
+        {when}
       </span>
-      <span className="text-small text-fg-muted">{runTime(run.startedAt, now)}</span>
+      {by}
+    </span>
+  ) : (
+    <>
+      {chip}
+      <span className="font-mono text-small">{run.shortId}</span>
+      {by}
+      {when}
     </>
   );
-  const classes = "flex min-h-control-md w-full items-center gap-3 px-2 py-1 text-start";
+  const classes = `flex min-h-control-md w-full items-center gap-3 py-1 text-start ${
+    phone ? "px-0" : "px-2"
+  }`;
   return (
     <li>
       {openRun === undefined ? (

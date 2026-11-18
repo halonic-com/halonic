@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it } from "vitest";
@@ -56,6 +57,15 @@ verifies("routines.triggers.lists-routines-that-start-it", () => {
     expect(rows[1]?.textContent).toContain("Off");
     await press(rows[1]?.querySelector("button") ?? undefined);
     expect(opened).toEqual(["acme/inbox"]);
+  });
+
+  it("gives a row a touch-sized height on a phone", async () => {
+    const page = await show(
+      <PresentationProvider presentation="phone">
+        <TriggersView host={hostWith([row("daily", "Daily")])} owner={agent} />
+      </PresentationProvider>,
+    );
+    expect(page.querySelector("li button")?.className).toContain("min-h-control-md");
   });
 });
 

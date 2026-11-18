@@ -20,6 +20,7 @@ import {
   installFakePopover,
   listing,
   memoryHost,
+  openDialogsInJsdom,
   show,
   typeInto,
   unmount,
@@ -342,6 +343,39 @@ verifies("routines.page.rename-and-delete", () => {
       title: "Couldn't rename Daily.",
       text: "The file changed on disk.",
     });
+  });
+
+  it("renames from a sheet in ⋮ on a phone, where the header has no name field", async () => {
+    openDialogsInJsdom();
+    const { host, save } = hostWithTrash();
+    const page = await show(
+      <PresentationProvider presentation="phone">
+        <RoutineScreen host={host} hubId="acme" id="daily" announce={() => {}} />
+      </PresentationProvider>,
+    );
+    expect(page.querySelector('input[aria-label="Routine name"]')).toBeNull();
+    act(() =>
+      page.querySelector<HTMLElement>('button[aria-label="More actions for Daily"]')?.click(),
+    );
+    const item = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+      (each) => each.textContent === "Rename",
+    );
+    await act(async () => item?.click());
+    const sheet = document.querySelector("dialog[open]");
+    const input = sheet?.querySelector<HTMLInputElement>("input") as HTMLInputElement;
+    expect(sheet?.textContent).toContain("Rename routine");
+    expect(input.value).toBe("Daily");
+    await typeInto(input, "   ");
+    await act(async () => buttonNamed(sheet as HTMLElement, "Rename")?.click());
+    expect(sheet?.textContent).toContain("Give it a name.");
+    expect(save).not.toHaveBeenCalled();
+    await typeInto(input, "Morning");
+    await act(async () => buttonNamed(sheet as HTMLElement, "Rename")?.click());
+    expect(save).toHaveBeenCalledExactlyOnceWith(
+      { hubId: "acme", id: "daily" },
+      { name: "Morning" },
+    );
+    expect(document.querySelector("dialog[open]")).toBeNull();
   });
 
   it("deletes from ⋮ with no dialog, then shows the routine gone, and Undo brings it back", async () => {

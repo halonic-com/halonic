@@ -1,4 +1,4 @@
-import { Button, EmptyState, StatusChip } from "@halonicjs/studio-kit";
+import { Button, EmptyState, StatusChip, usePresentation } from "@halonicjs/studio-kit";
 import type { ItemPageSectionViewProps } from "@halonicjs/studio-shell";
 import { useId, useState } from "react";
 import {
@@ -128,14 +128,17 @@ function RowButton({
   readonly now: Date;
   readonly openRoutine: TriggersViewProps["openRoutine"];
 }) {
+  const phone = usePresentation() === "phone";
   const next = row.enabled && row.nextRun !== undefined ? nextWhen(row.nextRun, now) : undefined;
   return (
     <button
       type="button"
-      className="flex w-full items-center justify-between gap-2 py-1 text-left"
+      className={`flex w-full justify-between gap-2 text-left ${
+        phone ? "min-h-control-md items-start py-2" : "items-center py-1"
+      }`}
       onClick={() => openRoutine?.(row.hubId ?? owner.hubId, row.id)}
     >
-      <span className="flex flex-col">
+      <span className="flex min-w-0 flex-col">
         <span>{row.sentence}</span>
         {row.enabled && (
           <span className="text-small text-fg-muted">
@@ -144,7 +147,11 @@ function RowButton({
         )}
         {!row.enabled && <span className="text-small text-fg-muted">{row.name}</span>}
       </span>
-      {!row.enabled && <StatusChip tone="neutral">{triggersWords.off}</StatusChip>}
+      {!row.enabled && (
+        <span className="shrink-0">
+          <StatusChip tone="neutral">{triggersWords.off}</StatusChip>
+        </span>
+      )}
     </button>
   );
 }

@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { RoutineRun, RoutineRuns, RoutinesHost, RoutineView } from "../api.ts";
 import { RoutineScreen } from "../page/routine-page.tsx";
 import { buttonNamed, memoryHost, show, unmount } from "../test-support.tsx";
+import { RunsView } from "./runs-view.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
 afterEach(() => {
@@ -98,6 +100,25 @@ verifies("routines.runs.view", () => {
     expect(earlier?.textContent).toContain("On schedule");
     await act(async () => earlier?.querySelector("button")?.click());
     expect(opened).toEqual(["run_9hv3bw"]);
+  });
+
+  it("stacks a run row in two lines on a phone", async () => {
+    const runs = { runs: [run("a1b2")], skips: [] };
+    const page = await show(
+      <PresentationProvider presentation="phone">
+        <RunsView
+          host={hostWith(async () => runs)}
+          routine={daily}
+          load={{ kind: "ready", runs }}
+          retry={() => {}}
+          openRun={() => {}}
+        />
+      </PresentationProvider>,
+    );
+    const row = page.querySelector("li button");
+    expect(row?.children).toHaveLength(1);
+    expect(row?.firstElementChild?.children).toHaveLength(2);
+    expect(row?.textContent).toContain("a1b2");
   });
 
   it("puts running and waiting runs under Now and counts the waiting one on the tab", async () => {
