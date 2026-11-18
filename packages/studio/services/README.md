@@ -29,19 +29,23 @@ import { provideShellSecrets, secretsKey, tokenStoreKey } from "@halonicjs/studi
 
 /**
  * A stand-in for the desktop app's page, which isn't there in a test: its
- * shell keeps values in memory, as the shell's keychain does.
+ * shell keeps values in memory, as the shell's keychain does, with tokens
+ * under a prefix of their own.
  */
 function examplePage(): object {
   const keychain = new Map<string, string>();
   return {
     __TAURI_INTERNALS__: {
       invoke: async (command: string, args?: Record<string, unknown>) => {
-        const name = String(args?.["name"]);
+        const given = String(args?.["name"]);
+        const name = command.startsWith("token_") ? `halonic_token_${given}` : given;
         switch (command) {
           case "secret_set":
+          case "token_set":
             keychain.set(name, String(args?.["value"]));
             return null;
           case "secret_delete":
+          case "token_delete":
             keychain.delete(name);
             return null;
           default:

@@ -30,7 +30,8 @@ verifies("secrets-tauri.shared-names", () => {
     const cases = readSharedCases();
     expect(cases.length).toBeGreaterThan(0);
     for (const { name, expected } of cases) {
-      const shell = new FakeShell();
+      // The fixture holds Halonic's own names too: this checks the name rule, not that refusal.
+      const shell = new FakeShell({ refusesHalonicNames: false });
       const lookup = new TauriSecrets(shell).get(name);
       if (expected === "INVALID") {
         await expect(lookup, JSON.stringify(name)).rejects.toThrow(RangeError);
