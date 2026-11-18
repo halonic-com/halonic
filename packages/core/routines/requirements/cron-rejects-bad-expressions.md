@@ -4,14 +4,15 @@
 - Since: 0.1.0
 - Source: `parseCron` and its field parser in the old routines package (`packages/core/routines/src/cron.ts`) at 784f78d
 
-If a cron expression is an unknown macro, doesn't have five fields, or a field holds something other than a number, a known name, a range or a step of 1 or more within the field's limits, then the parser shall throw a `CronError` whose message names the field (for example `Minute:`), the problem and the part that caused it, as a full sentence that ends with a full stop.
+If a cron expression is an unknown macro, doesn't have five fields, or a field holds something other than a number, a known name, a range that runs upwards or a step of 1 or more within the field's limits, then the parser shall throw a `CronError` whose message names the field (for example `Minute:`), the problem and the part that caused it, as a full sentence that ends with a full stop.
 
 ## Examples
 
 - Given `* * * *`, when it is parsed, then the error says `Cron needs 5 fields (minute hour day month weekday), got 4.`
 - Given an empty expression, when it is parsed, then the error says cron needs 5 fields.
 - Given `60 * * * *`, when it is parsed, then the error says `Minute: "60" is outside 0-59.`
-- Given `0 0 * * 5-1`, when it is parsed, then the error says `Weekday: "5-1" is outside 0-7.`
+- Given `0 0 * * 5-1`, when it is parsed, then the error says `Weekday: "5-1" runs backwards; write the smaller number first.`
+- Given `0 0 * * 9-1`, when it is parsed, then the error says `Weekday: "9-1" is outside 0-7.`, as an end outside the field's limits is named first.
 - Given `*/0 * * * *`, when it is parsed, then the error is about the step and names the minute field.
 - Given `x * * * *`, when it is parsed, then the error says `Minute: "x" is not a number.`
 - Given `/5 * * * *` or `1/2/3 * * * *`, when it is parsed, then the error says `Minute: "/5" is not a valid part.` (or the same for `"1/2/3"`).
@@ -22,4 +23,4 @@ If a cron expression is an unknown macro, doesn't have five fields, or a field h
 
 ## Difference from the old routines package
 
-The old parser read `1-2-3` as `1-2`, and read steps with `Number()`, so `*/1e1` meant every 10 minutes and `*/0x10` every 16. Both are now errors. The old parser also reported `1-/5` as `"" is not a number` and `@reboot` as having 1 field; both messages now name the problem. These are allowed differences: these are typing mistakes that cron elsewhere rejects, and quietly accepting them made a routine run at times nobody wrote down.
+The old parser read `1-2-3` as `1-2`, and read steps with `Number()`, so `*/1e1` meant every 10 minutes and `*/0x10` every 16. Both are now errors. The old parser also reported `1-/5` as `"" is not a number`, `@reboot` as having 1 field and a backwards range such as `5-1` as outside the field's limits; these messages now name the problem. These are allowed differences: these are typing mistakes that cron elsewhere rejects, and quietly accepting them made a routine run at times nobody wrote down.

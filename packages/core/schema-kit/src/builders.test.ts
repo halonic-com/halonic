@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { type Issue, parse, type Schema, s } from "./index.ts";
+import { type Issue, parse, type Schema, s, toJsonSchema } from "./index.ts";
 
 function issuesOf(result: { ok: true } | { ok: false; error: Issue[] }): Issue[] {
   return result.ok ? [] : result.error;
@@ -20,6 +20,7 @@ verifies("schema-kit.builders", () => {
       "null",
       "number",
       "object",
+      "preprocess",
       "record",
       "string",
       "tuple",
@@ -65,6 +66,18 @@ verifies("schema-kit.builders", () => {
       value: { a: 1, b: 2 },
     });
     expect(parse(s.object(shape), { a: 1, b: 2 })).toEqual({ ok: true, value: { a: 1 } });
+  });
+
+  it("changes the input with s.preprocess before the schema checks it", () => {
+    const minutes = s.preprocess(
+      (value) => (typeof value === "number" ? String(value) : value),
+      s.string().regex(/^\d+m$/, "use minutes"),
+    );
+    expect(parse(minutes, "15m")).toEqual({ ok: true, value: "15m" });
+    expect(issuesOf(parse(minutes, 15))).toEqual([
+      { code: "invalid_format", path: [], message: "use minutes" },
+    ]);
+    expect(toJsonSchema(minutes)).toMatchObject({ type: "string", pattern: "^\\d+m$" });
   });
 
   it("accepts any JSON value with s.json and nothing else", () => {
