@@ -47,9 +47,13 @@ export function systemRootOf(env: NodeJS.ProcessEnv): string | null {
   return root;
 }
 
-/** A PowerShell string literal: in single quotes, a quote is written twice. */
+/**
+ * A PowerShell string literal: in single quotes, a quote is written twice.
+ * PowerShell also reads the typographic quotes U+2018 to U+201B as single
+ * quotes, so those are written twice too.
+ */
 function psQuote(text: string): string {
-  return `'${text.replaceAll("'", "''")}'`;
+  return `'${text.replace(/['\u2018-\u201B]/g, "$&$&")}'`;
 }
 
 /** What every program "returns" when `SystemRoot` isn't usable: nothing starts. */
