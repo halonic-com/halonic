@@ -2,7 +2,6 @@
 
 - Approval: Liam decided this on HAL-11643, from the states audit on HAL-11635 (gap 5) and the board-approved microcopy 1.1; it applies approved words to existing screens, a team decision with no board card (HAL-2282 rule)
 - Kind: user-visible
-- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:veohBkYWYqHCmT1dXYYV+XcOSdYXMlY9s+grjaS9wKxKk3PLUNWkcnC3RAOG9WGsgiV/1uTvwFPOsdFjFDcyAg==
 - Task: HAL-11643
 
 ## What changes
