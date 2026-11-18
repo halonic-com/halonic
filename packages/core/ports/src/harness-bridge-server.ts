@@ -6,7 +6,11 @@ import { type ModelPrice, priceOf } from "./model-price.ts";
 /** Version of the {@link HarnessBridgeServer} port. A breaking change bumps it and comes with an ADR. */
 export const harnessBridgeServerVersion = 1;
 
-/** A model provider the bridge passes requests to, each at one fixed host the adapter knows. */
+/**
+ * The API a model provider speaks, which the bridge passes requests on in:
+ * Anthropic's Messages API, or OpenAI's Responses API. Each is at a fixed
+ * host the adapter knows, unless a keyed access names its own `baseUrl`.
+ */
 export type BridgeProvider = "anthropic" | "openai";
 
 /** How the agent reaches one provider through the bridge. */
@@ -16,8 +20,14 @@ export type BridgeProviderAccess =
    * this name, from the `Secrets` port, in place of the program's key, and
    * records the cost from the model's price. A model without a price is
    * recorded without a cost, so the run shows it as unpriced.
+   *
+   * `baseUrl` is the provider file's address for a host that speaks the
+   * same API, such as `https://api.z.ai/api/anthropic`. The bridge sends
+   * this agent's calls, and the key, to that one origin only; without it,
+   * to the API's own host. The host has already checked that the key may
+   * go there (the workspace's trust and the key's allowed addresses).
    */
-  | { kind: "key"; secret: string }
+  | { kind: "key"; secret: string; baseUrl?: string }
   /**
    * With the person's own subscription: the bridge passes the program's own
    * sign-in to the provider unchanged and never reads, logs or stores it.
