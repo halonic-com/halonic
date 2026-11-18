@@ -31,6 +31,8 @@ export const sandboxInboxWords = {
   docs: "Read the guide",
   /** `sandbox-inbox.runs-heading` */
   runsHeading: "Didn't run because of this",
+  /** Said in place of the runs while they can't be read (states audit gap 5); wording to confirm with Noah. */
+  runsFailed: "Couldn't load the runs that didn't run.",
   /** `sandbox-inbox.open-run` */
   openRun: "Open run",
   /** `sandbox-inbox.fixed` */

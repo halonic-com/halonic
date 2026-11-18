@@ -1,14 +1,28 @@
 import { useEffect, useState } from "react";
 import type { InboxRequests, RequestWorkflow } from "./inbox-requests.ts";
 
+/** The workflows the Inbox offers as requests, and whether the latest read of them failed. */
+export interface Offered {
+  readonly list: readonly RequestWorkflow[];
+  /** The latest read failed; the Inbox says so rather than look like a workspace with none. */
+  readonly failed: boolean;
+  /** Reads them again, as **Try again** does. */
+  readonly retry: () => void;
+}
+
 /**
  * The workflows the Inbox offers as requests, read again whenever they may have changed. Empty
- * while loading, when there is no source, and when a read fails: the form is then hidden and the
- * Inbox is the list alone, as for a workspace with no `start:` block.
+ * while loading and when there is no source: the form is then hidden and the Inbox is the list
+ * alone, as for a workspace with no `start:` block. A read that fails is `failed`, so the Inbox
+ * can say so (states audit gap 5).
  */
-export function useOffered(requests: InboxRequests | undefined): readonly RequestWorkflow[] {
+export function useOffered(requests: InboxRequests | undefined): Offered {
   const [offered, setOffered] = useState<readonly RequestWorkflow[]>([]);
+  const [failed, setFailed] = useState(false);
+  const [tries, setTries] = useState(0);
+  // `tries` counts the presses of Try again, so each press reads again.
   useEffect(() => {
+    setFailed(false);
     if (requests === undefined) {
       setOffered([]);
       return;
@@ -20,10 +34,14 @@ export function useOffered(requests: InboxRequests | undefined): readonly Reques
       const mine = ++latest;
       requests.offered().then(
         (list) => {
-          if (current && mine === latest) setOffered(list);
+          if (!current || mine !== latest) return;
+          setOffered(list);
+          setFailed(false);
         },
         () => {
-          if (current && mine === latest) setOffered([]);
+          if (!current || mine !== latest) return;
+          setOffered([]);
+          setFailed(true);
         },
       );
     };
@@ -33,6 +51,6 @@ export function useOffered(requests: InboxRequests | undefined): readonly Reques
       current = false;
       stop();
     };
-  }, [requests]);
-  return offered;
+  }, [requests, tries]);
+  return { list: offered, failed, retry: () => setTries((count) => count + 1) };
 }
