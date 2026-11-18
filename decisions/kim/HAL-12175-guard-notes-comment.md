@@ -2,8 +2,7 @@
 
 - Task: HAL-12175
 - Approval: Liam approves this note in review on HAL-12175
-- Kind: internal
-- Signature: 
+- Kind: user-visible
 
 ## What changes
 
