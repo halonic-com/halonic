@@ -45,6 +45,20 @@ verifies("cli.workspace-dir", () => {
     expect(await opened.store.read("workspace.yaml")).toContain("id: acme");
   });
 
+  it("shows a workspace more than two folders up by its full path", async () => {
+    const acme = join(cwd, "acme");
+    makeWorkspace(acme);
+    const deep = join(cwd, "one", "two", "three");
+    mkdirSync(deep, { recursive: true });
+    const opened = await openWorkspaceDir(inputWith(join("..", "..", "..", "acme")), ioIn(deep));
+    expect(opened.shown).toBe(acme);
+    const near = await openWorkspaceDir(
+      inputWith(join("..", "..", "acme")),
+      ioIn(join(cwd, "one", "two")),
+    );
+    expect(near.shown).toBe(join("..", "..", "acme"));
+  });
+
   it("opens the current folder without --dir", async () => {
     makeWorkspace(cwd);
     const opened = await openWorkspaceDir(inputWith(), ioIn(cwd));

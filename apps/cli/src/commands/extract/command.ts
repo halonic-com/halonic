@@ -11,7 +11,7 @@ import { type CliCommand, type CommandInput, UsageError } from "../../command.ts
 import { exitCode } from "../../exit-code.ts";
 import { extractMessages } from "../../messages/extract.ts";
 import { printable } from "../../output/printable.ts";
-import { shownPath } from "../../shown-path.ts";
+import { shownPath, typedPath } from "../../shown-path.ts";
 import {
   dirOption,
   givenDir,
@@ -77,7 +77,7 @@ function parse(input: CommandInput, cwd: string): { hub: string; folder: Extract
     throw new UsageError(extractMessages.takesHubAndFolder());
   }
   const root = resolve(cwd, folder);
-  return { hub, folder: { root, shown: shownPath(cwd, root), typed: relative(cwd, root) } };
+  return { hub, folder: { root, shown: shownPath(cwd, root), typed: typedPath(cwd, root) } };
 }
 
 /** The new workspace may not sit in the one it comes from, where it would be read as its files. */

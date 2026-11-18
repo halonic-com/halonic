@@ -33,6 +33,21 @@ export const testMessages = defineMessages("test", {
   /** A failure: expected and actual in plain words, with both steps in bold. */
   endedElsewhere: (expected: string, actual: string) =>
     phrase`Expected the run to end in the step ${bold(expected)}, but it ended in ${bold(actual)}.`,
+  /**
+   * `final` names a step the workflow doesn't have: both ends as ids, in
+   * quotes, then the workflow's step ids, so a typo shows next to the right
+   * spelling (HAL-12126).
+   */
+  endedInNoSuchStep: (expected: string, actual: string, steps: readonly string[]) =>
+    phrase`Expected the run to end in the step ${bold(expected)}, but it ended in ${bold(actual)}. The workflow has no step ${expected}; its steps are ${listInWords(steps)}.`,
+  /** `states` names steps the workflow doesn't have: as {@link endedInNoSuchStep}, with the run's steps as ids. */
+  wentThroughNoSuchStep: (
+    expected: readonly string[],
+    actual: readonly string[],
+    unknown: readonly string[],
+    steps: readonly string[],
+  ) =>
+    phrase`Expected the run to go through ${listInWords(expected)}, but it went through ${listInWords(actual)}. The workflow has no step ${listInWords(unknown, "or")}; its steps are ${listInWords(steps)}.`,
   /** `states` failed: the steps the test expected, then the ones the run went through, in order. */
   wentElsewhere: (expected: readonly string[], actual: readonly string[]) =>
     phrase`Expected the run to go through ${listInWords(expected)}, but it went through ${listInWords(actual)}.`,
@@ -93,7 +108,9 @@ export const testMessages = defineMessages("test", {
 
   /** With a ! and exit 0: a workspace without tests isn't a failure. */
   noTests: (workspace: string) => phrase`${workspace} has no workflow tests yet.`,
-  noTestsFix: () => phrase`Add one next to a workflow as <workflow>.test.yaml.`,
+  /** What a test file holds, and where to see one: a new workspace has none to copy (HAL-12126). */
+  noTestsFix: () =>
+    phrase`Add one next to a workflow as <workflow>.test.yaml, with the workflow's id and its cases: each a name, an input and what to expect. See some in the Acme example: halonic init --example acme.`,
   /** `--filter` matched no test: wrong usage, exit 2. */
   noMatch: (filter: string) => phrase`No tests match "${filter}".`,
   /** `dir` is the user's own `--dir`, repeated so the command works where they typed it. */

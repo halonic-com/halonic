@@ -84,6 +84,35 @@ verifies("cli.commands.test.run-tests", () => {
       expect(io.stdout.at(-1)).toBe("✕ 5 passed, 1 failed. 6 tests in 0.0 s.");
     });
 
+    it("names both steps by id and lists the workflow's steps when the test names a step it doesn't have", async () => {
+      const spamCase = (name: string, expectation: string) => [
+        "",
+        `  - name: ${name}`,
+        '    input: { mail: "You have won a prize!" }',
+        "    mocks: { writer: [Someone says we won a prize.], sorter: [spam] }",
+        "    expect:",
+        `      ${expectation}`,
+      ];
+      await appendFile(
+        join(acme, testFile),
+        [
+          ...spamCase("Spam ends nowhere", "final: nothing"),
+          ...spamCase("Spam is clasified", "states: [read, clasify, ignored]"),
+          "",
+        ].join("\n"),
+      );
+
+      const { code, io } = await testIn(acme);
+
+      expect(code).toBe(exitCode.failed);
+      const failures = io.stdout.filter((line) => line.startsWith("    Expected"));
+      const steps = '"read", "classify", "draft", "review", "replied", "not-replied" and "ignored"';
+      expect(failures).toEqual([
+        `    Expected the run to end in the step "nothing", but it ended in "ignored". The workflow has no step "nothing"; its steps are ${steps}.`,
+        `    Expected the run to go through "read", "clasify" and "ignored", but it went through "read", "classify" and "ignored". The workflow has no step "clasify"; its steps are ${steps}.`,
+      ]);
+    });
+
     it("runs only the tests whose hub/workflow/name contains --filter", async () => {
       const { code, io } = await testIn(acme, "--filter", "support/support-reply/Alex");
 
@@ -123,7 +152,7 @@ verifies("cli.commands.test.run-tests", () => {
       expect(code).toBe(exitCode.ok);
       expect(io.stdout).toEqual([
         "! acme has no workflow tests yet.",
-        "  Add one next to a workflow as <workflow>.test.yaml.",
+        "  Add one next to a workflow as <workflow>.test.yaml, with the workflow's id and its cases: each a name, an input and what to expect. See some in the Acme example: halonic init --example acme.",
       ]);
     });
 

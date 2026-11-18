@@ -69,7 +69,13 @@ verifies("cli.commands.test.run-tests", () => {
       expect(
         sentences({ kind: "states", expected: ["decide", "payd"], actual: ["decide"] }),
       ).toEqual([
-        `Expected the run to go through Decide on the invoice and "payd", but it went through Decide on the invoice.`,
+        `Expected the run to go through "decide" and "payd", but it went through "decide". The workflow has no step "payd"; its steps are "decide" and "paid".`,
+      ]);
+    });
+
+    it("names both ends by id, with the workflow's steps, when the final step is unknown", () => {
+      expect(sentences({ kind: "final", expected: "payd", actual: "decide" })).toEqual([
+        `Expected the run to end in the step "payd", but it ended in "decide". The workflow has no step "payd"; its steps are "decide" and "paid".`,
       ]);
     });
 

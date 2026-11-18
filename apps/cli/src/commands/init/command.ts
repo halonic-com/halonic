@@ -21,7 +21,7 @@ import { nearMatch } from "../../near-match.ts";
 import { type NextStep, nextSteps } from "../../output/next-steps.ts";
 import { printable } from "../../output/printable.ts";
 import { shellWord } from "../../output/shell-word.ts";
-import { shownPath } from "../../shown-path.ts";
+import { shownPath, typedPath } from "../../shown-path.ts";
 import { writeFailure } from "../../write-failure.ts";
 import { type InitExample, initExamples } from "./examples.ts";
 
@@ -181,7 +181,7 @@ function initFolder(input: CommandInput, cwd: string, fallback: string): InitFol
   return { root, shown: shownPath(cwd, root), name: basename(root) || "workspace" };
 }
 
-/** The ✓ line, then the `Next:` block: `cd` when the workspace is elsewhere, `validate`, the first-agent guide. */
+/** The ✓ line, then the `Next:` block: `cd` when the workspace is elsewhere, `validate`, `test`, the first-agent guide. */
 function createdLines(workspace: InitializedWorkspace, folder: InitFolder, cwd: string): Phrase[] {
   const name = printable(workspace.name);
   const here = isHere(folder, cwd);
@@ -192,9 +192,13 @@ function createdLines(workspace: InitializedWorkspace, folder: InitFolder, cwd: 
     command: initMessages.nextValidate().phrase,
     why: initMessages.nextValidateWhy().phrase,
   };
+  const test = { command: initMessages.nextTest().phrase, why: initMessages.nextTestWhy().phrase };
   return [
     phrase`${markPart("done")} ${created.phrase}`,
-    ...nextSteps([...changeFolder(folder, cwd), validate], initMessages.nextFirstAgent().phrase),
+    ...nextSteps(
+      [...changeFolder(folder, cwd), validate, test],
+      initMessages.nextFirstAgent().phrase,
+    ),
   ];
 }
 
@@ -245,7 +249,7 @@ function isHere(folder: InitFolder, cwd: string): boolean {
 function changeFolder(folder: InitFolder, cwd: string): NextStep[] {
   return isHere(folder, cwd)
     ? []
-    : [{ command: initMessages.nextChangeFolder(shellWord(relative(cwd, folder.root))).phrase }];
+    : [{ command: initMessages.nextChangeFolder(shellWord(typedPath(cwd, folder.root))).phrase }];
 }
 
 /**

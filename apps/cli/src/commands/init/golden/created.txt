@@ -6,6 +6,7 @@ stdout:
   Next:
     cd acme
     halonic validate                    \e[2mcheck the files as you edit them\e[22m
+    halonic test                        \e[2mrun its tests (no key, nothing sent)\e[22m
     \e[2mAdd your first agent: https://docs.halonic.dev/examples/approval-step\e[22m
 stderr:
 
@@ -17,6 +18,7 @@ stdout:
   Next:
     cd acme
     halonic validate                    check the files as you edit them
+    halonic test                        run its tests (no key, nothing sent)
     Add your first agent: https://docs.halonic.dev/examples/approval-step
 stderr:
 

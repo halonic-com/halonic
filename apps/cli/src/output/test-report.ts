@@ -114,16 +114,23 @@ function summaryLine(result: TestSuiteResult): Phrase {
 
 /** The sentence of each failure, in the runner's order, which is the design's. */
 function failureSentences(test: TestResult, loaded: LoadedWorkspace): Message[] {
-  const step = stepNamer(loaded, test.hub, test.workflow);
-  return test.failures.map((failure) => failureSentence(failure, step));
+  const steps = stepsOf(loaded, test.hub, test.workflow);
+  return test.failures.map((failure) => failureSentence(failure, steps));
 }
 
-function failureSentence(failure: TestFailure, step: (id: string) => string): Message {
+function failureSentence(failure: TestFailure, steps: WorkflowSteps): Message {
+  const step = steps.name;
   switch (failure.kind) {
     case "final":
-      return testMessages.endedElsewhere(step(failure.expected), step(failure.actual));
+      return steps.has(failure.expected)
+        ? testMessages.endedElsewhere(step(failure.expected), step(failure.actual))
+        : testMessages.endedInNoSuchStep(
+            quotedId(failure.expected),
+            quotedId(failure.actual),
+            steps.ids.map(quotedId),
+          );
     case "states":
-      return testMessages.wentElsewhere(failure.expected.map(step), failure.actual.map(step));
+      return statesSentence(failure.expected, failure.actual, steps);
     case "status":
       return testMessages.endedOtherwise(
         failure.expected,
@@ -158,22 +165,56 @@ function failureSentence(failure: TestFailure, step: (id: string) => string): Me
   }
 }
 
-/**
- * Names a step of the test's workflow as the live lines do (cli-output 3.4);
- * an id that isn't one of its steps is shown as written, in quotes.
- */
-function stepNamer(
-  loaded: LoadedWorkspace,
-  hub: string,
-  workflow: string,
-): (stateId: string) => string {
+/** The steps of the test's workflow, to name them in a failure. */
+interface WorkflowSteps {
+  /** Every step id, in the workflow file's order. */
+  readonly ids: readonly string[];
+  /** Whether the workflow has a step with this id. */
+  readonly has: (stateId: string) => boolean;
+  /**
+   * The step as the live lines name it (cli-output 3.4); an id that isn't
+   * one of its steps is shown as written, in quotes.
+   */
+  readonly name: (stateId: string) => string;
+}
+
+function stepsOf(loaded: LoadedWorkspace, hub: string, workflow: string): WorkflowSteps {
   const states = workflowIn(hubWorkflows(loaded), hub, workflow)?.states ?? {};
-  return (stateId) => {
-    const state = Object.hasOwn(states, stateId) ? states[stateId] : undefined;
-    return state === undefined
-      ? printable(unknownStep(stateId))
-      : stepName(stateId, state.description);
+  const has = (stateId: string) => Object.hasOwn(states, stateId);
+  return {
+    ids: Object.keys(states),
+    has,
+    name: (stateId) => {
+      const state = has(stateId) ? states[stateId] : undefined;
+      return state === undefined ? quotedId(stateId) : stepName(stateId, state.description);
+    },
   };
+}
+
+/**
+ * `states` failed: each step by its name, or, when the test names a step the
+ * workflow doesn't have, every step by its id and the ids it does have.
+ */
+function statesSentence(
+  expected: readonly string[],
+  actual: readonly string[],
+  steps: WorkflowSteps,
+): Message {
+  const unknown = [...new Set(expected.filter((stateId) => !steps.has(stateId)))];
+  if (unknown.length === 0) {
+    return testMessages.wentElsewhere(expected.map(steps.name), actual.map(steps.name));
+  }
+  return testMessages.wentThroughNoSuchStep(
+    expected.map(quotedId),
+    actual.map(quotedId),
+    unknown.map(quotedId),
+    steps.ids.map(quotedId),
+  );
+}
+
+/** A step id as a test file writes it, in quotes: `"replied"`. */
+function quotedId(stateId: string): string {
+  return printable(unknownStep(stateId));
 }
 
 /** "support-reply › answers a refund question", both from the test file. */
