@@ -279,4 +279,36 @@ verifies("app.plugin-add", () => {
     expect(placed.filter((path) => /\.(env|git|studio)/u.test(path))).toEqual([]);
     expect(read.filter((path) => /\.(env|git|studio)/u.test(path))).toEqual([]);
   });
+
+  it("counts only what it keeps, so a big .git hides no file after it", async () => {
+    const objects = Object.fromEntries(
+      Array.from({ length: MAX_PLUGIN_ENTRIES + 50 }, (_, index) => [`objects/${index}`, "x"]),
+    );
+    const prefixed = (prefix: string) =>
+      Object.fromEntries(
+        Object.entries(objects).map(([path, bytes]) => [`${prefix}/${path}`, bytes]),
+      );
+    for (const git of [".git", "vendor/dep/.git"]) {
+      const { folder, service } = setup();
+      const source = weatherSource({ ...prefixed(git), "web/app.js": "1" });
+      const result = await service.add(source, { from, replace: false });
+      expect(result.ok).toBe(true);
+      const placed = await pathsIn(folder);
+      expect(placed).toContain("weather/web/app.js");
+      expect(placed.filter((path) => path.includes(".git"))).toEqual([]);
+    }
+  });
+
+  it("still refuses a source past the limit once its private entries are left out", async () => {
+    const { folder, service } = setup();
+    const many = Object.fromEntries(
+      Array.from({ length: MAX_PLUGIN_ENTRIES }, (_, index) => [`web/${index}.js`, "1"]),
+    );
+    const result = await service.add(weatherSource({ ".env": "KEY=1", ...many }), {
+      from,
+      replace: false,
+    });
+    expect(brokenCodes(result)).toEqual(["too-many-files"]);
+    expect(await pathsIn(folder)).toEqual([]);
+  });
 });
