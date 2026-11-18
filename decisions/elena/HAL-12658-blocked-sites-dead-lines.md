@@ -2,6 +2,7 @@
 
 - Approval: Elena decided this on HAL-12658, the follow-up to the studio-claims check (C52, claim 4.8) on HAL-12648; it makes the words match the code, a team decision with no board card (HAL-2282 rule, Chief on HAL-12643)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yjrqmPYSDRh3PU0BjhKWNpf9M6hPrKvF1LzK9zNG32FcRkICfGaQWynjvGP2EfSq9YLrACvZCWwZqiZHoc1xBA==
 - Task: HAL-12658
 
 ## What changes
