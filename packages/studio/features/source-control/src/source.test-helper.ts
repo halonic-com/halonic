@@ -36,6 +36,7 @@ export function fakeSource(initial: ChangesRead) {
   let remoteFailure: unknown;
   let unshared = 0;
   let shareFailure: unknown;
+  let shareGate: Promise<void> = Promise.resolve();
   let shareCalls = 0;
   const remotes: string[] = [];
   let updatesAsked = 0;
@@ -118,6 +119,7 @@ export function fakeSource(initial: ChangesRead) {
     countUnshared: async () => unshared,
     share: async () => {
       shareCalls += 1;
+      await shareGate;
       if (shareFailure !== undefined) throw shareFailure;
       unshared = 0;
     },
@@ -241,6 +243,10 @@ export function fakeSource(initial: ChangesRead) {
     /** Makes Share fail with `error`; `undefined` makes it work again. */
     failShare: (error: unknown) => {
       shareFailure = error;
+    },
+    /** Makes Share wait until `gate` is settled. */
+    holdShare: (gate: Promise<void>) => {
+      shareGate = gate;
     },
     /** How many times Share ran. */
     shareCalls: () => shareCalls,

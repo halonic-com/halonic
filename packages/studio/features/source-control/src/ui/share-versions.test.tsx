@@ -69,11 +69,7 @@ verifies("source-control.share-versions", () => {
       const wait = new Promise<void>((resolve) => {
         finish = resolve;
       });
-      const original = fake.source.share;
-      fake.source.share = async () => {
-        await wait;
-        await original();
-      };
+      fake.holdShare(wait);
       await act(async () => {
         shareButton()?.click();
         await settle();
