@@ -2,6 +2,7 @@ import type {
   AgentHostAnswer,
   AgentHostRequestRoute,
   AgentHostTransport,
+  RemoteDecision,
 } from "@halonicjs/adapter-agent-host-client";
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import type { HarnessAgent } from "@halonicjs/engine";
@@ -22,9 +23,29 @@ function bridgeStream(lines: unknown[], until: Promise<void>): AsyncIterable<unk
   };
 }
 
-/** An agent host that offers Claude Code and an srt sandbox, and records the bridge's answers. */
+/** Claude Code asks for a person's OK on its bridge. */
+const approvalCall = {
+  type: "call",
+  call: "c1",
+  method: "approvals.request",
+  params: { callId: "toolu_1", tool: "Bash", args: { command: "ls" } },
+};
+
+/** A phone allows that question, passed on by the host from its own gateway. */
+const phoneCall = {
+  type: "call",
+  call: "c1",
+  method: "approvals.remote-decision",
+  params: { callId: "toolu_1", approved: true, source: "remote-device" },
+};
+
+/**
+ * An agent host that offers Claude Code and an srt sandbox, and records the
+ * bridge's answers. Its bridge sends one `call`, Claude Code's question unless told otherwise.
+ */
 function fakeHost(
   more: Partial<Record<AgentHostRequestRoute, (body: unknown) => AgentHostAnswer>> = {},
+  call: unknown = approvalCall,
 ) {
   const answers: unknown[] = [];
   const asked: string[] = [];
@@ -57,15 +78,7 @@ function fakeHost(
     stream: async () => ({
       ok: true,
       lines: bridgeStream(
-        [
-          { type: "opened", bridge: "b1", url: "http://127.0.0.1:4100", token: "t1" },
-          {
-            type: "call",
-            call: "c1",
-            method: "approvals.request",
-            params: { callId: "toolu_1", tool: "Bash", args: { command: "ls" } },
-          },
-        ],
+        [{ type: "opened", bridge: "b1", url: "http://127.0.0.1:4100", token: "t1" }, call],
         answered.promise,
       ),
     }),
@@ -92,6 +105,7 @@ function inputOn(
     clock: { now: () => new Date("2026-11-18T10:00:00.000Z") },
     instructionTrust: { check: async () => ({ kind: "trusted" }) },
     approvalsOf: () => undefined,
+    remoteDecisionsOf: () => undefined,
     reportError: () => {},
     ...more,
   };
@@ -100,7 +114,7 @@ function inputOn(
 const agent = { runId: "run_1", agentId: "coder" } as HarnessAgent;
 const recorder: BridgeRecorder = { record: async () => {} };
 
-/** Opens the agent's bridge, waits for its one approval call to be answered, then closes it. */
+/** Opens the agent's bridge, waits for its one call to be answered, then closes it. */
 async function answerOfApproval(host: ReturnType<typeof fakeHost>, input: StudioHarnessInput) {
   const built = await openStudioHarnessHost(input);
   const bridge = await built.harnesses.bridges.open(agent, recorder);
@@ -148,6 +162,33 @@ verifies("studio.engine-service", () => {
       const answers = await answerOfApproval(host, inputOn(host));
       expect(answers).toEqual([
         { bridge: "b1", call: "c1", error: expect.stringContaining("needs a person's OK") },
+      ]);
+    });
+
+    it("passes a phone's decision to the run's own remote decisions, marked from the remote device", async () => {
+      const decided: RemoteDecision[] = [];
+      const remoteDecisions = {
+        decide: async (decision: RemoteDecision) => {
+          decided.push(decision);
+          return "decided" as const;
+        },
+      };
+      const host = fakeHost({}, phoneCall);
+      const answers = await answerOfApproval(
+        host,
+        inputOn(host, {
+          remoteDecisionsOf: (runId) => (runId === "run_1" ? remoteDecisions : undefined),
+        }),
+      );
+      expect(decided).toEqual([{ callId: "toolu_1", approved: true, source: "remote-device" }]);
+      expect(answers).toEqual([{ bridge: "b1", call: "c1", result: { status: "decided" } }]);
+    });
+
+    it("refuses a phone's decision when the run has no remote decisions, and decides nothing", async () => {
+      const host = fakeHost({}, phoneCall);
+      const answers = await answerOfApproval(host, inputOn(host));
+      expect(answers).toEqual([
+        { bridge: "b1", call: "c1", error: expect.stringContaining("remote device") },
       ]);
     });
 
