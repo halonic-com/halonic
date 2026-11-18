@@ -66,7 +66,8 @@ export interface PluginPageProps {
  * **Check again** and **Open folder**.
  *
  * The ⋮ (F17) has Open panel, Open folder, Remove trust (while it's trusted) and **Remove
- * plugin…**, which asks first (F18). An action that fails says so in a toast.
+ * plugin…**, which asks first (F18). An action that fails says so in a toast. **Check for
+ * updates** (or **Update from folder**) shows only when the app can look for one.
  *
  * On a phone, and in a browser on `halonic serve`, the page is view only: no Trust, Update,
  * Remove trust, Remove, Check again or Open folder, the ⋮ only when there's a panel to open, and
@@ -91,13 +92,15 @@ export function PluginPage({
   const [saveState, setSaveState] = useState<SettingsSaveState | undefined>(undefined);
   const [removing, setRemoving] = useState(false);
   const [reviewing, setReviewing] = useState(false);
-  const [update, setUpdate] = useState<UpdateState>({ kind: "idle" });
   const { run, fail, toastOn, toastRemoved } = usePageActions();
   const manifest = plugin.manifest;
   const off = plugin.status === "on" ? undefined : { reason: statusId };
   const fromFolder = plugin.origin?.kind === "folder";
-  const canUpdate =
-    !viewOnly && plugin.status === "on" && plugin.origin !== undefined && manifest !== undefined;
+  const updates = updatesFor(plugin, actions, viewOnly);
+  const canUpdate = updates !== undefined;
+  const { update, setUpdate, checkForUpdate } = useUpdateCheck(plugin.plugin, updates, (error) =>
+    fail(fromFolder ? "updateFromFolder" : "checkForUpdates", error),
+  );
   const menu = menuEntries(
     plugin,
     {
@@ -112,21 +115,6 @@ export function PluginPage({
     viewOnly,
   );
 
-  async function checkForUpdate() {
-    if (manifest === undefined) return;
-    setUpdate({ kind: "checking" });
-    try {
-      const found = await actions.checkForUpdate(plugin.plugin);
-      setUpdate(
-        found.kind === "up-to-date"
-          ? { kind: "up-to-date", version: manifest.version }
-          : { kind: "available", found },
-      );
-    } catch (error) {
-      fail(fromFolder ? "updateFromFolder" : "checkForUpdates", error);
-      setUpdate({ kind: "idle" });
-    }
-  }
   return (
     <div className="flex flex-col">
       <header className="sticky top-0 z-(--layer-sticky) flex min-h-13 items-center gap-4 border-b border-border bg-surface px-4">
@@ -171,14 +159,14 @@ export function PluginPage({
           onTrusted={() => toastOn(plugin.name, manifest)}
         />
       ) : null}
-      {update.kind === "available" ? (
+      {update.kind === "available" && updates !== undefined ? (
         <UpdatePluginDialog
           plugin={plugin}
           found={update.found}
-          applyUpdate={actions.applyUpdate}
+          applyUpdate={updates.apply}
           programsRun={actions.programsRun}
           onUpdated={() => setUpdate({ kind: "idle" })}
-          onKeep={() => setUpdate({ kind: "up-to-date", version: manifest?.version ?? "" })}
+          onKeep={() => setUpdate({ kind: "up-to-date", version: updates.version })}
         />
       ) : null}
       {removing ? (
@@ -228,6 +216,60 @@ export function PluginPage({
       </div>
     </div>
   );
+}
+
+/**
+ * How the page looks for a newer version and puts it in, with the version it has now: only while
+ * the plugin is on and was added through Add plugin, the page isn't view only, and the app can
+ * look at all (N5b).
+ * `undefined` leaves **Check for updates** (or **Update from folder**) out.
+ */
+function updatesFor(
+  plugin: InstalledPlugin,
+  actions: PluginActions,
+  viewOnly: boolean,
+): Updates | undefined {
+  const { checkForUpdate: check, applyUpdate: apply } = actions;
+  if (viewOnly || check === undefined || apply === undefined) return undefined;
+  if (plugin.status !== "on" || plugin.origin === undefined || plugin.manifest === undefined) {
+    return undefined;
+  }
+  return { check, apply, version: plugin.manifest.version };
+}
+
+/** What `updatesFor` gives the page. */
+interface Updates {
+  readonly check: NonNullable<PluginActions["checkForUpdate"]>;
+  readonly apply: NonNullable<PluginActions["applyUpdate"]>;
+  readonly version: string;
+}
+
+/**
+ * Where **Check for updates** is, and the check itself: busy while it looks, then up to date or
+ * the newer version found. A check that fails calls `onFailed` and the button is back.
+ */
+function useUpdateCheck(
+  plugin: string,
+  updates: Updates | undefined,
+  onFailed: (error: unknown) => void,
+) {
+  const [update, setUpdate] = useState<UpdateState>({ kind: "idle" });
+  async function check() {
+    if (updates === undefined) return;
+    setUpdate({ kind: "checking" });
+    try {
+      const found = await updates.check(plugin);
+      setUpdate(
+        found.kind === "up-to-date"
+          ? { kind: "up-to-date", version: updates.version }
+          : { kind: "available", found },
+      );
+    } catch (error) {
+      onFailed(error);
+      setUpdate({ kind: "idle" });
+    }
+  }
+  return { update, setUpdate, checkForUpdate: check };
 }
 
 /** Plugins are view only on a phone and in a served browser (design section 10). */
