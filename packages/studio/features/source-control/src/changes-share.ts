@@ -24,6 +24,8 @@ export async function readRemote(
 /** The steps of sharing: adding the place to share to, and sending versions there. */
 export class ShareSteps {
   readonly #host: ListHost;
+  /** Whether the shared copy was asked yet; it is asked once when the page first sees one. */
+  #asked = false;
 
   constructor(host: ListHost) {
     this.#host = host;
@@ -70,6 +72,13 @@ export class ShareSteps {
     }
     await host.refresh();
     return { sent };
+  }
+
+  /** Asks the shared copy for news the first time the page can show the answer. */
+  checkOnce(canShow: boolean): void {
+    if (!canShow || this.#asked) return;
+    this.#asked = true;
+    void this.check();
   }
 
   /**

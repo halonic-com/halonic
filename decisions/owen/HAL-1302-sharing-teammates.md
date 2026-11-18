@@ -3,6 +3,7 @@
 - Task: HAL-1302 (T9, sharing, audit item 5, second part)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-1302 (checklist part 2, 2.3, from the board-approved design of source control)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:y4wgx8xYVeP982Gsx0pg9KXPNyb+Cy8ThvKdYbxaT72M4dVMZaK4Qnvtb1lDxFJi7Lw2EaS3NQQzFM9s0AvjDA==
 
 ## What changes
 
