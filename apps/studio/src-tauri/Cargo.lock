@@ -1682,6 +1682,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-tunnel"
+version = "0.1.0"
+dependencies = [
+ "hkdf",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "halonic-update-state"
 version = "0.1.0"
 dependencies = [
