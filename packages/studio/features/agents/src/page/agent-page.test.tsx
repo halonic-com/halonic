@@ -18,6 +18,7 @@ import {
 } from "../test-support.tsx";
 import { AgentScreen } from "./agent-page.tsx";
 import { markFreshAgent } from "./fresh-agents.ts";
+import { pageWords } from "./page-words.ts";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
 afterEach(() => {
@@ -441,11 +442,11 @@ verifies("agents.page.new-agent", () => {
     const box = instructionsBox(first);
     expect(box).not.toBeNull();
     expect(document.activeElement).toBe(box);
-    expect(first.textContent).not.toContain("No runs with this agent yet.");
+    expect(first.textContent).not.toContain(pageWords.noRuns);
     unmount();
 
     const later = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
-    expect(later.textContent).toContain("No runs with this agent yet.");
+    expect(later.textContent).toContain(pageWords.noRuns);
     expect(instructionsBox(later)).toBeNull();
   });
 
@@ -453,7 +454,7 @@ verifies("agents.page.new-agent", () => {
     markFreshAgent("acme", "someone-else");
     const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
 
-    expect(page.textContent).toContain("No runs with this agent yet.");
+    expect(page.textContent).toContain(pageWords.noRuns);
   });
 
   it("doesn't take the focus again when the person leaves Behaviour and comes back", async () => {
