@@ -139,3 +139,53 @@ verifies("format.legacy-keys", () => {
     expect(({} as Record<string, unknown>)["polluted"]).toBeUndefined();
   });
 });
+
+verifies("format.missing-key-words", () => {
+  const messages = (kind: Parameters<typeof problemsOf>[0], text: string) =>
+    problemsOf(kind, text).map(({ path, message }) => [path.join("."), message]);
+
+  it("names a missing key, and guesses it from a misspelled one next to it", () => {
+    const text = yaml(
+      "id: support-reply",
+      "nmae: Support reply",
+      "initial: done",
+      "states:",
+      "  done: { type: final }",
+    );
+    expect(messages("workflow", text)).toEqual([
+      ["name", 'Missing required key "name"'],
+      ["", 'Unrecognized key: "nmae". Did you mean "name"?'],
+    ]);
+  });
+
+  it("makes no guess for an unrecognized key that is far from every missing key", () => {
+    expect(messages("provider", yaml("id: mock", "colour: red"))).toEqual([
+      ["type", 'Missing required key "type"'],
+      ["", 'Unrecognized key: "colour"'],
+    ]);
+  });
+
+  it("names the key for each guess when several keys are unrecognized", () => {
+    const text = yaml(
+      "di: support-reply",
+      "nmae: Support reply",
+      "colour: red",
+      "initial: done",
+      "states:",
+      "  done: { type: final }",
+    );
+    const unrecognized = messages("workflow", text).find(([, message]) =>
+      message?.startsWith("Unrecognized"),
+    );
+    expect(unrecognized?.[1]).toBe(
+      'Unrecognized keys: "di", "nmae", "colour". Did you mean "id" for "di", "name" for "nmae"?',
+    );
+  });
+
+  it("keeps Zod's message for a key that is there with the wrong type", () => {
+    const text = yaml("id: clerk", "name: Clerk", "params:", "  temperature: hot");
+    expect(messages("agent", text)).toEqual([
+      ["params.temperature", "Invalid input: expected number, received string"],
+    ]);
+  });
+});
