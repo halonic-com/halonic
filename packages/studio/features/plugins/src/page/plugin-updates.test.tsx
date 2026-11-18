@@ -80,6 +80,27 @@ verifies("plugins.plugin-updates", () => {
     expect(button("Check for updates")).toBeUndefined();
   });
 
+  it("offers neither, in the status box or the ⋮, when the app can't look for updates", async () => {
+    const { checkForUpdate: _check, applyUpdate: _apply, ...cantUpdate } = noActions().actions;
+    render(
+      <ToastStoreProvider store={toasts}>
+        <PluginPage
+          plugin={weather()}
+          {...noSettings()}
+          actions={cantUpdate}
+          onOpenPanel={() => {}}
+        />
+      </ToastStoreProvider>,
+    );
+    await act(async () => {});
+
+    expect(button("Check for updates")).toBeUndefined();
+    const items = [...document.querySelectorAll('[role="menuitem"]')].map((item) =>
+      item.textContent?.trim(),
+    );
+    expect(items).toEqual(["Open panel", "Open folder", "Remove trust", "Remove plugin…"]);
+  });
+
   it("turns into Up to date when nothing is newer", async () => {
     await show(weather(), { checkForUpdate: async () => ({ kind: "up-to-date" }) });
 

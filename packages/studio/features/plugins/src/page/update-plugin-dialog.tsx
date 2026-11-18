@@ -11,7 +11,7 @@ export interface UpdatePluginDialogProps {
   readonly plugin: InstalledPlugin;
   /** What the check found: the newer version. */
   readonly found: Extract<PluginUpdateCheck, { kind: "available" }>;
-  readonly applyUpdate: PluginActions["applyUpdate"];
+  readonly applyUpdate: NonNullable<PluginActions["applyUpdate"]>;
   readonly programsRun?: ProgramsRun;
   /** After **Trust and update** is saved. */
   readonly onUpdated: () => void;

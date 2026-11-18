@@ -242,7 +242,7 @@ verifies("plugins.plugin-actions", () => {
     await pick(view, "Remove plugin…");
 
     expect(document.querySelector("dialog")?.textContent).toContain(
-      "Halonic couldn't check which connectors use it.",
+      "Halonic can't tell yet which connectors use it.",
     );
 
     await act(async () => button("Remove plugin").click());

@@ -58,15 +58,18 @@ export interface PluginActions {
   /**
    * **Check for updates** on a git plugin, **Update from folder** on a folder one: looks at the
    * source again without changing the installed version. It throws when the source can't be read.
+   * Left out, with `applyUpdate`, by an app that can't read a plugin's source again yet: the page
+   * then has neither button, so nothing on it promises updates (UX check N5b, HAL-9373).
    */
-  readonly checkForUpdate: (plugin: string) => Promise<PluginUpdateCheck>;
+  readonly checkForUpdate?: (plugin: string) => Promise<PluginUpdateCheck>;
   /**
    * **Trust and update**: puts the newer version the person approved in place of the old one and
    * trusts it, as one step. `approved` is what the dialog showed. The app installs only the copy it
    * saved for that version (and commit), and throws if it has none, so a later check can never
    * install a version the person didn't see. It throws when it can't, and then the old version stays.
+   * Left out together with `checkForUpdate`.
    */
-  readonly applyUpdate: (plugin: string, approved: PluginUpdateApproval) => Promise<void>;
+  readonly applyUpdate?: (plugin: string, approved: PluginUpdateApproval) => Promise<void>;
   /** **Check again**: reads the plugins folder again, so the feed has the plugin as it is now. */
   readonly reload: () => Promise<void>;
   /** Whether this computer can run the plugins' programs (`PluginLocalTools.state()`); the trust check says so. */
@@ -189,8 +192,8 @@ export function stopsWorkingLine(uses: readonly PluginUse[]): string {
   return `${capitalised(list.format(groups))} ${total === 1 ? "stops" : "stop"} working until you add the plugin again.`;
 }
 
-/** Shown in place of the connector sentence when Halonic couldn't look which connectors use it. */
-export const USED_BY_UNKNOWN = "Halonic couldn't check which connectors use it.";
+/** Shown in place of the connector sentence when Halonic can't look which connectors use it. */
+export const USED_BY_UNKNOWN = "Halonic can't tell yet which connectors use it.";
 
 /** Shown while the connector check is pending: why **Remove plugin** isn't pressable yet. */
 export const CHECKING_USED_BY = "Checking which connectors use it…";
@@ -230,11 +233,14 @@ export function actionFailedLine(action: string, reason: string): string {
 
 /**
  * A host's message after a colon: no closing full stop, and a capital that only starts the
- * sentence lower-cased ("The disk is full." is "the disk is full"), so a name keeps its capital.
+ * sentence lower-cased ("The disk is full." is "the disk is full"), so a name keeps its capital:
+ * "Halonic" and "Studio" too.
  */
 function afterColon(reason: string): string {
   const trimmed = reason.trim().replace(/\.$/, "");
-  return /^\p{Lu}\p{Ll}/u.test(trimmed) && !/^\S+\p{Lu}/u.test(trimmed)
+  return /^\p{Lu}\p{Ll}/u.test(trimmed) &&
+    !/^\S+\p{Lu}/u.test(trimmed) &&
+    !/^(?:Halonic|Studio)\b/u.test(trimmed)
     ? trimmed.charAt(0).toLowerCase() + trimmed.slice(1)
     : trimmed;
 }

@@ -20,6 +20,14 @@ export function cardFailedLine(title: string, reason: string): string {
   return `Couldn't get ${title}: ${reason.replace(/[.!?]+$/u, "")}.`;
 }
 
+/**
+ * The host has no plugin tools in this build, so trying again can't help (UX check L11): "Plugin
+ * tools aren't in this build of Halonic yet, so Tides can't show anything."
+ */
+export function notInThisBuildLine(title: string): string {
+  return `Plugin tools aren't in this build of Halonic yet, so ${title} can't show anything.`;
+}
+
 /** The plugin is new or changed since it was trusted. */
 export function notTrustedLine(name: string): string {
   return `${name} isn't trusted yet, so this card is empty.`;

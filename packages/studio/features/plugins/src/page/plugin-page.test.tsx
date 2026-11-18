@@ -218,7 +218,7 @@ verifies("plugins.plugin-page", () => {
     );
 
     expect(usedBySection(view)?.textContent).toContain(
-      "Halonic couldn't check which connectors use it.",
+      "Halonic can't tell yet which connectors use it.",
     );
     expect(usedBySection(view)?.textContent).not.toContain("No connector");
   });

@@ -9,6 +9,7 @@ import {
   CLOSE,
   COPY_RESULT,
   commandFailedLine,
+  commandNotInThisBuildLine,
   FILL_THIS_IN,
   fromPlugin,
   RESULT,
@@ -19,6 +20,7 @@ import {
   USES_THE_TOOL,
   WHICH_READS,
 } from "./command-text.ts";
+import { cantRunLine } from "./tools-cant-run.ts";
 
 /** One command from a plugin's `ui.commands`. */
 export type PluginCommand = PluginUi["commands"][number];
@@ -54,14 +56,17 @@ type Run =
   | { readonly kind: "idle" }
   | { readonly kind: "running" }
   | { readonly kind: "done"; readonly text: string }
-  | { readonly kind: "failed"; readonly reason: string };
+  | { readonly kind: "failed"; readonly reason: string }
+  /** The host can't run plugin tools at all here: the line, with no Try again. */
+  | { readonly kind: "cant-run"; readonly line: string };
 
 /**
  * A plugin command's dialog (design 8.1, UX checklist 7): the command's
  * title, where it comes from and the tool it uses, its form, then
  * **Run command**. The answer shows in a Result box with Copy, and the
  * buttons become **Run again** and **Close**. A failure shows in the alert
- * slot with **Try again**, and the form keeps what was typed. A command
+ * slot with **Try again**, and the form keeps what was typed; when the host can't run plugin
+ * tools at all here, the line stands alone, without **Try again**. A command
  * without a form runs as soon as the dialog opens. Every word that acts is
  * Halonic's; the plugin's title, labels and answer are plain text.
  *
@@ -94,7 +99,13 @@ export function PluginCommandDialog({
       const text = await caller.call(plugin.id, command.tool, args);
       if (attempt === latest.current) setRun({ kind: "done", text });
     } catch (error) {
-      if (attempt === latest.current) setRun({ kind: "failed", reason: errorReasonFor(error) });
+      if (attempt !== latest.current) return;
+      const line = cantRunLine(error, commandNotInThisBuildLine(command.title));
+      setRun(
+        line === undefined
+          ? { kind: "failed", reason: errorReasonFor(error) }
+          : { kind: "cant-run", line },
+      );
     }
   }
 
@@ -129,8 +140,10 @@ export function PluginCommandDialog({
       form={fields.length > 0}
       confirm={{ label: confirmLabels[run.kind], busyLabel: RUNNING }}
       busy={run.kind === "running"}
-      retryLabel={TRY_AGAIN}
-      {...(run.kind === "failed" ? { error: commandFailedLine(command.title, run.reason) } : {})}
+      {...(run.kind === "failed"
+        ? { error: commandFailedLine(command.title, run.reason), retryLabel: TRY_AGAIN }
+        : {})}
+      {...(run.kind === "cant-run" ? { error: run.line } : {})}
       onConfirm={submit}
       cancelLabel={run.kind === "done" ? CLOSE : CANCEL}
       onCancel={onClose}
@@ -185,6 +198,7 @@ const confirmLabels: Readonly<Record<Run["kind"], string>> = {
   running: RUN_COMMAND,
   done: RUN_AGAIN,
   failed: RUN_COMMAND,
+  "cant-run": RUN_COMMAND,
 };
 
 /** What's in a field now: text for an Input or a Select, a tick for a Checkbox. */

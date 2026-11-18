@@ -67,14 +67,8 @@ export function desktopPluginActions({
       // page says so rather than claiming nothing uses the plugin.
       throw new Error("Halonic can't look through every workspace yet");
     },
-    // Core can't read a plugin's source again yet (HAL-9373); the page says so in a toast rather
-    // than claiming nothing is newer.
-    checkForUpdate: async () => {
-      throw new Error("Halonic can't check for updates yet");
-    },
-    applyUpdate: async () => {
-      throw new Error("Halonic can't update plugins yet");
-    },
+    // No checkForUpdate or applyUpdate: core can't read a plugin's source again yet (HAL-9373),
+    // so the page leaves Check for updates and Update from folder out (UX check N5b).
     reload: () => feed.reload(),
     openFolder: async (plugin) => {
       if ((await reveal(plugin)) !== true) throw new Error("the plugin's folder isn't there");
