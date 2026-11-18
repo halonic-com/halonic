@@ -102,7 +102,7 @@ verifies("models.aliases.list", () => {
     const section = await showSection(files);
 
     expect([...section.querySelectorAll("li")].map((row) => row.textContent)).toEqual([
-      "default · ollama / llama3.2· Runs on this computer",
+      "default · ollama / llama3.2· Runs locally",
       "smart · anthropic / claude-sonnet-5-5· No price ·Add a price",
     ]);
     expect(section.querySelector("[aria-label='Add a price for smart']")).not.toBeNull();

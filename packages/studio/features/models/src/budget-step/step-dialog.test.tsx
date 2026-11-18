@@ -196,6 +196,18 @@ verifies("models.budget-step.ask-for-pay-per-use", () => {
 
       expect(document.body.textContent).toContain("No aliases use OpenAI yet.");
     });
+
+    it("says how the budget works as the engine keeps to it, child runs included", () => {
+      setup();
+
+      const details = document.body.textContent;
+      expect(details).toContain(
+        "Halonic checks the budget before each step. A step can make several model calls, so a run can go over.",
+      );
+      expect(details).toContain("Claude Code and Codex calls on your own sign-in don't count.");
+      expect(details).toContain("Per run, a run and every child run under it share one budget.");
+      expect(details).not.toContain("each child run counts on its own");
+    });
   });
 });
 

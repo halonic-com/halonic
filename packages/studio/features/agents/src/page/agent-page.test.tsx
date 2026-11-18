@@ -32,7 +32,7 @@ verifies("agents.page.frame", () => {
 
     expect(page.textContent).toContain("AGENT");
     expect(page.querySelector("h1")?.textContent).toBe("Sorter");
-    expect(page.textContent).toContain("No runs with this agent yet.");
+    expect(page.textContent).toContain("Runs aren't listed by agent yet. See them in Runs.");
     expect(page.querySelector("[role=status]")).toBeNull();
   });
 

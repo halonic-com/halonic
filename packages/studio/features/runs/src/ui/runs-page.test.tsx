@@ -235,14 +235,14 @@ verifies("runs.list", () => {
       expect(root.textContent).not.toContain("Go to Workflows");
     });
 
-    it("names the first workflow to run when the workspace has one", async () => {
+    it("says to start a run with Run when the workspace has a workflow", async () => {
       const fake = fakeSource([]);
       fake.workflows(["support-reply", "welcome"]);
       const { root } = await openPage(fake.source);
       expect(root.textContent).toContain(
-        "Runs started from the command line show up here. To start one, type halonic run support-reply in a terminal.",
+        "Runs show up here. To start one, open a workflow and press Run.",
       );
-      expect(root.querySelector("code")?.textContent).toBe("halonic run support-reply");
+      expect(root.textContent).not.toContain("command line");
     });
 
     it("sends a workspace with no workflow to Workflows", async () => {
@@ -250,20 +250,18 @@ verifies("runs.list", () => {
       fake.workflows([]);
       const { root } = await openPage(fake.source);
       expect(root.textContent).toContain(
-        "Runs started from the command line show up here. This workspace has no workflow yet: add one in Workflows.",
+        "Runs show up here. This workspace has no workflow yet: add one in Workflows.",
       );
-      expect(root.querySelector("code")).toBeNull();
     });
 
-    it("keeps the sentence without a name when the workflows can't be read", async () => {
+    it("keeps the Run sentence when the workflows can't be read", async () => {
       const fake = fakeSource([]);
       fake.workflows(new Error("unreadable"));
       const { root } = await openPage(fake.source);
       expect(root.textContent).not.toContain("Couldn't load runs");
       expect(root.textContent).toContain(
-        "Runs started from the command line show up here. To start one, type halonic run in a terminal.",
+        "Runs show up here. To start one, open a workflow and press Run.",
       );
-      expect(root.querySelector("code")?.textContent).toBe("halonic run");
     });
 
     it("says to start a run from the Inbox in the Acme sample, as Home does", async () => {
@@ -272,8 +270,7 @@ verifies("runs.list", () => {
       const { root } = await openPage(fake.source, undefined, undefined, true);
       expect(root.textContent).toContain("No runs yet");
       expect(root.textContent).toContain("Start one from the Inbox, and it shows up here.");
-      expect(root.textContent).not.toContain("command line");
-      expect(root.querySelector("code")).toBeNull();
+      expect(root.textContent).not.toContain("press Run");
     });
 
     it("says only test runs are there, and Show test runs shows them", async () => {

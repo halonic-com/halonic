@@ -140,21 +140,20 @@ verifies("runs.home", () => {
     );
   });
 
-  it("says to start a run from the Inbox in the Acme sample, with no command line note", async () => {
+  it("says to start a run from the Inbox in the Acme sample, with no Run note", async () => {
     const { root } = await show(fakeSource([]).source, { isSample: true });
     expect(root.textContent).toContain(
       "No runs yet. Start one from the Inbox, and it shows up here.",
     );
-    expect(root.textContent).not.toContain("halonic run");
-    expect(root.querySelector("code")).toBeNull();
+    expect(root.textContent).not.toContain("press Run");
   });
 
-  it("names the first workflow to run in the command line note", async () => {
+  it("says to start a run with Run when the workspace has a workflow", async () => {
     const { root } = await show(fakeSource([]).source);
     expect(root.textContent).toContain(
-      "Studio shows what your agents are doing and lets you read each run. To start one, use the command line: halonic run support-reply.",
+      "Studio shows what your agents are doing and lets you read each run. To start one, open a workflow and press Run.",
     );
-    expect(root.querySelector("code")?.textContent).toBe("halonic run support-reply");
+    expect(root.textContent).not.toContain("command line");
   });
 
   it("says a workspace with no workflow has none, and sends it to Workflows", async () => {
@@ -162,32 +161,30 @@ verifies("runs.home", () => {
     fake.workflows([]);
     const { root } = await show(fake.source);
     expect(root.textContent).toContain(
-      "This workspace has no workflows yet. Add one in Workflows, then start it from the command line.",
+      "This workspace has no workflows yet. Add one in Workflows, then press Run.",
     );
-    expect(root.querySelector("code")).toBeNull();
   });
 
-  it("keeps the note without a name when the workflows can't be read", async () => {
+  it("keeps the Run note when the workflows can't be read", async () => {
     const fake = fakeSource([]);
     fake.workflows(new Error("unreadable"));
     const { root } = await show(fake.source);
-    expect(root.textContent).toContain("To start one, use the command line: halonic run.");
-    expect(root.querySelector("code")?.textContent).toBe("halonic run");
+    expect(root.textContent).toContain("To start one, open a workflow and press Run.");
   });
 
-  it("insets the command line note like the section titles, on a phone and on desktop", async () => {
+  it("insets the Run note like the section titles, on a phone and on desktop", async () => {
     for (const phone of [false, true]) {
       const { root } = await show(fakeSource([]).source, { phone });
       const note = [...root.querySelectorAll("p")].find((p) =>
-        p.textContent?.includes("halonic run"),
+        p.textContent?.includes("press Run"),
       );
       expect(note?.className).toContain("px-4");
     }
   });
 
-  it("leaves the command line note out once there are runs", async () => {
+  it("leaves the Run note out once there are runs", async () => {
     const { root } = await show(fakeSource([done]).source);
-    expect(root.textContent).not.toContain("use the command line");
+    expect(root.textContent).not.toContain("press Run");
   });
 
   it("shows its skeleton until the first list loads, then its error with Try again", async () => {

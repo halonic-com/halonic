@@ -11,6 +11,6 @@ When the user edits an alias's "Fallbacks" field, the models feature shall save 
 - Given alias `smart` and other aliases `default`, `fast`,
   when the user types ` default, , fast ` in "Fallbacks",
   then `models.yaml` is saved with `fallback: [default, fast]` for `smart`.
-- Given the field hint, then it reads "Tried in order when this fails. Other aliases: default, fast".
+- Given the field hint, then it reads "Tried in order when this one is down, slow or busy. Other aliases: default, fast".
 - Given the user empties the field, then `fallback` is empty.
 - Given the user types `smartest`, which is not an alias, then `models.yaml` is not written and the field says "There's no model alias called smartest. Pick one from the list.".
