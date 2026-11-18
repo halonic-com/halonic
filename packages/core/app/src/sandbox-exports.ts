@@ -2,6 +2,7 @@
 // `index.ts` to keep that file under the size limit.
 export { type NoSandboxLine, noSandboxLine } from "./doctor-no-sandbox-line.ts";
 export { type NoSandboxOptions, NoSandboxService } from "./no-sandbox.ts";
+export { noUnfencedRunConsent } from "./no-unfenced-run-consent.ts";
 export {
   mxcFencesLocalTools,
   mxcFencesRunner,

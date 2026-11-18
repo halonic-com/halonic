@@ -414,7 +414,10 @@ the plugin's folder in its own profile and checks its own trust record at every
 call; the start refuses a folder that no longer has the fingerprint just
 checked. The runner starts only in the host's fenced sandbox. The host holds no
 saved yes for running without it, so a computer without the sandbox (Windows
-until HAL-3403) answers `403 not_fenced` and starts nothing. A plugin's
+until HAL-3403) answers `403 not_fenced` and starts nothing. The `halonic`
+command holds none either (`noUnfencedRunConsent`, HAL-12639): nothing offers
+that yes yet, so a file placed in the profile's `unfenced-runs` folder by hand
+starts no plugin backend or local integration. A plugin's
 backend gets no secret and no sign-in token through the host yet. The shipped
 single executable has no runner mode of its own (its `process.execPath` is the
 host, not Node), so there the route answers `403 not_in_this_build` and starts

@@ -1,12 +1,17 @@
 // What opening a local integration uses on this computer (HAL-8089): the
 // start gate with the srt sandbox as the fenced one and the launcher's as the
-// confirmed path, the user's saved yes from the profile folder, Node and the
-// built runner, and a fresh private temp folder for every start. The trust
-// check is read again from the workspace's files at every start.
+// confirmed path, Node and the built runner, and a fresh private temp folder
+// for every start. The trust check is read again from the workspace's files at
+// every start.
+//
+// The gate holds no saved yes to run without the sandbox (HAL-12639): nothing
+// offers that yes yet, so a file placed in the profile's `unfenced-runs`
+// folder by hand must not start anything, as in the agent host.
+// `FileUnfencedRunConsentStore` waits for the flow that offers it.
 
 import { rm } from "node:fs/promises";
 import { homedir } from "node:os";
-import { FileSystemFolderReader, FileUnfencedRunConsentStore } from "@halonicjs/adapter-fs-node";
+import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
 import { type AddressCheckingHttpClient, connectorHostClass } from "@halonicjs/adapter-http-kit";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import {
@@ -22,14 +27,19 @@ import {
   SrtSandbox,
   sandboxRuntimeFolder,
 } from "@halonicjs/adapter-sandbox-srt";
-import { RunnerStartGate, type SaveTimers, UnfencedRuns } from "@halonicjs/app";
+import {
+  noUnfencedRunConsent,
+  RunnerStartGate,
+  type SaveTimers,
+  UnfencedRuns,
+} from "@halonicjs/app";
+import type { Sandbox } from "@halonicjs/ports";
 import {
   type ProfileEnvironment,
   pluginsFolder,
   profileFolder,
   runnerTempFolder,
   sharedRunnerTempFolder,
-  unfencedRunsFolder,
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
@@ -72,6 +82,8 @@ export interface ComputerIntegrationInput {
   /** What the integration's own requests go out through; the sheet limits the hosts, and a host it lists under `localHosts` may be this computer or the home network. */
   readonly transport?: AddressCheckingHttpClient;
   readonly environment?: ProfileEnvironment;
+  /** The fenced sandbox the gate checks at every start; `srt` when left out. A test passes one whose check fails. */
+  readonly fenced?: Sandbox;
 }
 
 /**
@@ -85,10 +97,10 @@ export function computerIntegrationMachine(
   const profile = profileFolder(input.environment ?? nodeProfileEnvironment());
   const gate = new RunnerStartGate({
     platform: process.platform,
-    fenced: new SrtSandbox(undefined, undefined, privateJournalFolder(profile)),
+    fenced: input.fenced ?? new SrtSandbox(undefined, undefined, privateJournalFolder(profile)),
     launcher: createHostSandbox(),
     runs: new UnfencedRuns({
-      store: new FileUnfencedRunConsentStore(unfencedRunsFolder(profile)),
+      store: noUnfencedRunConsent,
       clock: systemClock,
       timers: unfencedRunTimers,
     }),
