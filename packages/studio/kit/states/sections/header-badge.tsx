@@ -30,6 +30,32 @@ function Badges() {
   );
 }
 
+/** The phone's connection label in its six states, as in the top bar (tunnel phase B). */
+function Connection() {
+  return (
+    <div className="flex flex-col items-start gap-4 phone:w-full phone:px-4">
+      <HeaderBadge as="status" tone="success" action="Details" onClick={ignore}>
+        Connected · Tim's laptop
+      </HeaderBadge>
+      <HeaderBadge as="status" tone="waiting" action="Details" onClick={ignore}>
+        Reconnecting…
+      </HeaderBadge>
+      <HeaderBadge as="status" tone="attention" action="Details" onClick={ignore}>
+        Can't reach your computer
+      </HeaderBadge>
+      <HeaderBadge as="status" tone="attention" action="Details" onClick={ignore}>
+        Your phone is offline
+      </HeaderBadge>
+      <HeaderBadge as="status" tone="danger" action="Details" onClick={ignore}>
+        Removed from this computer
+      </HeaderBadge>
+      <HeaderBadge as="status" tone="danger" action="Details" onClick={ignore}>
+        Can't confirm your computer
+      </HeaderBadge>
+    </div>
+  );
+}
+
 /** The sample chip's menu as the phone's panel sheet, in a 328px by 320px frame. */
 function Sheet() {
   return (
@@ -62,5 +88,12 @@ export const headerBadgeSection: PartSection = {
     { name: "Hover", force: "hover", target: "button", copies: () => <Badges /> },
     { name: "Focus", force: "focus", target: "button", copies: () => <Badges /> },
     { name: "Menu on a phone (T1-F51)", copies: () => <Sheet /> },
+    { name: "Connection label (phone)", copies: () => <Connection /> },
+    {
+      name: "Connection label, focus",
+      force: "focus",
+      target: "button",
+      copies: () => <Connection />,
+    },
   ],
 };

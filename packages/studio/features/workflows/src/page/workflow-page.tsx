@@ -8,6 +8,7 @@ import {
   CloseIcon,
   CommandBox,
   EmptyState,
+  LetterTile,
   SkeletonBar,
   type Tab,
   TabList,
@@ -22,7 +23,6 @@ import type { View } from "../canvas/geometry.ts";
 import { Configuration } from "../configuration/configuration-page.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
 import { countProblems } from "../configuration/problem-lines.ts";
-import { Avatar } from "../list/workflow-rows.tsx";
 import { runCount } from "../runs/runs-model.ts";
 import { RunsView } from "../runs/runs-view.tsx";
 import { runsWords } from "../runs/runs-words.ts";
@@ -169,7 +169,7 @@ export function WorkflowScreen({
       >
         {/* On a phone the top bar already names the workflow, so the page keeps only its type. */}
         <div className="flex items-center gap-3">
-          <Avatar name={name} />
+          <LetterTile name={name} />
           <div className="flex flex-col">
             <p className="text-caption text-fg-muted">{pageWords.kind}</p>
             <h1 ref={title} tabIndex={-1} className={phone ? "sr-only" : "text-title outline-none"}>

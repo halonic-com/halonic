@@ -1,6 +1,7 @@
 import {
   Button,
   EmptyState,
+  LetterTile,
   SkeletonBar,
   type Tab,
   TabList,
@@ -19,7 +20,6 @@ import {
 } from "../api.ts";
 import { Configuration } from "../configuration/configuration.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
-import { Avatar } from "../list/agent-rows.tsx";
 import { pageWords } from "./page-words.ts";
 import { RenameField } from "./rename-field.tsx";
 import { useLoad } from "./use-load.ts";
@@ -127,7 +127,7 @@ export function AgentScreen({ host, hubId, id, goToAgents }: AgentScreenProps) {
             : "flex items-center gap-3 border-b border-border px-6 py-3"
         }
       >
-        <Avatar name={name} />
+        <LetterTile name={name} />
         <div className="flex flex-col">
           <p className="text-caption text-fg-muted">{pageWords.kind}</p>
           {/* On a phone the top bar already names the agent, so the page keeps only its type. */}

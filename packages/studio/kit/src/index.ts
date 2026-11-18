@@ -34,6 +34,7 @@ export {
   type CheckboxProps,
   type CheckboxUnavailable,
 } from "./checkbox/checkbox.tsx";
+export { CodeDisplay, type CodeDisplayProps } from "./code-display/code-display.tsx";
 export {
   ColourPopover,
   type ColourPopoverProps,
@@ -126,6 +127,8 @@ export {
   type HeaderBadgeButton,
   type HeaderBadgeMenu,
   type HeaderBadgeProps,
+  type HeaderBadgeStatus,
+  type HeaderBadgeStatusTone,
   headerBadgeMenuClasses,
 } from "./header-badge/header-badge.tsx";
 export {
@@ -170,6 +173,7 @@ export type { InputLeadingButton } from "./input/leading-button.tsx";
 export { TextArea, type TextAreaProps } from "./input/text-area.tsx";
 export { Kbd, type KbdProps, keyShortcutsLabel } from "./kbd/kbd.tsx";
 export { isComposing } from "./keyboard/is-composing.ts";
+export { LetterTile, type LetterTileProps } from "./letter-tile/letter-tile.tsx";
 export {
   LineFrame,
   type LineFrameAction,

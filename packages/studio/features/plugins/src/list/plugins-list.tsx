@@ -5,6 +5,7 @@ import {
   type ContextMenuTarget,
   DashedRingIcon,
   EmptyState,
+  LetterTile,
   List,
   type ListRow,
   type MenuEntry,
@@ -129,7 +130,7 @@ function builtInRowsOf(
     return {
       id,
       title: plugin.name,
-      avatar: <Letter name={plugin.name} />,
+      avatar: <LetterTile name={plugin.name} />,
       meta: COMES_WITH_HALONIC,
       trailing: <StatusChip tone="neutral">{BUILT_IN_CHIP}</StatusChip>,
       ...(canOpen ? { more: { label: moreFor(plugin.name), onClick: openMore(id) } } : {}),
@@ -312,15 +313,6 @@ function InstalledList({ load, rows, onAdd, onOpen, onOpenInNewTab, onRetry }: I
   );
 }
 
-/** The accent-tinted letter that stands in for a logo: a plugin has none in v0.1. */
-function Letter({ name }: { readonly name: string }) {
-  return (
-    <span className="grid size-full place-items-center rounded-md bg-accent-soft text-small font-semibold text-accent">
-      {[...name.trim()][0]?.toUpperCase() ?? "?"}
-    </span>
-  );
-}
-
 /** A plugin as a row: its chips and, on the right, its version and when it was trusted. */
 function installedRow(
   plugin: InstalledPlugin,
@@ -332,7 +324,7 @@ function installedRow(
   const base: ListRow = {
     id: plugin.plugin,
     title: plugin.name,
-    avatar: <Letter name={plugin.name} />,
+    avatar: <LetterTile name={plugin.name} />,
     ...(meta === undefined ? {} : { meta }),
     more: { label: moreFor(plugin.name), onClick: onMore },
   };
