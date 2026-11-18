@@ -442,6 +442,9 @@ jobs:
           TURBO_TOKEN: ${{ steps.cache-token.outputs.token }}
           TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ github.event_name != 'pull_request' && secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY || '' }}
           EVENT: ${{ github.event_name }}
+          # Give each test and hook 30 s on a loaded runner, as the other jobs
+          # do (HAL-4241); this job had left it at Vitest's 5 s (HAL-12081).
+          HALONIC_TEST_TIMEOUT: "30000"
         run: |
           if [ -z "$TURBO_TOKEN" ] || [ -z "$TURBO_REMOTE_CACHE_SIGNATURE_KEY" ]; then
             if [ -n "$TURBO_TOKEN" ]; then

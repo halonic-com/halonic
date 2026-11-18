@@ -38,6 +38,8 @@ export interface ChangeListProps {
   readonly onFocusPlaced?: (() => void) | undefined;
   /** On a phone Create version is a full-width touch button under the heading and count (2.12). */
   readonly phone?: boolean;
+  /** The most rows to draw; a test gives a small number to prove the rule without drawing {@link ROW_LIMIT} rows. */
+  readonly rowLimit?: number;
 }
 
 /** Whether a kind places the entry; otherwise it is one of the "Other files". */
@@ -91,6 +93,7 @@ export function ChangeList({
   returnFocus,
   onFocusPlaced,
   phone = false,
+  rowLimit = ROW_LIMIT,
 }: ChangeListProps) {
   const waitingId = useId();
   const waiting = list.merging;
@@ -128,7 +131,7 @@ export function ChangeList({
     if (reason !== undefined) sayFailed(reason);
   }
 
-  const shown = items.slice(0, ROW_LIMIT);
+  const shown = items.slice(0, rowLimit);
   const itemRows = shown.filter(isItem).map((item) => rowOf(item, openMore));
   const otherRows = shown.filter((item) => !isItem(item)).map((item) => rowOf(item, openMore));
   const hidden = items.length - shown.length;
