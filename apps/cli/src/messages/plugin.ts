@@ -139,9 +139,8 @@ export const pluginMessages = defineMessages("plugin", {
   removeNoTerminal: (name: string) =>
     phrase`Removing ${name} deletes its settings, and there's no terminal to ask you.`,
   removeNoTerminalFix: () => phrase`To remove it anyway, pass --yes.`,
-  /** `halonic plugin remove --help` (W11). No secrets: the CLI stores none. */
-  removeHelp: () =>
-    phrase`Removes the plugin and its settings. To only turn it off: halonic trust --plugin <id> --remove`,
+  /** `halonic plugin remove`'s line in the help (W11). No secrets: the CLI stores none. */
+  removeHelp: () => phrase`Remove a plugin and its settings`,
   unknownPlugin: (name: string) => phrase`There's no plugin called "${name}".`,
   unknownPluginNear: (name: string, near: string) =>
     phrase`There's no plugin called "${name}". Did you mean ${near}?`,

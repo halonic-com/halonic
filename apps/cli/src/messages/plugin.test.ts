@@ -106,9 +106,7 @@ describe("plugin's sentences", () => {
     expect(words(pluginMessages.notRemoved("Weather"))).toBe(
       "Not removed. Weather is still added.",
     );
-    expect(words(pluginMessages.removeHelp())).toBe(
-      "Removes the plugin and its settings. To only turn it off: halonic trust --plugin <id> --remove",
-    );
+    expect(words(pluginMessages.removeHelp())).toBe("Remove a plugin and its settings");
     expect(words(pluginMessages.removeNeedsId())).toBe(
       "halonic plugin remove needs the plugin's id.",
     );

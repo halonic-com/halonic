@@ -15,7 +15,8 @@ export const googleMessages = defineMessages("google", {
 
   allowSendingNeedsMore: () =>
     phrase`halonic google allow-sending needs a connection and on or off.`,
-  allowSendingUsage: () => phrase`halonic google allow-sending <connection> on|off`,
+  allowSendingUsage: () =>
+    phrase`halonic google allow-sending <connection> on|off [--dir <folder>]`,
   unknownConnection: (typed: string, workspace: string) =>
     phrase`There's no connection called "${typed}" in ${workspace}.`,
   /** Line 2 under {@link unknownConnection} when no id is close. */
@@ -55,7 +56,7 @@ export const googleMessages = defineMessages("google", {
   signInNeedsMore: () => phrase`halonic google sign-in needs an account.`,
   signInUsage: () => phrase`halonic google sign-in <account> [--connection <id>] [--dir <folder>]`,
   signInConnectionOption: () =>
-    phrase`Check that the account is set up for this connection; it signs in the address of the account's own connection either way`,
+    phrase`Check that the account is set up for this connection; it signs in the address of the account's own connection either way.`,
   signInOtherWorkspace: () => phrase`This account was set up for another workspace.`,
   signInOtherWorkspaceFix: () =>
     phrase`Run the command in the workspace the account was set up for, or use --dir.`,
