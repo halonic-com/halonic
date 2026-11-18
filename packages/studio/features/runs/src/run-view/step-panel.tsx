@@ -1,12 +1,18 @@
 import type { RunEvent } from "@halonicjs/events";
 import { Button, CloseIcon, Disclosure, SidePanel } from "@halonicjs/studio-kit";
 import { useEffect, useMemo, useRef } from "react";
-import { stepEventsWords } from "../run-words.ts";
+import { failedCallWords, stepEventsWords } from "../run-words.ts";
 import { BlockedSitesPanel } from "./blocked-sites.tsx";
 import type { StepEntry } from "./every-step-model.ts";
+import { fillWords } from "./fill-words.tsx";
 import { stepSandboxes } from "./sandbox-model.ts";
 import { SandboxOffPanel, SandboxPanel, sayText } from "./sandbox-panel.tsx";
-import { stepBlockedSites, stepChildRuns, stepEvents } from "./step-events-model.ts";
+import {
+  type FailedCall,
+  stepBlockedSites,
+  stepChildRuns,
+  stepEvents,
+} from "./step-events-model.ts";
 
 /** Props for {@link StepPanel}. */
 export interface StepPanelProps {
@@ -29,7 +35,8 @@ export interface StepPanelProps {
  * sites the step's sandbox refused (sandbox-screens 2.2), then the child
  * runs it started, "Started Verify → Run 7k2m9p" with the link, then its model
  * calls with their model and tokens, then its tool calls, each with its
- * arguments folded, and last what its sandbox could do (sandbox-screens 1.3).
+ * arguments folded and, under one that failed, a quiet "✕ Didn't work"
+ * line, and last what its sandbox could do (sandbox-screens 1.3).
  * Opening it moves focus to its title, and closing it moves focus back to
  * the entry (kit `SidePanel`).
  *
@@ -144,6 +151,9 @@ export function StepPanel({
                       {call.args}
                     </pre>
                   </Disclosure>
+                  {call.failed === undefined ? null : (
+                    <FailedCallLine tool={call.tool} failed={call.failed} />
+                  )}
                 </li>
               ))}
             </ul>
@@ -156,6 +166,29 @@ export function StepPanel({
         ))}
       </SidePanel>
     </div>
+  );
+}
+
+/**
+ * "✕ Didn't work: the tool `create_note` (*notes-mcp*) broke off without an answer, …", under a
+ * tool call that failed, outside its fold so it shows while the arguments are closed. The ✕ is
+ * drawn only; a screen reader hears the words.
+ */
+function FailedCallLine({ tool, failed }: { readonly tool: string; readonly failed: FailedCall }) {
+  const words =
+    failed.reason === undefined
+      ? fillWords(failedCallWords, "failed")
+      : fillWords(failedCallWords, failed.connector === undefined ? "noAnswer" : "noAnswerFrom", {
+          tool: <code className="font-mono">{tool}</code>,
+          connector: <em>{failed.connector}</em>,
+        });
+  return (
+    <p className="px-4 pb-3 text-small text-fg-muted">
+      <span aria-hidden="true" className="text-danger">
+        ✕{" "}
+      </span>
+      {words}
+    </p>
   );
 }
 
