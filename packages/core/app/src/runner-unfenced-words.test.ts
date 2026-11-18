@@ -38,8 +38,8 @@ verifies("app.runner-unfenced-words", () => {
       key: "runner-unfenced.no-sandbox",
       reason: "You chose to continue without a sandbox on this computer.",
       fix: "Set up a sandbox in Settings › Agent sandbox.",
-      docsKey: "security/sandbox/",
-      docsLabel: "What the sandbox does",
+      docsKey: "security/sandbox/#no-sandbox",
+      docsLabel: "What changes without a sandbox",
     });
     expect(words.reason).not.toBe(sandboxStartWords("other").reason);
   });

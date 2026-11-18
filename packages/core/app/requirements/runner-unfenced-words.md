@@ -13,7 +13,7 @@ The runner-unfenced words shall give, for every reason plugin and integration co
 - Given `bubblewrap-missing`,
   then the reason and the fix are the sandbox-start words', and the docs link is "How to install bubblewrap".
 - Given `no-sandbox`,
-  then the reason is "You chose to continue without a sandbox on this computer." and the fix is "Set up a sandbox in Settings › Agent sandbox."
+  then the reason is "You chose to continue without a sandbox on this computer.", the fix is "Set up a sandbox in Settings › Agent sandbox.", and the docs link is "What changes without a sandbox".
 - Given every reason,
   then each has a reason, a fix and a docs link, and no two share a key.
 - Given a code from a newer version,

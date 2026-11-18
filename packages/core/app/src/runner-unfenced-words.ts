@@ -54,8 +54,8 @@ export function isRunnerUnfencedReason(code: string): code is RunnerUnfencedReas
  * reason, R3, because the agent sandbox may work on Windows while this code
  * still can't run in it; its fix is WSL 2, on Windows 11 too (HAL-3381).
  * `no-sandbox` names the person's own choice in S6's words and the Set up a
- * sandbox button (HAL-12350); its docs link goes to the page itself until the
- * page has a section on running without a sandbox (HAL-12352). Every other
+ * sandbox button (HAL-12350), and its docs link goes to the page's section on
+ * running without a sandbox (HAL-12359). Every other
  * reason uses 23.3's reason, fix and docs link word for word. A code Halonic
  * doesn't know reads as `other`.
  *
@@ -82,8 +82,8 @@ export function runnerUnfencedWords(code: string, what: UnfencedCode): RunnerUnf
       key,
       reason: "You chose to continue without a sandbox on this computer.",
       fix: "Set up a sandbox in Settings › Agent sandbox.",
-      docsKey: "security/sandbox/",
-      docsLabel: "What the sandbox does",
+      docsKey: "security/sandbox/#no-sandbox",
+      docsLabel: "What changes without a sandbox",
     };
   }
   const words = sandboxStartWords(reason);
