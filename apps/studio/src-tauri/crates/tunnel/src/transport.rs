@@ -50,6 +50,7 @@ pub enum SendError {
 
 enum Command {
     Send(Vec<u8>, oneshot::Sender<Result<(), SendError>>),
+    Drop,
     Pause,
     Resume,
     Close,
@@ -103,6 +104,15 @@ impl Transport {
             .send(Command::Send(frame, reply))
             .map_err(|_| SendError::NotOpen)?;
         answer.await.unwrap_or(Err(SendError::NotOpen))
+    }
+
+    /// Closes the current connection and reconnects after the backoff
+    /// delay, as after a drop. For the session layer, when a handshake fails
+    /// or takes too long: unlike a pause, it doesn't start the backoff
+    /// again, so a peer that always fails the handshake can't make the
+    /// phone retry in a tight loop.
+    pub fn drop_connection(&self) {
+        let _ = self.commands.send(Command::Drop);
     }
 
     /// Closes the connection and stops every timer until [`Self::resume`].
@@ -185,6 +195,10 @@ impl Worker {
                         }
                     }
                     Some(Command::Resume) => {}
+                    Some(Command::Drop) => {
+                        let _ = socket.close(None).await;
+                        break;
+                    }
                     Some(Command::Pause) => {
                         let _ = socket.close(None).await;
                         return Next::Pause;
@@ -282,7 +296,7 @@ impl Worker {
                 let _ = reply.send(Err(SendError::NotOpen));
                 None
             }
-            Some(Command::Resume) => None,
+            Some(Command::Resume | Command::Drop) => None,
             Some(Command::Pause) => Some(Next::Pause),
             Some(Command::Close) | None => Some(Next::Close),
         }
