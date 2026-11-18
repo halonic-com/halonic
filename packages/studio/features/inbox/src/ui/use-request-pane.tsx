@@ -40,6 +40,12 @@ export interface RequestPane {
   readonly sheet: ReactNode;
 }
 
+/** Said where the form would be, so a failed read doesn't look like a workspace with none. */
+function failedPane(phone: boolean, retry: () => void): RequestPane {
+  const line = <QuietLine line={OFFERED_FAILED} retry={retry} />;
+  return { newRequest: phone ? line : null, form: phone ? null : line, sheet: null };
+}
+
 /**
  * The request form's pieces for the Inbox page: the form, **New request** and the text you have
  * typed, which stays here while a card is open. A phone has no pane for the form: **New request**
@@ -120,11 +126,7 @@ export function useRequestPane(options: {
       formAsked.current = false;
     }
   }, [asks, offered.length, requests, sheetOpen]);
-  if (requests !== undefined && failed) {
-    // Said where the form would be, so a failed read doesn't look like a workspace with none.
-    const line = <QuietLine line={OFFERED_FAILED} retry={retry} />;
-    return { newRequest: phone ? line : null, form: phone ? null : line, sheet: null };
-  }
+  if (requests !== undefined && failed) return failedPane(phone, retry);
   if (requests === undefined || offered.length === 0) {
     return { newRequest: null, form: null, sheet: null };
   }
