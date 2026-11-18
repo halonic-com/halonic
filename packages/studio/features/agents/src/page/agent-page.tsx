@@ -129,15 +129,10 @@ export function AgentScreen({ host, hubId, id, goToAgents, openFile }: AgentScre
       heading.focus();
     }
   }, []);
-  const trash = useAgentTrash({
-    host,
-    agent: { hubId, id },
-    name,
-    openFile,
-    onRestored: () => {
-      focusWhenBack.current = true;
-    },
-  });
+  const onRestored = useCallback(() => {
+    focusWhenBack.current = true;
+  }, []);
+  const trash = useAgentTrash({ host, agent: { hubId, id }, name, openFile, onRestored });
   // The strip with Undo stands where "isn't in this workspace any more" would.
   if (trash.strip !== null) return trash.strip;
   if (load.kind === "failed" && load.gone === true && goToAgents !== undefined) {

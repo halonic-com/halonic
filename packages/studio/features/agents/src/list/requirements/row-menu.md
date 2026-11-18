@@ -10,7 +10,7 @@ The agents feature shall give each row of the Agents list a ⋮ button named "Mo
 
 - Given the agent "Sorter", then "More actions for Sorter" opens Open, Open in new tab, Open as file and Delete.
 - Given the window is a phone, then the menu has no Open as file.
-- Given Delete is chosen, then the agent is in the trash with no dialog and a toast says "Moved Sorter to the trash." with Undo.
+- Given Delete is chosen, then the agent is in the trash with no dialog and a toast says "Moved Sorter to the trash" with Undo.
 - Given a workflow runs Sorter in a step, then the toast's second line says "1 workflow now shows an error until you pick another agent for its step.".
 - Given Undo is pressed, then the row is back and has the focus.
 - Given the agent can't be moved because "the disk is full", then a toast that stays says "Couldn't move Sorter to the trash: the disk is full." with **Try again**.

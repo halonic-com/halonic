@@ -21,6 +21,11 @@ export async function show(node: React.ReactNode): Promise<HTMLElement> {
   return element;
 }
 
+/** Draws `node` again in what {@link show} drew, keeping the state of the components that stay. */
+export async function redraw(node: React.ReactNode): Promise<void> {
+  await act(async () => root?.render(node));
+}
+
 /** The button with this text, or `undefined`. */
 export function buttonNamed(page: HTMLElement, text: string): HTMLButtonElement | undefined {
   return [...page.querySelectorAll("button")].find((button) =>

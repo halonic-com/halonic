@@ -1,6 +1,6 @@
 import { Button, Menu, MoreIcon, usePresentation, useToastStore } from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useEffect, useId, useState } from "react";
 import type { AgentRef, AgentsHost, TrashedAgent } from "../api.ts";
 import { deleteWords } from "./delete-words.ts";
 import { putBackAgent, trashAgent } from "./trash-agent.ts";
@@ -9,11 +9,14 @@ import { putBackAgent, trashAgent } from "./trash-agent.ts";
 export interface AgentTrashInput {
   readonly host: AgentsHost;
   readonly agent: AgentRef;
-  /** The name the page shows. */
+  /** The name the page shows; Delete keeps it, for once the agent can't be read. */
   readonly name: string;
   /** Opens a workspace file in a tab; without it, and on a phone, the menu has no Open as file. */
   readonly openFile?: ((path: string) => void) | undefined;
-  /** Called once Undo has put the agent back, so the page can give its title the focus. */
+  /**
+   * Called once the agent is back, by Undo or by the workspace's own undo, so the page can give its
+   * title the focus. Keep it stable (`useCallback`): a new one listens to the host over again.
+   */
   readonly onRestored: () => void;
 }
 
@@ -44,9 +47,35 @@ export function useAgentTrash({
 }: AgentTrashInput): AgentTrash {
   const toasts = useToastStore();
   const phone = usePresentation() === "phone";
-  const [removed, setRemoved] = useState<{ trashed: TrashedAgent; line: string | undefined }>();
+  // The name is the one shown at Delete: once the agent is in the trash, the page can't read it.
+  const [removed, setRemoved] = useState<{
+    trashed: TrashedAgent;
+    line: string | undefined;
+    name: string;
+  }>();
   const stripTextId = useId();
   const { hubId, id } = agent;
+
+  // The workspace's undo (Ctrl Z) can bring the agent back past the strip; then the page returns.
+  const inTrash = removed !== undefined;
+  useEffect(() => {
+    if (!inTrash) return;
+    let live = true;
+    const check = () =>
+      host.read({ hubId, id }).then(
+        () => {
+          if (!live) return;
+          setRemoved(undefined);
+          onRestored();
+        },
+        () => undefined,
+      );
+    const stop = host.subscribe(() => void check());
+    return () => {
+      live = false;
+      stop();
+    };
+  }, [inTrash, host, hubId, id, onRestored]);
 
   const onDelete = () =>
     void trashAgent(
@@ -54,11 +83,11 @@ export function useAgentTrash({
       toasts,
       { hubId, id, name },
       // Focus goes to Undo, which reads the strip's text as its description: no toast says it too.
-      { quiet: true, onTrashed: (trashed, line) => setRemoved({ trashed, line }) },
+      { quiet: true, onTrashed: (trashed, line) => setRemoved({ trashed, line, name }) },
     );
   const onUndo = async () => {
     if (removed === undefined) return;
-    if (await putBackAgent(removed.trashed, name, toasts)) {
+    if (await putBackAgent(removed.trashed, removed.name, toasts)) {
       setRemoved(undefined);
       onRestored();
     }
