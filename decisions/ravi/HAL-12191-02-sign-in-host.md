@@ -2,6 +2,7 @@
 
 - Approval: HAL-12191 (HAL-8613 app side, HAL-984 design, section 4, "Signing in"); the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JvT8437A5IUnFD6YAvnP6JV4b/VkuEARCidp6V64klm6UX6C54rC2WI2iAPu4smiK9gSoikTMu/rdSajjWW8Dw==
 - Task: HAL-12191
 
 ## What changes
