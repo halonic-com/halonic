@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-1306 (T12 PR 6), HAL-12323; flow-routines 3.3 and 3.4; microcopy 12.3
+- Source: HAL-1306 (T12 PR 6), HAL-12323; flow-routines 3.3 and 3.4; microcopy 12.3; HAL-12402 (no switch for a manual routine)
 
-The routine page shall show a When card with the trigger in words, an On/Off switch named "Runs on its own" that writes `enabled` at once and announces "<name> is off. It only runs with Run now." or "<name> is on. Next: <time>.", and, while the routine is on, live and has a clock, the next three start times in the routine's time zone (with the zone named when it isn't the device's), followed by "Starts on time only while `halonic routines watch` is running in a terminal." because the app has no scheduler of its own in 0.1; a routine on New mail says "Halonic doesn't check mail yet, so this routine starts only with Run now."; a manual routine says "Starts only with Run now." and shows no times; a change that can't be saved shows why in the card and leaves the switch as saved; a routine that has never been live can't be turned on and says to make it live first; and, while the saved trigger differs from the live version's, the line "Your new schedule isn't live yet. Until it is, the routine keeps the live one: <the live trigger>." (for a trigger that isn't a schedule, "Your new trigger …").
+The routine page shall show a When card with the trigger in words, an On/Off switch named "Runs on its own" that writes `enabled` at once and announces "<name> is off. It only runs with Run now." or "<name> is on. Next: <time>.", and, while the routine is on, live and has a clock, the next three start times in the routine's time zone (with the zone named when it isn't the device's), followed by "Starts on time only while `halonic routines watch` is running in a terminal." because the app has no scheduler of its own in 0.1; a routine on New mail says "Halonic doesn't check mail yet, so this routine starts only with Run now."; a manual routine says "Starts only with Run now." and shows no times and no switch, since it never runs on its own; a change that can't be saved shows why in the card and leaves the switch as saved; a routine that has never been live can't be turned on and says to make it live first; and, while the saved trigger differs from the live version's, the line "Your new schedule isn't live yet. Until it is, the routine keeps the live one: <the live trigger>." (for a trigger that isn't a schedule, "Your new trigger …").
 
 ## Examples
 
@@ -13,6 +13,7 @@ The routine page shall show a When card with the trigger in words, an On/Off swi
 - Given the routine is on and has next times, then "Starts on time only while `halonic routines watch` is running in a terminal." shows under them.
 - Given a routine on New mail, then the card says "Halonic doesn't check mail yet, so this routine starts only with Run now."
 - Given the routine is off, then no times show.
+- Given a routine that starts only with Run now, then the card says "Starts only with Run now." and shows no switch.
 - Given the routine has the time zone Europe/Amsterdam and the device has another, then each time ends with "(Europe/Amsterdam)".
 - Given an `every` routine that has never run, then Next reads "At the next check (it hasn't run yet)".
 - Given the save fails, then the card shows "Couldn't save the change." and the reason, and the switch shows what is saved.
