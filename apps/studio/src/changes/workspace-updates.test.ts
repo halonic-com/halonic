@@ -107,6 +107,38 @@ verifies("source-control.get-updates", () => {
       }
     });
 
+    it("gets updates from the shared copy's branch of the same name when the branch tracks none", async () => {
+      const { root, mine, run, publish } = shared();
+      try {
+        run(mine, "branch", "--unset-upstream");
+        publish("b.md", "two\n");
+        expect(await real(mine).getUpdates()).toEqual({ kind: "got", count: 1 });
+        expect(readFileSync(join(mine, "b.md"), "utf8")).toBe("two\n");
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it("says it isn't set up to get updates when there is no shared copy", async () => {
+      const root = mkdtempSync(join(tmpdir(), "updates-"));
+      try {
+        execFileSync("git", ["init", "--quiet"], { cwd: root });
+        await expect(real(root).getUpdates()).rejects.toThrow("isn't set up to get updates");
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    it("says it isn't set up to get updates when the shared copy has no such branch", async () => {
+      const { root, mine, run } = shared();
+      try {
+        run(mine, "switch", "--quiet", "-c", "only-mine");
+        await expect(real(mine).getUpdates()).rejects.toThrow("isn't set up to get updates");
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
     it("says the shared copy can't be reached, never showing git's words", async () => {
       const { changes } = history(async () =>
         answer("", 1, "fatal: unable to access 'https://example.invalid/': Could not resolve host"),
