@@ -30,12 +30,13 @@ async function taskOf(models: HarnessModelNames | undefined, model: string | und
 }
 
 verifies("engine.harness-model-alias", () => {
-  it("asks the program for the alias's provider model id", async () => {
+  it("asks the program for the alias's provider model id, for every call", async () => {
     const asked: string[][] = [];
 
     const { task } = await taskOf(namesWithOneAlias(asked), "open-coder-agent");
 
     expect(task?.model).toBe("glm-5.2");
+    expect(task?.modelForEveryCall).toBe(true);
     expect(asked).toEqual([["acme", "open-coder-agent"]]);
   });
 
@@ -43,12 +44,14 @@ verifies("engine.harness-model-alias", () => {
     const { task } = await taskOf(namesWithOneAlias(), "sonnet");
 
     expect(task?.model).toBe("sonnet");
+    expect(task).not.toHaveProperty("modelForEveryCall");
   });
 
   it("passes every name on as written when the host gives no model names", async () => {
     const { task } = await taskOf(undefined, "open-coder-agent");
 
     expect(task?.model).toBe("open-coder-agent");
+    expect(task).not.toHaveProperty("modelForEveryCall");
   });
 
   it("names no model and asks nothing when the agent's file names none", async () => {
@@ -57,6 +60,7 @@ verifies("engine.harness-model-alias", () => {
     const { task } = await taskOf(namesWithOneAlias(asked), undefined);
 
     expect(task).not.toHaveProperty("model");
+    expect(task).not.toHaveProperty("modelForEveryCall");
     expect(asked).toEqual([]);
   });
 

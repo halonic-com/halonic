@@ -14,6 +14,7 @@ import {
   type Harness,
   type HarnessEvent,
   type HarnessRun,
+  type HarnessTask,
   ModelCallError,
   RunFailureError,
   type Sandbox,
@@ -209,18 +210,20 @@ export async function runHarnessCall(
 
 /**
  * The model the program is asked for (requirement `engine.harness-model-alias`):
- * the provider's model id for an alias the host knows, else the agent
- * file's `model` as written. `undefined` when the file names none.
+ * the provider's model id for an alias the host knows, for every call of
+ * the program, else the agent file's `model` as written. None when the
+ * file names none.
  *
  * @throws what the host's `providerModelOf` throws
  */
 async function programModelOf(
   options: HarnessRunsOptions,
   call: HarnessCall,
-): Promise<string | undefined> {
+): Promise<Pick<HarnessTask, "model" | "modelForEveryCall">> {
   const written = call.agent.model;
-  if (written === undefined || options.models === undefined) return written;
-  return (await options.models.providerModelOf(call.hubId, written)) ?? written;
+  if (written === undefined) return {};
+  const mapped = await options.models?.providerModelOf(call.hubId, written);
+  return mapped === undefined ? { model: written } : { model: mapped, modelForEveryCall: true };
 }
 
 /**
@@ -277,7 +280,7 @@ async function runInBridge(
         instructions: call.agent.instructions,
         prompt: effect.prompt,
         ...(instructions === null ? {} : { instructionsFolder: instructions.folder }),
-        ...(model === undefined ? {} : { model }),
+        ...model,
       };
       await started.stepLimits.startClock(started.limits);
       // From here the clock stops however the step ends, even when the harness fails to start.
