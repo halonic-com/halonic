@@ -1,8 +1,7 @@
-import { type Clock, ModelCallError, type Secrets, VendorErrorText } from "@halonicjs/ports";
+import { type Clock, ModelCallError } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it, vi } from "vitest";
 import { LocalExecutor } from "../local-executor.ts";
-import { failureCauseOf } from "../run/failure-cause-of.ts";
 import { runFailureReasonOf } from "../run/run-failure-reason-of.ts";
 import {
   call,
@@ -12,48 +11,12 @@ import {
   ScriptedModel,
   textAnswer,
 } from "../testing/scripted-model.ts";
-import { reviewedTools } from "./listed-tool-approval.test-helper.ts";
 import { noListedToolApproval } from "./listed-tool-approval.ts";
-import type { ResolvedModel } from "./model-chain.ts";
-import { runModelTurn } from "./run-model-turn.ts";
-import {
-  MemoryTurnLog,
-  runEveryCall,
-  secretsWith,
-  steppingClock,
-} from "./turn-test-kit.test-helper.ts";
-
-/** A model alias on a scripted provider; its model is named after the provider. */
-function alias(name: string, provider: ScriptedModel, more: Partial<ResolvedModel> = {}) {
-  return { alias: name, provider, model: `${provider.id}-1`, ...more };
-}
+import { alias, runTurnOn } from "./model-chain.test-helper.ts";
+import { MemoryTurnLog, secretsWith, steppingClock } from "./turn-test-kit.test-helper.ts";
 
 const offline = () => new ModelCallError("offline", "acme-cloud can't be reached");
 const busy = () => new ModelCallError("provider-busy", "acme-cloud was busy (HTTP 529)");
-
-interface TurnSetup {
-  secrets?: Secrets;
-  clock?: Clock;
-  log?: MemoryTurnLog;
-  connectors?: ScriptedConnector[];
-}
-
-function runTurnOn(model: ResolvedModel, setup: TurnSetup = {}) {
-  return runModelTurn({
-    model,
-    secrets: setup.secrets ?? secretsWith(),
-    messages: [{ role: "user", content: "Find the Acme invoice" }],
-    callerTools: [],
-    halonicTools: [],
-    connectors: setup.connectors ?? [],
-    listedToolApproval: reviewedTools,
-    maxRounds: 20,
-    agent: "clerk",
-    clock: setup.clock ?? steppingClock(),
-    checkCall: runEveryCall,
-    ...(setup.log === undefined ? {} : { log: setup.log }),
-  });
-}
 
 afterEach(() => {
   vi.useRealTimers();
@@ -437,73 +400,5 @@ verifies("ports.workspace-secrets", () => {
       }),
     ).rejects.toThrow(new RangeError("A workspace can't pick a secret that belongs to Halonic."));
     expect(smart.requests).toEqual([]);
-  });
-});
-
-verifies("engine.provider-text", () => {
-  it("keeps the provider's text on llm.fallback", async () => {
-    const log = new MemoryTurnLog();
-    const cause = new VendorErrorText(502, "upstream connect error");
-    const proxyDown = new ModelCallError("offline", "acme-cloud can't be reached", { cause });
-    const smart = new ScriptedModel([proxyDown], "acme-cloud");
-    const local = new ScriptedModel([textAnswer("From this machine")], "acme-local");
-
-    await runTurnOn(alias("smart", smart, { fallback: [alias("local", local)] }), { log });
-
-    expect(log.events[1]).toEqual({
-      type: "llm.fallback",
-      agent: "clerk",
-      from: "smart",
-      to: "local",
-      error: "offline: acme-cloud can't be reached",
-      providerText: { status: 502, text: "upstream connect error" },
-    });
-  });
-});
-
-verifies("engine.none-left-cause", () => {
-  it("keeps the last model's typed cause, such as a proxy that refused, for run.failed", async () => {
-    const proxyRefused = new ModelCallError(
-      "offline",
-      "Halonic couldn't reach acme-cloud at api.acme.test: Your proxy refused to connect to api.acme.test (status 403).",
-      {
-        host: "api.acme.test",
-        failureCause: { kind: "denied", code: "proxy.refused", detail: { status: "403" } },
-      },
-    );
-    const smart = new ScriptedModel([proxyRefused], "acme-cloud");
-
-    const failure = await runTurnOn(alias("smart", smart)).catch((error: unknown) => error);
-
-    expect(failure).toMatchObject({
-      reason: "offline",
-      host: "api.acme.test",
-      kind: "denied",
-      failureCause: { code: "proxy.refused", detail: { status: "403" } },
-      cause: proxyRefused,
-    });
-    expect((failure as Error).message).toMatch(/\(tried smart\): .*Your proxy refused/);
-    expect(failureCauseOf(failure)).toEqual({
-      kind: "denied",
-      code: "proxy.refused",
-      detail: { status: "403" },
-    });
-  });
-
-  it("ends the message with the last model's own message", async () => {
-    const smart = new ScriptedModel([busy()], "acme-cloud");
-    const backup = new ScriptedModel(
-      [new ModelCallError("provider-busy", "acme-other was busy (HTTP 429)")],
-      "acme-other",
-    );
-
-    const failure = await runTurnOn(
-      alias("smart", smart, { fallback: [alias("backup", backup)] }),
-    ).catch((error: unknown) => error);
-
-    expect((failure as Error).message).toBe(
-      "no model free: the last one's provider was busy (tried smart, backup): acme-other was busy (HTTP 429)",
-    );
-    expect(failure).not.toHaveProperty("kind");
   });
 });
