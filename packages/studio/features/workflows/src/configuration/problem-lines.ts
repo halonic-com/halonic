@@ -13,6 +13,7 @@ const stepLines: Readonly<Record<string, string>> = {
   "dead-end": "Has no way out",
   "unknown-gets": "Gets data not written yet",
   "timer-outside-wait": "Timers only work in Wait",
+  "timer-with-event": "Has a timer and an event",
   "foreach-without-items": "Has no list to go over",
   "foreach-without-work": "Needs agent or workflow",
   "self-subflow": "Runs its own workflow",
