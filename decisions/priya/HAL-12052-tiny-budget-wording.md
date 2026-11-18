@@ -3,6 +3,7 @@
 - Task: HAL-12052
 - Approval: Liam approves this change on HAL-12052, for HAL-12052. Liam decided the monthly line and Sofia the per-run title (HAL-12066, HAL-12103): small wording on approved screens (HAL-2282 rule), so there is no board card.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iZEFoK0FbRHsmnstsh1cjBRqKbdgLTM2tol5LY7mxeKHoFWHtu+ZWV/XD73yVkbcL1uAdueH+0k4ybGrfNZaDQ==
 
 ## What changes
 
