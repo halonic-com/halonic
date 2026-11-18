@@ -13,9 +13,9 @@
 //! helper under another name, checked, and written beside srt-win as
 //! `vcruntime140.dll`, never in the user's app folder.
 //! Its exit code is srt-win's, or one of its own from 30 up ([`code`]).
-//! A release build also checks that the copy of itself it leaves for
-//! Installed apps shows the same publisher as the one Windows asked about
-//! ([`SIGNER`]).
+//! A signed build also leaves a copy of itself for Installed apps, once it
+//! shows the same publisher as the one Windows asked about ([`SIGNER`]); an
+//! unsigned build can't check that copy, so it leaves none.
 //!
 //! The steps are written against [`Machine`], so they are tested anywhere;
 //! the Windows calls are in the `windows` module.
@@ -54,8 +54,9 @@ pub const UNINSTALL_KEY: &str =
 
 /// The publisher a signed release's helper shows in the UAC prompt: its
 /// signing certificate's name, as Windows displays it. The release build
-/// sets `HALONIC_SANDBOX_SIGNER` (HAL-1197); dev and CI builds aren't signed
-/// and leave it out, and only they skip the check of the helper's copy.
+/// sets `HALONIC_SANDBOX_SIGNER` (HAL-1197); dev and CI builds and an
+/// unsigned release leave it out, and leave no copy of the helper and no
+/// Installed apps entry.
 ///
 /// It is built in, not read from the helper's own file: that file is in the
 /// user's app folder, and while the helper runs it can be renamed and
@@ -356,27 +357,25 @@ fn steps(
     }
     match verb {
         Verb::SetUp => {
-            let helper = folder.join(PROGRAM);
-            if !in_folder {
-                let own_bytes = machine.read(&own).map_err(|_| code::FOLDER)?;
-                place(machine, &own, &helper, &own_bytes)?;
-                // Installed apps runs this copy elevated, for every user of
-                // the computer. What was read is whatever had the helper's
-                // name in the app folder by then, so it has to show the
-                // publisher Windows asked about before anyone else can open
-                // it (HAL-7385, S-4).
-                if let Some(signer) = signer
-                    && machine.signer(&helper).as_deref() != Some(signer)
-                {
-                    machine.delete(&helper);
-                    return Err(code::ENTRY);
+            // Installed apps runs the helper's copy elevated, for every user
+            // of the computer, so only a build that can show the copy is the
+            // helper Windows asked about leaves one.
+            let listed = match signer {
+                Some(signer) => {
+                    if !in_folder {
+                        copy_own(machine, &own, &folder.join(PROGRAM), signer)?;
+                    }
+                    true
                 }
-                machine.share(&helper).map_err(|_| code::FOLDER)?;
-            }
+                None => {
+                    forget_listing(machine, &folder)?;
+                    false
+                }
+            };
             let status = machine
                 .run(&srt_win, &["install"], &system, &environment)
                 .map_err(|_| code::SRT_WIN_DIDNT_START)?;
-            if status == code::OK {
+            if status == code::OK && listed {
                 machine
                     .write_entry(&uninstall_entry(&folder))
                     .map_err(|_| code::ENTRY)?;
@@ -408,6 +407,32 @@ fn steps(
             Ok(status)
         }
     }
+}
+
+/// Writes the helper's own file, `own`, to `helper` in the admin-only folder
+/// for Installed apps. What is read is whatever had the helper's name in the
+/// app folder by then, so the copy has to show `signer`, the publisher
+/// Windows asked about, before anyone else can open it (HAL-7385, S-4).
+/// Otherwise it is deleted unshared.
+fn copy_own(machine: &impl Machine, own: &Path, helper: &Path, signer: &str) -> Result<(), i32> {
+    let own_bytes = machine.read(own).map_err(|_| code::FOLDER)?;
+    place(machine, own, helper, &own_bytes)?;
+    if machine.signer(helper).as_deref() != Some(signer) {
+        machine.delete(helper);
+        return Err(code::ENTRY);
+    }
+    machine.share(helper).map_err(|_| code::FOLDER)
+}
+
+/// An unsigned build can't check the copy of itself it would leave in
+/// `folder`: while it runs, its file in the app folder can be swapped for
+/// another program, and Installed apps would run that one elevated. So it
+/// lists nothing, and takes away the entry and copy an earlier unsigned
+/// setup left. Its sandbox is removed by the helper next to Halonic.
+fn forget_listing(machine: &impl Machine, folder: &Path) -> Result<(), i32> {
+    machine.delete_entry().map_err(|_| code::ENTRY)?;
+    machine.delete(&folder.join(PROGRAM));
+    Ok(())
 }
 
 /// Puts the shipped file `shipped`, as `name` in the folder, into `folder` for Users to read and run, from
