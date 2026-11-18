@@ -11,7 +11,8 @@ The provider page of a provider that runs on this computer or your own network s
 - Given `providers/ollama.yaml` (type ollama, local) and Ollama is running,
   when the user chooses Check,
   then the button reads "Checking…" and keeps focus, and then the page says "Answering at localhost:11434 · checked 10:42".
-- Given Ollama is not running, then the page says "Not answering at localhost:11434 · checked 10:42. Start Ollama, then check again."- Given `providers/studio.yaml` (type lmstudio, local) is not running, then the line ends "Start LM Studio, then check again."; a local `openai-compatible` provider named vLLM ends "Start vLLM, then check again."
+- Given Ollama is not running, then the page says "Not answering at localhost:11434 · checked 10:42. Start Ollama, then check again."
+- Given `providers/studio.yaml` (type lmstudio, local) is not running, then the line ends "Start LM Studio, then check again."; a local `openai-compatible` provider named vLLM ends "Start vLLM, then check again."
 - Given a result, when the user chooses Check again and the result is the same, then it is announced again: "Ollama is answering at localhost:11434, checked 10:43."
 - Given `providers/anthropic.yaml` (cloud), then the page has no Check; its key status answers the question.
 - Given a local `openai-compatible` provider with no base URL, then the page has no Check.
