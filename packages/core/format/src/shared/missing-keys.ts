@@ -90,7 +90,7 @@ function nearMissingKeys(unrecognized: readonly string[], missing: readonly stri
 
 /**
  * The fewest single-character insertions, deletions, substitutions and swaps
- * of two neighbours that turn `from` into `to`, so "nmae" is one from "name".
+ * of two neighbours that turn `from` into `to`, so "nmae" and "name" are one apart.
  * The CLI has its own copy for commands; core can't use the CLI's.
  */
 function editDistance(from: string, to: string): number {
