@@ -3,6 +3,7 @@
 // counts, so an old run or a free-text failure gets the ordinary banner and no chip.
 
 import type { RunSummary } from "@halonicjs/events";
+import type { SourcedRun } from "../api.ts";
 
 /** The cause code the Google integrations give a switched-off API (`google.api-disabled`). */
 export const apiDisabledCode = "google.api-disabled";
@@ -79,4 +80,47 @@ export function googleConsoleAddress(address: string | undefined): string | unde
     url.username === "" &&
     url.password === "";
   return plain ? url.href : undefined;
+}
+
+/** A switched-off API that is still off as far as the runs can tell: the newest run that found it so. */
+export interface CurrentApiOff extends ApiOff {
+  readonly run: RunSummary;
+}
+
+/**
+ * The Google APIs the runs say are still switched off, one for each API, as the header chip shows
+ * them (requirement `google-setup.connector-badges`). Each comes from the newest real run that failed
+ * with that API's typed cause. It stays until a later real run of the same workflow ends without
+ * that cause: nothing else clears it, not time and not a click on **Switch it on**, because
+ * Studio can't see Google's side. A run doesn't name its Google account, so the workflow is the
+ * closest "same run" there is.
+ *
+ * @example
+ * currentApiOffs(runs).map((off) => off.api); // ["gmail"]
+ */
+export function currentApiOffs(runs: readonly SourcedRun[]): CurrentApiOff[] {
+  const newestFirst = runs
+    .map((run) => run.summary)
+    .filter((summary) => summary.kind === "run")
+    .sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
+  const found = new Map<GoogleApi, CurrentApiOff>();
+  for (const summary of newestFirst) {
+    const off = apiOffOf(summary);
+    if (off === undefined || found.has(off.api)) {
+      continue;
+    }
+    const later = newestFirst.filter(
+      (other) =>
+        Date.parse(other.startedAt) > Date.parse(summary.startedAt) &&
+        other.hubId === summary.hubId &&
+        other.workflowId === summary.workflowId,
+    );
+    const cleared = later.some(
+      (other) => other.endedAt !== null && apiOffOf(other)?.api !== off.api,
+    );
+    if (!cleared) {
+      found.set(off.api, { ...off, run: summary });
+    }
+  }
+  return [...found.values()];
 }
