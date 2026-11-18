@@ -622,7 +622,11 @@ fails the check until Julian has reviewed it and it has its own entry under
 task that accepted it. The check also fails when an entry's file is gone, or
 when `tooling/check/licence-texts/<SPDX ID>.txt` has no full text of its
 licence. `pnpm check:sbom --notices` adds one block per vendored file to
-`THIRD-PARTY-NOTICES.txt`. A vendored entry is an exception for that one
+`THIRD-PARTY-NOTICES.txt`, with that text. A licence like MIT or BSD carries
+the author's copyright line, which each copy must keep: when a vendored file
+comes from another author than the one in `<SPDX ID>.txt`, give its entry a
+`text` that names its own file in `tooling/check/licence-texts/` (for
+example `MIT-<author>.txt`), with its own copyright line. A vendored entry is an exception for that one
 file only: `MPL-2.0` stays on `devOnly` for packages.
 
 ## Package names and layers
