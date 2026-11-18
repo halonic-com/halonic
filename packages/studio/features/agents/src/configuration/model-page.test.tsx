@@ -16,12 +16,13 @@ afterEach(() => {
 
 const ref = { hubId: "acme", id: "sorter" };
 
-async function openModel() {
-  const agents = memoryAgentsHost({
+async function openModel(readAliases?: () => Promise<readonly string[]>) {
+  const memory = memoryAgentsHost({
     hubs: [{ id: "acme", name: "acme" }],
     agents: [{ ...ref, name: "Sorter", model: "fast" }],
     modelAliases: ["fast", "smart"],
   });
+  const agents = readAliases === undefined ? memory : { ...memory, modelAliases: readAliases };
   const page = await show(<AgentScreen host={agents} hubId="acme" id="sorter" />);
   await act(async () => buttonNamed(page, "Configuration")?.click());
   await act(async () =>
@@ -38,6 +39,21 @@ const blur = (input: HTMLElement) =>
   act(async () => input.dispatchEvent(new FocusEvent("focusout", { bubbles: true })));
 
 verifies("agents.configuration.model", () => {
+  it("says it couldn't load the models when reading them fails, and loads them on Try again", async () => {
+    let works = false;
+    const { page } = await openModel(async () => {
+      if (!works) throw new Error("The hub didn't answer.");
+      return ["fast", "smart"];
+    });
+    expect(page.textContent).toContain("Couldn't load the models");
+    expect(page.querySelector("select")).toBeNull();
+
+    works = true;
+    await act(async () => buttonNamed(page, "Try again")?.click());
+    const select = page.querySelector("select") as HTMLSelectElement;
+    expect([...select.options].map((option) => option.value)).toEqual(["fast", "smart"]);
+  });
+
   it("lists the hub's aliases and shows the agent's model", async () => {
     const { select } = await openModel();
     expect([...select.options].map((option) => option.value)).toEqual(["fast", "smart"]);
