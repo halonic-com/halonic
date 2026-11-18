@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12360, building decision 14 (option B) recorded on HAL-12353, under the HAL-12235 note `decisions/liam/HAL-12235-pairing-codecs.md`; Liam wrote it, Julian reviews and signs this note as the security reviewer
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:UY0+axGYrGTC5viXjgJ/couFiaQIPQ3EBaETZ80ivFWl5NUGNqF+PCBKozGWUuNg/4vGqU+9RPpas7Zxvgd9BQ==
 
 In the pairing QR record, each endpoint was a length byte and its URL as text. That left room for
 one address only, so a phone paired at home never learned the Tailscale address it needs away
