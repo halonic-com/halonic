@@ -17,7 +17,7 @@ The sandbox-start words shall give, for every reason code of the `Sandbox` port,
 - Given `distro-missing`, `setup-conflict` or `setup-needed`,
   then the fix points to Settings, not to WSL 2 on the command line, and there is no fix for Settings.
 - Given `windows`, which only MXC gives,
-  then the reason says the sandbox needs Windows 11 and the fix points to another sandbox in Settings (HAL-12642).
+  then the reason says the sandbox can't start on this version of Windows, names no Windows version, and the fix points to another sandbox in Settings (HAL-12642).
 - Given `sign-in-needed`,
   then the fix names no particular service.
 - Given `bubblewrap-missing` or `blocked-by-policy`,

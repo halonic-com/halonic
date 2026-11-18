@@ -54,7 +54,7 @@ verifies("app.sandbox-start-words", () => {
     }
   });
 
-  it("says a sandbox that needs Windows 11 needs it, and points to another sandbox in Settings", () => {
+  it("says the sandbox can't start on this version of Windows, names no version, and points to another sandbox in Settings", () => {
     const words = sandboxStartWords("windows");
     expect(words.reason).toBe("The sandbox can't start on this version of Windows.");
     expect(words.calloutFix).toBe("Pick another sandbox in Settings.");
