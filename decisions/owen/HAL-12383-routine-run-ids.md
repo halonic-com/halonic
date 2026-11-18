@@ -2,6 +2,7 @@
 
 - Approval: found in Nina's docs check (HAL-12361) and fixed on HAL-12383; the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:m74orrpOMK833bBiM1vNwcacevuBAVsDTCZcgVUeJk5fo1OYEjp/fEhDqfbY5KptGACCB3Mkhv2dn9DP2LdSBQ==
 
 ## What changes
 
