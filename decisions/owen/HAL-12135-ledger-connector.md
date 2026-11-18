@@ -2,6 +2,7 @@
 
 - Approval: follow-up to HAL-11852, task HAL-12135 (carry the bridge approval's `connector` into the agent host's run ledger)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+MisSX88QOueKa+T0oxOcXOxSGjM7UonRGYyd/eVbMzLGTP4CTnW0053RDEUUwu9sbAaJI9W+NK1r20+faeQAw==
 
 ## What changes
 
