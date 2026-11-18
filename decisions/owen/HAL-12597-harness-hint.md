@@ -3,6 +3,7 @@
 - Task: HAL-12597 (C44 docs check P6 and P9, HAL-12580 section 8, via HAL-12591)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12597 (Liam asked for both changes on the task; he reviews and signs this note)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kElhCjsDFYE0VLYtIdGH04zpKIqvBHx2fIWNNOQ3a5N7x5UVLMSWxo8PhE+3bHKLGEeyUnB+y+H+YONKnr/WCA==
 
 ## What changes
 
