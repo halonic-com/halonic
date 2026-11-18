@@ -77,9 +77,15 @@ verifies("connector-stdio-sandbox.local-tool-profile", () => {
 
     it("starts with the secrets Halonic read, and refuses one that isn't set", async () => {
       const { sandbox, factory, context } = setUp({ profile: secretProfile });
-      await expect(factory.create(withSecret, context).listTools()).rejects.toThrow(
+      const refused = factory.create(withSecret, context).listTools();
+      await expect(refused).rejects.toThrow(
         'Connector "notes" needs the secret "notes-token", which isn\'t set.',
       );
+      // Typed, so the agent host can name the secret without passing on the message (HAL-12410).
+      await expect(refused).rejects.toMatchObject({
+        name: "SecretNotSetError",
+        secretName: "notes-token",
+      });
       expect(sandbox.started).toEqual([]);
       const client = factory.create(withSecret, { ...context, secrets: secretsWithToken() });
       await client.listTools();
