@@ -187,7 +187,7 @@ localTools:
 
 Local tools run only in a session whose sandbox is proven: the desktop app,
 the CLI and `serve`. Windows is a preview: the sandbox there has limits, and
-a plugin's backend worker starts there only when MXC fences it, on Windows 11. On Android
+a plugin's backend worker starts there, for now, only when MXC fences it, on Windows 11. On Android
 and in the browser the plugin still loads, and its local tools show as needing
 the desktop app. Halonic builds the sandbox's rules; a plugin can't ask for
 more. See [the plugins page of the

@@ -95,7 +95,8 @@ cloned workspace can't trust itself.
   its JavaScript heap, and on Linux, where `prlimit` is installed, on the
   whole process. Windows is a preview: there a backend worker is fenced only
   by MXC on Windows 11, with only its heap limited. Without MXC it doesn't
-  start, and a yes to run without the sandbox doesn't change that. And a program that is allowed a host can send anything there.
+  start, because a yes to run it without the sandbox isn't offered yet. And
+  a program that is allowed a host can send anything there.
 - **Tool results are untrusted content.** A plugin's answer can try to steer a
   model, as any outside text can. See
   [model output](threat-model.md#42-model-output-and-content-b2).
