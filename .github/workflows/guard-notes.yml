@@ -46,9 +46,9 @@ jobs:
           node-version: "26"
       # Blocking. An `internal` note signed by the CTO key covers routine
       # changes to .github/ and tooling/check/; a change to a trust root
-      # needs two guardians' signatures (check.guard-two-guardians). This job fails the pull request, but it blocks a
-      # merge only once it is a required check next to ci-ok: ci-ok can't
-      # wait for it, because it runs in another workflow.
+      # needs two guardians' signatures (check.guard-two-guardians). This job fails the pull request, and that
+      # blocks the merge today. ci-ok can't wait for it, because it runs in
+      # another workflow.
       - name: Check the decision note (base branch's code)
         env:
           GH_TOKEN: ${{ github.token }}
