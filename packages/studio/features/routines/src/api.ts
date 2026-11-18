@@ -223,7 +223,7 @@ export type RunNowRefusal =
 
 /** What Run now answers: the run it started, or why there is none. */
 export type RunNowResult =
-  | { readonly started: true; readonly runId: string }
+  | { readonly started: true; readonly runId: string; readonly shortId: string }
   | { readonly started: false; readonly refusal: RunNowRefusal };
 
 /** A routine that was moved to the trash, and the way to bring it back. */

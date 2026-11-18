@@ -1,3 +1,4 @@
+import { shortRunId } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
 import type { DefinitionSource } from "@halonicjs/ports";
 import {
@@ -386,7 +387,7 @@ export class WorkspaceRoutines implements RoutinesHost {
         routineKey: routineKey({ hub: ref.hubId, routine: value }),
         at: this.#parts.now().toISOString(),
       });
-      return { started: true, runId: id };
+      return { started: true, runId: id, shortId: shortRunId(id) };
     } catch (error) {
       if (error instanceof KindedError && error.kind === "unavailable")
         throw new EngineNotAnswering();

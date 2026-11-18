@@ -1,11 +1,10 @@
 import type { ToastStore } from "@halonicjs/studio-kit";
 import { errorMessageFor } from "@halonicjs/studio-shell";
 import type { RoutineListing, RoutinesHost, TrashedRoutine } from "../api.ts";
+import { rowMenuWords } from "./list-words.ts";
 
 /** What {@link trashRoutine} needs to know of a routine: where it is, its name and what it starts. */
 export type TrashedListing = Pick<RoutineListing, "hubId" | "id" | "name" | "targetName">;
-
-import { rowMenuWords } from "./list-words.ts";
 
 /** The sentence a failure gives the person: a system message never reaches them. */
 function reasonOf(error: unknown, title: string): string | undefined {
