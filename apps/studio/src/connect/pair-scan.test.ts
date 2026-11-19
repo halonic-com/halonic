@@ -23,7 +23,7 @@ const written = encodePairingQr({
   hostKey: Uint8Array.from({ length: 32 }, (_, index) => index),
   code: "7KQ2M9XF4HTA",
   hostName: "Test laptop",
-  endpoints: ["https://192.168.1.20:4281", "tcp:10.0.0.5:4281"],
+  endpoints: ["https://192.168.1.20:4281", "tcp://10.0.0.5:4281"],
 });
 
 const text = written.text;
