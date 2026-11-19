@@ -15,7 +15,10 @@ Two failures had a cause the CLI already knew but didn't say.
     Set type in providers/weird.yaml to one of anthropic, openai, openai-compatible, ollama, lmstudio or mock, then run again.
 
 There is no report link. The list of types comes from one exported `providerTypes` list in
-`workspace-models`, which the provider loader also uses, so it can't go stale.
+`workspace-models`, which the provider loader also uses, so it can't go stale. Since HAL-12411 a
+failed run's facts come from `@halonicjs/app`, so the cause is read there as the fact
+`unknown-provider-type` (`app.run-failure`) and only the words are the CLI's; Studio can word the
+same fact later.
 
 **A git that drops Halonic's git settings** (a wrapper script, a version manager's shim or git
 older than 2.31) was reported as "git can't start on this computer… Install git"; only `--debug`
@@ -29,5 +32,6 @@ The exit code stays 9. This means the same as Studio's `HardeningIgnored`. The f
 
 ## Covers
 
+- app.run-failure
 - cli.run-failure
 - cli.run-live-version
