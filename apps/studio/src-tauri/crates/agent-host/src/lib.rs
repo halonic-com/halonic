@@ -8,6 +8,7 @@
 //! and output instead (`relay.rs`). Nothing here knows Tauri, so it builds
 //! and tests anywhere.
 
+mod console_window;
 mod default_distro;
 mod handshake;
 mod relay;
@@ -16,13 +17,13 @@ mod security_updates;
 mod stderr_log;
 mod wsl;
 
-use std::ffi::OsStr;
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
+use console_window::{new_command, without_console_window};
 pub use default_distro::halonic_is_default;
 pub use handshake::{Handshake, read_handshake};
 use relay::Relay;
@@ -52,12 +53,6 @@ const EXIT_POLL: Duration = Duration::from_millis(25);
 
 /// How long dropping an [`AgentHost`] waits for it to exit on its own.
 const DROP_GRACE: Duration = Duration::from_secs(5);
-
-/// Windows' `CREATE_NO_WINDOW` process flag. The release shell is a GUI
-/// program, so a console program it starts would otherwise open a console
-/// window of its own for as long as it runs.
-#[cfg(windows)]
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 /// Why the host couldn't be started. No message contains the token.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -366,29 +361,6 @@ fn read_relayed_handshake_line(
         let _ = sender.send(answer.map(|handshake| (handshake, reader)));
     });
     receiver
-}
-
-/// The crate's one way to make a command: `program` started, on Windows,
-/// without a console window of its own (HAL-13197).
-#[expect(
-    clippy::disallowed_methods,
-    reason = "the crate's one Command::new, which hides the console window"
-)]
-fn new_command(program: impl AsRef<OsStr>) -> Command {
-    let mut command = Command::new(program);
-    without_console_window(&mut command);
-    command
-}
-
-/// On Windows, starts `command` without a console window of its own.
-fn without_console_window(command: &mut Command) {
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        command.creation_flags(CREATE_NO_WINDOW);
-    }
-    #[cfg(not(windows))]
-    let _ = command;
 }
 
 fn kill(child: &mut Child) {

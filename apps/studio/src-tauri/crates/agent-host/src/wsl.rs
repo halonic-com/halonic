@@ -25,7 +25,7 @@ use std::time::Duration;
 
 use sha2::{Digest, Sha256};
 
-use crate::new_command;
+use crate::console_window::new_command;
 
 mod run;
 

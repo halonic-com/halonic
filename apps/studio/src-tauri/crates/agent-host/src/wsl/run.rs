@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use super::WslError;
 use crate::stderr_log::log_stderr;
-use crate::without_console_window;
+use crate::console_window::without_console_window;
 
 /// What a step reads on its standard input.
 pub(crate) enum Input {
