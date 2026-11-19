@@ -20,6 +20,8 @@ import {
 import { type KeyboardEvent, useCallback } from "react";
 import type {
   WorkflowAgentChoice,
+  WorkflowArrow,
+  WorkflowArrowChange,
   WorkflowStep,
   WorkflowStepChange,
   WorkflowStepType,
@@ -27,6 +29,7 @@ import type {
 } from "../api.ts";
 import { pageWords } from "./page-words.ts";
 import type { Dock } from "./run-dock.tsx";
+import { ArrowsIn, StepArrows } from "./step-arrows.tsx";
 import type { WorkflowLoad } from "./use-workflow.ts";
 
 const words = pageWords.stepCard;
@@ -40,6 +43,15 @@ export interface DockedStepCardProps {
   readonly agents: readonly WorkflowAgentChoice[];
   /** Saves one change of the step; resolves to whether it was written. */
   readonly save: (change: WorkflowStepChange) => Promise<boolean>;
+  /** Every step of the workflow, in the file's order, which the step's arrows can go to. */
+  readonly stepIds: readonly string[];
+  /** The workflow's arrows: the step's own, and those into it for **Arrows in**. */
+  readonly arrows: readonly WorkflowArrow[];
+  /** Adds or moves one of the step's arrows; resolves to whether it was written. Absent: no arrows section. */
+  readonly changeArrows?: ((change: WorkflowArrowChange) => Promise<boolean>) | undefined;
+  /** Opens another step's card, from **Arrows in**. */
+  readonly onOpenStep: (stepId: string) => void;
+  readonly announce?: ((line: string) => void) | undefined;
   /** Hears how many of its fields aren't saved, for the toolbar's "1 field not saved". */
   readonly reportNotSaved?: ((count: number) => void) | undefined;
   /** ✕ and Escape. Focus goes back to the step's card on the canvas. */
@@ -81,6 +93,12 @@ function agentOptions(
   return options;
 }
 
+/** The steps with an arrow to `stepId`, each once, for **Arrows in**; a step's arrow to itself isn't a way in. */
+function stepsInto(stepId: string, arrows: readonly WorkflowArrow[]): readonly string[] {
+  const from = arrows.filter((arrow) => arrow.to === stepId && arrow.from !== stepId);
+  return [...new Set(from.map((arrow) => arrow.from))];
+}
+
 /** A picker's change: the pick is a finished edit, so it is saved at once. */
 const pickNow =
   (field: AutoSaved) =>
@@ -106,6 +124,11 @@ export function DockedStepCard({
   workflowName,
   agents,
   save,
+  stepIds,
+  arrows,
+  changeArrows,
+  onOpenStep,
+  announce,
   reportNotSaved,
   onClose,
 }: DockedStepCardProps) {
@@ -207,6 +230,16 @@ export function DockedStepCard({
               onBlur={description.flush}
             />
           </Field>
+          {kind !== "final" && changeArrows !== undefined && (
+            <StepArrows
+              stepId={step.id}
+              arrows={arrows.filter((arrow) => arrow.from === step.id)}
+              stepIds={stepIds}
+              change={changeArrows}
+              announce={announce}
+            />
+          )}
+          <ArrowsIn from={stepsInto(step.id, arrows)} onOpen={onOpenStep} />
         </div>
       </SidePanel>
     </div>
@@ -214,19 +247,19 @@ export function DockedStepCard({
 }
 
 /**
- * How the page saves a step from its card: through the host, saying why on a toast when it
- * can't. Resolves to whether it was written, so the field keeps what wasn't.
+ * How the page changes a step from its card, its fields or its arrows: through the host, saying
+ * why on a toast when it can't. Resolves to whether it was written, so a field keeps what wasn't.
  */
-export function useSaveStep(
-  changeStep: ((stepId: string, change: WorkflowStepChange) => Promise<void>) | undefined,
+export function useChangeStep<Change>(
+  apply: ((stepId: string, change: Change) => Promise<void>) | undefined,
   stepId: string | undefined,
-): ((change: WorkflowStepChange) => Promise<boolean>) | undefined {
+): ((change: Change) => Promise<boolean>) | undefined {
   const toasts = useToastStore();
-  const save = useCallback(
-    async (change: WorkflowStepChange) => {
-      if (changeStep === undefined || stepId === undefined) return false;
+  const change = useCallback(
+    async (one: Change) => {
+      if (apply === undefined || stepId === undefined) return false;
       try {
-        await changeStep(stepId, change);
+        await apply(stepId, one);
         return true;
       } catch (error) {
         toasts?.show({
@@ -237,9 +270,9 @@ export function useSaveStep(
         return false;
       }
     },
-    [changeStep, stepId, toasts],
+    [apply, stepId, toasts],
   );
-  return changeStep === undefined || stepId === undefined ? undefined : save;
+  return apply === undefined || stepId === undefined ? undefined : change;
 }
 
 /** Props for {@link StepEditDock}. */
@@ -254,6 +287,9 @@ export interface StepEditDockProps {
   readonly runShown: boolean;
   readonly phone: boolean;
   readonly saving: Pick<SaveState, "setFieldsNotSaved"> | undefined;
+  /** Opens another step's card, from **Arrows in**. */
+  readonly onOpenStep: (stepId: string) => void;
+  readonly announce?: ((line: string) => void) | undefined;
   readonly onClose: () => void;
 }
 
@@ -291,12 +327,18 @@ export function StepEditDock({
   runShown,
   phone,
   saving,
+  onOpenStep,
+  announce,
   onClose,
 }: StepEditDockProps) {
   const view = workflow.kind === "ready" ? workflow.value : undefined;
-  const { changeStep } = host;
-  const save = useSaveStep(
+  const { changeStep, changeArrows } = host;
+  const save = useChangeStep<WorkflowStepChange>(
     changeStep && view && ((stepId, change) => changeStep.call(host, view, stepId, change)),
+    pickedStep,
+  );
+  const saveArrows = useChangeStep<WorkflowArrowChange>(
+    changeArrows && view && ((stepId, change) => changeArrows.call(host, view, stepId, change)),
     pickedStep,
   );
   const key = view === undefined ? "" : `workflow/${view.hubId}/${view.id}/step`;
@@ -319,6 +361,11 @@ export function StepEditDock({
       workflowName={view.name}
       agents={view.agents ?? []}
       save={save}
+      stepIds={view.steps.map((one) => one.id)}
+      arrows={view.arrows}
+      changeArrows={saveArrows}
+      onOpenStep={onOpenStep}
+      announce={announce}
       reportNotSaved={reportNotSaved}
       onClose={onClose}
     />

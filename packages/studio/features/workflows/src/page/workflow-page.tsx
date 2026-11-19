@@ -392,6 +392,8 @@ export function WorkflowScreen({
           runShown={shown !== undefined}
           phone={phone}
           saving={saving}
+          onOpenStep={setPickedStep}
+          announce={announce}
           onClose={() => setPickedStep(undefined)}
         />
         <GuideSlot {...guideSlot} page={guidePage} at="right" />

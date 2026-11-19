@@ -140,7 +140,23 @@ export interface WorkflowArrow {
   readonly to: string;
   /** The words on the arrow, when the file gives some. */
   readonly label?: string | undefined;
+  /** The event that fires it; absent for `done`, when the step's work finishes. */
+  readonly event?: string | undefined;
+  /** A wait step's timer ("2d"): the arrow fires when nothing else happened in that time. */
+  readonly after?: string | undefined;
+  /** The condition on the run's data (the file's `when`), as the file gives it; absent for none. */
+  readonly condition?: unknown;
 }
+
+/**
+ * One change of the arrows out of a step, from its docked card:
+ * - `add`: a new arrow to the step `to`, on done, after the step's other arrows;
+ * - `move`: the step's arrow at `index` (in file order, from 0) one place up (`-1`) or down (`1`),
+ *   which changes which arrow wins when several fit.
+ */
+export type WorkflowArrowChange =
+  | { readonly kind: "add"; readonly to: string }
+  | { readonly kind: "move"; readonly index: number; readonly by: -1 | 1 };
 
 /** One workflow as its page draws it. */
 export interface WorkflowView extends WorkflowRef {
@@ -149,6 +165,7 @@ export interface WorkflowView extends WorkflowRef {
   readonly initial: string;
   /** The steps in the file's order. */
   readonly steps: readonly WorkflowStep[];
+  /** Every step's arrows, step by step in the file's order, each step's in the order its file lists them. */
   readonly arrows: readonly WorkflowArrow[];
   /** Where a person put steps on the canvas; a step not in it takes the automatic place. */
   readonly layout: Readonly<Record<string, { readonly x: number; readonly y: number }>>;
@@ -384,6 +401,13 @@ export interface WorkflowsHost {
    * {@link WorkflowsHost.trash} is. Rejects with the reason the workspace couldn't be read.
    */
   referencesTo?(ref: WorkflowRef): Promise<WorkflowUsers>;
+  /**
+   * Adds or moves one arrow out of the step `stepId`, as one undoable change that saves itself; the
+   * file keeps its comments. Present whenever {@link WorkflowsHost.changeStep} is. Rejects a step
+   * that isn't there, an arrow to a step that isn't there, an arrow that can't move that way, or
+   * with the reason the file couldn't be changed.
+   */
+  changeArrows?(ref: WorkflowRef, stepId: string, change: WorkflowArrowChange): Promise<void>;
   /**
    * Makes the workflow `start → done` in the hub, with the id taken from its name (`-2` when the
    * id is taken), and returns where it is. Rejects with the reason it couldn't be written.
