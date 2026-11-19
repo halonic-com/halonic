@@ -188,7 +188,7 @@ export function StartRunCard({
           {failure.fix !== undefined && <p>{withFullStop(failure.fix)}</p>}
         </Callout>
       )}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {failure === undefined && (
           <Button
             variant="primary"

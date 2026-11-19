@@ -116,7 +116,7 @@ export function RunCard({
         openModels={openModels}
       />
       {(onOpenLog || saveAsTest) && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {onOpenLog && (
             <Button variant="secondary" size="sm" onClick={onOpenLog}>
               {words.openLog}

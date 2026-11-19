@@ -402,3 +402,25 @@ verifies("workflows.start.start-run", () => {
     expect(started).not.toHaveBeenCalled();
   });
 });
+
+verifies("workflows.start.start-run", () => {
+  /** The docked card's width classes: never wider than the page area, so a phone-narrow window doesn't scroll sideways (HAL-13162). */
+  const capped = (page: HTMLElement, label: string) =>
+    page.querySelector(`aside[aria-label='${label}']`)?.className.split(" ") ?? [];
+
+  it("keeps the start card, the waiting line and the run's card within the page's width", async () => {
+    const runs = memoryRuns();
+    const { page } = await open(async () => ({ runId: "run_mfx3k2a1_01jd8q" }), runs);
+
+    await click(runButton(page));
+    expect(capped(page, "Start run")).toContain("max-w-full");
+    await click(buttonNamed(page, "Start run"));
+    expect(page.querySelector("aside[role='status']")?.className.split(" ")).toContain(
+      "max-w-full",
+    );
+    await act(async () => {
+      runs.change([runSummary({ status: "running", state: "draft" })]);
+    });
+    expect(capped(page, "Run 01jd8q")).toContain("max-w-full");
+  });
+});
