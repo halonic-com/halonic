@@ -28,12 +28,19 @@ verifies("agent-host-client.bridge-agent-model", () => {
     const told = await toldFor({
       runId: "run-1",
       agentId: "writer",
+      harness: "claude-code",
       hubId: "acme",
       file: { model: "open-coder-agent" },
     });
 
     expect(told).toEqual([
-      { runId: "run-1", agentId: "writer", hubId: "acme", model: "open-coder-agent" },
+      {
+        runId: "run-1",
+        agentId: "writer",
+        harness: "claude-code",
+        hubId: "acme",
+        model: "open-coder-agent",
+      },
     ]);
   });
 
@@ -41,6 +48,7 @@ verifies("agent-host-client.bridge-agent-model", () => {
     const engineAgent = {
       runId: "run-1",
       agentId: "writer",
+      harness: "claude-code",
       hubId: "acme",
       file: {},
       filesFolder: "/x",
@@ -48,6 +56,22 @@ verifies("agent-host-client.bridge-agent-model", () => {
 
     const told = await toldFor(engineAgent);
 
-    expect(told).toEqual([{ runId: "run-1", agentId: "writer", hubId: "acme" }]);
+    expect(told).toEqual([
+      { runId: "run-1", agentId: "writer", harness: "claude-code", hubId: "acme" },
+    ]);
+  });
+});
+
+verifies("agent-host-client.bridge-agent-harness", () => {
+  it("tells Studio the harness the agent's call runs in", async () => {
+    const told = await toldFor({
+      runId: "run-1",
+      agentId: "writer",
+      harness: "codex",
+      hubId: "acme",
+      file: { model: "open-coder-agent" },
+    });
+
+    expect(told).toMatchObject([{ harness: "codex" }]);
   });
 });

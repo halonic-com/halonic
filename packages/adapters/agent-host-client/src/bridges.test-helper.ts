@@ -4,7 +4,7 @@ import type { BridgeApprovals, BridgeRecorder, BridgeTools } from "@halonicjs/po
 import { AgentHostBridges, type BridgeServices } from "./bridges.ts";
 import { FakeHost, type FakeStream, ok } from "./fake-host.test-helper.ts";
 
-export const agent = { runId: "run-1", agentId: "writer" };
+export const agent = { runId: "run-1", agentId: "writer", harness: "claude-code" };
 export const opened = {
   type: "opened",
   bridge: "b1",

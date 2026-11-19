@@ -33,7 +33,7 @@ verifies("agent-host-client.bridges", () => {
       const { bridges, bridge } = await openOn(host, served);
       expect(host.calls[0]).toEqual({
         route: "POST /v1/bridge/open",
-        body: { ...agent, providers: served.providers, prices },
+        body: { runId: agent.runId, agentId: agent.agentId, providers: served.providers, prices },
       });
       expect(bridge).toMatchObject({ url: opened.url, token: opened.token });
       expect(bridge.providers).toBe(served.providers);
