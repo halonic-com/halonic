@@ -50,6 +50,7 @@ const host: AgentsHost = {
       instructions: "",
       output: { type: "text" },
       maxSteps: 6,
+      params: {},
       harness: "halonic",
       skills: [],
       knowledge: [],

@@ -3,6 +3,8 @@ import type {
   AgentHarnessId,
   AgentHub,
   AgentListing,
+  AgentModelParams,
+  AgentModelParamsChange,
   AgentOutput,
   AgentRef,
   AgentSettings,
@@ -24,6 +26,7 @@ export interface MemoryAgentsHostOptions {
         readonly instructions?: string;
         readonly output?: AgentOutput;
         readonly maxSteps?: number;
+        readonly params?: AgentModelParams;
         readonly harness?: AgentHarnessId;
         readonly skills?: readonly string[];
         readonly knowledge?: readonly string[];
@@ -56,6 +59,7 @@ function listingOf({
   instructions: _instructions,
   output: _output,
   maxSteps: _maxSteps,
+  params: _params,
   harness: _harness,
   skills: _skills,
   knowledge: _knowledge,
@@ -67,11 +71,22 @@ function listingOf({
   return listing;
 }
 
+/** The model settings after a change: a value sets one, `null` takes it out. */
+function changedParams(params: AgentModelParams, change: AgentModelParamsChange): AgentModelParams {
+  const next: Record<string, unknown> = { ...params };
+  for (const [key, value] of Object.entries(change)) {
+    if (value === null) delete next[key];
+    else if (value !== undefined) next[key] = value;
+  }
+  return next;
+}
+
 /** The settings an agent has before anyone changes them. */
 const fresh = {
   instructions: "",
   output: { type: "text" },
   maxSteps: 6,
+  params: {},
   harness: "halonic",
   skills: [],
   knowledge: [],
@@ -127,8 +142,13 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       if (change.output?.type === "choice" && change.output.options.length === 0) {
         throw new KindedError("invalid_input", "A list of options needs at least one.");
       }
-      const definite = Object.entries(change).filter(([, value]) => value !== undefined);
-      agents.set(keyOf(ref), { ...agent, ...Object.fromEntries(definite) });
+      const { params, ...fields } = change;
+      const definite = Object.entries(fields).filter(([, value]) => value !== undefined);
+      agents.set(keyOf(ref), {
+        ...agent,
+        ...Object.fromEntries(definite),
+        params: params === undefined ? agent.params : changedParams(agent.params, params),
+      });
       for (const listener of listeners) listener();
     },
     modelAliases: async (ref) => {

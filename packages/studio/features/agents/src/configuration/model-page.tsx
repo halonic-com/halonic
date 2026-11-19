@@ -2,6 +2,7 @@ import { Field, Input, Select, type SelectOption } from "@halonicjs/studio-kit";
 import { useEffect, useState } from "react";
 import type { AgentChange, AgentSettings } from "../api.ts";
 import { configurationWords as words } from "./configuration-words.ts";
+import { MoreSettings } from "./more-settings.tsx";
 import { useAutoSaved, useReportNotSaved } from "./use-auto-saved.ts";
 
 /** The turn limit a file gets when the field is left empty (`agents.editor.max-steps-default`). */
@@ -39,8 +40,8 @@ export interface ModelPageProps {
 
 /**
  * The Model page (`agents.configuration.model`): the model, picked from the workspace's aliases,
- * and the turn limit. Both save by themselves. A turn limit with a mistake isn't saved, and
- * counts as a field not saved, as does one whose save failed.
+ * the turn limit, and the model settings folded under More settings. Each saves by itself. A turn
+ * limit with a mistake isn't saved, and counts as a field not saved, as does one whose save failed.
  */
 export function ModelPage({
   settings,
@@ -94,6 +95,7 @@ export function ModelPage({
           onBlur={turnLimit.flush}
         />
       </Field>
+      <MoreSettings params={settings.params} save={save} />
     </div>
   );
 }
