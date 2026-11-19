@@ -67,7 +67,7 @@ function shellStores(): Record<string, Handler> {
         ? null
         : { text, logEvents: logs.get(runId as string)?.length ?? 0 };
     },
-    run_logs: () => [],
+    run_logs: () => [...logs].map(([runId, log]) => ({ runId, stamp: null, lines: log.join("") })),
     blob_put: ({ data }) => {
       const hash = blobs.size.toString(16).padStart(64, "0");
       blobs.set(hash, data as string);
