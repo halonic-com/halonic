@@ -9,7 +9,7 @@
 - `app.sandbox-start-check`: for `other` only, the answer now carries the check's own sentences
   as `details`, one per line. Before, the answer never carried them. For every other reason it
   still doesn't, and no screen shows them: they go only to **Copy details**.
-- `app.sandbox-start-words`: a seventh part per reason, the can't-run Callout's fix for a phone.
+- `app.sandbox-start-words`: a new part per reason, the can't-run Callout's fix for a phone.
   For `bubblewrap-missing` and `user-namespaces-restricted` it names the thing ("install
   bubblewrap, …"), like the can't-run Callout's own fix; for every other reason it is the phone fix.
 - `runs.sandbox-cant-run`: for `other`, the Callout offers **Copy details** after the guide. It
