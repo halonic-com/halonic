@@ -38,7 +38,9 @@ verifies("harness-host.bridge", () => {
     const bridge = await host.open(writer, recorder);
 
     expect(bridge.url).toBe("http://127.0.0.1:4100");
-    expect(asked).toEqual([{ runId: "01JD8Q", agentId: "writer", hubId: "support" }]);
+    expect(asked).toEqual([
+      { runId: "01JD8Q", agentId: "writer", harness: "claude-code", hubId: "support" },
+    ]);
     const [options] = server.opened;
     expect(options).toMatchObject({
       runId: "01JD8Q",
@@ -83,7 +85,9 @@ verifies("harness-host.bridge-agent-model", () => {
 
     await host.open(writer, recorder);
 
-    expect(asked).toEqual([{ runId: "01JD8Q", agentId: "writer", hubId: "support" }]);
+    expect(asked).toEqual([
+      { runId: "01JD8Q", agentId: "writer", harness: "claude-code", hubId: "support" },
+    ]);
   });
 
   it("tells the host the agent file's model as written, so it can resolve an alias", async () => {
@@ -93,7 +97,24 @@ verifies("harness-host.bridge-agent-model", () => {
     await host.open(openCoder, recorder);
 
     expect(asked).toEqual([
-      { runId: "01JD8Q", agentId: "writer", hubId: "support", model: "open-coder-agent" },
+      {
+        runId: "01JD8Q",
+        agentId: "writer",
+        harness: "claude-code",
+        hubId: "support",
+        model: "open-coder-agent",
+      },
     ]);
+  });
+});
+
+verifies("harness-host.bridge-agent-harness", () => {
+  it("tells the host the harness the agent's call runs in", async () => {
+    const { asked, host } = setup();
+    const codexWriter = { ...writer, harness: "codex" as const };
+
+    await host.open(codexWriter, recorder);
+
+    expect(asked.map((agent) => agent.harness)).toEqual(["codex"]);
   });
 });
