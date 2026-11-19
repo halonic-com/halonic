@@ -5,6 +5,7 @@
 
 import { anthropicBaseUrl } from "@halonicjs/adapter-model-anthropic";
 import { defaultBaseUrl } from "@halonicjs/ports";
+import { isOnThisMachine } from "@halonicjs/workspace";
 import type { ProviderFile } from "./workspace-providers.ts";
 
 /** Where one provider sends its stored key. */
@@ -76,3 +77,33 @@ export function keyDestination(
     isDefault: origin !== undefined && origin === builtInOrigin,
   };
 }
+
+/**
+ * The `host:port` a provider on this computer calls, such as `localhost:11434`,
+ * for the run log to name what a step waits for (requirement
+ * `engine.llm-event-address`). Run logs get copied and shared, so it never
+ * holds a scheme, path, query or user name. `undefined` for the test model,
+ * which calls no address, and for any provider that isn't on this computer
+ * by the rule {@link isOnThisMachine} reads.
+ *
+ * @example
+ * localAddress({ type: "ollama" }); // "localhost:11434"
+ * localAddress({ type: "openai", baseUrl: "http://user@127.0.0.1/v1" }); // "127.0.0.1:80"
+ * localAddress({ type: "anthropic" }); // undefined
+ */
+export function localAddress(
+  file: Pick<ProviderFile, "type" | "baseUrl" | "secret" | "options">,
+): string | undefined {
+  if (file.type === "mock" || !isOnThisMachine(file)) {
+    return undefined;
+  }
+  const url = URL.parse(file.baseUrl ?? builtInAddress(file.type) ?? "");
+  if (url === null) {
+    return undefined;
+  }
+  const port = url.port === "" ? defaultPorts[url.protocol] : url.port;
+  return port === undefined ? undefined : `${url.hostname}:${port}`;
+}
+
+/** The port an address without one calls, by its scheme. */
+const defaultPorts: Readonly<Record<string, string>> = { "http:": "80", "https:": "443" };
