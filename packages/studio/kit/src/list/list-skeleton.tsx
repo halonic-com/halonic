@@ -38,10 +38,14 @@ const barWidths: readonly { title: SkeletonBarWidth; meta: SkeletonBarWidth }[] 
   { title: "1/3", meta: "2/3" },
 ];
 
-type Wait = "early" | "showing" | "slow";
+/** Where a wait is: too early to show anything, showing the skeleton, or taking long. */
+export type Wait = "early" | "showing" | "slow";
 
-/** Where the wait is: too early to show anything, showing the skeleton, or taking long. */
-function useWait(): Wait {
+/**
+ * Where the wait is, counted from the first render: too early to show anything, showing the
+ * skeleton, or taking long. The chat's loading lines share it.
+ */
+export function useWait(): Wait {
   const [wait, setWait] = useState<Wait>("early");
   useEffect(() => {
     const show = setTimeout(() => setWait("showing"), SKELETON_AFTER_MS);

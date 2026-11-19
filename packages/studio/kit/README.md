@@ -517,6 +517,53 @@ where it is goes through the alert slot that the Dialog and the text sheet own.
 **On a phone** it sits inside the 16px page inset, never flush. Its action's `sm` button draws at
 `lg` with a 48px hit area, as every `sm` button does there, and stays under the text.
 
+## Chat parts
+
+The parts both chats draw with: an agent's Try it chat and the Assistant. They take props only and
+hold no chat logic: each feature turns its `ChatService` answer into these rows itself.
+
+```tsx
+<ChatTranscript label="Chat with Sorter" notice={engineDown ? engineLine : undefined}>
+  <ChatMessage from="you">Sort this mail</ChatMessage>
+  <ChatMessage from="reply" heading="Sorter said">
+    <ChatToolLine state="done">Read the mail</ChatToolLine>
+    <ChatText>It's about a refund.</ChatText>
+    <ChatEndLine tone="danger" actions={[{ label: "Try again", onClick: sendAgain }]}>
+      Sorter's reply failed: Anthropic was busy.
+    </ChatEndLine>
+  </ChatMessage>
+</ChatTranscript>;
+<ChatComposer
+  label="Message Sorter"
+  placeholder="Message Sorter…"
+  value={draft}
+  onChange={setDraft}
+  onSend={send}
+  onStop={stop}
+  answering={answering}
+  line={
+    noKey ? (
+      <ChatBoxLine tone="warning" actions={[{ label: "Set the key ›", onClick: openKey, look: "link" }]}>
+        Sorter has no model it can use: <code>smart</code> needs an API key for Anthropic.
+      </ChatBoxLine>
+    ) : undefined
+  }
+/>;
+```
+
+| Part | What it is |
+| --- | --- |
+| `ChatTranscript` | The scrolling column, reading width, newest at the bottom. It stays at the end while a reply grows, unless the reader scrolled up. `notice` is a line at the top, such as "The engine isn't answering. Showing what it said last." |
+| `ChatMessage` | One row: `from="you"` on the right in a tinted box, or `from="reply"` across the column under a hidden heading ("Sorter said") |
+| `ChatText` | A text step of a reply, in `text-reading`, keeping its line breaks |
+| `ChatToolLine` | One quiet line per tool call: spinner while `running`, tick when `done`, alert mark in `danger` when `failed` |
+| `ChatEndLine` | The line that ends a reply: `danger` for a failure, `plain` for "Stopped by you." and the like, with its actions (a `button`, or a `link` for a way to another place) |
+| `ChatComposer` | The message box and its button. Enter sends, Shift Enter adds a line; while `answering` the button is **Stop**, the same button, so focus stays. `sendUnavailable` makes Send wait with a visible reason. `line` goes under the box |
+| `ChatBoxLine` | The line under the box: `warning` (triangle) for what stops a message, such as no key or a key in the message, `muted` for a calm fact; its actions follow the sentence |
+
+Nothing in the transcript is a live region: a reply isn't read while it streams in. The composer's line under the box sits in a status region, so it's read once when it appears. The feature announces the
+end of a reply ("Sorter replied.") through the shell's announcer, once.
+
 ## StatusChip
 
 The state of an item, in a row, a card header or a panel. It isn't interactive: something you can
@@ -1030,6 +1077,21 @@ the grey fill is dropped.
 
 `width` is one of a fixed set (`1/3`, `2/5`, `1/2`, `3/5`, `2/3`, `7/10`, `full`), never random,
 so tests and screenshots stay the same.
+
+## ChatStart and ChatLoading
+
+Two states of a chat's transcript, for an agent's Try it chat and the Assistant.
+
+```tsx
+<ChatStart figure={orb} heading="Chat with Sorter" description="Sorts incoming mail by topic" />;
+<ChatLoading label="Loading this chat" onRetry={load} />;
+```
+
+`ChatStart` is an empty chat before its first message: the figure (the orb at 64px, hidden from
+screen readers), the heading in `text-heading`, and the muted description when there is one.
+`ChatLoading` is a chat's first load, on the List's clock: nothing for 300ms, then three still
+lines and the status line's label, and after 10 seconds "Still loading" with **Try again**. A chat
+already shown in this session opens at once, without it.
 
 ## SidePanel
 

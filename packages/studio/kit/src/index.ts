@@ -29,6 +29,32 @@ export {
   type CalloutTone,
 } from "./callout/callout.tsx";
 export { Card, type CardProps, type CardState } from "./card/card.tsx";
+export type { ChatAction } from "./chat/chat-actions.tsx";
+export {
+  ChatBoxLine,
+  type ChatBoxLineProps,
+  type ChatBoxLineTone,
+} from "./chat/chat-box-line.tsx";
+export { ChatComposer, type ChatComposerProps } from "./chat/chat-composer.tsx";
+export {
+  ChatEndLine,
+  type ChatEndLineProps,
+  type ChatEndLineTone,
+} from "./chat/chat-end-line.tsx";
+export { ChatLoading, type ChatLoadingProps } from "./chat/chat-loading.tsx";
+export {
+  ChatMessage,
+  type ChatMessageProps,
+  ChatText,
+  type ChatTextProps,
+} from "./chat/chat-message.tsx";
+export { ChatStart, type ChatStartProps } from "./chat/chat-start.tsx";
+export {
+  ChatToolLine,
+  type ChatToolLineProps,
+  type ChatToolState,
+} from "./chat/chat-tool-line.tsx";
+export { ChatTranscript, type ChatTranscriptProps } from "./chat/chat-transcript.tsx";
 export {
   Checkbox,
   type CheckboxProps,
