@@ -6,7 +6,7 @@ import { expect, it } from "vitest";
 import type { NodeProblem } from "./doctor-lines.ts";
 import { type DoctorProvider, DoctorService, type DoctorWorkspace } from "./doctor-service.ts";
 import type { DoctorHarness } from "./doctor-sign-ins.ts";
-import { doctorCheckLimitMs } from "./doctor-time-limit.ts";
+import { doctorCheckLimitMs, type TimedOutLine } from "./doctor-time-limit.ts";
 import type { ProviderModels, Resources } from "./resource-report.ts";
 import type { SandboxBackendStatus, SandboxChoice } from "./sandbox-choice.ts";
 import { HandTimers } from "./testing/hand-timers.ts";
@@ -148,6 +148,14 @@ async function afterLimit(
   return checking;
 }
 
+/** A line that answered in time, so its own fields can be checked; a timed-out one fails the test. */
+function answered<Line extends object>(line: Line | undefined): Exclude<Line, TimedOutLine> {
+  if (line === undefined || "timedOut" in line) {
+    throw new Error(`expected a line that answered, got ${JSON.stringify(line)}`);
+  }
+  return line as Exclude<Line, TimedOutLine>;
+}
+
 verifies("app.doctor-service", () => {
   it("shows only the Sandbox and Disk lines outside a workspace, and exits 0 when they're fine", async () => {
     const report = await doctor().service.check(null);
@@ -252,10 +260,10 @@ verifies("app.doctor-service", () => {
       }),
     );
 
-    expect(report.models).toMatchObject({
-      ready: [],
-      problems: [{ problem: "no-key", alias: "smart", provider: "anthropic", name: "Anthropic" }],
-    });
+    expect(answered(report.models).ready).toEqual([]);
+    expect(answered(report.models).problems).toEqual([
+      { problem: "no-key", alias: "smart", provider: "anthropic", name: "Anthropic" },
+    ]);
   });
 
   it("warns about an agent whose harness isn't installed, and not about one in Halonic's own loop", async () => {
@@ -297,17 +305,15 @@ verifies("app.doctor-service", () => {
     });
     const without = await service.check(workspace({ agents }));
 
-    expect(report.harnesses).toMatchObject({
-      status: "warning",
-      problems: [
-        expect.objectContaining({
-          problem: "signed-out",
-          agent: "Writer",
-          settingsFolder: "/data/writer/codex",
-        }),
-      ],
-    });
-    expect(without.harnesses).toMatchObject({ problems: [] });
+    expect(report.harnesses?.status).toBe("warning");
+    expect(answered(report.harnesses).problems).toEqual([
+      expect.objectContaining({
+        problem: "signed-out",
+        agent: "Writer",
+        settingsFolder: "/data/writer/codex",
+      }),
+    ]);
+    expect(answered(without.harnesses).problems).toEqual([]);
   });
 
   it("lists a ready harness outside a workspace, and has no Harnesses line when none is ready or used", async () => {
@@ -316,9 +322,9 @@ verifies("app.doctor-service", () => {
     );
     const none = await doctor().service.check(null);
 
-    expect(installed.harnesses).toMatchObject({
-      installed: [{ harness: "codex", name: "Codex", version: "0.9.2" }],
-    });
+    expect(answered(installed.harnesses).installed).toEqual([
+      { harness: "codex", name: "Codex", version: "0.9.2" },
+    ]);
     expect(none.harnesses).toBeUndefined();
   });
 
@@ -329,7 +335,7 @@ verifies("app.doctor-service", () => {
     }).service.check(null);
 
     expect(report.sandbox.status).toBe("failed");
-    expect(report.disk).toMatchObject({ problem: "low" });
+    expect(answered(report.disk).problem).toBe("low");
     expect(report.summary).toEqual({ problems: 1, warnings: 1, needsFixing: true });
   });
 
