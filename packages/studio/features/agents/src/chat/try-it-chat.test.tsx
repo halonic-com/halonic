@@ -5,6 +5,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { AgentChatRequest } from "../api.ts";
+import type { HarnessStrip } from "../configuration/harness-strip.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { buttonNamed, show, typeIntoArea, unmount } from "../test-support.tsx";
 import { TryItChatView } from "./try-it-chat.tsx";
@@ -12,6 +13,7 @@ import { useTryItChat } from "./use-try-it-chat.ts";
 
 afterEach(() => {
   unmount();
+  vi.clearAllMocks();
 });
 
 const sorter = {
@@ -43,15 +45,28 @@ function scriptedHost() {
   return { host, requests, finish };
 }
 
+const ways = { goToKeyField: vi.fn(), openHarness: vi.fn() };
+
 function Chat({
   host,
   announce,
+  harnessStrip = null,
 }: {
   readonly host: ReturnType<typeof memoryAgentsHost>;
   readonly announce: (text: string, politeness?: "polite" | "assertive") => void;
+  readonly harnessStrip?: HarnessStrip | null;
 }) {
   const chat = useTryItChat({ host, agent: sorter, name: "Sorter", announce });
-  return <TryItChatView chat={chat} name="Sorter" description={sorter.description} />;
+  return (
+    <TryItChatView
+      chat={chat}
+      name="Sorter"
+      description={sorter.description}
+      harness="claude-code"
+      harnessStrip={harnessStrip}
+      ways={ways}
+    />
+  );
 }
 
 async function sendMessage(page: HTMLElement, text: string) {
@@ -207,4 +222,67 @@ verifies("agents.chat.reply-ends", () => {
     expect(buttonNamed(page, "Try again")).toBeUndefined();
     expect(page.querySelectorAll(".text-danger")).toHaveLength(1);
   });
+});
+
+verifies("agents.chat.box-lines", () => {
+  const key = `sk-${"a1B2".repeat(6)}`;
+
+  it("holds a message that looks like it has a key, with the way to the key field", async () => {
+    const { host, requests } = scriptedHost();
+    const page = await show(<Chat host={host} announce={vi.fn()} />);
+    await sendMessage(page, `My key is ${key}`);
+    expect(requests).toHaveLength(0);
+    expect((page.querySelector("textarea") as HTMLTextAreaElement).value).toBe(`My key is ${key}`);
+    const status = page.querySelector("[role=status]") as HTMLElement;
+    expect(status.textContent).toContain(
+      "This looks like an API key. Keys go in the key field, so they stay out of chats and files.",
+    );
+    await act(async () => buttonNamed(page, "Go to the key field")?.click());
+    expect(ways.goToKeyField).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends the held message once, as it is, on Send anyway", async () => {
+    const { host, requests } = scriptedHost();
+    const page = await show(<Chat host={host} announce={vi.fn()} />);
+    await sendMessage(page, `My key is ${key}`);
+    await act(async () => buttonNamed(page, "Send anyway")?.click());
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.messages).toEqual([{ role: "user", content: `My key is ${key}` }]);
+    expect(page.querySelector("[role=status]")?.textContent).toBe("");
+  });
+
+  it("sends a message that only mentions a key prefix as usual", async () => {
+    const { host, requests } = scriptedHost();
+    const page = await show(<Chat host={host} announce={vi.fn()} />);
+    await sendMessage(page, "my key starts with sk-abc");
+    expect(requests).toHaveLength(1);
+  });
+
+  it("drops the held line when the text changes", async () => {
+    const { host } = scriptedHost();
+    const page = await show(<Chat host={host} announce={vi.fn()} />);
+    await sendMessage(page, `My key is ${key}`);
+    await typeIntoArea(page.querySelector("textarea") as HTMLTextAreaElement, "Sort this mail");
+    expect(page.querySelector("[role=status]")?.textContent).toBe("");
+  });
+
+  it.each([
+    ["not-installed", "Sorter can't run until Claude Code is installed."],
+    ["too-old", "Sorter can't run until Claude Code is updated."],
+  ] as const)(
+    "makes Send wait when the harness is %s, with the line as its reason",
+    async (strip, line) => {
+      const { host, requests } = scriptedHost();
+      const page = await show(<Chat host={host} announce={vi.fn()} harnessStrip={strip} />);
+      const status = page.querySelector("[role=status]") as HTMLElement;
+      expect(status.textContent).toContain(line);
+      await sendMessage(page, "Sort this mail");
+      expect(requests).toHaveLength(0);
+      const send = buttonNamed(page, "Send") as HTMLButtonElement;
+      const reason = document.getElementById(send.getAttribute("aria-describedby") ?? "");
+      expect(reason?.textContent).toContain(line);
+      await act(async () => buttonNamed(page, "Open Harness settings")?.click());
+      expect(ways.openHarness).toHaveBeenCalledTimes(1);
+    },
+  );
 });

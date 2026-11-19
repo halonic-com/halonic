@@ -28,6 +28,13 @@ export const tryItWords = {
   turnLimit: (agent: string, turns: number) =>
     `${agent} used all ${turns} turns without finishing.`,
   tryAgain: "Try again",
+  /** H29: a message that looks like it holds a key isn't sent (flow-assistant 5.9, HAL-1625). */
+  keyInMessage:
+    "This looks like an API key. Keys go in the key field, so they stay out of chats and files.",
+  goToKeyField: "Go to the key field ›",
+  sendAnyway: "Send anyway",
+  /** H27: the harness line's way to fix it. */
+  openHarness: "Open Harness settings ›",
   /** A tool call's line, with the tool's name in words: "send reply". */
   tool: {
     running: (tool: string) => `Using ${tool}…`,
