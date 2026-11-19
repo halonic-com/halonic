@@ -36,6 +36,11 @@ export interface ItemTrash {
   readonly menu: React.ReactNode;
   /** Goes on the page's title (`<h1 tabIndex={-1}>`): after Undo the page comes back with focus on it. */
   readonly titleRef: React.RefCallback<HTMLElement>;
+  /**
+   * The classes for a plain title. Under a phone top bar, which already names the item, it is for
+   * screen readers only, as on the agent page.
+   */
+  readonly titleClassName: string;
   /** The strip that replaces the "isn't in this workspace any more" state after Delete, or `null`. */
   readonly strip: React.ReactNode;
 }
@@ -149,5 +154,6 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
         />
       </div>
     );
-  return { menu, titleRef, strip };
+  const titleClassName = inTopBar ? "sr-only" : "text-title [overflow-wrap:anywhere]";
+  return { menu, titleRef, titleClassName, strip };
 }

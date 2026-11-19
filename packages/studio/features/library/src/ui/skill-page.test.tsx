@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { ItemUsage } from "@halonicjs/app";
-import { settlePendingSaves } from "@halonicjs/studio-kit";
-import { type ItemViewProps, limitedLookup } from "@halonicjs/studio-shell";
+import { PresentationProvider, settlePendingSaves } from "@halonicjs/studio-kit";
+import { type ItemViewProps, limitedLookup, PhoneTopBarSlot } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -277,5 +277,26 @@ verifies("library.skill-page", () => {
       act(() => root.querySelector("button")?.click());
       expect(openPlace).toHaveBeenCalledWith("library");
     });
+  });
+});
+
+verifies("library.library-phone", () => {
+  it("names a skill once on screen under the phone's top bar, and keeps its title for screen readers", async () => {
+    const topBar = document.createElement("div");
+    document.body.append(topBar);
+    const { props } = setup();
+    const root = render(
+      <PresentationProvider presentation="phone">
+        <PhoneTopBarSlot value={topBar}>
+          <SkillPage {...props} />
+        </PhoneTopBarSlot>
+      </PresentationProvider>,
+    );
+    await settled();
+    const title = root.querySelector("h1");
+    expect(title?.textContent).toBe("Refunds");
+    expect(title?.className).toBe("sr-only");
+    expect(title?.tabIndex).toBe(-1);
+    topBar.remove();
   });
 });
