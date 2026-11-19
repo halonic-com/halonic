@@ -1,12 +1,13 @@
 # New advisories appear without any code change, so main is checked on a
 # schedule too. Mutation testing runs here too, nightly rather than on
-# every pull request. A failure opens an issue.
+# every pull request. A failure opens an issue. The failures of main's own
+# push runs are sorted by area here too (docs/guides/area-owners.md).
 
 name: Scheduled checks
 
 on:
   schedule:
-    - cron: "17 4 * * *" # daily: advisories, the lockfile and mutation testing
+    - cron: "17 4 * * *" # daily: advisories, the lockfile, mutation testing, failures on main
     - cron: "47 4 * * 1" # weekly: full terms and secret scan, Rust advisories
   workflow_dispatch:
 
@@ -122,9 +123,43 @@ jobs:
       - name: gitleaks over the whole history
         uses: $/.github/actions/gitleaks
 
+  main-failures:
+    # Every push to main already runs the whole matrix in ci.yml, so this job
+    # doesn't run it again: it reads the newest finished run, opens or updates
+    # one issue per failing area and closes the issue of an area that is green
+    # again. Then it starts the Android screen captures, the one check the
+    # push runs leave out, so the next night reads their result.
+    name: Failures on main, by area
+    if: github.event.schedule != '47 4 * * 1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The script needs only Node's own modules, so nothing is installed.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+          package-manager-cache: false
+      - name: Open, update or close one issue per area
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: node tooling/check/src/cli/main-failures.ts --apply
+      - name: Start the Android screen captures for the next night
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run android-screens.yml --ref main
+
   report:
     name: Open an issue on failure
-    needs: [advisories, cargo-deny, mutation, full-scan]
+    needs: [advisories, cargo-deny, mutation, full-scan, main-failures]
     if: failure()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
