@@ -46,6 +46,8 @@ export interface PluginLocalToolSetting {
  * - It reaches the bridge and the hosts the manifest's `network` lists
  *   (`stdio.sites`), and nothing else.
  *
+ * @throws a `RangeError` when a folder of the setting isn't an absolute
+ *   path, which would be read from the host's own working folder
  * @throws a `RangeError` when the plugin's copy is inside the working
  *   folder or a denied path, where the session couldn't read it as it is
  *
@@ -58,6 +60,13 @@ export function pluginLocalToolPlace(
   setting: PluginLocalToolSetting,
 ): LocalToolPlace {
   const { pluginCopy } = setting;
+  const folders = [setting.workingFolder, setting.tempFolder, pluginCopy, ...setting.deniedPaths];
+  const relativeFolder = folders.find((folder) => !isAbsolute(folder));
+  if (relativeFolder !== undefined) {
+    throw new RangeError(
+      `The folder ${relativeFolder} isn't an absolute path, so the session's place can't be set up.`,
+    );
+  }
   const holder = [setting.workingFolder, ...setting.deniedPaths].find((folder) =>
     isInsideOrSame(pluginCopy, folder),
   );

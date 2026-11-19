@@ -72,6 +72,15 @@ verifies("connector-stdio-sandbox.plugin-local-tool-place", () => {
     expect(() => pluginLocalToolPlace(script, { ...setting, pluginCopy })).toThrow(RangeError);
   });
 
+  it.each([
+    ["the plugin's copy", { pluginCopy: "launch-3/plugin" }],
+    ["the working folder", { workingFolder: "./launch-1" }],
+    ["the temp folder", { tempFolder: "launch-2" }],
+    ["a denied path", { deniedPaths: ["/person/.ssh", ".ssh"] }],
+  ])("refuses a relative path as %s", (_, change: Partial<PluginLocalToolSetting>) => {
+    expect(() => pluginLocalToolPlace(script, { ...setting, ...change })).toThrow(RangeError);
+  });
+
   it("takes a copy next to a denied folder whose name starts the same", () => {
     const place = pluginLocalToolPlace(script, { ...setting, pluginCopy: "/person/.ssh-notes" });
 
