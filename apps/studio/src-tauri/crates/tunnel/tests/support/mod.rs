@@ -32,7 +32,7 @@ impl FakeHost {
         let psk = PairingCode::parse(code).expect("a plain code").psk();
         Builder::new(PAIRING_PATTERN.parse().expect("a Noise pattern"))
             .local_private_key(&self.keys.private)
-            .and_then(|builder| builder.psk(3, psk.as_slice()))
+            .and_then(|builder| builder.psk(3, &psk))
             .and_then(|builder| builder.prologue(PROLOGUE.as_bytes()))
             .and_then(|builder| builder.build_responder())
             .expect("a pairing responder")
