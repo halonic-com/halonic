@@ -2,6 +2,7 @@
 
 - Approval: team wording decided on HAL-12323 under the HAL-2282 rule (builds on the approved Routines screens and the CLI's own watch line); the reviewer (Liam) approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5i0XXBQoW8/t/GMkvOeJHVK/zafNOYhTmbiOSsSL68WVfr8dwkzLaW4QKCmASBmNVr/173q0qaA0jSeW/jMQAA==
 - Task: HAL-12323
 
 ## What changes
