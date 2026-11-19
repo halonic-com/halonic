@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { KindedError } from "@halonicjs/std";
 import { engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -279,6 +280,38 @@ verifies("inbox.approval-card", () => {
       await press(button(root, "Try again"));
       expect(sent).toEqual(["reject", "reject"]);
       expect(root.textContent).toContain("Rejected by you at");
+    });
+
+    it("says what to close under Try again, not Decided elsewhere, when another engine holds the workspace", async () => {
+      let held = true;
+      const { root, sent, later } = openCard({
+        decisions: {
+          approve: async () => {
+            sent.push("approve");
+            if (held) {
+              throw new KindedError(
+                "unavailable",
+                "This workspace is open in another engine (process 4242). Close it, then try again.",
+              );
+            }
+            return waitingRun("r47");
+          },
+          reject: async () => waitingRun("r47"),
+          askForChanges: async () => waitingRun("r47"),
+        },
+      });
+      later(2);
+      await press(button(root, "Approve"));
+      const slot = root.querySelector("[role='alert']");
+      expect(slot?.textContent).toBe(
+        "Couldn't record your decision.Try againThis workspace is open in another engine (process 4242). Close it, then try again.",
+      );
+      expect(root.textContent).not.toContain("This is no longer waiting for you.");
+      expect(button(root, "Reject")).toBeDefined();
+      held = false;
+      await press(button(root, "Try again"));
+      expect(sent).toEqual(["approve", "approve"]);
+      expect(root.textContent).toContain("Approved by you at");
     });
 
     it("says Decided elsewhere with Open run, not Try again, when the call isn't the waiting one", async () => {

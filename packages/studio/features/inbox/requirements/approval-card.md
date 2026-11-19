@@ -2,11 +2,11 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1218; card requirements (HAL-64) INBOX-CARD-01, 05, 13, 15 to 18, 31; flow-inbox (HAL-877) 5.3; ux-checklists-approvals (HAL-1250) 2.1 to 2.4 and 2.6; ux-checklists (HAL-1069) 2.5 to 2.7; microcopy (HAL-751) 10.2 and 19; the way back on the decided card (HAL-4008)
+- Source: HAL-1218; card requirements (HAL-64) INBOX-CARD-01, 05, 13, 15 to 18, 31; flow-inbox (HAL-877) 5.3; ux-checklists-approvals (HAL-1250) 2.1 to 2.4 and 2.6; ux-checklists (HAL-1069) 2.5 to 2.7; microcopy (HAL-751) 10.2 and 19; the way back on the decided card (HAL-4008); the failure's own sentence under Try again (team decision, HAL-13318, check C267 AN3)
 
 The approval card shall be a region named by its title, "_Agent_ wants to use _tool_ (_connector_)", and opening it shall focus the title, never Approve. The header says since when it waits, counting on every minute while the card is open, "Started by" what started the run, and has **Open run**, which opens the run's page and leaves the Inbox as it is. The action shows the summary as its heading, the neutral tag "External connector (MCP)" for a tool from a connector, the raw name, and every argument with **Show raw JSON**. A tool approval shows no timer.
 
-The bar under the card holds **Reject**, **Ask for changes** and **Approve**. For 1 s after the card opens, a press that started in that second, or a key that is held or repeats, does nothing; a screen reader's click, with no press before it, goes through. No key decides. While a decision is sent its button reads "Approving…" or "Rejecting…" and is busy, and the others ignore presses. If it fails, "Couldn't record your decision." shows with **Try again** in the bar's alert slot and the card stays as it was. When Studio can't send the answer itself, the alert slot shows the executor's sentence and the command line that sends it in code style, with **Copy command**, and no **Try again**: a retry can't work. The card stays waiting.
+The bar under the card holds **Reject**, **Ask for changes** and **Approve**. For 1 s after the card opens, a press that started in that second, or a key that is held or repeats, does nothing; a screen reader's click, with no press before it, goes through. No key decides. While a decision is sent its button reads "Approving…" or "Rejecting…" and is busy, and the others ignore presses. If it fails, "Couldn't record your decision." shows with **Try again** in the bar's alert slot and the card stays as it was; when the failure says why in a sentence of its own, such as "This workspace is open in another engine (process 4242). Close it, then try again.", that sentence shows under it. Another engine holding the workspace is such a failure, never "no longer waiting". When Studio can't send the answer itself, the alert slot shows the executor's sentence and the command line that sends it in code style, with **Copy command**, and no **Try again**: a retry can't work. The card stays waiting.
 
 **Ask for changes** opens a dialog, "Ask for changes", with its **Note** field focused. Enter adds a line and Ctrl Enter sends, the same as **Send note**, which reads "Sending note…" while the note is sent. **Send note** is never disabled: an empty note shows "Say what should change." under the field and focuses it. A note that can't be sent keeps the dialog open with the note and says "Couldn't record your decision."; when the answer can only go by the command line, it shows that sentence, "The command sends Reject without your note." and the command to copy. Cancel closes it and the card keeps the note until the item is decided.
 
@@ -26,6 +26,9 @@ After a decision the card shall be replaced in place: the header keeps **Open ru
 - Given recording the decision fails,
   when you press Reject,
   then "Couldn't record your decision." shows with **Try again**, and the buttons stay.
+- Given another engine holds the workspace (process 4242),
+  when you press Approve,
+  then "Couldn't record your decision." shows with **Try again** and "This workspace is open in another engine (process 4242). Close it, then try again." under it, the buttons stay, and **Try again** records it once the engine is closed.
 - Given Studio can't send the answer and gives `halonic runs send 7k2m9p approve`,
   when you press Approve,
   then the alert shows the sentence and the command with **Copy command**, there is no **Try again**, and the card stays waiting.

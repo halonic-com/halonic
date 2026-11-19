@@ -12,6 +12,7 @@ import {
   DecidedBar,
   type EngineState,
   FailedLine,
+  failureDetailOf,
   type ManualAnswer,
   manualAnswerOf,
   type NextItem,
@@ -51,6 +52,8 @@ type CardState =
       /** The answer was refused because the run isn't waiting at this step any more. */
       readonly elsewhere: boolean;
       readonly manual: ManualAnswer | null;
+      /** The failure's own sentence, shown under "Couldn't record your decision.". */
+      readonly detail: string | null;
     }
   | { readonly kind: "answering"; readonly event: string }
   | { readonly kind: "answered"; readonly event: string; readonly at: Date };
@@ -127,6 +130,7 @@ export function WaitCard(props: WaitCardProps) {
     failed: null,
     elsewhere: false,
     manual: null,
+    detail: null,
   });
   const [usableAt] = useState(() => now().getTime());
   const guard = useDecisionGuard(usableAt, () => now().getTime());
@@ -154,6 +158,7 @@ export function WaitCard(props: WaitCardProps) {
         failed: event,
         elsewhere: wasDecidedElsewhere(error),
         manual: manualAnswerOf(error),
+        detail: failureDetailOf(error),
       });
     }
   }
@@ -252,6 +257,7 @@ function AnswerBar({ accepts, labels, state, guard, engine, onAnswer, onOpenRun 
       <NotAnsweringLine id={reasonId} {...engine} />
       <FailedLine
         onRetry={failed === null ? null : () => onAnswer(failed)}
+        detail={state.kind === "open" ? state.detail : null}
         manual={state.kind === "open" ? state.manual : null}
         elsewhere={state.kind === "open" && state.elsewhere ? { openRun: onOpenRun } : null}
       />

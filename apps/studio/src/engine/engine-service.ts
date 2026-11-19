@@ -14,7 +14,8 @@
 // shell checks every address and every redirect hop, and a key never goes
 // through the webview's network layer (the page still reads it from `secrets`).
 // The page starts no connector: a workflow with an agent that lists one is
-// refused as `unavailable` before the engine opens. Agents in a harness run in
+// refused as `unavailable` before the engine opens, and so is an Approve of a
+// connector's tool call in a run the CLI started, with the CLI line that sends it. Agents in a harness run in
 // the agent host's sandbox (`openHarnessHost`, HAL-10849); where no agent host
 // runs, a workflow with one is refused the same way.
 // Nothing starts from a workspace that isn't trusted, unless it reaches only
@@ -39,7 +40,7 @@ import {
   workspaceBudget,
   workspaceExecutorOptions,
 } from "@halonicjs/adapter-workspace-models";
-import type { startOfDueRun } from "@halonicjs/app";
+import { shortRunId, type startOfDueRun } from "@halonicjs/app";
 import {
   type AssembledEngine,
   assembleEngine,
@@ -59,7 +60,7 @@ import {
   type Secrets,
   type SendOptions,
 } from "@halonicjs/ports";
-import { KindedError } from "@halonicjs/std";
+import { errorKindOf, KindedError } from "@halonicjs/std";
 import type { TauriIpc } from "@halonicjs/studio-services";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import {
@@ -146,6 +147,8 @@ export interface EngineServiceOptions {
 interface OpenEngine {
   readonly engine: AssembledEngine;
   readonly workspace: LoadedWorkspace;
+  /** The runs the engine keeps, read before an answer is sent. */
+  readonly runs: TauriRunStore;
 }
 
 /** The engine of one workspace in the page, opened on first use. */
@@ -301,9 +304,16 @@ export class EngineService {
    * answers): opens the engine, with the checks of a start, since the run goes on
    * from here, and returns once the event is recorded, not when the run ends.
    *
+   * Another engine holding the workspace is a failure to try again, not a run that moved on, so
+   * that refusal is `unavailable` here, its sentence saying what to close. An Approve of a
+   * connector's tool call is refused before anything is recorded, since the page starts no
+   * connector: its `fix` is the CLI line that sends it. Reject and Ask for changes still go.
+   *
    * @returns the run as it is after the event
-   * @throws what {@link EngineService.open} throws, KindedError `denied` for a workspace that may
-   *   start nothing, or the executor's refusal when the run doesn't take the event now
+   * @throws KindedError `unavailable` when another engine holds the workspace or for an Approve of
+   *   a connector's tool call, `denied` for a workspace that may start nothing, what
+   *   {@link EngineService.open} throws otherwise, or the executor's refusal when the run doesn't
+   *   take the event now
    */
   async send(
     runId: string,
@@ -311,8 +321,38 @@ export class EngineService {
     payload?: unknown,
     options?: SendOptions,
   ): Promise<RunSummary> {
-    const engine = await this.#forStart();
+    const { engine, runs } = await this.#forAnswer();
+    if (event === "approve" && options?.callId !== undefined) {
+      const run = await runs.get(runId);
+      const call = run?.approvals.find((approval) => approval.callId === options.callId);
+      if (call?.connector !== undefined) {
+        throw new KindedError(
+          "unavailable",
+          `This window can't run ${call.connector}'s tools yet. To approve this one, run this in a terminal:`,
+          { fix: `halonic runs send ${shortRunId(runId)} approve` },
+        );
+      }
+    }
     return engine.executor.send(runId, event, payload, options);
+  }
+
+  /**
+   * The open engine, for an answer: as for a start, with the lock's `conflict` as `unavailable`.
+   *
+   * @throws KindedError `unavailable` naming the other engine, or what {@link EngineService.open} throws
+   */
+  async #forAnswer(): Promise<OpenEngine> {
+    let open: OpenEngine;
+    try {
+      open = await this.#open();
+    } catch (error) {
+      if (!(error instanceof KindedError) || errorKindOf(error) !== "conflict") throw error;
+      throw new KindedError("unavailable", `${error.message} ${error.fix ?? ""}`.trim(), {
+        cause: error,
+      });
+    }
+    await this.#refuseUntrusted(open.workspace);
+    return open;
   }
 
   /**
@@ -458,7 +498,7 @@ export class EngineService {
         release: () => held.release(),
       });
       executor = engine.executor;
-      return { engine, workspace };
+      return { engine, workspace, runs: runStore };
     } catch (error) {
       await held.release();
       throw error;

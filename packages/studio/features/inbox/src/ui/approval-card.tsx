@@ -16,6 +16,7 @@ import {
   type EngineState,
   FailedLine,
   failedText,
+  failureDetailOf,
   type ManualAnswer,
   manualAnswerOf,
   type NextItem,
@@ -66,6 +67,8 @@ type CardState =
       /** The decision was refused because the tool call isn't the one waiting any more. */
       readonly elsewhere: boolean;
       readonly manual: ManualAnswer | null;
+      /** The failure's own sentence, shown under "Couldn't record your decision.". */
+      readonly detail: string | null;
     }
   | { readonly kind: "deciding"; readonly decision: Decision }
   | { readonly kind: "decided"; readonly decided: Decided; readonly at: Date };
@@ -126,6 +129,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
     failed: null,
     elsewhere: false,
     manual: null,
+    detail: null,
   });
   const [note, setNote] = useState(props.initialNote ?? "");
   const [form, setForm] = useState<NoteForm>({
@@ -155,6 +159,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
         failed: decision,
         elsewhere: wasDecidedElsewhere(error),
         manual: manualAnswerOf(error),
+        detail: failureDetailOf(error),
       });
     }
   }
@@ -288,6 +293,7 @@ function DecisionBar({
       <NotAnsweringLine id={reasonId} {...engine} />
       <FailedLine
         onRetry={failed === null ? null : () => onDecide(failed)}
+        detail={state.kind === "open" ? state.detail : null}
         manual={state.kind === "open" ? state.manual : null}
         elsewhere={state.kind === "open" && state.elsewhere ? { openRun: onOpenRun } : null}
       />

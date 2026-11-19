@@ -183,6 +183,16 @@ export function manualAnswerOf(error: unknown): ManualAnswer | null {
   return typeof fix === "string" && fix !== "" ? { message, command: fix } : null;
 }
 
+/**
+ * The sentence under "Couldn't record your decision." for a failure **Try again** may fix: an
+ * `unavailable` error without a command to run, such as another engine holding the workspace.
+ */
+export function failureDetailOf(error: unknown): string | null {
+  if (errorKindOf(error) !== "unavailable" || manualAnswerOf(error) !== null) return null;
+  const { message } = error as { message: string };
+  return message === "" ? null : message;
+}
+
 /** What the bar shows for an answer that came too late: its sentence, and **Open run** when it can. */
 export interface DecidedElsewhere {
   readonly openRun: (() => void) | undefined;
@@ -191,6 +201,8 @@ export interface DecidedElsewhere {
 interface FailedLineProps {
   /** Shows "Couldn't record your decision." with **Try again** when set. */
   readonly onRetry: (() => void) | null;
+  /** The failure's own sentence, under "Couldn't record your decision.", when set. */
+  readonly detail?: string | null;
   /** Shows the executor's sentence and the command to copy, with no **Try again**, when set. */
   readonly manual?: ManualAnswer | null;
   /** Shows "This is no longer waiting for you." with **Open run**, in place of **Try again**, when set. */
@@ -198,7 +210,12 @@ interface FailedLineProps {
 }
 
 /** The bar's always-mounted alert slot, above its buttons (a11y 8.3). */
-export function FailedLine({ onRetry, manual = null, elsewhere = null }: FailedLineProps) {
+export function FailedLine({
+  onRetry,
+  detail = null,
+  manual = null,
+  elsewhere = null,
+}: FailedLineProps) {
   return (
     <div role="alert" className="text-small text-fg">
       {manual === null ? null : (
@@ -218,11 +235,14 @@ export function FailedLine({ onRetry, manual = null, elsewhere = null }: FailedL
         </Callout>
       )}
       {manual !== null || elsewhere !== null || onRetry === null ? null : (
-        <span className="flex flex-wrap items-center gap-2">
-          {failedText}
-          <Button variant="ghost" size="sm" onClick={onRetry}>
-            Try again
-          </Button>
+        <span className="flex flex-col gap-1">
+          <span className="flex flex-wrap items-center gap-2">
+            {failedText}
+            <Button variant="ghost" size="sm" onClick={onRetry}>
+              Try again
+            </Button>
+          </span>
+          {detail === null ? null : <span className="text-fg-muted">{detail}</span>}
         </span>
       )}
     </div>
