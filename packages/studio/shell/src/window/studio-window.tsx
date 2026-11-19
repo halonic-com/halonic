@@ -298,6 +298,14 @@ export function StudioWindow(props: StudioWindowProps) {
   // A phone shows its own place's page, not the active tab's, so the title names that page.
   const tabTitle = useActiveTabTitle(tabs);
   useWindowTitle(desktop ? tabTitle : phone.topBar.title, workspace.name);
+  // The features' badges first, as the status bar shows them; a window as narrow as a phone
+  // shows the same ones on More, as it has no status bar (WCAG 1.4.10).
+  const headerBadges = (
+    <>
+      <HeaderBadges registry={shell.badges} />
+      {props.badges}
+    </>
+  );
 
   return (
     <ShellFrame
@@ -316,12 +324,7 @@ export function StudioWindow(props: StudioWindowProps) {
           <WindowTabStrip tabs={tabs} onNewTab={palette.show} windowKeys={{ host, platform }} />
         </>
       }
-      badges={
-        <>
-          <HeaderBadges registry={shell.badges} />
-          {props.badges}
-        </>
-      }
+      badges={headerBadges}
       saveNote={<StatusBarSaveNote saving={workspace.saving} />}
       sidebar={
         <StudioSidebar
@@ -391,7 +394,7 @@ export function StudioWindow(props: StudioWindowProps) {
             switcher={props.phoneSwitcher}
             menuSwitcher={sidebarSwitcher}
             badge={props.phoneBadge}
-            desktopBadges={props.badges}
+            desktopBadges={headerBadges}
             onSettings={() => openSettings()}
             settingsPlace={host === "desktop-app" ? "app" : "served"}
             settingsSections={sections}
