@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13463 (a team decision: filed by Liam from the first-run timing on HAL-13436, wording that builds on the approved Acme sample)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zOYRqtfRSxYlWJRsrPdi9Rnzlo3OCLccYubzBhTVQN0APmvEsK4PyuFzMOX2utMWFCgflJzJsf6gZ5edC7fiCQ==
 
 On a real model, every draft of Support reply on Sam's email started with a Markdown `**Subject: …**` line and ended with a `[Your Name]` placeholder. The first real run a new user sees should give a reply they could send. So the `draft` step's prompt in `examples/acme` now asks for a reply ready to send, in plain text with no subject line and no Markdown, ending with "Acme support" on its own line. The rule sits in the `draft` step, not in the Writer's instructions, so the Writer's one-sentence summary in the `read` step doesn't get signed too.
 
