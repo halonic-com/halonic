@@ -3,6 +3,7 @@
 - Task: HAL-12870
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12870 (found in Mara's claims check C88, HAL-12844; small wording of an approved screen, team decision, HAL-2282 rule; Sofia took Mara's wording on the task; Liam's code review)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0t4U6QxrSmY1glNJElP4TNTloKGuQyETgyrbfMBZxwR4ODNLXLDdoR/bZLdpcIJsj4KaWPQilEDt2CABYmQiAQ==
 
 ## What changes
 
