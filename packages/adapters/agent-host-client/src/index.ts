@@ -14,6 +14,7 @@ export {
 } from "./bridges.ts";
 export { AgentHostChat } from "./chat.ts";
 export { AgentHostConnectorFactory } from "./connector.ts";
+export { ConnectorFailedError, type ConnectorFailure } from "./connector-failure.ts";
 export {
   AgentHostGoogleSetup,
   type GoogleAccountType,
@@ -46,6 +47,7 @@ export {
   type InstructionsAgent,
 } from "./run-instructions.ts";
 export { AgentHostSandbox, AgentHostSession } from "./sandbox.ts";
+export { AgentHostSandboxChoice } from "./sandbox-choice.ts";
 export {
   AgentHostSandboxSetup,
   type FinishedSandboxSetup,

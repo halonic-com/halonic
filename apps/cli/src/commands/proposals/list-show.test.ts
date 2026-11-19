@@ -89,6 +89,8 @@ verifies("cli.commands.proposals.show", () => {
         "  @@ -1,1 +1,1 @@",
         "  -Two tickets.",
         "  +Three tickets.",
+        "",
+        "Accept with halonic proposals accept 01jd8q, or discard with halonic proposals discard 01jd8q.",
       ]);
     });
 

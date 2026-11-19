@@ -8,6 +8,7 @@ import {
   FolderDefinitionStore,
   FolderRunCopies,
   FolderTrash,
+  folderRecordLock,
   makePrivateFolder,
 } from "@halonicjs/adapter-fs-node";
 import { lazyGitVcs } from "@halonicjs/adapter-git";
@@ -124,6 +125,8 @@ export class HostProposalFolders {
       // With history off, a run that writes files works in a plain copy of the saved files.
       copies: new FolderRunCopies(folders.runCopiesFolder()),
       records: new FolderDefinitionStore(folders.proposalRecordsFolder()),
+      // `halonic proposals` and the CLI's engine open the same records from other processes.
+      recordLock: folderRecordLock(folders.proposalRecordsFolder()),
       store,
       trash: new FolderTrash({ folder: folders.trashFolder(), store, digest }),
       digest,

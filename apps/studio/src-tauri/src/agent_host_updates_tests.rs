@@ -1,8 +1,8 @@
-//! What the page is told about the security updates.
+//! What the page is told about the security updates and the default distro.
 
 use halonic_agent_host::WslError;
 
-use super::{SecurityUpdatesAnswer, answer, cleanup_log};
+use super::{DistroStartChecks, answer, cleanup_log, default_distro};
 
 /// 2026-11-15T12:00:00Z.
 const NOW: i64 = 1_794_744_000;
@@ -13,10 +13,11 @@ fn status(stamp: &str) -> Result<String, WslError> {
     ))
 }
 
-fn overdue(last: Option<&str>) -> SecurityUpdatesAnswer {
-    SecurityUpdatesAnswer {
+fn overdue(last: Option<&str>) -> DistroStartChecks {
+    DistroStartChecks {
         overdue: true,
         last: last.map(str::to_owned),
+        is_default_distro: false,
     }
 }
 
@@ -25,9 +26,10 @@ fn updates_from_the_last_week_are_not_overdue() {
     let current = answer(status("2026-11-14T12:00:00Z"), NOW);
     assert_eq!(
         current,
-        SecurityUpdatesAnswer {
+        DistroStartChecks {
             overdue: false,
-            last: None
+            last: None,
+            is_default_distro: false,
         }
     );
 }
@@ -50,7 +52,20 @@ fn updates_that_never_ran_or_a_status_that_failed_are_overdue_with_no_date() {
 #[test]
 fn the_page_gets_camel_case_fields_and_null_for_no_date() {
     let json = serde_json::to_value(overdue(None)).expect("serializes");
-    assert_eq!(json, serde_json::json!({"overdue": true, "last": null}));
+    assert_eq!(
+        json,
+        serde_json::json!({"overdue": true, "last": null, "isDefaultDistro": false})
+    );
+}
+
+#[test]
+fn the_default_distro_is_told_only_when_wsl_says_so() {
+    assert!(default_distro(Ok(Some(true))));
+    assert!(!default_distro(Ok(Some(false))));
+    // Unknown is not "the default": the warning tells the person to change it.
+    assert!(!default_distro(Ok(None)));
+    assert!(!default_distro(Err(WslError::TimedOut)));
+    assert!(!default_distro(Err(WslError::Failed(Some(1)))));
 }
 
 #[test]

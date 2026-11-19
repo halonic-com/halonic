@@ -33,7 +33,7 @@ import type { ShownRun } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
 import { pageWords } from "./page-words.ts";
-import { type Dock, RunDock, useShownRun } from "./run-dock.tsx";
+import { type Dock, dockHasCard, RunDock, useShownRun } from "./run-dock.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
 import { WorkflowCanvas } from "./workflow-canvas.tsx";
@@ -67,6 +67,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       {...(step === "tests" && { startOnTests: true, testsAsked: asked ?? 0 })}
       notAnswering={engineWordsOf(context).notAnswering}
       announceState={(key, text) => context.announcer.announceState(key, text)}
+      announce={(line) => context.announcer.announce(line)}
       {...(context.runCommand && {
         openModels: () => void context.runCommand?.(openModelsCommand),
       })}
@@ -105,6 +106,7 @@ export function WorkflowScreen({
   startOnTests,
   testsAsked = 0,
   announceState,
+  announce,
 }: WorkflowScreenProps) {
   // After a Try again reads, the workflow's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -148,6 +150,8 @@ export function WorkflowScreen({
   });
   const ids = useTabIds();
   const phone = usePresentation() === "phone";
+  // A step picked on the canvas is the dock's business only while the canvas shows.
+  const dockStep = view === "flow" ? pickedStep : undefined;
   const errors =
     settings.load.kind === "ready" ? countProblems(settings.load.value.problems).errors : 0;
   // `halonic run reply` stops when two hubs have a `reply`, so the command then names the hub.
@@ -220,7 +224,15 @@ export function WorkflowScreen({
         </div>
       )}
       <div className="flex min-h-0 flex-1">
-        <TabPanel ids={ids} tabs={views} selected={view} className={panelClass(view)}>
+        <TabPanel
+          ids={ids}
+          tabs={views}
+          selected={view}
+          className={panelClass(view, {
+            phone,
+            docked: dockHasCard({ dock, host, shown, pickedStep: dockStep }),
+          })}
+        >
           {view === "configuration" && (
             <Configuration
               key={madeTest?.n ?? 0}
@@ -293,8 +305,9 @@ export function WorkflowScreen({
           }}
           openRun={openRun}
           openModels={openModels}
+          announce={announce}
           saveAsTest={saveAsTest}
-          pickedStep={view === "flow" ? pickedStep : undefined}
+          pickedStep={dockStep}
           onClosePickedStep={() => setPickedStep(undefined)}
         />
       </div>
@@ -302,9 +315,24 @@ export function WorkflowScreen({
   );
 }
 
-/** The tab panel's layout: Flow fills it with the canvas, the other views scroll. */
-function panelClass(view: WorkflowView): string {
-  return view === "flow" ? "flex min-h-0 min-w-0 flex-1 flex-col" : "min-w-0 flex-1 overflow-auto";
+/**
+ * The tab panel's layout: Flow fills it with the canvas, Runs with its list and a run's card side by
+ * side (each scrolls and keeps its own inset), and Configuration scrolls. On a phone a docked card
+ * takes the page's body, so the panel hides behind it: beside the card it would have no room.
+ */
+function panelClass(
+  view: WorkflowView,
+  { phone, docked }: { readonly phone: boolean; readonly docked: boolean },
+): string {
+  if (phone && docked) return "hidden";
+  switch (view) {
+    case "flow":
+      return "flex min-h-0 min-w-0 flex-1 flex-col";
+    case "runs":
+      return "flex min-h-0 min-w-0 flex-1";
+    case "configuration":
+      return "min-w-0 flex-1 overflow-auto";
+  }
 }
 
 /**

@@ -7,7 +7,7 @@ import { PlainList } from "./plain-list.tsx";
 /** What the review shows instead of its rows and its button bar, or `null` when it shows them. */
 export type ReviewFallback =
   | { readonly kind: "loading" }
-  | { readonly kind: "load-failed"; readonly reason: string }
+  | { readonly kind: "load-failed"; readonly reason: string; readonly needsTrust: boolean }
   | { readonly kind: "listing-refused"; readonly reason: string }
   | { readonly kind: "unreadable"; readonly toolName: string | undefined }
   | { readonly kind: "nothing-waiting" };
@@ -20,7 +20,11 @@ export function reviewFallback(state: ListedToolsReviewState): ReviewFallback | 
   const { snapshot } = state;
   if (snapshot === undefined) {
     return state.phase === "failed"
-      ? { kind: "load-failed", reason: state.loadError ?? "" }
+      ? {
+          kind: "load-failed",
+          reason: state.loadError ?? "",
+          needsTrust: state.loadNeedsTrust === true,
+        }
       : { kind: "loading" };
   }
   if (snapshot.listingRefused !== null) {
@@ -130,8 +134,14 @@ export function ListedToolsFallbackBody({
     case "loading":
       return <LoadingRows />;
     case "load-failed":
+      // In a workspace that isn't trusted, trying again can't help; the connector page offers Review.
       return (
-        <Callout tone="danger" action={{ label: listedToolsWords.tryAgain, onClick: onTryAgain }}>
+        <Callout
+          tone="danger"
+          {...(fallback.needsTrust
+            ? {}
+            : { action: { label: listedToolsWords.tryAgain, onClick: onTryAgain } })}
+        >
           {listedToolsWords.loadFailed(fallback.reason)}
         </Callout>
       );

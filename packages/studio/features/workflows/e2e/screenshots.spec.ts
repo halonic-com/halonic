@@ -61,6 +61,40 @@ for (const state of states) {
 }
 
 /**
+ * The docked run card in a window as narrow as a phone (HAL-13162, WCAG 1.4.10): it takes the
+ * window's width instead of its 480 px, so nothing scrolls sideways and every button, Close run
+ * included, is on the screen.
+ */
+for (const width of [390, 320] as const) {
+  test(`run card, failed, ${width} px wide`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/run-card.html?state=failed");
+    const card = page.getByRole("complementary", { name: "Run 01jd8q" });
+    await expect(card).toBeVisible();
+    const box = await card.boundingBox();
+    expect(box, "the card is shown").not.toBeNull();
+    if (box === null) return;
+    expect(box.x, "the card's left edge is inside the window").toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width, "the card's right edge is inside the window").toBeLessThanOrEqual(
+      width,
+    );
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scrollWidth, "the page doesn't scroll sideways").toBeLessThanOrEqual(width);
+    for (const button of await card.getByRole("button").all()) {
+      const name = (await button.getAttribute("aria-label")) ?? (await button.textContent());
+      const at = await button.boundingBox();
+      expect(at, `${name} is shown`).not.toBeNull();
+      if (at === null) continue;
+      expect(at.x, `${name} is inside the window's left edge`).toBeGreaterThanOrEqual(0);
+      expect(at.x + at.width, `${name} is inside the window's right edge`).toBeLessThanOrEqual(
+        width,
+      );
+    }
+    await page.screenshot({ path: `test-results/screenshots/run-card-failed-${width}px.png` });
+  });
+}
+
+/**
  * The first-start sandbox choice (HAL-5405) on a Windows PC, at the window sizes the plan names
  * (HAL-3777): the halo must stay partly visible around the card at each. Every screen at the largest
  * size, and the first screen at the others.
@@ -294,7 +328,7 @@ for (const shown of canvasRuns) {
     test(`canvas, ${shown}, ${scheme}`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: scheme });
       await page.goto(`/canvas.html?run=${shown}`);
-      await expect(page.getByRole("application")).toBeVisible();
+      await expect(page.getByRole("group", { name: "Workflow canvas" })).toBeVisible();
       await expect(page.getByText("Summarise the change")).toBeVisible();
       const taken = { none: 0, mid: 1, done: 3, branch: 3, failed: 2 }[shown];
       await expect(page.locator("g[data-taken]")).toHaveCount(taken);

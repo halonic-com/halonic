@@ -12,6 +12,12 @@ Halonic is a local-first Studio, engine and command-line tool for designing,
 running and supervising AI agent workflows. Workflows, agents and settings live
 as plain files in your own git repository.
 
+[![A terminal: halonic init --example acme makes the Acme workspace, halonic test says 5 tests passed, halonic run stops at 'Approve this reply?' and waits, halonic runs send approves it and the run finishes, having sent nothing. The example only drafts replies. Nothing is sent.](docs/assets/readme/first-run-still.svg)](docs/assets/readme/first-run.svg)
+
+*The example only drafts replies. Nothing is sent.*
+*Real output from Halonic 0.1.0. Typing and pauses are paced for reading.*
+Click the picture to watch it play.
+
 New here? [Getting started](https://docs.halonic.dev/getting-started) has the
 fuller Windows (WSL 2), macOS and Linux steps, and
 [Troubleshooting](https://docs.halonic.dev/getting-started/troubleshooting) helps
@@ -213,7 +219,9 @@ to add the first one.
 
 ## Something failed?
 
-Run `halonic doctor` and fix what it lists. A red ✕ Sandbox line is normal on
+Run `halonic doctor` and fix what it lists:
+[Check your setup with `halonic doctor`](docs/how-to/check-your-setup-with-doctor.md)
+explains each line and its fix. A red ✕ Sandbox line is normal on
 a fresh install and doesn't stop the steps above. Then run the command that failed
 again with `--debug`. Still stuck? Open an
 [Install problem](https://github.com/halonic-com/halonic/issues/new?template=install-problem.yml)
@@ -228,6 +236,11 @@ output can include your home folder.
 - No account.
 - Halonic talks only to the models and services you set up. Local models keep
   your prompts on your computer.
+- One exception, on Android: scanning a pairing code uses Google's ML Kit
+  through Google Play services. The camera image stays on your phone, but
+  Google may receive usage statistics about the scanner (device and app
+  details, speed, image settings). See
+  [Google's ML Kit data disclosure](https://developers.google.com/ml-kit/android-data-disclosure).
 - The 0.1.0 command line doesn't check for updates.
 
 ## How Halonic is built

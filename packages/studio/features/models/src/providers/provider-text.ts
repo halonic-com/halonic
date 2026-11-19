@@ -56,8 +56,9 @@ export function providerUpdatedLine(name: string): string {
   return `Updated provider ${name}`;
 }
 
-/** Check on a local provider's page (flow-first-run 6.3; microcopy 5). */
+/** Check on a local provider's page (flow-first-run 6.3; microcopy 5), and after a result (1.2). */
 export const CHECK = "Check";
+export const CHECK_AGAIN = "Check again";
 export const CHECKING = "Checking…";
 export const CHECK_HINT =
   "Small local models can miss tool calls. Try a short run to see whether yours keeps up.";
@@ -73,7 +74,7 @@ export function localProgramName(type: string, providerName: string): string {
   return LOCAL_PROGRAMS[type] ?? providerName;
 }
 
-/** What to do when a local provider isn't answering (microcopy 1.6; HAL-12390 M1). Check stays the button. */
+/** What to do when a local provider isn't answering (microcopy 1.6; HAL-12390 M1). */
 export function checkFixSentence(program: string): string {
   return `Start ${program}, then check again.`;
 }
@@ -122,6 +123,6 @@ export function checkAnnouncement(
   checkedAt: string,
   program: string,
 ): string {
-  const line = `${providerName} is ${answering ? "answering" : "not answering"} at ${address}, checked ${checkedAt}.`;
+  const line = `${providerName} ${answering ? "is answering" : "isn't answering"} at ${address}, checked ${checkedAt}.`;
   return answering ? line : `${line} ${checkFixSentence(program)}`;
 }

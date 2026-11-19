@@ -1,14 +1,6 @@
-import {
-  Button,
-  Dialog,
-  Field,
-  InfoIcon,
-  Input,
-  Select,
-  usePresentation,
-} from "@halonicjs/studio-kit";
-import { errorReasonFor } from "@halonicjs/studio-shell";
-import { useRef, useState } from "react";
+import { Button, Dialog, Field, Input, Select, usePresentation } from "@halonicjs/studio-kit";
+import { errorReasonFor, NameAndHubRow, NewItemNote } from "@halonicjs/studio-shell";
+import { useId, useRef, useState } from "react";
 import type { NewWorkflow, WorkflowHub, WorkflowRef } from "../api.ts";
 import { newWorkflowWords as words } from "./new-workflow-words.ts";
 import { workflowFilePath } from "./workflow-file.ts";
@@ -59,6 +51,7 @@ export function NewWorkflowDialog({
   const [failure, setFailure] = useState<string>();
   const [busy, setBusy] = useState(false);
   const nameField = useRef<HTMLInputElement>(null);
+  const noteId = useId();
 
   const file = workflowFilePath(hubId, name, takenIds(hubId));
   const fileText = file.kind === "file" ? words.file(file.path) : words.folder(file.path);
@@ -94,45 +87,42 @@ export function NewWorkflowDialog({
       onConfirm={() => void submit()}
       onCancel={onCancel}
       returnFocus={returnFocus}
+      // The info line says what the workflow starts as, so a screen reader reads it on opening (UX 2.1).
+      describedBy={noteId}
     >
       <div className="flex flex-col gap-3">
-        <div className={hubs.length > 1 ? "grid grid-cols-[1fr_160px] gap-3" : "grid gap-3"}>
-          <Field
-            label={words.nameField}
-            error={problem ?? null}
-            {...(fileLine === undefined ? {} : { hint: fileLine })}
-          >
-            <Input
-              ref={nameField}
-              autoFocus
-              readOnly={busy}
-              value={name}
-              onChange={(event) => {
-                setProblem(undefined);
-                setName(event.target.value);
-              }}
-            />
-          </Field>
-          {hubs.length > 1 && (
-            <Field label={words.hubField}>
-              <Select
-                options={hubs.map((hub) => ({ value: hub.id, label: hub.name }))}
-                value={hubId}
-                onChange={setHubId}
+        <NameAndHubRow
+          name={
+            <Field
+              label={words.nameField}
+              error={problem ?? null}
+              {...(fileLine === undefined ? {} : { hint: fileLine })}
+            >
+              <Input
+                ref={nameField}
+                autoFocus
+                readOnly={busy}
+                value={name}
+                onChange={(event) => {
+                  setProblem(undefined);
+                  setName(event.target.value);
+                }}
               />
             </Field>
-          )}
-        </div>
-        <p className="flex items-center gap-2 text-small text-fg-muted">
-          {/* The icon has no size of its own: in a flex row it would shrink to nothing. */}
-          <span
-            className="inline-grid size-icon-sm shrink-0 text-fg-subtle *:size-full"
-            aria-hidden
-          >
-            <InfoIcon />
-          </span>
-          {words.startsWith}
-        </p>
+          }
+          hub={
+            hubs.length > 1 ? (
+              <Field label={words.hubField}>
+                <Select
+                  options={hubs.map((hub) => ({ value: hub.id, label: hub.name }))}
+                  value={hubId}
+                  onChange={setHubId}
+                />
+              </Field>
+            ) : undefined
+          }
+        />
+        <NewItemNote id={noteId}>{words.startsWith}</NewItemNote>
         {onDescribe && (
           <div>
             <Button variant="ghost" size="sm" onClick={() => onDescribe(name.trim())}>

@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-7331 (T11); flow-settings 2 and 12 (HAL-646)
 
-The Settings feature shall add a Ctrl K command for each of the sections Appearance (`appearance`), Formats (`formats`), Assistant (`assistant`), Trusted sources (`trusted-sources`) and Agent sandbox (`agent-sandbox`) that a feature added to Settings, whichever feature added it, named as the section's row. Running one shall open Settings on its section through the window's `openSettings`. A section no feature added shall have no command, and Models, Trust, Workspace and Developer shall have none, because Ctrl K takes Models and Trust to the workspace page. Without a window's `settingsSections`, there shall be no section commands.
+The Settings feature shall add a Ctrl K command for each of the sections Appearance (`appearance`), Formats (`formats`), Assistant (`assistant`), Trusted sources (`trusted-sources`) and Agent sandbox (`agent-sandbox`) that a feature added to Settings, whichever feature added it, named as the section's row. Running one shall open Settings on its section through the window's `openSettings`. A section no feature added shall have no command, and Models, Trust, Workspace and Developer shall have none, because Ctrl K takes Models and Trust to the workspace page. Without a window's `settingsSections`, there shall be no section commands. Ctrl K's **About Halonic** shall likewise be listed only where the window's `settingsSections` has About Halonic (`about`).
 
 ## Examples
 
@@ -17,3 +17,6 @@ The Settings feature shall add a Ctrl K command for each of the sections Appeara
 - Given features added Assistant,
   when the user runs **Assistant** from Ctrl K,
   then Settings opens on Assistant.
+- Given a served Studio whose window leaves out About Halonic,
+  when Ctrl K lists the commands,
+  then it has no **About Halonic**.

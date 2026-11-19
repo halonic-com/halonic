@@ -3,7 +3,7 @@ import { Button } from "../../src/button/button.tsx";
 import { CloseIcon, PlusIcon } from "../icons.tsx";
 import type { PartSection } from "../state-table.tsx";
 
-/** The five copies of the sheet's Button row. `reason` makes every one of them unavailable. */
+/** The six copies of the sheet's Button row. `reason` makes every one of them unavailable. */
 function Buttons({ reason }: { readonly reason?: string }) {
   const unavailable = reason === undefined ? {} : { unavailable: { reason } };
   return (
@@ -16,6 +16,9 @@ function Buttons({ reason }: { readonly reason?: string }) {
       </Button>
       <Button variant="ghost" {...unavailable}>
         Cancel
+      </Button>
+      <Button variant="danger-outline" {...unavailable}>
+        Revoke
       </Button>
       <Button variant="danger" {...unavailable}>
         Delete agent
@@ -42,7 +45,8 @@ export const buttonSection: PartSection = {
   id: "button",
   number: "1",
   name: "Button",
-  order: "kit 1 · left to right: primary, secondary, ghost, danger, ghost icon button",
+  order:
+    "kit 1 · left to right: primary, secondary, ghost, danger-outline, danger, ghost icon button",
   notApplicable: "error (a toast or a field says it), read-only (fields only)",
   rows: [
     { name: "Default", copies: () => <Buttons /> },
@@ -73,6 +77,9 @@ export const buttonSection: PartSection = {
         <>
           <Button variant="primary" busy>
             Saving…
+          </Button>
+          <Button variant="danger-outline" busy>
+            Revoking…
           </Button>
           <Button variant="danger" busy>
             Deleting…

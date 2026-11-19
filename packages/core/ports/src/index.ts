@@ -46,6 +46,11 @@ export {
   type TrustGrant,
 } from "./connector-client.ts";
 export {
+  type ConnectorStartFailure,
+  connectorStartFailureOf,
+} from "./connector-start-failure.ts";
+export { ConnectorToolError, isConnectorToolError } from "./connector-tool-error.ts";
+export {
   type Coordination,
   type CounterResult,
   coordinationVersion,
@@ -170,6 +175,7 @@ export {
   ModelCallError,
   type ModelCallErrorReason,
   modelCallErrorReasons,
+  networkCauseOf,
   type ProviderConfig,
   type ProviderFactoryContext,
   VendorErrorText,
@@ -356,6 +362,7 @@ export {
   type SandboxStrength,
   type SandboxUnavailableReason,
   sandboxPackageManagers,
+  sandboxResiduals,
   sandboxUnavailableReasons,
   sandboxVersion,
 } from "./sandbox.ts";

@@ -5,11 +5,11 @@ import { passResultToModel } from "./pass-result-to-model.ts";
 import type { TurnAnswer } from "./turn-approval.ts";
 import type { TurnLog } from "./turn-log.ts";
 import {
-  errorMessage,
   halonicSource,
   type SubagentStopped,
   type TurnTool,
   type TurnTools,
+  toolErrorText,
 } from "./turn-tools.ts";
 
 /** What running one call needs from its turn. */
@@ -336,7 +336,7 @@ async function runTool(
     const result = await start();
     return typeof result === "string" ? { kind: "ran", result, outcome: "ok" } : result;
   } catch (error) {
-    const result = `The tool ${call.name} failed: ${errorMessage(error)}`;
+    const result = `The tool ${call.name} failed: ${toolErrorText(error)}`;
     return { kind: "ran", result, outcome: "error" };
   }
 }

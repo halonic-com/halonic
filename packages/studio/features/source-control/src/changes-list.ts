@@ -3,7 +3,7 @@ import type { VcsChange } from "@halonicjs/ports";
 import { applyLineChanges, diffLines, type LineChange } from "@halonicjs/std";
 import type { PlaceSignal, ServiceKey } from "@halonicjs/studio-shell";
 import { serviceKey } from "@halonicjs/studio-shell";
-import type { ChangesSource, Identity, KeptFile } from "./api.ts";
+import type { ChangesSource, Identity, KeptFile, VersionDialogOutcome } from "./api.ts";
 import { type ChangeItem, groupIntoItems } from "./change-items.ts";
 import {
   type ChangedFile,
@@ -15,20 +15,13 @@ import {
 } from "./changes-list-state.ts";
 import { MergeSteps } from "./changes-merge.ts";
 import { readRemote, ShareSteps } from "./changes-share.ts";
-import {
-  discardWords,
-  pageWords,
-  shareWords,
-  undoWords,
-  updatesWords,
-  versionWords,
-} from "./changes-words.ts";
+import { VersionSteps } from "./changes-version.ts";
+import { discardWords, pageWords, shareWords, undoWords, updatesWords } from "./changes-words.ts";
 import { describeChanges } from "./describe-changes.ts";
 import { discardWithCopy } from "./discard-with-copy.ts";
 import { isIdentityComplete } from "./identity.ts";
 import { type IdentityOutcome, saveIdentity } from "./identity-save.ts";
 import { loadFailureReason } from "./load-failure.ts";
-import { versionMessage } from "./version-name.ts";
 
 export type {
   ChangedFile,
@@ -38,6 +31,7 @@ export type {
   MergeOutcome,
   UndoOutcome,
   UpdatesOutcome,
+  VersionOpener,
 } from "./changes-list-state.ts";
 export { historyPageSize } from "./changes-list-state.ts";
 
@@ -79,6 +73,7 @@ export class ChangesList {
   /** The steps of a merge of both sides: choose per item, Undo, Finish and Cancel. */
   readonly merge: MergeSteps;
   readonly #sharing: ShareSteps;
+  readonly #version: VersionSteps;
 
   constructor(source: ChangesSource) {
     this.source = source;
@@ -91,6 +86,7 @@ export class ChangesList {
     };
     this.merge = new MergeSteps(host);
     this.#sharing = new ShareSteps(host);
+    this.#version = new VersionSteps(host);
     this.#stopWatching = source.subscribe(() => void this.refresh());
     void this.refresh();
   }
@@ -143,6 +139,7 @@ export class ChangesList {
         identity,
         merge: merge ?? undefined,
         choosing: merge !== null && this.#state.choosing,
+        version: this.#version.afterRead(answer.kind === "ready"),
         error: undefined,
       });
       if (answer.kind === "ready") await this.#readHistory(this.#state.history.versions.length);
@@ -296,11 +293,19 @@ export class ChangesList {
   }
 
   /**
-   * Opens Create version for `paths`, or for every changed file without them. Other screens use
-   * it to open the dialog with one item in it.
+   * Opens Create version on the Changes page for `paths`, or for every changed file without them.
+   * The page's own screens use it to open the dialog with one item in it.
    */
   startVersion(paths?: readonly string[]): void {
-    this.#set({ ...this.#state, version: { paths } });
+    this.#version.start(paths);
+  }
+
+  /**
+   * Opens Create version for `paths` from another feature, over whatever page is open
+   * (`VersionDialogService`); answers once a version is made or the dialog closes.
+   */
+  openVersion(paths: readonly string[]): Promise<VersionDialogOutcome> {
+    return this.#version.open(paths);
   }
 
   /** Who versions are from; once both parts are set they are kept, so a refresh doesn't ask git. */
@@ -328,15 +333,12 @@ export class ChangesList {
 
   /** Closes Create version without creating anything. */
   cancelVersion(): void {
-    if (this.#state.version !== undefined) this.#set({ ...this.#state, version: undefined });
+    this.#version.cancel();
   }
 
   /** The changed files Create version is open for; none while it is closed. */
   get versionFiles(): readonly ChangedFile[] {
-    const { version, files } = this.#state;
-    if (version?.paths === undefined) return version === undefined ? [] : files;
-    const wanted = new Set(version.paths);
-    return files.filter((file) => wanted.has(file.path));
+    return this.#version.files;
   }
 
   /**
@@ -344,34 +346,12 @@ export class ChangesList {
    * files go in, or only those of them in `only` when it is given; anything else stays a change.
    * Gives the reason it didn't work, or `undefined`.
    */
-  async createVersion(
+  createVersion(
     name: string,
     notes: string,
     only?: readonly string[],
   ): Promise<string | undefined> {
-    const { read } = this.#state;
-    const left = only === undefined ? undefined : new Set(only);
-    const files = this.versionFiles.filter((file) => left === undefined || left.has(file.path));
-    if (read?.kind !== "ready" || files.length === 0) return versionWords.nothingToCreate;
-    const chosen = new Set(files.map((file) => file.path));
-    // A renamed file is two paths to git: the old one goes away, the new one comes in.
-    const paths = [
-      ...new Set(
-        read.changes.flatMap((change) =>
-          chosen.has(change.path)
-            ? [change.path, ...(change.from === undefined ? [] : [change.from])]
-            : [],
-        ),
-      ),
-    ];
-    try {
-      await this.source.createVersion({ message: versionMessage(name, notes), paths });
-    } catch (error) {
-      return loadFailureReason(error);
-    }
-    if (!this.#disposed) this.#set({ ...this.#state, version: undefined });
-    await this.refresh();
-    return undefined;
+    return this.#version.create(name, notes, only);
   }
 
   /** Writes a file's new text, then reads again; the reason it didn't work, or `undefined`. */
@@ -482,6 +462,7 @@ export class ChangesList {
   /** Stops watching, when the workspace closes and its services are disposed. */
   dispose(): void {
     this.#disposed = true;
+    this.#version.dispose();
     this.#stopWatching();
     this.#listeners.clear();
   }

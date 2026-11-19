@@ -152,6 +152,34 @@ verifies("fs-node.definition-store", () => {
   );
 });
 
+verifies("fs-node.definition-store-file-limit", () => {
+  it("counts the files list() gives, so a private one isn't counted", async () => {
+    const root = await tempFolder();
+    await writeFiles(root, { "a.yaml": "1", "hubs/b.yaml": "2", ".git/config": "3" });
+    const store = new FolderDefinitionStore(root);
+    expect(await store.hasMoreFilesThan(2)).toBe(false);
+    expect(await store.hasMoreFilesThan(1)).toBe(true);
+  });
+
+  it("finds more files than the limit across folders", async () => {
+    const root = await tempFolder();
+    const files: Record<string, string> = {};
+    for (let folder = 0; folder < 5; folder += 1) {
+      for (let file = 0; file < 10; file += 1) {
+        files[`hub-${folder}/agent-${file}.yaml`] = "id: a\n";
+      }
+    }
+    await writeFiles(root, files);
+    expect(await new FolderDefinitionStore(root).hasMoreFilesThan(3)).toBe(true);
+    expect(await new FolderDefinitionStore(root).hasMoreFilesThan(50)).toBe(false);
+  });
+
+  it("finds no files in a missing root", async () => {
+    const root = await tempFolder();
+    expect(await new FolderDefinitionStore(join(root, "missing")).hasMoreFilesThan(0)).toBe(false);
+  });
+});
+
 verifies("fs-node.unreadable-workspace-folder", () => {
   // Windows has no read permission bits, and root reads any folder.
   it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(

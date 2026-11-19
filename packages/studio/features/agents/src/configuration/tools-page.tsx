@@ -7,7 +7,7 @@ import {
   PlusIcon,
   SkeletonBar,
 } from "@halonicjs/studio-kit";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type RefObject, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   type AgentChange,
   type AgentSettings,
@@ -47,7 +47,12 @@ export function ToolsPage({ host, settings, save, openLibrary }: ToolsPageProps)
     }),
     [host, hubId, id],
   );
-  const options = useLoad<Options>(source);
+  const lists = useRef<HTMLDivElement>(null);
+  // Try again worked, so its button is gone: the reader goes on at the first list's heading (the
+  // failure's own heading is an h3 too, and goes with it).
+  const options = useLoad<Options>(source, () =>
+    lists.current?.querySelector<HTMLElement>("section h3")?.focus(),
+  );
   if (options.load.kind === "loading") {
     return (
       <div className="flex flex-col gap-4">
@@ -58,7 +63,7 @@ export function ToolsPage({ host, settings, save, openLibrary }: ToolsPageProps)
   }
   const ready = options.load.kind === "ready" ? options.load.value : undefined;
   return (
-    <div className="flex flex-col gap-6">
+    <div ref={lists} className="flex flex-col gap-6">
       {options.load.kind === "failed" && (
         <EmptyState
           tone="error"
@@ -103,10 +108,24 @@ function ToolList({ list, chosen, options, save, openLibrary }: ToolListProps) {
   const [ids, setIds] = useState(chosen);
   useEffect(() => setIds(chosen), [chosen]);
   const section = useRef<HTMLElement>(null);
+  const openLibraryButton = useRef<HTMLButtonElement>(null);
   const headingId = `agent-tools-${list}`;
+  const lineIds = useId();
   const nameOf = (id: string) => options?.find((option) => option.id === id)?.name ?? id;
   const missing = (id: string) =>
     options !== undefined && !options.some((option) => option.id === id);
+  /** The id of the line that says the hub can't use `id`. */
+  const missingLineId = (id: string) => `${lineIds}-missing-${ids.indexOf(id)}`;
+  const addable = options?.filter((option) => !ids.includes(option.id));
+
+  // Set when the last item was added, until the list has drawn what took the Add button's place.
+  const focusAfterLastAdd = useRef(false);
+  useEffect(() => {
+    if (!focusAfterLastAdd.current) return;
+    focusAfterLastAdd.current = false;
+    const addedRemove = section.current?.querySelector<HTMLElement>("li:last-child button");
+    (openLibraryButton.current ?? addedRemove)?.focus();
+  }, [ids]);
 
   const change = (next: readonly string[]) => {
     setIds(next);
@@ -117,10 +136,16 @@ function ToolList({ list, chosen, options, save, openLibrary }: ToolListProps) {
     // The ✕ that was pressed is gone, so focus goes to the first button left in the list.
     queueMicrotask(() => section.current?.querySelector("button")?.focus());
   };
+  const add = (id: string) => {
+    // The Add button goes with the last item, so focus goes to the line's Open Library › that
+    // takes its place or, where the app has none, to the ✕ of the item just added.
+    focusAfterLastAdd.current = addable?.length === 1;
+    change([...ids, id]);
+  };
 
   return (
     <section ref={section} aria-labelledby={headingId} className="flex flex-col gap-2">
-      <h3 id={headingId} className="text-body-strong text-fg">
+      <h3 id={headingId} tabIndex={-1} className="text-body-strong text-fg outline-none">
         {words.toolLists[list]}
       </h3>
       {ids.length > 0 && (
@@ -138,6 +163,7 @@ function ToolList({ list, chosen, options, save, openLibrary }: ToolListProps) {
                 size="sm"
                 icon={<CloseIcon />}
                 label={words.removeTool(nameOf(id))}
+                {...(missing(id) && { "aria-describedby": missingLineId(id) })}
                 onClick={() => remove(id)}
               />
             </li>
@@ -145,17 +171,18 @@ function ToolList({ list, chosen, options, save, openLibrary }: ToolListProps) {
         </ul>
       )}
       {ids.filter(missing).map((id) => (
-        <p key={id} className="text-small text-danger">
+        <p key={id} id={missingLineId(id)} className="text-small text-danger">
           {words.missingTool[list](id)}
         </p>
       ))}
-      {options !== undefined && (
+      {options !== undefined && addable !== undefined && (
         <AddTool
           list={list}
           options={options}
-          addable={options.filter((option) => !ids.includes(option.id))}
-          add={(id) => change([...ids, id])}
+          addable={addable}
+          add={add}
           openLibrary={openLibrary}
+          openLibraryRef={openLibraryButton}
         />
       )}
     </section>
@@ -172,12 +199,14 @@ function AddTool({
   addable,
   add,
   openLibrary,
+  openLibraryRef,
 }: {
   readonly list: AgentToolList;
   readonly options: readonly AgentToolOption[];
   readonly addable: readonly AgentToolOption[];
   readonly add: (id: string) => void;
   readonly openLibrary: (() => void) | undefined;
+  readonly openLibraryRef: RefObject<HTMLButtonElement | null>;
 }) {
   if (addable.length === 0) {
     return (
@@ -186,7 +215,12 @@ function AddTool({
         {openLibrary && (
           <>
             {" "}
-            <button type="button" className={inlineLinkClasses} onClick={openLibrary}>
+            <button
+              ref={openLibraryRef}
+              type="button"
+              className={inlineLinkClasses}
+              onClick={openLibrary}
+            >
               {words.openLibrary}
             </button>
           </>

@@ -24,6 +24,7 @@ function serviceOf(settings: string): EngineService {
       invoke: async (command) =>
         command === "record_read" ? { lines: "", version: "0", file: "records" } : undefined,
     },
+    lock: { hold: async () => ({ release: async () => {} }) },
     location: "/acme",
     definitions: new MemoryDefinitionStore({ "workspace.yaml": settings }),
     secrets: { get: async () => null },

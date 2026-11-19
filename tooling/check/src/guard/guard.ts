@@ -33,6 +33,8 @@ export interface GuardRun {
   readonly head: CheckContext;
   /** The older green commit whose test results the base side has, if not `base` itself. */
   readonly tested?: CheckContext;
+  /** The package folders whose tests ran, if not every package's (HAL-12539). */
+  readonly affected?: ReadonlySet<string>;
   /** The pull request's branch, which names its decision note. */
   readonly branch: string;
   readonly approvals: ApprovalLookup;
@@ -51,6 +53,7 @@ export async function checkRequirementGuard(run: GuardRun): Promise<Report> {
     base: run.base,
     head: run.head,
     ...(run.tested === undefined ? {} : { tested: run.tested }),
+    ...(run.affected === undefined ? {} : { affected: run.affected }),
   };
   const findings = (run.checks ?? guardChecks).flatMap((check) => check(checkouts));
   if (findings.length === 0) {

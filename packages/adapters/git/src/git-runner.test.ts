@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { repositoryWith, Scratch, testGit, testRunner } from "./fixtures.test-helper.ts";
-import { GitRunner } from "./git-runner.ts";
+import { GitHardeningIgnoredError, GitRunner } from "./git-runner.ts";
 import { hardenedEnvironment } from "./hardening.ts";
 
 // "The environment" is ported from the desktop's git-guard, `runner_tests.rs`
@@ -189,9 +189,9 @@ verifies("git.runner-close", () => {
         const temporary = await scratch.folder();
         vi.stubEnv("TMPDIR", temporary);
         try {
-          await expect(GitRunner.create({ git: wrapper })).rejects.toThrow(
-            "doesn't pass Halonic's git settings on to git",
-          );
+          const refusal = GitRunner.create({ git: wrapper });
+          await expect(refusal).rejects.toThrow(GitHardeningIgnoredError);
+          await expect(refusal).rejects.toMatchObject({ git: wrapper });
         } finally {
           vi.unstubAllEnvs();
         }

@@ -1,5 +1,5 @@
 /** The sections of the workspace page a command can open it at. */
-export type WorkspacePageTarget = "trust" | "models";
+export type WorkspacePageTarget = "trust" | "models" | "budget";
 
 type Listener = () => void;
 

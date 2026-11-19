@@ -252,7 +252,14 @@ const inputFields = [
     .object({
       ...fieldBase,
       type: s.literal("choice"),
-      choices: s.array(s.string().min(1)).min(1),
+      choices: s
+        .array(
+          s
+            .string()
+            .min(1)
+            .refine((text) => !HIDDEN_MARK.test(text), NO_HIDDEN_MARKS),
+        )
+        .min(1),
       default: s.string().optional(),
     })
     .strict(),

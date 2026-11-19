@@ -138,7 +138,7 @@ if (root === null) throw new Error("The plugins flow page needs its #root elemen
 createRoot(root).render(
   <StrictMode>
     <ToastStoreProvider store={toasts}>
-      <div className="relative min-h-screen bg-bg p-6 text-fg">
+      <div className="relative min-h-screen bg-surface p-6 text-fg">
         <main className="mx-auto flex max-w-3xl flex-col gap-6">
           <h1 className="text-title">Plugins</h1>
           <PluginsSettingsSection {...props} />

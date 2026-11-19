@@ -2,15 +2,18 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1289, HAL-1563, HAL-8421 (`xs`); base component specs 1, 0.2 and 23.5
+- Source: HAL-1289, HAL-1563, HAL-8421 (`xs`), HAL-13102 (`danger-outline`); base component specs 1, 0.2 and 23.5
 
-The kit shall render a `Button` as a native `<button>` of type `button` unless it is given `type="submit"`, in one of four variants (`primary`, `secondary`, `ghost`, `danger`) and five sizes (`xs`, `sm`, `md`, `lg`, `touch`), with the variant and size written once as class lists in the kit. An `xs` button shall be 20px high, so it fits in the 24px status bar with its line, in the caption type, and is meant only for the status bar; the other sizes shall use the body's strong type. When a `Button` has an `icon` and a `label` and no children, the kit shall render a square icon button named by its `label`, with the icon hidden from screen readers. While the layout is the phone's or the pointer is coarse, the kit shall render `xs`, `sm` and `md` buttons at `lg` with a 48px hit area. While the pointer is coarse, an icon button shall be a 40px square with a 48px hit area; while the layout is the phone's, a 48px square, also when the pointer is coarse.
+The kit shall render a `Button` as a native `<button>` of type `button` unless it is given `type="submit"`, in one of five variants (`primary`, `secondary`, `ghost`, `danger-outline`, `danger`) and five sizes (`xs`, `sm`, `md`, `lg`, `touch`), with the variant and size written once as class lists in the kit. An `xs` button shall be 20px high, so it fits in the 24px status bar with its line, in the caption type, and is meant only for the status bar; the other sizes shall use the body's strong type. When a `Button` has an `icon` and a `label` and no children, the kit shall render a square icon button named by its `label`, with the icon hidden from screen readers. While the layout is the phone's or the pointer is coarse, the kit shall render `xs`, `sm` and `md` buttons at `lg` with a 48px hit area. While the pointer is coarse, an icon button shall be a 40px square with a 48px hit area; while the layout is the phone's, a 48px square, also when the pointer is coarse.
 
 ## Examples
 
 - Given `<Button variant="primary">New agent</Button>`,
   when it renders,
   then it is a `<button type="button">` with the primary classes and the label "New agent".
+- Given `<Button variant="danger-outline">Revoke</Button>`,
+  when it renders,
+  then its classes include `border-danger`, `bg-surface` and `text-danger`, with `danger-soft` as its hover and press fill.
 - Given `<Button icon={…} label="Close Support reply" />`,
   when it renders,
   then its accessible name is "Close Support reply" and its icon is `aria-hidden`.

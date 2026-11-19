@@ -70,8 +70,11 @@ export function DialogFooter({
 }: DialogFooterProps) {
   const { busy = false } = props;
   const size = phone ? "touch" : "md";
+  const withCancel = props.cancelButton !== false;
+  // With no Cancel, the confirming button takes the ref, so focus starts on it instead.
   const confirmButton = (
     <Button
+      {...(withCancel ? {} : { ref: cancelButton })}
       id={confirmId}
       variant={props.confirm.variant ?? "primary"}
       size={size}
@@ -86,7 +89,7 @@ export function DialogFooter({
     </Button>
   );
   // While busy, Cancel is unavailable, and the busy confirming button ("Deleting…") says why.
-  const cancelButtonElement = (
+  const cancelButtonElement = withCancel ? (
     <Button
       ref={cancelButton}
       variant="ghost"
@@ -97,7 +100,7 @@ export function DialogFooter({
     >
       {props.cancelLabel ?? "Cancel"}
     </Button>
-  );
+  ) : null;
   const { alternative } = props;
   const alternativeButton =
     alternative === undefined ? null : (

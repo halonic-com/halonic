@@ -174,4 +174,24 @@ verifies("check.guard-needs-test-results", () => {
   test("passes a package without tests and without a result file", async () => {
     expect(await errorsFor({}, {})).toEqual([]);
   });
+
+  test("leaves out a package the pull request doesn't affect, on both sides", async () => {
+    const withoutResults = { [testFile]: testSource };
+    const affected = new Set(["packages/core/other"]);
+    const outcome = await runGuard({ base: two, head: withoutResults, affected, checks });
+    expect(outcome.errors).toEqual([]);
+  });
+
+  test("still fails when an affected package has no result file", async () => {
+    const withoutResults = { [testFile]: testSource };
+    const affected = new Set([workflowDirectory]);
+    const outcome = await runGuard({ base: two, head: withoutResults, affected, checks });
+    expect(outcome.errors.join("\n")).toMatch(/The pull request's .* is missing/);
+  });
+
+  test("still fails on a deleted test file in a package it leaves out", async () => {
+    const affected = new Set<string>();
+    const outcome = await runGuard({ base: two, head: {}, affected, checks });
+    expect(outcome.errors.join("\n")).toContain(`The test file ${testPath} was deleted.`);
+  });
 });

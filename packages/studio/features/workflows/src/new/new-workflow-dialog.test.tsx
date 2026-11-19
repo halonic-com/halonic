@@ -46,6 +46,12 @@ function nameField(): HTMLInputElement {
 
 const body = () => document.body.textContent ?? "";
 
+/** What the dialog's `aria-describedby` reads: empty when it names nothing. */
+function description(): string {
+  const ids = document.querySelector("dialog")?.getAttribute("aria-describedby")?.split(" ") ?? [];
+  return ids.map((id) => document.getElementById(id)?.textContent ?? "").join(" ");
+}
+
 verifies("workflows.new.create", () => {
   it("asks for a name with the folder and the note, and no Hub with one hub", async () => {
     await show(dialog().node);
@@ -68,6 +74,12 @@ verifies("workflows.new.create", () => {
     expect(icon?.className).toContain("size-icon-sm");
     expect(icon?.className).toContain("*:size-full");
     expect(icon?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("reads the note on opening, as the dialog's description", async () => {
+    await show(dialog().node);
+
+    expect(description()).toContain("It starts with a step “start” that leads to “done”.");
   });
 
   it("shows the file the name makes, with -2 when the id is taken, and follows the hub", async () => {

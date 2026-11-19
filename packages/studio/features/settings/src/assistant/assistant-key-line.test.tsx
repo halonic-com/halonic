@@ -123,6 +123,16 @@ verifies("settings.ai-agent-key-line", () => {
     expect(view.querySelector("code")?.textContent).toBe("anthropic-api-key");
   });
 
+  it("keeps the add-provider link's words in one piece, so on a phone they wrap as one sentence", async () => {
+    const { workspace } = fakeWorkspace({ ...acme, usesSecret: () => false }, false);
+    const { view } = await setup(workspace);
+    // On a phone the link is a flex row: three children would be three columns.
+    const link = view.querySelector("code")?.closest("button");
+    expect(link?.children).toHaveLength(1);
+    expect(link?.firstElementChild?.tagName).toBe("SPAN");
+    expect(link?.firstElementChild?.className).toContain("text-left");
+  });
+
   it("shows the local-only warning view-only too", async () => {
     const { workspace } = fakeWorkspace({ ...acme, localOnly: true });
     const { view } = await setup(workspace, "served");

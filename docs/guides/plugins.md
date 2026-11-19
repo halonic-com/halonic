@@ -108,8 +108,8 @@ ui: { … } # optional
 At least one of `backend` and `localTools` is required. A plugin with only
 `ui` has nothing for its forms and cards to call.
 
-Text people read (`name`, `description`, and every `label`, `title` and
-`help` under `ui`) can't hold control characters or text-direction marks,
+Text people read (`name`, `description`, and every `label`, `title`,
+`help` and choice under `ui`) can't hold control characters or text-direction marks,
 such as a right-to-left override: they could make one plugin's name look like
 another's. A `description` or `help` may break lines.
 
@@ -262,7 +262,8 @@ Both leave private names out of the copy, at any depth: `.git`, `.studio`, `.env
 The check lists what the plugin can do and reach:
 
 - **Tools for agents:** every tool, as **Reads**, **Changes things** or
-  **Sends**. A tool that changes or sends asks a person first.
+  **Sends**. Agents get them through a connector, and each one asks a person
+  first, a tool that reads too, until the connector file's `read` list names it.
 - **Programs:** local tools, each with its command and
   arguments.
 - **Secrets:** each by name and the addresses it goes to, never its value.

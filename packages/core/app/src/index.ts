@@ -155,6 +155,13 @@ export {
   liveVersionOf,
 } from "./live-version.ts";
 export { integrationsFolder, readLocalIntegrations } from "./local-integrations.ts";
+export {
+  type DownloadedModelSource,
+  detectLocalModels,
+  type LocalModels,
+  ollamaDownloadedModelSource,
+  ollamaDownloadedModels,
+} from "./local-models.ts";
 export { defaultCurrency, type MoneyAmountOptions, moneyAmount } from "./money-amount.ts";
 export { lastMonths, type MonthSpend, monthOf, monthStartOf, spendByMonth } from "./month-spend.ts";
 export {
@@ -304,6 +311,7 @@ export {
   pluginTrustSectionHeadings,
   pluginTrustSectionOrder,
   pluginTrustSections,
+  pluginTrustToolsIntro,
 } from "./plugin-trust-sections.ts";
 export {
   ProgramCopies,

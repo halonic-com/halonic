@@ -1,9 +1,11 @@
 import type { Secrets } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
+import { type KnownRequest, refuseUnknownAtCompatible } from "./compatible-request.ts";
 import { OpenAiReplyReader } from "./openai-reply.ts";
 import { refuseStoredPrompt, refuseUrlInputs } from "./openai-sources.ts";
 import { type Fetch, passThrough, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
-import { providerAuthorization } from "./provider-key.ts";
+import { type ProviderApi, providerTarget } from "./provider-address.ts";
+import { providerAccess, providerAuthorization } from "./provider-key.ts";
 import {
   hasRemovedType,
   type ProviderReach,
@@ -17,6 +19,76 @@ import { readModelCall, recordModelCall } from "./spend.ts";
 
 /** The one host the bridge sends OpenAI requests to. */
 export const openAiOrigin = "https://api.openai.com";
+
+/**
+ * Where Responses calls go: `/v1/responses` at OpenAI, or `/responses`
+ * under a compatible provider's `baseUrl`, which names the API's version
+ * itself, as in `https://openrouter.ai/api/v1`.
+ */
+const openAiApi: ProviderApi = {
+  name: "OpenAI",
+  ownOrigin: openAiOrigin,
+  ownPath: "/v1/responses",
+  pathUnder: (basePath) => `${basePath}/responses`,
+};
+
+/** The Responses tool types the program runs itself; OpenAI runs every other one on its side. */
+const programToolTypes = ["custom", "function", "local_shell"];
+
+/**
+ * What a compatible provider is sent of a Responses request: the top-level
+ * fields OpenAI's reference names, and only the tools the program runs
+ * itself. A `tool_choice` is `auto`, `none` or `required`, one of those
+ * tools, or an `allowed_tools` list of them.
+ */
+const openAiKnown: KnownRequest = {
+  name: "OpenAI",
+  fields: new Set([
+    "background",
+    "conversation",
+    "include",
+    "input",
+    "instructions",
+    "max_output_tokens",
+    "max_tool_calls",
+    "metadata",
+    "model",
+    "parallel_tool_calls",
+    "previous_response_id",
+    "prompt",
+    "prompt_cache_key",
+    "prompt_cache_retention",
+    "reasoning",
+    "safety_identifier",
+    "service_tier",
+    "store",
+    "stream",
+    "stream_options",
+    "temperature",
+    "text",
+    "tool_choice",
+    "tools",
+    "top_logprobs",
+    "top_p",
+    "truncation",
+    "user",
+  ]),
+  isProgramTool: (type) => typeof type === "string" && programToolTypes.includes(type),
+  isKnownToolChoice: isKnownOpenAiToolChoice,
+};
+
+/** True for a Responses `tool_choice` that names no tool the provider runs itself. */
+function isKnownOpenAiToolChoice(choice: unknown): boolean {
+  if (typeof choice === "string") return ["auto", "none", "required"].includes(choice);
+  if (!isPlainObject(choice)) return false;
+  const type = choice["type"];
+  if (type !== "allowed_tools") return openAiKnown.isProgramTool(type);
+  const allowed = choice["tools"];
+  return (
+    Array.isArray(allowed) &&
+    allowed.every((tool) => isPlainObject(tool) && openAiKnown.isProgramTool(tool["type"]))
+  );
+}
 
 /**
  * The request headers that go on to OpenAI. The program's key, its
@@ -75,12 +147,15 @@ const openAiReach: ProviderReach = {
 export interface OpenAiRouteDependencies {
   secrets: Secrets;
   fetch: Fetch;
+  /** Reaches a compatible provider at its file's `baseUrl`; left out, such calls are refused. */
+  compatibleFetch?: Fetch | undefined;
   limits: UpstreamLimits;
 }
 
 /**
- * `POST /v1/responses`, as Codex sends it, passed on to `api.openai.com`
- * with the agent's key in place of the program's (requirement
+ * `POST /v1/responses`, as Codex sends it, passed on to `api.openai.com`,
+ * or to the one compatible provider the agent's key names (requirement
+ * `harness-bridge.provider-base-url`), with the agent's key in place of the program's (requirement
  * `harness-bridge.openai`), or with the program's own sign-in for an agent
  * on a subscription (requirement `harness-bridge.sign-in`). Streaming
  * replies stream through unchanged.
@@ -95,6 +170,10 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
     method: "POST",
     path: "/v1/responses",
     handle: async (context) => {
+      const access = providerAccess(context, "openai");
+      const { search } = new URL(context.request.url ?? "", openAiOrigin);
+      // Before the key is read, so an address the bridge refuses never reads it.
+      const target = providerTarget(access, openAiApi, search, dependencies);
       const authorization = await providerAuthorization(
         context,
         dependencies.secrets,
@@ -105,9 +184,9 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
       const request = parseModelRequest(sent);
       refuseStoredPrompt(request);
       refuseUrlInputs(request);
+      if (target.atCompatibleProvider) refuseUnknownAtCompatible(request, openAiKnown);
       const call = readModelCall("openai", request, "input");
       const body = withoutProviderReach(sent, request, openAiReach);
-      const { search } = new URL(context.request.url ?? "", openAiOrigin);
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);
       const reply = new OpenAiReplyReader();
       await recordModelCall(context.run, call, reply, () =>
@@ -115,13 +194,13 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
           context,
           {
             provider: "OpenAI",
-            url: new URL(`/v1/responses${search}`, openAiOrigin),
+            url: target.url,
             headers: { ...headers, ...authorization },
             body,
             replyHeader: isForwardedReplyHeader,
             watch: reply,
           },
-          dependencies,
+          { fetch: target.fetch, limits: dependencies.limits },
         ),
       );
     },

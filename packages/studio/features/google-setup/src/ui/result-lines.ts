@@ -74,7 +74,7 @@ export function resultText(line: ServiceResultLine): ResultText {
     case "unreachable":
       return {
         passed: false,
-        text: `${label}: Studio couldn't reach Google to check it. Check your connection, then check again.`,
+        text: `${label}: Halonic couldn't reach Google to check it. Check your connection, then check again.`,
       };
   }
 }

@@ -28,6 +28,7 @@ export type {
   HarnessBridgeHost,
   HarnessInstructionSource,
   HarnessInstructionsPin,
+  HarnessModelNames,
   HarnessProfile,
   HarnessProfileBuilder,
   HarnessRunsOptions,

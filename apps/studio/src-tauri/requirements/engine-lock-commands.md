@@ -4,9 +4,13 @@
 - Since: unreleased
 - Source: HAL-8792, decided on HAL-6602; `holdLock` in `fs-node`; `cli.local-engine-lock`
 
-When the page calls `engine_lock_hold` for a workspace, the shell shall hold `engine.lock` in the workspace's folder in the profile, the file the CLI's engine holds, in the same format and with the same stale takeover, so the CLI and the Studio never both run an engine on one workspace. If another engine holds it, the shell shall refuse the call as `conflict` with the other process's id. The shell, not the page, shall hold the lock, for as long as the app runs, keyed by the window that asked, and shall renew it so it never counts as stale: a call from the window that holds it already, as a reloaded page makes, shall succeed and keep the lock, and a lock the window lost to another process shall be taken again. The shell shall release the lock when the page calls `engine_lock_release`, when the window closes and when the app quits. The page shall name a workspace it opened and never a path; any other workspace shall be refused as `folder_not_open`, before the shell makes a folder or a lock.
+When the page calls `engine_lock_hold` for a workspace, the shell shall hold `engine.lock` in the workspace's folder in the profile, the file the CLI's engine holds, in the same format and with the same stale takeover, so the CLI and the Studio never both run an engine on one workspace. If another engine holds it, the shell shall refuse the call as `conflict` with the other process's id. The shell, not the page, shall hold the lock, for as long as the app runs, keyed by the window that asked, and shall renew it so it never counts as stale: a call from the window that holds it already, as a reloaded page makes, shall succeed and keep the lock, and a lock the window lost to another process shall be taken again. The call shall take a channel, and when another process takes the lock over, so that the renewal finds it lost, the shell shall send one message to the channel of the page that holds it now (the one that asked last, after a reload), so the page stops its engine. The shell shall release the lock when the page calls `engine_lock_release`, when the window closes and when the app quits. The page shall name a workspace it opened and never a path; any other workspace shall be refused as `folder_not_open`, before the shell makes a folder or a lock.
 
 ## Examples
+
+- Given a page that holds the lock and a CLI engine that takes it over after the computer slept,
+  when the shell's renewal finds the lock lost,
+  then the page's channel gets one message and the page closes its engine.
 
 - Given the opened workspace `acme` with no engine,
   when the page calls `engine_lock_hold`,

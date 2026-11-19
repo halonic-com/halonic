@@ -228,6 +228,8 @@ export function SettingsListPage({
       <List
         label="Settings"
         groups={listGroups}
+        // Straight under the page's `h1`, so the group headings are `h2`.
+        groupHeadingLevel={2}
         flush
         onOpen={(id) => {
           const section = listed.find((candidate) => candidate.id === id);

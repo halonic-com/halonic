@@ -13,6 +13,7 @@ import type {
   RunTrigger,
   RunVersion,
   StoredBlob,
+  ToolFailureCause,
   ToolNoun,
   ToolOutcome,
   ToolRefusalReason,
@@ -303,6 +304,8 @@ export type RunEventBody =
    * `resultBlob`: set when the result was too large for the log; `result`
    * then holds only its start, and the whole result is in the blob store
    * (requirement `events.tool-result-blob`).
+   * `cause`: why the call failed, when the engine knows (requirement
+   * `events.tool-result-cause`); read it with `toolFailureCauseOf`.
    */
   | {
       type: "tool.result";
@@ -314,6 +317,7 @@ export type RunEventBody =
       noun?: ToolNoun;
       verb?: ToolVerb;
       resultBlob?: StoredBlob;
+      cause?: ToolFailureCause;
     }
   /** A connector tool call that needs a person's OK; the run waits for "approve" or "reject". */
   | {

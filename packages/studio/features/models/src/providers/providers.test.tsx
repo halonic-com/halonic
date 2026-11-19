@@ -8,7 +8,7 @@ import type { ReactElement } from "react";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it } from "vitest";
-import type { ModelsFiles } from "../api.ts";
+import { type ModelKeys, ModelKeysService, type ModelsFiles } from "../api.ts";
 import { modelsFeature } from "../feature.ts";
 import { ProviderPage } from "./provider-page.tsx";
 import { ProvidersSection } from "./providers-section.tsx";
@@ -48,11 +48,15 @@ async function show(
   view: (context: WorkspaceContext) => ReactElement,
   files: ModelsFiles,
   opened: ItemRef[] = [],
+  keys?: ModelKeys,
 ) {
   element = document.createElement("div");
   document.body.append(element);
   const context = {
-    services: limitedLookup(modelsFeature, { get: () => files, find: () => undefined }),
+    services: limitedLookup(modelsFeature, {
+      get: () => files,
+      find: (key) => (key === ModelKeysService ? keys : undefined),
+    }),
     openItem: (item: ItemRef) => opened.push(item),
   } as unknown as WorkspaceContext;
   root = createRoot(element);
@@ -322,5 +326,45 @@ verifies("models.providers.list-and-show", () => {
 
     const fine = await page("ollama", filesWith({ ollama }, localOnly));
     expect(fine.querySelector("[role=alert]")).toBeNull();
+  });
+});
+
+verifies("models.api-keys.open-at-key", () => {
+  const keys: ModelKeys = {
+    entry: { kind: "field", keptOn: "this-computer", offHostHttps: false },
+    stored: async () => false,
+    save: async () => undefined,
+    remove: async () => undefined,
+  };
+  const pageAt = (step: string | undefined) =>
+    show(
+      (context) => (
+        <ProviderPage
+          item={{ kind: "model-provider", hub: "local", id: "anthropic" }}
+          context={context}
+          Sections={() => null}
+          {...(step === undefined ? {} : { step, asked: 1 })}
+        />
+      ),
+      filesWith({ anthropic }),
+      [],
+      keys,
+    );
+  const settled = () => act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+
+  it("opens a provider's page at its key field for the step key", async () => {
+    const view = await pageAt("key");
+    await settled();
+    expect(document.activeElement).toBe(view.querySelector('input[type="password"]'));
+  });
+
+  it("leaves the focus alone for another step or none", async () => {
+    for (const step of [undefined, "budget"]) {
+      const view = await pageAt(step);
+      await settled();
+      expect(view.contains(document.activeElement)).toBe(false);
+      act(() => root?.unmount());
+      view.remove();
+    }
   });
 });

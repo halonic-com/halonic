@@ -23,6 +23,12 @@ export interface Checkouts {
    * green one (HAL-7660). `base` stays the commit the merge ref was built on.
    */
   readonly tested?: CheckContext;
+  /**
+   * The package folders whose tests ran on both sides, when the pull
+   * request's tests ran only for the packages it affects (HAL-12539).
+   * Without it every package's tests ran.
+   */
+  readonly affected?: ReadonlySet<string>;
 }
 
 /** How a file differs between the checkouts: "added", "deleted", "changed" or not at all. */

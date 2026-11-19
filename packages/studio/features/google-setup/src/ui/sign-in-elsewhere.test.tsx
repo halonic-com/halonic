@@ -66,4 +66,27 @@ verifies("google-setup.sign-in-elsewhere", () => {
     expect(container.textContent).not.toContain("Continue on a computer.");
     expect(container.querySelectorAll("button, input, a")).toHaveLength(0);
   });
+
+  it("shows a served window the read-only layout in its own words, with Copy", async () => {
+    const fake = fakeAccounts([signedOut()], {
+      signInEntry: { kind: "elsewhere", commandExists: true },
+    });
+    const container = render(
+      <GoogleSetupView
+        item={item}
+        answering
+        close={vi.fn()}
+        accounts={{ ...fake.source, readOnly: true }}
+      />,
+    );
+    await settle();
+    const text = container.textContent ?? "";
+    expect(text).toContain(
+      "This window only shows the setup. Finish it on the computer running Halonic.",
+    );
+    expect(text).not.toContain("hard to use on a phone");
+    expect(text).toContain(`${sentence} there, or run ${command} on it.`);
+    expect(container.querySelectorAll("button")).toHaveLength(1);
+    expect(container.querySelector(`button[aria-label="Copy the command"]`)).not.toBeNull();
+  });
 });

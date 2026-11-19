@@ -71,6 +71,36 @@ verifies("routines.when.when-card", () => {
     expect(toggle(page).checked).toBe(true);
   });
 
+  it("says the times are kept only while routines watch is running", async () => {
+    const { host } = hostWith(times("2026-11-06T06:30:00Z"));
+    const page = await show(<WhenCard host={host} routine={daily} announce={() => {}} />);
+
+    expect(page.textContent).toContain(
+      "Starts on time only while halonic routines watch is running.",
+    );
+    expect(page.querySelector("code")?.textContent).toBe("halonic routines watch");
+  });
+
+  it("says mail doesn't start a mail routine yet, and promises no time", async () => {
+    const { host } = hostWith(times());
+    const page = await show(
+      <WhenCard
+        host={host}
+        routine={{
+          ...daily,
+          trigger: { kind: "mail", connector: "acme-gmail", query: "in:inbox", every: "2m" },
+          triggerSentence: "New mail in acme-gmail",
+        }}
+        announce={() => {}}
+      />,
+    );
+
+    expect(page.textContent).toContain(
+      "Halonic doesn't check mail yet, so this routine starts only with Run now.",
+    );
+    expect(page.textContent).not.toContain("Starts on time");
+  });
+
   it("names a time zone that isn't the device's", () => {
     expect(nextTime("2026-11-06T06:30:00Z", "Europe/Amsterdam", "America/New_York")).toBe(
       "Fri 6 Nov 07:30 (Europe/Amsterdam)",
@@ -87,6 +117,7 @@ verifies("routines.when.when-card", () => {
       <WhenCard host={host} routine={{ ...daily, enabled: false }} announce={() => {}} />,
     );
     expect(off.textContent).not.toContain("Next");
+    expect(off.textContent).not.toContain("Starts on time");
     unmount();
 
     const manual = await show(

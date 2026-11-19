@@ -326,7 +326,9 @@ ${readEach}`,
         (own ?? "\0").toLowerCase(),
       );
     }
-  });
+    // Longer than the suite's 60 s: making the temp folder may wait up to
+    // `readAccessLimitMs` for a slow PowerShell before the attack starts (HAL-13092).
+  }, 120_000);
 
   it("A35: connects to no named pipe on this computer", async () => {
     const connectionsBefore = agentConnections;

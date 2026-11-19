@@ -115,6 +115,13 @@ export const tryingAgain = "Trying again…";
 const phoneKnowledgeDescription =
   "Put documents in the workspace's docs folder on your computer, then give it to an agent under Tools.";
 
+/**
+ * The toast after "Open the docs folder" when the workspace has no docs folder, so the Files view
+ * shows its root (HAL-13066). It says "on your computer" as the phone's sentence does.
+ */
+export const noDocsFolderToast =
+  "There's no docs folder in this workspace yet. Make one on your computer, then put documents in it.";
+
 /** What {@link overviewWords} needs besides the tab. */
 export interface OverviewWordsOptions {
   /** A phone's empty Knowledge sentence has no button and says "on your computer". */

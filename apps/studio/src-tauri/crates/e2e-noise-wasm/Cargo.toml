@@ -1,0 +1,38 @@
+[package]
+name = "halonic-e2e-noise-wasm"
+description = "The agent host's Noise session: snow behind a few plain functions, built to WebAssembly for @halonicjs/adapter-e2e-noise."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Not the workspace's lints: the workspace forbids unsafe code, and the
+# WebAssembly exports need `#[unsafe(no_mangle)]` and one imported function.
+# Unsafe code is denied here instead, and allowed only in src/exports.rs,
+# which holds nothing else (Julian's condition 3 on HAL-12355).
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+
+# snow is the vetted Noise library the approved plan names ("vetted library,
+# Noise via snow", board decision 4d on HAL-5674); B1 chose it for the host
+# on HAL-12236 and Julian signed it on HAL-12355. Pinned exactly: the phone
+# locks the same version, so both ends run the same Noise code.
+# Only the crypto our two handshakes use (25519, ChaChaPoly, SHA256). No
+# getrandom: randomness comes from the host through one imported function.
+# Never risky-raw-split, hfs or nightly.
+[dependencies]
+snow = { version = "=0.10.0", default-features = false, features = [
+  "default-resolver",
+  "use-chacha20poly1305",
+  "use-sha2",
+  "use-curve25519",
+] }
+
+# The published vectors are JSON.
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

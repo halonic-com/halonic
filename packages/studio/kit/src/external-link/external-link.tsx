@@ -32,11 +32,13 @@ export type ExternalLinkProps = ExternalLinkToAddress | ExternalLinkToRequestedA
 /**
  * The inline link style (base component specs, 17.1): accent text, underlined in a softer line at
  * rest and a full one on hover. The line at rest is what tells a link inside a sentence from the
- * words around it, which colour alone doesn't do (WCAG 1.4.1, HAL-12946).
+ * words around it, which colour alone doesn't do (WCAG 1.4.1, HAL-12946). In high contrast it's the
+ * system's link colour: a `<button>` with this style would otherwise get the button text colour
+ * there (HAL-12933).
  */
 export const inlineLinkClasses = [
   "rounded-xs text-accent-text underline decoration-accent-text/50 underline-offset-2",
-  "hover:decoration-current focus-ring",
+  "hover:decoration-current focus-ring forced-colors:text-[LinkText]",
   "touch:hit-touch phone:inline-flex phone:min-h-touch phone:items-center",
 ].join(" ");
 

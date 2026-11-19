@@ -1,14 +1,6 @@
 import { findSecretShape } from "@halonicjs/std";
-import {
-  Dialog,
-  Field,
-  InfoIcon,
-  Input,
-  Select,
-  TextArea,
-  usePresentation,
-} from "@halonicjs/studio-kit";
-import { errorReasonFor } from "@halonicjs/studio-shell";
+import { Dialog, Field, Input, Select, TextArea, usePresentation } from "@halonicjs/studio-kit";
+import { errorReasonFor, NameAndHubRow, NewItemNote } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState } from "react";
 import type { AgentHub, AgentRef, NewAgent } from "../api.ts";
 import { agentFilePath } from "./agent-file.ts";
@@ -106,33 +98,37 @@ export function NewAgentDialog({
       {...(note === undefined ? {} : { describedBy: noteId })}
     >
       <div className="flex flex-col gap-3">
-        <div className={hubs.length > 1 ? "grid grid-cols-[1fr_160px] gap-3" : "grid gap-3"}>
-          <Field
-            label={words.nameField}
-            error={problem ?? null}
-            {...(fileLine === undefined ? {} : { hint: fileLine })}
-          >
-            <Input
-              ref={nameField}
-              autoFocus
-              readOnly={busy}
-              value={name}
-              onChange={(event) => {
-                setProblem(undefined);
-                setName(event.target.value);
-              }}
-            />
-          </Field>
-          {hubs.length > 1 && (
-            <Field label={words.hubField}>
-              <Select
-                options={hubs.map((hub) => ({ value: hub.id, label: hub.name }))}
-                value={hubId}
-                onChange={setHubId}
+        <NameAndHubRow
+          name={
+            <Field
+              label={words.nameField}
+              error={problem ?? null}
+              {...(fileLine === undefined ? {} : { hint: fileLine })}
+            >
+              <Input
+                ref={nameField}
+                autoFocus
+                readOnly={busy}
+                value={name}
+                onChange={(event) => {
+                  setProblem(undefined);
+                  setName(event.target.value);
+                }}
               />
             </Field>
-          )}
-        </div>
+          }
+          hub={
+            hubs.length > 1 ? (
+              <Field label={words.hubField}>
+                <Select
+                  options={hubs.map((hub) => ({ value: hub.id, label: hub.name }))}
+                  value={hubId}
+                  onChange={setHubId}
+                />
+              </Field>
+            ) : undefined
+          }
+        />
         <Field
           label={words.instructionsField}
           hint={words.instructionsHint}
@@ -150,15 +146,7 @@ export function NewAgentDialog({
             }}
           />
         </Field>
-        {note !== undefined && (
-          <p id={noteId} className="flex items-start gap-2 text-small text-fg-muted">
-            {/* The icon has no size of its own, so in a flex row it needs one; it sits on the first line. */}
-            <span className="mt-0.5 size-4 shrink-0 text-fg-subtle" aria-hidden>
-              <InfoIcon />
-            </span>
-            {note}
-          </p>
-        )}
+        {note !== undefined && <NewItemNote id={noteId}>{note}</NewItemNote>}
       </div>
     </Dialog>
   );

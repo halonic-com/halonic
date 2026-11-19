@@ -86,6 +86,8 @@ export const itemWords = {
     sentence === "" ? kind : `${kind} · ${sentence}`,
   /** Over a new item's fields on its What changed page: "New skill". */
   newOfKind: (kind: string) => `New ${kind.toLowerCase()}`,
+  /** Create version's sentence after the kind in an item's checkbox: "· New". */
+  sentenceAfterKind: (sentence: string) => `· ${sentence}`,
   /** `.gitignore`: the file Halonic writes when history is turned on. */
   historyLeavesOut: "Files history leaves out",
   /** The sentence of an item that moved: "Renamed from Support". */
@@ -260,8 +262,11 @@ export const mergeWords = {
   theirsName: (people: readonly string[]) =>
     people.length === 1 && people[0] !== undefined ? `${people[0]}'s` : "The shared one",
   heading: "Getting updates",
+  /** No History sentence when nothing overlaps: nothing of yours is replaced (HAL-13042). */
   intro: (people: readonly string[], count: number) =>
-    `You and ${mergeWords.who(people)} both changed ${count === 1 ? "1 item" : `${count} items`}. Choose which one to keep. Your version is kept in History either way.`,
+    count === 0
+      ? `You and ${mergeWords.who(people)} changed different items, so there's nothing to choose. Finish getting updates to bring theirs in.`
+      : `You and ${mergeWords.who(people)} both changed ${count === 1 ? "1 item" : `${count} items`}. Choose which one to keep. Your version is kept in History either way.`,
   /** The strip over the page while a merge is left open. */
   inTheMiddle: (people: readonly string[]) =>
     `You're in the middle of getting ${mergeWords.whose(people)} updates.`,

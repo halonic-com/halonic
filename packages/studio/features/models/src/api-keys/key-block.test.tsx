@@ -50,14 +50,33 @@ function keysWith(entry: KeyEntry, stored: string[] = []) {
   return { keys, sent, stored };
 }
 
-async function show(keys: ModelKeys, secretName: string | undefined = "anthropic") {
+/** Shows the block; `null` for a provider with no secret name. */
+async function show(
+  keys: ModelKeys,
+  secretName: string | null = "anthropic",
+  focusRequest?: string,
+) {
   element = document.createElement("div");
   document.body.append(element);
   root = createRoot(element);
-  await act(async () =>
-    root?.render(<KeyBlock keys={keys} secretName={secretName} providerName="Anthropic" />),
-  );
+  await draw(keys, secretName ?? undefined, focusRequest);
   return element;
+}
+
+/** Draws the block again, as the provider page does when it is asked for its key again. */
+async function draw(keys: ModelKeys, secretName: string | undefined, focusRequest?: string) {
+  await act(async () =>
+    root?.render(
+      <KeyBlock
+        keys={keys}
+        secretName={secretName}
+        providerName="Anthropic"
+        focusRequest={focusRequest}
+      />,
+    ),
+  );
+  // The focus moves a moment later, after the shell focuses the page's heading.
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
 }
 
 async function type(container: HTMLElement, value: string) {
@@ -139,6 +158,22 @@ verifies("models.api-keys.enter-key", () => {
     expect(view.textContent).toContain("Couldn't save the key: refused");
     expect(view.textContent).not.toContain("sk-acme-test-789");
     expect(input.value).toBe("sk-acme-test-789");
+  });
+
+  it("says the old key is still in use when replacing it fails", async () => {
+    const { keys } = keysWith(desktop, ["anthropic"]);
+    const view = await show({
+      ...keys,
+      save: async () => {
+        throw new KindedError("unavailable", "The system keychain is locked.");
+      },
+    });
+    await type(view, "sk-acme-test-456");
+    await press(view, "Save key");
+    await press(document.querySelector("dialog") as HTMLElement, "Change key");
+    expect(view.textContent).toContain(
+      "Couldn't save the key: The system keychain is locked. Your old key is still in use.",
+    );
   });
 
   it("shows no path or stack when saving fails", async () => {
@@ -254,5 +289,46 @@ verifies("models.api-keys.where-keys-are-kept", () => {
       keysWith({ kind: "field", keptOn: "host-computer", offHostHttps: false }).keys,
     );
     expect(view.textContent).toContain("kept on the host");
+  });
+});
+
+verifies("models.api-keys.open-at-key", () => {
+  it("puts the focus in the key field when the page is opened at the key", async () => {
+    const view = await show(keysWith(desktop).keys, "anthropic", "anthropic/0");
+    expect(document.activeElement).toBe(view.querySelector("input"));
+  });
+
+  it("puts the focus back in the field when it is asked again, and only then", async () => {
+    const { keys } = keysWith(desktop, ["anthropic"]);
+    const view = await show(keys, "anthropic", "anthropic/0");
+    const outside = document.createElement("button");
+    document.body.append(outside);
+    outside.focus();
+    await draw(keys, "anthropic", "anthropic/0");
+    expect(document.activeElement).toBe(outside);
+    await draw(keys, "anthropic", "anthropic/1");
+    expect(document.activeElement).toBe(view.querySelector("input"));
+    outside.remove();
+  });
+
+  it("focuses the heading when the provider has no secret name", async () => {
+    const view = await show(keysWith(desktop).keys, null, "anthropic/0");
+    expect(view.textContent).toContain("Give this provider a secret name");
+    expect(document.activeElement).toBe(view.querySelector("h2"));
+  });
+
+  it("focuses the heading where this page can't take a key", async () => {
+    const view = await show(
+      keysWith({ kind: "unavailable", reason: "unencrypted" }).keys,
+      "anthropic",
+      "anthropic/0",
+    );
+    expect(view.querySelector("input")).toBeNull();
+    expect(document.activeElement).toBe(view.querySelector("h2"));
+  });
+
+  it("leaves the focus alone when the page isn't opened at the key", async () => {
+    const view = await show(keysWith(desktop).keys);
+    expect(view.contains(document.activeElement)).toBe(false);
   });
 });

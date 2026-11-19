@@ -62,10 +62,10 @@ describe("plugin's sentences", () => {
   it("has the trust check's headings in Studio's words and order", () => {
     expect([
       words(pluginMessages.toolsHeading()),
+      words(pluginMessages.toolsIntro()),
       words(pluginMessages.reads()),
       words(pluginMessages.changesThings()),
       words(pluginMessages.sends()),
-      words(pluginMessages.asksFirst()),
       words(pluginMessages.programsHeading()),
       words(pluginMessages.secretsHeading()),
       words(pluginMessages.secretGoesTo("api.weather.example")),
@@ -73,10 +73,10 @@ describe("plugin's sentences", () => {
       words(pluginMessages.notChecked()),
     ]).toEqual([
       "Tools for agents",
+      "Agents can use these through a connector. Each one asks a person first unless you change that.",
       "Reads",
       "Changes things",
       "Sends",
-      "asks a person first",
       "Programs",
       "Secrets",
       "goes only to api.weather.example",

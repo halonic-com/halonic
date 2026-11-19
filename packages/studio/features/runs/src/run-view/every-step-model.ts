@@ -50,11 +50,12 @@ export function everyStep(
   summary: RunSummary,
   workflow: RunWorkflow | undefined,
   now: Date,
+  phone = false,
 ): StepEntry[] {
   const eventsOfSteps = eventsBySteps(events);
   const steps = runSteps(events, summary);
   // Only the step the run is in can wait, and it says what for once it has been quiet for 10 s.
-  const slow = summary.status === "running" ? slowStepLine(events, now) : undefined;
+  const slow = summary.status === "running" ? slowStepLine(events, now, phone) : undefined;
   return steps.map((step, index) => {
     const name = stepName(step.stateId, workflow?.stepDescription(step.stateId));
     const time = clockTime(new Date(step.startedAt));

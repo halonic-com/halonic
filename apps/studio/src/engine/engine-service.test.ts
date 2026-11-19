@@ -55,6 +55,28 @@ verifies("studio.engine-service", () => {
       expect((refusal as Error).message).toContain("4242");
     });
 
+    it("closes the engine when the shell loses the lock, and is taken again by the next open", async () => {
+      const shell = fakeShell();
+      const reportError = vi.fn();
+      const service = serviceOn(shell, acmeFiles(), { reportError });
+      const first = await service.open();
+
+      shell.loseLock();
+      await vi.waitFor(() => expect(lockCalls(shell)).toContain("engine_lock_release"));
+      const second = await service.open();
+
+      expect(second).not.toBe(first);
+      expect(reportError).toHaveBeenCalledWith(
+        new Error("The engine lock was taken over by another process."),
+      );
+      expect(lockCalls(shell)).toEqual([
+        "engine_lock_hold",
+        "engine_lock_release",
+        "engine_lock_hold",
+      ]);
+      await service.close();
+    });
+
     it("is given back when the workspace's files can't be read", async () => {
       const shell = fakeShell();
       const unreadable = new MemoryDefinitionStore({});

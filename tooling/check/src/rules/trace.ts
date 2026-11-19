@@ -23,8 +23,10 @@ export function checkTrace(context: CheckContext): Report {
   }
   const byId = groupById(model.requirements);
   reportDuplicateIds(byId, report);
-  reportVerifiesCalls(model, byId, report);
-  reportTaggedTests(model, byId, report);
+  // A test in scope may verify a requirement of a package outside it.
+  const allById = groupById([...model.requirements, ...model.outOfScope]);
+  reportVerifiesCalls(model, allById, report);
+  reportTaggedTests(model, allById, report);
   reportMissingResults(model, report);
   reportUnreadableResults(model, report);
   reportUnproven(model, report);

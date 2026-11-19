@@ -1,7 +1,7 @@
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { defineFeature, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { ALIAS_KIND, ALIAS_KIND_LABEL, aliasTitle } from "./aliases/alias-text.ts";
-import { readModels } from "./aliases/read-models.ts";
+import { readModels, subscribeProviderNames } from "./aliases/read-models.ts";
 import {
   ModelKeysService,
   ModelsFilesService,
@@ -70,6 +70,12 @@ export const modelsFeature = defineFeature({
           label: providerTabTitle(context.services.find(ModelsFilesService), item.id),
         }),
         exists: () => true,
+        // A tab opened before `providers/` is read shows the id; the window titles it again once the
+        // names are read or change (C104 P3, HAL-12963).
+        subscribe: (listener, context) => {
+          const files = context.services.find(ModelsFilesService);
+          return files === undefined ? () => undefined : subscribeProviderNames(files, listener);
+        },
       },
     });
     studio.itemPage.addSection({

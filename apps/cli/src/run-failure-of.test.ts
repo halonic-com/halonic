@@ -261,6 +261,34 @@ verifies("cli.run-failure", () => {
       });
     }
 
+    it("names a provider type Halonic can't call as the user's typo, with no report link (HAL-12342)", () => {
+      const failed = {
+        ...failedWith("error"),
+        cause: {
+          kind: "not_found" as const,
+          code: "models.unknown-provider-type",
+          detail: { provider: "weird", type: "carrier-pigeon" },
+        },
+      };
+      const failure = runFailureOf(failed, undefined);
+      expect(failure).toEqual({
+        reason: "unknown-provider-type",
+        provider: "weird",
+        type: "carrier-pigeon",
+      });
+      expect(fixLine(failure)).toBe(
+        "Set type in providers/weird.yaml to one of anthropic, openai, openai-compatible, ollama, lmstudio or mock, then run again.",
+      );
+    });
+
+    it("gives an unknown provider type the general lines when its cause doesn't name the file", () => {
+      const failed = {
+        ...failedWith("error"),
+        cause: { kind: "not_found" as const, code: "models.unknown-provider-type" },
+      };
+      expect(runFailureOf(failed, undefined)).toEqual(general);
+    });
+
     it("gives an older log's run.failed without a reason the general lines", () => {
       expect(runFailureOf(failedWith(undefined), calledModel())).toEqual(general);
     });

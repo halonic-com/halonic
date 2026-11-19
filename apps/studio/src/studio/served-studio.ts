@@ -1,5 +1,7 @@
 import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import { HostSettings, ServiceRegistry } from "@halonicjs/app";
+import { servedGoogleSetupFeature } from "@halonicjs/studio-feature-google-setup";
+import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
 import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
 import {
@@ -24,6 +26,7 @@ import {
   type StudioHost,
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
+import { ServedGoogleSetupAccounts } from "../google/served-google-setup-accounts.ts";
 import { type PageFetch, ServedInboxRuns } from "../runs/served-inbox-runs.ts";
 import { halonicVersion } from "./open-trusts.ts";
 import { loadServedWorkspace } from "./served-workspace.ts";
@@ -51,8 +54,13 @@ export function startServedStudio(
 ): StartedStudio {
   const pageFetch: PageFetch = page.fetch ?? ((path, init) => fetch(path, init));
   const shell = createShell({
-    features: [inboxFeature, settingsFeature],
-    hostServices: [InboxRunsService, DisplaySettingsService, HostSettingsService],
+    features: [inboxFeature, settingsFeature, servedGoogleSetupFeature],
+    hostServices: [
+      InboxRunsService,
+      DisplaySettingsService,
+      HostSettingsService,
+      GoogleSetupAccountsService,
+    ],
     host,
     platform,
   });
@@ -101,7 +109,8 @@ export function startServedStudio(
  * server's (HAL-6159 design, section 5). They last until the page is closed, and nothing reads
  * them yet: the window leaves out the host sections of Settings until then. It shows the version
  * of Halonic that serves it, for now `halonicVersion`. The Inbox reads and answers the served
- * workspace's runs through `fetch`, the page's own (`studio.served-inbox-runs`).
+ * workspace's runs through `fetch`, the page's own (`studio.served-inbox-runs`), and lists the
+ * Google setups the computer lets it read (`studio.served-google-setup-accounts`).
  */
 export function servedServices(
   fetch: PageFetch = (path, init) => globalThis.fetch(path, init),
@@ -116,6 +125,7 @@ export function servedServices(
     InboxRunsService,
     new ServedInboxRuns({ fetch, ...(onFocus === undefined ? {} : { onFocus }) }),
   );
+  services.provide(GoogleSetupAccountsService, new ServedGoogleSetupAccounts(fetch, onFocus));
   return services;
 }
 

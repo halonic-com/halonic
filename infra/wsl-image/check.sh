@@ -136,12 +136,35 @@ done
   '{"current":"1.2.0","previous":"1.0.0","securityUpdated":""}' ] || fail "status is wrong"
 code=0; chroot "$root" su halonic -s /bin/sh -c "$updater rollback" 2>/dev/null || code=$?
 [ "$code" -eq 2 ] || fail "halonic could roll back (exit $code)"
+# An update Studio's time limit cut off inside dpkg (HAL-12672): socat is left
+# half-configured, and its package script sets a file capability. Offline, so
+# a stand-in apt-get fails on update: the next security-update still finishes
+# socat and drops the capability, and doesn't say updates ran.
+sed -i '/^Package: socat$/,/^$/ s/^Status: install ok installed$/Status: install ok half-configured/' \
+  "$root/var/lib/dpkg/status"
+[ "$(chroot "$root" dpkg-query -W -f "\${Status}" socat)" = "install ok half-configured" ] || fail "couldn't cut off socat"
+postinst="$root/var/lib/dpkg/info/socat.postinst"
+[ ! -e "$postinst" ] || mv "$postinst" "$postinst.orig"
+printf '#!/bin/sh\nprintf "#!/bin/sh\\n" > /usr/bin/cut-off-cap\nsetcap cap_net_raw+ep /usr/bin/cut-off-cap\n' > "$postinst"
+chmod 0755 "$postinst"
+printf '#!/bin/sh\necho offline >&2\nexit 100\n' > "$root/usr/sbin/apt-get"
+chmod 0755 "$root/usr/sbin/apt-get"
+code=0; chroot "$root" "$updater" security-update >/dev/null 2>&1 || code=$?
+[ "$code" -ne 0 ] || fail "security updates succeeded offline"
+[ "$(chroot "$root" dpkg-query -W -f "\${Status}" socat)" = "install ok installed" ] ||
+  fail "a cut-off update wasn't finished: $(chroot "$root" dpkg-query -W -f "\${Status}" socat)"
+[ -z "$(getcap -r "$root/usr")" ] || fail "finishing a cut-off update left a file capability: $(getcap -r "$root/usr")"
+chroot "$root" "$updater" status | grep -q '"securityUpdated":""' || fail "a failed update says updates ran"
+rm -f "$postinst" "$root/usr/bin/cut-off-cap"
+[ ! -e "$postinst.orig" ] || mv "$postinst.orig" "$postinst"
 # Security updates, with a stand-in apt-get (first on the updater's PATH) whose
 # upgrade brings a new setuid program, a setgid program of another system user
 # and a program with a file capability: the bits and the capability must go,
 # and the bits stay gone.
 cat > "$root/usr/sbin/apt-get" <<'APT'
 #!/bin/sh
+# Like the real apt-get, it refuses while dpkg has unfinished work.
+[ -z "$(dpkg --audit)" ] || { echo "E: dpkg was interrupted" >&2; exit 100; }
 case " $* " in *" upgrade "*)
   for f in new-suid new-sgid new-cap; do printf '#!/bin/sh\n' > "/usr/bin/$f"; chmod 0755 "/usr/bin/$f"; done
   chmod 4755 /usr/bin/new-suid

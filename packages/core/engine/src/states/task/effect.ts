@@ -59,7 +59,7 @@ export function requestEffect(
 export function takeToolResult(
   { run, stateId }: StateContext,
   input: EffectDoneInput,
-  { result, outcome, risk, noun, verb }: ToolResult,
+  { result, outcome, risk, noun, verb, cause }: ToolResult,
 ): StateStep {
   const effect = run.effect;
   if (effect === null || effect.unknown || effect.callId !== input.callId) return nothing;
@@ -73,6 +73,7 @@ export function takeToolResult(
     ...(risk === undefined ? {} : { risk }),
     ...(noun === undefined ? {} : { noun }),
     ...(verb === undefined ? {} : { verb }),
+    ...(cause === undefined ? {} : { cause }),
   };
   if (outcome === "unknown") {
     const waiting: DecidedEvent = {

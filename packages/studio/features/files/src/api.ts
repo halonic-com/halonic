@@ -19,5 +19,5 @@ export {
 } from "./files-host.ts";
 export { filesWords } from "./files-words.ts";
 export { type FollowFilesParts, followFilesHost } from "./follow-host.ts";
-export { requestFilesReveal } from "./reveal-request.ts";
+export { type FilesRevealAnswer, requestFilesReveal } from "./reveal-request.ts";
 export type { FileMarks, TreeMarks } from "./tree/tree-model.ts";

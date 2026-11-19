@@ -15,9 +15,11 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { useStudioHost } from "../engine/studio-host-context.ts";
 import { detailsOf } from "../errors/copy-details-words.ts";
 import { errorMessageFor } from "../errors/error-message.ts";
 import { useCopyDetails } from "../page/copy-details.ts";
+import { asUnreachable } from "../page/page-unreachable.tsx";
 import { type HomeCardContribution, type HomeSection, homeSectionTitles } from "../points/home.ts";
 import type { Registered } from "../points/point-store.ts";
 import { loadView } from "../view.ts";
@@ -29,6 +31,12 @@ import { SectionSkeleton } from "./home-loading.tsx";
 /** What a Home card's view gets: the context of the feature that added the card. */
 export interface HomeCardProps {
   readonly context: WorkspaceContext;
+  /**
+   * How many times the section's Try again was pressed, `0` at first. A view that keeps a failed
+   * load across renders, so React's retries throw the same error rather than load again, loads
+   * again when this changes.
+   */
+  readonly attempt: number;
 }
 
 /** The heading of each section's error when its card can't load (microcopy 3.3). */
@@ -96,13 +104,15 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
   const focusMoved = useCallback(() => setFocusPending(false), []);
   const [empty, setEmpty] = useState(false);
   const signal = useCardSignal(card, context);
+  const name = card.title?.(context) ?? homeSectionTitles[card.id];
+  const host = useStudioHost();
 
   return (
     <section aria-labelledby={headingId} hidden={empty}>
       <ListHeading
         id={headingId}
         headingRef={headingRef}
-        name={card.title?.(context) ?? homeSectionTitles[card.id]}
+        name={name}
         {...(signal === undefined ? {} : { detail: signal })}
       />
       <ViewErrorBoundary
@@ -111,7 +121,9 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
         fallback={(error) => (
           <SectionError
             section={card.id}
-            error={error}
+            // A card whose code couldn't load on the served Studio or the phone says the computer
+            // can't be reached (`shell.page-unreachable`), not that Halonic can't explain it.
+            error={asUnreachable(host, error, `show ${name}`)}
             focus={focusPending}
             onFocused={focusMoved}
             onRetry={retry}
@@ -120,7 +132,7 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
       >
         <Suspense fallback={skeletonFor(card.id)}>
           <HomeSectionEmptyReport value={setEmpty}>
-            <CardView context={context} />
+            <CardView context={context} attempt={attempt} />
           </HomeSectionEmptyReport>
           {focusPending ? <FocusOnShow target={headingRef} onFocused={focusMoved} /> : null}
         </Suspense>

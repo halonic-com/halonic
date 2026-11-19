@@ -3,7 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { expect, it, vi } from "vitest";
 import { click, render } from "../test/render.tsx";
-import { ExternalLink, isWebAddress } from "./external-link.tsx";
+import { ExternalLink, inlineLinkClasses, isWebAddress } from "./external-link.tsx";
 import { type OpenExternal, OpenExternalProvider } from "./open-external.tsx";
 
 const audiencePage = "https://console.cloud.google.com/auth/audience?project=halonic-x";
@@ -46,6 +46,18 @@ verifies("kit.external-link", () => {
     const { link } = renderLink();
     expect(link.className).toContain("touch:hit-touch");
     expect(link.className).toContain("phone:min-h-touch");
+  });
+
+  it("is the link colour and underlined in high contrast, also on a button", () => {
+    const { container } = render(
+      <button type="button" className={inlineLinkClasses}>
+        Open Library ›
+      </button>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.className).toContain("forced-colors:text-[LinkText]");
+    // The underline at rest (HAL-12946) carries over into high contrast, so it needs no variant.
+    expect(button.className).toContain("underline decoration-accent-text/50");
   });
 
   it("keeps the address on the link, opening in a new tab without a handle back", () => {

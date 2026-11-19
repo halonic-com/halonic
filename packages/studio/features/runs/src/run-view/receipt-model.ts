@@ -16,14 +16,9 @@ import { draftsOf, readsOf, sendsOf } from "@halonicjs/events";
 import { escapeHidden } from "@halonicjs/std";
 import type { SourcedRun } from "../api.ts";
 import { costParts, currentStepName, enteredAStep, took, waitingLine } from "../list/run-row.ts";
-import {
-  lineSeparator,
-  receiptWords,
-  rowLineWords,
-  summaryWords,
-  toolAction,
-} from "../run-words.ts";
+import { lineSeparator, rowLineWords, summaryWords, toolAction } from "../run-words.ts";
 import { clockTime } from "../time-words.ts";
+import { receiptWords } from "./receipt-words.ts";
 import { type RunPageContext, startedWords } from "./run-page-model.ts";
 
 /**

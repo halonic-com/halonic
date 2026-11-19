@@ -185,10 +185,18 @@ pub fn distro_installed(wsl: &Path) -> Result<bool, WslError> {
 }
 
 /// True when `listing`, what `wsl.exe --list --quiet` printed, has a line
-/// that is exactly [`DISTRO`]. Piped, `wsl.exe` prints UTF-16 little-endian,
-/// often with a byte order mark; any other output is read as UTF-8.
+/// that is exactly [`DISTRO`].
 fn lists_distro(listing: &[u8]) -> bool {
-    let text = if listing.contains(&0) {
+    listing_text(listing)
+        .lines()
+        .any(|line| line.trim_matches(|c: char| c == '\u{feff}' || c.is_whitespace()) == DISTRO)
+}
+
+/// What `wsl.exe --list` printed, as text. Piped, `wsl.exe` prints UTF-16
+/// little-endian, often with a byte order mark; any other output is read as
+/// UTF-8.
+pub(crate) fn listing_text(listing: &[u8]) -> String {
+    if listing.contains(&0) {
         let units: Vec<u16> = listing
             .as_chunks::<2>()
             .0
@@ -198,9 +206,7 @@ fn lists_distro(listing: &[u8]) -> bool {
         String::from_utf16_lossy(&units)
     } else {
         String::from_utf8_lossy(listing).into_owned()
-    };
-    text.lines()
-        .any(|line| line.trim_matches(|c: char| c == '\u{feff}' || c.is_whitespace()) == DISTRO)
+    }
 }
 
 /// The command that runs one step of the runtime updater as root.
@@ -328,7 +334,18 @@ fn run(command: Command, input: Stdio) -> Result<String, WslError> {
     run_within(command, input, Duration::MAX)
 }
 
-fn run_within(mut command: Command, input: Stdio, limit: Duration) -> Result<String, WslError> {
+fn run_within(command: Command, input: Stdio, limit: Duration) -> Result<String, WslError> {
+    run_within_bytes(command, input, limit)
+        .map(|printed| String::from_utf8_lossy(&printed).into_owned())
+}
+
+/// Runs `command` with `input` and answers the bytes it printed, stopping it
+/// after `limit`. A `wsl.exe` of its own prints UTF-16, so the caller decodes.
+pub(crate) fn run_within_bytes(
+    mut command: Command,
+    input: Stdio,
+    limit: Duration,
+) -> Result<Vec<u8>, WslError> {
     command
         .stdin(input)
         .stdout(Stdio::piped())
@@ -365,12 +382,12 @@ fn run_within(mut command: Command, input: Stdio, limit: Duration) -> Result<Str
         }
     };
     let printed = reader.join().unwrap_or_default();
-    ending(status, &printed)
+    ending(status, printed)
 }
 
-fn ending(status: ExitStatus, stdout: &[u8]) -> Result<String, WslError> {
+fn ending(status: ExitStatus, stdout: Vec<u8>) -> Result<Vec<u8>, WslError> {
     match status.code() {
-        Some(0) => Ok(String::from_utf8_lossy(stdout).into_owned()),
+        Some(0) => Ok(stdout),
         Some(3) => Err(WslError::Busy),
         Some(4) => Err(WslError::ChecksumDiffers),
         Some(5) => Err(WslError::ArchiveRefused),

@@ -1,9 +1,8 @@
-import { type ReactNode, type Ref, useId, useImperativeHandle, useRef, useState } from "react";
-import { Button, OnTintContext } from "../button/button.tsx";
+import { type ReactNode, type Ref, useId, useImperativeHandle, useRef } from "react";
 import { AlertIcon } from "../icons/alert-icon.tsx";
 import { InfoIcon } from "../icons/info-icon.tsx";
 import { WarningIcon } from "../icons/warning-icon.tsx";
-import { Tooltip, type TooltipTriggerProps } from "../tooltip/tooltip.tsx";
+import { CalloutButton } from "./callout-button.tsx";
 
 /**
  * `info` for a fact and maybe a next step (also the "neutral" notices). `warning` when part of
@@ -71,8 +70,20 @@ interface FocusedCallout extends CalloutBase {
   readonly ref?: Ref<CalloutHandle>;
 }
 
+/**
+ * A Callout that comes and goes with what the page shows, such as a strip that says the chosen
+ * program can't run. Its title, text and files are a polite live region, read out when they
+ * appear or change; its action sits outside the region, so "Check again" and "Checking…" aren't
+ * read with the text each time. Keep it on the page and pass empty `children` while there's
+ * nothing to say: the region has to be there before the words arrive to be read.
+ */
+interface PoliteCallout extends CalloutBase {
+  readonly announce: "polite";
+  readonly ref?: never;
+}
+
 /** The props of `Callout`. */
-export type CalloutProps = QuietCallout | FocusedCallout;
+export type CalloutProps = QuietCallout | FocusedCallout | PoliteCallout;
 
 /** The number of files shown before "and N more". */
 export const CALLOUT_FILES_SHOWN = 3;
@@ -106,50 +117,118 @@ const actionRow = "mt-2 -ml-2.5 phone:-ml-4 touch:-ml-4";
  * <Callout tone="info" icon={<ShieldIcon />}>This workspace isn't trusted yet.</Callout>
  * <Callout tone="warning" title="Couldn't change 3 files" files={failed} action={retry}
  *   announce="focus" ref={callout}>Halonic kept a copy of each.</Callout>
+ * <Callout tone="warning" action={checkAgain} announce="polite">{strip}</Callout>
  */
 export function Callout(props: CalloutProps) {
-  const ids = { title: useId(), text: useId(), files: useId() };
+  const ids: CalloutIds = { title: useId(), text: useId(), files: useId() };
   const box = useRef<HTMLDivElement>(null);
   useImperativeHandle(props.ref, () => ({
     focus: () => box.current?.focus({ preventScroll: true }),
   }));
 
-  const tone = toneClasses[props.tone];
-  const hasTitle = props.title !== undefined && props.title !== "";
+  const title = props.title === "" ? undefined : props.title;
   const files = props.files ?? [];
   const focusable = props.announce === "focus";
-  const actions = props.action === undefined ? [] : [props.action].flat();
+  // Only a polite Callout is ever empty: it stays on the page as its live region alone.
+  const empty = props.announce === "polite" && !hasText(props.children);
+  const message = (
+    <CalloutMessage ids={ids} title={title} files={files}>
+      {props.children}
+    </CalloutMessage>
+  );
 
+  // An empty polite Callout keeps the same elements without their classes, so React keeps the
+  // live region's node when the words come and go.
   return (
     <div
       ref={box}
-      {...(focusable ? groupAttributes(ids, hasTitle, files.length > 0) : {})}
-      className={`flex gap-2 rounded-sm border border-transparent p-3 ${tone.fill}${focusable ? " focus-ring" : ""}`}
+      {...(focusable ? groupAttributes(ids, title !== undefined, files.length > 0) : {})}
+      className={empty ? undefined : boxClass(props.tone, focusable)}
     >
-      <span
-        aria-hidden="true"
-        className={`mt-0.5 inline-grid size-icon-sm shrink-0 place-items-center *:size-full ${tone.icon}`}
-      >
-        {props.icon ?? toneIcons[props.tone]}
-      </span>
-      <div className="min-w-0 flex-1 wrap-break-word text-fg">
-        {hasTitle ? (
-          <p id={ids.title} className="text-body-strong">
-            {props.title}
-          </p>
-        ) : null}
-        <div id={ids.text} className="text-small">
-          {props.children}
-        </div>
-        {files.length > 0 ? <FileList id={ids.files} files={files} /> : null}
-        {actions.length > 0 ? (
-          <div className={`${actionRow} flex flex-wrap`}>
-            {actions.map((action) => (
-              <CalloutButton key={action.label} action={action} textId={ids.text} />
-            ))}
+      {empty ? null : <ToneIcon tone={props.tone} icon={props.icon} />}
+      <div className={empty ? undefined : "min-w-0 flex-1 wrap-break-word text-fg"}>
+        {props.announce === "polite" ? (
+          <div role="status" aria-atomic="true">
+            {empty ? null : message}
           </div>
-        ) : null}
+        ) : (
+          message
+        )}
+        {empty ? null : <CalloutActions action={props.action} textId={ids.text} />}
       </div>
+    </div>
+  );
+}
+
+/** The ids the Callout's parts point at each other with. */
+interface CalloutIds {
+  readonly title: string;
+  readonly text: string;
+  readonly files: string;
+}
+
+/** The box's classes: the tone's fill, and the focus ring when it can take focus. */
+function boxClass(tone: CalloutTone, focusable: boolean): string {
+  const ring = focusable ? " focus-ring" : "";
+  return `flex gap-2 rounded-sm border border-transparent p-3 ${toneClasses[tone].fill}${ring}`;
+}
+
+/** The 16px icon in the tone's colour, 2px down so it's centred on the first line. */
+function ToneIcon({ tone, icon }: { readonly tone: CalloutTone; readonly icon: ReactNode }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`mt-0.5 inline-grid size-icon-sm shrink-0 place-items-center *:size-full ${toneClasses[tone].icon}`}
+    >
+      {icon ?? toneIcons[tone]}
+    </span>
+  );
+}
+
+/** The words: the title, the text and the files. A polite Callout reads them out together. */
+function CalloutMessage({
+  ids,
+  title,
+  files,
+  children,
+}: {
+  readonly ids: CalloutIds;
+  readonly title: string | undefined;
+  readonly files: readonly string[];
+  readonly children: ReactNode;
+}) {
+  return (
+    <>
+      {title === undefined ? null : (
+        <p id={ids.title} className="text-body-strong">
+          {title}
+        </p>
+      )}
+      <div id={ids.text} className="text-small">
+        {children}
+      </div>
+      {files.length > 0 ? <FileList id={ids.files} files={files} /> : null}
+    </>
+  );
+}
+
+/** The action row under the words, or nothing without an action. */
+function CalloutActions({
+  action,
+  textId,
+}: {
+  readonly action: CalloutAction | readonly CalloutAction[] | undefined;
+  readonly textId: string;
+}) {
+  const actions = action === undefined ? [] : [action].flat();
+  if (actions.length === 0) {
+    return null;
+  }
+  return (
+    <div className={`${actionRow} flex flex-wrap`}>
+      {actions.map((one) => (
+        <CalloutButton key={one.label} action={one} textId={textId} />
+      ))}
     </div>
   );
 }
@@ -158,11 +237,7 @@ export function Callout(props: CalloutProps) {
  * The group's name is its title, or its text when it has none; its description is the text and
  * the list, without repeating the name.
  */
-function groupAttributes(
-  ids: { readonly title: string; readonly text: string; readonly files: string },
-  hasTitle: boolean,
-  hasFiles: boolean,
-) {
+function groupAttributes(ids: CalloutIds, hasTitle: boolean, hasFiles: boolean) {
   const described = [hasTitle ? ids.text : null, hasFiles ? ids.files : null].filter(
     (id) => id !== null,
   );
@@ -172,6 +247,11 @@ function groupAttributes(
     "aria-labelledby": hasTitle ? ids.title : ids.text,
     "aria-describedby": described.length > 0 ? described.join(" ") : undefined,
   };
+}
+
+/** Whether the text has something to show: not absent, `null`, `false` or `""`. */
+function hasText(children: ReactNode): boolean {
+  return children !== undefined && children !== null && children !== false && children !== "";
 }
 
 /** A path has no spaces, so it wraps anywhere rather than push the Callout off a phone. */
@@ -187,64 +267,5 @@ function FileList({ id, files }: { readonly id: string; readonly files: readonly
       ))}
       {more > 0 ? <li>and {more} more</li> : null}
     </ul>
-  );
-}
-
-/** Puts focus on an action that asks for it when it is drawn. */
-function focusOnMount(button: HTMLButtonElement | null): void {
-  button?.focus();
-}
-
-/** The ghost action, busy while a returned promise runs, so it keeps focus (17.5). */
-function CalloutButton({
-  action,
-  textId,
-}: {
-  readonly action: CalloutAction;
-  readonly textId: string;
-}) {
-  const focused = action.focus === true;
-  const [busy, setBusy] = useState(false);
-
-  function run() {
-    const result = action.onClick();
-    if (result === undefined) {
-      return;
-    }
-    setBusy(true);
-    // A rejection is the screen's to report; `finally` passes it on rather than hide it.
-    return result.finally(() => setBusy(false));
-  }
-
-  const button = (trigger: TooltipTriggerProps) => (
-    <Button
-      variant="ghost"
-      size="sm"
-      busy={busy}
-      busyLabel={action.busyLabel}
-      onClick={run}
-      {...(focused ? { ref: focusOnMount, "aria-describedby": textId } : {})}
-      {...trigger}
-    >
-      {action.label}
-      {action.opens === undefined ? null : (
-        <>
-          <span aria-hidden="true"> ↗</span>
-          <span className="sr-only">. {action.opens}</span>
-        </>
-      )}
-    </Button>
-  );
-
-  return (
-    <OnTintContext value={true}>
-      {action.opens === undefined ? (
-        button({})
-      ) : (
-        <Tooltip text={action.opens} isName>
-          {button}
-        </Tooltip>
-      )}
-    </OnTintContext>
   );
 }

@@ -62,16 +62,24 @@ export async function withProposals<T>(
 }
 
 /**
- * What `read` gives, or an `unavailable` error that says so when the
- * proposal's texts were deleted outside Halonic.
+ * What `read` gives, or an `unavailable` error the person can act on when
+ * the proposal's texts were deleted outside Halonic.
  *
  * @throws OwnLineError `unavailable` for a `ProposalUnavailableError`
  */
-export async function unlessUnavailable<T>(read: () => Promise<T>, shownRunId: string): Promise<T> {
+export async function unlessUnavailable<T>(
+  read: () => Promise<T>,
+  shownRunId: string,
+  place: ProposalPlace,
+): Promise<T> {
   try {
     return await read();
   } catch (error) {
     if (!(error instanceof ProposalUnavailableError)) throw error;
-    throw new OwnLineError("unavailable", proposalsMessages.unavailable(shownRunId));
+    throw new OwnLineError(
+      "unavailable",
+      proposalsMessages.unavailable(shownRunId),
+      proposalsMessages.unavailableFix(shownRunId, place.dir),
+    );
   }
 }

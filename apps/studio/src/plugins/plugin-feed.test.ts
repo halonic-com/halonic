@@ -152,3 +152,45 @@ verifies("studio.desktop-plugins-host", () => {
     expect(mostRunning).toBe(1);
   });
 });
+
+verifies("studio.desktop-plugins-first-read", () => {
+  it("is reading until a read ends", () => {
+    const { service } = acme();
+    expect(new PluginFeed(service).firstRead()).toEqual({ kind: "reading" });
+  });
+
+  it("says a first read failed, with its error, and tells the listeners", async () => {
+    const { service } = acme();
+    const feed = new PluginFeed(service);
+    const listener = vi.fn();
+    feed.subscribe(listener);
+    const error = new Error("the folder can't be listed");
+    vi.spyOn(service, "load").mockRejectedValueOnce(error);
+    await expect(feed.reload()).rejects.toBe(error);
+    expect(feed.firstRead()).toEqual({ kind: "failed", error });
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("is ready, and tells the listeners, once a read works, even with no plugins", async () => {
+    const { service } = acme();
+    const feed = new PluginFeed(service);
+    vi.spyOn(service, "load").mockRejectedValueOnce(new Error("not yet")).mockResolvedValueOnce([]);
+    await expect(feed.reload()).rejects.toThrow("not yet");
+    const listener = vi.fn();
+    feed.subscribe(listener);
+    await feed.reload();
+    expect(feed.current()).toEqual([]);
+    expect(feed.firstRead()).toEqual({ kind: "ready" });
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays ready when a later read fails", async () => {
+    const { service } = acme();
+    const feed = new PluginFeed(service);
+    await feed.reload();
+    const ready = feed.firstRead();
+    vi.spyOn(service, "load").mockRejectedValueOnce(new Error("the folder can't be listed"));
+    await expect(feed.reload()).rejects.toThrow();
+    expect(feed.firstRead()).toBe(ready);
+  });
+});

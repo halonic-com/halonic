@@ -61,6 +61,22 @@ verifies("source-control.changes-page", () => {
       ]);
     });
 
+    it("calls a workflow test by the workflow it tests: its name when it changed too, else its id as a name", () => {
+      const [workflow, test, alone] = groupIntoItems([
+        changed(
+          "hubs/support/workflows/support-reply.workflow.yaml",
+          "New",
+          undefined,
+          "Answer mail",
+        ),
+        changed("hubs/support/workflows/support-reply.test.yaml", "New"),
+        changed("workflows/weekly-report.test.yaml", "Changed"),
+      ]);
+      expect(workflow).toMatchObject({ name: "Answer mail", kind: "workflow" });
+      expect(test).toMatchObject({ name: "Answer mail", kind: "workflowTest" });
+      expect(alone).toMatchObject({ name: "Weekly report", kind: "workflowTest" });
+    });
+
     it("says Renamed from the old name for a moved item", () => {
       const [item] = groupIntoItems([
         changed("agents/help.agent.yaml", "Changed", "agents/support.agent.yaml"),

@@ -2,12 +2,10 @@ import {
   Button,
   ContextMenu,
   type ContextMenuTarget,
-  FileIcon,
   List,
   ListHeading,
   type ListRow,
   type MenuEntry,
-  PlaceIcon,
 } from "@halonicjs/studio-kit";
 import type { ItemRef } from "@halonicjs/studio-shell";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
@@ -15,6 +13,7 @@ import type { ChangeItem } from "../change-items.ts";
 import { groupIntoItems, isOpenable } from "../change-items.ts";
 import type { ChangedFile, ChangesList } from "../changes-list.ts";
 import { discardWords, itemWords, mergeWords, versionWords } from "../changes-words.ts";
+import { ItemIcon } from "./item-icon.tsx";
 import { UndoPartialCallout } from "./undo-partial-callout.tsx";
 import { UndoWithoutCopyDialog } from "./undo-without-copy-dialog.tsx";
 import type { ReturnFocus } from "./use-open-item.ts";
@@ -45,16 +44,6 @@ export interface ChangeListProps {
 /** Whether a kind places the entry; otherwise it is one of the "Other files". */
 const isItem = (item: ChangeItem) => item.kind !== undefined;
 
-/** The sidebar's place icon that says most about an item's kind. */
-function iconOf(item: ChangeItem): ReactNode {
-  if (item.kind === undefined) return <FileIcon />;
-  const place =
-    item.kind === "agent" || item.kind === "workflow" || item.kind === "routine"
-      ? (`${item.kind}s` as const)
-      : "library";
-  return <PlaceIcon name={place} />;
-}
-
 /** What a list of rows needs to say about each item: its icon, name, and kind with one sentence, and its ⋮. */
 function rowOf(item: ChangeItem, openMore: (id: string) => MoreHandler): ListRow {
   const meta =
@@ -65,7 +54,7 @@ function rowOf(item: ChangeItem, openMore: (id: string) => MoreHandler): ListRow
     id: item.id,
     title: item.name,
     meta,
-    icon: iconOf(item),
+    icon: <ItemIcon kind={item.kind} />,
     more: { label: itemWords.moreActionsFor(item.name), onClick: openMore(item.id) },
   };
 }

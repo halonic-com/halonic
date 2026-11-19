@@ -94,6 +94,16 @@ export interface ConfirmingDialogProps extends DialogCommonProps {
   readonly onConfirm: () => void;
   /** "Cancel", or what cancelling does: "Not now". */
   readonly cancelLabel?: string;
+  /**
+   * Default `true`. `false` for a result with one way on, such as "Sandbox removed" with nothing
+   * to show: the confirming button (**Close**) is the footer's only button and takes focus.
+   */
+  readonly cancelButton?: boolean;
+  /**
+   * A phone's form sheet only: Close stays available while `busy`, for a wait that closing
+   * doesn't stop, such as the request sheet waiting for the card of a run that has started.
+   */
+  readonly closeWhileBusy?: boolean;
   /** Default `true`. `false` for a decision whose cancel button says what it does. */
   readonly closeButton?: boolean;
   /** While the request runs: the confirming button is busy, Escape and the overlay do nothing. */
@@ -101,9 +111,10 @@ export interface ConfirmingDialogProps extends DialogCommonProps {
   /**
    * One short line right above the buttons, outside the body's scroll area, in small muted text:
    * the trust check's last line. It's part of the decision, so it stays in sight while the body
-   * scrolls, and it describes the Dialog with the body. Plain text, not a Callout.
+   * scrolls, and it describes the Dialog with the body. Not a Callout: inline text only, such as
+   * the trust check's amber line with its reason and docs link, because it sits in a `<p>`.
    */
-  readonly footnote?: string;
+  readonly footnote?: ReactNode;
   readonly initialFocus?: undefined;
 }
 
@@ -117,6 +128,8 @@ export interface FooterlessDialogProps extends DialogCommonProps {
   readonly confirm?: undefined;
   readonly onConfirm?: undefined;
   readonly cancelLabel?: undefined;
+  readonly cancelButton?: undefined;
+  readonly closeWhileBusy?: undefined;
   readonly closeButton?: undefined;
   readonly busy?: undefined;
   readonly footnote?: undefined;

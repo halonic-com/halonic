@@ -122,9 +122,10 @@ verifies("format.plugin-file", () => {
     const marks = ["\u202E", "\u2066", "\u200F", "\u061C", "\u0007", "\u001B", "\u0085", "\t"];
 
     it.each(marks.map((mark) => [JSON.stringify(mark), mark]))(
-      "refuses %s in the name, the description, a label, a title and a help text",
+      "refuses %s in the name, the description, a label, a title, a help text and a choice",
       (_shown, mark) => {
         const field = { type: "text", label: `City${mark}`, help: `Where${mark}` };
+        const units = { type: "choice", label: "Units", choices: ["metric", `imperial${mark}`] };
         const parsed = parse(Plugin, {
           id: "weather",
           version: "1.0.0",
@@ -132,7 +133,7 @@ verifies("format.plugin-file", () => {
           name: `Weather${mark}`,
           description: `Forecasts${mark}`,
           ui: {
-            settings: { city: field },
+            settings: { city: field, units },
             cards: [{ id: "today", title: `Today${mark}`, tool: "forecast", show: "text" }],
             panel: { title: `Radar${mark}` },
           },
@@ -142,6 +143,7 @@ verifies("format.plugin-file", () => {
           "description",
           "ui.settings.city.label",
           "ui.settings.city.help",
+          "ui.settings.units.choices.1",
           "ui.cards.0.title",
           "ui.panel.title",
         ]);
@@ -155,7 +157,12 @@ verifies("format.plugin-file", () => {
         sdk: 1,
         name: "מזג אוויר ☀️",
         description: "Forecasts for the cities you name.\nUpdated hourly.",
-        ui: { settings: { city: { type: "text", label: "مدينة", help: "One\nper line" } } },
+        ui: {
+          settings: {
+            city: { type: "text", label: "مدينة", help: "One\nper line" },
+            units: { type: "choice", label: "Units", choices: ["מטרי", "imperial 🇺🇸"] },
+          },
+        },
       });
       expect(parsed.ok).toBe(true);
     });

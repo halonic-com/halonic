@@ -1,3 +1,4 @@
+import { sandboxStartWords } from "@halonicjs/app";
 import { engineWordsOf, errorReasonFor } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentSandboxHost } from "../api.ts";
@@ -216,7 +217,13 @@ async function runCommand(
   const outcome: SandboxOutcome = {
     kind: "setup",
     how: "check_failed",
-    reason: "reason" in check ? check.reason : text.STILL_NEEDS_SETUP,
+    reason: failedCheckReason(check),
   };
   return { outcome, check: afterResult(outcome, check) };
+}
+
+/** Why the check after a setup didn't pass: 23.3's reason for its code, never the check's sentence. */
+function failedCheckReason(check: SandboxCheckFacts): string {
+  if (check.state === "unavailable") return sandboxStartWords(check.code).reason;
+  return "reason" in check ? check.reason : text.STILL_NEEDS_SETUP;
 }

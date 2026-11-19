@@ -1,6 +1,6 @@
 import type { RunSummary } from "@halonicjs/events";
 import { Button, List, type ListRow, StatusChip, usePresentation } from "@halonicjs/studio-kit";
-import type { HomeCardProps } from "@halonicjs/studio-shell";
+import { firstLoad, type HomeCardProps } from "@halonicjs/studio-shell";
 import { use, useCallback, useSyncExternalStore } from "react";
 import { SampleHintService } from "../api.ts";
 import { homeWords } from "../home-words.ts";
@@ -9,15 +9,15 @@ import { recentRuns } from "../list/recent-runs.ts";
 import type { RunRow } from "../list/run-row.ts";
 import { runCommand } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
-import { firstLoad } from "./first-load.ts";
 
 /** Home's Recent runs card: the open workspace's runs, from `RunsListService`. */
-export function RecentRunsCard({ context }: HomeCardProps) {
+export function RecentRunsCard({ context, attempt }: HomeCardProps) {
   const { openPlace, openItem } = context;
   return (
     <RecentRunsView
       list={context.services.get(RunsListService)}
       isSample={context.services.find(SampleHintService)?.isSample() === true}
+      attempt={attempt}
       {...(openPlace === undefined ? {} : { openRuns: () => openPlace("runs") })}
       {...(openItem === undefined
         ? {}
@@ -39,6 +39,8 @@ export interface RecentRunsViewProps {
   readonly openRun?: (run: RunSummary) => void;
   /** The clock for due times; tests pass a fixed one. */
   readonly now?: () => Date;
+  /** The section's Try again count from {@link HomeCardProps}; a new one loads again after a failed first load. */
+  readonly attempt?: number;
 }
 
 /**
@@ -60,12 +62,13 @@ export function RecentRunsView({
   openRuns,
   openRun,
   now = () => new Date(),
+  attempt = 0,
 }: RecentRunsViewProps) {
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
   const phone = usePresentation() === "phone";
   // Called on every render, as React asks: the promise stays settled once the first list is in.
-  use(firstLoad(list));
+  use(firstLoad(list, attempt));
   const shown = recentRuns(listRows(list, now()));
   const open =
     openRun === undefined

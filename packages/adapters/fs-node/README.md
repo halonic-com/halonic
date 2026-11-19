@@ -28,7 +28,9 @@ and passes the shared `DefinitionStore` contract suite.
   `list()` leaves links out, with everything under them.
 - **Version:** `sha256:` and 16 hex characters over the files it serves,
   worked out as the memory adapter does, so the same files give the same
-  version in both.
+  version in both. It reads one file and one piece of it at a time, so a
+  workspace whose agents work in a large code folder, `node_modules` and
+  all, still has a version; it does read every byte of that folder.
 - **Limits:** a path is checked, then used. A program that swaps a folder
   for a link in between could get past the check; the store guards its own
   callers, not against other programs writing into its root.
@@ -423,3 +425,15 @@ the lock up instead of renewing it, because another process may be taking it
 over at that moment; `onLost` hears that too. `release()` removes the
 lock while it still holds this process's record. A lock file that is a link
 to a file that isn't there fails with an error that says to remove the link.
+
+## The lock of a run's proposal record
+
+`folderRecordLock(folder)` is the record lock (`recordLock`) of the run
+proposal service in `@halonicjs/app`, for the records in `folder`. The CLI's
+engine, `halonic proposals` and Studio's agent host all open the same
+records, so a decision holds `<run-id>.lock` in that folder, taken with
+`holdLock`, while it reads the record and writes it back. When another
+process holds a run's lock, it tries again every 25 milliseconds for up to
+30 seconds, then fails with the `LockHeldError` naming that process. When
+the lock is lost while the work runs, the work's result isn't given: it
+fails, saying another process may have decided at the same time.

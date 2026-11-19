@@ -59,8 +59,9 @@ export interface TabListProps<Id extends string = string> {
   readonly selected: Id;
   readonly onSelect: (id: Id) => void;
   /**
-   * Tabs share the page column in equal parts, at least 48px high, and labels wrap. On by default
-   * on a phone (the presentation context), off on desktop. A vertical list ignores it.
+   * Tabs share the page column in equal parts, each at least 48px high and as wide as its longest
+   * word, and labels wrap. On by default on a phone (the presentation context), off on desktop. A
+   * vertical list ignores it.
    */
   readonly fill?: boolean;
   /**
@@ -98,7 +99,9 @@ type Layout = "inline" | "fill" | "vertical";
 
 const trackClasses = {
   inline: "inline-flex max-w-full gap-0.5 rounded-sm bg-surface-muted p-0.5",
-  fill: "flex w-full gap-0.5 rounded-sm bg-surface-muted p-0.5",
+  // A fill tab is never narrower than its longest word, so tabs whose words don't fit side by side
+  // (large text) go on to a second row rather than push the page sideways.
+  fill: "flex w-full flex-wrap gap-0.5 rounded-sm bg-surface-muted p-0.5",
   vertical: "flex flex-col gap-1",
 } as const;
 
@@ -122,9 +125,12 @@ const sizeClasses = {
     "text-center hyphens-auto wrap-break-word",
     "touch:min-h-control-lg touch:hit-touch",
   ].join(" "),
-  // The label wraps between words and the counter follows it like one more word. A word longer
-  // than its tab breaks with a hyphen, or without one where there's no hyphenation dictionary.
-  fill: "min-h-touch min-w-0 flex-1 basis-0 px-2 py-1 text-center hyphens-auto wrap-break-word",
+  // The label wraps between words and the counter follows it like one more word. The tabs take
+  // equal parts, but a tab is never narrower than its longest word (a flex item's own minimum
+  // width), so "Behaviour" stays whole at 320px and the others share what's left (HAL-13044). No
+  // hyphens: a hyphenation point would shrink that minimum to the word's longest piece. Only a
+  // word wider than the whole track, where max-w-full caps the minimum, breaks.
+  fill: "min-h-touch max-w-full flex-1 basis-0 px-2 py-1 text-center wrap-break-word",
   // A nav row: 32px, 48px on a touch screen. A long label wraps and the row grows with it.
   vertical: [
     "flex min-h-control-md w-full items-center gap-2 px-3 py-1",
@@ -300,6 +306,7 @@ export function TabList<Id extends string>({
             )}
             <TabLabel label={tab.label} layout={layout} />
             <TabSignal tab={tab} fill={layout === "fill"} />
+            {layout === "fill" ? <FillWidthCopy label={tab.label} /> : null}
           </button>
         );
       })}
@@ -371,6 +378,19 @@ function InlineLabel({ label }: { readonly label: string }) {
       <span aria-hidden="true" className={`invisible col-start-1 row-start-1 ${selectedWeight}`}>
         {label}
       </span>
+    </span>
+  );
+}
+
+/**
+ * A `fill` tab is at least as wide as its longest word, and the selected label is bolder. So an
+ * invisible bold copy with no height holds the bold word's width, and switching tabs doesn't move
+ * the tabs beside it. The label itself stays plain text, so it still wraps with its counter.
+ */
+function FillWidthCopy({ label }: { readonly label: string }) {
+  return (
+    <span aria-hidden="true" className={`invisible block h-0 overflow-hidden ${selectedWeight}`}>
+      {label}
     </span>
   );
 }

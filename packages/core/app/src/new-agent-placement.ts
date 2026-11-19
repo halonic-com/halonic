@@ -27,9 +27,7 @@ export const newAgentsRun: HostSetting<NewAgentsRun> = hostSetting<NewAgentsRun>
  * now. Any other value, settings that aren't loaded and a read that fails
  * leave the agent in its sandbox, as `AgentPlacement.where` does for a
  * choice it can't read.
- *
- * It has no caller yet: the path that creates agents will call it (HAL-9509).
- * Don't remove it as unused.
+ * Studio's agent creation calls it (`studio.new-agents-run`).
  *
  * @example
  * const run = await newAgentPlacement(settings, placement, { location, agent: "coder", file });

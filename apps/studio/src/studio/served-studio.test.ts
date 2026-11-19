@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type StartedStudio, startStudio } from "./start-studio.ts";
 
@@ -17,6 +17,27 @@ function desktopMediaQueries(query: string): MediaQueryList {
     dispatchEvent: () => false,
   };
 }
+
+/** A Google setup the computer lists, started but not signed in. */
+const googleSetup = {
+  accountRef: "gaccount_abc123",
+  account: "kim@acme.example",
+  available: [{ id: "gmail", label: "Gmail", googleApis: [], googleScopes: [] }],
+  route: { app: "own", runsOn: "this-computer" },
+  accountType: "personal",
+  startedAt: "2026-11-08T10:00:00.000Z",
+  projectId: null,
+  stepsDone: {},
+  inProductionTickedAt: null,
+  clientId: null,
+  clientSecretSavedAt: null,
+  signInStartedAt: null,
+  lastSignInAt: null,
+  wrongAccountAt: null,
+  lastSignInEnded: null,
+  refreshRefused: null,
+  services: {},
+};
 
 let element: HTMLElement;
 let started: StartedStudio | undefined;
@@ -198,7 +219,7 @@ verifies("studio.served-settings", () => {
 
     const headings = await vi.waitFor(
       () => {
-        const found = [...element.querySelectorAll("main h3")].map((h) => h.textContent);
+        const found = [...element.querySelectorAll("main h2")].map((h) => h.textContent);
         expect(found).toContain("On this phone");
         return found;
       },
@@ -214,7 +235,7 @@ verifies("studio.served-settings", () => {
     expect(element.textContent).not.toContain("Assistant");
   });
 
-  it("offers no Ctrl K command that opens Assistant or Agent sandbox", async () => {
+  it("offers no Ctrl K command that opens Assistant, Agent sandbox or About Halonic", async () => {
     restoreDialogs = fakeModalDialogs();
     started = startAcme();
     await inboxLink();
@@ -248,5 +269,46 @@ verifies("studio.served-settings", () => {
     expect((await search("Appearance", "1 result")).join()).toContain("Appearance");
     expect(await search("Assistant", "No results")).toEqual([]);
     expect(await search("Agent sandbox", "No results")).toEqual([]);
+    expect(await search("About Halonic", "No results")).toEqual([]);
+  });
+});
+
+verifies("studio.served-google-setup-accounts", () => {
+  it("lists the Google setup in the served window's Inbox, read-only", {
+    timeout: 30_000,
+  }, async () => {
+    started = startStudio({
+      element,
+      window,
+      userAgent: "Mozilla/5.0 (X11; Linux x86_64)",
+      fetch: async (path) => {
+        if (path === "/api/google/setups") {
+          return Response.json({ signIn: "elsewhere", setups: [googleSetup] });
+        }
+        return path === "/api/workspace"
+          ? Response.json({ name: "Acme", sample: false, folder: "~/Projects/acme" })
+          : Response.json({ runs: [] });
+      },
+    });
+    const find = (text: RegExp) =>
+      [...element.querySelectorAll<HTMLElement>("a, button, td[role=gridcell]")].find((e) =>
+        text.test(e.textContent ?? ""),
+      );
+    await waitUntil("the Inbox place to be in the window", () => find(/^Inbox/) !== undefined, {
+      timeout: 10_000,
+    });
+    expect(find(/^Library/)).toBeUndefined();
+    find(/^Inbox/)?.click();
+    await waitUntil(
+      "the Google setup item to be listed",
+      () => find(/Set up Google for kim@acme.example/) !== undefined,
+      { timeout: 10_000 },
+    );
+    find(/Set up Google for kim@acme.example/)?.click();
+    await waitUntil(
+      "the read-only setup to be shown",
+      () => (element.textContent ?? "").includes("This window only shows the setup."),
+      { timeout: 10_000 },
+    );
   });
 });

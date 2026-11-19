@@ -62,7 +62,12 @@ export const BUILT_IN_PLUGINS: readonly BuiltInPlugin[] = [
 /** Whether the installed plugins have loaded, so the list can show a skeleton or why not. */
 export type PluginsLoad =
   | { readonly kind: "loading" }
-  | { readonly kind: "failed"; readonly reason: string }
+  | {
+      readonly kind: "failed";
+      readonly reason: string;
+      /** **Try again** is reading: its button is busy and keeps the focus. */
+      readonly trying?: boolean;
+    }
   | { readonly kind: "ready" };
 
 /** The props of `PluginsList`. */
@@ -230,10 +235,11 @@ export function PluginsList({
         {load.kind === "failed" ? (
           <EmptyState
             tone="error"
+            align="start"
             headingLevel={headingLevel}
             title={LOAD_FAILED_TITLE}
             description={load.reason}
-            action={{ label: TRY_AGAIN, onClick: onRetry }}
+            action={{ label: TRY_AGAIN, onClick: onRetry, busy: load.trying === true }}
           />
         ) : (
           <InstalledList

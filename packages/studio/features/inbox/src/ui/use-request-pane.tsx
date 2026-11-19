@@ -92,6 +92,8 @@ export function useRequestPane(options: {
   const { list: offered, failed, retry } = useOffered(requests);
   const [draft, setDraft] = useState(emptyDraft);
   const [busy, setBusy] = useState(false);
+  // A phone's sheet sent its request and waits for the card, which closes it (first-run 7.2).
+  const [waiting, setWaiting] = useState(false);
   const [notStarted, setNotStarted] = useState("");
   const [budgetStop, setBudgetStop] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -101,8 +103,13 @@ export function useRequestPane(options: {
   const [asks, setAsks] = useState(0);
   if (shared !== undefined) shared.current = phone && sheetOpen;
   useEffect(() => {
-    if (cardOpen) setSheetOpen(false);
-  }, [cardOpen]);
+    if (!cardOpen) return;
+    setSheetOpen(false);
+    if (!waiting) return;
+    // The card the sheet waited for is here: the sent text has done its job.
+    setWaiting(false);
+    setDraft((d) => ({ ...d, message: "" }));
+  }, [cardOpen, waiting]);
   // The sheet gives focus back to New request, which the card hides on a phone: the card's title
   // takes it instead (flow-first-run 4.3). This runs after the sheet's own clean-up has.
   const sheetWasOpen = useRef(false);
@@ -147,7 +154,9 @@ export function useRequestPane(options: {
     setBusy(true);
     try {
       const started = await requests.start(workflow.key, text);
-      setDraft((d) => ({ ...d, message: "" }));
+      // The sheet keeps the sent text under "Working…" until its card arrives.
+      if (phone && sheetOpen) setWaiting(true);
+      else setDraft((d) => ({ ...d, message: "" }));
       onStarted?.(started.runId);
       toasts?.show({
         tone: "success",
@@ -172,6 +181,13 @@ export function useRequestPane(options: {
     // The form is in the pane once the card has closed, so Message can take focus.
     flushSync(closeItem);
     message.current?.focus();
+  };
+  // Closing while the card is on its way leaves the run going; the text was sent, so it goes.
+  const closeSheet = () => {
+    setSheetOpen(false);
+    if (!waiting) return;
+    setWaiting(false);
+    setDraft((d) => ({ ...d, message: "" }));
   };
   const onEscape = () => list.current?.querySelector<HTMLElement>('[role="gridcell"]')?.focus();
   return {
@@ -207,10 +223,11 @@ export function useRequestPane(options: {
           draft={draft}
           onDraft={setDraft}
           busy={busy}
+          waiting={waiting}
           notStarted={notStarted}
           {...(budgetStop && openBudget !== undefined && { onChangeBudget: openBudget })}
           onSend={send}
-          onClose={() => setSheetOpen(false)}
+          onClose={closeSheet}
           messageRef={message}
         />
       ) : null,

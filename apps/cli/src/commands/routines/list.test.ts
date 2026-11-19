@@ -208,8 +208,8 @@ verifies("cli.commands.routines.list", () => {
 
       expect(code).toBe(exitCode.ok);
       expect(io.stdout).toEqual([
-        "Morning check reports   Manual only      No set time           Never ran",
-        "Morning check support   Daily at 08:00   Next tomorrow 08:00   Never ran",
+        "Morning check · reports   Manual only      No set time           Never ran",
+        "Morning check · support   Daily at 08:00   Next tomorrow 08:00   Never ran",
         hint,
       ]);
     });
@@ -223,8 +223,8 @@ verifies("cli.commands.routines.list", () => {
       const { io } = await routinesIn();
 
       expect(io.stdout).toEqual([
-        "By hand support   Manual only   No set time   Never ran",
-        "By hand           Manual only   No set time   Never ran",
+        "By hand · support   Manual only   No set time   Never ran",
+        "By hand             Manual only   No set time   Never ran",
         hint,
       ]);
     });

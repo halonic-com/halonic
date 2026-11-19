@@ -47,6 +47,12 @@ export {
   type FeatureDialogsProps,
 } from "./dialogs/feature-dialogs.tsx";
 export {
+  NameAndHubRow,
+  type NameAndHubRowProps,
+  NewItemNote,
+  type NewItemNoteProps,
+} from "./dialogs/new-item-parts.tsx";
+export {
   createShellEngine,
   type EngineConnectionEvent,
   type EngineConnectionListener,
@@ -112,6 +118,7 @@ export {
   StatusBarSaveNote,
   type StatusBarSaveNoteProps,
 } from "./frame/status-bar-save-note.tsx";
+export { firstLoad, type HomeCardSource } from "./home/first-load.ts";
 export type { HomeCardProps } from "./home/home-page.tsx";
 export { HomeSectionEmpty } from "./home/home-section.tsx";
 export { ItemHeader, type ItemHeaderProps } from "./item-page/item-header.tsx";
@@ -150,6 +157,7 @@ export {
   type PageErrorBoundaryProps,
   pageStoppedWords,
 } from "./page/page-error-boundary.tsx";
+export { unreachableWords } from "./page/page-unreachable.tsx";
 export { CommandPalette, type CommandPaletteProps } from "./palette/command-palette.tsx";
 export {
   compareNameMatches,
@@ -239,6 +247,7 @@ export { PhoneTopBar, type PhoneTopBarProps } from "./phone/phone-top-bar.tsx";
 export {
   PhoneTopBarActions,
   type PhoneTopBarActionsProps,
+  PhoneTopBarSlot,
   useInPhoneTopBar,
 } from "./phone/phone-top-bar-actions.tsx";
 export {

@@ -2,6 +2,14 @@
 # `ci-ok`: it runs unless the run was cancelled, waits for every other job and fails if any of
 # them failed. Jobs that only run for some changes can then be skipped
 # without blocking the merge.
+#
+# macOS and Windows jobs don't run in merge groups (board decision on
+# HAL-5327, 19 Nov): the queue tests the full Linux suite only, so it doesn't
+# wait on the few macOS and Windows runners. Pull requests still run them as
+# before, and every push to main runs all of them. The daily "Failures on
+# main, by area" job in scheduled.yml reads that run and opens a
+# nightly:<area> issue for each failing job, which the area's owner gets as a
+# task. A skipped job counts as passed for ci-ok.
 
 name: CI
 
@@ -27,6 +35,13 @@ env:
   # turbo.json caps Turbo at 2 tasks at once for agent workspaces; CI keeps
   # Turbo's own default of 10.
   TURBO_CONCURRENCY: "10"
+  # "on": a pull request's build job and the merge base's tests run only the
+  # tests of the packages it changes, their dependents and the packages whose
+  # tests verify their requirements (tooling/check's affected-tests), and the
+  # guard job compares only those. Typecheck, lint and build still cover every
+  # package, and the merge queue and main test everything. "off" tests every
+  # package again (HAL-12539).
+  AFFECTED_TESTS: "on"
 
 jobs:
   changes:
@@ -108,7 +123,8 @@ jobs:
             # as a pull request. Each entry ahead checks its own areas before
             # it can merge, and every push to main runs every job, so a gap
             # in the area rules still shows on main. An empty diff or a diff
-            # that can't be read runs every job.
+            # that can't be read runs every job. macOS and Windows jobs skip
+            # in merge groups whatever the areas say (see the top of this file).
             if changed=$(git diff --name-only "$BASE...HEAD") && [ -n "$changed" ]; then
               by_area=true
             fi
@@ -136,7 +152,10 @@ jobs:
 
   fast:
     name: Fast gates
-    runs-on: ubuntu-24.04
+    # Trial (HAL-13578): with the repository variable CF_RUNNER set to `merge-queue`, the merge
+    # queue and pushes to main run this job on a one-job Cloudflare container
+    # (infra/cf-runner). Unset, everything runs on GitHub's runners as before.
+    runs-on: ${{ vars.CF_RUNNER == 'merge-queue' && (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'cf-linux' || 'ubuntu-24.04' }}
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
     permissions:
@@ -210,8 +229,8 @@ jobs:
           pnpm check
       - name: Licences
         run: pnpm check:licences
-      - name: Infra tests (spend guard, turbo-cache)
-        run: node --test infra/spend-guard/test/guard.test.mjs infra/turbo-cache/test.mjs
+      - name: Infra tests (spend guard, turbo-cache, cf-runner)
+        run: node --test infra/spend-guard/test/guard.test.mjs infra/turbo-cache/test.mjs infra/cf-runner/test.mjs
       - name: Formatting
         run: pnpm exec biome ci --linter-enabled=false .
       - name: Feature list and generated files
@@ -390,7 +409,10 @@ jobs:
 
   build:
     name: Typecheck, lint, test, build
-    runs-on: ubuntu-24.04
+    # Trial (HAL-13578): with the repository variable CF_RUNNER set to `merge-queue`, the merge
+    # queue and pushes to main run this job on a one-job Cloudflare container
+    # (infra/cf-runner). Unset, everything runs on GitHub's runners as before.
+    runs-on: ${{ vars.CF_RUNNER == 'merge-queue' && (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'cf-linux' || 'ubuntu-24.04' }}
     timeout-minutes: 25
     # The key that signs the remote cache's entries lives in the environment
     # `turbo-cache-write`, which only `main` and the merge queue may use
@@ -413,6 +435,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # A pull request's merge ref with its parents, for affected-tests.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
       - uses: $/.github/actions/setup
       # Every task runs; unchanged packages are cache hits. The
       # cache is GitHub's own, scoped per branch, so a pull request can read
@@ -450,6 +474,19 @@ jobs:
           [ -n "$token" ] || off "The cache answered the token exchange without a token"
           echo "::add-mask::$token"
           echo "token=$token" >> "$GITHUB_OUTPUT"
+      # The merge ref's first parent is the main commit the pull request is
+      # tested on, the same commit the merge base's tests use (HAL-5568).
+      # Anything else (no merge commit) tests every package.
+      - id: affected
+        name: Choose the packages to test
+        if: github.event_name == 'pull_request' && env.AFFECTED_TESTS == 'on'
+        run: |
+          if [ "$(git rev-list --parents -n 1 HEAD | wc -w)" = 3 ]; then
+            node tooling/check/src/cli/affected-tests.ts --base HEAD^1
+          else
+            echo "::notice title=Affected tests::No merge commit, so every package is tested."
+            echo "all=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Run every task through the cache
         env:
           TURBO_API: ${{ vars.TURBO_API }}
@@ -457,6 +494,8 @@ jobs:
           TURBO_TOKEN: ${{ steps.cache-token.outputs.token }}
           TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ github.event_name != 'pull_request' && secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY || '' }}
           EVENT: ${{ github.event_name }}
+          AFFECTED: ${{ steps.affected.outputs.all == 'false' }}
+          TEST_FILTERS: ${{ steps.affected.outputs.filters }}
           # Give each test and hook 30 s on a loaded runner, as the other jobs
           # do (HAL-4241); this job had left it at Vitest's 5 s (HAL-12081).
           HALONIC_TEST_TIMEOUT: "30000"
@@ -472,7 +511,20 @@ jobs:
             # The merge queue: the queued change's own code runs here, so it only reads.
             cache=local:rw,remote:r
           fi
-          pnpm exec turbo run typecheck lint test build --continue --output-logs=new-only --summarize --cache="$cache"
+          flags=(--continue --output-logs=new-only --summarize --cache="$cache")
+          if [ "$AFFECTED" != true ]; then
+            pnpm exec turbo run typecheck lint test build "${flags[@]}"
+            exit 0
+          fi
+          status=0
+          pnpm exec turbo run typecheck lint build "${flags[@]}" || status=$?
+          read -ra filters <<< "$TEST_FILTERS"
+          if [ "${#filters[@]}" -gt 0 ]; then
+            pnpm exec turbo run test "${filters[@]}" "${flags[@]}" || status=$?
+          else
+            echo "::notice title=Affected tests::No package's tests are needed for this change."
+          fi
+          exit "$status"
       # On main and in the merge queue, the change checks itself: it reads
       # the result files the tests just wrote, even when a task failed (a
       # missing result file fails the check anyway). A queued change already
@@ -524,12 +576,15 @@ jobs:
       - name: Task timings
         if: always()
         run: |
-          summary=$(ls -t .turbo/runs/*.json 2>/dev/null | head -1)
-          [ -n "$summary" ] || exit 0
-          jq -r '"Tasks: \(.execution.attempted), cached: \(.execution.cached), failed: \(.execution.failed), \((.execution.endTime - .execution.startTime) / 1000)s"' "$summary" \
-            | tee -a "$GITHUB_STEP_SUMMARY"
-          jq '[.tasks[] | {taskId, task, package, cache: .cache.status, startTime: .execution.startTime, endTime: .execution.endTime, exitCode: .execution.exitCode}]' \
-            "$summary" > "$RUNNER_TEMP/task-timings.json"
+          # With affected tests on, the build and the tests are two turbo runs.
+          mapfile -t summaries < <(ls -t .turbo/runs/*.json 2>/dev/null)
+          [ "${#summaries[@]}" -gt 0 ] || exit 0
+          for summary in "${summaries[@]}"; do
+            jq -r '"Tasks: \(.execution.attempted), cached: \(.execution.cached), failed: \(.execution.failed), \((.execution.endTime - .execution.startTime) / 1000)s"' "$summary" \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+          jq -s '[.[].tasks[] | {taskId, task, package, cache: .cache.status, startTime: .execution.startTime, endTime: .execution.endTime, exitCode: .execution.exitCode}]' \
+            "${summaries[@]}" > "$RUNNER_TEMP/task-timings.json"
           jq -r '"",
             "| Task | Tasks | Run (not cached) | Seconds run | Longest |",
             "| --- | --- | --- | --- | --- |",
@@ -612,6 +667,7 @@ jobs:
           # the merge base.
           if [ "$(git rev-list --parents -n 1 HEAD | wc -w)" = 3 ]; then
             sha=$(git rev-parse HEAD^1)
+            echo "merge-ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           else
             sha=$(git merge-base "$BASE" HEAD)
           fi
@@ -651,17 +707,55 @@ jobs:
           done
           echo "::error::No commit within 20 of the merge base on main installs. Fix main first (docs/guides/broken-main.md)."
           exit 1
+      # The same packages as the build job: the merge base's own copy of
+      # affected-tests compares the merge ref with its first parent. The
+      # guard works the set out again and compares only those packages, so
+      # testing more here is harmless and testing fewer fails it. So when
+      # the merge base's copy fails (an older copy without --head, say),
+      # every package is tested; the later lines win in $GITHUB_OUTPUT.
+      - id: affected
+        name: Choose the packages to test
+        if: env.AFFECTED_TESTS == 'on'
+        env:
+          MERGE_BASE: ${{ steps.merge-base.outputs.sha }}
+          MERGE_REF: ${{ steps.merge-base.outputs.merge-ref }}
+        run: |
+          cli=tooling/check/src/cli/affected-tests.ts
+          if [ -n "$MERGE_REF" ] && [ -f "$cli" ]; then
+            if ! pnpm exec node "$cli" --base "$MERGE_BASE" --head "$MERGE_REF"; then
+              echo "::notice title=Affected tests::The merge base's affected-tests failed, so every package is tested."
+              printf 'all=true\nfilters=\nfolders=\n' >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "::notice title=Affected tests::No merge commit, or the merge base has no affected-tests, so every package is tested."
+            echo "all=true" >> "$GITHUB_OUTPUT"
+          fi
       # A failing test here means main itself is red, and that would fail
       # every pull request, the one that repairs main included.
       - id: base-test-run
         name: Run the merge base's tests without reading any cache
         continue-on-error: true
-        run: pnpm exec turbo run test --force --continue --output-logs=errors-only
+        env:
+          AFFECTED: ${{ steps.affected.outputs.all == 'false' }}
+          TEST_FILTERS: ${{ steps.affected.outputs.filters }}
+        run: |
+          if [ "$AFFECTED" != true ]; then
+            pnpm exec turbo run test --force --continue --output-logs=errors-only
+            exit 0
+          fi
+          read -ra filters <<< "$TEST_FILTERS"
+          if [ "${#filters[@]}" -eq 0 ]; then
+            echo "::notice title=Affected tests::No package's tests are needed for this change."
+            exit 0
+          fi
+          pnpm exec turbo run test "${filters[@]}" --force --continue --output-logs=errors-only
       # Then walk back along main's first-parent history to the newest commit
       # whose push CI run passed (at most 20 commits back from the merge base,
       # then fail) and use its tests as the baseline. As with the lockfile, the
       # baseline is always a commit on main, and the guard installs and
       # compares against exactly this commit. API and network errors fail.
+      # It runs every package's tests: the guard compares only the affected
+      # ones, and a red main is rare.
       - id: walk-back
         name: Walk back to main's newest green commit
         if: steps.base-test-run.outcome == 'failure'
@@ -754,11 +848,13 @@ jobs:
             echo "::error::The merge base's tests job didn't report its result archive's ID and sha256."
             exit 1
           fi
-      # The same commit the build job tested.
+      # The same commit the build job tested, with its first parent, the
+      # commit affected-tests compares it with.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           path: head
+          fetch-depth: 2
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -827,11 +923,42 @@ jobs:
       - name: Find the merge base's Node
         working-directory: base
         run: echo "BASE_NODE=$(pnpm exec node -p process.execPath)" >> "$GITHUB_ENV"
-      # Reads the result files the tests wrote. A missing result
-      # file fails the check.
+      # The packages whose tests ran, worked out again by the merge base's
+      # copy of affected-tests with the same commit as the test jobs.
+      - id: affected
+        name: Choose the packages to check
+        if: env.AFFECTED_TESTS == 'on'
+        working-directory: head
+        env:
+          BUILT_ON_SHA: ${{ needs.base-tests.outputs.built-on }}
+        run: |
+          cli="$BASE_DIR/tooling/check/src/cli/affected-tests.ts"
+          if [ -f "$cli" ]; then
+            "$BASE_NODE" "$cli" --base "$BUILT_ON_SHA"
+          else
+            echo "all=true" >> "$GITHUB_OUTPUT"
+          fi
+      # Reads the result files the tests wrote, of the affected packages
+      # only when only those were tested. A missing result file fails the
+      # check.
       - name: Requirements and their tests (trace, merge base's copy)
         working-directory: head
-        run: '"$BASE_NODE" "$BASE_DIR/tooling/check/src/cli/check.ts" trace --report'
+        env:
+          AFFECTED: ${{ steps.affected.outputs.all == 'false' }}
+          FOLDERS: ${{ steps.affected.outputs.folders }}
+        run: |
+          scope=()
+          if [ "$AFFECTED" = true ]; then
+            read -ra folders <<< "$FOLDERS"
+            if [ "${#folders[@]}" -eq 0 ]; then
+              echo "::notice title=Affected tests::No package's tests ran, so there is nothing to trace."
+              exit 0
+            fi
+            for folder in "${folders[@]}"; do
+              scope+=(--package "$folder")
+            done
+          fi
+          "$BASE_NODE" "$BASE_DIR/tooling/check/src/cli/check.ts" trace --report "${scope[@]}"
       # Blocking through ci-ok. The base side is the main commit the merge
       # ref was built on (base-tests), so the guard sees only the pull
       # request's own changes. After a walk-back, --built-on gives the guard
@@ -865,7 +992,12 @@ jobs:
           if [ "$BUILT_ON_SHA" != "$BASE_SHA" ]; then
             built_on=(--built-on "$BUILT_ON_DIR")
           fi
-          "$BASE_NODE" "$BASE_DIR/$guard" --base "$BASE_DIR" "${built_on[@]}" --branch "$HEAD_BRANCH" \
+          # The guard works out the affected packages itself (HAL-12539).
+          affected=()
+          if [ "$AFFECTED_TESTS" = on ]; then
+            affected=(--affected-base "$BUILT_ON_SHA")
+          fi
+          "$BASE_NODE" "$BASE_DIR/$guard" --base "$BASE_DIR" "${built_on[@]}" "${affected[@]}" --branch "$HEAD_BRANCH" \
             --repo "$REPO" --pr "$PR_NUMBER" --head-sha "$PR_HEAD_SHA" --base-sha "$PR_BASE_SHA"
 
   scaffold:
@@ -984,6 +1116,24 @@ jobs:
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Tests
         run: cargo test --locked --workspace
+      # The agent host's Noise session in WebAssembly (HAL-12236): clippy
+      # for the target, since the exports only compile there, and the build
+      # @halonicjs/adapter-e2e-noise ships. Paths are remapped so the file
+      # doesn't depend on where the checkout is.
+      - name: Noise session in WebAssembly
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo clippy --locked -p halonic-e2e-noise-wasm --target wasm32-unknown-unknown -- -D warnings
+          export RUSTFLAGS="--remap-path-prefix=$GITHUB_WORKSPACE=. --remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo"
+          cargo rustc --locked -p halonic-e2e-noise-wasm --profile noise-wasm \
+            --target wasm32-unknown-unknown --crate-type cdylib
+          sha256sum target/wasm32-unknown-unknown/noise-wasm/halonic_e2e_noise_wasm.wasm
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: noise-wasm
+          path: apps/studio/src-tauri/target/wasm32-unknown-unknown/noise-wasm/halonic_e2e_noise_wasm.wasm
+          if-no-files-found: error
+          retention-days: 7
       # The keychain's contract test is ignored in plain `cargo test`: it
       # needs an unlocked keychain (HAL-4499). Here a GNOME Keyring on a
       # private D-Bus, unlocked with a password made for this run, is the
@@ -1039,7 +1189,7 @@ jobs:
     # so they run only in the Linux job.
     name: Tauri shell on Windows (build and tests)
     needs: changes
-    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: windows-2025
     timeout-minutes: 40
     permissions:
@@ -1365,7 +1515,7 @@ jobs:
     # and its dependencies, so no cache is restored.
     name: Keychain contract on macOS
     needs: changes
-    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: macos-15
     timeout-minutes: 15
     permissions:
@@ -1481,7 +1631,7 @@ jobs:
     # in the fence, not a flaky test. No cache is restored.
     name: Sandbox fence (Seatbelt)
     needs: changes
-    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: macos-15
     timeout-minutes: 15
     permissions:
@@ -1543,7 +1693,7 @@ jobs:
     # script from passing silently. No cache: see the setup action.
     name: Sandbox fence (MXC on Windows 11)
     needs: changes
-    if: needs.changes.outputs.sandbox-mxc == 'true' && needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.sandbox-mxc == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: windows-11-arm
     timeout-minutes: 30
     permissions:
@@ -1576,15 +1726,15 @@ jobs:
     #
     # The Windows leg also runs the tests of the other packages that touch
     # paths, files and processes (HAL-4348, step 1 of HAL-4343; agent-host added in HAL-4672). Pull requests
-    # and merge groups run the listed packages that changed or depend on a
-    # changed one; a push to main runs the whole list plus the parity and
+    # run the listed packages that changed or depend on a changed one (merge
+    # groups skip this job, see the top of this file); a push to main runs the whole list plus the parity and
     # integration kits. A test that fails there today skips itself with
     # `it.skipIf(process.platform === 'win32')` and a reason naming its task.
     # The job name is a required check (#1352): don't rename it without a
     # ruleset change.
     name: Sandbox packages on ${{ matrix.name }}
     needs: changes
-    if: (needs.changes.outputs.sandbox == 'true' || needs.changes.outputs.windows == 'true') && needs.changes.outputs.full == 'true'
+    if: (needs.changes.outputs.sandbox == 'true' || needs.changes.outputs.windows == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     permissions:
@@ -1725,7 +1875,7 @@ jobs:
     # the job summary.
     name: Sandbox fence on Windows (canary probes)
     needs: changes
-    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: windows-2025
     timeout-minutes: 30
     permissions:
@@ -1807,10 +1957,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { name: Linux, os: ubuntu-24.04 }
-          - { name: macOS, os: macos-15 }
-          - { name: Windows, os: windows-2025 }
+        # Linux only in a merge group: macOS and Windows don't run there (see the top of this file).
+        include: ${{ fromJSON(github.event_name == 'merge_group' && '[{"name":"Linux","os":"ubuntu-24.04"}]' || '[{"name":"Linux","os":"ubuntu-24.04"},{"name":"macOS","os":"macos-15"},{"name":"Windows","os":"windows-2025"}]') }}
     defaults:
       run:
         shell: bash
@@ -1845,7 +1993,7 @@ jobs:
     # and that the uninstaller removes the agent sandbox. Signing is later.
     name: Windows installer (build, install, uninstall)
     needs: changes
-    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true'
+    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: windows-2025
     timeout-minutes: 45
     permissions:
@@ -2037,7 +2185,7 @@ jobs:
     # only and are never uploaded.
     name: Windows update (0.1.0 to 0.1.1)
     needs: changes
-    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true'
+    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: windows-2025
     timeout-minutes: 75
     permissions:
@@ -2125,6 +2273,11 @@ jobs:
       # The Gradle download and its dependencies, so a network blip on
       # services.gradle.org does not turn main red. Keyed on the files that
       # pin them; scoped per branch like the Turbo cache above.
+      # Tauri plugins bring their own Android dependencies (the barcode
+      # scanner pulls in androidx.camera), and those are pinned by Cargo.lock,
+      # not by the generated Gradle files. Without Cargo.lock in the key, a new
+      # plugin keeps an exact hit on the old cache, so every run downloads the
+      # plugin's packages from Maven Central and nothing saves them (HAL-13164).
       # Restore and save are separate so the save can run after a failed
       # build: what was downloaded before the failure is kept.
       - name: Restore the Gradle cache
@@ -2134,7 +2287,7 @@ jobs:
           path: |
             ~/.gradle/wrapper/dists
             ~/.gradle/caches
-          key: gradle-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/gen/android/**/*.gradle*', 'apps/studio/src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties') }}
+          key: gradle-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/gen/android/**/*.gradle*', 'apps/studio/src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties', 'apps/studio/src-tauri/Cargo.lock') }}
           restore-keys: gradle-${{ runner.os }}-
       # Fetches the Gradle distribution with retries, so a 5xx from
       # services.gradle.org on a cold cache does not fail the build.

@@ -6,7 +6,7 @@ import {
   type ToastStore,
   ToastStoreProvider,
 } from "@halonicjs/studio-kit";
-import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
+import { type ItemRef, limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -45,6 +45,7 @@ afterEach(() => {
 async function showFile(path: string, host: FilesHost = contextHost()) {
   const written: string[] = [];
   const shownViews: string[] = [];
+  const opened: ItemRef[] = [];
   const toasts: ToastStore = createToastStore();
   // One host for the whole render: a new object on each read would restart the tab's effects.
   const readable: FilesHost = { ...host, read: async () => "name: a\n" };
@@ -54,6 +55,7 @@ async function showFile(path: string, host: FilesHost = contextHost()) {
     }),
     announcer: { announce: () => {} },
     showSidebarView: (viewId: string) => shownViews.push(viewId),
+    openItem: (item: ItemRef) => opened.push(item),
   } as unknown as WorkspaceContext;
   const page = render(
     <ClipboardProvider
@@ -72,7 +74,7 @@ async function showFile(path: string, host: FilesHost = contextHost()) {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
   }
-  return { page, written, toasts, shownViews };
+  return { page, written, toasts, shownViews, opened };
 }
 
 const pick = async (label: string) => {
@@ -104,6 +106,16 @@ verifies("files.ui.file-tab-header", () => {
     expect(
       [...document.querySelectorAll("[role=menuitem]")].map((item) => item.textContent),
     ).toEqual(["RenameF2", "Copy path", "DeleteDelete"]);
+  });
+
+  it("starts the menu with Open as agent for an agent's file, which opens the agent", async () => {
+    const { opened } = await showFile("hubs/p/agents/sorter.agent.yaml");
+
+    expect(
+      [...document.querySelectorAll("[role=menuitem]")].map((item) => item.textContent),
+    ).toEqual(["Open as agent", "RenameF2", "Copy path", "DeleteDelete"]);
+    await pick("Open as agent");
+    expect(opened).toEqual([{ kind: "agent", hub: "p", id: "sorter" }]);
   });
 
   it("asks the tree to rename the file on Rename and on F2, and shows the tree", async () => {

@@ -13,6 +13,7 @@ import {
   usePresentation,
 } from "@halonicjs/studio-kit";
 import { type KeyboardEvent, type ReactNode, type Ref, useRef, useState } from "react";
+import { PhoneTopBarActions, useInPhoneTopBar } from "../phone/phone-top-bar-actions.tsx";
 import {
   allFilter,
   currentFilter,
@@ -80,7 +81,10 @@ export interface OverviewPageProps {
   /** The items are on their way. */
   readonly loading?: boolean;
   readonly failure?: OverviewFailure;
-  /** The page's one create button, after the search field: "New skill". Without it, none shows. */
+  /**
+   * The page's one create button, after the search field: "New skill". Under a phone top bar it is
+   * a 48px **+** there, after Search, named with the label (UX 9.12). Without it, none shows.
+   */
   readonly newButton?: { readonly label: string; readonly onClick: () => void };
   /**
    * The items of an item's ⋮ menu, in the feature's words. Without it, or with none for an item,
@@ -106,7 +110,9 @@ type UsedByPlace = "right" | "line";
 
 /**
  * The line under an item's name: its detail, and on a phone its used-by text after a " · ", so the
- * kit doesn't move that text to the line's start as it does a chip.
+ * kit doesn't move that text to the line's start as it does a chip. When the line is too long, the
+ * detail is cut and the used-by text stays whole, as the kit's stacked rows keep their time
+ * (HAL-13066).
  */
 function metaOf(item: OverviewItem, usedByPlace: UsedByPlace): ReactNode {
   if (usedByPlace === "right" || item.usedBy === undefined) {
@@ -116,9 +122,12 @@ function metaOf(item: OverviewItem, usedByPlace: UsedByPlace): ReactNode {
     return item.usedBy;
   }
   return (
-    <>
-      {item.detail} · {item.usedBy}
-    </>
+    <span className="flex min-w-0">
+      <span className="min-w-0 truncate">{item.detail}</span>
+      {/* `whitespace-pre` keeps the spaces round the dot: a flex item would drop them. */}
+      <span className="shrink-0 whitespace-pre"> · </span>
+      <span className="shrink-0 whitespace-nowrap">{item.usedBy}</span>
+    </span>
   );
 }
 
@@ -187,6 +196,7 @@ export function OverviewPage({
   emptyTitleRef,
 }: OverviewPageProps) {
   const phone = usePresentation() === "phone";
+  const inTopBar = useInPhoneTopBar();
   const [query, setQuery] = useState("");
   const searchField = useRef<HTMLInputElement>(null);
   const [chosen, setChosen] = useState(allFilter);
@@ -233,7 +243,18 @@ export function OverviewPage({
                 onKeyDown={clearOnEscape}
               />
             </div>
-            {newButton && (
+            {newButton && inTopBar && (
+              <PhoneTopBarActions>
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  icon={<PlusIcon />}
+                  label={newButton.label}
+                  onClick={newButton.onClick}
+                />
+              </PhoneTopBarActions>
+            )}
+            {newButton && !inTopBar && (
               <Button
                 variant="primary"
                 icon={<PlusIcon />}

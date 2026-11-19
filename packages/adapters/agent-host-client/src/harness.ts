@@ -56,6 +56,8 @@ const signInSchema = s.discriminatedUnion("opened", [
   s.object({ opened: s.literal(false), reason: s.string(), command: s.string() }).strict(),
 ]);
 
+const settingsFolderSchema = s.object({ settingsFolder: s.string().min(1) }).strict();
+
 const runLineSchema = s.discriminatedUnion("type", [
   s.object({ type: s.literal("started"), run: s.string().min(1) }).strict(),
   s
@@ -125,6 +127,22 @@ export class AgentHostHarness implements Harness {
     const route = "POST /v1/harnesses/sign-in";
     const answer = await this.#transport.request(route, { harness: this.id, settingsFolder });
     return readAnswer(route, answer, signInSchema) as SignInOpened;
+  }
+
+  /**
+   * The agent's own settings folder for this harness, which the host makes
+   * private: the folder its runs use, to pass to {@link detect} and
+   * {@link openSignIn} (HAL-6351).
+   *
+   * @param workspace - the workspace folder, one the launcher named to the host
+   * @param agentId - the agent's id, from its file
+   * @throws {@link AgentHostError} with kind `unknown_workspace`, `no_sign_in`
+   * for a harness without a sign-in of its own, or `agent_id_refused`
+   */
+  async settingsFolderOf(workspace: string, agentId: string): Promise<string> {
+    const route = "POST /v1/harnesses/settings-folder";
+    const answer = await this.#transport.request(route, { workspace, agentId, harness: this.id });
+    return readAnswer(route, answer, settingsFolderSchema).settingsFolder;
   }
 
   /**

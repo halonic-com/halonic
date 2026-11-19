@@ -2,6 +2,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import { PresentationProvider } from "../presentation/presentation.tsx";
 import { render, unmountAll } from "../test/render.tsx";
 import { type SetupStep, SetupSteps } from "./setup-steps.tsx";
 
@@ -37,8 +38,9 @@ function partsOf(cell: HTMLElement) {
   const title = [...cell.querySelectorAll<HTMLElement>("span")].find((span) =>
     span.className.includes("text-body-strong"),
   );
+  const hint = title?.nextElementSibling ?? null;
   const chevron = cell.querySelector<HTMLElement>(".text-fg-subtle > svg");
-  return { circle, title, chevron };
+  return { circle, title, hint, chevron };
 }
 
 verifies("kit.setup-steps", () => {
@@ -121,5 +123,32 @@ verifies("kit.setup-steps", () => {
       done?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     });
     expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it("wraps a step's title and hint on a 320px phone and reads the hint as the row's description", () => {
+    const { container } = render(
+      <PresentationProvider presentation="phone">
+        <div style={{ width: "320px" }}>
+          <SetupSteps label="Try the sample" steps={steps} onOpen={vi.fn()} />
+        </div>
+      </PresentationProvider>,
+    );
+    const todo = cellsOf(container)[1];
+    if (todo === undefined) throw new Error("no second row");
+    const { circle, title, hint, chevron } = partsOf(todo);
+    for (const line of [title, hint]) {
+      expect(line?.className).not.toContain("truncate");
+      expect(line?.className).toContain("wrap-break-word");
+    }
+    // The circle stays at the top, beside the title; the chevron stays centred on the row.
+    expect(circle?.parentElement?.className).toContain("self-start");
+    expect(chevron?.parentElement?.parentElement?.className).not.toContain("self-start");
+    expect(todo.firstElementChild?.className).toContain("min-h-14");
+    const describedBy = todo.getAttribute("aria-describedby");
+    expect(describedBy).not.toBeNull();
+    expect(document.getElementById(describedBy ?? "")?.textContent).toBe(
+      "The run waits for you before it finishes.",
+    );
+    expect(hint?.id).toBe(describedBy);
   });
 });

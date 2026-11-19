@@ -27,7 +27,23 @@ export const noConnectorCalls: CallTool = async () => ({
   type: "tool",
   result: "The call wasn't made: this engine makes no connector calls.",
   outcome: "error",
+  cause: { code: "not-made", why: "not-connected" },
 });
+
+/**
+ * A connector call's time limit ran out before it answered. A class of its
+ * own, so the runner tells a real timeout from any other failure: only this
+ * one logs the `time-limit` cause.
+ */
+class CallTimedOut extends Error {
+  readonly seconds: number;
+
+  constructor(seconds: number) {
+    super(`it took longer than ${seconds} seconds`);
+    this.name = "CallTimedOut";
+    this.seconds = seconds;
+  }
+}
 
 /** What the runner needs from the local runs. */
 export interface RunConnectorCallRunnerOptions {
@@ -65,7 +81,12 @@ export class RunConnectorCallRunner {
     for (const listed of await store.list({ status: "running" })) {
       const effect = (await readRun(store, listed.id))?.effect;
       if (effect == null || effect.unknown) continue;
-      const result: ToolResult = { type: "tool", result: stoppedDuringCall, outcome: "unknown" };
+      const result: ToolResult = {
+        type: "tool",
+        result: stoppedDuringCall,
+        outcome: "unknown",
+        cause: { code: "engine-stopped" },
+      };
       const at = this.#options.now();
       await this.#options.record(listed.id, {
         type: "effect-done",
@@ -119,13 +140,16 @@ export class RunConnectorCallRunner {
     const limit = {
       timeoutMs: call.timeoutMs,
       start: () => this.#options.callTool(call, run),
-      timedOut: () => new Error(`it took longer than ${call.timeoutMs / 1000} seconds`),
+      timedOut: () => new CallTimedOut(call.timeoutMs / 1000),
     };
     return this.#options.deadlines
       .connectorCall(run.runId, call.callId, limit)
       .catch((error: unknown): ToolResult => {
         const why = error instanceof Error ? error.message : String(error);
-        return { type: "tool", result: brokeOff(why), outcome: "unknown" };
+        const broken: ToolResult = { type: "tool", result: brokeOff(why), outcome: "unknown" };
+        // Only the limit's own error is a timeout; any other failure keeps no cause.
+        if (!(error instanceof CallTimedOut)) return broken;
+        return { ...broken, cause: { code: "time-limit", seconds: error.seconds } };
       });
   }
 }

@@ -2,6 +2,7 @@
 
 import { KindedError } from "@halonicjs/std";
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -125,6 +126,39 @@ verifies("workflows.runs.runs-view", () => {
       card?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(page.querySelector("aside")).toBeNull();
+  });
+
+  it("keeps the 24 px inset itself, empty or with runs, as the tab panel around it has none", async () => {
+    const empty = await show(<Connected source={memoryRuns().source} />);
+    expect(empty.querySelector("p")?.parentElement?.className).toContain("p-6");
+    unmount();
+
+    const page = await show(<Connected source={memoryRuns([finished]).source} />);
+    expect(page.querySelector("section")?.closest(".p-6")).not.toBeNull();
+    // Pulled out by a negative margin, it would sit on the panel's edge and scroll sideways.
+    expect(page.querySelector("[class*='-m-']")).toBeNull();
+  });
+
+  it("gives a run's card the whole tab on a phone, and shows the list again with its row focused on close", async () => {
+    const page = await show(
+      <PresentationProvider presentation="phone">
+        <Connected source={memoryRuns([finished]).source} />
+      </PresentationProvider>,
+    );
+    const list = () => page.querySelector<HTMLElement>("[data-testid=runs-inset]");
+    const row = page.querySelector<HTMLButtonElement>("li button");
+
+    await act(async () => row?.click());
+    expect(page.querySelector("aside")).not.toBeNull();
+    expect(list()?.className).toBe("hidden");
+
+    await act(async () => {
+      page
+        .querySelector("aside")
+        ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(list()?.className).not.toContain("hidden");
+    expect(document.activeElement).toBe(row);
   });
 
   it("outlines the open run's row in high contrast, where its soft fill doesn't show", async () => {

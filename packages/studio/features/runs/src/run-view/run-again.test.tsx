@@ -110,6 +110,22 @@ verifies("runs.run-view.run-again", () => {
     expect(copyDetailsCount(root)).toBe(before);
   });
 
+  it("lowers the desktop app's engine words after the colon, and tries again", async () => {
+    const startRun = vi
+      .fn()
+      .mockRejectedValueOnce(new EngineNotAnswering())
+      .mockResolvedValue({ runId: "run_b_new" });
+    const openRun = vi.fn();
+    const root = await open(failed, { startRun }, openRun, undefined, engineWords["desktop-app"]);
+    await act(async () => button(root, "Run again")?.click());
+    expect(root.textContent).toContain(
+      "Couldn't start the run: the engine isn't answering. It may still be starting.",
+    );
+    await act(async () => button(root, "Try again")?.click());
+    expect(startRun).toHaveBeenCalledTimes(2);
+    expect(openRun).toHaveBeenCalledWith("run_b_new");
+  });
+
   it("gives an unexplained failure the can't-explain line with Copy details", async () => {
     const startRun = vi.fn(async () => {
       throw new Error("no answer");

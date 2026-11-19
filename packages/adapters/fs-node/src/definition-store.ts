@@ -1,4 +1,5 @@
-import type { Dirent } from "node:fs";
+import { createHash, type Hash } from "node:crypto";
+import { createReadStream, type Dirent } from "node:fs";
 import { chmod, mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { DigestWatch, runOwnChange } from "@halonicjs/adapter-watch-kit";
@@ -15,7 +16,7 @@ import {
   type WriteOptions,
   type WriteResult,
 } from "@halonicjs/ports";
-import { bytesToHex, KeyedQueue, matchesExpected } from "@halonicjs/std";
+import { KeyedQueue, matchesExpected } from "@halonicjs/std";
 import { writeFlushedFile } from "./flushed-write.ts";
 import { type FolderEvents, folderWatchEvents, nodeFolderEvents } from "./folder-watch.ts";
 import { entryAt, isMissing } from "./links.ts";
@@ -92,15 +93,36 @@ export class FolderDefinitionStore implements DefinitionStore {
 
   async list(dir?: string): Promise<string[]> {
     const paths: string[] = [];
+    const add = (path: string) => {
+      paths.push(path);
+      return true;
+    };
     if (dir === undefined) {
-      await this.#collect(this.#root, "", paths);
+      await this.#walk(this.#root, "", add);
     } else {
       checkPublicWorkspacePath(dir);
       if ((await entryAt(this.#root, dir))?.isDirectory()) {
-        await this.#collect(join(this.#root, dir), dir, paths);
+        await this.#walk(join(this.#root, dir), dir, add);
       }
     }
     return paths.sort();
+  }
+
+  /**
+   * Whether the root holds more than `limit` of the files `list()` gives.
+   * It stops counting at the first file over the limit, so a very large
+   * folder costs no more than `limit` files' worth of looking.
+   *
+   * @example
+   * await store.hasMoreFilesThan(50_000); // false for a workspace of hubs and agents
+   */
+  async hasMoreFilesThan(limit: number): Promise<boolean> {
+    let count = 0;
+    await this.#walk(this.#root, "", () => {
+      count += 1;
+      return count <= limit;
+    });
+    return count > limit;
   }
 
   async read(path: string): Promise<string | null> {
@@ -200,30 +222,39 @@ export class FolderDefinitionStore implements DefinitionStore {
    * `sha256:` and the first 16 hex characters of a hash over every file it
    * serves and its text, worked out as the memory adapter does, so the same
    * files give the same version in both.
+   *
+   * The hash takes in one file and one piece of it at a time: an agent's
+   * working folder with its installed packages holds more text than one
+   * string can (HAL-13291).
    */
   async version(): Promise<string> {
-    const parts: string[] = [];
+    const hash = createHash("sha256");
+    let separator = "";
     for (const path of await this.list()) {
-      const content = await this.read(path);
-      if (content !== null) {
-        parts.push(`${path}\n${content}`);
+      // As `read()` does: a file removed since `list()`, or swapped for a link, isn't served.
+      if (!(await entryAt(this.#root, path))?.isFile()) {
+        continue;
       }
+      hash.update(`${separator}${path}\n`);
+      await hashText(join(this.#root, path), hash);
+      separator = "\n\0";
     }
-    const digest = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(parts.join("\n\0")),
-    );
-    return `sha256:${bytesToHex(new Uint8Array(digest)).slice(0, 16)}`;
+    return `sha256:${hash.digest("hex").slice(0, 16)}`;
   }
 
   /**
-   * Adds the files under `folder`, whose workspace path is `prefix`, to
-   * `into`, leaving out links and private entries.
+   * Gives `visit` the workspace path of each file under `folder`, whose
+   * workspace path is `prefix`, leaving out links and private entries. The
+   * shell's folder watch leaves out the same (`walk` in the
+   * `workspace-files` crate), so the doctor counts the files Studio would
+   * watch.
    *
+   * @param visit takes a file's path and returns `false` to stop the walk
+   * @returns `false` when `visit` stopped it
    * @throws UnreadableWorkspaceFolderError naming a folder under the root
    *   that the account may not read
    */
-  async #collect(folder: string, prefix: string, into: string[]): Promise<void> {
+  async #walk(folder: string, prefix: string, visit: (path: string) => boolean): Promise<boolean> {
     const entries = await entriesOf(folder, prefix);
     for (const entry of entries) {
       // A backslash is allowed in a file name on Linux, but not in a workspace path.
@@ -237,12 +268,28 @@ export class FolderDefinitionStore implements DefinitionStore {
       }
       const path = prefix === "" ? entry.name : `${prefix}/${entry.name}`;
       if (entry.isDirectory()) {
-        await this.#collect(join(folder, entry.name), path, into);
-      } else if (entry.isFile()) {
-        into.push(path);
+        if (!(await this.#walk(join(folder, entry.name), path, visit))) {
+          return false;
+        }
+      } else if (entry.isFile() && !visit(path)) {
+        return false;
       }
     }
+    return true;
   }
+}
+
+/**
+ * Adds the text of `file` to `hash` piece by piece, as `read()` would give
+ * it: decoded as UTF-8, a byte order mark kept and bytes that aren't UTF-8
+ * replaced, so the hash matches one over the whole text.
+ */
+async function hashText(file: string, hash: Hash): Promise<void> {
+  const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
+  for await (const piece of createReadStream(file)) {
+    hash.update(decoder.decode(piece as Buffer, { stream: true }));
+  }
+  hash.update(decoder.decode());
 }
 
 /**

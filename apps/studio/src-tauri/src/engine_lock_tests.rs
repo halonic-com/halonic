@@ -3,6 +3,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -10,7 +11,7 @@ use halonic_git_guard::OpenedFolders;
 use halonic_profile::{Platform, ProfileFolder};
 use halonic_run_lock::{parse_record, record_text};
 
-use super::{EngineLockState, engine_lock_file};
+use super::{EngineLockState, LockLost, engine_lock_file};
 
 /// A folder of its own for one test, removed when the test ends.
 struct TestFolder(PathBuf);
@@ -58,6 +59,22 @@ impl Drop for TestFolder {
     }
 }
 
+/// A page that never hears of a lost lock.
+fn quiet() -> Box<dyn Fn(LockLost) + Send> {
+    Box::new(|_| {})
+}
+
+/// A page that sends what it hears of a lost lock to the receiver.
+fn listening() -> (Box<dyn Fn(LockLost) + Send>, mpsc::Receiver<LockLost>) {
+    let (send, heard) = mpsc::channel();
+    (
+        Box::new(move |lost| {
+            let _ = send.send(lost);
+        }),
+        heard,
+    )
+}
+
 fn holder_pid(file: &Path) -> Option<i64> {
     parse_record(&fs::read_to_string(file).ok()?).map(|record| record.pid)
 }
@@ -99,7 +116,9 @@ fn engine_lock_commands_is_held_for_a_window_until_it_releases_it() {
     let file = folder.lock_file();
     let state = EngineLockState::default();
 
-    state.hold("main", &file).expect("the lock is taken");
+    state
+        .hold("main", &file, quiet())
+        .expect("the lock is taken");
     assert_eq!(holder_pid(&file), Some(i64::from(std::process::id())));
     state.release("main", &file);
     assert!(!file.exists());
@@ -111,10 +130,12 @@ fn engine_lock_commands_is_taken_back_by_the_window_that_holds_it_when_its_page_
     let file = folder.lock_file();
     let state = EngineLockState::default();
 
-    state.hold("main", &file).expect("the lock is taken");
+    state
+        .hold("main", &file, quiet())
+        .expect("the lock is taken");
     let before = fs::read_to_string(&file).unwrap();
     state
-        .hold("main", &file)
+        .hold("main", &file, quiet())
         .expect("the reloaded page asks again");
     assert_eq!(fs::read_to_string(&file).unwrap(), before);
 }
@@ -124,9 +145,13 @@ fn engine_lock_commands_is_refused_to_another_window_and_to_an_engine_in_another
     let folder = TestFolder::new("refused");
     let file = folder.lock_file();
     let state = EngineLockState::default();
-    state.hold("main", &file).expect("the lock is taken");
+    state
+        .hold("main", &file, quiet())
+        .expect("the lock is taken");
 
-    let other_window = state.hold("second", &file).expect_err("it is held");
+    let other_window = state
+        .hold("second", &file, quiet())
+        .expect_err("it is held");
     assert_eq!(other_window.kind, "conflict");
     assert_eq!(other_window.pid, Some(i64::from(std::process::id())));
     assert!(other_window.message.contains("Another engine is open"));
@@ -135,7 +160,9 @@ fn engine_lock_commands_is_refused_to_another_window_and_to_an_engine_in_another
     // What the CLI's `holdLock` writes, from a process that runs: this one.
     let cli = record_text(std::process::id(), &host(), now_ms());
     fs::write(&file, &cli).unwrap();
-    let refusal = state.hold("main", &file).expect_err("the CLI holds it");
+    let refusal = state
+        .hold("main", &file, quiet())
+        .expect_err("the CLI holds it");
     assert_eq!(refusal.kind, "conflict");
     assert_eq!(fs::read_to_string(&file).unwrap(), cli);
 }
@@ -148,7 +175,7 @@ fn engine_lock_commands_takes_over_the_lock_of_a_process_that_has_ended() {
     let state = EngineLockState::default();
 
     state
-        .hold("main", &file)
+        .hold("main", &file, quiet())
         .expect("a dead holder's lock is taken over");
     assert_eq!(holder_pid(&file), Some(i64::from(std::process::id())));
 }
@@ -159,13 +186,13 @@ fn engine_lock_commands_is_released_when_its_window_closes_or_the_app_quits() {
     let file = folder.lock_file();
     let state = EngineLockState::default();
 
-    state.hold("main", &file).unwrap();
+    state.hold("main", &file, quiet()).unwrap();
     state.release_window("second");
     assert!(file.exists());
     state.release_window("main");
     assert!(!file.exists());
 
-    state.hold("main", &file).unwrap();
+    state.hold("main", &file, quiet()).unwrap();
     state.release_all();
     assert!(!file.exists());
 }
@@ -176,7 +203,7 @@ fn engine_lock_commands_is_renewed_while_it_is_held() {
     let file = folder.lock_file();
     let state = EngineLockState::renewing_every(Duration::from_millis(20));
 
-    state.hold("main", &file).unwrap();
+    state.hold("main", &file, quiet()).unwrap();
     let first = fs::read_to_string(&file).unwrap();
     wait_until("the record is written again", || {
         fs::read_to_string(&file).is_ok_and(|text| text != first)
@@ -190,15 +217,53 @@ fn engine_lock_commands_taken_again_after_another_process_took_it_over() {
     let folder = TestFolder::new("lost");
     let file = folder.lock_file();
     let state = EngineLockState::renewing_every(Duration::from_millis(20));
-    state.hold("main", &file).unwrap();
+    state.hold("main", &file, quiet()).unwrap();
 
     // Another computer's engine takes the lock over; this one gives it up.
     let theirs = record_text(1, "another-computer", now_ms());
     fs::write(&file, &theirs).unwrap();
     wait_until("the renewal finds the lock taken over", || {
-        state.hold("main", &file).is_err()
+        state.hold("main", &file, quiet()).is_err()
     });
     assert_eq!(fs::read_to_string(&file).unwrap(), theirs);
+}
+
+#[test]
+fn engine_lock_commands_tells_the_page_when_another_process_takes_the_lock_over() {
+    let folder = TestFolder::new("tell");
+    let file = folder.lock_file();
+    let state = EngineLockState::renewing_every(Duration::from_millis(20));
+    let (tell, heard) = listening();
+    state.hold("main", &file, tell).unwrap();
+
+    fs::write(&file, record_text(1, "another-computer", now_ms())).unwrap();
+    let lost = heard
+        .recv_timeout(Duration::from_secs(5))
+        .expect("the page hears that the lock is lost");
+    assert!(lost.message.contains("taken over"), "{}", lost.message);
+    assert!(
+        heard.recv_timeout(Duration::from_millis(100)).is_err(),
+        "it is told once"
+    );
+}
+
+#[test]
+fn engine_lock_commands_tells_the_page_that_reloaded_and_not_the_one_that_left() {
+    let folder = TestFolder::new("tell-reload");
+    let file = folder.lock_file();
+    let state = EngineLockState::renewing_every(Duration::from_millis(20));
+    let (before, heard_before) = listening();
+    state.hold("main", &file, before).unwrap();
+    let (after, heard_after) = listening();
+    state
+        .hold("main", &file, after)
+        .expect("the reloaded page asks again");
+
+    fs::write(&file, record_text(1, "another-computer", now_ms())).unwrap();
+    heard_after
+        .recv_timeout(Duration::from_secs(5))
+        .expect("the page that holds the lock hears");
+    assert!(heard_before.try_recv().is_err());
 }
 
 fn host() -> String {

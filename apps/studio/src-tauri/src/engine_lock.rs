@@ -27,6 +27,7 @@ use halonic_git_guard::OpenedFolders;
 use halonic_profile::ProfileFolder;
 use halonic_run_lock::{EngineLock, HoldError, RENEW_EVERY, Renewal, hold_lock};
 use serde::Serialize;
+use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime, Window};
 
 use crate::git::GitState;
@@ -57,8 +58,19 @@ impl EngineLockRefusal {
     }
 }
 
+/// What the page hears when its lock is lost: the engine must stop.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct LockLost {
+    message: String,
+}
+
+/// Tells the page that holds a lock that it lost it. The page that holds it
+/// now, after a reload, is the one told, so it is replaced on each hold.
+type Notify = Arc<Mutex<Box<dyn Fn(LockLost) + Send>>>;
+
 /// A lock whose renewals a thread keeps going, until it is told to stop.
 struct Kept {
+    notify: Notify,
     stop: Sender<()>,
     thread: JoinHandle<()>,
     /// Set by the thread when the lock was lost: another process took it over.
@@ -85,13 +97,21 @@ impl EngineLockState {
         }
     }
 
-    /// Holds `file` for `window`. It is already held when this window holds
-    /// it still, as after a page reload; one the window lost is taken again.
-    fn hold(&self, window: &str, file: &Path) -> Result<(), EngineLockRefusal> {
+    /// Holds `file` for `window`, and calls `on_lost` if another process
+    /// takes it over. It is already held when this window holds it still, as
+    /// after a page reload, which hands over its new `on_lost`; one the
+    /// window lost is taken again.
+    fn hold(
+        &self,
+        window: &str,
+        file: &Path,
+        on_lost: Box<dyn Fn(LockLost) + Send>,
+    ) -> Result<(), EngineLockRefusal> {
         let key = (window.to_owned(), file.to_owned());
         let mut kept = self.kept.lock().unwrap_or_else(PoisonError::into_inner);
         if let Some(held) = kept.get(&key) {
             if !held.lost.load(Ordering::SeqCst) {
+                *held.notify.lock().unwrap_or_else(PoisonError::into_inner) = on_lost;
                 return Ok(());
             }
             if let Some(lost) = kept.remove(&key) {
@@ -101,11 +121,21 @@ impl EngineLockState {
         let lock = hold_lock(file, &OperatingSystem).map_err(refusal)?;
         let (stop, stopped) = mpsc::channel();
         let lost = Arc::new(AtomicBool::new(false));
+        let notify: Notify = Arc::new(Mutex::new(on_lost));
         let thread = thread::spawn({
-            let (lost, every, file) = (Arc::clone(&lost), self.renew_every, file.to_owned());
-            move || renew_until_stopped(lock, &stopped, every, &lost, &file)
+            let (lost, notify) = (Arc::clone(&lost), Arc::clone(&notify));
+            let (every, file) = (self.renew_every, file.to_owned());
+            move || renew_until_stopped(lock, &stopped, every, &lost, &notify, &file)
         });
-        kept.insert(key, Kept { stop, thread, lost });
+        kept.insert(
+            key,
+            Kept {
+                notify,
+                stop,
+                thread,
+                lost,
+            },
+        );
         Ok(())
     }
 
@@ -150,12 +180,14 @@ fn stop(held: Kept) {
 }
 
 /// Renews `lock` every `every` until `stopped` hears or its sender is
-/// dropped, then releases it. A lost lock ends the thread and sets `lost`.
+/// dropped, then releases it. A lost lock ends the thread, sets `lost` and
+/// tells the page through `notify`.
 fn renew_until_stopped(
     mut lock: EngineLock,
     stopped: &mpsc::Receiver<()>,
     every: Duration,
     lost: &AtomicBool,
+    notify: &Notify,
     file: &Path,
 ) {
     loop {
@@ -168,6 +200,8 @@ fn renew_until_stopped(
                         "engine_lock",
                         format!("the lock {} {why}", file.display()),
                     );
+                    let message = format!("The engine lock {why}.");
+                    (notify.lock().unwrap_or_else(PoisonError::into_inner))(LockLost { message });
                     return;
                 }
                 // The next renewal is tried as planned.
@@ -265,15 +299,25 @@ where
 
 /// Holds the workspace's engine lock for the calling window, or refuses as
 /// `conflict` while another engine is open on it. Asking again from the
-/// same window, as a reloaded page does, succeeds and keeps the lock.
+/// same window, as a reloaded page does, succeeds and keeps the lock. Sends
+/// one message to `on_lost` if another process takes the lock over, so the
+/// page stops its engine.
 #[tauri::command]
 pub async fn engine_lock_hold<R: Runtime>(
     app: AppHandle<R>,
     window: Window<R>,
     workspace: PathBuf,
+    on_lost: Channel<LockLost>,
 ) -> Result<(), EngineLockRefusal> {
     let label = window.label().to_owned();
-    on_lock_file(app, workspace, move |state, file| state.hold(&label, &file)).await
+    on_lock_file(app, workspace, move |state, file| {
+        let tell = Box::new(move |lost| {
+            // A page that closed or reloaded no longer listens; it asks again.
+            let _ = on_lost.send(lost);
+        });
+        state.hold(&label, &file, tell)
+    })
+    .await
 }
 
 /// Releases the workspace's engine lock, when the calling window holds it.

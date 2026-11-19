@@ -34,7 +34,7 @@ export interface PaletteRow {
   readonly hubName?: string;
   /** Where an action comes from when that isn't Halonic, such as "Weather plugin". */
   readonly source?: string;
-  /** Where the typed words are in `label`; none when nothing is typed. */
+  /** Where the typed words are in `label`; none when nothing is typed or the label lacks them. */
   readonly match?: NameMatch;
   /** Whether a window tab shows it already, so the row says "Switch to tab". */
   readonly open: boolean;
@@ -83,13 +83,14 @@ export interface PaletteSources {
  * The places that commands open, by command id: the key of the place the command shows. The
  * palette hides an open or recent place that one of these commands opens, because the command's
  * Action stands in for it. It matches by place, not by title, so a place a person names like a
- * command ("Workspace settings") stays when no command opens it. The three workspace commands all
- * open the workspace page, `workspace/local/settings`; keep this in step with that feature.
+ * command ("Workspace settings") stays when no command opens it. The workspace commands all open
+ * the workspace page, `workspace/local/settings`; keep this in step with that feature.
  */
 export const commandPlaceKeys: ReadonlyMap<string, string> = new Map([
   ["workspace.open", "workspace/local/settings"],
   ["workspace.open-trust", "workspace/local/settings"],
   ["workspace.open-models", "workspace/local/settings"],
+  ["workspace.open-budget", "workspace/local/settings"],
 ]);
 
 /**
@@ -116,10 +117,11 @@ export function itemLocation(item: ItemRef, label: string, kinds: PaletteKindNam
 /**
  * Ranks and groups what Ctrl K shows (design-search 2, component specs 24.3). With nothing typed:
  * Open tabs, then Recent places that no tab shows. With words typed: "Agents, workflows and
- * more", the places and items whose name matches, and Actions, the commands whose title does.
- * In a group the whole name comes first, then names that start with the words, then a word that
- * starts with them, then names that only contain them; among equal matches the more recently
- * opened comes first. Each group keeps its best 5 rows. A source that isn't built yet adds
+ * more", the places whose name matches and every item a search provider found, and Actions, the
+ * commands whose title matches. In a group the whole name comes first, then names that start with
+ * the words, then a word that starts with them, then names that only contain them; among equal
+ * matches the more recently opened comes first. Items found by something other than their name
+ * come last, in the provider's order. Each group keeps its best 5 rows. A source that isn't built yet adds
  * nothing, so it never shows an error or a stand-in. It says nothing matches only when no action
  * matches either. When nothing matches because a provider failed, the palette says it couldn't
  * search rather than that nothing matches; when other providers found something, it shows that.
@@ -166,7 +168,11 @@ export function paletteGroups(sources: PaletteSources): PaletteContent {
     (row) => standIns.has(row.key) && matchName(sources.words, row.label) !== undefined,
   );
   const recency = new Map(sources.recent.map((location, index) => [location.key, index]));
-  const items = ranked(sources.words, withoutRepeats([...foundRows, ...placeRows]), recency);
+  const itemRows = withoutRepeats([...foundRows, ...placeRows]);
+  const items = [
+    ...ranked(sources.words, itemRows, recency),
+    ...foundOtherwise(sources.words, itemRows),
+  ];
   const actions = ranked(
     sources.words,
     sources.actions.map(
@@ -212,6 +218,17 @@ function ranked(
       compareRecency(recentIndex(left.row), recentIndex(right.row)),
   );
   return matching.map(({ row }) => row);
+}
+
+/**
+ * The items a search provider found by something other than their name, such as a run by "#8b16"
+ * or an agent by its description, in the order given. They show after the rows whose name
+ * matches, with nothing marked (HAL-13242). An open or recent place needs its name to match.
+ */
+function foundOtherwise(words: string, rows: readonly PaletteRow[]): PaletteRow[] {
+  return rows.filter(
+    (row) => row.target.kind === "item" && matchName(words, row.label) === undefined,
+  );
 }
 
 function compareRecency(left: number, right: number): number {

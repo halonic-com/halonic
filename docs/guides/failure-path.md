@@ -90,7 +90,9 @@ held by another process, an approval, a timer.
 - **One function per source** reads each number, and a test covers it with a
   fake source. Nothing polls faster than once a second.
 - **`halonic doctor` prints the report**, so it works without Studio and can be
-  pasted into a bug report.
+  pasted into a bug report. A new check or line also goes into
+  [Check your setup with `halonic doctor`](../how-to/check-your-setup-with-doctor.md),
+  with what it means and its fix.
 - **What we write is bounded.** Every cache and log we keep has a size or age
   limit and a way to clear it. A process we start is stopped when its run ends
   or the engine stops; none outlives the engine.

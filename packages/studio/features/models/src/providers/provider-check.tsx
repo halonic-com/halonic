@@ -5,6 +5,7 @@ import type { ProviderCheck } from "../api.ts";
 import { providerName } from "./provider-rows.ts";
 import {
   CHECK,
+  CHECK_AGAIN,
   CHECK_HINT,
   CHECKING,
   checkAnnouncement,
@@ -81,8 +82,8 @@ function ResultLine({ result, phone, program }: ResultLineProps) {
 
 /**
  * **Check** on a provider that runs on this computer or your own network
- * (`models.providers.check`): one secondary button, and under it one status line with the last
- * result. The button reads "Checking…" and stays focused while it asks. The result lasts until the
+ * (`models.providers.check`): one secondary button, **Check again** once there is a result, and
+ * under it one status line with the last result. The button reads "Checking…" and stays focused while it asks. The result lasts until the
  * page closes; it is not written to a file. Nothing shows for a cloud provider or one with no
  * address. On a phone the button is full width and the result is a tone chip, **Answering** or
  * **Not answering**, with "at localhost:11434 · checked 10:42" under it and no dot.
@@ -126,7 +127,7 @@ export function CheckProvider({ check, provider, now = () => new Date() }: Check
           busyLabel={CHECKING}
           onClick={() => void run(check, address)}
         >
-          {CHECK}
+          {current === undefined ? CHECK : CHECK_AGAIN}
         </Button>
       </div>
       {current === undefined ? null : (

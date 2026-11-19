@@ -238,6 +238,18 @@ impl SecretBackend for FailingBackend {
     fn delete(&self, _name: &SecretName) -> Result<(), SecretError> {
         Err(SecretError::Denied)
     }
+
+    fn get_origins(&self, _name: &SecretName) -> Result<Option<String>, SecretError> {
+        Err(SecretError::Unavailable)
+    }
+
+    fn set_origins(&self, _name: &SecretName, _origins: &str) -> Result<(), SecretError> {
+        Err(SecretError::Unavailable)
+    }
+
+    fn delete_origins(&self, _name: &SecretName) -> Result<(), SecretError> {
+        Err(SecretError::Denied)
+    }
 }
 
 /// The limit of [`SmallBackend`], the Windows Credential Manager's.
@@ -261,6 +273,18 @@ impl SecretBackend for SmallBackend {
         self.0.delete(name)
     }
 
+    fn get_origins(&self, name: &SecretName) -> Result<Option<String>, SecretError> {
+        self.0.get_origins(name)
+    }
+
+    fn set_origins(&self, name: &SecretName, origins: &str) -> Result<(), SecretError> {
+        self.0.set_origins(name, origins)
+    }
+
+    fn delete_origins(&self, name: &SecretName) -> Result<(), SecretError> {
+        self.0.delete_origins(name)
+    }
+
     fn max_value_bytes(&self) -> usize {
         SMALL_LIMIT
     }
@@ -280,5 +304,17 @@ impl SecretBackend for CuttingBackend {
 
     fn delete(&self, name: &SecretName) -> Result<(), SecretError> {
         self.0.delete(name)
+    }
+
+    fn get_origins(&self, name: &SecretName) -> Result<Option<String>, SecretError> {
+        self.0.get_origins(name)
+    }
+
+    fn set_origins(&self, name: &SecretName, origins: &str) -> Result<(), SecretError> {
+        self.0.set_origins(name, origins)
+    }
+
+    fn delete_origins(&self, name: &SecretName) -> Result<(), SecretError> {
+        self.0.delete_origins(name)
     }
 }

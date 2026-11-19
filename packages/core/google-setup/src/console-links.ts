@@ -1,7 +1,8 @@
 /**
- * The Google Cloud Console pages the setup steps link to. The paths are
- * checked against the live Console before release (HAL-687), so they live
- * here, in one place.
+ * The Google Cloud Console pages the setup steps link to. Every path here,
+ * `?project=<id>` on the `/auth/*` pages and the "Switch on all" link were
+ * checked against the live Console on 19 Nov 2026 (HAL-687). They live here,
+ * in one place, so a change at Google is a one-line fix.
  */
 const consoleOrigin = "https://console.cloud.google.com";
 

@@ -32,6 +32,12 @@ export interface SidePanelProps {
   readonly initialFocus?: RefObject<HTMLElement | null>;
   /** The phone's Back button. On desktop the shell puts close in `actions` and binds Escape. */
   readonly onClose: () => void;
+  /**
+   * The title's id, for a panel inside a dialog that the title names (a sheet's `<dialog>`). The
+   * panel then draws no `complementary` region of its own, so a screen reader hears its name once,
+   * as the dialog's, and not again as a region's.
+   */
+  readonly dialogTitleId?: string | undefined;
 }
 
 /** Title and meta bar widths, one pair per line of the loading body. */
@@ -56,16 +62,13 @@ const lines: readonly (readonly [SkeletonBarWidth, SkeletonBarWidth])[] = [
  */
 export function SidePanel(props: SidePanelProps) {
   const sheet = usePresentation() === "phone";
-  const titleId = useId();
+  const ownTitleId = useId();
+  const titleId = props.dialogTitleId ?? ownTitleId;
   const title = useRef<HTMLHeadingElement>(null);
   usePanelFocus(title, sheet ? undefined : props.initialFocus);
-
-  return (
-    <aside
-      aria-label={props.label}
-      aria-labelledby={props.label === undefined ? titleId : undefined}
-      className={`flex h-full min-h-0 flex-col bg-surface text-fg ${edge(props, sheet)}`}
-    >
+  const className = `flex h-full min-h-0 flex-col bg-surface text-fg ${edge(props, sheet)}`;
+  const content = (
+    <>
       <PanelHeader props={props} sheet={sheet} titleId={titleId} title={title} />
       <div
         aria-busy={props.loading === undefined ? undefined : true}
@@ -89,6 +92,19 @@ export function SidePanel(props: SidePanelProps) {
           {props.footer}
         </footer>
       )}
+    </>
+  );
+
+  if (props.dialogTitleId !== undefined) {
+    return <div className={className}>{content}</div>;
+  }
+  return (
+    <aside
+      aria-label={props.label}
+      aria-labelledby={props.label === undefined ? titleId : undefined}
+      className={className}
+    >
+      {content}
     </aside>
   );
 }
@@ -167,7 +183,13 @@ function usePanelFocus(
 
   // Only on open: a later change of the ref must not pull focus back.
   useLayoutEffect(() => {
-    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focused = document.activeElement;
+    // StrictMode runs this twice while the panel stays open; the second time focus is already
+    // in the panel, and the panel's own title isn't where focus goes back to.
+    const inPanel = focused !== null && title.current?.closest("aside")?.contains(focused) === true;
+    if (!inPanel) {
+      opener.current = focused instanceof HTMLElement ? focused : null;
+    }
     (initialFocus?.current ?? title.current)?.focus();
   }, []);
 

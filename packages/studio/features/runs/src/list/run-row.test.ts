@@ -219,6 +219,32 @@ verifies("runs.row-columns", () => {
       expect(gone.startedByTooltip).toBe(routineId);
     });
 
+    it("keeps a day name's capital mid-sentence, and lowercases any other first word", () => {
+      // The Acme example's Weekly report, `0 9 * * 1` (HAL-13067).
+      const weekly = triggered(
+        { type: "schedule", at, routineId },
+        { name: "Weekly report", schedule: "Mondays at 09:00" },
+      );
+      const someDays = triggered(
+        { type: "schedule", at, routineId },
+        { name: "Digest", schedule: "Mondays, Wednesdays, Fridays at 07:30" },
+      );
+      const every = triggered(
+        { type: "every", at, routineId },
+        { name: "Inbox sweep", schedule: "Every 15 minutes" },
+      );
+
+      expect(weekly.startedBy).toBe("Schedule · Mondays at 09:00");
+      expect(weekly.label).toBe(
+        "Run 01jd8q, Support reply, running, in Draft. Started by the schedule for Mondays at 09:00, 10:40.",
+      );
+      expect(someDays.startedBy).toBe("Schedule · Mondays, Wednesdays, Fridays at 07:30");
+      expect(every.startedBy).toBe("Schedule · every 15 minutes");
+      expect(every.label).toBe(
+        "Run 01jd8q, Support reply, running, in Draft. Started by the schedule for every 15 minutes, 10:40.",
+      );
+    });
+
     it("says a catch-up run caught up after sleep, with the routine's name in the tooltip", () => {
       const row = triggered(
         { type: "schedule", at, routineId, catchUp: { skipped: 61 } },

@@ -37,6 +37,10 @@ verifies("routines.list.rows-and-states", () => {
     const text = page.textContent ?? "";
 
     expect(page.querySelector("h1")?.textContent).toBe("Routines");
+    expect(text).toContain(
+      "A routine starts a workflow or an agent on its own: on a schedule or every so often. " +
+        "Routines start on time only while halonic routines watch is running.",
+    );
     expect(text.indexOf("Daily")).toBeLessThan(text.indexOf("Weekly report"));
     expect(text).toContain("Daily at 07:30 → Daily");
     expect(text).toContain("DDaily");
