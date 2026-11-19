@@ -35,7 +35,12 @@ than 16 Mi characters ends the reading with an error.
 five variables: `ANTHROPIC_BASE_URL` (the run's bridge), `ANTHROPIC_CUSTOM_HEADERS`
 (the run token in the bridge's own header, so `Authorization` stays free for
 the person's sign-in), `CLAUDE_CONFIG_DIR`, `CLAUDE_CODE_TMPDIR` (the
-session's own temp folder) and `HALONIC_RUN_TOKEN`. It throws when the profile
+session's own temp folder) and `HALONIC_RUN_TOKEN`. When the bridge serves
+Anthropic with a key Halonic keeps (its `keyProviders` names `anthropic`), it
+also sets `ANTHROPIC_API_KEY` to `claudeCodeStandInKey`, a fixed stand-in that
+holds no secret: without a key or a sign-in, Claude Code says "Not logged in"
+and never calls its model, and the bridge puts the real key in its place. With
+the person's own sign-in it stays unset. It throws when the profile
 has no settings folder. The run token is removed from every event and error.
 
 `claudeCodeEnvironment(bridge, folders, model)` also points Claude Code's own
