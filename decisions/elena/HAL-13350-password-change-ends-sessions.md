@@ -2,6 +2,7 @@
 
 - Approval: HAL-13350, from the gap list on HAL-13348 (J5)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Z3GPbDndnIarYBaLwQMAiK7K1C6itmCO7Lemc8CJDxSNwECwLZmkmCb7G2Tk+qWTtSPMRLvaQoTviGiWtvMhDw==
 
 ## What changes
 
