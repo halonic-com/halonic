@@ -201,7 +201,12 @@ export const versionWords = {
   addedByHistory: "Halonic added this when you turned on history.",
   /** The name offered for the first version of a workspace. */
   firstVersion: "First version",
-  /** The name offered for a version of one or more items. */
+  /**
+   * The name offered for a version of one item Halonic can describe, with its row's sentence:
+   * "Support reply · Step added: Page on-call".
+   */
+  nameFromSentence: (item: string, sentence: string) => `${item} · ${sentence}`,
+  /** The name offered for a version of one or more items, when no sentence says what changed. */
   suggestedName: (items: readonly string[]) => {
     const [first, second] = items;
     if (second === undefined) return `Changes to ${first ?? "the workspace"}`;

@@ -34,6 +34,48 @@ verifies("source-control.create-version", () => {
       );
     });
 
+    it("names one item Halonic can describe with its row's sentence", () => {
+      const described: ChangedFile = {
+        path: "workflows/reply.workflow.yaml",
+        texts: undefined,
+        description: {
+          path: "workflows/reply.workflow.yaml",
+          kind: "workflow",
+          name: "Support reply",
+          described: true,
+          lines: [{ id: "step", sentence: "Step added: Page on-call", parts: [] }],
+        },
+      };
+      expect(suggestedVersionName([described], { first: false })).toBe(
+        "Support reply · Step added: Page on-call",
+      );
+    });
+
+    it("names a renamed item with its rename, even when Halonic can't describe it", () => {
+      const renamed: ChangedFile = {
+        ...changed("agents/triage.agent.yaml"),
+        from: "agents/support.agent.yaml",
+      };
+      expect(suggestedVersionName([renamed], { first: false })).toBe(
+        "triage · Renamed from support",
+      );
+    });
+
+    it("counts two items even when Halonic can describe them", () => {
+      const described = (path: string): ChangedFile => {
+        const file = changed(path);
+        return { ...file, description: { ...file.description, described: true } };
+      };
+      expect(
+        suggestedVersionName(
+          [described("agents/triage.agent.yaml"), described("agents/sorter.agent.yaml")],
+          {
+            first: false,
+          },
+        ),
+      ).toBe("Changes to triage and sorter");
+    });
+
     it("is First version for the first version", () => {
       expect(suggestedVersionName([changed("README.md")], { first: true })).toBe("First version");
     });
