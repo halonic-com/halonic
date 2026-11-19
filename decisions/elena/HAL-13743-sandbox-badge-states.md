@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13743 (decided by the team on an approved component, HAL-2282: Sofia's C226 check of #3423; the badge itself is HAL-3777's)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7XIZ/iw9037stvZuqj5BXrFXwCaoZnQDktUI0yVeUhfa1gFOTc31SF3ZBoLRs5d8HSaCKJwAzjPEaRYkuGEWAw==
 
 Nothing here is mounted yet (W3, HAL-13321), so no person has seen the old words. Four points from the check:
 
