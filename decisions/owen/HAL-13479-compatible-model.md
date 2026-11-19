@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-13479 (Julian's security review of #3957 on HAL-13475); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:G678Ldej9RfZaYDUyeBBfbF1DOQuq+AdFnDI4tIo6s/v692jAmlkVu1GYSCeb8flffODNA8/6R43ptTH5lChCg==
 
 `harness-bridge.compatible-request` (new in #3957, not yet released) changes in four ways, all of which make it stricter:
 
