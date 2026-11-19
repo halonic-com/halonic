@@ -64,10 +64,8 @@ restart Halonic.
   as in curl. An empty value counts as not set.
 - **`HTTP_PROXY` is not read.** Halonic tunnels only `https`.
 - **`https://` and SOCKS proxies are not supported yet.**
-- **The Studio desktop app doesn't use the proxy yet.** Its model calls connect
-  directly, so behind a proxy that blocks direct traffic they fail. Studio in
-  the browser (`halonic serve`) and the command line do use it.
-  <!-- CHECK (HAL-12966): remove when the desktop app reads HTTPS_PROXY. -->
+- **The Studio desktop app** uses the proxy for its model calls and for
+  checking and downloading updates, by the same rules.
 - **A password in the proxy URL travels unencrypted to an `http://` proxy.**
   That is normal for company proxies, but know it. Halonic never prints the
   user name or password, and never sends them to anything but the proxy.
