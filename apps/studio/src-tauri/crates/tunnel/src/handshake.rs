@@ -112,7 +112,7 @@ impl Pairing {
         let psk = code.psk();
         let mut noise = Builder::new(PAIRING_PATTERN.parse()?)
             .local_private_key(keys.private())?
-            .psk(3, psk.as_slice())?
+            .psk(3, &psk)?
             .prologue(PROLOGUE.as_bytes())?
             .build_initiator()?;
 
