@@ -3,6 +3,7 @@
 - Task: HAL-11627
 - Approval: the rows S1, S3, S4, S5 and P1 to P3 of the UX check on HAL-11613 say "Build" to the approved microcopy (13.1a, 19.4, 19.6, 1.2, 23.3, 23.3a) and flow-first-run 7.2; Liam reviews this change on HAL-11627. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wcYhHaQga3GKeQYegQa7qo/XSsAbtv7m6q8YLVjP4NSgw2u8SJYWJ/mjZQ35XioaaEJPtItvxqp3ruf9Cq9WCA==
 
 ## What changes
 
