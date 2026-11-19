@@ -1,5 +1,5 @@
 import { Callout, Card, Field, Select, TextArea } from "@halonicjs/studio-kit";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   RoutinesHost,
   RoutineTarget,
@@ -10,9 +10,6 @@ import type {
 import { failureReason } from "../page/page-words.ts";
 import { startsWords as words } from "./starts-words.ts";
 import { useTargets } from "./use-targets.ts";
-
-/** What a new agent target is asked to do until the person writes more; the same text `create` uses. */
-const DEFAULT_PROMPT = "Describe what to do.";
 
 /** Props for {@link StartsCard}. */
 export interface StartsCardProps {
@@ -29,7 +26,17 @@ export interface StartsCardProps {
 export function StartsCard({ host, routine }: StartsCardProps) {
   const targets = useTargets(host, routine);
   const [failure, setFailure] = useState<string | undefined>();
-  const { target } = routine;
+  const [picked, setPicked] = useState<RoutineTargetChoice | undefined>();
+  // An agent picked but not yet written: the file keeps its target until the agent has a prompt.
+  const waiting = picked !== undefined && !sameTarget(picked, routine.target) ? picked : undefined;
+  const target: RoutineTarget =
+    waiting === undefined
+      ? routine.target
+      : { kind: "agent", hubId: waiting.hubId, id: waiting.id, prompt: "" };
+  // Once written, the pick is the file's target; forget it so a later change to the file shows.
+  useEffect(() => {
+    if (picked !== undefined && waiting === undefined) setPicked(undefined);
+  }, [picked, waiting]);
   const current = targets.find((choice) => sameTarget(choice, target));
   const name = current?.name ?? target.id;
 
@@ -41,14 +48,20 @@ export function StartsCard({ host, routine }: StartsCardProps) {
       setFailure(words.couldntSave(failureReason(error)));
     }
   };
+  // A workflow is written at once with an empty input; an agent waits for its prompt, since a
+  // stand-in prompt would be saved as the agent's real task.
   const pick = (key: string) => {
     const choice = targets.find((candidate) => targetKey(candidate) === key);
     if (choice === undefined || sameTarget(choice, target)) return;
-    void save(
-      choice.kind === "workflow"
-        ? { kind: "workflow", hubId: choice.hubId, id: choice.id, input: "{}" }
-        : { kind: "agent", hubId: choice.hubId, id: choice.id, prompt: DEFAULT_PROMPT },
-    );
+    setFailure(undefined);
+    if (choice.kind === "agent") {
+      setPicked(choice);
+      return;
+    }
+    setPicked(undefined);
+    // Back to the file's own workflow: nothing to write, its input stays.
+    if (sameTarget(choice, routine.target)) return;
+    void save({ kind: "workflow", hubId: choice.hubId, id: choice.id, input: "{}" });
   };
   const options = [
     ...targets.map((choice) => ({
@@ -67,16 +80,22 @@ export function StartsCard({ host, routine }: StartsCardProps) {
             onChange={pick}
           />
         </Field>
-        <TargetState routine={routine} name={name} />
-        {routine.live !== undefined && routine.live.targetName !== routine.targetName && (
-          <p className="text-small text-fg-muted">
-            {words.newTargetNotLive(routine.live.targetName)}
-          </p>
+        {waiting === undefined && (
+          <>
+            <TargetState routine={routine} name={name} />
+            {routine.live !== undefined && routine.live.targetName !== routine.targetName && (
+              <p className="text-small text-fg-muted">
+                {words.newTargetNotLive(routine.live.targetName)}
+              </p>
+            )}
+          </>
         )}
         {target.kind === "workflow" ? (
           <InputField input={target.input} onChange={(input) => void save({ ...target, input })} />
         ) : (
           <PromptField
+            key={targetKey(target)}
+            name={name}
             prompt={target.prompt}
             onChange={(prompt) => void save({ ...target, prompt })}
           />
@@ -149,9 +168,11 @@ function InputField({
 
 /** The agent's prompt: written as it is typed, and never emptied. */
 function PromptField({
+  name,
   prompt,
   onChange,
 }: {
+  readonly name: string;
   readonly prompt: string;
   readonly onChange: (prompt: string) => void;
 }) {
@@ -162,9 +183,10 @@ function PromptField({
     if (next.trim() !== "") onChange(next);
   };
   return (
-    <Field label={words.prompt} error={text.trim() === "" ? words.promptNeeded : null}>
+    <Field label={words.prompt} error={text.trim() === "" ? words.promptNeeded(name) : null}>
       <TextArea
         value={text}
+        placeholder={words.promptPlaceholder}
         minRows={3}
         onChange={(event) => change(event.target.value)}
         onBlur={() => setDraft(undefined)}
