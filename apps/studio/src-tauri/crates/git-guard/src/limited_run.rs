@@ -22,13 +22,15 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     reason = "the crate's one Command::new, which hides the console window"
 )]
 pub(crate) fn new_command(program: impl AsRef<OsStr>) -> Command {
-    let mut command = Command::new(program);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
+        let mut command = Command::new(program);
         command.creation_flags(CREATE_NO_WINDOW);
+        command
     }
-    command
+    #[cfg(not(windows))]
+    Command::new(program)
 }
 
 /// How long git may run and how much it may write.
