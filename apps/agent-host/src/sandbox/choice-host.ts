@@ -75,6 +75,11 @@ export function hostSandboxChoice(
         canary: backend.canary ?? unbuiltCanary,
       },
     ],
-    settings: new FileSandboxSettingStore(join(profileFolder, settingFolderName)),
+    settings: profileSandboxSettings(profileFolder),
   });
+}
+
+/** The person's sandbox choice in `profileFolder`, where Studio's shell saves it. */
+export function profileSandboxSettings(profileFolder: string): FileSandboxSettingStore {
+  return new FileSandboxSettingStore(join(profileFolder, settingFolderName));
 }

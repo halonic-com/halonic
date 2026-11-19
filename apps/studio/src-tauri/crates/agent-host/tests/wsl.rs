@@ -8,8 +8,8 @@ use std::process::Command;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use halonic_agent_host::{
-    RuntimeStep, WslError, distro_host_command, file_sha256, install_runtime, runtime_command,
-    wsl_exe,
+    RuntimeStep, SettingCopy, WslError, distro_host_command, file_sha256, install_runtime,
+    runtime_command, setting_copy_command, wsl_exe,
 };
 
 const WSL: &str = r"C:\Windows\System32\wsl.exe"; // leak-guard: allow absolute-path fixed Windows and distro paths under test
@@ -113,6 +113,31 @@ fn wsl_launch_starts_the_agent_host_in_halonics_distro_with_fixed_arguments() {
             "127.0.0.1:49152",
         ],
     );
+}
+
+#[test]
+fn wsl_launch_copies_the_sandbox_choice_as_halonic_with_fixed_arguments() {
+    let prefix = [
+        "-d",
+        "halonic",
+        "-u",
+        "halonic",
+        "--cd",
+        "/",
+        "--exec",
+        "/opt/halonic/current/bin/halonic-agent-host",
+        "--profile-folder",
+        concat!("/home", "/halonic/.local/share/halonic"),
+    ];
+    let wsl = Path::new(WSL);
+    for (copy, flag) in [
+        (SettingCopy::Save("{}"), "--sandbox-setting-copy"),
+        (SettingCopy::Remove, "--sandbox-setting-remove"),
+    ] {
+        let mut expected = prefix.to_vec();
+        expected.push(flag);
+        pinned(&setting_copy_command(wsl, copy), &expected);
+    }
 }
 
 #[test]

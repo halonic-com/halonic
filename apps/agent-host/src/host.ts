@@ -33,6 +33,7 @@ import { optionalProfileOf, profileGoogleSetup, profileTrustStore } from "./prof
 import { proxySetting } from "./proxy-setting.ts";
 import { hostSandboxChoice } from "./sandbox/choice-host.ts";
 import { sandboxChoiceRoutes } from "./sandbox/choice-routes.ts";
+import { sandboxCommand } from "./sandbox/sandbox-commands.ts";
 import { sandboxRoutes } from "./sandbox/sandbox-routes.ts";
 import { SessionTable } from "./sandbox/session-table.ts";
 import { SetupJobs, setupRoutes } from "./sandbox/setup-routes.ts";
@@ -90,6 +91,7 @@ const relayHostPattern = /^127\.0\.0\.1:([1-9][0-9]{0,4})$/;
  * - `--sandbox-setup` sets the sandbox up, for the installer and Studio, with one administrator prompt (see {@link SrtSandbox.setUp}), and prints whether it worked, as JSON: `ok`, or the `outcome` (`cancelled`, `failed`, `check_failed`) and the `reason`;
  * - `--sandbox-remove` removes what the setup left, for the uninstaller and Studio (see {@link SrtSandbox.remove}), and prints whether it worked, as JSON;
  * - `--sandbox-cleanup` removes what sessions added to the user's access lists, for the uninstaller (see {@link SrtSandbox.cleanUp}), and prints whether it worked, as JSON. It reads the profile folder from `--profile-folder`, which the executable passes on;
+ * - `--sandbox-setting-copy` saves the sandbox choice on standard input in the profile, and `--sandbox-setting-remove` removes it: Studio's shell keeps the copy in Halonic's WSL distro equal to the choice on Windows (see {@link copySandboxSetting}). Both print whether it worked, as JSON;
  * - `--wsl-shared-folders` (with serving) is how Studio's launcher says the host runs in Halonic's WSL distro: every session then denies the distro's shared folders (see {@link WSL_SHARED_FOLDERS}, security review W1);
  * - `--stdio --relay-host 127.0.0.1:<port>` serves over standard input and output (see {@link serveOverFrames});
  * - otherwise it serves on loopback (see {@link serve}).
@@ -128,7 +130,9 @@ export async function run(
     io.write(`halonic-agent-host ${version}\n`);
     return 0;
   }
-  const sandboxExit = sandboxCommand(args, io, makeSandbox);
+  const sandboxExit = sandboxCommand(args, argumentAfter(args, "--profile-folder"), io, () =>
+    makeSandbox([], []),
+  );
   if (sandboxExit !== undefined) return await sandboxExit;
   const given = sweepRoots(args);
   if ("error" in given) {
@@ -203,36 +207,6 @@ function relayPortForServing(args: readonly string[]): number | undefined {
   return args.includes("--stdio") ? relayPortOf(args) : undefined;
 }
 
-/** Runs the `--sandbox-*` command in the arguments, or returns `undefined` when there is none. */
-function sandboxCommand(
-  args: readonly string[],
-  io: HostIo,
-  makeSandbox: (sweepRoots: readonly string[], sharedFolders: readonly string[]) => SrtSandbox,
-): Promise<number> | undefined {
-  const sandbox = () => makeSandbox([], []);
-  if (args.includes("--sandbox-check"))
-    return sandbox()
-      .check()
-      .then((result) => answer(io, result));
-  if (args.includes("--sandbox-setup"))
-    return sandbox()
-      .setUp()
-      .then((result) => answer(io, result));
-  if (args.includes("--sandbox-remove"))
-    return sandbox()
-      .remove()
-      .then((result) => answer(io, result));
-  if (!args.includes("--sandbox-cleanup")) return undefined;
-  const profileFolder = argumentAfter(args, "--profile-folder");
-  if (profileFolder === undefined) {
-    const missing = { ok: false, reason: "--sandbox-cleanup needs --profile-folder." };
-    return Promise.resolve(answer(io, missing));
-  }
-  return sandbox()
-    .cleanUp(profileFolder)
-    .then((result) => answer(io, result));
-}
-
 /**
  * What workspace connectors may use and never reach: Halonic's own profile folder is never a workspace, and is denied.
  * The host checks every connector's trust grant against the trust records of that same folder.
@@ -249,12 +223,6 @@ function connectorPlaces(roots: readonly string[], profileFolder: string | undef
 function argumentAfter(args: readonly string[], name: string): string | undefined {
   const at = args.indexOf(name);
   return at === -1 ? undefined : args[at + 1];
-}
-
-/** Prints `result` as one JSON line. @returns its exit code: 0 when it is `ok`, 1 when not */
-function answer(io: HostIo, result: { ok: boolean }): number {
-  io.write(`${JSON.stringify(result)}\n`);
-  return result.ok ? 0 : 1;
 }
 
 /**

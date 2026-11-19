@@ -123,7 +123,7 @@ pub(crate) fn unreadable(file: &Path, failure: ReadFailure) -> HostSettingsError
 /// Creates the folder, and any missing parents, readable by its owner only.
 /// A folder made earlier by something else is made private too, as
 /// `makePrivateFolder` in `fs-node` does.
-fn create_private_folder(folder: &Path) -> Result<(), HostSettingsError> {
+pub(crate) fn create_private_folder(folder: &Path) -> Result<(), HostSettingsError> {
     let mut builder = DirBuilder::new();
     builder.recursive(true);
     #[cfg(unix)]
@@ -140,7 +140,7 @@ fn create_private_folder(folder: &Path) -> Result<(), HostSettingsError> {
 /// Writes `text` to a new temporary file next to `file`, then renames it
 /// over `file`, replacing a link there rather than writing through it. On
 /// Windows the rename is tried again while another program holds `file`.
-fn write_replacing(file: &Path, text: &str) -> Result<(), HostSettingsError> {
+pub(crate) fn write_replacing(file: &Path, text: &str) -> Result<(), HostSettingsError> {
     let temporary = temporary_for(file);
     if let Err(error) = write_then_rename(&temporary, file, text) {
         // A half-written temporary file must not stay behind. If removing
