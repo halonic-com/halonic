@@ -2,7 +2,7 @@
 
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   createFromWelcome,
   holdOpens,
@@ -75,5 +75,73 @@ verifies("workspace.workspace-window", () => {
     // As the app's restore at start does: straight on the switcher, not through the window.
     await act(() => switcher.openLocation("/work/acme"));
     expect(document.activeElement).toBe(document.body);
+  });
+});
+
+verifies("workspace.switch-announced", () => {
+  beforeEach(() => {
+    // jsdom has no popovers, which the menu closes itself with.
+    HTMLElement.prototype.hidePopover ??= () => {};
+  });
+
+  it("reads Switched to beta on Ctrl 2, after focus is on the title (a11y W1b)", async () => {
+    const { shell, switcher } = start([]);
+    await act(() => switcher.openLocation("/work/acme"));
+    await act(() => switcher.openLocation("/work/beta"));
+    await press({ key: "1", ctrlKey: true });
+    const announce = vi.spyOn(shell.announcer, "announce");
+    let focusedWhenRead: Element | null = null;
+    announce.mockImplementation(() => {
+      focusedWhenRead = document.activeElement;
+    });
+
+    await press({ key: "2", ctrlKey: true });
+    expect(announce.mock.calls).toEqual([["Switched to beta"]]);
+    expect(focusedWhenRead).toBe(shownHeading());
+  });
+
+  it("reads Switched to beta when the menu's Open a folder… picks beta, already open", async () => {
+    const { shell, switcher } = start(["/work/beta"]);
+    await act(() => switcher.openLocation("/work/beta"));
+    await act(() => switcher.openLocation("/work/acme"));
+    const announce = vi.spyOn(shell.announcer, "announce");
+
+    await act(async () => menuRow("Open a folder…")?.click());
+    await act(async () => {});
+    expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: beta");
+    expect(announce.mock.calls).toEqual([["Switched to beta"]]);
+  });
+
+  it("reads Switched to acme after closing beta", async () => {
+    const { shell, switcher } = start([]);
+    await act(() => switcher.openLocation("/work/acme"));
+    await act(() => switcher.openLocation("/work/beta"));
+    const announce = vi.spyOn(shell.announcer, "announce");
+
+    await act(async () => menuRow("Close workspace")?.click());
+    expect(announce.mock.calls).toEqual([["Switched to acme"]]);
+  });
+
+  it("doesn't read it when Open a folder… opens a folder, whose toast is read instead", async () => {
+    const { shell, switcher } = start(["/work/beta"]);
+    await act(() => switcher.openLocation("/work/acme"));
+    const announce = vi.spyOn(shell.announcer, "announce");
+
+    await act(async () => menuRow("Open a folder…")?.click());
+    await act(async () => {});
+    expect(switcherButton()?.getAttribute("aria-label")).toBe("Workspace: beta");
+    expect(announce).not.toHaveBeenCalledWith("Switched to beta");
+  });
+
+  it("doesn't read it for a workspace shown without the person asking", async () => {
+    const { shell, switcher } = start([]);
+    await act(() => switcher.openLocation("/work/acme"));
+    const announce = vi.spyOn(shell.announcer, "announce");
+
+    // As the app's restore at start does: straight on the switcher, not through the window.
+    await act(() => switcher.openLocation("/work/beta"));
+    await act(() => switcher.openLocation("/work/acme"));
+    expect(announce).not.toHaveBeenCalledWith("Switched to beta");
+    expect(announce).not.toHaveBeenCalledWith("Switched to acme");
   });
 });

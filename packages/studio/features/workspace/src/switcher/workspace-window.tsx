@@ -82,7 +82,7 @@ export function WorkspaceWindow({
   resources,
 }: WorkspaceWindowProps) {
   const { open } = switcher;
-  const showByPerson = useShowByPerson(switcher);
+  const showByPerson = useShowByPerson(switcher, (line) => shell.announcer.announce(line));
   const [creating, setCreating] = useState(false);
   const askNewWorkspace = newWorkspace === undefined ? undefined : () => setCreating(true);
   useEffect(
@@ -292,32 +292,50 @@ export function WorkspaceWindow({
 /**
  * Gives the way to run what a person does to open, show or close a workspace. When it ends with
  * another workspace shown, focus moves to that workspace's page title once it is drawn, because the
- * window the focus was in is gone (a11y W1). A restore at start doesn't run through it, so it
- * leaves focus alone, and closing the last workspace leaves it to Welcome, which focuses
- * **Open folder**.
+ * window the focus was in is gone (a11y W1). When that workspace was already open, the announcer
+ * also reads "Switched to *name*", since the title alone ("Home") can be the same in both
+ * workspaces and a switch has no "Opened …" toast (a11y W1b). A restore at start doesn't run
+ * through it, so it leaves focus alone, and closing the last workspace leaves it to Welcome, which
+ * focuses **Open folder**.
  */
 function useShowByPerson(
   switcher: WorkspaceSwitcher,
+  announce: (text: string) => void,
 ): <T>(change: () => T | Promise<T>) => Promise<T> {
   // Counts the shows, so the focus moves after the commit that draws the new workspace.
   const [shows, setShows] = useState(0);
+  // The name to read once the focus has moved, when the shown workspace was already open.
+  const switchedTo = useRef<string | undefined>(undefined);
   useLayoutEffect(() => {
-    if (shows > 0) {
-      focusPageHeading();
+    if (shows === 0) {
+      return;
+    }
+    focusPageHeading();
+    const name = switchedTo.current;
+    switchedTo.current = undefined;
+    if (name !== undefined) {
+      announce(switchedLine(name));
     }
   }, [shows]);
   return useCallback(
     async <T,>(change: () => T | Promise<T>): Promise<T> => {
       const before = switcher.open.shown?.location;
+      const openBefore = new Set(switcher.open.all.map((slot) => slot.location));
       const result = await change();
-      const after = switcher.open.shown?.location;
-      if (after !== undefined && after !== before) {
+      const after = switcher.open.shown;
+      if (after !== undefined && after.location !== before) {
+        switchedTo.current = openBefore.has(after.location) ? after.value.name : undefined;
         setShows((count) => count + 1);
       }
       return result;
     },
     [switcher],
   );
+}
+
+/** What a screen reader hears when an open workspace is shown again, such as "Switched to Acme". */
+function switchedLine(name: string): string {
+  return `Switched to ${name}`;
 }
 
 /** Whether a key press happened in a field that has its own undo. */
