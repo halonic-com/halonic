@@ -3,7 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it } from "vitest";
 import { mondayMorning } from "../summary.test-helper.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { Details } from "./details.tsx";
+import { Details, DetailsRow } from "./details.tsx";
 
 afterEach(unmountAll);
 
@@ -50,5 +50,25 @@ verifies("runs.run-view.details", () => {
       />,
     );
     expect(root.querySelector("dd span[tabindex]")?.textContent).toBe("Morning brief");
+  });
+
+  it("draws the phone row's chevron in an icon-sized box, so the row stays one touch row", () => {
+    const root = render(
+      <DetailsRow
+        rows={rows}
+        version={undefined}
+        logRead={false}
+        runId="run_a"
+        now={mondayMorning}
+      />,
+    );
+
+    const button = root.querySelector("button");
+    expect(button?.className).toContain("min-h-touch");
+    const chevron = button?.querySelector("svg")?.parentElement;
+    expect(chevron).not.toBe(button);
+    expect(chevron?.className).toContain("size-icon-md");
+    expect(chevron?.className).toContain("*:size-full");
+    expect(chevron?.getAttribute("aria-hidden")).toBe("true");
   });
 });
