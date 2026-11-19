@@ -10,6 +10,7 @@ import {
   type StudioWorkspace,
   type WelcomeOpenProblem,
 } from "@halonicjs/studio-shell";
+import { openOnSupportReply } from "../sample/demo-start.ts";
 import type { TestModelWatch } from "../sample/test-model-watch.ts";
 import type { WorkspaceTrustControl } from "../trust/workspace-trust-control.ts";
 import { OpenWorkspaces } from "./open-workspaces.ts";
@@ -152,7 +153,8 @@ export class WorkspaceSwitcher {
    * the app reopens the folder the user picked before, then opens the workspace in it. A
    * `toast` replaces "Opened Acme", as "Created Acme" does after the New workspace dialog. With
    * `asSample` the folder is remembered as the Acme sample at the moment it opens, before the
-   * workspace is first drawn, so Home knows it is the sample from its first frame.
+   * workspace is first drawn, so Home knows it is the sample from its first frame, and a demo that
+   * wasn't open yet opens on Support reply.
    */
   async openLocation(
     location: string,
@@ -433,6 +435,7 @@ export class WorkspaceSwitcher {
     }
     // Before the workspace is added, which tells whoever draws it.
     if (asSample) this.recent.remember({ location, name: opened.name, sample: true });
+    if (asSample) openOnSupportReply(opened.workspace);
     this.open.add(location, opened);
     this.#remember();
     this.#openedToasts.set(
@@ -462,17 +465,13 @@ export class WorkspaceSwitcher {
   }
 
   #setButtonBusy(busy: boolean): void {
-    if (this.#buttonBusy === busy) {
-      return;
-    }
+    if (this.#buttonBusy === busy) return;
     this.#buttonBusy = busy;
     this.#notify();
   }
 
   #notify(): void {
-    for (const listener of this.#listeners) {
-      listener();
-    }
+    for (const listener of this.#listeners) listener();
   }
 
   #remember(): void {

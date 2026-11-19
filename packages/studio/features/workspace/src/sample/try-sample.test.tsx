@@ -132,6 +132,47 @@ verifies("workspace.try-sample", () => {
     expect(shell.toasts.list().map((toast) => toast.title)).toEqual(["Created Acme sample"]);
   });
 
+  it("opens the demo on Support reply, with the Workflows list one step back", async () => {
+    const { switcher } = start({
+      kind: "created",
+      folder: "/docs/Acme sample",
+      name: "Acme sample",
+      trust: { kind: "trusted" },
+    });
+
+    await act(async () => openDemo()?.click());
+
+    const tab = switcher.open.shown?.value.workspace.tabs.active;
+    expect(tab?.history.slice(-2).map((location) => location.key)).toEqual([
+      "workflows",
+      "workflow/support/support-reply",
+    ]);
+    expect(tab?.position).toBe((tab?.history.length ?? 0) - 1);
+  });
+
+  it("opens a remembered demo that isn't open yet on Support reply too", async () => {
+    const known = { location: "/docs/Acme sample", name: "Acme", sample: true } as const;
+    const { switcher } = start({ kind: "existing", folder: known.location }, [known]);
+
+    await act(async () => openDemo()?.click());
+
+    expect(switcher.open.shown?.value.workspace.tabs.active.history.at(-1)?.key).toBe(
+      "workflow/support/support-reply",
+    );
+  });
+
+  it("opens a workspace from Recent that isn't the demo on Home", async () => {
+    const { switcher } = start({ kind: "cant", folder: "Documents", reason: "x" }, [
+      { location: "/work/acme", name: "Acme" },
+    ]);
+
+    await act(async () => element.querySelector<HTMLButtonElement>("li button")?.click());
+
+    expect(
+      switcher.open.shown?.value.workspace.tabs.active.history.map((location) => location.key),
+    ).toEqual(["home"]);
+  });
+
   it("takes the Created toast away when the workspace is closed", async () => {
     const { shell, switcher } = start({
       kind: "created",

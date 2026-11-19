@@ -1,5 +1,5 @@
 import { Button } from "@halonicjs/studio-kit";
-import { useId } from "react";
+import type { Ref } from "react";
 import { cantOpenWords } from "./cant-open.ts";
 
 /** Why the demo couldn't be copied: the folder it goes in, as the user knows it, and the reason. */
@@ -12,13 +12,13 @@ export interface WelcomeSampleProblem {
   readonly unavailable?: true;
 }
 
-/** The demo action and its cost line (microcopy 5, flow-first-run 2.1, first-run-flow 8a). */
+/** The demo action and the time line under it (first-run-flow 3.1). */
 export const trySampleWords = {
   action: "Open demo",
   creating: "Copying the demo…",
   /** What a screen reader hears while it is busy (microcopy 19); the demo always goes in Documents. */
   creatingName: "Copying the demo to Documents…",
-  cost: "Runs on the built-in test model, with scripted replies. No key, no cost.",
+  time: "New here? The demo takes about 4 minutes.",
 } as const;
 
 /** The sentence under Welcome's text when the demo couldn't be copied, with a closing full stop. */
@@ -32,42 +32,38 @@ export function cantCreateSampleLine(problem: WelcomeSampleProblem): string {
 
 /** Props for {@link TrySample}. */
 export interface TrySampleProps {
-  /** True once Recent has entries: the action is then a quiet link without the cost line. */
+  /** True once Recent has entries: the action is then a quiet link without the time line. */
   readonly quiet: boolean;
   /** True while the demo is being copied. */
   readonly busy: boolean;
   readonly onPress: () => void;
+  /** The primary button's element, which Welcome focuses first while the demo leads. */
+  readonly buttonRef?: Ref<HTMLButtonElement> | undefined;
+  /** The time line's id, which describes the button while it leads; absent once quiet. */
+  readonly timeId?: string | undefined;
 }
 
 /**
- * **Open demo** on the Welcome screen (`shell.welcome-sample`). While Recent is
- * empty it is a secondary button with the cost line under it; once Recent has entries it is a
- * ghost button under the list, without the cost line. The cost line is the button's description
- * (accessibility pass 1.3). While busy it reads "Copying the demo…",
- * keeps focus and ignores presses.
+ * **Open demo** on the Welcome screen (`shell.welcome-sample`). While Recent is empty it is the
+ * primary button, and Welcome shows the time line under the buttons as its description
+ * (accessibility pass 1.3); once Recent has entries it is a ghost button under the list. While
+ * busy it reads "Copying the demo…", keeps focus and ignores presses.
  *
  * @example
- * <TrySample quiet={false} busy={false} onPress={copyDemo} />
+ * <TrySample quiet={false} busy={false} onPress={copyDemo} timeId={timeId} />
  */
-export function TrySample({ quiet, busy, onPress }: TrySampleProps) {
-  const costId = useId();
+export function TrySample({ quiet, busy, onPress, buttonRef, timeId }: TrySampleProps) {
   return (
-    <div className="flex flex-col items-center gap-1">
-      <Button
-        variant={quiet ? "ghost" : "secondary"}
-        busy={busy}
-        busyLabel={trySampleWords.creating}
-        busyName={trySampleWords.creatingName}
-        {...(quiet ? {} : { "aria-describedby": costId })}
-        onClick={onPress}
-      >
-        {trySampleWords.action}
-      </Button>
-      {quiet ? null : (
-        <p id={costId} className="text-small text-fg-muted">
-          {trySampleWords.cost}
-        </p>
-      )}
-    </div>
+    <Button
+      {...(buttonRef === undefined ? {} : { ref: buttonRef })}
+      variant={quiet ? "ghost" : "primary"}
+      busy={busy}
+      busyLabel={trySampleWords.creating}
+      busyName={trySampleWords.creatingName}
+      {...(quiet || timeId === undefined ? {} : { "aria-describedby": timeId })}
+      onClick={onPress}
+    >
+      {trySampleWords.action}
+    </Button>
   );
 }

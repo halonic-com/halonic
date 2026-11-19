@@ -11,7 +11,7 @@ afterEach(() => {
   unmountAll();
 });
 
-const costLine = "Runs on the built-in test model, with scripted replies. No key, no cost.";
+const timeLine = "New here? The demo takes about 4 minutes.";
 
 function sampleButton(root: HTMLElement): HTMLButtonElement | undefined {
   return [...root.querySelectorAll("button")].find((each) =>
@@ -26,25 +26,43 @@ const recent = {
 };
 
 verifies("shell.welcome-sample", () => {
-  it("has no sample button without the app's sample creator", () => {
+  it("has no demo button without the app's demo, and Open folder leads", () => {
     const root = render(<Welcome onOpenFolder={async () => undefined} />);
 
     expect(sampleButton(root)).toBeUndefined();
+    expect(root.textContent).not.toContain(timeLine);
+    expect(document.activeElement?.textContent).toMatch(/^Open folder/);
   });
 
-  it("shows the button with the cost line while Recent is empty", () => {
+  it("leads with Open demo, then Open folder and the New workspace… link, while Recent is empty", () => {
     const root = render(
-      <Welcome onOpenFolder={async () => undefined} onTrySample={async () => undefined} />,
+      <Welcome
+        onOpenFolder={async () => undefined}
+        onNewWorkspace={() => {}}
+        onTrySample={async () => undefined}
+      />,
     );
 
-    expect(sampleButton(root)?.getAttribute("aria-busy")).not.toBe("true");
-    expect(root.textContent).toContain(costLine);
+    const buttons = [...root.querySelectorAll("button")];
+    // A busy button keeps its busy words hidden after its label, so each row starts with its label.
+    expect(buttons.map((each) => each.textContent)).toEqual([
+      expect.stringMatching(/^Open demo/),
+      expect.stringMatching(/^Open folder/),
+      "New workspace…",
+    ]);
+    expect(buttons.map((each) => each.className.includes("bg-primary "))).toEqual([
+      true,
+      false,
+      false,
+    ]);
+    expect(document.activeElement).toBe(sampleButton(root));
+    expect(root.textContent).toContain(timeLine);
     const described = sampleButton(root)?.getAttribute("aria-describedby");
     expect(described).toBeTruthy();
-    expect(document.getElementById(described ?? "")?.textContent).toBe(costLine);
+    expect(document.getElementById(described ?? "")?.textContent).toBe(timeLine);
   });
 
-  it("moves under Recent without the cost line once Recent has entries", () => {
+  it("moves under Recent without the time line once Recent has entries", () => {
     const root = render(
       <Welcome
         onOpenFolder={async () => undefined}
@@ -53,10 +71,11 @@ verifies("shell.welcome-sample", () => {
       />,
     );
 
-    expect(root.textContent).not.toContain(costLine);
+    expect(root.textContent).not.toContain(timeLine);
     expect(root.textContent?.indexOf("Recent")).toBeLessThan(
       root.textContent?.indexOf("Open demo") ?? -1,
     );
+    expect(document.activeElement?.textContent).toMatch(/^Open folder/);
   });
 
   it("is busy while the demo is copied and ignores more presses", async () => {
