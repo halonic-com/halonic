@@ -15,7 +15,9 @@ import { personalTermRule } from "./terms.ts";
  *   fingerprint, so an entry allows that one value and never a real key
  *   added next to it later.
  *
- * Personal terms can't be allowed at all: reword the text instead.
+ * A personal term is only allowed in history: an entry names the one
+ * commit and the exact file it sits in, for old commits that can't be
+ * reworded any more. Anything new must be reworded instead.
  */
 
 /** Where the allow file lives, relative to the repo root. */
@@ -35,13 +37,15 @@ interface AllowEntry {
   readonly fingerprint: string | undefined;
   /** For an absolute path: the root it may sit under (`root:`), as the leak guard prints it. */
   readonly root: string | undefined;
-  /** For an absolute path: the commit it may be added in (`commit:`), as a hash prefix. */
+  /** For an absolute path or a personal term: the commit it may be added in (`commit:`), as a hash prefix. */
   readonly commit: string | undefined;
 }
 
-/** What an absolute-path finding is, so an entry can excuse that and nothing else. */
-export interface PathFinding {
-  readonly root: string;
+/** Where a finding is, so an entry can excuse that and nothing else. */
+export interface FindingPlace {
+  /** For an absolute path: the root found. */
+  readonly root?: string;
+  /** The commit the finding was added in. */
   readonly commit: string | undefined;
 }
 
@@ -54,7 +58,11 @@ export interface AllowFileProblem {
 }
 
 const secretRuleNames = new Set(secretRules.map((rule) => rule.name));
-const otherRuleNames = new Set([absolutePathRule, ...fileRules.map((rule) => rule.name)]);
+const otherRuleNames = new Set([
+  absolutePathRule,
+  personalTermRule,
+  ...fileRules.map((rule) => rule.name),
+]);
 
 /** File rules allow one named file at a time: a glob could let any `.env` or key file in. */
 const exactFileRuleNames = new Set(fileRules.map((rule) => rule.name));
@@ -90,17 +98,21 @@ function takePin(words: string[], prefix: string): string | undefined {
 }
 
 /** What is wrong with the `root:` and `commit:` pins of an entry, or `undefined` if they are right. */
-function pathPinProblem(
+function pinProblem(
   rule: string,
+  file: string,
   root: string | undefined,
   commit: string | undefined,
 ): string | undefined {
   const pinned = root !== undefined || commit !== undefined;
-  if (rule === absolutePathRule && !pinned) {
+  if (rule === personalTermRule) {
+    if (commit === undefined || root !== undefined || file.includes("*")) {
+      return "A personal term can only be allowed in an old commit: name the exact file and commit:<hash>. Reword anything new instead.";
+    }
+  } else if (rule === absolutePathRule && !pinned) {
     return "An absolute-path entry needs root:<root> or commit:<hash>, so it excuses one thing and not whatever the file holds later.";
-  }
-  if (rule !== absolutePathRule && pinned) {
-    return "Only absolute-path entries take root: or commit:.";
+  } else if (rule !== absolutePathRule && pinned) {
+    return "Only absolute-path and personal-term entries take root: or commit:.";
   }
   if (commit !== undefined && commit.length < minCommitLength) {
     return `A commit needs at least ${minCommitLength} characters of its hash.`;
@@ -121,9 +133,6 @@ function parseEntry(text: string): AllowEntry | string {
   const root = takePin(rest, "root:");
   const commit = takePin(rest, "commit:");
   const reason = rest.join(" ");
-  if (rule === personalTermRule) {
-    return "Personal terms can't be allowed. Reword the text instead.";
-  }
   if (!secretRuleNames.has(rule) && !otherRuleNames.has(rule)) {
     return `Unknown rule "${rule}".`;
   }
@@ -139,9 +148,9 @@ function parseEntry(text: string): AllowEntry | string {
   if (secretRuleNames.has(rule) && fingerprint === undefined) {
     return "A secret rule needs the fingerprint the leak guard printed (fp:…).";
   }
-  const pinProblem = pathPinProblem(rule, root, commit);
-  if (pinProblem !== undefined) {
-    return pinProblem;
+  const pinned = pinProblem(rule, file, root, commit);
+  if (pinned !== undefined) {
+    return pinned;
   }
   if (!secretRuleNames.has(rule) && fingerprint !== undefined) {
     return "Only secret rules take a fingerprint.";
@@ -181,16 +190,16 @@ export class AllowList {
    * True when an entry allows this finding.
    *
    * @param fingerprint - for secret rules, the fingerprint of the matched value
-   * @param path - for absolute paths, the root found and the commit it was added in
+   * @param place - for absolute paths and personal terms: the root found and the commit it was added in
    */
-  allows(rule: string, file: string, fingerprint?: string, path?: PathFinding): boolean {
+  allows(rule: string, file: string, fingerprint?: string, place?: FindingPlace): boolean {
     return this.entries.some(
       (entry) =>
         entry.rule === rule &&
         entry.file.test(file) &&
         (entry.fingerprint === undefined || entry.fingerprint === fingerprint) &&
-        (entry.root === undefined || entry.root === path?.root) &&
-        (entry.commit === undefined || (path?.commit ?? "").startsWith(entry.commit)),
+        (entry.root === undefined || entry.root === place?.root) &&
+        (entry.commit === undefined || (place?.commit ?? "").startsWith(entry.commit)),
     );
   }
 }
