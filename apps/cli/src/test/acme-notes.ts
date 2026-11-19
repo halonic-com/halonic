@@ -115,7 +115,8 @@ export async function acmeNotes(): Promise<AcmeNotes> {
 
   const machineWith = (approvals: string): ToolsMachine => ({
     factories: cliConnectorFactories(servers, { PATH: "/usr/bin" }),
-    http: { fetch: () => Promise.reject(new TypeError("This test reaches no server.")) },
+    // As Node's client fails when nothing listens at the address.
+    http: { fetch: () => Promise.reject(connectionRefused()) },
     tokens: new MemoryTokenStore(),
     trustStore,
     clock,
@@ -166,6 +167,14 @@ export async function acmeNotes(): Promise<AcmeNotes> {
     },
     remove: () => rm(folder, { recursive: true, force: true }),
   };
+}
+
+/** The error Node's `fetch` gives when nothing listens at the address: the code is on its cause. */
+function connectionRefused(): Error {
+  const cause = Object.assign(new Error("connect ECONNREFUSED 127.0.0.1:47998"), {
+    code: "ECONNREFUSED",
+  });
+  return new TypeError("fetch failed", { cause });
 }
 
 /** `notes-mcp`'s listed tools, listed once and checked against `machine`'s approvals. */

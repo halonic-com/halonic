@@ -32,4 +32,14 @@ export const connectorStartMessages = defineMessages("connectorStart", {
   /** `connector` is the id as the workspace writes it, and `dir` the user's own `--dir`. */
   notListedFix: (connector: string, dir: string | undefined) =>
     phrase`To see why, run ${suggestedCommand("tools review", dir, shellWord(connector))}`,
+  /** HAL-13714: an `http` connector where nothing answers at its address. Mateo, decided by the team. */
+  nothingAnswered: (address: string) => phrase`Nothing answered at ${address}.`,
+  nothingAnsweredFix: (connector: string, file: string | undefined) =>
+    file === undefined
+      ? phrase`Start its server, or change the address in the ${connector} connector file.`
+      : phrase`Start its server, or change the address in ${file}.`,
+  /** HAL-13714: Studio's `stopped`, for the server of a connector that stopped before it listed its tools. */
+  stopped: (connector: string) =>
+    phrase`The ${connector} server stopped, or didn't answer in time, before it listed its tools.`,
+  stoppedFix: () => phrase`Check that its server starts and works on its own, then try again.`,
 });

@@ -13,6 +13,7 @@ import {
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { connectorFileOf } from "./connector-file.ts";
 import type { ConnectorMachine } from "./connector-machine.ts";
+import { connectorReachError } from "./connector-reach-error.ts";
 import { connectorStartError } from "./connector-start-error.ts";
 import type { Message } from "./messages/define.ts";
 import { printable } from "./output/printable.ts";
@@ -55,7 +56,9 @@ export interface SourceListing {
  * @param nothingDone - the end of line 1 of a refusal, saying nothing happened
  * @throws NotTrustedError when the workspace isn't trusted as it is now (exit 3)
  * @throws OwnLineError when the connector's program or a secret it names
- *   isn't on this computer, naming which ({@link connectorStartError})
+ *   isn't on this computer, naming which ({@link connectorStartError}), or
+ *   when nothing answers at its address or its server stopped before it
+ *   listed its tools ({@link connectorReachError})
  */
 export async function readSourceListing(
   target: SourceListingTarget,
@@ -84,6 +87,10 @@ export async function readSourceListing(
   } catch (error) {
     const { id } = target.connector;
     const file = connectorFileOf(target.workspace, id);
-    throw connectorStartError(error, printable(id), file) ?? error;
+    throw (
+      connectorStartError(error, printable(id), file) ??
+      connectorReachError(error, target.connector, file) ??
+      error
+    );
   }
 }
