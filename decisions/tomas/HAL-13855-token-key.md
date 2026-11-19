@@ -3,6 +3,7 @@
 - Task: HAL-13855
 - Approval: Liam chose option 2 on HAL-13854 (Halonic makes the key, so nobody makes one by hand); this is a security pull request, reviewed by Liam on its own review task, with Julian checking the threat side, and Liam signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hqEMMlrJP3cwExsOSv7KrYK09CFQIgYwmDZ3kzCvo1RCHPaYeWnSg+1hSK8Kf+cn7I0IHLE4ImalMvhnAr0HBQ==
 
 ## What changes
 
