@@ -3,16 +3,16 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
-import { LockHeldError } from "@halonicjs/adapter-fs-node";
 import { runLockFormat } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { LockHeldError } from "./held-lock.ts";
 import { folderRecordLock } from "./proposal-record-lock.ts";
 
 let folder: string;
 
 beforeEach(() => {
-  folder = join(mkdtempSync(join(tmpdir(), "halonic-cli-record-lock-")), "proposals");
+  folder = join(mkdtempSync(join(tmpdir(), "halonic-fs-record-lock-")), "proposals");
 });
 
 afterEach(() => {
@@ -28,7 +28,7 @@ function gate() {
   return { open, opened };
 }
 
-verifies("cli.proposal-record-lock", () => {
+verifies("fs-node.proposal-record-lock", () => {
   describe("the record lock of a workspace's proposals", () => {
     it("makes a second taker of the same run wait until the first has released it", async () => {
       // Two locks on one folder stand in for two processes: each holds its own lock file.

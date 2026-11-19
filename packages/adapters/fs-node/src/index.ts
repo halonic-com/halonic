@@ -25,6 +25,7 @@ export {
   type FileSystemPluginFolderOptions,
 } from "./plugin-folder.ts";
 export { makePrivateFolder, readUnlinkedFile } from "./private-files.ts";
+export { folderRecordLock, type RecordLock } from "./proposal-record-lock.ts";
 export { resolveRealPath } from "./real-path-resolver.ts";
 export { FileRecordStore } from "./record-store.ts";
 export { renameOver } from "./rename-over.ts";

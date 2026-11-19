@@ -7,10 +7,13 @@
 
 `app.run-proposal-record-lock` is new. The proposal service reads and writes a run's record in the
 run's turn, as before. When the host gives it a `ProposalRecordLock`, it also holds that run's lock,
-taken after this process's turn so it never waits on itself. `cli.proposal-record-lock` is new too.
-The CLI gives the lock to the service in the engine and in `halonic proposals` alike: one file per
-run, `<run-id>.lock` beside the records in the profile, held with `holdLock`. It waits up to 30
-seconds for another process's decision, then fails naming that process.
+taken after this process's turn so it never waits on itself. `fs-node.proposal-record-lock` is new
+too: `folderRecordLock` in `@halonicjs/adapter-fs-node` is that lock for records in a folder, one
+file per run, `<run-id>.lock` beside the records in the profile, held with `holdLock`. It waits up
+to 30 seconds for another process's decision, then fails naming that process. Every host that opens
+these records takes it: the CLI's engine and `halonic proposals` (`localProposalParts`), and
+Studio's agent host (`agent-host.proposal-record-lock`, new), which writes the same records when
+Studio opens, ends or clears a run's folder.
 
 Nothing existing is removed or weakened. A host that passes no lock keeps the old behaviour: only
 its own turns keep the work on a record apart. No test is changed, skipped or deleted.
@@ -26,7 +29,8 @@ The Undo steps and settle both read `decisions`, so a lost decision isn't harmle
 1 on HAL-12841. Option 2, arguing it is harmless, doesn't hold.)
 
 The lock is per run, not the engine lock and not one per folder. Deciding one proposal never waits
-on another, and `routines watch` never blocks the command. It is `holdLock`, not `withRunLock`. A
+on another, and `routines watch` never blocks the command. The lock lives in `@halonicjs/adapter-fs-node`, next to `holdLock`, so the CLI and Studio's
+agent host use the same one. It is `holdLock`, not `withRunLock`. A
 run lock counts as stale after 10 seconds even while its holder runs, and a decision can take
 longer than that when git starts cold. `holdLock` renews itself, and the lock of a process that has
 ended is still taken over at once. If the lock is lost anyway (the process stalled past the stale
@@ -43,5 +47,6 @@ accept and discard settle only the proposal they decided.
 
 ## Covers
 
+- agent-host.proposal-record-lock
 - app.run-proposal-record-lock
-- cli.proposal-record-lock
+- fs-node.proposal-record-lock

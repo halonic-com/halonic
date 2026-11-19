@@ -10,14 +10,20 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { type HeldLock, holdLock, LockHeldError } from "@halonicjs/adapter-fs-node";
-import type { ProposalRecordLock } from "@halonicjs/app";
+import { type HeldLock, holdLock, LockHeldError } from "./held-lock.ts";
+
+/**
+ * Runs `work` while holding the lock of run `runId`. The same shape as the
+ * proposal service's `ProposalRecordLock` in `@halonicjs/app`, which an
+ * adapter doesn't depend on.
+ */
+export type RecordLock = <T>(runId: string, work: () => Promise<T>) => Promise<T>;
 
 /** How long to wait before trying again to take a lock another process holds. */
 const retryDelayMs = 25;
 
 /** How long a decision waits for another process's decision on the same run before it gives up. */
-export const recordLockWaitMs = 30_000;
+const recordLockWaitMs = 30_000;
 
 /**
  * The record lock of the records in `folder`: waits while another process
@@ -32,10 +38,7 @@ export const recordLockWaitMs = 30_000;
  * const recordLock = folderRecordLock(folders.proposalRecordsFolder());
  * const proposals = new RunProposals({ ...options, recordLock });
  */
-export function folderRecordLock(
-  folder: string,
-  waitMs: number = recordLockWaitMs,
-): ProposalRecordLock {
+export function folderRecordLock(folder: string, waitMs: number = recordLockWaitMs): RecordLock {
   return async (runId, work) => {
     await mkdir(folder, { recursive: true });
     const file = join(folder, `${runId}.lock`);

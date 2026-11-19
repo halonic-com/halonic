@@ -13,7 +13,12 @@
 // lock (`folderRecordLock`), in the engine as in the command.
 
 import { realpath } from "node:fs/promises";
-import { FolderDefinitionStore, FolderRunCopies, FolderTrash } from "@halonicjs/adapter-fs-node";
+import {
+  FolderDefinitionStore,
+  FolderRunCopies,
+  FolderTrash,
+  folderRecordLock,
+} from "@halonicjs/adapter-fs-node";
 import { type GitRunnerOptions, lazyGitVcs } from "@halonicjs/adapter-git";
 import type { ProposalVcs, RunProposals } from "@halonicjs/app";
 import { type RunProposalsParts, runProposalsOf } from "@halonicjs/host-harness-host";
@@ -25,7 +30,6 @@ import {
   workspaceFolders,
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
-import { folderRecordLock } from "./proposal-record-lock.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 
 /** What the proposal parts are built from. */
