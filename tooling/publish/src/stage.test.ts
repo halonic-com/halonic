@@ -20,6 +20,7 @@ verifies("publish.staged-package", () => {
     expect(manifest.name).toBe("@halonicjs/adapters");
     expect(manifest.dependencies).toEqual({});
     expect(manifest.description).toContain("runTool");
+    expect(manifest.keywords).toEqual(["halonic", "integration", "plugin", "sdk", "typescript"]);
     expect(manifest.repository.directory).toBe("packages/adapters");
     expect(readFileSync(join(staged.directory, "README.md"), "utf8")).toMatch(
       /^# @halonicjs\/adapters\n/,
@@ -117,6 +118,7 @@ verifies("publish.staged-package", () => {
     name: "@halonicjs/adapters",
     version: "0.1.0",
     description: "Adapters.",
+    keywords: [],
     dependencies: {},
     peerDependencies: {},
   };

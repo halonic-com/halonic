@@ -1,4 +1,5 @@
 import type { LibraryItemKind } from "@halonicjs/app";
+import { requestFilesReveal } from "@halonicjs/studio-feature-files/api";
 import { usePresentation } from "@halonicjs/studio-kit";
 import type { PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useState } from "react";
@@ -25,6 +26,26 @@ import { NewSkillDialog } from "./new-skill-dialog.tsx";
 import { OpenAsFileSheet, type OpenedFile } from "./open-as-file-sheet.tsx";
 
 export { sharedHubKey };
+
+/** The folder the empty Knowledge tab points to, read from the workspace folder (HAL-12261). */
+const docsFolder = "docs";
+
+/**
+ * The empty Knowledge tab's "Open the docs folder" (requirement `library.open-docs-folder`):
+ * shows the Files view with the workspace's docs folder revealed in the tree, or the deepest
+ * folder above it when there is none. Only the desktop's sidebar has the Files view.
+ */
+function openDocsFolder(
+  showSidebarView: PlaceViewProps["context"]["showSidebarView"],
+): Pick<LibraryPageProps, "onOpenDocsFolder"> {
+  if (showSidebarView === undefined) return {};
+  return {
+    onOpenDocsFolder: () => {
+      requestFilesReveal(docsFolder);
+      showSidebarView("files");
+    },
+  };
+}
 
 function refOf(kind: LibraryItemKind, { hub, id }: LibraryEntryPlace) {
   return { kind, hub: hub ?? sharedHubKey, id };
@@ -201,6 +222,7 @@ function LibraryKindView({ context, sub }: PlaceViewProps) {
         onOpen={(each, entry) => openItem?.(refOf(each, entry))}
         onOpenInNewTab={(each, entry) => openItemInNewTab?.(refOf(each, entry))}
         {...openAsFile}
+        {...(desktop ? openDocsFolder(context.showSidebarView) : {})}
         {...(onNew === undefined ? {} : { onNew })}
       />
       {openedFile !== undefined && (

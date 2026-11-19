@@ -117,7 +117,9 @@ function OpenRow({ name, onOpen }: { readonly name: string; readonly onOpen: () 
       onClick={onOpen}
     >
       {itemWords.openNamed(name)}
-      <ChevronRightIcon />
+      <span className="size-icon-md shrink-0 text-fg-subtle *:size-full" aria-hidden="true">
+        <ChevronRightIcon />
+      </span>
     </button>
   );
 }

@@ -63,8 +63,14 @@ export interface DueRun {
 // period or catch-up cap; times past it are dropped, not caught up next tick.
 export const WINDOW_LIMIT = 10_000;
 
-/** The id a routine goes by in a due run. */
-export function routineKey(placed: PlacedRoutine): string {
+/**
+ * The id a routine goes by in a due run. Only the hub and the routine's id
+ * count, so a routine file that didn't load has its key too.
+ */
+export function routineKey(placed: {
+  hub: string | null;
+  routine: Pick<PlacedRoutine["routine"], "id">;
+}): string {
   return `${placed.hub ?? "@workspace"}/${placed.routine.id}`;
 }
 

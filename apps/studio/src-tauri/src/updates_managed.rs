@@ -53,7 +53,7 @@ fn apply(inner: &mut Inner, result: Result<String, CheckFailure>, at: u64) {
             }
         }
         Err(reason) => {
-            eprintln!("updates: the bucket check failed: {reason:?}");
+            halonic_shell_log::record("updates", format!("the bucket check failed: {reason:?}"));
             inner.record.last_result = Some(CheckResult::CantCheck { reason });
             inner.state = Some(UpdateState::CantCheck { reason });
         }

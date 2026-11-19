@@ -27,6 +27,12 @@ export interface VendoredFile {
   readonly source: string;
   /** The task that accepted it. */
   readonly task: string;
+  /**
+   * Its own licence text under `tooling/check/licence-texts/`, for a file whose
+   * copyright line differs from the shared `<SPDX ID>.txt`, such as a second
+   * MIT file from another author. Without it, the notices print `<SPDX ID>.txt`.
+   */
+  readonly text?: string;
 }
 
 /** One installed package and its declared licence. */
@@ -194,9 +200,16 @@ export function thirdPartyLicenceMark(text: string): string | undefined {
   return undefined;
 }
 
+const licenceTexts = "tooling/check/licence-texts/";
+
 /** Where the full text of a vendored file's licence lives, for the release notices. */
 export function licenceTextPath(licence: string): string {
-  return `tooling/check/licence-texts/${licence}.txt`;
+  return `${licenceTexts}${licence}.txt`;
+}
+
+/** The licence text a vendored file's notice prints: its own `text`, or its licence's. */
+export function vendoredTextPath(entry: VendoredFile): string {
+  return entry.text ?? licenceTextPath(entry.licence);
 }
 
 const vendoredFields = ["path", "name", "licence", "source", "task"] as const;
@@ -248,9 +261,21 @@ function entryProblems(entry: VendoredFile, present: ReadonlySet<string>): strin
       `tooling/check/licences.json: the vendored file ${entry.path} is gone. Remove its entry, or fix the path if the file moved.`,
     );
   }
-  if (typeof entry.licence === "string" && !present.has(licenceTextPath(entry.licence))) {
+  const text: unknown = entry.text;
+  if (text === undefined) {
+    if (typeof entry.licence === "string" && !present.has(licenceTextPath(entry.licence))) {
+      problems.push(
+        `tooling/check/licences.json: the vendored file ${String(entry.path)} is under ${entry.licence}, but ${licenceTextPath(entry.licence)} is missing. Add the licence's full text there, for the release notices.`,
+      );
+    }
+  } else if (
+    typeof text !== "string" ||
+    !text.startsWith(licenceTexts) ||
+    !text.endsWith(".txt") ||
+    !present.has(text)
+  ) {
     problems.push(
-      `tooling/check/licences.json: the vendored file ${String(entry.path)} is under ${entry.licence}, but ${licenceTextPath(entry.licence)} is missing. Add the licence's full text there, for the release notices.`,
+      `tooling/check/licences.json: the vendored file ${String(entry.path)} names the licence text ${String(text)}, which is not a .txt file in ${licenceTexts}. Add its full text, with its own copyright line, there, for the release notices.`,
     );
   }
   return problems;

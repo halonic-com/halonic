@@ -51,12 +51,19 @@ function partValues(part: string, range: FieldRange): number[] {
   const step = stepText === undefined ? 1 : parseStep(stepText, part);
 
   const { low, high } = spanBounds(span, part, stepText !== undefined, range);
-  if (low < range.min || high > range.max || low > high) {
+  if (!inRange(low, range) || !inRange(high, range)) {
     throw new CronError(`"${part}" is outside ${range.min}-${range.max}.`);
+  }
+  if (low > high) {
+    throw new CronError(`"${span}" runs backwards; write the smaller number first.`);
   }
   const values: number[] = [];
   for (let value = low; value <= high; value += step) values.push(value);
   return values;
+}
+
+function inRange(value: number, range: FieldRange): boolean {
+  return value >= range.min && value <= range.max;
 }
 
 function parseStep(stepText: string, part: string): number {

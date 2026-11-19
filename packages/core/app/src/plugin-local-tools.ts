@@ -1,9 +1,11 @@
 // A trusted plugin's local tools on this computer, as `app.plugin-local-tools`
 // asks (plugins ADR, section 4; P5 plan, rules 9 and 10). Each local tool runs
 // in a sandbox session Halonic opens with a profile it builds itself, never
-// the plugin. Where no sandbox works, such as on Android or in the browser,
-// the plugin still loads and its local tools report a load state instead of
-// crashing. It reports codes, never sentences: Studio and the CLI word them.
+// the plugin. Before each session opens it reads the plugin folder again and
+// checks the person's trust against what is in it now, as a backend's start
+// does (`app.plugin-backend`). Where no sandbox works, such as on Android or
+// in the browser, the plugin still loads and its local tools report a load
+// state instead of crashing. It reports codes, never sentences: Studio and the CLI word them.
 
 import type {
   ConnectorCallOptions,
@@ -19,6 +21,13 @@ import type {
   SandboxUnavailableReason,
 } from "@halonicjs/ports";
 import type { PluginToolSet } from "./plugin-contributions.ts";
+import type { PluginProblem } from "./plugin-folder.ts";
+import {
+  checkPluginTrustNow,
+  type PluginStartTrustOptions,
+  type PluginStartTrustReason,
+  type TrustedPluginFolder,
+} from "./plugin-start-trust.ts";
 import { mxcFencesLocalTools } from "./runner-fence.ts";
 
 /** The tools of one local tool of a trusted plugin. */
@@ -90,11 +99,17 @@ export interface PluginLocalToolsOptions {
   readonly factory: ConnectorFactory;
   /** Everything a connector needs besides its trust grant and session, which come from here. */
   readonly context: Omit<ConnectorFactoryContext, "trust" | "sandbox">;
+  /** Where each start reads the plugin again and checks the person's trust in it. */
+  readonly startTrust: PluginStartTrustOptions;
   /**
    * Builds the local tool's config and profile. Called before each session
-   * opens, so a tool whose session ended gets a fresh working folder.
+   * opens, once the plugin was read again and found trusted, so a tool whose
+   * session ended gets a fresh working folder.
+   *
+   * @param trusted - the plugin as it was read and checked for this session;
+   *   build from it, never from a second read of the folder
    */
-  prepare(set: LocalToolSet): Promise<LocalToolOpening>;
+  prepare(set: LocalToolSet, trusted: TrustedPluginFolder): Promise<LocalToolOpening>;
 }
 
 /** A local tool can't run on this computer. `state` says why, for Studio and the CLI to word. */
@@ -105,6 +120,30 @@ export class LocalToolUnavailableError extends Error {
   constructor(connectorId: string, state: LocalToolUnavailable) {
     super(`Local tool "${connectorId}" can't run on this computer: ${describe(state)}.`);
     this.state = state;
+  }
+}
+
+/**
+ * A local tool didn't start, because the trust a person gave doesn't cover
+ * what is in its plugin's folder now, or isn't the trust it was loaded with.
+ * Nothing was opened or started.
+ */
+export class PluginLocalToolNotTrustedError extends Error {
+  override readonly name = "PluginLocalToolNotTrustedError";
+  readonly plugin: string;
+  readonly reason: PluginStartTrustReason;
+  /** For `unreadable`, what is wrong with the folder; otherwise empty. */
+  readonly problems: readonly PluginProblem[];
+
+  constructor(
+    plugin: string,
+    reason: PluginStartTrustReason,
+    problems: readonly PluginProblem[] = [],
+  ) {
+    super(notTrustedMessage(plugin, reason, problems));
+    this.plugin = plugin;
+    this.reason = reason;
+    this.problems = problems;
   }
 }
 
@@ -258,7 +297,8 @@ class SessionConnector implements ConnectorClient {
   }
 
   async #open(): Promise<Opened> {
-    const { config, profile } = await this.#options.prepare(this.#set);
+    const trusted = await this.#trustedNow();
+    const { config, profile } = await this.#options.prepare(this.#set, trusted);
     if (config.id !== this.id) {
       throw new Error(
         `Local tool "${this.id}" was prepared as connector "${config.id}", so Halonic doesn't open it.`,
@@ -292,6 +332,29 @@ class SessionConnector implements ConnectorClient {
       await session.close();
       throw error;
     }
+  }
+
+  /**
+   * The plugin as it is in its folder now, when the person's trust covers
+   * it and is still the trust this tool was loaded with. A plugin trusted
+   * again after a change waits for the next load, which offers its new tools.
+   */
+  async #trustedNow(): Promise<TrustedPluginFolder> {
+    const plugin = this.#set.plugin;
+    const checked = await checkPluginTrustNow(this.#options.startTrust, plugin);
+    if (!checked.ok) {
+      throw new PluginLocalToolNotTrustedError(
+        plugin,
+        checked.error.reason,
+        checked.error.problems,
+      );
+    }
+    const { location, fingerprint } = checked.value;
+    const grant = this.#set.trust;
+    if (location !== grant.location || fingerprint !== grant.fingerprint) {
+      throw new PluginLocalToolNotTrustedError(plugin, "changed");
+    }
+    return checked.value;
   }
 
   /** Forgets an ended session, and closes it and its connector. */
@@ -346,5 +409,24 @@ function describe(state: LocalToolUnavailable): string {
       return "it declares a network, and the Windows 11 sandbox can't allow single sites yet";
     case "sandbox-not-fenced":
       return `its sandbox session has no proven fence (${state.fence})`;
+  }
+}
+
+function notTrustedMessage(
+  plugin: string,
+  reason: PluginStartTrustReason,
+  problems: readonly PluginProblem[],
+): string {
+  switch (reason) {
+    case "unreadable":
+      return `The plugin ${plugin}'s program doesn't start: ${problems.map((problem) => problem.message).join(" ")}`;
+    case "not-trusted":
+      return `The plugin ${plugin} runs a program, so it starts only once you trust it. Review and trust it with halonic trust --plugin ${plugin}.`;
+    case "changed":
+      return `The plugin ${plugin} changed since you trusted it, so its program doesn't start. Review what changed and trust it again with halonic trust --plugin ${plugin}.`;
+    case "record-unreadable":
+      return `The plugin ${plugin}'s program doesn't start: Halonic can't read its trust record. Trust it again with halonic trust --plugin ${plugin}, which writes the record again.`;
+    case "not-checked":
+      return `The plugin ${plugin}'s program doesn't start: Halonic couldn't check whether you trust it. See where it stands with halonic plugin list.`;
   }
 }

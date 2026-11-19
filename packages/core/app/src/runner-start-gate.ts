@@ -127,9 +127,28 @@ export class RunnerStartGate {
   async start<Runner extends GatedRunner>(
     startIn: StartInSandbox<Runner>,
   ): Promise<GatedStart<Runner>> {
-    const { sandbox: fenced, backend, mxcFences } = this.#fencedSandbox();
-    const check = await fenced.check();
-    const fence = runnerFence({ platform: this.#platform, check, backend, mxcFences });
+    const fenced = this.#fencedSandbox();
+    const check = await fenced.sandbox.check();
+    const fence = runnerFence({
+      platform: this.#platform,
+      check,
+      backend: fenced.backend,
+      mxcFences: fenced.mxcFences,
+    });
+    const decideAndStart = () => this.#decideAndStart(startIn, fenced, check, fence);
+    if (fence.state === "not-fenced") {
+      // Take back waits for this start, from before it reads the yes.
+      return await this.#runs.whileStarting(decideAndStart);
+    }
+    return await decideAndStart();
+  }
+
+  async #decideAndStart<Runner extends GatedRunner>(
+    startIn: StartInSandbox<Runner>,
+    fenced: FencedSandbox,
+    check: SandboxCheck,
+    fence: RunnerFence,
+  ): Promise<GatedStart<Runner>> {
     const decision = await this.#runs.decide(fence);
     switch (decision.run) {
       case "needs-yes":
@@ -137,7 +156,7 @@ export class RunnerStartGate {
       case "stopped":
         return { run: "stopped" };
       case "fenced":
-        return this.#startFenced(startIn, check, { sandbox: fenced, backend, mxcFences });
+        return this.#startFenced(startIn, check, fenced);
       case "allowed":
         return this.#startUnfenced(startIn, fence, decision);
     }
@@ -189,15 +208,18 @@ export class RunnerStartGate {
         `the launcher's sandbox reported the fence proof ${runner.fence.state}, not off`,
       );
     }
-    const unregister = this.#runs.registerUnfencedRun(() => runner.close());
+    const unregister = this.#runs.registerUnfencedRun(allowed.reason, () => runner.close());
     // Forget the run however it stops. A `stopped` that rejects is handled
     // here too, so it never becomes an unhandled rejection.
     void runner.stopped.then(unregister, unregister);
-    // Take back may have run while the runner was starting, after it had
-    // collected the runs to stop. Asking again now catches that start.
+    // Take back may have run while the runner was starting; it waits for this
+    // start. Asking again now catches that, and stops the runner before Take
+    // back returns. A runner that fails to stop stays registered, so Take
+    // back tries again and reports it.
     const now = await this.#runs.decide(fence);
     if (now.run !== "allowed") {
       await runner.close();
+      unregister();
       return now.run === "needs-yes"
         ? { run: "needs-yes", reason: now.reason }
         : { run: "stopped" };

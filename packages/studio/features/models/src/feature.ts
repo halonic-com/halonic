@@ -8,7 +8,8 @@ import {
   NoLimitMemoryService,
   ProviderCheckService,
 } from "./api.ts";
-import { PROVIDER_KIND, PROVIDER_KIND_LABEL, providerTabLabel } from "./providers/provider-text.ts";
+import { providerTabTitle } from "./providers/provider-names.ts";
+import { PROVIDER_KIND, PROVIDER_KIND_LABEL } from "./providers/provider-text.ts";
 import { modelsSummary } from "./settings/settings-text.ts";
 import { hasProblems } from "./settings/use-problems.ts";
 
@@ -64,7 +65,12 @@ export const modelsFeature = defineFeature({
       label: PROVIDER_KIND_LABEL,
       icon: "settings",
       open: { view: "ProviderPage", load: () => import("./providers/provider-page.tsx") },
-      tab: { describe: (item) => ({ label: providerTabLabel(item.id) }), exists: () => true },
+      tab: {
+        describe: (item, context) => ({
+          label: providerTabTitle(context.services.find(ModelsFilesService), item.id),
+        }),
+        exists: () => true,
+      },
     });
     studio.itemPage.addSection({
       on: "workspace",

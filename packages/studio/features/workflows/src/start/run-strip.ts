@@ -7,6 +7,12 @@ export type StepMark = "done" | "running" | "waiting" | "failed" | "stopped";
 /** What the canvas strip says of the run it shows, and the step it rings when the run failed. */
 export interface ShownRun {
   readonly runId: string;
+  /** The run's short id, as the strip and the Runs row name it. */
+  readonly shortId: string;
+  /** How the run stands, as its Runs row says. */
+  readonly standing: RunRow["standing"];
+  /** The name of the step the run is in, or ended in, as the strip says it. */
+  readonly step: string;
   /** The strip's line: "Showing run 01JD8Q · failed in Draft reply". */
   readonly line: string;
   /** The step to ring in danger with its **Failed** chip; only a failed run has one. */
@@ -79,6 +85,9 @@ export function shownRun(
   }[standing];
   return {
     runId: row.id,
+    shortId: row.shortId,
+    standing,
+    step,
     line: words.strip(row.shortId, how),
     failedStep: standing === "failed" ? stateId : undefined,
     route: run.summary.statesVisited,

@@ -3,6 +3,7 @@
   "mainBinaryName": "Halonic",
   "bundle": {
     "active": true,
+    "licenseFile": "windows/licence.txt",
     "targets": [
       "nsis"
     ],

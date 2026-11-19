@@ -121,6 +121,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         )
         .plugin(navigation::guard())
         .setup(|app| {
+            profile::start_shell_log(app.handle());
             window::open(app.handle())?;
             #[cfg(desktop)]
             updates::start(app.handle());

@@ -1,5 +1,6 @@
 import { posix, win32 } from "node:path";
 import type { ConnectorPin } from "@halonicjs/ports";
+import { ProgramNotFoundError } from "../stdio/start-errors.ts";
 import { type FolderSources, programFolders, uniqueFolders } from "./program-folders.ts";
 
 /** What the launcher may look at to find a runner, all from the app's own environment. */
@@ -22,8 +23,13 @@ export interface FoundRunner {
   readonly pathFolders: readonly string[];
 }
 
-/** The runner, or the reason the launch is refused. */
-export type RunnerLookup = { found: FoundRunner } | { refused: string };
+/**
+ * The runner, or the reason the launch is refused. `missing` names the
+ * program that isn't on this computer, when that is the reason.
+ */
+export type RunnerLookup =
+  | { found: FoundRunner }
+  | { refused: string; missing?: string | undefined };
 
 /** The endings Windows starts a bare name with when `%PATHEXT%` isn't set. */
 const defaultPathExt = ".COM;.EXE;.BAT;.CMD";
@@ -66,6 +72,7 @@ export async function findRunner(
   if (runner === undefined) {
     return {
       refused: `couldn't find "${command}" on this computer; give its full path as the connector's command`,
+      missing: command,
     };
   }
   const mapped = await withoutShell(runner, folders, search);
@@ -75,6 +82,7 @@ export async function findRunner(
   if (node === undefined) {
     return {
       refused: `couldn't find "node" on this computer, which "${command}" needs; give the full path of a "${command}" with "node" in the same folder`,
+      missing: "node",
     };
   }
   const pathFolders = uniqueFolders(
@@ -82,6 +90,20 @@ export async function findRunner(
     search.platform,
   );
   return { found: { ...mapped.found, pathFolders } };
+}
+
+/**
+ * The error a refused runner lookup throws: a {@link ProgramNotFoundError}
+ * when a program is missing, so a caller can name it, or else a plain one.
+ */
+export function runnerRefusedError(
+  connectorId: string,
+  refusal: { refused: string; missing?: string | undefined },
+): Error {
+  const message = `Halonic didn't start the connector "${connectorId}": ${refusal.refused}.`;
+  return refusal.missing === undefined
+    ? new Error(message)
+    : new ProgramNotFoundError(refusal.missing, message);
 }
 
 /** Whether `command` names a folder or a drive, such as `./npx`, `bin/uvx` or `C:uvx`, rather than just a program. */

@@ -3,9 +3,9 @@ import type { PartSection } from "../state-table.tsx";
 
 export const letterTileSection: PartSection = {
   id: "letter-tile",
-  number: "26.2",
+  number: "26.4",
   name: "LetterTile",
-  order: "kit 26.2 · left to right: an agent, a plugin, a routine, an empty name",
+  order: "kit 26.4 · left to right: an agent, a plugin, a routine, an empty name",
   notApplicable: "hover, focus, disabled (decoration, not interactive)",
   rows: [
     {

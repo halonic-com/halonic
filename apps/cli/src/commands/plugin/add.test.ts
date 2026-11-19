@@ -197,7 +197,9 @@ verifies("cli.commands.plugin.add", () => {
     const { code, io } = await add([source, "--yes", "--fingerprint", `hpf1:${"0".repeat(64)}`]);
 
     expect(code).toBe(exitCode.notTrusted);
-    expect(io.stderr.join("\n")).toContain("it changed since that fingerprint was made.");
+    expect(io.stderr.join("\n")).toContain(
+      "✕ That fingerprint doesn't match Weather as it is now.",
+    );
     expect(await plugins()).toEqual(["new"]);
   });
 
@@ -223,7 +225,7 @@ verifies("cli.commands.plugin.add", () => {
     expect(noTerminal.io.stderr.at(-2)).toBe(
       `! ${shown} is added but off, because there's no terminal to ask you to trust it.`,
     );
-    expect(changed.io.stderr.join("\n")).toContain(`trust ${shown}`);
+    expect(changed.io.stderr.join("\n")).toContain(`doesn't match ${shown} as it is now.`);
     expect(yes.io.stdout).toEqual([`✓ Added ${shown} 1.2.0. It's on.`]);
     const everything = [
       asked.written(),

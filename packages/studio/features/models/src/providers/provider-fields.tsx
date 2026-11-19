@@ -7,7 +7,7 @@ import { useDraft } from "../aliases/use-draft.ts";
 import type { ModelsFiles } from "../api.ts";
 import { editProvider, type ProviderField, type ProviderProblem } from "./provider-edits.ts";
 import {
-  DEFAULT_BASE_URL,
+  baseUrlPlaceholder,
   LOCAL_SWITCH_LABEL,
   PROVIDER_TYPES,
   providerUpdatedLine,
@@ -96,7 +96,7 @@ export function ProviderFields({ files, provider, path, onEdited }: ProviderFiel
         </Field>
         <Field label="Base URL" error={problemFor("baseUrl")}>
           <Input
-            placeholder={DEFAULT_BASE_URL}
+            placeholder={baseUrlPlaceholder(provider.type)}
             value={baseUrl}
             onChange={(event) => setBaseUrl(event.target.value)}
             onBlur={() => onBlur("baseUrl", baseUrl, provider.baseUrl)}

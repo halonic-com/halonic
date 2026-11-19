@@ -30,7 +30,7 @@ export function usedByText(usage: ItemUsage): string {
 }
 
 /**
- * The second line of "Moved X to the trash.": what breaks, or `undefined` when no agent uses the
+ * The second line of "Deleted X.": what breaks, or `undefined` when no agent uses the
  * item. Only agents have a sentence in the design (flow-library 4, microcopy 11.3); the other
  * users of an item (collections, connectors' routines, hubs) have none until Maya settles it.
  *

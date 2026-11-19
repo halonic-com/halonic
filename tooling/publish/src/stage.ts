@@ -316,6 +316,7 @@ function writeManifest(
     name: config.name,
     version: config.version,
     description: config.description,
+    keywords: config.keywords,
     license: "Apache-2.0",
     repository: {
       type: "git",

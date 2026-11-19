@@ -1,6 +1,7 @@
 import { defaultCurrency } from "@halonicjs/app";
 import { type Models, type Provider, parseFile, type WorkspaceSettings } from "@halonicjs/format";
 import type { ModelsFiles } from "../api.ts";
+import { rememberProviderNames } from "../providers/provider-names.ts";
 
 /** What the provider views know of the workspace; it doesn't depend on `models.yaml`. */
 export interface ProvidersState {
@@ -98,6 +99,7 @@ async function readProviderEntries(files: ModelsFiles) {
     if (parsed.ok) entries.push({ path, provider: parsed.value.value });
     else unreadable.push(path);
   }
+  if (!found.failed) rememberProviderNames(files, entries);
   return { entries, unreadable, failed: found.failed };
 }
 

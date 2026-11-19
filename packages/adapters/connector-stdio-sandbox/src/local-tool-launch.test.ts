@@ -69,6 +69,16 @@ verifies("connector-stdio-sandbox.local-tool-profile", () => {
       expect(env["HOME"]).toBe(testPlace.workingFolder);
     });
 
+    it("lets Halonic's own variables win over a secret of the same name", () => {
+      const secrets = { HOME: "/elsewhere", TMPDIR: "/shared", NOTES_TOKEN: "token-value" };
+      const { env } = localToolLaunch(script, testPlace, null, secrets).profile;
+      expect(env["HOME"]).toBe(testPlace.workingFolder);
+      expect(env["TMPDIR"]).toBe(testPlace.tempFolder);
+      expect(env["NOTES_TOKEN"]).toBe("token-value");
+      const pinned = localToolLaunch(npx, pinnedPlace, npmPin, { TMPDIR: "/shared" }).profile;
+      expect(pinned.env["TMPDIR"]).toBe(testPlace.workingFolder);
+    });
+
     it("starts a pinned package as the pinned launcher does, with only PATH inherited", () => {
       const { profile, command } = localToolLaunch(npx, pinnedPlace, npmPin, {});
       expect(command).toEqual({ program: "/acme/bin/npx", args: ["-y", "@acme/notes-mcp@1.2.3"] });

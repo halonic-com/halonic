@@ -205,6 +205,17 @@ verifies("format.plugin-checks", () => {
         "localTools.0.secrets.acme-key.hosts.2 secret-host-not-declared",
       ]);
     });
+
+    it("fails an env variable Halonic sets itself, from a secret or a setting", () => {
+      expect(
+        found(...withEnv("    env: { HOME: { secret: acme-key }, PATH: { setting: root } }")),
+      ).toEqual([
+        "localTools.0.env.HOME env-reserved",
+        "localTools.0.env.PATH env-reserved",
+        "localTools.0.secrets.acme-key.hosts.1 secret-host-not-declared",
+        "localTools.0.secrets.acme-key.hosts.2 secret-host-not-declared",
+      ]);
+    });
   });
 
   it("fails a secret field for a secret no part declares", () => {

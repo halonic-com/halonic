@@ -21,6 +21,7 @@ import {
   type StartPhase,
   seconds,
 } from "./start-limits.ts";
+import type { StepLimits } from "./step-limits.ts";
 import { unlessStopped } from "./unless-stopped.ts";
 
 /** What the steps of a harness call share once it knows its harness. */
@@ -33,8 +34,10 @@ export interface StartedCall {
   readonly log: HarnessEventLog;
   readonly approvals: HarnessApprovals;
   readonly limits: StartLimits;
-  /** The engine's stop, or the budget's once it refused a model call. */
+  /** The engine's stop, or the budget's or a step limit's once one was reached. */
   readonly stop: StopSignal;
+  /** The step's use against its agent's `harnessLimits`. */
+  readonly stepLimits: StepLimits;
 }
 
 /** The limit of one start, from the host's options or the default. */

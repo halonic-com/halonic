@@ -27,6 +27,8 @@ export interface TrustedSource {
   readonly trustedAt: string;
   /** Whether the folder is still there. Unknown (`undefined`) shows the row as trusted, never as gone. */
   readonly found?: boolean | undefined;
+  /** What the record trusts; the Remove dialog says what stops. Absent counts as a workspace. */
+  readonly kind?: "workspace" | "plugin" | undefined;
 }
 
 /** What Settings › Trusted sources reads and changes of the trust records on this computer. */

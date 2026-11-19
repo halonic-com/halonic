@@ -107,7 +107,10 @@ impl Inner {
             return;
         };
         if let Err(error) = write_over(file, &record_text(&self.record)) {
-            eprintln!("updates: {} can't be written: {error}", file.display());
+            halonic_shell_log::record(
+                "updates",
+                format!("{} can't be written: {error}", file.display()),
+            );
         }
     }
 
@@ -147,7 +150,7 @@ pub fn start<R: Runtime>(app: &AppHandle<R>) {
             background(&app, ready);
         });
     if let Err(error) = started {
-        eprintln!("updates: the checks can't start: {error}");
+        halonic_shell_log::record("updates", format!("the checks can't start: {error}"));
     }
 }
 
@@ -159,7 +162,10 @@ fn load<R: Runtime>(app: &AppHandle<R>) {
                 .join("updater.json"),
         ),
         Err(error) => {
-            eprintln!("updates: no profile folder, so nothing is remembered: {error}");
+            halonic_shell_log::record(
+                "updates",
+                format!("no profile folder, so nothing is remembered: {error}"),
+            );
             None
         }
     };
@@ -193,7 +199,10 @@ fn load<R: Runtime>(app: &AppHandle<R>) {
                 version,
                 attempts,
                 counted: true,
-            } => eprintln!("updates: {version} didn't install ({attempts} tries)"),
+            } => halonic_shell_log::record(
+                "updates",
+                format!("{version} didn't install ({attempts} tries)"),
+            ),
             _ => {}
         }
         let state = inner.record.starting_state(&current);
@@ -226,7 +235,10 @@ fn migrate_settings(profile: &Path, from: &str) -> Vec<String> {
         let file = profile.join(name);
         match migrate_settings_file(&file, from, migrate) {
             Ok(lost) => not_carried_over.extend(lost),
-            Err(error) => eprintln!("updates: {} can't be migrated: {error}", file.display()),
+            Err(error) => halonic_shell_log::record(
+                "updates",
+                format!("{} can't be migrated: {error}", file.display()),
+            ),
         }
     }
     not_carried_over
@@ -248,7 +260,10 @@ fn read_file(file: Option<&Path>) -> (UpdaterRecord, bool) {
             (UpdaterRecord::default(), true)
         }
         Err(error) => {
-            eprintln!("updates: {} can't be read: {error}", file.display());
+            halonic_shell_log::record(
+                "updates",
+                format!("{} can't be read: {error}", file.display()),
+            );
             (UpdaterRecord::default(), false)
         }
     }
@@ -342,7 +357,7 @@ async fn check<R: Runtime>(app: &AppHandle<R>) {
             }
         }
         Err(error) => {
-            eprintln!("updates: the check failed: {error}");
+            halonic_shell_log::record("updates", format!("the check failed: {error}"));
             let reason = check_failure(&error);
             inner.record.last_result = Some(CheckResult::CantCheck { reason });
             if !inner.busy() {
@@ -394,7 +409,10 @@ pub fn install_at_quit<R: Runtime>(app: &AppHandle<R>) {
         return;
     }
     if let Err(error) = install(app, false) {
-        eprintln!("updates: the update didn't install at quit: {error}");
+        halonic_shell_log::record(
+            "updates",
+            format!("the update didn't install at quit: {error}"),
+        );
     }
 }
 
@@ -464,7 +482,7 @@ pub fn update_restart<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
         return Err("updates are managed by another tool".to_owned());
     }
     install(&app, true).inspect_err(|error| {
-        eprintln!("updates: restart to update failed: {error}");
+        halonic_shell_log::record("updates", format!("restart to update failed: {error}"));
     })?;
     app.restart()
 }

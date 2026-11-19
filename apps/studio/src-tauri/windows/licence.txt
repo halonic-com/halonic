@@ -1,0 +1,33 @@
+HALONIC LICENCE TERMS
+
+Please read these terms. Press "I Agree" to accept them and install Halonic. If you don't accept them, press Cancel: nothing is installed.
+
+1. HALONIC
+
+Halonic is open-source software, licensed under the Apache License, Version 2.0. The installer copies that licence (LICENSE), Halonic's notices (NOTICE) and the licences of the open-source components Halonic includes (THIRD-PARTY-NOTICES.txt) into Halonic's folder. These terms don't limit the rights those licences give you.
+
+2. MICROSOFT VISUAL C++ RUNTIME
+
+Halonic includes vcruntime140.dll, a file of the Microsoft Visual C++ runtime ("the Microsoft runtime"), which Halonic's agent sandbox helper (srt-win.exe) needs. The Microsoft runtime is Microsoft's software, not Halonic's, and it is not open source. Halonic distributes it under Microsoft's licence terms, which require that you agree to the terms in this section before you install it.
+
+a. Licence. The Microsoft runtime is licensed, not sold. You may use it only with Halonic, on the computer you install Halonic on. Microsoft and its suppliers reserve all other rights.
+
+b. Restrictions. You may not:
+- work around any technical limitations in the Microsoft runtime;
+- reverse engineer, decompile or disassemble the Microsoft runtime, except and only to the extent that applicable law expressly permits it, despite this limitation;
+- remove, change or hide any notices of Microsoft or its suppliers in the Microsoft runtime;
+- copy the Microsoft runtime out of Halonic to use or distribute it on its own;
+- publish, rent, lease or lend the Microsoft runtime, or host it as a service for others;
+- use the Microsoft runtime in any way that is against the law.
+
+c. No warranty. The Microsoft runtime is provided "as is". Microsoft gives no express warranties, guarantees or conditions. To the extent permitted by law, Microsoft excludes the implied warranties of merchantability, fitness for a particular purpose and non-infringement.
+
+d. Limitation of liability. To the extent permitted by law, you can recover from Microsoft and its suppliers only direct damages up to U.S. $5.00. You cannot recover any other damages, including consequential, lost profits, special, indirect or incidental damages. This applies even if Microsoft knew or should have known about the possibility of the damages. Some places don't allow these damages to be excluded or limited, so this may not apply to you.
+
+e. Export. You must comply with all domestic and international export laws and regulations that apply to the Microsoft runtime, including restrictions on destinations, end users and end use.
+
+f. No support from Microsoft. Microsoft gives no support for the Microsoft runtime as part of Halonic. For help, ask the Halonic project, not Microsoft.
+
+g. Microsoft's rights. Microsoft and its suppliers may enforce this section against you.
+
+h. Trademarks. Microsoft doesn't make or endorse Halonic. Microsoft and Visual C++ are trademarks of the Microsoft group of companies.

@@ -85,6 +85,12 @@ describe("run's sentences", () => {
     );
   });
 
+  it("quotes a --dir with a space in the answer line, so it can be pasted back", () => {
+    expect(words(runMessages.answerHere("1ac531", ["approve", "reject"], "./Acme sample"))).toBe(
+      'Answer with: halonic runs send --dir "./Acme sample" 1ac531 approve (or reject)',
+    );
+  });
+
   it("writes the author's label after an event that has one, and keeps the event to type", () => {
     const labels = { approve: "Send reply", hold: "Ask me later" };
     expect(words(runMessages.answerHere("01jd8q", ["approve", "reject"], undefined, labels))).toBe(

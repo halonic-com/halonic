@@ -93,7 +93,7 @@ async function settle(): Promise<void> {
 const path = "notes/a.md";
 
 verifies("files.ui.delete-file", () => {
-  it("greys the editor and says the file went to the trash, with Undo that brings it back", async () => {
+  it("greys the editor and says the file was deleted, with Undo that brings it back", async () => {
     const state = { text: "keep" as string | null };
     const { host, notify } = hostOf(state);
     const undo = vi.fn(async () => {
@@ -112,8 +112,8 @@ verifies("files.ui.delete-file", () => {
     });
     await settle();
 
-    expect(page.textContent).toContain("This file was moved to the trash");
-    expect(announced).toEqual(["This file was moved to the trash"]);
+    expect(page.textContent).toContain("This file was deleted");
+    expect(announced).toEqual(["This file was deleted"]);
     expect(opened.at(-1)?.options.readOnly).toBe(true);
     expect(opened.at(-1)?.options.text).toBe("keep");
     const button = [...page.querySelectorAll("button")].find((b) => b.textContent === "Undo");
@@ -126,7 +126,7 @@ verifies("files.ui.delete-file", () => {
     await settle();
 
     expect(undo).toHaveBeenCalledOnce();
-    expect(page.textContent).not.toContain("moved to the trash");
+    expect(page.textContent).not.toContain("This file was deleted");
     expect(opened.at(-1)?.options.readOnly).toBe(false);
   });
 
@@ -161,14 +161,14 @@ verifies("files.ui.delete-file", () => {
     });
     notify();
     await settle();
-    expect(page.textContent).toContain("This file was moved to the trash");
+    expect(page.textContent).toContain("This file was deleted");
 
     await act(async () => {
       [...page.querySelectorAll("button")].find((b) => b.textContent === "Undo")?.click();
     });
     await settle();
 
-    expect(page.textContent).not.toContain("moved to the trash");
+    expect(page.textContent).not.toContain("This file was deleted");
     expect(page.textContent).toContain("This file isn't in this workspace any more.");
     expect([...page.querySelectorAll("button")].map((b) => b.textContent)).toContain("Go to Files");
     expect(opened.at(-1)?.destroyed).toBe(true);

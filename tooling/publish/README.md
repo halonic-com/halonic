@@ -49,7 +49,8 @@ A workspace package of that layer becomes one subpath with `halonic.publish` in 
 `tooling/publish/dist/<layer>`; `run stage adapters` stages one. Publish that folder, never a source package.
 
 - `layer.json` `name` and `version`: the npm name and the one version of the whole layer package.
-- `layer.json` `description`: the npm description.
+- `layer.json` `description` and `keywords`: the npm description and search words. Keywords are messaging:
+  they need the board's yes (HAL-12430), and a word goes in only once it is true of the published package.
 - `layer.json` `dependencies` and `peerDependencies`: the only outside packages the tarball may import.
   Staging fails on any other. Dependencies are exact versions.
 - `halonic.publish.name`: the import path on npm, the layer package's name with a subpath (or without one

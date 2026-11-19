@@ -15,6 +15,8 @@ export interface CreateVersionDialogProps {
   readonly first?: boolean;
   /** Where focus goes when the dialog closes and the button that opened it has gone. */
   readonly returnFocus: () => HTMLElement | null;
+  /** Called once the version is made and the page has read again, for where focus goes next. */
+  readonly onCreated: () => void;
 }
 
 /**
@@ -30,6 +32,7 @@ export function CreateVersionDialog({
   files,
   first = false,
   returnFocus,
+  onCreated,
 }: CreateVersionDialogProps) {
   const toasts = useToastStore();
   const nameField = useRef<HTMLInputElement>(null);
@@ -77,6 +80,7 @@ export function CreateVersionDialog({
     if (reason === undefined) {
       // The dialog is gone with the version, and so is the button that opened it.
       toasts?.show({ tone: "success", title: versionWords.created(name.trim()) });
+      onCreated();
       return;
     }
     setBusy(false);

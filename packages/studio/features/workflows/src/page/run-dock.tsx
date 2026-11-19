@@ -1,6 +1,6 @@
 import type { RunRow, RunsSource } from "@halonicjs/studio-feature-runs/api";
 import { Button, CloseIcon } from "@halonicjs/studio-kit";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { WorkflowRef, WorkflowsHost } from "../api.ts";
 import { RunCard } from "../runs/run-card.tsx";
 import { realRunsOf, runRowsOf } from "../runs/runs-model.ts";
@@ -67,6 +67,34 @@ interface RunDockProps {
   readonly onClosePickedStep: () => void;
 }
 
+/**
+ * The dock between **Start run** and the run showing in the runs. Its line takes focus at once,
+ * as the button that had it is gone; the run's card heading takes it over when the run shows (A6).
+ */
+function WaitingForRun({ onClose }: { readonly onClose: () => void }) {
+  const line = useRef<HTMLParagraphElement>(null);
+  useEffect(() => line.current?.focus(), []);
+  // The runs source hasn't listed the new run yet; the card takes its place when it does.
+  return (
+    <aside
+      role="status"
+      aria-label={startWords.cardKind}
+      className="flex w-80 shrink-0 items-start justify-between gap-3 border-s border-border p-4 text-small text-fg-muted"
+    >
+      <p ref={line} tabIndex={-1} className="outline-none">
+        {startWords.waitingForRun}
+      </p>
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={<CloseIcon />}
+        label={startWords.closeCard}
+        onClick={onClose}
+      />
+    </aside>
+  );
+}
+
 /** The card docked at the right: the start form, then the simple card of the run it started. */
 export function RunDock({
   dock,
@@ -110,23 +138,7 @@ export function RunDock({
     );
   }
   if (typeof dock === "object" && !shown) {
-    // The runs source hasn't listed the new run yet; the card takes its place when it does.
-    return (
-      <aside
-        role="status"
-        aria-label={startWords.cardKind}
-        className="flex w-80 shrink-0 items-start justify-between gap-3 border-s border-border p-4 text-small text-fg-muted"
-      >
-        <p>{startWords.waitingForRun}</p>
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={<CloseIcon />}
-          label={startWords.closeCard}
-          onClick={() => onDock(undefined)}
-        />
-      </aside>
-    );
+    return <WaitingForRun onClose={() => onDock(undefined)} />;
   }
   if (typeof dock === "object" && shown) {
     return (

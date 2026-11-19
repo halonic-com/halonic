@@ -11,32 +11,25 @@
 // `windows` (Julian's build conditions (a) and (b), HAL-1873 design 11).
 
 import type { Plugin } from "@halonicjs/format";
-import type { Digest, FolderReader, Sandbox } from "@halonicjs/ports";
-import { type PluginFolder, type PluginProblem, readPluginFolder } from "./plugin-folder.ts";
+import type { Sandbox } from "@halonicjs/ports";
+import type { PluginProblem } from "./plugin-folder.ts";
 import { pluginSecretNames } from "./plugin-secret-names.ts";
 import type { PluginSettingValues } from "./plugin-settings.ts";
+import {
+  checkPluginTrustNow,
+  type PluginStartTrustOptions,
+  type PluginStartTrustReason,
+  type TrustedPluginFolder,
+} from "./plugin-start-trust.ts";
 import type { RunnerBackend } from "./runner-fence.ts";
 import type { GatedRunner, GatedStart, RunnerStartGate } from "./runner-start-gate.ts";
-import type { TrustService } from "./trust-service.ts";
 
 /**
- * Why a plugin's backend didn't start for lack of trust.
- *
- * - `unreadable`: the plugin folder can't be read or checked now; `problems` says why.
- * - `no-backend`: the plugin declares no backend.
- * - `not-trusted`: a person never trusted the plugin, or took their trust back.
- * - `changed`: the manifest or a file changed since the person trusted it.
- * - `record-unreadable`: the plugin's trust record can't be read.
- * - `not-checked`: the trust check gave a status this code doesn't know, so it
- *   can't say whether the person trusted the plugin.
+ * Why a plugin's backend didn't start for lack of trust: a
+ * {@link PluginStartTrustReason}, or `no-backend` when the plugin declares
+ * no backend.
  */
-export type PluginBackendTrustReason =
-  | "unreadable"
-  | "no-backend"
-  | "not-trusted"
-  | "changed"
-  | "record-unreadable"
-  | "not-checked";
+export type PluginBackendTrustReason = PluginStartTrustReason | "no-backend";
 
 /** A plugin's backend didn't start, because the trust a person gave doesn't cover what is in its folder now. */
 export class PluginBackendNotTrustedError extends Error {
@@ -64,10 +57,7 @@ export class PluginBackendNotTrustedError extends Error {
  * gets it, so nothing has to read the folder a second time and take what a
  * change in between left there.
  */
-export interface TrustedPluginBackend extends PluginFolder {
-  /** The fingerprint the trust covers: the hash of the manifest and of every file in `files`. */
-  readonly fingerprint: string;
-}
+export type TrustedPluginBackend = TrustedPluginFolder;
 
 /**
  * Starts the runner in the sandbox the gate picked, for the plugin that was
@@ -81,13 +71,7 @@ export type StartTrustedBackend<Runner extends GatedRunner> = (
 ) => Promise<Runner>;
 
 /** What {@link PluginBackendStart} needs from the host. */
-export interface PluginBackendStartOptions {
-  /** The profile's plugin folder, which holds one folder per plugin, named by its id. */
-  readonly plugins: FolderReader;
-  /** For the hash of every file, the same one the trust check uses. */
-  readonly digest: Digest;
-  /** The `TrustService` that holds the person's trust in plugins. */
-  readonly trust: Pick<TrustService, "checkPlugin">;
+export interface PluginBackendStartOptions extends PluginStartTrustOptions {
   /** The gate that picks the sandbox once trust is settled. */
   readonly gate: RunnerStartGate;
 }
@@ -129,39 +113,14 @@ export class PluginBackendStart {
   }
 
   async #checkTrust(id: string): Promise<TrustedPluginBackend> {
-    const { plugins, digest, trust } = this.#options;
-    if (id === "" || id === "." || id === ".." || /[/\\]/u.test(id)) {
-      throw new RangeError(`${JSON.stringify(id)} isn't a plugin id`);
+    const checked = await checkPluginTrustNow(this.#options, id);
+    if (!checked.ok) {
+      throw new PluginBackendNotTrustedError(id, checked.error.reason, checked.error.problems);
     }
-    const read = await readPluginFolder(plugins, digest, id).catch((error: unknown) => {
-      throw new PluginBackendNotTrustedError(id, "unreadable", [readFailed(error)]);
-    });
-    if (!read.ok) throw new PluginBackendNotTrustedError(id, "unreadable", read.error);
-    const { plugin, location, files } = read.value;
-    if (plugin.backend === undefined) throw new PluginBackendNotTrustedError(id, "no-backend");
-    const check = await trust.checkPlugin({ location, plugin, files });
-    // Anything but `trusted` refuses, so a status added later fails closed.
-    if (check.status === "trusted")
-      return { plugin, location, files, fingerprint: check.fingerprint };
-    throw new PluginBackendNotTrustedError(id, untrustedReason(check.status));
-  }
-}
-
-/** The reason a check that isn't `trusted` gives for refusing the start. */
-function untrustedReason(
-  status: Exclude<Awaited<ReturnType<TrustService["checkPlugin"]>>["status"], "trusted">,
-): PluginBackendTrustReason {
-  switch (status) {
-    case "new":
-      return "not-trusted";
-    case "changed":
-      return "changed";
-    case "unreadable":
-      return "record-unreadable";
-    default:
-      // A status added later still refuses, but the person may have trusted
-      // the plugin, so it isn't told to trust it: it needs a reason of its own.
-      return "not-checked";
+    if (checked.value.plugin.backend === undefined) {
+      throw new PluginBackendNotTrustedError(id, "no-backend");
+    }
+    return checked.value;
   }
 }
 
@@ -227,16 +186,6 @@ export class PluginSecretNameMissingError extends Error {
     this.plugin = plugin;
     this.secret = secret;
   }
-}
-
-function readFailed(error: unknown): PluginProblem {
-  const reason = error instanceof Error ? error.message : String(error);
-  return {
-    code: "read-failed",
-    file: "",
-    path: [],
-    message: `Halonic couldn't read the plugin: ${reason}.`,
-  };
 }
 
 function notTrustedMessage(

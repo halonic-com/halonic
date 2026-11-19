@@ -14,6 +14,7 @@ function layer(name: string, version: string, dependencies = {}): LayerConfig {
     name,
     version,
     description: "A layer.",
+    keywords: [],
     dependencies,
     peerDependencies: {},
   };

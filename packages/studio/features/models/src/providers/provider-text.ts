@@ -13,6 +13,13 @@ export function blockedLocalOnlyLine(workspaceName: string | undefined): string 
 export const PROVIDER_GONE_LINE = "This provider is no longer in providers/.";
 /** The Base URL box's placeholder: what an empty box means. */
 export const DEFAULT_BASE_URL = "The provider's own";
+/** The Base URL placeholder for a type that has no usual address, so an empty box fails at run time. */
+export const NEEDED_BASE_URL = "Needed for this type";
+
+/** The Base URL box's placeholder for a provider of this type. */
+export function baseUrlPlaceholder(type: string): string {
+  return type === "openai-compatible" ? NEEDED_BASE_URL : DEFAULT_BASE_URL;
+}
 
 /** The adapter types a provider can have, for the Type list. Keep in step with the provider type enum in `@halonicjs/format` (`kinds/provider/schema.ts`). */
 export const PROVIDER_TYPES = [
@@ -55,9 +62,34 @@ export const CHECKING = "Checking…";
 export const CHECK_HINT =
   "Small local models can miss tool calls. Try a short run to see whether yours keeps up.";
 
-/** The status line after a check, as it is read on the page: "Answering at localhost:11434 · checked 10:42". */
-export function checkResultLine(answering: boolean, address: string, checkedAt: string): string {
-  return `${answering ? "Answering" : "Not answering"} at ${address} · checked ${checkedAt}`;
+/** The programs the provider types run in, as "Start *program*" names them (microcopy 15.3). */
+const LOCAL_PROGRAMS: Readonly<Record<string, string>> = {
+  ollama: "Ollama",
+  lmstudio: "LM Studio",
+};
+
+/** The program to start for a local provider: Ollama, LM Studio, or else the provider's own name. */
+export function localProgramName(type: string, providerName: string): string {
+  return LOCAL_PROGRAMS[type] ?? providerName;
+}
+
+/** What to do when a local provider isn't answering (microcopy 1.6; HAL-12390 M1). Check stays the button. */
+export function checkFixSentence(program: string): string {
+  return `Start ${program}, then check again.`;
+}
+
+/**
+ * The status line after a check, as it is read on the page: "Answering at localhost:11434 · checked
+ * 10:42", or "Not answering at localhost:11434 · checked 10:42. Start Ollama, then check again."
+ */
+export function checkResultLine(
+  answering: boolean,
+  address: string,
+  checkedAt: string,
+  program: string,
+): string {
+  const line = `${answering ? "Answering" : "Not answering"} at ${address} · checked ${checkedAt}`;
+  return answering ? line : `${line}. ${checkFixSentence(program)}`;
 }
 
 /** The phone's status chip words: "Answering" or "Not answering", with no dot (flow-first-run 7.3). */
@@ -65,17 +97,31 @@ export function checkChipWords(answering: boolean): string {
   return answering ? "Answering" : "Not answering";
 }
 
-/** The line under the phone's chip: "at localhost:11434 · checked 10:42". */
-export function checkChipDetail(address: string, checkedAt: string): string {
-  return `at ${address} · checked ${checkedAt}`;
+/**
+ * The line under the phone's chip: "at localhost:11434 · checked 10:42", and when the provider
+ * isn't answering the same second sentence as the desktop line.
+ */
+export function checkChipDetail(
+  answering: boolean,
+  address: string,
+  checkedAt: string,
+  program: string,
+): string {
+  const line = `at ${address} · checked ${checkedAt}`;
+  return answering ? line : `${line}. ${checkFixSentence(program)}`;
 }
 
-/** What a screen reader hears when a check ends, also when the result is the same as before. */
+/**
+ * What a screen reader hears when a check ends, also when the result is the same as before; when
+ * the provider isn't answering it hears what to do, as the line says.
+ */
 export function checkAnnouncement(
   providerName: string,
   answering: boolean,
   address: string,
   checkedAt: string,
+  program: string,
 ): string {
-  return `${providerName} is ${answering ? "answering" : "not answering"} at ${address}, checked ${checkedAt}.`;
+  const line = `${providerName} is ${answering ? "answering" : "not answering"} at ${address}, checked ${checkedAt}.`;
+  return answering ? line : `${line} ${checkFixSentence(program)}`;
 }

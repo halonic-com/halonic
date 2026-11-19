@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-6167
 
-If a file under `packages/` or `apps/` has a third-party licence in the comment block at its top (an `@license` tag, the Mozilla Public License, a GNU General Public License, or an `SPDX-License-Identifier` other than `Apache-2.0`) and isn't on the `vendored` list of `tooling/check/licences.json`, or a `vendored` entry lacks a field, names a file that is gone, or has no licence text in `tooling/check/licence-texts/`, then `pnpm check:licences` shall fail and name the file. `pnpm check:sbom --notices` shall add one block per `vendored` entry, with its name, path, licence, source and licence text, to `THIRD-PARTY-NOTICES.txt`.
+If a file under `packages/` or `apps/` has a third-party licence in the comment block at its top (an `@license` tag, the Mozilla Public License, a GNU General Public License, or an `SPDX-License-Identifier` other than `Apache-2.0`) and isn't on the `vendored` list of `tooling/check/licences.json`, or a `vendored` entry lacks a field, names a file that is gone, or has no licence text in `tooling/check/licence-texts/` (its own `text` file when it names one, or else `<SPDX ID>.txt`), then `pnpm check:licences` shall fail and name the file. `pnpm check:sbom --notices` shall add one block per `vendored` entry, with its name, path, licence, source and licence text (its own `text` file when it names one), to `THIRD-PARTY-NOTICES.txt`.
 
 ## Examples
 
@@ -19,3 +19,7 @@ If a file under `packages/` or `apps/` has a third-party licence in the comment 
   then the check passes.
 - Given a file with the MPL header under `tooling/`, then the check passes.
 - Given one vendored entry, then the notices end with a block for it that has its source and licence text.
+- Given an entry whose `text` names a file that is missing or outside `licence-texts/`,
+  then the check fails.
+- Given two MIT entries from different authors, the second with its own `text`,
+  then each block in the notices carries its own copyright line.

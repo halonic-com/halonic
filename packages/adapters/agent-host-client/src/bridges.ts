@@ -32,10 +32,27 @@ const malformedCallMessage = "The bridge's call wasn't of the expected shape.";
  */
 export const bridgeOpenLimitMs = 30_000;
 
-/** The agent a bridge serves; the engine's `HarnessAgent` has these and more. */
+/** The agent a bridge serves, as Studio's `servicesFor` is told it. */
 export interface BridgeAgent {
   readonly runId: string;
   readonly agentId: string;
+  /** The hub whose workspace the agent's file is in, where Studio resolves its model. */
+  readonly hubId?: string;
+  /**
+   * The agent file's `model` as written, before any mapping: a `models.yaml`
+   * alias, `provider/model`, or a name the program knows. Studio resolves
+   * an alias to choose the provider's access; `undefined` when the file names none.
+   */
+  readonly model?: string;
+}
+
+/** The agent the engine opens a bridge for; the engine's `HarnessAgent` has these and more. */
+export interface OpeningAgent {
+  readonly runId: string;
+  readonly agentId: string;
+  readonly hubId?: string;
+  /** The agent's file as the call reads it, whose `model` Studio is told. */
+  readonly file?: { readonly model?: string | undefined };
 }
 
 /** What Studio serves one agent's bridge. */
@@ -108,8 +125,8 @@ export class AgentHostBridges {
    * @throws {@link AgentHostError} when the host refuses (`too_many_bridges`)
    *   or the bridge can't listen (`bridge_failed`)
    */
-  async open(agent: BridgeAgent, recorder: BridgeRecorder): Promise<OpenHarnessBridge> {
-    const services = await this.#servicesFor(agent);
+  async open(agent: OpeningAgent, recorder: BridgeRecorder): Promise<OpenHarnessBridge> {
+    const services = await this.#servicesFor(bridgeAgentOf(agent));
     const hangUp = new AbortController();
     const body = {
       runId: agent.runId,
@@ -347,4 +364,15 @@ export function fitsAnswerLimit(text: string): boolean {
   if (text.length > bridgeAnswerLimitBytes) return false;
   if (text.length * 3 <= bridgeAnswerLimitBytes) return true;
   return new TextEncoder().encode(text).byteLength <= bridgeAnswerLimitBytes;
+}
+
+/** What `servicesFor` is told of the agent: only the fields it names, so nothing else of the engine's leaks in. */
+function bridgeAgentOf(agent: OpeningAgent): BridgeAgent {
+  const model = agent.file?.model;
+  return {
+    runId: agent.runId,
+    agentId: agent.agentId,
+    ...(agent.hubId === undefined ? {} : { hubId: agent.hubId }),
+    ...(model === undefined ? {} : { model }),
+  };
 }

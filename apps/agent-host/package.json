@@ -15,6 +15,7 @@
     "smoke:sea": "node scripts/smoke.ts"
   },
   "devDependencies": {
+    "@halonicjs/testing-sign-in": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
@@ -40,6 +41,7 @@
     "@halonicjs/adapter-harness-kit": "workspace:*",
     "@halonicjs/adapter-http-kit": "workspace:*",
     "@halonicjs/adapter-http-node": "workspace:*",
+    "@halonicjs/adapter-integration-kit": "workspace:*",
     "@halonicjs/adapter-integration-runner": "workspace:*",
     "@halonicjs/adapter-mcp": "workspace:*",
     "@halonicjs/adapter-model-mock": "workspace:*",
@@ -57,7 +59,9 @@
     "@halonicjs/format": "workspace:*",
     "@halonicjs/google-setup": "workspace:*",
     "@halonicjs/host-google-sign-in": "workspace:*",
+    "@halonicjs/host-integration-sign-in": "workspace:*",
     "@halonicjs/host-server": "workspace:*",
+    "@halonicjs/oauth-sign-in": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/profile": "workspace:*",
     "@halonicjs/workspace": "workspace:*",
