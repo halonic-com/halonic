@@ -3,6 +3,7 @@
 - Task: HAL-12384
 - Approval: Liam approves this change in review on HAL-12384 (https://paperclip.halonic.com/HAL/issues/HAL-12384). A team decision with no board card (HAL-2282 rule): the line is Studio's approved T8 wording, now shown in the CLI too.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WHJD73H7JLkPp2FM1yc2HjfLqDnkQSZZ1vIE4kRExbPqS668it6MsuaDO0nqZkTqg6OmHQ3/fhuAVCwzqtxmAA==
 
 ## What changes
 
