@@ -15,6 +15,7 @@ const notPorts = new Set([
   "connector-start-failure.ts",
   "connector-tool-error.ts",
   "harness-sign-in-command.ts",
+  "host-too-old.ts",
   "index.ts",
   "model-price.ts",
   "pairing-codes.ts",
