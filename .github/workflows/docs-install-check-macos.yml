@@ -80,15 +80,16 @@ jobs:
           step 1 'git --version'
 
           if ! version_step 2 'node --version' 26 12; then
-            # The page: "install Node.js 26 with nvm or fnm (nvm install 26 ...)".
+            # The page: "nvm install 26, then nvm alias default 26". If nvm says "command not
+            # found": on a new Mac `touch ~/.zshrc`, then nvm's curl line, then a new terminal.
             if ! step 2a 'nvm install 26 && nvm alias default 26'; then
-              fix "Step 2: \`nvm install 26\` fails with \`$(echo "$OUT" | tail -1)\`: a Mac has no nvm. The page says \"Install nvm first\" but gives no command; a reader has to find nvm's install line (used here: nvm's README, v0.41.0)."
-              step 2b 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.41.0/install.sh | bash'
-              if echo "$OUT" | grep -q 'Profile not found'; then
-                fix "Step 2: nvm's installer finds no shell profile on a new Mac (no \`~/.zshrc\`), so nvm doesn't load in a new terminal. Needed: \`touch ~/.zshrc\` and run nvm's installer again."
-                step 2b-retry 'touch ~/.zshrc && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.41.0/install.sh | bash'
-              fi
-              # New terminal, as nvm's installer says.
+              echo "$OUT" | grep -q 'command not found' \
+                || fix "Step 2: \`nvm install 26\` fails with \`$(echo "$OUT" | tail -1)\`, not the \"command not found\" the page covers."
+              step 2b 'touch ~/.zshrc && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.41.0/install.sh | bash' \
+                || fix "Step 2: the page's \`touch ~/.zshrc\` and nvm install line fail with \`$(echo "$OUT" | tail -1)\`."
+              ! echo "$OUT" | grep -q 'Profile not found' \
+                || fix "Step 2: nvm's installer still prints \`Profile not found\` after the page's \`touch ~/.zshrc\`."
+              # New terminal, as the page says.
               step 2c 'nvm install 26 && nvm alias default 26' \
                 || fix "Step 2: \`nvm\` is still missing in a new terminal after nvm's installer: \`$(echo "$OUT" | tail -1)\`."
             fi
