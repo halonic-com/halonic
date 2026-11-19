@@ -15,6 +15,13 @@ these records takes it: the CLI's engine and `halonic proposals` (`localProposal
 Studio's agent host (`agent-host.proposal-record-lock`, new), which writes the same records when
 Studio opens, ends or clears a run's folder.
 
+Two requirements from #3747 get more text, as Liam asked in his review of it. `app.run-proposal-list`
+gets an example: a record that can't be read isn't listed. That was already the rule, it only had no
+example. `cli.commands.proposals.show` now prints git's `\ No newline at end of file` line, so a
+change to only the final newline shows; it ends with how to accept or discard while a file is left
+to decide; and a proposal whose texts were deleted outside Halonic says how to remove it, now that
+`discard` exists.
+
 Nothing existing is removed or weakened. A host that passes no lock keeps the old behaviour: only
 its own turns keep the work on a record apart. No test is changed, skipped or deleted.
 
@@ -48,5 +55,7 @@ accept and discard settle only the proposal they decided.
 ## Covers
 
 - agent-host.proposal-record-lock
+- app.run-proposal-list
 - app.run-proposal-record-lock
+- cli.commands.proposals.show
 - fs-node.proposal-record-lock
