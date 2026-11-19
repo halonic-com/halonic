@@ -11,8 +11,9 @@ export const REVIEW = "Review";
 export const REVIEW_CHANGES = "Review changes";
 export const REMOVE_TRUST = "Remove trust";
 export const REMOVING = "Removing…";
+/** The Remove trust dialog's line: removing it also closes the engine, so its runs stop (HAL-13678). */
 export const REMOVE_TRUST_BODY =
-  "Its routines and connectors won't start until you trust it again.";
+  "Its routines and connectors won't start until you trust it again, and runs in progress stop.";
 export const CHANGED_BADGE = "Changed since you trusted it";
 export const LOADING_LINE = "Loading workspace settings";
 export const TRY_AGAIN = "Try again";

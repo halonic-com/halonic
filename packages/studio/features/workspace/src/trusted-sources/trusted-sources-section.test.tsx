@@ -117,7 +117,7 @@ verifies("workspace.trusted-sources", () => {
     await show(hostOf([inbox, weather]));
     act(() => button("Remove", element.querySelectorAll("li")[1] as HTMLElement)?.click());
     expect(document.querySelector("dialog")?.textContent).toContain(
-      "Its routines and connectors won't start until you trust it again.",
+      "Its routines and connectors won't start until you trust it again, and runs in progress stop.",
     );
     act(() => button("Cancel")?.click());
     act(() => button("Remove", element.querySelectorAll("li")[0] as HTMLElement)?.click());

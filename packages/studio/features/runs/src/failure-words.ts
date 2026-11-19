@@ -121,6 +121,11 @@ export const failureWords = {
     `${workflow} stopped because Halonic's engine stopped during the step ${step}. Nothing after that step ran.`,
   engineStoppedBeforeFirstStep: (workflow: string) =>
     `${workflow} stopped because Halonic's engine stopped before the first step. Nothing ran.`,
+  /** An interrupted run the engine stopped because the workspace's trust was removed (HAL-13678). */
+  trustRemoved: (workflow: string, step: string) =>
+    `${workflow} stopped because this workspace's trust was removed during the step ${step}. Nothing after that step ran.`,
+  trustRemovedBeforeFirstStep: (workflow: string) =>
+    `${workflow} stopped because this workspace's trust was removed before the first step. Nothing ran.`,
   /** F21: the harness program (Claude Code, Codex) didn't start, or sent no first event in time. */
   harnessStartFailed: (agent: string, harness: string, seconds: number, step: string) =>
     `${capitalised(agent)} didn't start: ${harness} didn't start on this computer, or didn't answer within ${seconds} ${seconds === 1 ? "second" : "seconds"}. Nothing ran in the step ${step}.`,

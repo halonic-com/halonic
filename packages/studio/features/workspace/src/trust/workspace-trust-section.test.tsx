@@ -182,7 +182,7 @@ verifies("workspace.trust-section", () => {
     const dialog = document.querySelector("dialog[open]");
     expect(dialog?.textContent).toContain("Remove trust from Acme?");
     expect(dialog?.textContent).toContain(
-      "Its routines and connectors won't start until you trust it again.",
+      "Its routines and connectors won't start until you trust it again, and runs in progress stop.",
     );
     expect(document.activeElement).toBe(button("Cancel"));
     act(() => button("Cancel")?.click());

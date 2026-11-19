@@ -5,6 +5,7 @@ import { expect, it } from "vitest";
 import {
   endInterruptedRuns,
   endLostRuns,
+  endStoppedRuns,
   interruptedError,
   parentEndedError,
 } from "./end-interrupted-runs.ts";
@@ -231,5 +232,62 @@ verifies("engine.report-interrupted-runs", () => {
 
   it("tells nothing when no run was lost", async () => {
     expect(await endLostRuns(new MemoryRuns(), clock)).toEqual({ interrupted: [], cancelled: [] });
+  });
+});
+
+verifies("engine.end-stopped-runs", () => {
+  const cause = { kind: "denied", code: "workspace.trust-removed" } as const;
+
+  it("ends a run that was going with reason interrupted and the cause, and leaves a waiting one", async () => {
+    const store = new MemoryRuns();
+    store.add("run_going", [started, { type: "state.entered", state: "pay" }]);
+    store.add("run_waiting", [
+      started,
+      { type: "state.entered", state: "approve" },
+      { type: "run.waiting", state: "approve", events: ["approved"] },
+    ]);
+
+    expect(await endStoppedRuns(store, clock, cause)).toEqual({
+      interrupted: ["run_going"],
+      cancelled: [],
+    });
+
+    expect(store.logs.get("run_going")?.at(-1)).toEqual({
+      runId: "run_going",
+      seq: 3,
+      at: now.toISOString(),
+      type: "run.failed",
+      state: "pay",
+      error: interruptedError,
+      reason: "interrupted",
+      cause,
+    });
+    expect((await store.get("run_going"))?.cause).toEqual(cause);
+    expect((await store.get("run_waiting"))?.status).toBe("waiting");
+  });
+
+  it("ends the parents waiting on a run it ended, and cancels their other waiting children", async () => {
+    const store = new MemoryRuns();
+    store.add("run_1", waitingParent);
+    store.add("run_1.2", [
+      { ...started, parent: { runId: "run_1", state: "check", depth: 1 } },
+      { type: "state.entered", state: "pay" },
+    ]);
+    store.add("run_1.3", waitingChild("run_1"));
+    store.add("run_5", waitingParent);
+    store.add("run_5.2", waitingChild("run_5"));
+
+    expect(await endStoppedRuns(store, clock, cause)).toEqual({
+      interrupted: ["run_1.2", "run_1"],
+      cancelled: ["run_1.3"],
+    });
+
+    expect(store.logs.get("run_1")?.at(-1)).toMatchObject({
+      type: "run.failed",
+      state: "check",
+      reason: "interrupted",
+      cause,
+    });
+    expect((await store.get("run_5.2"))?.status).toBe("waiting");
   });
 });
