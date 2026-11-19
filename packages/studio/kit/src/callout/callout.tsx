@@ -110,6 +110,13 @@ const toneIcons: Record<CalloutTone, ReactNode> = {
 const actionRow = "mt-2 -ml-2.5 phone:-ml-4 touch:-ml-4";
 
 /**
+ * On a phone an action is never wider than the row, so its label wraps instead of being cut
+ * (HAL-13770). A button never shrinks below its label, so the cap goes on the row's child (the
+ * button, or the Tooltip's wrapper round it) and on the button itself.
+ */
+const actionRowPhoneWrap = "phone:*:max-w-full phone:[&_button]:max-w-full";
+
+/**
  * A message that belongs to one place on a page and stays there until what it's about is dealt
  * with. It has no close button and never cuts its text. As wide as its column.
  *
@@ -230,7 +237,7 @@ function CalloutActions({
     return null;
   }
   return (
-    <div className={`${actionRow} flex flex-wrap`}>
+    <div className={`${actionRow} ${actionRowPhoneWrap} flex flex-wrap`}>
       {actions.map((one) => (
         <CalloutButton key={one.label} action={one} describedBy={describedBy} />
       ))}
