@@ -144,6 +144,8 @@ runLogLines(events);
 // [{ kind: "event", seq: 1, time: "10:40:00", type: "run.started", fields: '{"hubId":"acme",…}' }, …]
 ```
 
+The providers' notes, "Notes on this run", sit under the timeline or the run log and above **Show the run log**, one quiet line each (requirement `runs.run-view.provider-notes`).
+
 Enter or a click on an entry opens its events in a side panel beside the page: the step's model calls with their model and tokens, then its tool calls with their arguments folded. ✕ or Escape closes it, and focus goes back to the entry (requirement `runs.run-view.step-events`):
 
 ```ts
