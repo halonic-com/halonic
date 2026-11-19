@@ -5,6 +5,7 @@ import type { PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useState } from "react";
 import type { CollectionRef } from "../collection-host.ts";
 import { requestConnectorTitleFocus } from "../connector-focus-request.ts";
+import { ConnectorStatusHostService } from "../connector-status-host.ts";
 import { itemFileRef } from "../item-file.ts";
 import { type LibraryItemsHost, LibraryItemsHostService } from "../library-items-host.ts";
 import type { LibraryEntryPlace } from "../library-overview.ts";
@@ -24,6 +25,7 @@ import { NewCollectionDialog } from "./new-collection-dialog.tsx";
 import { NewConnectorDialog } from "./new-connector-dialog.tsx";
 import { NewSkillDialog } from "./new-skill-dialog.tsx";
 import { OpenAsFileSheet, type OpenedFile } from "./open-as-file-sheet.tsx";
+import { useBlockedConnectors } from "./use-blocked-connectors.ts";
 
 export { sharedHubKey };
 
@@ -126,12 +128,17 @@ export function LibraryPlace(props: PlaceViewProps) {
     [onList, openPlaceList],
   );
   const counts = useKindCounts(context.services.find(LibraryItemsHostService), onList);
+  const blockedConnectors = useBlockedConnectors(
+    context.services.find(ConnectorStatusHostService),
+    onList,
+  );
   if (onList) {
     const plugins = context.settingsSections?.find(({ id }) => id === "plugins");
     const { openSettings } = context;
     return (
       <LibraryKindList
         counts={counts}
+        blockedConnectors={blockedConnectors}
         onOpenKind={(kind) => openPlaceList?.("library", kind, tabLabel(kind))}
         {...(plugins === undefined || openSettings === undefined
           ? {}

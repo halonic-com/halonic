@@ -73,15 +73,19 @@ export function tabLabel(kind: LibraryItemKind): string {
   return plural.charAt(0).toUpperCase() + plural.slice(1);
 }
 
-/** A phone row's detail (flow-library 8.1): how many there are, "3 skills", "1 source". */
-export function countLine(kind: LibraryItemKind, count: number): string {
+/**
+ * A phone row's detail (flow-library 8.1): how many there are, "3 skills", "1 source", and how
+ * many of them are blocked when any is, "2 connectors · 1 blocked".
+ */
+export function countLine(kind: LibraryItemKind, count: number, blocked = 0): string {
   const noun = {
     skill: "skill",
     knowledge: "source",
     collection: "collection",
     connector: "connector",
   }[kind];
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+  const line = `${count} ${noun}${count === 1 ? "" : "s"}`;
+  return blocked > 0 ? `${line} · ${blocked} blocked` : line;
 }
 
 /** The one sentence under the title for the tab. */

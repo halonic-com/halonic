@@ -6,6 +6,8 @@ import { PlainList } from "./plain-list.tsx";
 export interface LibraryKindListProps {
   /** How many of each kind there are; a kind not read yet (or that failed) shows no line. */
   readonly counts?: Partial<Record<LibraryItemKind, number>>;
+  /** How many connectors are blocked; none, or not read, adds nothing to the Connectors line. */
+  readonly blockedConnectors?: number;
   readonly onOpenKind: (kind: LibraryItemKind) => void;
   /** The Plugins row's action. Without it, the list has no Plugins row. */
   readonly onOpenPlugins?: () => void;
@@ -19,7 +21,12 @@ const rowClass =
  * opening that kind's list on its own page. The heading is for a screen reader; the top bar and
  * the bottom navigation stay.
  */
-export function LibraryKindList({ counts = {}, onOpenKind, onOpenPlugins }: LibraryKindListProps) {
+export function LibraryKindList({
+  counts = {},
+  blockedConnectors = 0,
+  onOpenKind,
+  onOpenPlugins,
+}: LibraryKindListProps) {
   return (
     <div>
       <h1 className="sr-only">Library</h1>
@@ -30,7 +37,9 @@ export function LibraryKindList({ counts = {}, onOpenKind, onOpenPlugins }: Libr
               <span className="flex min-w-0 flex-col">
                 <span className="text-body">{tabLabel(kind)}</span>
                 {counts[kind] !== undefined && (
-                  <span className="text-small text-fg-muted">{countLine(kind, counts[kind])}</span>
+                  <span className="text-small text-fg-muted">
+                    {countLine(kind, counts[kind], kind === "connector" ? blockedConnectors : 0)}
+                  </span>
                 )}
               </span>
               <span aria-hidden="true">›</span>
