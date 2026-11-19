@@ -90,8 +90,17 @@ verifies("settings.agent-sandbox-state", () => {
   });
 
   it("leaves the fix out where it is the section's own set-up button", () => {
+    const v = view({ check: { state: "unavailable", code: "distro-missing" } });
+    expect(v.lead).toBe(
+      "WSL works, but Halonic's own Linux system for the sandbox isn't installed.",
+    );
+  });
+
+  it("keeps the fix for a reason the set-up button doesn't fix", () => {
     const v = view({ check: { state: "unavailable", code: "windows" } });
-    expect(v.lead).toBe("The sandbox doesn't work on Windows in this version of Halonic.");
+    expect(v.lead).toBe(
+      "The sandbox can't start on this version of Windows. Pick another sandbox in Settings.",
+    );
   });
 
   it("gives served Studio the fix that says to do it on the computer", () => {
