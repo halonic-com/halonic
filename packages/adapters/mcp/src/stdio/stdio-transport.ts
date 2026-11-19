@@ -49,6 +49,7 @@ export class StdioTransport implements McpTransport {
   readonly #waiting = new Map<number, MessageQueue>();
   readonly #errorOutput: ErrorOutputTail;
   #ended: McpError | undefined;
+  #endedByProgram = false;
   #stopped: Promise<void> | undefined;
 
   constructor(program: RunningProgram, limits: StdioLimits) {
@@ -61,6 +62,15 @@ export class StdioTransport implements McpTransport {
   /** Whether the session has ended, for any reason: no request can be sent any more. */
   get ended(): boolean {
     return this.#ended !== undefined;
+  }
+
+  /**
+   * Whether the session ended because the program stopped by itself: its
+   * output ended or it stopped reading its input. Not when it didn't
+   * answer in time, sent something we can't read, or was closed.
+   */
+  get endedByProgram(): boolean {
+    return this.#endedByProgram;
   }
 
   /**
@@ -122,7 +132,7 @@ export class StdioTransport implements McpTransport {
       await this.#program.write(`${JSON.stringify(message)}\n`);
     } catch {
       const error = new McpStoppedError("The program stopped reading its input.");
-      this.#end(error);
+      this.#end(error, { byProgram: true });
       throw error;
     }
   }
@@ -133,7 +143,7 @@ export class StdioTransport implements McpTransport {
       if (line.trim() === "") continue;
       await this.#route(parseLine(line));
     }
-    this.#end(new McpStoppedError("The program stopped."));
+    this.#end(new McpStoppedError("The program stopped."), { byProgram: true });
   }
 
   async #route(value: unknown): Promise<void> {
@@ -170,9 +180,10 @@ export class StdioTransport implements McpTransport {
   }
 
   /** Ends the session once: the first reason wins. */
-  #end(error: McpError): void {
+  #end(error: McpError, { byProgram = false } = {}): void {
     if (this.#ended !== undefined) return;
     this.#ended = error;
+    this.#endedByProgram = byProgram;
     for (const queue of this.#waiting.values()) queue.fail(error);
     // `RunningProgram` promises not to throw while stopping; this guards the
     // Node process against an unhandled rejection if a starter breaks that.

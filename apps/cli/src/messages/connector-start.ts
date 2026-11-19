@@ -22,6 +22,13 @@ export const connectorStartMessages = defineMessages("connectorStart", {
     file === undefined
       ? phrase`Install ${program}, or change the command in the ${connector} connector file.`
       : phrase`Install ${program}, or change the command in ${file}.`,
+  programStopped: (program: string) =>
+    phrase`The program ${program} stopped right after it started.`,
+  /** `file` as for `programMissingFix`. The command and args, not the program alone: `npx` on its own only prints its help (Sofia, HAL-13732). */
+  programStoppedFix: (connector: string, file: string | undefined) =>
+    file === undefined
+      ? phrase`To see why, run the command and args from the ${connector} connector file yourself.`
+      : phrase`To see why, run the command and args from ${file} yourself.`,
   secretMissing: (secret: string) => phrase`The secret ${secret} isn't set on this computer.`,
   secretMissingFix: (secret: string) =>
     phrase`Save it with halonic secret set ${secret}, or set ${secretVariableName(secret)}, then try again.`,

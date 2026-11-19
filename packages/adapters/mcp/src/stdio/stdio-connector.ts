@@ -18,7 +18,7 @@ import { cleanErrorOutput, type PersonalDetails } from "./error-output.ts";
 import { inheritedSecrets } from "./inherited-secrets.ts";
 import type { AgentWorkingFolders, ProgramLaunch, ProgramStarter } from "./program.ts";
 import { defaultRestartLimits, RestartLimit, type RestartLimits } from "./restart-limit.ts";
-import { SecretNotSetError } from "./start-errors.ts";
+import { ProgramStoppedAtStartError, SecretNotSetError } from "./start-errors.ts";
 import { defaultStdioLimits, type StdioLimits, StdioTransport } from "./stdio-transport.ts";
 import { ConnectorStoppedError } from "./stopped-error.ts";
 import { resultText, toConnectorTool } from "./tool-mapping.ts";
@@ -224,6 +224,7 @@ class McpStdioConnector implements ConnectorClient {
     } catch (error) {
       // The next call starts a new program, so this one must not keep running.
       await transport.close();
+      if (transport.endedByProgram) throw new ProgramStoppedAtStartError(this.#stdio.command);
       throw error;
     }
     return { session, transport };

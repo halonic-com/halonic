@@ -19,7 +19,8 @@ export interface ListedMcpTool {
  * Stdio MCP servers in this process: each program started answers
  * `initialize` and lists {@link FakeMcpServers.tools} as they are when it is
  * asked, so a test can change a tool between two listings. A program
- * named in {@link FakeMcpServers.missing} isn't on this computer.
+ * named in {@link FakeMcpServers.missing} isn't on this computer, and one
+ * named in {@link FakeMcpServers.stopsAtStart} exits as soon as it starts.
  */
 export class FakeMcpServers implements ProgramStarter {
   /** Every program started, in order. */
@@ -30,6 +31,8 @@ export class FakeMcpServers implements ProgramStarter {
   tools: ListedMcpTool[];
   /** The programs that aren't on this computer: starting one fails as the real starter does. */
   readonly missing = new Set<string>();
+  /** The programs that exit as soon as they start, as `false` does. */
+  readonly stopsAtStart = new Set<string>();
 
   constructor(tools: ListedMcpTool[]) {
     this.tools = tools;
@@ -52,8 +55,10 @@ export class FakeMcpServers implements ProgramStarter {
       stdout.end();
       resolveExit();
     };
+    if (this.stopsAtStart.has(launch.program)) end();
     return {
       write: async (text) => {
+        if (ended) throw new Error("write after end");
         for (const line of text.split("\n").filter((part) => part !== "")) {
           const answer = this.answerTo(JSON.parse(line) as { id?: number; method?: string });
           if (answer !== undefined) stdout.write(`${JSON.stringify(answer)}\n`);

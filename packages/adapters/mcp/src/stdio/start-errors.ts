@@ -1,3 +1,5 @@
+import { McpStoppedError } from "../protocol/errors.ts";
+
 /**
  * The program a connector names isn't on this computer: no absolute folder
  * of its `PATH` has it. The message is ours; `program` is the name as the
@@ -34,5 +36,23 @@ export class SecretNotSetError extends Error {
   constructor(connectorId: string, secretName: string) {
     super(`Connector "${connectorId}" needs the secret "${secretName}", which isn't set.`);
     this.secretName = secretName;
+  }
+}
+
+/**
+ * A connector's program stopped by itself right after it started, before
+ * it answered `initialize`: it exited, or closed its input or output. It is
+ * an {@link McpStoppedError}, so a caller that only asks "did it stop?"
+ * still can. `program` is the name as the connector's file wrote it, so a
+ * caller can say which program stopped without passing on any other text,
+ * such as the program's own output.
+ */
+export class ProgramStoppedAtStartError extends McpStoppedError {
+  /** The program as the connector's `command` names it, such as `notes-mcp`. */
+  readonly program: string;
+
+  constructor(program: string) {
+    super(`The program ${program} stopped right after it started, before it answered initialize.`);
+    this.program = program;
   }
 }
