@@ -1,6 +1,9 @@
 import { itemLocationKey, type StudioWorkspace } from "@halonicjs/studio-shell";
 
-/** Acme's support workflow, the one the demo's first run starts (first-run-flow 3.2). */
+/**
+ * Acme's support workflow, the one the demo's first run starts (first-run-flow 3.2). The app's
+ * `sample-files.test.ts` fails if the bundled Acme no longer has it here, under this name.
+ */
 const supportReply = { kind: "workflow", hub: "support", id: "support-reply" } as const;
 
 /**
