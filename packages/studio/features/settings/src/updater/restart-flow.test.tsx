@@ -89,6 +89,7 @@ function setup(
     }),
     announcer: { announce },
     openSettings,
+    settingsSections: [{ id: "about", title: "About Halonic" }],
   } as unknown as WorkspaceContext;
   const toasts = createToastStore();
   const openExternal = vi.fn(async () => {});
@@ -251,6 +252,18 @@ verifies("settings.restart-flow", () => {
       "About Halonic",
       "Check for Halonic updates",
       "Restart to update Halonic",
+    ]);
+  });
+
+  it("offers About Halonic in Ctrl K only where the window has the section", async () => {
+    const { context } = await mount(statusOf({ kind: "up-to-date" }));
+    const without = { ...context, settingsSections: [{ id: "appearance", title: "Appearance" }] };
+    expect(updateCommands(without).map((command) => command.title)).toEqual([
+      "Check for Halonic updates",
+    ]);
+    const { settingsSections: _, ...unsaid } = context;
+    expect(updateCommands(unsaid).map((command) => command.title)).toEqual([
+      "Check for Halonic updates",
     ]);
   });
 
