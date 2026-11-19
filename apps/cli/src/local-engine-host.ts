@@ -10,8 +10,8 @@
 // In 0.1 it has no Halonic tools. It has the harness host
 // (`openLocalHarnessHost`, HAL-7747): the engine can run an agent in a
 // harness, in a worktree of its own in the profile, and keeps what the run
-// changed as a proposal there. `halonic run` still refuses a harness agent
-// (`refuseHarnessAgents`) until HAL-6477 turns them on. Each top-level
+// changed as a proposal there, which `halonic proposals` reviews (HAL-6477).
+// `halonic routines watch` still refuses a harness agent. Each top-level
 // run starts its own connectors (`runConnectors`, HAL-6277) in the folder its
 // programs start in: `programFolders`, a copy at the run's commit for a live
 // run (HAL-4975). A chat turn calls the connectors it is given, none by

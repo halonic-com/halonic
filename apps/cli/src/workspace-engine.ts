@@ -103,6 +103,12 @@ export interface WorkspaceEngineTarget {
   readonly runs: readonly SandboxGateRun[];
   /** What line 1 of a refusal ends with: "Nothing ran." for `run`, "Nothing was sent." for `runs send`. */
   readonly ending: Message;
+  /**
+   * What {@link checkEngineRuns} answered, when the command checked the
+   * sandbox itself before its trust check, as `run` does for a harness
+   * agent (HAL-6580): the engine then doesn't ask the sandbox again.
+   */
+  readonly sandboxChecked?: readonly UnsandboxedAgent[];
   /** The routine scheduler on the engine's tick, for `routines watch`; none for a single run. */
   readonly routines?: (engine: RoutineEngine) => RoutineTicks;
   /**
@@ -164,7 +170,7 @@ export async function openWorkspaceEngine(
   setup: WorkspaceEngineSetup,
   target: WorkspaceEngineTarget,
 ): Promise<WorkspaceEngine> {
-  const unsandboxed = await checkEngineRuns(setup, target);
+  const unsandboxed = target.sandboxChecked ?? (await checkEngineRuns(setup, target));
   let opened: LocalEngine | undefined;
   const { onStuck, onGaveUp = () => {} } = target;
   const stuck = stuckTimerWatch(
