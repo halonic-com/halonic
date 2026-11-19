@@ -20,7 +20,7 @@ import type {
   HarnessReadiness,
   HarnessSignIn,
 } from "./api.ts";
-import { alreadyHandsWork, handOffPath } from "./api.ts";
+import { loopRefusal } from "./api.ts";
 
 /** What {@link memoryAgentsHost} starts with. */
 export interface MemoryAgentsHostOptions {
@@ -131,14 +131,8 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
 
   /** Rejects a new subagent that already hands work back to this agent, as the app's host does. */
   const refuseLoops = (ref: AgentRef, before: readonly string[], after: readonly string[]) => {
-    const team = teamOf(ref.hubId);
-    for (const id of after.filter((each) => !before.includes(each))) {
-      const path = handOffPath(team, id, ref.id);
-      if (path !== undefined) {
-        const names = path.map((each) => team.find((member) => member.id === each)?.name ?? each);
-        throw new KindedError("conflict", `${alreadyHandsWork(names)}; that would be a loop.`);
-      }
-    }
+    const refusal = loopRefusal(teamOf(ref.hubId), ref.id, before, after);
+    if (refusal !== undefined) throw new KindedError("conflict", refusal);
   };
 
   return {

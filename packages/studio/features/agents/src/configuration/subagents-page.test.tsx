@@ -64,8 +64,10 @@ verifies("agents.configuration.subagents", () => {
     const { page } = await openSubagents();
     expect(page.textContent).toContain("The agents Mail triage hands work to.");
     expect(page.querySelector("[aria-label='Remove Writer']")).not.toBeNull();
-    const disabled = page.querySelector("[aria-disabled=true]");
-    expect(disabled?.textContent).toBe("Sorter");
+    const disabled = [...page.querySelectorAll("li > span")].find(
+      (chip) => chip.textContent === "Sorter",
+    );
+    expect(disabled?.hasAttribute("aria-disabled")).toBe(false);
     expect(disabled?.parentElement?.textContent).toContain(
       "Sorter already hands work to Mail triage",
     );

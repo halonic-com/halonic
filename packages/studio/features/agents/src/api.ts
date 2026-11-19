@@ -196,6 +196,27 @@ export function handOffPath(
  */
 export type AgentLiveState = "never-versioned" | "live" | "not-live";
 
+/**
+ * Why the host refuses to give agent `to` the subagents `next` when it has `now`: the reason of the
+ * first new subagent that already hands work back to `to`, as "… ; that would be a loop.", or
+ * `undefined` when none does. Both hosts ask this, so the sentence lives in one place.
+ */
+export function loopRefusal(
+  team: readonly AgentTeamMember[],
+  to: string,
+  now: readonly string[],
+  next: readonly string[],
+): string | undefined {
+  for (const id of next.filter((each) => !now.includes(each))) {
+    const way = handOffPath(team, id, to);
+    if (way !== undefined) {
+      const names = way.map((each) => team.find((member) => member.id === each)?.name ?? each);
+      return `${alreadyHandsWork(names)}; that would be a loop.`;
+    }
+  }
+  return undefined;
+}
+
 /** The lists of the Tools page: what an agent uses of the Library. */
 export type AgentToolList = "skills" | "knowledge" | "connectors";
 
