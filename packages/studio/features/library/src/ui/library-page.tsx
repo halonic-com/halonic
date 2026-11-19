@@ -277,8 +277,9 @@ export function LibraryPage({
 
   return (
     <div ref={page}>
-      {/* On a phone the top bar names the kind's list, so the heading says the same. */}
-      <h1 className={phone ? "sr-only" : "px-4 pt-4 text-title"}>
+      {/* On a phone the top bar names the kind's list, so the heading says the same. Margin, not
+          padding: the shell focuses it, and its focus ring must fit inside the scrolling page. */}
+      <h1 className={phone ? "sr-only" : "mx-4 mt-4 text-title"}>
         {phone ? tabLabel(kind) : "Library"}
       </h1>
       <p className="px-4 pt-2 text-small text-fg-muted">{tabSentence(kind)}</p>

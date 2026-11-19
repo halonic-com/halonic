@@ -20,8 +20,8 @@ export interface ListHeadingProps {
   readonly layout?: ListHeadingLayout;
   /**
    * For a heading that takes focus from code, as Home's section heading after Try again works
-   * (a11y 1.4). With it the heading gets `tabindex="-1"`, so only code can focus it, and no ring:
-   * it isn't a control.
+   * (a11y 1.4). With it the heading gets `tabindex="-1"`, so only code can focus it, and the
+   * theme draws the focus ring round it, as round every heading that takes focus from code.
    */
   readonly headingRef?: Ref<HTMLHeadingElement>;
 }
@@ -56,7 +56,7 @@ export function ListHeading({
       ref={headingRef}
       id={id}
       tabIndex={headingRef === undefined ? undefined : -1}
-      className={`${shared} ${layoutClasses[layout]}${headingRef === undefined ? "" : " outline-none"}`}
+      className={`${shared} ${layoutClasses[layout]}`}
     >
       <span className="min-w-0 truncate">{name}</span>
       {hasDetail ? (

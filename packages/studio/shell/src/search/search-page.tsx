@@ -108,7 +108,7 @@ export function SearchPage(props: SearchPageProps) {
   return (
     <div className="mx-auto flex w-full max-w-page flex-col gap-4 px-6 py-6">
       <div className="flex flex-col gap-1">
-        <h1 tabIndex={-1} className="text-title outline-none">
+        <h1 tabIndex={-1} className="text-title">
           Search
         </h1>
         <p className="text-body text-fg-muted">{pageSentence}</p>

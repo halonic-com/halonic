@@ -67,7 +67,7 @@ export function SandboxModal({
           >
             <header className="flex flex-col gap-1">
               {step === undefined ? null : <p className="text-small text-fg-muted">{step}</p>}
-              <h2 ref={titleRef} id={titleId} tabIndex={-1} className="text-section outline-none">
+              <h2 ref={titleRef} id={titleId} tabIndex={-1} className="text-section">
                 {title}
               </h2>
             </header>

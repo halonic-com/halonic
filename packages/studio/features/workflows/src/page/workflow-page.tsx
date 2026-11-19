@@ -208,7 +208,7 @@ export function WorkflowScreen({
           <LetterTile name={name} />
           <div className="flex flex-col">
             <p className="text-caption text-fg-muted">{pageWords.kind}</p>
-            <h1 ref={title} tabIndex={-1} className={phone ? "sr-only" : "text-title outline-none"}>
+            <h1 ref={title} tabIndex={-1} className={phone ? "sr-only" : "text-title"}>
               {name}
             </h1>
           </div>

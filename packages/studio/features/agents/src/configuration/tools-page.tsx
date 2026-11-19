@@ -145,7 +145,7 @@ function ToolList({ list, chosen, options, save, openLibrary }: ToolListProps) {
 
   return (
     <section ref={section} aria-labelledby={headingId} className="flex flex-col gap-2">
-      <h3 id={headingId} tabIndex={-1} className="text-body-strong text-fg outline-none">
+      <h3 id={headingId} tabIndex={-1} className="text-body-strong text-fg">
         {words.toolLists[list]}
       </h3>
       {ids.length > 0 && (

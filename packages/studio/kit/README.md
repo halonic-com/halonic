@@ -76,6 +76,7 @@ dark values; that decision belongs to the first `apps/studio` pull request.
 | a hovered window tab, over the frame | `bg-tab-hover` |
 | the workflow canvas | `bg-canvas-grid` |
 | the focus ring (keyboard focus only) | `focus-ring`, `focus-ring-inset` for list rows |
+| a heading only code focuses (`tabindex="-1"`) | none: the theme rings it; never add `outline-none` |
 | a selected row's mark | `selected-bar`, `selected-forced` |
 | Windows high-contrast mode only | `text-forced-disabled` |
 | `--breakpoint-wide` | `wide:`, `max-wide:` (compact) |
@@ -149,6 +150,8 @@ and 60% instead of 45% for a waiting button. Windows high-contrast mode wins whe
 - the agent orb's edges keep 3:1 and text keeps 4.5:1 on the stack shades, and each shade is darker
   than the card in front;
 - the focus rings never remove the outline, so they show in Windows high-contrast mode;
+- a heading with `tabindex="-1"` wears the focus ring without a class, and no Studio heading that
+  takes focus from code carries `outline-none`;
 - the more-contrast block raises exactly its seven variables, and the raised text colours gain
   contrast on every surface;
 - the kit imports no other Studio package, in any import form.
@@ -472,8 +475,9 @@ broke". It's centred in the space it replaces, in a 360px column (`max-w-empty`)
 | `align` | `start`, only for an error: one section of a page couldn't load |
 | `titleRef` | The title, which code focuses when the last row of a list goes (23 A2) |
 
-The title has `tabindex="-1"` and draws no ring: it's where focus goes when what had it goes away,
-not a control. The tile and the alert mark are hidden from screen readers; the title says it all.
+The title has `tabindex="-1"`: it's where focus goes when what had it goes away. Like every heading
+that takes focus from code, it wears the focus ring on keyboard focus. The tile and the alert mark
+are hidden from screen readers; the title says it all.
 
 `align="start"` is for an error in one section of a page (Home's Recent runs), so the whole page
 doesn't look broken: left-aligned in the 16px inset, the alert mark inline with a
@@ -1176,8 +1180,9 @@ panel fills what it's given and never sets its own width.
 It's a `complementary` region (`<aside>`) named by its title, or by `label`. On desktop it's docked:
 a 1px line on the side facing the main view, no radius and no shadow. The header is 48px with the
 title on one line (ellipsised; the region's name keeps the full text) and the actions 4px apart; the
-footer is 48px too, its `sm` buttons 8px apart. The title takes focus with no ring, as it isn't a
-control. It opens and closes without motion; the main view reflows once.
+footer is 48px too, its `sm` buttons 8px apart. The title takes focus and wears the focus ring, as
+every heading that takes focus from code does. It opens and closes without motion; the main view
+reflows once.
 
 **On a phone** it reads the presentation and becomes a panel sheet: the whole screen, its header
 the phone top bar (`--spacing-phone-bar` and the top safe area) with a 48px **Back** at the top

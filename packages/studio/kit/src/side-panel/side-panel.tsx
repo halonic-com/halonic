@@ -150,7 +150,7 @@ function PanelHeader({ props, sheet, inDialog, titleId, title }: PanelHeaderProp
         ref={title}
         id={titleId}
         tabIndex={-1}
-        className={`min-w-0 flex-1 truncate outline-none ${sheet ? "text-heading" : "text-section"}`}
+        className={`min-w-0 flex-1 truncate ${sheet ? "text-heading" : "text-section"}`}
       >
         {props.title}
       </h2>

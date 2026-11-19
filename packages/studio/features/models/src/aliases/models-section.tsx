@@ -47,7 +47,7 @@ export function ModelsSection({ context }: ItemPageSectionViewProps) {
       className="flex flex-col gap-2"
     >
       <div className="flex items-center justify-between gap-2">
-        <h2 ref={heading} id={headingId} tabIndex={-1} className="text-heading outline-none">
+        <h2 ref={heading} id={headingId} tabIndex={-1} className="text-heading">
           {MODELS_HEADING}
         </h2>
         <Button ref={newButton} variant="secondary" onClick={() => setCreating(true)}>

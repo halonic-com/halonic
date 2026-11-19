@@ -45,7 +45,7 @@ verifies("kit.side-panel", () => {
     expect(title.className).toContain("truncate");
     expect(title.className).toContain("text-section");
     expect(title.getAttribute("tabindex")).toBe("-1");
-    expect(title.className).toContain("outline-none");
+    expect(title.className).not.toContain("outline-none");
     expect(body?.className).toContain("min-h-0 flex-1 overflow-y-auto px-4 py-3");
     expect(body?.className).not.toContain("bg-halo-wash");
   });

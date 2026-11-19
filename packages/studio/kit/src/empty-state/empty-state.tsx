@@ -93,8 +93,12 @@ interface SectionError extends EmptyStateBase {
 /** The props of `EmptyState`. */
 export type EmptyStateProps = Nothing | CentredError | SectionError;
 
-/** The title can take focus from code (A2), but it isn't a control, so it draws no ring. */
-const titleFocus = "outline-none";
+/**
+ * The title takes focus from code (A2) and wears the focus ring, as every heading that does
+ * (kit.focusable-heading). The theme rings a heading by itself; a `plain` title is a paragraph,
+ * which that rule doesn't reach, so the class says it.
+ */
+const titleFocus = "focus-ring";
 
 /** The alert mark next to an error's title when there's no tile for it. */
 const inlineAlert = "inline-grid size-icon-md shrink-0 place-items-center *:size-full text-danger";

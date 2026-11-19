@@ -156,7 +156,7 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
   return (
     <div className="flex w-full flex-col gap-4 px-6 py-5">
       <header className={phone ? "sr-only" : "flex flex-col gap-1"}>
-        <h1 ref={title} tabIndex={-1} className="text-title outline-none">
+        <h1 ref={title} tabIndex={-1} className="text-title">
           {listWords.title}
         </h1>
         {(listings.length > 0 || load.kind !== "ready") && (

@@ -234,13 +234,13 @@ verifies("kit.empty-state", () => {
     expect(onReload).not.toHaveBeenCalled();
   });
 
-  it("lets code focus its title, which draws no ring", () => {
+  it("lets code focus its title, which wears the focus ring", () => {
     const titleRef = createRef<HTMLHeadingElement>();
     const { container } = render(<EmptyState title="No files to stage" titleRef={titleRef} />);
     const title = container.querySelector("h2") as HTMLElement;
     expect(titleRef.current).toBe(title);
     expect(title.getAttribute("tabindex")).toBe("-1");
-    expect(title.className).toContain("outline-none");
+    expect(title.className).toContain("focus-ring");
     act(() => titleRef.current?.focus());
     expect(document.activeElement).toBe(title);
   });
