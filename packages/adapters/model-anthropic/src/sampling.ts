@@ -71,3 +71,15 @@ function modelFamily(model: string): string {
     .replace(/-latest$/, "")
     .replace(/-\d{8}$/, "");
 }
+
+/**
+ * The run log's notes on the sampling settings left out of a call to
+ * `model`, one per setting, in the words of HAL-12285.
+ *
+ * @example
+ * samplingNotes("claude-sonnet-5-5", ["temperature"]);
+ * // => ["Left out temperature: claude-sonnet-5-5 doesn't take it."]
+ */
+export function samplingNotes(model: string, leftOut: readonly string[]): string[] {
+  return leftOut.map((name) => `Left out ${name}: ${model} doesn't take it.`);
+}
