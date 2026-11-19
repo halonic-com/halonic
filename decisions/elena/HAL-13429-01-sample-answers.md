@@ -2,6 +2,7 @@
 
 - Approval: the board approved the first-run flow on 19 Nov (HAL-7993; first-run-flow revision 7, section 8a and the team decisions in 10.2 on HAL-7985). Liam decided on HAL-13429 to keep the one-click copy without a folder dialog (10.2 R2), and approves this note there
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BRSt60caZG3krf6cYMsCT3K3fQ4EDRmPPKQtyK60VRIMm6FIypdtcK6+2OkyKKKkMIW+YqZUYvGgQAJ4UlVtDw==
 
 The board chose one name for the scripted path, **Sample answers**. On Welcome, **Open demo** takes the place of
 **Try the Acme sample**. This pull request changes the words; the next one in the stack changes Welcome's order. The
