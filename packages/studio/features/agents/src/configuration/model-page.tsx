@@ -57,7 +57,8 @@ export function ModelPage({
     (next) => save({ maxSteps: next.trim() === "" ? DEFAULT_TURN_LIMIT : Number(next) }),
     turnLimitCheck,
   );
-  useReportNotSaved(reportNotSaved, [turnLimit]);
+  const [moreNotSaved, setMoreNotSaved] = useState(0);
+  useReportNotSaved(reportNotSaved, [turnLimit], moreNotSaved);
   // A model the file names that isn't an alias stays in the list, so it isn't lost. A
   // `provider/model` name is fine as it is; an alias the hub doesn't have gets an error under it.
   const options: SelectOption[] = aliases.map((alias) => ({ value: alias, label: alias }));
@@ -95,7 +96,7 @@ export function ModelPage({
           onBlur={turnLimit.flush}
         />
       </Field>
-      <MoreSettings params={settings.params} save={save} />
+      <MoreSettings params={settings.params} save={save} reportNotSaved={setMoreNotSaved} />
     </div>
   );
 }

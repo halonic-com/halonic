@@ -6,7 +6,14 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { AgentModelParams } from "../api.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { AgentScreen } from "../page/agent-page.tsx";
-import { buttonNamed, show, typeInto, typeIntoArea, unmount } from "../test-support.tsx";
+import {
+  buttonNamed,
+  notSavedCounts,
+  show,
+  typeInto,
+  typeIntoArea,
+  unmount,
+} from "../test-support.tsx";
 import { SAVE_PAUSE_MS } from "./use-auto-saved.ts";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -17,13 +24,16 @@ afterEach(() => {
 
 const sorter = { hubId: "acme", id: "sorter" };
 
-async function openMoreSettings(params: AgentModelParams = {}) {
+async function openMoreSettings(
+  params: AgentModelParams = {},
+  saving?: ReturnType<typeof notSavedCounts>["saving"],
+) {
   const agents = memoryAgentsHost({
     hubs: [{ id: "acme", name: "acme" }],
     agents: [{ ...sorter, name: "Sorter", model: "fast", params }],
     modelAliases: ["fast"],
   });
-  const page = await show(<AgentScreen host={agents} hubId="acme" id="sorter" />);
+  const page = await show(<AgentScreen host={agents} saving={saving} hubId="acme" id="sorter" />);
   await act(async () => buttonNamed(page, "Configuration")?.click());
   await act(async () =>
     [...page.querySelectorAll<HTMLElement>("[role=tab]")]
@@ -76,6 +86,19 @@ verifies("agents.configuration.more-settings", () => {
     expect(page.textContent).toContain("Enter a number from 0 to 2.");
     expect(page.textContent).toContain("Enter a number from 0 to 1.");
     expect(page.textContent).toContain("Enter a whole number above 0.");
+  });
+
+  it("counts each number with a mistake as a field not saved, until it is fixed", async () => {
+    const { counts, saving } = notSavedCounts();
+    const { page } = await openMoreSettings({}, saving);
+    await typeInto(control(page, "Temperature"), "3");
+    await typeInto(control(page, "Max tokens"), "2.5");
+    await pause();
+    expect(counts.at(-1)).toBe(2);
+
+    await typeInto(control(page, "Temperature"), "1");
+    await typeInto(control(page, "Max tokens"), "800");
+    expect(counts.at(-1)).toBe(0);
   });
 
   it("keeps a number as typed while it reads the same as the file", async () => {

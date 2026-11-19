@@ -3,7 +3,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { AgentChange, AgentOutput } from "../api.ts";
 import { configurationWords as words } from "./configuration-words.ts";
 import { OptionChips } from "./option-chips.tsx";
-import { type AutoSaved, useAutoSaved } from "./use-auto-saved.ts";
+import { type AutoSaved, useAutoSaved, useReportNotSaved } from "./use-auto-saved.ts";
 
 type OutputKind = AgentOutput["type"];
 
@@ -50,15 +50,18 @@ export interface OutputFieldProps {
   readonly output: AgentOutput;
   /** Saves one change; resolves to whether it was written. */
   readonly save: (change: AgentChange) => Promise<boolean>;
+  /** Hears whether Output is a field not saved (1) or not (0), for the page's count. */
+  readonly reportNotSaved?: ((count: number) => void) | undefined;
 }
 
 /**
  * Behaviour's Output (`agents.configuration.output`): Text, One of a list or JSON, as Tabs. Each
  * saves by itself like the other fields: picking a tab, adding or removing an option, and a pause
  * in typing the schema or leaving it. A list with no options or a schema with a mistake isn't
- * saved: the file keeps what it had, and the field says what to fix.
+ * saved: the file keeps what it had, and the field says what to fix. Until then, or while the
+ * schema's save failed, Output counts as a field not saved.
  */
-export function OutputField({ output, save }: OutputFieldProps) {
+export function OutputField({ output, save, reportNotSaved }: OutputFieldProps) {
   const ids = useTabIds();
   const [kind, setKind] = useState<OutputKind>(output.type);
   const [options, setOptions] = useState<readonly string[]>(
@@ -71,6 +74,10 @@ export function OutputField({ output, save }: OutputFieldProps) {
     async (text) => picked.current === "json" && save({ output: jsonOutput(text) }),
     schemaCheck,
   );
+  // Only the picked tab's mistake counts: the others aren't what the file is given.
+  const notSaved =
+    (kind === "choice" && options.length === 0) || (kind === "json" && schema.notSaved);
+  useReportNotSaved(reportNotSaved, [{ notSaved }]);
 
   // A change made elsewhere (the file edited, Undo) shows here. Comparing the text, not the
   // object, keeps a tab picked but not saved yet while other fields save.

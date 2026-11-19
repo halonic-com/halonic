@@ -87,13 +87,15 @@ export function useAutoSaved(
 
 /**
  * Tells the page's `report` how many of its fields aren't saved, each time the number changes,
- * and 0 when the page goes, since its boxes go with it.
+ * and 0 when the page goes, since its boxes go with it. `inParts` adds the fields not saved that
+ * parts of the page with fields of their own (Output, More settings) reported to it.
  */
 export function useReportNotSaved(
   report: ((count: number) => void) | undefined,
-  fields: readonly AutoSaved[],
+  fields: readonly Pick<AutoSaved, "notSaved">[],
+  inParts = 0,
 ): void {
-  const count = fields.filter((field) => field.notSaved).length;
+  const count = fields.filter((field) => field.notSaved).length + inParts;
   useEffect(() => {
     report?.(count);
     return () => report?.(0);

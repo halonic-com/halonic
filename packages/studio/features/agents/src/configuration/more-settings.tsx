@@ -8,7 +8,7 @@ import {
   agentReasoningEfforts,
 } from "../api.ts";
 import { configurationWords as words } from "./configuration-words.ts";
-import { type AutoSaved, useAutoSaved } from "./use-auto-saved.ts";
+import { type AutoSaved, useAutoSaved, useReportNotSaved } from "./use-auto-saved.ts";
 
 /** The check of a number box: `null` when it is empty, or a number from `min` to `max`. */
 const numberFrom =
@@ -85,15 +85,17 @@ export interface MoreSettingsProps {
   readonly params: AgentModelParams;
   /** Saves one change; resolves to whether it was written. */
   readonly save: (change: AgentChange) => Promise<boolean>;
+  /** Hears how many of its boxes aren't saved, for the page's count. */
+  readonly reportNotSaved?: ((count: number) => void) | undefined;
 }
 
 /**
  * The Model page's **More settings** (`agents.configuration.more-settings`), folded: temperature,
  * top-p, max tokens, stop and reasoning effort. Each saves by itself, and an empty one takes the
- * setting out of the file, so the model's default applies. A number with a mistake isn't saved.
- * Folded, the row names the settings the file sets.
+ * setting out of the file, so the model's default applies. A number with a mistake isn't saved,
+ * and counts as a field not saved, as does a box whose save failed. Folded, the row names the settings the file sets.
  */
-export function MoreSettings({ params, save }: MoreSettingsProps) {
+export function MoreSettings({ params, save, reportNotSaved }: MoreSettingsProps) {
   const saveParams = (change: AgentModelParamsChange) => save({ params: change });
   const temperature = useTypedSetting(
     params.temperature,
@@ -119,6 +121,7 @@ export function MoreSettings({ params, save }: MoreSettingsProps) {
     (value) => saveParams({ stop: value }),
     noMistake,
   );
+  useReportNotSaved(reportNotSaved, [temperature, topP, maxTokens, stop]);
   const set = (["temperature", "topP", "maxTokens", "stop", "reasoningEffort"] as const)
     .filter((key) => params[key] !== undefined)
     .map((key) => words[key]);
