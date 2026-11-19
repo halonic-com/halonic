@@ -75,6 +75,25 @@ verifies("app.doctor-workspace-drive", () => {
   });
 });
 
+verifies("app.doctor-workspace-watch", () => {
+  it("warns about a workspace with more files than Studio watches, also when it is trusted", () => {
+    expect(workspaceLine("acme", "trusted", { tooManyFilesToWatch: 50_000 })).toEqual({
+      check: "workspace",
+      status: "warning",
+      name: "acme",
+      trust: "trusted",
+      tooManyFilesToWatch: 50_000,
+    });
+    expect(workspaceLine("acme", "not-needed", { tooManyFilesToWatch: 50_000 }).status).toBe(
+      "warning",
+    );
+  });
+
+  it("is never failed, as runs and Studio still work there", () => {
+    expect(workspaceLine("acme", "new", { tooManyFilesToWatch: 50_000 }).status).toBe("warning");
+  });
+});
+
 const onThisComputer: SandboxCapabilities = { files: "shared", strength: "os" };
 
 verifies("app.doctor-sandbox", () => {

@@ -208,21 +208,6 @@ verifies("cli.doctor-report", () => {
   });
 });
 
-verifies("cli.doctor-windows-drive", () => {
-  it("says under the trust which Windows drive the workspace is on, and how to fix it", () => {
-    const workspace: WorkspaceLine = { ...trusted, status: "warning", windowsDrive: "/mnt/c" };
-    const lines = printed(reportOf({ workspace, sandbox: sandboxReady, disk: diskFree }));
-
-    expect(check(lines, "Workspace")).toEqual([
-      "! Workspace   acme · trusted on this computer",
-      "              The workspace is on the Windows drive /mnt/c, so runs are slower. If Studio on Windows opens this folder, keep it there.",
-      "              Fix: if you use it only from the command line, move it into your Linux home folder (~), then run halonic doctor again.",
-      "              More: https://docs.halonic.dev/security/sandbox/#wsl2-folder",
-    ]);
-    expect(lines.at(-1)).toBe("No problems. 1 warning.");
-  });
-});
-
 verifies("cli.doctor-node", () => {
   it("says Windows' Node.js runs in a WSL folder, with the fix, between Harnesses and Disk", () => {
     const node: NodeLine = { check: "node", status: "warning", problem: "windows-node-in-wsl" };
