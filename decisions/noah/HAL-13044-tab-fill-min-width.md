@@ -3,6 +3,7 @@
 - Task: HAL-13044
 - Approval: team decision on the kit's approved Tabs under the HAL-2282 rule (Noah, kit owner, on HAL-13044); the reviewer of the pull request on HAL-13044 signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:roIoKg+rDCJRUrRYkbi6N1HPgWs7C3pviEg2EbW7ACXniP3VBwiJQBGLEjuMSMjJmrLn6tD7EI62wqWDomd/AA==
 
 ## What changes
 
