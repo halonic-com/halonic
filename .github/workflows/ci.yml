@@ -449,9 +449,10 @@ jobs:
       SHARD: ${{ matrix.shard }}
       # The packages whose tests run in test-1: the slowest, picked by the
       # cold-run timings (turbo-task-timings). test-2 tests every other
-      # package, so a new package always lands in a shard.
+      # package, so a new package always lands in a shard. The slowest of
+      # all, adapter-password-scrypt, stays in test-2: with only heavy tests
+      # beside it, one scrypt test ran past its 180 s limit.
       TEST_1_PACKAGES: >-
-        @halonicjs/adapter-password-scrypt
         @halonicjs/studio-kit
         @halonicjs/adapter-git
         @halonicjs/studio-shell

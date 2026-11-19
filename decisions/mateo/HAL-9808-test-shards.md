@@ -2,14 +2,14 @@
 
 - Approval: the plan on HAL-9808 (Liam approved Option 1, pull requests only, step 1); Liam approves this note in review on HAL-9808 and signs it
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:q12VYMrZhddOcROvohGbSRLYXuiJHsXq+XPdrWtXASHSrNJu4ZxE5MviGInglu5AzISigVb5BAjfE7llX5CmDg==
 
 ## What changes
 
 In `.github/workflows/ci.yml`, the `Typecheck, lint, test, build` job becomes a matrix. One
 expression picks the shards: a pull request runs `checks` (typecheck, lint, build), `test-1`
-(the tests of the ten slowest packages, `TEST_1_PACKAGES`) and `test-2` (every other package's
-tests, as `--filter=!…`). Main and the merge queue run one job, `all`, as before, with `trace`
+(the tests of nine of the ten slowest packages, `TEST_1_PACKAGES`) and `test-2` (every other
+package's tests, as `--filter=!…`). The slowest, `adapter-password-scrypt`, stays in `test-2`:
+in `test-1`, with only heavy tests beside it, one of its scrypt tests ran past its 180 s limit. Main and the merge queue run one job, `all`, as before, with `trace`
 and the cache save.
 
 - `checks` first runs `turbo run test --dry=json` for all packages and for each test shard,
