@@ -134,6 +134,7 @@ export {
   HeaderBadge,
   type HeaderBadgeButton,
   type HeaderBadgeMenu,
+  type HeaderBadgePhoneLine,
   type HeaderBadgeProps,
   type HeaderBadgeStatus,
   type HeaderBadgeStatusTone,
