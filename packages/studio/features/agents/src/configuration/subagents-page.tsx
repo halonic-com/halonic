@@ -6,6 +6,7 @@ import {
   EmptyState,
   Field,
   Input,
+  inlineLinkClasses,
   PlusIcon,
   SkeletonBar,
   useToastStore,
@@ -13,6 +14,7 @@ import {
 import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
+  type AgentListing,
   type AgentSettings,
   type AgentsHost,
   type AgentTeamMember,
@@ -28,6 +30,8 @@ export interface SubagentsPageProps {
   /** The host, for the hub's agents, saving the list and creating a new agent. */
   readonly host: AgentsHost;
   readonly settings: AgentSettings;
+  /** Opens a subagent as a card on top of the panel; absent where there are no cards. */
+  readonly openSubagent?: ((agent: AgentListing) => void) | undefined;
 }
 
 /** An agent of the hub that can't be a subagent, and why. */
@@ -43,7 +47,7 @@ interface LoopingAgent {
  * saves the whole list at once. A change the host refuses shows its reason in a toast and changes
  * nothing (flow-agents 5.4).
  */
-export function SubagentsPage({ host, settings }: SubagentsPageProps) {
+export function SubagentsPage({ host, settings, openSubagent }: SubagentsPageProps) {
   const { hubId, id, name } = settings;
   const source = useMemo(
     () => ({
@@ -111,7 +115,7 @@ export function SubagentsPage({ host, settings }: SubagentsPageProps) {
     void change(ids.filter((_, at) => at !== index));
     // The ✕ that was pressed is gone: focus goes to the next chip's ✕, else Add subagent.
     queueMicrotask(() => {
-      const next = list.current?.querySelectorAll("button")[index];
+      const next = list.current?.querySelectorAll<HTMLButtonElement>("button[aria-label]")[index];
       (next ?? addButton.current)?.focus();
     });
   };
@@ -129,7 +133,11 @@ export function SubagentsPage({ host, settings }: SubagentsPageProps) {
                     key={each}
                     className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-subtle ps-3 text-body text-fg"
                   >
-                    {nameOf(each)}
+                    <SubagentName
+                      name={nameOf(each)}
+                      member={members.find((member) => member.id === each)}
+                      openSubagent={openSubagent}
+                    />
                     <Button
                       variant="ghost"
                       size="sm"
@@ -184,6 +192,27 @@ export function SubagentsPage({ host, settings }: SubagentsPageProps) {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * A subagent's name on its chip: a link that opens it as a card where the page has cards, else
+ * plain text, as for an id the hub doesn't have.
+ */
+function SubagentName({
+  name,
+  member,
+  openSubagent,
+}: {
+  readonly name: string;
+  readonly member: AgentTeamMember | undefined;
+  readonly openSubagent: ((agent: AgentListing) => void) | undefined;
+}) {
+  if (member === undefined || openSubagent === undefined) return <>{name}</>;
+  return (
+    <button type="button" className={inlineLinkClasses} onClick={() => openSubagent(member)}>
+      {name}
+    </button>
   );
 }
 
