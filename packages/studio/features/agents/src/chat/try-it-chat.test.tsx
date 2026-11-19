@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import type { ChatAnswer } from "@halonicjs/app";
 import { KindedError } from "@halonicjs/std";
+import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -285,4 +286,67 @@ verifies("agents.chat.box-lines", () => {
       expect(ways.openHarness).toHaveBeenCalledTimes(1);
     },
   );
+});
+
+verifies("agents.chat.not-trusted", () => {
+  /** A chat in a workspace this computer doesn't trust, with the gate a test answers. */
+  async function untrusted(ask?: () => Promise<"trusted" | "declined">) {
+    let trusted = false;
+    const requests: AgentChatRequest[] = [];
+    const host = memoryAgentsHost({
+      hubs: [{ id: "acme", name: "Acme" }],
+      agents: [sorter],
+      answer: async (_ref, request) => {
+        requests.push(request);
+        return { messages: [], end: { reason: "answered" } };
+      },
+      trust: {
+        mayStart: () => trusted,
+        ask:
+          ask &&
+          (async () => {
+            const answer = await ask();
+            trusted = answer === "trusted";
+            return answer;
+          }),
+        workspaceName: "Acme",
+      },
+    });
+    const toasts = createToastStore();
+    const page = await show(
+      <ToastStoreProvider store={toasts}>
+        <Chat host={host} announce={vi.fn()} />
+      </ToastStoreProvider>,
+    );
+    const box = () => (page.querySelector("textarea") as HTMLTextAreaElement).value;
+    return { page, requests, toasts, box };
+  }
+
+  it("sends nothing, keeps the message and says why when there is no gate", async () => {
+    const { page, requests, toasts, box } = await untrusted();
+    await sendMessage(page, "Sort this mail");
+    expect(requests).toHaveLength(0);
+    expect(box()).toBe("Sort this mail");
+    expect(toasts.list()).toMatchObject([
+      { tone: "warning", title: "Not started: Acme isn't trusted yet" },
+    ]);
+  });
+
+  it("sends the message once the person trusts the workspace in the gate", async () => {
+    const ask = vi.fn(async () => "trusted" as const);
+    const { page, requests, toasts, box } = await untrusted(ask);
+    await sendMessage(page, "Sort this mail");
+    expect(ask).toHaveBeenCalledTimes(1);
+    expect(requests.map((request) => request.messages.at(-1)?.content)).toEqual(["Sort this mail"]);
+    expect(box()).toBe("");
+    expect(toasts.list()).toHaveLength(0);
+  });
+
+  it("keeps the message and shows the toast after Not now", async () => {
+    const { page, requests, toasts, box } = await untrusted(async () => "declined");
+    await sendMessage(page, "Sort this mail");
+    expect(requests).toHaveLength(0);
+    expect(box()).toBe("Sort this mail");
+    expect(toasts.list()[0]?.title).toBe("Not started: Acme isn't trusted yet");
+  });
 });
