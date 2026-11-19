@@ -213,6 +213,46 @@ verifies("runs.run-page", () => {
     expect(goToRuns).toHaveBeenCalledOnce();
   });
 
+  it("loads the runs again before it says a run isn't here, as for a run that has just started", async () => {
+    // The new run's folder is there, but nothing has told the list yet.
+    let runs = [running];
+    const fake = fakeSource(runs);
+    const list = new RunsList({
+      ...fake.source,
+      list: async () => runs.map((summary) => ({ summary })),
+    });
+    await settled();
+    runs = [needsYou, running];
+
+    const root = render(<RunView list={list} runId={needsYou.id} now={() => mondayMorning} />);
+    expect(root.textContent).not.toContain("This run isn't in this workspace any more.");
+    const loadingHeading = root.querySelector("h1");
+    expect(loadingHeading?.textContent).toBe("Run 01jd8q");
+    loadingHeading?.setAttribute("tabindex", "-1");
+    act(() => loadingHeading?.focus());
+    await settled();
+
+    expect(root.textContent).not.toContain("This run isn't in this workspace any more.");
+    expect(root.querySelector('section[aria-label="Waiting for you"]')).not.toBeNull();
+    // Focus moves from the loading page's h1 to the run's, as when a run page opens.
+    expect(document.activeElement).toBe(root.querySelector("h1"));
+    expect(document.activeElement?.textContent).toBe("Run 01jd8q");
+  });
+
+  it("says a run isn't here once the runs loaded again still haven't got it", async () => {
+    const fake = fakeSource([running]);
+    const list = new RunsList(fake.source);
+    await settled();
+    const refresh = vi.spyOn(list, "refresh");
+
+    const root = render(<RunView list={list} runId="run_gone_aaaaaa" now={() => mondayMorning} />);
+    expect(root.textContent).not.toContain("This run isn't in this workspace any more.");
+    await settled();
+
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(root.textContent).toContain("This run isn't in this workspace any more.");
+  });
+
   it("shows the h1 while it loads, and Couldn't load with Try again when the first load fails", async () => {
     const fake = fakeSource([running]);
     fake.fail(new Error("no answer"));

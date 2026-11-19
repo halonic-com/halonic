@@ -27,6 +27,28 @@ describe("RunsList", () => {
     expect(listener).toHaveBeenCalledTimes(2);
   });
 
+  it("resolves a refresh once the last load started has, so the list is as new as the call", async () => {
+    const answers: ((runs: SourcedRun[]) => void)[] = [];
+    const fake = fakeSource([]);
+    const list = new RunsList({
+      ...fake.source,
+      list: () => new Promise((resolve) => answers.push(resolve)),
+    });
+    const first = list.refresh();
+    let firstDone = false;
+    void first.then(() => {
+      firstDone = true;
+    });
+    const second = list.refresh();
+    answers[1]?.([{ summary: done }]);
+    await settled();
+    expect(firstDone).toBe(false);
+
+    answers[2]?.([{ summary: running }, { summary: done }]);
+    await Promise.all([first, second]);
+    expect(list.state.runs).toHaveLength(2);
+  });
+
   it("has a running dot, read '1 running', only while a run is running", async () => {
     const fake = fakeSource([done]);
     const list = new RunsList(fake.source);

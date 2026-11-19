@@ -260,7 +260,7 @@ verifies("workflows.start.start-run", () => {
     await click(runButton(page));
     await click(buttonNamed(page, "Start run"));
 
-    expect(page.textContent).toContain("Couldn't start the run: The disk is full.");
+    expect(page.textContent).toContain("Couldn't start the run: the disk is full.");
   });
 
   it("shows the next step of a refusal in place of Try again", async () => {
@@ -336,7 +336,7 @@ verifies("workflows.start.start-run", () => {
     await click(buttonNamed(page, "Start run"));
     await click(buttonNamed(page, "Run again"));
     expect(announce).toHaveBeenCalledExactlyOnceWith(
-      "Couldn't start the run: The workflow changed.",
+      "Couldn't start the run: the workflow changed.",
     );
   });
 

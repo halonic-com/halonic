@@ -86,11 +86,36 @@ verifies("runs.run-view.run-again", () => {
     const announce = vi.fn();
     const root = await open(failed, { startRun }, openRun, announce);
     await act(async () => button(root, "Run again")?.click());
-    expect(root.textContent).toContain("Couldn't start the run: The workflow changed.");
+    expect(root.textContent).toContain("Couldn't start the run: the workflow changed.");
     expect(announce).toHaveBeenCalledExactlyOnceWith(
-      "Couldn't start the run: The workflow changed.",
+      "Couldn't start the run: the workflow changed.",
     );
     expect(openRun).not.toHaveBeenCalled();
+  });
+
+  it("lowers the desktop shell's own sentence after the colon too, and keeps a name's capital", async () => {
+    const startRun = vi
+      .fn()
+      .mockRejectedValueOnce(
+        Object.assign(new Error("The desktop shell gave no answer to the run call."), {
+          kind: "unavailable",
+        }),
+      )
+      .mockRejectedValueOnce(
+        Object.assign(new Error("Ollama isn't running."), { kind: "unavailable" }),
+      );
+    const announce = vi.fn();
+    const root = await open(failed, { startRun }, vi.fn(), announce);
+    await act(async () => button(root, "Run again")?.click());
+    expect(root.textContent).toContain(
+      "Couldn't start the run: the desktop shell gave no answer to the run call.",
+    );
+    await act(async () => button(root, "Try again")?.click());
+    expect(root.textContent).toContain("Couldn't start the run: Ollama isn't running.");
+    expect(announce.mock.calls).toEqual([
+      ["Couldn't start the run: the desktop shell gave no answer to the run call."],
+      ["Couldn't start the run: Ollama isn't running."],
+    ]);
   });
 
   it("says the engine isn't answering in the host's words only when the host says so", async () => {
