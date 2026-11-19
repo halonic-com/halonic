@@ -184,3 +184,56 @@ verifies("shell.phone-notice-badges", () => {
     expect(container.querySelectorAll("[data-notice-row]")).toHaveLength(1);
   });
 });
+
+verifies("shell.badge-gone-focus", () => {
+  const trustBadge = {
+    id: "trust",
+    label: "Not trusted yet",
+    tone: "neutral" as const,
+    priority: 1000,
+    action: "Review",
+    onSelect: () => {},
+  };
+
+  /** The badges beside a page whose `h1` is "Acme". */
+  function withPage(registry: ReturnType<typeof createBadgeRegistry>) {
+    return render(
+      <>
+        <HeaderBadges registry={registry} />
+        <main>
+          <h1>Acme</h1>
+          <button type="button">Run</button>
+        </main>
+      </>,
+    );
+  }
+
+  it("gives focus to the page's h1 when the focused badge goes", () => {
+    const registry = createBadgeRegistry();
+    let remove = () => {};
+    act(() => {
+      remove = registry.add(trustBadge);
+    });
+    const container = withPage(registry);
+    act(() => container.querySelector<HTMLButtonElement>("button")?.focus());
+
+    act(() => remove());
+
+    expect(document.activeElement).toBe(container.querySelector("main h1"));
+  });
+
+  it("leaves focus alone when the badge goes while something else has it", () => {
+    const registry = createBadgeRegistry();
+    let remove = () => {};
+    act(() => {
+      remove = registry.add(trustBadge);
+    });
+    const container = withPage(registry);
+    const run = container.querySelector<HTMLButtonElement>("main button");
+    act(() => run?.focus());
+
+    act(() => remove());
+
+    expect(document.activeElement).toBe(run);
+  });
+});

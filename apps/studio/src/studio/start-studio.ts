@@ -330,6 +330,7 @@ export async function openFolder(
       files,
       window,
       trust,
+      askTrust: () => trustView?.asks.ask() ?? Promise.resolve("declined"),
       location,
       name,
       scope,

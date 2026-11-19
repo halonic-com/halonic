@@ -105,6 +105,8 @@ export interface FolderServiceParts {
   readonly files: TauriFileShell;
   readonly window: object;
   readonly trust: WorkspaceTrust;
+  /** Opens the window's trust check for a start it refused, and says how the person answered. */
+  readonly askTrust: () => Promise<"trusted" | "declined">;
   readonly location: string;
   /** The workspace's name, as the window shows it. */
   readonly name: string;
@@ -127,6 +129,7 @@ export function provideFolderServices(
     files,
     window,
     trust,
+    askTrust,
     location,
     name,
     scope,
@@ -256,6 +259,7 @@ export function provideFolderServices(
       runs: services.get(RunsSourceService),
       ...(settle === undefined ? {} : { settle }),
       engine,
+      askTrust,
     }),
   );
   services.provide(
@@ -272,6 +276,7 @@ export function provideFolderServices(
       // The source control feature gives the dialog once the shell instantiates its services,
       // which is after this, so it is looked up when Make live is pressed.
       versionDialog: (paths) => services.get(VersionDialogService).open(paths),
+      askTrust,
     }),
   );
   // Run again on the run page starts a run the way the workflow page's Run does.
@@ -280,6 +285,7 @@ export function provideFolderServices(
     services.provide(RunStartHostService, {
       startRun: ({ hubId, workflowId }, input) =>
         startRun.call(workflows, { hubId, id: workflowId }, input),
+      askTrust,
     });
   }
   services.provide(

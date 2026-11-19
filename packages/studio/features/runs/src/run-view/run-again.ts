@@ -1,4 +1,5 @@
 import type { RunEvent } from "@halonicjs/events";
+import { errorKindOf } from "@halonicjs/std";
 import type { EngineWords } from "@halonicjs/studio-shell";
 import { useRef, useState } from "react";
 import type { RunStartHost, SourcedRun } from "../api.ts";
@@ -31,6 +32,11 @@ export interface RunAgain {
   readonly busy: boolean;
   /** Why the last start failed, until the next one: the error, which the page words. */
   readonly problem: { readonly error: unknown } | undefined;
+  /**
+   * While the last start was refused because the workspace isn't trusted yet (`denied`) and the
+   * host can ask: opens the trust check, and once the person trusts it, the problem goes.
+   */
+  readonly review: (() => Promise<"trusted" | "declined">) | undefined;
 }
 
 /**
@@ -71,5 +77,14 @@ export function useRunAgain(
       setBusy(false);
     }
   };
-  return { start, busy, problem };
+  const { askTrust } = host;
+  const review =
+    askTrust === undefined || problem === undefined || errorKindOf(problem.error) !== "denied"
+      ? undefined
+      : async () => {
+          const answer = await askTrust();
+          if (answer === "trusted") setProblem(undefined);
+          return answer;
+        };
+  return { start, busy, problem, review };
 }

@@ -1,6 +1,8 @@
+import { errorKindOf } from "@halonicjs/std";
 import {
   Button,
   Callout,
+  type CalloutAction,
   type CalloutHandle,
   CloseIcon,
   CommandBox,
@@ -20,6 +22,11 @@ export interface StartRunCardProps {
   readonly firstTestInput: () => Promise<string | undefined>;
   /** Starts the run with the parsed input; resolves with the new run's id. */
   readonly start: (input: Record<string, unknown>) => Promise<{ readonly runId: string }>;
+  /**
+   * Opens the workspace's trust check; absent where there is none. A start refused because the
+   * workspace isn't trusted then offers **Review** in place of **Try again**.
+   */
+  readonly askTrust?: () => Promise<"trusted" | "declined">;
   /** The reason of an engine that can't be reached, in the words for where Studio runs. */
   readonly notAnswering: string;
   readonly onStarted: (runId: string) => void;
@@ -64,25 +71,31 @@ interface StartFailure {
   readonly fix: string | undefined;
   /** The command the next step leads to, which the card shows in a CommandBox (rule N2, HAL-12363). */
   readonly command: string | undefined;
+  /** Refused because the workspace isn't trusted yet: **Review** opens the trust check. */
+  readonly untrusted: boolean;
 }
 
-function failureOf(error: unknown, notAnswering: string): StartFailure {
+function failureOf(error: unknown, notAnswering: string, canAskTrust: boolean): StartFailure {
   const line = words.couldntStart(withFullStop(reasonOf(error, notAnswering)));
+  const untrusted = canAskTrust && errorKindOf(error) === "denied";
   const terminal = terminalStartOf(error);
   return terminal === undefined
-    ? { line, fix: fixOf(error), command: undefined }
-    : { line, fix: terminal.lead, command: terminal.command };
+    ? { line, fix: fixOf(error), command: undefined, untrusted }
+    : { line, fix: terminal.lead, command: terminal.command, untrusted };
 }
 
 /**
  * The card **▶ Run** opens (`workflows.start.start-run`), docked at the right: the run's input and
  * **Start run**. A failed start stays in the card with the input kept, in a danger Callout that
  * takes focus, with **Try again** (D7), unless the refusal names a next step: then the step is the second line and there is no **Try again**. A step that leads to a command has the command in a CommandBox under it.
+ * A refusal because the workspace isn't trusted yet has **Review** instead, which opens the trust
+ * check; once the person trusts it, the failure goes and **Start run** takes focus (C144 RT1).
  */
 export function StartRunCard({
   workflowName,
   firstTestInput,
   start,
+  askTrust,
   notAnswering,
   onStarted,
   onClose,
@@ -90,6 +103,7 @@ export function StartRunCard({
   const heading = useRef<HTMLHeadingElement>(null);
   const callout = useRef<CalloutHandle>(null);
   const field = useRef<HTMLTextAreaElement>(null);
+  const startButton = useRef<HTMLButtonElement>(null);
   const [text, setText] = useState("{}");
   // Set while the input still holds what the first test gave, so the note says where it came from.
   const [filled, setFilled] = useState(false);
@@ -121,6 +135,17 @@ export function StartRunCard({
   useEffect(() => {
     if (rejected > 0) field.current?.focus();
   }, [rejected]);
+  // Counts the trusts from **Review**: Start run is back, and takes focus from Review, which is gone.
+  const [trusted, setTrusted] = useState(0);
+  useEffect(() => {
+    if (trusted > 0) startButton.current?.focus();
+  }, [trusted]);
+
+  const review = async () => {
+    if ((await askTrust?.()) !== "trusted") return;
+    setFailure(undefined);
+    setTrusted((count) => count + 1);
+  };
 
   const submit = async () => {
     const input = parseInput(text);
@@ -135,7 +160,7 @@ export function StartRunCard({
       const { runId } = await start(input);
       onStarted(runId);
     } catch (error) {
-      setFailure(failureOf(error, notAnswering));
+      setFailure(failureOf(error, notAnswering, askTrust !== undefined));
     } finally {
       setBusy(false);
     }
@@ -188,9 +213,7 @@ export function StartRunCard({
           tone="danger"
           announce="focus"
           ref={callout}
-          {...(failure.fix === undefined
-            ? { action: { label: words.tryAgain, onClick: submit } }
-            : {})}
+          {...failureAction(failure, submit, () => void review())}
         >
           <p>{failure.line}</p>
           {failure.fix !== undefined && <p>{withFullStop(failure.fix)}</p>}
@@ -200,6 +223,7 @@ export function StartRunCard({
       <div className="flex flex-wrap gap-2">
         {failure === undefined && (
           <Button
+            ref={startButton}
             variant="primary"
             size="sm"
             busy={busy}
@@ -215,4 +239,14 @@ export function StartRunCard({
       </div>
     </aside>
   );
+}
+
+/** **Review** on an untrusted refusal, **Try again** on another without a next step, else none. */
+function failureAction(
+  failure: StartFailure,
+  submit: () => Promise<void>,
+  review: () => void,
+): { readonly action?: CalloutAction } {
+  if (failure.untrusted) return { action: { label: words.review, onClick: review } };
+  return failure.fix === undefined ? { action: { label: words.tryAgain, onClick: submit } } : {};
 }

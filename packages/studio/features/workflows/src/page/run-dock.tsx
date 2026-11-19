@@ -184,6 +184,7 @@ export function RunDock({
         workflowName={workflowName}
         firstTestInput={() => firstTestInput(host, workflow)}
         start={(input) => startRun.call(host, workflow, input)}
+        {...(host.askTrust === undefined ? {} : { askTrust: host.askTrust.bind(host) })}
         notAnswering={notAnswering}
         onStarted={started}
         onClose={onClose}
@@ -210,6 +211,7 @@ export function RunDock({
             runStart: {
               startRun: ({ hubId, workflowId }, input) =>
                 startRun.call(host, { hubId, id: workflowId }, input),
+              ...(host.askTrust === undefined ? {} : { askTrust: host.askTrust.bind(host) }),
             },
             onStarted: started,
             announce,

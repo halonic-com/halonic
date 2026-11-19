@@ -1,7 +1,8 @@
-import type {
-  TrustGrantResult,
-  TrustReview,
-  WorkspaceTrustControl,
+import {
+  TrustAsks,
+  type TrustGrantResult,
+  type TrustReview,
+  type WorkspaceTrustControl,
 } from "@halonicjs/studio-feature-workspace";
 import { trustReviewOf } from "./trust-review.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -19,6 +20,8 @@ import type { WorkspaceTrust } from "./workspace-trust.ts";
 export class WorkspaceTrustView implements WorkspaceTrustControl {
   readonly #trust: WorkspaceTrust;
   readonly #folder: string;
+  /** The starts that ask for the check after a refusal: Run now, the Run panel and Run again. */
+  readonly asks = new TrustAsks();
   #builtFor: unknown;
   #built: TrustReview | undefined;
 

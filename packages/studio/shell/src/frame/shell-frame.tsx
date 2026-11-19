@@ -50,6 +50,11 @@ export interface ShellFrameProps {
    * edge, before the other items. Left out, the slot takes no room.
    */
   readonly badges?: ReactNode;
+  /**
+   * What opens over the window on the desktop and on a phone alike, such as the trust check the
+   * header badge and a refused start open. It sits in the frame, so a Dialog learns the layout.
+   */
+  readonly dialogs?: ReactNode;
   /** The workspace's save note ("✓ Saved") on the desktop, at the status bar's right end. */
   readonly saveNote?: ReactNode;
   /**
@@ -115,6 +120,7 @@ export function ShellFrame(props: ShellFrameProps) {
           <ToastStoreProvider store={toasts}>
             <FrameLayers presentation={presentation} {...props} />
             <FrameRegions announcer={announcer} />
+            {props.dialogs}
           </ToastStoreProvider>
         </FieldAnnounceProvider>
       </ModalRegionsProvider>

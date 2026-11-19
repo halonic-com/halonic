@@ -49,6 +49,7 @@ export {
   type WorkspaceWindowProps,
   workspaceKeyPosition,
 } from "./switcher/workspace-window.tsx";
+export { type TrustAnswer, TrustAsks } from "./trust/trust-asks.ts";
 export type {
   TrustGrantResult,
   TrustReview,

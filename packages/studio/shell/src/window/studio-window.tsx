@@ -87,6 +87,11 @@ export interface StudioWindowProps {
   readonly phoneSwitcher?: MorePageSwitcher | undefined;
   /** The workspace's header badges, such as "Not trusted yet · Review", on the desktop. */
   readonly badges?: ReactNode;
+  /**
+   * What the workspace opens over the window on the desktop and on a phone, such as the trust
+   * check, which a refused start opens where no header badge shows.
+   */
+  readonly dialogs?: ReactNode;
   /** The header badge on the phone's More page, on its own line under the workspace row. */
   readonly phoneBadge?: ReactNode;
   /**
@@ -359,6 +364,7 @@ function StudioWindowBody(props: StudioWindowProps) {
       badges={headerBadges}
       saveNote={<StatusBarSaveNote saving={workspace.saving} />}
       phoneBadges={<HeaderBadges registry={shell.badges} layout="strip" />}
+      dialogs={props.dialogs}
       sidebar={
         <StudioSidebar
           places={places}

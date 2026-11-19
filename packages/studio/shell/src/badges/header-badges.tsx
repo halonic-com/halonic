@@ -5,7 +5,8 @@ import {
   Tooltip,
   type TooltipTriggerProps,
 } from "@halonicjs/studio-kit";
-import { useRef, useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import { focusPageHeading } from "../tabs/history-moves.ts";
 import { type BadgeRegistry, type BadgeState, trustBadgePriority } from "./badge-registry.ts";
 
 /** The props of {@link HeaderBadges}. */
@@ -21,7 +22,9 @@ export interface HeaderBadgesProps {
 
 /**
  * The header badges the features registered, in priority order; nothing when there are none. The
- * status bar shows them, and More in a desktop window as narrow as a phone.
+ * status bar shows them, and More in a desktop window as narrow as a phone. A badge that goes while
+ * it has focus, as "Not trusted yet · Review" does once the workspace is trusted, gives focus to the
+ * page's `h1`, so the next Tab doesn't start from the top (C144 TR1).
  */
 export function HeaderBadges({ registry, layout = "bar" }: HeaderBadgesProps) {
   const states = useSyncExternalStore(
@@ -80,6 +83,15 @@ function RegisteredBadge({
   readonly phoneLine?: HeaderBadgePhoneLine;
 }) {
   const opener = useRef<HTMLElement | null>(null);
+  // Layout cleanup runs before React takes the button out, so it still knows it had focus.
+  useLayoutEffect(
+    () => () => {
+      if (opener.current !== null && opener.current === document.activeElement) {
+        focusPageHeading();
+      }
+    },
+    [],
+  );
   const { action, onSelect, tooltip } = state;
   // The tooltip's trigger props go on the button, so a screen reader reads what it says too.
   const badge = (trigger: TooltipTriggerProps = {}) =>
@@ -88,7 +100,8 @@ function RegisteredBadge({
     ) : (
       <span
         ref={(element) => {
-          opener.current = element?.querySelector("button") ?? null;
+          // Kept when React lets go of the span, for the check above when the badge goes.
+          if (element !== null) opener.current = element.querySelector("button");
         }}
         // On a phone a badge on its own line runs full width, so its divider does too; a chip in
         // the strip's row stays its own size, so the row wraps.

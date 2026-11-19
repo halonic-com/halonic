@@ -231,6 +231,12 @@ export interface WorkflowsHost {
    */
   startRun?(ref: WorkflowRef, input: Record<string, unknown>): Promise<{ readonly runId: string }>;
   /**
+   * Opens the workspace's trust check, for a start refused because the workspace isn't trusted yet
+   * (a `denied` refusal), and answers `"trusted"` once the person trusted it, `"declined"` on Not
+   * now. Absent where there is no folder to trust, so the Run panel offers **Try again**.
+   */
+  askTrust?(): Promise<"trusted" | "declined">;
+  /**
    * Saves the real run `runId` as a test case called `name` in the workflow's test file: the run's
    * input, and the step it ended in as the step the case expects. Absent while the app can't write
    * test cases, so the run card shows no **Save as test**. Rejects with the reason it couldn't be

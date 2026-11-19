@@ -256,24 +256,25 @@ export function WorkspaceWindow({
         resources={resources}
         switcher={{ workspace: { name: shown.value.name, folder: shown.location }, menu, busy }}
         badges={
-          <>
-            {shown.value.trust === undefined ? null : (
-              <WorkspaceTrustBadge
-                trust={shown.value.trust}
-                name={shown.value.name}
-                toasts={shell.toasts}
-                badges={shell.badges}
-              />
-            )}
-            {freshCopy === undefined || !switcher.recent.isSample(shown.location) ? null : (
-              <SampleChip
-                trust={shown.value.trust}
-                testModel={shown.value.testModel}
-                onNewWorkspace={askNewWorkspace}
-                onFreshCopy={() => void freshCopy()}
-              />
-            )}
-          </>
+          freshCopy === undefined || !switcher.recent.isSample(shown.location) ? null : (
+            <SampleChip
+              trust={shown.value.trust}
+              testModel={shown.value.testModel}
+              onNewWorkspace={askNewWorkspace}
+              onFreshCopy={() => void freshCopy()}
+            />
+          )
+        }
+        // The badge's check is mounted on a phone too, where a refused start still opens it.
+        dialogs={
+          shown.value.trust === undefined ? null : (
+            <WorkspaceTrustBadge
+              trust={shown.value.trust}
+              name={shown.value.name}
+              toasts={shell.toasts}
+              badges={shell.badges}
+            />
+          )
         }
       />
       {dialog}

@@ -187,6 +187,12 @@ export interface RunStartHost {
     workflow: { readonly hubId: string; readonly workflowId: string },
     input: Record<string, unknown>,
   ) => Promise<{ readonly runId: string }>;
+  /**
+   * Opens the workspace's trust check, for a start refused because the workspace isn't trusted yet
+   * (a `denied` refusal), and answers `"trusted"` once the person trusted it, `"declined"` on Not
+   * now. Absent where there is no folder to trust, so the refusal has no **Review**.
+   */
+  readonly askTrust?: () => Promise<"trusted" | "declined">;
 }
 
 /** The open workspace's way to start a run. Absent where there is no engine to start it. */
