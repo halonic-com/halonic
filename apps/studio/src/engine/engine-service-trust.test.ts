@@ -109,8 +109,10 @@ verifies("studio.untrusted-starts-nothing", () => {
           listeners.add(listener);
           return () => listeners.delete(listener);
         },
-        change(to: boolean | "fails") {
+        /** Changes the trust; `quietly`, as a terminal does, without telling the engine. */
+        change(to: boolean | "fails", { quietly = false } = {}) {
           state.trusted = to;
+          if (quietly) return;
           for (const listener of listeners) listener();
         },
         listeners,
@@ -210,6 +212,23 @@ verifies("studio.untrusted-starts-nothing", () => {
       await waitUntil("the engine's lock given back", () => released(shell));
 
       expect(lockCalls(shell)).toEqual(["engine_lock_hold", "engine_lock_release"]);
+    });
+
+    it("refuses the next harness step when the trust goes where the window doesn't hear it (HAL-12811)", async () => {
+      const { trust, timers, harness, service, id } = await harnessRunWaiting();
+
+      // As `halonic trust revoke` in a terminal: the trust is gone, and no listener is told.
+      trust.change(false, { quietly: true });
+      timers.fireAll();
+      const { runs } = await service.open();
+      await waitUntil("the run failed", async () => (await runs.get(id))?.status === "failed");
+
+      expect(harness.steps).toEqual([]);
+      expect(await runs.get(id)).toMatchObject({
+        status: "failed",
+        error: `Agent "writer" runs in claude-code, and this workspace isn't trusted on this computer, so Halonic didn't start it.`,
+      });
+      await service.close();
     });
 
     it("stops hearing the trust once the workspace closes", async () => {

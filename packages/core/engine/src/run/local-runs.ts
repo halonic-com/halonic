@@ -105,6 +105,9 @@ export class LocalRuns {
       startDeadlines: this.#startDeadlines,
       clock,
       ...(this.#budget === undefined ? {} : { budget: this.#budget }),
+      ...(options.mayStartHarness === undefined
+        ? {}
+        : { mayStart: options.mayStartHarness.bind(options) }),
       record: (runId, input) => this.#record(runId, input),
       send: (runId, event, options) => this.send(runId, event, undefined, options),
     });
