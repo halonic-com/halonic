@@ -210,3 +210,66 @@ test("containers reader converts real row units (bytes x s) to GiB-s and GB-s", 
     globalThis.fetch = realFetch;
   }
 });
+
+test("containers and Durable Objects are split between render and cf-runner", async () => {
+  const { SERVICES, splitByService } = await import("../src/usage.mjs");
+  const u = (n) => ({ containerVcpuSeconds: n });
+  const d = (n) => ({ doRequests: n });
+  const shares = splitByService(SERVICES, {
+    apps: {
+      "a037415f-356a-40d8-b7ed-aa19a408b6e4": u(1), // listed: image A
+      nsB: u(2), // a durable_object policy app, same ID as cf-runner's namespace
+      renderApp: u(3),
+      gone: u(4), // a deleted app nobody names
+    },
+    namespaces: {
+      nsA: { script: "halonic-cf-runner", usage: d(10) },
+      nsB: { script: "halonic-cf-runner", usage: d(20) },
+      nsR: { script: "halonic-render", usage: d(30) },
+      nsX: { script: "halonic-code-runner", usage: d(40) },
+    },
+  });
+  assert.deepEqual(shares["cf-runner"], [d(10), d(20), u(1), u(2)]);
+  assert.deepEqual(shares.render, [d(30), d(40), u(3), u(4)]);
+  assert.deepEqual(shares["turbo-cache"], []);
+});
+
+test("containerParts groups rows by application and namespace", async () => {
+  const { READERS } = await import("../src/usage.mjs");
+  const realFetch = globalThis.fetch;
+  const account = {
+    c: [
+      {
+        sum: { cpuTimeSec: 2, allocatedMemory: 2 ** 31, allocatedDisk: 1e9 },
+        dimensions: { applicationId: "a" },
+      },
+      {
+        sum: { cpuTimeSec: 3, allocatedMemory: 2 ** 30, allocatedDisk: 0 },
+        dimensions: { applicationId: "a" },
+      },
+    ],
+    inv: [
+      { sum: { requests: 5 }, dimensions: { namespaceId: "n", scriptName: "halonic-cf-runner" } },
+    ],
+    dur: [{ sum: { activeTime: 8e6 }, dimensions: { namespaceId: "n" } }],
+  };
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ data: { viewer: { accounts: [account] } } }));
+  try {
+    const p = await READERS.containerParts(
+      { CLOUDFLARE_SPEND_GUARD_TOKEN: "x", ACCOUNT_ID: "a" },
+      { since: "s", until: "u" },
+    );
+    assert.deepEqual(p.apps.a, {
+      containerVcpuSeconds: 5,
+      containerMemGibSeconds: 3,
+      containerDiskGbSeconds: 1,
+    });
+    assert.deepEqual(p.namespaces.n, {
+      script: "halonic-cf-runner",
+      usage: { doRequests: 5, doGbSeconds: 1 },
+    });
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

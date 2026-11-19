@@ -9,7 +9,8 @@ import { price } from "./pricing.mjs";
 export const DEFAULTS = {
   tripUsd: 900,
   warnUsd: [500, 800],
-  subBudgetsUsd: { render: 20, "turbo-cache": 5 },
+  // cf-runner: the runner trial's $20 cap (HAL-13578).
+  subBudgetsUsd: { render: 20, "turbo-cache": 5, "cf-runner": 20 },
   staleAfterMs: 3 * 3600 * 1000,
 };
 

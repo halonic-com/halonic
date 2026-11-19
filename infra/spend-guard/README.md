@@ -15,7 +15,7 @@ KV namespace **`halonic-spend-guard`**, ID **`646a6e2ba633475da4ecf9502cd8ce25`*
 | Key | Value | Meaning |
 | --- | --- | --- |
 | `spend_ok` | `on` / `off` | Account-wide switch |
-| `spend_ok:<service>` | `on` / `off` | Per-service switch (`render`, `turbo-cache`) |
+| `spend_ok:<service>` | `on` / `off` | Per-service switch (`render`, `turbo-cache`, `cf-runner`) |
 | `state` | JSON | Month, estimated cost per product and service, last good read, and `offBy` (see below) |
 
 `state.offBy` is `auto` only while the guard itself holds the switch off (`offReason` is `limit` or `no-usage`); `serviceOff.<service>.by` works the same way. A **manual** stop is a `spend_ok` set to `off` by hand: the guard never writes it, so `offBy` stays absent. That is how the month reset tells them apart: it undoes `auto` stops and leaves manual ones. When the guard sees `spend_ok` back on while `offBy` is set, it logs "manual resume noticed" and clears `offBy`.
@@ -52,7 +52,8 @@ if (!(await checkSpend(env, "render"))) return spendOffResponse(); // 503
 
 - Cron `*/15 * * * *`. Reads month-to-date usage (UTC calendar month) from the GraphQL Analytics API, prices it, stores `state`.
 - Telegram warnings at **$500** and **$800**, once each per month. **Off at $900** (the $100 margin covers lag and estimate error).
-- Sub-budgets: **render $20**, **turbo-cache $5** per month. Going over turns off only that service's key. These are priced without free allowances, so they err high.
+- Sub-budgets: **render $20**, **turbo-cache $5**, **cf-runner $20** (the runner trial, HAL-13578) per month. Going over turns off only that service's key. These are priced without free allowances, so they err high.
+- Containers and Durable Objects are split per service (`splitByService` in `src/usage.mjs`): cf-runner pays for its own scripts' Durable Object namespaces and container applications, render for every other one. Analytics don't name a container application's script, so cf-runner's default-policy application (image A) is listed by ID; a `durable_object`-policy application has its namespace's ID and is found that way. A new container application elsewhere counts to render until it's listed.
 - Month reset: on the first run of a new month it turns the switch back on **only if it turned it off itself**.
 - Fails safe: no readable usage (bad or missing token, API outage) sends a Telegram alert at once and turns `spend_ok` off after 3 hours. It switches back on by itself when usage is readable again and under the limit. It never reports all clear without data.
 - Settings (Worker vars, all optional): `TRIP_USD`, `WARN_USD` (`500,800`), `SUB_BUDGETS_JSON`, `THRESHOLD_OVERRIDE` (test only).
@@ -68,8 +69,8 @@ No new Cloudflare product goes live before it is on this list and priced in `src
 | R2 (storage, Class A/B) | yes | `r2StorageAdaptiveGroups`, `r2OperationsAdaptiveGroups` | storage = peak size × elapsed part of month (high estimate) |
 | KV | yes | `kvOperationsAdaptiveGroups`, `kvStorageAdaptiveGroups` |  |
 | Workers AI | no | `aiInferenceAdaptiveGroups` | read anyway |
-| Durable Objects | yes (HAL-3083) | `durableObjectsInvocationsAdaptiveGroups`, `durableObjectsPeriodicGroups` | `activeTime` µs × 0.125 GB; counted in the render sub-budget |
-| Containers | yes (HAL-3083) | `containersUsageAdaptiveGroups` | Units checked 11 Nov 2026 against real data: `cpuTimeSec` = vCPU-s, `allocatedMemory` = bytes×s (÷2³⁰ → GiB-s), `allocatedDisk` = bytes×s (÷10⁹ → GB-s). Counted in the render sub-budget |
+| Durable Objects | yes (HAL-3083) | `durableObjectsInvocationsAdaptiveGroups`, `durableObjectsPeriodicGroups` | `activeTime` µs × 0.125 GB; split per namespace between the render and cf-runner sub-budgets |
+| Containers | yes (HAL-3083) | `containersUsageAdaptiveGroups` | Units checked 11 Nov 2026 against real data: `cpuTimeSec` = vCPU-s, `allocatedMemory` = bytes×s (÷2³⁰ → GiB-s), `allocatedDisk` = bytes×s (÷10⁹ → GB-s). Split per application between the render and cf-runner sub-budgets |
 
 Flip `live` in `src/usage.mjs` in the same pull request that ships the product (done for Containers and Durable Objects with HAL-3083). Any product not on the list (Queues, D1, Vectorize, Images, Stream, Browser Rendering...) is not covered.
 
