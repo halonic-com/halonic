@@ -92,7 +92,13 @@ verifies("cli.harness-bridge-keys", () => {
       const services = await keys.services.servicesFor(coder("open-coder-agent"));
 
       expect(services.providers).toEqual({
-        anthropic: { kind: "key", secret: "zai-key", providerId: "zai", baseUrl: zaiAddress },
+        anthropic: {
+          kind: "key",
+          secret: "zai-key",
+          providerId: "zai",
+          baseUrl: zaiAddress,
+          model: "glm-5.3",
+        },
       });
       expect(services.prices).toEqual({ anthropic: { "glm-5.3": { input: 0.6, output: 2.2 } } });
       expect(await keys.models.providerModelOf("lab", "open-coder-agent")).toBe("glm-5.3");
@@ -166,7 +172,15 @@ verifies("cli.harness-bridge-keys", () => {
 
         expect(summary).toMatchObject({ status: "completed" });
         expect(opened.map((options) => options.providers)).toEqual([
-          { anthropic: { kind: "key", secret: "zai-key", providerId: "zai", baseUrl: zaiAddress } },
+          {
+            anthropic: {
+              kind: "key",
+              secret: "zai-key",
+              providerId: "zai",
+              baseUrl: zaiAddress,
+              model: "glm-5.3",
+            },
+          },
         ]);
         expect(opened[0]?.price("anthropic", "glm-5.3")).toEqual({ input: 0.6, output: 2.2 });
         expect(tasks.map(({ model, modelForEveryCall }) => ({ model, modelForEveryCall }))).toEqual(

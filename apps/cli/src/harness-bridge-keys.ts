@@ -103,8 +103,9 @@ const signInServices: BridgeServices = {
 
 /**
  * The agent's services: its alias's provider with the key, at its `baseUrl`,
- * and its price under the route, or the sign-in services when its file names
- * no alias.
+ * for the alias's model only, and its price under the route, or the sign-in
+ * services when its file names no alias. An alias without a price leaves its
+ * calls unpriced, as the built-in loop does, so no cost limit counts them.
  *
  * @throws what `harnessModelAccess` throws, so the run fails with the reason
  */
@@ -122,6 +123,9 @@ async function keyedServices(
         kind: "key",
         secret: access.secret,
         providerId: access.providerId,
+        // The program chooses each request's model; pinning it means the key
+        // pays only for the model priced below (harness-bridge.keyed-model).
+        model: access.model,
         ...(access.baseUrl === undefined ? {} : { baseUrl: access.baseUrl }),
       },
     },

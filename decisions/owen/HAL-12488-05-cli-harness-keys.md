@@ -7,6 +7,7 @@
 
 - The key check is the built-in loop's (`cli.harness-model-access`): trust for an address other than the type's own, the key's allowed origins, and trust for any real provider. It runs before the key is named.
 - The bridge's secrets give a key only by a name a bridge of the engine was given, and never Halonic's own or a plugin's.
+- The bridge spends the key only on the alias's own model (`harness-bridge.keyed-model`), so every call is priced as the alias says.
 - Every other harness agent keeps the program's own sign-in, as before.
 
 ## Covers

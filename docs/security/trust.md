@@ -141,7 +141,10 @@ call, before the bridge is told its name: a non-default address needs a trusted
 workspace, a key with a list goes only to an origin on it, and an untrusted
 workspace calls no real provider. The bridge then sends that agent's calls and
 the key to the provider file's one origin only, never to another host the
-program names, and never after a redirect. The bridge reads only the keys it
+program names, and never after a redirect. It refuses a call for any model
+but the alias's, so the key pays only for the model the alias prices. Give the
+alias a `price`: without one, its calls are unpriced, as in any other agent,
+and a cost limit or budget doesn't count them. The bridge reads only the keys it
 was given this way; a key you saved for anything else never reaches it. The
 CLI does this today; Studio still signs every harness agent in.
 
