@@ -152,6 +152,15 @@ verifies("cli.subcommands", () => {
     ]);
   });
 
+  it("names the whole command in the hint for a subcommand's unknown option", async () => {
+    const io = captureIo("/work");
+    expect(await runCli(["runs", "show", "01JD8Q", "--evnts"], io, commands)).toBe(exitCode.usage);
+    expect(io.stderr).toEqual([
+      "✕ There's no option --evnts. Did you mean --events?",
+      "  Run halonic runs show --help to see its options.",
+    ]);
+  });
+
   it("prints the help of a command that only hands off, and exits with 2 without a subcommand", async () => {
     const io = captureIo("/work");
     expect(await runCli(["plugin"], io, commands)).toBe(exitCode.usage);
