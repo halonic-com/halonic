@@ -3,6 +3,7 @@
 - Task: HAL-13318 (continues HAL-8792, item 7)
 - Approval: Liam asked for this on HAL-13318 ("retire or park `shell.engine-start` with the reason") and reviews it. A team decision with no board card.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nPAlz4W0Em5XwYBR12QjKQZaLNXoX6BVvm0Zqy0StHa67Q8TzcwwMT/ii4kafw1LSG5YENa8OwUs3VQCuwFHCQ==
 
 ## What changes
 
