@@ -5,12 +5,13 @@
 // so both say the same about a run. The words are the catalogue's.
 
 import { type RunDetail, shortRunId } from "@halonicjs/app";
-import { workspaceModelsOf } from "@halonicjs/app/run-failure";
+import { isSetupCause, workspaceModelsOf } from "@halonicjs/app/run-failure";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { CommandResult } from "../../command.ts";
 import { providerAddress } from "../../doctor-workspace.ts";
 import { type ExitCode, exitCode } from "../../exit-code.ts";
+import { exitCodeFor } from "../../exit-code-for.ts";
 import { dimmed, markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
 import type { RunClock } from "../../run-times.ts";
@@ -40,7 +41,8 @@ export interface RunResultFacts {
 
 /**
  * The run's lines and exit code: 0 for a finished run and for one that waits
- * for the user, 8 for one its budget stopped, 1 for any other failed one. `--json` gets the run's summary and its
+ * for the user, 8 for one its budget stopped, the cause's kind for one the
+ * workspace's setup stopped, 1 for any other failed one. `--json` gets the run's summary and its
  * events, oldest first, with full ids.
  *
  * @example
@@ -81,13 +83,18 @@ export function runProgress(run: RunDetail, facts: RunResultFacts): CommandResul
 
 /**
  * 8 (`limitReached`) for a run its budget stopped, so a script can tell a
- * spent budget from a broken run (HAL-12007); 1 for any other failed run.
+ * spent budget from a broken run (HAL-12007). A run the workspace's setup
+ * stopped, such as a model alias the hub doesn't have, exits with its
+ * cause's kind, 4 for `not_found` (HAL-12377); 1 for any other failed run.
  * A run that couldn't try every step didn't pass, so a script must not take
  * it as done.
  */
 function runExitCode(summary: RunSummary): ExitCode {
   if (summary.status === "failed") {
-    return summary.reason === "budget" ? exitCode.limitReached : exitCode.failed;
+    if (summary.reason === "budget") {
+      return exitCode.limitReached;
+    }
+    return isSetupCause(summary.cause) ? exitCodeFor(summary.cause.kind) : exitCode.failed;
   }
   return summary.status === "cant-try" ? exitCode.failed : exitCode.ok;
 }
