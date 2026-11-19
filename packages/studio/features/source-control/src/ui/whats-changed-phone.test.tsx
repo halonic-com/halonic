@@ -81,6 +81,10 @@ verifies("source-control.whats-changed-phone", () => {
       const page = openItem(root, "Triage");
       const row = buttons(page, "Open Triage")[0];
       expect(row?.className).toContain("min-h-touch");
+      // The kit's icons have no size of their own: a bare chevron would fill the row.
+      const chevron = row?.querySelector("svg")?.parentElement;
+      expect(chevron).not.toBe(row);
+      expect(chevron?.className).toContain("size-icon-md");
       await act(async () => row?.click());
       expect(opened).toHaveBeenCalledWith({ kind: "agent", hub: "", id: "triage" });
     });
