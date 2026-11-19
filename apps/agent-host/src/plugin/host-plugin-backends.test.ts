@@ -39,6 +39,8 @@ sdk: 1
 name: Acme
 backend:
   hosts: [api.acme.example]
+  secrets:
+    acme-key: { purpose: Reads your Acme account, hosts: [api.acme.example], as: bearer }
   tools:
     - { name: echo, description: Echoes., risk: read, untrusted: true }
 `;
@@ -187,6 +189,9 @@ verifies("agent-host.plugin-routes", () => {
       await expect(backends.trustedFingerprint("acme")).rejects.toMatchObject({
         code: "not_in_this_build",
       });
+      await expect(backends.trustedSecretNames("acme")).rejects.toMatchObject({
+        code: "not_in_this_build",
+      });
       await expect(backends.open("acme", "f")).rejects.toBeInstanceOf(PluginRefusal);
     });
   });
@@ -274,6 +279,27 @@ verifies("agent-host.plugin-routes", () => {
       const { backends } = await setup();
       expect(backends.runnerSurvives(new RunnerToolError("bad input"))).toBe(true);
       expect(backends.runnerSurvives(new Error("the runner stopped"))).toBe(false);
+    });
+  });
+});
+
+verifies("agent-host.plugin-secrets", () => {
+  describe("the names of a plugin's secrets", () => {
+    it("names each secret a trusted plugin declares by the plugin's own name for it", async () => {
+      const { backends } = await setup();
+      expect(await backends.trustedSecretNames("acme")).toEqual({
+        "acme-key": "plugin__acme__acme-key",
+      });
+    });
+
+    it("names no secret of a plugin nobody trusted, or one that changed since", async () => {
+      const untrusted = await setup({ trusted: false });
+      expect(await refusedWith(untrusted.backends.trustedSecretNames("acme"))).toBe(
+        "plugin_not_trusted",
+      );
+      const { backends } = await setup();
+      await put({ "acme/backend/index.js": "export default { changed: true };\n" });
+      expect(await refusedWith(backends.trustedSecretNames("acme"))).toBe("plugin_not_trusted");
     });
   });
 });
