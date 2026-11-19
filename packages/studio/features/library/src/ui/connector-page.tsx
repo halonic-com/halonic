@@ -7,8 +7,8 @@ import {
 } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { takeConnectorTitleFocus } from "../connector-focus-request.ts";
-import { type ConnectorStatus, ConnectorStatusHostService } from "../connector-status-host.ts";
-import { ConnectorStatusModel } from "../connector-status-model.ts";
+import { ConnectorStatusHostService } from "../connector-status-host.ts";
+import { ConnectorStatusModel, type ConnectorStatusState } from "../connector-status-model.ts";
 import { itemFileRef } from "../item-file.ts";
 import { LibraryItemsHostService } from "../library-items-host.ts";
 import { ListedToolsHostService } from "../listed-tools-host.ts";
@@ -19,31 +19,26 @@ import { ConnectorStatusSection } from "./connector-status-section.tsx";
 import { useItemTrash } from "./item-trash.tsx";
 import { sharedHubKey } from "./library-place.tsx";
 import { ListedToolsElsewhere } from "./listed-tools-elsewhere.tsx";
-import { ListedToolsWaiting } from "./listed-tools-waiting.tsx";
+import { ListedToolsWaiting, type ListedToolsWaitingProps } from "./listed-tools-waiting.tsx";
 
 /** The command that opens the workspace page at Trust, where the trust check is (Settings' **Open Trust** runs it too). */
 const openTrustCommand = "workspace.open-trust";
 
 /**
  * The line about the connector's listed tools: how many wait for approval, or for an MCP server
- * over HTTP, which Studio can't list yet, the command that reviews them.
+ * over HTTP, which Studio can't list yet, the command that reviews them. It waits for the status,
+ * which says whether the server is over HTTP; if the status host can't answer, the waiting line
+ * shows as before.
  */
 function ListedToolsLine({
-  model,
-  connector,
-  sourceName,
-  viewOnly,
-}: {
-  readonly model: ListedToolsReviewModel;
-  /** Missing when the status host is out of reach: the waiting line stands. */
-  readonly connector: ConnectorStatus | undefined;
-  readonly sourceName: string;
-  readonly viewOnly: boolean;
-}) {
-  if (connector?.connection?.kind === "http") {
-    return <ListedToolsElsewhere connectorId={connector.id} />;
+  status,
+  ...waiting
+}: ListedToolsWaitingProps & { readonly status: ConnectorStatusState }) {
+  if (!status.loaded && status.error === undefined) return null;
+  if (status.connector?.connection?.kind === "http") {
+    return <ListedToolsElsewhere connectorId={status.connector.id} />;
   }
-  return <ListedToolsWaiting model={model} sourceName={sourceName} viewOnly={viewOnly} />;
+  return <ListedToolsWaiting {...waiting} />;
 }
 
 /**
@@ -55,10 +50,8 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
   const host = context.services.get(ConnectorStatusHostService);
   const model = useMemo(() => new ConnectorStatusModel(host, item.id), [host, item.id]);
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
-  const { loaded, error, connector } = useSyncExternalStore(subscribe, () => model.state);
-  // The tools line waits for the status, which says whether the server is over HTTP; if the
-  // status host can't answer, the waiting line shows as before.
-  const toolsLineReady = loaded || error !== undefined;
+  const status = useSyncExternalStore(subscribe, () => model.state);
+  const { loaded, connector } = status;
   const listedTools = context.services.find(ListedToolsHostService);
   const toolsModel = useMemo(
     () =>
@@ -146,10 +139,10 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
           )}
         </div>
       )}
-      {toolsModel === undefined || !toolsLineReady ? null : (
+      {toolsModel === undefined ? null : (
         <ListedToolsLine
           model={toolsModel}
-          connector={connector}
+          status={status}
           sourceName={name}
           engine={engineWordsOf(context)}
           {...(runCommand === undefined

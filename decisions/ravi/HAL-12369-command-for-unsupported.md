@@ -2,7 +2,6 @@
 
 - Approval: the words are microcopy 11.4 B5 (approved on HAL-11629) and the UX check rows L7 and L8 (HAL-12363), a team decision with no new board card (HAL-2282 rule); Liam signs this note
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QtO2504m6qX5NWXEMUI8nvfMTGZCK5686aDB+zWzhXMiYS6mnsoSCmSEWFqht2bfzBgePTXR/80Zz5X146xaAQ==
 - Task: HAL-12369
 
 ## What changes
@@ -17,7 +16,9 @@
   terminal:" and `halonic google sign-in <account ref>` under it.
 - Requirements `studio.workspace-google-setup-accounts` and `studio.served-google-setup-accounts`:
   each host says so through a new `checkAgainEntry`. The desktop refusal for the checks becomes
-  "Studio can't save this change yet."
+  "Studio can't save this change yet.", still of kind `unavailable` as HAL-12413 (halonic#3604)
+  made it, so the page shows it after its colon. Both requirements also keep HAL-12413's
+  untrusted-workspace **Review** line and the host's own refusal words.
 
 ## Why
 
