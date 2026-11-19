@@ -14,6 +14,7 @@ mod error;
 mod handshake;
 mod relay;
 mod routes;
+mod runtime_status;
 mod security_updates;
 mod stderr_log;
 mod wsl;
@@ -30,6 +31,7 @@ pub use error::{AgentHostError, StartCause};
 pub use handshake::{Handshake, read_handshake};
 use relay::Relay;
 pub use routes::{Answer, LineSplitter, LineTooLong, Method, Route, find_route};
+pub use runtime_status::runtime_installed;
 pub use security_updates::{OVERDUE_AFTER_DAYS, SecurityUpdates, security_updates};
 use stderr_log::log_stderr;
 pub use wsl::{
