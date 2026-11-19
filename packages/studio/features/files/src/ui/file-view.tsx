@@ -9,7 +9,9 @@ import {
 import { errorReasonFor, type ItemViewProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { copyPath } from "../copy-path.ts";
+import { fileAsItem } from "../file-as-item.ts";
 import { FILES_VIEW, fileItem, fileName } from "../file-item.ts";
+import type { FileMenuActions } from "../file-menu.ts";
 import { sizeOf, textKindOf } from "../file-size.ts";
 import {
   type CompareChoice,
@@ -363,6 +365,14 @@ export function FileView({ item, context }: ItemViewProps) {
     context.showSidebarView?.(FILES_VIEW);
   }
 
+  /** Open as *kind*, for a file that defines an agent, a workflow or a routine the window can open. */
+  function openAsItem(): FileMenuActions["openAsItem"] {
+    const asItem = fileAsItem(path);
+    const openItem = context.openItem;
+    if (asItem === undefined || openItem === undefined) return undefined;
+    return { kind: asItem.kind, open: () => openItem(asItem.item) };
+  }
+
   return (
     <section
       className="flex h-full min-h-0 flex-col"
@@ -377,6 +387,7 @@ export function FileView({ item, context }: ItemViewProps) {
       <FileHeader
         path={path}
         actions={{
+          openAsItem: openAsItem(),
           rename: renameInTree,
           remove: () => void removeFile(host, toasts, path),
           copyPath: () => void copyPath(writeClipboard, toasts, path),
