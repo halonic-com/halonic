@@ -412,11 +412,17 @@ class SessionConnector implements ConnectorClient {
   }
 }
 
-/** Closes the connector and the session, then removes what `prepare` made for them. */
+/**
+ * Closes the connector, then the session even when the connector's close throws,
+ * then removes what `prepare` made for them.
+ */
 async function closeBoth(opened: Opened): Promise<void> {
   try {
-    await opened.client.close();
-    await opened.session.close();
+    try {
+      await opened.client.close();
+    } finally {
+      await opened.session.close();
+    }
   } finally {
     await release(opened.opening);
   }
