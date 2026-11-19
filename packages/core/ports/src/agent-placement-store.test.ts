@@ -12,6 +12,7 @@ import {
 
 const placement: AgentPlacementRecord = {
   location: "/workspaces/acme",
+  hub: "support",
   agent: "coder",
   runsOn: "this-computer",
   agentFingerprint: "sha256:00",
@@ -40,13 +41,19 @@ verifies("ports.agent-placement-store", () => {
     const unpinned: AgentPlacementRecord = { ...placement, agentFingerprint: undefined };
     // @ts-expect-error: a choice belongs to one agent
     const unkeyed: AgentPlacementRecord = { ...placement, agent: undefined };
+    // @ts-expect-error: an agent id is unique only in its hub, so a choice names the hub too
+    const hubless: AgentPlacementRecord = { ...placement, hub: undefined };
     expect(placement.runsOn).toBe("this-computer");
-    expect([sandboxed, unpinned, unkeyed]).toHaveLength(3);
+    expect([sandboxed, unpinned, unkeyed, hubless]).toHaveLength(4);
   });
 });
 
 verifies("ports.agent-placement-store", () => {
-  const key: AgentPlacementKey = { location: placement.location, agent: placement.agent };
+  const key: AgentPlacementKey = {
+    location: placement.location,
+    hub: placement.hub,
+    agent: placement.agent,
+  };
 
   it("accepts a placement for the key it is asked about", () => {
     expect(isAgentPlacementFor(key, { ...placement })).toBe(true);
@@ -62,6 +69,8 @@ verifies("ports.agent-placement-store", () => {
     ["a time that isn't text", { ...placement, chosenAt: 0 }],
     ["an extra field", { ...placement, sandbox: false }],
     ["another agent's key", { ...placement, agent: "writer" }],
+    ["the same agent id in another hub", { ...placement, hub: "billing" }],
+    ["a choice saved before the key had a hub", withoutHub(placement)],
     ["another workspace's key", { ...placement, location: "/workspaces/other" }],
   ])("refuses %s", (_kind, value) => {
     expect(isAgentPlacementFor(key, value)).toBe(false);
@@ -73,3 +82,9 @@ verifies("ports.agent-placement-store", () => {
     expect(isAgentPlacementFor(key, inherited)).toBe(false);
   });
 });
+
+/** A placement as version 1 of the port saved it, with no hub. */
+function withoutHub(record: AgentPlacementRecord): Omit<AgentPlacementRecord, "hub"> {
+  const { hub: _hub, ...rest } = record;
+  return rest;
+}

@@ -22,7 +22,7 @@ const nothing = s.object({}).strict();
  *
  * @example
  * const store = new AgentHostPlacementStore(transport);
- * await store.get({ location: "/work/acme", agent: "coder" });
+ * await store.get({ location: "/work/acme", hub: "support", agent: "coder" });
  */
 export class AgentHostPlacementStore implements AgentPlacementStore {
   readonly #transport: AgentHostTransport;
@@ -46,9 +46,10 @@ export class AgentHostPlacementStore implements AgentPlacementStore {
   /** @throws {@link AgentHostError} when the host refuses */
   async save(placement: AgentPlacementRecord): Promise<void> {
     const route = "POST /v1/placements/save";
-    const { location, agent, runsOn, agentFingerprint, chosenAt } = placement;
+    const { location, hub, agent, runsOn, agentFingerprint, chosenAt } = placement;
     const answer = await this.#transport.request(route, {
       location,
+      hub,
       agent,
       runsOn,
       agentFingerprint,
@@ -65,7 +66,7 @@ export class AgentHostPlacementStore implements AgentPlacementStore {
   }
 }
 
-/** Only the key's two fields go to the host, even when the caller passes a whole record. */
+/** Only the key's three fields go to the host, even when the caller passes a whole record. */
 function keyOf(key: AgentPlacementKey): AgentPlacementKey {
-  return { location: key.location, agent: key.agent };
+  return { location: key.location, hub: key.hub, agent: key.agent };
 }

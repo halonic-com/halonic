@@ -1,11 +1,18 @@
 /** Version of the {@link AgentPlacementStore} port. A breaking change bumps it and comes with an ADR. */
-export const agentPlacementStoreVersion = 1;
+export const agentPlacementStoreVersion = 2;
 
-/** Which agent a placement is for. */
+/**
+ * Which agent a placement is for. An agent's id is unique only within its
+ * hub, so the hub is part of the key: two hubs in one workspace can each
+ * have a `writer`, and a choice for one is never a choice for the other
+ * (Julian, HAL-13203).
+ */
 export interface AgentPlacementKey {
   /** The workspace's resolved real path, as in a `TrustRecord`. */
   location: string;
-  /** The agent's id in the workspace. */
+  /** The id of the hub the agent is in. */
+  hub: string;
+  /** The agent's id in its hub. */
   agent: string;
 }
 
@@ -17,6 +24,7 @@ export interface AgentPlacementKey {
  * @example
  * const placement: AgentPlacementRecord = {
  *   location: "/workspaces/acme",
+ *   hub: "support",
  *   agent: "coder",
  *   runsOn: "this-computer",
  *   agentFingerprint: "sha256:9f86d0…",
@@ -64,14 +72,22 @@ export interface AgentPlacementStore {
 }
 
 /** Every field of an {@link AgentPlacementRecord}, and no other. */
-const placementFields = ["location", "agent", "runsOn", "agentFingerprint", "chosenAt"] as const;
+const placementFields = [
+  "location",
+  "hub",
+  "agent",
+  "runsOn",
+  "agentFingerprint",
+  "chosenAt",
+] as const;
 
 /**
  * Whether `value`, as read back from a store, is a valid choice for `key`:
  * exactly the fields of an {@link AgentPlacementRecord}, each text, with
  * `runsOn: "this-computer"` and the key asked for. Anything else is a
- * damaged or borrowed choice, such as a hand edit or a file copied from
- * another agent, and must never take an agent out of its sandbox. Every
+ * damaged or borrowed choice, such as a hand edit, a file copied from
+ * another agent, or one saved before the key had a hub (version 1), and
+ * must never take an agent out of its sandbox. Every
  * adapter checks what it reads with this, and `AgentPlacement` in
  * `core/app` checks what an adapter gives back with it again.
  *
@@ -93,6 +109,7 @@ export function isAgentPlacementFor(
     ) &&
     record.runsOn === "this-computer" &&
     record.location === key.location &&
+    record.hub === key.hub &&
     record.agent === key.agent
   );
 }

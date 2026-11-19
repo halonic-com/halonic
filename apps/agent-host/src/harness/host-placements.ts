@@ -19,7 +19,7 @@ import { namedWorkspace } from "../server/named-workspace.ts";
  *
  * @example
  * const placements = new HostPlacements(store, workspaceRoots);
- * await placements.get({ location: "/work/acme", agent: "coder" }); // the choice, or null
+ * await placements.get({ location: "/work/acme", hub: "support", agent: "coder" }); // the choice, or null
  */
 export class HostPlacements {
   readonly #store: AgentPlacementStore;

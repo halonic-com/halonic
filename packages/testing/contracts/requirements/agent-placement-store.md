@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: stack 3a of the HAL-189 implementation plan, with Liam's change on HAL-1967 (each new port gets a contract suite); `AgentPlacementStore` port v1
 
-Where an adapter implements `AgentPlacementStore`, it shall start empty; give back every field of a saved placement; replace a placement saved again for the same location and agent; remove a placement, treating the removal of a missing one as no error; keep what was saved whatever the caller later does with the objects it passed or got; keep one placement per location and agent id, compared exactly and never joined in a way that lets two keys meet; and, for a placement that can't be read, throw an error naming its location and agent from `get`, while `remove` and `save` still work.
+Where an adapter implements `AgentPlacementStore`, it shall start empty; give back every field of a saved placement; replace a placement saved again for the same location, hub and agent; remove a placement, treating the removal of a missing one as no error; keep what was saved whatever the caller later does with the objects it passed or got; keep one placement per location, hub id and agent id, compared exactly, so the same agent id in two hubs has two placements, and never joined in a way that lets two keys meet; and, for a placement that can't be read, throw an error naming its location and agent from `get`, while `remove` and `save` still work.
 
 ## Examples
 

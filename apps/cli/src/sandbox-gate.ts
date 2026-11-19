@@ -156,6 +156,7 @@ export async function checkRunSandbox(
   for (const agent of programAgentsOf(workspace, run)) {
     const answer = await machine.placement.where({
       location: machine.location,
+      hub: run.hubId,
       agent: agent.value.id,
       file: await machine.readFile(agent.path),
     });

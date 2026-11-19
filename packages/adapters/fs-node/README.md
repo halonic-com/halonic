@@ -219,9 +219,10 @@ the user's profile such as `<profile>/placements`, never inside a workspace,
 so an agent that edits the workspace can't take itself out of its sandbox.
 It passes the shared `AgentPlacementStore` contract suite.
 
-- **File names** are the SHA-256 of the JSON of `[location, agent]` as
+- **File names** are the SHA-256 of the JSON of `[location, hub, agent]` as
   UTF-16 code units, as for trust records. JSON keeps a location ending in
-  `/` from running into the agent id.
+  `/` from running into the hub id. A choice saved before the key had a hub
+  (version 1 of the port) has another name, so it reads as no choice.
 - **Writes** go through a flushed temporary file and a rename, with the same
   modes as trust records.
 - **Damage:** when a choice can't be read, or the file holds another

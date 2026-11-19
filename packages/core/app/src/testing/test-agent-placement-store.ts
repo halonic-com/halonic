@@ -42,7 +42,7 @@ export class TestAgentPlacementStore implements AgentPlacementStore {
   }
 }
 
-/** One string per key. JSON keeps a location with a `/` from running into the agent id. */
+/** One string per key. JSON keeps a location with a `/` from running into the hub id. */
 function keyId(key: AgentPlacementKey): string {
-  return JSON.stringify([key.location, key.agent]);
+  return JSON.stringify([key.location, key.hub, key.agent]);
 }

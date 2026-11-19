@@ -16,6 +16,7 @@ const digest: Digest = {
 const clock: Clock = { now: () => new Date("2026-11-14T10:00:00.000Z") };
 const subject: PlacementSubject = {
   location: "/workspaces/acme",
+  hub: "support",
   agent: "coder",
   file: encodeUtf8("kind: agent\nid: coder\n"),
 };

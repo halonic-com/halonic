@@ -43,7 +43,7 @@ export class MemoryPlacementStore implements AgentPlacementStore {
 }
 
 function idOf(key: AgentPlacementKey): string {
-  return JSON.stringify([key.location, key.agent]);
+  return JSON.stringify([key.location, key.hub, key.agent]);
 }
 
 /** Workspace files in memory, enough for the proposal records. */

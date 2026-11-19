@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: stack 3 of the HAL-189 implementation plan (the `fs-node` adapter follows once `adapters/fs-node`, HAL-1635, is merged); `AgentPlacementStore` port v1
 
-The file placement store shall keep each agent's "this computer" choice as one JSON file in the folder it is given, named by the lower-case hex SHA-256 of the JSON of `[location, agent]` as UTF-16 code units (little-endian) and `.json`, with the location and the agent as the file's first keys. It shall create the folder with mode `700` and each file with mode `600`, and write a choice through a temporary file and a rename. A folder that doesn't exist yet shall hold no choices. When a choice can't be read, or holds another agent's key, `get` shall throw naming the agent and its workspace. `remove` shall delete the file without reading it. The adapter shall pass the `contracts.agent-placement-store` suite.
+The file placement store shall keep each agent's "this computer" choice as one JSON file in the folder it is given, named by the lower-case hex SHA-256 of the JSON of `[location, hub, agent]` as UTF-16 code units (little-endian) and `.json`, with the location, the hub and the agent as the file's first keys. It shall create the folder with mode `700` and each file with mode `600`, and write a choice through a temporary file and a rename. A folder that doesn't exist yet shall hold no choices. When a choice can't be read, or holds another agent's key or no hub, `get` shall throw naming the agent, its hub and its workspace. A choice saved before the key had a hub shall read as no choice. `remove` shall delete the file without reading it. The adapter shall pass the `contracts.agent-placement-store` suite.
 
 ## Examples
 
