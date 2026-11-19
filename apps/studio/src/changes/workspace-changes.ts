@@ -123,7 +123,8 @@ export class WorkspaceChanges implements ChangesSource {
     const status = await this.#run(statusArgs);
     if (status === "no-git") return { kind: "no-git" };
     if (status.code !== 0) throw new KindedError("unavailable", readableProblem(status));
-    return { kind: "ready", changes: parseStatus(status.stdout).changes.filter(isVersioned) };
+    const changes = parseStatus(status.stdout).changes.filter(isVersioned);
+    return { kind: "ready", changes: await this.#merge.ownChanges(changes) };
   }
 
   async readTexts(change: VcsChange): Promise<FileTexts> {
