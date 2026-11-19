@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: UX check C104, P3 (HAL-12952, HAL-12963)
 
-A provider's tab shall be named after the `name` in its file in `providers/`, and after its id with a capital when the file has no name or hasn't been read yet, and the tab shall take the new name when `providers/` changes it (`shell.item-tab-names`).
+The tab of a provider shall be named after the `name` in its file in `providers/`, and after its id with a capital when the file has no name or hasn't been read yet, and the tab shall take the new name when `providers/` changes it (`shell.item-tab-names`).
 
 ## Examples
 
