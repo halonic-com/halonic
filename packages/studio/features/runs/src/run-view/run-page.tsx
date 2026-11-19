@@ -177,7 +177,7 @@ export function RunView({
     const entries =
       log === undefined
         ? []
-        : everyStep(log, summarize(log) ?? run.summary, context.workflow, context.now);
+        : everyStep(log, summarize(log) ?? run.summary, context.workflow, context.now, phone);
     const open = entries.find((entry) => entry.id === openEntry);
     return (
       <div ref={page} className="flex min-h-full w-full items-start">

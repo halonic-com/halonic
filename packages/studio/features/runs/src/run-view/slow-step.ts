@@ -14,16 +14,22 @@ export const slowStepAfterMs = 10_000;
 /**
  * What the running step waits for, once the log's last event is at least 10 seconds old, or
  * `undefined` while the step is quick or the last event names no wait. Only the last event
- * counts, so a step that moved on never shows an old wait.
+ * counts, so a step that moved on never shows an old wait. On a `phone`, a local model's line says
+ * it runs on the computer.
  */
-export function slowStepLine(log: readonly RunEvent[], now: Date): string | undefined {
+export function slowStepLine(
+  log: readonly RunEvent[],
+  now: Date,
+  phone = false,
+): string | undefined {
   const last = log.at(-1);
   if (last === undefined || now.getTime() - Date.parse(last.at) < slowStepAfterMs) {
     return undefined;
   }
   switch (last.type) {
     case "llm.request":
-      return last.provider === "ollama" ? slowStepWords.ollama : slowStepWords.model(last.provider);
+      if (last.provider !== "ollama") return slowStepWords.model(last.provider);
+      return phone ? slowStepWords.ollamaOnPhone : slowStepWords.ollama;
     case "tool.called":
       return slowStepWords.tool(last.tool);
     case "connector.started":

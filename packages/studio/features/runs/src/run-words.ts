@@ -229,6 +229,7 @@ export const runPageWords = {
   runAgainFailedName: "Run didn't start",
   runAgainFailedTitle: "Couldn't start the run",
   runAgainFailed: (reason: string) => `Couldn't start the run: ${reason}`,
+  tryAgain: "Try again",
   openRun: (shortId: string) => `Open run ${shortId}`,
   waitingForYouName: "Waiting for you",
   waitingName: "Waiting",
