@@ -6,7 +6,8 @@
 //! hello call to the checked addresses, and turns the reply into a
 //! [`ConnectResult`] for the page. Errors and states come back as values;
 //! the connect page owns the words (microcopy 20.4). The pairing scanner's
-//! `pair_scan` command reads its answers the same way, with [`read_scanned`].
+//! `pair_scan` command reads its answers the same way, with [`read_scanned`],
+//! and keeps track of its scan and cancels with a [`ScanSession`].
 
 mod address;
 mod check;
@@ -18,6 +19,7 @@ mod home_network;
 mod local_network;
 mod navigation;
 mod pair_scan;
+mod scan_session;
 mod timed_resolver;
 mod version;
 
@@ -31,5 +33,6 @@ pub use home_network::{Reach, reach};
 pub use local_network::{call_needs_local_network, lookup_needs_local_network};
 pub use navigation::{Destination, NavigationTarget, navigation_destination, page_may_stay};
 pub use pair_scan::{CameraPermission, QR_CODE_FORMAT, ScanAnswer, read_scanned};
+pub use scan_session::{CANCEL_FOLLOW_UPS, CancelPlan, ScanId, ScanSession};
 pub use timed_resolver::TimedResolver;
 pub use version::Version;

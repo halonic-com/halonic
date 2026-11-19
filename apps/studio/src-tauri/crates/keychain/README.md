@@ -1,9 +1,10 @@
 # halonic-keychain
 
-The Studio shell's desktop keychain (HAL-192, plan approved on HAL-1508): the `SecretBackend` from `halonic-secrets` on macOS, Windows and Linux. The shell's `secret_get`, `secret_has`, `secret_set` and `secret_delete` commands use it.
+The Studio shell's desktop keychain (HAL-192, plan approved on HAL-1508): the `SecretBackend` from `halonic-secrets` on macOS, Windows and Linux. The shell's `secret_get`, `secret_has`, `secret_set`, `secret_delete`, `secret_allowed_origins` and `secret_allow_origin` commands use it.
 
 - **Where secrets go:** the macOS Keychain, the Windows Credential Manager, or the Secret Service on Linux (GNOME Keyring, KWallet), through the `keyring` crate (3.6.3, pinned, one platform feature per target).
 - **The entry:** service `halonic`, user the canonical name (`Acme-Key` becomes `acme_key`), the entry the CLI uses for the same name. On Windows the entry's target is `acme_key.halonic`.
+- **Allowed origins:** the origins a key may be sent to are a second entry, service `halonic-origins` and the same user, one origin per line (HAL-11887). On Windows its target is `acme_key.halonic-origins`. A list that isn't text is kept and reported as `backend`, since removing it would unbind the key.
 - **No mock store:** keyring 3 keeps secrets in memory when it's built without a platform feature. This crate never uses keyring's default store, and a test checks that each entry is the platform's credential type. On other targets (Android) keyring isn't built, and every call is `unavailable`.
 - **Value size:** 16 KiB, except on Windows: the Credential Manager keeps 2,560 bytes of UTF-16, so values there are at most 1,280 bytes. Longer values are `invalid_value`.
 - **Errors:** a locked Secret Service or a dismissed unlock prompt is `denied`; a missing keychain on macOS or Windows is `unavailable`; a value that isn't text is deleted and reported as `unreadable`. No message holds a value.

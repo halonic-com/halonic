@@ -225,6 +225,15 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
     ]);
   });
 
+  it("lists the provider types Halonic can call for a type it can't (HAL-12342)", () => {
+    expect(
+      lines({ reason: "unknown-provider-type", provider: "weird", type: "carrier-pigeon" }),
+    ).toEqual([
+      "Support reply failed in the step Draft a reply: provider weird has type carrier-pigeon, which Halonic can't call.",
+      "Set type in providers/weird.yaml to one of anthropic, openai, openai-compatible, ollama, lmstudio or mock, then run again.",
+    ]);
+  });
+
   it("keeps the fail-closed promise for a local-only workspace and a blocked site", () => {
     const localOnly: RunFailure = {
       reason: "local-only",

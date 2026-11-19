@@ -116,11 +116,16 @@ export class WorkspaceHarnessHost implements HarnessProfileHost {
    * as Halonic's own loop.
    */
   async settingsFolder(agent: HarnessAgent): Promise<string | null> {
-    if (this.#options.harnesses[agent.harness]?.signIn === undefined) return null;
-    const folder = this.#options.settingsFolders.harnessSettingsFolder(
-      agent.agentId,
-      agent.harness,
-    );
+    return this.agentSettingsFolder(agent.agentId, agent.harness);
+  }
+
+  /**
+   * {@link settingsFolder} by the agent's id alone, outside a run: where
+   * Studio checks and opens the agent's own sign-in (HAL-6351).
+   */
+  async agentSettingsFolder(agentId: string, harness: ProgramHarness): Promise<string | null> {
+    if (this.#options.harnesses[harness]?.signIn === undefined) return null;
+    const folder = this.#options.settingsFolders.harnessSettingsFolder(agentId, harness);
     await this.#disk.makePrivateFolder(folder);
     return folder;
   }

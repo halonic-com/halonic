@@ -43,6 +43,8 @@ The page draws them as one kit List with `groups` and `columns`: an `h3` for eac
 
 The Started by column reads the run's trigger: "You, with Run", "A message arrived", "A signal arrived", "Schedule · weekdays at 08:00" with the routine's name in a tooltip (from the source's `routine`), "Caught up after sleep" for a catch-up run, and `Test “<case>”` for a test run. A run without a trigger was started in the terminal, "You, in the terminal", and a child run names its parent, "Run 7k2m9p". Until the run log records which test case started a test run, the source has no `testCase` and the column says "A test case". The row's sentence has its own words after "Started by", which read on from it: "a message", "the schedule, weekdays at 08:00", "a catch-up after sleep" (`rowLabelWords.startedBy`).
 
+A change of the filters is read once the list has settled, under the key `runs-filter`: "2 runs.", "1 run.", or the filter's own line when it shows none ("No failed runs."). A row that changes status isn't read: Needs you's own announcement says what needs the person (requirement `runs.list-announcements`).
+
 Not on the list yet: the spend line (it needs T4's spend function), opening a run in a new tab, the text and hub filters, and the row's ⋮.
 
 The run page says under its title what the run ran, from the version its run.started records:
@@ -107,6 +109,14 @@ runHeader(run, context); // { title: "Run 01jd8q", kindLabel: "Support reply", l
 runBanner(run, context); // { kind: "callout", tone: "warning", name: "Waiting for you", action: { kind: "review-in-inbox" }, … }
 ```
 
+When the run's status changes, the page reads its new state through the shell's `announceState`, under the key `run:<run id>`, in microcopy 19.3's words (requirement `runs.run-view.status-announcements`). The state it opens on isn't read, and a finished run waits for its log, so what it sent is read with it. When the change takes the focused element away, such as **Review in Inbox** in a banner that goes, focus moves to the page's `h1`:
+
+```ts
+import { runChangeText } from "./run-view/run-change.ts";
+
+runChangeText(run, log, context); // "Run 650704 finished. Sent 1 email, estimated cost €0.01."
+```
+
 Every step reads the run's whole log from the source (`RunsSource.log`) and lists the steps `runSteps` in `@halonicjs/app` finds, the same steps `halonic runs show` prints (requirement `runs.every-step`). Each entry is worked out in `run-view/every-step-model.ts`:
 
 ```ts
@@ -114,6 +124,15 @@ import { everyStep } from "./run-view/every-step-model.ts";
 
 everyStep(events, summary, workflow, new Date());
 // [{ id: "step-0", name: "Read", mark: "done", line: "Took 1 min", time: "10:40", label: "Read, done, 10:40, Took 1 min" }, …]
+```
+
+Above Every step, the receipt's Items section names the files the run saved (requirement `runs.run-view.receipt-items`), and a dashed frame, "What the agent says it did (its own words, not checked)", holds the last answer an agent of the run gave, as plain text (requirement `runs.run-view.agent-says`). The frame is model output: the receipt's lines never come from it.
+
+```ts
+import { agentSays, itemLines } from "./run-view/receipt-model.ts";
+
+itemLines(events); // ["Created 1 file: weekly-report.md"]
+agentSays(events); // "This week: 12 emails…"
 ```
 
 Under the timeline, **Show the run log** shows the run's events in its place, numbered by `seq`, the same events `halonic runs show --json` returns, and **Show every step** brings the timeline back (requirement `runs.run-view.run-log`). Each line's fields are one line of JSON with hidden characters escaped (`escapeHidden` in `@halonicjs/std`), and a step's blocked sites read "Blocked: registry.npmjs.org (12 tries)" once:

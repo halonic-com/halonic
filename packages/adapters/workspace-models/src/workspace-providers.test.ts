@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   openAiBaseUrl,
   type ProviderFile,
+  providerTypes,
   WorkspaceModelError,
   workspaceProvider,
 } from "./index.ts";
@@ -132,9 +133,24 @@ verifies("cli.workspace-models", () => {
           code: "unknown-provider-type",
           kind: "not_found",
           message: "provider acme has type acme-cloud, which Halonic can't call.",
-          fix: "Give providers/acme.yaml one of the types anthropic, openai, openai-compatible, ollama, lmstudio or mock.",
+          fix: "Set type in providers/acme.yaml to one of anthropic, openai, openai-compatible, ollama, lmstudio or mock, then run again.",
+          failureCause: {
+            code: "models.unknown-provider-type",
+            detail: { provider: "acme", type: "acme-cloud" },
+          },
         }),
       );
+    });
+
+    it("can call every type the fix lists", () => {
+      for (const type of providerTypes) {
+        const settings =
+          type === "openai-compatible" ? { baseUrl: "http://models.acme.test/v1" } : {};
+        expect(
+          () => workspaceProvider(file(type, settings), recordingHttpContext()),
+          type,
+        ).not.toThrow();
+      }
     });
   });
 

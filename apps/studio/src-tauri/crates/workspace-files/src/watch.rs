@@ -94,7 +94,7 @@ impl FolderSnapshot {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WatchMessage {
     Changed(Vec<String>),
-    Failed(String),
+    Failed(FileError),
 }
 
 /// Where a watch's messages go; `false` once no one reads them.
@@ -179,7 +179,7 @@ impl Watches {
         let first = match scan() {
             Ok(first) => first,
             Err(error @ FileError::TooManyFiles { .. }) => {
-                (watcher.send)(WatchMessage::Failed(error.to_string()));
+                (watcher.send)(WatchMessage::Failed(error));
                 return Ok(id);
             }
             Err(error) => return Err(error),
@@ -291,7 +291,7 @@ impl FolderLook {
                     }
                 }
                 Err(error) => {
-                    self.fail(all, key, &error.to_string());
+                    self.fail(all, key, &error);
                     return;
                 }
             }
@@ -317,12 +317,12 @@ impl FolderLook {
 
     /// Ends the look with one `Failed` to every watch on it, those that
     /// joined at the last moment included.
-    fn fail(&self, all: &Folders, key: &str, reason: &str) {
+    fn fail(&self, all: &Folders, key: &str, error: &FileError) {
         let mut folders = lock(all);
         self.leave(&mut folders, key);
         let mut watchers = lock(&self.watchers);
         for watcher in watchers.iter_mut() {
-            (watcher.send)(WatchMessage::Failed(reason.to_owned()));
+            (watcher.send)(WatchMessage::Failed(error.clone()));
         }
         // The senders go now, so whoever reads them sees the end.
         watchers.clear();

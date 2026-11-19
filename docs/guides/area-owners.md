@@ -37,7 +37,7 @@ Most CI jobs check one area. A failing job goes to its area's owner.
 
 | Area | Jobs in `ci.yml` | Other workflows |
 | --- | --- | --- |
-| Sandbox | Sandbox fence (bubblewrap), Sandbox fence (Seatbelt), Sandbox fence (MXC on Windows 11), Sandbox packages on each system, Sandbox fence on Windows (canary probes) |  |
+| Sandbox | Sandbox fence (bubblewrap), Sandbox fence (Seatbelt), Sandbox fence (MXC on Windows 11), Sandbox packages on macOS, Sandbox packages on Windows, Sandbox fence on Windows (canary probes) |  |
 | Studio | Tauri shell (Rust checks), Tauri shell on Windows, Keychain contract on macOS, Android shell (debug APK), Studio end-to-end (Playwright) | `android-screens.yml` |
 | Engine and CLI | Live cloud suites passed |  |
 | Adapters | Agent host executable |  |
@@ -48,3 +48,15 @@ Two jobs test every package: "Typecheck, lint, test, build" and "Merge base's
 tests (no cache)". When one of them fails, the task goes to the area of the
 package that failed, using the paths above. If the log doesn't name a package,
 it goes to Liam.
+
+## The nightly
+
+Every night `scheduled.yml` runs `tooling/check/src/cli/main-failures.ts`. It
+reads the newest finished push run of `ci.yml` on `main` and the newest
+`android-screens.yml` run, sorts their failed jobs into areas with the tables
+above, and opens or updates one GitHub issue per failing area, labelled
+`nightly:<area>` (for example `nightly:engine-and-cli`). It closes the issue of
+an area that is green again, and then starts `android-screens.yml` for the next
+night. A job that also failed on the run from the night before is marked
+"second night in a row". Each morning a Paperclip routine turns the open
+`nightly:*` issues into tasks for the area owners and tells Liam.

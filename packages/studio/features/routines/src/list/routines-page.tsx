@@ -17,6 +17,7 @@ import {
   RoutinesHostService,
 } from "../api.ts";
 import { NewRoutineDialog } from "../new/new-routine-dialog.tsx";
+import { OnTimeHint } from "../when/on-time-hint.tsx";
 import { listWords, rowMenuWords } from "./list-words.ts";
 import { dropNewRoutineRequest, takeNewRoutineRequests } from "./new-request.ts";
 import { routineHubs, rowId } from "./routine-rows.tsx";
@@ -200,7 +201,9 @@ export function RoutinesView({ host, open, openInNewTab, engine, newWorkflow }: 
           {listWords.title}
         </h1>
         {(listings.length > 0 || load.kind !== "ready") && (
-          <p className="text-body text-fg-muted">{listWords.sentence}</p>
+          <p className="text-body text-fg-muted">
+            {listWords.sentence} <OnTimeHint of="routines" />
+          </p>
         )}
       </header>
       {load.kind === "ready" && load.stale && (

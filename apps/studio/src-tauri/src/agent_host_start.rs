@@ -47,7 +47,7 @@ pub(super) async fn running_host<R: Runtime>(app: &AppHandle<R>) -> Result<Hands
                 }
             },
         };
-        *state.security_updates.lock().map_err(|_| poisoned())? = updates;
+        *state.start_checks.lock().map_err(|_| poisoned())? = updates;
         let handshake = started.handshake().clone();
         *host = Some(started);
         Ok(handshake)

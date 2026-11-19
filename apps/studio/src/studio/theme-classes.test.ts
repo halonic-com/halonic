@@ -40,12 +40,15 @@ async function buildStudioCss(classes: readonly string[]): Promise<string> {
   return compiler.build([...classes]);
 }
 
-/** Every shipped source file of the Studio packages: no tests, no e2e pages, no node_modules. */
+/**
+ * Every source file of the Studio packages, no tests and no node_modules. The e2e pages count:
+ * they build their CSS from the same theme, and a page that loses its fill tests a different look.
+ */
 function sourceFiles(folder: string): string[] {
   return readdirSync(folder, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(folder, entry.name);
     if (entry.isDirectory()) {
-      return ["node_modules", "dist", "e2e"].includes(entry.name) ? [] : sourceFiles(full);
+      return ["node_modules", "dist"].includes(entry.name) ? [] : sourceFiles(full);
     }
     return /\.tsx?$/.test(entry.name) && !/\.(test|spec)\.tsx?$/.test(entry.name) ? [full] : [];
   });
@@ -57,11 +60,12 @@ function withoutComments(text: string): string {
 }
 
 /**
- * A colour, size or edge utility, after any variants (`hover:`, `phone:`): `text-danger`,
- * `bg-surface-muted`, `border-s-2`, `ring-accent/40`. Its group is the utility without variants.
+ * A colour, size, edge or shadow utility, after any variants (`hover:`, `phone:`): `text-danger`,
+ * `bg-surface-muted`, `border-s-2`, `ring-accent/40`, `from-surface`, `shadow-2`. Its group is the
+ * utility without variants.
  */
 const utility =
-  /(?<![\w:/-])(?:[\w-]+:)*((?:text|bg|border|fill|stroke|ring|outline|divide|decoration|placeholder|caret)-[a-z0-9-]+(?:\/\d+)?)(?![\w/-])/g;
+  /(?<![\w:/-])(?:[\w-]+:)*((?:text|bg|border|fill|stroke|ring|outline|divide|decoration|placeholder|caret|from|via|to|shadow)-[a-z0-9-]+(?:\/\d+)?)(?![\w/-])/g;
 
 /** Every utility the Studio packages name, with the `file:line` places it's used. */
 function usedUtilities(): Map<string, string[]> {
@@ -92,6 +96,8 @@ describe("the Studio's colour and type classes", () => {
     const places = usedUtilities();
     expect(places.get("text-danger")?.length).toBeGreaterThan(10);
     expect(places.get("bg-surface")?.length).toBeGreaterThan(10);
+    expect(places.get("shadow-2")?.length).toBeGreaterThan(0);
+    expect(places.get("bg-surface")?.some((where) => where.includes("/e2e/pages/"))).toBe(true);
   });
 
   it("are all defined by the kit's theme, so none falls back to the normal text", async () => {

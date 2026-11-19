@@ -1,14 +1,60 @@
-import type { SettingsSectionProps } from "@halonicjs/studio-shell";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { focusSectionHeading, type SettingsSectionProps } from "@halonicjs/studio-shell";
+import { type RefObject, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AddPluginDialog } from "../add/add-plugin-dialog.tsx";
 import { PluginsService } from "../api.ts";
-import { pluginPageItem } from "../page/plugin-pages.ts";
+import {
+  type InstalledPluginFeed,
+  type InstalledPluginsRead,
+  pluginPageItem,
+} from "../page/plugin-pages.ts";
 import { ReviewPluginDialog } from "../page/review-plugin-dialog.tsx";
 import { usePageActions } from "../page/use-page-actions.ts";
-import { BUILT_IN_PLUGINS, PluginsList } from "./plugins-list.tsx";
+import { LOAD_FAILED_REASON } from "./list-text.ts";
+import { BUILT_IN_PLUGINS, PluginsList, type PluginsLoad } from "./plugins-list.tsx";
 
 /** The Library feature's command that shows its Connectors tab. */
 const OPEN_CONNECTORS_COMMAND = "library.connector";
+
+const ALWAYS_READ: InstalledPluginsRead = { kind: "ready" };
+const alwaysRead = () => ALWAYS_READ;
+const LOADING: PluginsLoad = { kind: "loading" };
+const LOADED: PluginsLoad = { kind: "ready" };
+
+/**
+ * The list's load state from the feed's first read (P2, P3), and **Try again**, which reads again.
+ * A failed read always shows {@link LOAD_FAILED_REASON}: the plugins folder reader's errors are
+ * written for developers and can name a path or an OS error, which P3 never shows. Try again
+ * keeps the error on screen with its button busy; once the plugins read, the focus goes to the
+ * section's heading, since the button that had it is gone.
+ */
+function useFirstRead(
+  feed: InstalledPluginFeed,
+  reload: () => Promise<void>,
+  anchor: RefObject<HTMLElement | null>,
+): { readonly load: PluginsLoad; readonly tryAgain: () => void } {
+  const read = useSyncExternalStore(feed.subscribe, feed.firstRead ?? alwaysRead);
+  const [trying, setTrying] = useState(false);
+  const focusHeading = useRef(false);
+  useEffect(() => {
+    if (read.kind !== "ready" || !focusHeading.current) return;
+    focusHeading.current = false;
+    focusSectionHeading(anchor.current);
+  }, [read.kind, anchor]);
+  const tryAgain = () => {
+    focusHeading.current = true;
+    setTrying(true);
+    reload()
+      .catch(() => {
+        // The feed keeps the failure as its first read, so the list shows the new reason.
+        focusHeading.current = false;
+      })
+      .finally(() => setTrying(false));
+  };
+  if (read.kind === "failed") {
+    return { load: { kind: "failed", reason: LOAD_FAILED_REASON, trying }, tryAgain };
+  }
+  return { load: read.kind === "reading" ? LOADING : LOADED, tryAgain };
+}
 
 /**
  * Settings → Plugins (`plugins.plugin-settings-list`): the installed plugins and the ones that
@@ -24,6 +70,8 @@ export function PluginsSettingsSection({ context, closeSettings, place }: Settin
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState<string | undefined>(undefined);
   const { toastOn, toastAddedOff } = usePageActions();
+  const anchor = useRef<HTMLDivElement>(null);
+  const { load, tryAgain } = useFirstRead(plugins.feed, plugins.actions.reload, anchor);
   const open = (plugin: string, inNewTab: boolean) => {
     closeSettings();
     const item = pluginPageItem(plugin);
@@ -44,9 +92,9 @@ export function PluginsSettingsSection({ context, closeSettings, place }: Settin
     open(justAdded.plugin, false);
   });
   return (
-    <>
+    <div ref={anchor}>
       <PluginsList
-        load={{ kind: "ready" }}
+        load={load}
         plugins={installed}
         builtIn={plugins.builtIn ?? BUILT_IN_PLUGINS}
         {...(context.runCommand === undefined ? {} : { onOpenBuiltIn: openConnectors })}
@@ -54,7 +102,7 @@ export function PluginsSettingsSection({ context, closeSettings, place }: Settin
         onOpen={(plugin) => open(plugin, false)}
         onOpenInNewTab={(plugin) => open(plugin, true)}
         {...(plugins.installer === undefined ? {} : { onAdd: () => setAdding(true) })}
-        onRetry={() => {}}
+        onRetry={tryAgain}
         place={place === "served" || plugins.place === "served" ? "served" : "app"}
         headingLevel={4}
       />
@@ -91,6 +139,6 @@ export function PluginsSettingsSection({ context, closeSettings, place }: Settin
           }}
         />
       )}
-    </>
+    </div>
   );
 }

@@ -14,6 +14,9 @@ The proposal service shall list the open proposals of the workspace's runs, newe
 - Given the person rejected every file of run `01JD8Q` and its proposal was settled,
   when the host lists the proposals,
   then `01JD8Q` isn't listed.
+- Given runs `01JD8Q` and `7KQ2MX` with proposals, and the record of `7KQ2MX` can't be read,
+  when the host lists the proposals,
+  then it gets `01JD8Q` only, and `7KQ2MX` waits for a read of it to say what is wrong.
 - Given a run that changed nothing,
   when the host lists the proposals,
   then the list is empty.

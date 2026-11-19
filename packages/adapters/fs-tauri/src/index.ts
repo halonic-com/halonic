@@ -8,6 +8,15 @@ export {
 export { TauriBlobStore } from "./blob-store.ts";
 export { commandPathCommands, TauriCommandPaths } from "./command-paths.ts";
 export { TauriDefinitionStore, webCryptoDigest } from "./definition-store.ts";
+export { TauriEngineLock, type TauriHeldEngineLock } from "./engine-lock.ts";
+export {
+  type EngineLockLost,
+  type EngineLockRefusal,
+  type EngineLockRefusalKind,
+  engineLockCommands,
+  engineLockRefusalKinds,
+  isEngineLockRefusal,
+} from "./engine-lock-commands.ts";
 export {
   type FileRefusal,
   type FileRefusalKind,

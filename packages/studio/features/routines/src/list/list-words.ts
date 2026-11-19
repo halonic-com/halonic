@@ -1,8 +1,7 @@
 /** The Routines list's words (microcopy 12.1, flow-routines 2.1). */
 export const listWords = {
   title: "Routines",
-  sentence:
-    "A routine starts a workflow or an agent on its own: on a schedule, every so often, or when mail arrives.",
+  sentence: "A routine starts a workflow or an agent on its own: on a schedule or every so often.",
   emptySentence:
     "A routine starts a workflow or an agent on its own, for example every weekday at 8.",
   searchLabel: "Search routines",

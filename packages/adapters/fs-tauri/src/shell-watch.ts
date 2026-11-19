@@ -123,11 +123,14 @@ function receive(
   noticed: (name: string) => void,
   failed: (error: Error) => void,
 ): void {
-  const { type, paths, message: reason } = (message ?? {}) as Record<string, unknown>;
+  const { type, paths, kind, message: reason } = (message ?? {}) as Record<string, unknown>;
   if (type === "changed" && Array.isArray(paths) && paths.every(isString)) {
     for (const path of paths) {
       noticed(path);
     }
+  } else if (type === "failed" && typeof reason === "string" && kind === "too_many_files") {
+    // The shell's sentence already says what happened and what to do, so the page can show it as is.
+    failed(new KindedError("limit_reached", reason));
   } else if (type === "failed" && typeof reason === "string") {
     failed(new KindedError("unavailable", `The workspace watch stopped: ${reason}`));
   } else {

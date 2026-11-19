@@ -296,6 +296,17 @@ verifies("app.review-try-it-holds-back", () => {
       expect(reason).toBe("permissions");
     });
 
+    it("leaves out a raised or removed limit on a harness step", async () => {
+      const before = `${clerk}harnessLimits:\n  maxSteps: 200\n  maxMinutes: 30\n`;
+      const raised = await tried(agent, before, `${clerk}harnessLimits:\n  maxSteps: 9000\n`);
+      expect(raised.read).toBe(before);
+      expect(raised.reason).toBe("permissions");
+
+      const removed = await tried(agent, before, clerk);
+      expect(removed.read).toBe(before);
+      expect(removed.reason).toBe("permissions");
+    });
+
     it("leaves out a change to the budget in workspace.yaml, and uses the rest", async () => {
       const { read, reason } = await tried(
         "workspace.yaml",

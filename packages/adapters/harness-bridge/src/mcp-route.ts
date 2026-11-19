@@ -46,9 +46,9 @@ function mcpServerRoutes(
 }
 
 async function answerMcpMessage(context: BridgeRequestContext, tools: McpToolSet): Promise<void> {
-  const { request, response, signal } = context;
+  const { request, response, signal, reportError } = context;
   checkVersionHeader(request.headers[versionHeader]);
-  const server = new McpToolServer(tools);
+  const server = new McpToolServer(tools, { reportError });
   const reply = await server.answerBytes(await context.readBody(), { signal });
   if (reply === null) {
     // A notification or a response gets no reply (streamable HTTP, "sending messages").

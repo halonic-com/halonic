@@ -92,6 +92,25 @@ verifies("agents.configuration.tools", () => {
     expect(chips(listNamed(page, "Skills"))).toEqual(["Refund policy"]);
   });
 
+  it("moves focus to Open Library › when the last skill is added and the Add button goes", async () => {
+    const page = await openTools(host({ skills: ["refunds"] }), () => undefined);
+    const skills = listNamed(page, "Skills");
+    await act(async () => buttonNamed(skills, "Add skill")?.click());
+    await act(async () => skills.querySelector<HTMLElement>("[role=menuitem]")?.click());
+
+    expect(buttonNamed(skills, "Add skill")).toBeUndefined();
+    expect(document.activeElement).toBe(buttonNamed(skills, "Open Library ›"));
+  });
+
+  it("moves focus to the added skill's ✕ when the last one is added and there's no Open Library", async () => {
+    const page = await openTools(host({ skills: ["refunds"] }));
+    const skills = listNamed(page, "Skills");
+    await act(async () => buttonNamed(skills, "Add skill")?.click());
+    await act(async () => skills.querySelector<HTMLElement>("[role=menuitem]")?.click());
+
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Remove Friendly tone");
+  });
+
   it("removes a skill with its ✕, leaving only the Add button", async () => {
     const agents = host({ skills: ["refunds"] });
     const page = await openTools(agents);
@@ -111,7 +130,9 @@ verifies("agents.configuration.tools", () => {
     expect(knowledge.textContent).toContain(
       "This hub can't use a knowledge source called old-notes.",
     );
-    expect(page.querySelector('[aria-label="Remove old-notes"]')).not.toBeNull();
+    const remove = page.querySelector('[aria-label="Remove old-notes"]');
+    const line = document.getElementById(remove?.getAttribute("aria-describedby") ?? "");
+    expect(line?.textContent).toBe("This hub can't use a knowledge source called old-notes.");
   });
 
   it("says when the Library has none, or all are added, with Open Library", async () => {
@@ -160,6 +181,7 @@ verifies("agents.configuration.tools", () => {
     works = true;
     await act(async () => buttonNamed(page, "Try again")?.click());
     expect(page.textContent).not.toContain("Couldn't load the Library");
+    expect(document.activeElement).toBe(listNamed(page, "Skills").querySelector("h3"));
     expect(chips(listNamed(page, "Skills"))).toEqual(["Refund policy"]);
     expect(buttonNamed(listNamed(page, "Skills"), "Add skill")).toBeDefined();
   });

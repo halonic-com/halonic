@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-1303 (P9c); flow-library 8
 
-While the app is a phone, the Library feature shall not offer New connector, on the Connectors tab or from a run banner's request: connectors are looked at there, and set up on a larger screen. While the app is a phone, Knowledge and Connectors rows and pages shall not offer Delete either, because a phone can't remove what it can't make again; only skill and collection rows and pages keep it (flow-library 8.1, phone layout 1.1).
+While the app is a phone, the Library feature shall not offer New connector, on the Connectors tab or from a run banner's request: connectors are looked at there, and set up on a larger screen. While the app is a phone, Knowledge and Connectors rows and pages shall not offer Delete either, because a phone can't remove what it can't make again; only skill and collection rows and pages keep it (flow-library 8.1, phone layout 1.1). Where an item page is under the phone's top bar, the Library feature shall put the page's ⋮ there, after the item's name, and not in the page (phone layout 1.1).
 
 ## Examples
 
@@ -29,3 +29,6 @@ While the app is a phone, the Library feature shall not offer New connector, on 
 - Given a phone and a skill or collection page,
   when it shows,
   then its ⋮ menu has Open as file, and Delete after it.
+- Given a phone and a skill page under the phone's top bar,
+  when it shows,
+  then the top bar has its ⋮ and the page has none.

@@ -24,7 +24,10 @@ export const NEEDS_SETUP =
   "The sandbox needs a one-time setup with administrator rights. Until then, agents set to run in a sandbox don't start.";
 export const needsRepair = (reason: string) =>
   `The sandbox is set up, but part of it is missing or out of date: ${reason} Until it's repaired, agents set to run in a sandbox don't start.`;
-export const notReady = (reason: string) => `The sandbox isn't ready: ${reason}`;
+/** After a reason the check found: the way round it (23.3, 13.1's second sentence). */
+export const RUN_HERE_AFTER_WARNING = "You can run an agent on this computer after a warning.";
+/** Where the docs keys of the sandbox-start catalogue point, as the Inbox and the run page link. */
+export const DOCS_ADDRESS = "https://docs.halonic.dev";
 export const RESTART_NEEDED =
   "Windows needs to restart to finish setting up the sandbox. Restart Windows, then press Check again.";
 /** W2 (HAL-7373): a warning, never "vulnerable" or "unsafe". The section has no update button yet. */

@@ -252,6 +252,29 @@ verifies("agent-host.integration-sign-in-routes", () => {
       expect(await response.json()).toMatchObject({ error: { kind: "callback_unavailable" } });
     });
 
+    it("answers 501, and starts nothing, when the request's socket names no local port", async () => {
+      const example = exampleSignInHost(rig);
+      const routes = integrationSignInRoutes({ signIns: example.host, log: () => {} });
+      // A socket without a port: the start must not guess one, such as 80.
+      const noPort: typeof routes = routes.map((route) => ({
+        ...route,
+        handle: (request, response) => {
+          Object.defineProperty(request.socket, "localPort", { value: undefined });
+          return route.handle(request, response);
+        },
+      }));
+      server = await startHostServer(token, noPort);
+
+      const response = await post(server.url, "/v1/integrations/sign-in/start", {
+        integration: "example",
+        signIn: rig.signInName,
+      });
+
+      expect(response.status).toBe(501);
+      expect(await response.json()).toMatchObject({ error: { kind: "callback_unavailable" } });
+      expect(await states(server.url)).toMatchObject({ signIns: [{ state: "signedOut" }] });
+    });
+
     it("refuses another field and a name that isn't a sheet name, before anything runs", async () => {
       const { example, url } = await started();
 

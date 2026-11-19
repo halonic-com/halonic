@@ -64,10 +64,18 @@ afterEach(async () => {
 /**
  * Acme's Writer with `lines` added to its file, such as a harness, and Acme
  * trusted as it is then: an agent in a harness reaches more than the test model.
+ * Acme is no longer local only, since a harness there is an error in its files,
+ * which `run` refuses before the sandbox (HAL-12978).
  */
 async function writerWith(lines: string): Promise<void> {
   const file = join(acme, writerPath);
   await writeFile(file, `${await readFile(file, "utf8")}${lines}`);
+  const settings = join(acme, "workspace.yaml");
+  const localOnly = (await readFile(settings, "utf8")).replace(
+    "localOnly: true",
+    "localOnly: false",
+  );
+  await writeFile(settings, localOnly);
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
   const read = await readWorkspaceTrust(dir, noCommands);
   const { subject } = read;

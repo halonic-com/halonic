@@ -9,6 +9,7 @@ use std::fmt;
 
 use hkdf::Hkdf;
 use sha2::{Digest, Sha256};
+use zeroize::{ZeroizeOnDrop, Zeroizing};
 
 /// The 31 symbols of both codes: digits and capitals without 0, O, 1, I and
 /// L, which are easy to mistake for each other.
@@ -40,8 +41,9 @@ pub const PAIR_COMMIT_LABEL: &str = "halonic pair commit v1";
 /// `readPairingCode` (any case, spaces and dots) and hands over the plain
 /// form, so this side accepts nothing else.
 ///
-/// Its `Debug` form leaves the code out, so a log line never holds it.
-#[derive(Clone, PartialEq, Eq)]
+/// Its `Debug` form leaves the code out, so a log line never holds it, and
+/// this crate's copy of the code is wiped from memory when it's dropped.
+#[derive(Clone, PartialEq, Eq, ZeroizeOnDrop)]
 pub struct PairingCode(String);
 
 impl PairingCode {
@@ -55,9 +57,12 @@ impl PairingCode {
 
     /// The Noise psk for the pairing handshake: HKDF-SHA256 of the code's
     /// ASCII, with an empty salt and the info [`PAIRING_PSK_INFO`]. The code
-    /// itself is never sent.
-    pub fn psk(&self) -> [u8; 32] {
-        hkdf_sha256(self.0.as_bytes(), PAIRING_PSK_INFO)
+    /// itself is never sent. This copy of the psk is wiped from memory when
+    /// it's dropped; the copy `snow` keeps in its handshake state isn't.
+    pub fn psk(&self) -> Zeroizing<[u8; 32]> {
+        let mut psk = Zeroizing::new([0u8; 32]);
+        hkdf_sha256(self.0.as_bytes(), PAIRING_PSK_INFO, psk.as_mut_slice());
+        psk
     }
 }
 
@@ -83,7 +88,9 @@ impl CheckCode {
 /// its handshake hash, with an empty salt and the info [`CHECK_CODE_INFO`],
 /// read by [`check_code_from_bytes`].
 pub fn check_code(handshake_hash: &[u8]) -> CheckCode {
-    check_code_from_bytes(hkdf_sha256(handshake_hash, CHECK_CODE_INFO))
+    let mut bytes = [0u8; CHECK_CODE_INPUT_BYTES];
+    hkdf_sha256(handshake_hash, CHECK_CODE_INFO, &mut bytes);
+    check_code_from_bytes(bytes)
 }
 
 /// The check code for 8 HKDF bytes: an unsigned 64-bit big-endian number,
@@ -115,11 +122,10 @@ pub fn pair_commit(phone_static_key: &[u8; 32], payload3: &[u8]) -> [u8; 32] {
         .into()
 }
 
-/// HKDF-SHA256 with an empty salt, `N` bytes out.
-fn hkdf_sha256<const N: usize>(input: &[u8], info: &str) -> [u8; N] {
-    let mut output = [0u8; N];
+/// HKDF-SHA256 with an empty salt, written straight into `output`, so a
+/// secret never sits in a copy the caller can't wipe.
+fn hkdf_sha256(input: &[u8], info: &str, output: &mut [u8]) {
     Hkdf::<Sha256>::new(None, input)
-        .expand(info.as_bytes(), &mut output)
+        .expand(info.as_bytes(), output)
         .expect("HKDF-SHA256 gives up to 8,160 bytes, far more than any caller asks for");
-    output
 }

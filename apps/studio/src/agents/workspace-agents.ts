@@ -1,5 +1,6 @@
+import { type AgentPlacement, type HostSettings, newAgentPlacement } from "@halonicjs/app";
 import type { DefinitionSource } from "@halonicjs/ports";
-import { KindedError, slugify, uniqueName } from "@halonicjs/std";
+import { encodeUtf8, KindedError, slugify, uniqueName } from "@halonicjs/std";
 import type {
   AgentChange,
   AgentHarnessId,
@@ -8,6 +9,7 @@ import type {
   AgentRef,
   AgentSettings,
   AgentsHost,
+  AgentTeamMember,
   AgentToolList,
   AgentToolOption,
   AgentUser,
@@ -15,6 +17,7 @@ import type {
   NewAgent,
   TrashedAgent,
 } from "@halonicjs/studio-feature-agents/api";
+import { alreadyHandsWork, handOffPath } from "@halonicjs/studio-feature-agents/api";
 import {
   filesOf,
   loadWorkspace,
@@ -47,6 +50,23 @@ export interface WorkspaceAgentsParts {
    * host (the browser), which answers "couldn't check".
    */
   readonly detectHarness?: (ref: AgentRef, harness: AgentHarnessId) => Promise<HarnessReadiness>;
+  /**
+   * What Settings › New agents run needs to place each new agent. Absent where there is no agent
+   * host (the browser), so a new agent stays in its sandbox.
+   */
+  readonly newAgents?: NewAgentsParts;
+}
+
+/** What {@link WorkspaceAgents} applies Settings › New agents run (`sandbox.new-agents`) with. */
+export interface NewAgentsParts {
+  /** The host settings, where Settings saves the choice. */
+  readonly settings: HostSettings;
+  /** The "On this computer" choices, kept by the agent host in the person's profile. */
+  readonly placement: AgentPlacement;
+  /** The workspace's real path, which the choices are kept for. */
+  readonly location: string;
+  /** Gets a choice that couldn't be saved; the agent is made all the same, in its sandbox. */
+  readonly reportError: (error: unknown) => void;
 }
 
 /** Where the agent files of a hub are kept. */
@@ -130,7 +150,21 @@ export class WorkspaceAgents implements AgentsHost {
       skills: agent.skills,
       knowledge: agent.knowledge,
       connectors: agent.connectors,
+      subagents: agent.subagents,
     };
+  }
+
+  /** The agents of the agent's hub with their subagents, sorted by name; throws `not_found` when the agent isn't there. */
+  async team(ref: AgentRef): Promise<readonly AgentTeamMember[]> {
+    await this.#find(ref);
+    return this.#team(ref.hubId);
+  }
+
+  async #team(hubId: string): Promise<AgentTeamMember[]> {
+    return filesOf(await this.#load(), "agent")
+      .filter((file) => file.hub === hubId)
+      .map((file) => ({ ...listingOf(hubId, file.value), subagents: file.value.subagents }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   /**
@@ -193,7 +227,9 @@ export class WorkspaceAgents implements AgentsHost {
     ) {
       throw new KindedError("invalid_input", "The turn limit is a whole number from 1 to 200.");
     }
-    const { path } = await this.#find(ref);
+    const { agent, path } = await this.#find(ref);
+    if (change.subagents !== undefined)
+      await this.#refuseLoops(ref, agent.subagents, change.subagents);
     const text = await this.#parts.files.read(path);
     if (text === null) throw agentGone();
     const edits: YamlEdit[] = [];
@@ -207,6 +243,7 @@ export class WorkspaceAgents implements AgentsHost {
       "skills",
       "knowledge",
       "connectors",
+      "subagents",
     ] as const) {
       const value = change[field];
       if (value !== undefined) edits.push({ kind: "set", path: [field], value });
@@ -225,6 +262,18 @@ export class WorkspaceAgents implements AgentsHost {
       { coalesceKey: `agent:${path}:${fields}` },
     );
     if (change.name !== undefined) this.#names.set(`${ref.hubId}/${ref.id}`, change.name);
+  }
+
+  /** Throws `conflict` when one of the subagents `next` adds would hand work back to the agent. */
+  async #refuseLoops(ref: AgentRef, now: readonly string[], next: readonly string[]) {
+    const team = await this.#team(ref.hubId);
+    for (const id of next.filter((each) => !now.includes(each))) {
+      const way = handOffPath(team, id, ref.id);
+      if (way !== undefined) {
+        const names = way.map((each) => team.find((member) => member.id === each)?.name ?? each);
+        throw new KindedError("conflict", `${alreadyHandsWork(names)}; that would be a loop.`);
+      }
+    }
   }
 
   /** The path of the agent's file; throws `not_found` when the agent isn't there. */
@@ -316,11 +365,30 @@ export class WorkspaceAgents implements AgentsHost {
       .map((path) => path.slice(folder.length + 1, -agentSuffix.length))
       .filter((id) => !id.includes("/"));
     const id = uniqueName(slugify(name), taken);
-    this.#parts.files.change(`Created agent ${name}`, {
-      [`${folder}/${id}${agentSuffix}`]: newAgentText(id, name, instructions),
-    });
+    const text = newAgentText(id, name, instructions);
+    this.#parts.files.change(`Created agent ${name}`, { [`${folder}/${id}${agentSuffix}`]: text });
     this.#names.set(`${hubId}/${id}`, name);
+    await this.#placeNew(id, text);
     return { hubId, id };
+  }
+
+  /**
+   * Applies Settings › New agents run to the agent just made, for its file as written: "On this
+   * computer" records that choice for it, anything else leaves it in its sandbox. A choice that
+   * can't be saved goes to `reportError` and leaves it in its sandbox too.
+   */
+  async #placeNew(agent: string, text: string): Promise<void> {
+    const parts = this.#parts.newAgents;
+    if (parts === undefined) return;
+    const subject = { location: parts.location, agent, file: encodeUtf8(text) };
+    try {
+      const placed = await newAgentPlacement(parts.settings, parts.placement, subject);
+      if (!placed.ok) {
+        parts.reportError(new Error(`The new agent's file changed while it was placed: ${agent}.`));
+      }
+    } catch (error) {
+      parts.reportError(error);
+    }
   }
 
   /** Loads the workspace from its files as they are now, and keeps its hubs for {@link WorkspaceAgents.hubs}. */

@@ -147,7 +147,9 @@ export function baseEnv(
  * sets there (its proxy variables): the safe host `PATH` when the profile has
  * none, the session's temp folder and the profile's variables. Never the rest
  * of the host's environment, and never a proxy variable of the profile. A
- * `PATH` of the profile loses its entries in the private folder.
+ * `PATH` of the profile loses its entries in the private folder. `toolEnv`
+ * (Halonic's own, see `windowsToolEnv`) comes last and replaces a variable of
+ * the same name in any case, as Windows reads names.
  *
  * @throws when a variable of the profile has a name that is not plain.
  */
@@ -155,6 +157,7 @@ export function programEnv(
   profile: SandboxProfile,
   hostEnv: Record<string, string | undefined> = process.env,
   privateFolder?: string,
+  toolEnv: Record<string, string> = {},
 ): Record<string, string> {
   assertVariableNames(profile);
   // Not the launcher's: on Windows its system variables would replace the sandbox account's own.
@@ -162,6 +165,12 @@ export function programEnv(
   for (const [name, value] of Object.entries(profile.env)) {
     if (proxyVariables.has(name)) continue;
     env[name] = name === "PATH" ? withoutPrivateFolder(value, privateFolder) : value;
+  }
+  for (const [name, value] of Object.entries(toolEnv)) {
+    for (const key of Object.keys(env)) {
+      if (key.toUpperCase() === name.toUpperCase()) delete env[key];
+    }
+    env[name] = value;
   }
   return env;
 }

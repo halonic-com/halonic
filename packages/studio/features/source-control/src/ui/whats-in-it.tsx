@@ -3,7 +3,8 @@ import { Checkbox } from "@halonicjs/studio-kit";
 import { useId } from "react";
 import type { ChangeItem } from "../change-items.ts";
 import type { ChangedFile } from "../changes-list.ts";
-import { versionWords } from "../changes-words.ts";
+import { itemWords, versionWords } from "../changes-words.ts";
+import { ItemIcon } from "./item-icon.tsx";
 import { shownValue } from "./part-change.tsx";
 
 /** Props for {@link WhatsInIt}. */
@@ -20,10 +21,11 @@ export interface WhatsInItProps {
 const hasImportant = (file: ChangedFile) => file.description.lines.some((line) => line.important);
 
 /**
- * What's in the version (save model 2.6): a row for each item, named as the page names it, with a
- * checkbox, ticked unless the person leaves it out. An item with an Important setting comes first
- * and has the Important chip at the right of its row; its Important changes are always shown as
- * before → after. An item with one plain change says it beside its name, so a short list is short.
+ * What's in the version (save model 2.6): a row for each item, with the icon, name and kind the
+ * page's list gives it, and a checkbox, ticked unless the person leaves it out. An item with an
+ * Important setting comes first and has the Important chip at the right of its row; its Important
+ * changes are always shown as before → after. An item with one plain change says it beside its
+ * kind, so a short list is short.
  */
 export function WhatsInIt({ items, first = false, ticked, onTick }: WhatsInItProps) {
   const headingId = useId();
@@ -46,12 +48,12 @@ export function WhatsInIt({ items, first = false, ticked, onTick }: WhatsInItPro
           return (
             <li key={item.id} className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
-                <Checkbox checked={ticked.has(item.id)} onChange={(on) => onTick(item.id, on)}>
-                  <span className="text-label break-words">{item.name}</span>
-                </Checkbox>
-                {inline ? (
-                  <span className="text-body text-fg-muted">{only?.line.sentence}</span>
-                ) : null}
+                <ItemCheckbox
+                  item={item}
+                  ticked={ticked.has(item.id)}
+                  onTick={(on) => onTick(item.id, on)}
+                />
+                {inline ? <InlineSentence item={item} sentence={only?.line.sentence} /> : null}
                 <span className="flex-1" />
                 {item.files.some(hasImportant) ? (
                   <span className="text-small shrink-0 rounded-full border border-border px-2 text-fg-muted">
@@ -80,6 +82,50 @@ export function WhatsInIt({ items, first = false, ticked, onTick }: WhatsInItPro
         })}
       </ul>
     </section>
+  );
+}
+
+/**
+ * An item's checkbox, named by its icon, name and kind as the list shows them. The kind is part of
+ * the name, so two items of one name sound different too.
+ */
+function ItemCheckbox({
+  item,
+  ticked,
+  onTick,
+}: {
+  readonly item: ChangeItem;
+  readonly ticked: boolean;
+  readonly onTick: (on: boolean) => void;
+}) {
+  return (
+    <Checkbox checked={ticked} onChange={onTick}>
+      <span className="inline-flex items-center gap-2">
+        <span className="inline-grid size-icon-md shrink-0 text-fg-muted *:size-full">
+          <ItemIcon kind={item.kind} />
+        </span>
+        <span className="text-label break-words">{item.name}</span>
+        {item.kind === undefined ? null : (
+          <span className="text-body text-fg-muted">{itemWords.kind[item.kind]}</span>
+        )}
+      </span>
+    </Checkbox>
+  );
+}
+
+/** The one plain change of an item, beside its checkbox: "· New" after a kind. */
+function InlineSentence({
+  item,
+  sentence = "",
+}: {
+  readonly item: ChangeItem;
+  readonly sentence?: string | undefined;
+}) {
+  if (sentence === "") return null;
+  return (
+    <span className="text-body text-fg-muted">
+      {item.kind === undefined ? sentence : itemWords.sentenceAfterKind(sentence)}
+    </span>
   );
 }
 

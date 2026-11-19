@@ -4,6 +4,7 @@
 // `@halonicjs/std`, the diff the Studio's Compare uses too.
 
 import { diffLines, type LineChange, splitLines } from "@halonicjs/std";
+import { noNewlineMarker } from "../../messages/proposals.ts";
 
 /** How many unchanged lines are shown around a change, as git does. */
 const contextLines = 3;
@@ -11,7 +12,8 @@ const contextLines = 3;
 /**
  * The lines of a unified diff from `before` to `after`: a `@@` heading per
  * group of nearby changes, then each line with ` `, `-` or `+` in front,
- * without its newline. `null` means no file: everything is added or removed.
+ * without its newline, and {@link noNewlineMarker} after a text's last line
+ * when it has none. `null` means no file: everything is added or removed.
  *
  * @returns no lines when the texts are the same
  *
@@ -57,8 +59,8 @@ function hunkLines(hunk: readonly LineChange[], beforeLines: readonly string[]):
   let added = 0;
   for (const change of hunk) {
     lines.push(...unchanged(beforeLines, position, change.beforeStart));
-    lines.push(...change.removed.map((line) => `-${withoutNewline(line)}`));
-    lines.push(...change.added.map((line) => `+${withoutNewline(line)}`));
+    lines.push(...change.removed.flatMap((line) => shown("-", line)));
+    lines.push(...change.added.flatMap((line) => shown("+", line)));
     removed += change.removed.length;
     added += change.added.length;
     position = change.beforeEnd;
@@ -71,7 +73,7 @@ function hunkLines(hunk: readonly LineChange[], beforeLines: readonly string[]):
 }
 
 function unchanged(lines: readonly string[], from: number, to: number): string[] {
-  return lines.slice(from, to).map((line) => ` ${withoutNewline(line)}`);
+  return lines.slice(from, to).flatMap((line) => shown(" ", line));
 }
 
 /** A range as git writes it: the first line counting from 1, then the count; an empty range starts at the line before. */
@@ -79,6 +81,9 @@ function rangeOf(start: number, count: number): string {
   return `${count === 0 ? start : start + 1},${count}`;
 }
 
-function withoutNewline(line: string): string {
-  return line.endsWith("\n") ? line.slice(0, -1) : line;
+/** A line with its sign in front and without its newline, then the marker when it had none. */
+function shown(sign: " " | "-" | "+", line: string): string[] {
+  return line.endsWith("\n")
+    ? [`${sign}${line.slice(0, -1)}`]
+    : [`${sign}${line}`, noNewlineMarker];
 }

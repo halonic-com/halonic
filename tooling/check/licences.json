@@ -52,5 +52,83 @@
       "source": "https://github.com/nayuki/QR-Code-generator/blob/bcfe1b018cec5f1f91b5705eca5bb4cdd34e9f8d/typescript-javascript/qrcodegen.ts",
       "task": "HAL-12239"
     }
-  ]
+  ],
+  "gradle": {
+    "//": "POM licence names of the Android app's Gradle libraries, and Google's libraries we ship under their own terms. See decisions/mateo/HAL-12585-01-gradle-notices.md.",
+    "names": {
+      "Apache 2.0": "Apache-2.0",
+      "Apache License, Version 2.0": "Apache-2.0",
+      "Apache-2.0": "Apache-2.0",
+      "The Apache License, Version 2.0": "Apache-2.0",
+      "The Apache Software License, Version 2.0": "Apache-2.0"
+    },
+    "bundled": [
+      {
+        "artifact": "androidx.camera:camera-core",
+        "name": "BSD License",
+        "url": "https://chromium.googlesource.com/libyuv/libyuv/+/refs/heads/main/README.chromium",
+        "component": "libyuv",
+        "licence": "BSD-3-Clause",
+        "text": "tooling/check/licence-texts/gradle/libyuv.txt",
+        "source": "https://chromium.googlesource.com/libyuv/libyuv/+/8a0ee9fbd26ee2fc4e198907ed5b14a89a292a6b/LICENSE",
+        "task": "HAL-12585"
+      }
+    ],
+    "proprietary": [
+      {
+        "artifact": "com.google.android.gms:play-services-base",
+        "terms": "Android Software Development Kit License",
+        "url": "https://developer.android.com/studio/terms.html",
+        "task": "HAL-12585"
+      },
+      {
+        "artifact": "com.google.android.gms:play-services-basement",
+        "terms": "Android Software Development Kit License",
+        "url": "https://developer.android.com/studio/terms.html",
+        "task": "HAL-12585"
+      },
+      {
+        "artifact": "com.google.android.gms:play-services-mlkit-barcode-scanning",
+        "terms": "ML Kit Terms of Service",
+        "url": "https://developers.google.com/ml-kit/terms",
+        "task": "HAL-12585"
+      },
+      {
+        "artifact": "com.google.android.gms:play-services-tasks",
+        "terms": "Android Software Development Kit License",
+        "url": "https://developer.android.com/studio/terms.html",
+        "task": "HAL-12585"
+      },
+      {
+        "artifact": "com.google.android.odml:image",
+        "terms": "Android Software Development Kit License",
+        "url": "https://developer.android.com/studio/terms.html",
+        "task": "HAL-12585"
+      },
+      {
+        "artifact": "com.google.mlkit:barcode-scanning-common",
+        "terms": "ML Kit Terms of Service",
+        "url": "https://developers.google.com/ml-kit/terms",
+        "task": "HAL-12585"
+      },
+      {
+        "artifact": "com.google.mlkit:common",
+        "terms": "ML Kit Terms of Service",
+        "url": "https://developers.google.com/ml-kit/terms",
+        "task": "HAL-12585"
+      },
+      {
+        "artifact": "com.google.mlkit:vision-common",
+        "terms": "ML Kit Terms of Service",
+        "url": "https://developers.google.com/ml-kit/terms",
+        "task": "HAL-12585"
+      },
+      {
+        "artifact": "com.google.mlkit:vision-interfaces",
+        "terms": "ML Kit Terms of Service",
+        "url": "https://developers.google.com/ml-kit/terms",
+        "task": "HAL-12585"
+      }
+    ]
+  }
 }

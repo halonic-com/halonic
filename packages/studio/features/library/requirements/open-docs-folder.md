@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-12227 (Iris's walk of the Acme sample, HAL-12225); plan approved on HAL-12255; folder from HAL-12261
+- Source: HAL-12227 (Iris's walk of the Acme sample, HAL-12225); plan approved on HAL-12255; folder from HAL-12261; toast from HAL-13066
 
-While the window offers `showSidebarView` (on the desktop), the Library place shall give the empty Knowledge tab its "Open the docs folder" button (`library.library-page`). Pressing it shall ask the Files tree to reveal the workspace's `docs` folder (`files.tree.reveal-request`) and show the Files sidebar view (`shell.sidebar-view-request`). When there is no `docs` folder, the tree shows the deepest folder above it; the button shall create and write nothing. On a phone, or where the window offers no `showSidebarView`, the tab shall show its sentence without the button.
+While the window offers `showSidebarView` (on the desktop), the Library place shall give the empty Knowledge tab its "Open the docs folder" button (`library.library-page`). Pressing it shall ask the Files tree to reveal the workspace's `docs` folder (`files.tree.reveal-request`) and show the Files sidebar view (`shell.sidebar-view-request`). When there is no `docs` folder, the tree shows the deepest folder above it; the button shall create and write nothing, and when the tree answers that it showed another row (`nearest`), the place shall show one `info` toast, read politely: "There's no docs folder in this workspace yet. Make one on your computer, then put documents in it." Focus shall stay where the tree puts it. On a phone, or where the window offers no `showSidebarView`, the tab shall show its sentence without the button.
 
 ## Examples
 
@@ -15,3 +15,6 @@ While the window offers `showSidebarView` (on the desktop), the Library place sh
   then no "Open the docs folder" button shows.
 - Given the desktop and a window that offers no `showSidebarView`,
   then no "Open the docs folder" button shows.
+- Given the desktop, an empty Knowledge tab and no `docs` folder in the workspace,
+  when "Open the docs folder" is pressed,
+  then the Files view shows the workspace root and one `info` toast reads "There's no docs folder in this workspace yet. Make one on your computer, then put documents in it."

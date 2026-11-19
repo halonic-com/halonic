@@ -30,4 +30,6 @@ export interface WorkflowScreenProps {
   readonly testsAsked?: number;
   /** Reads a state change to screen readers (`announcer.announceState`); without it nothing is read. */
   readonly announceState?: AnnounceState;
+  /** Says a line to a screen reader (`announcer.announce`), for why the run card's Run again didn't start; without it nothing is said. */
+  readonly announce?: (line: string) => void;
 }

@@ -25,19 +25,3 @@ export function resultText(result: McpToolResult): string {
     .map((part) => (part.type === "text" ? part.text : `[${part.kind} content]`))
     .join("\n");
 }
-
-/**
- * A tool that failed on its own terms (`isError`). The message is ours;
- * the tool's own text, which the server wrote, is kept apart in
- * `toolText`.
- */
-export class ConnectorToolError extends Error {
-  override readonly name = "ConnectorToolError";
-  /** What the tool said about its failure: the server's text. */
-  readonly toolText: string;
-
-  constructor(connectorId: string, toolName: string, toolText: string) {
-    super(`Connector "${connectorId}" says its tool "${toolName}" failed.`);
-    this.toolText = toolText;
-  }
-}

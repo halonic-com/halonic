@@ -1,4 +1,4 @@
-import { AgentHostSandbox } from "@halonicjs/adapter-agent-host-client";
+import { AgentHostSandbox, AgentHostSandboxChoice } from "@halonicjs/adapter-agent-host-client";
 import { TauriPickedFolders, TauriTrustStore } from "@halonicjs/adapter-fs-tauri";
 import { ServiceRegistry, sandboxStartCheck, sandboxStartCheckKey } from "@halonicjs/app";
 import {
@@ -22,6 +22,7 @@ import {
   DisplaySettingsService,
   HostSettingsService,
   RestartRunsService,
+  SandboxChoiceHostService,
   UpdaterService,
 } from "@halonicjs/studio-feature-settings/api";
 import {
@@ -71,6 +72,7 @@ import { startServedStudio } from "./served-studio.ts";
 
 export { servedServices } from "./served-studio.ts";
 
+import { keyboardPlatform, studioHost } from "./studio-host.ts";
 import { followSystemRegion } from "./system-region.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
 import {
@@ -114,25 +116,6 @@ export interface StartedStudio {
 }
 
 /**
- * Where this Studio runs (`studio.entry`): the desktop app when the page is in Tauri's
- * webview, else the Studio served to a browser. The Android app never loads this page.
- */
-export function studioHost(page: object): StudioHost {
-  return tauriIpc(page) === undefined ? "served" : "desktop-app";
-}
-
-/** Whether `Mod` means ⌘ or Ctrl here, read from the browser's user agent. */
-export function keyboardPlatform(userAgent: string): KeyboardPlatform {
-  if (userAgent.includes("Mac")) {
-    return "macos";
-  }
-  if (userAgent.includes("Windows")) {
-    return "windows";
-  }
-  return "linux";
-}
-
-/**
  * Starts the Studio in a page (`studio.entry`). The desktop app starts on the Welcome screen and
  * opens the folders the user picks, each with its own services, behind the workspace switcher
  * (`studio.open-folder`). The served Studio shows the one workspace the computer serves
@@ -140,8 +123,8 @@ export function keyboardPlatform(userAgent: string): KeyboardPlatform {
  * starts it, as AGENTS.md asks of screens.
  *
  * The desktop app registers the Inbox, Google setup, Workflows and Runs, over the runs in each open folder, Settings
- * (`studio.settings`) and the workspace page (`workspace.page`). The served Studio registers no feature yet: nothing serves it runs until
- * `halonic serve` is built, so it shows Home and the Search box.
+ * (`studio.settings`) and the workspace page (`workspace.page`). The served Studio registers the Inbox over the served workspace's
+ * runs, Settings and the Google setup, read-only (`studio.served-google-setup-accounts`).
  *
  * @param desktop the desktop app's features and the services it gives them, `desktopFeatures`
  *
@@ -434,6 +417,9 @@ async function provideAgentSandbox(
   );
   services.provide(sandboxStartCheckKey, check);
   services.provide(SandboxPassesService, passes);
+  // The engine's choice only reads, like the start check. Nothing shows it until the real canary
+  // lands (HAL-10552, UX W3): until then every backend's trust check fails closed.
+  services.provide(SandboxChoiceHostService, new AgentHostSandboxChoice(transport));
   if (agentSandboxOffered)
     services.provide(
       AgentSandboxService,

@@ -1,3 +1,4 @@
+import { AgentHostError } from "@halonicjs/adapter-agent-host-client";
 import type { SetupRecord, SetupRecords } from "@halonicjs/google-setup";
 import { SecretText } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
@@ -228,6 +229,60 @@ verifies("studio.workspace-google-setup-accounts", () => {
         "Halonic couldn't save this. The agent host answered with 502",
       );
       expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps the words of a refusal the host words itself, with its kind, so the page shows why", async () => {
+      const { accounts } = await accountsOf({
+        host: (own) => ({
+          ...hostOver(own, []),
+          startSignIn: async () => {
+            throw new AgentHostError(
+              409,
+              "google_setup_incomplete",
+              "Save the client ID and the client secret first.",
+            );
+          },
+          edit: async () => {
+            throw new AgentHostError(
+              404,
+              "google_setup_not_found",
+              "There is no Google setup for this account.",
+            );
+          },
+        }),
+      });
+      const listener = vi.fn();
+      accounts.subscribe(listener);
+
+      await expect(accounts.startSignIn("gaccount_1")).rejects.toMatchObject({
+        kind: "conflict",
+        message: "Save the client ID and the client secret first.",
+      });
+      await expect(accounts.edit("gaccount_1", { kind: "sign-in-dropped" })).rejects.toMatchObject({
+        kind: "not_found",
+        message: "There is no Google setup for this account.",
+      });
+      expect(listener).toHaveBeenCalledTimes(2);
+    });
+
+    it("leaves a failure the host can't explain without a kind, so its detail stays out of the line", async () => {
+      const { accounts } = await accountsOf({
+        host: (own) => ({
+          ...hostOver(own, []),
+          startSignIn: async () => {
+            throw new AgentHostError(
+              502,
+              "google_failed",
+              "The agent host couldn't finish this Google request. Its log has the detail.",
+            );
+          },
+        }),
+      });
+
+      const failure = await accounts.startSignIn("gaccount_1").catch((error: unknown) => error);
+
+      expect(failure).not.toHaveProperty("kind");
+      expect(failure).toBeInstanceOf(Error);
     });
 
     it("says the app needs its agent host when it has none, without the old 'not yet' text", async () => {

@@ -51,7 +51,8 @@ export function SummaryField({
     if (problem !== undefined) announce(problem);
   }, [problem, announce]);
 
-  // Use and Discard return focus to Summarize (accessibility pass 9.3).
+  // Use, Discard and Try again return focus to Summarize (accessibility pass 9.3): their buttons
+  // go away, and focus would fall to the page body with them.
   const backToAsk = () => ask.current?.focus();
 
   return (
@@ -79,7 +80,10 @@ export function SummaryField({
           reason={summarize.reason}
           line={problem ?? ""}
           openModels={openModels}
-          tryAgain={() => void model.summarize()}
+          tryAgain={() => {
+            backToAsk();
+            void model.summarize();
+          }}
         />
       ) : null}
       {drafted ? (

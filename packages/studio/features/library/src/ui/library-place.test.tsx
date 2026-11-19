@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { LibraryItemKind } from "@halonicjs/app";
-import { PresentationProvider } from "@halonicjs/studio-kit";
+import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -16,7 +16,7 @@ import { fakeModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { LibraryPlace } from "./library-place.tsx";
 
-const filesApi = vi.hoisted(() => ({ requestFilesReveal: vi.fn() }));
+const filesApi = vi.hoisted(() => ({ requestFilesReveal: vi.fn(async () => "shown") }));
 vi.mock("@halonicjs/studio-feature-files/api", () => filesApi);
 
 afterEach(() => {
@@ -450,6 +450,35 @@ verifies("library.open-docs-folder", () => {
 
     expect(filesApi.requestFilesReveal).toHaveBeenCalledExactlyOnceWith("docs");
     expect(showSidebarView).toHaveBeenCalledExactlyOnceWith("files");
+  });
+
+  /** Clicks the button while the reveal answers `answer`, and returns the toasts shown. */
+  async function toastsAfterReveal(answer: "shown" | "nearest") {
+    filesApi.requestFilesReveal.mockResolvedValue(answer);
+    const toasts = createToastStore();
+    const { context } = contextOf("knowledge", { showSidebarView: vi.fn() });
+    const page = render(
+      <ToastStoreProvider store={toasts}>
+        <LibraryPlace context={context} />
+      </ToastStoreProvider>,
+    );
+    await settled();
+    await act(async () => docsButton(page)?.click());
+    return toasts.list();
+  }
+
+  it("says politely, once, that there's no docs folder when Files shows the root instead", async () => {
+    expect(await toastsAfterReveal("nearest")).toMatchObject([
+      {
+        tone: "info",
+        title:
+          "There's no docs folder in this workspace yet. Make one on your computer, then put documents in it.",
+      },
+    ]);
+  });
+
+  it("shows no toast when the docs folder is there", async () => {
+    expect(await toastsAfterReveal("shown")).toEqual([]);
   });
 
   it("offers no button where the window has no sidebar views to show", async () => {

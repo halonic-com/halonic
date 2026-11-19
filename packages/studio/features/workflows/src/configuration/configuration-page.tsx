@@ -1,8 +1,15 @@
-import { EmptyState, SkeletonBar, StatusChip } from "@halonicjs/studio-kit";
-import { type KeyboardEvent, type ReactNode, useId, useState } from "react";
+import {
+  EmptyState,
+  SkeletonBar,
+  type Tab,
+  TabList,
+  TabPanel,
+  useTabIds,
+} from "@halonicjs/studio-kit";
+import { type ReactNode, useState } from "react";
 import type { WorkflowConfiguration } from "../api.ts";
 import type { Load } from "../page/use-load.ts";
-import { type ConfigurationPage, configurationPages, pageForKey } from "./configuration-pages.ts";
+import { type ConfigurationPage, configurationPages } from "./configuration-pages.ts";
 import { configurationWords as words } from "./configuration-words.ts";
 import { countProblems, problemRows } from "./problem-lines.ts";
 
@@ -34,7 +41,7 @@ export function Configuration({
   onOpenStep,
 }: ConfigurationProps) {
   const [page, setPage] = useState<ConfigurationPage>(startOn);
-  const ids = useId();
+  const ids = useTabIds();
   if (load.kind === "failed") {
     return (
       <EmptyState
@@ -46,62 +53,31 @@ export function Configuration({
     );
   }
   const configuration = load.kind === "ready" ? load.value : undefined;
-  const errors = configuration ? countProblems(configuration.problems).errors : 0;
-
-  const onKeyDown = (event: KeyboardEvent) => {
-    const next = pageForKey(page, event.key);
-    if (next === undefined) return;
-    event.preventDefault();
-    setPage(next);
-    document.getElementById(`${ids}-${next}`)?.focus();
-  };
+  const pages = configuration === undefined ? [] : pageTabs(configuration);
 
   return (
     <div className="flex min-h-0 flex-1">
-      <div
-        role="tablist"
-        aria-orientation="vertical"
-        aria-label={words.pages}
-        onKeyDown={onKeyDown}
-        className="flex w-52 shrink-0 flex-col gap-1 border-e border-border px-2 py-4"
-      >
-        {configuration === undefined
-          ? configurationPages.map((one) => (
-              <div key={one} aria-hidden="true" className="flex h-control-md items-center px-3">
+      <div className="w-52 shrink-0 border-e border-border px-2 py-4">
+        {configuration === undefined ? (
+          <div aria-hidden="true" className="flex flex-col gap-1">
+            {configurationPages.map((one) => (
+              <div key={one} className="flex h-control-md items-center px-3">
                 <SkeletonBar kind="meta" width="1/2" />
               </div>
-            ))
-          : configurationPages.map((one) => (
-              <button
-                key={one}
-                id={`${ids}-${one}`}
-                type="button"
-                role="tab"
-                aria-selected={page === one}
-                aria-controls={`${ids}-panel`}
-                tabIndex={page === one ? 0 : -1}
-                onClick={() => setPage(one)}
-                className={`focus-ring flex h-control-md items-center justify-between rounded-sm px-3 text-start text-body ${
-                  page === one
-                    ? "bg-accent-soft font-medium text-fg selected-forced"
-                    : "text-fg-muted hover:text-fg"
-                }`}
-              >
-                {words.pageNames[one]}
-                {one === "problems" && errors > 0 && (
-                  <StatusChip tone="danger" shape="count" name={words.errors(errors)}>
-                    {errors}
-                  </StatusChip>
-                )}
-              </button>
             ))}
+          </div>
+        ) : (
+          <TabList
+            label={words.pages}
+            orientation="vertical"
+            tabs={pages}
+            selected={page}
+            onSelect={setPage}
+            ids={ids}
+          />
+        )}
       </div>
-      <div
-        role="tabpanel"
-        id={`${ids}-panel`}
-        aria-labelledby={configuration ? `${ids}-${page}` : undefined}
-        className="min-w-0 flex-1 overflow-auto p-6"
-      >
+      <TabPanel ids={ids} tabs={pages} selected={page} className="min-w-0 flex-1 overflow-auto p-6">
         {configuration === undefined ? (
           <div role="status" className="flex flex-col gap-4">
             <span className="sr-only">{words.loading(name)}</span>
@@ -118,9 +94,21 @@ export function Configuration({
             />
           </div>
         )}
-      </div>
+      </TabPanel>
     </div>
   );
+}
+
+/** The list's tabs; Problems carries the number of errors, read as "Problems, 1 error". */
+function pageTabs(configuration: WorkflowConfiguration): readonly Tab<ConfigurationPage>[] {
+  const errors = countProblems(configuration.problems).errors;
+  return configurationPages.map((one) => ({
+    id: one,
+    label: words.pageNames[one],
+    ...(one === "problems" && errors > 0
+      ? { count: { value: errors, tone: "danger", name: words.errors(errors) } as const }
+      : {}),
+  }));
 }
 
 /** A side-label row: the label in a column on the left, the value beside it. */

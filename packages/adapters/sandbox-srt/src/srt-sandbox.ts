@@ -9,6 +9,7 @@ import type {
   SandboxFix,
   SandboxNetwork,
   SandboxProfile,
+  SandboxResidual,
   SandboxSession,
   SandboxUnavailableReason,
 } from "@halonicjs/ports";
@@ -135,12 +136,14 @@ export class SrtSandbox implements Sandbox {
       unavailable = { reason: "other", missing: "the machine could not be examined" };
     }
     if (unavailable === null) {
-      const readable = await this.#profileReadable();
+      const residuals: SandboxResidual[] = [];
+      if (await this.#profileReadable()) residuals.push("kept-roots-readable");
+      if (await this.#dockerDesktopVisible()) residuals.push("docker-desktop-visible");
       return {
         ok: true,
         reason: null,
         missing: [],
-        ...(readable ? { residuals: ["kept-roots-readable" as const] } : {}),
+        ...(residuals.length > 0 ? { residuals } : {}),
       };
     }
     const { reason, missing, fix } = unavailable;
@@ -292,6 +295,16 @@ export class SrtSandbox implements Sandbox {
     if (this.#machine.platform !== "win32") return false;
     try {
       return (await this.#machine.profileReadGranted?.()) ?? false;
+    } catch {
+      return true;
+    }
+  }
+
+  /** Whether Docker Desktop shows in the WSL distro, the one place with shared folders (W6); true when the machine can't say. */
+  async #dockerDesktopVisible(): Promise<boolean> {
+    if (this.#machine.platform !== "linux" || this.#sharedFolders.length === 0) return false;
+    try {
+      return (await this.#machine.dockerDesktopVisible?.()) ?? false;
     } catch {
       return true;
     }

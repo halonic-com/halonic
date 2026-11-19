@@ -41,6 +41,12 @@ export { type SandboxBackendId, sandboxBackendIds };
  *   residuals on Windows, as `srt-win wfp verify` reports them.
  * - `security-updates-overdue`: a backend with its own system updates (`srt-wsl`, W2 of
  *   HAL-5407) hasn't run them for more than 7 days. A warning, never a failure.
+ * - `docker-desktop-visible`: Docker Desktop's socket or its `/mnt/wsl/docker-desktop*`
+ *   folders show in the `srt-wsl` distro (W6 of HAL-5407, HAL-12445). Only a residual of
+ *   an `ok` check. A warning, never a failure.
+ * - `default-distro`: the `srt-wsl` distro is the user's default WSL distro, so `wsl`
+ *   alone opens it (W6 of HAL-5407, HAL-12445). Read by the shell that starts the host
+ *   in the distro. A warning, never a failure.
  */
 export const limitCodes = [
   "name-lookups-leave",
@@ -58,6 +64,8 @@ export const limitCodes = [
   "deny-only-user-sid",
   "lowered-integrity-unprobed",
   "security-updates-overdue",
+  "docker-desktop-visible",
+  "default-distro",
 ] as const;
 
 /** A limit of a backend: one of {@link limitCodes}. */

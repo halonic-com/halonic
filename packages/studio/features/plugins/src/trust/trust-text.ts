@@ -6,6 +6,7 @@ import {
   type LocalToolState,
   pluginTrustLocationHeadings,
   pluginTrustMoreFilesText,
+  pluginTrustToolsIntro,
 } from "@halonicjs/app";
 import { hostFromSetting } from "../settings/settings-text.ts";
 
@@ -95,9 +96,9 @@ export function unchangedRow(count: number): string {
 export const ARROW = " → ";
 
 /**
- * The trust check's last line, outside the scroll area (T9, CHECK P1). The one place it's
- * written, so HAL-3384 can put the approved "Runs" line (microcopy 24.1) here without touching
- * the dialog.
+ * The trust check's last line where the sandbox status isn't known (T9, CHECK P1): the two
+ * sentences that hold either way. Also R2b's line for a plugin with only programs, not in the
+ * sandbox (microcopy 24.1).
  */
 export const TRUST_CHECK_LAST_LINE =
   "Plugin code runs apart from Studio. Halonic doesn't check what the plugin does with what it's given.";
@@ -120,9 +121,8 @@ export function sectionRow(title: string, count: number): string {
   return `${title} (${count})`;
 }
 
-/** The first line in Tools for agents (T8). */
-export const TOOLS_INTRO =
-  "Agents can use these through a connector. Each one asks a person first unless you change that.";
+/** The first line in Tools for agents (T8), worded in core, which the CLI reads too. */
+export const TOOLS_INTRO = pluginTrustToolsIntro;
 
 /** After a tool whose answers the plugin marks as untrusted (T8). */
 export const OUTSIDE_TEXT = "its answers aren't trusted as instructions";

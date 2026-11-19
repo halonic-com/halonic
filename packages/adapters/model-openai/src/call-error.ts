@@ -1,4 +1,9 @@
-import { isModelOutOfMemory, ModelCallError, VendorErrorText } from "@halonicjs/ports";
+import {
+  isModelOutOfMemory,
+  ModelCallError,
+  networkCauseOf,
+  VendorErrorText,
+} from "@halonicjs/ports";
 import { findSecretShape, isPlainObject } from "@halonicjs/std";
 import type { CallTimeoutError } from "./call-timer.ts";
 import type { BodyTooLargeError } from "./read-body.ts";
@@ -49,7 +54,7 @@ const maskedKey = /sk-[\w-]*\*/;
  * is busy: 501 Not Implemented, such as a `baseUrl` with a wrong path or a
  * server that doesn't speak this API, and 505 HTTP Version Not Supported.
  * Waiting won't fix them, so they are `refused`, and the message points at
- * the provider's `baseUrl` in models.yaml.
+ * the `baseUrl` in the provider's file, providers/<id>.yaml.
  */
 const notSupportedStatuses: ReadonlySet<number> = new Set([501, 505]);
 
@@ -135,7 +140,7 @@ export function errorForStatus(
 /** "acme at proxy.test doesn't support …": the server answered, but not to this API. */
 function notSupportedMessage(call: FailedCall, label: string): string {
   const where = call.host === undefined ? "" : ` at ${call.host}`;
-  return `${call.providerId}${where} doesn't support the call to the model "${call.model}", so check the baseUrl of ${call.providerId} in models.yaml (${label})`;
+  return `${call.providerId}${where} doesn't support the call to the model "${call.model}", so check the baseUrl in providers/${call.providerId}.yaml (${label})`;
 }
 
 /**
@@ -165,12 +170,20 @@ function isKeyRefused(status: number, vendor: VendorError): boolean {
   return status === 403 && !notTheKeyWording.test(vendor.message);
 }
 
-/** The {@link ModelCallError} when the provider couldn't be reached at all. */
+/** The {@link ModelCallError} when the provider couldn't be reached at all.
+ * A network error that names its cause, such as the HTTP client's
+ * `ProxyError`, passes it on (requirement `ports.model-call-cause`), and its
+ * message follows ours: such an error's message is written for the user and
+ * holds no credential. Any other error's message stays out, as it may.
+ */
 export function errorForNetwork(cause: unknown, call: FailedCall): ModelCallError {
   const where = call.host === undefined ? "" : ` at ${call.host}`;
-  return new ModelCallError("offline", `Halonic couldn't reach ${call.providerId}${where}`, {
+  const failureCause = networkCauseOf(cause);
+  const why = failureCause === undefined || !(cause instanceof Error) ? "" : `: ${cause.message}`;
+  return new ModelCallError("offline", `Halonic couldn't reach ${call.providerId}${where}${why}`, {
     cause,
     ...(call.host === undefined ? {} : { host: call.host }),
+    failureCause,
   });
 }
 

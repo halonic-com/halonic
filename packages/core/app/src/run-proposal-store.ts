@@ -16,22 +16,41 @@ import {
 const recordFilePattern = /^([A-Za-z0-9_][A-Za-z0-9_-]{0,63})\.json$/u;
 
 /**
+ * Keeps every other process off one run's record while `work` reads and
+ * writes it, and waits while another process holds it. A host whose records
+ * another process can decide too, as `halonic proposals` and the engine of
+ * `halonic routines watch` can, passes one, so two decisions never read the
+ * same record and one write over the other (`app.run-proposal-record-lock`).
+ */
+export type ProposalRecordLock = <T>(runId: string, work: () => Promise<T>) => Promise<T>;
+
+/** The lock of a host whose records only this process uses: the run's turn is enough. */
+const thisProcessOnly: ProposalRecordLock = (_runId, work) => work();
+
+/**
  * The records of one workspace's runs, one per run with a worktree or a
  * proposal. Work on one run runs in that run's turn ({@link inTurn}), so
- * an `end` and an Accept, or two Accepts, never interleave.
+ * an `end` and an Accept, or two Accepts, never interleave, in this process
+ * or, under the host's {@link ProposalRecordLock}, in another.
  */
 export class ProposalRecordStore {
   /** The records' own store, holding nothing else; never the workspace's store. */
   readonly store: DefinitionStore;
   private readonly queue = new KeyedQueue();
+  private readonly lock: ProposalRecordLock;
 
-  constructor(store: DefinitionStore) {
+  constructor(store: DefinitionStore, lock: ProposalRecordLock = thisProcessOnly) {
     this.store = store;
+    this.lock = lock;
   }
 
-  /** Runs `work` after every earlier piece of work on the same run. */
+  /**
+   * Runs `work` after every earlier piece of work on the same run, holding
+   * the run's record lock: first this process's turn, so it never waits on
+   * its own lock, then the lock.
+   */
   inTurn<T>(runId: string, work: () => Promise<T>): Promise<T> {
-    return this.queue.run(runId, work);
+    return this.queue.run(runId, () => this.lock(runId, work));
   }
 
   /**

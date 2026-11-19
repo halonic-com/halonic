@@ -80,3 +80,35 @@ export function zoomAround(view: View, factor: number, anchor: Point): View {
 export function panBy(view: View, delta: Point): View {
   return { zoom: view.zoom, pan: { x: view.pan.x + delta.x, y: view.pan.y + delta.y } };
 }
+
+/**
+ * The view panned just enough that all of `box` (in canvas units) shows inside `viewport` (in
+ * screen pixels), `margin` pixels clear of its edges (`workflows.canvas.focus-in-view`). The zoom
+ * stays. A box that already shows gets back the same `view`, so nothing moves. A box too big for
+ * the viewport lines up its top-left corner, where a card's kind and title are.
+ */
+export function panToShow(view: View, box: Box, viewport: Box, margin = 16): View {
+  const x = shiftToShow(
+    box.x * view.zoom + view.pan.x,
+    box.width * view.zoom,
+    viewport.x + margin,
+    viewport.width - 2 * margin,
+  );
+  const y = shiftToShow(
+    box.y * view.zoom + view.pan.y,
+    box.height * view.zoom,
+    viewport.y + margin,
+    viewport.height - 2 * margin,
+  );
+  return x === 0 && y === 0 ? view : panBy(view, { x, y });
+}
+
+/**
+ * How far to move a span that starts at `start` and is `size` long, along one axis, so it lies in
+ * the room that starts at `roomStart` and is `room` long: 0 when it already does.
+ */
+function shiftToShow(start: number, size: number, roomStart: number, room: number): number {
+  if (size > room || start < roomStart) return roomStart - start;
+  const overshoot = start + size - (roomStart + room);
+  return overshoot > 0 ? -overshoot : 0;
+}

@@ -207,6 +207,16 @@ describe("describeAgentChange", () => {
     });
   });
 
+  it("names the harness limits and gives them one line", () => {
+    const limited = `${lastVersion}harnessLimits:\n  maxSteps: 200\n`;
+    expect(described(limited, `${lastVersion}harnessLimits:\n  maxSteps: 900\n`)).toEqual([
+      { id: "field:harnessLimits", sentence: "Harness limits edited", parts: [["harnessLimits"]] },
+    ]);
+    expect(described(lastVersion, limited)).toEqual([
+      { id: "field:harnessLimits", sentence: "Harness limits added", parts: [["harnessLimits"]] },
+    ]);
+  });
+
   it("gives no lines when nothing changed", () => {
     expect(described(lastVersion, lastVersion)).toEqual([]);
   });

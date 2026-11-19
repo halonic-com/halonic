@@ -47,6 +47,12 @@ export {
   type FeatureDialogsProps,
 } from "./dialogs/feature-dialogs.tsx";
 export {
+  NameAndHubRow,
+  type NameAndHubRowProps,
+  NewItemNote,
+  type NewItemNoteProps,
+} from "./dialogs/new-item-parts.tsx";
+export {
   createShellEngine,
   type EngineConnectionEvent,
   type EngineConnectionListener,
@@ -239,6 +245,7 @@ export { PhoneTopBar, type PhoneTopBarProps } from "./phone/phone-top-bar.tsx";
 export {
   PhoneTopBarActions,
   type PhoneTopBarActionsProps,
+  PhoneTopBarSlot,
   useInPhoneTopBar,
 } from "./phone/phone-top-bar-actions.tsx";
 export {

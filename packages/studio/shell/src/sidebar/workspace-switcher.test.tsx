@@ -38,7 +38,7 @@ describe("WorkspaceSwitcher", () => {
     );
     const switcher = container.querySelector('button[aria-haspopup="menu"]') as HTMLButtonElement;
     expect(switcher.textContent).toBe(`AAcme${folder}`);
-    const kept = switcher.querySelector(".whitespace-pre");
+    const kept = switcher.querySelector(".whitespace-pre-wrap");
     expect(kept?.textContent).toBe("\\OneDrive - Acme BV\\Documents\\Acme sample");
   });
 

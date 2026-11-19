@@ -94,3 +94,12 @@ export const instructionsBody = s
 
 /** A run's instructions folder to remove, as the host answered it. */
 export const releaseInstructionsBody = s.object({ folder: absolutePath }).strict();
+
+/**
+ * What Studio gives to learn an agent's own settings folder: the workspace
+ * (one the launcher named), the agent's id and its harness. The host picks
+ * the folder, in Halonic's data folder.
+ */
+export const settingsFolderBody = s
+  .object({ workspace: absolutePath, agentId: id, harness: id })
+  .strict();

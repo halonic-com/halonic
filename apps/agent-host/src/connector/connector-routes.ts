@@ -13,6 +13,7 @@ import type {
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import { namedWorkspace } from "../server/named-workspace.ts";
+import { connectorFailureReasonOf } from "./connector-failure.ts";
 import {
   callToolBody,
   configOf,
@@ -69,8 +70,9 @@ const unknownConnectorMessage = "The agent host has no open connector with this 
  * - `POST /v1/connectors/call` with `{ connector, tool, args, idempotencyKey? }` answers `{ text }`;
  * - `POST /v1/connectors/close` with `{ connector }` stops the program and closes its session.
  *
- * A failed start or call answers 502 `connector_failed` with a fixed message:
- * the error's own text can hold paths or secret values, so it goes only to the
+ * A failed start or call answers 502 `connector_failed` with a fixed message,
+ * and a `reason` when the host knows why (`ConnectorFailureReason`): the
+ * error's own text can hold paths or secret values, so it goes only to the
  * host's own log (`deps.log`), with the connector's secret values left out.
  */
 export function connectorRoutes(deps: ConnectorRouteDeps): HostRoute[] {
@@ -276,7 +278,8 @@ async function answering(
 }
 
 /**
- * Answers 502 with the fixed reason and keeps the detail in the host's log.
+ * Answers 502 with the fixed message, and the reason when the error's type
+ * says it, and keeps the detail in the host's log.
  *
  * @param secretValues - values to leave out of the log line (the connector's own secrets)
  */
@@ -290,7 +293,10 @@ function failed(
   deps.log?.(
     `A connector request failed (${name}): ${withoutValues(messageOf(error), secretValues)}\n`,
   );
-  sendError(response, 502, "connector_failed", connectorFailedMessage);
+  const reason = connectorFailureReasonOf(error);
+  sendJson(response, 502, {
+    error: { kind: "connector_failed", message: connectorFailedMessage, ...reason },
+  });
 }
 
 function withoutValues(text: string, values: readonly string[]): string {

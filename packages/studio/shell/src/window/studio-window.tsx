@@ -23,6 +23,7 @@ import type { KeyboardPlatform } from "../points/keybindings.ts";
 import { ResourceStatusItem } from "../resources/resource-status-item.tsx";
 import type { ResourceWatch } from "../resources/resource-watch.ts";
 import { announceSaveNotes } from "../save/save-note-words.ts";
+import { useAvailableSections } from "../settings/available-sections.ts";
 import { SettingsDialog } from "../settings/settings-dialog.tsx";
 import { listedSections, settingsGroups } from "../settings/settings-groups.ts";
 import { useSettingsOpening } from "../settings/settings-opening.ts";
@@ -137,10 +138,15 @@ export function StudioWindow(props: StudioWindowProps) {
   const settings = useSettingsOpening(host, platform);
   const showSettingsDialog = settings.show;
   // The sections this window has, so the list, the dialog and Ctrl K all leave out the same ones.
-  const sections = useMemo(() => {
+  const placeSections = useMemo(() => {
     const all = contributions.settings.list();
     return withoutHostSettings === true ? all.filter(({ scope }) => scope !== "host") : all;
   }, [contributions, withoutHostSettings]);
+  const baseContextFor = useCallback(
+    (featureId: string) => shell.services.contextFor(featureId, workspace.services),
+    [shell, workspace.services],
+  );
+  const sections = useAvailableSections(placeSections, baseContextFor);
   const settingsSections = useMemo(
     () => sections.map(({ id, title }) => ({ id, title })),
     [sections],
@@ -292,6 +298,14 @@ export function StudioWindow(props: StudioWindowProps) {
   // A phone shows its own place's page, not the active tab's, so the title names that page.
   const tabTitle = useActiveTabTitle(tabs);
   useWindowTitle(desktop ? tabTitle : phone.topBar.title, workspace.name);
+  // The features' badges first, as the status bar shows them; a window as narrow as a phone
+  // shows the same ones on More, as it has no status bar (WCAG 1.4.10).
+  const headerBadges = (
+    <>
+      <HeaderBadges registry={shell.badges} />
+      {props.badges}
+    </>
+  );
 
   return (
     <ShellFrame
@@ -310,12 +324,7 @@ export function StudioWindow(props: StudioWindowProps) {
           <WindowTabStrip tabs={tabs} onNewTab={palette.show} windowKeys={{ host, platform }} />
         </>
       }
-      badges={
-        <>
-          <HeaderBadges registry={shell.badges} />
-          {props.badges}
-        </>
-      }
+      badges={headerBadges}
       saveNote={<StatusBarSaveNote saving={workspace.saving} />}
       sidebar={
         <StudioSidebar
@@ -385,7 +394,7 @@ export function StudioWindow(props: StudioWindowProps) {
             switcher={props.phoneSwitcher}
             menuSwitcher={sidebarSwitcher}
             badge={props.phoneBadge}
-            desktopBadges={props.badges}
+            desktopBadges={headerBadges}
             onSettings={() => openSettings()}
             settingsPlace={host === "desktop-app" ? "app" : "served"}
             settingsSections={sections}

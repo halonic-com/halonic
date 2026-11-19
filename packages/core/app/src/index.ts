@@ -304,6 +304,7 @@ export {
   pluginTrustSectionHeadings,
   pluginTrustSectionOrder,
   pluginTrustSections,
+  pluginTrustToolsIntro,
 } from "./plugin-trust-sections.ts";
 export {
   ProgramCopies,

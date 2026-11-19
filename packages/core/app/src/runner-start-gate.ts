@@ -16,7 +16,7 @@ import {
   type RunnerUnfencedReason,
   runnerFence,
 } from "./runner-fence.ts";
-import type { UnfencedRunDecision, UnfencedRuns } from "./unfenced-runs.ts";
+import { isSameYes, type UnfencedRunDecision, type UnfencedRuns } from "./unfenced-runs.ts";
 
 /** The sandbox a start is fenced by, and what decides whether it counts as a fence. */
 interface FencedSandbox {
@@ -208,19 +208,20 @@ export class RunnerStartGate {
         `the launcher's sandbox reported the fence proof ${runner.fence.state}, not off`,
       );
     }
-    const unregister = this.#runs.registerUnfencedRun(allowed.reason, () => runner.close());
+    const unregister = this.#runs.registerUnfencedRun(allowed, () => runner.close());
     // Forget the run however it stops. A `stopped` that rejects is handled
     // here too, so it never becomes an unhandled rejection.
     void runner.stopped.then(unregister, unregister);
     // Take back may have run while the runner was starting; it waits for this
     // start. Asking again now catches that, and stops the runner before Take
-    // back returns. A runner that fails to stop stays registered, so Take
-    // back tries again and reports it.
+    // back returns. A yes given again since is another yes, so the runner
+    // stops then too and the caller asks again. A runner that fails to stop
+    // stays registered, so Take back tries again and reports it.
     const now = await this.#runs.decide(fence);
-    if (now.run !== "allowed") {
+    if (now.run !== "allowed" || !isSameYes(allowed, now)) {
       await runner.close();
       unregister();
-      return now.run === "needs-yes"
+      return now.run === "needs-yes" || now.run === "allowed"
         ? { run: "needs-yes", reason: now.reason }
         : { run: "stopped" };
     }

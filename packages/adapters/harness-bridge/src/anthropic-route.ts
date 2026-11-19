@@ -3,7 +3,8 @@ import { isPlainObject } from "@halonicjs/std";
 import { AnthropicReplyReader } from "./anthropic-reply.ts";
 import { refuseUrlSources } from "./anthropic-sources.ts";
 import { type Fetch, passThrough, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
-import { providerAuthorization } from "./provider-key.ts";
+import { type ProviderApi, providerTarget } from "./provider-address.ts";
+import { providerAccess, providerAuthorization } from "./provider-key.ts";
 import {
   type ProviderReach,
   parseModelRequest,
@@ -16,6 +17,20 @@ import { readModelCall, recordModelCall } from "./spend.ts";
 
 /** The one host the bridge sends Anthropic requests to. */
 export const anthropicOrigin = "https://api.anthropic.com";
+
+/**
+ * Where Messages calls go: `/v1/messages` at Anthropic, or under a
+ * compatible provider's `baseUrl`, as the built-in loop's Anthropic provider
+ * builds it, so `https://api.z.ai/api/anthropic` gets
+ * `https://api.z.ai/api/anthropic/v1/messages` and a `baseUrl` that already
+ * ends in `/v1` doesn't get it twice.
+ */
+const anthropicApi: ProviderApi = {
+  name: "Anthropic",
+  ownOrigin: anthropicOrigin,
+  ownPath: "/v1/messages",
+  pathUnder: (baseUrl) => `${baseUrl.replace(/\/v1$/, "")}/v1/messages`,
+};
 
 /** The request headers that go on to Anthropic. The program's key and the run token stay behind. */
 const forwardedRequestHeaders = ["accept", "anthropic-beta", "anthropic-version", "content-type"];
@@ -64,12 +79,15 @@ const anthropicReach: ProviderReach = {
 export interface AnthropicRouteDependencies {
   secrets: Secrets;
   fetch: Fetch;
+  /** Reaches a compatible provider at its file's `baseUrl`; left out, such calls are refused. */
+  compatibleFetch?: Fetch | undefined;
   limits: UpstreamLimits;
 }
 
 /**
  * `POST /v1/messages`, as Claude Code sends it, passed on to
- * `api.anthropic.com` with the agent's key in place of the program's
+ * `api.anthropic.com`, or to the one compatible provider the agent's key
+ * names (requirement `harness-bridge.provider-base-url`), with the agent's key in place of the program's
  * (requirement `harness-bridge.anthropic`), or with the program's own
  * sign-in for an agent on a subscription (requirement
  * `harness-bridge.sign-in`). Streaming replies stream through unchanged.
@@ -85,6 +103,11 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
     method: "POST",
     path: "/v1/messages",
     handle: async (context) => {
+      const access = providerAccess(context, "anthropic");
+      // Keep the program's query, such as Claude Code's `?beta=true`.
+      const { search } = new URL(context.request.url ?? "", anthropicOrigin);
+      // Before the key is read, so an address the bridge refuses never reads it.
+      const target = providerTarget(access, anthropicApi, search, dependencies);
       const authorization = await providerAuthorization(
         context,
         dependencies.secrets,
@@ -96,8 +119,6 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
       refuseUrlSources(request);
       const call = readModelCall("anthropic", request, "messages");
       const body = withoutProviderReach(sent, request, anthropicReach);
-      // Keep the program's query, such as Claude Code's `?beta=true`.
-      const { search } = new URL(context.request.url ?? "", anthropicOrigin);
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);
       const reply = new AnthropicReplyReader();
       await recordModelCall(context.run, call, reply, () =>
@@ -105,13 +126,13 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
           context,
           {
             provider: "Anthropic",
-            url: new URL(`/v1/messages${search}`, anthropicOrigin),
+            url: target.url,
             headers: { ...headers, ...authorization },
             body,
             replyHeader: isForwardedReplyHeader,
             watch: reply,
           },
-          dependencies,
+          { fetch: target.fetch, limits: dependencies.limits },
         ),
       );
     },

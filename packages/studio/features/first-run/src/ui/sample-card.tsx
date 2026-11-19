@@ -27,9 +27,12 @@ export function SampleCard({ context }: HomeCardProps) {
   );
 }
 
-/** A phone's finished-card row: 48px, a chevron at the right, a `border` line under it. */
+/**
+ * A phone's finished-card row: 48px, a chevron at the right, a `border` line under it. Its `px-4`
+ * starts the label where the section heading starts, as Home's See all runs does.
+ */
 const linkRowClasses = [
-  "flex w-full min-h-touch items-center gap-3 border-b border-border text-left text-body",
+  "flex w-full min-h-touch items-center gap-3 border-b border-border px-4 text-left text-body",
   "transition-colors focus-ring-inset hover:bg-surface-subtle active:bg-surface-subtle",
 ].join(" ");
 
@@ -42,6 +45,31 @@ function LinkRow({ label, onPress }: { readonly label: string; readonly onPress:
         <ChevronRightIcon />
       </span>
     </button>
+  );
+}
+
+/** The section heading's inset (`ListHeading`'s `px-4`), so the card's lines start where "TRY THE SAMPLE" does. */
+const inset = "px-4";
+
+/** "N of 3 done": inset like the heading, in the section's small muted style. */
+function Caption({ done }: { readonly done: number }) {
+  return (
+    <p className={`${inset} pb-2 text-small text-fg-muted`}>{sampleCardWords.caption(done)}</p>
+  );
+}
+
+/** "✓ You've seen it work.": the tick sits in an icon-sized box, as the kit's other inline icons do. */
+function FinishedLine() {
+  return (
+    <p className={inset}>
+      <span
+        aria-hidden="true"
+        className="inline-grid size-icon-sm align-middle text-success *:size-full"
+      >
+        <TickIcon />
+      </span>{" "}
+      {sampleCardWords.finished}
+    </p>
   );
 }
 
@@ -83,10 +111,8 @@ export function SampleSteps({ progress, openers, openTests, announce }: SampleSt
     const startOwnWorkspace = progress.startOwnWorkspace;
     return (
       <>
-        <p>
-          <TickIcon /> {sampleCardWords.finished}
-        </p>
-        <p>{sampleCardWords.caption(done.size)}</p>
+        <FinishedLine />
+        <Caption done={done.size} />
         <div className="border-t border-border">
           {openTests === undefined || finishedRun === undefined ? null : (
             <LinkRow label={sampleCardWords.seeTests} onPress={() => openTests(finishedRun.hub)} />
@@ -102,10 +128,8 @@ export function SampleSteps({ progress, openers, openTests, announce }: SampleSt
     const startOwnWorkspace = progress.startOwnWorkspace;
     return (
       <>
-        <p>
-          <TickIcon /> {sampleCardWords.finished}
-        </p>
-        <p>{sampleCardWords.caption(done.size)}</p>
+        <FinishedLine />
+        <Caption done={done.size} />
         {openTests === undefined || finishedRun === undefined ? null : (
           <Button variant="secondary" size="sm" onClick={() => openTests(finishedRun.hub)}>
             {sampleCardWords.seeTests}
@@ -129,7 +153,7 @@ export function SampleSteps({ progress, openers, openTests, announce }: SampleSt
   }));
   return (
     <>
-      <p>{sampleCardWords.caption(done.size)}</p>
+      <Caption done={done.size} />
       <SetupSteps
         label={sampleCardWords.heading}
         steps={steps}

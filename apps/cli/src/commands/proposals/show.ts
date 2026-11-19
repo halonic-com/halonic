@@ -17,7 +17,8 @@ import { type Phrase, phrase } from "../../messages/phrase.ts";
 import { proposalsMessages, type ShownDecision } from "../../messages/proposals.ts";
 import { printable } from "../../output/printable.ts";
 import { unifiedDiff } from "./diff-lines.ts";
-import { findProposal } from "./find-proposal.ts";
+import { findProposal, type ProposalPlace } from "./find-proposal.ts";
+import { undecidedFiles } from "./list.ts";
 import { type ProposalsSetup, unlessUnavailable, withProposals } from "./open-proposals.ts";
 
 /** One file as `show` prints it, and as its `--json` gives it. */
@@ -33,8 +34,9 @@ interface ShownFile {
 
 /**
  * Shows the open proposal of one run: a heading, then each file with how
- * the run changed it and, while it is undecided, its diff. With `--json`,
- * the proposal as recorded and each file's diff lines.
+ * the run changed it and, while it is undecided, its diff; then how to
+ * accept or discard it. With `--json`, the proposal as recorded and each
+ * file's diff lines.
  *
  * @throws UsageError when there isn't exactly one run id
  * @throws OwnLineError when no open proposal has that id, two end in it, or its texts are gone
@@ -52,10 +54,12 @@ export function showProposal(
     const files = await unlessUnavailable(
       () => Promise.all(record.proposal.files.map((file) => shownFile(proposals, record, file))),
       shownId,
+      place,
     );
     const lines: Phrase[] = [
       proposalsMessages.heading(shownId, files.length, place.workspaceName).phrase,
       ...files.flatMap(fileLines),
+      ...decideLines(record, shownId, place),
     ];
     return { exitCode: exitCode.ok, lines, json: { proposal: record, files } };
   });
@@ -91,6 +95,12 @@ function fileLines(file: ShownFile): Phrase[] {
       : file.diff.map((line) => phrase`  ${printable(line)}`);
   const since = file.changedSince ? [proposalsMessages.changedSince().phrase] : [];
   return [[], heading, ...since, ...diff];
+}
+
+/** How to accept or discard, while a file is left to decide. */
+function decideLines(record: ProposedRecord, shownId: string, place: ProposalPlace): Phrase[] {
+  if (undecidedFiles(record).length === 0) return [];
+  return [[], proposalsMessages.howToDecide(shownId, place.dir).phrase];
 }
 
 function shownDecision(decision: Decision): ShownDecision {

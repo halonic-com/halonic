@@ -142,6 +142,8 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
   const startCreating = () => setCreating(true);
   // A workflow needs a hub to live in, and the hubs are known only once the first read is done.
   const canCreate = load.kind === "ready" && host.hubs().length > 0;
+  // A phone doesn't edit workflows, so its list has no New workflow (UX 10.15).
+  const offersNew = canCreate && !phone;
   // Ctrl K's New workflow waits until the dialog can open; with no hub to put one in, it is dropped.
   const noHubs = load.kind === "ready" && host.hubs().length === 0;
   useEffect(() => {
@@ -185,14 +187,14 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
             nothingYet: {
               title: listWords.nothingYetTitle,
               description: listWords.sentence,
-              ...(canCreate
+              ...(offersNew
                 ? { action: { label: listWords.newWorkflow, onClick: startCreating } }
                 : {}),
             },
           }}
           loading={load.kind === "loading"}
           quietWhenEmpty
-          {...(canCreate
+          {...(offersNew
             ? { newButton: { label: listWords.newWorkflow, onClick: startCreating } }
             : {})}
           onOpen={openRow}

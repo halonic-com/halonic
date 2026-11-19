@@ -6,15 +6,26 @@ import type { AnyListRow } from "./list-props.ts";
  * the title. Split out of list.tsx by concept.
  */
 
+/** A line of text is cut with an ellipsis, or wraps when the row does. */
+export function lineFit(row: AnyListRow): string {
+  return row.wrap === true ? "wrap-break-word" : "truncate";
+}
+
 /**
  * The row's icon or avatar. `small` is a 32px `dense` row; a dense row 48px high, on a phone or
- * under a coarse pointer, keeps 20px.
+ * under a coarse pointer, keeps 20px. In a row that wraps it stays at the top, centred on the
+ * title's first 20px line.
  */
 export function Leading({ row, small }: { readonly row: AnyListRow; readonly small: boolean }) {
   const dim = row.unavailable !== undefined;
+  const wrap = row.wrap === true;
   if (row.avatar !== undefined) {
+    // At the top, the 28px avatar reaches 4px above and below the title's line.
     return (
-      <span aria-hidden="true" className={`size-7 shrink-0 ${dim ? "opacity-45" : ""}`}>
+      <span
+        aria-hidden="true"
+        className={`size-7 shrink-0 ${wrap ? "-my-1 self-start" : ""} ${dim ? "opacity-45" : ""}`}
+      >
         {row.avatar}
       </span>
     );
@@ -23,13 +34,18 @@ export function Leading({ row, small }: { readonly row: AnyListRow; readonly sma
     return (
       <span
         aria-hidden="true"
-        className={`inline-grid ${small ? "size-icon-sm touch:size-icon-md" : "size-icon-md"} shrink-0 place-items-center *:size-full ${dim ? "text-fg-disabled text-forced-disabled" : "text-fg-muted"}`}
+        className={`inline-grid ${small ? "size-icon-sm touch:size-icon-md" : "size-icon-md"} shrink-0 ${wrap ? "self-start" : ""} place-items-center *:size-full ${dim ? "text-fg-disabled text-forced-disabled" : "text-fg-muted"}`}
       >
         {row.icon}
       </span>
     );
   }
   return null;
+}
+
+/** The meta line is the row's description: why it's unavailable, or a setup step's hint. */
+export function describesRow(row: AnyListRow): boolean {
+  return row.unavailable !== undefined || row.metaDescribes === true;
 }
 
 interface MetaLineProps {
@@ -56,8 +72,8 @@ export function MetaLine({ row, text, id, chip }: MetaLineProps) {
   const line =
     text === undefined ? null : (
       <span
-        id={row.unavailable === undefined ? undefined : id}
-        className={`truncate text-small ${colour}`}
+        id={describesRow(row) ? id : undefined}
+        className={`${lineFit(row)} text-small ${colour}`}
       >
         {text}
       </span>

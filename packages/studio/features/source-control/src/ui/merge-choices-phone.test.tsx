@@ -114,5 +114,18 @@ verifies("source-control.changes-phone", () => {
       expect(root.textContent).toContain("Keeping yours");
       expect(root.textContent).toContain("Choose for 1 more item.");
     });
+
+    it("puts why Get updates waits on its own line under the button", async () => {
+      const { root } = await openPhonePage();
+      await press("Get updates");
+      await press("Back to Changes");
+      const reason = [...root.querySelectorAll("span")].find(
+        (span) => span.textContent === "Finish getting updates first.",
+      );
+      const column = reason?.parentElement;
+      expect(column?.className).toContain("flex-col");
+      expect(column?.className).toContain("items-start");
+      expect(column?.firstElementChild).toBe(button("Get updates"));
+    });
   });
 });

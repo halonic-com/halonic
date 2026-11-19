@@ -18,6 +18,12 @@
 //! is in the background, and the shell cancels an open scan whenever the
 //! window starts loading a page or closes ([`end_page_scan`]), so leaving or
 //! reloading the page never leaves it on.
+//!
+//! A cancel is never lost, however early it comes (HAL-12577): one during
+//! the permission question stops the scan before the camera opens, and one
+//! that reaches the plugin before the camera is bound is repeated until well
+//! after, because the plugin binds the camera once CameraX is ready even
+//! when it was cancelled in between (`halonic_connect::ScanSession`).
 
 use halonic_connect::ScanAnswer;
 use tauri::{AppHandle, Runtime};
@@ -36,17 +42,18 @@ pub async fn pair_scan_cancel<R: Runtime>(app: AppHandle<R>) {
 
 #[cfg(target_os = "android")]
 mod android {
-    use std::sync::atomic::{AtomicBool, Ordering};
-
-    use halonic_connect::{CameraPermission, QR_CODE_FORMAT, ScanAnswer, read_scanned};
+    use halonic_connect::{
+        CANCEL_FOLLOW_UPS, CameraPermission, CancelPlan, QR_CODE_FORMAT, ScanAnswer, ScanId,
+        ScanSession, read_scanned,
+    };
     use serde::{Deserialize, Serialize};
     use tauri::plugin::{PluginHandle, TauriPlugin};
     use tauri::{AppHandle, Manager, Runtime};
 
-    /// The plugin's Kotlin side, and whether a scan is open.
+    /// The plugin's Kotlin side, and the open scan with its cancels.
     pub struct Scanner<R: Runtime> {
         plugin: PluginHandle<R>,
-        open: AtomicBool,
+        session: ScanSession,
     }
 
     /// The plugin's answer to `checkPermissions` and `requestPermissions`.
@@ -83,7 +90,7 @@ mod android {
                     .register_android_plugin("app.tauri.barcodescanner", "BarcodeScannerPlugin")?;
                 app.manage(Scanner {
                     plugin,
-                    open: AtomicBool::new(false),
+                    session: ScanSession::default(),
                 });
                 Ok(())
             })
@@ -94,31 +101,12 @@ mod android {
         let Some(scanner) = app.try_state::<Scanner<R>>() else {
             return ScanAnswer::Closed;
         };
-        if scanner.camera("checkPermissions").await != CameraPermission::Granted
-            && scanner.camera("requestPermissions").await != CameraPermission::Granted
-        {
-            // A refused request always reads `denied`; asking again tells
-            // whether Android will show its question next time.
-            return scanner.camera("checkPermissions").await.turned_down();
-        }
         // One scan at a time: the plugin answers only the latest.
-        if scanner.open.swap(true, Ordering::SeqCst) {
+        let Some(id) = scanner.session.begin() else {
             return ScanAnswer::Closed;
-        }
-        let options = ScanOptions {
-            formats: [QR_CODE_FORMAT],
-            windowed: true,
-            camera_direction: "back",
         };
-        let answer = match scanner
-            .plugin
-            .run_mobile_plugin_async::<Scanned>("scan", options)
-            .await
-        {
-            Ok(scanned) => read_scanned(scanned.format.as_deref(), &scanned.content),
-            Err(_) => ScanAnswer::Closed,
-        };
-        scanner.open.store(false, Ordering::SeqCst);
+        let answer = scanner.scan(id).await;
+        scanner.session.end(id);
         answer
     }
 
@@ -126,17 +114,69 @@ mod android {
         let Some(scanner) = app.try_state::<Scanner<R>>() else {
             return;
         };
-        if scanner.open.load(Ordering::SeqCst) {
-            // The scan's own answer clears `open` once the plugin has
-            // closed the camera and answered it.
-            let _ = scanner
-                .plugin
-                .run_mobile_plugin_async::<()>("cancel", ())
-                .await;
+        // A scan still at the permission question stops there by itself.
+        let CancelPlan::ClosePlugin(id) = scanner.session.cancel() else {
+            return;
+        };
+        scanner.close().await;
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move { follow_up(&app, id).await });
+    }
+
+    /// Cancels again after each of [`CANCEL_FOLLOW_UPS`], for a cancel that
+    /// reached the plugin before it took the scan, or before CameraX bound
+    /// the camera: the plugin binds it even then. Stops once a newer scan
+    /// has begun.
+    async fn follow_up<R: Runtime>(app: &AppHandle<R>, id: ScanId) {
+        for wait in CANCEL_FOLLOW_UPS {
+            let _ = tauri::async_runtime::spawn_blocking(move || std::thread::sleep(wait)).await;
+            let Some(scanner) = app.try_state::<Scanner<R>>() else {
+                return;
+            };
+            if !scanner.session.may_follow_up(id) {
+                return;
+            }
+            scanner.close().await;
         }
     }
 
     impl<R: Runtime> Scanner<R> {
+        /// Asks for the camera when Android hasn't granted it, then opens it
+        /// unless the scan was cancelled meanwhile, and waits for one code.
+        async fn scan(&self, id: ScanId) -> ScanAnswer {
+            if self.camera("checkPermissions").await != CameraPermission::Granted
+                && self.camera("requestPermissions").await != CameraPermission::Granted
+            {
+                // A refused request always reads `denied`; asking again
+                // tells whether Android will show its question next time.
+                return self.camera("checkPermissions").await.turned_down();
+            }
+            if !self.session.may_open_camera(id) {
+                return ScanAnswer::Closed;
+            }
+            let options = ScanOptions {
+                formats: [QR_CODE_FORMAT],
+                windowed: true,
+                camera_direction: "back",
+            };
+            match self
+                .plugin
+                .run_mobile_plugin_async::<Scanned>("scan", options)
+                .await
+            {
+                Ok(scanned) => read_scanned(scanned.format.as_deref(), &scanned.content),
+                Err(_) => ScanAnswer::Closed,
+            }
+        }
+
+        /// Closes the camera, and answers a waiting scan `closed`.
+        async fn close(&self) {
+            let _ = self
+                .plugin
+                .run_mobile_plugin_async::<()>("cancel", ())
+                .await;
+        }
+
         /// The camera permission after `command`, `checkPermissions` or
         /// `requestPermissions`. A plugin that fails reads as `Denied`.
         async fn camera(&self, command: &str) -> CameraPermission {

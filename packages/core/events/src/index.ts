@@ -11,6 +11,7 @@ export type {
   ApprovalResolver,
   CantTryReason,
   CantTryStep,
+  ConnectorStartReason,
   HarnessStartCause,
   InstructionsRefusal,
   LeftOutReason,
@@ -27,6 +28,8 @@ export type {
   RunTrigger,
   RunVersion,
   StoredBlob,
+  ToolFailureCause,
+  ToolNotMadeReason,
   ToolNoun,
   ToolOutcome,
   ToolRefusalReason,
@@ -54,4 +57,5 @@ export { deniedPathGroupCodes, sandboxOpenedView } from "./sandbox-opened.ts";
 export { readSandboxOpened } from "./sandbox-opened-read.ts";
 export { summarize } from "./summarize.ts";
 export { entryOf } from "./timeline-entry.ts";
+export { maxCauseNameLength, toolFailureCauseOf } from "./tool-failure-cause.ts";
 export { parseEventLine, upgradeEvent } from "./upgrade.ts";

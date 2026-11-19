@@ -9,7 +9,7 @@
 // workspace, a model that isn't local is skipped before any call, so nothing
 // is sent to it (ADR 2026-11-08-local-first).
 
-import type { ModelSkipReason } from "@halonicjs/events";
+import type { ModelSkipReason, RunFailureCause } from "@halonicjs/events";
 import {
   type ChatParams,
   type ChatRequest,
@@ -118,8 +118,8 @@ export class ModelChain {
   private usable = false;
   /** Why the last model was given up on, for the error when none is left. */
   private lastCause: PassOverReason = "offline";
-  /** The host of the last model that was offline, when its provider named it. */
-  private lastHost: string | undefined;
+  /** The error the last model failed with, when a call moved on from it. */
+  private lastError: MoveOnError | undefined;
 
   /**
    * @param agent - names the agent in the events the chain writes
@@ -215,13 +215,14 @@ export class ModelChain {
     };
     this.skipped.push(skip);
     this.lastCause = reason;
+    this.lastError = undefined;
     this.index++;
     await this.log?.append({ type: "llm.skipped", agent: this.agent, ...skip });
   }
 
   private async moveOn(from: ResolvedModel, error: MoveOnError): Promise<void> {
     this.lastCause = error.reason;
-    this.lastHost = error.host;
+    this.lastError = error;
     this.index++;
     this.usable = false;
     const to = await this.current();
@@ -236,15 +237,31 @@ export class ModelChain {
     });
   }
 
+  /**
+   * The error when no model is left: why the last one was passed over and
+   * the models tried. After a call that moved on, it keeps that call's
+   * error as its `cause`, its host and its typed cause, such as a proxy that
+   * refused, and its message follows, so the run log says what went wrong.
+   */
   private noneLeft(): ModelCallError {
     const tried = this.models.map(nameOf).join(", ");
     const message = `${noneLeftMessage[this.lastCause]} (tried ${tried})`;
-    return new ModelCallError(
-      this.lastCause,
-      message,
-      this.lastHost === undefined ? {} : { host: this.lastHost },
-    );
+    const last = this.lastError;
+    if (last === undefined) {
+      return new ModelCallError(this.lastCause, message);
+    }
+    return new ModelCallError(this.lastCause, `${message}: ${last.message}`, {
+      cause: last,
+      ...(last.host === undefined ? {} : { host: last.host }),
+      failureCause: typedCauseOf(last),
+    });
   }
+}
+
+/** The typed cause a model call failure carries, as {@link ModelCallError} takes it back. */
+function typedCauseOf(error: ModelCallError): RunFailureCause | undefined {
+  if (error.kind === undefined) return undefined;
+  return { kind: error.kind, ...error.failureCause };
 }
 
 /**

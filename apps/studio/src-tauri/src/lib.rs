@@ -30,6 +30,8 @@ mod agent_host;
 mod blobs;
 mod command_paths;
 mod connect;
+#[cfg(target_os = "android")]
+mod device_keys;
 mod engine_lock;
 mod file_answers;
 mod files;
@@ -96,7 +98,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(engine_lock::EngineLockState::default())
         .manage(records::RecordState::default())
         .manage(agent_host::AgentHostState::default())
-        .manage(http_fetch::HttpFetchState::default())
+        .manage(http_fetch::HttpFetchState::from_env())
         .manage(sandbox_backup::BackupState::default())
         .manage(files::FileState::default())
         .manage(plugin_source::PluginSources::default())
@@ -115,6 +117,10 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     // connect page gets only `pair_scan` and `pair_scan_cancel`.
     #[cfg(target_os = "android")]
     let builder = builder.plugin(pair_scan::plugin());
+    // The phone's key for each paired computer, sealed by the Android
+    // Keystore. Used from Rust only: no capability grants its commands.
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(device_keys::plugin());
     builder
         // The navigation guard hands outside links to the browser with the
         // opener. Its click script stays off. That script would run in
@@ -167,6 +173,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             secrets::secret_has,
             secrets::secret_set,
             secrets::secret_delete,
+            secrets::secret_allowed_origins,
+            secrets::secret_allow_origin,
             secrets::token_get,
             secrets::token_set,
             secrets::token_delete,

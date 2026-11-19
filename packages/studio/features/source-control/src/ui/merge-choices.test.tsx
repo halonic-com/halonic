@@ -61,6 +61,14 @@ const press = (label: string) =>
     button(label)?.click();
     await settle();
   });
+/** Presses a button the way a key press does: focused first, so focus has somewhere to be lost from. */
+const pressFocused = (label: string) =>
+  act(async () => {
+    button(label)?.focus();
+    button(label)?.click();
+    await settle();
+  });
+const focusedHeading = () => document.activeElement === document.querySelector("h1");
 const unavailable = (label: string) => button(label)?.getAttribute("aria-disabled") === "true";
 
 verifies("source-control.get-updates-per-item", () => {
@@ -83,6 +91,24 @@ verifies("source-control.get-updates-per-item", () => {
       await press("Get updates");
       expect(button("Use the shared one")).toBeDefined();
       expect(document.body.textContent).toContain("You and the team both changed 1 item.");
+    });
+
+    it("says there's nothing to choose when no item changed on both sides", async () => {
+      await openPage({ started: merge([]) });
+      await press("Get updates");
+      expect(document.body.textContent).toContain(
+        "You and Sam changed different items, so there's nothing to choose. Finish getting updates to bring theirs in.",
+      );
+      expect(document.body.textContent).not.toContain("Choose which one to keep");
+      expect(unavailable("Finish getting updates")).toBe(false);
+    });
+
+    it("says the team changed different items when more than one person's versions came", async () => {
+      await openPage({ started: merge([], ["Sam", "Ada"]) });
+      await press("Get updates");
+      expect(document.body.textContent).toContain(
+        "You and the team changed different items, so there's nothing to choose.",
+      );
     });
 
     it("offers Keep both only where both sides still have the item", async () => {
@@ -134,19 +160,34 @@ verifies("source-control.get-updates-per-item", () => {
       expect(document.body.textContent).toContain("Choose for 1 more item.");
       await press("Keep mine");
       expect(unavailable("Finish getting updates")).toBe(false);
-      await press("Finish getting updates");
+      await pressFocused("Finish getting updates");
       expect(fake.mergeCalls.at(-1)).toBe("finish Merged Sam's updates");
       expect(toasts.list().map((t) => t.title)).toContain("Merged Sam's updates");
       expect(button("Finish getting updates")).toBeUndefined();
+      expect(focusedHeading()).toBe(true);
     });
 
     it("cancels, leaving everything as it was", async () => {
       const { fake, toasts } = await openPage({ started: merge([item("a.md", "m\n", "s\n")]) });
       await press("Get updates");
-      await press("Cancel getting updates");
+      await pressFocused("Cancel getting updates");
       expect(fake.mergeCalls.at(-1)).toBe("cancel");
       expect(toasts.list().map((t) => t.title)).toContain("Cancelled getting updates");
       expect(button("Cancel getting updates")).toBeUndefined();
+      expect(focusedHeading()).toBe(true);
+    });
+
+    it("leaves focus where it is when a read finds the merge ended elsewhere", async () => {
+      const { fake, list } = await openPage({ started: merge([item("a.md", "m\n", "s\n")]) });
+      await press("Get updates");
+      button("Get updates")?.focus();
+      fake.setMerge(null);
+      await act(async () => {
+        await list.refresh();
+        await settle();
+      });
+      expect(button("Cancel getting updates")).toBeUndefined();
+      expect(document.activeElement).toBe(button("Get updates"));
     });
 
     it("says why a choice didn't work and keeps the item open", async () => {

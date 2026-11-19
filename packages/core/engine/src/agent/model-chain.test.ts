@@ -1,4 +1,4 @@
-import { type Clock, ModelCallError, type Secrets, VendorErrorText } from "@halonicjs/ports";
+import { type Clock, ModelCallError, VendorErrorText } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it, vi } from "vitest";
 import { LocalExecutor } from "../local-executor.ts";
@@ -11,48 +11,12 @@ import {
   ScriptedModel,
   textAnswer,
 } from "../testing/scripted-model.ts";
-import { reviewedTools } from "./listed-tool-approval.test-helper.ts";
 import { noListedToolApproval } from "./listed-tool-approval.ts";
-import type { ResolvedModel } from "./model-chain.ts";
-import { runModelTurn } from "./run-model-turn.ts";
-import {
-  MemoryTurnLog,
-  runEveryCall,
-  secretsWith,
-  steppingClock,
-} from "./turn-test-kit.test-helper.ts";
-
-/** A model alias on a scripted provider; its model is named after the provider. */
-function alias(name: string, provider: ScriptedModel, more: Partial<ResolvedModel> = {}) {
-  return { alias: name, provider, model: `${provider.id}-1`, ...more };
-}
+import { alias, runTurnOn } from "./model-chain.test-helper.ts";
+import { MemoryTurnLog, secretsWith, steppingClock } from "./turn-test-kit.test-helper.ts";
 
 const offline = () => new ModelCallError("offline", "acme-cloud can't be reached");
 const busy = () => new ModelCallError("provider-busy", "acme-cloud was busy (HTTP 529)");
-
-interface TurnSetup {
-  secrets?: Secrets;
-  clock?: Clock;
-  log?: MemoryTurnLog;
-  connectors?: ScriptedConnector[];
-}
-
-function runTurnOn(model: ResolvedModel, setup: TurnSetup = {}) {
-  return runModelTurn({
-    model,
-    secrets: setup.secrets ?? secretsWith(),
-    messages: [{ role: "user", content: "Find the Acme invoice" }],
-    callerTools: [],
-    halonicTools: [],
-    connectors: setup.connectors ?? [],
-    listedToolApproval: reviewedTools,
-    maxRounds: 20,
-    agent: "clerk",
-    clock: setup.clock ?? steppingClock(),
-    checkCall: runEveryCall,
-    ...(setup.log === undefined ? {} : { log: setup.log }),
-  });
-}
 
 afterEach(() => {
   vi.useRealTimers();
@@ -235,7 +199,7 @@ verifies("engine.offline-falls-back", () => {
     expect(failure).toBeInstanceOf(ModelCallError);
     expect(failure).toMatchObject({
       reason: "offline",
-      message: "no model reachable (tried smart, local)",
+      message: "no model reachable (tried smart, local): acme-cloud can't be reached",
     });
     expect(smart.requests).toHaveLength(1);
     expect(local.requests).toHaveLength(1);
@@ -260,7 +224,8 @@ verifies("engine.offline-falls-back", () => {
     expect(failure).toMatchObject({
       reason: "timeout",
       host: "localhost:11434",
-      message: "no model answered in time (tried local)",
+      message:
+        "no model answered in time (tried local): acme-local didn't answer within 600 seconds",
     });
     expect(runFailureReasonOf(failure)).toEqual({
       reason: "model-timeout",
@@ -335,7 +300,8 @@ verifies("engine.busy-falls-back", () => {
     expect(failure).toBeInstanceOf(ModelCallError);
     expect(failure).toMatchObject({
       reason: "provider-busy",
-      message: "no model free: the last one's provider was busy (tried smart, backup)",
+      message:
+        "no model free: the last one's provider was busy (tried smart, backup): acme-cloud was busy (HTTP 529)",
     });
     expect(smart.requests).toHaveLength(1);
     expect(backup.requests).toHaveLength(1);
@@ -424,19 +390,6 @@ verifies("engine.model-failure-stops", () => {
   });
 });
 
-verifies("ports.workspace-secrets", () => {
-  it("ends the turn when a model's secret is one of Halonic's own", async () => {
-    const smart = new ScriptedModel([textAnswer("From the cloud")], "acme-cloud");
-
-    await expect(
-      runTurnOn(alias("smart", smart, { secret: "token_key" }), {
-        secrets: secretsWith("token-key", "token_key"),
-      }),
-    ).rejects.toThrow(new RangeError("A workspace can't pick a secret that belongs to Halonic."));
-    expect(smart.requests).toEqual([]);
-  });
-});
-
 verifies("engine.provider-text", () => {
   it("keeps the provider's text on llm.fallback", async () => {
     const log = new MemoryTurnLog();
@@ -455,5 +408,18 @@ verifies("engine.provider-text", () => {
       error: "offline: acme-cloud can't be reached",
       providerText: { status: 502, text: "upstream connect error" },
     });
+  });
+});
+
+verifies("ports.workspace-secrets", () => {
+  it("ends the turn when a model's secret is one of Halonic's own", async () => {
+    const smart = new ScriptedModel([textAnswer("From the cloud")], "acme-cloud");
+
+    await expect(
+      runTurnOn(alias("smart", smart, { secret: "token_key" }), {
+        secrets: secretsWith("token-key", "token_key"),
+      }),
+    ).rejects.toThrow(new RangeError("A workspace can't pick a secret that belongs to Halonic."));
+    expect(smart.requests).toEqual([]);
   });
 });

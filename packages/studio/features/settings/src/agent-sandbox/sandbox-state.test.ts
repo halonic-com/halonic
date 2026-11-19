@@ -64,11 +64,41 @@ verifies("settings.agent-sandbox-state", () => {
     );
   });
 
-  it("says why the sandbox can't run when the check ran, and offers Check again only", () => {
-    const v = view({ check: { state: "unavailable", reason: "hardware virtualization is off." } });
-    expect(v.lead).toBe("The sandbox isn't ready: hardware virtualization is off.");
+  it("says why the sandbox can't run and what fixes it, with Check again, the guide and the way round", () => {
+    const v = view({ check: { state: "unavailable", code: "bubblewrap-missing" } });
+    expect(v.chip).toEqual({ label: "Not available", tone: "attention" });
+    expect(v.lead).toBe(
+      "bubblewrap isn't installed, and the sandbox needs it. Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap.",
+    );
     expect(v.secondary).toEqual(["check-again"]);
     expect(v.primary).toBeNull();
+    expect(v.docs).toEqual({
+      name: "How to install bubblewrap",
+      href: "https://docs.halonic.dev/security/sandbox/#bubblewrap",
+    });
+    expect(v.hint).toBe("You can run an agent on this computer after a warning.");
+  });
+
+  it("words `other` and an unknown code from the catalogue, never the check's sentence", () => {
+    for (const code of ["other", "from-the-future"]) {
+      const v = view({ check: { state: "unavailable", code } });
+      expect(v.lead).toBe(
+        "Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer.",
+      );
+      expect(v.docs?.name).toBe("What the sandbox needs");
+    }
+  });
+
+  it("leaves the fix out where it is the section's own set-up button", () => {
+    const v = view({ check: { state: "unavailable", code: "windows" } });
+    expect(v.lead).toBe("The sandbox doesn't work on Windows in this version of Halonic.");
+  });
+
+  it("gives served Studio the fix that says to do it on the computer", () => {
+    const v = view({ check: { state: "unavailable", code: "ripgrep-missing" }, place: "served" });
+    expect(v.lead).toBe(
+      "ripgrep isn't installed, and the sandbox needs it. On the computer Halonic runs on: install it, for example on macOS with brew install ripgrep.",
+    );
   });
 
   it("asks for a restart with Check again only, never Repair", () => {

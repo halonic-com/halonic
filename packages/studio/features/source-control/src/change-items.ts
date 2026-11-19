@@ -1,10 +1,10 @@
-import type { FileChange } from "@halonicjs/app";
+import { type FileChange, nameFromId } from "@halonicjs/app";
 import { placeOf, settingsPath } from "@halonicjs/workspace";
 import type { ChangedFile } from "./changes-list-state.ts";
 import { itemWords } from "./changes-words.ts";
 
 /** An item's kind, as the format names it. */
-type KindName = NonNullable<FileChange["kind"]>;
+export type ItemKind = NonNullable<FileChange["kind"]>;
 
 /**
  * One row of the Changes list: an item with all the files that belong to it, or a file no kind
@@ -18,7 +18,7 @@ export interface ChangeItem {
   /** The item's id in its kind (what the Open button needs); the same as `name` for an other file. */
   readonly itemId: string;
   /** The item's kind, or `undefined` for an other file. */
-  readonly kind: KindName | undefined;
+  readonly kind: ItemKind | undefined;
   /** The hub the item is in; empty for an item that sits in the workspace itself. */
   readonly hub: string;
   /** The changed files of the item; at least one. */
@@ -45,7 +45,7 @@ function baseName(path: string): string {
 /** Which item a path belongs to: its kind, hub and name; `undefined` for a file that is no item. */
 function itemOf(path: string):
   | {
-      readonly kind: KindName;
+      readonly kind: ItemKind;
       readonly name: string;
       readonly hub: string;
       readonly key: string;
@@ -90,7 +90,7 @@ export function groupIntoItems(files: readonly ChangedFile[]): ChangeItem[] {
     {
       name: string;
       itemId: string;
-      kind: KindName | undefined;
+      kind: ItemKind | undefined;
       hub: string;
       files: ChangedFile[];
     }
@@ -119,8 +119,20 @@ export function groupIntoItems(files: readonly ChangedFile[]): ChangeItem[] {
   return [...byId].map(([id, item]) => ({
     id,
     ...item,
+    name: item.kind === "workflowTest" ? testName(item, byId) : item.name,
     sentence: sentenceOf(item.files),
   }));
+}
+
+/**
+ * A workflow test has no name of its own: it is called by the workflow it tests, its kind tells
+ * the two apart. The workflow's name comes from its file when it changed too, else from its id.
+ */
+function testName(
+  test: { readonly itemId: string; readonly hub: string },
+  byId: ReadonlyMap<string, { readonly name: string }>,
+): string {
+  return byId.get(`workflow:${test.hub}:${test.itemId}`)?.name ?? nameFromId(test.itemId);
 }
 
 /** The kinds that have a page of their own to open from the Changes page. */

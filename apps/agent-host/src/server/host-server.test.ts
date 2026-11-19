@@ -147,6 +147,22 @@ describe("startHostServer", () => {
     expect((await fetch(`${server.url}/other/abc`)).status).toBe(401);
   });
 
+  it("refuses to start with a prefix route whose path doesn't end in a slash", async () => {
+    const route: HostRoute = {
+      method: "GET",
+      path: "/sign-in",
+      prefix: true,
+      tokenFree: true,
+      handle: (_request, response) => {
+        response.end();
+      },
+    };
+    // Without the slash, the token-free route would also serve "/sign-inside".
+    await expect(startHostServer(token, [route])).rejects.toThrow(
+      'The prefix route GET /sign-in must end in "/".',
+    );
+  });
+
   it("answers 500 when a route rejects before it answers", async () => {
     server = await startHostServer(token, [
       { method: "GET", path: "/v1/broken", handle: () => Promise.reject(new Error("broken")) },

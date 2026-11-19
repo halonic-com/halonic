@@ -137,6 +137,41 @@ export interface RunParent {
 export type ToolOutcome = "ok" | "error" | "unknown";
 
 /**
+ * Why the engine didn't make a connector call (requirement
+ * `events.tool-result-cause`): `not-connected`, the agent's connector isn't
+ * among the run's; `tool-gone`, the connector no longer offers the tool;
+ * `sending-off`, the tool sends and sending is off for the connector;
+ * `bad-arguments`, the call's arguments aren't an object.
+ */
+export type ToolNotMadeReason = "not-connected" | "tool-gone" | "sending-off" | "bad-arguments";
+
+/** Why a run's connectors didn't start, when the engine knows (requirement `events.tool-result-cause`). */
+export type ConnectorStartReason = "program-missing" | "secret-not-set" | "other";
+
+/**
+ * Why a tool call failed, when the engine knows (requirement
+ * `events.tool-result-cause`):
+ *
+ * - `time-limit`: the tool didn't answer within `seconds`.
+ * - `engine-stopped`: the engine stopped while the call was going.
+ * - `not-made`: the engine didn't make the call, for the reason in `why`.
+ * - `connector-not-started`: the run's connectors didn't start. `name` is
+ *   the program or the secret's name as the connector's file writes it,
+ *   never a secret's value or a program's output.
+ *
+ * Read it with `toolFailureCauseOf`: a cause it doesn't know reads as absent.
+ */
+export type ToolFailureCause =
+  | { readonly code: "time-limit"; readonly seconds: number }
+  | { readonly code: "engine-stopped" }
+  | { readonly code: "not-made"; readonly why: ToolNotMadeReason }
+  | {
+      readonly code: "connector-not-started";
+      readonly why: ConnectorStartReason;
+      readonly name?: string;
+    };
+
+/**
  * Why a model's tool call was refused before it ran (requirement
  * `events.tool-refused`): `not-offered`, the step offered no tool of that name.
  */

@@ -69,7 +69,8 @@ export async function recordModelCall(
   reply: ReplyReader,
   send: () => Promise<void>,
 ): Promise<void> {
-  const { provider, model } = call;
+  const { model } = call;
+  const provider = providerNamed(run, call);
   await run.recorder.record({
     type: "llm.request",
     agent: run.agentId,
@@ -95,6 +96,18 @@ export async function recordModelCall(
       });
     }
   }
+}
+
+/**
+ * The provider the run log names for a call: the provider file the key
+ * comes from, such as `zai`, when the host names it, else the API's own
+ * name (requirement `harness-bridge.provider-base-url`).
+ */
+function providerNamed(run: HarnessBridgeOptions, call: ModelCall): string {
+  const access = run.providers[call.provider];
+  return access?.kind === "key" && access.providerId !== undefined
+    ? access.providerId
+    : call.provider;
 }
 
 /** The `cost` and `paidBy` of a call: the price is asked for only when a key pays. */

@@ -6,11 +6,13 @@ import type {
   AgentRef,
   AgentSettings,
   AgentsHost,
+  AgentTeamMember,
   AgentToolList,
   AgentToolOption,
   AgentUser,
   HarnessReadiness,
 } from "./api.ts";
+import { alreadyHandsWork, handOffPath } from "./api.ts";
 
 /** What {@link memoryAgentsHost} starts with. */
 export interface MemoryAgentsHostOptions {
@@ -23,6 +25,7 @@ export interface MemoryAgentsHostOptions {
         readonly skills?: readonly string[];
         readonly knowledge?: readonly string[];
         readonly connectors?: readonly string[];
+        readonly subagents?: readonly string[];
       })[]
     | undefined;
   /** What `harnessReadiness` answers for Claude Code and Codex; ready when left out. */
@@ -52,6 +55,7 @@ function listingOf({
   skills: _skills,
   knowledge: _knowledge,
   connectors: _connectors,
+  subagents: _subagents,
   ...listing
 }: AgentSettings): AgentListing {
   return listing;
@@ -65,6 +69,7 @@ const fresh = {
   skills: [],
   knowledge: [],
   connectors: [],
+  subagents: [],
 } as const;
 
 /**
@@ -82,6 +87,12 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
     return agent;
   };
 
+  const teamOf = (hubId: string): AgentTeamMember[] =>
+    [...agents.values()]
+      .filter((each) => each.hubId === hubId)
+      .map((each) => ({ ...listingOf(each), subagents: each.subagents }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
   return {
     hubs: () => options.hubs,
     list: async () => [...agents.values()].map(listingOf),
@@ -91,6 +102,18 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       const agent = found(ref);
       if (change.name !== undefined && change.name.trim() === "") {
         throw new KindedError("invalid_input", "An agent needs a name.");
+      }
+      if (change.subagents !== undefined) {
+        const team = teamOf(ref.hubId);
+        for (const id of change.subagents.filter((each) => !agent.subagents.includes(each))) {
+          const path = handOffPath(team, id, ref.id);
+          if (path !== undefined) {
+            const names = path.map(
+              (each) => team.find((member) => member.id === each)?.name ?? each,
+            );
+            throw new KindedError("conflict", `${alreadyHandsWork(names)}; that would be a loop.`);
+          }
+        }
       }
       const definite = Object.entries(change).filter(([, value]) => value !== undefined);
       agents.set(keyOf(ref), { ...agent, ...Object.fromEntries(definite) });
@@ -105,6 +128,10 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       found(ref);
       const { skills = [], knowledge = [], connectors = [] } = options.toolOptions ?? {};
       return { skills, knowledge, connectors };
+    },
+    team: async (ref) => {
+      found(ref);
+      return teamOf(ref.hubId);
     },
     harnessReadiness: async (ref, harness) => {
       found(ref);

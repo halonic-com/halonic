@@ -32,12 +32,12 @@ export function CaseCard({ test, onClose, onOpenRun }: CaseCardProps) {
     <aside
       aria-label={words.case(test.name)}
       onKeyDown={onKeyDown}
-      className="flex w-120 shrink-0 flex-col gap-4 overflow-auto border-s border-border bg-surface-raised p-6 shadow-2"
+      className="flex w-120 max-w-full shrink-0 flex-col gap-4 overflow-auto border-s border-border bg-surface-raised p-6 shadow-2"
     >
       <div className="flex items-center justify-between">
         <div>
           <p className="text-caption text-fg-muted">{words.kind}</p>
-          <h2 ref={heading} tabIndex={-1} className="text-title">
+          <h2 ref={heading} tabIndex={-1} className="focus-ring text-title">
             {test.name}
           </h2>
         </div>

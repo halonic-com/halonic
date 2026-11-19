@@ -1,4 +1,4 @@
-import { appendFile, cp, mkdtemp, rm } from "node:fs/promises";
+import { appendFile, cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -55,6 +55,22 @@ async function addFailingCase(): Promise<void> {
     ].join("\n"),
   );
 }
+
+verifies("cli.workspace-file-problems", () => {
+  it("runs no test and points at validate when a workflow file has an error", async () => {
+    const file = join(acme, "hubs/support/workflows/support-reply.workflow.yaml");
+    await writeFile(file, `version: 2\n${await readFile(file, "utf8")}`);
+
+    const { code, io } = await testIn(acme);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stdout).toEqual([]);
+    expect(io.stderr.slice(0, 2)).toEqual([
+      "✕ Couldn't test acme: Acme has 1 problem in its files. Nothing ran.",
+      "  See them with: halonic validate",
+    ]);
+  });
+});
 
 verifies("cli.commands.test.run-tests", () => {
   describe("the report", () => {

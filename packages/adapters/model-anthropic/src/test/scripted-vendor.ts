@@ -18,7 +18,7 @@ type Step =
   | { kind: "hang"; partialText: string }
   | { kind: "stall"; status: number }
   | { kind: "flood" }
-  | { kind: "unreachable" };
+  | { kind: "unreachable"; error: Error };
 
 /** How a body ends once it has sent its text: closed, dropped, or failed when the call aborts. */
 type BodyEnd = "close" | "drop" | { abortedBy: AbortSignal | null | undefined };
@@ -68,9 +68,9 @@ export class ScriptedVendor implements HttpClient {
     this.#steps.push({ kind: "flood" });
   }
 
-  /** Fails the next call as a network failure would. */
-  unreachableNext(): void {
-    this.#steps.push({ kind: "unreachable" });
+  /** Fails the next call as a network failure would, with `error` as the client's own error. */
+  unreachableNext(error: Error = new TypeError("fetch failed")): void {
+    this.#steps.push({ kind: "unreachable", error });
   }
 
   calls(): { started: number; open: number } {
@@ -84,7 +84,7 @@ export class ScriptedVendor implements HttpClient {
     this.received.push({ url, method: init.method, redirect: init.redirect, headers, body });
     const step = this.#steps.shift();
     if (step === undefined) throw new Error("the scripted vendor has no step left");
-    if (step.kind === "unreachable") throw new TypeError("fetch failed");
+    if (step.kind === "unreachable") throw step.error;
     this.#open += 1;
     const streamed = body["stream"] === true;
     switch (step.kind) {

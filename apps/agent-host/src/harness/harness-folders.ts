@@ -15,6 +15,7 @@ import { instructionRoutes } from "./instruction-routes.ts";
 import { placementRoutes } from "./placement-routes.ts";
 import { profileRoute } from "./profile-route.ts";
 import { proposalRoutes } from "./proposal-routes.ts";
+import { settingsFolderRoute } from "./settings-folder-route.ts";
 
 /** The harness folders' routes, and the profile builder, whose sessions the sandbox routes open. */
 export interface HarnessFolders {
@@ -43,7 +44,9 @@ export function harnessFolders(
   return {
     profiles,
     routes: [
-      ...(profiles === undefined ? [] : [profileRoute(profiles, bridges)]),
+      ...(profiles === undefined
+        ? []
+        : [profileRoute(profiles, bridges), settingsFolderRoute(profiles)]),
       ...(proposals === undefined ? [] : proposalRoutes(proposals)),
       ...(placements === undefined ? [] : placementRoutes(placements)),
       ...(instructions === undefined ? [] : instructionRoutes(instructions)),

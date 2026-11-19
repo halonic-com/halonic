@@ -55,7 +55,7 @@ export interface ActionBarProps {
    * An optional line right above the buttons, under `lead`, never shortened: "Sending is off until
    * you connect Gmail." in `warning`.
    */
-  readonly note?: { readonly text: string; readonly tone?: ActionBarNoteTone };
+  readonly note?: { readonly text: ReactNode; readonly tone?: ActionBarNoteTone };
   /**
    * `ride` (the default) keeps the bar on top of the keyboard while you type: for a bar that
    * confirms what you're typing (a form sheet's button, the decision bar). `hide` drops it while a
