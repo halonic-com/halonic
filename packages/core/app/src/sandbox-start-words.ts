@@ -14,8 +14,12 @@ import { type SandboxUnavailableReason, sandboxUnavailableReasons } from "@halon
  *
  * - `reason`: what is wrong, one sentence.
  * - `fix`: what to do, as a fragment that follows "Fix: ".
- * - `calloutFix`: the same fix as a sentence of its own, for a Callout.
+ * - `calloutFix`: the same fix as a sentence of its own, for a Callout that shows the reason first.
+ * - `cantRunFix`: the fix for the can't-run Callout, which shows no reason before it, so it names
+ *   the thing where the fix says "it" (microcopy 23.3, "Fix in the can't-run Callout").
  * - `phoneFix`: the fix for someone on a phone, who has to do it on the computer.
+ * - `command`: the command the fixes name, word for word as they write it, so a screen can show it
+ *   as code; absent when the fix names none.
  * - `docsKey`: the docs page and section that explain it, relative to the docs address.
  */
 export interface SandboxStartWords {
@@ -23,12 +27,24 @@ export interface SandboxStartWords {
   readonly reason: string;
   readonly fix: string;
   readonly calloutFix: string;
+  readonly cantRunFix: string;
   readonly phoneFix: string;
+  readonly command?: string;
   readonly docsKey: string;
 }
 
-/** A reason's source words: the sentence, the fix fragment and the docs section, when it has one. */
-type Words = Readonly<{ reason: string; fix: string; docsSection?: string }>;
+/**
+ * A reason's source words: the sentence, the fix fragment, the can't-run Callout's fix when the
+ * fix alone says "it" (else the fix with a capital letter), the command the fix names, and the docs
+ * section, when it has one.
+ */
+type Words = Readonly<{
+  reason: string;
+  fix: string;
+  cantRunFix?: string;
+  command?: string;
+  docsSection?: string;
+}>;
 
 /** Where Studio sends the fixes the CLI words as "use Halonic inside WSL 2" (0.1 has no Studio on Windows, HAL-7540). */
 const inSettings = "open Settings and set up the sandbox there.";
@@ -47,6 +63,7 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   "not-supported": {
     reason: "This distro runs on WSL 1, and the sandbox needs WSL 2.",
     fix: "switch it to WSL 2 with wsl --set-version <distro> 2 in PowerShell on Windows.",
+    command: "wsl --set-version <distro> 2",
     docsSection: "wsl1",
   },
   "blocked-by-policy": {
@@ -60,6 +77,7 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   "wsl-missing": {
     reason: "WSL isn't installed, and the sandbox needs it.",
     fix: "install it with wsl --install --no-distribution in a terminal run as administrator, then restart Windows.",
+    command: "wsl --install --no-distribution",
   },
   "restart-needed": {
     reason: "Windows needs to restart to finish setting up WSL.",
@@ -80,25 +98,33 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   "user-namespaces-restricted": {
     reason: "Ubuntu 24.04 blocks the user namespaces the sandbox needs.",
     fix: "allow them for bubblewrap with an AppArmor rule. The guide has the exact commands.",
+    cantRunFix:
+      "Allow user namespaces for bubblewrap with an AppArmor rule. The guide has the exact commands.",
     docsSection: "user-namespaces",
   },
   "bubblewrap-missing": {
     reason: "bubblewrap isn't installed, and the sandbox needs it.",
     fix: "install it, for example on Ubuntu or Debian with sudo apt install bubblewrap.",
+    cantRunFix:
+      "Install bubblewrap, for example on Ubuntu or Debian with sudo apt install bubblewrap.",
+    command: "sudo apt install bubblewrap",
     docsSection: "bubblewrap",
   },
   "linux-tools-missing": {
     reason: "socat or ripgrep isn't installed, and the sandbox needs both.",
     fix: "install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep.",
+    command: "sudo apt install socat ripgrep",
     docsSection: "linux-tools",
   },
   "ripgrep-missing": {
     reason: "ripgrep isn't installed, and the sandbox needs it.",
     fix: "install it, for example on macOS with brew install ripgrep.",
+    command: "brew install ripgrep",
   },
   "sign-in-needed": {
     reason: "The sandbox needs you to sign in to its service first.",
     fix: "sign in, for example with docker login for Docker Sandboxes.",
+    command: "docker login",
   },
   other: {
     reason: "Halonic can't tell what the sandbox is missing.",
@@ -132,17 +158,21 @@ function capitalised(text: string): string {
  * @example
  * sandboxStartWords("bubblewrap-missing").calloutFix;
  * // "Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap."
+ * sandboxStartWords("bubblewrap-missing").cantRunFix;
+ * // "Install bubblewrap, for example on Ubuntu or Debian with sudo apt install bubblewrap."
  * sandboxStartWords("from-the-future").key; // "sandbox-start.other"
  */
 export function sandboxStartWords(code: string): SandboxStartWords {
   const reason = isSandboxStartReason(code) ? code : "other";
-  const { reason: sentence, fix, docsSection } = words[reason];
+  const { reason: sentence, fix, cantRunFix, command, docsSection } = words[reason];
   return {
     key: `sandbox-start.${reason}`,
     reason: sentence,
     fix,
     calloutFix: capitalised(fix),
+    cantRunFix: cantRunFix ?? capitalised(fix),
     phoneFix: `On the computer Halonic runs on: ${fix}`,
+    ...(command === undefined ? {} : { command }),
     docsKey: docsSection === undefined ? "security/sandbox/" : `security/sandbox/#${docsSection}`,
   };
 }
