@@ -138,6 +138,13 @@ export type RunFailure =
       readonly withinMs: number;
     }
   | {
+      readonly reason: "unknown-provider-type";
+      /** The provider's id, which is also its file's name, such as "acme". */
+      readonly provider: string;
+      /** The type its file names, which Halonic has no adapter for. */
+      readonly type: string;
+    }
+  | {
       readonly reason: "model-no-tools";
       /** The model the alias points at, such as "llama3.2". */
       readonly model: string;
@@ -234,9 +241,10 @@ export function runFailureOf(
       return harnessFailure(failed, started);
     case "budget":
       return budgetFailure(failed);
+    case "error":
+      return causeOfError(failed) ?? generalFailure(failed);
     case "harness-unavailable":
     case "instructions-not-trusted":
-    case "error":
       return generalFailure(failed);
     default:
       return assertNever(reason, "run failure reason");
@@ -335,6 +343,22 @@ function timeoutFailure(failed: RunFailedEvent, model: FailedModel | undefined):
     withinMs: modelFirstAnswerMs,
     ...(model.provider?.local === true && address !== undefined ? { localAddress: address } : {}),
   };
+}
+
+/**
+ * The failure an `error` names by its cause code, when it has facts of its
+ * own: a provider file whose type Halonic can't call is the user's own typo,
+ * not a bug (HAL-12342).
+ */
+function causeOfError(failed: RunFailedEvent): RunFailure | undefined {
+  const { code, detail } = failed.cause ?? {};
+  if (code !== "models.unknown-provider-type") {
+    return undefined;
+  }
+  const { provider, type } = detail ?? {};
+  return provider === undefined || type === undefined
+    ? undefined
+    : { reason: "unknown-provider-type", provider, type };
 }
 
 /** The engine's own message, which is safe to show, for a failure without facts of its own. */

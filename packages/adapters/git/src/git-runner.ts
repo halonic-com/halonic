@@ -171,10 +171,28 @@ export class GitRunner {
       args: ["config", "--get", "core.hooksPath"],
     });
     if (result.stdout.toString("utf8").trim() !== this.#hooksFolder) {
-      throw new Error(
-        `The program at ${this.#git} doesn't pass Halonic's git settings on to git, so it can't run safely. It may be a wrapper script; give Halonic the path of git itself.`,
-      );
+      throw new GitHardeningIgnoredError(this.#git);
     }
+  }
+}
+
+/**
+ * The git program on the `PATH`, or the one given, dropped Halonic's git
+ * settings on the way to git, so {@link GitRunner.create} refused it
+ * (HAL-4373). It is a wrapper script or a version manager's shim, or git
+ * older than 2.31, which doesn't read settings from the environment. The
+ * Studio's `GitError::HardeningIgnored` is the same refusal.
+ */
+export class GitHardeningIgnoredError extends Error {
+  /** The program that was refused, as an absolute path. */
+  readonly git: string;
+
+  constructor(git: string) {
+    super(
+      `The program at ${git} doesn't pass Halonic's git settings on to git, so it can't run safely. It may be a wrapper script or git older than 2.31; give Halonic the path of git 2.31 or later itself.`,
+    );
+    this.name = "GitHardeningIgnoredError";
+    this.git = git;
   }
 }
 

@@ -7,7 +7,12 @@
 
 import { access } from "node:fs/promises";
 import { join } from "node:path";
-import { GitRunner, type GitRunnerOptions, GitVcs } from "@halonicjs/adapter-git";
+import {
+  GitHardeningIgnoredError,
+  GitRunner,
+  type GitRunnerOptions,
+  GitVcs,
+} from "@halonicjs/adapter-git";
 import { type LiveVersionReader, liveVersionOf, runSourceFor, runVersionOf } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
 import type { Vcs } from "@halonicjs/ports";
@@ -60,11 +65,30 @@ export type RunWorkspace =
  */
 export class HistoryUnavailableError extends KindedError {
   constructor(nothingDone: Message, cause: unknown) {
-    super("unavailable", plainText(runMessages.gitWontStart(nothingDone.phrase).phrase), {
-      fix: plainText(runMessages.gitWontStartFix().phrase),
-      cause,
-    });
+    const { reason, fix } = historyRefusalOf(nothingDone, cause);
+    super("unavailable", plainText(reason.phrase), { fix: plainText(fix.phrase), cause });
   }
+}
+
+/**
+ * Why the history can't be opened, and its fix: a git that drops Halonic's
+ * git settings is named, since installing git wouldn't help (HAL-12342);
+ * any other cause reads as git that can't start.
+ */
+function historyRefusalOf(
+  nothingDone: Message,
+  cause: unknown,
+): { readonly reason: Message; readonly fix: Message } {
+  if (cause instanceof GitHardeningIgnoredError) {
+    return {
+      reason: runMessages.gitNotItself(cause.git, nothingDone.phrase),
+      fix: runMessages.gitNotItselfFix(),
+    };
+  }
+  return {
+    reason: runMessages.gitWontStart(nothingDone.phrase),
+    fix: runMessages.gitWontStartFix(),
+  };
 }
 
 /**
