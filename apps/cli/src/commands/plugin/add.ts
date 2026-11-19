@@ -71,7 +71,7 @@ export async function addPlugin(
   }
 
   const opened = await openSource(source, context, setup);
-  const service = openPluginService(setup);
+  const service = openPluginService(setup, context.cwd);
   let added: Awaited<ReturnType<PluginService["add"]>>;
   try {
     added = await service.add(new FileSystemFolderReader(opened.folder), {
@@ -207,6 +207,8 @@ async function trustAdded(
 
 /** The refusal for a plugin that wasn't added, with its reason and "Check the folder or git address.". */
 function refused(error: PluginAddRefusal): KindedError {
+  if (error.kind === "halonic-data")
+    return refusal("invalid_input", pluginMessages.halonicData().phrase);
   if (error.kind === "taken") {
     return new KindedError("conflict", plainOf(pluginMessages.alreadyAdded(error.id)), {
       fix: plainOf(pluginMessages.alreadyAddedFix(error.id)),

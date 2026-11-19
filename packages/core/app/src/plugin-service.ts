@@ -34,7 +34,7 @@ import {
   PluginSettings,
   type PluginSettingValues,
 } from "./plugin-settings.ts";
-import { PluginSourceSnapshot, sourceFolder } from "./plugin-source.ts";
+import { overlapsHalonicData, PluginSourceSnapshot, sourceFolder } from "./plugin-source.ts";
 import type { PluginTrustCheck } from "./plugin-trust.ts";
 import type { PersonTrustOrigin, TrustRefusal } from "./trust-record.ts";
 import type { TrustService } from "./trust-service.ts";
@@ -75,7 +75,9 @@ export type PluginTrustRefusal =
  */
 export type PluginAddRefusal =
   | { readonly kind: "broken"; readonly problems: readonly PluginProblem[] }
-  | { readonly kind: "taken"; readonly id: string; readonly name: string };
+  | { readonly kind: "taken"; readonly id: string; readonly name: string }
+  /** The source is, holds or is inside Halonic's own data (see `overlapsHalonicData`). */
+  | { readonly kind: "halonic-data" };
 
 /** How {@link PluginService.add} adds a plugin. */
 export interface AddPluginOptions {
@@ -123,6 +125,14 @@ export interface PluginServiceOptions {
   readonly records: RecordStore;
   /** Dates each saved setting value. */
   readonly clock: Clock;
+  /**
+   * Halonic's own data folders on this computer that a plugin's source must
+   * stay clear of, each absolute and in every spelling the host knows (as
+   * written, with links resolved): the profile folder, and the open
+   * workspace's `.studio` data. Any workspace's `.studio` is refused
+   * without being named here. None by default.
+   */
+  readonly halonicData?: readonly string[];
 }
 
 /**
@@ -174,6 +184,10 @@ export class PluginService {
    * or checked is refused before anything is written. A new copy that
    * can't be read back is taken out again and refused the same way.
    *
+   * A source whose real location is, holds or is inside Halonic's own data
+   * (`halonicData`, or any workspace's `.studio`) is refused as
+   * `halonic-data` before anything in it is read.
+   *
    * It doesn't trust the plugin: the entry it gives is new, or changed when
    * it replaced one, until a person trusts it with {@link trust}.
    *
@@ -184,6 +198,7 @@ export class PluginService {
     source: FolderReader,
     options: AddPluginOptions,
   ): Promise<Result<PluginEntry, PluginAddRefusal>> {
+    if (await this.#overlapsHalonicData(source)) return err({ kind: "halonic-data" });
     const snapshot = new PluginSourceSnapshot(source);
     let read: Awaited<ReturnType<typeof readPluginFolder>>;
     try {
@@ -222,6 +237,16 @@ export class PluginService {
       return err({ kind: "broken", problems: entry.problems });
     }
     return ok(entry);
+  }
+
+  /**
+   * Whether the source's real location overlaps Halonic's own data. A
+   * source with no location, or whose reader fails, is left to the read,
+   * which refuses it with its reason.
+   */
+  async #overlapsHalonicData(source: FolderReader): Promise<boolean> {
+    const real = await source.locationOf().catch(() => null);
+    return real !== null && overlapsHalonicData(real, this.#options.halonicData ?? []);
   }
 
   /**

@@ -131,6 +131,17 @@ verifies("studio.desktop-plugin-installer", () => {
       expect(outcome).toEqual({ kind: "taken", plugin: "Acme-Weather", name: "Acme Weather" });
     });
 
+    it("rejects with why when the folder overlaps Halonic's own data", async () => {
+      const add = installerOver(
+        fakeShell().shell,
+        fakeService(refused({ kind: "halonic-data" })).service,
+      ).add({ kind: "folder", path: "pick:acme" }, never);
+      await expect(add).rejects.toMatchObject({
+        kind: "invalid_input",
+        message: expect.stringContaining("Halonic's own data"),
+      });
+    });
+
     it("says no-manifest for a folder without plugin.yaml, and broken with the problems otherwise", async () => {
       const problem = { file: "plugin.yaml", path: ["ui", "panel"], message: "no title" };
       const missing = { code: "manifest-missing", file: "", path: [], message: "no plugin.yaml" };

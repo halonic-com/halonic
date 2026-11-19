@@ -83,8 +83,15 @@ function terminalTyping(...answers: string[]) {
   return { terminal, written: () => written.join("") };
 }
 
-async function add(args: readonly string[], terminal?: Terminal) {
-  const io = captureIo(folder);
+/** Writes a valid weather plugin into `source`, which may be anywhere. */
+async function writePluginAt(source: string): Promise<void> {
+  await mkdir(join(source, "backend"), { recursive: true });
+  await writeFile(join(source, "plugin.yaml"), manifest("weather", "Weather"));
+  await writeFile(join(source, "backend", "index.js"), "export default {};\n");
+}
+
+async function add(args: readonly string[], terminal?: Terminal, cwd = folder) {
+  const io = captureIo(cwd);
   const code = await runCli(["plugin", "add", ...args], io, [pluginCommandWith(setup)], {
     ...(terminal === undefined ? {} : { terminal }),
   });
@@ -289,6 +296,52 @@ verifies("cli.commands.plugin.add", () => {
     await mkdir(source, { recursive: true });
 
     const { code } = await add([source]);
+
+    expect(code).toBe(exitCode.usage);
+    await expect(readdir(pluginsFolder())).rejects.toThrow();
+  });
+
+  it.each([
+    ["is the profile", () => join(folder, "profile")],
+    ["holds the profile", () => folder],
+    ["is inside the profile", () => join(folder, "profile", "stash")],
+  ])("refuses a folder that %s, and copies nothing", async (_, source) => {
+    await mkdir(join(folder, "profile", "trust"), { recursive: true });
+    await writeFile(join(folder, "profile", "trust", "a.json"), "{}");
+    await writePluginAt(source());
+
+    const { code, io } = await add([source()]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr[0]).toBe(
+      "✕ Couldn't add the plugin: this folder is, holds or is inside Halonic's own data.",
+    );
+    await expect(readdir(pluginsFolder())).rejects.toThrow();
+  });
+
+  it("refuses a link into the profile, and copies nothing", async () => {
+    await writePluginAt(join(folder, "profile", "stash"));
+    const link = join(folder, "sources", "weather");
+    await mkdir(join(folder, "sources"), { recursive: true });
+    await symlink(join(folder, "profile", "stash"), link, "junction");
+
+    const { code } = await add([link]);
+
+    expect(code).toBe(exitCode.usage);
+    await expect(readdir(pluginsFolder())).rejects.toThrow();
+  });
+
+  it.each([
+    ["is the workspace's data", (workspace: string) => join(workspace, ".studio")],
+    ["holds the workspace's data", (workspace: string) => workspace],
+    ["is inside the workspace's data", (workspace: string) => join(workspace, ".studio", "x")],
+  ])("refuses a folder that %s, and copies nothing", async (_, source) => {
+    const workspace = join(folder, "work");
+    await mkdir(join(workspace, ".studio"), { recursive: true });
+    await writeFile(join(workspace, ".studio", "state.json"), "{}");
+    await writePluginAt(source(workspace));
+
+    const { code } = await add([source(workspace)], undefined, workspace);
 
     expect(code).toBe(exitCode.usage);
     await expect(readdir(pluginsFolder())).rejects.toThrow();

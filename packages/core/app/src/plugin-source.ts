@@ -8,7 +8,9 @@ import {
   type FolderEntry,
   type FolderReader,
   isPrivateWorkspacePath,
+  segmentAsOpened,
 } from "@halonicjs/ports";
+import { absolutePathsOverlap } from "@halonicjs/std";
 
 /** The folder name the source is read under, before its plugin's id is known. */
 export const sourceFolder = "source";
@@ -103,6 +105,28 @@ export class PluginSourceSnapshot implements FolderReader {
   files(): ReadonlyMap<string, Uint8Array> {
     return new Map(this.#read);
   }
+}
+
+/**
+ * Whether a plugin's source at the real path `source` overlaps Halonic's own
+ * data: it is, holds or is inside one of `halonicData` (such as the profile
+ * folder, as written and with links resolved), or it is or is inside any
+ * workspace's `.studio` data. A copy of it would hand a plugin what the
+ * sandbox keeps from it, so `PluginService.add` refuses it.
+ *
+ * Paths are compared as Windows reads them, on every system (see
+ * `absolutePathsOverlap`).
+ *
+ * @example
+ * overlapsHalonicData("/person", ["/person/.halonic"]); // true: it holds the profile
+ * overlapsHalonicData("/person/work/.studio/x", []); // true: inside a workspace's data
+ * overlapsHalonicData("/person/plugins/weather", ["/person/.halonic"]); // false
+ */
+export function overlapsHalonicData(source: string, halonicData: readonly string[]): boolean {
+  const inWorkspaceData = source
+    .split(/[\\/]/u)
+    .some((name) => segmentAsOpened(name) === ".studio");
+  return inWorkspaceData || halonicData.some((data) => absolutePathsOverlap(source, data));
 }
 
 /**

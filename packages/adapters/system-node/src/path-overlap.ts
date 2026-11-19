@@ -1,16 +1,6 @@
 import { realpathSync } from "node:fs";
 import { basename, dirname, join, win32 } from "node:path";
-
-/**
- * Whether `child` is `parent` or lies inside it, as Windows reads paths:
- * without regard to letter case, with `/` and `\` both as separators. Both
- * paths should be resolved first (`win32.resolve`).
- */
-export function insideOrSame(parent: string, child: string): boolean {
-  const base = parent.toLowerCase();
-  const path = child.toLowerCase();
-  return path === base || path.startsWith(base.endsWith("\\") ? base : `${base}\\`);
-}
+import { absolutePathsOverlap } from "@halonicjs/std";
 
 /**
  * Whether `a` is on, above or inside `b`: the same path, a folder holding
@@ -18,19 +8,17 @@ export function insideOrSame(parent: string, child: string): boolean {
  * denial on Windows, so a readable folder that overlaps a hidden one in any
  * of these ways would reopen it.
  *
- * The paths are compared as Windows reads them, on every system: letter
- * case is ignored and `/` and `\` both separate folders. Elsewhere that
- * refuses a few more paths than it must, never fewer. Links are not
- * followed; compare each of {@link bothSpellings} for that.
+ * A relative path is resolved against this process's folder first, then
+ * both are compared as `absolutePathsOverlap` in `@halonicjs/std` compares
+ * them: as Windows reads them, on every system. Links are not followed;
+ * compare each of {@link bothSpellings} for that.
  *
  * @example
  * pathsOverlap("/person", "/person/.ssh"); // true: it holds the denied folder
  * pathsOverlap("/person/.ssh-notes", "/person/.ssh"); // false
  */
 export function pathsOverlap(a: string, b: string): boolean {
-  const first = win32.resolve(a);
-  const second = win32.resolve(b);
-  return insideOrSame(first, second) || insideOrSame(second, first);
+  return absolutePathsOverlap(win32.resolve(a), win32.resolve(b));
 }
 
 /**
