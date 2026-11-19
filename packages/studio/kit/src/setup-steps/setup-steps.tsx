@@ -60,8 +60,9 @@ function StepChevron() {
 
 /**
  * The steps of a setup card, as Get set up's and the sample's Try the sample (HAL-477 2.2, first
- * run 3.3): a 56px row each with a 24px number circle, the title and its hint, and a chevron while
- * it isn't done. A done step has a `success` circle with a tick and its title in `fg-muted`, not
+ * run 3.3): a row of at least 56px each with a 24px number circle, the title and its hint, and a
+ * chevron while it isn't done. The title and the hint wrap rather than being cut, so a phone
+ * shows them whole, and the hint is the row's description for screen readers (HAL-13121). A done step has a `success` circle with a tick and its title in `fg-muted`, not
  * struck through, and no chevron, and its row does nothing: there's nothing left to do there. It
  * doesn't look pressable either, and Tab enters at the first step still to do.
  */
@@ -74,6 +75,8 @@ export function SetupSteps<Id extends string>({ label, steps, onOpen }: SetupSte
     avatar: <StepCircle number={index + 1} done={step.done} />,
     muted: step.done,
     inert: step.done,
+    wrap: true,
+    metaDescribes: true,
     trailing: step.done ? undefined : <StepChevron />,
   }));
   return <List label={label} rows={rows} onOpen={onOpen} />;
