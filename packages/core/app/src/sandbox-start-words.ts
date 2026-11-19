@@ -187,8 +187,7 @@ function onTheComputer(fix: string): string {
  */
 export function sandboxStartWords(code: string): SandboxStartWords {
   const reason = isSandboxStartReason(code) ? code : "other";
-  const { reason: sentence, fix, cantRunFix = fix, command, docsSection, docsName } =
-    words[reason];
+  const { reason: sentence, fix, cantRunFix = fix, command, docsSection, docsName } = words[reason];
   return {
     key: `sandbox-start.${reason}`,
     reason: sentence,
