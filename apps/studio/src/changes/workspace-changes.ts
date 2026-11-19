@@ -24,6 +24,8 @@ import { historyArgs, versionsFromLog } from "./history-log.ts";
 import { lastVersionDiffArgs, lastVersionFromDiff } from "./last-version.ts";
 import { SharedCopy } from "./shared-copy.ts";
 import { statusArgs } from "./status-args.ts";
+import { ignoreStudioFolder } from "./studio-ignore.ts";
+import { readFileAtVersion } from "./version-file.ts";
 import { type ChoicesMemory, UpdatesMerge } from "./workspace-merge.ts";
 
 /** What git said, as the shell's `git` command gives it back. */
@@ -64,9 +66,6 @@ const shareRemoteName = "origin";
 
 /** The most versions counted for Share or Get updates; a bigger count reads as this many. */
 const versionCountCap = 1000;
-
-/** The line that keeps Halonic's own data out of the history. */
-const studioIgnoreLine = ".studio/";
 
 /**
  * The open workspace's history, read through the shell's `git` command: what changed since the
@@ -152,6 +151,14 @@ export class WorkspaceChanges implements ChangesSource {
     }
   }
 
+  async readFile(path: string): Promise<string | null> {
+    return this.#options.files.read(path);
+  }
+
+  async readAtVersion(versionId: string, path: string): Promise<string | null> {
+    return readFileAtVersion((args) => this.#run(args), readableProblem, versionId, path);
+  }
+
   async readHistory(limit: number): Promise<readonly Version[]> {
     const log = await this.#run(historyArgs(limit));
     if (log === "no-git") return [];
@@ -190,7 +197,7 @@ export class WorkspaceChanges implements ChangesSource {
 
   async turnOnHistory(): Promise<void> {
     // The ignore line first, so a failed init never leaves `.studio/` showing up as changed.
-    await this.#ignoreStudioFolder();
+    await ignoreStudioFolder(this.#options.files);
     const init = await this.#run(["init", "--quiet"]);
     if (init === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
     if (init.code !== 0) throw new KindedError("unavailable", readableProblem(init));
@@ -345,25 +352,6 @@ export class WorkspaceChanges implements ChangesSource {
       throw error;
     }
   }
-
-  async #ignoreStudioFolder(): Promise<void> {
-    const current = await this.#options.files.read(".gitignore");
-    if (current !== null && ignoresStudio(current)) return;
-    const separator = current === null || current === "" || current.endsWith("\n") ? "" : "\n";
-    const text = `${current ?? ""}${separator}${studioIgnoreLine}\n`;
-    // A file that is there is added to without a check: the line is only added, and git ignores
-    // a repeated one. A new file must not appear in between.
-    const result =
-      current === null
-        ? await this.#options.files.write(".gitignore", text, { expected: "absent" })
-        : await this.#options.files.write(".gitignore", text);
-    if (result.status === "changed-on-disk") {
-      throw new KindedError(
-        "conflict",
-        ".gitignore changed while Halonic was changing it. Try again.",
-      );
-    }
-  }
 }
 
 /** The first non-empty line of what git said: its own message is never shown as raw output. */
@@ -473,13 +461,6 @@ function isGitNotFound(error: unknown): boolean {
   return (
     typeof error === "object" && error !== null && "kind" in error && error.kind === "git_not_found"
   );
-}
-
-/** Whether a `.gitignore` already lists the `.studio` folder. */
-function ignoresStudio(text: string): boolean {
-  return text
-    .split("\n")
-    .some((line) => [".studio", ".studio/", "/.studio", "/.studio/"].includes(line.trim()));
 }
 
 /** Files in Halonic's own folders, such as review records, aren't versions of the workspace. */

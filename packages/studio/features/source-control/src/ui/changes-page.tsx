@@ -191,7 +191,7 @@ function pushedPage({
   if (phone && versionNav.open !== undefined) {
     return (
       <div className={pageClass}>
-        <VersionPage version={versionNav.open} onBack={versionNav.back} />
+        <VersionPage version={versionNav.open} list={list} onBack={versionNav.back} />
       </div>
     );
   }

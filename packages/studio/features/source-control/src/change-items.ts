@@ -142,3 +142,40 @@ const openableKinds: readonly string[] = ["agent", "workflow", "routine"];
 export function isOpenable(item: ChangeItem): boolean {
   return item.kind !== undefined && openableKinds.includes(item.kind);
 }
+
+/** One item a version changed, as the version's What's in it lists it. */
+export interface VersionItem {
+  /** Its kind and name, or the file's path for an other file, as {@link ChangeItem.id}. */
+  readonly id: string;
+  /** What the row is called: the item's name, or a friendly name for an other file. */
+  readonly name: string;
+  /** The item's kind, or `undefined` for an other file. */
+  readonly kind: ItemKind | undefined;
+  /** The files of the item the version changed; at least one. */
+  readonly paths: readonly string[];
+}
+
+/**
+ * Groups the files a version changed into its items, as the Changes list groups changed files:
+ * the items first, then the files no kind places, each in the order the files came. A version
+ * holds no descriptions, so an item is called by its name in its path.
+ */
+export function groupVersionFiles(paths: readonly string[]): VersionItem[] {
+  const byId = new Map<string, { name: string; kind: ItemKind | undefined; paths: string[] }>();
+  for (const path of paths) {
+    const item = itemOf(path);
+    const id = item?.key ?? `file:${path}`;
+    const found = byId.get(id);
+    if (found === undefined) {
+      const name = item?.name ?? friendlyNames[path] ?? baseName(path);
+      byId.set(id, { name, kind: item?.kind, paths: [path] });
+    } else {
+      found.paths.push(path);
+    }
+  }
+  const items = [...byId].map(([id, item]) => ({ id, ...item }));
+  return [
+    ...items.filter((item) => item.kind !== undefined),
+    ...items.filter((item) => item.kind === undefined),
+  ];
+}
