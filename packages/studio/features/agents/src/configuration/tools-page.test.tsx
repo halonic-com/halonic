@@ -108,7 +108,9 @@ verifies("agents.configuration.tools", () => {
     const knowledge = listNamed(page, "Knowledge");
     expect(chips(knowledge)).toEqual(["old-notes"]);
     expect(knowledge.querySelector("li")?.className).toContain("border-danger");
-    expect(knowledge.textContent).toContain("There's no knowledge source called old-notes.");
+    expect(knowledge.textContent).toContain(
+      "This hub can't use a knowledge source called old-notes.",
+    );
     expect(page.querySelector('[aria-label="Remove old-notes"]')).not.toBeNull();
   });
 
@@ -116,7 +118,7 @@ verifies("agents.configuration.tools", () => {
     const opened: string[] = [];
     const page = await openTools(host({ knowledge: ["handbook"] }), (list) => opened.push(list));
     const connectors = listNamed(page, "Connectors");
-    expect(connectors.textContent).toContain("No connectors yet. Open Library ›");
+    expect(connectors.textContent).toContain("No connectors this hub can use yet. Open Library ›");
     expect(buttonNamed(connectors, "Add connector")).toBeUndefined();
     const knowledge = listNamed(page, "Knowledge");
     expect(knowledge.textContent).toContain("No more knowledge to add. Open Library ›");
@@ -130,7 +132,7 @@ verifies("agents.configuration.tools", () => {
   it("leaves out Open Library where the app can't open it", async () => {
     const page = await openTools(host());
     const connectors = listNamed(page, "Connectors");
-    expect(connectors.textContent).toContain("No connectors yet.");
+    expect(connectors.textContent).toContain("No connectors this hub can use yet.");
     expect(buttonNamed(connectors, "Open Library ›")).toBeUndefined();
   });
 
@@ -148,7 +150,7 @@ verifies("agents.configuration.tools", () => {
     const skills = listNamed(page, "Skills");
     expect(chips(skills)).toEqual(["refunds", "gone"]);
     expect(buttonNamed(skills, "Add skill")).toBeUndefined();
-    expect(skills.textContent).not.toContain("There's no skill called");
+    expect(skills.textContent).not.toContain("This hub can't use a skill called");
 
     await act(async () =>
       page.querySelector<HTMLButtonElement>('[aria-label="Remove gone"]')?.click(),
