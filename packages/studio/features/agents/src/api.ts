@@ -3,6 +3,8 @@
  * file. The app provides `AgentsHostService` for each open workspace; the Agents feature's list,
  * dialogs and page read it, and the Workflows feature reads `referencesTo` for its "used by" line.
  */
+import type { ChatAnswer, ChatAnswerListener } from "@halonicjs/app";
+import type { ChatMessage } from "@halonicjs/ports";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
 /** Names one agent the way a deep link does: its hub and its id. */
@@ -255,6 +257,16 @@ export interface TrashedAgent {
   undo(): Promise<void>;
 }
 
+/** One answer of an agent's Try it chat. */
+export interface AgentChatRequest {
+  /** The conversation so far, with the person's new message last. It is not changed. */
+  readonly messages: readonly ChatMessage[];
+  /** Aborted when the person clicks Stop. */
+  readonly signal?: AbortSignal | undefined;
+  /** Told how the answer goes, for the transcript: each turn, tool call and message. */
+  readonly listener?: ChatAnswerListener | undefined;
+}
+
 /** A workflow that runs an agent in one of its task steps. */
 export interface AgentUser {
   readonly hubId: string;
@@ -332,6 +344,15 @@ export interface AgentsHost {
    * Absent where the app can't tell, which shows no line. Rejects like {@link AgentsHost.read}.
    */
   liveState?(ref: AgentRef): Promise<AgentLiveState>;
+  /**
+   * Answers the person's latest message in the agent's Try it chat, with the agent as it's saved
+   * now: its model, instructions and tools, at most its model call limit of turns (64 at most). It
+   * is a chat turn outside any run (v0.1, HAL-902), so it records no run. A model or tool that
+   * fails ends the answer as `failed` instead of rejecting, so the messages before it are kept.
+   * Rejects with `denied` when the workspace may start nothing (not trusted), with `not_found` when
+   * the agent isn't there, and with the reason the engine couldn't be opened.
+   */
+  answer(ref: AgentRef, request: AgentChatRequest): Promise<ChatAnswer>;
   /**
    * The path of the agent's file from the workspace folder, for **Open as file**. Rejects like
    * {@link AgentsHost.read}.

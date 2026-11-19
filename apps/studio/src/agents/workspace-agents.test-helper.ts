@@ -6,7 +6,9 @@ export const writerFile = "id: writer\nname: Writer\ndescription: Drafts replies
 const replyFile =
   "id: reply\nname: Reply\ninitial: first\nstates:\n  first:\n    agent: writer\n    on:\n      - to: done\n  done:\n    type: final\n";
 
-export function setup(extra: Pick<WorkspaceAgentsParts, "newAgents" | "liveness"> = {}) {
+export function setup(
+  extra: Pick<WorkspaceAgentsParts, "newAgents" | "liveness" | "answerChat"> = {},
+) {
   const store: Record<string, string> = {
     "models.yaml":
       "aliases:\n  fast:\n    provider: anthropic\n    model: claude-haiku\n  smart:\n    provider: anthropic\n    model: claude-sonnet\n",

@@ -72,6 +72,7 @@ const host: AgentsHost = {
       .map((agent) => ({ ...agent, subagents: [] })),
   harnessReadiness: async () => ({ status: "ready", version: "1.0.0" }),
   openHarnessSignIn: async () => ({ opened: true }),
+  answer: async () => ({ messages: [], end: { reason: "answered" } }),
   filePath: async (ref) => `hubs/${ref.hubId}/agents/${ref.id}.agent.yaml`,
   trash: async () => ({ undo: async () => undefined }),
   referencesTo: async () => [],

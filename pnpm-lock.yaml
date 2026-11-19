@@ -2702,6 +2702,12 @@ importers:
 
   packages/studio/features/agents:
     dependencies:
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../../core/app
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../../core/ports
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std

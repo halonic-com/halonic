@@ -1,5 +1,11 @@
 import { MemoryAgentPlacementStore, MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
-import { AgentPlacement, HostSettings, type NewAgentsRun, newAgentsRun } from "@halonicjs/app";
+import {
+  AgentPlacement,
+  type ChatAnswerRequest,
+  HostSettings,
+  type NewAgentsRun,
+  newAgentsRun,
+} from "@halonicjs/app";
 import type { AgentPlacementStore, Digest } from "@halonicjs/ports";
 import { encodeUtf8 } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
@@ -450,6 +456,59 @@ verifies("studio.new-agents-run", () => {
       expect(await placement.where({ location, agent: ref.id, file })).toMatchObject({
         runsOn: "sandbox",
         reason: "file-changed",
+      });
+    });
+  });
+});
+
+verifies("studio.workspace-agents-chat", () => {
+  describe("WorkspaceAgents answer", () => {
+    const ref = { hubId: "acme", id: "writer" };
+    const messages = [{ role: "user", content: "Sort this mail" }] as const;
+
+    it("answers on the engine by the agent's id, with no tools of its own and its model call limit", async () => {
+      const requests: ChatAnswerRequest[] = [];
+      const { host } = setup({
+        answerChat: async (request) => {
+          requests.push(request);
+          return { messages: [], end: { reason: "answered" } };
+        },
+      });
+      const stop = new AbortController();
+      const answer = await host.answer(ref, { messages, signal: stop.signal });
+      expect(answer.end).toEqual({ reason: "answered" });
+      expect(requests).toEqual([
+        {
+          settings: { hubId: "acme", agentId: "writer" },
+          messages,
+          tools: [],
+          turnLimit: 6,
+          signal: stop.signal,
+        },
+      ]);
+    });
+
+    it("stops a chat answer at 64 turns when the file allows more", async () => {
+      const turnLimits: (number | undefined)[] = [];
+      const { host, store } = setup({
+        answerChat: async (request) => {
+          turnLimits.push(request.turnLimit);
+          return { messages: [], end: { reason: "answered" } };
+        },
+      });
+      store["hubs/acme/agents/writer.agent.yaml"] = `${writerFile}maxSteps: 200\n`;
+      await host.answer(ref, { messages });
+      expect(turnLimits).toEqual([64]);
+    });
+
+    it("says the engine isn't answering where there is none, and not_found for an agent that isn't there", async () => {
+      const { host } = setup();
+      await expect(host.answer(ref, { messages })).rejects.toMatchObject({
+        kind: "unavailable",
+        message: "The engine isn't answering.",
+      });
+      await expect(host.answer({ hubId: "acme", id: "gone" }, { messages })).rejects.toMatchObject({
+        kind: "not_found",
       });
     });
   });
