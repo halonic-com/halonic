@@ -1,20 +1,20 @@
 import { MonthBars, usePresentation } from "@halonicjs/studio-kit";
-import type { HomeCardProps } from "@halonicjs/studio-shell";
+import { firstLoad, type HomeCardProps } from "@halonicjs/studio-shell";
 import { use, useCallback, useSyncExternalStore } from "react";
 import { RunsSourceService } from "../api.ts";
 import { spendWords } from "../home-words.ts";
 import { spendTile } from "../list/spend-tile.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
-import { firstLoad } from "./first-load.ts";
 
 /** Home's Spend section: the open workspace's runs, from `RunsListService`, and its budget. */
-export function SpendCard({ context }: HomeCardProps) {
+export function SpendCard({ context, attempt }: HomeCardProps) {
   const source = context.services.get(RunsSourceService);
   return (
     <SpendView
       list={context.services.get(RunsListService)}
       currency={() => source.currency()}
       monthlyBudget={() => source.monthlyBudget()}
+      attempt={attempt}
     />
   );
 }
@@ -27,6 +27,8 @@ export interface SpendViewProps {
   readonly monthlyBudget: () => number | undefined;
   /** The clock that sets the current month; tests pass a fixed one. */
   readonly now?: () => Date;
+  /** The section's Try again count from {@link HomeCardProps}; a new one loads again after a failed first load. */
+  readonly attempt?: number;
 }
 
 /**
@@ -41,11 +43,12 @@ export function SpendView({
   currency,
   monthlyBudget,
   now = () => new Date(),
+  attempt = 0,
 }: SpendViewProps) {
   const subscribe = useCallback((listener: () => void) => list.subscribe(listener), [list]);
   const state = useSyncExternalStore(subscribe, () => list.state);
   const phone = usePresentation() === "phone";
-  use(firstLoad(list));
+  use(firstLoad(list, attempt));
   const tile = spendTile(
     state.runs.map((run) => run.summary),
     now().toISOString(),

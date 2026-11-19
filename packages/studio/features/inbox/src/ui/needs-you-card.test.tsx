@@ -72,7 +72,7 @@ function OnHome(props: { readonly inbox: Inbox; readonly openInbox?: () => void 
   const [attempt, setAttempt] = useState(0);
   return (
     <Section key={attempt} onRetry={() => setAttempt((count) => count + 1)}>
-      <NeedsYouView {...props} now={now} />
+      <NeedsYouView {...props} now={now} attempt={attempt} />
     </Section>
   );
 }
@@ -225,6 +225,26 @@ verifies("inbox.home", () => {
     await click(button(root, "Couldn't load what needs you"));
     await settled();
     expect(rows(root)).toHaveLength(1);
+  });
+
+  it("asks once when the first load fails late, and shows the error rather than asking again", async () => {
+    // As a served Studio signed out: the engine answers 401 after a while, not straight away.
+    const waiting = vi.fn(
+      () =>
+        new Promise<RunSummary[]>((_, reject) =>
+          setTimeout(() => reject(new Error("unauthenticated")), 1),
+        ),
+    );
+    const runs: InboxRuns = { waiting, subscribe: () => () => {}, send: vi.fn() };
+    const root = await renderSuspending(<OnHome inbox={new Inbox(runs)} />);
+    for (let round = 0; round < 5; round += 1) {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      });
+    }
+
+    expect(root.textContent).toContain("Couldn't load what needs you");
+    expect(waiting).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the rows when a later load fails", async () => {

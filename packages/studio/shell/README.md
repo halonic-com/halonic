@@ -68,7 +68,10 @@ skeleton (none for Get set up), says "Loading Home" once for the page, and puts 
 says each reason once, each ending in a full stop (one that has none gets one, so two reasons aren't
 read as one sentence), so when the engine isn't answering, screen readers hear it once, not once per
 section, and the reasons take the place of "Loading Home" while other sections still load
-(`shell.home-states`). Get set up's card
+(`shell.home-states`). `HomeCardProps.attempt` counts the section's Try again presses; a card that
+waits for its data's first load passes it to `firstLoad(source, attempt)`, which keeps a failed load
+for that attempt, so React's renders after the failure throw it rather than load again, and only
+Try again loads again. Get set up's card
 throws only once it knows setup isn't finished: if it can't tell, it shows nothing, so a workspace
 that is set up never sees "Couldn't load setup". On a phone, the `h1` is for screen readers only
 (the top bar shows "Home"), the sections run edge to edge 8px apart, and a loading section shows two

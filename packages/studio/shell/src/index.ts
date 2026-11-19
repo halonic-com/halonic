@@ -112,6 +112,7 @@ export {
   StatusBarSaveNote,
   type StatusBarSaveNoteProps,
 } from "./frame/status-bar-save-note.tsx";
+export { firstLoad, type HomeCardSource } from "./home/first-load.ts";
 export type { HomeCardProps } from "./home/home-page.tsx";
 export { HomeSectionEmpty } from "./home/home-section.tsx";
 export { ItemHeader, type ItemHeaderProps } from "./item-page/item-header.tsx";
