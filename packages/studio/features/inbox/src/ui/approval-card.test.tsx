@@ -191,6 +191,22 @@ verifies("inbox.approval-card", () => {
       expect(button(root, "Open run")).toBeDefined();
     });
 
+    it("brings the decided line and what follows it into view, in a short window too (HAL-13918)", async () => {
+      const scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+      try {
+        const { root, later } = openCard();
+        later(2);
+        await press(button(root, "Approve"));
+        const bar = root.querySelector("[role='group']")?.parentElement;
+        expect(bar?.textContent).toContain("Nothing else is waiting for you.");
+        expect(scrollIntoView.mock.contexts).toEqual([bar]);
+        expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+      } finally {
+        delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+      }
+    });
+
     it("says the agent is told when you reject, and offers Next", async () => {
       const open = vi.fn();
       const { root, sent, later } = openCard({

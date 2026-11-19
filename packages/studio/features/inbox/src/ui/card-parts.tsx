@@ -7,7 +7,7 @@ import {
   CommandBox,
 } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { wasDecidedElsewhere } from "../decide.ts";
 import { PlainValue } from "./plain-value.tsx";
 
@@ -138,10 +138,18 @@ interface DecidedBarProps {
  * The bar once decided: the decided Callout, which takes focus, then the way back, secondary,
  * and **Next** (flow-inbox 5.3). The way back stays when nothing else waits, so you're never
  * left without one.
+ *
+ * The Callout takes focus without scrolling, so the bar brings itself into view when it appears:
+ * in a short window, where the whole column scrolls, the shorter bar would otherwise leave the
+ * line below the window (HAL-13918). It scrolls whichever element scrolls the card, only as far
+ * as it must: the whole bar when it fits, else from its top, so the line shows whole. It does so
+ * before the bar is drawn, so the window never shows it out of view first.
  */
 export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps) {
+  const bar = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => bar.current?.scrollIntoView?.({ block: "nearest" }), []);
   return (
-    <div className="flex flex-col gap-3 border-t border-border p-4">
+    <div ref={bar} className="flex flex-col gap-3 border-t border-border p-4">
       <Callout tone="info" announce="focus" ref={callout}>
         {text}
         {note === undefined ? null : (
