@@ -21,7 +21,10 @@ The requirement `shell.studio-phone` is updated to say this, with examples for e
 test "comes back to where each layout was when the width crosses the phone's" checked the old
 behaviour; it now checks only the More case that still holds ("keeps the desktop's tab when the
 phone was on More"), and its last step (narrowing again shows More) is dropped, because narrowing
-now shows the desktop's page. New tests in `layout-crossing.test.tsx` cover the rest. No test was
+now shows the desktop's page. The window-title test "names the phone's page on a phone, and the
+active tab's again on the desktop" narrowed with a run open and expected Home; it now goes to More
+from Home, checks that widening keeps the desktop's tab, then checks that narrowing with a run
+open names the run. New tests in `layout-crossing.test.tsx` cover the rest. No test was
 skipped.
 
 ## Why
@@ -33,3 +36,4 @@ the screen, lost their place and the keyboard focus.
 
 - shell.studio-phone
 - packages/studio/shell/src/window/studio-phone.test.tsx
+- packages/studio/shell/src/window/window-title.test.tsx
