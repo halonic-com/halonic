@@ -211,6 +211,61 @@ verifies("kit.toast", () => {
       pass(TOAST_FADE_MS);
       expect(document.activeElement).toBe(save);
     });
+
+    it("goes to the page's h1 when a toast that Tab reached closes, never the body", async () => {
+      const { container } = render(
+        <>
+          <main>
+            <h1>Home</h1>
+            <button type="button">Save</button>
+          </main>
+          <ToastRegion store={store} />
+        </>,
+      );
+      show({ tone: "warning", title: "Too many files" });
+      act(() => button(container, "Save").focus());
+      act(() => button(container, "Close Too many files").focus());
+      await click(button(container, "Close Too many files"));
+      pass(TOAST_FADE_MS);
+      const heading = container.querySelector("h1");
+      expect(document.activeElement).toBe(heading);
+      expect(heading?.tabIndex).toBe(-1);
+    });
+
+    it("goes to the newest toast left when a toast that Tab reached closes", async () => {
+      const { container } = render(
+        <>
+          <h1>Home</h1>
+          <ToastRegion store={store} />
+        </>,
+      );
+      show({ tone: "warning", title: "Too many files" }, { tone: "danger", title: "Run failed" });
+      act(() => button(container, "Close Run failed").focus());
+      await click(button(container, "Close Run failed"));
+      pass(TOAST_FADE_MS);
+      expect(document.activeElement).toBe(button(container, "Close Too many files"));
+    });
+
+    it("forgets where F6 came from once focus has left the toasts and Tab brings it back", async () => {
+      const { container } = render(
+        <>
+          <main>
+            <h1>Home</h1>
+            <button type="button">Save</button>
+          </main>
+          <ToastRegion store={store} />
+        </>,
+      );
+      show({ tone: "warning", title: "Too many files" });
+      const save = button(container, "Save");
+      act(() => save.focus());
+      act(() => store.focus());
+      act(() => save.focus());
+      act(() => button(container, "Close Too many files").focus());
+      await click(button(container, "Close Too many files"));
+      pass(TOAST_FADE_MS);
+      expect(document.activeElement).toBe(container.querySelector("h1"));
+    });
   });
 });
 

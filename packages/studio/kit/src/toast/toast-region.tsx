@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
+import { type FocusEvent, useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { useModalOpen } from "../dialog/open-modals.ts";
 import { usePresentation } from "../presentation/presentation.tsx";
 import { ToastCard } from "./toast-card.tsx";
@@ -59,24 +59,31 @@ export function ToastRegion({ store }: ToastRegionProps) {
       store.bindFocus(() => {
         const target = lastShown(box.current);
         const before = document.activeElement;
+        // Focusing the toast first, so `entered` doesn't forget where F6 came from.
+        target?.focus();
         if (target !== null && before instanceof HTMLElement && !box.current?.contains(before)) {
           cameFrom.current = before;
         }
-        target?.focus();
       }),
     [store],
   );
 
+  // Focus that came in some other way than F6 (Tab, a click) has nowhere to go back to.
+  const entered = useCallback((event: FocusEvent<HTMLElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+      cameFrom.current = null;
+    }
+  }, []);
+
   // When the toast that had focus goes, focus moves to the newest one left, else back to where
-  // it was before `focus()` (F6) brought it here (component specs 23 A2).
+  // it was before `focus()` (F6) brought it here (component specs 23 A2), else to the page's h1,
+  // never the body (HAL-13402). The page keeps its scroll.
   const closed = useCallback(
     (id: string, hadFocus: boolean) => {
       store.close(id);
       if (hadFocus) {
-        const target = lastShown(box.current, id) ?? cameFrom.current;
-        if (target?.isConnected === true) {
-          target.focus();
-        }
+        const target = lastShown(box.current, id) ?? stillThere(cameFrom.current) ?? pageHeading();
+        target?.focus({ preventScroll: true });
       }
     },
     [store],
@@ -85,7 +92,7 @@ export function ToastRegion({ store }: ToastRegionProps) {
   const shown = shownToasts(toasts, phone, dialogOpen);
   // Always mounted and named, so the live cards inside it are known before they arrive.
   return (
-    <section ref={box} aria-label="Notifications" className={region}>
+    <section ref={box} aria-label="Notifications" className={region} onFocus={entered}>
       {toasts.map((toast) => (
         <ToastCard key={toast.id} toast={toast} waiting={!shown.has(toast.id)} onClosed={closed} />
       ))}
@@ -106,4 +113,28 @@ function lastShown(box: HTMLElement | null, except?: string): HTMLElement | null
   const cards = [...(box?.querySelectorAll<HTMLElement>("[data-toast]:not(.sr-only)") ?? [])];
   const others = cards.filter((card) => card.getAttribute("data-toast") !== except);
   return others[others.length - 1]?.querySelector<HTMLElement>(focusable) ?? null;
+}
+
+/** Where F6 came from, if it can still take focus; the body (nothing focused) is no place. */
+function stillThere(element: HTMLElement | null): HTMLElement | null {
+  if (element === null || element === document.body || !element.isConnected) {
+    return null;
+  }
+  return element.closest("[inert], [hidden]") === null ? element : null;
+}
+
+/** The shown page's h1, focusable from code but never a Tab stop. */
+function pageHeading(): HTMLElement | null {
+  const shown = (selector: string) =>
+    [...document.querySelectorAll<HTMLElement>(selector)].find(
+      (heading) => heading.closest("[inert], [hidden]") === null,
+    );
+  const heading = shown("main h1") ?? shown("h1");
+  if (heading === undefined) {
+    return null;
+  }
+  if (!heading.hasAttribute("tabindex")) {
+    heading.tabIndex = -1;
+  }
+  return heading;
 }
