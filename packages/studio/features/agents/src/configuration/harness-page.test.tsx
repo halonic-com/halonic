@@ -291,6 +291,21 @@ verifies("agents.configuration.harness", () => {
     expect(buttonNamed(page, "Check again")).toBeDefined();
   });
 
+  it("shows one Check again: the strip's when there is a strip, else the group's", async () => {
+    const { page } = await openHarness("codex", { codex: { status: "missing" } });
+    const checkAgain = () =>
+      [...page.querySelectorAll("button")].filter((button) =>
+        button.textContent?.trim().startsWith("Check again"),
+      );
+    expect(page.textContent).toContain("Sorter can't run until Codex is installed.");
+    expect(checkAgain()).toHaveLength(1);
+    expect(checkAgain()[0]?.closest("[role=status]")).not.toBeNull();
+    await act(async () => radioNamed(page, "Halonic")?.click());
+    expect(page.textContent).not.toContain("can't run until");
+    expect(checkAgain()).toHaveLength(1);
+    expect(checkAgain()[0]?.closest("[role=status]")).toBeNull();
+  });
+
   it("puts the strip in a polite live region that is there before it", async () => {
     const { page } = await openHarness("halonic", { codex: { status: "missing" } });
     const region = page.querySelector("[role=status]");

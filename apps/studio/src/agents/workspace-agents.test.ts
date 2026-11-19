@@ -4,13 +4,23 @@ import type { AgentPlacementStore, Digest } from "@halonicjs/ports";
 import { encodeUtf8 } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { type NewAgentsParts, WorkspaceAgents } from "./workspace-agents.ts";
+import {
+  type NewAgentsParts,
+  WorkspaceAgents,
+  type WorkspaceAgentsParts,
+} from "./workspace-agents.ts";
 
 const writerFile = "id: writer\nname: Writer\ndescription: Drafts replies.\nmodel: fast\n";
 const replyFile =
   "id: reply\nname: Reply\ninitial: first\nstates:\n  first:\n    agent: writer\n    on:\n      - to: done\n  done:\n    type: final\n";
 
-function setup(newAgents?: NewAgentsParts) {
+function setup({
+  newAgents,
+  detectHarness,
+}: {
+  newAgents?: NewAgentsParts;
+  detectHarness?: WorkspaceAgentsParts["detectHarness"];
+} = {}) {
   const store: Record<string, string> = {
     "models.yaml":
       "aliases:\n  fast:\n    provider: anthropic\n    model: claude-haiku\n  smart:\n    provider: anthropic\n    model: claude-sonnet\n",
@@ -63,6 +73,7 @@ function setup(newAgents?: NewAgentsParts) {
       return () => listeners.delete(listener);
     },
     ...(newAgents === undefined ? {} : { newAgents }),
+    ...(detectHarness === undefined ? {} : { detectHarness }),
   });
   return { host, store, changes };
 }
@@ -334,16 +345,38 @@ verifies("studio.workspace-agents", () => {
       });
     });
 
-    it("answers whether a harness can run: Halonic always, the others as the host finds, a failed check as failed", async () => {
+    it("answers whether a harness can run: Halonic always, the others as the host finds, and rejects without a host", async () => {
       const { host } = setup();
       const ref = { hubId: "acme", id: "writer" };
       expect(await host.harnessReadiness(ref, "halonic")).toMatchObject({ status: "ready" });
-      expect(await host.harnessReadiness(ref, "codex")).toMatchObject({ status: "failed" });
+      await expect(host.harnessReadiness(ref, "codex")).rejects.toMatchObject({
+        kind: "unavailable",
+        message: "Halonic can't check programs on this computer from here.",
+      });
       await expect(
         host.harnessReadiness({ hubId: "acme", id: "gone" }, "codex"),
       ).rejects.toMatchObject({
         kind: "not_found",
       });
+    });
+
+    it("gives the host's own failed answer as failed, and rejects when the host can't be asked", async () => {
+      const ref = { hubId: "acme", id: "writer" };
+      const failed = setup({
+        detectHarness: async () => ({ status: "failed", error: "No answer." }),
+      });
+      expect(await failed.host.harnessReadiness(ref, "codex")).toEqual({
+        status: "failed",
+        error: "No answer.",
+      });
+      const down = setup({
+        detectHarness: async () => {
+          throw new Error("The engine isn't answering.");
+        },
+      });
+      await expect(down.host.harnessReadiness(ref, "claude-code")).rejects.toThrow(
+        "The engine isn't answering.",
+      );
     });
   });
 });
@@ -394,7 +427,7 @@ verifies("studio.new-agents-run", () => {
   describe("WorkspaceAgents and New agents run", () => {
     it("records On this computer for the new agent's file as written, keyed by the workspace and its id", async () => {
       const { parts, placement, errors } = await newAgentsSetup("this-computer");
-      const { host, store } = setup(parts);
+      const { host, store } = setup({ newAgents: parts });
 
       const ref = await host.create({ name: "Refund checker", hubId: "acme" });
 
@@ -410,7 +443,7 @@ verifies("studio.new-agents-run", () => {
     it("leaves the new agent in its sandbox when the setting says so, or nothing is saved", async () => {
       for (const run of ["sandbox", undefined] as const) {
         const { parts, placement } = await newAgentsSetup(run);
-        const { host, store } = setup(parts);
+        const { host, store } = setup({ newAgents: parts });
 
         const ref = await host.create({ name: "Refund checker", hubId: "acme" });
 
@@ -429,7 +462,7 @@ verifies("studio.new-agents-run", () => {
         throw refused;
       };
       const { parts, placement, errors } = await newAgentsSetup("this-computer", store);
-      const { host, store: files } = setup(parts);
+      const { host, store: files } = setup({ newAgents: parts });
 
       const ref = await host.create({ name: "Refund checker", hubId: "acme" });
 
@@ -443,7 +476,7 @@ verifies("studio.new-agents-run", () => {
 
     it("asks again once the new agent's file is edited", async () => {
       const { parts, placement } = await newAgentsSetup("this-computer");
-      const { host, store } = setup(parts);
+      const { host, store } = setup({ newAgents: parts });
 
       const ref = await host.create({ name: "Refund checker", hubId: "acme" });
       await host.update(ref, { description: "Checks refunds." });
