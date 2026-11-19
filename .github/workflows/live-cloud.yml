@@ -143,7 +143,8 @@ jobs:
     needs: [plan, sweep]
     if: ${{ !cancelled() && needs.plan.outputs.live == 'true' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # Up to 45 minutes of waiting for the account, then the suites.
+    timeout-minutes: 105
     environment: cloudflare-live
     permissions:
       contents: read
@@ -181,6 +182,16 @@ jobs:
               break
             fi
           done
+      # One run on the account at a time, oldest first: D1 refuses work when
+      # several runs load the one account at once (HAL-13840). Not a
+      # concurrency group: GitHub cancels all but one pending run in a group,
+      # which would fail that pull request's gate. tooling/check/src/lib/live-turn.ts
+      # finds this step and the suites step by name; keep both names.
+      - name: Wait for the account
+        if: steps.reuse.outputs.reused != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tooling/check/src/cli/live-turn.ts
       # Before any suite: the token reaches the test account and can do the
       # harmless reads (HAL-6804). Read-only; it creates nothing to sweep.
       - name: Account probe
