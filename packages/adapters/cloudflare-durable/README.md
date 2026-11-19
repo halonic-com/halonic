@@ -32,8 +32,8 @@ Worker (HAL-197 part 9) re-exports each class under its name.
 
 ## How it works
 
-- `CoordinationState` is the logic, over a small `StateStorage`: Durable
-  Object storage in the Worker, an in-memory fake in the Node tests.
+- `CoordinationState` is the logic, over a small `StateStorage`: the
+  Durable Object's own storage.
 - `CoordinationObject` is the Durable Object class: each method calls the same
   method of `CoordinationState`, so callers can use it over RPC.
 - `DurableCoordination` is the `Coordination` the rest of Halonic uses. It
@@ -139,13 +139,19 @@ event, and how long its earliest timer has been due without delivery.
 
 ## Tests
 
-The `Coordination` contract runs two ways. `coordination.test.ts` runs it
-inside workerd, through Miniflare, against the real Durable Object and real
-storage. `state-contract.test.ts` and `durable-coordination.test.ts` run it in
-Node against an in-memory storage fake, which also gives this package its
-coverage numbers (code inside workerd can't be measured from Node).
+Every test runs inside workerd, through Miniflare, against real Durable Objects
+and their real storage: each `*.test.ts` starts workerd and runs the cases of a
+spec in `src/test`, and the coverage counted inside workerd is this package's
+coverage. The only cases left in Node are the two of `napFor` in
+`timer-delivery.test.ts`, which spy on `setTimeout`.
 
-The workerd specs run on a real Cloudflare account too, where every Durable Object has an
+The specs of the parts of the run object (its log, timers, outbox and alarm
+logic) run each case inside a Durable Object of its own, `StateHostObject`, with
+that object's own `ctx.storage` (`inObjectState` in `src/test/state-host.ts`).
+That relies on workerd running the object in the suite's isolate, so these
+specs run locally only.
+
+The contract specs run on a real Cloudflare account too, where every Durable Object has an
 isolate of its own. So the test objects (`TestRunObject`, `TestRoutinesObject`,
 `TestCoordinationObject`, exported from `./testing`) keep nothing in the suite's isolate: the
 suite's `SuiteCase` gives each object its clock over RPC (`setCase`), which the object keeps in its
