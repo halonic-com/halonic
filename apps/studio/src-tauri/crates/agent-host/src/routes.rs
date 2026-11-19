@@ -60,8 +60,6 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/sandbox/sessions/close",
         route(Method::Post, "/v1/sandbox/sessions/close", Answer::Json),
     ),
-    // The sandbox's one-time setup and its removal (HAL-1451): desktop
-    // only, since a served page can't call the shell at all.
     // Which sandbox runs, as the engine's choice (HAL-10796). The page only
     // asks; the shell saves the person's setting itself, never the page.
     (
@@ -70,8 +68,14 @@ const ROUTES: &[(&str, Route)] = &[
     ),
     (
         "POST /v1/sandbox/choice/settings-changed",
-        route(Method::Post, "/v1/sandbox/choice/settings-changed", Answer::Json),
+        route(
+            Method::Post,
+            "/v1/sandbox/choice/settings-changed",
+            Answer::Json,
+        ),
     ),
+    // The sandbox's one-time setup and its removal (HAL-1451): desktop
+    // only, since a served page can't call the shell at all.
     (
         "GET /v1/sandbox/setup",
         route(Method::Get, "/v1/sandbox/setup", Answer::Json),
