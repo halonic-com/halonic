@@ -2,6 +2,7 @@
 
 - Approval: Liam's follow-up on HAL-13155 (review of PR 3672); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:D74DYNcIDx2fT7not9zeLRv524EFJMhHUxPCsh3wfjmYsafByNVp8vwphRZsEHezZaasy7R4ChqMe5gXWk3jCQ==
 
 ## What changes
 
