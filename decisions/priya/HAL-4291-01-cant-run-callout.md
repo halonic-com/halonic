@@ -6,7 +6,7 @@
 
 ## What changes
 
-The requirement `app.sandbox-start-words` gains a sixth part per reason, the fix for the
+The requirement `app.sandbox-start-words` gains a part per reason, the fix for the
 can't-run Callout, and the command a fix names:
 
 - The can't-run Callout shows no reason before its fix, so "Install it, …" can't stand alone
@@ -18,7 +18,7 @@ can't-run Callout, and the command a fix names:
 
 The Callout sentence `calloutFix` is unchanged, so the Inbox card and the run page banner, which
 show the reason first, read as before. Nothing the requirement promised before is taken away: the
-"all five parts" example becomes "all six parts", and one example is added for the new fix.
+"every part" example now counts the new fix too, and one example is added for it.
 
 ## Why
 
