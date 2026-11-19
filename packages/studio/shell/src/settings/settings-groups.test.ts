@@ -2,7 +2,12 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { SettingsScope, SettingsSectionContribution } from "../points/frame.ts";
 import type { Registered } from "../points/point-store.ts";
-import { listedSections, type SettingsGroup, settingsGroups } from "./settings-groups.ts";
+import {
+  listedSections,
+  type SettingsGroup,
+  sectionHeadingLevel,
+  settingsGroups,
+} from "./settings-groups.ts";
 import { rowAfterKey } from "./settings-nav.tsx";
 
 const load = async () => ({ View: () => "view" });
@@ -115,5 +120,13 @@ verifies("shell.settings-keyboard", () => {
       expect(rowAfterKey(order, "models", "End")).toBe("developer");
       expect(rowAfterKey(order, "models", "Enter")).toBeUndefined();
     });
+  });
+});
+
+verifies("shell.settings-list-page", () => {
+  it("puts a section's own headings one level under its name: h4 in the dialog, h2 on a phone", () => {
+    expect(sectionHeadingLevel("window")).toBe(4);
+    expect(sectionHeadingLevel(undefined)).toBe(4);
+    expect(sectionHeadingLevel("phone")).toBe(2);
   });
 });

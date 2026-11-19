@@ -5,14 +5,16 @@ import {
   engineWordsOf,
   focusSectionHeading,
   type SettingsSectionProps,
+  type SettingsSurface,
   sectionHeading,
+  sectionHeadingLevel,
 } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type TrustedSource, type TrustedSourcesHost, TrustedSourcesService } from "../api.ts";
 import * as text from "./trusted-sources-text.ts";
 
 /** Settings › Trusted sources as the settings container shows it. */
-export function TrustedSourcesSection({ context, place }: SettingsSectionProps) {
+export function TrustedSourcesSection({ context, place, surface }: SettingsSectionProps) {
   const host = context.services.get(TrustedSourcesService);
   return (
     <TrustedSourcesView
@@ -20,6 +22,7 @@ export function TrustedSourcesSection({ context, place }: SettingsSectionProps) 
       readOnly={place === "served"}
       announce={(line) => context.announcer.announce(line)}
       engine={engineWordsOf(context)}
+      surface={surface}
     />
   );
 }
@@ -33,6 +36,8 @@ export interface TrustedSourcesViewProps {
   readonly announce: (line: string) => void;
   /** Whose words say the engine isn't answering; the desktop app's when absent. */
   readonly engine?: EngineWords;
+  /** `phone` on the phone's Settings page, where the error's heading sits under the page's `h1`. */
+  readonly surface?: SettingsSurface;
 }
 
 /** The records, most recently trusted first, as the list shows them. */
@@ -50,7 +55,13 @@ type Loaded =
  * with **Remove** and its confirmation, the empty sentence, the note on the CLI's own records and,
  * served, the same list read-only. A list that can't be read says so and offers Try again.
  */
-export function TrustedSourcesView({ host, readOnly, announce, engine }: TrustedSourcesViewProps) {
+export function TrustedSourcesView({
+  host,
+  readOnly,
+  announce,
+  engine,
+  surface,
+}: TrustedSourcesViewProps) {
   const { notAnswering } = engine ?? engineWordsOf({});
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
   const [removing, setRemoving] = useState<TrustedSource | undefined>();
@@ -134,7 +145,7 @@ export function TrustedSourcesView({ host, readOnly, announce, engine }: Trusted
       <EmptyState
         tone="error"
         align="start"
-        headingLevel={4}
+        headingLevel={sectionHeadingLevel(surface)}
         title={text.LOAD_FAILED}
         description={loaded.reason}
         action={{ label: text.TRY_AGAIN, onClick: tryAgain, busy: retrying }}

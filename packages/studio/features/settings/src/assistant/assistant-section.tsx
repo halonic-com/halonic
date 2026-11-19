@@ -7,6 +7,7 @@ import {
   type SettingsPlace,
   type SettingsSectionProps,
   type SettingsSurface,
+  sectionHeadingLevel,
 } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import {
@@ -68,7 +69,12 @@ export function AssistantSection({ context, closeSettings, place, surface }: Set
           closeSettings={closeSettings}
         />
       ) : (
-        <NotLoaded reason={loaded.reason} trying={loaded.trying} onTryAgain={loaded.tryAgain} />
+        <NotLoaded
+          reason={loaded.reason}
+          trying={loaded.trying}
+          onTryAgain={loaded.tryAgain}
+          surface={surface}
+        />
       )}
     </div>
   );
@@ -110,13 +116,14 @@ function NotLoaded(props: {
   readonly reason: string | null;
   readonly trying: boolean;
   readonly onTryAgain: () => void;
+  readonly surface: SettingsSurface;
 }) {
   return (
     <div className="max-w-90">
       <EmptyState
         tone="error"
         align="start"
-        headingLevel={4}
+        headingLevel={sectionHeadingLevel(props.surface)}
         title={text.NOT_LOADED}
         description={props.reason ?? text.NOT_LOADED_REASON}
         action={{ label: text.TRY_AGAIN, onClick: props.onTryAgain, busy: props.trying }}
@@ -276,8 +283,11 @@ function AssistantEditor({
   workspace,
   navigate,
   closeSettings,
+  surface,
 }: AssistantViewProps) {
   const open = useOpenWorkspace(workspace);
+  // h4 under the dialog's h3, h2 under the phone page's h1; they look the same either way.
+  const Group = `h${sectionHeadingLevel(surface)}` as const;
   const provider = useHostSetting(settings, assistantPrefs.provider);
   const model = useHostSetting(settings, assistantPrefs.model);
   const baseUrl = useHostSetting(settings, assistantPrefs.baseUrl);
@@ -373,7 +383,7 @@ function AssistantEditor({
           }}
         />
       )}
-      <h4 className="text-body-strong">{text.MODEL_GROUP}</h4>
+      <Group className="text-body-strong">{text.MODEL_GROUP}</Group>
       <Field
         label={text.PROVIDER}
         hint={chosen === "not-set-up" ? text.NOT_SET_UP_LINE : undefined}
@@ -436,7 +446,7 @@ function AssistantEditor({
           }}
         />
       )}
-      <h4 className="text-body-strong">{text.ANSWERS_GROUP}</h4>
+      <Group className="text-body-strong">{text.ANSWERS_GROUP}</Group>
       <SavedTextField
         label={text.TURN_LIMIT}
         hint={text.TURN_LIMIT_HINT}

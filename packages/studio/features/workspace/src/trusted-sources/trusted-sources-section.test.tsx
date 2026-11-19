@@ -51,11 +51,15 @@ function hostOf(sources: TrustedSource[], remove?: (location: string) => Promise
   } satisfies TrustedSourcesHost;
 }
 
-async function show(host: TrustedSourcesHost, readOnly = false) {
+async function show(
+  host: TrustedSourcesHost,
+  readOnly = false,
+  surface: "window" | "phone" = "window",
+) {
   const announce = vi.fn();
   root = createRoot(element);
   await act(async () => {
-    root?.render(createElement(TrustedSourcesView, { host, readOnly, announce }));
+    root?.render(createElement(TrustedSourcesView, { host, readOnly, announce, surface }));
   });
   return announce;
 }
@@ -182,6 +186,19 @@ verifies("workspace.trusted-sources", () => {
     expect(element.textContent).toContain("The profile is locked");
     await act(async () => button("Try again")?.click());
     expect(element.textContent).toContain("pdf-tools");
+  });
+
+  it("heads the load error h4 in the dialog and h2 under the phone page's h1", async () => {
+    const failing = () => ({
+      list: vi.fn(async () => Promise.reject(new Error("The profile is locked."))),
+      remove: vi.fn(),
+    });
+    await show(failing());
+    expect(element.querySelector("h4")?.textContent).toBe("Couldn't load trusted sources");
+    act(() => root?.unmount());
+    await show(failing(), false, "phone");
+    expect(element.querySelector("h2")?.textContent).toBe("Couldn't load trusted sources");
+    expect(element.querySelector("h4")).toBeNull();
   });
 
   it("keeps the error with a busy button while Try again reads, then focuses the section's heading", async () => {

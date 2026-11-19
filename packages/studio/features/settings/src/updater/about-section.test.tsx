@@ -56,8 +56,15 @@ function fakeHost(first: UpdateStatus) {
   };
 }
 
-async function show(host: UpdaterHost, announce = vi.fn(), onRestart?: () => void) {
-  const view = render(<AboutHostView host={host} announce={announce} onRestart={onRestart} />);
+async function show(
+  host: UpdaterHost,
+  announce = vi.fn(),
+  onRestart?: () => void,
+  surface?: "window" | "phone",
+) {
+  const view = render(
+    <AboutHostView host={host} announce={announce} onRestart={onRestart} surface={surface} />,
+  );
   await act(async () => {});
   return { view, announce };
 }
@@ -183,6 +190,19 @@ verifies("settings.about-section", () => {
     );
     expect(view.textContent).toContain("scoop update halonic");
     expect(view.querySelector('button[aria-label="Copy command"]')).not.toBeNull();
+  });
+
+  it("heads the version and the Scoop block one level apart, under the phone page's h1 too", async () => {
+    const scoop = statusOf(
+      { kind: "available", version: "0.1.1", notesUrl },
+      { managed: { by: "scoop", command: "scoop update halonic" } },
+    );
+    const levels = (view: HTMLElement) =>
+      [...view.querySelectorAll("h1, h2, h3, h4, h5")].map(({ tagName }) => tagName);
+    const { view } = await show(fakeHost(scoop).host);
+    expect(levels(view)).toEqual(["H3", "H4"]);
+    const { view: phone } = await show(fakeHost(scoop).host, vi.fn(), undefined, "phone");
+    expect(levels(phone)).toEqual(["H2", "H3"]);
   });
 
   it("says checks are off, and keeps the switch reachable, on a Scoop install", async () => {

@@ -11,6 +11,14 @@ export type SettingsPlace = "app" | "served";
  */
 export type SettingsSurface = "window" | "phone";
 
+/**
+ * The level of a section's own headings, one under its name: `h4` under the dialog's `h3`, `h2`
+ * under the phone page's `h1`, so a screen reader's outline skips no level.
+ */
+export function sectionHeadingLevel(surface: SettingsSurface | undefined): 2 | 4 {
+  return surface === "phone" ? 2 : 4;
+}
+
 /** A group in the settings list: its heading and its sections, in the order they show. */
 export interface SettingsGroup {
   /** Tells the groups apart: `workspace`, `computer`, or, when served, `browser` and `host`. */

@@ -165,6 +165,33 @@ verifies("plugins.plugin-settings-list", () => {
     expect(opened).toEqual([{ kind: "plugin", hub: "this-computer", id: "weather" }]);
   });
 
+  it("puts its headings one level under the phone page's h1, with none installed", async () => {
+    const { feed } = feedOf([]);
+    const shell = createShell({ features: [pluginsFeature], hostServices: [PluginsHostService] });
+    const workspace = new WorkspaceServices();
+    workspace.provide(PluginsHostService, {
+      feed,
+      caller: { call: async () => "" },
+      ...noSettings(),
+      ...noActions(),
+    });
+    shell.services.instantiate(workspace);
+    const section = shell.contributions.settings.list().find(({ id }) => id === "plugins");
+    if (section === undefined) throw new Error("No Plugins section");
+    const View = await loadView<ComponentType<SettingsSectionProps>>(section);
+    const view = render(
+      <View
+        context={shell.services.contextFor("plugins", workspace)}
+        closeSettings={() => {}}
+        place="app"
+        surface="phone"
+      />,
+    );
+    // Installed on this computer › No plugins yet, then Built in, under the page's h1 (HAL-13401).
+    const levels = [...view.querySelectorAll("h2, h3, h4, h5")].map(({ tagName }) => tagName);
+    expect(levels).toEqual(["H2", "H3", "H2"]);
+  });
+
   it("opens the trust check at once when Add works, and Trust and turn on says it is on", async () => {
     const asked: string[] = [];
     const { opened, events, press } = await showAdding(async (plugin) => {
