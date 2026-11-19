@@ -193,7 +193,40 @@ verifies("fs-node.plugin-folder-plain", () => {
     const profile = await tempFolder();
     await writeFile(join(profile, "plugins"), "a file, not a folder");
     const writer = new FileSystemPluginFolder(join(profile, "plugins"));
-    await expect(writer.place("weather", weather, { replace: false })).rejects.toThrow();
+    await expect(writer.place("weather", weather, { replace: false })).rejects.toMatchObject({
+      kind: "conflict",
+      message: expect.stringMatching(
+        /isn't a folder; plugins are written only into a plain folder/,
+      ),
+    });
+    expect(await readFile(join(profile, "plugins"), "utf8")).toBe("a file, not a folder");
+  });
+});
+
+verifies("fs-node.plugin-folder-remove-plain", () => {
+  it("refuses to remove through a plugins folder that is a link, and deletes nothing", async () => {
+    const profile = await tempFolder();
+    const outside = await tempFolder();
+    await mkdir(join(outside, "weather"));
+    await writeFile(join(outside, "weather", "plugin.yaml"), "id: weather\n");
+    await symlink(outside, join(profile, "plugins"), folderLinkType);
+    const writer = new FileSystemPluginFolder(join(profile, "plugins"));
+    await expect(writer.remove("weather")).rejects.toMatchObject({
+      kind: "conflict",
+      message: expect.stringMatching(/is a link; plugins are removed only from a plain folder/),
+    });
+    expect(await readFile(join(outside, "weather", "plugin.yaml"), "utf8")).toBe("id: weather\n");
+    expect(await readdir(profile)).toEqual(["plugins"]);
+  });
+
+  it("refuses to remove from a plugins folder that is a file, and leaves the file", async () => {
+    const profile = await tempFolder();
+    await writeFile(join(profile, "plugins"), "a file, not a folder");
+    const writer = new FileSystemPluginFolder(join(profile, "plugins"));
+    await expect(writer.remove("weather")).rejects.toMatchObject({
+      kind: "conflict",
+      message: expect.stringMatching(/isn't a folder/),
+    });
     expect(await readFile(join(profile, "plugins"), "utf8")).toBe("a file, not a folder");
   });
 });
