@@ -1,11 +1,13 @@
 import {
   AgentHostPluginToolCaller,
   type AgentHostTransport,
+  AgentHostUnfencedRuns,
 } from "@halonicjs/adapter-agent-host-client";
 import type { ServiceRegistry } from "@halonicjs/app";
 import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
 import { shellKeychain, type TauriIpc } from "@halonicjs/studio-services";
 import { type DesktopPluginsHost, desktopPluginsHost } from "./desktop-plugins-host.ts";
+import { desktopUnfencedRuns } from "./unfenced-runs.ts";
 
 /**
  * The plugins are the profile's, not a folder's, so a window has one host that every open
@@ -15,7 +17,8 @@ const hosts = new WeakMap<object, DesktopPluginsHost>();
 
 /**
  * Gives the open folder the plugins feature's host (`studio.desktop-plugins-host`). Tool calls go
- * through the agent host, which refuses them where plugins can't run fenced. The plugins folder
+ * through the agent host, which refuses them where plugins can't run fenced unless the person's
+ * saved yes is for the reason at that start; the trust check reads and saves that yes there too. The plugins folder
  * is read again whenever the window comes to the front, so a plugin added with `halonic plugin add`
  * shows up without a restart. Without the agent host's transport there is no host to give, and
  * nothing is provided.
@@ -47,6 +50,7 @@ export function providePlugins(
     secrets: shellKeychain(parts.ipc),
     caller: new AgentHostPluginToolCaller(transport),
     onReloadFailed: parts.onReloadFailed,
+    unfencedRuns: desktopUnfencedRuns(new AgentHostUnfencedRuns(transport)),
   });
   hosts.set(parts.window, plugins);
   const reload = (): void => {

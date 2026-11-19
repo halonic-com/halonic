@@ -127,6 +127,7 @@ export function PluginsSettingsSection({ context, closeSettings, place }: Settin
           manifest={justAdded.manifest}
           trust={plugins.actions.trust}
           programsRun={plugins.actions.programsRun}
+          unfencedRuns={plugins.actions.unfencedRuns}
           onTrusted={() => toastOn(justAdded.name, justAdded.manifest)}
           onNotNow={() => {
             setAdded(undefined);

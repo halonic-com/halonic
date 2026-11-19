@@ -7,6 +7,7 @@ import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { PluginsHost, StudioPlugins } from "./plugins-service.ts";
 
 export type { PluginsHost, StudioPlugins } from "./plugins-service.ts";
+export type { PluginUnfencedRuns, UnfencedRunStatus } from "./trust/unfenced-status.ts";
 export { PluginResult, type PluginResultProps, type ResultShow } from "./ui/plugin-result.tsx";
 
 /** The installed plugins and their tool calls. The app provides it for each open workspace. */

@@ -155,6 +155,7 @@ export function PluginPage({
           manifest={manifest}
           trust={actions.trust}
           programsRun={actions.programsRun}
+          unfencedRuns={actions.unfencedRuns}
           onClose={() => setReviewing(false)}
           returnFocus={() => statusBox.current}
           onTrusted={() => toastOn(plugin.name, manifest)}
@@ -166,6 +167,7 @@ export function PluginPage({
           found={update.found}
           applyUpdate={updates.apply}
           programsRun={actions.programsRun}
+          unfencedRuns={actions.unfencedRuns}
           onUpdated={() => setUpdate({ kind: "idle" })}
           onKeep={() => setUpdate({ kind: "up-to-date", version: updates.version })}
         />

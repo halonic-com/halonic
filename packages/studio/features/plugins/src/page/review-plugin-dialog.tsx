@@ -1,9 +1,11 @@
+import type { RunnerUnfencedReason } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
 import { useState } from "react";
 import { messageOf } from "../message-of.ts";
 import { changeSummary } from "../trust/change-rows.ts";
 import { PluginTrustDialog } from "../trust/plugin-trust-dialog.tsx";
 import type { ProgramsRun, TrustCheckReason } from "../trust/trust-text.ts";
+import { type PluginUnfencedRuns, trustWithYes, useTrustStatus } from "../trust/unfenced-status.ts";
 import { trustedDay } from "./page-text.ts";
 import type { PluginActions } from "./plugin-actions.ts";
 import type { InstalledPlugin } from "./plugin-pages.ts";
@@ -14,6 +16,8 @@ export interface ReviewPluginDialogProps {
   readonly manifest: Plugin;
   readonly trust: PluginActions["trust"];
   readonly programsRun?: ProgramsRun;
+  /** The host's sandbox status and saved yes, read when the check opens; without it, T9. */
+  readonly unfencedRuns?: PluginUnfencedRuns | undefined;
   /** After **Trust** is saved, and on **Not now** and Escape. */
   readonly onClose: () => void;
   /** After **Trust** is saved, before `onClose`: the page says "*name* is on" in a toast. */
@@ -29,7 +33,8 @@ export interface ReviewPluginDialogProps {
 /**
  * The trust check opened from **Review** on a plugin's page (design section 5, checklist 4):
  * **Trust** saves trust through the app and closes the dialog, so the status box then says the
- * plugin is on. When it can't be saved, the dialog stays open and says why; **Not now** leaves
+ * plugin is on. With the box ticked, it saves the yes to run without the sandbox first, and trusts
+ * only once that's saved. When it can't be saved, the dialog stays open and says why; **Not now** leaves
  * the plugin as it was.
  *
  * @example
@@ -41,6 +46,7 @@ export function ReviewPluginDialog({
   manifest,
   trust,
   programsRun,
+  unfencedRuns,
   onClose,
   onTrusted,
   returnFocus,
@@ -49,15 +55,17 @@ export function ReviewPluginDialog({
 }: ReviewPluginDialogProps) {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | undefined>(undefined);
+  const status = useTrustStatus(unfencedRuns);
 
-  async function confirm() {
+  async function confirm(allow: RunnerUnfencedReason | undefined) {
     setBusy(true);
     setFailure(undefined);
     try {
-      await trust(plugin.plugin);
-      onTrusted?.();
-      onClose();
-      return;
+      if (await trustWithYes(allow, unfencedRuns, status, () => trust(plugin.plugin))) {
+        onTrusted?.();
+        onClose();
+        return;
+      }
     } catch (error) {
       setFailure(messageOf(error));
     }
@@ -78,9 +86,11 @@ export function ReviewPluginDialog({
       changes={changes !== undefined ? changeSummary(manifest, changes) : undefined}
       trustedOn={trustedDay(plugin.trustedAt, new Date())}
       programsRun={programsRun}
+      fence={status.fence}
+      unfencedYes={status.yes}
       busy={busy}
       failure={failure}
-      onTrust={() => void confirm()}
+      onTrust={(allow) => void confirm(allow)}
       onNotNow={onNotNow ?? onClose}
       returnFocus={returnFocus}
     />

@@ -9,7 +9,7 @@ import {
 } from "@halonicjs/adapter-fs-tauri";
 import { PluginService, TrustService } from "@halonicjs/app";
 import { systemClock } from "@halonicjs/std";
-import type { PluginsHost } from "@halonicjs/studio-feature-plugins/api";
+import type { PluginsHost, PluginUnfencedRuns } from "@halonicjs/studio-feature-plugins/api";
 import { halonicVersion } from "../studio/open-trusts.ts";
 import { desktopPluginInstaller } from "./desktop-plugin-installer.ts";
 import { desktopPluginActions } from "./plugin-actions.ts";
@@ -25,6 +25,8 @@ export interface DesktopPluginsParts {
   readonly caller: PluginsHost["caller"];
   /** Told when a change was saved but reading the plugins folder again failed. */
   readonly onReloadFailed: (error: unknown) => void;
+  /** The agent host's sandbox status and the yes to run without it, which the trust check reads. */
+  readonly unfencedRuns?: PluginUnfencedRuns;
 }
 
 /** The desktop's plugins host, and the feed it keeps current. */
@@ -51,6 +53,7 @@ export function desktopPluginsHost({
   secrets,
   caller,
   onReloadFailed,
+  unfencedRuns,
 }: DesktopPluginsParts): DesktopPluginsHost {
   const service = new PluginService({
     plugins: new TauriPluginFolderReader(ipc),
@@ -66,13 +69,17 @@ export function desktopPluginsHost({
     clock: systemClock,
   });
   const feed = new PluginFeed(service);
-  const actions = desktopPluginActions({
-    service,
-    feed,
-    secrets,
-    reveal: async (plugin) => (await ipc.invoke(pluginFolderCommands.reveal, { plugin })) === true,
-    onReloadFailed,
-  });
+  const actions = {
+    ...desktopPluginActions({
+      service,
+      feed,
+      secrets,
+      reveal: async (plugin) =>
+        (await ipc.invoke(pluginFolderCommands.reveal, { plugin })) === true,
+      onReloadFailed,
+    }),
+    ...(unfencedRuns === undefined ? {} : { unfencedRuns }),
+  };
   return {
     reload: actions.reload,
     host: {
