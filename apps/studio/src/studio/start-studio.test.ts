@@ -19,13 +19,12 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   desktopFeatures,
   displaySettingsOf,
-  keyboardPlatform,
   openFolder,
   type StartedStudio,
   servedServices,
   startStudio,
-  studioHost,
 } from "./start-studio.ts";
+import { phonePointerQuery } from "./studio-host.ts";
 
 /** A desktop window: jsdom has no `matchMedia`, and the shell follows the phone width with it. */
 function desktopMediaQueries(query: string): MediaQueryList {
@@ -152,17 +151,15 @@ verifies("studio.entry", () => {
     await services.dispose();
   });
 
-  it("runs as the desktop app in Tauri's webview", () => {
-    const webview = { __TAURI_INTERNALS__: { invoke: async () => undefined } };
+  it("runs as the served Studio on a phone where the browser's main pointer is a touchscreen", () => {
+    window.matchMedia = (query) => ({
+      ...desktopMediaQueries(query),
+      matches: query === phonePointerQuery,
+    });
 
-    expect(studioHost(webview)).toBe("desktop-app");
-    expect(studioHost({})).toBe("served");
-  });
+    started = startStudio({ element, window, userAgent: "Mozilla/5.0 (Linux; Android 15)" });
 
-  it("reads ⌘ on macOS and Ctrl elsewhere from the user agent", () => {
-    expect(keyboardPlatform("Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)")).toBe("macos");
-    expect(keyboardPlatform("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")).toBe("windows");
-    expect(keyboardPlatform("Mozilla/5.0 (X11; Linux x86_64)")).toBe("linux");
+    expect(started.host).toBe("phone");
   });
 
   it("takes the window off the page when stopped", async () => {
