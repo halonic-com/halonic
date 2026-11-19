@@ -3,6 +3,7 @@
 - Task: HAL-13179
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11705 (Liam approved the T6 plan, which has the Subagents page in Configuration, flow-agents 5.4); Liam reviews PR #3864 on HAL-13179 and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:swWHFHCSMc0LtOs2fFwqpVnxTDDRDOg512JkNQRuRB++FWvFAi2Xk/Z8FzJr+xhj3gSpE27HK7AgnS2GAP0mAw==
 
 ## What changes
 
