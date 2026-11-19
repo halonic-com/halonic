@@ -63,6 +63,8 @@ interface RunDockProps {
   readonly openRun: ((runId: string, step?: string) => void) | undefined;
   /** Opens the workspace page at Models, for **Open Models** on the run card's banner. */
   readonly openModels: (() => void) | undefined;
+  /** Says a line to a screen reader, for why the run card's **Run again** didn't start. */
+  readonly announce: ((line: string) => void) | undefined;
   readonly saveAsTest: (row: RunRow) => SaveAsTestProps | undefined;
   /** The step picked on the canvas; while a run is shown its card replaces the run's. */
   readonly pickedStep: string | undefined;
@@ -109,6 +111,7 @@ export function RunDock({
   onStarted,
   openRun,
   openModels,
+  announce,
   saveAsTest,
   pickedStep,
   onClosePickedStep,
@@ -163,6 +166,7 @@ export function RunDock({
                 startRun.call(host, { hubId, id: workflowId }, input),
             },
             onStarted: started,
+            announce,
           },
         })}
         openModels={openModels}

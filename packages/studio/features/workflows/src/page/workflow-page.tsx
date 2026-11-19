@@ -67,6 +67,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       {...(step === "tests" && { startOnTests: true, testsAsked: asked ?? 0 })}
       notAnswering={engineWordsOf(context).notAnswering}
       announceState={(key, text) => context.announcer.announceState(key, text)}
+      announce={(line) => context.announcer.announce(line)}
       {...(context.runCommand && {
         openModels: () => void context.runCommand?.(openModelsCommand),
       })}
@@ -105,6 +106,7 @@ export function WorkflowScreen({
   startOnTests,
   testsAsked = 0,
   announceState,
+  announce,
 }: WorkflowScreenProps) {
   // After a Try again reads, the workflow's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -293,6 +295,7 @@ export function WorkflowScreen({
           }}
           openRun={openRun}
           openModels={openModels}
+          announce={announce}
           saveAsTest={saveAsTest}
           pickedStep={view === "flow" ? pickedStep : undefined}
           onClosePickedStep={() => setPickedStep(undefined)}

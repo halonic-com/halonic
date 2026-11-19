@@ -33,6 +33,7 @@ function show(more: {
   runStart?: RunStartHost;
   openModels?: () => void;
   openStartedRun?: (runId: string) => void;
+  announce?: (line: string) => void;
 }) {
   return render(
     <RunCardReceipt
@@ -75,6 +76,18 @@ verifies("runs.run-view.card-run-again", () => {
     await act(async () => button(root, "Run again")?.click());
     expect(root.querySelector('section[aria-label="Run didn\'t start"]')?.textContent).toContain(
       "The workflow changed.",
+    );
+  });
+
+  it("says why Run again didn't start to a screen reader once, as the run page does", async () => {
+    const startRun = vi.fn(async () => {
+      throw Object.assign(new Error("The workflow changed."), { kind: "invalid_input" });
+    });
+    const announce = vi.fn();
+    const root = show({ runStart: { startRun }, announce });
+    await act(async () => button(root, "Run again")?.click());
+    expect(announce).toHaveBeenCalledExactlyOnceWith(
+      "Couldn't start the run: The workflow changed.",
     );
   });
 
