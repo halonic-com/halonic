@@ -1,5 +1,5 @@
 import { type RunsList, useRunEnd } from "@halonicjs/studio-feature-runs/api";
-import { Button, PlusIcon, useToastStore } from "@halonicjs/studio-kit";
+import { Button, PlusIcon, type ToastMessage, useToastStore } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
 import {
   type MutableRefObject,
@@ -31,6 +31,15 @@ const newRequestRowClasses = [
 /** Said in place of the form while the workflows you can start can't be read (states audit gap 5). */
 export const OFFERED_FAILED = "Couldn't load the workflows you can start.";
 
+/** The request a phone's sheet sent and waits on: its run, and the "… started" toast it showed. */
+interface SentRequest {
+  readonly runId: string;
+  readonly hubId: string;
+  readonly workflowName: string;
+  /** The "… started" toast, which gives way to "… finished" when the run ends without a card. */
+  readonly startedToast: string | undefined;
+}
+
 /** What the Inbox page needs from the request form, or nothing when there is none to offer. */
 export interface RequestPane {
   /** **New request**, for the list's header; `null` with no form. */
@@ -45,6 +54,19 @@ export interface RequestPane {
 function failedPane(phone: boolean, retry: () => void): RequestPane {
   const line = <QuietLine line={OFFERED_FAILED} retry={retry} />;
   return { newRequest: phone ? line : null, form: phone ? null : line, sheet: null };
+}
+
+/** A sent request's toast, "Support reply started" or "… finished", with **Open run** where it can. */
+function runToast(
+  title: string,
+  run: { readonly hubId: string; readonly runId: string },
+  openRun: ((hubId: string, runId: string) => void) | undefined,
+): ToastMessage {
+  return {
+    tone: "success",
+    title,
+    ...(openRun && { action: { label: "Open run", onClick: () => openRun(run.hubId, run.runId) } }),
+  };
 }
 
 /**
@@ -100,9 +122,9 @@ export function useRequestPane(options: {
   const [waiting, setWaiting] = useState(false);
   const [notStarted, setNotStarted] = useState("");
   // The run the waiting sheet started, and what it said when it failed before its card arrived.
-  const [sentRun, setSentRun] = useState<string>();
+  const [sent, setSent] = useState<SentRequest>();
   const [runFailed, setRunFailed] = useState<{ line: string; hubId: string; runId: string }>();
-  const runEnd = useRunEnd(runs, waiting ? sentRun : undefined);
+  const runEnd = useRunEnd(runs, waiting ? sent?.runId : undefined);
   const [budgetStop, setBudgetStop] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const toasts = useToastStore();
@@ -120,19 +142,22 @@ export function useRequestPane(options: {
     setDraft((d) => ({ ...d, message: "" }));
   }, [cardOpen, waiting]);
   // The run ended before a card came (RS1, HAL-13723). Failed: the sheet stays with the run
-  // page's failure line and the message, to send again. Finished: it closes as for a card.
+  // page's failure line and the message, to send again. Finished: it closes as for a card, and
+  // "… finished" takes the place of the "… started" toast, so the close says why (RS2, HAL-13771).
   const finished = useRef(false);
   useEffect(() => {
-    if (!waiting || sentRun === undefined || runEnd === undefined) return;
+    if (!waiting || sent === undefined || runEnd === undefined) return;
     setWaiting(false);
     if (runEnd.kind === "failed") {
-      setRunFailed({ line: runEnd.line, hubId: runEnd.hubId, runId: sentRun });
+      setRunFailed({ line: runEnd.line, hubId: runEnd.hubId, runId: sent.runId });
       return;
     }
     finished.current = true;
     setSheetOpen(false);
     setDraft((d) => ({ ...d, message: "" }));
-  }, [waiting, sentRun, runEnd]);
+    if (sent.startedToast !== undefined) toasts?.close(sent.startedToast);
+    toasts?.show(runToast(`${sent.workflowName} finished`, sent, openRun));
+  }, [waiting, sent, runEnd, toasts, openRun]);
   // The sheet gives focus back to New request, which the card hides on a phone: the card's title
   // takes it instead (flow-first-run 4.3). A run that finished without a card gives it to New
   // request itself, as the sheet's opener may have been elsewhere. This runs after the sheet's own
@@ -182,19 +207,13 @@ export function useRequestPane(options: {
     setBusy(true);
     try {
       const started = await requests.start(workflow.key, text);
+      onStarted?.(started.runId);
+      const startedToast = toasts?.show(runToast(`${workflow.name} started`, started, openRun));
       // The sheet keeps the sent text under "Working…" until its card arrives.
       if (phone && sheetOpen) {
-        setSentRun(started.runId);
+        setSent({ ...started, workflowName: workflow.name, startedToast });
         setWaiting(true);
       } else setDraft((d) => ({ ...d, message: "" }));
-      onStarted?.(started.runId);
-      toasts?.show({
-        tone: "success",
-        title: `${workflow.name} started`,
-        ...(openRun && {
-          action: { label: "Open run", onClick: () => openRun(started.hubId, started.runId) },
-        }),
-      });
     } catch (error) {
       setNotStarted(notStartedLine(error, words));
       setBudgetStop(error instanceof BudgetUsedUp);
