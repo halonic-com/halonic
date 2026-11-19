@@ -53,9 +53,9 @@ fn is_unicast_link_local_v6(ip: Ipv6Addr) -> bool {
     ip.segments()[0] & 0xffc0 == 0xfe80
 }
 
-/// Loopback and private-network addresses.
-fn is_local(ip: IpAddr) -> bool {
-    match ip {
+/// Loopback and private-network addresses, an IPv4 one written as IPv6 too.
+pub(crate) fn is_local(ip: IpAddr) -> bool {
+    match unmapped(ip) {
         IpAddr::V4(v4) => v4.is_loopback() || v4.is_private() || is_shared_v4(v4),
         IpAddr::V6(v6) => v6.is_loopback() || v6.segments()[0] & 0xfe00 == 0xfc00,
     }
