@@ -8,9 +8,9 @@ The sandbox-srt adapter shall, on Windows, pass every path of a session's settin
 
 ## Decision
 
-srt on Windows expands a glob pattern into the paths that match when the session starts, so a matching file made later isn't denied. A deny on a folder is inherited by everything created in it later, so Halonic's deny list is folders and the files that are there when the session opens, each passed as a literal path. The allowed list of patterns on Windows is empty. A denied file is denied as that file: a tool that replaces it (writes a new file and renames it over the old one) leaves the new file with its folder's access. That is covered by `reads-open-by-default`: the files Halonic denies by name lie in the user profile, which the sandbox account can't read without a grant.
+srt on Windows expands a glob pattern into the paths that match when the session starts, so a matching file made later isn't denied. A deny on a folder is inherited by everything created in it later, so Halonic's deny list is folders and the files that are there when the session opens, each passed as a literal path. The allowed list of patterns on Windows is empty. A denied file is denied as that file. When a tool replaces it (writes a new file and renames it over the old one), the fence run on Windows CI found the new file still refused (`EPERM`). That is observed, not relied on: srt doesn't promise it, and `reads-open-by-default` covers the case: the files Halonic denies by name lie in the user profile, which the sandbox account can't read without a grant.
 
-- Decided by: Mateo (HAL-5398, 18 Nov); review: Liam
+- Decided by: Mateo (HAL-5398, 18 Nov; replaced-file result measured 19 Nov); review: Liam
 
 ## Examples
 

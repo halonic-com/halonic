@@ -296,6 +296,9 @@ export const systemMachine: Machine = {
         allowLoopback: false,
       });
       if (check.errors.length === 0) return "ok";
+      // Without elevation srt can't list the network filters, but it still
+      // reports the loopback mode it installed, so a mismatch shows here too
+      // (measured on a Windows runner, HAL-5398).
       return check.loopbackMismatch === undefined ? "setup-needed" : "setup-conflict";
     } catch {
       return "setup-needed"; // No srt-win, or it did not answer: not installed, as far as we can tell.
