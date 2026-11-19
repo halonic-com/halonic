@@ -247,6 +247,7 @@ verifies("runs.run-view.run-again-review", () => {
     expect(root.textContent).toContain(
       "Couldn't start the run: This workspace isn't trusted yet, so nothing was started.",
     );
+    expect(button(root, "Try again")).toBeUndefined();
     await act(async () => button(root, "Review")?.click());
     expect(askTrust).toHaveBeenCalledOnce();
     // Not now leaves the sentence and its Review.
@@ -266,7 +267,7 @@ verifies("runs.run-view.run-again-review", () => {
     expect(document.activeElement?.textContent).toBe("Run again");
   });
 
-  it("has no Review for another refusal, or where the host can't ask", async () => {
+  it("keeps Try again, not Review, for another refusal, or where the host can't ask", async () => {
     const other = await open(failed, {
       startRun: vi.fn(async () => {
         throw Object.assign(new Error("The workflow changed."), { kind: "invalid_input" });
@@ -275,11 +276,13 @@ verifies("runs.run-view.run-again-review", () => {
     });
     await act(async () => button(other, "Run again")?.click());
     expect(button(other, "Review")).toBeUndefined();
+    expect(button(other, "Try again")).toBeDefined();
 
     unmountAll();
     const cantAsk = await open(failed, { startRun: vi.fn(async () => untrusted()) });
     await act(async () => button(cantAsk, "Run again")?.click());
     expect(cantAsk.textContent).toContain("isn't trusted yet");
     expect(button(cantAsk, "Review")).toBeUndefined();
+    expect(button(cantAsk, "Try again")).toBeDefined();
   });
 });
