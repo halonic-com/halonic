@@ -64,14 +64,19 @@ verifies("workflows.tests.page", () => {
   });
 
   it("describes each row's button by its state, and a failed one's also by its sentence", async () => {
-    const { page } = await open({ tests: async () => afterRun });
+    const notRun = { name: "new customer", input: "{}" };
+    const { page } = await open({
+      tests: async () => ({ ...afterRun, cases: [...afterRun.cases, notRun] }),
+    });
     const description = (name: string) =>
       (buttonNamed(page, name)?.getAttribute("aria-describedby") ?? "")
         .split(" ")
         .map((id) => document.getElementById(id)?.textContent)
         .join(" ");
 
-    expect(description("invoice run")).toBe("Passed:");
+    // The colon leads into a failed test's sentence only; alone, a braille display shows it.
+    expect(description("invoice run")).toBe("Passed");
+    expect(description("new customer")).toBe("Not run yet");
     expect(description("personal mail")).toBe(
       'Failed: Expected to end in "archive", ended in "reply".',
     );
