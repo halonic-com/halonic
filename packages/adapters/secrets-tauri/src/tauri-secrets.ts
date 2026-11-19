@@ -1,4 +1,4 @@
-import { type Secrets, secretKey, type TokenStore } from "@halonicjs/ports";
+import { type SecretStore, type Secrets, secretKey } from "@halonicjs/ports";
 import { KeychainError } from "./keychain-error.ts";
 import { secretCommands, type TauriShell } from "./shell.ts";
 import { callShell, expectNothing, expectValue } from "./shell-call.ts";
@@ -24,8 +24,11 @@ export interface SecretPresence {
  * The shell refuses Halonic's own names here (`reserved_name`, a
  * `RangeError`): `token-key`, `serve-password` and every name under the
  * token prefix. Sign-in tokens go through `TauriTokens` instead.
+ *
+ * It writes and removes as a `SecretStore` does, but it isn't one: the
+ * keychain can't list its entries, so there is no `names`.
  */
-export class TauriSecrets implements Secrets, TokenStore, SecretPresence {
+export class TauriSecrets implements Secrets, Pick<SecretStore, "set" | "remove">, SecretPresence {
   readonly #shell: TauriShell;
 
   /** @param shell - the shell's IPC, usually `window.__TAURI_INTERNALS__` */

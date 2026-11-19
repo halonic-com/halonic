@@ -1,14 +1,9 @@
+import { maxTokenNameLength } from "@halonicjs/adapter-secrets-tauri";
 import { ServiceRegistry } from "@halonicjs/app";
 import { tokenNamePrefix } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import {
-  maxShellTokenNameLength,
-  provideShellSecrets,
-  secretsKey,
-  shellKeychain,
-  tokenStoreKey,
-} from "./shell-secrets.ts";
+import { provideShellSecrets, secretsKey, shellKeychain, tokenStoreKey } from "./shell-secrets.ts";
 import { tauriIpc } from "./tauri-ipc.ts";
 
 /** One command the page sent, with the name as it sent it. */
@@ -117,8 +112,8 @@ verifies("services.shell-secrets", () => {
 
     it("refuses a token name too long to fit once prefixed, without repeating it", async () => {
       const { services, keychain, calls } = openInShell();
-      const longest = "t".repeat(maxShellTokenNameLength);
-      const tooLong = "t".repeat(maxShellTokenNameLength + 1);
+      const longest = "t".repeat(maxTokenNameLength);
+      const tooLong = "t".repeat(maxTokenNameLength + 1);
 
       await services.get(tokenStoreKey).set(longest, "example-token");
       const set = services.get(tokenStoreKey).set(tooLong, "example-token");
