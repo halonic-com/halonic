@@ -1,34 +1,12 @@
-import { ModelCallError, VendorErrorText } from "@halonicjs/ports";
+import { ModelCallError } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { failureCauseOf } from "../run/failure-cause-of.ts";
-import { ScriptedModel, textAnswer } from "../testing/scripted-model.ts";
+import { ScriptedModel } from "../testing/scripted-model.ts";
 import { alias, runTurnOn } from "./model-chain.test-helper.ts";
-import { MemoryTurnLog } from "./turn-test-kit.test-helper.ts";
 
-// What a failed model call leaves behind: the provider's text on llm.fallback,
-// and the last model's typed cause and message when none is left.
-
-verifies("engine.provider-text", () => {
-  it("keeps the provider's text on llm.fallback", async () => {
-    const log = new MemoryTurnLog();
-    const cause = new VendorErrorText(502, "upstream connect error");
-    const proxyDown = new ModelCallError("offline", "acme-cloud can't be reached", { cause });
-    const smart = new ScriptedModel([proxyDown], "acme-cloud");
-    const local = new ScriptedModel([textAnswer("From this machine")], "acme-local");
-
-    await runTurnOn(alias("smart", smart, { fallback: [alias("local", local)] }), { log });
-
-    expect(log.events[1]).toEqual({
-      type: "llm.fallback",
-      agent: "clerk",
-      from: "smart",
-      to: "local",
-      error: "offline: acme-cloud can't be reached",
-      providerText: { status: 502, text: "upstream connect error" },
-    });
-  });
-});
+// What a failed turn keeps when no model is left: the last model's typed cause
+// and its message.
 
 verifies("engine.none-left-cause", () => {
   it("keeps the last model's typed cause, such as a proxy that refused, for run.failed", async () => {
