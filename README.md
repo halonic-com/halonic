@@ -49,8 +49,9 @@ Read or report known problems in the [open issues](https://github.com/halonic-co
 - Studio doesn't start connectors (MCP servers) yet.
 - Agents can't use your Claude or ChatGPT subscription. They use an API key or
   a local model. Agents that run Claude Code or Codex are in progress.
-- The sandbox is in progress: 0.1.0 doesn't start agent programs, so nothing
-  runs in it.
+- The command line starts connectors in the sandbox when the sandbox works on
+  your computer. Otherwise it starts them on your computer, under the trust you
+  gave the workspace.
 
 ## Install the command line from source
 
