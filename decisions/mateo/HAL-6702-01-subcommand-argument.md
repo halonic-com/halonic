@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-6702 (step 1d of the HAL-198 build plan); the command shape is ADR 5.6 on HAL-35 and Sofia's deploy flow on HAL-6687, approved by the board on HAL-6814. Liam reviews the pull request on HAL-6702 and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0Mz0MQifQ6oIYVYo4DkVSbjM6Zx2A90kZo9799EqVr66TIPk4+4bWsMhVTzyl/S576k0F5wYjYzjU+4pe3e/CA==
 
 `halonic deploy <deployment>` deploys, and `halonic deploy status <deployment>`,
 `rollback`, `export`, `import`, `destroy` and the rest are its subcommands (ADR
