@@ -112,6 +112,12 @@ export interface TurnTools {
   readonly refusals: readonly ChatTurnRefusal[];
   /** The listed tools left out because nobody approved them yet; they never go to the model. */
   readonly waiting: readonly ChatTurnWaiting[];
+  /**
+   * What each connector whose listing failed threw, by connector id, for the
+   * engine to read why (`connectorStartFailureOf`). It never goes to the
+   * model: its `listing` refusal has the words.
+   */
+  readonly listingErrors: ReadonlyMap<string, unknown>;
 }
 
 /** Where a turn's tools come from. */
@@ -176,11 +182,7 @@ async function addConnectorTools(
   try {
     listed = await connector.listTools();
   } catch (error) {
-    builder.refuse({
-      source: connector.id,
-      refused: "listing",
-      reason: `couldn't list its tools: ${shortText(errorMessage(error))}`,
-    });
+    builder.refuseListing(connector.id, error);
     return;
   }
   const approved = await approveConnectorListing(approval, connector.id, listed);
@@ -224,6 +226,7 @@ class ToolListBuilder {
   private readonly byName = new Map<string, TurnTool>();
   private readonly refusals: ChatTurnRefusal[] = [];
   private readonly waiting: ChatTurnWaiting[] = [];
+  private readonly listingErrors = new Map<string, unknown>();
 
   add(tool: TurnTool): void {
     const name = tool.definition.name;
@@ -245,6 +248,16 @@ class ToolListBuilder {
     this.refusals.push(refusal);
   }
 
+  /** Leaves out a connector whose listing threw `error`, keeping the error for the engine. */
+  refuseListing(connector: string, error: unknown): void {
+    this.refuse({
+      source: connector,
+      refused: "listing",
+      reason: `couldn't list its tools: ${shortText(errorMessage(error))}`,
+    });
+    this.listingErrors.set(connector, error);
+  }
+
   wait(waiting: readonly ChatTurnWaiting[]): void {
     this.waiting.push(...waiting);
   }
@@ -259,6 +272,7 @@ class ToolListBuilder {
       byName: this.byName,
       refusals: this.refusals,
       waiting: this.waiting,
+      listingErrors: this.listingErrors,
     };
   }
 }

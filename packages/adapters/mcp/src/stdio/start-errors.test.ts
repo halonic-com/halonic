@@ -1,7 +1,7 @@
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { MemorySecrets, MemoryTokenStore } from "@halonicjs/adapter-memory";
-import type { ConnectorConfig } from "@halonicjs/ports";
+import { type ConnectorConfig, connectorStartFailureOf } from "@halonicjs/ports";
 import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it, vi } from "vitest";
@@ -103,5 +103,18 @@ verifies("mcp.connector-start-errors", () => {
     const failure = expect(session.initialize()).rejects.toBeInstanceOf(McpStoppedError);
     await vi.advanceTimersByTimeAsync(5000);
     await failure;
+  });
+});
+
+verifies("ports.connector-start-failure", () => {
+  it("throws start errors the engine can read without this adapter", () => {
+    expect(connectorStartFailureOf(new ProgramNotFoundError("npx"))).toEqual({
+      reason: "program-missing",
+      program: "npx",
+    });
+    expect(connectorStartFailureOf(new SecretNotSetError("notes", "notes-token"))).toEqual({
+      reason: "secret-not-set",
+      secret: "notes-token",
+    });
   });
 });
