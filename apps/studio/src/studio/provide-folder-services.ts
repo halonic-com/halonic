@@ -55,6 +55,7 @@ import {
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import {
   ChangesSourceService,
+  ShareChoiceService,
   VersionDialogService,
 } from "@halonicjs/studio-feature-source-control/api";
 import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
@@ -69,6 +70,7 @@ import {
 import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
+import { shareChoiceMemory } from "../changes/share-choice.ts";
 import { versionHistoryOf } from "../changes/version-history.ts";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
@@ -189,6 +191,7 @@ export function provideFolderServices(
   });
   services.provide(ChangesSourceService, changes);
   services.provide(VersionHistoryHostService, versionHistoryOf(changes));
+  services.provide(ShareChoiceService, shareChoiceMemory(storageOf(window), location));
   const transport = tauriAgentHostTransport(window);
   const engine = services.provide(
     engineServiceKey,
