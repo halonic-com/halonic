@@ -38,5 +38,5 @@ shows it in its "Changed areas" notice.
 ## Covers
 
 - tooling/check/
-- .github/workflows/
+- .github/
 - check.cloud-affected
