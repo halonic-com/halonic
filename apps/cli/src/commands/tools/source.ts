@@ -6,7 +6,7 @@ import { realpath } from "node:fs/promises";
 import { FileToolApprovalStore } from "@halonicjs/adapter-fs-node";
 import { checkConnectorTools, type ListedToolApprovalCheck } from "@halonicjs/app/listed-tools";
 import type { Connector } from "@halonicjs/format";
-import type { Digest, ToolApprovalStore } from "@halonicjs/ports";
+import { connectorStartFailureOf, type Digest, type ToolApprovalStore } from "@halonicjs/ports";
 import { profileFolder, toolApprovalFolder } from "@halonicjs/profile";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import {
@@ -23,7 +23,7 @@ import { toolsMessages } from "../../messages/tools.ts";
 import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import { shellWord } from "../../output/shell-word.ts";
-import { readSourceListing } from "../../source-listing.ts";
+import { readSourceListing, type SourceListing } from "../../source-listing.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
@@ -64,6 +64,8 @@ export interface ToolSource {
   /** The workspace's resolved real path: the approvals' key. */
   readonly location: string;
   readonly connector: Connector;
+  /** The connector's file, relative to the workspace, such as `library/connectors/notes.connector.yaml`. */
+  readonly file: string;
   /** The connector's id, made safe to print. */
   readonly shown: string;
 }
@@ -88,12 +90,12 @@ export async function openToolSource(
   }
   const dir = await openWorkspaceDir(input, context);
   const loaded = await loadWorkspace(dir.store);
-  const connectors = filesOf(loaded, "connector").map((file) => file.value);
-  const connector = connectors.find((candidate) => candidate.id === typed);
-  if (connector === undefined) {
+  const files = filesOf(loaded, "connector");
+  const found = files.find((candidate) => candidate.value.id === typed);
+  if (found === undefined) {
     const near = nearMatch(
       typed,
-      connectors.map((candidate) => candidate.id),
+      files.map((candidate) => candidate.value.id),
     );
     throw new OwnLineError(
       "not_found",
@@ -107,8 +109,9 @@ export async function openToolSource(
     workspace: workspaceNameOf(loaded, dir),
     loaded,
     location: await realpath(dir.root),
-    connector,
-    shown: printable(connector.id),
+    connector: found.value,
+    file: found.path,
+    shown: printable(found.value.id),
   };
 }
 
@@ -126,6 +129,8 @@ export type NoToolsToApprove = "built_in" | "plugin";
  *
  * @throws NotTrustedError when the workspace isn't trusted as it is now (exit 3): nothing starts
  * @throws OwnLineError when Halonic refused the whole listing, or an approval can't be read
+ * @throws OwnLineError `not_found` when the connector's program isn't on this computer, or a
+ *   secret it needs isn't set (cli.commands.tools.start-failure)
  */
 export async function checkToolSource(
   source: ToolSource,
@@ -138,17 +143,22 @@ export async function checkToolSource(
   if ("plugin" in source.connector.transport) {
     return "plugin";
   }
-  const listing = await readSourceListing(
-    {
-      dir: source.dir,
-      typedDir: source.typedDir,
-      connector: source.connector,
-      workspace: source.loaded,
-    },
-    machine,
-    context.secrets,
-    toolsMessages.nothingStarted(),
-  );
+  let listing: SourceListing;
+  try {
+    listing = await readSourceListing(
+      {
+        dir: source.dir,
+        typedDir: source.typedDir,
+        connector: source.connector,
+        workspace: source.loaded,
+      },
+      machine,
+      context.secrets,
+      toolsMessages.nothingStarted(),
+    );
+  } catch (error) {
+    throw startFailureError(error, source) ?? error;
+  }
   const check = await checkConnectorTools({
     location: source.location,
     connector: source.connector,
@@ -162,6 +172,31 @@ export async function checkToolSource(
     throw new OwnLineError("denied", toolsMessages.cantList(source.shown, printable(check.error)));
   }
   return usableCheck(check.value, source);
+}
+
+/**
+ * The error that says why the connector didn't start, when it's one the
+ * person can fix themselves (`connectorStartFailureOf`): its program isn't on
+ * this computer, or a secret it needs isn't set. `undefined` for any other
+ * error, which keeps its own line. It names the program or the secret, never
+ * the error's message or a secret's value.
+ */
+function startFailureError(error: unknown, source: ToolSource): OwnLineError | undefined {
+  const failure = connectorStartFailureOf(error);
+  if (failure === undefined) return undefined;
+  if (failure.reason === "program-missing") {
+    return new OwnLineError(
+      "not_found",
+      toolsMessages.programMissing(source.shown, printable(failure.program)),
+      toolsMessages.programMissingFix(printable(source.file)),
+    );
+  }
+  const secret = printable(failure.secret);
+  return new OwnLineError(
+    "not_found",
+    toolsMessages.secretNotSet(source.shown, secret),
+    toolsMessages.secretNotSetFix(shellWord(failure.secret)),
+  );
 }
 
 /**

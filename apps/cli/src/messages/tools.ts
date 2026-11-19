@@ -167,4 +167,16 @@ export const toolsMessages = defineMessages("tools", {
   /** A connector with no server address to approve its tools at. */
   cantList: (source: string, reason: string) =>
     phrase`Couldn't list the tools from ${source}: ${reason}.`,
+  /**
+   * The connector's program isn't on this computer, so it didn't start
+   * (HAL-13829, decided by the team). `file` is the connector's file,
+   * relative to the workspace.
+   */
+  programMissing: (source: string, program: string) =>
+    phrase`Couldn't list the tools from ${source}: its program ${program} isn't on this computer.`,
+  programMissingFix: (file: string) => phrase`Install it, or change the command in ${file}.`,
+  /** A secret the connector needs isn't set, so it didn't start (HAL-13829). Its name, never a value. */
+  secretNotSet: (source: string, secret: string) =>
+    phrase`Couldn't list the tools from ${source}: it needs the secret ${secret}, which isn't set.`,
+  secretNotSetFix: (secret: string) => phrase`Set it with: halonic secret set ${secret}`,
 });

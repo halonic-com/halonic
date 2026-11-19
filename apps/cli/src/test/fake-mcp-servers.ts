@@ -1,5 +1,10 @@
 import { PassThrough } from "node:stream";
-import type { ProgramLaunch, ProgramStarter, RunningProgram } from "@halonicjs/adapter-mcp";
+import {
+  type ProgramLaunch,
+  ProgramNotFoundError,
+  type ProgramStarter,
+  type RunningProgram,
+} from "@halonicjs/adapter-mcp";
 
 /** A tool as an MCP server lists it in `tools/list`. */
 export interface ListedMcpTool {
@@ -22,12 +27,18 @@ export class FakeMcpServers implements ProgramStarter {
   running = 0;
   /** What the next `tools/list` returns. */
   tools: ListedMcpTool[];
+  /**
+   * Set when the program isn't on this computer: `start` then throws what
+   * Node's starter throws for it, and starts nothing.
+   */
+  programMissing = false;
 
   constructor(tools: ListedMcpTool[]) {
     this.tools = tools;
   }
 
   async start(launch: ProgramLaunch): Promise<RunningProgram> {
+    if (this.programMissing) throw new ProgramNotFoundError(launch.program);
     this.started.push(launch);
     this.running += 1;
     const stdout = new PassThrough();
