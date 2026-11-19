@@ -107,6 +107,29 @@ verifies("workflows.list.rows-and-states", () => {
     ]);
   });
 
+  it("gives Last run a line of its own under the description on a phone", async () => {
+    const rows = [
+      listing("acme", "reply", "Support reply", {
+        description: "A customer writes in and gets a drafted reply.",
+        lastRun: { startedAt: new Date().toISOString(), outcome: "failed" },
+      }),
+    ];
+    const page = await show(
+      <PresentationProvider presentation="phone">
+        <WorkflowsView host={memoryHost(hubs, rows).host} />
+      </PresentationProvider>,
+    );
+    const row = [...page.querySelectorAll("tr")].find((each) =>
+      each.textContent?.includes("Support reply"),
+    );
+    const lines = [...(row?.querySelectorAll(".block.truncate") ?? [])].map(
+      (each) => each.textContent ?? "",
+    );
+
+    expect(lines[0]).toBe("A customer writes in and gets a drafted reply.");
+    expect(lines[1]).toMatch(/^Last run ✕ failed, Today \d\d:\d\d$/);
+  });
+
   it("opens the workflow of the chosen row", async () => {
     const open = vi.fn();
     const page = await show(<WorkflowsView host={memoryHost(hubs, workflows).host} open={open} />);

@@ -112,7 +112,7 @@ type UsedByPlace = "right" | "line";
  * The line under an item's name: its detail, and on a phone its used-by text after a " · ", so the
  * kit doesn't move that text to the line's start as it does a chip. When the line is too long, the
  * detail is cut and the used-by text stays whole, as the kit's stacked rows keep their time
- * (HAL-13066).
+ * (HAL-13066). An item that asks for it gets its used-by text on a line of its own (HAL-13100).
  */
 function metaOf(item: OverviewItem, usedByPlace: UsedByPlace): ReactNode {
   if (usedByPlace === "right" || item.usedBy === undefined) {
@@ -120,6 +120,14 @@ function metaOf(item: OverviewItem, usedByPlace: UsedByPlace): ReactNode {
   }
   if (item.detail === undefined) {
     return item.usedBy;
+  }
+  if (item.usedByOwnLine === true) {
+    return (
+      <>
+        <span className="block truncate">{item.detail}</span>
+        <span className="block truncate">{item.usedBy}</span>
+      </>
+    );
   }
   return (
     <span className="flex min-w-0">
