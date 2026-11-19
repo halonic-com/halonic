@@ -28,7 +28,8 @@ review.
 
 `examples/refund-question.json` is an input for the workflow: Sam's email
 about a damaged order. The test model's script answers that one run: the
-Sorter says `refund` and the Writer drafts a short, friendly reply.
+Sorter says `refund` and the Writer drafts a short, friendly reply. The draft
+is plain text, ready to send, and signed "Acme support".
 
 The Reporter has no real support data. On the test model its weekly report is
 a scripted text, so don't expect a real report.
