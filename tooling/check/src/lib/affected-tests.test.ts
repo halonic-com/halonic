@@ -1,4 +1,5 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -245,6 +246,45 @@ verifies("check.affected-tests", () => {
         const selection = selectTests(context, "no-such-commit");
         expect(selection.kind).toBe("all");
         expect(selectedFolders(selection, packages)).toBeUndefined();
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+
+    test("selects both packages of a file moved from one to the other", () => {
+      const root = mkdtempSync(join(tmpdir(), "affected-tests-"));
+      const git = (...args: string[]): string =>
+        execFileSync(
+          "git",
+          ["-c", "user.name=test", "-c", "user.email=test@example.com", ...args],
+          {
+            cwd: root,
+            encoding: "utf8",
+          },
+        ).trim();
+      try {
+        git("init", "--quiet", "-b", "main");
+        mkdirSync(join(root, "packages/core/format/src"), { recursive: true });
+        writeFileSync(
+          join(root, "packages/core/format/src/failure-line.ts"),
+          'export const failureLine = "failed";\n',
+        );
+        git("add", ".");
+        git("commit", "--quiet", "--no-verify", "-m", "base");
+        const base = git("rev-parse", "HEAD");
+        mkdirSync(join(root, "packages/core/workspace/src"), { recursive: true });
+        git("mv", "packages/core/format/src/failure-line.ts", "packages/core/workspace/src/");
+        git("commit", "--quiet", "--no-verify", "-m", "move");
+        const context = { root, files: [], packages, read: () => "" } as unknown as CheckContext;
+        expect(selectTests(context, base)).toEqual({
+          kind: "some",
+          packages: [
+            "@halonicjs/format",
+            "@halonicjs/test-runner",
+            "@halonicjs/workspace",
+            "halonic",
+          ],
+        });
       } finally {
         rmSync(root, { recursive: true, force: true });
       }

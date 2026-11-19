@@ -246,15 +246,18 @@ export function testSelection(
 
 /**
  * The tests a pull request needs, for the checkout in `context`: the files
- * `git diff <base>...<head>` lists, run through `testSelection`. CI's build
- * job, the merge base's tests and the requirement guard all call this with
- * the merge ref's first parent as `base`, so they select the same packages.
+ * `git diff <base>...<head>` lists, a moved file by both its paths, run
+ * through `testSelection`. CI's build job, the merge base's tests and the
+ * requirement guard all call this with the merge ref's first parent as
+ * `base`, so they select the same packages.
  * When git can't list the changes, every package's tests are selected.
  */
 export function selectTests(context: CheckContext, base: string, head = "HEAD"): TestSelection {
   let changed: string;
   try {
-    changed = execFileSync("git", ["diff", "--name-only", `${base}...${head}`], {
+    // Without `--no-renames`, git lists a moved file only by its new path,
+    // and the package it left would not be selected.
+    changed = execFileSync("git", ["diff", "--name-only", "--no-renames", `${base}...${head}`], {
       cwd: context.root,
       encoding: "utf8",
       maxBuffer: 64 * 1024 * 1024,
