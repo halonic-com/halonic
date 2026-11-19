@@ -1,5 +1,4 @@
 import type { Readable, Writable } from "node:stream";
-import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { NodeHarnessBridgeServer, providerHostClass } from "@halonicjs/adapter-harness-bridge";
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
@@ -12,8 +11,8 @@ import {
 } from "@halonicjs/adapter-sandbox-srt";
 import type { SandboxChoiceService } from "@halonicjs/app";
 import type { GoogleSetupPorts } from "@halonicjs/host-server";
-import type { Harness, TrustStore } from "@halonicjs/ports";
-import { type ProfileFolder, type ProfilePlatform, trustFolder } from "@halonicjs/profile";
+import type { Harness } from "@halonicjs/ports";
+import type { ProfileFolder } from "@halonicjs/profile";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { bridgeSocketFolder, sweepLeftOverBridges } from "./bridge/socket-folder.ts";
 import { hostConnectorRoutes } from "./connector/connector-factory.ts";
@@ -22,7 +21,6 @@ import { type GatewaySettings, gatewayFor, gatewayOff } from "./gateway/gateway-
 import { RemoteGateway } from "./gateway/remote-gateway.ts";
 import { RunLedger } from "./gateway/run-ledger.ts";
 import { googleRoutes } from "./google/google-routes.ts";
-import { openGoogleSetup } from "./google/google-setup.ts";
 import { harnessFolders } from "./harness/harness-folders.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
 import { RunTable } from "./harness/run-table.ts";
@@ -31,6 +29,7 @@ import { hostModelRoutes } from "./model/host-model-routes.ts";
 import { modelRoutes } from "./model/model-routes.ts";
 import { hostPlugins } from "./plugin/host-plugins.ts";
 import { pluginRoutes } from "./plugin/plugin-routes.ts";
+import { optionalProfileOf, profileGoogleSetup, profileTrustStore } from "./profile-folder.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { hostSandboxChoice } from "./sandbox/choice-host.ts";
 import { sandboxChoiceRoutes } from "./sandbox/choice-routes.ts";
@@ -244,33 +243,6 @@ function connectorPlaces(roots: readonly string[], profileFolder: string | undef
     deniedPaths: profileFolder === undefined ? [] : [profileFolder],
     trustStore: profileFolder === undefined ? undefined : profileTrustStore(profileFolder),
   };
-}
-
-function profileTrustStore(profileFolder: string): TrustStore {
-  return new FileTrustStore(trustFolder(profileOf(profileFolder)));
-}
-
-/** The Google setup of the profile folder, or `undefined` without one. */
-function profileGoogleSetup(
-  profileFolder: string | undefined,
-  workspaceRoots: readonly string[],
-): GoogleSetupPorts | undefined {
-  if (profileFolder === undefined) return undefined;
-  return openGoogleSetup({ profile: profileOf(profileFolder), env: process.env, workspaceRoots });
-}
-
-/** The profile folder `--profile-folder` names, or `undefined` without one. */
-function optionalProfileOf(root: string | undefined): ProfileFolder | undefined {
-  return root === undefined ? undefined : profileOf(root);
-}
-
-/** The profile folder `--profile-folder` names, with the system its path belongs to. */
-function profileOf(root: string): ProfileFolder {
-  const platforms: Partial<Record<NodeJS.Platform, ProfilePlatform>> = {
-    win32: "windows",
-    darwin: "macos",
-  };
-  return { platform: platforms[process.platform] ?? "linux", root };
 }
 
 /** The value after `name` in `args`, when there is one. */
