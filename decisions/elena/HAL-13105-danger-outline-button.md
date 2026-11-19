@@ -3,6 +3,7 @@
 - Task: HAL-13105
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13102 (Noah's decision, building on the paired phones design the board approved on HAL-12206, section 2; a team decision with no board card, HAL-2282 rule); Liam signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BvTuJ3eqmYdl2HX4fC/FJIggjcon1nRXNJui8CrIy9r3Ar6o3h5w22RZ11HQP+Dp2C9i0QPudQr8Ypo6SGURAg==
 
 ## What changes
 
