@@ -3,6 +3,7 @@
 - Task: HAL-13792
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13792 (Nina's C239 check, HAL-13788, rows A6 and A7; words that catch up with what #3928 already ships, a team decision under HAL-2282; Liam reviews the pull request on HAL-13792 and signs this note)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:XgaghUb91e0YjPu1uOObRgpH4O6LnQMT9xIQ6F/vtp+/M2UcyPKQ9zcLv3IxLdq6frcGF+JsgACLPvmcrZ3hBA==
 
 ## What changes
 
