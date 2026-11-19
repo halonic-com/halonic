@@ -34,11 +34,14 @@ export type BridgeProviderAccess =
    *
    * `models` are the models the host resolved for this agent at this
    * provider: its alias's model, and the models of its fallbacks that use
-   * the same provider file. With a `baseUrl`, the bridge refuses a call that
-   * names any other model, exactly as written, and every call when the list
-   * is missing or empty, since a compatible provider can serve models that
-   * reach the network from its own side. Without a `baseUrl`, the bridge
-   * ignores it: it is no allow-list for the APIs' own hosts.
+   * the same provider file. The bridge refuses, before it reads the key, a
+   * call that names any other model, exactly as written, a call that names
+   * other models of its own (Messages' `fallbacks`, or a tool with its own
+   * `model`), so the key is spent only on models the host priced. With a
+   * `baseUrl`, it also refuses every call when the list is missing or
+   * empty, since a compatible provider can serve models that reach the
+   * network from its own side. Without a `baseUrl`, a missing list still
+   * lets any model through, until every host sends one (HAL-12488).
    */
   | {
       kind: "key";

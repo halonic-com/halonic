@@ -1,6 +1,7 @@
 import type { Secrets } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 import { type KnownRequest, refuseUnknownAtCompatible } from "./compatible-request.ts";
+import { refuseModelsNotGiven } from "./keyed-model.ts";
 import { OpenAiReplyReader } from "./openai-reply.ts";
 import { refuseStoredPrompt, refuseUrlInputs } from "./openai-sources.ts";
 import { type Fetch, passThrough, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
@@ -174,12 +175,6 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
       const { search } = new URL(context.request.url ?? "", openAiOrigin);
       // Before the key is read, so an address the bridge refuses never reads it.
       const target = providerTarget(access, openAiApi, search, dependencies);
-      const authorization = await providerAuthorization(
-        context,
-        dependencies.secrets,
-        "openai",
-        (key) => ({ authorization: `Bearer ${key}` }),
-      );
       const sent = await context.readBody();
       const request = parseModelRequest(sent);
       refuseStoredPrompt(request);
@@ -188,6 +183,14 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
         refuseUnknownAtCompatible(request, openAiKnown, target.models);
       }
       const call = readModelCall("openai", request, "input");
+      // Also before the key is read, so a model the agent wasn't given never reads it.
+      refuseModelsNotGiven(access, request);
+      const authorization = await providerAuthorization(
+        context,
+        dependencies.secrets,
+        "openai",
+        (key) => ({ authorization: `Bearer ${key}` }),
+      );
       const body = withoutProviderReach(request, openAiReach);
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);
       const reply = new OpenAiReplyReader();

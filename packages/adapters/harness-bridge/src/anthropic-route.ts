@@ -3,6 +3,7 @@ import { isPlainObject } from "@halonicjs/std";
 import { AnthropicReplyReader } from "./anthropic-reply.ts";
 import { refuseUrlSources } from "./anthropic-sources.ts";
 import { type KnownRequest, refuseUnknownAtCompatible } from "./compatible-request.ts";
+import { refuseModelsNotGiven } from "./keyed-model.ts";
 import { type Fetch, passThrough, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
 import { type ProviderApi, providerTarget } from "./provider-address.ts";
 import { providerAccess, providerAuthorization } from "./provider-key.ts";
@@ -152,12 +153,6 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
       const { search } = new URL(context.request.url ?? "", anthropicOrigin);
       // Before the key is read, so an address the bridge refuses never reads it.
       const target = providerTarget(access, anthropicApi, search, dependencies);
-      const authorization = await providerAuthorization(
-        context,
-        dependencies.secrets,
-        "anthropic",
-        (key) => ({ "x-api-key": key }),
-      );
       const sent = await context.readBody();
       const request = parseModelRequest(sent);
       refuseUrlSources(request);
@@ -165,6 +160,14 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
         refuseUnknownAtCompatible(request, anthropicKnown, target.models);
       }
       const call = readModelCall("anthropic", request, "messages");
+      // Also before the key is read, so a model the agent wasn't given never reads it.
+      refuseModelsNotGiven(access, request);
+      const authorization = await providerAuthorization(
+        context,
+        dependencies.secrets,
+        "anthropic",
+        (key) => ({ "x-api-key": key }),
+      );
       const body = withoutProviderReach(request, anthropicReach);
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);
       const reply = new AnthropicReplyReader();

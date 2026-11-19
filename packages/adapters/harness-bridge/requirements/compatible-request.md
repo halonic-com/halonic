@@ -12,7 +12,7 @@ When the agent's call goes to a compatible provider's `baseUrl` (requirement `ha
 - a `model` that ends in `:online`, in any case;
 - a `model` that isn't exactly, case and all, one of the access's `models`: the models the host resolved for the agent at that provider. When the access has no `models`, or an empty list, it shall refuse every call.
 
-It shall send the provider the request as it read it, written out again as JSON, never the program's own bytes, so a key the program repeats reaches the provider with only the value the bridge checked. Its error shall name the field or the tool type it refuses, cut to 64 characters, and never a value of the request; for the model, neither the model nor the `models`, in the error or in the run's events. A call to the API's own host shall keep the rules of `harness-bridge.anthropic` and `harness-bridge.openai` and none of these, whatever its `models` say.
+It shall send the provider the request as it read it, written out again as JSON, never the program's own bytes, so a key the program repeats reaches the provider with only the value the bridge checked. Its error shall name the field or the tool type it refuses, cut to 64 characters, and never a value of the request; for the model, neither the model nor the `models`, in the error or in the run's events. A call to the API's own host shall keep the rules of `harness-bridge.anthropic` and `harness-bridge.openai` and none of these; its `models` are checked as `harness-bridge.keyed-model` says.
 
 ## Examples
 
