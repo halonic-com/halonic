@@ -30,6 +30,8 @@ mod agent_host;
 mod blobs;
 mod command_paths;
 mod connect;
+#[cfg(target_os = "android")]
+mod device_keys;
 mod engine_lock;
 mod file_answers;
 mod files;
@@ -115,6 +117,10 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     // connect page gets only `pair_scan` and `pair_scan_cancel`.
     #[cfg(target_os = "android")]
     let builder = builder.plugin(pair_scan::plugin());
+    // The phone's key for each paired computer, sealed by the Android
+    // Keystore. Used from Rust only: no capability grants its commands.
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(device_keys::plugin());
     builder
         // The navigation guard hands outside links to the browser with the
         // opener. Its click script stays off. That script would run in

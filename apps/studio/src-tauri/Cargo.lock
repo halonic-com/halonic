@@ -1757,6 +1757,7 @@ dependencies = [
  "halonic-blob-store",
  "halonic-command-paths",
  "halonic-connect",
+ "halonic-device-keys",
  "halonic-git-guard",
  "halonic-host-settings",
  "halonic-http-guard",

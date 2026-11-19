@@ -15,6 +15,7 @@ use tauri::webview::{InvokeRequest, WebviewWindow};
 
 use crate::shell;
 
+mod device_keys;
 mod engine_lock;
 mod pair_scan;
 mod runs;

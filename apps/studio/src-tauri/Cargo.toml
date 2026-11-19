@@ -92,6 +92,10 @@ tauri-plugin-updater = { version = "=2.14.1", default-features = false, features
 [target.'cfg(target_os = "android")'.dependencies]
 tauri-plugin-barcode-scanner = "=2.5.3"
 
+# The phone's key for each paired computer (HAL-12245), sealed by the
+# Android Keystore through the shell's `device_keys` module.
+halonic-device-keys = { path = "crates/device-keys" }
+
 # Tauri's mock runtime, for the test that every command is refused from the
 # served page.
 [dev-dependencies]
