@@ -31,6 +31,11 @@ export interface ConnectorStatus {
   readonly connection?: ConnectorConnection;
   /** Absent when the file asks in some other way, so the page says nothing about it. */
   readonly asks?: ConnectorAsks;
+  /**
+   * True when the workspace is local only and this connector isn't local, so no run calls it
+   * (flow-library 8.2). Absent when nothing blocks it.
+   */
+  readonly blocked?: true;
 }
 
 /** One refusal and the time it arrived. */

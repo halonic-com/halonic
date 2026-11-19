@@ -1,4 +1,4 @@
-import type { Connector } from "@halonicjs/format";
+import { type Connector, connectorIsLocal } from "@halonicjs/format";
 import type { ChatTurnWaiting, DefinitionStore, DefinitionWatch } from "@halonicjs/ports";
 import {
   connectorFacts,
@@ -117,6 +117,8 @@ export class WorkspaceConnectorStatus implements ConnectorStatusHost {
     const accounts = connectors.some(({ transport }) => "google" in transport)
       ? await this.#options.google.list()
       : [];
+    // The engine starts only local connectors in a local-only workspace (`engine.local-only`).
+    const localOnly = filesOf(workspace, "workspace")[0]?.value.privacy.localOnly ?? false;
     const listed = connectors.map((connector): ConnectorStatus => {
       const asks = asksOf(connector);
       return {
@@ -125,6 +127,7 @@ export class WorkspaceConnectorStatus implements ConnectorStatusHost {
         state: this.#stateOf(connector, accounts),
         connection: connectionOf(connector),
         ...(asks === undefined ? {} : { asks }),
+        ...(localOnly && !connectorIsLocal(connector) ? { blocked: true } : {}),
       };
     });
     // A file that parsed is not an unreadable one.
