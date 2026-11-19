@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it } from "vitest";
@@ -46,10 +47,15 @@ const configuration: WorkflowConfiguration = {
   ],
 };
 
-const open = async (config: readonly WorkflowConfiguration[]) => {
+const open = async (
+  config: readonly WorkflowConfiguration[],
+  presentation: "desktop" | "phone" = "desktop",
+) => {
   const { host } = memoryHost([], [], [view], config);
   const page = await show(
-    <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    <PresentationProvider presentation={presentation}>
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />
+    </PresentationProvider>,
   );
   await act(async () => buttonNamed(page, "Configuration")?.click());
   return page;
@@ -216,5 +222,53 @@ verifies("workflows.configuration.pages", () => {
     const page = await open([configuration]);
 
     expect(tab(page, "Problems")?.textContent).toContain("1 error");
+  });
+});
+
+verifies("workflows.configuration.pages-phone", () => {
+  const pageList = (page: HTMLElement) =>
+    page.querySelector('[role=tablist][aria-label="Configuration pages"]') as HTMLElement;
+
+  it("puts the pages across the top on a phone, moved through with →", async () => {
+    const page = await open([configuration], "phone");
+    const list = pageList(page);
+    expect(list.getAttribute("aria-orientation")).toBe("horizontal");
+    const general = tab(page, "General");
+
+    await act(async () => general?.focus());
+    await act(async () => {
+      general?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }),
+      );
+    });
+
+    const requestForm = tab(page, "Request form");
+    expect(requestForm?.getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(requestForm);
+    // The page sits below the list at the full width, not beside a fixed-width column.
+    const configurationView = list.parentElement?.parentElement;
+    expect(configurationView?.className).toContain("flex-col");
+    expect(list.parentElement?.className).not.toContain("w-52");
+    const panel = page.querySelector(
+      `#${CSS.escape(requestForm?.getAttribute("aria-controls") ?? "")}`,
+    );
+    expect(panel?.parentElement).toBe(configurationView);
+    expect(panel?.textContent).toContain("Inbox");
+    expect(panel?.querySelector("dt")?.className).not.toContain("w-40");
+  });
+
+  it("still names the Problems count on a phone", async () => {
+    const page = await open([configuration], "phone");
+
+    expect(tab(page, "Problems")?.textContent).toContain("1 error");
+  });
+
+  it("keeps the column beside the page on the desktop", async () => {
+    const page = await open([configuration]);
+    const list = pageList(page);
+
+    expect(list.getAttribute("aria-orientation")).toBe("vertical");
+    expect(list.parentElement?.parentElement?.className).not.toContain("flex-col");
+    expect(page.querySelector("[role=tabpanel] dt")?.className).toContain("w-40");
   });
 });
