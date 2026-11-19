@@ -1063,6 +1063,21 @@ the grey fill is dropped.
 `width` is one of a fixed set (`1/3`, `2/5`, `1/2`, `3/5`, `2/3`, `7/10`, `full`), never random,
 so tests and screenshots stay the same.
 
+## ChatStart and ChatLoading
+
+Two states of a chat's transcript, for an agent's Try it chat and the Assistant.
+
+```tsx
+<ChatStart figure={orb} heading="Chat with Sorter" description="Sorts incoming mail by topic" />;
+<ChatLoading label="Loading this chat" onRetry={load} />;
+```
+
+`ChatStart` is an empty chat before its first message: the figure (the orb at 64px, hidden from
+screen readers), the heading in `text-heading`, and the muted description when there is one.
+`ChatLoading` is a chat's first load, on the List's clock: nothing for 300ms, then three still
+lines and the status line's label, and after 10 seconds "Still loading" with **Try again**. A chat
+already shown in this session opens at once, without it.
+
 ## SidePanel
 
 The frame every side panel shares: step details, the assistant, the list of changes. The shell
