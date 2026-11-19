@@ -148,8 +148,10 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
   const noHubs = load.kind === "ready" && host.hubs().length === 0;
   useEffect(() => {
     if (noHubs) dropNewWorkflowRequest();
-    return canCreate ? takeNewWorkflowRequests(() => setCreating(true)) : undefined;
-  }, [canCreate, noHubs]);
+    // A phone takes the request and drops it, so the dialog doesn't open later, unasked, on a desktop.
+    if (phone) return takeNewWorkflowRequests(() => undefined);
+    return offersNew ? takeNewWorkflowRequests(() => setCreating(true)) : undefined;
+  }, [offersNew, noHubs, phone]);
 
   return (
     <div className="flex w-full flex-col gap-4 px-6 py-5">

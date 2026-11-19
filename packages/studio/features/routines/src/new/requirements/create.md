@@ -2,7 +2,7 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-1306 (T12 PR 4); flow-routines 2.2; microcopy 12.2; G5 T12-F19 and F20
+- Source: HAL-1306 (T12 PR 4); flow-routines 2.2; microcopy 12.2; G5 T12-F19 and F20; HAL-12751
 
 When the user chooses **New routine**, the routines feature shall ask for a name, and for a hub when there is more than one, in a "New routine" dialog that shows the file the routine will be written to and says what it will run, create the routine through the host, close the dialog and open the routine in its tab, and, while the name is empty, not create anything and say "Give it a name." under the field. When the chosen hub has no workflow and no agent, the dialog shall say "Create a workflow or an agent first; a routine runs one of them." instead of offering Create, and, when the app can open the New workflow dialog, show **New workflow**, which closes the dialog and opens it.
 
@@ -16,4 +16,5 @@ When the user chooses **New routine**, the routines feature shall ask for a name
 - Given the name is empty, then **Create** shows "Give it a name.", focuses Name and creates nothing.
 - Given the host can't write the file because "the disk is full", then the dialog says "Couldn't create the routine: the disk is full." and **Create** tries again.
 - Given the hub has nothing to run, then the dialog says "Create a workflow or an agent first; a routine runs one of them." and has no **Create**; given the app can open New workflow, **New workflow** closes the dialog and opens it, and otherwise there is no such button.
+- Given the window is a phone and the hub has nothing to run, then the dialog has no **New workflow**, as a phone doesn't edit workflows (UX 10.15).
 - Given the routines page, then Ctrl K's **New routine** opens the Routines place with the dialog open, and **New routine** on the list and in the empty state opens it too.

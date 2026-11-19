@@ -40,7 +40,9 @@ type Load =
 
 /** The Routines place's page: the open workspace's routines, from `RoutinesHostService`. */
 export function RoutinesPage({ context }: PlaceViewProps) {
-  const { openItem, openItemInNewTab, runCommand } = context;
+  const { openItem, openItemInNewTab } = context;
+  // A phone doesn't edit workflows (UX 10.15), so New routine offers no New workflow there.
+  const runCommand = usePresentation() === "phone" ? undefined : context.runCommand;
   // Only a routine in a hub is listed, so a row's hub is always there; a root routine has no tab.
   const itemOf = (ref: RoutineRef) =>
     ref.hubId === null ? undefined : { kind: "routine", hub: ref.hubId, id: ref.id };
