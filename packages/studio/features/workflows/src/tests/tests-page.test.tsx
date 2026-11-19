@@ -63,6 +63,20 @@ verifies("workflows.tests.page", () => {
     expect(rows[2]).toContain("Open run");
   });
 
+  it("describes each row's button by its state, and a failed one's also by its sentence", async () => {
+    const { page } = await open({ tests: async () => afterRun });
+    const description = (name: string) =>
+      (buttonNamed(page, name)?.getAttribute("aria-describedby") ?? "")
+        .split(" ")
+        .map((id) => document.getElementById(id)?.textContent)
+        .join(" ");
+
+    expect(description("invoice run")).toBe("Passed:");
+    expect(description("personal mail")).toBe(
+      'Failed: Expected to end in "archive", ended in "reply".',
+    );
+  });
+
   it("opens the failed test's run", async () => {
     const openRun = vi.fn();
     const { page } = await open({ tests: async () => afterRun }, openRun);
@@ -164,6 +178,7 @@ verifies("workflows.tests.page", () => {
     expect(card?.textContent).toContain("Expected");
     expect(card?.textContent).toContain("This run");
     expect(document.activeElement?.textContent).toBe("personal mail");
+    expect(document.activeElement?.className).toContain("focus-ring");
 
     await act(async () => {
       card?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
