@@ -141,6 +141,22 @@ verifies("models.api-keys.enter-key", () => {
     expect(input.value).toBe("sk-acme-test-789");
   });
 
+  it("says the old key is still in use when replacing it fails", async () => {
+    const { keys } = keysWith(desktop, ["anthropic"]);
+    const view = await show({
+      ...keys,
+      save: async () => {
+        throw new KindedError("unavailable", "The system keychain is locked.");
+      },
+    });
+    await type(view, "sk-acme-test-456");
+    await press(view, "Save key");
+    await press(document.querySelector("dialog") as HTMLElement, "Change key");
+    expect(view.textContent).toContain(
+      "Couldn't save the key: The system keychain is locked. Your old key is still in use.",
+    );
+  });
+
   it("shows no path or stack when saving fails", async () => {
     const { keys } = keysWith(desktop);
     const leak = new Error("EPERM: /srv/studio/.halonic/keys\n    at write (keys.ts:1:1)");
