@@ -23,7 +23,7 @@ verifies("format.deployments-file", () => {
     const problems = problemsOf("deployments", yaml("deployments:", "  Laptop:", "    name: L"));
     expect(summary(problems)).toEqual(["deployments.Laptop invalid_key 3"]);
     expect(problems[0]?.message).toBe(
-      "Not a deployment id: use lowercase letters, digits, '-' or '_'",
+      "Not a deployment id: use lowercase letters, digits, '-' or '_', starting with a letter or digit",
     );
   });
 
