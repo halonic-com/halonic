@@ -2,6 +2,7 @@
 
 - Approval: Julian's follow-up from his security review of PR #3761 (HAL-12808), decided on HAL-12810 and filed as HAL-12811; Julian reviewed the security change (HAL-13660), Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:F3mB62+21ht2s8X3hHq9vPT8bXLWX/LGYGUWYAZHHZwhuF+hbych/elzBj1EmL4M3LxWZvaIJ84y+UvFgoI/DQ==
 - Task: HAL-12811
 
 ## What changes
