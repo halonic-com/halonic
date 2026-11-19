@@ -49,6 +49,8 @@ export interface ResumeAfterApproval {
   readonly approved: boolean;
   /** What the person wrote with the answer, if anything. */
   readonly comment?: string;
+  /** The connector the waiting call's tool comes from, as its approval names it; absent when it names none. */
+  readonly connector?: string;
 }
 
 /** A tool call waiting for a person's OK, as its `approval.requested` asked. */
@@ -61,6 +63,8 @@ export interface WaitingApproval {
   /** The prompt of the model call that stopped for it, for the call that goes on. */
   readonly prompt: string;
   readonly resume: AgentResume;
+  /** The connector the tool comes from, as `approval.requested` names it; absent in older logs. */
+  readonly connector?: string;
 }
 
 /** The child run a `workflow` state started and waits on: the one its `workflow.started` named. */
@@ -387,7 +391,7 @@ function requestApproval(
   state: RunState,
   event: Extract<RunEvent, { type: "approval.requested" }>,
 ): RunState {
-  const { callId, state: stateId, agent, tool, resume } = event;
+  const { callId, state: stateId, agent, tool, resume, connector } = event;
   const stopped = state.pendingCall?.state === stateId ? state.pendingCall : null;
   const approval: WaitingApproval = {
     callId,
@@ -396,6 +400,7 @@ function requestApproval(
     tool,
     prompt: stopped?.prompt ?? "",
     resume,
+    ...(connector === undefined ? {} : { connector }),
   };
   return {
     ...state,
@@ -424,6 +429,7 @@ function resolveApproval(
     resume: approval.resume,
     approved,
     ...(comment === undefined ? {} : { comment }),
+    ...(approval.connector === undefined ? {} : { connector: approval.connector }),
   };
   const { state: stateId, agent, prompt } = approval;
   return {
