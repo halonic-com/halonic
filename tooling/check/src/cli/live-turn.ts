@@ -1,5 +1,11 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { type JobState, longestWaitMs, waitForTurn } from "../lib/live-turn.ts";
+import {
+  type JobState,
+  longestWaitMs,
+  type TurnResult,
+  type UnfinishedRun,
+  waitForTurn,
+} from "../lib/live-turn.ts";
 
 /**
  * Waits for this run's turn on the live test account (HAL-13840): the
@@ -7,11 +13,9 @@ import { type JobState, longestWaitMs, waitForTurn } from "../lib/live-turn.ts";
  *
  *   GH_TOKEN=… GITHUB_REPOSITORY=owner/repo GITHUB_RUN_ID=… node tooling/check/src/cli/live-turn.ts
  *
- * After the longest wait it warns and lets the run go ahead, as before.
+ * After the longest wait, or when GitHub can't be read, it warns and lets the
+ * run go ahead, as before.
  */
-
-/** The statuses of a run that hasn't finished and may still use the account. */
-export const unfinishedStatuses = ["in_progress", "queued", "waiting"] as const;
 
 /** A GET on GitHub's REST API, for a path below the API root; returns the parsed body. */
 export type GitHubGet = (path: string) => Promise<unknown>;
@@ -39,21 +43,25 @@ const field = (value: unknown, key: string): unknown =>
 
 const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 
-/** The IDs of the live-cloud workflow's unfinished runs. */
-export async function unfinishedLiveRuns(get: GitHubGet, repository: string): Promise<number[]> {
-  const ids = new Set<number>();
-  for (const status of unfinishedStatuses) {
-    const body = await get(
-      `/repos/${repository}/actions/workflows/live-cloud.yml/runs?status=${status}&per_page=100`,
-    );
-    for (const run of list(field(body, "workflow_runs"))) {
-      const id = field(run, "id");
-      if (typeof id === "number") {
-        ids.add(id);
-      }
+/**
+ * The live-cloud workflow's unfinished runs, in one call: the newest 100 runs,
+ * keeping those whose status isn't `completed` (queued, waiting, requested,
+ * pending and in progress alike). A run still unfinished is always among them.
+ */
+export async function unfinishedLiveRuns(
+  get: GitHubGet,
+  repository: string,
+): Promise<UnfinishedRun[]> {
+  const body = await get(`/repos/${repository}/actions/workflows/live-cloud.yml/runs?per_page=100`);
+  const runs: UnfinishedRun[] = [];
+  for (const run of list(field(body, "workflow_runs"))) {
+    const id = field(run, "id");
+    const attempt = field(run, "run_attempt");
+    if (typeof id === "number" && field(run, "status") !== "completed") {
+      runs.push({ id, attempt: typeof attempt === "number" ? attempt : 1 });
     }
   }
-  return [...ids];
+  return runs;
 }
 
 /** The jobs of a run's latest attempt, with their steps' names and statuses. */
@@ -75,6 +83,18 @@ export async function runJobs(
   }));
 }
 
+/** The line the job prints when the wait ends; a warning when it went ahead without its turn. */
+export function turnReport(result: TurnResult): string {
+  const waitedMinutes = Math.round(result.waitedMs / 60_000);
+  if (result.outcome === "turn") {
+    return `live-turn: the account is free after ${waitedMinutes} min; going ahead.`;
+  }
+  if (result.outcome === "unreadable") {
+    return `::warning title=Live cloud turn::Couldn't read the other live-cloud runs (${result.error ?? "no reason given"}); going ahead without its turn after ${waitedMinutes} min, so D1 may refuse work under the load (HAL-13840).`;
+  }
+  return `::warning title=Live cloud turn::Waited ${longestWaitMs / 60_000} min for run(s) ${result.ahead.join(", ")}; going ahead anyway, so D1 may refuse work under the load (HAL-13840).`;
+}
+
 if (import.meta.main) {
   const token = process.env["GH_TOKEN"] ?? "";
   const repository = process.env["GITHUB_REPOSITORY"] ?? "";
@@ -93,13 +113,6 @@ if (import.meta.main) {
       now: () => Date.now(),
       log: (line) => console.log(line),
     });
-    const waitedMinutes = Math.round(result.waitedMs / 60_000);
-    if (result.outcome === "turn") {
-      console.log(`live-turn: the account is free after ${waitedMinutes} min; going ahead.`);
-    } else {
-      console.log(
-        `::warning title=Live cloud turn::Waited ${longestWaitMs / 60_000} min for run(s) ${result.ahead.join(", ")}; going ahead anyway, so D1 may refuse work under the load (HAL-13840).`,
-      );
-    }
+    console.log(turnReport(result));
   }
 }

@@ -9,7 +9,7 @@ import {
   type TurnDeps,
   waitForTurn,
 } from "../lib/live-turn.ts";
-import { gitHubGet, runJobs, unfinishedLiveRuns } from "./live-turn.ts";
+import { gitHubGet, runJobs, turnReport, unfinishedLiveRuns } from "./live-turn.ts";
 
 const step = (name: string, status: string) => ({ name, status });
 
@@ -26,15 +26,25 @@ function liveJob(stage: "waiting" | "suites" | "sweeping" | "finished"): JobStat
 
 const planning: JobState[] = [{ name: "What to run", status: "in_progress", steps: [] }];
 
-/** Fake GitHub and clock: each look returns the next entry of `looks`, then the last one forever. */
-function fakeDeps(looks: readonly Record<number, JobState[]>[]) {
+/**
+ * Fake GitHub and clock: each look returns the next entry of `looks`, then the
+ * last one forever. `attempts` gives a run's attempt per look (default 1).
+ */
+function fakeDeps(
+  looks: readonly Record<number, JobState[]>[],
+  attempts: readonly Record<number, number>[] = [],
+) {
   let clock = 0;
   let look = 0;
   const lines: string[] = [];
   const jobsAsked: number[] = [];
   const current = () => looks[Math.min(look, looks.length - 1)] ?? {};
   const deps: TurnDeps = {
-    unfinishedRuns: async () => [5, ...Object.keys(current()).map(Number)],
+    unfinishedRuns: async () =>
+      [5, ...Object.keys(current()).map(Number)].map((id) => ({
+        id,
+        attempt: attempts[Math.min(look, attempts.length - 1)]?.[id] ?? 1,
+      })),
     jobs: async (runId) => {
       jobsAsked.push(runId);
       return current()[runId] ?? [];
@@ -112,30 +122,82 @@ verifies("check.live-turn", () => {
       expect(jobsAsked).toEqual([3, 7, 7]);
     });
 
+    test("looks again at a run seen done once a new attempt of it starts", async () => {
+      const { deps, jobsAsked } = fakeDeps(
+        [
+          { 3: [liveJob("sweeping")], 7: [liveJob("suites")] },
+          { 3: [liveJob("suites")], 7: [liveJob("finished")] },
+          { 3: [liveJob("finished")], 7: [liveJob("finished")] },
+        ],
+        [{ 3: 1 }, { 3: 2 }],
+      );
+      expect(await waitForTurn(5, deps)).toEqual({
+        outcome: "turn",
+        waitedMs: 2 * pollMs,
+        ahead: [],
+      });
+      expect(jobsAsked).toEqual([3, 7, 3, 7, 3]);
+    });
+
+    test("goes ahead with the error when GitHub can't be read, keeping who was ahead", async () => {
+      const { deps } = fakeDeps([{ 7: [liveJob("suites")] }]);
+      let looks = 0;
+      const failing: TurnDeps = {
+        ...deps,
+        unfinishedRuns: async () => {
+          looks += 1;
+          if (looks > 1) {
+            throw new Error("GitHub answered 403 for GET /repos/acme/halonic.");
+          }
+          return deps.unfinishedRuns();
+        },
+      };
+      const result = await waitForTurn(5, failing);
+      expect(result).toEqual({
+        outcome: "unreadable",
+        waitedMs: pollMs,
+        ahead: [7],
+        error: "GitHub answered 403 for GET /repos/acme/halonic.",
+      });
+      expect(turnReport(result)).toBe(
+        "::warning title=Live cloud turn::Couldn't read the other live-cloud runs (GitHub answered 403 for GET /repos/acme/halonic.); going ahead without its turn after 2 min, so D1 may refuse work under the load (HAL-13840).",
+      );
+    });
+
     test("gives up after the longest wait and names the runs ahead", async () => {
       const { deps } = fakeDeps([{ 3: [liveJob("suites")] }]);
       expect(await waitForTurn(5, deps)).toEqual({
         outcome: "gave-up",
-        waitedMs: longestWaitMs,
+        // The first look at or past the longest wait.
+        waitedMs: Math.ceil(longestWaitMs / pollMs) * pollMs,
         ahead: [3],
       });
     });
   });
 
   describe("GitHub reads", () => {
-    test("collects unfinished runs across statuses, once each", async () => {
+    test("lists the unfinished runs in one call, with their current attempt", async () => {
       const asked: string[] = [];
       const get = async (path: string) => {
         asked.push(path);
-        if (path.includes("status=in_progress")) return { workflow_runs: [{ id: 7 }, { id: 3 }] };
-        if (path.includes("status=queued")) return { workflow_runs: [{ id: 7 }, { id: 9 }] };
-        return { workflow_runs: [] };
+        return {
+          workflow_runs: [
+            { id: 9, status: "queued", run_attempt: 1 },
+            { id: 8, status: "completed", run_attempt: 1 },
+            { id: 7, status: "in_progress", run_attempt: 2 },
+            { id: 6, status: "requested", run_attempt: 1 },
+            { id: 4, status: "pending" },
+          ],
+        };
       };
-      expect((await unfinishedLiveRuns(get, "acme/halonic")).sort()).toEqual([3, 7, 9]);
+      expect(await unfinishedLiveRuns(get, "acme/halonic")).toEqual([
+        { id: 9, attempt: 1 },
+        { id: 7, attempt: 2 },
+        { id: 6, attempt: 1 },
+        { id: 4, attempt: 1 },
+      ]);
       expect(asked).toEqual([
-        "/repos/acme/halonic/actions/workflows/live-cloud.yml/runs?status=in_progress&per_page=100",
-        "/repos/acme/halonic/actions/workflows/live-cloud.yml/runs?status=queued&per_page=100",
-        "/repos/acme/halonic/actions/workflows/live-cloud.yml/runs?status=waiting&per_page=100",
+        "/repos/acme/halonic/actions/workflows/live-cloud.yml/runs?per_page=100",
       ]);
     });
 

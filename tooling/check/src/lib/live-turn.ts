@@ -70,10 +70,16 @@ export function runsAhead(ownRunId: number, standings: ReadonlyMap<number, RunSt
   return ahead.sort((left, right) => left - right);
 }
 
+/** A run of the workflow that hasn't finished, and which attempt of it is current. */
+export interface UnfinishedRun {
+  readonly id: number;
+  readonly attempt: number;
+}
+
 /** What the wait needs from GitHub and the clock. */
 export interface TurnDeps {
-  /** The IDs of this workflow's runs that haven't finished. */
-  readonly unfinishedRuns: () => Promise<number[]>;
+  /** This workflow's runs that haven't finished. */
+  readonly unfinishedRuns: () => Promise<UnfinishedRun[]>;
   /** The jobs of a run's latest attempt. */
   readonly jobs: (runId: number) => Promise<JobState[]>;
   readonly sleep: (milliseconds: number) => Promise<void>;
@@ -81,40 +87,70 @@ export interface TurnDeps {
   readonly log: (line: string) => void;
 }
 
-/** How the wait ended: its turn came, or it gave up after the longest wait. */
+/**
+ * How the wait ended: its turn came, it gave up after the longest wait, or it
+ * couldn't read GitHub (`error` says why) and went ahead rather than fail a
+ * run the suites would pass.
+ */
 export interface TurnResult {
-  readonly outcome: "turn" | "gave-up";
+  readonly outcome: "turn" | "gave-up" | "unreadable";
   readonly waitedMs: number;
   readonly ahead: readonly number[];
+  readonly error?: string;
 }
 
-/** How often to look again: once a minute keeps well inside GITHUB_TOKEN's rate limit. */
-export const pollMs = 60_000;
+/**
+ * How often to look again. Every workflow in the repository shares
+ * GITHUB_TOKEN's hourly budget, so the waiters look only every 2 minutes.
+ */
+export const pollMs = 2 * 60_000;
 
 /** The longest wait before going ahead anyway, so a stuck run can't block everyone. */
 export const longestWaitMs = 45 * 60_000;
 
 /**
+ * Where each other unfinished run stands. A run attempt once seen done stays
+ * done, so its jobs aren't asked for again; a re-run is a new attempt and is
+ * looked at afresh.
+ */
+async function lookAtRuns(
+  ownRunId: number,
+  deps: TurnDeps,
+  seenDone: Set<string>,
+): Promise<Map<number, RunStanding>> {
+  const standings = new Map<number, RunStanding>();
+  for (const run of await deps.unfinishedRuns()) {
+    const attemptKey = `${run.id}:${run.attempt}`;
+    if (run.id === ownRunId || seenDone.has(attemptKey)) {
+      continue;
+    }
+    const standing = runStanding(await deps.jobs(run.id));
+    if (standing === "done") {
+      seenDone.add(attemptKey);
+    }
+    standings.set(run.id, standing);
+  }
+  return standings;
+}
+
+/**
  * Waits until no run is ahead of `ownRunId`, looking once per `pollMs`. Gives
- * up after `longestWaitMs`. A run once seen done stays done, so its jobs
- * aren't asked for again.
+ * up after `longestWaitMs`. When GitHub can't be read it stops waiting and
+ * returns the error: the wait only helps, so it never fails the run.
  */
 export async function waitForTurn(ownRunId: number, deps: TurnDeps): Promise<TurnResult> {
   const started = deps.now();
-  const seenDone = new Set<number>();
+  const seenDone = new Set<string>();
+  let ahead: number[] = [];
   for (;;) {
-    const standings = new Map<number, RunStanding>();
-    for (const runId of await deps.unfinishedRuns()) {
-      if (runId === ownRunId || seenDone.has(runId)) {
-        continue;
-      }
-      const standing = runStanding(await deps.jobs(runId));
-      if (standing === "done") {
-        seenDone.add(runId);
-      }
-      standings.set(runId, standing);
+    let standings: Map<number, RunStanding>;
+    try {
+      standings = await lookAtRuns(ownRunId, deps, seenDone);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { outcome: "unreadable", waitedMs: deps.now() - started, ahead, error: message };
     }
-    const ahead = runsAhead(ownRunId, standings);
+    ahead = runsAhead(ownRunId, standings);
     const waitedMs = deps.now() - started;
     if (ahead.length === 0) {
       return { outcome: "turn", waitedMs, ahead };

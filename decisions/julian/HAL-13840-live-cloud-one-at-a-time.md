@@ -13,8 +13,9 @@
   requirement `check.live-turn`. Through the Actions API they read the other unfinished
   `live-cloud.yml` runs and wait while another run holds the account (its job is past the wait
   step and its `Run the live suites` step hasn't finished), or while a run with a lower ID still
-  hasn't finished its suites. They poll once a minute. After 45 minutes they print a warning and
-  go ahead, as before this change.
+  hasn't finished its suites. They list the runs in one call and poll every 2 minutes, to spare the
+  repository's shared `GITHUB_TOKEN` budget. After 45 minutes, or when GitHub can't be read,
+  they print a warning and go ahead, as before this change.
 - `tooling/check/README.md` and `docs/guides/checks.md` list the new command.
 
 Nothing in the guard's trust roots changes: the requirement guard and `note-check.ts` don't
