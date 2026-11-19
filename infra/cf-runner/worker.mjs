@@ -64,7 +64,7 @@ export default {
     const run = await github(token, "GET", `/repos/${REPO}/actions/runs/${job.runId}`);
     if (!trustedRun(run)) {
       console.log(
-        JSON.stringify({ msg: "refused", job: job.id, event: run.event, branch: run.head_branch }),
+        JSON.stringify({ msg: "refused", job: job.id, event: run?.event, branch: run?.head_branch }),
       );
       return new Response("not a merge-queue or main run", { status: 403 });
     }
@@ -110,8 +110,7 @@ async function installationToken(env, installationId) {
 }
 
 // The org's runner group RUNNER_GROUP, which the board set up with access to halonic-com/halonic
-// only. An org on GitHub Free has only the Default group; the job-started hook still refuses
-// any other repository there.
+// only. Never fall back to the Default group: it may be open to other repositories.
 let groupId;
 async function runnerGroup(token) {
   if (groupId) return groupId;
@@ -120,8 +119,7 @@ async function runnerGroup(token) {
     "GET",
     `/orgs/${ORG}/actions/runner-groups?per_page=100`,
   );
-  const group =
-    runner_groups.find((g) => g.name === RUNNER_GROUP) ?? runner_groups.find((g) => g.default);
+  const group = runner_groups.find((g) => g.name === RUNNER_GROUP);
   if (!group) throw new Error(`no runner group ${RUNNER_GROUP} in ${ORG}`);
   groupId = group.id;
   return groupId;
