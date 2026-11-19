@@ -1,10 +1,11 @@
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdtemp, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { currentUserSid } from "../src/journal-acl.ts";
+import { removeFolder } from "../src/remove-folder.ts";
 import { accountFolderName, makeRunnerTempFolder } from "../src/runner-temp-folder.ts";
 
 /**
@@ -132,8 +133,8 @@ describe("the runner's temp folder on Windows", () => {
 
   afterAll(async () => {
     await run("net.exe", ["user", other, "/delete"]);
-    await rm(profileBase, { recursive: true, force: true });
-    await rm(shared, { recursive: true, force: true });
+    await removeFolder(profileBase);
+    await removeFolder(shared);
   });
 
   it("makes the run's folder in the account's own folder in the shared folder", () => {
@@ -205,7 +206,7 @@ describe("the runner's temp folder on Windows", () => {
       expect(await readdir(plantedAccount)).toEqual([]);
       expect((await entriesOf(made)).join("\n")).not.toContain(other);
     } finally {
-      await rm(planted, { recursive: true, force: true });
+      await removeFolder(planted);
     }
   });
 });
