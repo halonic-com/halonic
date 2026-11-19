@@ -45,6 +45,7 @@ export interface RemoteSettingsViewProps {
 export function RemoteSettingsView({ remote, state, announce, surface }: RemoteSettingsViewProps) {
   const [failed, setFailed] = useState<string>();
   const [pairing, setPairing] = useState(false);
+  const openExternal = useOpenExternal();
   const run = (action: Promise<void>, failure: string): Promise<void> => {
     setFailed(undefined);
     return action.catch(() => {
@@ -104,6 +105,7 @@ export function RemoteSettingsView({ remote, state, announce, surface }: RemoteS
           remote={remote}
           provider={state.tunnelProviderId}
           allowRisky={state.allowRiskyRemotely}
+          openExternal={openExternal}
           onClose={() => setPairing(false)}
         />
       ) : null}
