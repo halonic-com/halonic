@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import { createHmac, generateKeyPairSync } from "node:crypto";
 import { test } from "node:test";
-import { nextStep, pemToPkcs8, trustedRun, validSignature, wantedJob } from "./lib.mjs";
+import {
+  imageFor,
+  nextStep,
+  pemToPkcs8,
+  SNAPSHOT_MAX_AGE_MS,
+  snapshotDue,
+  trustedRun,
+  validSignature,
+  wantedJob,
+} from "./lib.mjs";
 
 const repo = { full_name: "halonic-com/halonic" };
 const queued = (over = {}) => ({
@@ -89,4 +98,23 @@ test("cf-runner reads GitHub's PKCS#1 app key", async () => {
     );
     assert.equal(key.type, "private");
   }
+});
+
+test("cf-runner gives image B only to the chosen runs, and only with a snapshot", () => {
+  const snap = { id: "s1" };
+  assert.equal(imageFor("alternate", 9, snap), "b");
+  assert.equal(imageFor("alternate", 10, snap), "a");
+  assert.equal(imageFor("all", 10, snap), "b");
+  assert.equal(imageFor("off", 9, snap), "a");
+  assert.equal(imageFor(undefined, 9, snap), "a");
+  assert.equal(imageFor("all", 9, null), "a");
+});
+
+test("cf-runner rebuilds image B for a new lockfile or after a day", () => {
+  const lock = "a".repeat(64);
+  const built = { id: "s1", lock, builtAt: 1_000 };
+  assert.equal(snapshotDue(null, lock, 2_000), true);
+  assert.equal(snapshotDue(built, lock, 2_000), false);
+  assert.equal(snapshotDue(built, "b".repeat(64), 2_000), true);
+  assert.equal(snapshotDue(built, lock, 1_000 + SNAPSHOT_MAX_AGE_MS + 1), true);
 });

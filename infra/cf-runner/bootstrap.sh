@@ -1,5 +1,6 @@
 #!/bin/bash
-# Turns a fresh ubuntu:24.04 container into a one-job GitHub Actions runner (HAL-13578).
+# Turns a fresh ubuntu:24.04 (image A) or Cloudflare's debian-trixie (image B, before prefill.sh)
+# container into a one-job GitHub Actions runner (HAL-13578).
 # Runs as root, once, before the runner starts. Holds no secret: the runner's one-time
 # registration (JIT config) reaches it later, as an environment variable of the runner process.
 set -euo pipefail
@@ -15,7 +16,7 @@ apt-get update -qq
 # What the jobs that run here call outside of pnpm: git, curl, jq, sudo, zstd for actions/cache.
 apt-get install -y -qq --no-install-recommends \
   ca-certificates curl git jq sudo xz-utils zstd unzip tar gzip build-essential python3 \
-  libicu74 >/dev/null
+  "$(apt-cache search --names-only '^libicu[0-9]+$' | cut -d' ' -f1 | sort -V | tail -1)" >/dev/null
 
 # Downloads go to a scratch folder; the hooks' state goes to $state, which the runner user owns.
 scratch=$(mktemp -d)
@@ -59,6 +60,9 @@ if [ "$ok" != yes ]; then
   exit 1
 fi
 date +%s > /opt/cf-runner/job-started
+# Seconds from the Worker's start() (CF_STARTED_AT) to the job's first step: container start,
+# setup and runner together.
+echo $(( $(date +%s) - ${CF_STARTED_AT:-$(date +%s)} )) > /opt/cf-runner/boot-to-job
 echo "Cloudflare container runner (HAL-13578): $(nproc) vCPU, $(free -g | awk '/^Mem:/{print $2}') GiB memory, $(df -h / | awk 'NR==2{print $4}') disk free."
 EOF
 
@@ -67,7 +71,8 @@ cat > "$home/job-completed.sh" <<'EOF'
 #!/bin/bash
 started=$(cat /opt/cf-runner/job-started 2>/dev/null || date +%s)
 read -r mem disk < /opt/cf-runner/peak 2>/dev/null || { mem=0; disk=0; }
-line="cf-runner job=${GITHUB_JOB:-?} run=${GITHUB_RUN_ID:-?} seconds=$(( $(date +%s) - started )) peak_mem_mib=${mem} peak_disk_mib=${disk}"
+boot=$(cat /opt/cf-runner/boot-to-job 2>/dev/null || echo 0)
+line="cf-runner image=${CF_RUNNER_IMAGE:-a} job=${GITHUB_JOB:-?} run=${GITHUB_RUN_ID:-?} boot_to_job=${boot} seconds=$(( $(date +%s) - started )) peak_mem_mib=${mem} peak_disk_mib=${disk}"
 echo "$line"
 echo "$line" > /opt/cf-runner/job-metrics
 EOF
