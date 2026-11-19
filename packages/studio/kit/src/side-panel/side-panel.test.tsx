@@ -59,6 +59,17 @@ verifies("kit.side-panel", () => {
     expect(body?.className).toContain("bg-halo-wash");
   });
 
+  it("draws no region inside a dialog, and gives its title the dialog's id", () => {
+    const { container } = render(panel({ dialogTitleId: "sheet-title" }));
+    const frame = container.firstElementChild;
+    expect(container.querySelector("aside")).toBeNull();
+    expect(frame?.tagName).toBe("DIV");
+    expect(frame?.hasAttribute("aria-label")).toBe(false);
+    expect(frame?.hasAttribute("aria-labelledby")).toBe(false);
+    expect(frame?.className).toContain("flex h-full min-h-0 flex-col bg-surface");
+    expect(container.querySelector("h2")?.id).toBe("sheet-title");
+  });
+
   it("puts the shell's actions right of the title and the footer under a divider", () => {
     const { container } = render(
       panel({

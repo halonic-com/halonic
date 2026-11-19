@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import { ModalRegions } from "../dialog/modal-regions.tsx";
 import { useCancelEvents } from "../dialog/use-cancel-events.ts";
 import { useModal } from "../dialog/use-modal.ts";
@@ -10,12 +10,15 @@ import { HeaderBadgeSheet, type HeaderBadgeSheetProps } from "./header-badge-she
  * on, such as More in a desktop window as narrow as a phone. It is a `<dialog>` opened with
  * `showModal()`, as the kit's other sheets are, so everything behind it is inert: Tab never
  * reaches a control hidden under the sheet (WCAG 2.4.11). Escape is Back. Mounting it opens it;
- * the screen unmounts it to close it, and focus goes back to the opener.
+ * the screen unmounts it to close it, and focus goes back to the opener. The sheet's title names
+ * the dialog, as a `Sheet`'s does, and the panel inside draws no region of its own, so a screen
+ * reader hears the title once.
  *
  * @example
  * {open ? <HeaderBadgeSheetDialog title="Workspace" entries={entries} onClose={close} /> : null}
  */
 export function HeaderBadgeSheetDialog(props: HeaderBadgeSheetProps) {
+  const titleId = useId();
   const dialog = useRef<HTMLDialogElement>(null);
   // The panel focuses its title before the dialog opens, while the title can't take focus yet,
   // so the dialog focuses it again once it is open.
@@ -23,9 +26,9 @@ export function HeaderBadgeSheetDialog(props: HeaderBadgeSheetProps) {
   // The sheet holds nothing typed, so Escape always closes it, as Back does.
   const events = useCancelEvents(props.onClose, props.onClose, false);
   return (
-    <dialog ref={dialog} aria-label={props.title} className={sheetFrameClasses} {...events}>
+    <dialog ref={dialog} aria-labelledby={titleId} className={sheetFrameClasses} {...events}>
       <ModalRegions>
-        <HeaderBadgeSheet {...props} />
+        <HeaderBadgeSheet {...props} dialogTitleId={titleId} />
       </ModalRegions>
     </dialog>
   );

@@ -40,16 +40,30 @@ function openSheet(onClose: () => void = vi.fn()) {
   return { opener, showModal, dialog, close };
 }
 
+/** The name the dialog's `aria-labelledby` gives it: the words of the element it points to. */
+function nameOf(dialog: HTMLDialogElement): string | undefined {
+  const id = dialog.getAttribute("aria-labelledby") ?? "";
+  return document.getElementById(id)?.textContent ?? undefined;
+}
+
 verifies("kit.header-badge-sheet-dialog", () => {
   it("opens the sheet as a modal dialog named by its title, with focus on the title", () => {
     const { showModal, dialog } = openSheet();
 
     expect(showModal.mock.contexts).toEqual([dialog]);
     expect(dialog.open).toBe(true);
-    expect(dialog.getAttribute("aria-label")).toBe("Workspace");
+    expect(nameOf(dialog)).toBe("Workspace");
     expect(dialog.querySelector("li > button")?.textContent).toContain("Beta");
     expect(document.activeElement?.textContent).toBe("Workspace");
     expect(document.activeElement?.tagName).toBe("H2");
+  });
+
+  it("names the dialog once: by its title, with no region inside it", () => {
+    const { dialog } = openSheet();
+
+    expect(dialog.hasAttribute("aria-label")).toBe(false);
+    expect(dialog.getAttribute("aria-labelledby")).toBe(dialog.querySelector("h2")?.id);
+    expect(dialog.querySelector("aside, [role='complementary'], [role='region']")).toBeNull();
   });
 
   it("calls onClose on Escape", () => {

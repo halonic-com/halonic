@@ -1080,6 +1080,7 @@ panel fills what it's given and never sets its own width.
 | `facing` | The side facing the main view, which gets the 1px line: `start` (default), `end` |
 | `initialFocus` | A field to focus instead of the title, for a panel you open to type in |
 | `onClose` | The phone's Back. On desktop, close is in `actions` and the shell binds Escape |
+| `dialogTitleId` | For a panel inside a dialog its title names: the title's id. The panel then draws no region, so its name is read once |
 
 | State | What happens |
 | --- | --- |
@@ -1585,8 +1586,9 @@ item stays listed and does nothing, an unavailable one with its reason under its
 A screen with no page stack to put the sheet on, such as More in a desktop window as narrow as a
 phone, mounts **`HeaderBadgeSheetDialog`** instead, with the same props. It shows the sheet over the
 whole window in a `<dialog>` opened with `showModal()`, so everything behind it is inert and Tab
-never reaches a control hidden under it (WCAG 2.4.11). Focus moves to the title, Escape calls
-`onClose`, and unmounting it closes it and gives focus back to the opener.
+never reaches a control hidden under it (WCAG 2.4.11). The title names the dialog, and the panel
+inside draws no region of its own, so a screen reader reads the name once. Focus moves to the
+title, Escape calls `onClose`, and unmounting it closes it and gives focus back to the opener.
 
 ## Tooltip
 
