@@ -13,9 +13,10 @@ NODE_SHA256=cdeb8670a0c81f51b4dc4ac61919f9b1ad917b304bf8221eb939570663d240f8
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-# What the jobs that run here call outside of pnpm: git, curl, jq, sudo, zstd for actions/cache.
+# What the jobs that run here call outside of pnpm: git, curl, jq, sudo, zstd for actions/cache,
+# and gh, which the merge queue's pull-request step uses (window A failed without it).
 apt-get install -y -qq --no-install-recommends \
-  ca-certificates curl git jq sudo xz-utils zstd unzip tar gzip build-essential python3 \
+  ca-certificates curl gh git jq sudo xz-utils zstd unzip tar gzip build-essential python3 \
   "$(apt-cache search --names-only '^libicu[0-9]+$' | cut -d' ' -f1 | sort -V | tail -1)" >/dev/null
 
 # Downloads go to a scratch folder; the hooks' state goes to $state, which the runner user owns.
