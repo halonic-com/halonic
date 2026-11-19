@@ -26,6 +26,7 @@ function serviceOf(settings: string): EngineService {
     },
     lock: { hold: async () => ({ release: async () => {} }) },
     location: "/acme",
+    name: "Acme",
     definitions: new MemoryDefinitionStore({ "workspace.yaml": settings }),
     secrets: { get: async () => null },
     http: { fetch },
