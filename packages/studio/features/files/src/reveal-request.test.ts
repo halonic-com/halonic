@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { requestFilesReveal, takeFilesRevealRequests, workspacePath } from "./reveal-request.ts";
 
 // A request no test took would reach the next test's listener.
-afterEach(() => takeFilesRevealRequests(() => {})());
+afterEach(() => takeFilesRevealRequests(() => "shown")());
 
 verifies("files.tree.reveal-request", () => {
   it("reads a path from the workspace folder, dropping . and empty segments", () => {
@@ -37,6 +37,16 @@ verifies("files.tree.reveal-request", () => {
     const later = vi.fn();
     takeFilesRevealRequests(later)();
     expect(later).not.toHaveBeenCalled();
+  });
+
+  it("answers with what the tree did, and drops a request outside the folder or replaced", async () => {
+    const outside = requestFilesReveal("/etc");
+    const replaced = requestFilesReveal("hubs/reports");
+    const latest = requestFilesReveal("docs");
+    takeFilesRevealRequests(() => "nearest")();
+    expect(await outside).toBe("dropped");
+    expect(await replaced).toBe("dropped");
+    expect(await latest).toBe("nearest");
   });
 
   it("hands a later request to the tree that is listed", () => {

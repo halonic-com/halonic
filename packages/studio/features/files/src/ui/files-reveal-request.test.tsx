@@ -10,7 +10,7 @@ import { FilesSidebarView } from "./files-sidebar-view.tsx";
 
 afterEach(() => {
   unmountAll();
-  takeFilesRevealRequests(() => {})();
+  takeFilesRevealRequests(() => "shown")();
 });
 
 /** The Acme sample's shape: one hub with docs, one without. */
@@ -47,10 +47,11 @@ const opened = (page: HTMLElement) =>
 
 verifies("files.tree.reveal-request", () => {
   it("opens the folders down to a folder asked for before the tree is listed, and focuses it", async () => {
-    requestFilesReveal("hubs/sales/docs");
+    const answer = requestFilesReveal("hubs/sales/docs");
     const page = await show(watchedHost());
     await settled();
 
+    expect(await answer).toBe("shown");
     expect(opened(page)).toEqual(["hubs", "hubs/sales", "hubs/sales/docs"]);
     expect(rowNamed(page, "hubs/sales/docs/guide.md")).toBeDefined();
     expect(document.activeElement).toBe(rowNamed(page, "hubs/sales/docs"));
@@ -59,7 +60,9 @@ verifies("files.tree.reveal-request", () => {
   it("takes a request made while the tree is shown", async () => {
     const page = await show(watchedHost());
 
-    act(() => requestFilesReveal("hubs/reports/agents/a.agent.yaml"));
+    act(() => {
+      void requestFilesReveal("hubs/reports/agents/a.agent.yaml");
+    });
     await settled();
 
     expect(opened(page)).toEqual(["hubs", "hubs/reports", "hubs/reports/agents"]);
@@ -67,19 +70,21 @@ verifies("files.tree.reveal-request", () => {
   });
 
   it("shows the deepest folder on the path when the folder asked for isn't in the tree", async () => {
-    requestFilesReveal("hubs/reports/docs");
+    const answer = requestFilesReveal("hubs/reports/docs");
     const page = await show(watchedHost());
     await settled();
 
+    expect(await answer).toBe("nearest");
     expect(opened(page)).toEqual(["hubs", "hubs/reports"]);
     expect(document.activeElement).toBe(rowNamed(page, "hubs/reports"));
   });
 
   it("falls back to the tree's first row, opening nothing, when no folder on the path is there", async () => {
-    requestFilesReveal("notes/a/b");
+    const answer = requestFilesReveal("notes/a/b");
     const page = await show(watchedHost());
     await settled();
 
+    expect(await answer).toBe("nearest");
     expect(opened(page)).toEqual([]);
     expect(document.activeElement).toBe(rowNamed(page, "hubs"));
   });
