@@ -2,6 +2,7 @@
 
 - Approval: Decided by the designer on HAL-12962 (https://paperclip.halonic.com/HAL/issues/HAL-12962), rows S4 and S5 of the UX check on HAL-12952, a team decision on an approved screen (HAL-2282 rule). Liam signs on HAL-12962.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jM6cFecYZcEkN8DE5rVtb8Gqif51aCN0Ij8Mjk76Pu+JuQvQkyutYPYTJDEE29g153YcAt0z9anD2P6xoj7sDA==
 
 ## What changes
 
