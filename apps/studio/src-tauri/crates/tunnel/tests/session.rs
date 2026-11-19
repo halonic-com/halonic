@@ -117,8 +117,9 @@ fn session_rekey_refuses_what_the_session_cannot_carry() {
 
 #[test]
 fn session_rekey_reads_no_refusal_after_a_reconnect() {
-    let (mut session, _) = connected(Instant::now());
+    // A fresh session for each refusal, since the first one ends the session.
     for refusal in [&[0x30][..], &[0x31, 0, 4]] {
+        let (mut session, _) = connected(Instant::now());
         assert_eq!(session.open(refusal), Err(SessionError::Unreadable));
     }
 }

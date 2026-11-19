@@ -14,6 +14,14 @@ key and keep using it. `PhoneKeys` is no longer `Clone`, so there is one copy to
 Writing our own wipe was the other choice: about 20 lines of volatile writes and a compiler fence
 that we would own and audit, for no gain.
 
+## Test changed
+
+`session_rekey_reads_no_refusal_after_a_reconnect` read both refusal kinds on one session. The
+session now fails closed, so the first refusal ends it and the second gives `Ended`. The test now
+reads each refusal on a fresh session and still expects `Unreadable` for both: it checks the same
+thing, no less.
+
 ## Covers
 
 - apps/studio/src-tauri/crates/tunnel/Cargo.toml
+- apps/studio/src-tauri/crates/tunnel/tests/session.rs
