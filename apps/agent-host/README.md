@@ -101,6 +101,7 @@ A request body is JSON of at most 1 MiB. A `Content-Length` over that gets `413`
 | `GET /v1/harnesses` | `[{"id","name"}]` |
 | `POST /v1/harnesses/detect` with `{"harness"}`, and `"settingsFolder"` for one agent | the `HarnessDetection` |
 | `POST /v1/harnesses/sign-in` with `{"harness","settingsFolder"}` | `{"opened":true}`, or `{"opened":false,"reason","command"}` (below) |
+| `POST /v1/harnesses/settings-folder` with `{"workspace","agentId","harness"}` (only with a profile folder) | `{"settingsFolder"}`, the agent's own, made private; `404 unknown_workspace` or `unknown_harness`; `422 no_sign_in` or `agent_id_refused` |
 | `POST /v1/harnesses/profile` with `{"workspace","agent","bridge"}` (only with a profile folder) | the `HarnessProfile`: `{"profile","deniedGroups"}` (below); `404 unknown_workspace`, `unknown_harness` or `unknown_bridge`; `422 profile_refused` with the builder's reason |
 | `POST /v1/proposals/open` with `{"workspace","run":{"runId","hubId","workflowId","version"}}`, `…/folder-of` and `…/end` with `{"workspace","runId"}`, `…/start` with `{"workspace","openRuns"}` (only with a profile folder) | `{"folder"}` (`null` from `folder-of` when the run has none), `{"folder"}`, `{}`, `{}`; `404 unknown_workspace`; `422 proposal_refused` with the reason when a folder can't be made |
 | `POST /v1/integrations/sign-in/start` with `{"integration","signIn"}` | `{"authorizeUrl"}` to open in the browser; the callback is `GET /sign-in/<random>`, served without the token. `404 unknown_integration` / `unknown_sign_in`, `422 settings_invalid` / `client_secret_missing`, `501 callback_unavailable` over frames. Served only with `--profile-folder`, whose `integration-sign-ins` folder keeps the grants sealed with the token key. The app runs no integration with a sign-in yet (a local sheet can't declare one), so for now every route answers `404 unknown_integration` |
@@ -193,6 +194,8 @@ An agent that uses a Claude Code or Codex subscription signs in once, in its own
 - `settingsFolder` must be an absolute path (`400 body_invalid` otherwise).
 - The program is found on the host's `PATH`, as `detect` finds it. When it isn't there, or no window could open, the answer is `{ opened: false, reason, command }`: `command` is the sign-in to type by hand, in PowerShell on Windows (`$env:CLAUDE_CONFIG_DIR = '<folder>'; claude auth login`) and in `sh` elsewhere (`CLAUDE_CONFIG_DIR='<folder>' claude auth login`), from `signInCommandText` in `@halonicjs/ports`, so `halonic doctor` shows the same command.
 - A harness without a sign-in of its own gets `422 no_sign_in`, and a command the terminal refuses (a folder under a skill's `scripts/`) `422 sign_in_refused`.
+
+Studio learns the agent's settings folder from `POST /v1/harnesses/settings-folder` (HAL-6351): the folder a run of that agent uses, `harness-settings/<agentId>/<harnessId>` in the workspace's folder of the profile, made private. It passes that folder to `detect`, so the Harness page shows whether this agent is signed in, and to the sign-in.
 
 ## Opening a terminal the person can see
 
