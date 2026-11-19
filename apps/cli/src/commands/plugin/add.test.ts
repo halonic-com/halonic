@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { withHomeAsTilde } from "@halonicjs/profile";
@@ -256,6 +256,19 @@ verifies("cli.commands.plugin.add", () => {
     expect(stderr).toContain("Replace it with a plain folder, then try again.");
     expect(stderr).not.toContain("can't explain yet");
     expect(await readdir(outside)).toEqual([]);
+  });
+
+  it("says why when the plugins folder is a file, and leaves the file", async () => {
+    await mkdir(join(folder, "profile"));
+    await writeFile(pluginsFolder(), "a file, not a folder");
+
+    const { code, io } = await add([await writeSource("weather")]);
+
+    expect(code).toBe(exitCode.conflict);
+    const stderr = io.stderr.join("\n");
+    expect(stderr).toContain("isn't a folder; plugins are written only into a plain folder.");
+    expect(stderr).not.toContain("can't explain yet");
+    expect(await readFile(pluginsFolder(), "utf8")).toBe("a file, not a folder");
   });
 
   it("names the plugin's folder by its id, not by the source folder's name", async () => {
