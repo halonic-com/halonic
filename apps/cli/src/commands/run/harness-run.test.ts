@@ -1,8 +1,9 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { FileAgentPlacementStore } from "@halonicjs/adapter-fs-node";
-import { AgentPlacement } from "@halonicjs/app";
+import { AgentPlacement, agentFingerprint } from "@halonicjs/app";
 import type { Harness, HarnessBridgeServer, Sandbox, SandboxCheck } from "@halonicjs/ports";
+import { placementFolder, profileFolder } from "@halonicjs/profile";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -40,11 +41,27 @@ let acmeRuns: AcmeRuns;
 let writes: Record<string, string>;
 /** The working folder of each program the fake sandbox opened a session for. */
 let workingFolders: string[];
+/** Which fake sandbox, `fenced` or `launcher`, opened each session. */
+let openedBy: string[];
+/** How often the fake program started. */
+let harnessStarts: number;
+/** How often the CLI asked whether the sandbox starts, before the run. */
+let sandboxChecks: number;
+/** A person's "On this computer" choices, in the profile's folder, where the engine reads them too. */
+let placement: AgentPlacement;
 
 beforeEach(async () => {
   writes = {};
   workingFolders = [];
+  openedBy = [];
+  harnessStarts = 0;
+  sandboxChecks = 0;
   acmeRuns = await makeAcmeRuns("run-harness-on");
+  placement = new AgentPlacement({
+    store: new FileAgentPlacementStore(placementFolder(profileFolder(acmeRuns.profile))),
+    digest: webCryptoDigest,
+    clock: fixedClock(engineStart),
+  });
   await writeFiles(acmeRuns.acme, {
     // Harness agents send their work to a cloud model, which a local-only workspace refuses.
     "workspace.yaml":
@@ -78,23 +95,29 @@ afterEach(async () => {
 
 const sandboxStarts: SandboxCheck = { ok: true, reason: null, missing: [] };
 
-/** A sandbox that starts no program, since the fake program is in this process. */
-const recordingSandbox: Sandbox = {
-  check: async () => sandboxStarts,
-  capabilities: () => ({ files: "shared", strength: "os" }),
-  open: async (profile) => {
-    workingFolders.push(profile.workingFolder ?? "");
-    return {
-      profile,
-      fence: { state: "fenced" },
-      start: async () => {
-        throw new Error("The fake sandbox starts no program.");
-      },
-      onBlocked: () => () => {},
-      close: async () => {},
-    };
-  },
-};
+/**
+ * A sandbox that starts no program, since the fake program is in this process.
+ * `label` tells the fenced one from the launcher in `openedBy`.
+ */
+function recordingSandbox(label: string): Sandbox {
+  return {
+    check: async () => sandboxStarts,
+    capabilities: () => ({ files: "shared", strength: "os" }),
+    open: async (profile) => {
+      workingFolders.push(profile.workingFolder ?? "");
+      openedBy.push(label);
+      return {
+        profile,
+        fence: { state: "fenced" },
+        start: async () => {
+          throw new Error("The fake sandbox starts no program.");
+        },
+        onBlocked: () => () => {},
+        close: async () => {},
+      };
+    },
+  };
+}
 
 /** Claude Code, which writes `writes` in its working folder and finishes. */
 const claudeCode: Harness = {
@@ -104,6 +127,7 @@ const claudeCode: Harness = {
   environment: () => ({}),
   start: (task, session) => ({
     async *[Symbol.asyncIterator]() {
+      harnessStarts += 1;
       for (const [path, text] of Object.entries(writes)) {
         const file = join(session.profile.workingFolder ?? "", path);
         await mkdir(dirname(file), { recursive: true });
@@ -128,6 +152,17 @@ const bridgeServer: HarnessBridgeServer = {
 
 /** Trusts Acme as `halonic trust` does, and the coder's instructions as a person would. */
 async function trustAcme(): Promise<void> {
+  await trustWorkspace();
+  await trustInstructions({
+    profile: acmeRuns.profile,
+    workspace: acmeRuns.acme,
+    agent: "coder",
+    text: "Write the change.",
+  });
+}
+
+/** Trusts Acme as `halonic trust` does, and leaves the coder's instructions untrusted. */
+async function trustWorkspace(): Promise<void> {
   const machine = acmeRunsSetup(acmeRuns).trust();
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acmeRuns.acme });
   const { subject } = await readWorkspaceTrust(dir, machine.commandSearch);
@@ -135,12 +170,16 @@ async function trustAcme(): Promise<void> {
   const check = await service.check(subject);
   if (!("fingerprint" in check)) throw new Error("Acme has no fingerprint.");
   await service.grant(subject, check.fingerprint, "cli");
-  await trustInstructions({
-    profile: acmeRuns.profile,
-    workspace: acmeRuns.acme,
-    agent: "coder",
-    text: "Write the change.",
-  });
+}
+
+/** A person chose "On this computer" for the coder, for its file as it is now. */
+async function chooseThisComputer(): Promise<void> {
+  const file = new Uint8Array(
+    await readFile(join(acmeRuns.acme, "hubs/lab/agents/coder.agent.yaml")),
+  );
+  const subject = { location: await realpath(acmeRuns.acme), agent: "coder", file };
+  const shown = await agentFingerprint(file, webCryptoDigest);
+  expect((await placement.chooseThisComputer(subject, shown)).ok).toBe(true);
 }
 
 async function runChange(...args: string[]): Promise<{ code: number; io: CapturedIo }> {
@@ -151,20 +190,21 @@ async function runChange(...args: string[]): Promise<{ code: number; io: Capture
     engine: {
       ...setup.engine,
       harnessParts: {
-        fenced: recordingSandbox,
-        launcher: recordingSandbox,
+        fenced: recordingSandbox("fenced"),
+        launcher: recordingSandbox("launcher"),
         harnesses: { "claude-code": claudeCode },
         bridgeServer,
         platform: "linux",
       },
     },
     sandboxGate: () => ({
-      sandbox: { check: async () => sandboxStarts },
-      placement: new AgentPlacement({
-        store: new FileAgentPlacementStore(join(acmeRuns.folder, "placements")),
-        digest: webCryptoDigest,
-        clock: fixedClock(engineStart),
-      }),
+      sandbox: {
+        check: async () => {
+          sandboxChecks += 1;
+          return sandboxStarts;
+        },
+      },
+      placement,
     }),
   });
   const code = await runCli(["run", "lab/change", ...args], io, [command]);
@@ -182,6 +222,9 @@ verifies("cli.run-proposal", () => {
       const { code, io } = await runChange();
 
       expect(code).toBe(exitCode.ok);
+      expect(openedBy).toEqual(["fenced"]);
+      // The engine reuses the answer `halonic run` got before the run (Julian, HAL-13057).
+      expect(sandboxChecks).toBe(1);
       expect(workingFolders).toHaveLength(1);
       expect(workingFolders[0]?.startsWith(acmeRuns.acme)).toBe(false);
       const last = io.stdout.at(-1) ?? "";
@@ -212,6 +255,42 @@ verifies("cli.run-proposal", () => {
     expect(code).toBe(exitCode.ok);
     expect(io.stdout.join("\n")).not.toContain("proposes changes");
   });
+
+  it(
+    "runs an agent set to On this computer without the sandbox, and says so",
+    slowTest,
+    async () => {
+      await trustAcme();
+      await chooseThisComputer();
+      writes = { "change.txt": "The change.\n" };
+
+      const { code, io } = await runChange();
+
+      expect(code).toBe(exitCode.ok);
+      expect(openedBy).toEqual(["launcher"]);
+      expect([...io.stdout, ...io.stderr]).toContainEqual(
+        expect.stringMatching(
+          /^! Coder runs on this computer without the sandbox, as chosen on .+\.$/u,
+        ),
+      );
+    },
+  );
+
+  it(
+    "starts no program for instructions nobody trusted, and leaves no proposal",
+    slowTest,
+    async () => {
+      await trustWorkspace();
+      writes = { "change.txt": "The change.\n" };
+
+      const { code, io } = await runChange();
+
+      expect(code).toBe(exitCode.failed);
+      expect(harnessStarts).toBe(0);
+      expect(io.stdout.join("\n")).not.toContain("proposes changes");
+      expect(await savedFile(acmeRuns, changedFile)).toBeNull();
+    },
+  );
 
   it("shows the trust check for a workspace that isn't trusted, and runs nothing", async () => {
     const { code } = await runChange();
