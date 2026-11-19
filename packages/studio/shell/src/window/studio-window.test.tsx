@@ -431,3 +431,59 @@ verifies("shell.sidebar-view-request", () => {
     expect(seen?.showSidebarView).toBeUndefined();
   });
 });
+
+verifies("shell.context-close-stack", () => {
+  /** The context the last drawn Home card got. */
+  let seen: WorkspaceContext | undefined;
+
+  function SeeContextCard({ context }: HomeCardProps) {
+    seen = context;
+    return <p>Seen</p>;
+  }
+
+  const cardFeature = defineFeature({
+    id: "cards",
+    title: "Cards",
+    register(studio) {
+      studio.home.addCard({
+        id: "cards",
+        view: "SeeContextCard",
+        load: async () => ({ SeeContextCard }),
+      });
+    },
+  });
+
+  function renderCards(): Shell {
+    const shell = createShell({ features: [cardFeature], timers: new FakeTimers() });
+    seen = undefined;
+    renderWindow(shell);
+    return shell;
+  }
+
+  it("gives a feature's context the window's close stack, which Esc closes", async () => {
+    const shell = renderCards();
+    await settle();
+
+    expect(seen?.closeStack).toBe(shell.closeStack);
+    let closed = 0;
+    seen?.closeStack?.open({
+      kind: "stacked-card",
+      close: () => {
+        closed += 1;
+        return true;
+      },
+    });
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(closed).toBe(1);
+  });
+
+  it("gives a phone's context the close stack too", async () => {
+    media.resize(400);
+    const shell = renderCards();
+    await settle();
+
+    expect(seen?.closeStack).toBe(shell.closeStack);
+  });
+});
