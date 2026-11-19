@@ -2,6 +2,7 @@
 
 - Approval: board approval of proposal 1 ("What this run can do") in the `proposals` document on HAL-1601; the field (P3) on HAL-1782; the sign-in checks closed on HAL-1710 (19 Nov, wording unchanged); the words approved on HAL-1784; the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Njf6Jiftk1L8fGXHCoLd27vknFI8o76O1f8y5iBqQ2I3BlrxbRwhsPOBJIs62xB7G/Tb5DWm6Blb9pJ4jEVZAA==
 - Task: HAL-10728
 
 ## What changes
