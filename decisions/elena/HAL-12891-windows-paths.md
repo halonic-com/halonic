@@ -3,6 +3,7 @@
 - Task: HAL-12891
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12891 (Sofia's C94 UX check on HAL-12884, rows WD1.1, WD1.3 and WD1.6; "Documents" is a team decision on an approved line, HAL-2282 rule, microcopy revision 116)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:r6j+F1UIcNuYT7zPPAx+PB8Gke/MJj/TCDuNy2v7aYqWjcw8/K1iI5LlF01OwFU9x2KG86iztbjdz3VteXurAA==
 
 ## What changes
 
