@@ -108,6 +108,11 @@ ui: { … } # optional
 At least one of `backend` and `localTools` is required. A plugin with only
 `ui` has nothing for its forms and cards to call.
 
+Text people read (`name`, `description`, and every `label`, `title` and
+`help` under `ui`) can't hold control characters or text-direction marks,
+such as a right-to-left override: they could make one plugin's name look like
+another's. A `description` or `help` may break lines.
+
 Every object is strict: an unknown field is an error, so a typo in `risk` can
 never make a tool look harmless. `halonic plugin add` checks the manifest,
 and `plugin.schema.json` in `core/format` gives editors

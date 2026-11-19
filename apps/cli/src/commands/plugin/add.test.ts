@@ -203,35 +203,18 @@ verifies("cli.commands.plugin.add", () => {
     expect(await plugins()).toEqual(["new"]);
   });
 
-  it("escapes a control character in the plugin's name on every line", async () => {
+  it("refuses a plugin whose name has a control character, and writes nothing", async () => {
     // YAML's "\e" is the escape character, which would start a terminal sequence.
     const source = await writeSource("weather", "weather", String.raw`"Wea\e[31mther"`);
-    const shown = String.raw`Wea\u001b[31mther`;
-    const again = async (args: readonly string[], terminal?: Terminal) => {
-      await rm(pluginsFolder(), { recursive: true, force: true });
-      return await add([source, ...args], terminal);
-    };
 
-    const asked = terminalTyping("n");
-    const no = await again([], asked.terminal);
-    const noTerminal = await again([]);
-    const changed = await again(["--yes", "--fingerprint", `hpf1:${"0".repeat(64)}`]);
-    const yes = await again([], terminalTyping("y").terminal);
+    const { code, io } = await add([source], terminalTyping("y").terminal);
 
-    expect(asked.written()).toContain(`Trust ${shown} and turn it on? [y/N] `);
-    expect(no.io.stdout).toEqual([
-      `! ${shown} is added but off. Nothing from it runs until you trust it: halonic trust --plugin weather`,
-    ]);
-    expect(noTerminal.io.stderr.at(-2)).toBe(
-      `! ${shown} is added but off, because there's no terminal to ask you to trust it.`,
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr[0]).toBe(
+      "✕ Couldn't add the plugin: don't use control characters or text-direction marks",
     );
-    expect(changed.io.stderr.join("\n")).toContain(`doesn't match ${shown} as it is now.`);
-    expect(yes.io.stdout).toEqual([`✓ Added ${shown} 1.2.0. It's on.`]);
-    const everything = [
-      asked.written(),
-      ...[no, noTerminal, changed, yes].flatMap(({ io }) => [...io.stdout, ...io.stderr]),
-    ];
-    expect(everything.join("\n")).not.toContain("\u001b");
+    await expect(readdir(pluginsFolder())).rejects.toThrow();
+    expect([...io.stdout, ...io.stderr].join("\n")).not.toContain("\u001b");
   });
 
   it("refuses --yes without --fingerprint before copying anything", async () => {
