@@ -164,15 +164,24 @@ fn renew_until_stopped(
                 Ok(Renewal::Renewed) => {}
                 Ok(Renewal::Lost(why)) => {
                     lost.store(true, Ordering::SeqCst);
-                    eprintln!("engine_lock: the lock {} {why}", file.display());
+                    halonic_shell_log::record(
+                        "engine_lock",
+                        format!("the lock {} {why}", file.display()),
+                    );
                     return;
                 }
                 // The next renewal is tried as planned.
-                Err(error) => eprintln!("engine_lock: renewing {}: {error}", file.display()),
+                Err(error) => halonic_shell_log::record(
+                    "engine_lock",
+                    format!("renewing {}: {error}", file.display()),
+                ),
             },
             Ok(()) | Err(RecvTimeoutError::Disconnected) => {
                 if let Err(error) = lock.release() {
-                    eprintln!("engine_lock: releasing {}: {error}", file.display());
+                    halonic_shell_log::record(
+                        "engine_lock",
+                        format!("releasing {}: {error}", file.display()),
+                    );
                 }
                 return;
             }

@@ -105,6 +105,9 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "secret_has",
         "secret_set",
         "secret_delete",
+        "token_get",
+        "token_set",
+        "token_delete",
         "pick_folder",
         "documents_folder",
         "system_region",
@@ -265,10 +268,40 @@ fn served_page_test_sees_the_connect_page_allowed_the_secret_commands_on_desktop
         ("secret_has", json!({"name": "not a name"})),
         ("secret_set", json!({"name": "not a name", "value": "v"})),
         ("secret_delete", json!({"name": "not a name"})),
+        ("token_get", json!({"name": "not a name"})),
+        ("token_set", json!({"name": "not a name", "value": "v"})),
+        ("token_delete", json!({"name": "not a name"})),
     ] {
         let answer = invoke(&window, CONNECT_PAGE, command, body);
         let refusal = answer.expect_err("the name is invalid");
         assert_eq!(refusal["kind"], "invalid_name", "{command}: {refusal}");
+    }
+}
+
+#[cfg(desktop)]
+#[test]
+fn served_page_test_sees_the_secret_commands_refuse_halonic_names_over_ipc() {
+    // The refusal is the shell's, not the page's: a page that calls the
+    // commands directly gets it before the keychain, which CI doesn't have.
+    let window = app_window();
+    for name in [
+        "halonic_token_google_refresh_acme",
+        "token-key",
+        "serve-password",
+    ] {
+        for (command, body) in [
+            ("secret_get", json!({"name": name})),
+            ("secret_has", json!({"name": name})),
+            ("secret_set", json!({"name": name, "value": "v"})),
+            ("secret_delete", json!({"name": name})),
+        ] {
+            let answer = invoke(&window, CONNECT_PAGE, command, body);
+            let refusal = answer.expect_err("the name belongs to Halonic");
+            assert_eq!(
+                refusal["kind"], "reserved_name",
+                "{command} {name}: {refusal}"
+            );
+        }
     }
 }
 

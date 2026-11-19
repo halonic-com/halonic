@@ -174,4 +174,28 @@ verifies("routines.when.when-card", () => {
     expect(page.textContent).toContain("Make this routine live first to turn it on.");
     expect(toggle(page).getAttribute("aria-disabled")).toBe("true");
   });
+
+  it("says what still runs while the saved schedule isn't live", async () => {
+    const { host } = hostWith(times());
+    const changed: RoutineView = {
+      ...daily,
+      triggerSentence: "Every day at 09:00",
+      changesNotLive: true,
+      live: {
+        triggerSentence: "Weekdays at 07:30",
+        targetName: "Briefing",
+        overlap: "skip",
+        catchUp: "last",
+      },
+    };
+    const page = await show(<WhenCard host={host} routine={changed} announce={() => {}} />);
+    expect(page.textContent).toContain(
+      "Your new schedule isn't live yet. Until it is, the routine keeps the live one: Weekdays at 07:30.",
+    );
+    unmount();
+    const same = await show(
+      <WhenCard host={host} routine={{ ...daily, live: changed.live }} announce={() => {}} />,
+    );
+    expect(same.textContent).not.toContain("isn't live yet");
+  });
 });

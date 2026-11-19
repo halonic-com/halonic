@@ -223,7 +223,7 @@ The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 | Prop | What it is |
 | --- | --- |
 | `variant` | `primary` once per view, `secondary` (the default), `ghost` for Cancel, `danger` only to confirm |
-| `size` | `sm` 28px, `md` 32px (the default), `lg` 40px, `touch` 48px for a phone's bottom bar or sheet |
+| `size` | `xs` 20px in the caption type, only for the status bar; `sm` 28px, `md` 32px (the default), `lg` 40px, `touch` 48px for a phone's bottom bar or sheet |
 | `block` | Full width |
 | `icon` | A 16px icon before the label. With `label` and no children, the button is a square icon button |
 | `label` | An icon button's name, saying what and which: "Close Support reply", never just "Close" |
@@ -798,6 +798,7 @@ List draws them.
 | `current` | The row whose item shows beside the list, as the Inbox's open item: the selected look and `aria-current`, but not selected, and it still opens |
 | `dense` | 32px rows, for menus and pickers |
 | `flush` | No outer border or radius, lines from 16px. On by default on a phone |
+| `chevrons` | Each row opens a page of its own, as History's versions: on a phone each row ends in a 20px `fg-subtle` chevron, hidden from screen readers, and its `trailing` chip starts its meta line. Desktop rows don't change. Not with `columns` |
 | `empty` | An [`EmptyState`](#emptystate)'s props, shown in place of the box when there are no rows |
 | `loading` | Skeleton rows in place of the rows; see **Loading** below |
 | `skeleton` | `{ leading: "icon" \| "avatar", trailing }`: the shape of the rows that are coming |
@@ -861,7 +862,8 @@ the title, and a `label`: the sentence screen readers hear in place of the colum
 `trailing`; an error row's chip takes the first `status` column's place. When a row's main cell is
 narrower than 800px (`--container-list-wide`, measured on the cell, not the window), or on a phone,
 each row stacks its columns on three lines: the title and tag with the `status` chips, the meta
-line, then the other columns joined with " · ". The List throws unless there is exactly one `main`
+line, then the other columns joined with " · ", where only a `text` column is cut, never the short
+id or the time. The List throws unless there is exactly one `main`
 column and each other key is used once. While it loads at 800px or more, each skeleton row has a
 bar in each column.
 
@@ -1629,6 +1631,19 @@ hidden from them.
 The error line is `danger` with the 16px alert icon, so the colour is never the only sign. A
 control of your own can read the Field through `useFieldControl()`.
 
+**An error that appears after you leave the field** (a value checked on blur) would go unread,
+because focus is already on the next control. So when a Field's error appears or changes while
+focus is outside it, the Field announces "Label: error" once, politely. While focus is inside, the
+screen reader reads the error as the control's description, so a form that moves focus to the
+field hears it once. The error line itself is never a live region. The shell connects this once,
+at its root; without a provider, a Field says nothing:
+
+```tsx
+<FieldAnnounceProvider announce={(text) => announcer.announce(text)}>
+  <App />
+</FieldAnnounceProvider>;
+```
+
 A `prefix` puts its symbol in `text-body` `fg-muted` 8px before the box, centred on it, and
 tapping it focuses the control. Screen readers skip the symbol and hear its `name` after the
 label: "Per run, in euros". The hint and the error still start at the Field's left edge, under
@@ -1976,6 +1991,8 @@ A left or middle click calls the **`openExternal` service** with the address and
 own navigation, so Studio never leaves its page. The address stays on the link, so "Copy link
 address" still works. A right click is left to the browser. Only `http` and `https` addresses are
 allowed: anything else throws, because addresses are often built from what the user typed.
+Code that decides whether to draw a link at all asks `isWebAddress(href)`, the same rule, so it
+never draws one that throws.
 
 **An address from a request.** "Sign in with Google" gets its address from the host's start
 route, so `href` can be a function that returns a promise. Then `onError` is required, because the

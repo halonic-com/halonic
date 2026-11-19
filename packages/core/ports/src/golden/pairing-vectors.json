@@ -1,5 +1,5 @@
 {
-  "//": "Test vectors for pairing-codes.ts, read by its tests and by the phone's Rust transport (D1, D3). HKDF is HKDF-SHA256 with an empty salt. A change to the codes changes this file, and both sides must pass it.",
+  "//": "Test vectors for pairing-codes.ts, read by its tests and by the phone's Rust transport (D1, D3). HKDF is HKDF-SHA256 with an empty salt. typedCodes is how a typed code is read: separators dropped, then printable ASCII only, then uppercased; a null code is refused. qrPayloads give the endpoints in order and keep the ones that fit; qrEndpointsRefused are endpoints writing refuses, qrTextsRefused are QR texts whose endpoint entry reading refuses. A change to the codes changes this file, and both sides must pass it.",
   "pairingCodes": [
     {
       "randomBytes": "b75aa046e0533f9f8d89853fd14fe4d2",
@@ -18,6 +18,80 @@
       "code": "GWE4SD4V3SZM",
       "shown": "GWE4 SD4V 3SZM",
       "psk": "8b819ac5005c640e62c822a4686e4cc54787329b6924ff2b53360be7b6aa2a16"
+    }
+  ],
+  "typedCodes": [
+    {
+      "kind": "pairing",
+      "typed": " xx7a-9q36.kfb3 ",
+      "code": "XX7A9Q36KFB3",
+      "why": "any case, spaces, dots and dashes"
+    },
+    {
+      "kind": "pairing",
+      "typed": "XX7A \u00b7 9Q36 \u00b7 KFB3",
+      "code": "XX7A9Q36KFB3",
+      "why": "middle dots"
+    },
+    {
+      "kind": "pairing",
+      "typed": "\tgwe4\nsd4v\r3szm\f",
+      "code": "GWE4SD4V3SZM",
+      "why": "ASCII whitespace"
+    },
+    {
+      "kind": "pairing",
+      "typed": "gwe4\u017fd4v3szm",
+      "code": null,
+      "why": "long s, which uppercases to S"
+    },
+    {
+      "kind": "pairing",
+      "typed": "GWE4\u00a0SD4V\u00a03SZM",
+      "code": null,
+      "why": "no-break spaces"
+    },
+    {
+      "kind": "pairing",
+      "typed": "GWE4\u000bSD4V3SZM",
+      "code": null,
+      "why": "a vertical tab, which Rust's is_ascii_whitespace leaves out"
+    },
+    {
+      "kind": "pairing",
+      "typed": "\uff38X7A9Q36KFB3",
+      "code": null,
+      "why": "a full-width X"
+    },
+    {
+      "kind": "pairing",
+      "typed": "XX7A9Q36KFB3\u200b",
+      "code": null,
+      "why": "a zero-width space"
+    },
+    {
+      "kind": "pairing",
+      "typed": "XX7A9Q36KFB0",
+      "code": null,
+      "why": "a 0"
+    },
+    {
+      "kind": "check",
+      "typed": "2bu \u00b7 xkw",
+      "code": "2BUXKW",
+      "why": "a check code as shown, in lower case"
+    },
+    {
+      "kind": "check",
+      "typed": "67p-a8h",
+      "code": "67PA8H",
+      "why": "a dash"
+    },
+    {
+      "kind": "check",
+      "typed": "22t a2\uff45",
+      "code": null,
+      "why": "a full-width e"
     }
   ],
   "checkCodes": [
@@ -58,25 +132,203 @@
       "code": "XX7A9Q36KFB3",
       "hostName": "Tim's laptop",
       "given": [
-        "tcp:192.168.1.20:4100",
-        "wss:tims-laptop.tail1234.ts.net:4100"
+        "tcp://192.168.1.20:4100",
+        "tcp://100.101.102.103:4100",
+        "wss://tims-laptop.tail1234.ts.net:4100"
       ],
       "endpoints": [
-        "tcp:192.168.1.20:4100"
+        "tcp://192.168.1.20:4100",
+        "tcp://100.101.102.103:4100",
+        "wss://tims-laptop.tail1234.ts.net:4100"
       ],
-      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgMVGltJ3MgbGFwdG9wARV0Y3A6MTkyLjE2OC4xLjIwOjQxMDA"
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgMVGltJ3MgbGFwdG9wAxDAqAEUEAQQZGVmZxAEHRR0aW1zLWxhcHRvcC50YWlsMTIzNBAE"
+    },
+    {
+      "hostPublic": "09f10e4bdc37a471382a5aa37101705b258c9b246fbcfa1e8727723214f1a738",
+      "code": "GWE4SD4V3SZM",
+      "hostName": "Workstation in the second office",
+      "given": [
+        "tcp://192.168.178.23:4100",
+        "tcp://100.64.0.7:4100",
+        "wss://workstation.tail1234.ts.net:4100"
+      ],
+      "endpoints": [
+        "tcp://192.168.178.23:4100",
+        "tcp://100.64.0.7:4100"
+      ],
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4BT-GCFvIh5kgV29ya3N0YXRpb24gaW4gdGhlIHNlY29uZCBvZmZpY2UCEMCoshcQBBBkQAAHEAQ"
     },
     {
       "hostPublic": "09f10e4bdc37a471382a5aa37101705b258c9b246fbcfa1e8727723214f1a738",
       "code": "9PW5WVT6EP67",
       "hostName": "Büro-Rechner",
       "given": [
-        "tcp:10.0.0.2:4100"
+        "tcp://10.0.0.2:4100",
+        "wss://buero.tail1234.ts.net",
+        "https://studio.example.net"
       ],
       "endpoints": [
-        "tcp:10.0.0.2:4100"
+        "tcp://10.0.0.2:4100",
+        "wss://buero.tail1234.ts.net",
+        "https://studio.example.net"
       ],
-      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4ArSrXNWZ5QkNQsO8cm8tUmVjaG5lcgERdGNwOjEwLjAuMC4yOjQxMDA"
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4ArSrXNWZ5QkNQsO8cm8tUmVjaG5lcgMQCgAAAhAEDQ5idWVyby50YWlsMTIzNAYSc3R1ZGlvLmV4YW1wbGUubmV0"
+    }
+  ],
+  "qrEndpointsRefused": [
+    {
+      "endpoint": "tcp:192.168.1.20:4100",
+      "why": "no // after the scheme"
+    },
+    {
+      "endpoint": "http://192.168.1.20:4100",
+      "why": "http"
+    },
+    {
+      "endpoint": "TCP://192.168.1.20:4100",
+      "why": "a scheme in upper case"
+    },
+    {
+      "endpoint": "tcp://192.168.1.20",
+      "why": "tcp without a port"
+    },
+    {
+      "endpoint": "wss://studio.tail1234.ts.net:443",
+      "why": "the default port written out"
+    },
+    {
+      "endpoint": "https://studio.example.net:443",
+      "why": "the default port written out"
+    },
+    {
+      "endpoint": "tcp://192.168.1.20:04100",
+      "why": "a port with a leading zero"
+    },
+    {
+      "endpoint": "tcp://192.168.1.20:0",
+      "why": "port 0"
+    },
+    {
+      "endpoint": "tcp://192.168.1.20:65536",
+      "why": "a port past 65535"
+    },
+    {
+      "endpoint": "tcp://192.168.001.20:4100",
+      "why": "an IPv4 part with a leading zero"
+    },
+    {
+      "endpoint": "tcp://192.168.1.256:4100",
+      "why": "an IPv4 part past 255"
+    },
+    {
+      "endpoint": "tcp://[fd7a:115c:a1e0::1]:4100",
+      "why": "an IPv6 address"
+    },
+    {
+      "endpoint": "wss://Studio.example.net",
+      "why": "a host name in upper case"
+    },
+    {
+      "endpoint": "wss://studio.example.net/",
+      "why": "a path"
+    },
+    {
+      "endpoint": "wss://studio.example.net.",
+      "why": "a final dot"
+    },
+    {
+      "endpoint": "wss://studio..example.net",
+      "why": "an empty label"
+    },
+    {
+      "endpoint": "wss://-studio.example.net",
+      "why": "a label starting with a dash"
+    },
+    {
+      "endpoint": "wss://studio.123",
+      "why": "a last label that starts with a digit"
+    },
+    {
+      "endpoint": "wss://user@studio.example.net",
+      "why": "a user name"
+    },
+    {
+      "endpoint": "wss://b\u00fcro.example.net",
+      "why": "a host name outside ASCII"
+    },
+    {
+      "endpoint": "wss://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example.net",
+      "why": "a label of 64 characters"
+    },
+    {
+      "endpoint": "wss://abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc.abc",
+      "why": "a host name of 255 characters"
+    }
+  ],
+  "qrTextsRefused": [
+    {
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgFUGl4ZWwBUAoAAAIQBA",
+      "why": "a kind byte with a top bit set"
+    },
+    {
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgFUGl4ZWwBEwoAAAIQBA",
+      "why": "scheme 3"
+    },
+    {
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgFUGl4ZWwBGAoAAAIQBA",
+      "why": "the .ts.net bit on an IPv4 address"
+    },
+    {
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgFUGl4ZWwBAAoAAAI",
+      "why": "tcp without a port"
+    },
+    {
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgFUGl4ZWwBEQoAAAIBuw",
+      "why": "wss with its default port 443 written out"
+    },
+    {
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgFUGl4ZWwBEAoAAAIAAA",
+      "why": "port 0"
+    },
+    {
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgFUGl4ZWwBEAoAAAIQ",
+      "why": "a port bit and only one port byte"
+    },
+    {
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgFUGl4ZWwBBQA",
+      "why": "an empty host name"
+    },
+    {
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgFUGl4ZWwBDQA",
+      "why": "an empty host name before .ts.net"
+    },
+    {
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgFUGl4ZWwBBRJTdHVkaW8uZXhhbXBsZS5uZXQ",
+      "why": "a host name in upper case"
+    },
+    {
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgFUGl4ZWwBBRZzdHVkaW8udGFpbDEyMzQudHMubmV0",
+      "why": "a host name ending in .ts.net without the .ts.net bit"
+    },
+    {
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgFUGl4ZWwBBQgxMC4wLjAuMg",
+      "why": "a host name that reads as an IPv4 address"
+    },
+    {
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgFUGl4ZWwBBRNzdHVkaW8tLmV4YW1wbGUubmV0",
+      "why": "a host name with a dash at the end of a label"
+    },
+    {
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgFUGl4ZWwBBRZzdHVkaW8uZXhhbXBsZS5uZXQ6NDQz",
+      "why": "a host name with a port in it"
+    },
+    {
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgFUGl4ZWwBBQdiw7xyby5kZQ",
+      "why": "a host name outside ASCII"
+    },
+    {
+      "text": "halonic-pair:AQnxDkvcN6RxOCpao3EBcFsljJskb7z6HocncjIU8ac4CjGPqrgEimgFUGl4ZWwBBRRzdHVkaW8uZXhhbXBsZS5uZXQ",
+      "why": "a host name longer than its length byte says"
     }
   ]
 }

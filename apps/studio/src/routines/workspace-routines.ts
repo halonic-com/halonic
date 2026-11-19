@@ -18,6 +18,7 @@ import {
   type RoutineChanges,
   type RoutineHub,
   type RoutineListing,
+  type RoutineLiveValues,
   type RoutineMailbox,
   type RoutineNextTimes,
   type RoutineRef,
@@ -91,12 +92,14 @@ export interface WorkspaceRoutinesParts {
   /** The times the scheduler dropped for a routine, by its key; none when absent. */
   readonly skips?: (key: string) => Promise<readonly StoredSkip[]>;
   /**
-   * Whether the routine's file is in a live version and whether the saved file differs from it.
-   * Without it a routine counts as live and unchanged.
+   * Whether the routine's file is in a live version and whether the saved file differs from it,
+   * with what the live version holds when it does. Without it a routine counts as live and unchanged.
    */
-  readonly liveness?: (
-    ref: RoutineRef,
-  ) => Promise<{ readonly everLive: boolean; readonly changesNotLive: boolean }>;
+  readonly liveness?: (ref: RoutineRef) => Promise<{
+    readonly everLive: boolean;
+    readonly changesNotLive: boolean;
+    readonly live?: RoutineLiveValues | undefined;
+  }>;
   /**
    * Starts what a routine runs, as the scheduler would start it. Absent where the app has no
    * engine, so there is no `runNow`.

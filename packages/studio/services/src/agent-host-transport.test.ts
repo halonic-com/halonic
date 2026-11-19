@@ -1,6 +1,8 @@
 import { AgentHostError } from "@halonicjs/adapter-agent-host-client";
+import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { AgentHostNotAnswering } from "./agent-host-not-answering.ts";
 import { TauriAgentHostTransport, tauriAgentHostTransport } from "./agent-host-transport.ts";
 import { FakeShell } from "./fake-shell.test-helper.ts";
 
@@ -55,7 +57,7 @@ verifies("services.agent-host-transport", () => {
 
     it("turns the shell's refusal into an AgentHostError with status 0 and its kind", async () => {
       const shell = new FakeShell().answer("agent_host_request", () => {
-        throw { kind: "host_unavailable", message: "the agent host didn't start" };
+        throw { kind: "unknown_route", message: "not a route of the agent host" };
       });
 
       const failure = new TauriAgentHostTransport(shell).request(health);
@@ -63,8 +65,8 @@ verifies("services.agent-host-transport", () => {
       await expect(failure).rejects.toBeInstanceOf(AgentHostError);
       await expect(failure).rejects.toMatchObject({
         status: 0,
-        kind: "host_unavailable",
-        message: expect.stringContaining("the agent host didn't start"),
+        kind: "unknown_route",
+        message: expect.stringContaining("not a route of the agent host"),
       });
     });
 
@@ -74,7 +76,7 @@ verifies("services.agent-host-transport", () => {
       });
 
       await expect(new TauriAgentHostTransport(shell).request(health)).rejects.toMatchObject({
-        kind: "host_unavailable",
+        code: "host_unavailable",
         reason: "distro-missing",
       });
     });
@@ -160,5 +162,46 @@ verifies("services.agent-host-transport", () => {
         TauriAgentHostTransport,
       );
     });
+  });
+});
+
+verifies("services.agent-host-not-answering", () => {
+  const notRunning = { kind: "host_unavailable", message: "the agent host didn't start" };
+
+  it("rejects a call to a host that isn't running as the engine not answering", async () => {
+    const shell = new FakeShell().answer("agent_host_request", () => {
+      throw notRunning;
+    });
+
+    const refused = await new TauriAgentHostTransport(shell)
+      .request(health)
+      .catch((error: unknown) => error);
+
+    expect(refused).toBeInstanceOf(EngineNotAnswering);
+    expect(refused).toBeInstanceOf(AgentHostNotAnswering);
+    expect(refused).toMatchObject({
+      kind: "unavailable",
+      status: 0,
+      code: "host_unavailable",
+      reason: undefined,
+    });
+    // The shell's words stay in the log, never in the message a screen may show.
+    expect((refused as Error).message).not.toContain("agent host");
+    expect((refused as AgentHostNotAnswering).cause).toBeInstanceOf(AgentHostError);
+    expect((refused as AgentHostNotAnswering).cause.message).toContain("didn't start");
+  });
+
+  it("rejects a stream the shell can't open for that reason the same way", async () => {
+    const shell = new FakeShell().answer("agent_host_stream", () => {
+      throw notRunning;
+    });
+
+    const refused = new TauriAgentHostTransport(shell).stream(
+      "POST /v1/bridge/open",
+      {},
+      { signal: new AbortController().signal },
+    );
+
+    await expect(refused).rejects.toBeInstanceOf(EngineNotAnswering);
   });
 });

@@ -11,41 +11,51 @@ import {
 } from "./shell-secrets.ts";
 import { tauriIpc } from "./tauri-ipc.ts";
 
+/** One command the page sent, with the name as it sent it. */
+interface SentCall {
+  readonly command: string;
+  readonly name: string;
+}
+
 /**
  * A page in the shell whose keychain commands keep values in memory. Like the
- * shell, it matches names in lower case with `-` as `_`.
+ * shell, it matches names in lower case with `-` as `_`, and keeps a token
+ * under the token prefix.
  */
-function shellPage(): { page: object; keychain: Map<string, string>; names: string[] } {
+function shellPage(): { page: object; keychain: Map<string, string>; calls: SentCall[] } {
   const keychain = new Map<string, string>();
-  const names: string[] = [];
+  const calls: SentCall[] = [];
   const invoke = async (command: string, args?: Record<string, unknown>) => {
     const name = String(args?.["name"]);
-    names.push(name);
+    calls.push({ command, name });
     const canonical = name.toLowerCase().replaceAll("-", "_");
+    const stored = command.startsWith("token_") ? tokenNamePrefix + canonical : canonical;
     switch (command) {
       case "secret_set":
-        keychain.set(canonical, String(args?.["value"]));
+      case "token_set":
+        keychain.set(stored, String(args?.["value"]));
         return null;
       case "secret_delete":
-        keychain.delete(canonical);
+      case "token_delete":
+        keychain.delete(stored);
         return null;
       default:
-        return keychain.get(canonical) ?? null;
+        return keychain.get(stored) ?? null;
     }
   };
-  return { page: { __TAURI_INTERNALS__: { invoke } }, keychain, names };
+  return { page: { __TAURI_INTERNALS__: { invoke } }, keychain, calls };
 }
 
 /** The services of a workspace opened in the shell. */
 function openInShell(): {
   services: ServiceRegistry;
   keychain: Map<string, string>;
-  names: string[];
+  calls: SentCall[];
 } {
-  const { page, keychain, names } = shellPage();
+  const { page, keychain, calls } = shellPage();
   const services = new ServiceRegistry();
   expect(provideShellSecrets(services, page)).toBe(true);
-  return { services, keychain, names };
+  return { services, keychain, calls };
 }
 
 /** The same name in upper case, lower case, and with `-` and `_` swapped. */
@@ -78,17 +88,18 @@ verifies("services.shell-secrets", () => {
   });
 
   describe("separate namespaces", () => {
-    it("stores every token under the prefix, so the same name as a secret finds nothing", async () => {
-      const { services, names } = openInShell();
+    it("sends every token to the shell's token commands, so the same name as a secret finds nothing", async () => {
+      const { services, keychain, calls } = openInShell();
 
       await services.get(tokenStoreKey).set("google_refresh", "example-token");
 
-      expect(names).toEqual([`${tokenNamePrefix}google_refresh`]);
+      expect(calls).toEqual([{ command: "token_set", name: "google_refresh" }]);
+      expect([...keychain.keys()]).toEqual([`${tokenNamePrefix}google_refresh`]);
       expect(await services.get(secretsKey).get("google_refresh")).toBeNull();
     });
 
     it("refuses the token prefix and Halonic's own secrets as secret names, in every spelling", async () => {
-      const { services, keychain, names } = openInShell();
+      const { services, keychain, calls } = openInShell();
       keychain.set("token_key", "example-key");
       const reserved = [
         ...variants("halonic_token_google_refresh"),
@@ -101,11 +112,11 @@ verifies("services.shell-secrets", () => {
         await expect(read).rejects.toThrow(RangeError);
         await expect(read).rejects.not.toThrow(name);
       }
-      expect(names).toEqual([]);
+      expect(calls).toEqual([]);
     });
 
     it("refuses a token name too long to fit once prefixed, without repeating it", async () => {
-      const { services, names } = openInShell();
+      const { services, keychain, calls } = openInShell();
       const longest = "t".repeat(maxShellTokenNameLength);
       const tooLong = "t".repeat(maxShellTokenNameLength + 1);
 
@@ -114,14 +125,15 @@ verifies("services.shell-secrets", () => {
 
       await expect(set).rejects.toThrow(RangeError);
       await expect(set).rejects.not.toThrow(tooLong);
-      expect(names).toEqual([tokenNamePrefix + longest]);
+      expect(calls).toEqual([{ command: "token_set", name: longest }]);
+      expect([...keychain.keys()]).toEqual([tokenNamePrefix + longest]);
       expect((tokenNamePrefix + longest).length).toBe(128);
     });
   });
 
   describe("shellKeychain", () => {
     it("is the keychain as it is, under the name it is given", async () => {
-      const { page, keychain, names } = shellPage();
+      const { page, keychain, calls } = shellPage();
       const ipc = tauriIpc(page);
       if (ipc === undefined) {
         throw new Error("The test page has no shell.");
@@ -133,7 +145,11 @@ verifies("services.shell-secrets", () => {
       expect(await store.get("openai-key")).toBe("example-key");
       await store.remove("openai-key");
       expect(keychain.size).toBe(0);
-      expect(names).toEqual(["openai-key", "openai-key", "openai-key"]);
+      expect(calls).toEqual([
+        { command: "secret_set", name: "openai-key" },
+        { command: "secret_get", name: "openai-key" },
+        { command: "secret_delete", name: "openai-key" },
+      ]);
     });
   });
 });

@@ -25,8 +25,11 @@ interface EmptyStateBase {
   readonly title: string;
   /** One or two sentences that say what the thing is for; for an error, the reason. */
   readonly description?: ReactNode;
-  /** The title's heading level. Default 2: the Empty state stands in for a page's content. */
-  readonly headingLevel?: 2 | 3 | 4;
+  /**
+   * The title's heading level. Default 2: the Empty state stands in for a page's content. 5 is for
+   * a list that is itself an h4 under a Settings section's h3.
+   */
+  readonly headingLevel?: 2 | 3 | 4 | 5;
   /**
    * The title, which takes focus when the last row of a list goes while focus was in it
    * (component specs 23 A2). It has `tabindex="-1"`, so only code can focus it.

@@ -76,6 +76,14 @@ verifies("publish.staged-cli", () => {
     expect(readFileSync(join(consumer, "copy/workspace.yaml"), "utf8").length).toBeGreaterThan(0);
   }, 60_000);
 
+  it("lists the board-approved npm keywords in the installed manifest", () => {
+    const manifest = JSON.parse(
+      readFileSync(join(consumer, "node_modules/halonic/package.json"), "utf8"),
+    ) as { keywords: string[] };
+    expect(manifest.keywords).toContain("local-first");
+    expect(manifest.keywords).not.toContain("mcp");
+  });
+
   it("carries the runner file and the patched sandbox runtime, and no TypeScript", () => {
     const installed = join(consumer, "node_modules/halonic");
     expect(existsSync(join(installed, "dist/runner.mjs"))).toBe(true);
@@ -101,6 +109,13 @@ verifies("publish.staged-cli", () => {
     expect(
       readFileSync(join(consumer, "node_modules/halonic/THIRD-PARTY-NOTICES.txt"), "utf8"),
     ).toBe("notices\n");
+  });
+
+  it("carries the README for users, not the CLI's notes for its developers", () => {
+    const readme = readFileSync(join(consumer, "node_modules/halonic/README.md"), "utf8");
+    expect(readme).toContain("npm install -g halonic");
+    expect(readme).toContain("https://docs.halonic.dev/getting-started");
+    expect(readme).not.toContain("**Layer:**");
   });
 
   it("refuses to stage when the notices file is missing", async () => {

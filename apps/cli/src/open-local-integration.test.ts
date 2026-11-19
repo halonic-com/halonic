@@ -25,6 +25,9 @@ import { removeTestFolder } from "./test/remove-folder.ts";
 import { webCryptoDigest } from "./workspace-runs.ts";
 import { cliTrustService, workspaceIntegrations } from "./workspace-trust.ts";
 
+/** These tests never take a yes back in another process, so the saved yes is never read again. */
+const noSavedYesChecks = { set: () => undefined, clear: () => undefined };
+
 const clock = fixedClock(Date.UTC(2026, 10, 12, 9));
 const passes: SandboxCheck = { ok: true, reason: null, missing: [] };
 const onWindows: SandboxCheck = { ok: false, reason: "windows", missing: [] };
@@ -108,7 +111,11 @@ async function setup(
       platform: "linux",
       fenced: sandbox(check),
       launcher: sandbox(check),
-      runs: new UnfencedRuns({ store: new MemoryUnfencedRunConsentStore(), clock }),
+      runs: new UnfencedRuns({
+        store: new MemoryUnfencedRunConsentStore(),
+        clock,
+        timers: noSavedYesChecks,
+      }),
     }),
     runtime: { node: "/node/bin/node", nodeFolder: "/node", runnerFile: "/runner/runner.mjs" },
     transport: { fetch: async () => new Response("{}") } as never,

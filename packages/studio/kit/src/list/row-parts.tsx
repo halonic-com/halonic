@@ -34,7 +34,7 @@ export function Leading({ row, small }: { readonly row: AnyListRow; readonly sma
 
 interface MetaLineProps {
   readonly row: AnyListRow;
-  readonly text: string | undefined;
+  readonly text: ReactNode;
   readonly id: string;
   /** On a phone next to a More button, the chip starts the last line (kit 6). */
   readonly chip: ReactNode;

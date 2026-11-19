@@ -47,6 +47,8 @@ export interface SheetFrameProps {
   readonly initialFocus?: () => HTMLElement | null;
   /** Where focus goes on close when the opener has gone (component specs 23 A2). */
   readonly returnFocus?: () => HTMLElement | null;
+  /** The id of a line in the body that describes the sheet when it opens (a Dialog's `describedBy`). */
+  readonly describedBy?: string;
   /** The body, which scrolls on its own. The sheet gives it its padding. */
   readonly children: ReactNode;
 }
@@ -81,7 +83,13 @@ export function SheetFrame(props: SheetFrameProps) {
     </>
   );
   return (
-    <dialog ref={dialog} aria-labelledby={titleId} className={sheetFrameClasses} {...events}>
+    <dialog
+      ref={dialog}
+      aria-labelledby={titleId}
+      aria-describedby={props.describedBy}
+      className={sheetFrameClasses}
+      {...events}
+    >
       <ModalRegions>
         {props.onSubmit === undefined ? (
           content

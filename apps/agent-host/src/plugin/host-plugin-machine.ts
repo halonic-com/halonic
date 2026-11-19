@@ -17,7 +17,13 @@ import {
 } from "@halonicjs/adapter-integration-runner";
 import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
 import { makeRunnerTempFolder, sandboxRuntimeFolder } from "@halonicjs/adapter-sandbox-srt";
-import { PluginSettings, RunnerStartGate, TrustService, UnfencedRuns } from "@halonicjs/app";
+import {
+  PluginSettings,
+  RunnerStartGate,
+  type SaveTimers,
+  TrustService,
+  UnfencedRuns,
+} from "@halonicjs/app";
 import type { Sandbox, UnfencedRunConsentStore } from "@halonicjs/ports";
 import {
   type ProfileFolder,
@@ -38,6 +44,12 @@ const noConsent: UnfencedRunConsentStore = {
   get: async () => null,
   save: async () => undefined,
   remove: async () => undefined,
+};
+
+/** Node's timers for reading the saved yes again; with {@link noConsent} no run ever needs them. */
+const unfencedRunTimers: SaveTimers = {
+  set: (callback, delayMs) => setTimeout(callback, delayMs).unref(),
+  clear: (handle) => clearTimeout(handle as NodeJS.Timeout),
 };
 
 /** The launcher's sandbox in name only: the gate only reaches it on the confirmed unfenced path, which the host never allows. */
@@ -96,7 +108,7 @@ export function hostPluginMachine(options: HostPluginMachineOptions): HostPlugin
       platform: process.platform,
       fenced: options.fenced,
       launcher: refusingLauncher(),
-      runs: new UnfencedRuns({ store: noConsent, clock: systemClock }),
+      runs: new UnfencedRuns({ store: noConsent, clock: systemClock, timers: unfencedRunTimers }),
     }),
     runtime: {
       node: process.execPath,

@@ -116,6 +116,15 @@ verifies("shell.more-page", () => {
     expect(switcher?.contains(badge as Node)).toBe(false);
   });
 
+  it("stretches each badge line across the page, so its divider runs full width like the rest", () => {
+    // jsdom has no layout: a column with the default stretch is what gives the line its width.
+    const { container } = renderMore(places, "Sample · test model");
+    const line = [...container.querySelectorAll("button")][1]?.parentElement;
+
+    expect(line?.classList.contains("flex-col")).toBe(true);
+    expect(line?.className).not.toMatch(/\bitems-(center|start|end)\b/);
+  });
+
   it("with only Home added, shows the switcher and the footer line, with no list", () => {
     const { container } = renderMore([showPlace("home", undefined)]);
 

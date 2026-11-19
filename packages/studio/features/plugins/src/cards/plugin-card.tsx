@@ -112,7 +112,9 @@ export function PluginCard({
     <Card>
       <div className="flex flex-col gap-2">
         <div className="flex min-h-control-sm items-start gap-2">
-          <h3 className="min-w-0 flex-1 text-section wrap-anywhere">{card.title}</h3>
+          <h3 className="min-w-0 flex-1 text-section wrap-anywhere">
+            <bdi>{card.title}</bdi>
+          </h3>
           {status === "on" ? (
             <Button
               variant="ghost"

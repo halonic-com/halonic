@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isGuard } from "./guard.ts";
+import { guardProblem, isGuard } from "./guard.ts";
 
 describe("isGuard", () => {
   it("accepts every shape of condition, nested ones too", () => {
@@ -20,5 +20,28 @@ describe("isGuard", () => {
     expect(isGuard(null)).toBe(false);
     expect(isGuard("exists")).toBe(false);
     expect(isGuard([{ exists: "a" }])).toBe(false);
+  });
+});
+
+describe("guardProblem", () => {
+  it("names an unknown kind and lists the allowed ones", () => {
+    expect(guardProblem({ matches: ["a", "b"] })).toBe(
+      'unknown condition kind "matches"; allowed: equals, notEquals, contains, exists, gt, gte, lt, lte, not, all, any',
+    );
+  });
+
+  it("says what a known kind takes", () => {
+    expect(guardProblem({ exists: 5 })).toBe(
+      'condition "exists" takes a path, such as input.email',
+    );
+    expect(guardProblem({ all: { exists: "a" } })).toBe(
+      'condition "all" takes a list of conditions',
+    );
+  });
+
+  it("asks for exactly one kind when there are none, several, or no map", () => {
+    for (const input of [{}, { exists: "a", extra: true }, "exists", null, [{ exists: "a" }]]) {
+      expect(guardProblem(input)).toMatch(/^a condition is a map with exactly one kind/);
+    }
   });
 });

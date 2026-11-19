@@ -12,6 +12,8 @@ export interface ListedToolsWaitingProps {
   readonly sourceName: string;
   /** Opens the workspace's trust check; without it, a workspace that isn't trusted gets no button. */
   readonly onReviewTrust?: () => void;
+  /** On a phone the line shows, but approving is for the desktop: no button, a view-only line. */
+  readonly viewOnly?: boolean;
 }
 
 /** The line for a screen the dialog alone can show, or `undefined` for one the page stays quiet on. */
@@ -61,14 +63,20 @@ function WaitingLine({ text, children }: { readonly text: string; readonly child
 
 /**
  * The connector's "N tools are waiting for your approval" line with its **Review tools** button,
- * which opens the review dialog. It shows nothing while the tools are being read and when none
+ * which opens the review dialog; where the page is view only, the button gives way to a line that
+ * says so. It shows nothing while the tools are being read and when none
  * waits. When the list couldn't be read, was refused, or an approval is unreadable, it says so in
  * one line with **Try again** or **Review tools**, since the dialog's screens for those can't
  * be reached otherwise. When the workspace isn't trusted, trying again can't help, so the line
  * offers **Review**, which opens the trust check, instead. The dialog shares this model, so an
  * approval updates the line behind it.
  */
-export function ListedToolsWaiting({ model, sourceName, onReviewTrust }: ListedToolsWaitingProps) {
+export function ListedToolsWaiting({
+  model,
+  sourceName,
+  onReviewTrust,
+  viewOnly = false,
+}: ListedToolsWaitingProps) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
   const state = useSyncExternalStore(subscribe, () => model.state);
   const { snapshot } = state;
@@ -86,9 +94,15 @@ export function ListedToolsWaiting({ model, sourceName, onReviewTrust }: ListedT
     <>
       {waiting > 0 ? (
         <WaitingLine text={listedToolsWords.waitingBadge(waiting)}>
-          <Button variant="secondary" onClick={() => setOpen(true)}>
-            {listedToolsWords.reviewTools}
-          </Button>
+          {viewOnly ? (
+            <p className="min-w-0 text-small text-fg-muted [overflow-wrap:anywhere]">
+              {listedToolsWords.reviewToolsViewOnly}
+            </p>
+          ) : (
+            <Button variant="secondary" onClick={() => setOpen(true)}>
+              {listedToolsWords.reviewTools}
+            </Button>
+          )}
         </WaitingLine>
       ) : null}
       {waiting === 0 && fallback?.kind === "load-failed" ? (

@@ -2,6 +2,7 @@ import type { Clock, Sandbox, SandboxCheck, SandboxFence } from "@halonicjs/port
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { type GatedRunner, RunnerStartGate } from "./runner-start-gate.ts";
+import { HandTimers } from "./testing/hand-timers.ts";
 import { TestUnfencedRunConsentStore } from "./testing/test-unfenced-run-consent-store.ts";
 import { UnfencedRuns } from "./unfenced-runs.ts";
 
@@ -68,7 +69,8 @@ interface Setup {
 
 function setup({ platform = "linux", check = passes, proofs = {}, mxc }: Setup = {}) {
   const store = new TestUnfencedRunConsentStore();
-  const runs = new UnfencedRuns({ store, clock });
+  const timers = new HandTimers();
+  const runs = new UnfencedRuns({ store, clock, timers });
   const fenced = sandbox("fenced", check);
   const launcher = sandbox("launcher");
   const gate = new RunnerStartGate({
@@ -101,7 +103,7 @@ function setup({ platform = "linux", check = passes, proofs = {}, mxc }: Setup =
     started.push(runner);
     return runner;
   };
-  return { store, runs, gate, started, startIn, backends };
+  return { store, timers, runs, gate, started, startIn, backends };
 }
 
 verifies("app.runner-start-gate", () => {
@@ -182,19 +184,54 @@ verifies("app.runner-start-gate", () => {
       expect(started.map((runner) => [runner.startedIn, runner.closed])).toEqual([["mxc", 1]]);
     });
 
-    it("stops a runner that started while Take back ran", async () => {
+    it("stops a runner that was starting when Take back ran, before Take back returns", async () => {
       const { gate, runs, started } = setup({ check: inContainer });
       await runs.allow("container");
-      const start = await gate.start(async (picked) => {
-        // Take back runs after the gate decided, before the runner is registered.
-        await runs.takeBack();
+      let reachedStart!: () => void;
+      const startReached = new Promise<void>((resolve) => {
+        reachedStart = resolve;
+      });
+      let finishStart!: () => void;
+      const startFinishes = new Promise<void>((resolve) => {
+        finishStart = resolve;
+      });
+      const start = gate.start(async (picked) => {
+        reachedStart();
+        await startFinishes;
         const runner = new FakeRunner((picked as Sandbox & { name: string }).name, {
           state: "off",
         });
         started.push(runner);
         return runner;
       });
-      expect(start).toEqual({ run: "needs-yes", reason: "container" });
+
+      // Take back runs after the gate decided, while the runner is still starting.
+      await startReached;
+      let takenBack = false;
+      const takingBack = runs.takeBack().then(() => {
+        takenBack = true;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(takenBack).toBe(false);
+
+      finishStart();
+      await takingBack;
+      expect(started[0]?.closed).toBe(1);
+      expect(await start).toEqual({ run: "needs-yes", reason: "container" });
+    });
+
+    it("stops a runner here when the yes is taken back in another process", async () => {
+      const { gate, runs, store, timers, started, startIn } = setup({ check: inContainer });
+      await runs.allow("container");
+      expect((await gate.start(startIn)).run).toBe("unfenced");
+
+      // Studio, or a second CLI, shares the saved yes but not the runs.
+      const studio = new UnfencedRuns({ store, clock, timers: new HandTimers() });
+      await studio.takeBack();
+      expect(started[0]?.closed).toBe(0);
+
+      timers.fire();
+      await new Promise((resolve) => setTimeout(resolve, 0));
       expect(started[0]?.closed).toBe(1);
     });
 

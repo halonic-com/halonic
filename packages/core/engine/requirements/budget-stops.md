@@ -23,6 +23,9 @@ When a step decides on a model call or a harness run and the workspace has a bud
 - Given a run budget of 1.50 EUR and a harness run whose model calls cost 0.60 EUR each,
   when the harness makes its fourth model call,
   then the bridge refuses it with 429 `limit_reached`, the harness run is stopped, and the run fails in that state with the reason `budget`, the error `Run budget reached: 1.80 of 1.50 EUR spent.` and the cause code `budget.run`
+- Given a harness run whose budget is already reached,
+  when its bridge records a `bridge.failed`,
+  then the event is written to the run log, the budget isn't asked, and nothing is refused or stopped (HAL-11272).
 - Given a parent that cost 0.25 EUR and two child runs under it that cost 0.25 EUR and 0.125 EUR,
   when the run spend of a child is worked out,
   then it is 0.625 EUR.

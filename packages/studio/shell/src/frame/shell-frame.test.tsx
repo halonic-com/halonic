@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
 import type { EngineConnection, EngineConnectionState } from "@halonicjs/ports";
-import { createToastStore, Dialog, usePresentation } from "@halonicjs/studio-kit";
+import { createToastStore, Dialog, Field, Input, usePresentation } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { createAnnouncer } from "../announcer/announcer.ts";
 import { createCloseStack } from "../close-stack/close-stack.ts";
@@ -89,6 +89,19 @@ verifies("shell.frame", () => {
     // Not trusted yet first, the other items, then Saved at the right end.
     expect(statusBar?.textContent).toBe("Not trusted yet1 error✓ Saved");
     expect(statusBar?.lastElementChild?.className).toContain("ms-auto");
+  });
+
+  it("gives the status bar the soft fill of a save note's problem, and none while it's calm", () => {
+    const { container } = renderFrame(undefined, {
+      saveNote: <span data-problem="danger">Couldn't save Support reply</span>,
+    });
+    const statusBar = container.querySelector("footer") as HTMLElement;
+    // The fill comes from the note inside, so the frame needn't know the save state.
+    expect(statusBar.className).toContain("bg-surface-subtle");
+    expect(statusBar.className).toContain("has-[[data-problem=danger]]:bg-danger-soft");
+    expect(statusBar.className).toContain("has-[[data-problem=warning]]:bg-warning-soft");
+    expect(statusBar.className).toContain("transition-colors");
+    expect(statusBar.querySelector('[data-problem="danger"]')).not.toBeNull();
   });
 
   it("leaves the badge and save note slots out of the status bar when they are empty", () => {
@@ -362,5 +375,28 @@ verifies("shell.engine-line", () => {
     act(() => connection.set("lost"));
     const panel = container.querySelector('[data-layout="phone"] > div');
     expect(panel?.firstElementChild?.textContent).toBe(lineText);
+  });
+});
+
+verifies("shell.frame-field-errors", () => {
+  it("reads a kit Field's error that appears after focus has left it", async () => {
+    let showError: (error: string) => void = () => {};
+    function TurnLimit() {
+      const [error, setError] = useState<string | null>(null);
+      showError = setError;
+      return (
+        <Field label="Turn limit" error={error}>
+          <Input />
+        </Field>
+      );
+    }
+    const { container, timers } = renderFrame(<TurnLimit />);
+    act(() => showError("Enter a whole number from 1 to 64."));
+    await nextFrame();
+    act(() => timers.advance(0));
+    await nextFrame();
+    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe(
+      "Turn limit: Enter a whole number from 1 to 64.",
+    );
   });
 });

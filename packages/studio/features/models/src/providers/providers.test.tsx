@@ -86,7 +86,39 @@ const page = (id: string, files: ModelsFiles) =>
     files,
   );
 
+/** The title the provider kind gives a provider's tab, with `files` as the workspace's models files. */
+function tabTitle(id: string, files: ModelsFiles | undefined): string | undefined {
+  type Describe = (item: ItemRef, context: WorkspaceContext) => { label: string };
+  let describe: Describe | undefined;
+  const studio = new Proxy(
+    {},
+    {
+      get: () => ({
+        add: (added: { kind?: string; tab?: { describe: Describe } }) => {
+          if (added.kind === "model-provider") describe = added.tab?.describe;
+        },
+        addSection: () => undefined,
+      }),
+    },
+  );
+  modelsFeature.register(studio as never);
+  const context = { services: { find: () => files } } as unknown as WorkspaceContext;
+  return describe?.({ kind: "model-provider", hub: "local", id }, context).label;
+}
+
 verifies("models.providers.list-and-show", () => {
+  it("titles a provider's tab with the name its page shows, and its id before it's read (HAL-12536)", async () => {
+    const mock = "version: 1\nid: mock\nname: Test model\ntype: mock\nlocal: true\n";
+    const files = filesWith({ mock });
+    expect(tabTitle("mock", files)).toBe("Mock");
+
+    await section(files);
+
+    expect(tabTitle("mock", files)).toBe("Test model");
+    expect(tabTitle("mock", filesWith({ mock }))).toBe("Mock");
+    expect(tabTitle("mock", undefined)).toBe("Mock");
+  });
+
   it("lists the providers by id with type and local or cloud", async () => {
     const view = await section(filesWith({ ollama, anthropic }));
 
@@ -127,6 +159,15 @@ verifies("models.providers.list-and-show", () => {
     );
     expect(view.textContent).not.toContain("File:");
     expect(view.textContent).toContain("This computer or your own network");
+  });
+
+  it("says a Base URL is needed for an openai-compatible provider, which has no usual address", async () => {
+    const compatible = "version: 1\nid: gateway\nname: Gateway\ntype: openai-compatible\n";
+    const view = await page("gateway", filesWith({ gateway: compatible }));
+
+    expect(view.querySelector<HTMLInputElement>("input[placeholder]")?.placeholder).toBe(
+      "Needed for this type",
+    );
   });
 
   it("says so, naming the file, when the providers can't be read or a file doesn't parse", async () => {

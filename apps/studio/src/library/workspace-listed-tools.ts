@@ -7,7 +7,7 @@ import {
   reviewListedTools,
   revokeNamedTool,
 } from "@halonicjs/app/listed-tools";
-import { type Connector, needsApproval } from "@halonicjs/format";
+import { type Connector, marksRead } from "@halonicjs/format";
 import type {
   Clock,
   DefinitionSource,
@@ -90,7 +90,8 @@ export class WorkspaceListedTools implements ListedToolsHost {
     return listedToolsSnapshot(sourceName, reviewListedTools(await this.#check(source)), {
       workspaceName:
         filesOf(source.workspace, "workspace")[0]?.value.name ?? folderNameOf(source.location),
-      asksBeforeUse: (toolName) => needsApproval(source.connector.tools, toolName),
+      // A run asks before every tool the `read` list doesn't mark (HAL-12339).
+      asksBeforeUse: (toolName) => !marksRead(source.connector.tools, toolName),
     });
   }
 

@@ -86,6 +86,18 @@ verifies("files.ui.tree-view", () => {
     expect(rowNamed(page, long).title).toBe(long);
   });
 
+  it("names a file row by its full name, not with its ⋮ button, and leaves a folder row as it is", async () => {
+    const long = `${"a".repeat(30)}.agent.yaml`;
+    const page = await show(hostOf(listing([...files, long])));
+    expect(rowNamed(page, "models.yaml").getAttribute("aria-label")).toBe("models.yaml");
+    expect(rowNamed(page, "models.yaml").querySelector("button")?.getAttribute("aria-label")).toBe(
+      "More actions for models.yaml",
+    );
+    expect(rowNamed(page, long).getAttribute("aria-label")).toBe(long);
+    expect(rowNamed(page, "hubs").hasAttribute("aria-label")).toBe(false);
+    expect(rowNamed(page, "hubs").textContent).toBe("hubs");
+  });
+
   it("marks rows with glyphs and shows warnings only while a row has no errors", async () => {
     const page = await show(
       hostOf(

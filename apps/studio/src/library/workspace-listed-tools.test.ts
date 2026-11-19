@@ -86,6 +86,23 @@ verifies("studio.workspace-listed-tools", () => {
       expect(started[0]?.workspaceRoot).toBe("memory:folder");
     });
 
+    it("says a tool asks before each use unless the connector's read list marks it, as a run does", async () => {
+      const archiveNote: ConnectorTool = { ...readNote, name: "archive_note" };
+      const { host } = hostOf({
+        tools: [readNote, archiveNote],
+        files: acmeFiles({
+          "library/connectors/notes.connector.yaml": `${notesFile}tools:\n  read: [read_note]\n`,
+        }),
+      });
+
+      const snapshot = await host.review("notes");
+
+      expect(snapshot.toReview.map((row) => [row.name, row.asksBeforeUse])).toEqual([
+        ["read_note", false],
+        ["archive_note", true],
+      ]);
+    });
+
     it("names an unnamed workspace by its folder, as the CLI does", async () => {
       const { host } = hostOf({
         files: new MemoryDefinitionStore({

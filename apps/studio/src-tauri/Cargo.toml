@@ -45,6 +45,7 @@ halonic-resource-probe = { path = "crates/resource-probe" }
 halonic-run-lock = { path = "crates/run-lock" }
 halonic-run-store = { path = "crates/run-store" }
 halonic-secrets = { path = "crates/secrets" }
+halonic-shell-log = { path = "crates/shell-log" }
 halonic-trust-grant = { path = "crates/trust-grant" }
 halonic-trust-store = { path = "crates/trust-store" }
 halonic-update-state = { path = "crates/update-state" }
@@ -103,3 +104,6 @@ unsafe_code = "forbid"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
+# A release build on Windows has no console: what the shell prints to
+# stderr goes nowhere. It records through `halonic-shell-log` instead.
+print_stderr = "deny"

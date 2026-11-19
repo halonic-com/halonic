@@ -1,4 +1,4 @@
-import { checkPinnedLaunch } from "@halonicjs/adapter-mcp";
+import { checkPinnedLaunch, SecretNotSetError } from "@halonicjs/adapter-mcp";
 import type {
   ConnectorConfig,
   ConnectorFactoryContext,
@@ -83,7 +83,7 @@ export async function planLaunch(checks: LaunchChecks): Promise<SandboxCommand> 
  * The values of a connector's secrets, by the variable each is given as.
  * The host reads them with this too, when it builds the profile.
  *
- * @throws naming the first secret that isn't set
+ * @throws {@link SecretNotSetError} naming the first secret that isn't set
  */
 export async function readSecretEnv(
   connectorId: string,
@@ -93,11 +93,7 @@ export async function readSecretEnv(
   const values: Record<string, string> = {};
   for (const [variable, secretName] of Object.entries(secretEnv)) {
     const value = await secrets.get(secretName);
-    if (value === null) {
-      throw new Error(
-        `Connector "${connectorId}" needs the secret "${secretName}", which isn't set.`,
-      );
-    }
+    if (value === null) throw new SecretNotSetError(connectorId, secretName);
     values[variable] = value;
   }
   return values;

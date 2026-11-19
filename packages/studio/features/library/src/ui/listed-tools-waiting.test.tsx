@@ -68,8 +68,9 @@ function toolsHost(read: ListedToolsHost["review"]): ListedToolsHost {
 
 function page(
   tools: ListedToolsHost | undefined,
-  runCommand?: (id: string) => boolean,
+  options: { readonly host?: "phone"; readonly runCommand?: (id: string) => boolean } = {},
 ): ItemViewProps {
+  const { host, runCommand } = options;
   const provided = new Map<unknown, unknown>([[ConnectorStatusHostService, statusHost]]);
   if (tools !== undefined) provided.set(ListedToolsHostService, tools);
   return {
@@ -80,6 +81,7 @@ function page(
         find: (key: unknown) => provided.get(key),
       }),
       announcer: { announceState: vi.fn() },
+      host,
       ...(runCommand === undefined ? {} : { runCommand }),
     },
     Sections: () => null,
@@ -113,6 +115,23 @@ describe("the connector page's listed tools", () => {
       expect(root.querySelector("dialog[open]")?.textContent).toContain(
         "Review the tools from Notes",
       );
+    });
+
+    it("says approving is for the computer, with no button, on a phone", async () => {
+      const root = render(
+        <ConnectorPage
+          {...page(
+            toolsHost(async () => snapshot(["read_note"])),
+            { host: "phone" },
+          )}
+        />,
+      );
+      await settled();
+      expect(root.textContent).toContain("1 tool is waiting for your approval");
+      expect(root.textContent).toContain(
+        "View only here. Review the tools on the computer running Halonic.",
+      );
+      expect(reviewButton(root)).toBeUndefined();
     });
 
     it("shows no line and no button when no tool waits", async () => {
@@ -153,7 +172,7 @@ describe("the connector page's listed tools", () => {
             toolsHost(async () => {
               throw new WorkspaceNotTrusted();
             }),
-            runCommand,
+            { runCommand },
           )}
         />,
       );

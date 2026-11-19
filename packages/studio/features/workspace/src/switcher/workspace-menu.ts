@@ -1,5 +1,5 @@
 import type { MenuEntry, MenuItem } from "@halonicjs/studio-kit";
-import { hintKeys, type KeyboardPlatform } from "@halonicjs/studio-shell";
+import { hintKeys, type KeyboardPlatform, sampleTag } from "@halonicjs/studio-shell";
 import { NEW_WORKSPACE_MENU_ROW } from "../new-workspace/new-workspace-text.ts";
 import { WORKSPACE_MENU_ROW } from "../page/workspace-page-text.ts";
 import type { RememberedWorkspace } from "./recent-workspaces.ts";
@@ -28,7 +28,8 @@ export interface WorkspaceMenuOptions {
 /**
  * The workspace menu's rows (flow-workspace 2.1a, microcopy 4.1 and 4.2): the heading **Recent**
  * and the remembered workspaces, each its name over its folder with the shown one checked, a
- * divider, **Open a folder…**, a divider, **Workspace settings…** and **Close workspace**. With nothing remembered the
+ * divider, **Open a folder…**, a divider, **Workspace settings…** and **Close workspace**. A workspace
+ * created as the sample has the Sample tag, as on Welcome. With nothing remembered the
  * heading and its divider go too. An open workspace shows its Ctrl 1 to Ctrl 9 key
  * (`workspace.switcher.ctrl-number-keys`).
  *
@@ -74,6 +75,8 @@ function recentRow(workspace: RememberedWorkspace, options: WorkspaceMenuOptions
     id: `recent:${workspace.location}`,
     label: workspace.name,
     detail: workspace.location,
+    // The same outline tag as Welcome's Recent row (flow-first-run 8).
+    ...(workspace.sample === true ? { tag: sampleTag } : {}),
     checked: workspace.location === options.shown,
     ...keys,
     onSelect: () => options.onOpen(workspace.location),

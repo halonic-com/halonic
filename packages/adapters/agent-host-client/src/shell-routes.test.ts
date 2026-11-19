@@ -20,11 +20,15 @@ interface ShellRoute {
   readonly answer: string;
 }
 
-/** Each `("<name>", route(Method::<method>, "<path>", Answer::<answer>))` entry of `ROUTES`. */
+/**
+ * Each `("<name>", route(Method::<method>, "<path>", Answer::<answer>))` entry
+ * of `ROUTES`, also when rustfmt puts a long one over several lines.
+ */
 function readShellRoutes(): ShellRoute[] {
   const text = readFileSync(shellRoutes, "utf8");
   const table = /const ROUTES: &\[\(&str, Route\)\] = &\[([\s\S]*?)\n\];/.exec(text)?.[1] ?? "";
-  const entry = /\(\s*"([^"]+)",\s*route\(Method::(\w+),\s*"([^"]+)",\s*Answer::(\w+)\),?\s*\)/g;
+  const entry =
+    /\(\s*"([^"]+)",\s*route\(\s*Method::(\w+),\s*"([^"]+)",\s*Answer::(\w+),?\s*\),?\s*\)/g;
   return [...table.matchAll(entry)].map(([, name = "", method = "", path = "", answer = ""]) => ({
     name,
     method,
@@ -53,7 +57,7 @@ verifies("agent-host-client.shell-routes", () => {
     const routes = readShellRoutes();
     const entries = /const ROUTES[\s\S]*?\n\];/.exec(readFileSync(shellRoutes, "utf8"))?.[0];
     expect(routes.length).toBeGreaterThan(0);
-    expect(routes.length).toBe(entries?.match(/route\(Method::/g)?.length);
+    expect(routes.length).toBe(entries?.match(/route\(\s*Method::/g)?.length);
     for (const route of routes) {
       expect(route.name).toBe(`${route.method.toUpperCase()} ${route.path}`);
     }

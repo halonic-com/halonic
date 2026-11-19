@@ -45,6 +45,8 @@ export function WhenCard({
   const timeZone = routine.trigger.kind === "schedule" ? routine.trigger.timeZone : undefined;
   const shown = times?.times.map((iso) => nextTime(iso, timeZone, deviceTimeZone()));
 
+  const newTriggerNotLive = notLiveLine(routine);
+
   const turn = async (enabled: boolean) => {
     if (saving) return;
     setSaving(true);
@@ -110,6 +112,9 @@ export function WhenCard({
             {words.makeLiveFirst}
           </p>
         )}
+        {newTriggerNotLive !== undefined && (
+          <p className="text-small text-fg-muted">{newTriggerNotLive}</p>
+        )}
         {manual && <p className="text-small text-fg-muted">{words.manualOnly}</p>}
         {shown !== undefined && shown.length > 0 && (
           <p className="text-small">
@@ -125,4 +130,12 @@ export function WhenCard({
       </div>
     </Card>
   );
+}
+
+/** The line that says what still runs while the saved trigger isn't live; nothing when they agree. */
+function notLiveLine(routine: RoutineView): string | undefined {
+  const live = routine.live?.triggerSentence;
+  if (live === undefined || live === routine.triggerSentence) return undefined;
+  const scheduled = routine.trigger.kind === "schedule" || routine.trigger.kind === "every";
+  return (scheduled ? words.newScheduleNotLive : words.newTriggerNotLive)(live);
 }

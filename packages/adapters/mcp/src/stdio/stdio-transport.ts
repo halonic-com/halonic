@@ -1,4 +1,4 @@
-import { McpError, unexpectedResponse } from "../protocol/errors.ts";
+import { McpError, McpStoppedError, unexpectedResponse } from "../protocol/errors.ts";
 import { errorCodes, type OutgoingMessage } from "../protocol/json-rpc.ts";
 import type { AbortSignalLike, McpTransport } from "../protocol/transport.ts";
 import { ErrorOutputTail } from "./error-output.ts";
@@ -106,7 +106,7 @@ export class StdioTransport implements McpTransport {
 
   /** Fails every waiting request and stops the program. Safe to call twice. */
   async close(): Promise<void> {
-    this.#end(new McpError("unavailable", "The connection to the program was closed."));
+    this.#end(new McpStoppedError("The connection to the program was closed."));
     await this.#stopped;
   }
 
@@ -121,7 +121,7 @@ export class StdioTransport implements McpTransport {
     try {
       await this.#program.write(`${JSON.stringify(message)}\n`);
     } catch {
-      const error = new McpError("unavailable", "The program stopped reading its input.");
+      const error = new McpStoppedError("The program stopped reading its input.");
       this.#end(error);
       throw error;
     }
@@ -133,7 +133,7 @@ export class StdioTransport implements McpTransport {
       if (line.trim() === "") continue;
       await this.#route(parseLine(line));
     }
-    this.#end(new McpError("unavailable", "The program stopped."));
+    this.#end(new McpStoppedError("The program stopped."));
   }
 
   async #route(value: unknown): Promise<void> {
@@ -211,8 +211,7 @@ function isRequestId(value: unknown): value is string | number {
 }
 
 function notAnsweredInTime(method: string, timeoutMs: number): McpError {
-  return new McpError(
-    "unavailable",
+  return new McpStoppedError(
     `The program didn't answer ${method} within ${Math.round(timeoutMs / 1000)} seconds, so it was stopped.`,
   );
 }

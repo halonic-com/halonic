@@ -6,6 +6,7 @@ import {
   defaultStdioLimits,
   McpError,
   McpSession,
+  McpStoppedError,
   type McpToolResult,
   RestartLimit,
   type RestartLimits,
@@ -463,16 +464,11 @@ class SandboxStdioConnector implements ConnectorClient {
     const ended = this.#sessionEnded();
     if (ended !== undefined) return ended;
     const reason = error instanceof McpError ? ` ${error.message}` : "";
-    return new McpError(
-      "unavailable",
+    return new McpStoppedError(
       `Connector "${this.id}" lost its program while its tool "${toolName}" ran.${reason} Halonic didn't try the call again, because it may already have had an effect. The next call starts the program again.`,
     );
   }
 }
 
 /** A request to the program took longer than the connector allows, so it stopped the program. */
-class DeadlinePassedError extends McpError {
-  constructor(message: string) {
-    super("unavailable", message);
-  }
-}
+class DeadlinePassedError extends McpStoppedError {}

@@ -313,6 +313,16 @@
       ],
       "reason": "A DOM for Vitest, so the kit's component tests check rendered markup, ARIA and clicks without a browser (HAL-175 section 13), and so the Android connect page's tests check its screens, focus and field errors (HAL-1140, approved by Liam on HAL-1253). Tests only."
     },
+    "jsqr": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/studio-kit"
+      ],
+      "layers": [
+        "studio"
+      ],
+      "reason": "A QR decoder for the kit's tests only: they decode the vendored QR encoder's output (src/qr) and check it reads back as the payload, an independent check of the encoder (HAL-12232 decision 15, approved by Liam). No dependencies, never ships."
+    },
     "miniflare": {
       "category": "dev-tooling",
       "allowedIn": [

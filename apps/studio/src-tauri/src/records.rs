@@ -205,7 +205,10 @@ fn scope_folder(profile: &ProfileFolder, scope: RecordScope) -> String {
 /// stands, so the page must not try again, and the lock goes stale by itself.
 fn log_unreleased_lock(command: &str, error: Option<RecordStoreError>) {
     if let Some(error) = error {
-        eprintln!("{command}: the record folder's write lock wasn't released: {error}");
+        halonic_shell_log::record(
+            command,
+            format!("the record folder's write lock wasn't released: {error}"),
+        );
     }
 }
 

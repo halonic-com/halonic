@@ -37,7 +37,7 @@ verifies("harness-host.bridge", () => {
     const bridge = await host.open(writer, recorder);
 
     expect(bridge.url).toBe("http://127.0.0.1:4100");
-    expect(asked).toEqual([{ runId: "01JD8Q", agentId: "writer" }]);
+    expect(asked).toEqual([{ runId: "01JD8Q", agentId: "writer", hubId: "support" }]);
     const [options] = server.opened;
     expect(options).toMatchObject({
       runId: "01JD8Q",
@@ -72,5 +72,26 @@ verifies("harness-host.bridge", () => {
     });
 
     await expect(host.open(writer, recorder)).rejects.toThrow("Can't listen on loopback.");
+  });
+});
+
+verifies("harness-host.bridge-agent-model", () => {
+  it("tells the host the agent's hub and no model when the agent's file names none", async () => {
+    const { asked, host } = setup();
+
+    await host.open(writer, recorder);
+
+    expect(asked).toEqual([{ runId: "01JD8Q", agentId: "writer", hubId: "support" }]);
+  });
+
+  it("tells the host the agent file's model as written, so it can resolve an alias", async () => {
+    const { asked, host } = setup();
+    const openCoder = { ...writer, file: { ...writer.file, model: "open-coder-agent" } };
+
+    await host.open(openCoder, recorder);
+
+    expect(asked).toEqual([
+      { runId: "01JD8Q", agentId: "writer", hubId: "support", model: "open-coder-agent" },
+    ]);
   });
 });

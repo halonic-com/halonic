@@ -125,6 +125,28 @@ describe("startHostServer", () => {
     expect(answer.status).toBe(401);
   });
 
+  it("serves every path under a prefix route, and prefers an exact route", async () => {
+    const answer =
+      (text: string): HostRoute["handle"] =>
+      (_request, response) => {
+        response.writeHead(200).end(text);
+      };
+    server = await startHostServer(token, [
+      { method: "GET", path: "/sign-in/", prefix: true, tokenFree: true, handle: answer("prefix") },
+      { method: "GET", path: "/sign-in/exact", handle: answer("exact") },
+    ]);
+    const get = async (path: string) => (await fetch(`${server?.url}${path}`)).text();
+    const withToken = (path: string) =>
+      fetch(`${server?.url}${path}`, { headers: { authorization: `Bearer ${token}` } });
+
+    expect(await get("/sign-in/abc?code=1")).toBe("prefix");
+    // The exact route still needs the token, the prefix route doesn't.
+    expect((await fetch(`${server.url}/sign-in/exact`)).status).toBe(401);
+    expect(await (await withToken("/sign-in/exact")).text()).toBe("exact");
+    expect((await fetch(`${server.url}/sign-in`)).status).toBe(401);
+    expect((await fetch(`${server.url}/other/abc`)).status).toBe(401);
+  });
+
   it("answers 500 when a route rejects before it answers", async () => {
     server = await startHostServer(token, [
       { method: "GET", path: "/v1/broken", handle: () => Promise.reject(new Error("broken")) },

@@ -331,6 +331,40 @@ verifies("shell.overview.used-by", () => {
     expect(text.indexOf("1 running")).toBeLessThan(text.indexOf("Used by 1 agent"));
   });
 
+  it("ends the line under the name with the used-by text on a phone, after the detail", () => {
+    const page = render(
+      <PresentationProvider presentation="phone">
+        <OverviewPage
+          hubs={[
+            {
+              id: "acme",
+              name: "acme",
+              items: [
+                {
+                  id: "refunds",
+                  name: "Refund handling",
+                  detail: "When an email asks for a refund",
+                  usedBy: "Not used yet",
+                },
+                { id: "tone", name: "Tone of voice", usedBy: "Not used yet" },
+              ],
+            },
+          ]}
+          words={words}
+          onOpen={() => undefined}
+          onOpenInNewTab={() => undefined}
+          itemMenu={() => [{ id: "open", label: "Open", onSelect: () => undefined }]}
+        />
+      </PresentationProvider>,
+    );
+    const lineUnder = (name: string) =>
+      [...page.querySelectorAll("tr")]
+        .find((row) => row.textContent?.includes(name))
+        ?.querySelector(".text-small")?.textContent;
+    expect(lineUnder("Refund handling")).toBe("When an email asks for a refund · Not used yet");
+    expect(lineUnder("Tone of voice")).toBe("Not used yet");
+  });
+
   it("doesn't search the used-by text", () => {
     const page = show({ hubs: used });
     type(search(page), "agents");

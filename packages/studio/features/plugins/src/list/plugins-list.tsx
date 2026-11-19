@@ -86,6 +86,11 @@ export interface PluginsListProps {
    * Plugins are view only on a phone and when served (design section 10).
    */
   readonly place?: "app" | "served";
+  /**
+   * The level of the two lists' headings: 2 (the default) where the list is the page, 4 inside
+   * Settings, under the section's h3. An empty list's title goes one below (HAL-12536).
+   */
+  readonly headingLevel?: 2 | 4;
   readonly now?: () => Date;
 }
 
@@ -178,6 +183,7 @@ export function PluginsList({
   onAdd,
   onRetry,
   place = "app",
+  headingLevel = 2,
   now = () => new Date(),
 }: PluginsListProps) {
   const phone = usePresentation() === "phone";
@@ -224,6 +230,7 @@ export function PluginsList({
         {load.kind === "failed" ? (
           <EmptyState
             tone="error"
+            headingLevel={headingLevel}
             title={LOAD_FAILED_TITLE}
             description={load.reason}
             action={{ label: TRY_AGAIN, onClick: onRetry }}
@@ -231,6 +238,7 @@ export function PluginsList({
         ) : (
           <InstalledList
             load={load}
+            headingLevel={headingLevel}
             rows={installedRows}
             onAdd={add}
             onOpen={onOpen}
@@ -242,7 +250,7 @@ export function PluginsList({
           <List
             label={BUILT_IN_HEADING}
             groups={[{ id: "built-in", heading: { name: BUILT_IN_HEADING }, rows: builtInRows }]}
-            groupHeadingLevel={2}
+            groupHeadingLevel={headingLevel}
             {...builtInOpener(onOpenBuiltIn)}
           />
         )}
@@ -272,6 +280,7 @@ export function PluginsList({
 
 interface InstalledListProps {
   readonly load: PluginsLoad;
+  readonly headingLevel: 2 | 4;
   readonly rows: ListRow[];
   readonly onAdd: (() => void) | undefined;
   readonly onOpen: (plugin: string) => void;
@@ -283,13 +292,21 @@ interface InstalledListProps {
  * The "Installed on this computer" list. With rows it is its own box with its ListHeading above
  * it, as Home draws its sections; while loading or with none, the heading stays the List's own.
  */
-function InstalledList({ load, rows, onAdd, onOpen, onOpenInNewTab, onRetry }: InstalledListProps) {
+function InstalledList({
+  load,
+  headingLevel,
+  rows,
+  onAdd,
+  onOpen,
+  onOpenInNewTab,
+  onRetry,
+}: InstalledListProps) {
   if (rows.length > 0 && load.kind === "ready") {
     return (
       <List
         label={INSTALLED_HEADING}
         groups={[{ id: "installed", heading: { name: INSTALLED_HEADING }, rows }]}
-        groupHeadingLevel={2}
+        groupHeadingLevel={headingLevel}
         onOpen={onOpen}
         onOpenInNewTab={onOpenInNewTab}
       />
@@ -298,6 +315,7 @@ function InstalledList({ load, rows, onAdd, onOpen, onOpenInNewTab, onRetry }: I
   return (
     <List
       heading={{ name: INSTALLED_HEADING }}
+      headingLevel={headingLevel}
       rows={rows}
       loading={load.kind === "loading"}
       loadingLabel={LOADING_LABEL}
@@ -305,6 +323,7 @@ function InstalledList({ load, rows, onAdd, onOpen, onOpenInNewTab, onRetry }: I
       onOpenInNewTab={onOpenInNewTab}
       onRetry={onRetry}
       empty={{
+        headingLevel: headingLevel === 2 ? 3 : 5,
         title: EMPTY_TITLE,
         description: EMPTY_LINE,
         ...(onAdd === undefined ? {} : { action: { label: ADD_PLUGIN, onClick: onAdd } }),

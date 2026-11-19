@@ -9,12 +9,13 @@ export const TOASTS_SHOWN = 3;
 
 /**
  * Bottom right of the shell's content area, 16px in, 360px wide. On a phone, the width less 16px
- * each side and 8px above whatever bar sits under the scroll area's wrapper. Pointer events pass
- * through the gaps to the page below.
+ * each side and 8px above whatever bar sits under the scroll area's wrapper. On a short phone
+ * window the bars scroll with the page, so the toast sits 8px above the window's bottom instead.
+ * Pointer events pass through the gaps to the page below.
  */
 const region = [
   "pointer-events-none absolute right-4 bottom-4 z-(--layer-toast) flex w-toast flex-col gap-2",
-  "phone:bottom-2 phone:left-4 phone:w-auto",
+  "phone:bottom-2 phone:left-4 phone:w-auto phone:short:fixed",
 ].join(" ");
 
 const focusable = "button";

@@ -68,6 +68,12 @@ interface DialogCommonProps {
   readonly retryLabel?: string;
   /** Where focus goes on close when the opener has gone, such as a deleted row's next row (23 A2). */
   readonly returnFocus?: () => HTMLElement | null;
+  /**
+   * The id of a line in the body that says what the Dialog does, such as the New agent dialog's
+   * info line: a screen reader reads it when the Dialog opens, also in a `form`, whose body isn't
+   * read. It comes before the footnote.
+   */
+  readonly describedBy?: string;
   readonly children: ReactNode;
 }
 

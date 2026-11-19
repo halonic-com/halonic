@@ -8,7 +8,8 @@ import type { Plugin } from "@halonicjs/format";
 import { markHiddenName } from "@halonicjs/std";
 import { Dialog, Disclosure, StatusChip } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
-import { originText, type PluginOrigin, quoted, RISK_WORDS } from "../page/page-text.ts";
+import { originText, type PluginOrigin, RISK_WORDS } from "../page/page-text.ts";
+import { Quoted } from "../ui/quoted.tsx";
 import type { ChangeRow, PluginChangeSummary } from "./change-rows.ts";
 import { type TrustCheckContent, type TrustSecret, trustCheckContent } from "./trust-check.ts";
 import {
@@ -285,7 +286,7 @@ function Section({
                   <StatusChip tone="neutral">{RISK_WORDS[tool.risk]}</StatusChip>
                 </span>
                 <span className="text-small text-fg-muted wrap-anywhere">
-                  {quoted(tool.description)}
+                  <Quoted text={tool.description} />
                   {tool.untrusted ? ` · ${OUTSIDE_TEXT}` : null}
                 </span>
               </li>

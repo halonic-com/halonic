@@ -1,6 +1,14 @@
 import { EmptyState, ExternalLink, List, usePresentation } from "@halonicjs/studio-kit";
 import type { ItemRef, PlaceViewProps } from "@halonicjs/studio-shell";
-import { useCallback, useRef, useState, useSyncExternalStore } from "react";
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { type ChangesRead, type DeveloperView, DeveloperViewService } from "../api.ts";
 import type { ChangeItem } from "../change-items.ts";
 import { type ChangesList, ChangesListService, type ChangesListState } from "../changes-list.ts";
@@ -20,6 +28,8 @@ import {
   UpToDateStrip,
 } from "./sharing-strip.tsx";
 import { type OpenItem, useOpenItem } from "./use-open-item.ts";
+import { type OpenVersion, useOpenVersion } from "./use-open-version.ts";
+import { VersionPage } from "./version-page.tsx";
 import { WhatChangedPage } from "./whats-changed-page.tsx";
 
 /** The Changes place's page: the open workspace's changes, from `ChangesListService`. */
@@ -50,6 +60,7 @@ export interface ChangesViewProps {
  *
  * On a phone (2.12) it is the same page in one column with a 16px inset: the top bar says
  * "Changes", so the heading is for screen readers only, and git's words say "your computer".
+ * A version in History opens as its own page (2.14).
  *
  * Not here yet: the sharing strip's teammate-versions state.
  */
@@ -59,27 +70,17 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
   const state = useSyncExternalStore(subscribe, () => list.state);
   const developer = useDeveloperView(developerView);
   const heading = useRef<HTMLHeadingElement>(null);
+  const page = useRef<HTMLDivElement>(null);
+  const focusNewVersion = useFocusNewVersion(list, page);
   const [addingAddress, setAddingAddress] = useState(false);
   const items = orderItems(state.files);
   const nav = useOpenItem(items, () => heading.current?.focus());
+  const versionNav = useOpenVersion(state.history.versions);
   const pageClass = `flex w-full flex-col gap-4 ${phone ? "p-4" : "px-6 py-5"}`;
-  if (nav.open !== undefined) {
-    return (
-      // On a phone the page draws its own inset, so its bottom bar can run edge to edge.
-      <div className={phone ? "flex min-h-full w-full flex-col" : pageClass}>
-        <WhatChangedPage
-          list={list}
-          item={nav.open}
-          developer={developer}
-          openItem={openItem}
-          onBack={nav.back}
-          phone={phone}
-        />
-      </div>
-    );
-  }
+  const pushed = pushedPage({ list, nav, versionNav, developer, openItem, phone, pageClass });
+  if (pushed !== undefined) return pushed;
   return (
-    <div className={pageClass}>
+    <div ref={page} className={pageClass}>
       <header className="flex items-center gap-3">
         <h1 ref={heading} tabIndex={-1} className={phone ? "sr-only flex-1" : "text-title flex-1"}>
           {pageWords.title}
@@ -100,6 +101,7 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
         state={state}
         items={items}
         nav={nav}
+        versionPage={phone ? versionNav : undefined}
         openItem={openItem}
         phone={phone}
         focusHeading={() => heading.current?.focus()}
@@ -120,10 +122,54 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
           files={list.versionFiles}
           first={hasNoVersions(state.history)}
           returnFocus={() => heading.current}
+          onCreated={focusNewVersion}
         />
       )}
     </div>
   );
+}
+
+/** The page pushed over the Changes page, if one is open: an item's What changed, or a phone's version page. */
+function pushedPage({
+  list,
+  nav,
+  versionNav,
+  developer,
+  openItem,
+  phone,
+  pageClass,
+}: {
+  readonly list: ChangesList;
+  readonly nav: OpenItem;
+  readonly versionNav: OpenVersion;
+  readonly developer: boolean;
+  readonly openItem: ((item: ItemRef) => void) | undefined;
+  readonly phone: boolean;
+  readonly pageClass: string;
+}): ReactNode | undefined {
+  if (nav.open !== undefined) {
+    return (
+      // On a phone the page draws its own inset, so its bottom bar can run edge to edge.
+      <div className={phone ? "flex min-h-full w-full flex-col" : pageClass}>
+        <WhatChangedPage
+          list={list}
+          item={nav.open}
+          developer={developer}
+          openItem={openItem}
+          onBack={nav.back}
+          phone={phone}
+        />
+      </div>
+    );
+  }
+  if (phone && versionNav.open !== undefined) {
+    return (
+      <div className={pageClass}>
+        <VersionPage version={versionNav.open} onBack={versionNav.back} />
+      </div>
+    );
+  }
+  return undefined;
 }
 
 /**
@@ -157,6 +203,7 @@ function PageBody({
   state,
   items,
   nav,
+  versionPage,
   openItem,
   phone,
   focusHeading,
@@ -165,6 +212,7 @@ function PageBody({
   readonly state: ChangesListState;
   readonly items: readonly ChangeItem[];
   readonly nav: OpenItem;
+  readonly versionPage: OpenVersion | undefined;
   readonly openItem: ((item: ItemRef) => void) | undefined;
   readonly phone: boolean;
   readonly focusHeading: () => void;
@@ -185,6 +233,7 @@ function PageBody({
         read={read}
         items={items}
         nav={nav}
+        versionPage={versionPage}
         openItem={openItem}
         phone={phone}
         focusHeading={focusHeading}
@@ -200,6 +249,7 @@ function ReadBody({
   read,
   items,
   nav,
+  versionPage,
   openItem,
   phone,
   focusHeading,
@@ -209,6 +259,7 @@ function ReadBody({
   readonly read: ChangesRead;
   readonly items: readonly ChangeItem[];
   readonly nav: OpenItem;
+  readonly versionPage: OpenVersion | undefined;
   readonly openItem: ((item: ItemRef) => void) | undefined;
   readonly phone: boolean;
   readonly focusHeading: () => void;
@@ -242,9 +293,37 @@ function ReadBody({
           phone={phone}
         />
       )}
-      <History list={list} history={state.history} phone={phone} />
+      <History
+        list={list}
+        history={state.history}
+        unshared={state.unsharedIds}
+        phone={phone}
+        versionPage={versionPage}
+      />
     </>
   );
+}
+
+/**
+ * Creating a version closes its dialog, and focus goes back to the Create version button. With
+ * nothing left to version that button is gone a moment later, and focus would drop to the page
+ * (WCAG 2.4.3). So focus moves on to what the person just made: History's first row, the new
+ * version, once the page has read again. When that read failed, the first row isn't the new
+ * version, so focus stays where the dialog put it, and the failure's alert says why.
+ */
+function useFocusNewVersion(list: ChangesList, page: RefObject<HTMLElement | null>): () => void {
+  const [pending, setPending] = useState(false);
+  useEffect(() => {
+    if (!pending) return;
+    setPending(false);
+    page.current
+      ?.querySelector<HTMLElement>('[data-part="history-list"] [data-row-id] [role="gridcell"]')
+      ?.focus();
+  }, [pending, page]);
+  return () => {
+    const { error, history } = list.state;
+    if (error === undefined && history.error === undefined) setPending(true);
+  };
 }
 
 /** Whether the developer view is on, read again when it is turned on or off. */

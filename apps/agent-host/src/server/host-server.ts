@@ -10,6 +10,13 @@ export interface HostRoute {
   method: "GET" | "POST";
   /** The path without a query, such as "/v1/health". */
   path: string;
+  /**
+   * The route serves every path that starts with `path` (which then ends in
+   * `/`), not only `path`: for a callback whose path is new for each sign-in.
+   * The route's handler must check the rest of the path. An exact route that
+   * matches the whole path is preferred.
+   */
+  prefix?: true;
   handle(request: IncomingMessage, response: ServerResponse): void | Promise<void>;
   /**
    * For a page a browser opens by following a redirect, which can't send the
@@ -191,8 +198,12 @@ function isTokenFree(route: HostRoute | undefined): boolean {
 }
 
 function findRoute(routes: readonly HostRoute[], request: IncomingMessage): HostRoute | undefined {
-  const path = (request.url ?? "").split("?")[0];
-  return routes.find((route) => route.method === request.method && route.path === path);
+  const path = (request.url ?? "").split("?")[0] ?? "";
+  const sameMethod = routes.filter((route) => route.method === request.method);
+  return (
+    sameMethod.find((route) => route.path === path) ??
+    sameMethod.find((route) => route.prefix === true && path.startsWith(route.path))
+  );
 }
 
 function sendRefusal(request: IncomingMessage, response: ServerResponse, refusal: Refusal): void {

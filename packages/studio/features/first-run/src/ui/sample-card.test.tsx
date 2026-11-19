@@ -132,7 +132,7 @@ verifies("first-run.sample-card", () => {
     expect(startOwnWorkspace).toHaveBeenCalledOnce();
   });
 
-  it("offers Run its tests when finished, which opens the support workflow in the hub of its runs", () => {
+  it("offers See its tests when finished, which opens the support workflow in the hub of its runs", () => {
     const openTests = vi.fn();
     const root = render(
       <SampleSteps
@@ -146,7 +146,7 @@ verifies("first-run.sample-card", () => {
       />,
     );
     const button = [...root.querySelectorAll("button")].find(
-      (each) => each.textContent === "Run its tests",
+      (each) => each.textContent === "See its tests",
     );
     act(() => button?.click());
     expect(openTests).toHaveBeenCalledWith("support");
@@ -158,7 +158,7 @@ verifies("first-run.sample-card", () => {
         openTests={openTests}
       />,
     );
-    expect(noRun.textContent).not.toContain("Run its tests");
+    expect(noRun.textContent).not.toContain("See its tests");
     const unfinished = render(
       <SampleSteps
         progress={progressWith(["start"], { kind: "run", hub: "support", id: "r1" })}
@@ -166,7 +166,7 @@ verifies("first-run.sample-card", () => {
         openTests={openTests}
       />,
     );
-    expect(unfinished.textContent).not.toContain("Run its tests");
+    expect(unfinished.textContent).not.toContain("See its tests");
   });
 
   it("offers no button when the app has no New workspace dialog, and doesn't save an unfinished card", () => {
@@ -228,7 +228,7 @@ verifies("first-run.sample-card", () => {
     expect(none.inbox.requestNewRequest).toHaveBeenCalledOnce();
   });
 
-  it("opens the support workflow on its Tests for Run its tests, where the window can open pages", () => {
+  it("opens the support workflow on its Tests for See its tests, where the window can open pages", () => {
     const { context, openItem } = contextWith(false);
     testsOpener(context)?.("support");
     expect(openItem).toHaveBeenCalledWith(
@@ -294,7 +294,7 @@ verifies("first-run.sample-card", () => {
     );
     const rows = [...root.querySelectorAll("button")];
     expect(rows.map((row) => row.textContent)).toEqual([
-      "Run its tests",
+      "See its tests",
       "Start your own workspace",
     ]);
     expect(rows.every((row) => row.className.includes("min-h-touch"))).toBe(true);

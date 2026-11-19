@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from "react";
+import type { ReactNode, RefCallback, RefObject } from "react";
 import { PageErrorBoundary } from "../page/page-error-boundary.tsx";
 import type { ShellPhoneSearchProps } from "../palette/shell-phone-search.tsx";
 import { MorePage, type MorePageSwitcher } from "../phone/more-page.tsx";
@@ -11,9 +11,11 @@ import {
   sectionLocation,
 } from "../phone/settings-list-page.tsx";
 import type { PhonePlaces } from "../phone/use-phone-places.ts";
-import type { ShownPlace } from "../points/frame.ts";
+import type { SettingsSectionContribution, ShownPlace } from "../points/frame.ts";
+import type { Registered } from "../points/point-store.ts";
 import { SectionView } from "../settings/settings-dialog.tsx";
 import { listedSections, type SettingsPlace, settingsGroups } from "../settings/settings-groups.ts";
+import type { WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
 import { StudioPage, type StudioPageProps } from "./studio-page.tsx";
 
 /** Props for {@link StudioPhoneTopBar}. */
@@ -22,20 +24,26 @@ export interface StudioPhoneTopBarProps {
   readonly places: PhonePlaces;
   /** What the Search sheet searches; a pick opens on the phone, in its places. */
   readonly search: Omit<ShellPhoneSearchProps, "onOpenLocation" | "onClose">;
+  /** Gets the slot the page's own buttons go in (`PhoneTopBarActions`), after **Search**. */
+  readonly slot: RefCallback<HTMLElement>;
 }
 
 /**
  * The phone's top bar in the Studio window (`shell.studio-phone`): the page's title, Back under
- * the top of a place, and **Search** at the top of a place. A page below a place gets its own
- * actions there once a feature gives it some (its ⋮, "1 of 3").
+ * the top of a place, **Search** at the top of a place, and then the page's own buttons
+ * (`shell.phone-top-bar-actions`), so an overflow ⋮ is always last.
  */
-export function StudioPhoneTopBar({ places, search }: StudioPhoneTopBarProps) {
+export function StudioPhoneTopBar({ places, search, slot }: StudioPhoneTopBarProps) {
   const atPlaceTop = places.topBar.onBack === undefined;
   return (
     <PhoneTopBar
       {...places.topBar}
       actions={
-        atPlaceTop ? <PhoneSearchButton {...search} onOpenLocation={places.open} /> : undefined
+        <>
+          {atPlaceTop ? <PhoneSearchButton {...search} onOpenLocation={places.open} /> : null}
+          {/* Its children are the top bar's own flex items, 4px apart like the rest. */}
+          <span ref={slot} className="contents" />
+        </>
       }
     />
   );
@@ -49,12 +57,21 @@ export interface StudioPhonePageProps extends Omit<StudioPageProps, "location"> 
   readonly shown: readonly ShownPlace[];
   /** The More page's workspace switcher row, once the app has a workspace picker (T3). */
   readonly switcher?: MorePageSwitcher | undefined;
+  /** The sidebar's switcher, for More in a desktop window as narrow as a phone. */
+  readonly menuSwitcher?: WorkspaceSwitcherProps | undefined;
   /** The More page's header badge, on its own line under the switcher row. */
   readonly badge?: ReactNode;
+  /**
+   * The desktop's header badges, for More when there is no `badge`: a desktop window as narrow as
+   * a phone has no title bar to show them in (WCAG 1.4.10).
+   */
+  readonly desktopBadges?: ReactNode;
   /** The window's `openSettings`: with it, More ends with a Settings row. */
   readonly onSettings?: (() => void) | undefined;
   /** In the desktop app, or in a browser, as Settings words its saved lines. */
   readonly settingsPlace: SettingsPlace;
+  /** The Settings sections the window has, as Settings' list and its pages show them. */
+  readonly settingsSections: readonly Registered<SettingsSectionContribution>[];
   /** The system's region format, handed on to each Settings section. */
   readonly regionFormat?: string | undefined;
   /** Where the Settings list's scroll position is kept while a section's page is open. */
@@ -87,21 +104,24 @@ function PhonePageBody({
   places,
   shown,
   switcher,
+  menuSwitcher,
   badge,
+  desktopBadges,
   onSettings,
   settingsPlace,
+  settingsSections,
   regionFormat,
   settingsScroll,
   workspaceName,
   ...page
 }: StudioPhonePageProps) {
   const { location } = places.page;
-  const { contributions } = page.shell;
   if (location.key === "more") {
     return (
       <MorePage
         switcher={switcher}
-        badge={badge}
+        menuSwitcher={menuSwitcher}
+        badge={badge ?? desktopBadges}
         places={shown}
         onOpen={(place) => places.openPlace(place)}
         onSettings={onSettings}
@@ -111,7 +131,7 @@ function PhonePageBody({
   if (location.key === settingsLocation.key) {
     return (
       <SettingsListPage
-        sections={contributions.settings.list()}
+        sections={settingsSections}
         workspaceName={workspaceName}
         place={settingsPlace}
         contextFor={page.contextFor}
@@ -125,7 +145,7 @@ function PhonePageBody({
     // The same sections the list shows, so a link to one it leaves out opens nothing.
     const section = listedSections(
       settingsGroups({
-        sections: contributions.settings.list(),
+        sections: settingsSections,
         workspaceName,
         place: settingsPlace,
         phone: true,

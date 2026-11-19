@@ -27,7 +27,7 @@ verifies("cli.messages", () => {
     expect(fix?.key).toBe("runFailedFix.key-refused");
     expect(lines(failure)).toEqual([
       "Support reply failed in the step Draft a reply: OpenAI didn't accept the key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model alias smart.",
-      "Set HALONIC_SECRET_OPENAI_KEY to a key OpenAI accepts, then run again.",
+      "Save a key OpenAI accepts with halonic secret set openai-key, or set HALONIC_SECRET_OPENAI_KEY, then run again.",
     ]);
   });
 
@@ -77,7 +77,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
     };
     expect(lines(failure)).toEqual([
       "Support reply failed in the step Draft a reply: there's no key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model alias smart.",
-      "Set HALONIC_SECRET_OPENAI_KEY to your OpenAI key, then run again.",
+      "Save your OpenAI key with halonic secret set openai-key, or set HALONIC_SECRET_OPENAI_KEY, then run again.",
     ]);
   });
 

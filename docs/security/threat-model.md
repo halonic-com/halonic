@@ -44,14 +44,14 @@ depends on the app. The CLI uses the trust check in
 [4.1](#41-workspace-code-b1) and the run log in
 [4.2](#42-model-output-and-content-b2) now. Studio's **On `main`** rows are code
 on `main` that you get once Studio ships. The rest is tested code that no app
-calls yet (for example `readToolListing` has no caller outside its tests).
+calls yet.
 
 | Shape | Who can reach it | Status |
 | --- | --- | --- |
 | `halonic` on your machine | you, and programs running as you | Part of 0.1, run from source |
 | Studio on your machine | you, and programs running as you | Being built (phase 1, plan HAL-9). Not shipped |
 | `halonic serve` on loopback | programs and web pages on your machine | On `main`, run from source (phase 4, plan HAL-9) |
-| `halonic serve --network` on a LAN | everyone on that network | On `main`, run from source (`cli.commands.serve`, which needs a password). Treated as public |
+| `halonic serve --network` on a LAN | everyone on that network | On `main`, run from source (`cli.commands.serve.serve`, which needs a password). Treated as public |
 | `serve` through a tunnel or on a VPS | the internet | Planned (phase 4). Treated as public |
 | Cloud deployments (Cloudflare, containers) | the whole internet | Library code on `main`; no command deploys yet. See [section 6](#6-cloud-deployments-b7) |
 
@@ -113,7 +113,7 @@ workspace you didn't write is like running its code.
 | --- | --- | --- |
 | A workspace starts programs before you trust it | Ask "trust this workspace" before any program starts; no `shell: true`. The CLI asks: `halonic trust` shows what the workspace can start and trusts it on this computer, by a fingerprint of its connectors, agents and providers. `run`, `runs send` and `routines watch` refuse a workspace that isn't trusted here, or changed since, and start nothing (exit 3); a run that can only reach the test model needs no trust (`reachesOnlyTheTestModel`). A trust record that can't be read counts as no trust. Studio asks too: it checks the folder with the CLI's `TrustService`, and its review lists the programs, agents, addresses and the fingerprint before you trust it; its older "Trust this folder?" question only lets the shell open a folder you didn't pick. The requirement `ports.connector-trust-enforcement` is still a draft, because the stdio launcher that checks the grant itself isn't built (HAL-230) | CLI **On `main`** (`apps/cli`, `workspace-trust.ts`); Studio **On `main`** (`apps/studio`, `src/studio/workspace-trust.ts`, `src/studio/trust-review.ts`; `studio.workspace-trust`); the requirement becomes active with the contract suites (HAL-181) |
 | A hub or an agent lists the token collection | Halonic's own collections (`_tokens`, `_google_setups`) start with `_`, which no workspace collection id may, so a hub, an agent or a ref field can't name them; the scheduler's and coordination's collections (`halonic.scheduler.timers`, `halonic.coordination`) are kept out by their `.` (`packages/core/format`, `collectionId`) | **On `main`** |
-| A workspace picks a token or one of Halonic's own secrets by name | A provider's, a model's or a connector's `secret` (and a program's `secretEnv`) is read through `workspaceSecrets`, which refuses `token-key`, `serve-password` and every name under the token prefix `halonic_token_`, in any case and with `-` or `_` (`packages/core/ports`). Together with the row above, no workspace name reaches a token or Halonic's own secrets in either store: the record store keeps tokens in `_tokens`, and a store that holds secrets and tokens together, such as the desktop keychain, keeps tokens under the prefix | **On `main`** (`ports.workspace-secrets`); tokens under the prefix in the keychain: the bridge **On `main`** (`services.shell-secrets`), and the desktop app using it **On `main`** (`apps/studio`, `start-studio.ts`; HAL-2952) |
+| A workspace picks a token or one of Halonic's own secrets by name | A provider's, a model's or a connector's `secret` (and a program's `secretEnv`) is read through `workspaceSecrets`, which refuses `token-key`, `serve-password`, every name under the token prefix `halonic_token_` and every name under the plugin prefix `plugin__`, where the app keeps each plugin's secrets, in any case and with `-` or `_` (`packages/core/ports`). Together with the row above, no workspace name reaches a token or Halonic's own secrets in either store: the record store keeps tokens in `_tokens`, and a store that holds secrets and tokens together, such as the desktop keychain, keeps tokens under the prefix | **On `main`** (`ports.workspace-secrets`); tokens under the prefix in the keychain: the bridge **On `main`** (`services.shell-secrets`), and the desktop app using it **On `main`** (`apps/studio`, `start-studio.ts`; HAL-2952) |
 | A workspace reads another workspace's or hub's data | Isolation between workspaces and hubs is not built | **Planned** (phase 2, plan HAL-9) |
 | A listed tool of an untrusted workspace lowers its risk | Without a trust grant every listed tool counts as `write`; `readToolListing` ignores the workspace's lower risks (`packages/core/app/src/tool-listing.ts`) | **On `main`** |
 | Secrets committed to the repository | The leak guard blocks private keys, Google client secrets, OAuth tokens, protected personal terms and absolute local paths (`tooling/check/src/leaks`, [leak guard](../guides/leak-guard.md)) | **On `main`** |
@@ -210,13 +210,14 @@ Its text is attacker text. The rules are the requirement
 | Requests go to hosts nobody declared, or redirect there | Exact, case-insensitive host match over `https`; every redirect hop is checked like the first request | **On `main`** (`declared-hosts-only`, `redirects-checked`) |
 | A company proxy hides where a request really goes | With `HTTPS_PROXY` set, public `https` hosts go through a CONNECT tunnel to the host's name, and Halonic runs TLS itself over it, so the proxy sees no content and the certificate is checked against the name. The proxy setting is read once by the app, outside the sandbox, never reaches the sandbox launcher or the program, and its user name and password never appear in a message, a log or a redirect. A bad setting fails every request that needs it and never goes direct; `loopback`, `private` and `NO_PROXY` hosts always go direct with the full address check; a public host over plain `http` is refused; the CONNECT reply is size-limited, timed and must leave no stray bytes | **On `main`** (`http-node.proxy-config`, `http-node.proxy-tunnel`, `http-node.proxy-guard`, `sandbox-srt.session`) |
 | Plain `http` leaks a secret | `http` only to this machine or a private address, and a secret only to this machine | **On `main`** (`local-http-hosts`) |
+| A workspace sends a stored model key to an address of its choice | A provider's key goes to an address other than its type's own (such as `https://api.anthropic.com`) only when the workspace is trusted here, and the trust check shows such a provider with "Sends its key to" and the address; otherwise the call fails with `untrusted-provider-address`. A key with a list of allowed addresses goes only to an address on it (`key-origin-not-allowed`). `halonic models allow-address`, which adds to that list, refuses to run inside a run (`HALONIC_RUN_TOKEN`). The Anthropic and OpenAI providers follow no redirect. Errors name the provider and the address, never the key | **On `main`** for the CLI (`cli.workspace-provider-key-trust`, `cli.commands.models.allow-address`, `model-anthropic.endpoint`, `model-openai.endpoint`); Studio's keychain keeps no address list yet |
 | One integration reads another's tokens | Names are `i<n>_<integration>_<token>`; a policy declares what each may read | **On `main`** (`scoped-tokens`) |
 | A slow or huge response ties up the host | Header, idle and overall timeouts and a size limit on every request | **On `main`** (`request-limits`) |
 | Logs leak secrets | The request log holds method, host, path, status, time and outcome; no query, headers or bodies | **On `main`** (`request-log`) |
 | A stored token is read from disk or a copy | AES-256-GCM, a new random nonce per write, bound to the token's name so a value can't be moved to another name; the key is the secret `token-key` (32 bytes) | **On `main`** (`packages/adapters/token-store`) |
 | A wrong key looks like "not signed in" | A value that won't open throws `UnreadableTokenError`, never `null`; the error names the token, not its value | **On `main`** |
 | Token names fold into each other | Case and `-` versus `_` are treated as the same name; bad names are refused before anything is read | **On `main`** |
-| A workspace's secret pick reads a token or the token key | The names a workspace picks for providers and models go through `workspaceSecrets`, which refuses `token-key`, `serve-password` and the token prefix `halonic_token_` by their `secretKey` form; its error never repeats the name. A store that holds secrets and tokens together keeps tokens under that prefix | **On `main`** (`ports.workspace-secrets`); tokens under the prefix in the keychain: the bridge **On `main`** (`services.shell-secrets`), and the desktop app using it **On `main`** (`apps/studio`, `start-studio.ts`; HAL-2952) |
+| A workspace's secret pick reads a token or the token key | The names a workspace picks for providers and models go through `workspaceSecrets`, which refuses `token-key`, `serve-password`, the token prefix `halonic_token_` and the plugin prefix `plugin__` by their `secretKey` form; its error never repeats the name. A store that holds secrets and tokens together keeps tokens under that prefix | **On `main`** (`ports.workspace-secrets`); tokens under the prefix in the keychain: the bridge **On `main`** (`services.shell-secrets`), and the desktop app using it **On `main`** (`apps/studio`, `start-studio.ts`; HAL-2952) |
 | A program a workspace starts reads the keys in your environment | A `stdio` connector's program gets only a base of the app's environment, plus its connector's `env` and `secretEnv` and the variables it names in `inheritEnv`. The base holds variables such as the program lookup (`PATH`), home, user, shell, terminal, temp, time zone and locale, `XDG_*_HOME`, your proxy, certificate and library folders, and on Windows the system folders a program needs. A model key or token in your shell, the `HALONIC_SECRET_…` variables included, stays out unless the connector names it in `secretEnv`, which the trust check lists. `inheritEnv` refuses a name that looks like it holds a secret, such as `ANTHROPIC_API_KEY`, and the trust check lists the names it takes. `NODE_TLS_REJECT_UNAUTHORIZED`, `LD_PRELOAD` and `DYLD_INSERT_LIBRARIES` stay out of the base | **On `main`** (`app.connector-base-env`, `app.connector-inherited-env`, `format.connector-inherit-env`, `mcp.stdio-connector`, `mcp.pinned-launcher`) |
 | A copied data folder gives away tokens (desktop) | In the desktop shell, Studio's services keep secrets and tokens in the OS keychain; the data folder holds no token and no key (`packages/studio/services`) | **On `main`**: the bridge (`services.shell-secrets`) and the desktop app using it (`apps/studio`, `start-studio.ts`; HAL-2952) |
 
@@ -370,6 +371,17 @@ reuse of the connection, at most 4 at once). The callback page is sent with
 `Connection: close`, and loads nothing outside itself, because the code is in
 the address bar and the history (`agent-host.google-callback-over-frames`).
 
+An integration's sign-in (HAL-12191, HAL-8613) has a second token-free route of
+its own: `GET /sign-in/<random>`, a prefix route of `host-server`, whose path is
+new for each start and whose redirect names the host's own port. It has the
+same `Host` and `Origin` checks and the same defence, the sign-in's `state`
+(plus PKCE), and a path no sign-in waits on gets a plain 400 page that repeats
+nothing of the request. The relay passes only `/v1/google/callback` without the
+token, so in WSL a start of an integration's sign-in is refused
+(`501 callback_unavailable`) instead of sending a browser to a callback that
+can't arrive; passing a `/sign-in/` prefix would be a change to the relay and
+its own security review (`agent-host.integration-sign-in-routes`).
+
 What the callback answers to, in relay mode as on the host's own port:
 
 - **A web page makes the browser call the callback.** The `Host` check (the
@@ -469,9 +481,9 @@ loopback address.
 | The agent reads the provider key | The program gets the run token where a key would go; the bridge puts the agent's key in place of it and sends the call only to the provider's fixed address. An error names the key's secret, never its value | **On `main`** (`harness-bridge.anthropic`) |
 | The provider's own web tools fetch a site the fence would stop | The bridge removes `web_search_` and `web_fetch_` tools and `mcp_servers` from every request, and refuses a content block whose source is a URL | **On `main`** (`harness-bridge.anthropic`) |
 | A run outlives its bridge, or a stream hangs | Closing the bridge or aborting the run stops calls in flight; response and idle time limits; a body size limit | **On `main`** (`harness-bridge.pass-through`) |
-| A run's spend isn't counted | The bridge records each call's tokens and cost in the run log | **Planned** (HAL-2553) |
-| The agent calls tools or sends without approval | Halonic's tools are offered over MCP on the bridge, with the agent's `allow` and `approve` lists, "allow sending" and trust checks, as in the built-in loop; permission questions reach Halonic's approval card | **Planned** (HAL-194) |
-| A working folder's `.mcp.json`, hooks or permission rules bypass those lists | The adapter starts Claude Code with only Halonic's MCP server (`--strict-mcp-config`) and only the agent's own settings (`--setting-sources user`), so a folder's MCP servers, hooks and permission rules don't load. Anything they would start stays in the fence | **On `main`** for Claude Code (`harness-claude-code.command`); **Planned** for Codex (HAL-2608) |
+| A run's spend isn't counted | The bridge records each call's tokens and cost in the run log | **On `main`** (`harness-bridge.spend`) |
+| The agent calls tools or sends without approval | Halonic's tools are offered over MCP on the bridge, with the agent's `allow` and `approve` lists, "allow sending" and trust checks, as in the built-in loop; permission questions reach Halonic's approval card | **On `main`** (`harness-bridge.mcp`, `harness-bridge.approvals`; Claude Code gets `--permission-prompt-tool`, `harness-claude-code.command`) |
+| A working folder's `.mcp.json`, hooks or permission rules bypass those lists | The adapter starts Claude Code with only Halonic's MCP server (`--strict-mcp-config`) and only the agent's own settings (`--setting-sources user`), so a folder's MCP servers, hooks and permission rules don't load. Anything they would start stays in the fence | **On `main`** for Claude Code (`harness-claude-code.command`); for Codex, no folder is marked trusted, so the folder's `.codex/config.toml` (with its MCP servers), `AGENTS.md` and skills don't load: **On `main`** (`harness-codex.config`) |
 
 A leaked run token gives only what that agent may already do, for that one run.
 
@@ -565,7 +577,9 @@ start, in this order, because its fix comes first.
 
 You can choose, per agent and per machine, to run an agent **on this
 computer**, outside the sandbox. That choice turns off everything in this
-section for that agent.
+section for that agent. Studio doesn't run an agent on this computer yet: it
+runs agents only in the sandbox, and an agent set to this computer fails
+before its program starts (`apps/studio`, `src/engine/studio-harness-host.ts`).
 
 What you accept with it: the agent runs with all your rights. It can read
 your SSH keys, browser profiles and Halonic's own data (including the token
@@ -596,7 +610,9 @@ srt runs on Node, so the desktop app runs the sandbox, the bridge and the
 harnesses in a separate program, the agent host (`apps/agent-host`). Studio
 starts it and talks to it over loopback; the engine, budgets, approvals and
 the run log stay in Studio, and the bridge asks Studio for keys, tools and
-approvals as calls on a stream. The host runs as you, outside the sandbox,
+approvals as calls on a stream. For now Studio answers only approvals: its
+bridges offer no Halonic tools and no keys, and Claude Code and Codex use
+their own sign-in (`src/engine/studio-harness-host.ts`). The host runs as you, outside the sandbox,
 like Studio.
 
 | Threat | Mitigation | Mark |
@@ -606,6 +622,7 @@ like Studio.
 | Studio's profile request widens the fence or names a folder the person didn't open | `POST /v1/harnesses/profile` takes only the agent's working folder, sites and proposal folder, and the bridge by id. The workspace must be one the launcher named (by real path), the data folder, the home folder and the program's variables are the host's own, the body takes no other field, and the builder refuses a working folder outside the workspace, in a protected folder or in a denied one. The answer never holds the bridge's token | **On `main`** (`apps/agent-host`, `src/harness/host-profiles.ts`, `profile-route.ts`) |
 | Studio's proposal request opens a folder for a workspace the person didn't open | `POST /v1/proposals/{open,folder-of,end,start}` take the workspace and the run, and nothing else. The workspace must be one the launcher named (by real path); any other is a 404 and nothing is made. Worktrees, copies and records go in Halonic's data folder, never in the workspace, and git starts only when a run first needs a worktree | **On `main`** (`apps/agent-host`, `src/harness/host-proposals.ts`, `proposal-routes.ts`) |
 | Studio's placement request takes an agent out of its sandbox for a workspace the person didn't open | `POST /v1/placements/{get,save,remove}` take the key or the choice's five fields, and nothing else. The location must be the real path of a workspace the launcher named; any other is a 404 and nothing is read or written. A choice is only `this-computer`, and a choice that can't be read is a 422, never "none". The files are the CLI's own, in the profile folder, never in a workspace | **On `main`** (`apps/agent-host`, `src/harness/host-placements.ts`, `placement-routes.ts`) |
+| Studio's instructions request writes or removes files outside the run's own folder | `POST /v1/harnesses/instructions` takes the workspace and the files by name and text, and nothing else. The workspace must be the real path of one the launcher named; any other is a 404 and nothing is made. Only `AGENTS.md` and a skill's `SKILL.md` are written, read-only, in a new folder the host picks in the profile's harness temp folder. `…/instructions/release` removes only a folder the host made, and leaves any other path alone. Whether the instructions are trusted is checked in Studio, against the person's own records | **On `main`** (`apps/agent-host`, `src/harness/host-instructions.ts`, `instruction-routes.ts`) |
 | The bridge's run token leaks over the host's loopback | A run names its bridge and its session by ids the host makes, so the run token crosses loopback once, when the bridge opens, and only to Studio. The host asks Studio only for the secrets the run's providers name | **On `main`** (`apps/agent-host`, `src/harness`, `src/bridge`) |
 | A caller fills the host's memory or holds it open | Bodies of at most 1 MiB, refused before reading when the length says more; a stream with more than 4 MiB unread is dropped; at most 64 sessions and 64 bridges | **On `main`** (`apps/agent-host`, `src/server`) |
 | A sandboxed program outlives Studio | The host stops when its standard input closes. It cancels every run and then closes every session before it stops serving | **On `main`** (`apps/agent-host`, `src/host.ts`) |
@@ -618,10 +635,13 @@ it, and at every launch until the version has proved itself
 (`src-tauri/src/agent_host_start.rs`, `updates_way_back.rs`). The page calls the
 host's routes only through the shell's `agent_host_*` commands, for connector
 listings, plugins and Google sign-in setup (`src/connect/agent-host-tool-lister.ts`,
-`src/plugins/provide-plugins.ts`, `src/google/provide-google-setup.ts`). The
-page's own engine (`src/engine/engine-service.ts`) has models and secrets only:
-it refuses an agent in a harness or one that lists a connector as `unavailable`,
-so no Studio run starts a program in the sandbox yet.
+`src/plugins/provide-plugins.ts`, `src/google/provide-google-setup.ts`), and for
+runs of agents in a harness. The page's own engine (`src/engine/engine-service.ts`)
+runs such an agent in the agent host's sandbox, with the host's profiles,
+bridges and proposal folders (`src/engine/studio-harness-host.ts`, HAL-10849).
+Where no agent host runs, it refuses a workflow with such an agent as
+`unavailable`. It refuses an agent that lists a connector the same way, so no
+Studio run starts a connector.
 
 #### Known limits
 
@@ -723,25 +743,26 @@ root. What matters is the distro reaching Windows.
 | --- | --- | --- |
 | **[gate]** An agent on one project reads another project, a Windows-drive project mount or Halonic's data in the distro. srt on Linux leaves reads open (`/` read-only), so every file the `halonic` user can read is readable unless denied | The profile denies the other projects, the other Windows-drive mounts, `/mnt/wsl`, Halonic's data in the distro, the other harnesses' settings folders and the writable parts of `/opt/halonic`. bubblewrap's deny lasts one session, so nothing stays behind. The home, `/mnt/halonic` and `/mnt/wsl` are each denied as a whole, with only the session's own folders re-allowed inside, so a project or mount made during a session stays hidden from it; a missing one stops the session from opening. Residual (accepted, HAL-6147): mount point names stay visible in `/proc/self/mountinfo`. Attack-suite case: a session on one project reads a canary in another, also one made after it opened | The deny **On `main`** (`sandbox-srt.shared-folders`, fence case for folders made after the session opened); passing `WSL_SHARED_FOLDERS` and creating `/mnt/halonic` when Studio starts the distro **Planned** (HAL-7373) |
 | **[gate]** Root in the distro reaches all of Windows: it can mount a Windows drive whatever `wsl.conf` says, and switch interop back on | Agents never run as root: no `sudo`, the root password locked. The updater, which runs as root, never runs or reads a file the `halonic` user can write, and checks a new runtime's SHA-256 on the Windows side before copying it in | No `sudo` and a locked root **On `main`** (`infra/wsl-image`); the updater **On `main`** (`infra/wsl-image/files/halonic-runtime`, `studio.src-tauri.crates.agent-host.runtime-update`) |
-| Programs with the setuid bit give more ways to become root | The image removes it from `su`, `mount`, `umount`, `newgrp`, `chsh`, `chfn` and `gpasswd`, and its check refuses any setuid file outside an allowed list | **On `main`** (`infra/wsl-image/check.sh`) |
+| Programs with the setuid bit give more ways to become root | The image removes it from `su`, `mount`, `umount`, `newgrp`, `chsh`, `chfn` and `gpasswd`, and its check refuses any setuid or setgid file (the allowed list is empty) | **On `main`** (`infra/wsl-image/check.sh`) |
 | An agent starts `cmd.exe` or `powershell.exe` through interop | `[interop] enabled=false`. Inside srt the socket interop needs is refused anyway (seen with interop on) | **On `main`** (`infra/wsl-image/files/wsl.conf`) |
 | The Windows drive is mounted | `[automount] enabled=false` | **On `main`** (`infra/wsl-image/files/wsl.conf`) |
 | A planted `/etc/fstab` mounts a drive at the next start (root-only file) | `mountFsTab=false` | **On `main`** (`infra/wsl-image/check.sh`) |
-| **[gate]** While a folder is imported from Windows, every process in the distro sees it; a drive mount without `metadata` shows every file as writable by everyone | The import mount is read-only, `noexec,nosuid,nodev`, under a new random name, and unmounted when the import ends, or at the next start after a crash. A project mount belongs to `halonic` with `umask=077`, `nosuid,nodev`, and holds the project folder only, never a parent | **Planned** (HAL-5402) |
+| **[gate]** While a folder is imported from Windows, every process in the distro sees it; a drive mount without `metadata` shows every file as writable by everyone | The import mount is read-only, `noexec,nosuid,nodev`, under a new random name, and unmounted when the import ends, or at the next start after a crash. A project mount belongs to `halonic` with `umask=077`, `nosuid,nodev`, and holds the project folder only, never a parent | **On `main`** in the adapter (`sandbox-srt.wsl-mounts`); Studio starting the distro with it **Planned** (HAL-7373) |
 | **[gate]** A junction or link inside a mounted project folder points at your Windows files, such as `.ssh` | Must not be readable through the mount. Real-PC probe | **Planned** (HAL-5402) |
-| **[gate]** Docker Desktop puts its socket into our distro when `halonic` is the default distro. The socket is root on Docker's VM, which mounts the Windows drives | Studio always names the distro (`wsl.exe -d halonic`). The setup checks whether `halonic` became the default after import, and the trust check reports a residual when Docker's socket or its `/mnt/wsl` folder is present. srt refuses new Unix sockets, and `/mnt/wsl` is denied. Real-PC probe | **Planned** (HAL-5394) |
+| **[gate]** Docker Desktop puts its socket into our distro when `halonic` is the default distro. The socket is root on Docker's VM, which mounts the Windows drives | Studio always names the distro (`wsl.exe -d halonic`). When the setup is done, it reports the residual `default-distro` when `halonic` is the default distro, and `docker-desktop-visible` when Docker's socket or its `/mnt/wsl` folder can be seen. srt refuses new Unix sockets, and `/mnt/wsl` is denied. Real-PC probe | The setup's checks **On `main`** in the adapter (`sandbox-srt.wsl-setup`, W6); Studio running the setup **Planned** (HAL-7373) |
 | A planted `wsl.exe` earlier on `PATH`, or your text reaching a shell | Studio starts `wsl.exe` from `System32` by full path, with `-d halonic --exec` and fixed arguments; project names and paths go over standard input, never on the command line | **On `main`** (`studio.src-tauri.crates.agent-host.wsl-launch`); Studio calling it **Planned** (HAL-7373) |
-| Another distro named `halonic` | Distros belong to one Windows user, so only you can register one. The setup refuses to import over a `halonic` it didn't record | **Planned** (HAL-5394) |
+| Another distro named `halonic` | Distros belong to one Windows user, so only you can register one. The setup refuses to import over a `halonic` it didn't record (`distro-not-ours`) | **On `main`** in the adapter (`sandbox-srt.wsl-setup`, W8); Studio running the setup **Planned** (HAL-7373) |
 | All of your WSL 2 distros share one network. A server in your own Ubuntu on `localhost` is reachable from ours | The sandboxed agent has no network but srt's proxy, which refuses loopback and private addresses. The engine and agent host in the distro listen on no port. With mirrored networking, `localhost` in the distro is Windows' own: the bridge listens on a Unix socket in a private folder rather than a port, and the trust check's canary probes run in both modes. Studio's relay listens on Windows' `127.0.0.1`: under NAT (the default) another distro can't reach it. CI probed this through the distro's own `127.0.0.1` and through its gateway to Windows; a control port on all of Windows' addresses was reached through the gateway, the `127.0.0.1` port wasn't (HAL-7130). Under mirrored networking Microsoft documents that a distro reaches Windows' `127.0.0.1`, so expect another distro to reach the relay there: only the host token and the `Host` check stop it, as for the loopback host elsewhere. CI can't run mirrored networking, so this is a real-PC probe | Proxy rules **On `main`** (`sandbox-srt.profile-to-srt-config`); the agent host's `--stdio` mode **On `main`** (`apps/agent-host`, `src/stdio`); Studio's relay **On `main`** (`studio.src-tauri.crates.agent-host.relay`), Studio calling it **Planned** (HAL-7373); the bridge off its port **Planned** (HAL-6316) |
-| **[gate]** Removing the sandbox setup deletes every project in the distro | An explicit choice that offers an export first | **Planned** (HAL-5402) |
+| **[gate]** Removing the sandbox setup deletes every project in the distro | An explicit choice that offers an export first, and only a distro Halonic recorded as its own is removed | **On `main`** (`sandbox-srt.wsl-remove`); Studio offers it through the agent host (`apps/studio`, `src/studio/agent-sandbox-host.ts`, HAL-10974) |
 | Debian updates run as root | Signed `apt` from Debian's mirrors, checked with the archive keyring, at most once a day, outside agent sessions | Signed sources **On `main`** (`infra/wsl-image`); when updates run **On `main`** (`halonic-runtime security-update`: at most once a day, never while a sandbox runs) |
 
 **Known limits.**
 
 - **The kernel is shared.** The distro runs Microsoft's WSL kernel, shared by
   all of your distros and updated by WSL, not by Halonic. A kernel bug can
-  break the fence, as on Linux. **Planned** (HAL-5394): the trust check reads
-  the kernel version and the setup offers `wsl --update` below a floor.
+  break the fence, as on Linux. The setup reads the kernel version and, below
+  a floor, stops with `kernel-too-old` and offers `wsl --update`: **On `main`**
+  in the adapter (`sandbox-srt.wsl-setup`, W11). The trust check doesn't read it.
 - **Your Windows tools run what the agent wrote.** Opening a project in the
   distro from a Windows git client, VS Code or Explorer runs
   their settings and hooks with your rights. srt stops the agent writing
@@ -788,7 +809,7 @@ Plugins stay unfenced on Windows (`packages/core/app`, `runner-fence.ts`).
 | Threat | Mitigation | Mark |
 | --- | --- | --- |
 | **[gate]** A tool folder on `PATH` granted for reading is your profile itself, `AppData`, `.` or a folder with secrets | Only `PATH` entries strictly below the profile, never the profile, `AppData`, `AppData\Roaming` or `AppData\Local` as a whole, nor a folder on the deny list or above it. Relative entries are dropped. A contract test holds those cases | **Planned** (HAL-5398) |
-| **[gate]** A crash between a grant and its record leaves a folder granted forever | The folder is recorded before srt grants it and confirmed after. Removing the setup and uninstalling forget every grant, recorded or not | **Planned** (HAL-5398, HAL-5404) |
+| **[gate]** A crash between a grant and its record leaves a folder granted forever | The folder is recorded before srt grants it and confirmed after. Removing the setup and uninstalling forget every grant, recorded or not | The record **On `main`** (`sandbox-srt.kept-grants`); removing the setup takes back the grants srt kept for you before its uninstall **On `main`** (`sandbox-srt.remove`); the rest of uninstalling **Planned** (HAL-5404) |
 | A rollback to an older setup version keeps grants under the old account | A rollback that can't uninstall first is refused | **Planned** (HAL-5404) |
 | Another program's srt shares the machine-wide sandbox account and reads our kept folders | The trust check reports it when another program's srt setup is present, not only a second Halonic user | **Planned** (HAL-5398) |
 | The sandbox account registers a WSL distro of its own and escapes through it | Probed on Windows Server 2025: refused (WSL 1 and WSL 2, in three folders), while the same import works outside srt. A reachable WSL service stays a limit, not an escape. To confirm on Windows 11 | **Probed** (`sandbox-srt`, `scripts/windows-wsl-probe.mjs`) |
@@ -868,7 +889,7 @@ Pieces already on `main` that `serve` is built on:
 
 | Piece | Mark |
 | --- | --- |
-| `PasswordHasher` port and the hash format: scrypt, `ln=14, r=8, p=5`, 16-byte salt, checked ranges so a hash fits a 128 MB Worker (`ports.password-hash-format`) | **On `main`** |
+| `PasswordHasher` port and the hash format: scrypt, `ln=14, r=8, p=5`, 16-byte salt, checked ranges so one check stays within 32 MiB of memory (`ports.password-hash-format`). Cloud targets use `$pbkdf2-sha256-chain$` instead, made at deploy time, because a Worker has too little memory for scrypt at safe settings | **On `main`** |
 | Constant-time comparison in `core/std` | **On `main`** |
 | `Coordination` port with a Node adapter: leases, compare-and-set, counters that never pass their limit, fixed-window attempt counts safe against parallel calls | **On `main`** |
 | The scrypt implementation, the sign-in flow, the login limiter and the server | **On `main`** |

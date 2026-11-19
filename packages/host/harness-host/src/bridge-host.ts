@@ -20,6 +20,14 @@ import type {
 export interface BridgeAgent {
   readonly runId: string;
   readonly agentId: string;
+  /** The hub whose workspace the agent's file is in, where the host resolves its model. */
+  readonly hubId?: string;
+  /**
+   * The agent file's `model` as written, before any mapping: a `models.yaml`
+   * alias, `provider/model`, or a name the program knows. The host resolves
+   * an alias to choose the provider's access; `undefined` when the file names none.
+   */
+  readonly model?: string;
 }
 
 /**
@@ -62,6 +70,8 @@ export class LocalBridgeHost implements HarnessBridgeHost {
     const services = await this.#services.servicesFor({
       runId: agent.runId,
       agentId: agent.agentId,
+      hubId: agent.hubId,
+      ...(agent.file.model === undefined ? {} : { model: agent.file.model }),
     });
     return await this.#server.open({
       runId: agent.runId,

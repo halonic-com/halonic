@@ -110,7 +110,7 @@ export async function askToTrustPlugin(
 type CheckedPlugin = Exclude<PluginEntry, { status: "broken" }>;
 
 /**
- * "✕ Couldn't trust Weather: it changed since that fingerprint was made.",
+ * "✕ That fingerprint doesn't match Weather as it is now.",
  * leaving the plugin as it is (exit 3). The refusal ends with the fingerprint
  * the plugin has now, as a check run now would, so a script can pass it to
  * `--yes --fingerprint` after a review.
@@ -126,12 +126,12 @@ export function fingerprintNotCurrent(
   },
 ): NotTrustedError {
   return new NotTrustedError({
-    problem: trustMessages.fingerprintChanged(),
+    // The manifest's name is outside text (cli-output 5).
+    problem: trustMessages.fingerprintNotCurrent(printable(entry.plugin.name)),
     fix: pluginMessages.addNoTerminalFix(entry.folder),
     fingerprint: now.fingerprint,
     check: now.check,
-    // The manifest's name is outside text (cli-output 5).
-    action: trustMessages.action(printable(entry.plugin.name)),
+    action: null,
   });
 }
 

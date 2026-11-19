@@ -237,6 +237,11 @@ export {
 } from "./phone/phone-search-button.tsx";
 export { PhoneTopBar, type PhoneTopBarProps } from "./phone/phone-top-bar.tsx";
 export {
+  PhoneTopBarActions,
+  type PhoneTopBarActionsProps,
+  useInPhoneTopBar,
+} from "./phone/phone-top-bar-actions.tsx";
+export {
   currentPhonePage,
   goBackOnPhone,
   isAtPlaceTop,
@@ -453,6 +458,7 @@ export {
   type WelcomeRecentList,
 } from "./welcome/welcome.tsx";
 export {
+  sampleTag,
   WELCOME_RECENT_ROWS,
   type WelcomeRecentWorkspace,
 } from "./welcome/welcome-recent.tsx";

@@ -68,6 +68,20 @@ verifies("routines.new.create", () => {
     expect(document.activeElement).toBe(nameField());
   });
 
+  it("draws the note's info icon in an icon-sized box, so it doesn't shrink to nothing", async () => {
+    await show(dialog().node);
+
+    const note = [...document.querySelectorAll("p")].find((line) =>
+      line.textContent?.startsWith("It runs Briefing"),
+    );
+    // The kit's icons have no size of their own: in the note's flex row a bare one has no width.
+    const icon = note?.querySelector("svg")?.parentElement;
+    expect(icon).not.toBe(note);
+    expect(icon?.className).toContain("size-icon-sm");
+    expect(icon?.className).toContain("*:size-full");
+    expect(icon?.getAttribute("aria-hidden")).toBe("true");
+  });
+
   it("names the hub's first agent when the host starts the routine with one", async () => {
     const analyst: RoutineTargetChoice = {
       kind: "agent",

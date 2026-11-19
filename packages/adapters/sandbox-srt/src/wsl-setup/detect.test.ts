@@ -34,5 +34,14 @@ verifies("sandbox-srt.wsl-setup", () => {
       expect(parseRegDword("    AllowWSL    REG_DWORD    0x0")).toBe(0);
       expect(parseRegDword("nothing")).toBeUndefined();
     });
+
+    it("finds a distro whose translated state is more than one word", () => {
+      const list =
+        "  NAME      STATUS            VERSION\n* halonic   Wird ausgeführt   2\n  Ubuntu    Beendet           2\n";
+      expect(parseDistroList(list)).toEqual([
+        { name: "halonic", state: "Wird ausgeführt", version: 2, isDefault: true },
+        { name: "Ubuntu", state: "Beendet", version: 2, isDefault: false },
+      ]);
+    });
   });
 });

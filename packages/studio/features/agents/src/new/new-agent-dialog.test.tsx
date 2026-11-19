@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -54,6 +55,11 @@ function nameField(): HTMLInputElement {
 }
 
 const body = () => document.body.textContent ?? "";
+/** What the dialog's `aria-describedby` reads: empty when it names nothing. */
+function description(): string {
+  const ids = document.querySelector("dialog")?.getAttribute("aria-describedby")?.split(" ") ?? [];
+  return ids.map((id) => document.getElementById(id)?.textContent ?? "").join(" ");
+}
 const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
 verifies("agents.new.create", () => {
@@ -165,6 +171,23 @@ verifies("agents.new.create", () => {
 
     expect(body()).not.toContain("It starts with");
     expect(body()).not.toContain("It has no model yet");
+    expect(description()).toBe("");
+  });
+
+  it("is described by its info line, so a screen reader reads it on opening", async () => {
+    await show(dialog().node);
+
+    expect(description()).toBe("It starts with the workspace's default model.");
+  });
+
+  it("is described by the no-model line too, and on a phone", async () => {
+    await show(
+      <PresentationProvider presentation="phone">
+        {dialog({ defaultModelOf: async () => undefined }).node}
+      </PresentationProvider>,
+    );
+
+    expect(description()).toBe("It has no model yet. Pick one in Configuration › Model.");
   });
 
   it("names the folder alone while the name is empty", () => {

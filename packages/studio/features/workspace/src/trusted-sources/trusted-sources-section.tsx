@@ -218,7 +218,7 @@ export function TrustedSourcesView({ host, readOnly, announce, engine }: Trusted
           onConfirm={() => void confirmRemove(removing)}
           onCancel={() => setRemoving(undefined)}
         >
-          <p>{text.REMOVE_BODY}</p>
+          <p>{removing.kind === "plugin" ? text.REMOVE_PLUGIN_BODY : text.REMOVE_BODY}</p>
         </Dialog>
       )}
     </div>

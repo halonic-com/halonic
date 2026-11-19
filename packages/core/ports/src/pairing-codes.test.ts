@@ -21,6 +21,7 @@ import {
 
 interface Vectors {
   pairingCodes: { randomBytes: string; code: string; shown: string; psk: string }[];
+  typedCodes: { kind: "pairing" | "check"; typed: string; code: string | null; why: string }[];
   checkCodes: { handshakeHash: string; hkdf: string; checkCode: string; shown: string }[];
   qrPayloads: {
     /** The host key, hex; named so a secret scanner doesn't take a public key for a secret. */
@@ -31,6 +32,8 @@ interface Vectors {
     endpoints: string[];
     text: string;
   }[];
+  qrEndpointsRefused: { endpoint: string; why: string }[];
+  qrTextsRefused: { text: string; why: string }[];
 }
 
 const vectors: Vectors = JSON.parse(
@@ -67,9 +70,24 @@ verifies("ports.pairing-codes", () => {
       expect(draws).toHaveLength(0);
     });
 
+    it("stops with an error when 8 draws don't give 12 symbols", () => {
+      let draws = 0;
+      const broken = () => {
+        draws += 1;
+        return new Uint8Array(16).fill(255);
+      };
+      expect(() => newPairingCode(broken)).toThrow("the random source is broken");
+      expect(draws).toBe(8);
+    });
+
     it("reads a typed code in any case, with spaces, dots and dashes", () => {
       expect(readPairingCode(" xx7a-9q36.kfb3 ")).toBe("XX7A9Q36KFB3");
       expect(readPairingCode("XX7A · 9Q36 · KFB3")).toBe("XX7A9Q36KFB3");
+    });
+
+    it.each(vectors.typedCodes)("reads the $kind code $typed: $why", (vector) => {
+      const read = vector.kind === "pairing" ? readPairingCode : readCheckCode;
+      expect(read(vector.typed) ?? null).toBe(vector.code);
     });
 
     it.each(["XX7A9Q36KFB", "XX7A9Q36KFB33", "XX7A9Q36KFB0", "XX7A9Q36KFBO", "XX7A9Q36KFB1", ""])(
@@ -121,17 +139,20 @@ verifies("ports.pairing-codes", () => {
         hostKey,
         code: "ZZZZZZZZZZZZ",
         hostName: "n".repeat(100),
-        endpoints: ["tcp:1.2.3.4:5", "tcp:1.2.3.4:6", "tcp:1.2.3.4:7", "tcp:1.2.3.4:8"],
+        endpoints: [`wss://${"h.".repeat(60)}h`, "tcp://1.2.3.4:5", "tcp://1.2.3.4:6"],
       });
-      expect(worst.endpoints).toHaveLength(1);
+      expect(worst.endpoints).toEqual(["tcp://1.2.3.4:5", "tcp://1.2.3.4:6"]);
       for (let length = 1; length <= 120; length += 1) {
         const { text } = encodePairingQr({
           hostKey,
           code: "ZZZZZZZZZZZZ",
           hostName: "€".repeat(20),
-          endpoints: [`tcp:${"h".repeat(length)}`, "tcp:a:1", "tcp:b:2", "tcp:c:3"].slice(
-            length % 2,
-          ),
+          endpoints: [
+            `wss://${"h.".repeat(length)}h`,
+            "tcp://1.2.3.4:5",
+            "wss://b",
+            "wss://c",
+          ].slice(length % 2),
         });
         expect(text.length).toBeLessThanOrEqual(pairingQrMaxBytes);
       }
@@ -144,14 +165,68 @@ verifies("ports.pairing-codes", () => {
         code: "XX7A9Q36KFB3",
         hostName: "Pixel",
         endpoints: [
-          "tcp:192.168.1.20:4100",
-          `wss:${"long".repeat(20)}.ts.net:4100`,
-          "tcp:10.0.0.2:4100",
-          "tcp:10.0.0.3:4100",
-          "tcp:10.0.0.4:4100",
+          "tcp://192.168.1.20:4100",
+          `wss://${"long.".repeat(20)}ts.net:4100`,
+          "tcp://10.0.0.2:4100",
+          "tcp://10.0.0.3:4100",
+          "tcp://10.0.0.4:4100",
         ],
       });
-      expect(result.endpoints).toEqual(["tcp:192.168.1.20:4100", "tcp:10.0.0.2:4100"]);
+      expect(result.endpoints).toEqual([
+        "tcp://192.168.1.20:4100",
+        "tcp://10.0.0.2:4100",
+        "tcp://10.0.0.3:4100",
+      ]);
+    });
+
+    it("always fits a LAN and a Tailscale IPv4 address, even with a 32-byte name", () => {
+      const endpoints = ["tcp://255.255.255.255:65535", "tcp://100.255.255.255:65535"];
+      const result = encodePairingQr({
+        hostKey,
+        code: "ZZZZZZZZZZZZ",
+        hostName: `${"€".repeat(10)}ab`,
+        endpoints,
+      });
+      expect(result.endpoints).toEqual(endpoints);
+    });
+
+    it.each([
+      "tcp://0.0.0.0:1",
+      "wss://a",
+      "https://studio.example.net:8443",
+      "wss://ts.net",
+      "wss://a.ts.net.ts.net",
+      "wss://x-1.a1",
+      `wss://${"a".repeat(50)}.ts.net`,
+    ])("reads %s back as it was written", (endpoint) => {
+      const { text } = encodePairingQr({
+        hostKey,
+        code: "XX7A9Q36KFB3",
+        hostName: "",
+        endpoints: [endpoint],
+      });
+      expect(decodePairingQr(text)?.endpoints).toEqual([endpoint]);
+    });
+
+    it("takes a host name of 253 characters, the most DNS allows", () => {
+      const name = `${Array(63).fill("abc").join(".")}.a`;
+      expect(name).toHaveLength(253);
+      const { endpoints } = encodePairingQr({
+        hostKey,
+        code: "XX7A9Q36KFB3",
+        hostName: "",
+        endpoints: [`wss://${name}`, "tcp://10.0.0.2:4100"],
+      });
+      expect(endpoints).toEqual(["tcp://10.0.0.2:4100"]);
+    });
+
+    it.each(vectors.qrEndpointsRefused)("refuses to write $endpoint: $why", ({ endpoint }) => {
+      const payload = { hostKey, code: "XX7A9Q36KFB3", hostName: "Pixel", endpoints: [endpoint] };
+      expect(() => encodePairingQr(payload)).toThrow(RangeError);
+    });
+
+    it.each(vectors.qrTextsRefused)("reads $text as no payload: $why", ({ text }) => {
+      expect(decodePairingQr(text)).toBeUndefined();
     });
 
     it("cuts a long host name at a whole character to 32 bytes", () => {
@@ -159,7 +234,7 @@ verifies("ports.pairing-codes", () => {
         hostKey,
         code: "XX7A9Q36KFB3",
         hostName: `${"a".repeat(30)}€b`,
-        endpoints: ["tcp:10.0.0.2:4100"],
+        endpoints: ["tcp://10.0.0.2:4100"],
       });
       expect(decodePairingQr(text)?.hostName).toBe("a".repeat(30));
     });
@@ -167,15 +242,14 @@ verifies("ports.pairing-codes", () => {
     it.each([
       ["a short key", { hostKey: new Uint8Array(31) }],
       ["a bad code", { code: "XX7A9Q36KFB0" }],
-      ["an http endpoint", { endpoints: ["http://10.0.0.2:4100"] }],
       ["no endpoint", { endpoints: [] }],
-      ["no endpoint that fits", { endpoints: [`tcp:${"h".repeat(200)}`] }],
+      ["no endpoint that fits", { endpoints: [`wss://${"h".repeat(60)}.example.net`] }],
     ])("refuses to write %s", (_, change) => {
       const payload = {
         hostKey,
         code: "XX7A9Q36KFB3",
         hostName: "Pixel",
-        endpoints: ["tcp:10.0.0.2:4100"],
+        endpoints: ["tcp://10.0.0.2:4100"],
         ...change,
       };
       expect(() => encodePairingQr(payload)).toThrow(RangeError);
@@ -202,8 +276,12 @@ verifies("ports.pairing-codes", () => {
       ],
       ["a name that isn't UTF-8", withRecord((b) => Buffer.from(b.fill(0xff, 42, 43)))],
       [
-        "an http endpoint",
-        withRecord((b) => Buffer.from(b.toString("latin1").replace("tcp:", "ftp:"), "latin1")),
+        "four endpoints",
+        withRecord((b) => {
+          const head = b.subarray(0, 42 + (b[41] ?? 0));
+          const entry = Buffer.of(0b1_0000, 10, 0, 0, 2, 0x10, 0x04);
+          return Buffer.concat([head, Buffer.of(4), entry, entry, entry, entry]);
+        }),
       ],
     ])("reads %s as no payload", (_, text) => {
       expect(decodePairingQr(text)).toBeUndefined();

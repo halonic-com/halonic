@@ -342,7 +342,7 @@ verifies("routines.page.rename-and-delete", () => {
 
     expect(document.querySelector("dialog[open]")).toBeNull();
     expect(toasts.list()[0]).toMatchObject({
-      title: "Moved Daily to the trash.",
+      title: "Deleted Daily.",
       text: "It won't start Briefing any more. Runs it already started keep going.",
       action: { label: "Undo" },
     });

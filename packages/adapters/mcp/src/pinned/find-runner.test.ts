@@ -73,11 +73,13 @@ verifies("mcp.runner-lookup", () => {
       expect(await findRunner("npx", "npm", none)).toEqual({
         refused:
           "couldn't find \"npx\" on this computer; give its full path as the connector's command",
+        missing: "npx",
       });
       const noNode = computer(["/usr/bin/npx"], { platform: "linux", path: "/usr/bin" });
       expect(await findRunner("npx", "npm", noNode)).toEqual({
         refused:
           'couldn\'t find "node" on this computer, which "npx" needs; give the full path of a "npx" with "node" in the same folder',
+        missing: "node",
       });
     });
   });

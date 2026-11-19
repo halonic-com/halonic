@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-1299 (T6 PR 2); flow-agents 2.2; microcopy 8.2; kit T6-F17 to F20; UX 9.1, 2.1
+- Source: HAL-1299 (T6 PR 2); HAL-12310; flow-agents 2.2; microcopy 8.2; kit T6-F17 to F20; UX 9.1, 2.1
 
-When the user chooses **New agent**, the agents feature shall ask for a name, and for a hub when there is more than one, in a "New agent" dialog that shows the file the agent will be written to, create the agent through the host, close the dialog and open the agent in its tab, and, while the name is empty, not create anything and say "Give it a name." under the field.
+When the user chooses **New agent**, the agents feature shall ask for a name, and for a hub when there is more than one, in a "New agent" dialog that shows the file the agent will be written to, create the agent through the host, close the dialog and open the agent in its tab, and, while the name is empty, not create anything and say "Give it a name." under the field. The info line about the model shall describe the dialog, so a screen reader reads it when the dialog opens.
 
 ## Examples
 
@@ -14,7 +14,7 @@ When the user chooses **New agent**, the agents feature shall ask for a name, an
 - Given the user presses **Create** with the name "Refund checker", then the host creates it in the picked hub and its tab opens.
 - Given the name is empty, then **Create** shows "Give it a name.", focuses Name and creates nothing.
 - Given the host can't write the file because "the disk is full", then the dialog says "Couldn't create the agent: the disk is full." and **Create** tries again.
-- Given the hub has a default model (its own, else the workspace's), then the dialog says "It starts with the workspace's default model."; given neither names one, it says "It has no model yet. Pick one in Configuration › Model."; given the read fails, it says nothing about the model. The line follows the picked hub.
+- Given the hub has a default model (its own, else the workspace's), then the dialog says "It starts with the workspace's default model."; given neither names one, it says "It has no model yet. Pick one in Configuration › Model."; given the read fails, it says nothing about the model. The line follows the picked hub and describes the dialog.
 - Given the window is a phone, then the dialog has no File line.
 - Given the user wrote "Check refunds against the policy." in **What should it do? (optional)**, then **Create** hands it to the host as the agent's instructions; left empty, the agent starts with none.
 - Given that box holds text that looks like a key, then **Create** says "This looks like a key. Keep it as a secret instead?" under it, focuses it and creates nothing.

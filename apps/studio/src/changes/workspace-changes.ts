@@ -226,10 +226,13 @@ export class WorkspaceChanges implements ChangesSource {
   }
 
   async countUnshared(): Promise<number> {
-    // A history with no version yet has nothing to share, whatever the shared copy holds.
-    if ((await this.#head()) === null) return 0;
-    const shared = await this.#sharedCopy.ref();
-    return this.#sharedCopy.count(shared === null ? "HEAD" : `${shared}..HEAD`);
+    const range = await this.#sharedCopy.unsharedRange();
+    return range === null ? 0 : this.#sharedCopy.count(range);
+  }
+
+  async listUnshared(): Promise<readonly string[]> {
+    const range = await this.#sharedCopy.unsharedRange();
+    return range === null ? [] : this.#sharedCopy.idsInFolder(range);
   }
 
   async checkUpdates(): Promise<number> {

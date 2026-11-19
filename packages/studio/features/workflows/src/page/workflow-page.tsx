@@ -28,6 +28,7 @@ import { RunsView } from "../runs/runs-view.tsx";
 import { runsWords } from "../runs/runs-words.ts";
 import { useRuns } from "../runs/use-runs.ts";
 import { useSaveAsTest } from "../runs/use-save-as-test.ts";
+import { useAnnounceDockedRun } from "../start/run-announcement.ts";
 import type { ShownRun } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
@@ -62,6 +63,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       id={item.id}
       {...(step === "tests" && { startOnTests: true, testsAsked: asked ?? 0 })}
       notAnswering={engineWordsOf(context).notAnswering}
+      announceState={(key, text) => context.announcer.announceState(key, text)}
       {...(openItem && {
         openRun: (runId: string, step?: string) =>
           openItem({ kind: "run", hub: item.hub, id: runId }, step === undefined ? {} : { step }),
@@ -95,6 +97,7 @@ export function WorkflowScreen({
   reviewInInbox,
   startOnTests,
   testsAsked = 0,
+  announceState,
 }: WorkflowScreenProps) {
   // After a Try again reads, the workflow's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -149,6 +152,7 @@ export function WorkflowScreen({
   const views = workflowTabs(errors, needYou);
   const shown = useShownRun(runsRead.load, { hubId, id }, runs, shownId);
   const strip = shown?.line;
+  useAnnounceDockedRun(strip, typeof dock === "object", announceState);
   const { startRun } = host;
   const saveAsTest = useSaveAsTest(host, { hubId, id }, (testName) => {
     testsMade.current += 1;
@@ -198,7 +202,8 @@ export function WorkflowScreen({
           </div>
         )}
       </header>
-      {settings.load.kind === "ready" && errors === 0 && (
+      {/* With a Run button, the page starts it itself, so the terminal line would only repeat it. */}
+      {!startRun && settings.load.kind === "ready" && errors === 0 && (
         <div
           data-testid="start-command"
           className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-6 py-2 text-small text-fg-muted"

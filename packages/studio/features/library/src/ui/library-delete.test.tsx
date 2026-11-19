@@ -95,7 +95,7 @@ verifies("library.library-delete", () => {
     expect(host.remove).toHaveBeenCalledWith("skill", { hub: null, id: "tone" });
     expect(document.querySelector("dialog[open]")).toBeNull();
     expect(toasts.list()[0]).toMatchObject({
-      title: "Moved Tone to the trash.",
+      title: "Deleted Tone.",
       text: "1 agent now shows an error until you take it off its Tools page.",
       action: { label: "Undo" },
     });
@@ -130,7 +130,7 @@ verifies("library.library-delete", () => {
     await pick(page, "More actions for Tone", "Delete");
     expect(toasts.list()[0]).toMatchObject({
       tone: "danger",
-      title: "Couldn't move Tone to the trash: Tone isn't in this workspace any more.",
+      title: "Couldn't delete Tone: Tone isn't in this workspace any more.",
       sticky: true,
       action: { label: "Try again" },
     });
@@ -146,7 +146,7 @@ verifies("library.library-delete", () => {
     await pick(page, "More actions for Tone", "Delete");
     await act(async () => toasts.list()[0]?.action?.onClick());
     expect(host.remove).toHaveBeenCalledTimes(2);
-    expect(toasts.list().at(-1)?.title).toBe("Moved Tone to the trash");
+    expect(toasts.list().at(-1)?.title).toBe("Deleted Tone");
   });
 
   it("deletes from an open page and shows the strip with Undo, not the gone state", async () => {
@@ -203,16 +203,18 @@ verifies("library.library-delete", () => {
     await settled();
     await pick(page, "More actions for Tone", "Delete");
     expect(remove).toHaveBeenCalledWith("skill", { hub: null, id: "tone" });
-    expect(page.textContent).toContain("This skill was moved to the trash");
+    expect(page.textContent).toContain("This skill was deleted");
     expect(page.textContent).not.toContain("isn't in this workspace any more");
     const undoButton = [...page.querySelectorAll("button")].find((b) => b.textContent === "Undo");
     expect(document.activeElement).toBe(undoButton);
+    // The kit's trash strip: the same warning Callout as a deleted file's tab.
+    expect(undoButton?.closest(".bg-warning-soft")).not.toBeNull();
     // Undo's description is the strip's text, so the move and the "used by" line are heard once.
     const description = document.getElementById(
       undoButton?.getAttribute("aria-describedby") ?? "",
     )?.textContent;
     expect(description).toBe(
-      "This skill was moved to the trash. 1 agent now shows an error until you take it off its Tools page.",
+      "This skill was deleted. 1 agent now shows an error until you take it off its Tools page.",
     );
     expect(announce).not.toHaveBeenCalled();
     await act(async () => undoButton?.click());
@@ -221,6 +223,6 @@ verifies("library.library-delete", () => {
     expect(page.querySelector("h1")?.textContent).toBe("Tone");
     expect(document.activeElement).toBe(page.querySelector("h1"));
     expect(announce).not.toHaveBeenCalled();
-    expect(page.textContent).not.toContain("was moved to the trash");
+    expect(page.textContent).not.toContain("was deleted");
   });
 });

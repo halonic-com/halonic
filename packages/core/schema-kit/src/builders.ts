@@ -76,6 +76,11 @@ export const s = {
   lazy: z.lazy,
   /** Any JSON value: null, a boolean, a finite number, text, or a list or map of JSON values. */
   json: z.json,
+  /**
+   * Changes the input before the schema checks it, such as a number into
+   * text, so the schema's own message applies. JSON Schema describes the schema.
+   */
+  preprocess: z.preprocess,
   /** An absolute `http` or `https` URL as `URL` writes it; see `URL_PATTERN`. */
   url: () => z.string().regex(URL_PATTERN, "must be an http or https URL as URL writes it"),
 } as const;

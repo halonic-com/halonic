@@ -1,5 +1,6 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
 import { agentId, collectionId, id, ModelParams, version } from "../../shared/fields.ts";
+import { HarnessLimits } from "./harness-limits.ts";
 import { AgentHarness, AllowedSite, MAX_ALLOWED_SITES, WorkingFolder } from "./sandbox-fields.ts";
 
 /** The shape of an agent's reply: free text, one of a list of options, or JSON. */
@@ -109,6 +110,8 @@ export const Agent = s
     workingFolder: WorkingFolder.optional(),
     /** Sites a harness agent may reach besides Halonic: host names or `*.` and a domain. */
     allowedSites: s.array(AllowedSite).max(MAX_ALLOWED_SITES).optional(),
+    /** The step, time and cost limits of one step in a harness program. */
+    harnessLimits: HarnessLimits.optional(),
   })
   .strict();
 

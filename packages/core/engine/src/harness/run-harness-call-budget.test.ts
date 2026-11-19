@@ -87,4 +87,36 @@ verifies("engine.budget-stops", () => {
     expect(error).toBeInstanceOf(BudgetReachedError);
     expect(isRunFailureError(error)).toBe(false);
   });
+
+  it("writes a bridge failure past the budget without asking it or stopping the call", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [{ type: "agent.finished", agent: "writer", output: "done" }];
+    let asked = 0;
+    const reached: CallBudget = {
+      keep: async () => {
+        asked += 1;
+        await budgetOf(0).keep();
+      },
+    };
+    const failed = {
+      type: "bridge.failed",
+      agent: "writer",
+      kind: "internal",
+      message: "the tool list could not be read",
+    } as const;
+    const recorded = Promise.withResolvers<unknown>();
+    ports.harness.whileRunning = () => {
+      void ports.recorders[0]?.record(failed).then(recorded.resolve, recorded.resolve);
+    };
+
+    const { error, written } = await runCallOn(ports, undefined, undefined, undefined, {
+      ...writerCall,
+      budget: reached,
+    });
+
+    expect(await recorded.promise).toBeUndefined();
+    expect(error).toBeUndefined();
+    expect(asked).toBe(0);
+    expect(written).toContainEqual(failed);
+  });
 });

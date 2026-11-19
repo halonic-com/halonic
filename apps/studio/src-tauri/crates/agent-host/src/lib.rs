@@ -12,6 +12,7 @@ mod handshake;
 mod relay;
 mod routes;
 mod security_updates;
+mod stderr_log;
 mod wsl;
 
 use std::io::{BufRead, BufReader, Read};
@@ -24,6 +25,7 @@ pub use handshake::{Handshake, read_handshake};
 use relay::Relay;
 pub use routes::{Answer, LineSplitter, LineTooLong, Method, Route, find_route};
 pub use security_updates::{OVERDUE_AFTER_DAYS, SecurityUpdates, security_updates};
+use stderr_log::log_stderr;
 pub use wsl::{
     DISTRO, DISTRO_HOST, DISTRO_PROFILE_FOLDER, DISTRO_USER, RUNTIME_UPDATER, RuntimeStep,
     WslError, distro_host_command, distro_installed, file_sha256, install_runtime,
@@ -143,11 +145,12 @@ impl AgentHost {
         command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit());
+            .stderr(Stdio::piped());
         without_console_window(&mut command);
         let mut child = command.spawn().map_err(|error| {
             AgentHostError::Start(format!("The agent host could not start: {error}."))
         })?;
+        log_stderr(&mut child, "agent host");
         let stdin = child.stdin.take();
         let first_line = child.stdout.take().map(read_first_line);
         let answer = match first_line {
@@ -197,11 +200,12 @@ impl AgentHost {
         command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit());
+            .stderr(Stdio::piped());
         without_console_window(&mut command);
         let mut child = command.spawn().map_err(|error| {
             AgentHostError::Start(format!("The agent host could not start: {error}."))
         })?;
+        log_stderr(&mut child, "agent host");
         let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
             kill(&mut child);
             return Err(AgentHostError::Exited);

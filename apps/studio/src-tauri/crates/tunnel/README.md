@@ -1,0 +1,13 @@
+# halonic-tunnel
+
+The phone's end of the end-to-end session with the computer's remote gateway (tunnel phase B, HAL-12244; ADR "Pairing and the end-to-end session"). Plain Rust with no Tauri types; the Android shell wraps it, so the page never talks to the network itself (board decision 4d on HAL-5276).
+
+- `PairingCode`, `check_code` and `pair_commit`: the Noise psk from the 12-character code, the 6-character check code from the handshake hash, and the commitment to pairing message 3. They pass the test vectors in `packages/core/ports/src/golden/pairing-vectors.json`, which the host's codecs pass too.
+- `FrameKind`, `read_frame` and `read_refusal`: the binary frames, their size limits and the two cleartext refusals, `handshake-failed` and `pair-refused`, read exactly as the host writes them and nothing else.
+
+- `Endpoint`: a `wss:`, `https:` or `tcp:` endpoint from a pairing, and the gateway's WebSocket URL there.
+- `Transport`: the byte pipe to one gateway, the `TunnelTransport` port's rules in Rust. It reconnects with `Backoff::TUNNEL`, refuses frames while not open and never resends, and pauses and resumes. Each `Opened` event is a new connection for the session layer to handshake on, with an id that its frames and drops carry, so nothing meant for one connection reaches the next. Sends and closes have time limits (`Timeouts::TUNNEL`), so a peer that stops reading can't hold up a pause. `tokio-tungstenite` does only the upgrade and the frames, capped at one session frame. TLS comes from the `Dialer`'s rustls config, which the shell builds with the platform verifier.
+
+Still to come in this crate: the Noise handshakes with `snow` (XXpsk3 to pair, IK to reconnect), rekeying, and the phone's connection states on top of the transport.
+
+The requirements in `requirements/` are drafts until the trace check reads `cargo test` results. Until then, each test's name starts with the last part of the requirement it proves, for example `pairing_codes_` for `pairing-codes`.

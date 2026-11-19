@@ -6,6 +6,14 @@
 
 import type { Clock, UnfencedRunConsentStore } from "@halonicjs/ports";
 import type { RunnerFence, RunnerUnfencedReason } from "./runner-fence.ts";
+import type { SaveTimers } from "./save-scheduler.ts";
+
+/**
+ * How often a run without the sandbox reads the saved yes again, in
+ * milliseconds. A Take back in another process (the CLI, or a second
+ * Studio) stops this process's runs within about this long.
+ */
+export const savedYesCheckMs = 1000;
 
 /**
  * What a start, or the trust check, may do now.
@@ -28,12 +36,23 @@ export type UnfencedRunDecision =
 /** Stops code that runs without the sandbox, straight away. */
 export type StopUnfencedRun = () => Promise<void>;
 
+/** A registered run without the sandbox, and the reason its yes was for. */
+interface UnfencedRun {
+  readonly reason: RunnerUnfencedReason;
+  readonly stop: StopUnfencedRun;
+}
+
 /** What {@link UnfencedRuns} needs from the host. */
 export interface UnfencedRunsOptions {
   /** The saved yes, in the user's profile on this computer. */
   readonly store: UnfencedRunConsentStore;
   /** Gives the time the user said yes. */
   readonly clock: Clock;
+  /**
+   * What the saved yes is read again with while runs without the sandbox
+   * are running: `setTimeout` and `clearTimeout`, or a test's own.
+   */
+  readonly timers: SaveTimers;
 }
 
 /**
@@ -47,21 +66,33 @@ export interface UnfencedRunsOptions {
  * sandbox check since the yes, and after Take back: a yes for "inside a
  * container" doesn't cover "bubblewrap isn't installed".
  *
+ * The yes is saved in the profile, so every process on this computer shares
+ * it, but each process keeps its own runs. While runs are registered, this
+ * process reads the saved yes again every {@link savedYesCheckMs} and stops
+ * each run whose yes is gone, unreadable or for another reason. That is how
+ * a Take back in Studio reaches a CLI runner too.
+ *
  * @example
- * const runs = new UnfencedRuns({ store, clock });
+ * const runs = new UnfencedRuns({ store, clock, timers });
  * const decision = await runs.decide(runnerFence({ platform, check: await sandbox.check() }));
  * if (decision.run === "allowed") {
- *   const unregister = runs.registerUnfencedRun(() => connection.stop());
+ *   const unregister = runs.registerUnfencedRun(decision.reason, () => connection.stop());
  * }
  */
 export class UnfencedRuns {
   readonly #store: UnfencedRunConsentStore;
   readonly #clock: Clock;
-  readonly #running = new Set<StopUnfencedRun>();
+  readonly #timers: SaveTimers;
+  readonly #running = new Set<UnfencedRun>();
+  /** Starts that may start code without the sandbox and haven't finished yet. */
+  readonly #starting = new Set<Promise<unknown>>();
+  /** The timer of the next read of the saved yes, while runs are registered. */
+  #nextCheck: unknown;
 
   constructor(options: UnfencedRunsOptions) {
     this.#store = options.store;
     this.#clock = options.clock;
+    this.#timers = options.timers;
   }
 
   /**
@@ -98,37 +129,105 @@ export class UnfencedRuns {
 
   /**
    * Takes the yes back and stops every plugin and integration that runs
-   * without the sandbox, before it returns, so the toast "Taken back" is
-   * true. Halonic asks again the next time one starts.
+   * without the sandbox in this process, before it returns, so the toast
+   * "Taken back" is true. A start that is still in progress is waited for:
+   * it sees the yes is gone and stops what it started. Halonic asks again
+   * the next time one starts.
+   *
+   * Runs in other processes stop within {@link savedYesCheckMs}, when they
+   * next read the saved yes.
    *
    * @throws an `AggregateError` when one or more could not be stopped; the
    *   others are still stopped, and the yes is gone either way
    */
   async takeBack(): Promise<void> {
     await this.#store.remove();
-    const stops = [...this.#running];
-    const results = await Promise.allSettled(stops.map((stop) => stop()));
+    // Every start that could still have read the yes registered before it
+    // read it, so it is in this list now. Its own errors are its caller's.
+    await Promise.allSettled([...this.#starting]);
+    const runs = [...this.#running];
+    const results = await Promise.allSettled(runs.map((run) => run.stop()));
     const failed = results.flatMap((result) =>
       result.status === "rejected" ? [result.reason as unknown] : [],
     );
     if (failed.length > 0) {
       throw new AggregateError(
         failed,
-        `${failed.length} of ${stops.length} plugins and integrations without the sandbox didn't stop.`,
+        `${failed.length} of ${runs.length} plugins and integrations without the sandbox didn't stop.`,
       );
     }
   }
 
   /**
-   * Registers code that has started without the sandbox, so
-   * {@link UnfencedRuns.takeBack} can stop it. Call the returned function
-   * when it stops by itself.
+   * Runs `start`, a start that may run code without the sandbox, so that
+   * {@link UnfencedRuns.takeBack} waits for it. `start` must decide with
+   * {@link UnfencedRuns.decide} again once its code runs, and stop it when
+   * the yes is gone.
    */
-  registerUnfencedRun(stop: StopUnfencedRun): () => void {
-    this.#running.add(stop);
+  async whileStarting<Result>(start: () => Promise<Result>): Promise<Result> {
+    // Added before `start` reads the yes, so a Take back after that read waits for it.
+    const started = start();
+    this.#starting.add(started);
+    try {
+      return await started;
+    } finally {
+      this.#starting.delete(started);
+    }
+  }
+
+  /**
+   * Registers code that has started without the sandbox with the yes for
+   * `reason`, so {@link UnfencedRuns.takeBack} can stop it, and so it stops
+   * when that yes is gone from the profile. Call the returned function when
+   * it stops by itself.
+   */
+  registerUnfencedRun(reason: RunnerUnfencedReason, stop: StopUnfencedRun): () => void {
+    const run: UnfencedRun = { reason, stop };
+    this.#running.add(run);
+    this.#checkSavedYesLater();
     return () => {
-      this.#running.delete(stop);
+      this.#running.delete(run);
+      if (this.#running.size === 0) this.#stopCheckingSavedYes();
     };
+  }
+
+  #checkSavedYesLater(): void {
+    if (this.#nextCheck !== undefined) return;
+    this.#nextCheck = this.#timers.set(() => {
+      this.#nextCheck = undefined;
+      void this.#checkSavedYes();
+    }, savedYesCheckMs);
+  }
+
+  #stopCheckingSavedYes(): void {
+    if (this.#nextCheck === undefined) return;
+    this.#timers.clear(this.#nextCheck);
+    this.#nextCheck = undefined;
+  }
+
+  /**
+   * Stops every run whose yes is no longer saved. A run that fails to stop
+   * stays registered, so the next check tries again.
+   */
+  async #checkSavedYes(): Promise<void> {
+    const reason = await this.#savedReason();
+    const withoutYes = [...this.#running].filter((run) => run.reason !== reason);
+    await Promise.allSettled(
+      withoutYes.map(async (run) => {
+        await run.stop();
+        this.#running.delete(run);
+      }),
+    );
+    if (this.#running.size > 0) this.#checkSavedYesLater();
+  }
+
+  /** The reason of the saved yes, or `null` when there is none or it can't be read. */
+  async #savedReason(): Promise<string | null> {
+    try {
+      return (await this.#store.get())?.reason ?? null;
+    } catch {
+      return null;
+    }
   }
 
   async #decideWithoutFence(reason: RunnerUnfencedReason): Promise<UnfencedRunDecision> {

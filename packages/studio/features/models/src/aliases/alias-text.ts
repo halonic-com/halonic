@@ -12,7 +12,7 @@ export const TRY_AGAIN = "Try again";
 export const NO_PRICE_LINE = "No price";
 export const ADD_A_PRICE = "Add a price";
 /** What a row of a model on this machine says in place of a price: no cost, nothing to add. */
-export const RUNS_LOCALLY_LINE = "Runs on this computer";
+export const RUNS_LOCALLY_LINE = "Runs locally";
 
 /** The name of an alias row's "Add a price" button, so a screen reader knows whose price it adds. */
 export function addPriceLabel(name: string): string {
@@ -42,7 +42,7 @@ export function aliasUpdatedLine(name: string): string {
 
 /** The hint under "Fallbacks": the order they are tried in, and which aliases can be named. */
 export function fallbacksHint(otherAliases: readonly string[]): string {
-  const base = "Tried in order when this fails.";
+  const base = "Tried in order when this one is down, slow or busy, or has no key set.";
   return otherAliases.length === 0 ? base : `${base} Other aliases: ${otherAliases.join(", ")}`;
 }
 

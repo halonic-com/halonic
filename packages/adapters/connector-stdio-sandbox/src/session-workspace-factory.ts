@@ -3,6 +3,7 @@ import {
   findRunner,
   type LaunchFolders,
   type RunnerSearch,
+  runnerRefusedError,
 } from "@halonicjs/adapter-mcp";
 import type {
   ConnectorCallOptions,
@@ -265,9 +266,7 @@ class SessionWorkspaceConnector implements ConnectorClient {
     }
     if (checked.value === null) return { pin: null };
     const found = await findRunner(this.#stdio.command, checked.value.registry, runners);
-    if ("refused" in found) {
-      throw new Error(`Halonic didn't start the connector "${this.id}": ${found.refused}.`);
-    }
+    if ("refused" in found) throw runnerRefusedError(this.id, found);
     return { pin: checked.value, runner: { found: found.found, platform: runners.platform } };
   }
 }

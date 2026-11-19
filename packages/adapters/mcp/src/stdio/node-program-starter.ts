@@ -4,6 +4,7 @@ import { resolve, win32 } from "node:path";
 import { findProgram } from "@halonicjs/adapter-system-node";
 import { type PathLookup, skillScriptsRefusal, touchesSkillScripts } from "@halonicjs/format";
 import type { ProgramExit, ProgramLaunch, ProgramStarter, RunningProgram } from "./program.ts";
+import { ProgramNotFoundError } from "./start-errors.ts";
 import { refuseWorkingFolders } from "./working-folder-guard.ts";
 
 const isWindows = process.platform === "win32";
@@ -59,15 +60,13 @@ export const nodeProgramStarter: ProgramStarter = {
  * The absolute path of the launch's program, found in the `PATH` of the
  * environment the program gets.
  *
- * @throws when no absolute folder of that `PATH` has it
+ * @throws {@link ProgramNotFoundError} when no absolute folder of that `PATH` has it
  */
 async function absoluteProgram(launch: ProgramLaunch): Promise<string> {
   const path = launch.env["PATH"] ?? launch.env["Path"] ?? "";
   const program = await findProgram(launch.program, { path });
   if (program !== undefined) return program;
-  throw new Error(
-    `The program ${launch.program} was not found in any absolute folder of the PATH.`,
-  );
+  throw new ProgramNotFoundError(launch.program);
 }
 
 /** Resolves once the child has started, and rejects when it can't be launched. */

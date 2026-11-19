@@ -127,6 +127,7 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
           {...(runCommand === undefined
             ? {}
             : { onReviewTrust: () => void runCommand(openTrustCommand) })}
+          viewOnly={context.host === "phone"}
         />
       )}
       {connector?.connection === undefined ? null : (

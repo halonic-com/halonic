@@ -1,6 +1,7 @@
 //! The profile the CLI uses, found as `@halonicjs/profile` finds it, for the
 //! commands that keep files in it: the trust records (`trust.rs`), the
-//! host settings (`host_settings.rs`) and the runs (`runs.rs`). One way of
+//! host settings (`host_settings.rs`), the runs (`runs.rs`) and the shell's
+//! log. One way of
 //! finding it, so the shell never writes to another profile than the CLI's.
 //!
 //! A Studio started from Finder, the Dock or a desktop launcher doesn't get
@@ -11,10 +12,11 @@
 
 use std::collections::BTreeMap;
 use std::ffi::OsString;
+use std::path::PathBuf;
 use std::sync::OnceLock;
 use std::time::Duration;
 
-use halonic_profile::{Platform, ProfileEnvironment, ProfileFolder, profile_folder};
+use halonic_profile::{Platform, ProfileEnvironment, ProfileFolder, join_path, profile_folder};
 use tauri::{AppHandle, Manager, Runtime};
 
 /// The CLI's profile folder, or why it can't be found, for the log.
@@ -33,6 +35,23 @@ pub fn cli_profile<R: Runtime>(app: &AppHandle<R>) -> Result<ProfileFolder, Stri
         xdg_data_home: variable("XDG_DATA_HOME")?,
     };
     profile_folder(&environment).map_err(|error| error.to_string())
+}
+
+/// Names the shell's log, `studio/shell.log` in the CLI's profile, so what
+/// the shell records reaches a file in a release build, which has no
+/// console on Windows. Without a profile it records on stderr only.
+pub fn start_shell_log<R: Runtime>(app: &AppHandle<R>) {
+    match cli_profile(app) {
+        Ok(profile) => halonic_shell_log::start(PathBuf::from(join_path(
+            profile.platform,
+            &profile.root,
+            &["studio", halonic_shell_log::FILE_NAME],
+        ))),
+        Err(error) => halonic_shell_log::record(
+            "profile",
+            format!("no profile folder, so the shell's log stays on stderr: {error}"),
+        ),
+    }
 }
 
 /// The variables [`cli_profile`] reads.
@@ -77,7 +96,10 @@ fn login_shell() -> &'static BTreeMap<String, OsString> {
             .unwrap_or_else(|| default_shell().into());
         halonic_login_shell::login_variables(shell.as_ref(), &NAMES, LOGIN_SHELL_WAIT)
             .unwrap_or_else(|error| {
-                eprintln!("profile: the login shell's variables can't be read: {error}");
+                halonic_shell_log::record(
+                    "profile",
+                    format!("the login shell's variables can't be read: {error}"),
+                );
                 BTreeMap::new()
             })
     })

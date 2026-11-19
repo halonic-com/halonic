@@ -50,6 +50,7 @@ function show(
     phone?: boolean;
     noAdd?: boolean;
     place?: "app" | "served";
+    headingLevel?: 2 | 4;
   } = {},
 ): Seen {
   const seen: Seen = { opened: [], tabs: [], builtIns: [], calls: [] };
@@ -57,6 +58,7 @@ function show(
     <PresentationProvider presentation={options.phone === true ? "phone" : "desktop"}>
       <PluginsList
         place={options.place ?? "app"}
+        {...(options.headingLevel === undefined ? {} : { headingLevel: options.headingLevel })}
         load={options.load ?? { kind: "ready" }}
         plugins={plugins}
         builtIn={options.builtIn === false ? [] : [{ id: "gmail", name: "Gmail" }]}
@@ -109,7 +111,38 @@ async function choose(label: string) {
 
 const text = () => document.body.textContent ?? "";
 
+/** Each heading on the page as "h4 Built in", in page order. */
+function headings(): string[] {
+  return [...document.querySelectorAll("h1, h2, h3, h4, h5, h6")].map(
+    (heading) => `${heading.tagName.toLowerCase()} ${heading.textContent?.trim()}`,
+  );
+}
+
 verifies("plugins.plugin-list", () => {
+  it("draws its lists at h2 and an empty list's title at h3 where the list is the page", () => {
+    show([weather()]);
+    expect(headings()).toEqual(["h2 Installed on this computer", "h2 Built in"]);
+    unmountAll();
+    show([]);
+    expect(headings()).toEqual([
+      "h2 Installed on this computer",
+      "h3 No plugins yet",
+      "h2 Built in",
+    ]);
+  });
+
+  it("draws its lists at the level it is given and an empty list's title one below (HAL-12536)", () => {
+    show([weather()], { headingLevel: 4 });
+    expect(headings()).toEqual(["h4 Installed on this computer", "h4 Built in"]);
+    unmountAll();
+    show([], { headingLevel: 4 });
+    expect(headings()).toEqual([
+      "h4 Installed on this computer",
+      "h5 No plugins yet",
+      "h4 Built in",
+    ]);
+  });
+
   it("is view only on a phone: the line, the command, no Add plugin, and a ⋮ that only opens", async () => {
     show([weather()], { phone: true });
     expect(text()).toContain(

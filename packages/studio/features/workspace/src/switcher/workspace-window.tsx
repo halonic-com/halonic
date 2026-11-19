@@ -9,7 +9,14 @@ import {
   WelcomeWindow,
   type WindowActions,
 } from "@halonicjs/studio-shell";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { openWorkspaceCommand } from "../feature.ts";
 import type { NewWorkspaceAsks } from "../new-workspace/new-workspace-asks.ts";
 import {
@@ -75,6 +82,7 @@ export function WorkspaceWindow({
   resources,
 }: WorkspaceWindowProps) {
   const { open } = switcher;
+  const showByPerson = useShowByPerson(switcher);
   const [creating, setCreating] = useState(false);
   const askNewWorkspace = newWorkspace === undefined ? undefined : () => setCreating(true);
   useEffect(
@@ -89,8 +97,7 @@ export function WorkspaceWindow({
     toastOf: (name: string, trustFailure?: string) => string,
   ): Promise<void> => {
     if (made.kind === "existing") {
-      await switcher.fromMenu(() => switcher.openLocation(made.folder));
-      focusPageHeading();
+      await showByPerson(() => switcher.fromMenu(() => switcher.openLocation(made.folder)));
       return;
     }
     const toast = toastOf(
@@ -98,9 +105,9 @@ export function WorkspaceWindow({
       made.trust.kind === "not-saved" ? made.trust.reason : undefined,
     );
     // Marked as the sample while it opens, so Home's first frame already knows it is one.
-    await switcher.fromMenu(() => switcher.openLocation(made.folder, toast, true));
-    // The Welcome screen the focus was on is gone; Home's title is where a person starts (A3).
-    focusPageHeading();
+    await showByPerson(() =>
+      switcher.fromMenu(() => switcher.openLocation(made.folder, toast, true)),
+    );
   };
   const knownSamples = () =>
     switcher.recent.list().flatMap((each) => (each.sample === true ? [each.location] : []));
@@ -169,7 +176,7 @@ export function WorkspaceWindow({
       const position = workspaceKeyPosition(event, platform);
       if (position !== undefined) {
         event.preventDefault();
-        switcher.showAt(position);
+        void showByPerson(() => switcher.showAt(position));
         return;
       }
       const history = historyKey(event, platform);
@@ -184,7 +191,7 @@ export function WorkspaceWindow({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [switcher, platform]);
+  }, [switcher, platform, showByPerson]);
 
   const dialog =
     creating && newWorkspace !== undefined ? (
@@ -194,12 +201,12 @@ export function WorkspaceWindow({
         onCancel={() => setCreating(false)}
         onOpen={(folder) => {
           setCreating(false);
-          void switcher.fromMenu(() => switcher.openLocation(folder));
+          void showByPerson(() => switcher.fromMenu(() => switcher.openLocation(folder)));
         }}
         onCreated={(folder, name, trust) => {
           setCreating(false);
           const toast = createdLine(name, trust.kind === "not-saved" ? trust.reason : undefined);
-          void switcher.fromMenu(() => switcher.openLocation(folder, toast));
+          void showByPerson(() => switcher.fromMenu(() => switcher.openLocation(folder, toast)));
         }}
       />
     ) : null;
@@ -209,12 +216,12 @@ export function WorkspaceWindow({
         <WelcomeWindow
           shell={shell}
           language={language}
-          onOpenFolder={() => switcher.pickAndOpen()}
+          onOpenFolder={() => showByPerson(() => switcher.pickAndOpen())}
           onNewWorkspace={askNewWorkspace}
           onTrySample={trySample}
           recent={{
             workspaces: switcher.recent.list(),
-            onOpen: (location) => switcher.openLocation(location),
+            onOpen: (location) => showByPerson(() => switcher.openLocation(location)),
             onRemove: (location) => switcher.removeFromRecent(location),
           }}
         />
@@ -228,11 +235,12 @@ export function WorkspaceWindow({
       open: open.all.map((slot) => slot.location),
       shown: shown.location,
       platform,
-      onOpen: (location) => void switcher.fromMenu(() => switcher.openLocation(location), true),
+      onOpen: (location) =>
+        void showByPerson(() => switcher.fromMenu(() => switcher.openLocation(location), true)),
       ...(askNewWorkspace === undefined ? {} : { onNewWorkspace: askNewWorkspace }),
-      onOpenFolder: () => void switcher.fromMenu(() => switcher.pickAndOpen()),
+      onOpenFolder: () => void showByPerson(() => switcher.fromMenu(() => switcher.pickAndOpen())),
       onWorkspaceSettings: () => window.runCommand(openWorkspaceCommand),
-      onClose: () => void switcher.closeShown(),
+      onClose: () => void showByPerson(() => switcher.closeShown()),
     });
   return (
     <>
@@ -272,12 +280,43 @@ export function WorkspaceWindow({
         <CloseWorkspaceDialog
           request={closeRequest}
           onCancel={() => switcher.cancelClose()}
-          onCloseAnyway={() => void switcher.closeAnyway()}
-          onTryAgain={() => void switcher.tryCloseAgain()}
+          onCloseAnyway={() => void showByPerson(() => switcher.closeAnyway())}
+          onTryAgain={() => void showByPerson(() => switcher.tryCloseAgain())}
           busy={retrying}
         />
       )}
     </>
+  );
+}
+
+/**
+ * Gives the way to run what a person does to open, show or close a workspace. When it ends with
+ * another workspace shown, focus moves to that workspace's page title once it is drawn, because the
+ * window the focus was in is gone (a11y W1). A restore at start doesn't run through it, so it
+ * leaves focus alone, and closing the last workspace leaves it to Welcome, which focuses
+ * **Open folder**.
+ */
+function useShowByPerson(
+  switcher: WorkspaceSwitcher,
+): <T>(change: () => T | Promise<T>) => Promise<T> {
+  // Counts the shows, so the focus moves after the commit that draws the new workspace.
+  const [shows, setShows] = useState(0);
+  useLayoutEffect(() => {
+    if (shows > 0) {
+      focusPageHeading();
+    }
+  }, [shows]);
+  return useCallback(
+    async <T,>(change: () => T | Promise<T>): Promise<T> => {
+      const before = switcher.open.shown?.location;
+      const result = await change();
+      const after = switcher.open.shown?.location;
+      if (after !== undefined && after !== before) {
+        setShows((count) => count + 1);
+      }
+      return result;
+    },
+    [switcher],
   );
 }
 

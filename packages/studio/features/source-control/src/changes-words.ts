@@ -234,9 +234,12 @@ export const updatesWords = {
   /** The toast's title when nothing could be got; the reason and "Nothing changed here." follow. */
   failed: "Couldn't get versions",
   nothingChanged: "Nothing changed here.",
-  /** Both sides have new versions; combining them, item by item, comes with Keep mine and Use theirs. */
+  /**
+   * Both sides have new versions and the choices didn't open; trying again can't help, so the
+   * toast has no Try again (UX check L13).
+   */
   bothMoved:
-    "The shared copy and this workspace both have new versions, so they can't be combined here yet.",
+    "The shared copy and this workspace both have new versions, and Halonic can't combine them yet.",
   tryAgain: "Try again",
   alreadyWorking: "Halonic is already getting updates.",
 };
@@ -306,6 +309,10 @@ export const historyWords = {
   showMore: "Show more",
   /** On a phone the newest few show first; this row shows the rest (552 5.1). */
   seeAll: "See all history",
+  /** A version's page on a phone goes back to History (552 5.6). */
+  back: "Back to History",
+  /** On a phone, the chip on a version the shared copy lacks (611 3). */
+  notShared: "Not shared yet",
   today: "Today",
   yesterday: "Yesterday",
   /** The name of the box that shows the picked version. */

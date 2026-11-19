@@ -12,6 +12,8 @@ export const startsWords = {
   promptNeeded: "Give the agent something to do.",
   notFound: "not found",
   neverLive: (name: string) => `${name} isn't live yet, so this routine can't start it.`,
+  newTargetNotLive: (live: string) =>
+    `Your new choice isn't live yet. Until it is, the routine starts ${live}.`,
   inTrash: (name: string) => `${name} is in the trash, so this routine won't start it.`,
   placeholders: (names: readonly string[]) => {
     const wrapped = names.map((name) => `{{${name}}}`);
