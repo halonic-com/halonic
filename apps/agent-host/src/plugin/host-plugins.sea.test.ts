@@ -37,10 +37,10 @@ const inContainer: Sandbox = {
 verifies("agent-host.unfenced-runs-routes", () => {
   describe("the single executable", () => {
     it("serves the same status, yes and Take back, saved in the profile", async () => {
-      const profile = {
-        platform: process.platform === "win32" ? ("windows" as const) : ("linux" as const),
-        root,
-      };
+      const onWindows = process.platform === "win32";
+      const profile = { platform: onWindows ? ("windows" as const) : ("linux" as const), root };
+      // On Windows plugin code never runs in the sandbox, whatever the check says (condition b).
+      const reason = onWindows ? "windows" : "container";
       const plugins = hostPlugins("0.0.0", inContainer as SrtSandbox, profile);
       server = await startHostServer(
         token,
@@ -56,19 +56,19 @@ verifies("agent-host.unfenced-runs-routes", () => {
       };
       expect((await call("/v1/unfenced-runs")).body).toEqual({
         run: "needs-yes",
-        reason: "container",
+        reason,
       });
-      expect((await call("/v1/unfenced-runs/allow", { reason: "container" })).status).toBe(200);
+      expect((await call("/v1/unfenced-runs/allow", { reason })).status).toBe(200);
       // A second host on the same profile reads the yes from the file.
       const again = hostPlugins("0.0.0", inContainer as SrtSandbox, profile);
       expect(await again?.unfenced.gate.status()).toMatchObject({
         run: "allowed",
-        reason: "container",
+        reason,
       });
       expect((await call("/v1/unfenced-runs/take-back", {})).status).toBe(200);
       expect((await call("/v1/unfenced-runs")).body).toEqual({
         run: "needs-yes",
-        reason: "container",
+        reason,
       });
       // And the plugin route still starts nothing.
       const plugin = await call("/v1/plugins/call", { plugin: "acme", tool: "echo", args: {} });
