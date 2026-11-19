@@ -9,6 +9,7 @@ import {
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { focusPageHeading } from "../tabs/history-moves.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { PageErrorBoundary } from "./page-error-boundary.tsx";
 
@@ -127,6 +128,29 @@ verifies("shell.page-stopped", () => {
     expect(container.querySelector("h2")?.textContent).toBe("This page stopped working");
     expect(container.textContent).toContain("Halonic ran into a problem showing Agents.");
     expect(document.activeElement).toBe(inbox);
+  });
+
+  it("moves focus to its title when the page stops as the user opens it", async () => {
+    const container = render(
+      <nav>
+        <button type="button">Agents</button>
+      </nav>,
+    );
+    button(container, "Agents").focus();
+    await act(async () => {
+      render(
+        <main>
+          <PageErrorBoundary pageKey="workflow-1" pageName="Support reply">
+            <WorkflowPage />
+          </PageErrorBoundary>
+        </main>,
+      );
+      // The sidebar asks for focus on the page's `h1` as it opens the page.
+      focusPageHeading();
+    });
+    const title = document.querySelector("main h2");
+    expect(title?.textContent).toBe("This page stopped working");
+    expect(document.activeElement).toBe(title);
   });
 
   it("draws the page again on Reload page and moves focus to its h1", async () => {

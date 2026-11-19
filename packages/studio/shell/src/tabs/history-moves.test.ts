@@ -45,6 +45,27 @@ verifies("shell.title-bar", () => {
       expect(document.activeElement?.textContent).toBe("Inbox");
     });
 
+    it("focuses the title of a state shown in place of a page that has no h1", async () => {
+      document.body.innerHTML = "<button>Inbox</button><main></main>";
+      (document.querySelector("button") as HTMLButtonElement).focus();
+      focusPageHeading();
+      document
+        .querySelector("main")
+        ?.insertAdjacentHTML(
+          "beforeend",
+          '<h2 tabindex="-1" data-page-stand-in-title>Couldn\'t load this page</h2>',
+        );
+      await mutationsSeen();
+      expect(document.activeElement?.textContent).toBe("Couldn't load this page");
+    });
+
+    it("prefers the page's h1 to a stand-in title", () => {
+      document.body.innerHTML =
+        "<main><h1>Appearance</h1><h2 data-page-stand-in-title>Couldn't load these settings</h2></main>";
+      focusPageHeading();
+      expect(document.activeElement?.textContent).toBe("Appearance");
+    });
+
     it("waits past a heading on a hidden page", async () => {
       document.body.innerHTML = "<main><div hidden><h1>Agents</h1></div><div></div></main>";
       focusPageHeading();

@@ -2,7 +2,7 @@ import { EmptyState } from "@halonicjs/studio-kit";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { useStudioHost } from "../engine/studio-host-context.ts";
 import { copyDetailsWords, detailsOf } from "../errors/copy-details-words.ts";
-import { focusPageHeading } from "../tabs/history-moves.ts";
+import { focusPageHeading, pageStandInTitle } from "../tabs/history-moves.ts";
 import { ViewErrorBoundary } from "../view-error-boundary.tsx";
 import { useCopyDetails } from "./copy-details.ts";
 import { isUnreachable, PageUnreachable } from "./page-unreachable.tsx";
@@ -102,13 +102,17 @@ function PageStopped({
   readonly error: unknown;
   readonly onReload: () => void;
 }) {
-  const titleRef = useRef<HTMLHeadingElement>(null);
+  const titleRef = useRef<HTMLElement | null>(null);
   const copyDetails = useCopyDetails();
   useFocusWhenLost(titleRef);
   return (
     <EmptyState
       tone="error"
-      titleRef={titleRef}
+      // Stands in for the page's `h1`, so a page that stops as it opens takes focus here.
+      titleRef={(element) => {
+        titleRef.current = element;
+        element?.setAttribute(pageStandInTitle, "");
+      }}
       title={pageStoppedWords.title}
       description={pageStoppedWords.reason(pageName)}
       action={{ label: pageStoppedWords.reload, onClick: onReload }}
