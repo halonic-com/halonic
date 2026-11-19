@@ -189,7 +189,7 @@ function PickerRow<Value extends string>(props: PickerRowProps<Value>) {
         onKeyDown={props.onKeyDown}
       />
       <span
-        className={`pointer-events-none relative flex min-w-0 flex-1 flex-col ${unavailable ? "text-fg-disabled" : ""}`}
+        className={`pointer-events-none relative flex min-w-0 flex-1 flex-col ${unavailable ? "text-fg-disabled text-forced-disabled" : ""}`}
       >
         <span id={labelId} className="text-body wrap-break-word">
           {option.label}

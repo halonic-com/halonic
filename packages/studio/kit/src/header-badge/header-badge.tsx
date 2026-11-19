@@ -171,7 +171,12 @@ function StatusBadge({ props }: { readonly props: HeaderBadgeStatus }) {
       aria-label={`${spokenOf(props.children)}. ${props.action}`}
       onClick={props.onClick}
     >
-      <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${look.dot}`} />
+      {/* In high contrast the fill would turn into the background: the dot keeps its shape in
+          the text colour, like the sidebar's running dot (HAL-12946). */}
+      <span
+        aria-hidden="true"
+        className={`size-2 shrink-0 rounded-full ${look.dot} forced-color-adjust-none forced-colors:bg-[CanvasText]`}
+      />
       <span className="min-w-0">{props.children}</span>
       <Icon>
         <ChevronRightIcon />

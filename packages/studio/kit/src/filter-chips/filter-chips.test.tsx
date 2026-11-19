@@ -153,6 +153,9 @@ verifies("kit.filter-chips", () => {
     expect(chip.hasAttribute("disabled")).toBe(false);
     expect(chip.getAttribute("aria-describedby")).toBe("why");
     expect(chip.className).toContain("aria-disabled:text-fg-disabled");
+    // In forced colours fg-disabled is ordinary text: GrayText there, as Button (HAL-12946).
+    expect(chip.className).toContain("aria-disabled:text-forced-disabled");
+    expect(chip.className).toContain("aria-disabled:border-forced-disabled");
     await click(chip);
     expect(onChange).not.toHaveBeenCalled();
   });

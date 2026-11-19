@@ -102,8 +102,15 @@ const textOn = "pr-3 pl-2 font-medium text-accent-text";
 const pickerOff = "pr-2 pl-3 text-fg-muted";
 const pickerOn = "pr-2 pl-3 font-medium text-accent-text";
 
-/** An unavailable toggle keeps its state but draws it in `fg-disabled`; its hint says why. */
-const unavailableChip = "aria-disabled:cursor-not-allowed aria-disabled:text-fg-disabled";
+/**
+ * An unavailable toggle keeps its state but draws it in `fg-disabled`; its hint says why. In
+ * forced colours its words and edge turn `GrayText`, as Button's do, so it doesn't look usable there
+ * (HAL-12946).
+ */
+const unavailableChip = [
+  "aria-disabled:cursor-not-allowed aria-disabled:text-fg-disabled",
+  "aria-disabled:text-forced-disabled aria-disabled:border-forced-disabled",
+].join(" ");
 
 /** 8px between chips, 16px between wrapped lines, padding 8px 16px. Never scrolls sideways. */
 const rowClasses = "flex flex-wrap gap-x-2 gap-y-4 px-4 py-2";

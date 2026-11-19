@@ -35,6 +35,13 @@ verifies("kit.external-link", () => {
     expect(link.querySelector(".sr-only")?.textContent).toBe(" (opens in your browser)");
   });
 
+  it("is underlined at rest, so a link in a sentence isn't told by colour alone (HAL-12946)", () => {
+    const { link } = renderLink();
+    expect(link.className).toContain("underline decoration-accent-text/50");
+    expect(link.className).toContain("hover:decoration-current");
+    expect(link.className).not.toContain("hover:underline");
+  });
+
   it("has a 48px hit area on a touch screen and is 48px high on a phone", () => {
     const { link } = renderLink();
     expect(link.className).toContain("touch:hit-touch");
