@@ -212,10 +212,27 @@ verifies("cli.commands.plugin.add", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr[0]).toBe(
-      "✕ Couldn't add the plugin: don't use control characters or text-direction marks",
+      "✕ Couldn't add the plugin: name: don't use control characters or text-direction marks",
     );
     await expect(readdir(pluginsFolder())).rejects.toThrow();
     expect([...io.stdout, ...io.stderr].join("\n")).not.toContain("\u001b");
+  });
+
+  it("names the field of a refused value deep in the manifest", async () => {
+    const source = await writeSource("weather");
+    // YAML's "\u202E" turns the text after it around; one choice of many holds it.
+    const settings = String.raw`  settings:
+    units: { label: Units, type: choice, choices: [metric, "imp\u202Eerial"] }
+`;
+    await writeFile(join(source, "plugin.yaml"), manifest("weather", "Weather") + settings);
+
+    const { code, io } = await add([source], terminalTyping("y").terminal);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr[0]).toBe(
+      "✕ Couldn't add the plugin: ui.settings.units.choices[1]: don't use control characters or text-direction marks",
+    );
+    await expect(readdir(pluginsFolder())).rejects.toThrow();
   });
 
   it("refuses --yes without --fingerprint before copying anything", async () => {
