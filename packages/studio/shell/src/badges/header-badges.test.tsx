@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { createBadgeRegistry } from "./badge-registry.ts";
+import { type BadgeRegistry, createBadgeRegistry, trustBadgePriority } from "./badge-registry.ts";
 import { HeaderBadges } from "./header-badges.tsx";
 
 afterEach(() => unmountAll());
@@ -100,5 +101,82 @@ verifies("shell.header-badges", () => {
     const id = container.querySelector("button")?.getAttribute("aria-describedby") ?? "";
     expect(id).not.toBe("");
     expect(container.ownerDocument.getElementById(id)?.textContent).toBe(tooltip);
+  });
+});
+
+/** A registry with the trust badge and two connector states, one a button and one a chip. */
+function stripRegistry(): BadgeRegistry {
+  const registry = createBadgeRegistry();
+  registry.add({ id: "api-off", label: "Gmail API off", tone: "attention", priority: 10 });
+  registry.add({
+    id: "needs-sign-in",
+    label: "Needs sign-in again",
+    tone: "attention",
+    priority: 10,
+    action: "Fix",
+    onSelect: () => {},
+  });
+  registry.add({
+    id: "workspace-trust",
+    label: "Not trusted yet",
+    tone: "neutral",
+    priority: trustBadgePriority,
+    action: "Review",
+    onSelect: () => {},
+  });
+  return registry;
+}
+
+function renderStrip(registry: BadgeRegistry): HTMLElement {
+  return render(
+    <PresentationProvider presentation="phone">
+      <HeaderBadges registry={registry} layout="strip" />
+    </PresentationProvider>,
+  );
+}
+
+verifies("shell.phone-notice-badges", () => {
+  it("puts the trust badge on its own line, then the connector states in one row of chips", () => {
+    const container = renderStrip(stripRegistry());
+    const rows = [...container.querySelectorAll("[data-notice-row]")] as HTMLElement[];
+    expect(rows.map((row) => row.textContent)).toEqual([
+      "Not trusted yet · Review",
+      "Gmail API offNeeds sign-in again · Fix",
+    ]);
+    const [trust, chips] = rows as [HTMLElement, HTMLElement];
+    // The kit's phone line, indented 16px, without a line of its own: the row draws it.
+    const line = trust.querySelector("button")?.closest(".min-h-touch") as HTMLElement;
+    expect(line.className).toContain("ps-4");
+    expect(line.className).not.toContain("border-b");
+    // The chips wrap, 8px apart, with no line around each.
+    for (const part of ["flex-wrap", "gap-2", "px-4", "py-2", "bg-surface-subtle"]) {
+      expect(chips.className.split(" ")).toContain(part);
+    }
+    expect(chips.querySelector(".min-h-touch")).toBeNull();
+  });
+
+  it("draws a line under each row, and leaves the rows out in a short window", () => {
+    const container = renderStrip(stripRegistry());
+    for (const row of container.querySelectorAll("[data-notice-row]")) {
+      expect(row.className).toContain("border-b border-border");
+      expect(row.className.split(" ")).toContain("short:hidden");
+    }
+  });
+
+  it("shows no rows while there are no states, and no chip row without connector states", () => {
+    const registry = createBadgeRegistry();
+    const container = renderStrip(registry);
+    expect(container.querySelectorAll("[data-notice-row]")).toHaveLength(0);
+    act(() => {
+      registry.add({
+        id: "workspace-trust",
+        label: "Not trusted yet",
+        tone: "neutral",
+        priority: trustBadgePriority,
+        action: "Review",
+        onSelect: () => {},
+      });
+    });
+    expect(container.querySelectorAll("[data-notice-row]")).toHaveLength(1);
   });
 });

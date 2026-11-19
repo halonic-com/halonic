@@ -326,6 +326,7 @@ export function StudioWindow(props: StudioWindowProps) {
       }
       badges={headerBadges}
       saveNote={<StatusBarSaveNote saving={workspace.saving} />}
+      phoneBadges={<HeaderBadges registry={shell.badges} layout="strip" />}
       sidebar={
         <StudioSidebar
           places={places}
