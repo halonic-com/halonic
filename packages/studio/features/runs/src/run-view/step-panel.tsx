@@ -1,9 +1,10 @@
 import type { RunEvent } from "@halonicjs/events";
 import { Button, CloseIcon, Disclosure, SidePanel } from "@halonicjs/studio-kit";
 import { useEffect, useMemo, useRef } from "react";
-import { failedCallWords, stepEventsWords } from "../run-words.ts";
+import { stepEventsWords } from "../run-words.ts";
 import { BlockedSitesPanel } from "./blocked-sites.tsx";
 import type { StepEntry } from "./every-step-model.ts";
+import { failedCallWords } from "./failed-call-words.ts";
 import { fillWords } from "./fill-words.tsx";
 import { noConnectionProven, stepSandboxes } from "./sandbox-model.ts";
 import { SandboxOffPanel, SandboxPanel, sayText } from "./sandbox-panel.tsx";
