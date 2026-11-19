@@ -26,6 +26,10 @@ use crate::folder::{sort_as_javascript, walk};
 /// and workflows is far smaller. A larger folder, such as a home folder or
 /// a code repository with its dependencies, isn't watched: its watch fails
 /// with a message that says what to do.
+///
+/// `halonic doctor` warns about such a folder with its own copy of this
+/// limit, `studioWatchedFileLimit` in `apps/cli/src/studio-watch-limit.ts`;
+/// a test there reads this line and checks the two are equal.
 pub const MAX_WATCHED_FILES: usize = 50_000;
 
 /// The files under a folder at one look, by workspace path, with their size

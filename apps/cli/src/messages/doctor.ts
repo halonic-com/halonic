@@ -1,4 +1,4 @@
-import { counted } from "./counts.ts";
+import { counted, groupedDigits } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { markPart, type Phrase, phrase } from "./phrase.ts";
 import { suggestedCommand } from "./suggested-command.ts";
@@ -66,6 +66,15 @@ export const doctorMessages = defineMessages("doctor", {
   /** Under {@link onWindowsDrive}, for a folder only the CLI uses (HAL-12873). */
   moveToLinuxHome: () =>
     phrase`Fix: if you use it only from the command line, move it into your Linux home folder (~), then run halonic doctor again.`,
+  /**
+   * Workspace !, under the trust: more files than Studio's folder watch looks
+   * at, worded as the watch's own failure (HAL-12295, signed off by Liam on HAL-12296).
+   */
+  tooManyFilesToWatch: (limit: number) =>
+    phrase`The workspace has more than ${groupedDigits(limit)} files, too many for Studio to watch for changes made outside Halonic.`,
+  /** Under {@link tooManyFilesToWatch}. */
+  openSmallerFolder: () =>
+    phrase`Fix: to see them in Studio as they happen, open a smaller folder, or move files the workspace doesn't use out of this one.`,
 
   /** Models ✓ for a model server on this computer; `loaded` is left out when no model is loaded. */
   answering: (server: string, address: string, loaded?: Phrase) =>

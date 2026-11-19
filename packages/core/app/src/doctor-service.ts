@@ -91,6 +91,12 @@ export interface DoctorWorkspace {
    */
   fileProblems?: number;
   /**
+   * The most files Studio's folder watch looks at, such as 50,000, only when
+   * the host found more files than that in the workspace. The Workspace line
+   * warns about it (HAL-12295).
+   */
+  tooManyFilesToWatch?: number;
+  /**
    * The folder an agent's harness keeps its own settings in, its sign-in
    * among them, as `WorkspaceFolders.harnessSettingsFolder` gives it, or
    * `undefined` for an agent whose id can't name a folder. Left out where
@@ -194,6 +200,7 @@ export class DoctorService {
       report.workspace = workspaceLine(workspace.name, trust?.status ?? "not-needed", {
         windowsDrive: workspace.windowsDrive,
         fileProblems: workspace.fileProblems,
+        tooManyFilesToWatch: workspace.tooManyFilesToWatch,
       });
       const providers = workspace.providers.map((provider) =>
         providerState(provider, resources.models, keys),

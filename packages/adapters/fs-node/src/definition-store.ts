@@ -92,15 +92,36 @@ export class FolderDefinitionStore implements DefinitionStore {
 
   async list(dir?: string): Promise<string[]> {
     const paths: string[] = [];
+    const add = (path: string) => {
+      paths.push(path);
+      return true;
+    };
     if (dir === undefined) {
-      await this.#collect(this.#root, "", paths);
+      await this.#walk(this.#root, "", add);
     } else {
       checkPublicWorkspacePath(dir);
       if ((await entryAt(this.#root, dir))?.isDirectory()) {
-        await this.#collect(join(this.#root, dir), dir, paths);
+        await this.#walk(join(this.#root, dir), dir, add);
       }
     }
     return paths.sort();
+  }
+
+  /**
+   * Whether the root holds more than `limit` of the files `list()` gives.
+   * It stops counting at the first file over the limit, so a very large
+   * folder costs no more than `limit` files' worth of looking.
+   *
+   * @example
+   * await store.hasMoreFilesThan(50_000); // false for a workspace of hubs and agents
+   */
+  async hasMoreFilesThan(limit: number): Promise<boolean> {
+    let count = 0;
+    await this.#walk(this.#root, "", () => {
+      count += 1;
+      return count <= limit;
+    });
+    return count > limit;
   }
 
   async read(path: string): Promise<string | null> {
@@ -217,13 +238,18 @@ export class FolderDefinitionStore implements DefinitionStore {
   }
 
   /**
-   * Adds the files under `folder`, whose workspace path is `prefix`, to
-   * `into`, leaving out links and private entries.
+   * Gives `visit` the workspace path of each file under `folder`, whose
+   * workspace path is `prefix`, leaving out links and private entries. The
+   * shell's folder watch leaves out the same (`walk` in the
+   * `workspace-files` crate), so the doctor counts the files Studio would
+   * watch.
    *
+   * @param visit takes a file's path and returns `false` to stop the walk
+   * @returns `false` when `visit` stopped it
    * @throws UnreadableWorkspaceFolderError naming a folder under the root
    *   that the account may not read
    */
-  async #collect(folder: string, prefix: string, into: string[]): Promise<void> {
+  async #walk(folder: string, prefix: string, visit: (path: string) => boolean): Promise<boolean> {
     const entries = await entriesOf(folder, prefix);
     for (const entry of entries) {
       // A backslash is allowed in a file name on Linux, but not in a workspace path.
@@ -237,11 +263,14 @@ export class FolderDefinitionStore implements DefinitionStore {
       }
       const path = prefix === "" ? entry.name : `${prefix}/${entry.name}`;
       if (entry.isDirectory()) {
-        await this.#collect(join(folder, entry.name), path, into);
-      } else if (entry.isFile()) {
-        into.push(path);
+        if (!(await this.#walk(join(folder, entry.name), path, visit))) {
+          return false;
+        }
+      } else if (entry.isFile() && !visit(path)) {
+        return false;
       }
     }
+    return true;
   }
 }
 

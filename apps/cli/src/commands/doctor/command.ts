@@ -15,6 +15,7 @@ import { doctorWorkspace } from "../../doctor-workspace.ts";
 import { exitCode } from "../../exit-code.ts";
 import { doctorMessages } from "../../messages/doctor.ts";
 import { doctorReportLines } from "../../output/doctor-report.ts";
+import { studioWatchedFileLimit } from "../../studio-watch-limit.ts";
 import { halonicVersion } from "../../version.ts";
 import {
   dirOption,
@@ -24,11 +25,20 @@ import {
 } from "../../workspace-dir.ts";
 import { workspaceIntegrations } from "../../workspace-trust.ts";
 
+/** What tests change about `halonic doctor`, besides the computer. */
+export interface DoctorCommandOptions {
+  /** The most files Studio watches; {@link studioWatchedFileLimit} by default. */
+  readonly watchedFileLimit?: number;
+}
+
 /**
  * `halonic doctor [--dir <folder>]` on the computer `machine` reads, so tests
  * can hand it a fake one.
  */
-export function createDoctorCommand(machine: () => DoctorMachine): CliCommand {
+export function createDoctorCommand(
+  machine: () => DoctorMachine,
+  { watchedFileLimit = studioWatchedFileLimit }: DoctorCommandOptions = {},
+): CliCommand {
   return {
     name: "doctor",
     usage: "[--dir <folder>]",
@@ -37,7 +47,11 @@ export function createDoctorCommand(machine: () => DoctorMachine): CliCommand {
     options: { dir: dirOption },
     async run(input, context) {
       const given = givenDir(input);
-      const read = await readWorkspace(workspaceDir(input, context.cwd), given !== undefined);
+      const read = await readWorkspace(
+        workspaceDir(input, context.cwd),
+        given !== undefined,
+        watchedFileLimit,
+      );
       const computer = machine();
       const workspace =
         read === null
@@ -78,12 +92,15 @@ function givenDir(input: CommandInput): string | undefined {
 /**
  * The workspace in `dir`, or `null` when there's none: then `doctor` checks
  * only the computer. A `--dir` that holds no workspace is a mistake, though.
+ * It counts the workspace's files up to `watchedFileLimit`, so the Workspace
+ * line can say when Studio won't watch the folder (HAL-12295).
  *
  * @throws NoWorkspaceError when `--dir` was given and has no `workspace.yaml`
  */
 async function readWorkspace(
   dir: WorkspaceDir,
   dirGiven: boolean,
+  watchedFileLimit: number,
 ): Promise<MachineWorkspace | null> {
   const store = new FolderDefinitionStore(dir.root, dir.shown);
   if ((await store.read(settingsPath)) === null) {
@@ -99,10 +116,14 @@ async function readWorkspace(
     fallbackName: dir.name,
     commandPaths: await commandPaths(connectors, nodeCommandSearch()),
   });
+  const tooManyToWatch = await store.hasMoreFilesThan(watchedFileLimit);
   const providerFiles = new Map(
     filesOf(loaded, "provider").map((file) => [file.value.id, file.value]),
   );
-  return { workspace, providerFiles };
+  return {
+    workspace: tooManyToWatch ? { ...workspace, tooManyFilesToWatch: watchedFileLimit } : workspace,
+    providerFiles,
+  };
 }
 
 /**

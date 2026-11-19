@@ -62,6 +62,9 @@ function workspace(parts: Partial<DoctorWorkspace> & { agents?: Agent[] } = {}):
     providers: parts.providers ?? [],
     ...(parts.testModelOnly === undefined ? {} : { testModelOnly: parts.testModelOnly }),
     ...(parts.windowsDrive === undefined ? {} : { windowsDrive: parts.windowsDrive }),
+    ...(parts.tooManyFilesToWatch === undefined
+      ? {}
+      : { tooManyFilesToWatch: parts.tooManyFilesToWatch }),
   };
 }
 
@@ -358,6 +361,23 @@ verifies("app.doctor-workspace-drive", () => {
       name: "acme",
       trust: "trusted",
       windowsDrive: "/mnt/c",
+    });
+    expect(report.summary).toEqual({ problems: 0, warnings: 1, needsFixing: false });
+  });
+});
+
+verifies("app.doctor-workspace-watch", () => {
+  it("warns on the Workspace line when the host found more files than Studio watches", async () => {
+    const report = await doctor({ trust: "trusted" }).service.check(
+      workspace({ tooManyFilesToWatch: 50_000 }),
+    );
+
+    expect(report.workspace).toEqual({
+      check: "workspace",
+      status: "warning",
+      name: "acme",
+      trust: "trusted",
+      tooManyFilesToWatch: 50_000,
     });
     expect(report.summary).toEqual({ problems: 0, warnings: 1, needsFixing: false });
   });

@@ -124,6 +124,12 @@ function workspaceCheck(line: WorkspaceLine, dir: string | undefined): CheckLine
             doctorMessages.moveToLinuxHome().phrase,
             errorMessages.more(wsl2FolderDocs).phrase,
           ]),
+      ...(line.tooManyFilesToWatch === undefined
+        ? []
+        : [
+            doctorMessages.tooManyFilesToWatch(line.tooManyFilesToWatch).phrase,
+            doctorMessages.openSmallerFolder().phrase,
+          ]),
     ],
   };
 }

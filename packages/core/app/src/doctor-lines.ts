@@ -44,6 +44,12 @@ export interface WorkspaceLine extends DoctorLine {
    * starts there until they are fixed (HAL-6613).
    */
   fileProblems?: number;
+  /**
+   * The most files Studio's folder watch looks at, such as 50,000, only when
+   * the workspace has more: Studio doesn't watch it, so it won't show
+   * changes made outside Halonic as they happen (HAL-12295).
+   */
+  tooManyFilesToWatch?: number;
 }
 
 /** What else doctor found about the workspace, besides its trust. */
@@ -52,6 +58,8 @@ export interface WorkspaceFindings {
   windowsDrive?: string | undefined;
   /** The errors in the workspace's files, as `halonic validate` counts them. */
   fileProblems?: number | undefined;
+  /** Studio's folder watch limit, when the workspace has more files than it. */
+  tooManyFilesToWatch?: number | undefined;
 }
 
 /**
@@ -61,43 +69,50 @@ export interface WorkspaceFindings {
  * needs no trust, as `run` doesn't ask for it there; every other state is a
  * warning, because `halonic trust` fixes it and nothing else is stopped. A
  * workspace on a Windows drive under WSL is a warning too (requirement
- * `app.doctor-workspace-drive`): it works, only slowly.
+ * `app.doctor-workspace-drive`): it works, only slowly. So is one with
+ * more files than Studio watches (requirement `app.doctor-workspace-watch`):
+ * it works, but Studio won't show changes made outside Halonic.
  *
  * @param name the workspace's name
  * @param trust the status `TrustService.check` returned
- * @param findings the Windows drive it is on and the errors in its files, when there are any
+ * @param findings the Windows drive it is on, the errors in its files and
+ *   Studio's watch limit, when there are any
  *
  * @example
  * workspaceLine("acme", "changed");
  * // { check: "workspace", status: "warning", name: "acme", trust: "changed" }
  * workspaceLine("acme", "new", { fileProblems: 2 });
  * // { check: "workspace", status: "failed", name: "acme", trust: "new", fileProblems: 2 }
+ * workspaceLine("acme", "trusted", { tooManyFilesToWatch: 50_000 });
+ * // { check: "workspace", status: "warning", name: "acme", trust: "trusted", tooManyFilesToWatch: 50000 }
  */
 export function workspaceLine(
   name: string,
   trust: WorkspaceTrust,
-  { windowsDrive, fileProblems = 0 }: WorkspaceFindings = {},
+  findings: WorkspaceFindings = {},
 ): WorkspaceLine {
+  const { windowsDrive, fileProblems = 0, tooManyFilesToWatch } = findings;
   return {
     check: "workspace",
-    status: workspaceStatus(trust, windowsDrive, fileProblems),
+    status: workspaceStatus(trust, findings),
     name,
     trust,
     ...(windowsDrive === undefined ? {} : { windowsDrive }),
     ...(fileProblems === 0 ? {} : { fileProblems }),
+    ...(tooManyFilesToWatch === undefined ? {} : { tooManyFilesToWatch }),
   };
 }
 
 function workspaceStatus(
   trust: WorkspaceTrust,
-  windowsDrive: string | undefined,
-  fileProblems: number,
+  { windowsDrive, fileProblems = 0, tooManyFilesToWatch }: WorkspaceFindings,
 ): WorkspaceLine["status"] {
   if (fileProblems > 0) {
     return "failed";
   }
   const trustOk = trust === "trusted" || trust === "not-needed";
-  return trustOk && windowsDrive === undefined ? "ok" : "warning";
+  const warned = windowsDrive !== undefined || tooManyFilesToWatch !== undefined;
+  return trustOk && !warned ? "ok" : "warning";
 }
 
 /** The Sandbox line. */
