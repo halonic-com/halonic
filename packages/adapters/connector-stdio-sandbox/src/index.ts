@@ -22,6 +22,11 @@ export {
   pluginLocalToolPlace,
 } from "./plugin-local-tool-place.ts";
 export {
+  LocalToolSettingsNotSetError,
+  PluginLocalToolSessions,
+  type PluginLocalToolSessionsOptions,
+} from "./plugin-local-tool-sessions.ts";
+export {
   type ConnectorBlock,
   type LocalToolSetup,
   SandboxStdioConnectorFactory,
