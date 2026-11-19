@@ -278,11 +278,39 @@ verifies("deploy.upload", () => {
 
   it("fails clearly when the upload leaves no deployment to read back", async () => {
     const { api, options } = setup({ accounts: [] }, passing);
+    let lookups = 0;
     const emptied = Object.assign(Object.create(api), {
-      currentDeployment: async () => undefined,
+      currentDeployment: async () => {
+        lookups += 1;
+        return undefined;
+      },
     });
     const error = await uploadAndSwitch(emptied, options).catch((e: unknown) => e);
     expect((error as DeployError).code).toBe("cloudflare-request-failed");
+    // One lookup before the upload, five after it.
+    expect(lookups).toBe(6);
+  });
+
+  it("asks again while Cloudflare doesn't list the new deployment yet", async () => {
+    const { api, options } = setup({ accounts: [] }, passing);
+    let lookups = 0;
+    const sleeps: number[] = [];
+    // The first lookup is before the upload; the next two answer as if Cloudflare still lags.
+    const lagging = Object.assign(Object.create(api), {
+      currentDeployment: async () => {
+        lookups += 1;
+        return lookups <= 3 ? undefined : [{ id: "v1", percentage: 100 }];
+      },
+    });
+    const done = await uploadAndSwitch(lagging, {
+      ...options,
+      sleep: async (ms: number) => {
+        sleeps.push(ms);
+      },
+    });
+    expect(done.versionId).toBe("v1");
+    expect(lookups).toBe(4);
+    expect(sleeps.slice(0, 2)).toEqual([1000, 2000]);
   });
 
   it("still reports the failed self-test when putting the old version back fails", async () => {

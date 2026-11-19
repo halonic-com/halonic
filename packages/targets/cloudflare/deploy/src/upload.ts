@@ -17,6 +17,8 @@ const attemptsWhenOpen = 5;
  * edge answers 404 for a new address until it reaches the Worker, longer than 20 s (HAL-13834).
  */
 const attemptsWhenNew = 16;
+/** How often a live deploy reads the deployment back: waits of 1, 2, 3 and 4 s, about 10 s. */
+const deploymentLookups = 5;
 /** The longest wait between two tries. */
 const longestWaitMs = 10_000;
 
@@ -58,6 +60,11 @@ export interface UploadAndSwitchOptions {
    * 20 s), or 16 (about two minutes) when the deploy turned workers.dev on.
    */
   readonly attempts?: number;
+}
+
+/** Waits for real; tests inject `sleep` instead. */
+function realSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /** A 32-byte random token as hex, from the platform's CSPRNG. */
@@ -269,15 +276,19 @@ async function deployLive(
   migrations: readonly DurableObjectMigration[],
 ): Promise<string> {
   await api.uploadWorkerLive(options.accountId, options.worker, upload, migrations);
-  const now = await api.currentDeployment(options.accountId, options.worker);
-  const id = now?.[0]?.id;
-  if (!id) {
-    throw new DeployError(
-      "cloudflare-request-failed",
-      "Cloudflare took the upload but lists no deployment for the Worker, so the new version can't be tested.",
-    );
+  const sleep = options.sleep ?? realSleep;
+  // Cloudflare can take a few seconds to list a deployment it just took, more so when several
+  // deploys run at once (HAL-13838): ask again for about 10 s before giving up.
+  for (let lookup = 1; lookup <= deploymentLookups; lookup += 1) {
+    const now = await api.currentDeployment(options.accountId, options.worker);
+    const id = now?.[0]?.id;
+    if (id) return id;
+    if (lookup < deploymentLookups) await sleep(1000 * lookup);
   }
-  return id;
+  throw new DeployError(
+    "cloudflare-request-failed",
+    "Cloudflare took the upload but lists no deployment for the Worker, so the new version can't be tested.",
+  );
 }
 
 /** Uploads a version and gives it 0% next to the previous one, so only the override header reaches it. */
@@ -312,7 +323,7 @@ async function selfTest(
   options: UploadAndSwitchOptions,
 ): Promise<{ ok: boolean; failed: string[] }> {
   const doFetch = options.fetch ?? fetch;
-  const sleep = options.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
+  const sleep = options.sleep ?? realSleep;
   const attempts = options.attempts ?? attemptsWhenOpen;
   let failed: string[] = [];
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
