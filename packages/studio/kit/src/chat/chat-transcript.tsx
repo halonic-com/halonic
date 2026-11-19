@@ -11,6 +11,11 @@ export interface ChatTranscriptProps {
    * answering. Showing what it said last." The messages under it stay.
    */
   readonly notice?: string | undefined;
+  /**
+   * The notice's `id`, so a control that waits because of it can name it as its reason: the
+   * composer's Send while the engine isn't answering.
+   */
+  readonly noticeId?: string | undefined;
   /** The `ChatMessage` rows, oldest first. */
   readonly children: ReactNode;
 }
@@ -31,7 +36,7 @@ const AT_END_SLACK_PX = 24;
  *   <ChatMessage from="you">Sort this mail</ChatMessage>
  * </ChatTranscript>
  */
-export function ChatTranscript({ label, notice, children }: ChatTranscriptProps) {
+export function ChatTranscript({ label, notice, noticeId, children }: ChatTranscriptProps) {
   const scroller = useRef<HTMLElement>(null);
   const atEnd = useRef(true);
 
@@ -60,7 +65,7 @@ export function ChatTranscript({ label, notice, children }: ChatTranscriptProps)
       onScroll={noteWhereTheReaderIs}
     >
       {notice === undefined ? null : (
-        <div className="sticky top-0 bg-surface">
+        <div id={noticeId} className="sticky top-0 bg-surface">
           <LineFrame icon={<WarningIcon />}>{notice}</LineFrame>
         </div>
       )}

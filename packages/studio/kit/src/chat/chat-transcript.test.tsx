@@ -18,7 +18,7 @@ function setHeights(scroller: HTMLElement, content: number, visible: number) {
 
 function transcript(steps: readonly string[], notice?: string) {
   return (
-    <ChatTranscript label="Chat with Sorter" notice={notice}>
+    <ChatTranscript label="Chat with Sorter" notice={notice} noticeId="engine-line">
       <ChatMessage from="you">Sort this mail</ChatMessage>
       <ChatMessage from="reply" heading="Sorter said">
         {steps.map((step) => (
@@ -64,6 +64,7 @@ verifies("kit.chat-transcript", () => {
     const region = container.querySelector("section") as HTMLElement;
     const top = region.firstElementChild as HTMLElement;
     expect(top.textContent).toBe(notice);
+    expect(top.id).toBe("engine-line");
     expect(top.querySelector("[aria-hidden] svg path")).not.toBeNull();
     expect(region.querySelector("[data-chat-message=reply]")?.textContent).toContain("Reading it.");
   });
