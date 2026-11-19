@@ -104,7 +104,12 @@ verifies("harness-bridge.provider-base-url", () => {
       fetch: ownHosts.fetch,
       compatibleFetch: compatible.fetch,
     });
-    const openai = { kind: "key", secret: "k", baseUrl: "https://compatible.example/v1" } as const;
+    const openai = {
+      kind: "key",
+      secret: "k",
+      baseUrl: "https://compatible.example/v1",
+      models: ["glm-5.2"],
+    } as const;
     const recorder = { record: async () => {} };
     const bridge = await server.open({ ...fakeRun(), providers: { openai }, recorder });
     try {

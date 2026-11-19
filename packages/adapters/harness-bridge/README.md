@@ -58,7 +58,9 @@ OpenRouter's `plugins: [{ "id": "web" }]`, so removing the web tools Anthropic
 and OpenAI name isn't enough. The bridge refuses, with `denied`, a request
 with a top-level field the API's own reference doesn't name (and, for
 Messages, `container` and `fallbacks`), a tool or a `tool_choice` the
-program doesn't run itself, and a `model` that ends in `:online`. The
+program doesn't run itself, a `model` that ends in `:online`, and a `model`
+that isn't exactly one of the access's `models`, the ones the host resolved
+for the agent at that provider (every call, when the host gave none). The
 program's own tools are, for Messages, a tool without a `type`, `custom`,
 and `bash_`, `text_editor_`, `computer_` and `memory_` with an eight-digit
 date (such as `bash_20250124`), and for Responses `function`, `custom` and

@@ -184,7 +184,9 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
       const request = parseModelRequest(sent);
       refuseStoredPrompt(request);
       refuseUrlInputs(request);
-      if (target.atCompatibleProvider) refuseUnknownAtCompatible(request, openAiKnown);
+      if (target.atCompatibleProvider) {
+        refuseUnknownAtCompatible(request, openAiKnown, target.models);
+      }
       const call = readModelCall("openai", request, "input");
       const body = withoutProviderReach(request, openAiReach);
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);

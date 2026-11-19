@@ -34,6 +34,8 @@ export interface ProviderTarget {
    * bridge sends only what it knows (requirement `harness-bridge.compatible-request`).
    */
   atCompatibleProvider: boolean;
+  /** At a compatible provider, the only models the bridge sends it calls for. */
+  models?: readonly string[] | undefined;
 }
 
 /**
@@ -83,7 +85,8 @@ export function providerTarget(
       `This bridge doesn't call ${api.name}-compatible providers at their own address.`,
     );
   }
-  return { url, fetch: fetches.compatibleFetch, atCompatibleProvider: true };
+  const models = access.kind === "key" ? access.models : undefined;
+  return { url, fetch: fetches.compatibleFetch, atCompatibleProvider: true, models };
 }
 
 /**

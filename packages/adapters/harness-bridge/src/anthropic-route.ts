@@ -161,7 +161,9 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
       const sent = await context.readBody();
       const request = parseModelRequest(sent);
       refuseUrlSources(request);
-      if (target.atCompatibleProvider) refuseUnknownAtCompatible(request, anthropicKnown);
+      if (target.atCompatibleProvider) {
+        refuseUnknownAtCompatible(request, anthropicKnown, target.models);
+      }
       const call = readModelCall("anthropic", request, "messages");
       const body = withoutProviderReach(request, anthropicReach);
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);

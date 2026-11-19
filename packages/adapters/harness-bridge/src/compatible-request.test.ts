@@ -33,6 +33,7 @@ const atCompatible: BridgeProviderAccess = {
   kind: "key",
   secret: "openai-key",
   baseUrl: "https://compatible.example/api/v1",
+  models: ["glm-5.2", "gpt-5.5", "openai/gpt-5.5"],
 };
 
 /** Opens a bridge that serves only the Anthropic route, for an agent with `access`. */

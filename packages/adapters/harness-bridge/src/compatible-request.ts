@@ -26,14 +26,32 @@ export interface KnownRequest {
  * removing what it knows to be risky. It refuses rather than dropping, so the
  * person sees why the call failed.
  *
- * The error names the first field or tool type it refuses, never a value.
+ * Last, it refuses a `model` that isn't exactly one of `models`, the ones
+ * the host resolved for this agent at this provider, and every request when
+ * the host gave none: a compatible provider can serve models that search the
+ * web on their own, such as `perplexity/sonar`.
+ *
+ * The error names the first field or tool type it refuses, never a value:
+ * neither the model nor `models`.
  *
  * @throws KindedError `denied` when the request holds something unknown
  */
-export function refuseUnknownAtCompatible(request: unknown, known: KnownRequest): void {
-  if (!isPlainObject(request)) return;
+export function refuseUnknownAtCompatible(
+  request: unknown,
+  known: KnownRequest,
+  models: readonly string[] | undefined,
+): void {
   const provider = `the ${known.name}-compatible provider`;
+  if (isPlainObject(request)) refuseUnknownParts(request, known, provider);
+  refuseUnresolvedModel(isPlainObject(request) ? request["model"] : undefined, models, provider);
+}
 
+/** Refuses an unknown field, tool or `tool_choice`, and the `:online` model suffix. */
+function refuseUnknownParts(
+  request: Record<string, unknown>,
+  known: KnownRequest,
+  provider: string,
+): void {
   const unknownField = Object.keys(request).find((field) => !known.fields.has(field));
   if (unknownField !== undefined) {
     throw new KindedError(
@@ -53,6 +71,30 @@ export function refuseUnknownAtCompatible(request: unknown, known: KnownRequest)
     throw new KindedError(
       "denied",
       `The model ends in ":online", which makes ${provider} search the web from its own side, out of Halonic's sight. Name the model without it.`,
+    );
+  }
+}
+
+/**
+ * Refuses a model that isn't exactly one of `models`, case and all, and any
+ * model when `models` is missing or empty, so a host that forgot the list
+ * sends nothing rather than everything.
+ */
+function refuseUnresolvedModel(
+  model: unknown,
+  models: readonly string[] | undefined,
+  provider: string,
+): void {
+  if (models === undefined || models.length === 0) {
+    throw new KindedError(
+      "denied",
+      `Halonic has no models for this agent at ${provider}, so it sends it no calls. Check the agent's model alias.`,
+    );
+  }
+  if (typeof model !== "string" || !models.includes(model)) {
+    throw new KindedError(
+      "denied",
+      `The request names a model that isn't this agent's at ${provider}: Halonic sends only the models of the agent's model alias there.`,
     );
   }
 }

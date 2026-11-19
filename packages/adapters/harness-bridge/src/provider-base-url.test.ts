@@ -75,6 +75,7 @@ const zai = (baseUrl: string): BridgeProviderAccess => ({
   kind: "key",
   secret: "zai-key",
   baseUrl,
+  models: ["glm-5.2"],
 });
 
 /** Claude Code's request for an open model, with its own key and the run token. */
@@ -243,6 +244,7 @@ verifies("harness-bridge.provider-base-url", () => {
       kind: "key",
       secret: "openai-key",
       baseUrl: "https://openrouter.example/api/v1",
+      models: ["gpt-5.5"],
     };
 
     it("sends the call and the key to /responses under the provider's baseUrl", async () => {
