@@ -225,6 +225,13 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/plugins/call",
         route(Method::Post, "/v1/plugins/call", Answer::Json),
     ),
+    // A trusted plugin's own secrets, handed over right before a use
+    // (HAL-13652): the host checks the trust, builds each name itself and
+    // keeps the values in memory only.
+    (
+        "POST /v1/plugins/secrets",
+        route(Method::Post, "/v1/plugins/secrets", Answer::Json),
+    ),
 ];
 
 /// The route a page names, when it is one of the table's and answers as
