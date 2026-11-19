@@ -23,4 +23,13 @@ verifies("studio.try-sample", () => {
   it("bundles their contents, not their paths", () => {
     expect(sampleFiles()["workspace.yaml"]).toContain("name:");
   });
+
+  // The workspace feature's `openOnSupportReply` opens a fresh demo on this workflow by its
+  // location; if Acme renames or moves it, the demo would open on a page that isn't found.
+  it("bundles the Support reply workflow the demo opens on", () => {
+    const workflow = sampleFiles()["hubs/support/workflows/support-reply.workflow.yaml"];
+
+    expect(workflow).toContain("id: support-reply");
+    expect(workflow).toContain("name: Support reply");
+  });
 });
