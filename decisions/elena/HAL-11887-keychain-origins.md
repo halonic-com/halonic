@@ -4,6 +4,7 @@
 - Task: HAL-11887
 - Approval: pending (security review on HAL-11887)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6wB4x8fGPs/fR4SUtyojWg4p5+jD+SU/kvEVmp9VilAqz+SkK8ETBiGl1M5FDUyTdJW9X5W0uuZZmUPQOgVyAA==
 
 ## What changes
 
