@@ -5,7 +5,7 @@ import { createTokenStore } from "@halonicjs/adapter-token-store";
 import { clientSecretStore, setupRecords } from "@halonicjs/google-setup";
 import type { GoogleSetupPorts } from "@halonicjs/host-server";
 import type { HttpClient } from "@halonicjs/ports";
-import type { ProfileFolder } from "@halonicjs/profile";
+import { type ProfileFolder, tokenFolders } from "@halonicjs/profile";
 import { randomIds, systemClock } from "@halonicjs/std";
 import { tokenKeySecrets, webCryptoDigest } from "../profile-token-key.ts";
 import { proxySetting } from "../proxy-setting.ts";
@@ -44,7 +44,7 @@ export function openGoogleSetup(options: GoogleSetupOptions): GoogleSetupPorts {
   const ids = randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), clock);
   const googleFolder = join(options.profile.root, "google");
   const tokens = createTokenStore({
-    records: new FileRecordStore(join(googleFolder, "tokens")),
+    records: new FileRecordStore(tokenFolders(options.profile).google),
     secrets: tokenKeySecrets(options.profile, options.env),
     clock,
   });

@@ -14,6 +14,7 @@ import {
 import { exitCode } from "../../exit-code.ts";
 import { type GoogleSetup, openGoogleHost } from "../../google-host.ts";
 import { googleMessages } from "../../messages/google.ts";
+import { prepareTokenKey } from "./prepare-token-key.ts";
 import { readSetup } from "./read-setup.ts";
 
 /**
@@ -25,8 +26,8 @@ import { readSetup } from "./read-setup.ts";
  * @throws UsageError without an account, with a value as an argument, or
  *   when nobody can type one (no terminal, `CI` or `--json`)
  * @throws OwnLineError `not_found` when no setup has that ref, `conflict` when
- *   the secret may only be replaced through staging, `invalid_input` when the
- *   token key isn't set
+ *   the secret may only be replaced through staging or the token key is gone
+ *   while sealed secrets remain
  */
 export async function saveGoogleSecret(
   input: CommandInput,
@@ -42,13 +43,7 @@ export async function saveGoogleSecret(
   }
   const host = openGoogleHost(setup);
   const record = await readSetup(host.setups, accountRef);
-  if (!(await host.tokenKeyIsSet())) {
-    throw new OwnLineError(
-      "invalid_input",
-      googleMessages.secretNeedsTokenKey(),
-      googleMessages.secretNeedsTokenKeyFix(),
-    );
-  }
+  await prepareTokenKey(host);
   const value = await context.askSecret(
     googleMessages.secretPrompt(),
     () => new UsageError(googleMessages.secretNoTerminal(), googleMessages.secretNoTerminalFix()),

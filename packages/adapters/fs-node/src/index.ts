@@ -29,6 +29,7 @@ export { folderRecordLock, type RecordLock } from "./proposal-record-lock.ts";
 export { resolveRealPath } from "./real-path-resolver.ts";
 export { FileRecordStore } from "./record-store.ts";
 export { renameOver } from "./rename-over.ts";
+export { withRunLock } from "./run-lock.ts";
 export { FolderRunStore, type FolderRunStoreOptions } from "./run-store.ts";
 export { FileSandboxSettingStore } from "./sandbox-setting-store.ts";
 export { FileToolApprovalStore } from "./tool-approval-store.ts";

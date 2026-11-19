@@ -78,6 +78,15 @@ verifies("secrets-file.store", () => {
     expect(await readdir(join(file, ".."))).toEqual(["secrets.json"]);
   });
 
+  it("keeps every secret when several stores over one file save at once", async () => {
+    const file = await freshFile();
+    // Each store has its own in-process queue, so only the file's write lock keeps them apart.
+    const names = Array.from({ length: 10 }, (_, index) => `secret-${index}`);
+    await Promise.all(names.map((name) => new FileSecretStore(file).set(name, `value-${name}`)));
+    expect(await new FileSecretStore(file).names()).toHaveLength(10);
+    expect(await readdir(join(file, ".."))).toEqual(["secrets.json"]);
+  });
+
   it("goes on after a save failed", async () => {
     const file = await freshFile();
     const store = new FileSecretStore(file);
