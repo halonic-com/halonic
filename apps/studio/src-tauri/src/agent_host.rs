@@ -44,6 +44,11 @@ pub mod choice_save;
 mod life;
 pub use life::{end_page_streams, host_answers, stop_host};
 
+#[path = "agent_host_progress.rs"]
+pub mod progress;
+pub use progress::page_loaded;
+use progress::{StartFailure, StartProgress};
+
 /// How long the host may take to unpack its files and serve. The installer's
 /// wait for `started-<version>` (windows/installer.nsi, `WaitForStartOrGoBack`)
 /// must stay well above this.
@@ -98,6 +103,8 @@ pub struct AgentHostState {
     /// The distro's start checks as read when the host there started, or
     /// `None` for a host beside the shell.
     start_checks: Mutex<Option<DistroStartChecks>>,
+    /// How far Studio's start has got, for `start_status`.
+    progress: StartProgress,
     launch: Launch,
 }
 
@@ -208,6 +215,10 @@ pub struct HostRefusal {
     #[serde(skip_serializing_if = "Option::is_none")]
     reason: Option<&'static str>,
     message: String,
+    /// Why the host didn't start, for `start_status`; never sent with the
+    /// refusal.
+    #[serde(skip)]
+    failure: StartFailure,
 }
 
 impl HostRefusal {
@@ -216,11 +227,17 @@ impl HostRefusal {
             kind,
             reason: None,
             message: message.to_string(),
+            failure: StartFailure::of(progress::FailureCause::Other),
         }
     }
 
     fn with_reason(mut self, reason: &'static str) -> Self {
         self.reason = Some(reason);
+        self
+    }
+
+    fn with_failure(mut self, failure: StartFailure) -> Self {
+        self.failure = failure;
         self
     }
 }

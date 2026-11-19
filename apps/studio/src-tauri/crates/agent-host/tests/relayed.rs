@@ -13,7 +13,7 @@ use std::process::Command;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 
-use halonic_agent_host::{AgentHost, AgentHostError, Stopped};
+use halonic_agent_host::{AgentHost, AgentHostError, StartCause, Stopped};
 
 /// A made-up token of the right form, 43 base64url characters.
 const TOKEN: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJ-_01234";
@@ -104,10 +104,10 @@ fn relay_refuses_a_json_line_that_isnt_a_token() {
 }
 
 #[test]
-fn relay_refuses_a_host_that_ends_before_its_token() {
+fn relay_refuses_a_host_that_ends_before_its_token_and_keeps_its_exit_code() {
     let error =
         AgentHost::start_relayed(|_| exiting("no token here"), WAIT).expect_err("no handshake");
-    assert_eq!(error, AgentHostError::Exited);
+    assert_eq!(error, AgentHostError::Exited(Some(3)));
 }
 
 #[test]
@@ -122,7 +122,10 @@ fn relay_refuses_a_host_that_prints_no_token_in_time() {
 fn relay_says_why_a_host_can_not_start() {
     let missing = std::env::temp_dir().join("halonic-agent-host-test-missing-program");
     let error = AgentHost::start_relayed(|_| Command::new(missing), WAIT).expect_err("can't start");
-    assert!(matches!(error, AgentHostError::Start(_)), "{error:?}");
+    assert!(
+        matches!(error, AgentHostError::Start(StartCause::Missing, _)),
+        "{error:?}"
+    );
 }
 
 /// The first frame a connection to the relay sends reaches the host: `open`

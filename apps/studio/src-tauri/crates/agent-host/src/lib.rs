@@ -54,13 +54,56 @@ const EXIT_POLL: Duration = Duration::from_millis(25);
 /// How long dropping an [`AgentHost`] waits for it to exit on its own.
 const DROP_GRACE: Duration = Duration::from_secs(5);
 
+/// How long a host that closed its output before its handshake is given to
+/// exit, so its exit code can be read.
+const EXIT_CODE_WAIT: Duration = Duration::from_secs(2);
+
+/// Windows' `ERROR_VIRUS_INFECTED` and `ERROR_VIRUS_DELETED`: an antivirus
+/// program refused to run the file.
+#[cfg(windows)]
+const VIRUS_ERRORS: [i32; 2] = [225, 226];
+
+/// Why the system wouldn't start the host's program, read from its error so
+/// the shell can tell a broken install from a blocked one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StartCause {
+    /// The program, or something it needs, isn't there.
+    Missing,
+    /// The system refused to run it: a permission, or an antivirus program.
+    Blocked,
+    /// Any other reason.
+    Other,
+}
+
+impl StartCause {
+    /// The cause of `error`, the system's answer to starting a program.
+    pub fn of(error: &std::io::Error) -> Self {
+        #[cfg(windows)]
+        {
+            if error
+                .raw_os_error()
+                .is_some_and(|code| VIRUS_ERRORS.contains(&code))
+            {
+                return Self::Blocked;
+            }
+        }
+        match error.kind() {
+            std::io::ErrorKind::NotFound => Self::Missing,
+            std::io::ErrorKind::PermissionDenied => Self::Blocked,
+            _ => Self::Other,
+        }
+    }
+}
+
 /// Why the host couldn't be started. No message contains the token.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AgentHostError {
-    /// The program couldn't be started at all.
-    Start(String),
-    /// It ended, or closed its output, before printing a handshake.
-    Exited,
+    /// The program couldn't be started at all, and why the system said no.
+    Start(StartCause, String),
+    /// It ended, or closed its output, before printing a handshake. Holds
+    /// its exit code, or `None` when it was stopped by a signal or didn't
+    /// exit soon after.
+    Exited(Option<i32>),
     /// It printed nothing within the time allowed.
     TimedOut(Duration),
     /// It printed a line that isn't a valid handshake.
@@ -70,8 +113,12 @@ pub enum AgentHostError {
 impl std::fmt::Display for AgentHostError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Start(message) | Self::Handshake(message) => formatter.write_str(message),
-            Self::Exited => formatter.write_str("The agent host stopped before it served."),
+            Self::Start(_, message) | Self::Handshake(message) => formatter.write_str(message),
+            Self::Exited(Some(code)) => write!(
+                formatter,
+                "The agent host stopped before it served, with exit code {code}."
+            ),
+            Self::Exited(None) => formatter.write_str("The agent host stopped before it served."),
             Self::TimedOut(wait) => write!(
                 formatter,
                 "The agent host didn't serve within {} s.",
@@ -99,7 +146,10 @@ pub enum Stopped {
 /// [`AgentHostError::Start`] when `program` has no folder.
 pub fn executable_beside(program: &Path) -> Result<PathBuf, AgentHostError> {
     let folder = program.parent().ok_or_else(|| {
-        AgentHostError::Start("The agent host can't be found: the app has no folder.".to_owned())
+        AgentHostError::Start(
+            StartCause::Missing,
+            "The agent host can't be found: the app has no folder.".to_owned(),
+        )
     })?;
     Ok(folder.join(format!("{EXECUTABLE_NAME}{}", std::env::consts::EXE_SUFFIX)))
 }
@@ -147,7 +197,10 @@ impl AgentHost {
             .stderr(Stdio::piped());
         without_console_window(&mut command);
         let mut child = command.spawn().map_err(|error| {
-            AgentHostError::Start(format!("The agent host could not start: {error}."))
+            AgentHostError::Start(
+                StartCause::of(&error),
+                format!("The agent host could not start: {error}."),
+            )
         })?;
         log_stderr(&mut child, "agent host");
         let stdin = child.stdin.take();
@@ -159,7 +212,7 @@ impl AgentHost {
         let handshake = match answer {
             Ok(FirstLine::Text(line)) => read_handshake(&line),
             Ok(FirstLine::NotText) => Err(handshake::refused("it isn't UTF-8 text")),
-            Ok(FirstLine::Ended) => Err(AgentHostError::Exited),
+            Ok(FirstLine::Ended) => Err(AgentHostError::Exited(exit_code(&mut child))),
             Err(_) => Err(AgentHostError::TimedOut(wait)),
         };
         match handshake {
@@ -193,7 +246,10 @@ impl AgentHost {
         wait: Duration,
     ) -> Result<Self, AgentHostError> {
         let mut relay = Relay::bind().map_err(|error| {
-            AgentHostError::Start(format!("The agent host's relay could not listen: {error}."))
+            AgentHostError::Start(
+                StartCause::of(&error),
+                format!("The agent host's relay could not listen: {error}."),
+            )
         })?;
         let mut command = command(relay.port());
         command
@@ -202,14 +258,20 @@ impl AgentHost {
             .stderr(Stdio::piped());
         without_console_window(&mut command);
         let mut child = command.spawn().map_err(|error| {
-            AgentHostError::Start(format!("The agent host could not start: {error}."))
+            AgentHostError::Start(
+                StartCause::of(&error),
+                format!("The agent host could not start: {error}."),
+            )
         })?;
         log_stderr(&mut child, "agent host");
         let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
             kill(&mut child);
-            return Err(AgentHostError::Exited);
+            return Err(AgentHostError::Exited(None));
         };
         let answer = match read_relayed_handshake_line(stdout, relay.port()).recv_timeout(wait) {
+            Ok(Err(AgentHostError::Exited(_))) => {
+                Err(AgentHostError::Exited(exit_code(&mut child)))
+            }
             Ok(answer) => answer,
             Err(_) => Err(AgentHostError::TimedOut(wait)),
         };
@@ -342,7 +404,8 @@ fn read_relayed_handshake_line(
             let mut line = Vec::new();
             let read = reader.by_ref().take(left).read_until(b'\n', &mut line);
             let length = match read {
-                Ok(0) | Err(_) => break Err(AgentHostError::Exited),
+                // The shell reads the exit code once the host has ended.
+                Ok(0) | Err(_) => break Err(AgentHostError::Exited(None)),
                 Ok(length) => length,
             };
             left -= length as u64;
@@ -361,6 +424,20 @@ fn read_relayed_handshake_line(
         let _ = sender.send(answer.map(|handshake| (handshake, reader)));
     });
     receiver
+}
+
+/// The exit code of a host that closed its output before its handshake,
+/// once it has exited: `None` when a signal stopped it, or it still runs
+/// after [`EXIT_CODE_WAIT`]. The caller kills it then.
+fn exit_code(child: &mut Child) -> Option<i32> {
+    let deadline = Instant::now() + EXIT_CODE_WAIT;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return status.code(),
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(EXIT_POLL),
+            _ => return None,
+        }
+    }
 }
 
 fn kill(child: &mut Child) {

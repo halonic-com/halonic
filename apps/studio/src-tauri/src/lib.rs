@@ -11,7 +11,7 @@
 //! commands (capabilities/desktop-host-settings.json) and the `run_*` commands
 //! (capabilities/desktop-runs.json) and the `engine_lock_*` commands
 //! (capabilities/desktop-engine-lock.json) and the `agent_host_*` commands
-//! (capabilities/desktop-agent-host.json) and the `fs_*` commands
+//! with `engine_ready` and `start_status` (capabilities/desktop-agent-host.json) and the `fs_*` commands
 //! (capabilities/desktop-files.json, with the read-only `folder_*` commands) and the plugin install commands `plugin_source_*` (capabilities/desktop-plugin-source.json) and `plugin_folder_place` (capabilities/desktop-plugin-folder-place.json) and the git export `plugin_git_export*` (capabilities/desktop-plugin-git-export.json) and the `blob_*` commands
 //! (capabilities/desktop-blobs.json) and the `record_*` commands
 //! (capabilities/desktop-records.json) and the read-only `google_setup_read`
@@ -144,9 +144,11 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             Ok(())
         })
         // A page that reloads or closes can't end its agent host streams
-        // and file watches itself, so the shell ends them.
+        // and file watches itself, so the shell ends them. A page that
+        // loads starts the timer of Studio's start.
         .on_page_load(|webview, payload| {
             if payload.event() == PageLoadEvent::Started {
+                agent_host::page_loaded(webview.app_handle());
                 agent_host::end_page_streams(webview.app_handle(), webview.label());
                 http_fetch::end_page_calls(webview.app_handle(), webview.label());
                 files::end_page_watches(webview.app_handle(), webview.label());
@@ -213,6 +215,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             agent_host::agent_host_stream_end,
             agent_host::choice_save::agent_host_sandbox_choice_save,
             agent_host::updates::agent_host_security_updates,
+            agent_host::progress::engine_ready,
+            agent_host::progress::start_status,
             http_fetch::http_fetch,
             http_fetch::http_fetch_abort,
             files::fs_list,
