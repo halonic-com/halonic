@@ -39,19 +39,22 @@ verifies("remote.settings-available", () => {
 });
 
 verifies("remote.settings-section", () => {
-  it("sums Remote up as Off, On, or On with its phones", async () => {
+  it("sums Remote up as Off, or On with its phones", async () => {
     const remote = new FakeRemoteControl();
     const context = remoteContext(remote);
     expect(await remoteSummary(context)).toBe("Off");
 
     await remote.setRemote(true);
-    expect(await remoteSummary(context)).toBe("On");
+    expect(await remoteSummary(context)).toBe("On · no phone");
 
     remote.addPhone({ name: "Pixel 8" });
     expect(await remoteSummary(context)).toBe("On · 1 phone");
 
     remote.addPhone({ name: "Galaxy S22" });
     expect(await remoteSummary(context)).toBe("On · 2 phones");
+
+    await remote.setRemote(false);
+    expect(await remoteSummary(context)).toBe("Off");
     expect(await remoteSummary(remoteContext(undefined))).toBeUndefined();
   });
 });

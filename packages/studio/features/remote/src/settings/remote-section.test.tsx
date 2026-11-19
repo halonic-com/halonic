@@ -94,10 +94,10 @@ verifies("remote.tunnel-reasons", () => {
 
     expect(view.textContent).toContain("Tailscale is signed out");
     expect(view.textContent).toContain(
-      "Phones can't reach this computer until you sign in again. Your agents keep running.",
+      "Phones can't reach this computer until you sign in to Tailscale on it again. Your agents keep running.",
     );
     expect(view.textContent).toContain("Signed out");
-    expect(button("Open Tailscale")).toBeDefined();
+    expect(button("Open Tailscale")).toBeUndefined();
 
     await press(button("Check again") as HTMLElement);
 

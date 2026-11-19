@@ -6,7 +6,7 @@ export type TunnelAction =
       readonly kind: "open";
       readonly label: string;
       readonly url: string;
-      /** Where it leaves Studio for: "Opens Tailscale". */
+      /** Where it leaves Studio for: "Opens Tailscale's website". */
       readonly opens: string;
     }
   | { readonly kind: "check-again"; readonly label: string };
@@ -25,9 +25,13 @@ export interface ReasonWords {
 /** The names people know the providers by; any other id is shown as it is. */
 const providerNames: Readonly<Record<string, string>> = { tailscale: "Tailscale" };
 
-/** Where "Open Tailscale setup" and "Open Tailscale" go. */
+/**
+ * Where "Open Tailscale setup" and "How to turn Funnel off" go. Both are web pages: a web page
+ * can't open the Tailscale app (design decision 26).
+ */
 export const tailscaleSetupUrl = "https://tailscale.com/download";
-export const tailscaleConsoleUrl = "https://login.tailscale.com/admin";
+export const tailscaleFunnelOffUrl =
+  "https://tailscale.com/docs/reference/tailscale-cli/funnel#turn-tailscale-funnel-off";
 
 /** The provider's name, such as "Tailscale" for `tailscale`. */
 export function providerName(id: string): string {
@@ -39,13 +43,7 @@ const checkAgain: TunnelAction = { kind: "check-again", label: "Check again" };
 /** The words for a tunnel that is `degraded` or `down` for `reason`, through `provider`. */
 export function reasonWords(reason: TunnelReason, provider: string): ReasonWords {
   const name = providerName(provider);
-  const opens = `Opens ${name}`;
-  const open: TunnelAction = {
-    kind: "open",
-    label: `Open ${name}`,
-    url: tailscaleConsoleUrl,
-    opens,
-  };
+  const opens = `Opens ${name}'s website`;
   switch (reason) {
     case "not-installed":
       return {
@@ -60,8 +58,8 @@ export function reasonWords(reason: TunnelReason, provider: string): ReasonWords
     case "signed-out":
       return {
         title: `${name} is signed out`,
-        line: "Phones can't reach this computer until you sign in again. Your agents keep running.",
-        actions: [open, checkAgain],
+        line: `Phones can't reach this computer until you sign in to ${name} on it again. Your agents keep running.`,
+        actions: [checkAgain],
         state: "Signed out",
       };
     case "offline":
@@ -82,7 +80,10 @@ export function reasonWords(reason: TunnelReason, provider: string): ReasonWords
       return {
         title: `${name} Funnel is on`,
         line: `Funnel would put Halonic's remote port on the public internet, so Halonic refuses to use it. Turn Funnel off in ${name}.`,
-        actions: [open, checkAgain],
+        actions: [
+          { kind: "open", label: "How to turn Funnel off", url: tailscaleFunnelOffUrl, opens },
+          checkAgain,
+        ],
         state: "Funnel on",
       };
     case "stopped":

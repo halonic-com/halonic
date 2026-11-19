@@ -20,14 +20,14 @@ export const EMPTY_LINE_ON = "Pair a phone to see your agents, approve and send 
 export const EMPTY_STAYS = "Shell, files and secrets always stay on this computer.";
 export const PAIR = "Pair a phone";
 
-/** The summary line: "Off", or "On · 2 phones". */
+/** The summary line: "Off" (even with phones paired), or "On · no phone", "On · 2 phones". */
 export function summary(on: boolean, phones: number): string {
   if (!on) return "Off";
-  if (phones === 0) return "On";
+  if (phones === 0) return "On · no phone";
   return `On · ${phones} ${phones === 1 ? "phone" : "phones"}`;
 }
 
 export const CHECKING = "Checking…";
 export const TURN_ON_FAILED = "Couldn't turn remote on. Try again.";
 export const TURN_OFF_FAILED = "Couldn't turn remote off. Try again.";
-export const RISKY_FAILED = "Couldn't change risky approvals. Try again.";
+export const RISKY_FAILED = "Couldn't save the risky approvals setting. Try again.";
