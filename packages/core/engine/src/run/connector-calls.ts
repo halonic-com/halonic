@@ -4,18 +4,11 @@
 // key, and only then does the engine make it, here.
 
 import type { SendingSettings } from "@halonicjs/app";
-import {
-  maxCauseNameLength,
-  type ToolFailureCause,
-  type ToolNotMadeReason,
-} from "@halonicjs/events";
+import type { ToolFailureCause, ToolNotMadeReason } from "@halonicjs/events";
 import type { Agent, Connector } from "@halonicjs/format";
-import {
-  type ConnectorClient,
-  connectorStartFailureOf,
-  isConnectorToolError,
-} from "@halonicjs/ports";
+import { type ConnectorClient, isConnectorToolError } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
+import { connectorNotStartedCause } from "../agent/connector-not-started.ts";
 import type { ListedToolApproval } from "../agent/listed-tool-approval.ts";
 import { countedRisk, type DeclaredTools } from "../agent/offer-listed-tools.ts";
 import type { EffectBoundary } from "../agent/run-tool-call.ts";
@@ -94,7 +87,7 @@ export function readToolsOf(
  * tool can't be found, sending is off or the arguments aren't an object,
  * the call isn't made, so its outcome is `error`. When the connector's
  * listing failed, its cause is `connector-not-started`, with why it didn't
- * start when the error says (`connectorStartFailureOf`). When the tool answers
+ * start when the error says (`connectorNotStartedCause`). When the tool answers
  * with an error of its own (`ConnectorToolError`), the call is over and
  * failed: its outcome is `error`, with the tool's text, and the agent goes
  * on (HAL-12342). When the call breaks off without an answer, because the
@@ -127,7 +120,7 @@ export async function makeConnectorCall(
   if (tool?.kind !== "server") {
     const why = `the connector "${effect.connector}" no longer offers ${effect.tool}`;
     return tools.listingErrors.has(connector.id)
-      ? failed(why, notStarted(tools.listingErrors.get(connector.id)))
+      ? failed(why, connectorNotStartedCause(tools.listingErrors.get(connector.id)))
       : notMade("tool-gone", why);
   }
   if (tool.risk === "send") {
@@ -173,7 +166,7 @@ export async function makeRunConnectorCall(
     connectors = await open();
   } catch (error) {
     const why = `the connector "${effect.connector}" isn't connected: ${errorMessage(error)}`;
-    return failed(why, notStarted(error));
+    return failed(why, connectorNotStartedCause(error));
   }
   return makeConnectorCall(connectors, boundary, effect, listedToolApproval, declared);
 }
@@ -181,23 +174,6 @@ export async function makeRunConnectorCall(
 /** A call the engine didn't make, for `reason`; the model hears `why`. */
 function notMade(reason: ToolNotMadeReason, why: string): ToolResult {
   return failed(why, { code: "not-made", why: reason });
-}
-
-/**
- * The cause for connectors that didn't start because of `error`: the
- * program or the secret's name when the error is one `connectorStartFailureOf`
- * reads, cut to `maxCauseNameLength`, else `other` with no name. Never any
- * part of the error's message, which can hold paths or a program's output.
- */
-function notStarted(error: unknown): ToolFailureCause {
-  const failure = connectorStartFailureOf(error);
-  if (failure === undefined) return { code: "connector-not-started", why: "other" };
-  const name = failure.reason === "program-missing" ? failure.program : failure.secret;
-  return {
-    code: "connector-not-started",
-    why: failure.reason,
-    name: name.slice(0, maxCauseNameLength),
-  };
 }
 
 function failed(why: string, cause: ToolFailureCause): ToolResult {

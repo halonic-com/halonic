@@ -5,6 +5,7 @@
 
 import type { AgentResume, LoggedToolCall, ToolOutcome } from "@halonicjs/events";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
+import { answerNotStarted } from "./connector-not-started.ts";
 import { passResultToModel } from "./pass-result-to-model.ts";
 import {
   type CallStep,
@@ -49,6 +50,13 @@ export interface ApprovalAnswer {
   readonly approved: boolean;
   /** What the person wrote with the answer, if anything. */
   readonly comment?: string;
+  /**
+   * The connector the waiting call's tool comes from, as its approval names
+   * it; absent in older logs and for a tool from no connector. It tells an
+   * approved call to a connector that didn't start from one to a tool
+   * nobody offers.
+   */
+  readonly connector?: string;
 }
 
 /**
@@ -177,7 +185,10 @@ export function stopAtDelegate(
 
 /**
  * The answer to the call the turn stopped before. A call a person approved
- * is made, or handed over to the engine when it changes things.
+ * is made, or handed over to the engine when it changes things. When its
+ * connector didn't start this time, so the turn has no tool of that name,
+ * the call isn't made, and its result says why ({@link answerNotStarted});
+ * a call to a tool nobody offers any more is refused.
  */
 async function answerWaitingCall(
   context: ToolCallContext,
@@ -187,7 +198,12 @@ async function answerWaitingCall(
 ): Promise<CallStep> {
   const tool = tools.byName.get(call.name);
   if (tool === undefined) {
-    return answered(await refuseUnoffered(context, call));
+    const connector = notStartedConnectorOf(tools, answer);
+    return answered(
+      connector === undefined
+        ? await refuseUnoffered(context, call)
+        : await answerNotStarted(context, call, connector, tools.listingErrors.get(connector)),
+    );
   }
   if ("result" in answer) {
     const content = passResultToModel(tool, answer.result);
@@ -197,6 +213,17 @@ async function answerWaitingCall(
     return answered(refuseCall(context, tool.source, call, rejection(answer.comment)));
   }
   return makeOrHandOver(context, tool, call);
+}
+
+/**
+ * The connector of a call a person approved, when its listing failed in
+ * this turn, so it didn't start; `undefined` otherwise.
+ */
+function notStartedConnectorOf(tools: TurnTools, answer: TurnAnswer): string | undefined {
+  if (!("approved" in answer) || !answer.approved || answer.connector === undefined) {
+    return undefined;
+  }
+  return tools.listingErrors.has(answer.connector) ? answer.connector : undefined;
 }
 
 function answered(message: ChatMessage): CallStep {
