@@ -2144,15 +2144,30 @@ jobs:
       # One retry for a download that still fails after Gradle's own retries.
       # It also reruns a real compile error, so it stays at 2 attempts to keep
       # a broken build well inside the job timeout.
+      # Gradle remembers a "not found" from a repository, so a plain retry
+      # fails again within a second without asking the network (HAL-13164).
+      # `tauri android build` can't pass Gradle flags, so before the retry
+      # a separate resolve with --refresh-dependencies fetches the app's
+      # dependencies again. Attempt 1 keeps using the cache. The resolve
+      # needs tauri.settings.gradle, which attempt 1 writes; if attempt 1
+      # failed before that, the resolve fails too and the retry runs anyway.
       - name: Build the debug APK
         working-directory: apps/studio
         run: |
           export JAVA_HOME="$JAVA_HOME_17_X64"
           export NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          refresh_dependencies() {
+            (cd src-tauri/gen/android &&
+              ./gradlew --refresh-dependencies :app:dependencies --configuration universalDebugRuntimeClasspath) ||
+              echo "::warning title=android::Refreshing the Gradle dependencies failed."
+          }
           for attempt in 1 2; do
             pnpm exec tauri android build --debug --apk --target aarch64 --target x86_64 && exit 0
             echo "::warning title=android::Build attempt $attempt failed."
-            [ "$attempt" -lt 2 ] && sleep 20
+            if [ "$attempt" -lt 2 ]; then
+              sleep 20
+              refresh_dependencies
+            fi
           done
           exit 1
       # For trying a pull request's build on a phone or an emulator.
