@@ -58,7 +58,7 @@ export const startedByWords = {
   webhook: "A web request arrived",
   /** The routine's schedule, in `halonic routines`' words: "Schedule · weekdays at 08:00". */
   schedule: (when: string | undefined) =>
-    when === undefined ? "Schedule" : `Schedule · ${when.charAt(0).toLowerCase()}${when.slice(1)}`,
+    when === undefined ? "Schedule" : `Schedule · ${midSentence(when)}`,
   catchUp: "Caught up after sleep",
   test: (testCase: string) => `Test “${testCase}”`,
   /** A test run whose case the run log doesn't name. */
@@ -66,6 +66,19 @@ export const startedByWords = {
   /** A child run: the run that started it, by its short id. */
   parent: (shortId: string) => `Run ${shortId}`,
 };
+
+/** The day names a schedule can start with ("Mondays, Fridays at 07:30"). */
+const DAY_NAME = /^(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)days\b/;
+
+/**
+ * A schedule's words as they read after "Schedule ·": the first letter goes
+ * lowercase ("weekdays at 08:00", "every 15 minutes"), but a day name keeps
+ * its capital ("Mondays at 09:00") (HAL-13067).
+ */
+function midSentence(when: string): string {
+  if (DAY_NAME.test(when)) return when;
+  return `${when.charAt(0).toLowerCase()}${when.slice(1)}`;
+}
 
 /**
  * What a screen reader hears for a row (mc 19.3 Run row, revision 68):
@@ -84,9 +97,7 @@ export const rowLabelWords = {
     signal: "a signal",
     webhook: "a web request",
     schedule: (when: string | undefined) =>
-      when === undefined
-        ? "the schedule"
-        : `the schedule for ${when.charAt(0).toLowerCase()}${when.slice(1)}`,
+      when === undefined ? "the schedule" : `the schedule for ${midSentence(when)}`,
     catchUp: "a catch-up after sleep",
     test: (testCase: string) => `the test case “${testCase}”`,
     testCase: "a test case",
