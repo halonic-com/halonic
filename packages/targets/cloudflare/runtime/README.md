@@ -85,6 +85,12 @@ the migration, the bindings or the list differ, and `src/test/worker.spec.ts`
 (run inside workerd) fails when the Worker stops exporting one. The rule is
 `runtime.durable-object-migrations`.
 
+The Worker's `RunObject` (`src/run-object.ts`) is the adapter's class with the
+run list filled in: its alarm sends each run's summary to the D1 run list that
+`runStore.list()` and the admin export read. `run-list.test.ts` checks it inside
+workerd; the rule is `runtime.run-list`. Like the routines object's tick listener,
+its timer listener still throws until `host/server` is wired to run workflows.
+
 ## Configuration and wiring
 
 `createRuntime(env)` builds every Cloudflare adapter from the Worker's `env`:
