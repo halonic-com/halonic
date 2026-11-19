@@ -164,8 +164,19 @@ verifies("deploy.upload", () => {
   it("keeps the short wait when workers.dev was already on", async () => {
     const { api, options, requests } = setup({ accounts: [], deployment: live }, {}, 404);
     const { attempts: _attempts, ...defaults } = options;
-    await uploadAndSwitch(api, defaults).catch(() => {});
+    await expect(uploadAndSwitch(api, defaults)).rejects.toBeInstanceOf(SmokeTestFailedError);
     expect(requests).toHaveLength(5);
+  });
+
+  it("waits longer when workers.dev was off before this deploy", async () => {
+    const { api, options, requests } = setup(
+      { accounts: [], deployment: live, workersDevOn: false },
+      {},
+      404,
+    );
+    const { attempts: _attempts, ...defaults } = options;
+    await expect(uploadAndSwitch(api, defaults)).rejects.toBeInstanceOf(SmokeTestFailedError);
+    expect(requests).toHaveLength(16);
   });
 
   it("uploads a never-deployed Worker live and tests it", async () => {
