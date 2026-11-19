@@ -6,8 +6,10 @@ import { expect, it } from "vitest";
 import type { NodeProblem } from "./doctor-lines.ts";
 import { type DoctorProvider, DoctorService, type DoctorWorkspace } from "./doctor-service.ts";
 import type { DoctorHarness } from "./doctor-sign-ins.ts";
+import { doctorCheckLimitMs } from "./doctor-time-limit.ts";
 import type { ProviderModels, Resources } from "./resource-report.ts";
 import type { SandboxBackendStatus, SandboxChoice } from "./sandbox-choice.ts";
+import { HandTimers } from "./testing/hand-timers.ts";
 import type { TrustCheck } from "./trust-service.ts";
 
 const ready: SandboxCheck = { ok: true, reason: null, missing: [] };
@@ -81,7 +83,14 @@ interface Machine {
   secrets?: Record<string, string>;
   /** What the host found wrong with Node.js; the host checks nothing when left out. */
   node?: NodeProblem | null;
+  /** The sandbox check as a whole, in place of one that answers `sandbox`. */
+  sandboxCheck?: () => Promise<SandboxCheck>;
+  /** The resource report's read, in place of one that answers at once. */
+  read?: () => Promise<Resources>;
 }
+
+/** A check that never answers. */
+const never = <T>(): Promise<T> => new Promise<T>(() => undefined);
 
 /** A doctor on a machine with plenty of disk and a working sandbox, unless told otherwise. */
 function doctor(machine: Machine = {}) {
@@ -103,13 +112,14 @@ function doctor(machine: Machine = {}) {
       return machine.secrets?.[name] ?? null;
     },
   };
+  const timers = new HandTimers();
   const service = new DoctorService({
     trust: { check: async () => ({ status: machine.trust ?? "trusted" }) },
     sandbox: {
-      check: async () => machine.sandbox ?? ready,
+      check: machine.sandboxCheck ?? (async () => machine.sandbox ?? ready),
       capabilities: () => ({ files: "shared", strength: "os" }),
     },
-    resources: { read: async () => resources },
+    resources: { read: machine.read ?? (async () => resources) },
     harnesses: [
       machine.codexHarness ?? {
         id: "codex",
@@ -122,8 +132,23 @@ function doctor(machine: Machine = {}) {
       ? {}
       : { sandboxChoice: { current: () => machine.choice ?? null } }),
     ...(machine.node === undefined ? {} : { node: async () => machine.node ?? null }),
+    timers,
   });
-  return { service, asked };
+  return { service, asked, timers };
+}
+
+/**
+ * The report of `doctor`, with the time limit reached once the checks that
+ * answer have: the timers still set then are those of the checks that hang.
+ */
+async function afterLimit(
+  { service, timers }: ReturnType<typeof doctor>,
+  workspace: DoctorWorkspace | null,
+) {
+  const checking = service.check(workspace);
+  await new Promise((resolve) => setImmediate(resolve));
+  timers.fire();
+  return checking;
 }
 
 verifies("app.doctor-service", () => {
@@ -230,10 +255,10 @@ verifies("app.doctor-service", () => {
       }),
     );
 
-    expect(report.models?.ready).toEqual([]);
-    expect(report.models?.problems).toEqual([
-      { problem: "no-key", alias: "smart", provider: "anthropic", name: "Anthropic" },
-    ]);
+    expect(report.models).toMatchObject({
+      ready: [],
+      problems: [{ problem: "no-key", alias: "smart", provider: "anthropic", name: "Anthropic" }],
+    });
   });
 
   it("warns about an agent whose harness isn't installed, and not about one in Halonic's own loop", async () => {
@@ -275,15 +300,17 @@ verifies("app.doctor-service", () => {
     });
     const without = await service.check(workspace({ agents }));
 
-    expect(report.harnesses?.status).toBe("warning");
-    expect(report.harnesses?.problems).toEqual([
-      expect.objectContaining({
-        problem: "signed-out",
-        agent: "Writer",
-        settingsFolder: "/data/writer/codex",
-      }),
-    ]);
-    expect(without.harnesses?.problems).toEqual([]);
+    expect(report.harnesses).toMatchObject({
+      status: "warning",
+      problems: [
+        expect.objectContaining({
+          problem: "signed-out",
+          agent: "Writer",
+          settingsFolder: "/data/writer/codex",
+        }),
+      ],
+    });
+    expect(without.harnesses).toMatchObject({ problems: [] });
   });
 
   it("lists a ready harness outside a workspace, and has no Harnesses line when none is ready or used", async () => {
@@ -292,9 +319,9 @@ verifies("app.doctor-service", () => {
     );
     const none = await doctor().service.check(null);
 
-    expect(installed.harnesses?.installed).toEqual([
-      { harness: "codex", name: "Codex", version: "0.9.2" },
-    ]);
+    expect(installed.harnesses).toMatchObject({
+      installed: [{ harness: "codex", name: "Codex", version: "0.9.2" }],
+    });
     expect(none.harnesses).toBeUndefined();
   });
 
@@ -305,7 +332,7 @@ verifies("app.doctor-service", () => {
     }).service.check(null);
 
     expect(report.sandbox.status).toBe("failed");
-    expect(report.disk.problem).toBe("low");
+    expect(report.disk).toMatchObject({ problem: "low" });
     expect(report.summary).toEqual({ problems: 1, warnings: 1, needsFixing: true });
   });
 
@@ -410,5 +437,65 @@ verifies("app.doctor-node", () => {
   it("has no Node.js line when the host found nothing, or checks nothing", async () => {
     expect((await doctor({ node: null }).service.check(null)).node).toBeUndefined();
     expect((await doctor().service.check(null)).node).toBeUndefined();
+  });
+});
+
+verifies("app.doctor-time-limit", () => {
+  it("warns on a harness whose detect() never answers, and still gives the other lines", async () => {
+    const report = await afterLimit(
+      doctor({ codexHarness: { id: "codex", name: "Codex", detect: never } }),
+      null,
+    );
+
+    expect(report.harnesses).toEqual({ check: "harnesses", status: "warning", timedOut: true });
+    expect(report.sandbox.status).toBe("ok");
+    expect(report.disk.status).toBe("ok");
+    expect(report.summary).toEqual({ problems: 0, warnings: 1, needsFixing: false });
+  });
+
+  it("gives each check 5 seconds, and clears every timer of a check that answers", async () => {
+    const machine = doctor({ sandboxCheck: never });
+    const checking = machine.service.check(null);
+
+    expect(machine.timers.delays()).toEqual(Array(6).fill(doctorCheckLimitMs));
+    expect(doctorCheckLimitMs).toBe(5_000);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(machine.timers.delays()).toEqual([doctorCheckLimitMs]);
+    machine.timers.fire();
+    const report = await checking;
+
+    expect(report.sandbox).toEqual({ check: "sandbox", status: "warning", timedOut: true });
+    expect(report.summary).toEqual({ problems: 0, warnings: 1, needsFixing: false });
+  });
+
+  it("times out the Disk line, but not the Models line of providers off this computer, when the resource report hangs", async () => {
+    const report = await afterLimit(
+      doctor({ read: never, secrets: { ANTHROPIC_API_KEY: "sk-test" } }),
+      workspace({
+        providers: [anthropic],
+        aliases: [{ alias: "smart", provider: "anthropic" }],
+      }),
+    );
+
+    expect(report.disk).toEqual({ check: "disk", status: "warning", timedOut: true });
+    expect(report.models?.status).toBe("ok");
+  });
+
+  it("times out the Models line too when a provider runs on this computer", async () => {
+    const report = await afterLimit(
+      doctor({ read: never }),
+      workspace({ providers: [ollama], aliases: [{ alias: "fast", provider: "ollama" }] }),
+    );
+
+    expect(report.models).toEqual({ check: "models", status: "warning", timedOut: true });
+    expect(report.workspace?.status).toBe("ok");
+  });
+
+  it("still throws what a check throws in time", async () => {
+    const report = doctor({
+      sandboxCheck: () => Promise.reject(new Error("broken")),
+    }).service.check(null);
+
+    await expect(report).rejects.toThrow("broken");
   });
 });
