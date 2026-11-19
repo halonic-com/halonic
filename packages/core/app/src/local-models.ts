@@ -77,3 +77,18 @@ export function ollamaDownloadedModels(body: unknown): string[] {
     return name.replace(/:latest$/, "");
   });
 }
+
+/**
+ * The {@link DownloadedModelSource} for Ollama: `readTags` asks `/api/tags`
+ * (in `@halonicjs/adapter-http-kit`, `readOllamaTags`) and this reads the list.
+ *
+ * @throws from `downloadedModels` when `readTags` throws or its answer isn't Ollama's list
+ *
+ * @example
+ * await detectLocalModels(ollamaDownloadedModelSource(() => readOllamaTags(http)));
+ */
+export function ollamaDownloadedModelSource(
+  readTags: () => Promise<unknown>,
+): DownloadedModelSource {
+  return { downloadedModels: async () => ollamaDownloadedModels(await readTags()) };
+}

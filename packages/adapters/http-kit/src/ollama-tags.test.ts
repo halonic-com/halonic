@@ -1,11 +1,7 @@
 import type { HttpClient } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  ollamaAnswerTimeoutMs,
-  ollamaDownloadedModelSource,
-  ollamaTagsUrl,
-} from "./ollama-downloaded-models.ts";
+import { ollamaAnswerTimeoutMs, ollamaTagsUrl, readOllamaTags } from "./ollama-tags.ts";
 
 interface Asked {
   url: string;
@@ -32,16 +28,16 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-verifies("http-kit.ollama-downloaded-models", () => {
-  describe("ollamaDownloadedModelSource", () => {
+verifies("http-kit.ollama-tags", () => {
+  describe("readOllamaTags", () => {
     it("asks Ollama's /api/tags on this computer once, without a key or redirects", async () => {
       const { http, asked } = server(() =>
         Response.json({ models: [{ name: "llama3.2:latest" }, { name: "qwen3:8b" }] }),
       );
 
-      const models = await ollamaDownloadedModelSource(http).downloadedModels();
+      const answer = await readOllamaTags(http);
 
-      expect(models).toEqual(["llama3.2", "qwen3:8b"]);
+      expect(answer).toEqual({ models: [{ name: "llama3.2:latest" }, { name: "qwen3:8b" }] });
       expect(asked).toHaveLength(1);
       expect(asked[0]?.url).toBe("http://localhost:11434/api/tags");
       expect(asked[0]?.url).toBe(ollamaTagsUrl);
@@ -52,17 +48,15 @@ verifies("http-kit.ollama-downloaded-models", () => {
     it("throws and names the status when Ollama answers with an error", async () => {
       const { http } = server(() => new Response("broken", { status: 500 }));
 
-      await expect(ollamaDownloadedModelSource(http).downloadedModels()).rejects.toThrow(
+      await expect(readOllamaTags(http)).rejects.toThrow(
         "Ollama answered /api/tags with HTTP 500.",
       );
     });
 
-    it("throws when the answer isn't Ollama's list", async () => {
-      const { http } = server(() => Response.json({ error: "unknown" }));
+    it("throws when the answer isn't JSON", async () => {
+      const { http } = server(() => new Response("<html>"));
 
-      await expect(ollamaDownloadedModelSource(http).downloadedModels()).rejects.toThrow(
-        /no "models" list/,
-      );
+      await expect(readOllamaTags(http)).rejects.toThrow(SyntaxError);
     });
 
     it("puts one 3-second limit on the request and the body", async () => {
@@ -82,7 +76,7 @@ verifies("http-kit.ollama-downloaded-models", () => {
           ),
       );
 
-      const pending = ollamaDownloadedModelSource(http).downloadedModels();
+      const pending = readOllamaTags(http);
       await vi.waitFor(() => expect(asked).toHaveLength(1));
       limit.abort(new DOMException("The operation timed out.", "TimeoutError"));
 

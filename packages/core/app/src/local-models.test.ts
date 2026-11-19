@@ -3,6 +3,7 @@ import { expect, it } from "vitest";
 import {
   type DownloadedModelSource,
   detectLocalModels,
+  ollamaDownloadedModelSource,
   ollamaDownloadedModels,
 } from "./local-models.ts";
 
@@ -45,15 +46,21 @@ verifies("app.local-models-not-found", () => {
   });
 
   it("gives not-found when Ollama's list has a model without a name", async () => {
-    const source: DownloadedModelSource = {
-      downloadedModels: async () => ollamaDownloadedModels({ models: [{ size: 1 }] }),
-    };
+    const source = ollamaDownloadedModelSource(async () => ({ models: [{ size: 1 }] }));
 
     expect(await detectLocalModels(source)).toMatchObject({ kind: "not-found" });
   });
 });
 
 verifies("app.local-models-ollama-list", () => {
+  it("reads the list Ollama's source answers with", async () => {
+    const source = ollamaDownloadedModelSource(async () => ({
+      models: [{ name: "llama3.2:latest" }, { name: "qwen3:8b" }],
+    }));
+
+    expect(await source.downloadedModels()).toEqual(["llama3.2", "qwen3:8b"]);
+  });
+
   it("takes each name in order and drops the :latest tag", () => {
     const body = {
       models: [

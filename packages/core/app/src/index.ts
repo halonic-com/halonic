@@ -159,6 +159,7 @@ export {
   type DownloadedModelSource,
   detectLocalModels,
   type LocalModels,
+  ollamaDownloadedModelSource,
   ollamaDownloadedModels,
 } from "./local-models.ts";
 export { defaultCurrency, type MoneyAmountOptions, moneyAmount } from "./money-amount.ts";
