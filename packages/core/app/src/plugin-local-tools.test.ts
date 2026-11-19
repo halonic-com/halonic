@@ -1,19 +1,20 @@
-import type {
-  Clock,
-  ConnectorClient,
-  ConnectorConfig,
-  ConnectorFactory,
-  ConnectorFactoryContext,
-  Digest,
-  Sandbox,
-  SandboxCheck,
-  SandboxFence,
-  SandboxProfile,
-} from "@halonicjs/ports";
-import { FakeSandboxSession, idleProgram } from "@halonicjs/testing-contracts";
+import type { ConnectorFactoryContext } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import type { PluginToolSet } from "./plugin-contributions.ts";
+import {
+  backend,
+  clock,
+  config,
+  digest,
+  filesFolder,
+  lister,
+  profileNumber,
+  setUp,
+  TestFactory,
+  TestSandbox,
+  trust,
+  trustedAsLoaded,
+} from "./local-tool-fixtures.spec.ts";
 import { readPluginFolder } from "./plugin-folder.ts";
 import {
   isLocalToolSet,
@@ -24,164 +25,8 @@ import {
   PluginLocalToolNotTrustedError,
   PluginLocalTools,
 } from "./plugin-local-tools.ts";
-import type { PluginStartTrustOptions } from "./plugin-start-trust.ts";
-import type { PluginTrustCheck } from "./plugin-trust.ts";
-import { TestFolderReader } from "./testing/test-folder-reader.ts";
 import { TestTrustStore } from "./testing/test-trust-store.ts";
 import { TrustService } from "./trust-service.ts";
-
-const trust = { location: "/profile/plugins/files", fingerprint: "hfp1:files" };
-
-/** SHA-256 from Web Crypto, as the platforms' `Digest` adapters give it. */
-const digest: Digest = {
-  async sha256(data) {
-    return new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
-  },
-};
-
-const clock: Clock = { now: () => new Date("2026-11-18T09:00:00.000Z") };
-
-const filesManifest = `id: files
-version: 1.0.0
-sdk: 1
-name: Files
-description: Lists files.
-localTools:
-  - id: lister
-    start: { script: { program: node, path: tools/server.js } }
-    tools:
-      - { name: list-files, description: Lists the files., risk: read, untrusted: true }
-`;
-
-/** The plugin folder with the `files` plugin in it. */
-function filesFolder(): TestFolderReader {
-  return new TestFolderReader().putFiles({
-    "files/plugin.yaml": filesManifest,
-    "files/tools/server.js": "console.log('lister');\n",
-  });
-}
-
-/** A trust check that finds the `files` plugin trusted with the grant `trust`, as loaded. */
-function trustedAsLoaded(): PluginStartTrustOptions {
-  return {
-    plugins: filesFolder(),
-    digest,
-    trust: {
-      checkPlugin: async () =>
-        ({ status: "trusted", fingerprint: trust.fingerprint }) as PluginTrustCheck,
-    },
-  };
-}
-
-const lister: LocalToolSet = {
-  plugin: "files",
-  part: "local:lister",
-  declared: [
-    { name: "list-files", description: "Lists the files.", risk: "read", untrusted: true },
-  ],
-  trust,
-};
-
-const backend: PluginToolSet = { ...lister, part: "backend" };
-
-const config: ConnectorConfig = {
-  id: "files:lister",
-  transport: { kind: "stdio", command: "node", args: ["server.js"], env: {} },
-  secretEnv: {},
-};
-
-/** A profile whose working folder says which session it is. */
-function profileNumber(n: number): SandboxProfile {
-  return {
-    workingFolder: `/data/local-tools/files-lister-${n}`,
-    tempFolder: `/data/temp/files-lister-${n}`,
-    settingsFolder: null,
-    readOnlyPaths: [],
-    deniedPaths: [],
-    env: {},
-    network: { bridge: null, allowedSites: [] },
-    timeLimitMs: 60_000,
-  };
-}
-
-const ok: SandboxCheck = { ok: true, reason: null, missing: [] };
-
-/** A sandbox that opens fake sessions and keeps each one. */
-class TestSandbox implements Pick<Sandbox, "check" | "open"> {
-  readonly sessions: FakeSandboxSession[] = [];
-  checkResult: SandboxCheck = ok;
-  /** The fence proof each new session reports. */
-  fence: SandboxFence = { state: "fenced" };
-
-  async check(): Promise<SandboxCheck> {
-    return this.checkResult;
-  }
-
-  async open(profile: SandboxProfile): Promise<FakeSandboxSession> {
-    if (!this.checkResult.ok) throw new Error("bubblewrap is not installed");
-    const session = new FakeSandboxSession({ profile, program: idleProgram, fence: this.fence });
-    this.sessions.push(session);
-    return session;
-  }
-}
-
-/**
- * A factory whose connectors answer with their session's working folder.
- * The tool `outlast` runs until the session's time limit runs out.
- */
-class TestFactory implements ConnectorFactory {
-  readonly transport = "stdio";
-  readonly contexts: ConnectorFactoryContext[] = [];
-  closed = 0;
-
-  create(created: ConnectorConfig, context: ConnectorFactoryContext): ConnectorClient {
-    this.contexts.push(context);
-    const session = context.sandbox;
-    if (session === undefined) throw new Error("no session");
-    return {
-      id: created.id,
-      listTools: async () => [],
-      callTool: async (name) => {
-        if (name === "outlast") await session.close();
-        if (session.fence.state === "stopped") throw new Error("its sandbox session has ended");
-        return session.profile.workingFolder;
-      },
-      close: async () => {
-        this.closed += 1;
-      },
-    };
-  }
-}
-
-/** The profile of session `n` with `sites` as its allowed sites. */
-function profileWithSites(n: number, sites: readonly string[]): SandboxProfile {
-  const profile = profileNumber(n);
-  return { ...profile, network: { ...profile.network, allowedSites: [...sites] } };
-}
-
-function setUp(
-  sandbox: TestSandbox | null = new TestSandbox(),
-  options: {
-    mxc?: LocalToolMxc;
-    sites?: readonly string[];
-    startTrust?: PluginStartTrustOptions;
-  } = {},
-) {
-  const factory = new TestFactory();
-  let prepared = 0;
-  const local = new PluginLocalTools({
-    sandbox,
-    ...(options.mxc === undefined ? {} : { mxc: options.mxc }),
-    factory,
-    context: {} as Omit<ConnectorFactoryContext, "trust" | "sandbox">,
-    startTrust: options.startTrust ?? trustedAsLoaded(),
-    prepare: async () => {
-      prepared += 1;
-      return { config, profile: profileWithSites(prepared, options.sites ?? []) };
-    },
-  });
-  return { local, factory, sandbox };
-}
 
 verifies("app.plugin-local-tools", () => {
   it("tells local tools from the backend, and names each one's connector", () => {
