@@ -36,6 +36,7 @@ import {
   reachesNoNetwork,
 } from "./srt-session-env.ts";
 import { toolFoldersInProfile } from "./tool-folders.ts";
+import { sessionToolEnv } from "./windows-program-env.ts";
 import { prepareToolFolders } from "./windows-tool-folders.ts";
 
 /** One started program: what the session tracks to stop it and to say why it ended. */
@@ -88,6 +89,7 @@ export class SrtSession implements SandboxSession {
     git: { folder: GitFolderSnapshot | null; nested: NestedGitSnapshot | null },
     journal: { folder: string | null; file: string | null },
     grants: KeptGrants | null,
+    toolEnv: Record<string, string>,
   ) {
     this.profile = profile;
     this.#runner = runner;
@@ -100,7 +102,7 @@ export class SrtSession implements SandboxSession {
     this.#journal = journal;
     this.#grants = grants;
     this.#launcherEnv = launcherEnv(profile, process.env, folder, launcherTemp);
-    this.#programEnv = programEnv(profile, process.env, folder);
+    this.#programEnv = programEnv(profile, process.env, folder, toolEnv);
     this.#timer = setTimeout(() => void this.#expire(), remainingMs);
     this.#timer.unref();
     // Nobody awaits the abort handler, so a failed undo has no caller to reach there: `close()` reports it.
@@ -202,6 +204,7 @@ export class SrtSession implements SandboxSession {
         git,
         { folder: journalFolder, file: journal },
         grants,
+        await sessionToolEnv(profile),
       );
       return session;
     } catch (error) {
