@@ -4,32 +4,43 @@
 // This Worker checks it is the merge queue or a push to main of halonic-com/halonic, asks
 // GitHub for a one-time runner registration (JIT config) and starts one container that runs
 // exactly that runner. The runner takes one job, deregisters itself, and the container stops.
+//
+// Two images (HAL-13578, board 19 Nov): A starts plain ubuntu:24.04 and sets it up per job
+// (bootstrap.sh). B starts from a snapshot of a container that already ran bootstrap.sh and
+// prefill.sh (a warm pnpm store from main's lockfile); a cron rebuilds it nightly or when the
+// lockfile changes. IMAGE_B picks which jobs get B: "off", "alternate" (by run) or "all".
 
 import { checkSpend } from "../spend-guard/src/check-spend.mjs";
 import bootstrap from "./bootstrap.sh";
+import { JOB_LIMIT_MS, ledger, USD_PER_SECOND } from "./ledger.mjs";
 import {
   b64url,
+  imageFor,
   LABEL,
   nextStep,
   ORG,
   pemToPkcs8,
   REPO,
   RUNNER_GROUP,
+  snapshotDue,
   stillQueued,
   trustedRun,
   validSignature,
   wantedJob,
 } from "./lib.mjs";
+import prefill from "./prefill.sh";
 
-// standard-4 (4 vCPU, 12 GiB, 20 GB disk) at full use, rounded up: $0.40 an hour.
-export const USD_PER_SECOND = 0.4 / 3600;
+export { Ledger } from "./ledger.mjs";
+
 const START_GIVE_UP_MS = 45 * 60_000; // a job nobody could start for this long stays queued on GitHub
-const JOB_LIMIT_MS = 60 * 60_000; // the longest Linux job in ci.yml has a 35-minute timeout
 const RETRY_MS = 20_000;
 const POLL_MS = 60_000;
 // Cloudflare stops a container soon after its Durable Object goes idle, even mid-job, unless
 // given this. The alarms above run well within it.
 const INACTIVITY_MS = 10 * 60_000;
+const BUILD_LIMIT_MS = 30 * 60_000; // a snapshot build that isn't ready by then is stopped
+const BUILD_POLL_MS = 20_000;
+const LOCKFILE_URL = `https://raw.githubusercontent.com/${REPO}/main/pnpm-lock.yaml`;
 
 export default {
   async fetch(request, env) {
@@ -64,17 +75,48 @@ export default {
     const run = await github(token, "GET", `/repos/${REPO}/actions/runs/${job.runId}`);
     if (!trustedRun(run)) {
       console.log(
-        JSON.stringify({ msg: "refused", job: job.id, event: run.event, branch: run.head_branch }),
+        JSON.stringify({
+          msg: "refused",
+          job: job.id,
+          event: run?.event,
+          branch: run?.head_branch,
+        }),
       );
       return new Response("not a merge-queue or main run", { status: 403 });
     }
-    const stub = env.RUNNER_JOB.get(env.RUNNER_JOB.idFromName(`job-${job.id}`));
+    const snapshot = await (await ledger(env).fetch("https://ledger/snapshot")).json();
+    const image = imageFor(env.IMAGE_B, job.runId, snapshot);
+    const ns = image === "b" ? env.RUNNER_JOB_B : env.RUNNER_JOB;
+    const stub = ns.get(ns.idFromName(`job-${job.id}`));
     return stub.fetch("https://job/start", {
       method: "POST",
-      body: JSON.stringify({ ...job, installationId: payload.installation.id }),
+      body: JSON.stringify({
+        ...job,
+        installationId: payload.installation.id,
+        image,
+        snapshot: image === "b" ? { id: snapshot.id } : undefined,
+      }),
     });
   },
+
+  // Image B's snapshot: rebuilt when main's lockfile changed or the last one is a day old.
+  async scheduled(_controller, env) {
+    if ((env.IMAGE_B ?? "off") === "off") return;
+    if (!(await checkSpend(env, "cf-runner"))) return;
+    const res = await fetch(LOCKFILE_URL, { headers: { "user-agent": "halonic-cf-runner" } });
+    if (!res.ok)
+      return console.log(JSON.stringify({ msg: "lockfile fetch failed", status: res.status }));
+    const lock = hex(await crypto.subtle.digest("SHA-256", await res.arrayBuffer()));
+    const snapshot = await (await ledger(env).fetch("https://ledger/snapshot")).json();
+    if (!snapshotDue(snapshot, lock, Date.now())) return;
+    // One builder per lockfile and day; a builder that's already at work ignores the request.
+    const day = new Date().toISOString().slice(0, 10);
+    const stub = env.RUNNER_JOB_B.get(env.RUNNER_JOB_B.idFromName(`build-${lock}-${day}`));
+    await stub.fetch("https://job/build", { method: "POST", body: JSON.stringify({ lock }) });
+  },
 };
+
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 
 // ---- GitHub App ----
 
@@ -110,8 +152,7 @@ async function installationToken(env, installationId) {
 }
 
 // The org's runner group RUNNER_GROUP, which the board set up with access to halonic-com/halonic
-// only. An org on GitHub Free has only the Default group; the job-started hook still refuses
-// any other repository there.
+// only. Never fall back to the Default group: it may be open to other repositories.
 let groupId;
 async function runnerGroup(token) {
   if (groupId) return groupId;
@@ -120,8 +161,7 @@ async function runnerGroup(token) {
     "GET",
     `/orgs/${ORG}/actions/runner-groups?per_page=100`,
   );
-  const group =
-    runner_groups.find((g) => g.name === RUNNER_GROUP) ?? runner_groups.find((g) => g.default);
+  const group = runner_groups.find((g) => g.name === RUNNER_GROUP);
   if (!group) throw new Error(`no runner group ${RUNNER_GROUP} in ${ORG}`);
   groupId = group.id;
   return groupId;
@@ -248,14 +288,16 @@ export class RunnerJob {
         startedAt: Date.now(),
         released: false,
       });
-      this.state.container.start({
-        entrypoint: ["bash", "-c", `${bootstrap}\n${RUN}`],
-        env: { ACTIONS_RUNNER_INPUT_JITCONFIG: jit.encoded_jit_config },
-        enableInternet: true,
-      });
+      this.state.container.start(this.startOptions(job, jit.encoded_jit_config));
       await this.state.container.setInactivityTimeout(INACTIVITY_MS);
       console.log(
-        JSON.stringify({ msg: "started", job: job.id, name: job.name, runner: jit.runner.id }),
+        JSON.stringify({
+          msg: "started",
+          job: job.id,
+          name: job.name,
+          runner: jit.runner.id,
+          image: job.image ?? "a",
+        }),
       );
       return "started";
     } catch (error) {
@@ -263,6 +305,19 @@ export class RunnerJob {
       await this.state.storage.put("phase", "pending");
       throw error;
     }
+  }
+
+  // Image A: plain ubuntu:24.04 from the application's config, set up by bootstrap.sh.
+  startOptions(_job, jitConfig) {
+    return {
+      entrypoint: ["bash", "-c", `${bootstrap}\n${RUN}`],
+      env: {
+        ACTIONS_RUNNER_INPUT_JITCONFIG: jitConfig,
+        CF_STARTED_AT: now(),
+        CF_RUNNER_IMAGE: "a",
+      },
+      enableInternet: true,
+    };
   }
 
   async #finish(job, startedAt) {
@@ -288,6 +343,7 @@ export class RunnerJob {
     }
     await s.put("phase", "done");
     this.#log(job, queued ? "gave up starting" : "finished", {
+      image: job.image ?? "a",
       seconds,
       usd: +(seconds * USD_PER_SECOND).toFixed(3),
     });
@@ -312,6 +368,110 @@ export class RunnerJob {
   }
 }
 
+const now = () => String(Math.floor(Date.now() / 1000));
+
+// ---- Image B: jobs start from a snapshot; a builder makes the snapshot ----
+
+export class RunnerJobB extends RunnerJob {
+  // The snapshot already ran bootstrap.sh and prefill.sh: only find the runner and run it.
+  startOptions(job, jitConfig) {
+    return {
+      containerSnapshot: job.snapshot,
+      instance: "standard-4",
+      entrypoint: [
+        "bash",
+        "-c",
+        `home=$(getent passwd runner | cut -d: -f6)\ndir=$home/actions-runner\n${RUN}`,
+      ],
+      env: {
+        ACTIONS_RUNNER_INPUT_JITCONFIG: jitConfig,
+        CF_STARTED_AT: now(),
+        CF_RUNNER_IMAGE: "b",
+      },
+      enableInternet: true,
+    };
+  }
+
+  async fetch(request) {
+    if (new URL(request.url).pathname !== "/build") return super.fetch(request);
+    const s = this.state.storage;
+    if (await s.get("build")) return new Response("already building", { status: 200 });
+    const room = await (
+      await ledger(this.env).fetch("https://ledger/reserve", { method: "POST" })
+    ).json();
+    if (!room.ok) return new Response(`no room: ${room.reason}`, { status: 503 });
+    const { lock } = await request.json();
+    await s.put({ build: { lock, startedAt: Date.now() } });
+    // Same image family as the jobs: Cloudflare's managed Debian; bootstrap.sh adds the rest.
+    this.state.container.start({
+      image: "cloudflare/debian-trixie",
+      instance: "standard-4",
+      entrypoint: ["bash", "-c", `${bootstrap}\n${prefill}\nexec sleep infinity`],
+      enableInternet: true,
+    });
+    await this.state.container.setInactivityTimeout(INACTIVITY_MS);
+    console.log(JSON.stringify({ msg: "snapshot build started", lock }));
+    await s.setAlarm(Date.now() + BUILD_POLL_MS);
+    return new Response("building", { status: 202 });
+  }
+
+  async alarm() {
+    const build = await this.state.storage.get("build");
+    if (!build) return super.alarm();
+    if (build.done) return;
+    const elapsed = Date.now() - build.startedAt;
+    let result = "failed: container stopped";
+    if (this.state.container?.running) {
+      const marker = await this.#read("/opt/cf-runner/prefilled");
+      if (marker === null && elapsed < BUILD_LIMIT_MS) {
+        return this.state.storage.setAlarm(Date.now() + BUILD_POLL_MS);
+      }
+      result = marker === null ? "failed: not ready in time" : "ready";
+      if (marker !== null) {
+        const snap = await this.state.container.snapshotContainer({
+          name: `cf-runner-b-${build.lock.slice(0, 12)}`,
+        });
+        const lock = /lockfile=([0-9a-f]{64})/.exec(marker)?.[1] ?? build.lock;
+        await ledger(this.env).fetch("https://ledger/snapshot", {
+          method: "PUT",
+          body: JSON.stringify({
+            id: snap.id,
+            size: snap.size,
+            lock,
+            builtAt: Date.now(),
+            buildSeconds: Math.round(elapsed / 1000),
+          }),
+        });
+        result = `snapshot ${snap.id}, ${Math.round(snap.size / 2 ** 20)} MiB`;
+      }
+      await this.state.container.destroy();
+    }
+    await ledger(this.env).fetch("https://ledger/release", {
+      method: "POST",
+      body: String(Math.round(elapsed / 1000)),
+      headers: { "x-kind": "build" },
+    });
+    await this.state.storage.put("build", { ...build, done: true });
+    console.log(
+      JSON.stringify({
+        msg: `snapshot build ${result}`,
+        lock: build.lock,
+        seconds: Math.round(elapsed / 1000),
+      }),
+    );
+  }
+
+  async #read(path) {
+    try {
+      const proc = await this.state.container.exec(["cat", path]);
+      const out = await proc.output();
+      return out.exitCode === 0 ? new TextDecoder().decode(out.stdout) : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
 // After bootstrap.sh, in the same shell (so $home and $dir are set): sample memory and disk,
 // run the runner once as `runner`, print the measurements.
 const RUN = `
@@ -323,48 +483,3 @@ runuser -u runner -- env HOME="$home" \\
   "$dir/run.sh" || true
 cat /opt/cf-runner/job-metrics 2>/dev/null || true
 `;
-
-// ---- The trial's budget and parallel limit: one Durable Object for the account ----
-
-const ledger = (env) => env.LEDGER.get(env.LEDGER.idFromName("ledger"));
-
-export class Ledger {
-  constructor(state, env) {
-    this.state = state;
-    this.capUsd = Number(env.CAP_USD ?? 18);
-    this.maxRunners = Number(env.MAX_RUNNERS ?? 4);
-  }
-
-  async fetch(request) {
-    const s = this.state.storage;
-    const seconds = (await s.get("seconds")) ?? 0;
-    const running = (await s.get("running")) ?? 0;
-    const jobs = (await s.get("jobs")) ?? 0;
-    const path = new URL(request.url).pathname;
-    if (path === "/reserve") {
-      // Each running job could still use up to its time limit.
-      const committed = (seconds + (running + 1) * (JOB_LIMIT_MS / 1000)) * USD_PER_SECOND;
-      if (committed > this.capUsd) return Response.json({ ok: false, reason: "budget" });
-      if (running >= this.maxRunners) return Response.json({ ok: false, reason: "parallel limit" });
-      await s.put({ running: running + 1 });
-      return Response.json({ ok: true });
-    }
-    if (path === "/release") {
-      const used = Number(await request.text()) || 0;
-      await s.put({
-        running: Math.max(0, running - 1),
-        seconds: seconds + used,
-        jobs: jobs + (used > 0 ? 1 : 0),
-      });
-      return new Response(null, { status: 204 });
-    }
-    return Response.json({
-      jobs,
-      running,
-      containerHours: +(seconds / 3600).toFixed(2),
-      usd: +(seconds * USD_PER_SECOND).toFixed(2),
-      capUsd: this.capUsd,
-      maxRunners: this.maxRunners,
-    });
-  }
-}

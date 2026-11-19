@@ -7,7 +7,8 @@ rules = [{ type = "Text", globs = ["**/*.sh"] }]
 [vars]
 GH_APP_ID = "5833992" # the GitHub App halonic-cf-runner (not a secret); empty refuses every webhook
 CAP_USD = "18"    # the trial stops starting containers before $20 (HAL-13578)
-MAX_RUNNERS = "4" # containers at the same time
+MAX_RUNNERS = "4" # containers at the same time, both images and snapshot builds together
+IMAGE_B = "alternate" # off | alternate (by run) | all: which jobs start from image B's snapshot
 
 # Secrets, entered by Timothy in the dashboard (Workers > halonic-cf-runner > Settings):
 #   GH_APP_PRIVATE_KEY  the GitHub App's private key (.pem, as downloaded)
@@ -18,6 +19,10 @@ name = "RUNNER_JOB"
 class_name = "RunnerJob"
 
 [[durable_objects.bindings]]
+name = "RUNNER_JOB_B"
+class_name = "RunnerJobB"
+
+[[durable_objects.bindings]]
 name = "LEDGER"
 class_name = "Ledger"
 
@@ -25,11 +30,25 @@ class_name = "Ledger"
 tag = "v1"
 new_sqlite_classes = ["RunnerJob", "Ledger"]
 
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["RunnerJobB"]
+
 [[containers]]
 class_name = "RunnerJob"
 image = "docker.io/library/ubuntu:24.04@sha256:73b999393d07f2bf65a40373778a44dc9a6d54ad7718d29247d8ff9413c4d6a8"
 instance_type = "standard-4"
 max_instances = 4
+
+# Image B: the Durable Object picks the image or snapshot and the size (standard-4) at start().
+# Snapshots need this policy; the builder starts from Cloudflare's managed debian-trixie.
+[[containers]]
+class_name = "RunnerJobB"
+scheduling_policy = "durable_object"
+
+# Image B's snapshot: checked every 30 minutes, rebuilt when main's lockfile changed or after a day.
+[triggers]
+crons = ["*/30 * * * *"]
 
 # The spend switch (see ../spend-guard/README.md); key spend_ok:cf-runner.
 [[kv_namespaces]]
