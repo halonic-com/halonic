@@ -16,8 +16,8 @@ import { sampleSource } from "./sample-files.ts";
 /** The folder name of the first copy; later copies are "Acme sample 2", "Acme sample 3", … */
 const sampleName = "Acme sample";
 
-/** Where the copies go, as a person reads it on any computer (microcopy 3.2), never the full path. */
-const documentsName = "~/Documents";
+/** Where the copies go, the same word on every computer (microcopy 3.2, HAL-12891), never a path. */
+const documentsName = "Documents";
 
 /** How many copies it looks through before it says there is no room for another. */
 const mostCopies = 99;

@@ -11,5 +11,5 @@ When the app gives the welcome screen the Acme sample, it shall also show **Try 
 - Given Recent is empty, then the screen shows **Try the Acme sample** with the cost line under it.
 - Given Recent has one workspace, then the link is under the list and the cost line is gone.
 - Given the sample is being created, then the button reads "Creating the sample…" and a second press does nothing.
-- Given the folder can't be written, then the screen says "Can't create the sample in ~/Documents: permission denied." and the button works again.
+- Given the folder can't be written, then the screen says "Can't create the sample in Documents: permission denied." and the button works again.
 - Given a Recent row is a sample, then it ends in a Sample tag and reads "Acme, ~/Documents/Acme sample, Sample".

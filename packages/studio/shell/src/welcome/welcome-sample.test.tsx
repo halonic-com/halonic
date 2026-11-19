@@ -107,14 +107,14 @@ verifies("shell.welcome-sample", () => {
     const root = render(
       <Welcome
         onOpenFolder={async () => undefined}
-        onTrySample={async () => ({ folder: "~/Documents", reason: "permission denied." })}
+        onTrySample={async () => ({ folder: "Documents", reason: "permission denied." })}
       />,
     );
 
     await act(async () => sampleButton(root)?.click());
 
     expect(root.querySelector('[role="alert"]')?.textContent).toBe(
-      "Can't create the sample in ~/Documents: permission denied.",
+      "Can't create the sample in Documents: permission denied.",
     );
     expect(sampleButton(root)?.getAttribute("aria-busy")).not.toBe("true");
   });
@@ -123,7 +123,7 @@ verifies("shell.welcome-sample", () => {
     vi.useFakeTimers();
     try {
       const onTrySample = vi.fn(async () => ({
-        folder: "~/Documents",
+        folder: "Documents",
         reason: "The desktop shell gave no answer",
         unavailable: true as const,
       }));
@@ -141,7 +141,7 @@ verifies("shell.welcome-sample", () => {
 
       const line = root.querySelector('[role="alert"]')?.textContent;
       expect(line).toBe(
-        "Can't create the sample in ~/Documents: the engine isn't answering. It may still be starting.",
+        "Can't create the sample in Documents: the engine isn't answering. It may still be starting.",
       );
       expect(line).not.toMatch(/shell/i);
       expect(sampleButton(root)?.getAttribute("aria-busy")).not.toBe("true");
@@ -156,7 +156,7 @@ verifies("shell.welcome-sample", () => {
     try {
       const onTrySample = vi
         .fn<() => Promise<WelcomeSampleProblem | undefined>>()
-        .mockResolvedValueOnce({ folder: "~/Documents", reason: "x", unavailable: true })
+        .mockResolvedValueOnce({ folder: "Documents", reason: "x", unavailable: true })
         .mockResolvedValue(undefined);
       const root = render(
         <Welcome onOpenFolder={async () => undefined} onTrySample={onTrySample} />,

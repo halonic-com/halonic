@@ -27,9 +27,19 @@ describe("WorkspaceSwitcher", () => {
     );
     const switcher = container.querySelector('button[aria-haspopup="menu"]') as HTMLButtonElement;
     expect(switcher.textContent).toBe("Aacme~/Work/acme");
-    const [name, folder] = [...switcher.querySelectorAll(".truncate")];
+    const [name] = [...switcher.querySelectorAll(".truncate")];
     expect(name?.textContent).toBe("acme");
-    expect(folder?.textContent).toBe("~/Work/acme");
+  });
+
+  it("cuts a long Windows folder in the middle, so the folder's own name stays", () => {
+    const folder = "C:\\Users\\Ada\\OneDrive - Acme BV\\Documents\\Acme sample"; // leak-guard: allow absolute-path made-up Windows paths for the test
+    const container = render(
+      <WorkspaceSwitcher workspace={{ name: "Acme", folder }} menu={menu} />,
+    );
+    const switcher = container.querySelector('button[aria-haspopup="menu"]') as HTMLButtonElement;
+    expect(switcher.textContent).toBe(`AAcme${folder}`);
+    const kept = switcher.querySelector(".whitespace-pre");
+    expect(kept?.textContent).toBe("\\OneDrive - Acme BV\\Documents\\Acme sample");
   });
 
   it("while busy, shows a spinner for the chevron, says aria-busy and ignores presses", () => {
