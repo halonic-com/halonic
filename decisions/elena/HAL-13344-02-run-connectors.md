@@ -2,6 +2,7 @@
 
 - Approval: Liam signs this on HAL-13344 (item 4 of HAL-13318, built on Owen's #3425 for HAL-11953)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Uyrk9vff9MqvaUJ1AbQ/2YeNEM1Wx/WkH5tqgA0PLzcH2bbA/qaoGKcagqcEuybBhOC/BN7lD+3nvB04KgzYCA==
 
 `FolderRunConnectors` moves from `apps/cli/src/run-connectors.ts` to `@halonicjs/engine`
 (`src/run/folder-run-connectors.ts`), so the Studio's page can start a run's connectors the way the
