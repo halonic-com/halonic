@@ -533,6 +533,22 @@ hold no chat logic: each feature turns its `ChatService` answer into these rows 
     </ChatEndLine>
   </ChatMessage>
 </ChatTranscript>;
+<ChatComposer
+  label="Message Sorter"
+  placeholder="Message Sorter…"
+  value={draft}
+  onChange={setDraft}
+  onSend={send}
+  onStop={stop}
+  answering={answering}
+  line={
+    noKey ? (
+      <ChatBoxLine tone="warning" actions={[{ label: "Set the key ›", onClick: openKey, look: "link" }]}>
+        Sorter has no model it can use: <code>smart</code> needs an API key for Anthropic.
+      </ChatBoxLine>
+    ) : undefined
+  }
+/>;
 ```
 
 | Part | What it is |
@@ -542,8 +558,10 @@ hold no chat logic: each feature turns its `ChatService` answer into these rows 
 | `ChatText` | A text step of a reply, in `text-reading`, keeping its line breaks |
 | `ChatToolLine` | One quiet line per tool call: spinner while `running`, tick when `done`, alert mark in `danger` when `failed` |
 | `ChatEndLine` | The line that ends a reply: `danger` for a failure, `plain` for "Stopped by you." and the like, with its actions (a `button`, or a `link` for a way to another place) |
+| `ChatComposer` | The message box and its button. Enter sends, Shift Enter adds a line; while `answering` the button is **Stop**, the same button, so focus stays. `sendUnavailable` makes Send wait with a visible reason. `line` goes under the box |
+| `ChatBoxLine` | The line under the box: `warning` (triangle) for what stops a message, such as no key or a key in the message, `muted` for a calm fact; its actions follow the sentence |
 
-Nothing here is a live region: a reply isn't read while it streams in. The feature announces the
+Nothing in the transcript is a live region: a reply isn't read while it streams in. The composer's line under the box sits in a status region, so it's read once when it appears. The feature announces the
 end of a reply ("Sorter replied.") through the shell's announcer, once.
 
 ## StatusChip
