@@ -7,6 +7,7 @@ import type { PluginTrustChanges } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
 import { lowerAfterColon } from "@halonicjs/studio-shell";
 import type { ProgramsRun } from "../trust/trust-text.ts";
+import type { PluginUnfencedRuns } from "../trust/unfenced-status.ts";
 
 /** How removing a plugin ended: core's `PluginService.remove`. */
 export type PluginRemoveOutcome =
@@ -77,6 +78,11 @@ export interface PluginActions {
   readonly programsRun?: ProgramsRun;
   /** **Open folder**: shows the plugin's folder in the computer's file manager. */
   readonly openFolder: (plugin: string) => Promise<void>;
+  /**
+   * Whether plugin code runs in the sandbox here, and the yes to run it without, which the trust
+   * check reads when it opens and saves when the box is ticked. Without it the check keeps T9.
+   */
+  readonly unfencedRuns?: PluginUnfencedRuns;
 }
 
 /** The ⋮ button's name (a11y A10). */
