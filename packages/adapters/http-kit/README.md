@@ -40,6 +40,17 @@ on every request and redirect hop. It is a mark in the types only: the Node tran
 (`createNodeHttpClient`) returns one, and the integration kit's loader takes nothing else, so a
 plain `fetch` wrapper can't send an integration's requests.
 
+## Ollama's downloaded models
+
+`readOllamaTags(http)` asks Ollama for its downloaded models, so the CLI and Studio send the same
+request: one `GET http://localhost:11434/api/tags`, without a key, with `redirect: "error"`, and
+one 3-second signal (`ollamaAnswerTimeoutMs`) on the request and the body. Only Ollama, only this
+computer, at its usual address. It gives the answer as parsed JSON and throws when Ollama doesn't
+answer in time, answers with an error status, or sends what isn't JSON. `@halonicjs/app` reads the
+list: `detectLocalModels(ollamaDownloadedModelSource(() => readOllamaTags(http)))`. This package
+doesn't import `@halonicjs/app`, because the fenced integration runner bundles it and its file may
+import nothing but Node's own modules.
+
 ## Only canonical text
 
 `parseIpAddress` and `classifyAddress` read the text a DNS answer or `URL.hostname` gives: dotted
