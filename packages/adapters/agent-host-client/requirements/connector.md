@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-2310; HAL-12410 (a failure's reason); `apps/agent-host/README.md`, "Connectors over loopback"
 
-The stand-in `stdio` connector factory shall give the engine a `ConnectorClient` for a program the agent host runs. The stand-in shall open the connector in the host with `POST /v1/connectors/open` on its first call, never before, and only once however many calls follow at the same time. The open request shall hold the connector as its file says it, the workspace folder, the agents' working folders and the trust grant, and the values of the secrets its own `secretEnv` names, and no sandbox profile. It shall refuse to open without a workspace folder or without a trust grant, and shall name the first secret that isn't set, in each case without calling the host. `listTools` and `callTool` shall use the host's id for the connector, pass the idempotency key on, and give the host's tools and text unchanged; a refusal shall throw the host's status, kind and message, except a `connector_failed` refusal with a reason, which `agent-host-client.connector-failure` covers. `close` shall close the connector in the host once, do nothing for a connector that never opened, and count a connector the host no longer has as closed. A call after `close` shall throw.
+The stand-in `stdio` connector factory shall give the engine a `ConnectorClient` for a program the agent host runs. The stand-in shall open the connector in the host with `POST /v1/connectors/open` on its first call, never before, and only once however many calls follow at the same time. The open request shall hold the connector as its file says it, the workspace folder, the agents' working folders and the trust grant, and the values of the secrets its own `secretEnv` names, and no sandbox profile. It shall refuse to open without a workspace folder or without a trust grant, and shall name the first secret that isn't set, in each case without calling the host. `listTools` and `callTool` shall use the host's id for the connector, pass the idempotency key on, and give the host's tools and text unchanged; a tool that answered with an error of its own shall throw a `ConnectorToolError` with the tool's text, and a refusal shall throw the host's status, kind and message, except a `connector_failed` refusal with a reason, which `agent-host-client.connector-failure` covers. `close` shall close the connector in the host once, do nothing for a connector that never opened, and count a connector the host no longer has as closed. A call after `close` shall throw.
 
 ## Examples
 
@@ -14,6 +14,12 @@ The stand-in `stdio` connector factory shall give the engine a `ConnectorClient`
 - Given two tool calls made at once on a connector that isn't open yet,
   when both run,
   then the host gets one `open` and both calls use its id.
+- Given a tool that answered with an error, which the host sends as `toolError`,
+  when the engine calls it,
+  then it throws a `ConnectorToolError` with the tool's text, and the engine logs a failed call.
+- Given a host that answers 502 `connector_failed` because the program died,
+  when the engine calls a tool,
+  then it throws the host's refusal, not a `ConnectorToolError`.
 - Given a connector with no trust grant,
   when it is listed,
   then it throws and the host is never called.
