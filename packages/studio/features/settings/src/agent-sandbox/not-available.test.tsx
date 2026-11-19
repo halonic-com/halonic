@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { type SandboxStartResult, sandboxStartWords } from "@halonicjs/app";
+import { cantRunWords } from "@halonicjs/studio-feature-runs/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -47,8 +48,8 @@ verifies("settings.agent-sandbox-not-available", () => {
       words.reason,
       words.calloutFix,
       text.CHECK_AGAIN,
-      text.GUIDE,
-      text.RUN_AFTER_WARNING,
+      words.docsName,
+      text.RUN_HERE_AFTER_WARNING,
     ].map((part) => content.indexOf(part));
     expect(order.every((at) => at >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
@@ -86,7 +87,7 @@ verifies("settings.agent-sandbox-not-available", () => {
       `Sandbox checked: not ready. ${sandboxStartWords("user-namespaces-restricted").reason}`,
     );
     await act(async () => checkAgainOf(root).click());
-    expect(root.textContent).toContain(text.CHECK_FAILED);
+    expect(root.textContent).toContain(cantRunWords.checkFailed);
     await act(async () => checkAgainOf(root).click());
     expect(announce).toHaveBeenLastCalledWith("Sandbox checked: ready.");
     expect(root.textContent).toContain(text.NOT_AVAILABLE);

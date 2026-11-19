@@ -250,13 +250,13 @@ export function AgentSandboxView({
   );
 }
 
-/** The app's sandbox host, or none when the app gives none (served Studio, or a build without it). */
 /** The words under the chip: the Not available lines where the section has them, else the view's lead. */
 function Lead({ lead, notAvailable }: { readonly lead: string; readonly notAvailable: ReactNode }) {
   if (notAvailable !== undefined && notAvailable !== null) return notAvailable;
   return lead === "" ? null : <p className="text-small">{lead}</p>;
 }
 
+/** The app's sandbox host, or none when the app gives none (served Studio, or a build without it). */
 function hostOf(context: SettingsSectionProps["context"]): AgentSandboxHost | undefined {
   return context.services.find(AgentSandboxService);
 }
