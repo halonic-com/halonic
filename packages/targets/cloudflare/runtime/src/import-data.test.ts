@@ -131,7 +131,8 @@ async function entries(collection = "leads"): Promise<Entry[]> {
 
 /**
  * The run and record logs of the example export of `@halonicjs/format`, byte for byte: the live
- * round trip imports that example twice and exports it (HAL-13864). This file is checked against
+ * round trip imports that example twice and exports it (HAL-13864). The example's blob is not
+ * copied: `exampleEntries` uses this file's stand-in blob instead. This file is checked against
  * workerd's types, so it can't read the fixture folder.
  */
 const exampleLogs = {

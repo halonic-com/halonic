@@ -289,9 +289,12 @@ async function exportListing(
     sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
   } = wait;
   for (let attempt = 1; ; attempt++) {
-    // The export writes only into an empty folder.
-    await rm(work, { recursive: true, force: true });
-    await mkdir(work, { recursive: true });
+    // The export writes only into an empty folder. The caller's folder starts empty, so only a
+    // retry clears what the previous try wrote.
+    if (attempt > 1) {
+      await rm(work, { recursive: true, force: true });
+      await mkdir(work, { recursive: true });
+    }
     await exportFromWorker({ ...transfer, folder: work });
     const back = new Map((await readManifest(work)).files.map((f) => [f.path, f.sha256]));
     const missing = source.files.filter((file) => !back.has(file.path)).map((file) => file.path);

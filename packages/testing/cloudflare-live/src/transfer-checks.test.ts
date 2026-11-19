@@ -34,6 +34,8 @@ interface Behavior {
   readonly health?: number;
   /** Leaves the run logs out of this many export manifests after an import, as the lagging run list does. */
   readonly runListLag?: number;
+  /** Answers /admin/export with this status instead of a manifest. */
+  readonly exportStatus?: number;
 }
 
 /** What the fake Worker holds since the last import, and how many export manifests it has given since. */
@@ -47,6 +49,9 @@ function exportAnswer(behavior: Behavior, held: Held, pathname: string): Respons
   const files = [...held.files].sort((a, b) => (a.path < b.path ? -1 : 1));
   if (pathname === "/admin/export") {
     held.exportsSinceImport += 1;
+    if (behavior.exportStatus) {
+      return Response.json({ code: "export_failed" }, { status: behavior.exportStatus });
+    }
     const listsRuns = held.exportsSinceImport > (behavior.runListLag ?? 0);
     const listed = listsRuns ? files : files.filter((f) => !f.path.startsWith("runs/"));
     return Response.json({
@@ -303,14 +308,29 @@ verifies("cloudflare-live.transfer", () => {
     });
     it("fails at once, with no new export, when a listed file came back different", async () => {
       const { target, exports } = fakeWorker({ corrupt: true });
-      await roundTrip({
+      const error = await roundTrip({
         baseUrl: base,
         key,
         source: example,
         work: await fresh(),
         listed: { attempts: 3, sleep: async () => {} },
         ...(target.fetch ? { fetch: target.fetch } : {}),
-      }).catch(() => undefined);
+      }).catch((e: Error) => e);
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toMatch(/records\//);
+      expect(exports()).toBe(1);
+    });
+    it("fails at once, with no new export, when the export itself fails", async () => {
+      const { target, exports } = fakeWorker({ exportStatus: 500 });
+      const error = await roundTrip({
+        baseUrl: base,
+        key,
+        source: example,
+        work: await fresh(),
+        listed: { attempts: 3, sleep: async () => {} },
+        ...(target.fetch ? { fetch: target.fetch } : {}),
+      }).catch((e: Error) => e);
+      expect(error).toBeInstanceOf(Error);
       expect(exports()).toBe(1);
     });
   });
