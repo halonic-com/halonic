@@ -132,13 +132,19 @@ async function currentTrust(
 function pluginPins(plugin: Plugin): Record<string, ConnectorPin> {
   const pins: Record<string, ConnectorPin> = {};
   for (const tool of plugin.localTools ?? []) {
-    const pin = packagePin(tool);
+    const pin = localToolPin(tool);
     if (pin !== null) pins[tool.id] = pin;
   }
   return pins;
 }
 
-function packagePin(tool: PluginLocalTool): ConnectorPin | null {
+/**
+ * The pin a person trusts for a local tool started by a package, as the
+ * trust record keeps it, or `null` for one started by a script. The
+ * fingerprint holds the same fields, so a trusted manifest gives the pin
+ * its record holds.
+ */
+export function localToolPin(tool: PluginLocalTool): ConnectorPin | null {
   const start = tool.start.package;
   if (start === undefined) return null;
   const registry = start.runner === "npx" ? "npm" : "pypi";
