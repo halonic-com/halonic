@@ -27,7 +27,8 @@ export const CONNECTOR_TOOLS = "Connector tools";
 export const CONNECTOR_TOOLS_SENTENCE = "Let the assistant use the open workspace's connectors.";
 export const INSTRUCTIONS = "Instructions";
 export const INSTRUCTIONS_PLACEHOLDER = "Add instructions";
-export const NOT_SET_UP_LINE = "Not set up. Assistant chats use each workspace's model aliases.";
+export const NOT_SET_UP_LINE =
+  "Not set up. Assistant chats will use each workspace's model aliases.";
 
 /** The Callout when the computer's host settings can't be read, with its button. */
 export const NOT_LOADED = "Couldn't load the Assistant settings";
