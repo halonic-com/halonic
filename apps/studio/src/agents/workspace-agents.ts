@@ -8,6 +8,7 @@ import type {
   AgentHub,
   AgentListing,
   AgentLiveState,
+  AgentPlacementState,
   AgentRef,
   AgentSettings,
   AgentsHost,
@@ -19,6 +20,7 @@ import type {
   HarnessSignIn,
   NewAgent,
   NewAgentStep,
+  ThisComputerChoice,
   TrashedAgent,
 } from "@halonicjs/studio-feature-agents/api";
 import { loopRefusal } from "@halonicjs/studio-feature-agents/api";
@@ -35,6 +37,7 @@ import {
   trashAgentFile,
 } from "./agent-file.ts";
 import { paramsEdits, paramsOf } from "./agent-params.ts";
+import { type AgentPlacementChoices, choicesHere } from "./agent-placement-choices.ts";
 import { agentUsersOf, defaultModelOf } from "./agent-reads.ts";
 import { type NewAgentsParts, placeNewAgent } from "./new-agent-placing.ts";
 
@@ -88,6 +91,11 @@ export interface WorkspaceAgentsParts {
    * so there is no `makeLive`.
    */
   readonly versionDialog?: (paths: readonly string[]) => Promise<"made" | "cancelled">;
+  /**
+   * Where each agent runs on this computer, kept by the agent host. Absent where there is no agent
+   * host (the browser): the Harness page then offers no choice.
+   */
+  readonly placement?: AgentPlacementChoices;
 }
 
 /** Where the agent files of a hub are kept. */
@@ -303,6 +311,24 @@ export class WorkspaceAgents implements AgentsHost {
       ...(request.signal === undefined ? {} : { signal: request.signal }),
       ...(request.listener === undefined ? {} : { listener: request.listener }),
     });
+  }
+
+  /** Where the agent runs on this computer; `undefined` without an agent host. */
+  async placement(ref: AgentRef): Promise<AgentPlacementState | undefined> {
+    await this.#find(ref);
+    return this.#parts.placement?.where(ref);
+  }
+
+  /** Saves On this computer for the file the person was warned about. */
+  async chooseThisComputer(ref: AgentRef, shownFingerprint: string): Promise<ThisComputerChoice> {
+    await this.#find(ref);
+    return choicesHere(this.#parts.placement).chooseThisComputer(ref, shownFingerprint);
+  }
+
+  /** Puts the agent back in its sandbox on this computer. */
+  async chooseSandbox(ref: AgentRef): Promise<void> {
+    await this.#find(ref);
+    await choicesHere(this.#parts.placement).chooseSandbox(ref);
   }
 
   /**

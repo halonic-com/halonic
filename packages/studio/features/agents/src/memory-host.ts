@@ -9,6 +9,7 @@ import type {
   AgentModelParams,
   AgentModelParamsChange,
   AgentOutput,
+  AgentPlacementState,
   AgentRef,
   AgentSettings,
   AgentStep,
@@ -71,6 +72,16 @@ export interface MemoryAgentsHostOptions {
         readonly workspaceName?: string | undefined;
       }
     | undefined;
+  /** `false` for a Studio that can't choose where agents run, such as the browser's; it can when left out. */
+  readonly placement?: boolean | undefined;
+  /** Gives the time a person chose On this computer, as ISO text; a fixed day when left out. */
+  readonly now?: (() => string) | undefined;
+}
+
+/** A choice of On this computer: for the file with this fingerprint, at this time. */
+interface ThisComputerRecord {
+  readonly fingerprint: string;
+  readonly chosenAt: string;
 }
 
 /** The key a map uses for an agent. */
@@ -127,6 +138,15 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
   const agents = new Map<string, AgentSettings>();
   for (const agent of options.agents ?? []) agents.set(keyOf(agent), { ...fresh, ...agent });
   const listeners = new Set<() => void>();
+  // Each agent's file version, so a change gives it a new fingerprint as a saved edit does.
+  const versions = new Map<string, number>();
+  const choices = new Map<string, ThisComputerRecord>();
+  const fingerprintOf = (ref: AgentRef) => `sha256:memory-${versions.get(keyOf(ref)) ?? 0}`;
+  const canChoose = () => {
+    if (options.placement === false) {
+      throw new Error("Halonic can't choose where agents run from here.");
+    }
+  };
 
   const found = (ref: AgentRef): AgentSettings => {
     const agent = agents.get(keyOf(ref));
@@ -167,6 +187,7 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
         ...Object.fromEntries(definite),
         params: params === undefined ? agent.params : changedParams(agent.params, params),
       });
+      versions.set(keyOf(ref), (versions.get(keyOf(ref)) ?? 0) + 1);
       for (const listener of listeners) listener();
     },
     modelAliases: async (ref) => {
@@ -222,6 +243,29 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       ...(options.trust.ask && { askTrust: options.trust.ask }),
       workspaceName: () => options.trust?.workspaceName,
     }),
+    placement: async (ref): Promise<AgentPlacementState | undefined> => {
+      found(ref);
+      if (options.placement === false) return undefined;
+      const fingerprint = fingerprintOf(ref);
+      const chosen = choices.get(keyOf(ref));
+      if (chosen === undefined) return { runsOn: "sandbox", fingerprint };
+      if (chosen.fingerprint !== fingerprint) return { runsOn: "on-hold", fingerprint };
+      return { runsOn: "this-computer", fingerprint, chosenAt: chosen.chosenAt };
+    },
+    chooseThisComputer: async (ref, shownFingerprint) => {
+      found(ref);
+      canChoose();
+      const fingerprint = fingerprintOf(ref);
+      if (shownFingerprint !== fingerprint) return { saved: false, fingerprint };
+      const chosenAt = options.now?.() ?? "2026-11-09T14:02:00.000Z";
+      choices.set(keyOf(ref), { fingerprint, chosenAt });
+      return { saved: true };
+    },
+    chooseSandbox: async (ref) => {
+      found(ref);
+      canChoose();
+      choices.delete(keyOf(ref));
+    },
     filePath: async (ref) => {
       found(ref);
       return `hubs/${ref.hubId}/agents/${ref.id}.agent.yaml`;
