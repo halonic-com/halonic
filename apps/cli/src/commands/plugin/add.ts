@@ -8,6 +8,7 @@
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
+import { GitHardeningIgnoredError } from "@halonicjs/adapter-git";
 import type {
   PluginAddRefusal,
   PluginEntry,
@@ -27,6 +28,7 @@ import { exitCode } from "../../exit-code.ts";
 import type { Message } from "../../messages/define.ts";
 import { markPart, type Phrase, phrase, plainText } from "../../messages/phrase.ts";
 import { pluginMessages } from "../../messages/plugin.ts";
+import { runMessages } from "../../messages/run.ts";
 import { trustMessages } from "../../messages/trust.ts";
 import { printable } from "../../output/printable.ts";
 import { openPluginService, type PluginSetup } from "../../plugin-host.ts";
@@ -116,7 +118,11 @@ async function openSource(
   const git = gitSourceOf(source);
   if (git !== null) return await exportGitSource(git, context, setup);
   const folder = resolve(context.cwd, source);
-  if (!(await isFolder(folder))) {
+  const found = await stat(folder).catch(() => null);
+  if (found === null) {
+    throw refusal("invalid_input", pluginMessages.noFolder(printable(source)).phrase);
+  }
+  if (!found.isDirectory()) {
     throw refusal("invalid_input", pluginMessages.notAFolder(printable(source)).phrase);
   }
   return {
@@ -169,8 +175,22 @@ async function exportGitSource(
   };
 }
 
-/** A refused or failed export as the refusal `plugin add` ends with. */
+/**
+ * A refused or failed export as the refusal `plugin add` ends with. A git
+ * that drops Halonic's git settings isn't the address's fault, so it gets
+ * run's fix instead of "Check the folder or git address.".
+ */
 function exportRefusal(error: unknown): KindedError {
+  if (error instanceof GitHardeningIgnoredError) {
+    return new KindedError(
+      "unavailable",
+      plainOf(pluginMessages.gitNotItself(printable(error.git))),
+      {
+        fix: plainOf(runMessages.gitNotItselfFix()),
+        cause: error,
+      },
+    );
+  }
   const reason = error instanceof Error ? error.message : String(error);
   return refusal("invalid_input", phrase`${printable(reason)}`);
 }
@@ -241,10 +261,4 @@ function refusal(kind: "invalid_input", reason: Phrase): KindedError {
 
 function plainOf(message: Message): string {
   return plainText(message.phrase);
-}
-
-/** Whether `path` is a folder, or a link to one. */
-async function isFolder(path: string): Promise<boolean> {
-  const found = await stat(path).catch(() => null);
-  return found?.isDirectory() === true;
 }

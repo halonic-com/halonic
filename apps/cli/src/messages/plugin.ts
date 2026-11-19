@@ -91,8 +91,16 @@ export const pluginMessages = defineMessages("plugin", {
    */
   yesNeedsFingerprintFix: () =>
     phrase`Add it without --yes to see the check; the fingerprint is in it, above the question.`,
-  /** Line 1 of a source that isn't a folder this command can read. */
+  /** Line 1 of a source that is there but isn't a folder this command can read. */
   notAFolder: (path: string) => phrase`${path} isn't a folder.`,
+  /** Line 1 of a source that is neither a folder nor a git address, and isn't there. */
+  noFolder: (path: string) => phrase`there's no folder ${path}.`,
+  /**
+   * Line 1 when the git found drops Halonic's git settings, so a git address
+   * can't be fetched safely: `unavailable`, exit 9, with run's fix (HAL-12342).
+   */
+  gitNotItself: (git: string) =>
+    phrase`the git at ${git} doesn't pass Halonic's git settings on to git, so the plugin can't be fetched safely.`,
 
   added: (name: string, version: string) => phrase`Added ${name} ${version}. It's on.`,
   /** Answer No, or Enter, with a !: added but off, exit 3 (Studio's Not now, D4). */

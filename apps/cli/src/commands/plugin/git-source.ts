@@ -24,17 +24,16 @@ export interface GitSource {
  */
 export type GitExporter = (source: GitSource, destination: string) => Promise<GitExport>;
 
+/** An address's scheme, such as `https://`. */
+const schemeForm = /^[A-Za-z][A-Za-z0-9+.-]*:\/\//u;
+
 /**
  * What makes a source a git address rather than a folder: a scheme such as
  * `https://` or `ssh://`, a transport such as `ext::`, or git's short ssh
  * form `user@host:path`. Each is a git address even when the export will
  * refuse it, so the refusal says why instead of "isn't a folder".
  */
-const gitAddressForms = [
-  /^[A-Za-z][A-Za-z0-9+.-]*:\/\//u,
-  /^[A-Za-z][A-Za-z0-9+.-]*::/u,
-  /^[^/\\@]+@[^/\\:]+:/u,
-];
+const gitAddressForms = [schemeForm, /^[A-Za-z][A-Za-z0-9+.-]*::/u, /^[^/\\@]+@[^/\\:]+:/u];
 
 /**
  * The git address in `source`, or `null` when `source` is a folder. The
@@ -50,10 +49,23 @@ const gitAddressForms = [
 export function gitSourceOf(source: string): GitSource | null {
   if (!gitAddressForms.some((form) => form.test(source))) return null;
   const at = source.lastIndexOf("@");
-  if (at < Math.max(source.lastIndexOf("/"), source.lastIndexOf(":"))) {
+  if (at < Math.max(source.lastIndexOf("/"), source.lastIndexOf(":"), pathStart(source))) {
     return { address: source, commit: undefined };
   }
   return { address: source.slice(0, at), commit: source.slice(at + 1) };
+}
+
+/**
+ * Where the path of an address with a scheme starts, or the end of the
+ * address when it has none, so a commit is never read out of the user,
+ * password or host: `https://me:pw@example.com` is one address, which the
+ * export refuses for its password. `-1` without a scheme.
+ */
+function pathStart(source: string): number {
+  const scheme = schemeForm.exec(source);
+  if (scheme === null) return -1;
+  const slash = source.indexOf("/", scheme[0].length);
+  return slash === -1 ? source.length : slash;
 }
 
 /**

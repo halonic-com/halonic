@@ -189,7 +189,7 @@ export class GitHardeningIgnoredError extends Error {
 
   constructor(git: string) {
     super(
-      `The program at ${git} doesn't pass Halonic's git settings on to git, so it can't run safely. It may be a wrapper script or git older than 2.31; give Halonic the path of git 2.31 or later itself.`,
+      `The program at ${git} doesn't pass Halonic's git settings on to git, so it can't run safely. It may be a wrapper script or git older than 2.31; put git 2.31 or later itself first on the PATH.`,
     );
     this.name = "GitHardeningIgnoredError";
     this.git = git;

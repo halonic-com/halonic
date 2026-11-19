@@ -62,8 +62,8 @@ export async function approveTools(
   const source = await openToolSource(input, context, "approve");
   const check = await checkToolSource(source, machine, context);
   if (typeof check === "string") {
-    const { line, json } = noToolsToApprove(check, source);
-    return { exitCode: exitCode.ok, lines: [line], json: { approved: [], leftOut: [], ...json } };
+    const { lines, json } = await noToolsToApprove(check, source, machine);
+    return { exitCode: exitCode.ok, lines, json: { approved: [], leftOut: [], ...json } };
   }
   if (all) {
     return await approveAll(check, source, machine);
