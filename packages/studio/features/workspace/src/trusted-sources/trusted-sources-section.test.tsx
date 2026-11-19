@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
+import { ClipboardProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -55,11 +56,18 @@ async function show(
   host: TrustedSourcesHost,
   readOnly = false,
   surface: "window" | "phone" = "window",
+  writeClipboard = async (_text: string) => true,
 ) {
   const announce = vi.fn();
   root = createRoot(element);
   await act(async () => {
-    root?.render(createElement(TrustedSourcesView, { host, readOnly, announce, surface }));
+    root?.render(
+      createElement(
+        ClipboardProvider,
+        { writeClipboard },
+        createElement(TrustedSourcesView, { host, readOnly, announce, surface }),
+      ),
+    );
   });
   return announce;
 }
@@ -254,5 +262,25 @@ verifies("workspace.trusted-sources", () => {
       "Couldn't remove trust from pdf-tools: Halonic ran into a problem it can't explain yet.",
     );
     expect(dialog).not.toMatch(/srv|EACCES|trust\.ts/);
+  });
+
+  it("offers Copy details for an internal error in the Remove trust dialog", async () => {
+    vi.useFakeTimers();
+    const writeClipboard = vi.fn(async (_text: string) => true);
+    const remove = vi.fn().mockRejectedValue(new Error("EACCES: trust.json"));
+    await show({ list: vi.fn().mockResolvedValue([pdf]), remove }, false, "window", writeClipboard);
+    act(() => button("Remove")?.click());
+    await act(async () => confirm()?.click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50);
+    });
+    const dialog = document.querySelector("dialog");
+    expect(dialog?.textContent).not.toContain("Try again");
+    await act(async () => button("Copy details", dialog ?? document)?.click());
+    expect(writeClipboard).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^Couldn't remove trust from pdf-tools: .*\nError: EACCES: trust\.json/,
+      ),
+    );
   });
 });
