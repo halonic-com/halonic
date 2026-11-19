@@ -20,6 +20,7 @@ export function testBoxes(disk: MemoryDisk): { boxes: BoxFolders; made: () => st
     makeFolder: async (path) => {
       disk.folder(path);
     },
+    giveOwnAccessList: async () => {},
     makeFreshFolder: async (prefix) => {
       const path = `${prefix}${made.length + 1}`;
       made.push(path);

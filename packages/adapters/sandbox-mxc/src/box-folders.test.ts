@@ -36,6 +36,35 @@ verifies("sandbox-mxc.box-folders", () => {
       }
     });
 
+    it("gives the base folder its own access list before the first box, also when it was there", async () => {
+      await mkdir(base, { recursive: true });
+      const given: { path: string; existed: string[] }[] = [];
+      const disk: BoxDisk = {
+        ...diskWith([4242]),
+        giveOwnAccessList: async (path) => {
+          given.push({ path, existed: await readdir(path) });
+        },
+      };
+      const boxes = new BoxFolders(dataFolder, 4242, disk);
+      await boxes.create();
+      await boxes.create();
+      expect(given).toEqual([{ path: base, existed: [] }]);
+    });
+
+    it("fails a box when the access list can't be given, and tries again with the next", async () => {
+      let failures = 1;
+      const disk: BoxDisk = {
+        ...diskWith([]),
+        giveOwnAccessList: async () => {
+          if (failures-- > 0) throw new Error("acme icacls failed");
+        },
+      };
+      const boxes = new BoxFolders(dataFolder, 4242, disk);
+      await expect(boxes.create()).rejects.toThrow("acme icacls failed");
+      expect(await readdir(base)).toEqual([]);
+      await expect(boxes.create()).resolves.toMatchObject({ path: expect.any(String) });
+    });
+
     it("removes a box folder with everything in it, and a second removal does nothing", async () => {
       const box = await new BoxFolders(dataFolder, 4242, diskWith([4242])).create();
       await mkdir(join(box.path, "work"));
