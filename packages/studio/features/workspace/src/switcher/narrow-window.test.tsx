@@ -185,7 +185,8 @@ verifies("workspace.narrow-window-sheet-focus", () => {
     const dialog = element.querySelector("dialog[open]");
     // Strict mode opens it twice; it's the one dialog opened as a modal all the same.
     expect([...new Set(modals)]).toEqual([dialog]);
-    expect(dialog?.getAttribute("aria-label")).toBe(title);
+    const name = document.getElementById(dialog?.getAttribute("aria-labelledby") ?? "");
+    expect(name?.textContent).toBe(title);
     expect(document.activeElement?.textContent).toBe(title);
     expect(dialog?.contains(document.activeElement)).toBe(true);
   });

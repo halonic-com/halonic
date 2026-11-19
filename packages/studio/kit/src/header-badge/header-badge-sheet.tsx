@@ -19,6 +19,11 @@ export interface HeaderBadgeSheetProps {
   readonly onClose: () => void;
 }
 
+/** A `HeaderBadgeSheet` inside a dialog, which its title names (`SidePanel`'s `dialogTitleId`). */
+interface DialogSheetProps extends HeaderBadgeSheetProps {
+  readonly dialogTitleId?: string | undefined;
+}
+
 /**
  * 48px, divided by a `border` line, edge to edge, with a chevron at the right: rows that each
  * open something. Focus is the inset ring, so the list's edges don't clip it.
@@ -50,14 +55,15 @@ export function HeaderBadgeSheet({
   note,
   entries,
   onClose,
-}: HeaderBadgeSheetProps) {
+  dialogTitleId,
+}: DialogSheetProps) {
   const items = entries.filter(isMenuItem);
   const ordered = [
     ...items.filter((item) => item.danger !== true),
     ...items.filter((item) => item.danger === true),
   ];
   return (
-    <SidePanel title={title} onClose={onClose}>
+    <SidePanel title={title} onClose={onClose} dialogTitleId={dialogTitleId}>
       {description === undefined ? null : (
         <p className="pb-3 text-small text-fg-muted">{description}</p>
       )}
