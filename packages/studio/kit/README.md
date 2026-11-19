@@ -517,6 +517,35 @@ where it is goes through the alert slot that the Dialog and the text sheet own.
 **On a phone** it sits inside the 16px page inset, never flush. Its action's `sm` button draws at
 `lg` with a 48px hit area, as every `sm` button does there, and stays under the text.
 
+## Chat parts
+
+The parts both chats draw with: an agent's Try it chat and the Assistant. They take props only and
+hold no chat logic: each feature turns its `ChatService` answer into these rows itself.
+
+```tsx
+<ChatTranscript label="Chat with Sorter" notice={engineDown ? engineLine : undefined}>
+  <ChatMessage from="you">Sort this mail</ChatMessage>
+  <ChatMessage from="reply" heading="Sorter said">
+    <ChatToolLine state="done">Read the mail</ChatToolLine>
+    <ChatText>It's about a refund.</ChatText>
+    <ChatEndLine tone="danger" actions={[{ label: "Try again", onClick: sendAgain }]}>
+      Sorter's reply failed: Anthropic was busy.
+    </ChatEndLine>
+  </ChatMessage>
+</ChatTranscript>;
+```
+
+| Part | What it is |
+| --- | --- |
+| `ChatTranscript` | The scrolling column, reading width, newest at the bottom. It stays at the end while a reply grows, unless the reader scrolled up. `notice` is a line at the top, such as "The engine isn't answering. Showing what it said last." |
+| `ChatMessage` | One row: `from="you"` on the right in a tinted box, or `from="reply"` across the column under a hidden heading ("Sorter said") |
+| `ChatText` | A text step of a reply, in `text-reading`, keeping its line breaks |
+| `ChatToolLine` | One quiet line per tool call: spinner while `running`, tick when `done`, alert mark in `danger` when `failed` |
+| `ChatEndLine` | The line that ends a reply: `danger` for a failure, `plain` for "Stopped by you." and the like, with its actions (a `button`, or a `link` for a way to another place) |
+
+Nothing here is a live region: a reply isn't read while it streams in. The feature announces the
+end of a reply ("Sorter replied.") through the shell's announcer, once.
+
 ## StatusChip
 
 The state of an item, in a row, a card header or a panel. It isn't interactive: something you can
