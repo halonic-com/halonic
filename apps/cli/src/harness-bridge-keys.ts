@@ -62,10 +62,19 @@ export function harnessBridgeKeys(input: HarnessKeysInput): HarnessBridgeKeys {
     isTrusted: () => input.trusted,
     keyOrigins: input.keyOrigins,
   };
+  // The engine asks for the program's model id, then opens the bridge. Both
+  // read the version the first one read, so a commit landing in between
+  // can't give the program one version's model and the bridge another's.
+  // Should two calls of the same alias still cross, the bridge refuses the
+  // model it wasn't given (harness-bridge.keyed-model), so it fails closed.
+  const readFor = new Map<string, LoadedWorkspace>();
   return {
     services: {
       servicesFor: async (agent) => {
-        const services = await keyedServices(input.workspace(), agent, checks);
+        const key = aliasKey(agent.hubId, agent.model);
+        const workspace = readFor.get(key) ?? input.workspace();
+        readFor.delete(key);
+        const services = await keyedServices(workspace, agent, checks);
         for (const access of Object.values(services.providers)) {
           if (access?.kind === "key") given.add(access.secret);
         }
@@ -76,9 +85,18 @@ export function harnessBridgeKeys(input: HarnessKeysInput): HarnessBridgeKeys {
       get: async (name) => (given.has(name) ? await fileSecrets.get(name) : null),
     },
     models: {
-      providerModelOf: async (hubId, name) => harnessProviderModel(input.workspace(), hubId, name),
+      providerModelOf: async (hubId, name) => {
+        const workspace = input.workspace();
+        readFor.set(aliasKey(hubId, name), workspace);
+        return harnessProviderModel(workspace, hubId, name);
+      },
     },
   };
+}
+
+/** One entry per hub and agent `model`, so the map stays as small as the aliases in use. */
+function aliasKey(hubId: string | undefined, model: string | undefined): string {
+  return JSON.stringify([hubId ?? null, model ?? null]);
 }
 
 /** No Halonic tools yet: each tool name the program asks for is refused with its own error. */
@@ -115,7 +133,13 @@ async function keyedServices(
   checks: HarnessAccessChecks,
 ): Promise<BridgeServices> {
   if (agent.hubId === undefined || agent.model === undefined) return signInServices;
-  const access = await harnessModelAccess(workspace, agent.hubId, agent.model, checks);
+  const access = await harnessModelAccess(
+    workspace,
+    agent.hubId,
+    agent.model,
+    agent.harness,
+    checks,
+  );
   if (access === undefined) return signInServices;
   return {
     providers: {

@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import {
@@ -61,7 +61,7 @@ async function addOpenCoder(model: string | undefined): Promise<void> {
 }
 
 /** The keys over the lab as it is on disk, with stored keys for Z.ai and one Halonic doesn't give a bridge. */
-async function keysOf(overrides: Partial<Omit<HarnessKeysInput, "workspace">> = {}) {
+async function keysOf(overrides: Partial<HarnessKeysInput> = {}) {
   const workspace: LoadedWorkspace = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
   const stored: Record<string, string> = {
     "zai-key": "fake-zai-key",
@@ -76,9 +76,10 @@ async function keysOf(overrides: Partial<Omit<HarnessKeysInput, "workspace">> = 
   });
 }
 
-const coder = (model?: string) => ({
+const coder = (model?: string, harness: "claude-code" | "codex" = "claude-code") => ({
   runId: "01JD8Q",
   agentId: "coder",
+  harness,
   hubId: "lab",
   ...(model === undefined ? {} : { model }),
 });
@@ -135,6 +136,36 @@ verifies("cli.harness-bridge-keys", () => {
         });
         expect(await keys.secrets.get("zai-key")).toBeNull();
       }
+    });
+
+    it("refuses an alias whose provider the agent's harness can't call, before naming the key", async () => {
+      await addOpenCoder("open-coder-agent");
+      const keys = await keysOf();
+
+      await expect(
+        keys.services.servicesFor(coder("open-coder-agent", "codex")),
+      ).rejects.toMatchObject({ code: "not-for-harness" });
+      expect(await keys.secrets.get("zai-key")).toBeNull();
+    });
+
+    it("gives the bridge the alias of the version the program's model was read from", async () => {
+      await addOpenCoder("open-coder-agent");
+      const before = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
+      const modelsFile = join(acme, "models.yaml");
+      await writeFile(
+        modelsFile,
+        (await readFile(modelsFile, "utf8")).replace("glm-5.3", "glm-5.4"),
+      );
+      const after = await loadWorkspace(new FolderDefinitionStore(acme, "./acme"));
+      const versions = [before, after];
+      const keys = await keysOf({ workspace: () => versions.shift() ?? after });
+
+      const programModel = await keys.models.providerModelOf("lab", "open-coder-agent");
+      const services = await keys.services.servicesFor(coder("open-coder-agent"));
+
+      expect(programModel).toBe("glm-5.3");
+      expect(services.providers.anthropic).toMatchObject({ kind: "key", model: "glm-5.3" });
+      expect(services.prices).toEqual({ anthropic: { "glm-5.3": { input: 0.6, output: 2.2 } } });
     });
 
     it(
