@@ -1,3 +1,4 @@
+import { stateAgentsOf } from "@halonicjs/adapter-workspace-models";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import {
@@ -16,6 +17,7 @@ import {
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
 import { type PageRuns, workflowRefusalOf } from "../engine/page-refusal.ts";
+import { programOf } from "./step-program.ts";
 import {
   endedIn,
   newWorkflowText,
@@ -194,6 +196,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     if (file === undefined) throw workflowGone();
     const { value } = file;
     this.#learnNames([{ hubId, id, name: value.name }]);
+    const stateAgents = stateAgentsOf(workspace, { hubId, workflowId: id });
     return {
       hubId,
       id,
@@ -208,6 +211,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
         prompt: typeof state.input === "string" ? state.input : undefined,
         promptIsData: state.input !== undefined && typeof state.input !== "string",
         output: state.output,
+        program: programOf(stateAgents.get(stepId)),
       })),
       arrows: Object.entries(value.states).flatMap(([from, state]) =>
         state.on.map((arrow) => ({ from, to: arrow.to, label: arrow.label })),

@@ -1,4 +1,4 @@
-import type { WorkflowStepType } from "../api.ts";
+import type { WorkflowStepProgram, WorkflowStepType } from "../api.ts";
 
 /** The workflow page's words (microcopy 9.3, flow-workflows 3 and 4; states C9, C16). */
 export const pageWords = {
@@ -60,4 +60,20 @@ export const pageWords = {
     parallel: "PARALLEL STEP",
     foreach: "FOR EACH STEP",
   } satisfies Record<WorkflowStepType, string>,
+  /**
+   * The can't-run Callout's last line on the workflow page (microcopy 23.3, "Can't run, workflow"
+   * and "Phone"). Placeholders until HAL-1784 is approved: reviewers check the keys.
+   */
+  cantRun: {
+    programStep: (step: string, program: string) => `The step ${step} uses ${program}.`,
+    programSteps: (step: string, others: number) =>
+      `The step ${step} and ${others} other ${others === 1 ? "step" : "steps"} use a program.`,
+    changeIn: (agent: string) => `To run ${agent} without the sandbox, change it in`,
+    agentSettings: (agent: string) => `${agent}'s settings ›`,
+    onYourComputer: (agent: string) => `To change where ${agent} runs, use your computer.`,
+    programs: { "claude-code": "Claude Code", codex: "Codex" } satisfies Record<
+      WorkflowStepProgram["harness"],
+      string
+    >,
+  },
 } as const;

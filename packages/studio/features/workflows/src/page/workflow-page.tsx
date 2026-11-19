@@ -1,9 +1,10 @@
-import { startRunCommand } from "@halonicjs/app";
+import { sandboxStartCheckKey, startRunCommand } from "@halonicjs/app";
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import {
   openModelsOf,
   RunsListService,
   RunsSourceService,
+  SandboxCantRunCallout,
 } from "@halonicjs/studio-feature-runs/api";
 import {
   Button,
@@ -32,7 +33,9 @@ import { FlowView } from "./flow-view.tsx";
 import { goneState } from "./gone-state.tsx";
 import { firstTestsPick, firstView, panelClass } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
+import { ProgramStepsLine } from "./program-steps-line.tsx";
 import { dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
+import { useRunGate } from "./run-gate.ts";
 import { StartRow, useStartRefusal } from "./start-row.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
@@ -62,6 +65,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       announce={(line) => context.announcer.announce(line)}
       {...(openModels && { openModels })}
       saving={context.saving}
+      sandboxStartCheck={context.services.find(sandboxStartCheckKey)}
       {...(context.runCommand && {
         openBudget: () => void context.runCommand?.(openBudgetCommand),
       })}
@@ -69,6 +73,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       {...(openItem && {
         openRun: (runId: string, step?: string) =>
           openItem({ kind: "run", hub: item.hub, id: runId }, step === undefined ? {} : { step }),
+        openAgent: (agentId: string) => openItem({ kind: "agent", hub: item.hub, id: agentId }),
       })}
       {...(openPlace && {
         goToWorkflows: () => openPlace("workflows"),
@@ -108,6 +113,8 @@ export function WorkflowScreen({
   announceState,
   announce,
   saving,
+  sandboxStartCheck,
+  openAgent,
 }: WorkflowScreenProps) {
   // After a Try again reads, the workflow's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -176,6 +183,7 @@ export function WorkflowScreen({
   const strip = shown?.line;
   useAnnounceDockedRun(strip, typeof dock === "object", announceState);
   const { startRun } = host;
+  const gate = useRunGate(load, startRun !== undefined, sandboxStartCheck, phone);
   const saveAsTest = useSaveAsTest(host, { hubId, id }, (testName) => {
     testsMade.current += 1;
     setMadeTest({ name: testName, n: testsMade.current });
@@ -223,13 +231,14 @@ export function WorkflowScreen({
           }}
           ids={ids}
         />
-        {startRun && (
+        {gate.showRun && (
           <div className="ms-auto">
             <Button
               ref={runButton}
               variant="primary"
               size="sm"
-              unavailable={cantStart.unavailable}
+              // The sandbox's Callout comes first on the page, so it describes Run when both hold.
+              unavailable={gate.unavailable ?? cantStart.unavailable}
               onClick={() => {
                 setRowCard(undefined);
                 setDock("start");
@@ -240,6 +249,16 @@ export function WorkflowScreen({
           </div>
         )}
       </header>
+      <SandboxCantRunCallout
+        name={name}
+        start={gate.sandbox}
+        firstLineId={gate.cantRunId}
+        announce={announce}
+        onReady={() => (runButton.current ?? title.current)?.focus()}
+        band
+      >
+        <ProgramStepsLine steps={gate.programSteps} phone={phone} openAgent={openAgent} />
+      </SandboxCantRunCallout>
       {/* With a Run button, the page starts it itself, so the terminal line would only repeat it. */}
       <StartRow
         refusal={cantStart}

@@ -103,6 +103,12 @@ export interface WorkflowStep {
   readonly promptIsData?: boolean | undefined;
   /** The name later steps pick the step's output by (`output`, **Save output as**); `undefined` when it has none. */
   readonly output?: string | undefined;
+  /**
+   * The first agent the step runs in a program that needs the sandbox (Claude Code or Codex): its
+   * own, a branch's, or one of a workflow it starts. `undefined` when every agent it runs is in
+   * Halonic's own loop, or it runs none.
+   */
+  readonly program?: WorkflowStepProgram | undefined;
 }
 
 /**
@@ -113,6 +119,15 @@ export interface WorkflowStepChange {
   readonly description?: string;
   readonly prompt?: string;
   readonly output?: string;
+}
+
+/** An agent a step runs in a program of its own, as the can't-run Callout names it. */
+export interface WorkflowStepProgram {
+  /** The agent's id in the workflow's hub. */
+  readonly agent: string;
+  /** The agent's name, as its page shows it. */
+  readonly agentName: string;
+  readonly harness: "claude-code" | "codex";
 }
 
 /** One arrow between two steps. */

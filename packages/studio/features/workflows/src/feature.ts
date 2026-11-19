@@ -1,3 +1,4 @@
+import { sandboxStartCheckKey } from "@halonicjs/app";
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import { RunsListService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { defineFeature } from "@halonicjs/studio-shell";
@@ -15,7 +16,8 @@ export const workflowsFeature = defineFeature({
   title: "Workflows",
   needs: [WorkflowsHostService, RunsSourceService, RunsListService],
   // The docked run card notes its run in the Inbox, which then leaves it out of its news.
-  wants: [InboxService],
+  // Run is unavailable while the sandbox can't start, for a workflow whose steps need it.
+  wants: [InboxService, sandboxStartCheckKey],
   register(studio) {
     studio.places.add({
       id: "workflows",

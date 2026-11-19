@@ -192,6 +192,44 @@ verifies("studio.workspace-workflow-read", () => {
     });
   });
 
+  it("names the first agent each step runs in a program of its own", async () => {
+    const { host, store } = setup();
+    store["hubs/acme/agents/reader.agent.yaml"] = "id: reader\nname: Reader\n";
+    store["hubs/acme/agents/writer.agent.yaml"] =
+      "id: writer\nname: Writer\nharness: claude-code\n";
+    store["hubs/acme/agents/sorter.agent.yaml"] = "id: sorter\nname: Sorter\nharness: codex\n";
+    store["hubs/acme/workflows/reply.workflow.yaml"] = [
+      "id: reply",
+      "name: Reply",
+      "initial: first",
+      "states:",
+      "  first:",
+      "    agent: reader",
+      "    on: [{ to: draft }]",
+      "  draft:",
+      "    agent: writer",
+      "    on: [{ to: check }]",
+      "  check:",
+      "    type: parallel",
+      "    branches:",
+      "      read: { agent: reader }",
+      "      sort: { agent: sorter }",
+      "    on: [{ to: done }]",
+      "  done:",
+      "    type: final",
+      "",
+    ].join("\n");
+
+    const { steps } = await host.read({ hubId: "acme", id: "reply" });
+
+    expect(Object.fromEntries(steps.map((step) => [step.id, step.program]))).toEqual({
+      first: undefined,
+      draft: { agent: "writer", agentName: "Writer", harness: "claude-code" },
+      check: { agent: "sorter", agentName: "Sorter", harness: "codex" },
+      done: undefined,
+    });
+  });
+
   it("refuses a workflow the hub doesn't have as not found", async () => {
     const { host } = setup();
     await expect(host.read({ hubId: "acme", id: "gone" })).rejects.toThrow(

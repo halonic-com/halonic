@@ -5,7 +5,7 @@ import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { startsAProgram, workflowAgentsOf } from "./index.ts";
+import { startsAProgram, stateAgentsOf, workflowAgentsOf } from "./index.ts";
 
 let root: string;
 
@@ -59,18 +59,35 @@ const files: Record<string, string> = {
   "hubs/support/agents/idle.agent.yaml": "id: idle\nname: Idle\n",
 };
 
+/** The Acme workspace of `files`, loaded from a folder. */
+async function acme() {
+  for (const [path, text] of Object.entries(files)) {
+    mkdirSync(dirname(join(root, path)), { recursive: true });
+    writeFileSync(join(root, path), text);
+  }
+  return loadWorkspace(new FolderDefinitionStore(root, "./acme"));
+}
+
 verifies("cli.workspace-models", () => {
   describe("the agents a workflow runs", () => {
     it("lists each once, in the order named, through the workflows it starts", async () => {
-      for (const [path, text] of Object.entries(files)) {
-        mkdirSync(dirname(join(root, path)), { recursive: true });
-        writeFileSync(join(root, path), text);
-      }
-      const workspace = await loadWorkspace(new FolderDefinitionStore(root, "./acme"));
+      const workspace = await acme();
 
       const agents = workflowAgentsOf(workspace, { hubId: "support", workflowId: "reply" });
 
       expect(agents.map((agent) => agent.value.id)).toEqual(["writer", "sorter"]);
+    });
+
+    it("lists each state's own agents, and those of a workflow it starts", async () => {
+      const workspace = await acme();
+
+      const byState = stateAgentsOf(workspace, { hubId: "support", workflowId: "reply" });
+
+      const ids = (state: string) => byState.get(state)?.map((agent) => agent.value.id);
+      expect(ids("read")).toEqual(["writer"]);
+      expect(ids("check")).toEqual(["sorter", "writer"]);
+      expect(byState.has("done")).toBe(false);
+      expect(stateAgentsOf(workspace, { hubId: "support", workflowId: "gone" }).size).toBe(0);
     });
 
     it("starts a program for any harness but Halonic's own", () => {
