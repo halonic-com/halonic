@@ -37,6 +37,14 @@ export {
   type BuiltProfile,
   type ProfileAgent,
 } from "./harness-profiles.ts";
+export {
+  AgentHostIntegrationSignIns,
+  type IntegrationSignInFailure,
+  type IntegrationSignInOutcome,
+  type IntegrationSignInState,
+  type IntegrationSignInStatus,
+  type IntegrationSignOutResult,
+} from "./integration-sign-in.ts";
 export { AgentHostPlacementStore } from "./placement-store.ts";
 export { AgentHostPluginToolCaller, type PluginToolArgs } from "./plugins.ts";
 export { AgentHostProposalFolders, type ProposalFolderRun } from "./proposal-folders.ts";
