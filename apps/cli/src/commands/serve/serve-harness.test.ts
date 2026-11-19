@@ -307,7 +307,9 @@ verifies("cli.commands.serve.harness", () => {
       });
 
       expect((await startChange(address)).status).toBe(500);
+      // Nothing starts in the sandbox, and nothing falls back to this computer without it.
       expect(fenced).toEqual([]);
+      expect(programStarts).toBe(0);
     },
   );
 });

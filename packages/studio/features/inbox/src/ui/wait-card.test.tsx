@@ -88,6 +88,15 @@ async function press(target: HTMLElement) {
 
 verifies("inbox.wait-card", () => {
   describe("waiting", () => {
+    it("lets the answers follow the step in a short window, so the step gets the room (HAL-12665)", () => {
+      const { root } = openCard();
+      const card = root.querySelector("section") as HTMLElement;
+      const [body, bar] = [...card.children] as HTMLElement[];
+      expect(card.className).toContain("min-h-0 flex-col short:min-h-auto");
+      expect(body?.className).toContain("overflow-y-auto p-4 short:overflow-visible");
+      expect(bar?.textContent).toContain("Approve");
+    });
+
     it("is a region named by the step's first line, which has focus", () => {
       const { root } = openCard();
       const title = root.querySelector("h2");

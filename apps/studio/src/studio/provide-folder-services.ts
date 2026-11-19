@@ -178,7 +178,7 @@ export function provideFolderServices(
       ...(transport === undefined
         ? {}
         : {
-            openHarnessHost: (approvalsOf) =>
+            openHarnessHost: (decisions) =>
               openStudioHarnessHost({
                 transport,
                 location,
@@ -186,7 +186,7 @@ export function provideFolderServices(
                 digest: webCryptoDigest,
                 clock: systemClock,
                 instructionTrust,
-                approvalsOf,
+                ...decisions,
                 reportError: (error) => console.error("The harness host", error),
               }),
           }),

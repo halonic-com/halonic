@@ -166,6 +166,34 @@ fn secret_commands_never_put_the_value_in_an_error() {
 }
 
 #[test]
+fn secret_commands_log_a_failure_by_command_and_kind_without_the_value() {
+    let value = "acme-secret-value";
+    let backend = FailingBackend;
+    let failures = [
+        (
+            "secret_set",
+            set_secret(&backend, "acme-key", value).expect_err("the backend fails"),
+        ),
+        (
+            "secret_set",
+            set_secret(&backend, "acme-key", &value.repeat(MAX_VALUE_BYTES)).expect_err("too long"),
+        ),
+        (
+            "secret_get",
+            get_secret(&backend, "acme-key").expect_err("the backend fails"),
+        ),
+    ];
+    for (command, error) in failures {
+        let line = error.log_message(command);
+        assert!(
+            line.starts_with(&format!("{command} failed ({})", error.kind())),
+            "{line}"
+        );
+        assert!(!line.contains(value), "{line}");
+    }
+}
+
+#[test]
 fn secret_commands_name_every_error_kind() {
     let kinds = [
         SecretError::InvalidName,

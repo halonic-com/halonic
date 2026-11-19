@@ -1,6 +1,7 @@
 # Walks the installer's pages and saves a picture of each, so a reviewer can
 # see what a person sees (HAL-1202). It runs the installer with its pages, in
-# the runner's desktop session, presses Install, and waits for the finish page.
+# the runner's desktop session, presses I Agree and Install, and waits for the
+# finish page.
 # The sandbox step runs for real here; on a runner it is already elevated.
 param(
   [Parameter(Mandatory)][string]$Setup,
@@ -20,6 +21,7 @@ public static class W {
   [DllImport("user32.dll")] public static extern IntPtr GetDlgItem(IntPtr h, int id);
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
   [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr h, int m, IntPtr w, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, int m, IntPtr w, IntPtr l);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern bool IsWindowEnabled(IntPtr h);
 }
@@ -60,6 +62,13 @@ foreach ($i in 1..60) {
   if ($p.MainWindowHandle -ne [IntPtr]::Zero) { $h = $p.MainWindowHandle; break }
 }
 if ($h -eq [IntPtr]::Zero) { throw 'The installer opened no window' }
+# The licence page comes first (HAL-12506).
+Wait-Button $h 'I &Agree' 20
+Save-Picture $h '0-licence'
+# Post the press (WM_COMMAND for button 1), don't send it: the Install page it
+# opens runs its own message loop, so SendMessage would only return once that
+# page is left.
+[W]::PostMessage($h, 0x111, [IntPtr]1, [W]::GetDlgItem($h, 1)) | Out-Null
 Wait-Button $h '&Install' 20
 Save-Picture $h '1-install'
 [W]::SendMessage([W]::GetDlgItem($h, 1), 0xF5, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null

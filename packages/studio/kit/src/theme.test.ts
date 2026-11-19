@@ -73,6 +73,12 @@ const contrastPairs: ContrastPair[] = [
     ...onSurfaces(status, text),
     ...onSoftFill(status, `${status}-soft`),
   ]),
+  // The status bar while the save note is a problem: its words, the other items and the action
+  // on the note's soft fill (HAL-8692).
+  ...["fg", "fg-muted", "accent-text"].flatMap((foreground) => [
+    ...onSoftFill(foreground, "warning-soft"),
+    ...onSoftFill(foreground, "danger-soft"),
+  ]),
   // The switch's off track and a checkbox in a hovered menu item sit on surface-muted.
   ...onSurfaces("border-control", control, ["surface-muted"]),
   ...onSurfaces("accent", control),
@@ -80,6 +86,8 @@ const contrastPairs: ContrastPair[] = [
   // carry the state, so the dot needs the 3:1 of a graphic, not text's 4.5:1.
   { ...onFill("success", "surface-muted"), minimum: control },
   { ...onFill("attention", "surface-muted"), minimum: control },
+  // The QR tile's modules on its white tile, the same in both themes (HAL-12240).
+  onFill("qr-dark", "qr-light"),
   // A neutral chip, count or Kbd on a muted fill steps up to border (the on-muted: variant).
   onFill("fg", "border"),
   { ...onFill("fg", "border"), name: "fg on border over surface-muted", beneath: "surface-muted" },
@@ -341,6 +349,7 @@ describe("theme.css scales", () => {
       "--spacing-touch",
       "--spacing-phone-bar",
       "--spacing-nav-pill",
+      "--spacing-qr-tile",
     ]);
     expect(themeTokens.get("--spacing")).toBe("4px");
     expect(namesStartingWith(themeTokens, "--breakpoint-")).toEqual(["--breakpoint-wide"]);
@@ -406,6 +415,7 @@ describe("theme.css on a phone", () => {
     expect(themeTokens.get("--spacing-touch")).toBe("48px");
     expect(themeTokens.get("--spacing-phone-bar")).toBe("56px");
     expect(themeTokens.get("--spacing-nav-pill")).toBe("56px");
+    expect(themeTokens.get("--spacing-qr-tile")).toBe("232px");
     expect(themeTokens.get("--text-input-touch")).toBe("16px");
     expect(themeTokens.get("--text-input-touch--line-height")).toBe("24px");
     expect(themeTokens.get("--text-input-touch--font-weight")).toBe("400");

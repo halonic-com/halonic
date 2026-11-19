@@ -26,6 +26,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { hostPluginBackends, unavailablePluginBackends } from "./host-plugin-backends.ts";
 import { PluginRefusal } from "./plugin-refusal.ts";
 
+/** These tests never take a yes back in another process, so the saved yes is never read again. */
+const noSavedYesChecks = { set: () => undefined, clear: () => undefined };
+
 const clock = fixedClock(Date.UTC(2026, 10, 14, 9));
 const passes: SandboxCheck = { ok: true, reason: null, missing: [] };
 const onWindows: SandboxCheck = { ok: false, reason: "windows", missing: [] };
@@ -115,7 +118,11 @@ async function setup(
       fenced: sandbox(check),
       // Never reached: the host's gate has no saved yes, so it never takes the launcher's path.
       launcher: sandbox(passes),
-      runs: new UnfencedRuns({ store: new MemoryUnfencedRunConsentStore(), clock }),
+      runs: new UnfencedRuns({
+        store: new MemoryUnfencedRunConsentStore(),
+        clock,
+        timers: noSavedYesChecks,
+      }),
     }),
     runtime: { node: "/host/halonic-agent-host", nodeFolder: "/host", runnerFile: "/r/runner.mjs" },
     transport: { fetch: async () => new Response("{}") } as never,

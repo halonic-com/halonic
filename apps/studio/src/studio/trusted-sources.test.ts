@@ -29,10 +29,26 @@ verifies("workspace.trusted-sources", () => {
         location: "/work/inbox-helper",
         name: "inbox-helper",
         trustedAt: "2026-11-03T12:00:00.000Z",
+        kind: "workspace",
       },
     ]);
     await host.remove("/work/inbox-helper");
     expect(await host.list()).toEqual([]);
+  });
+
+  it("tells a plugin's record from a workspace's by its fingerprint", async () => {
+    const store = new MemoryTrustStore();
+    await store.grant({
+      location: "/plugins/weather",
+      fingerprint: "hpf1:a",
+      content: {},
+      grantedAt: "2026-11-03T12:00:00.000Z",
+      appVersion: "0.1.0",
+      pins: {},
+      origin: "cli",
+    });
+    const rows = await trustedSourcesOf(store).list();
+    expect(rows.map((row) => [row.name, row.kind])).toEqual([["weather", "plugin"]]);
   });
 
   it("marks a row whose folder is gone, and shows the list when the shell can't tell", async () => {

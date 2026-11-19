@@ -179,6 +179,9 @@ Stacks stay short, so a closed pull request never strands work above it:
   and CI green.
 - The security reviewer also reviews tests, requirements, dependencies and `tooling/check`. The
   CI reviewer reviews build, CI and releases. The docs reviewer reviews docs and community files.
+- When a CI job fails on `main`, its area's owner gets the task to fix or revert it within
+  2 hours. Who owns which area: [docs/guides/area-owners.md](docs/guides/area-owners.md). It
+  doesn't change who reviews.
 - Start every review finding with a severity tag, `[blocker]`, `[major]`, `[minor]` or `[nit]`,
   one finding per line, on the pull request and on the Paperclip task alike. Untagged findings
   aren't counted. What each tag means, and the reviewer's checklist:

@@ -79,6 +79,7 @@ verifies("kit.toast", () => {
     expect(region?.getAttribute("aria-label")).toBe("Notifications");
     expect(region?.className).toContain("absolute right-4 bottom-4 z-(--layer-toast)");
     expect(region?.className).toContain("w-toast");
+    expect(region?.className).toContain("phone:short:fixed");
     const [card] = cards(container);
     expect(card?.getAttribute("role")).toBe("status");
     expect(card?.className).toContain("rounded-md");
@@ -89,6 +90,10 @@ verifies("kit.toast", () => {
     expect(card?.querySelector("[aria-hidden]")?.className).toContain("text-success");
     expect(card?.textContent).toContain("Sorter is ready to run.");
     expect(button(container, "Close Agent saved")).toBeTruthy();
+    // The close reaches into the padding on every side it touches (HAL-12665).
+    expect(button(container, "Close Agent saved").parentElement?.className).toContain(
+      "phone:-mt-3 phone:-mr-3 phone:-mb-3",
+    );
   });
 
   it("makes a danger toast an alert that stays until it's closed", () => {

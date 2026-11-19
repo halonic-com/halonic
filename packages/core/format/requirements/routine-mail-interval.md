@@ -11,3 +11,4 @@ If a mail trigger's `every` is a whole number of one or more digits followed by 
 - Given `every: 15m`, when the routine is parsed, then it passes (the old code refused it).
 - Given no `every`, when it is parsed, then the interval is `2m`.
 - Given `every: 0m`, `15s` or `1dd`, when it is parsed, then it fails with `invalid_format` at `trigger.mail.every`.
+- Given `every: 15`, a bare number, when it is parsed, then it fails with `invalid_format` at `trigger.mail.every` too.

@@ -12,6 +12,11 @@ export interface MenuItem {
    * in the workspace menu. It describes the item: its name stays the label.
    */
   readonly detail?: string | undefined;
+  /**
+   * A fact about the item as an outline tag after its label, read after its name: the "Sample"
+   * of the Acme sample in the workspace menu (flow-first-run 8).
+   */
+  readonly tag?: string | undefined;
   /** An optional 16px icon before the label (20px on a phone). */
   readonly icon?: ReactNode;
   /** Its shortcut, shown on the right as a Kbd and named with `aria-keyshortcuts`. */
@@ -54,6 +59,18 @@ export type MenuEntry = MenuItem | "divider" | MenuHeading;
 /** Whether an entry is an item, not a divider or a heading. */
 export function isMenuItem(entry: MenuEntry): entry is MenuItem {
   return entry !== "divider" && !("heading" in entry);
+}
+
+/**
+ * The name of a tagged item, "Acme, Sample", or none when its content names it. Set as its
+ * `aria-label`: Chromium puts a space around a hidden, positioned `sr-only` span when it builds a
+ * name from content, which reads "Acme , Sample".
+ */
+export function taggedItemName(item: MenuItem, extra?: string): string | undefined {
+  if (item.tag === undefined) {
+    return undefined;
+  }
+  return [item.label, item.tag, extra].filter((part) => part !== undefined).join(", ");
 }
 
 /** What the menu's `trigger` spreads on its button: a kit `Button` takes all of them. */

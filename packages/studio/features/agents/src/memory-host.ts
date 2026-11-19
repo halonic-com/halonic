@@ -6,6 +6,8 @@ import type {
   AgentRef,
   AgentSettings,
   AgentsHost,
+  AgentToolList,
+  AgentToolOption,
   AgentUser,
   HarnessReadiness,
 } from "./api.ts";
@@ -18,6 +20,9 @@ export interface MemoryAgentsHostOptions {
         readonly instructions?: string;
         readonly maxSteps?: number;
         readonly harness?: AgentHarnessId;
+        readonly skills?: readonly string[];
+        readonly knowledge?: readonly string[];
+        readonly connectors?: readonly string[];
       })[]
     | undefined;
   /** What `harnessReadiness` answers for Claude Code and Codex; ready when left out. */
@@ -26,6 +31,10 @@ export interface MemoryAgentsHostOptions {
   readonly modelAliases?: readonly string[] | undefined;
   /** The model an agent without one uses; none when left out. */
   readonly defaultModel?: string | undefined;
+  /** The Library items every hub can use; none when left out. */
+  readonly toolOptions?:
+    | Readonly<Partial<Record<AgentToolList, readonly AgentToolOption[]>>>
+    | undefined;
   /** The workflows that run each agent, keyed by `hubId/id` of the agent. */
   readonly users?: Readonly<Record<string, readonly AgentUser[]>> | undefined;
 }
@@ -40,10 +49,23 @@ function listingOf({
   instructions: _instructions,
   maxSteps: _maxSteps,
   harness: _harness,
+  skills: _skills,
+  knowledge: _knowledge,
+  connectors: _connectors,
   ...listing
 }: AgentSettings): AgentListing {
   return listing;
 }
+
+/** The settings an agent has before anyone changes them. */
+const fresh = {
+  instructions: "",
+  maxSteps: 6,
+  harness: "halonic",
+  skills: [],
+  knowledge: [],
+  connectors: [],
+} as const;
 
 /**
  * An {@link AgentsHost} that keeps its agents in memory and tells its listeners about each change,
@@ -51,8 +73,7 @@ function listingOf({
  */
 export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
   const agents = new Map<string, AgentSettings>();
-  for (const agent of options.agents ?? [])
-    agents.set(keyOf(agent), { instructions: "", maxSteps: 6, harness: "halonic", ...agent });
+  for (const agent of options.agents ?? []) agents.set(keyOf(agent), { ...fresh, ...agent });
   const listeners = new Set<() => void>();
 
   const found = (ref: AgentRef): AgentSettings => {
@@ -80,6 +101,11 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       return options.modelAliases ?? [];
     },
     defaultModel: async () => options.defaultModel,
+    toolOptions: async (ref) => {
+      found(ref);
+      const { skills = [], knowledge = [], connectors = [] } = options.toolOptions ?? {};
+      return { skills, knowledge, connectors };
+    },
     harnessReadiness: async (ref, harness) => {
       found(ref);
       return harness === "halonic"
@@ -125,12 +151,11 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
         .map((each) => each.id);
       const id = uniqueName(slugify(name), taken);
       agents.set(keyOf({ hubId, id }), {
+        ...fresh,
         hubId,
         id,
         name,
         instructions: instructions ?? "",
-        maxSteps: 6,
-        harness: "halonic",
       });
       for (const listener of listeners) listener();
       return { hubId, id };

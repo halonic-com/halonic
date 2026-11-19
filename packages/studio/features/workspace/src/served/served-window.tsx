@@ -27,6 +27,8 @@ export interface ServedWindowProps {
   readonly served?: ServedWorkspace | undefined;
   /** Asks the computer again, each time the picker sheet opens. */
   readonly load: LoadServedWorkspace;
+  /** The page has no host settings yet, so Settings leaves out its `host` sections. */
+  readonly withoutHostSettings?: boolean | undefined;
 }
 
 /**

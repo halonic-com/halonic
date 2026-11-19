@@ -88,7 +88,7 @@ export interface SettingsSectionContribution extends Ordered, ViewRef {
   /** `false` leaves the section out on a phone, as Developer does. */
   readonly phone?: false;
   /**
-   * `false` leaves out the line "Part of Acme. Changes here show in Changes and can be undone." under
+   * `false` leaves out the line "Part of Acme." under
    * a workspace section's name, for a section whose values aren't files in the workspace, as Trust's.
    */
   readonly workspaceLine?: false;

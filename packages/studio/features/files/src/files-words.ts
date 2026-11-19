@@ -24,8 +24,8 @@ export const filesWords = {
     `${name}, ${language} editor. Press Escape, then Tab, to leave the editor.`,
   missingTitle: "This file isn't in this workspace any more.",
   goToFiles: "Go to Files",
-  /** The strip above the greyed editor of a file that was moved to the trash; Undo follows. */
-  trashed: "This file was moved to the trash",
+  /** The strip above the greyed editor of a file that was deleted; Undo follows. */
+  trashed: "This file was deleted",
   unreadableTitle: "Couldn't open this file",
   /** The line above the editor of a file over the size limit. */
   largeFile: "This file is large, so it opens read-only.",
@@ -121,8 +121,7 @@ export const filesWords = {
   /** The toast when Undo can't move a renamed file back. */
   couldntMoveBack: (path: string): string => `Couldn't move ${path} back`,
   /** The toast after a delete: with a second line it is a sentence and ends with a full stop. */
-  deleted: (path: string, withLine: boolean): string =>
-    `Moved ${path} to the trash${withLine ? "." : ""}`,
+  deleted: (path: string, withLine: boolean): string => `Deleted ${path}${withLine ? "." : ""}`,
   /** The second line of that toast when other files name the deleted one by its id. */
   deletedPlaces: (count: number): string =>
     count === 1
@@ -132,8 +131,8 @@ export const filesWords = {
   tryAgain: "Try again",
   couldntDelete: (path: string, reason: string | undefined): string =>
     reason === undefined
-      ? `Couldn't move ${path} to the trash.`
-      : `Couldn't move ${path} to the trash: ${reason.replace(/\.$/, "")}.`,
+      ? `Couldn't delete ${path}.`
+      : `Couldn't delete ${path}: ${reason.replace(/\.$/, "")}.`,
   couldntPutBack: (path: string): string => `Couldn't put ${path} back`,
   /** The toast after files changed outside Halonic were taken in: the name for one file, the count for a batch. */
   reloaded: (names: readonly string[]): string =>

@@ -61,9 +61,25 @@ verifies("format.workflow-file", () => {
       "      - to: done",
       "        when: { between: [1, 2] }",
     );
-    expect(summary(problemsOf("workflow", text))).toEqual([
-      "states.start.on.0.when invalid_union 8",
-    ]);
+    const problems = problemsOf("workflow", text);
+    expect(summary(problems)).toEqual(["states.start.on.0.when invalid_union 8"]);
+    expect(problems[0]?.message).toBe(
+      'unknown condition kind "between"; allowed: equals, notEquals, contains, exists, gt, gte, lt, lte, not, all, any',
+    );
+  });
+
+  it("says what a known condition kind takes when it is written the wrong way (HAL-12568)", () => {
+    const text = workflow("  start:", "    on: [{ to: done, when: { equals: x } }]");
+    expect(problemsOf("workflow", text)[0]?.message).toBe(
+      'condition "equals" takes a list of two values',
+    );
+  });
+
+  it("names the one allowed version (HAL-12568)", () => {
+    const text = `version: 2\n${workflow("  start:", "    type: final")}`;
+    const problems = problemsOf("workflow", text);
+    expect(summary(problems)).toEqual(["version invalid_value 1"]);
+    expect(problems[0]?.message).toBe("version must be 1");
   });
 
   it("refuses a timer without a unit and gets outside input and context", () => {

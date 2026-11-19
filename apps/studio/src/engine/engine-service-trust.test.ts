@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { acmeFiles, fakeShell, lockCalls, serviceOn } from "./engine-service.test-helper.ts";
+import { acmeFiles, fakeShell, lockCalls, serviceOn } from "./engine-service.testing.ts";
 
 verifies("studio.untrusted-starts-nothing", () => {
   const reply = { hubId: "support", workflowId: "reply" };

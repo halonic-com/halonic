@@ -228,6 +228,32 @@ verifies("kit.list-columns", () => {
     expect(lines[2]?.textContent).toBe("Test01JD9A · A message arrived · 10:44");
   });
 
+  it("on a long third line, cuts only the text columns, never the short id or the time", () => {
+    const longStart: ListColumnsRow = {
+      ...needsYou,
+      cells: {
+        ...needsYou.cells,
+        startedBy: { value: "Weekly report for the whole support team routine, with Run now" },
+      },
+    };
+    const { container } = renderRuns([longStart], true);
+    const { stacked } = layoutsOf(cellOf(container, 0));
+    const lines = Array.from(stacked?.querySelector(".flex-col")?.children ?? []);
+    const parts = Array.from(lines[2]?.lastElementChild?.children ?? []);
+    expect(parts.map((part) => part.textContent)).toEqual([
+      "01JD9A",
+      " · ",
+      "Weekly report for the whole support team routine, with Run now",
+      " · ",
+      "10:44",
+    ]);
+    const [id, , startedBy, , time] = parts.map((part) => part.className);
+    expect(id).toContain("shrink-0 whitespace-nowrap font-mono");
+    expect(startedBy).toContain("min-w-0 truncate");
+    expect(time).toContain("shrink-0 whitespace-nowrap");
+    expect(time).not.toContain("truncate");
+  });
+
   it("on a phone, next to a More button, puts the chip at the start of the second line", () => {
     const withMore: ListColumnsRow = {
       ...needsYou,

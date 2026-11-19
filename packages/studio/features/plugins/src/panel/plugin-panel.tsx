@@ -69,7 +69,7 @@ export function PluginPanel(props: PluginPanelProps) {
               unavailable={status === "on" ? undefined : { reason: reasonId }}
               onClick={() => props.onCommand(command)}
             >
-              {command.title}
+              <bdi>{command.title}</bdi>
             </Button>
           ))}
         </div>

@@ -3,6 +3,7 @@ import type { ItemKindContribution } from "../points/item-kinds.ts";
 import type { Registered } from "../points/point-store.ts";
 import { currentLocation, type TabSet } from "../tabs/tab-set.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
+import { renameItemTabs } from "./item-tab-names.ts";
 import { itemOfLocationKey } from "./item-view.tsx";
 
 /**
@@ -29,9 +30,9 @@ export function closeGoneItemTabs(
 }
 
 /**
- * Listens to every item kind whose tabs have a `subscribe`, and closes the tabs of its items that
- * are gone each time it says they changed (`shell.gone-item-tabs`). Each kind gets the context of
- * the feature that added it.
+ * Listens to every item kind whose tabs have a `subscribe`, and each time it says they changed
+ * closes the tabs of its items that are gone (`shell.gone-item-tabs`) and names the others again
+ * (`shell.item-tab-names`). Each kind gets the context of the feature that added it.
  */
 export function useClosingGoneItemTabs(
   tabs: TabSet,
@@ -44,7 +45,11 @@ export function useClosingGoneItemTabs(
         return [];
       }
       const context = contextFor(kind.featureId);
-      return [kind.tab.subscribe(() => closeGoneItemTabs(tabs, kind, context), context)];
+      const follow = () => {
+        closeGoneItemTabs(tabs, kind, context);
+        renameItemTabs(tabs, kind, context);
+      };
+      return [kind.tab.subscribe(follow, context)];
     });
     return () => {
       for (const stop of stops) {

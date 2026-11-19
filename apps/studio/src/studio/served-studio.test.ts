@@ -20,6 +20,28 @@ function desktopMediaQueries(query: string): MediaQueryList {
 
 let element: HTMLElement;
 let started: StartedStudio | undefined;
+let restoreDialogs: (() => void) | undefined;
+
+/** jsdom has `<dialog>` but no `showModal()` or `close()`; the Ctrl K palette opens with them. */
+function fakeModalDialogs(): () => void {
+  const prototype = HTMLDialogElement.prototype;
+  Object.defineProperty(prototype, "showModal", {
+    configurable: true,
+    value(this: HTMLDialogElement) {
+      this.setAttribute("open", "");
+    },
+  });
+  Object.defineProperty(prototype, "close", {
+    configurable: true,
+    value(this: HTMLDialogElement) {
+      this.removeAttribute("open");
+    },
+  });
+  return () => {
+    Reflect.deleteProperty(prototype, "showModal");
+    Reflect.deleteProperty(prototype, "close");
+  };
+}
 
 beforeEach(() => {
   window.matchMedia = desktopMediaQueries;
@@ -30,6 +52,8 @@ beforeEach(() => {
 afterEach(async () => {
   await started?.stop();
   started = undefined;
+  restoreDialogs?.();
+  restoreDialogs = undefined;
   element.remove();
 });
 
@@ -118,5 +142,111 @@ verifies("studio.served-inbox", () => {
     page.dispatchEvent(new Event("focus"));
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(asks).toBe(stopped);
+  });
+});
+
+/** A phone's window, 390px wide: each `(width < Npx)` query matches when 390 is below N. */
+function phoneMediaQueries(query: string): MediaQueryList {
+  const below = Number(/\(width < (\d+)px\)/.exec(query)?.[1] ?? Number.NaN);
+  return { ...desktopMediaQueries(query), matches: 390 < below };
+}
+
+/** The served Studio of the workspace Acme, with nothing waiting. */
+function startAcme(): StartedStudio {
+  return startStudio({
+    element,
+    window,
+    userAgent: "Mozilla/5.0 (X11; Linux x86_64)",
+    fetch: async (path) =>
+      path === "/api/workspace"
+        ? Response.json({ name: "Acme", sample: false, folder: "~/Projects/acme" })
+        : Response.json({ runs: [] }),
+  });
+}
+
+/** Clicks the first element under `selector` whose text is `text`, once the window has drawn it. */
+async function click(selector: string, text: string): Promise<void> {
+  const found = await vi.waitFor(
+    () => {
+      const match = [...element.querySelectorAll<HTMLElement>(selector)].find(
+        (each) => each.textContent === text,
+      );
+      expect(match).toBeDefined();
+      return match as HTMLElement;
+    },
+    { timeout: 4_000 },
+  );
+  found.click();
+}
+
+verifies("studio.served-settings", () => {
+  it("lists Appearance and Formats on this phone, and no group on your computer", async () => {
+    window.matchMedia = phoneMediaQueries;
+    started = startAcme();
+    const more = await vi.waitFor(
+      () => {
+        const link = element.querySelector<HTMLElement>(
+          'nav[aria-label="Places"] a[aria-label^="More"]',
+        );
+        expect(link).not.toBeNull();
+        return link as HTMLElement;
+      },
+      { timeout: 4_000 },
+    );
+    more.click();
+    await click("main [role=gridcell]", "Settings");
+
+    const headings = await vi.waitFor(
+      () => {
+        const found = [...element.querySelectorAll("main h3")].map((h) => h.textContent);
+        expect(found).toContain("On this phone");
+        return found;
+      },
+      { timeout: 4_000 },
+    );
+    expect(headings).not.toContain("On your computer");
+    const rows = [...element.querySelectorAll("main tr [role=gridcell]")].map(
+      (cell) => cell.textContent?.split(/(?=[A-Z])/)[0],
+    );
+    expect(rows).toContain("Appearance");
+    expect(rows).toContain("Formats");
+    expect(element.textContent).not.toContain("Agent sandbox");
+    expect(element.textContent).not.toContain("Assistant");
+  });
+
+  it("offers no Ctrl K command that opens Assistant or Agent sandbox", async () => {
+    restoreDialogs = fakeModalDialogs();
+    started = startAcme();
+    await inboxLink();
+    // Pressed again until the box shows: the window listens for Ctrl K once it has drawn.
+    const box = await vi.waitFor(
+      () => {
+        const field = element.querySelector<HTMLInputElement>("[role=combobox]");
+        if (field === null) {
+          window.dispatchEvent(
+            new KeyboardEvent("keydown", {
+              key: "k",
+              ctrlKey: true,
+              bubbles: true,
+              cancelable: true,
+            }),
+          );
+        }
+        expect(field).not.toBeNull();
+        return field as HTMLInputElement;
+      },
+      { timeout: 4_000 },
+    );
+    // Types `words` and waits until the palette says `said`, as it does once typing stops.
+    const search = async (words: string, said: string) => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(box, words);
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+      await vi.waitFor(() => expect(element.textContent).toContain(said), { timeout: 4_000 });
+      return [...element.querySelectorAll("[role=option]")].map((option) => option.textContent);
+    };
+
+    expect((await search("Appearance", "1 result")).join()).toContain("Appearance");
+    expect(await search("Assistant", "No results")).toEqual([]);
+    expect(await search("Agent sandbox", "No results")).toEqual([]);
   });
 });

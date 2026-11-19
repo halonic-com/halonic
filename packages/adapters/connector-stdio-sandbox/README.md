@@ -30,6 +30,10 @@ The `stdio` connector for a plugin's local tool: it starts the tool's MCP progra
 - **A program that stops starts again** on the next call, in the same session, up to the restart
   limit, as on this computer. Its error output is read and dropped, never kept: the profile gave
   it secrets.
+- **A plugin's local tool reads only its checked copy.** `pluginLocalToolPlace` builds a local
+  tool's place from what the host set up: new working and temp folders, the session's copy of the
+  plugin read-only (a script only), the host's denied paths, which cover all of Halonic's data, and
+  only the tool's own sites. It refuses a plugin copy inside the working folder or a denied path.
 - **Halonic builds the profile, never the plugin.** `localToolLaunch` builds the session's profile
   (working folder, environment, network, time limit) and the command from the place the host set
   up, the stdio config, the pin and the secrets. The host opens the session with it. Before each

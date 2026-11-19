@@ -145,8 +145,12 @@ function refuseNonWebAddress(href: string): void {
   }
 }
 
+/**
+ * Whether `ExternalLink` takes `href`: an absolute `http` or `https` address. Code that decides
+ * whether to draw a link asks this, so it never draws one that throws.
+ */
 // Not URL.parse(): the oldest webviews Studio supports don't have it (see README.md).
-function isWebAddress(href: string): boolean {
+export function isWebAddress(href: string): boolean {
   try {
     const { protocol } = new URL(href);
     return protocol === "https:" || protocol === "http:";

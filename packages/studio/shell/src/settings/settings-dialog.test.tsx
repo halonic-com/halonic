@@ -201,9 +201,7 @@ verifies("shell.settings-workspace-line", () => {
     const lineUnder = (container: HTMLElement) =>
       container.querySelector("section h3 + p")?.textContent;
     const { container } = await open({ requested: "models" });
-    expect(lineUnder(container)).toBe(
-      "Part of Acme. Changes here show in Changes and can be undone.",
-    );
+    expect(lineUnder(container)).toBe("Part of Acme.");
     unmountAll();
     const host = await open({ requested: "assistant" });
     expect(lineUnder(host.container) ?? "").not.toContain("Part of");

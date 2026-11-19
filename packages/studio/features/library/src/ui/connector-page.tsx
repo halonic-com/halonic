@@ -118,7 +118,11 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
         </div>
       )}
       {toolsModel === undefined ? null : (
-        <ListedToolsWaiting model={toolsModel} sourceName={name} />
+        <ListedToolsWaiting
+          model={toolsModel}
+          sourceName={name}
+          viewOnly={context.host === "phone"}
+        />
       )}
       {connector?.connection === undefined ? null : (
         <ConnectorConnectionSummary connection={connector.connection} />

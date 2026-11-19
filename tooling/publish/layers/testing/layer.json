@@ -2,6 +2,13 @@
   "name": "@halonicjs/testing",
   "version": "0.1.1",
   "description": "Halonic's test suites for code outside the engine. @halonicjs/testing/integration is the conformance suite every integration runs against recorded responses, with its attack cases.",
+  "keywords": [
+    "halonic",
+    "testing",
+    "conformance",
+    "integration",
+    "security-testing"
+  ],
   "dependencies": {
     "@halonicjs/adapters": "0.1.1",
     "yaml": "2.9.1",

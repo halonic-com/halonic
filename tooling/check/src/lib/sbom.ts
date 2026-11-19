@@ -3,6 +3,7 @@
  * `cli/sbom.ts` does the reading and writing.
  */
 import type { DependencyList } from "./config-files.ts";
+import { type VendoredFile, vendoredTextPath } from "./licences.ts";
 
 /** The parts of a CycloneDX component this check reads. */
 export interface SbomComponent {
@@ -149,6 +150,24 @@ export function withProduct(sbom: Sbom, name: string, version: string): Sbom {
           })),
         }),
   };
+}
+
+/**
+ * The vendored files of `licences.json`, each with its licence text: its own
+ * `text` when it names one, so each file keeps its own copyright line, or else
+ * its licence's shared text. `read` returns a file's text by repo path.
+ */
+export function vendoredNotices(
+  vendored: readonly VendoredFile[],
+  read: (path: string) => string,
+): NoticeEntry[] {
+  return vendored.map((entry) => ({
+    name: `${entry.name} (${entry.path})`,
+    versions: [],
+    licence: entry.licence,
+    source: entry.source,
+    texts: [read(vendoredTextPath(entry))],
+  }));
 }
 
 const rule = "=".repeat(72);

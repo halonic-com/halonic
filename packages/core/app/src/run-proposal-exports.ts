@@ -18,6 +18,7 @@ export {
   type InFileProposalTarget,
   type InFileResult,
   type ProposalFileParts,
+  type ProposalTarget,
   ProposalUnavailableError,
   type ProposedFile,
   type RefusalReason,

@@ -7,8 +7,11 @@ interface ListRowBase<Id extends string> {
   /** Stable, never the index: focus and selection follow it. */
   readonly id: Id;
   readonly title: string;
-  /** One line under the title, cut with an ellipsis. */
-  readonly meta?: string;
+  /**
+   * One line under the title, cut with an ellipsis. Usually words; a node when part of it needs
+   * other words for a screen reader, as a glyph does.
+   */
+  readonly meta?: ReactNode;
   /**
    * A 20px icon before the text, 16px in a `dense` row as in a Menu item. Hidden from screen
    * readers: the title names the row.
@@ -230,6 +233,11 @@ interface WithoutColumns {
   readonly columns?: never;
   /** 32px rows, for menus and pickers; 48px on a phone. */
   readonly dense?: boolean;
+  /**
+   * Each row opens a page of its own, as History's versions. On a phone each row then ends in a
+   * chevron, and its trailing chip starts its meta line. Desktop rows don't change.
+   */
+  readonly chevrons?: boolean;
 }
 
 /** A List with columns: its rows are `ListColumnsRow`s, with `cells` in place of `trailing`. */
@@ -242,6 +250,8 @@ interface WithColumns {
   readonly columns: readonly ListColumn[];
   /** A columned row is never 32px: it holds a title over a meta line. */
   readonly dense?: never;
+  /** A columned row's right edge holds its chips. */
+  readonly chevrons?: never;
 }
 
 /**

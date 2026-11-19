@@ -88,6 +88,7 @@ export {
   ExternalLink,
   type ExternalLinkProps,
   inlineLinkClasses,
+  isWebAddress,
 } from "./external-link/external-link.tsx";
 export {
   type ExternalAddress,
@@ -104,6 +105,11 @@ export {
   type FieldProps,
   useFieldControl,
 } from "./field/field.tsx";
+export {
+  type FieldAnnounce,
+  FieldAnnounceProvider,
+  type FieldAnnounceProviderProps,
+} from "./field/field-announce.tsx";
 export { FormRows, type FormRowsProps } from "./field/form-rows.tsx";
 export {
   FilterChips,
@@ -229,6 +235,7 @@ export {
   type PresentationProviderProps,
   usePresentation,
 } from "./presentation/presentation.tsx";
+export { QrTile, type QrTileProps } from "./qr-tile/qr-tile.tsx";
 export {
   RadioGroup,
   type RadioGroupProps,

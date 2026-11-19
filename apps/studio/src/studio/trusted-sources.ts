@@ -1,3 +1,4 @@
+import { pluginTrustFingerprintPrefix } from "@halonicjs/app";
 import type { TrustStore } from "@halonicjs/ports";
 import type { TrustedSource, TrustedSourcesHost } from "@halonicjs/studio-feature-workspace/api";
 
@@ -33,6 +34,8 @@ export function trustedSourcesOf(
         name: nameOf(record.location),
         trustedAt: record.grantedAt,
         found: found.get(record.location),
+        // A plugin's record has its own fingerprint kind; the Remove dialog says its tools stop.
+        kind: record.fingerprint.startsWith(pluginTrustFingerprintPrefix) ? "plugin" : "workspace",
       }));
     },
     async remove(location): Promise<void> {

@@ -40,7 +40,6 @@ import {
 } from "@halonicjs/engine";
 import type { Agent } from "@halonicjs/format";
 import {
-  type BridgeApprovals,
   type Clock,
   type DefinitionStore,
   type HttpClient,
@@ -59,7 +58,7 @@ import {
   loadWorkspace,
   runDefinitionsOf,
 } from "@halonicjs/workspace";
-import type { StudioHarnessHost } from "./studio-harness-host.ts";
+import type { EngineDecisions, StudioHarnessHost } from "./studio-harness-host.ts";
 
 /** What a routine starts, with its placeholders filled in: what the routine scheduler would start. */
 export type RoutineRunStart = ReturnType<typeof startOfDueRun>;
@@ -108,12 +107,11 @@ export interface EngineServiceOptions {
   reportError(error: unknown): void;
   /**
    * Builds the harness host on the agent host, when one runs (`openStudioHarnessHost`).
-   * `approvalsOf` gives one run's bridge approvals, the engine's once it is built.
-   * Without it, a workflow with an agent in a harness is refused.
+   * `decisions` gives one run's bridge approvals and its phone's decisions,
+   * the engine's once it is built. Without it, a workflow with an agent in a
+   * harness is refused.
    */
-  openHarnessHost?(
-    approvalsOf: (runId: string) => BridgeApprovals | undefined,
-  ): Promise<StudioHarnessHost>;
+  openHarnessHost?(decisions: EngineDecisions): Promise<StudioHarnessHost>;
 }
 
 /** An open engine and the workspace it was built on. */
@@ -261,9 +259,7 @@ export class EngineService {
       return { id };
     } catch (error) {
       if (!isAgentRunsNotAvailable(error)) throw error;
-      throw new KindedError("unavailable", "This window can't start an agent yet.", {
-        fix: "Run this routine from the command line.",
-      });
+      throw new KindedError("unavailable", "This window can't start an agent yet.");
     }
   }
 
@@ -290,10 +286,14 @@ export class EngineService {
    */
   #refuseWhatThePageCantStart(agent: Agent): void {
     if (startsAProgram(agent.harness) && this.#options.openHarnessHost === undefined) {
-      throw unavailable(agent.name, "runs in a harness program");
+      throw unavailable(
+        agent.name,
+        "runs in a harness program",
+        `Set ${agent.name} to Halonic on its Harness page to run it now.`,
+      );
     }
     if (agent.connectors.length > 0) {
-      throw unavailable(agent.name, "uses a connector");
+      throw unavailable(agent.name, "uses a connector", "Run this workflow from the command line.");
     }
   }
 
@@ -302,11 +302,9 @@ export class EngineService {
    * now. Without one the engine still opens for the workflows that need none,
    * and a run of an agent in a harness fails at its harness step.
    */
-  async #openHarnessHost(
-    approvalsOf: (runId: string) => BridgeApprovals | undefined,
-  ): Promise<StudioHarnessHost | undefined> {
+  async #openHarnessHost(decisions: EngineDecisions): Promise<StudioHarnessHost | undefined> {
     try {
-      return await this.#options.openHarnessHost?.(approvalsOf);
+      return await this.#options.openHarnessHost?.(decisions);
     } catch (error) {
       this.#options.reportError(error);
       return undefined;
@@ -324,7 +322,10 @@ export class EngineService {
       const runStore = new TauriRunStore(ipc, location);
       // Set once the engine is built; a bridge opens only during a run, so after that.
       let executor: LocalExecutor | undefined;
-      const harnessHost = await this.#openHarnessHost((runId) => executor?.bridgeApprovals(runId));
+      const harnessHost = await this.#openHarnessHost({
+        approvalsOf: (runId) => executor?.bridgeApprovals(runId),
+        remoteDecisionsOf: (runId) => executor?.bridgeRemoteDecisions(runId),
+      });
       await harnessHost?.start(await openRunsOf(runStore));
       const engine = assembleEngine({
         createScheduler: nodeSchedulerFactory({
@@ -427,8 +428,8 @@ function refusalOf(refusal: unknown): { kind?: string; message?: string; pid?: n
   };
 }
 
-function unavailable(agentName: string, why: string): KindedError {
+function unavailable(agentName: string, why: string, fix: string): KindedError {
   return new KindedError("unavailable", `${agentName} ${why}, which this window can't start yet.`, {
-    fix: "Run this workflow from the command line.",
+    fix,
   });
 }

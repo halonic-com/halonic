@@ -166,6 +166,14 @@ export type RunEventBody =
       reason: ModelSkipReason;
       next?: string;
     }
+  /**
+   * A request of the agent's program to the harness bridge failed for a reason
+   * the bridge didn't name to the program, which was told the run log has the
+   * details (requirement `events.bridge-failed`). `kind`: the error kind of
+   * `@halonicjs/std`, such as `internal`. `message`: the error's own text,
+   * never holding the run token. It never counts towards a budget.
+   */
+  | { type: "bridge.failed"; agent: string; kind: string; message: string }
   | { type: "tool.called"; agent: string; tool: string; args: unknown }
   /**
    * A model's tool call was refused before it ran, so it reached nothing

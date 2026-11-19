@@ -350,4 +350,22 @@ verifies("kit.select", () => {
     );
     expect((container.querySelector("button") as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it.each([
+    ["desktop", render],
+    ["phone", onPhone],
+  ] as const)("reads an extra description after the Field's line on %s", (_, draw) => {
+    const { container } = draw(
+      <>
+        <p id="extra">Acme is local only.</p>
+        <Field label="Provider" hint="Pick one.">
+          <Select options={models} value="sonnet" onChange={ignore} describedBy="extra" />
+        </Field>
+      </>,
+    );
+    const control = container.querySelector("select, button") as HTMLElement;
+    const ids = control.getAttribute("aria-describedby")?.split(" ");
+    expect(ids).toHaveLength(2);
+    expect(ids?.[1]).toBe("extra");
+  });
 });

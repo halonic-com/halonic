@@ -97,6 +97,26 @@ verifies("workflow.validate", () => {
     ]);
   });
 
+  it("refuses a transition with both an event and a timer, but not a plain timer (HAL-12568)", () => {
+    const workflow = oneState({
+      type: "wait",
+      on: [
+        { to: "end", event: "approve", after: "1h" },
+        { to: "end", after: "2h" },
+      ],
+    });
+    expect(validateWorkflow(workflow)).toEqual([
+      {
+        severity: "error",
+        code: "timer-with-event",
+        state: "s",
+        message:
+          'In "s", the transition to "end" has both event "approve" and a timer (after 1h); a timer never fires on an event. Keep one of the two, or split it into two transitions if both are wanted',
+        path: ["states", "s", "on", 0, "event"],
+      },
+    ]);
+  });
+
   it("checks what a for-each step needs", () => {
     const neither = oneState({ type: "foreach", on: [{ to: "end" }] });
     expect(codes(validateWorkflow(neither))).toEqual([

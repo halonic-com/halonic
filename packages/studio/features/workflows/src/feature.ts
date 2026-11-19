@@ -32,6 +32,10 @@ export const workflowsFeature = defineFeature({
             item.id,
         }),
         exists: () => true,
+        // The tab opens with the id when the host hasn't read the workflow yet; the window names
+        // it again once the host says it has (L14, HAL-12730).
+        subscribe: (listener, context) =>
+          context.services.get(WorkflowsHostService).subscribe(listener),
       },
     });
     studio.search.addProvider({

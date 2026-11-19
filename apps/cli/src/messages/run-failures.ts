@@ -323,9 +323,8 @@ const lineOne = {
  */
 const lineTwo = {
   "key-refused": (_run, failure) =>
-    phrase`Set ${secretVariableName(failure.secret)} to a key ${failure.provider} accepts, then run again.`,
-  "no-key": (_run, failure) =>
-    phrase`Set ${secretVariableName(failure.secret)} to your ${failure.provider} key, then run again.`,
+    saveKey(phrase`a key ${failure.provider} accepts`, failure.secret),
+  "no-key": (_run, failure) => saveKey(phrase`your ${failure.provider} key`, failure.secret),
   // The CLI has no sign-in command, so it names the service only.
   // TODO: name the CLI's sign-in command here once there is one.
   "signed-out": (_run, failure) => phrase`Sign in to ${failure.service} again, then run again.`,
@@ -419,6 +418,14 @@ function cantTellCause(run: FailedRun, end: "." | ":" = "."): Phrase {
 /** The text as a sentence: it keeps its own ".", "?" or "!", and gets a full stop if it has none. */
 function asSentence(text: string): string {
   return /[.?!]$/.test(text) ? text : `${text}.`;
+}
+
+/**
+ * A key's fix names `halonic secret set` first, as the CLI's own way to save
+ * one, and the variable as the other (HAL-12570).
+ */
+function saveKey(key: Phrase, secret: string): Phrase {
+  return phrase`Save ${key} with halonic secret set ${secret}, or set ${secretVariableName(secret)}, then run again.`;
 }
 
 /** Every key error names the secret and the variable Halonic reads it from, the same as the reader does. */

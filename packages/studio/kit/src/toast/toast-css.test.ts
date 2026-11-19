@@ -14,6 +14,13 @@ verifies("kit.toast", () => {
     expect(phone).toMatch(/\.phone\\:bottom-2\s*\{\s*bottom: calc\(var\(--spacing\) \* 2\)/);
   });
 
+  it("sits 8px above the window's bottom on a short phone window, where the bars scroll away", async () => {
+    const css = await buildCss(["phone:short:fixed"]);
+    expect(css).toMatch(
+      /@media \(width < 600px\)\s*\{\s*@media \(max-height: 36em\)\s*\{\s*\.phone\\:short\\:fixed\s*\{\s*position: fixed;/,
+    );
+  });
+
   it("keeps a transparent 1px outline inside the box for forced colours", async () => {
     const css = await buildCss(["outline-1", "outline-transparent", "-outline-offset-1"]);
     expect(css).toContain("outline-width: 1px");
@@ -22,14 +29,15 @@ verifies("kit.toast", () => {
   });
 
   it("centres the close on the title line, so a title-only toast stays 44px (T-D4)", async () => {
-    const css = await buildCss(["-my-1", "touch:-mt-2.5", "touch:-mb-2.5", "phone:mb-0"]);
+    const css = await buildCss(["-my-1", "touch:-mt-2.5", "touch:-mb-2.5", "phone:-mb-3"]);
     expect(css).toContain("margin-block: calc(var(--spacing) * -1)");
     const touch = css.slice(css.indexOf("@media (pointer: coarse)"));
     expect(touch).toContain("margin-top: calc(var(--spacing) * -2.5)");
     expect(touch).toContain("margin-bottom: calc(var(--spacing) * -2.5)");
-    // The phone keeps its 48px close as it was: no bottom margin, whatever the pointer.
+    // The phone's 48px close reaches 12px into the bottom padding as it does at the top, so a
+    // title-only toast is 48px, with no empty band under its line (HAL-12665).
     const phone = css.slice(css.indexOf("@media (width < 600px)"));
-    expect(phone).toMatch(/\.phone\\:mb-0\s*\{\s*margin-bottom: 0px;/);
+    expect(phone).toMatch(/\.phone\\:-mb-3\s*\{\s*margin-bottom: calc\(var\(--spacing\) \* -3\);/);
     expect(css.indexOf("@media (width < 600px)")).toBeGreaterThan(
       css.indexOf("@media (pointer: coarse)"),
     );

@@ -40,7 +40,6 @@ function followUp(after: string): string {
     "    description: Wait for an answer",
     "    on:",
     "      - to: done",
-    "        event: no-answer",
     `        after: ${after}`,
     "  done:",
     "    type: final",
@@ -344,6 +343,8 @@ verifies("cli.commands.routines.watch", () => {
 
     expect(line).toBe("✕ Hourly follow-up didn't start · due 15:00 · see why with --debug");
     expect(io.stderr.join("\n")).toContain("the sandbox can't start on this computer");
+    // `routines watch` has no --harness, so it doesn't suggest one (HAL-12597).
+    expect(io.stderr.join("\n")).not.toContain("--harness");
     expect(await storedRuns()).toEqual([]);
     signals.send("SIGINT");
     expect(await watching).toBe(130);

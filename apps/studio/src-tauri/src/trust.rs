@@ -74,7 +74,10 @@ pub async fn pick_folder<R: Runtime>(app: AppHandle<R>) -> Result<Option<String>
         match picked_folders(app) {
             Ok(list) => state.pick_remembered(&folders, &list, choose),
             Err(refusal) => {
-                eprintln!("pick_folder: picks can't be remembered: {refusal:?}");
+                halonic_shell_log::record(
+                    "pick_folder",
+                    format!("picks can't be remembered: {refusal:?}"),
+                );
                 state.pick(&folders, choose)
             }
         }
@@ -242,16 +245,19 @@ pub async fn trust_get<R: Runtime>(
 
 /// Every record, sorted by location. A record for a location the shell
 /// can't hold (see `Listing::left_out`) is left out and its file reported
-/// on stderr, so one such record doesn't empty the whole list.
+/// in the shell's log, so one such record doesn't empty the whole list.
 #[tauri::command]
 pub async fn trust_list<R: Runtime>(app: AppHandle<R>) -> Result<Vec<Value>, TrustRefusal> {
     on_worker(app, |app| {
         let listing = trust_store(app)?.list()?;
         for file in &listing.left_out {
-            eprintln!(
-                "trust_list: left out {}: its location isn't valid Unicode; \
+            halonic_shell_log::record(
+                "trust_list",
+                format!(
+                    "left out {}: its location isn't valid Unicode; \
                  `halonic trust` in the CLI can list and remove it",
-                file.display()
+                    file.display()
+                ),
             );
         }
         Ok(listing.records)

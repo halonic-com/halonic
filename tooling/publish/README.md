@@ -49,7 +49,8 @@ A workspace package of that layer becomes one subpath with `halonic.publish` in 
 `tooling/publish/dist/<layer>`; `run stage adapters` stages one. Publish that folder, never a source package.
 
 - `layer.json` `name` and `version`: the npm name and the one version of the whole layer package.
-- `layer.json` `description`: the npm description.
+- `layer.json` `description` and `keywords`: the npm description and search words. Keywords are messaging:
+  they need the board's yes (HAL-12430), and a word goes in only once it is true of the published package.
 - `layer.json` `dependencies` and `peerDependencies`: the only outside packages the tarball may import.
   Staging fails on any other. Dependencies are exact versions.
 - `halonic.publish.name`: the import path on npm, the layer package's name with a subpath (or without one
@@ -75,21 +76,32 @@ the public API of its layer package and needs Liam's review.
 the CLI and all the workspace code and libraries it imports are bundled into `dist/cli/main.js`, which imports
 Node's own modules only. Beside it ship `dist/runner.mjs`, the `examples` folder and the sandbox runtime as a
 bundled dependency: it is the copy the workspace runs, with our patch, and the sandbox starts it as a program.
-`bin/halonic.js` keeps its Node version check. The release workflow packs this folder and installs the tarball
+`bin/halonic.js` keeps its Node version check. The package's README, which the npm page shows, is
+[`cli/README.md`](cli/README.md), written for users; `apps/cli/README.md` is for the people who work on the CLI
+and isn't shipped. The release workflow packs this folder and installs the tarball
 into an empty folder to run `halonic --version` and `halonic doctor` before it uploads anything. The rule is the
 requirement `publish.staged-cli`.
 
 ### Publishing the CLI: move `latest`
 
-On npm, `halonic` 1.0.0 is our deprecated placeholder, and it holds the `latest` tag. A real 0.1.x is lower
+On npm, `halonic` 1.0.0 is our placeholder, and it holds the `latest` tag. It and `0.0.0-stage` are
+already deprecated ("Empty placeholder. Use halonic 0.1.0 or later.", checked on 18 Nov 2026), so nothing
+more is needed for them. A real 0.1.x is lower
 than 1.0.0, so npm won't move `latest` to it by itself, and `npm install halonic` would keep installing the
 placeholder (HAL-12286). Every CLI publish before 1.0.0 therefore takes one more step:
 
 1. Publish the release workflow's `cli-package` tarball with `npm publish <tarball> --tag latest`, or, if it was
    published without the tag, run `npm dist-tag add halonic@<version> latest` right after.
 2. Once the version is live, check that `npm view halonic dist-tags` shows `latest: <version>`.
+3. Check the npm page with `npm view halonic license readme`: it must show `Apache-2.0` and the README from
+   `cli/README.md`. npm shows the `latest` version's licence and README, so until `latest` moves it still
+   shows the placeholder's ISC licence and its one-word README.
+4. Check that both placeholders still say they are deprecated: `npm view halonic@1.0.0 deprecated` and
+   `npm view halonic@0.0.0-stage deprecated`. If either has lost it, the npm account holder (a person, not an
+   agent) runs `npm deprecate halonic@1.0.0 "Empty placeholder. Use halonic 0.1.0 or later."`, and the same for
+   `halonic@0.0.0-stage`. Leave them published: the deprecation is enough.
 
-The merge captain checks step 2 before closing the release task. A run that only stages the version moves
+The merge captain checks steps 2 to 4 before closing the release task. A run that only stages the version moves
 nothing yet: check again after the stage is approved on npmjs.com.
 
 ## Releasing

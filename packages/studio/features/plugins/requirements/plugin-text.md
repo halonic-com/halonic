@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1740; ADR `docs/adr/2026-11-09-plugins.md` section 5; plugin screens (HAL-1739) section 8.4; UX acceptance for P7 (HAL-1952) section 1
+- Source: HAL-1740; ADR `docs/adr/2026-11-09-plugins.md` section 5; plugin screens (HAL-1739) section 8.4; UX acceptance for P7 (HAL-1952) section 1; the P10 security review (HAL-12345)
 
-The Studio shall show a plugin tool's answer the way its command or card says, `text`, `markdown` or `table`, and shall never turn any of it into HTML or script. `text` is plain text with its line breaks. `markdown` reads only paragraphs, headings (drawn as a bold line), bullet and numbered lists, quotes, code, bold, italics and links; an image, HTML and a link to anything but an `http` or `https` page stay as their own characters. A link opens through `ExternalLink`, is followed by its host in muted text, such as "(example.com)", so keyboard and touch users see where it goes too, and shows its full address on hover. The host is the one the URL parser reads, with any port: an international name shows in its `xn--` form and an IP address as itself. `table` reads a JSON list of objects, one row each, with a column for every key in the order it first appears; an answer that isn't such a list shows as plain text.
+The Studio shall show a plugin tool's answer the way its command or card says, `text`, `markdown` or `table`, and shall never turn any of it into HTML or script. `text` is plain text with its line breaks. `markdown` reads only paragraphs, headings (drawn as a bold line), bullet and numbered lists, quotes, code, bold, italics and links; an image, HTML and a link to anything but an `http` or `https` page stay as their own characters. A link opens through `ExternalLink`, is followed by its host in muted text, such as "(example.com)", so keyboard and touch users see where it goes too, and shows its full address on hover. The host is the one the URL parser reads, with any port: an international name shows in its `xn--` form and an IP address as itself. `table` reads a JSON list of objects, one row each, with a column for every key in the order it first appears; an answer that isn't such a list shows as plain text. Where Studio draws a plugin's name, its description, a tool's description or the title of a command, card or panel as text of its own, that text is isolated in `<bdi>`, so right-to-left text can't reorder the quotes or words around it.
 
 ## Examples
 
@@ -26,3 +26,6 @@ The Studio shall show a plugin tool's answer the way its command or card says, `
 - Given a `table` answer `It's sunny`,
   when Studio shows it,
   then it reads `It's sunny` as plain text.
+- Given a plugin whose tool description is `תחזית` and whose command, card and panel titles are in Hebrew,
+  when its page shows What it adds,
+  then each of them is in its own `<bdi>`, and the description is quoted outside it.

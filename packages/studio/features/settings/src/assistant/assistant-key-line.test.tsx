@@ -62,10 +62,11 @@ async function setup(
   await settings.set(assistantPrefs.provider, provider as never);
   if (provider === "anthropic") await settings.set(assistantPrefs.secretName, "anthropic-api-key");
   const closeSettings = vi.fn();
+  const announce = vi.fn();
   const view = render(
     <AssistantView
       settings={settings}
-      announce={vi.fn()}
+      announce={announce}
       place={place}
       workspace={workspace}
       navigate={lastNavigate}
@@ -73,7 +74,7 @@ async function setup(
     />,
   );
   await act(async () => {});
-  return { settings, closeSettings, view };
+  return { settings, closeSettings, announce, view };
 }
 
 const buttonNamed = (view: HTMLElement, name: string) => {
@@ -169,6 +170,25 @@ verifies("settings.ai-agent-key-line", () => {
     expect(keyLine(view)).toContain("is local only");
     await change({ ...acme, localOnly: false });
     expect(keyLine(view)).not.toContain("is local only");
+  });
+
+  it("names the local-only warning as the Provider's description, and says it once when it comes up", async () => {
+    const warning = "Acme is local only, so it can't use this cloud model.";
+    const { workspace } = fakeWorkspace({ ...acme, localOnly: true });
+    const { view, announce } = await setup(workspace);
+    const local = () => view.querySelectorAll<HTMLInputElement>('[role="switch"]')[0];
+    const description = () => {
+      const ids = view.querySelector("select")?.getAttribute("aria-describedby")?.split(" ") ?? [];
+      return ids.map((id) => document.getElementById(id)?.textContent ?? "").join(" ");
+    };
+    // Open with the warning: it's read in page order and as the select's description, not said.
+    expect(description()).toContain(warning);
+    expect(announce).not.toHaveBeenCalled();
+    await click(local() as HTMLInputElement);
+    expect(description()).not.toContain("is local only");
+    await click(local() as HTMLInputElement);
+    expect(description()).toContain(warning);
+    expect(announce.mock.calls).toEqual([[warning]]);
   });
 
   it("does not warn about a cloud model while no provider is set up", async () => {

@@ -1,8 +1,10 @@
+// The engine service's tests' fakes: Acme's files and a shell that keeps runs in memory.
+
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import type { Clock, IdGenerator, Secrets } from "@halonicjs/ports";
 import { EngineService, type EngineServiceOptions } from "./engine-service.ts";
 
-const location = "/acme";
+export const location = "/acme";
 
 /** Acme's `support` hub: `reply` runs the `writer` agent, plus the agents the refusals need. */
 export function acmeFiles(
@@ -107,6 +109,7 @@ export function lockCalls(shell: ReturnType<typeof fakeShell>): string[] {
   return shell.calls.filter((call) => call.startsWith("engine_lock_"));
 }
 
+/** A service on `shell` and Acme's files, with `more` options. */
 export function serviceOn(
   shell: ReturnType<typeof fakeShell>,
   definitions: MemoryDefinitionStore = acmeFiles(),
