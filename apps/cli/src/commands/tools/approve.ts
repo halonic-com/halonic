@@ -27,6 +27,7 @@ import { shellWord } from "../../output/shell-word.ts";
 import { type ApprovedEntry, approvedEntry, leftOutEntry } from "./json.ts";
 import {
   checkToolSource,
+  noToolsToApprove,
   openToolSource,
   type ToolSource,
   type ToolsMachine,
@@ -59,12 +60,9 @@ export async function approveTools(
 
   const source = await openToolSource(input, context, "approve");
   const check = await checkToolSource(source, machine, context);
-  if (check === "built_in") {
-    return {
-      exitCode: exitCode.ok,
-      lines: [toolsMessages.onlyBuiltIn(source.shown).phrase],
-      json: { approved: [], leftOut: [] },
-    };
+  if (typeof check === "string") {
+    const { line, json } = noToolsToApprove(check, source);
+    return { exitCode: exitCode.ok, lines: [line], json: { approved: [], leftOut: [], ...json } };
   }
   if (all) {
     return await approveAll(check, source, machine);

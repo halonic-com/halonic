@@ -1,3 +1,4 @@
+import { pluginProgramSecretText } from "@halonicjs/app";
 import { type Plugin, placedSecrets } from "@halonicjs/format";
 import type { PluginToolRisk } from "../page/plugin-pages.ts";
 import { hostWords, type SecretKind, secretHow, type TrustCounts } from "./trust-text.ts";
@@ -26,6 +27,11 @@ export interface TrustSecret {
   readonly name: string;
   /** Where it may go, in words. */
   readonly goesTo: readonly string[];
+  /**
+   * A program's secret: which program gets it, as which variable, and where
+   * that program may connect, in the CLI's words (HAL-12638). A backend's has none.
+   */
+  readonly givenTo: string | undefined;
   /** How it goes in a request; a program's secret has none. */
   readonly how: string | undefined;
   /** Whose request carries it, which decides what the dialog says about who sees its value. */
@@ -79,6 +85,7 @@ export function trustCheckContent(plugin: Plugin): TrustCheckContent {
       name,
       goesTo: unique(secret.hosts.map((host) => hostWords(host, labelOf))),
       how: secretHow(secret),
+      givenTo: undefined,
       kind: "backend" as const,
     })),
     ...localTools.flatMap((local) =>
@@ -86,6 +93,7 @@ export function trustCheckContent(plugin: Plugin): TrustCheckContent {
         name,
         goesTo: unique(secret.hosts.map((host) => hostWords(host, labelOf))),
         how: undefined,
+        givenTo: sentence(pluginProgramSecretText(local, name)),
         kind: "program" as const,
       })),
     ),
@@ -151,6 +159,11 @@ function addressesOf(
     ...backend.map((address) => ({ address, program: false })),
     ...programs.map((address) => ({ address, program: true })),
   ];
+}
+
+/** Core's text starts lowercase, after a name in the CLI's row; here it stands on its own line. */
+function sentence(text: string): string {
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
 
 function unique(items: readonly string[]): string[] {

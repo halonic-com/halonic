@@ -14,7 +14,12 @@ import type { ToolApprovalStore } from "@halonicjs/ports";
 import { fixedClock } from "@halonicjs/std";
 import type { CliCommand } from "../command.ts";
 import { toolsCommandWith } from "../commands/tools/command.ts";
-import { checkToolSource, openToolSource, type ToolsMachine } from "../commands/tools/source.ts";
+import {
+  checkToolSource,
+  type NoToolsToApprove,
+  openToolSource,
+  type ToolsMachine,
+} from "../commands/tools/source.ts";
 import { cliConnectorFactories } from "../connector-machine.ts";
 import { noSecrets } from "../remembered-secrets.ts";
 import { runCli } from "../run-cli.ts";
@@ -86,7 +91,7 @@ export interface AcmeNotes {
    * Lists `notes-mcp`'s tools once and checks them against the approvals
    * the test started from, as every `tools` command does first.
    */
-  check(): Promise<ListedToolApprovalCheck | "built_in">;
+  check(): Promise<ListedToolApprovalCheck | NoToolsToApprove>;
   /** Writes the connector file again, such as with other arguments, and trusts the workspace as it is then. */
   rewriteConnector(text: string): Promise<void>;
   /** Damages every approval file, as a disk error or a hand edit would, so none can be read. */
@@ -167,7 +172,7 @@ export async function acmeNotes(): Promise<AcmeNotes> {
 async function checkNotes(
   acme: string,
   machine: ToolsMachine,
-): Promise<ListedToolApprovalCheck | "built_in"> {
+): Promise<ListedToolApprovalCheck | NoToolsToApprove> {
   const source = await openToolSource(
     { positionals: ["notes-mcp"], options: {} },
     { cwd: acme },

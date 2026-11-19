@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { pluginTrustContent } from "./plugin-trust-content.ts";
 import {
+  pluginProgramSecretText,
   pluginTrustFiles,
   pluginTrustSectionHeadings,
   pluginTrustSectionOrder,
@@ -85,3 +86,29 @@ const filesNamed = (count: number) => [
     sha256: "c".repeat(64),
   })),
 ];
+
+verifies("app.plugin-program-secret-text", () => {
+  const files = {
+    id: "files",
+    env: { LF_TOKEN: { secret: "lf-token" }, LF_ROOT: { setting: "root" } },
+    network: ["api.example.com"],
+  };
+
+  it("names the program, its variable and where it can connect", () => {
+    expect(pluginProgramSecretText(files, "lf-token")).toBe(
+      "given to files as LF_TOKEN; files can reach api.example.com",
+    );
+  });
+
+  it("says when the program can't reach the internet", () => {
+    expect(pluginProgramSecretText({ ...files, network: [] }, "lf-token")).toBe(
+      "given to files as LF_TOKEN; files can't reach the internet",
+    );
+  });
+
+  it("says when no variable takes the secret, so the program doesn't get it", () => {
+    expect(pluginProgramSecretText(files, "other-key")).toBe(
+      "files doesn't get it: no variable takes it; files can reach api.example.com",
+    );
+  });
+});

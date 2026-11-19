@@ -288,8 +288,10 @@ export {
   pluginTrustFingerprintPrefix,
 } from "./plugin-trust-content.ts";
 export {
+  type PluginProgramSecretSource,
   type PluginTrustFiles,
   type PluginTrustSection,
+  pluginProgramSecretText,
   pluginTrustFileCap,
   pluginTrustFiles,
   pluginTrustLocationHeadings,

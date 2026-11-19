@@ -127,6 +127,9 @@ export const toolsMessages = defineMessages("tools", {
   nothingWaiting: (source: string) => phrase`Nothing from ${source} is waiting for your approval.`,
   onlyBuiltIn: (source: string) =>
     phrase`${source} has no listed tools to approve. Its tools come with the integration.`,
+  /** HAL-12638: a plugin's connector. Its tools are on once the plugin is trusted, so this isn't an error. */
+  pluginTools: (source: string) =>
+    phrase`${source} is a plugin's connector. Its tools need no approval: trusting the plugin covers them.`,
   /** `--all`: one row per tool, the fingerprint cut to 12 hex digits. */
   approvedRow: (tool: string) => phrase`Approved ${tool}`,
   leftOutKeepsChanging: (tool: string, source: string, command: string) =>
