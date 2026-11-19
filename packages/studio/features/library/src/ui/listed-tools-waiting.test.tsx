@@ -10,6 +10,7 @@ import {
   type ListedToolsHost,
   ListedToolsHostService,
   type ListedToolsSnapshot,
+  WorkspaceNotTrusted,
 } from "../listed-tools-host.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -66,7 +67,11 @@ function toolsHost(read: ListedToolsHost["review"]): ListedToolsHost {
   };
 }
 
-function page(tools: ListedToolsHost | undefined, host?: "phone"): ItemViewProps {
+function page(
+  tools: ListedToolsHost | undefined,
+  options: { readonly host?: "phone"; readonly runCommand?: (id: string) => boolean } = {},
+): ItemViewProps {
+  const { host, runCommand } = options;
   const provided = new Map<unknown, unknown>([[ConnectorStatusHostService, statusHost]]);
   if (tools !== undefined) provided.set(ListedToolsHostService, tools);
   return {
@@ -78,6 +83,7 @@ function page(tools: ListedToolsHost | undefined, host?: "phone"): ItemViewProps
       }),
       announcer: { announceState: vi.fn() },
       host,
+      ...(runCommand === undefined ? {} : { runCommand }),
     },
     Sections: () => null,
   } as unknown as ItemViewProps;
@@ -117,7 +123,7 @@ describe("the connector page's listed tools", () => {
         <ConnectorPage
           {...page(
             toolsHost(async () => snapshot(["read_note"])),
-            "phone",
+            { host: "phone" },
           )}
         />,
       );
@@ -157,6 +163,30 @@ describe("the connector page's listed tools", () => {
       act(() => retry?.click());
       await settled();
       expect(root.textContent).toContain("1 tool is waiting for your approval");
+    });
+
+    it("offers Review, which opens the trust check, when the workspace isn't trusted", async () => {
+      const runCommand = vi.fn(() => true);
+      const root = render(
+        <ConnectorPage
+          {...page(
+            toolsHost(async () => {
+              throw new WorkspaceNotTrusted();
+            }),
+            { runCommand },
+          )}
+        />,
+      );
+      await settled();
+      expect(root.textContent).toContain(
+        "Couldn't list the tools: this workspace isn't trusted yet, so nothing was started.",
+      );
+      const buttons = [...root.querySelectorAll("button")].map((b) => b.textContent);
+      expect(buttons).not.toContain("Try again");
+
+      const review = [...root.querySelectorAll("button")].find((b) => b.textContent === "Review");
+      act(() => review?.click());
+      expect(runCommand).toHaveBeenCalledWith("workspace.open-trust");
     });
 
     it("says a refused list or an unreadable approval has no rows, with Review tools", async () => {

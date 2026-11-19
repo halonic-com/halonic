@@ -20,6 +20,9 @@ import { useItemTrash } from "./item-trash.tsx";
 import { sharedHubKey } from "./library-place.tsx";
 import { ListedToolsWaiting } from "./listed-tools-waiting.tsx";
 
+/** The command that opens the workspace page at Trust, where the trust check is (Settings' **Open Trust** runs it too). */
+const openTrustCommand = "workspace.open-trust";
+
 /**
  * The `connector` item kind's page, kept thin so the full connector page (HAL-751) can replace it
  * without touching the section: the connector's name as the `h1`, then how it connects, then the status section, then the sections other features add
@@ -36,7 +39,7 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
       listedTools === undefined ? undefined : new ListedToolsReviewModel(listedTools, item.id),
     [listedTools, item.id],
   );
-  const { openItem } = context;
+  const { openItem, runCommand } = context;
   // A phone has no tabs to open the file in, so the sentence stays and the link goes.
   const desktop = usePresentation() !== "phone";
   const title = useRef<HTMLHeadingElement | null>(null);
@@ -121,6 +124,9 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
         <ListedToolsWaiting
           model={toolsModel}
           sourceName={name}
+          {...(runCommand === undefined
+            ? {}
+            : { onReviewTrust: () => void runCommand(openTrustCommand) })}
           viewOnly={context.host === "phone"}
         />
       )}

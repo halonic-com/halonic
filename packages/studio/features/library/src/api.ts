@@ -52,6 +52,7 @@ export {
   type ListedToolsHost,
   ListedToolsHostService,
   type ListedToolsSnapshot,
+  WorkspaceNotTrusted,
 } from "./listed-tools-host.ts";
 export { listedToolsSnapshot } from "./listed-tools-snapshot.ts";
 export {
