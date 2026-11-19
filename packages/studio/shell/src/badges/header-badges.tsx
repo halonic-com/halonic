@@ -2,7 +2,10 @@ import { HeaderBadge, StatusChip, Tooltip } from "@halonicjs/studio-kit";
 import { useRef, useSyncExternalStore } from "react";
 import type { BadgeRegistry, BadgeState } from "./badge-registry.ts";
 
-/** The header badges the features registered, in priority order; nothing when there are none. */
+/**
+ * The header badges the features registered, in priority order; nothing when there are none. The
+ * status bar shows them, and More in a desktop window as narrow as a phone.
+ */
 export function HeaderBadges({ registry }: { readonly registry: BadgeRegistry }) {
   const states = useSyncExternalStore(
     (onChange) => registry.subscribe(onChange),
@@ -28,7 +31,8 @@ function RegisteredBadge({ state }: { readonly state: BadgeState }) {
         ref={(element) => {
           opener.current = element?.querySelector("button") ?? null;
         }}
-        className="inline-flex"
+        // On a phone the badge has its own line on More, so its divider runs full width.
+        className="inline-flex phone:flex phone:grow phone:flex-col"
       >
         <HeaderBadge
           as="button"
