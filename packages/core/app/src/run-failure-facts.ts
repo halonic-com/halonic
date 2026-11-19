@@ -33,7 +33,8 @@ const modelFirstAnswerMs = 5 * 60_000;
  * "OpenAI", or else by its id. Not every engine reason has its own facts:
  *
  * - `disk-full`, `interrupted` and `answer-not-an-option` are `error` with
- *   `causeKnown`, and `harness-unavailable` is `error` (HAL-6451);
+ *   `causeKnown`, as is an `error` whose cause is a bridge socket path that
+ *   is too long (HAL-13862), and `harness-unavailable` is `error` (HAL-6451);
  * - `cancelled` isn't a failure, so {@link runFailureOf} gives it none.
  */
 export type RunFailure =
@@ -182,7 +183,8 @@ export type RunFailure =
  * budget stop whose error doesn't read as the engine writes it, and a reason
  * whose model, provider file or started step can't be found. `disk-full`,
  * `interrupted` and `answer-not-an-option` have a known cause, so they get
- * `causeKnown` (HAL-6451).
+ * `causeKnown` (HAL-6451), as does an `error` whose cause is
+ * `harness-bridge.socket-path-too-long` (HAL-13862).
  *
  * @param model - from `failedModelOf`; `undefined` when the run called no model
  * @param started - from `failedStartOf`; read for `sandbox-start-failed` and `harness-start-failed`
@@ -255,7 +257,7 @@ export function runFailureOf(
     case "budget":
       return budgetFailure(failed);
     case "error":
-      return setupFailureOf(failed.cause) ?? generalFailure(failed);
+      return knownCauseFailureOf(failed) ?? setupFailureOf(failed.cause) ?? generalFailure(failed);
     case "harness-unavailable":
     case "instructions-not-trusted":
       return generalFailure(failed);
@@ -388,6 +390,21 @@ function setupFailureOf(cause: RunFailureCause | undefined): RunFailure | undefi
     default:
       return undefined;
   }
+}
+
+/**
+ * The cause codes of an `error` whose message already says what went wrong
+ * and how to fix it, so a bug report wouldn't help: a bridge socket path
+ * longer than the system takes (HAL-13862).
+ */
+const knownCauseCodes: ReadonlySet<string> = new Set(["harness-bridge.socket-path-too-long"]);
+
+/** An `error` whose cause code is in {@link knownCauseCodes}: the engine's message, with its cause known. */
+function knownCauseFailureOf(failed: RunFailedEvent): RunFailure | undefined {
+  const code = failed.cause?.code;
+  return code !== undefined && knownCauseCodes.has(code)
+    ? { ...generalFailure(failed), causeKnown: true }
+    : undefined;
 }
 
 /**

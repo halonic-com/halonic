@@ -40,7 +40,8 @@ const afterOf: MoneyAmountOptions = { tiny: "less than" };
  * after "Support reply failed in the step Draft a reply:", without what line 2
  * already says. `budget` says "stopped", because the run kept to a limit the
  * user set; `error` and `internal` have a full stop after the step, because
- * "Halonic can't tell the cause yet" is the reason.
+ * "Halonic can't tell the cause yet" is the reason, or for an `error` whose
+ * cause is known, the engine's message is.
  */
 const lineOne = {
   "key-refused": (run, failure) =>
@@ -168,8 +169,12 @@ const lineOne = {
   error: (run, failure) => {
     // An empty message says no more than none at all.
     const message = failure.message?.trim() ?? "";
-    return message === ""
-      ? cantTellCause(run)
+    if (message === "") {
+      return cantTellCause(run);
+    }
+    // A known cause's message is the reason, so Halonic doesn't say it can't tell (HAL-13862).
+    return failure.causeKnown === true
+      ? phrase`${run.title} failed in the step ${run.step}. ${asSentence(message)}`
       : phrase`${cantTellCause(run, ":")} ${asSentence(message)}`;
   },
   // A bug's own text never shows without --debug (cli-output 1.3 rule 5).

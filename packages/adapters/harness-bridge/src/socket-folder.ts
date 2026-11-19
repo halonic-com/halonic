@@ -28,6 +28,29 @@ function socketPathLimitOf(platform: NodeJS.Platform): { system: string; bytes: 
   return socketPathLimits[platform] ?? otherSystemLimit;
 }
 
+/**
+ * The socket's path would be longer than the system takes. It carries a
+ * `failureCause`, as the engine reads it from a failed call
+ * (`failureCauseOf`): the code `harness-bridge.socket-path-too-long` and the
+ * path's length, the system and its limit, so a run that fails this way says
+ * its cause is known instead of asking for a bug report (HAL-13862). The
+ * path itself stays out of it: it names the user's folders.
+ */
+class SocketPathTooLongError extends KindedError {
+  readonly failureCause: { readonly code: string; readonly detail: Record<string, string> };
+
+  constructor(bytes: number, limit: { system: string; bytes: number }) {
+    super(
+      "invalid_input",
+      `The bridge's socket path would be ${bytes} bytes, and ${limit.system} takes at most ${limit.bytes}. Move Halonic's data to a shorter path.`,
+    );
+    this.failureCause = {
+      code: "harness-bridge.socket-path-too-long",
+      detail: { bytes: String(bytes), limit: String(limit.bytes), system: limit.system },
+    };
+  }
+}
+
 /** The socket's file name in its run folder. */
 const socketFileName = "bridge.sock";
 
@@ -73,7 +96,8 @@ export interface RunSocketFolder {
  * to, or someone else could swap the run folder after the check and be
  * handed the run's token.
  *
- * @throws KindedError `invalid_input` when `parent` isn't absolute, or the socket's path would be too long
+ * @throws KindedError `invalid_input` when `parent` isn't absolute, or the socket's path would be too long,
+ *   with the cause `harness-bridge.socket-path-too-long`
  * @throws KindedError `unavailable` when the folder can't be created, or it or `parent` isn't private
  */
 export async function makeRunSocketFolder(
@@ -89,10 +113,7 @@ export async function makeRunSocketFolder(
   const length = Buffer.byteLength(socketPath);
   const limit = socketPathLimitOf(platform);
   if (length > limit.bytes) {
-    throw new KindedError(
-      "invalid_input",
-      `The bridge's socket path would be ${length} bytes, and ${limit.system} takes at most ${limit.bytes}. Move Halonic's data to a shorter path.`,
-    );
+    throw new SocketPathTooLongError(length, limit);
   }
   try {
     await mkdir(parent, { recursive: true, mode: privateMode });
