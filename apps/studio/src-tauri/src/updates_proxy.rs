@@ -7,13 +7,15 @@
 //!
 //! An unusable setting stops the check and the download before anything is
 //! sent, and nothing goes direct instead. Installing makes no call, so it
-//! keeps the plain builder.
+//! keeps the plain builder. The bucket check for an install Scoop updates
+//! doesn't go through the updater; it gets a client on the same rules from
+//! [`client_for`].
 
 use std::sync::Arc;
 
-use halonic_http_guard::{ProxyEndpoint, ProxySetting, Route, route_for};
+use halonic_http_guard::{ProxyEndpoint, ProxySetting, Refusal, Route, route_for};
 use reqwest::redirect::Policy;
-use reqwest::{ClientBuilder, Proxy};
+use reqwest::{Client, ClientBuilder, Proxy, Url};
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_updater::{Error as UpdaterError, UpdaterBuilder, UpdaterExt};
 
@@ -49,6 +51,20 @@ fn usable(setting: &ProxySetting) -> Result<(), UpdaterError> {
         ))),
         ProxySetting::None | ProxySetting::Proxy { .. } => Ok(()),
     }
+}
+
+/// A client on Halonic's proxy rules for `url`, a call the updater doesn't
+/// make. The updater insists on `https` for its first request; nothing does
+/// here, so `url` is asked of `route_for` before the client is built, and a
+/// URL it refuses is never sent direct instead.
+///
+/// # Errors
+///
+/// The refusal when `route_for` refuses `url`; its message never holds the
+/// proxy's user name or password.
+pub(super) fn client_for(url: &Url, setting: &Arc<ProxySetting>) -> Result<ClientBuilder, Refusal> {
+    route_for(url, setting)?;
+    Ok(on_proxy_rules(Client::builder(), setting))
 }
 
 /// No proxy from the environment; the proxy `route_for` picks for each

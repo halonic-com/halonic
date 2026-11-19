@@ -11,7 +11,7 @@ use std::time::Duration;
 use halonic_http_guard::ProxySetting;
 use reqwest::ClientBuilder;
 
-use super::{on_proxy_rules, usable};
+use super::{client_for, on_proxy_rules, usable};
 
 /// A loopback server that answers each connection with the next canned
 /// reply, and tells the test the head of the request it read.
@@ -165,4 +165,38 @@ fn updates_proxy_test_sends_nothing_with_an_unusable_setting() {
     );
     assert!(usable(&ProxySetting::None).is_ok());
     assert!(usable(&proxy_setting("http://127.0.0.1:3128")).is_ok());
+}
+
+#[test]
+fn updates_proxy_test_bucket_client_refuses_before_it_is_built() {
+    let proxy = Server::serve(vec![no_tunnel()]);
+    let setting = proxy_setting(&proxy.url(""));
+    let plain = "http://bucket.test/halonic.json".parse().expect("a URL");
+    let refusal = client_for(&plain, &setting).expect_err("plain http to a public name");
+    assert_eq!(refusal.code(), "plain_http_proxied");
+    let unusable = proxy_setting(&with_login("socks5://127.0.0.1:1080"));
+    let secure = "https://bucket.test/halonic.json".parse().expect("a URL");
+    let refusal = client_for(&secure, &unusable).expect_err("an unusable setting");
+    assert_eq!(refusal.code(), "proxy_refused");
+    assert!(
+        !refusal.message().contains("made") && !refusal.message().contains(":up"),
+        "{}",
+        refusal.message()
+    );
+    assert!(!proxy.was_asked());
+}
+
+#[test]
+fn updates_proxy_test_bucket_client_tunnels_a_public_name() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    let proxy = Server::serve(vec![no_tunnel()]);
+    let setting = proxy_setting(&proxy.url(""));
+    let url = "https://bucket.test/halonic.json".parse().expect("a URL");
+    let client = client_for(&url, &setting)
+        .expect("a public https name")
+        .build()
+        .expect("a client");
+    tauri::async_runtime::block_on(client.get(url).send()).expect_err("no tunnel");
+    let connect = proxy.request();
+    assert!(connect.starts_with("CONNECT bucket.test:443 "), "{connect}");
 }

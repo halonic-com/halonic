@@ -1,15 +1,21 @@
 //! The check for an install another tool updates (HAL-1452, flow-install-update
 //! section 14): Studio reads the version in our Scoop bucket's manifest and
 //! says whether it is newer. It never asks the update feed, downloads or
-//! installs, and "Check now" and the daily check come here alike.
+//! installs, and "Check now" and the daily check come here alike. The check
+//! follows Halonic's proxy rules, as the updater does (HAL-12966).
 
+use std::sync::Arc;
+
+use halonic_http_guard::{ProxySetting, Refusal};
 use halonic_update_state::{
     CHECK_TIME_LIMIT, CheckFailure, CheckResult, UpdateState, Version, bucket_version, notes_url,
 };
-use tauri::{AppHandle, Runtime};
-use tauri_plugin_http::reqwest;
+use reqwest::Url;
+use tauri::{AppHandle, Manager, Runtime};
 
+use super::proxy::client_for;
 use super::{Inner, lock, now};
+use crate::http_fetch::HttpFetchState;
 
 /// Our bucket's manifest. Scoop reads the same file, so this is the version
 /// `scoop update halonic` would install. The repository is S3's (HAL-1453).
@@ -23,7 +29,8 @@ const BUCKET_OVERRIDE: &str = "HALONIC_BUCKET_MANIFEST";
 
 /// Runs after `check` has marked the check as running.
 pub(super) async fn check<R: Runtime>(app: &AppHandle<R>) {
-    let result = read_version().await;
+    let setting = app.state::<HttpFetchState>().proxy();
+    let result = read_version(&setting).await;
     let mut inner = lock(app);
     apply(&mut inner, result, now());
     inner.save();
@@ -60,30 +67,33 @@ fn apply(inner: &mut Inner, result: Result<String, CheckFailure>, at: u64) {
     }
 }
 
-async fn read_version() -> Result<String, CheckFailure> {
-    let text = match standing_in().await {
+async fn read_version(setting: &Arc<ProxySetting>) -> Result<String, CheckFailure> {
+    let text = match standing_in(setting).await {
         Some(text) => text?,
-        None => fetch(BUCKET_MANIFEST).await?,
+        None => fetch(BUCKET_MANIFEST, setting).await?,
     };
     bucket_version(&text).ok_or(CheckFailure::Unreadable)
 }
 
 #[cfg(debug_assertions)]
-async fn standing_in() -> Option<Result<String, CheckFailure>> {
+async fn standing_in(setting: &Arc<ProxySetting>) -> Option<Result<String, CheckFailure>> {
     let source = std::env::var(BUCKET_OVERRIDE).ok()?;
     Some(if source.starts_with("http") {
-        fetch(&source).await
+        fetch(&source, setting).await
     } else {
         std::fs::read_to_string(&source).map_err(|_| CheckFailure::Unreadable)
     })
 }
 
 #[cfg(not(debug_assertions))]
-async fn standing_in() -> Option<Result<String, CheckFailure>> {
+async fn standing_in(_setting: &Arc<ProxySetting>) -> Option<Result<String, CheckFailure>> {
     None
 }
 
-async fn fetch(url: &str) -> Result<String, CheckFailure> {
+/// Reads `url` on Halonic's proxy rules. A URL the rules refuse, or an
+/// unusable proxy setting, sends nothing and counts as no answer, as it
+/// does for the updater's check.
+async fn fetch(url: &str, setting: &Arc<ProxySetting>) -> Result<String, CheckFailure> {
     let failure = |error: reqwest::Error| {
         if error.is_connect() {
             CheckFailure::Offline
@@ -93,7 +103,21 @@ async fn fetch(url: &str) -> Result<String, CheckFailure> {
             CheckFailure::NoAnswer
         }
     };
-    let client = reqwest::Client::builder()
+    let url = Url::parse(url).map_err(|_| CheckFailure::NoAnswer)?;
+    let refused = |refusal: Refusal| {
+        halonic_shell_log::record(
+            "updates",
+            format!("the bucket check sent nothing: {}", refusal.message()),
+        );
+        CheckFailure::NoAnswer
+    };
+    // The updater installs this crypto provider before it builds a client;
+    // this check builds one without the updater.
+    if rustls::crypto::CryptoProvider::get_default().is_none() {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+    }
+    let client = client_for(&url, setting)
+        .map_err(refused)?
         .timeout(CHECK_TIME_LIMIT)
         .build()
         .map_err(failure)?;
