@@ -15,9 +15,11 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { useStudioHost } from "../engine/studio-host-context.ts";
 import { detailsOf } from "../errors/copy-details-words.ts";
 import { errorMessageFor } from "../errors/error-message.ts";
 import { useCopyDetails } from "../page/copy-details.ts";
+import { asUnreachable } from "../page/page-unreachable.tsx";
 import { type HomeCardContribution, type HomeSection, homeSectionTitles } from "../points/home.ts";
 import type { Registered } from "../points/point-store.ts";
 import { loadView } from "../view.ts";
@@ -96,13 +98,15 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
   const focusMoved = useCallback(() => setFocusPending(false), []);
   const [empty, setEmpty] = useState(false);
   const signal = useCardSignal(card, context);
+  const name = card.title?.(context) ?? homeSectionTitles[card.id];
+  const host = useStudioHost();
 
   return (
     <section aria-labelledby={headingId} hidden={empty}>
       <ListHeading
         id={headingId}
         headingRef={headingRef}
-        name={card.title?.(context) ?? homeSectionTitles[card.id]}
+        name={name}
         {...(signal === undefined ? {} : { detail: signal })}
       />
       <ViewErrorBoundary
@@ -111,7 +115,9 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
         fallback={(error) => (
           <SectionError
             section={card.id}
-            error={error}
+            // A card whose code couldn't load on the served Studio or the phone says the computer
+            // can't be reached (`shell.page-unreachable`), not that Halonic can't explain it.
+            error={asUnreachable(host, error, `show ${name}`)}
             focus={focusPending}
             onFocused={focusMoved}
             onRetry={retry}

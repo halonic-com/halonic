@@ -3,6 +3,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { HeaderBadges } from "../badges/header-badges.tsx";
 import { FeatureDialogs } from "../dialogs/feature-dialogs.tsx";
 import type { StudioHost } from "../engine/engine-words.ts";
+import { StudioHostContext } from "../engine/studio-host-context.ts";
 import { usePresentationFromWidth } from "../frame/frame-effects.ts";
 import { ShellFrame } from "../frame/shell-frame.tsx";
 import { StatusBarItems } from "../frame/status-bar.tsx";
@@ -130,6 +131,15 @@ function DesktopResourceItem({
  * <StudioWindow shell={shell} workspace={workspace} host="desktop-app" platform="windows" language="en" />
  */
 export function StudioWindow(props: StudioWindowProps) {
+  // What the window draws deep down, such as a page that can't load its code, reads the host here.
+  return (
+    <StudioHostContext value={props.host}>
+      <StudioWindowBody {...props} />
+    </StudioHostContext>
+  );
+}
+
+function StudioWindowBody(props: StudioWindowProps) {
   const { shell, workspace, host, platform, withoutHostSettings } = props;
   const { tabs } = workspace;
   const { announcer, contributions } = shell;

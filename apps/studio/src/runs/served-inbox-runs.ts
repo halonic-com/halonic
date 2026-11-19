@@ -1,6 +1,7 @@
 import type { RunSummary } from "@halonicjs/events";
 import { type ErrorKind, KindedError } from "@halonicjs/std";
 import type { InboxRuns } from "@halonicjs/studio-feature-inbox/api";
+import { unreachableWords } from "@halonicjs/studio-shell";
 import { type PollTimer, runsPollInterval, systemTimer } from "./workspace-runs.ts";
 
 /** The page's own `fetch`: same address, same session. */
@@ -55,7 +56,7 @@ function refusal(status: number, doing: string, listing: boolean): KindedError {
       : `That run is gone, so Halonic couldn't ${doing}.`,
     conflict: `The run doesn't take that answer now, so Halonic couldn't ${doing}. It may have moved on.`,
     limit_reached: `The computer has had too many requests just now, so Halonic couldn't ${doing}.`,
-    unavailable: `Halonic couldn't reach the computer to ${doing}.`,
+    unavailable: unreachableWords.reason(doing),
     internal: `Halonic couldn't ${doing}.`,
   };
   return new KindedError(kind, why[kind]);
@@ -86,7 +87,7 @@ async function ask(
   try {
     response = await options.fetch(path, { ...init, signal });
   } catch (cause) {
-    throw new KindedError("unavailable", `Halonic couldn't reach the computer to ${doing}.`, {
+    throw new KindedError("unavailable", unreachableWords.reason(doing), {
       cause,
     });
   }
