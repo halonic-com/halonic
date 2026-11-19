@@ -271,6 +271,7 @@ verifies("http-node.proxy-tunnel", () => {
       await expect(
         openTunnel({
           proxy: result.endpoint,
+          variable: "HTTPS_PROXY",
           lookup: fixedLookup(["127.0.0.1"]),
           target: { hostname: "model.test\r\nX: y", port: 443 },
           connectTimeoutMs: 1_000,

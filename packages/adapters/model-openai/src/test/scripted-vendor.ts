@@ -19,7 +19,7 @@ type Step =
   | { kind: "hang"; partialText: string }
   | { kind: "stall"; status: number }
   | { kind: "flood" }
-  | { kind: "unreachable" };
+  | { kind: "unreachable"; error: Error };
 
 /** How many bytes the vendor sends at a time: few, so events and characters break across reads. */
 const bytesPerRead = 7;
@@ -64,9 +64,9 @@ export class ScriptedVendor implements HttpClient {
     this.#steps.push({ kind: "flood" });
   }
 
-  /** Fails the next call as a network failure would. */
-  unreachableNext(): void {
-    this.#steps.push({ kind: "unreachable" });
+  /** Fails the next call as a network failure would, with `error` as the client's own error. */
+  unreachableNext(error: Error = new TypeError("fetch failed")): void {
+    this.#steps.push({ kind: "unreachable", error });
   }
 
   calls(): { started: number; open: number } {
@@ -85,7 +85,7 @@ export class ScriptedVendor implements HttpClient {
     });
     const step = this.#steps.shift();
     if (step === undefined) throw new Error("the scripted vendor has no step left");
-    if (step.kind === "unreachable") throw new TypeError("fetch failed");
+    if (step.kind === "unreachable") throw step.error;
     this.#open += 1;
     const streams = body["stream"] === true;
     if (step.kind === "hang" && !streams) {

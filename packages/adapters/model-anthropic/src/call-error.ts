@@ -1,4 +1,4 @@
-import { ModelCallError, VendorErrorText } from "@halonicjs/ports";
+import { ModelCallError, networkCauseOf, VendorErrorText } from "@halonicjs/ports";
 import { findSecretShape, isPlainObject } from "@halonicjs/std";
 import type { CallTimeoutError } from "./call-timer.ts";
 import type { BodyTooLargeError } from "./read-body.ts";
@@ -194,12 +194,20 @@ function isKeyRefused(status: number | undefined, vendor: VendorError): boolean 
   return status === 403 && !notTheKeyWording.test(vendor.message);
 }
 
-/** The {@link ModelCallError} when the provider couldn't be reached. */
+/** The {@link ModelCallError} when the provider couldn't be reached.
+ * A network error that names its cause, such as the HTTP client's
+ * `ProxyError`, passes it on (requirement `ports.model-call-cause`), and its
+ * message follows ours: such an error's message is written for the user and
+ * holds no credential. Any other error's message stays out, as it may.
+ */
 export function errorForNetwork(cause: unknown, call: FailedCall): ModelCallError {
   const where = call.host === undefined ? "" : ` at ${call.host}`;
-  return new ModelCallError("offline", `Halonic couldn't reach ${call.providerId}${where}`, {
+  const failureCause = networkCauseOf(cause);
+  const why = failureCause === undefined || !(cause instanceof Error) ? "" : `: ${cause.message}`;
+  return new ModelCallError("offline", `Halonic couldn't reach ${call.providerId}${where}${why}`, {
     cause,
     ...(call.host === undefined ? {} : { host: call.host }),
+    failureCause,
   });
 }
 
