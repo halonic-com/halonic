@@ -1,7 +1,9 @@
+import { type ChatAnswer, type ChatAnswerRequest, maxTurnLimit } from "@halonicjs/app";
 import type { DefinitionSource } from "@halonicjs/ports";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import type {
   AgentChange,
+  AgentChatRequest,
   AgentHarnessId,
   AgentHub,
   AgentListing,
@@ -47,6 +49,12 @@ export interface WorkspaceAgentsParts {
    * host (the browser), which answers "couldn't check".
    */
   readonly detectHarness?: (ref: AgentRef, harness: AgentHarnessId) => Promise<HarnessReadiness>;
+  /**
+   * Answers a chat on the workspace's engine: `ChatService.answer` on the engine's executor,
+   * which opens the engine on first use. Absent where there is no engine, which answers
+   * "The engine isn't answering."
+   */
+  readonly answerChat?: (request: ChatAnswerRequest) => Promise<ChatAnswer>;
 }
 
 /** Where the agent files of a hub are kept. */
@@ -177,6 +185,27 @@ export class WorkspaceAgents implements AgentsHost {
     } catch (error) {
       return { status: "failed", error: error instanceof Error ? error.message : String(error) };
     }
+  }
+
+  /**
+   * Answers a Try it message on the engine. The engine reads the agent by its id, so the answer
+   * uses the agent as it's saved, with its own tools; the chat adds none of its own.
+   */
+  async answer(ref: AgentRef, request: AgentChatRequest): Promise<ChatAnswer> {
+    const { agent } = await this.#find(ref);
+    const answerChat = this.#parts.answerChat;
+    if (answerChat === undefined) {
+      throw new KindedError("unavailable", "The engine isn't answering.");
+    }
+    return answerChat({
+      settings: { hubId: ref.hubId, agentId: ref.id },
+      messages: request.messages,
+      tools: [],
+      // The file allows up to 200 model calls; a chat answer stops at 64 turns.
+      turnLimit: Math.min(agent.maxSteps, maxTurnLimit),
+      ...(request.signal === undefined ? {} : { signal: request.signal }),
+      ...(request.listener === undefined ? {} : { listener: request.listener }),
+    });
   }
 
   /**

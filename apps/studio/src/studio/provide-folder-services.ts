@@ -8,6 +8,7 @@ import {
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
 import {
+  ChatService,
   InstructionTrustService,
   type ServiceRegistry,
   type WorkspaceScope,
@@ -197,6 +198,8 @@ export function provideFolderServices(
     new WorkspaceAgents({
       files: services.get(workspaceFilesKey),
       onChange: (listener) => scope.events.on("files.changed", listener),
+      answerChat: async (request) =>
+        new ChatService((await engine.open()).executor).answer(request),
       ...(transport === undefined
         ? {}
         : {

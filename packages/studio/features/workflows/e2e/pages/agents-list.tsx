@@ -62,6 +62,7 @@ const host: AgentsHost = {
   defaultModel: async () => "fast",
   toolOptions: async () => ({ skills: [], knowledge: [], connectors: [] }),
   harnessReadiness: async () => ({ status: "ready", version: "1.0.0" }),
+  answer: async () => ({ messages: [], end: { reason: "answered" } }),
   filePath: async (ref) => `hubs/${ref.hubId}/agents/${ref.id}.agent.yaml`,
   trash: async () => ({ undo: async () => undefined }),
   referencesTo: async () => [],

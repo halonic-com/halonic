@@ -84,3 +84,41 @@ verifies("agents.host", () => {
     });
   });
 });
+
+verifies("agents.host-chat", () => {
+  const messages = [{ role: "user", content: "Sort this mail" }] as const;
+
+  it("answers a Try it message, telling the listener each message", async () => {
+    const host = memoryAgentsHost({ hubs: [acme], agents: [refundChecker] });
+    const heard: unknown[] = [];
+    const answer = await host.answer(refundChecker, {
+      messages,
+      listener: { onMessage: (message) => heard.push(message) },
+    });
+    expect(answer.end).toEqual({ reason: "answered" });
+    expect(answer.messages).toEqual([{ role: "assistant", content: "Done." }]);
+    expect(heard).toEqual(answer.messages);
+  });
+
+  it("answers the way a test gives it, with the conversation and the Stop signal", async () => {
+    const stop = new AbortController();
+    const host = memoryAgentsHost({
+      hubs: [acme],
+      agents: [refundChecker],
+      answer: async (_ref, request) => {
+        expect(request.messages).toEqual(messages);
+        expect(request.signal).toBe(stop.signal);
+        return { messages: [], end: { reason: "stopped", toolsRan: false } };
+      },
+    });
+    const answer = await host.answer(refundChecker, { messages, signal: stop.signal });
+    expect(answer.end).toEqual({ reason: "stopped", toolsRan: false });
+  });
+
+  it("rejects with not_found for an agent that isn't there", async () => {
+    const host = memoryAgentsHost({ hubs: [acme] });
+    await expect(host.answer({ hubId: "acme", id: "ghost" }, { messages })).rejects.toMatchObject({
+      kind: "not_found",
+    });
+  });
+});
