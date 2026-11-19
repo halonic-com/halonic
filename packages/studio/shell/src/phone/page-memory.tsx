@@ -26,10 +26,31 @@ export function emptyPageMemory(): PhonePageMemory {
   return { scroll: undefined, row: undefined };
 }
 
+/** Whether an element scrolls its content: its `overflow-y` lets the content scroll. */
+function scrolls(element: Element): boolean {
+  const overflow = getComputedStyle(element).overflowY;
+  return overflow === "auto" || overflow === "scroll";
+}
+
+/**
+ * The element that scrolls a phone page: its nearest ancestor that scrolls, or `null` when none
+ * does. On a phone that is the window's `main`; in a short window (`short:`) it is the whole phone
+ * column, as `main` no longer scrolls there.
+ */
+export function scrollerOf(page: HTMLElement): HTMLElement | null {
+  for (let parent = page.parentElement; parent !== null; parent = parent.parentElement) {
+    if (scrolls(parent)) {
+      return parent;
+    }
+  }
+  return null;
+}
+
 /**
  * Keeps how far the page is scrolled in its memory while it shows, and puts it back when the page
- * shows again, as after Back. The scroller is the window's `main`. A page shown for the first time
- * stays where the window has it, so its own view can still scroll to a part of it.
+ * shows again, as after Back. The scroller is whichever element scrolls the page (`scrollerOf`). A
+ * page shown for the first time starts at its top, as a desktop tab's fresh page does; a view that
+ * scrolls to a part of its page does so in an effect, which runs after this one.
  */
 export function KeptScroll({
   memory,
@@ -40,13 +61,11 @@ export function KeptScroll({
 }) {
   const page = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
-    const scroller = page.current?.closest("main");
-    if (scroller === null || scroller === undefined) {
+    const scroller = page.current === null ? null : scrollerOf(page.current);
+    if (scroller === null) {
       return;
     }
-    if (memory.scroll !== undefined) {
-      scroller.scrollTop = memory.scroll;
-    }
+    scroller.scrollTop = memory.scroll ?? 0;
     memory.scroll = scroller.scrollTop;
     const remember = () => {
       memory.scroll = scroller.scrollTop;

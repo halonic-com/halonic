@@ -12,6 +12,7 @@ import type { Registered } from "../points/point-store.ts";
 import { listedSections, type SettingsPlace, settingsGroups } from "../settings/settings-groups.ts";
 import type { TabLocation } from "../tabs/tab-set.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
+import { scrollerOf } from "./page-memory.tsx";
 
 /** Props for {@link SettingsListPage}. */
 export interface SettingsListPageProps {
@@ -127,26 +128,6 @@ function firstSummaries(
     }
   }
   return { summaries, pending };
-}
-
-/** Whether an element scrolls its content: its `overflow-y` lets the content scroll. */
-function scrolls(element: Element): boolean {
-  const overflow = getComputedStyle(element).overflowY;
-  return overflow === "auto" || overflow === "scroll";
-}
-
-/**
- * The element that scrolls the page: its nearest ancestor that scrolls, or `null` when none does.
- * On a phone that is the window's `main`; in a short window (`short:`) it is the whole phone
- * column, as `main` no longer scrolls there.
- */
-function scrollerOf(page: HTMLElement): HTMLElement | null {
-  for (let parent = page.parentElement; parent !== null; parent = parent.parentElement) {
-    if (scrolls(parent)) {
-      return parent;
-    }
-  }
-  return null;
 }
 
 /**

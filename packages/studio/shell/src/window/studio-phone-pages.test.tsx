@@ -129,23 +129,39 @@ verifies("shell.studio-phone", () => {
     expect(heading()).toBe("Changes");
   });
 
-  it("gives a page its scroll and its noted row back after Back", async () => {
-    const { container, button, openUnderMore } = renderPhoneWindow([inboxFeature, changesFeature]);
-    await openUnderMore("Changes");
-    const main = container.querySelector("main") as HTMLElement;
-    expect(container.querySelector(".kept-row")?.textContent).toBe("no row");
-    main.scrollTop = 300;
-    act(() => {
-      main.dispatchEvent(new Event("scroll"));
-    });
-    act(() => container.querySelector<HTMLButtonElement>("button.push-page")?.click());
-    await settle();
-    // The pushed page is shorter, so the window's scroller is back at the top.
-    main.scrollTop = 0;
+  /** What scrolls a phone page: `main`, or in a short window (`short:`) the whole phone column. */
+  const layouts = [
+    { name: "a phone", scrollerOf: (main: HTMLElement) => main },
+    {
+      name: "a short window",
+      scrollerOf: (main: HTMLElement) => main.parentElement?.parentElement as HTMLElement,
+    },
+  ];
 
-    act(() => button("Back")?.click());
-    await settle();
-    expect(main.scrollTop).toBe(300);
-    expect(container.querySelector(".kept-row")?.textContent).toBe("reply-writer");
-  });
+  for (const layout of layouts) {
+    it(`starts a pushed page at its top and gives a page its scroll and its noted row back after Back, in ${layout.name}`, async () => {
+      const { container, button, openUnderMore } = renderPhoneWindow([
+        inboxFeature,
+        changesFeature,
+      ]);
+      const scroller = layout.scrollerOf(container.querySelector("main") as HTMLElement);
+      // jsdom loads no styles, so the scroller is told here that it scrolls, as the window's CSS does.
+      scroller.style.overflowY = "auto";
+      await openUnderMore("Changes");
+      expect(container.querySelector(".kept-row")?.textContent).toBe("no row");
+      scroller.scrollTop = 300;
+      act(() => {
+        scroller.dispatchEvent(new Event("scroll"));
+      });
+      act(() => container.querySelector<HTMLButtonElement>("button.push-page")?.click());
+      await settle();
+      // jsdom has no layout to clamp the scroll, so only the page itself puts it at the top.
+      expect(scroller.scrollTop).toBe(0);
+
+      act(() => button("Back")?.click());
+      await settle();
+      expect(scroller.scrollTop).toBe(300);
+      expect(container.querySelector(".kept-row")?.textContent).toBe("reply-writer");
+    });
+  }
 });
