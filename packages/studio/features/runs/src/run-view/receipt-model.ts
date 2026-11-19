@@ -263,7 +263,8 @@ function outputText(output: unknown): string {
  * A cached answer says "cached, no model call", a call without a price says
  * "No price" and is never counted as zero, and a call the person's own
  * subscription paid for says so. Empty when the run made no model call, which
- * hides the section.
+ * hides the section. A model name is plain text with hidden characters escaped:
+ * a workspace's models or a provider's reply decide it.
  *
  * @example
  * modelLines(events, summary, "EUR");
@@ -336,7 +337,7 @@ function emptyTotals(): ModelTotals {
 }
 
 function modelLine(model: string, totals: ModelTotals, currency: string): string {
-  const parts = [receiptWords.modelCalls(model, totals.calls)];
+  const parts = [receiptWords.modelCalls(escapeHidden(model), totals.calls)];
   if (totals.cached === totals.calls)
     return [...parts, receiptWords.modelCached].join(lineSeparator);
   parts.push(receiptWords.modelTokens(totals.input, totals.output));
