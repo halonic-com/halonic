@@ -164,7 +164,7 @@ verifies("routines.starts.starts-card", () => {
     );
     unmount();
     expect((await card(routineStarting(briefing, "in-trash"))).page.textContent).toContain(
-      "Briefing is in the trash, so this routine won't start it.",
+      "Briefing was deleted, so this routine won't start it.",
     );
   });
 

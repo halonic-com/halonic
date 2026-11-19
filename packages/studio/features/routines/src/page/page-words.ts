@@ -45,7 +45,7 @@ export const runNowWords = {
   notTrusted: (name: string) => `Not started: ${name} isn't trusted yet.`,
   targetNotFound: (target: string) => `Not started: ${target} isn't in this hub any more.`,
   targetNeverLive: (target: string) => `Not started: ${target} isn't live yet.`,
-  targetInTrash: (target: string) => `Not started: ${target} is in the trash.`,
+  targetInTrash: (target: string) => `Not started: ${target} was deleted.`,
   couldntStart: (name: string) => `Couldn't start ${name}.`,
   signIn: "Sign in with Google",
   couldntSignIn: (account: string) => `Couldn't start the sign-in for ${account}.`,

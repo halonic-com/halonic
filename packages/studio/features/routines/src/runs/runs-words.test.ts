@@ -28,7 +28,7 @@ it("says why a time didn't start", () => {
     "08:00 Tue: Briefing isn't live yet",
   );
   expect(skipSentence({ ...skip, reason: "target-in-trash" }, "Briefing", now)).toBe(
-    "08:00 Tue: Briefing is in the trash",
+    "08:00 Tue: Briefing was deleted",
   );
 });
 

@@ -82,6 +82,19 @@ verifies("kit.header-badge", () => {
     expect(badge.querySelector("[aria-hidden=true]")?.className).toContain("size-3.5");
   });
 
+  it("as a button carries the description the feature gives", () => {
+    const plain = badgeIn(render(trustBadge()).container);
+    expect(plain.hasAttribute("aria-describedby")).toBe(false);
+    const described = badgeIn(
+      render(
+        <HeaderBadge as="button" action="Review" aria-describedby="trust-tip" onClick={vi.fn()}>
+          Not trusted yet
+        </HeaderBadge>,
+      ).container,
+    );
+    expect(described.getAttribute("aria-describedby")).toBe("trust-tip");
+  });
+
   it("as a button calls onClick", async () => {
     const onClick = vi.fn();
     await click(badgeIn(render(trustBadge(onClick)).container));

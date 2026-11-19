@@ -81,4 +81,24 @@ verifies("shell.header-badges", () => {
       "Couldn't load workspace settings · The folder has no location. Try again",
     );
   });
+
+  it("describes the button with its tooltip, so a screen reader reads it", () => {
+    const registry = createBadgeRegistry();
+    const container = render(<HeaderBadges registry={registry} />);
+    const tooltip = "Routines and connectors start only in a trusted workspace.";
+    act(() => {
+      registry.add({
+        id: "trust",
+        label: "Not trusted yet",
+        tone: "neutral",
+        priority: 1000,
+        action: "Review",
+        onSelect: () => {},
+        tooltip,
+      });
+    });
+    const id = container.querySelector("button")?.getAttribute("aria-describedby") ?? "";
+    expect(id).not.toBe("");
+    expect(container.ownerDocument.getElementById(id)?.textContent).toBe(tooltip);
+  });
 });
