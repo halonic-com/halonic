@@ -40,4 +40,18 @@ describe("MiddleCut", () => {
     expect(container.querySelector(".truncate")?.textContent).toBe("C:\\Users"); // leak-guard: allow absolute-path made-up Windows paths for the test
     expect(container.querySelector(".shrink-0")?.textContent).toBe("\\Ada\\Documents\\Acme sample");
   });
+
+  it("lets an end too wide for its row wrap, between folder names first, and not draw past it", () => {
+    const folder = "/work/projects/Customer Support/Halonic Workspaces/Q3 Renewals";
+    const container = render(<MiddleCut text={folder} />);
+    const end = container.querySelector(".shrink-0");
+    expect(end?.className).toContain("whitespace-pre-wrap");
+    expect(end?.className).toContain("max-w-");
+    // A break is allowed before each "/" in the end but its first, which already starts the end.
+    const breaksBefore = [...(end?.querySelectorAll("wbr") ?? [])].map(
+      (lineBreak) => lineBreak.nextSibling?.textContent,
+    );
+    expect(breaksBefore).toEqual(["/Q3 Renewals"]);
+    expect(end?.textContent).toBe("/Halonic Workspaces/Q3 Renewals");
+  });
 });
