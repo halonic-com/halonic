@@ -19,15 +19,16 @@ its token (`runtime.self-test`).
 Every other request goes to `host/server`'s handler with the Cloudflare adapters (HAL-9486,
 requirement `runtime.serve`), so its rules apply as on any host: the `Host` and `Origin` checks, the
 sign-in with the length-limited password check, the daily request ceiling and the one neutral 404 for
-an unknown path. Three plain Worker variables (none is a secret) configure it:
+an unknown path. Four plain Worker variables (none is a secret) configure it:
 
 | Variable | Meaning |
 | --- | --- |
 | `HALONIC_ALLOWED_HOSTS` | the `Host` names the API answers to, separated by commas. Any other name, such as a preview address, gets 421 and no API |
 | `HALONIC_DEPLOYMENT_ID` | the deployment's id in `deployments.yaml` |
 | `HALONIC_DAILY_REQUESTS` | optional: `limits.dailyRequests`, a whole number above zero |
+| `HALONIC_DEFINITIONS_VERSION` | the definitions snapshot this Worker version serves; `halonic deploy` sets it. Without it the Worker serves the one `current` names (as under `wrangler dev`); a value that is empty or isn't a snapshot version is a configuration error |
 
-A deployment that lacks a binding, a secret or one of the first two variables answers every request
+A deployment that lacks a binding, a secret or one of the first two variables, or has a malformed one, answers every request
 except `/health` with 503 and a fixed body; the names of what is missing go to the Worker's log only.
 The client's address is `CF-Connecting-IP`. The workspace is trusted, since the deployer uploaded it.
 Starting a run answers 501: the Worker doesn't run workflows yet. A webhook finds its routine in the
