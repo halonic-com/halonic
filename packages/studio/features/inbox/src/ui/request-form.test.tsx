@@ -180,12 +180,16 @@ verifies("inbox.request", () => {
         button(root, "New request").click();
       });
       const sheet = root.querySelector("dialog");
-      expect(sheet?.textContent).toContain("Answer a customer's email");
+      expect(sheet?.querySelector("h2")?.textContent).toBe("New request");
+      // One workflow: a read-only line, which the sheet reads out when it opens.
+      const line = sheet?.querySelector("p.text-section");
+      expect(line?.textContent).toBe("Answer a customer's email");
+      expect(sheet?.getAttribute("aria-describedby")).toContain(line?.id);
       expect(message(root).value).toBe("");
       expect(message(root).placeholder).toBe(support.description);
     });
 
-    it("sends from the sheet, keeps it open with the message cleared and says the run started", async () => {
+    it("sends from the sheet, which keeps saying Working… until the card arrives, with Close working", async () => {
       const { requests, started } = fakeRequests([support]);
       const { root, toasts } = await open(requests, { phone: true });
       await act(async () => {
@@ -195,7 +199,12 @@ verifies("inbox.request", () => {
       await send(root);
       expect(started).toHaveBeenCalledWith(support.key, "Hi, my order arrived damaged.");
       expect(root.querySelector("dialog")).not.toBeNull();
-      expect(message(root).value).toBe("");
+      expect(message(root).value).toBe("Hi, my order arrived damaged.");
+      expect(root.querySelector('dialog button[type="submit"]')?.getAttribute("aria-busy")).toBe(
+        "true",
+      );
+      const close = root.querySelector('dialog button[aria-label="Close, keeps your message"]');
+      expect(close?.getAttribute("aria-disabled")).toBeNull();
       expect(toasts.list().map((toast) => toast.title)).toEqual(["Support reply started"]);
     });
 
@@ -231,7 +240,9 @@ verifies("inbox.request", () => {
       await type(message(root), "Hi");
       await send(root);
       await act(async () => {
-        root.querySelector<HTMLButtonElement>('dialog button[aria-label="Close"]')?.click();
+        root
+          .querySelector<HTMLButtonElement>('dialog button[aria-label="Close, keeps your message"]')
+          ?.click();
       });
       await act(async () => {
         runs.change([waitingRun("r9", { state: "review", accepts: ["approve", "reject"] })]);
@@ -239,6 +250,11 @@ verifies("inbox.request", () => {
       await settled();
       expect(root.querySelector("dialog")).toBeNull();
       expect(root.textContent).not.toContain("Approve");
+      // The text was sent, so the next request starts empty.
+      await act(async () => {
+        button(root, "New request").click();
+      });
+      expect(message(root).value).toBe("");
     });
 
     it("puts focus in Message whether the row is pressed or another page asks", async () => {

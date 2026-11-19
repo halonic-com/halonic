@@ -16,7 +16,10 @@ import { type SandboxUnavailableReason, sandboxUnavailableReasons } from "@halon
  * - `fix`: what to do, as a fragment that follows "Fix: ".
  * - `calloutFix`: the same fix as a sentence of its own, for a Callout.
  * - `phoneFix`: the fix for someone on a phone, who has to do it on the computer.
+ * - `settingsFix`: the fix as Settings › Agent sandbox shows it, or `null` where the section's own
+ *   set-up button is the fix (microcopy 23.3a).
  * - `docsKey`: the docs page and section that explain it, relative to the docs address.
+ * - `docsName`: the name of the link to them, which says where it goes (23.3's Docs link).
  */
 export interface SandboxStartWords {
   readonly key: string;
@@ -24,11 +27,19 @@ export interface SandboxStartWords {
   readonly fix: string;
   readonly calloutFix: string;
   readonly phoneFix: string;
+  readonly settingsFix: string | null;
   readonly docsKey: string;
+  readonly docsName: string;
 }
 
-/** A reason's source words: the sentence, the fix fragment and the docs section, when it has one. */
-type Words = Readonly<{ reason: string; fix: string; docsSection?: string }>;
+/**
+ * A reason's source words: the sentence, the fix fragment, and the docs section and the link's
+ * name when it has its own.
+ */
+type Words = Readonly<{ reason: string; fix: string; docsSection?: string; docsName?: string }>;
+
+/** The link's name for a reason whose docs have no guide of its own. */
+const generalDocsName = "What the sandbox needs";
 
 /** Where Studio sends the fixes the CLI words as "use Halonic inside WSL 2" (0.1 has no Studio on Windows, HAL-7540). */
 const inSettings = "open Settings and set up the sandbox there.";
@@ -43,11 +54,13 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
     reason: "Halonic is running inside a container, and the sandbox can't start there.",
     fix: "run Halonic on the computer itself, not in a container.",
     docsSection: "container",
+    docsName: "Why the sandbox needs a real computer",
   },
   "not-supported": {
     reason: "This distro runs on WSL 1, and the sandbox needs WSL 2.",
     fix: "switch it to WSL 2 with wsl --set-version <distro> 2 in PowerShell on Windows.",
     docsSection: "wsl1",
+    docsName: "How to switch to WSL 2",
   },
   "blocked-by-policy": {
     reason: "A company policy on this computer blocks the sandbox.",
@@ -81,16 +94,19 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
     reason: "Ubuntu 24.04 blocks the user namespaces the sandbox needs.",
     fix: "allow them for bubblewrap with an AppArmor rule. The guide has the exact commands.",
     docsSection: "user-namespaces",
+    docsName: "How to allow it on Ubuntu 24.04",
   },
   "bubblewrap-missing": {
     reason: "bubblewrap isn't installed, and the sandbox needs it.",
     fix: "install it, for example on Ubuntu or Debian with sudo apt install bubblewrap.",
     docsSection: "bubblewrap",
+    docsName: "How to install bubblewrap",
   },
   "linux-tools-missing": {
     reason: "socat or ripgrep isn't installed, and the sandbox needs both.",
     fix: "install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep.",
     docsSection: "linux-tools",
+    docsName: "How to install the sandbox's tools",
   },
   "ripgrep-missing": {
     reason: "ripgrep isn't installed, and the sandbox needs it.",
@@ -136,13 +152,15 @@ function capitalised(text: string): string {
  */
 export function sandboxStartWords(code: string): SandboxStartWords {
   const reason = isSandboxStartReason(code) ? code : "other";
-  const { reason: sentence, fix, docsSection } = words[reason];
+  const { reason: sentence, fix, docsSection, docsName } = words[reason];
   return {
     key: `sandbox-start.${reason}`,
     reason: sentence,
     fix,
     calloutFix: capitalised(fix),
     phoneFix: `On the computer Halonic runs on: ${fix}`,
+    settingsFix: fix === inSettings ? null : capitalised(fix),
     docsKey: docsSection === undefined ? "security/sandbox/" : `security/sandbox/#${docsSection}`,
+    docsName: docsName ?? generalDocsName,
   };
 }

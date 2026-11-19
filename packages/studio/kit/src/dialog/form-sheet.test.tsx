@@ -137,6 +137,22 @@ verifies("kit.dialog-form-sheet", () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
+  it("names Close by closeLabel when the screen gives one", () => {
+    const { container } = onPhone({ closeLabel: "Close, keeps your message" });
+    const bar = container.querySelector("header") as HTMLElement;
+    expect(nameOf(bar.firstElementChild as HTMLElement)).toBe("Close, keeps your message");
+  });
+
+  it("with closeWhileBusy, keeps Close and Escape working while the button is busy", async () => {
+    const onCancel = vi.fn();
+    const { container } = onPhone({ busy: true, closeWhileBusy: true, onCancel });
+    const close = buttonNamed(container, "Close");
+    expect(close.getAttribute("aria-disabled")).toBeNull();
+    await click(close);
+    fire(dialogOf(container), new Event("cancel", { cancelable: true }));
+    expect(onCancel).toHaveBeenCalledTimes(2);
+  });
+
   it("shows a failed submit as the last thing in the body, above the bar, through the alert slot", async () => {
     const { container } = onPhone({ error: "Couldn't create the agent. The folder is read-only." });
     await act(async () => {

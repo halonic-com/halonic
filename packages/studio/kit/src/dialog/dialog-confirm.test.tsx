@@ -8,6 +8,7 @@ import {
   dialogOf,
   fakeDialogPage,
   fire,
+  nameOf,
   newAgentDialog,
   restoreDialogPage,
   scrolledIntoView,
@@ -62,6 +63,22 @@ verifies("kit.dialog", () => {
         new Event("submit", { bubbles: true, cancelable: true }),
       );
       expect(onConfirm).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("without Cancel", () => {
+    it("shows only the confirming button and starts focus on it", () => {
+      const { container } = render(
+        deleteDialog({
+          title: "Sandbox removed",
+          confirm: { label: "Close", busyLabel: "Closing…" },
+          cancelButton: false,
+        }),
+      );
+      const footer = container.querySelector("footer") as HTMLElement;
+      const buttons = [...footer.querySelectorAll("button")];
+      expect(buttons.map(nameOf)).toEqual(["Close"]);
+      expect(document.activeElement).toBe(buttons[0]);
     });
   });
 

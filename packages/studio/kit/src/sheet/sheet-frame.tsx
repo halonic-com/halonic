@@ -25,6 +25,8 @@ export interface SheetFrameProps {
    * throws away what changed. Without it, the title starts 16px in (the text sheet).
    */
   readonly onClose?: () => void;
+  /** Close's name, when it says more than "Close": "Close, keeps your message". Default "Close". */
+  readonly closeLabel?: string | undefined;
   /** Close can't be pressed now: while a form sheet is busy, with the busy button as the reason. */
   readonly closeUnavailable?: ButtonUnavailable | undefined;
   /** Escape and Android back, which the shell turns into the dialog's `cancel`. */
@@ -75,6 +77,7 @@ export function SheetFrame(props: SheetFrameProps) {
         title={title}
         text={props.title}
         onClose={props.onClose}
+        closeLabel={props.closeLabel ?? "Close"}
         closeUnavailable={props.closeUnavailable}
         actions={props.actions}
       />
@@ -108,6 +111,7 @@ interface SheetBarProps {
   readonly title: RefObject<HTMLHeadingElement | null>;
   readonly text: string;
   readonly onClose: (() => void) | undefined;
+  readonly closeLabel: string;
   readonly closeUnavailable: ButtonUnavailable | undefined;
   readonly actions: ReactNode;
 }
@@ -118,7 +122,15 @@ interface SheetBarProps {
  * title on one line, and the actions slot at the right with 12px more on its right, so a text
  * button there keeps the page's 16px inset.
  */
-function SheetBar({ titleId, title, text, onClose, closeUnavailable, actions }: SheetBarProps) {
+function SheetBar({
+  titleId,
+  title,
+  text,
+  onClose,
+  closeLabel,
+  closeUnavailable,
+  actions,
+}: SheetBarProps) {
   return (
     <header className="flex phone-top-bar shrink-0 items-center gap-1 border-b border-border px-1">
       {onClose === undefined ? null : (
@@ -126,7 +138,7 @@ function SheetBar({ titleId, title, text, onClose, closeUnavailable, actions }: 
           variant="ghost"
           size="lg"
           icon={<CloseIcon />}
-          label="Close"
+          label={closeLabel}
           unavailable={closeUnavailable}
           onClick={onClose}
         />

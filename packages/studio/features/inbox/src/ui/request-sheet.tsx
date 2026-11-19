@@ -1,5 +1,5 @@
 import { Button, Dialog, Field, Select, TextArea } from "@halonicjs/studio-kit";
-import { type Ref, useState } from "react";
+import { type Ref, useId, useState } from "react";
 import type { RequestWorkflow } from "../request/inbox-requests.ts";
 import type { RequestDraft } from "./request-form.tsx";
 
@@ -11,6 +11,11 @@ export interface RequestSheetProps {
   readonly onDraft: (update: (draft: RequestDraft) => RequestDraft) => void;
   /** A request is starting: Send is busy and Close waits. */
   readonly busy: boolean;
+  /**
+   * The run has started and its card hasn't arrived yet: Send still reads "Working…", and Close
+   * works, because closing doesn't stop the run (first-run 7.2).
+   */
+  readonly waiting: boolean;
   /** The "Not started: …" line, or empty; shown in the sheet's alert slot. */
   readonly notStarted: string;
   /** With a refusal for the month's budget: **Change budget**, under the fields. */
@@ -25,17 +30,19 @@ export interface RequestSheetProps {
 const emptyMessage = "Write a message first.";
 
 /**
- * The request form on a phone (first-run 7.2, component specs 15.3): a form sheet with the
- * workflow's `start.label` as its title, or a **Request type** picker with several, **Message**
- * with the workflow's description as its placeholder, and **Send** full width at the bottom.
- * Focus starts in Message. An empty Send shows "Write a message first." and keeps the sheet.
- * The caller closes the sheet once the run has started.
+ * The request form on a phone (first-run 7.2, component specs 15.3): a form sheet titled
+ * "New request" with the workflow's `start.label` as a read-only line, or a **Request type**
+ * picker with several, **Message** with the workflow's description as its placeholder, and
+ * **Send** full width at the bottom. Focus starts in Message. An empty Send shows "Write a message
+ * first." and keeps the sheet. Close is named "Close, keeps your message" (accessibility pass
+ * 3.5). Send reads "Working…" until the caller closes the sheet, when the run's card arrives.
  */
 export function RequestSheet({
   offered,
   draft,
   onDraft,
   busy,
+  waiting,
   notStarted,
   onChangeBudget,
   onSend,
@@ -43,6 +50,7 @@ export function RequestSheet({
   messageRef,
 }: RequestSheetProps) {
   const [fieldError, setFieldError] = useState("");
+  const workflowLine = useId();
   const picked = offered.find((workflow) => workflow.key === draft.workflow) ?? offered[0];
   if (picked === undefined) return null;
 
@@ -60,15 +68,21 @@ export function RequestSheet({
   return (
     <Dialog
       form
-      title={offered.length === 1 ? picked.label : "New request"}
-      closeLabel="Close"
+      title="New request"
+      closeLabel="Close, keeps your message"
       onCancel={onClose}
       confirm={{ label: "Send", busyLabel: "Working…" }}
       onConfirm={send}
-      busy={busy}
+      busy={busy || waiting}
+      closeWhileBusy={waiting}
+      {...(offered.length === 1 ? { describedBy: workflowLine } : {})}
       {...(notStarted === "" ? {} : { error: notStarted })}
     >
-      {offered.length === 1 ? null : (
+      {offered.length === 1 ? (
+        <p id={workflowLine} className="text-section">
+          {picked.label}
+        </p>
+      ) : (
         <Field label="Request type">
           <Select
             options={offered.map(({ key, label }) => ({ value: key, label }))}
@@ -81,6 +95,7 @@ export function RequestSheet({
         <TextArea
           ref={messageRef}
           value={draft.message}
+          readOnly={waiting}
           placeholder={picked.description ?? "What do you need?"}
           onChange={(event) => {
             const value = event.target.value;
