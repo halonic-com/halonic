@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { EngineNotAnswering, type ItemViewProps, limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -21,14 +22,31 @@ beforeEach(fakeModal);
 afterEach(() => {
   unmountAll();
   restoreModal();
+  statusList.mockReset();
+  statusList.mockResolvedValue([{ id: "notes", name: "Notes", state: "connected" }]);
 });
 
+const statusList = vi.fn<ConnectorStatusHost["list"]>(async () => [
+  { id: "notes", name: "Notes", state: "connected" },
+]);
 const statusHost: ConnectorStatusHost = {
-  list: async () => [{ id: "notes", name: "Notes", state: "connected" }],
+  list: statusList,
   refusals: async () => [],
   waiting: async () => [],
   subscribe: () => () => {},
 };
+
+/** The connector `notes-mcp`, an MCP server over HTTP. */
+function httpServer(): void {
+  statusList.mockResolvedValue([
+    {
+      id: "notes-mcp",
+      name: "Notes",
+      state: "connected",
+      connection: { kind: "http", url: "https://notes.acme.example/mcp", secrets: [] },
+    },
+  ]);
+}
 
 function tool(name: string): ListedToolRow {
   return {
@@ -70,13 +88,17 @@ function toolsHost(read: ListedToolsHost["review"]): ListedToolsHost {
 
 function page(
   tools: ListedToolsHost | undefined,
-  options: { readonly host?: "phone"; readonly runCommand?: (id: string) => boolean } = {},
+  options: {
+    readonly id?: string;
+    readonly host?: "phone";
+    readonly runCommand?: (id: string) => boolean;
+  } = {},
 ): ItemViewProps {
-  const { host, runCommand } = options;
+  const { id = "notes", host, runCommand } = options;
   const provided = new Map<unknown, unknown>([[ConnectorStatusHostService, statusHost]]);
   if (tools !== undefined) provided.set(ListedToolsHostService, tools);
   return {
-    item: { kind: "connector", hub: "local", id: "notes" },
+    item: { kind: "connector", hub: "local", id },
     context: {
       services: limitedLookup(libraryFeature, {
         get: (key: unknown) => provided.get(key),
@@ -261,6 +283,42 @@ describe("the connector page's listed tools", () => {
         expect(root.querySelector("dialog[open]")).not.toBeNull();
         unmountAll();
       }
+    });
+
+    it("gives the command for an MCP server over HTTP, without reading its tools", async () => {
+      httpServer();
+      const review = vi.fn<ListedToolsHost["review"]>(async () => snapshot(["read_note"]));
+      const root = render(<ConnectorPage {...page(toolsHost(review), { id: "notes-mcp" })} />);
+      await settled();
+      expect(root.textContent).toContain(
+        "Studio can't list this server's tools yet. To review them, run this in a terminal:",
+      );
+      expect(root.textContent).toContain("halonic tools review notes-mcp");
+      expect(root.textContent).not.toContain("Couldn't list the tools");
+      expect(root.querySelector('button[aria-label="Copy command"]')).not.toBeNull();
+      const labels = [...root.querySelectorAll("button")].map((b) => b.textContent);
+      expect(labels).not.toContain("Try again");
+      expect(reviewButton(root)).toBeUndefined();
+      expect(review).not.toHaveBeenCalled();
+    });
+
+    it("says on your computer on a phone", async () => {
+      httpServer();
+      const root = render(
+        <PresentationProvider presentation="phone">
+          <ConnectorPage
+            {...page(
+              toolsHost(async () => snapshot([])),
+              { id: "notes-mcp", host: "phone" },
+            )}
+          />
+        </PresentationProvider>,
+      );
+      await settled();
+      expect(root.textContent).toContain(
+        "Studio can't list this server's tools yet. To review them, run this on your computer:",
+      );
+      expect(root.textContent).toContain("halonic tools review notes-mcp");
     });
 
     it("shows neither without a listed-tools service", async () => {
