@@ -153,6 +153,23 @@ verifies("kit.dialog", () => {
       expect(onConfirm).toHaveBeenCalledOnce();
     });
 
+    it("puts errorAction in the Callout in place of Try again", async () => {
+      const onConfirm = vi.fn();
+      const openRun = vi.fn();
+      const { container } = render(
+        deleteDialog({
+          error: "Support reply failed.",
+          retryLabel: "Try again",
+          errorAction: { label: "Open run", onClick: openRun },
+          onConfirm,
+        }),
+      );
+      expect(container.ownerDocument.body.textContent).not.toContain("Try again");
+      await click(buttonNamed(container, "Open run"));
+      expect(openRun).toHaveBeenCalledOnce();
+      expect(onConfirm).not.toHaveBeenCalled();
+    });
+
     it("keeps focus on the confirming button", () => {
       const { container, rerender } = render(deleteDialog());
       const confirm = buttonNamed(container, "Delete agent");

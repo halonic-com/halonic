@@ -20,6 +20,7 @@ export {
 export { RunCardReceipt, type RunCardReceiptProps } from "./run-view/card-receipt.tsx";
 export { type RunLogRead, useRunLog } from "./run-view/every-step.tsx";
 export { openModelsOf } from "./run-view/open-models.ts";
+export { type RunEnd, runFailureLine, useRunEnd } from "./run-view/run-end.ts";
 export { RunView } from "./run-view/run-page.tsx";
 export { RunsList, RunsListService, type RunsListState } from "./runs-list.ts";
 export {

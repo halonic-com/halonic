@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { ButtonUnavailable } from "../button/button.tsx";
+import type { CalloutAction } from "../callout/callout.tsx";
 
 /** `sm` 440px: confirmations, short forms. `md` 560px: a form with hints. `lg` 720px: Settings. */
 export type DialogSize = "sm" | "md" | "lg";
@@ -66,6 +67,11 @@ interface DialogCommonProps {
   readonly error?: string;
   /** With `error`: the label of a ghost action in the failure's Callout that sends the form again. */
   readonly retryLabel?: string;
+  /**
+   * With `error`: the failure Callout's action when it isn't sending the form again, such as
+   * **Open run** for a run that failed after it started. It takes the place of `retryLabel`.
+   */
+  readonly errorAction?: CalloutAction;
   /** Where focus goes on close when the opener has gone, such as a deleted row's next row (23 A2). */
   readonly returnFocus?: () => HTMLElement | null;
   /**

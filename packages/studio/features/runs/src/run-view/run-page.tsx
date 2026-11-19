@@ -21,6 +21,7 @@ import { entryIdOfStep, everyStep, type StepEntry } from "./every-step-model.ts"
 import { useHasVersions } from "./has-versions.ts";
 import { openModelsOf } from "./open-models.ts";
 import { bannerOffersRunAgain, PageBanner } from "./page-banner.tsx";
+import { pageContext } from "./page-context.ts";
 import { AgentSays, Receipt } from "./receipt.tsx";
 import {
   agentSays,
@@ -418,33 +419,4 @@ function startedVersion(log: readonly RunEvent[] | undefined): RunVersion | unde
 /** What a workflow of the run's workspace is called, by its id; its id when it isn't loaded. */
 function workflowName(list: RunsList, run: SourcedRun, workflowId: string): string {
   return list.source.workflow(run.summary.hubId, workflowId)?.name ?? workflowId;
-}
-
-/** What the page's words need: the run's workflow, the child runs' workflows, the currency, the time. */
-function pageContext(
-  list: RunsList,
-  runs: readonly SourcedRun[],
-  run: SourcedRun,
-  now: Date,
-): RunPageContext {
-  const { source } = list;
-  return {
-    workflow: source.workflow(run.summary.hubId, run.summary.workflowId),
-    workflowOfRun: (runId) => {
-      const other = runs.find((candidate) => candidate.summary.id === runId)?.summary;
-      if (other === undefined) {
-        return undefined;
-      }
-      return source.workflow(other.hubId, other.workflowId)?.name ?? other.workflowId;
-    },
-    providerKind: (id: string) => source.providerKind(id),
-    ...(source.providerName === undefined
-      ? {}
-      : { providerName: (id: string) => source.providerName?.(id) }),
-    ...(source.agentName === undefined
-      ? {}
-      : { agentName: (id: string) => source.agentName?.(id) }),
-    currency: source.currency(),
-    now,
-  };
 }

@@ -18,11 +18,16 @@ export interface RequestSheetProps {
   readonly waiting: boolean;
   /** The "Not started: …" line, or empty; shown in the sheet's alert slot. */
   readonly notStarted: string;
+  /**
+   * The run started but failed before its card arrived: the run page's failure line, shown in the
+   * alert slot with **Open run** (with `openRun`). The message stays, to send again.
+   */
+  readonly runFailed?: { readonly line: string; readonly openRun?: () => void } | undefined;
   /** With a refusal for the month's budget: **Change budget**, under the fields. */
   readonly onChangeBudget?: (() => void) | undefined;
   /** Starts the run; clears the message once it has started. Never rejects. */
   readonly onSend: (workflow: RequestWorkflow, message: string) => Promise<void>;
-  /** Close: the sheet goes and the text stays. */
+  /** Close: the sheet goes; the text stays, unless it was sent and the sheet waits. */
   readonly onClose: () => void;
   readonly messageRef: Ref<HTMLTextAreaElement>;
 }
@@ -35,7 +40,8 @@ const emptyMessage = "Write a message first.";
  * picker with several, **Message** with the workflow's description as its placeholder, and
  * **Send** full width at the bottom. Focus starts in Message. An empty Send shows "Write a message
  * first." and keeps the sheet. Close is named "Close, keeps your message" (accessibility pass
- * 3.5). Send reads "Working…" until the caller closes the sheet, when the run's card arrives.
+ * 3.5), and plain "Close" while the sheet waits, since closing then clears the sent text. Send
+ * reads "Working…" until the run's card arrives or the run ends (HAL-13723).
  */
 export function RequestSheet({
   offered,
@@ -44,6 +50,7 @@ export function RequestSheet({
   busy,
   waiting,
   notStarted,
+  runFailed,
   onChangeBudget,
   onSend,
   onClose,
@@ -69,14 +76,14 @@ export function RequestSheet({
     <Dialog
       form
       title="New request"
-      closeLabel="Close, keeps your message"
+      closeLabel={waiting ? "Close" : "Close, keeps your message"}
       onCancel={onClose}
       confirm={{ label: "Send", busyLabel: "Working…" }}
       onConfirm={send}
       busy={busy || waiting}
       closeWhileBusy={waiting}
       {...(offered.length === 1 ? { describedBy: workflowLine } : {})}
-      {...(notStarted === "" ? {} : { error: notStarted })}
+      {...alertOf(notStarted, runFailed)}
     >
       {offered.length === 1 ? (
         <p id={workflowLine} className="text-section">
@@ -113,4 +120,18 @@ export function RequestSheet({
       ) : null}
     </Dialog>
   );
+}
+
+/** The alert slot's line: the request didn't start, or its run failed, with **Open run**. */
+function alertOf(
+  notStarted: string,
+  runFailed: RequestSheetProps["runFailed"],
+): { error?: string; errorAction?: { label: string; onClick: () => void } } {
+  if (notStarted !== "") return { error: notStarted };
+  if (runFailed === undefined) return {};
+  const { line, openRun } = runFailed;
+  return {
+    error: line,
+    ...(openRun === undefined ? {} : { errorAction: { label: "Open run", onClick: openRun } }),
+  };
 }

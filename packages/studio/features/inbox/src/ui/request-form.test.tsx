@@ -203,7 +203,8 @@ verifies("inbox.request", () => {
       expect(root.querySelector('dialog button[type="submit"]')?.getAttribute("aria-busy")).toBe(
         "true",
       );
-      const close = root.querySelector('dialog button[aria-label="Close, keeps your message"]');
+      // The message was sent, and closing now clears it, so Close no longer says it keeps it.
+      const close = root.querySelector('dialog button[aria-label="Close"]');
       expect(close?.getAttribute("aria-disabled")).toBeNull();
       expect(toasts.list().map((toast) => toast.title)).toEqual(["Support reply started"]);
     });
@@ -240,9 +241,7 @@ verifies("inbox.request", () => {
       await type(message(root), "Hi");
       await send(root);
       await act(async () => {
-        root
-          .querySelector<HTMLButtonElement>('dialog button[aria-label="Close, keeps your message"]')
-          ?.click();
+        root.querySelector<HTMLButtonElement>('dialog button[aria-label="Close"]')?.click();
       });
       await act(async () => {
         runs.change([waitingRun("r9", { state: "review", accepts: ["approve", "reject"] })]);
