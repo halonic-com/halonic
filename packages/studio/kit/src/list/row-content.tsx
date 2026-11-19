@@ -12,7 +12,8 @@ import { Leading, lineFit, MetaLine } from "./row-parts.tsx";
 
 /**
  * The row's height, from the presentation, the density and whether it has a meta line. A row that
- * wraps grows past it, so on a desktop it gets padding too, keeping its text off the lines.
+ * wraps, or only wraps its title, grows past it, so on a desktop it gets padding too, keeping its
+ * text off the lines.
  */
 function heightClasses(phone: boolean, dense: boolean, hasMeta: boolean, wrap: boolean): string {
   if (phone) {
@@ -37,6 +38,14 @@ function trailingOf(row: AnyListRow): ReactNode {
       {row.error.chip}
     </StatusChip>
   );
+}
+
+/**
+ * How the title fits: cut with an ellipsis, or wrapped when the row wraps or asks for `wrapTitle`,
+ * which wraps the title alone and keeps the meta line cut.
+ */
+function titleFit(row: AnyListRow): string {
+  return row.wrapTitle === true ? "wrap-break-word" : lineFit(row);
 }
 
 /** The title's colour: `fg`, `fg-muted` for a muted row, `fg-disabled` for an unavailable one. */
@@ -91,7 +100,7 @@ export function RowContent({
   // the meta line.
   const trailingBelow = phone && (row.more !== undefined || chevron);
   const showTrailingRight = !trailingBelow && trailing !== undefined;
-  const wrap = row.wrap === true;
+  const wrap = row.wrap === true || row.wrapTitle === true;
 
   return (
     <div
@@ -99,7 +108,7 @@ export function RowContent({
     >
       <Leading row={row} small={dense && !phone} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <span className={`${lineFit(row)} text-body-strong ${titleColour(row)}`}>{row.title}</span>
+        <span className={`${titleFit(row)} text-body-strong ${titleColour(row)}`}>{row.title}</span>
         <MetaLine row={row} text={meta} id={reasonId} chip={trailingBelow ? trailing : undefined} />
       </div>
       {showTrailingRight ? <span className="flex shrink-0 items-center">{trailing}</span> : null}

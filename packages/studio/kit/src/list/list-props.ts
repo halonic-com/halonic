@@ -56,6 +56,11 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
    */
   readonly muted?: boolean;
   /**
+   * The title wraps onto more lines instead of being cut, as Home's Recent runs' "Support reply ·
+   * run 2ff090", whose end is what tells two rows apart (HAL-13305). The meta line stays cut.
+   */
+  readonly wrapTitle?: boolean;
+  /**
    * A click, Enter or Space on the row does nothing, as a done setup step's: no hover or press tint
    * and the default cursor. It still takes focus with the arrows and is read as usual, but Tab
    * enters the List at the first row that isn't inert.
@@ -86,6 +91,7 @@ interface ListColumnsRowBase<Id extends string> extends ListRowBase<Id> {
   /** A chip goes in a `status` column instead. */
   readonly trailing?: never;
   readonly muted?: never;
+  readonly wrapTitle?: never;
   readonly inert?: never;
   readonly wrap?: never;
   readonly metaDescribes?: never;

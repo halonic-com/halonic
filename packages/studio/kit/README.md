@@ -878,7 +878,8 @@ A row has a `title`, an optional `meta` line (cut with an ellipsis), a 20px `ico
 32px `dense` row, as in a Menu item) or a 28px `avatar` (both hidden from screen readers), a
 `trailing` chip or value, a `more` button (`{ label, onClick }`, its label naming the row),
 `unavailable` (`{ reason }`), `error` (`{ reason, chip }`), `muted`, a title in `fg-muted`
-for a finished step, and `inert`: a click, Enter or Space does nothing and the row has no hover or
+for a finished step, `wrapTitle`, a title that wraps onto more lines instead of being cut, for
+one whose end tells rows apart, as Home's "Support reply · run 2ff090", and `inert`: a click, Enter or Space does nothing and the row has no hover or
 press tint, but the arrows still reach it, and Tab enters the List at the first row that isn't
 inert. Unlike the Button's, an unavailable row's `reason` is the text itself: the
 List draws it in place of the meta line and points `aria-describedby` at it.
