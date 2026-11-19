@@ -21,6 +21,27 @@ export function isSignedOut(error: unknown): boolean {
 }
 
 /**
+ * The line over Home's Needs you once the served Studio's sign-in ended, the one the Inbox's list
+ * shows then, in a polite status that is always there so it is read once (HAL-13830 HM1). Any
+ * other failed load shows no line: the rows stay as they were.
+ */
+export function SignedOutLine({
+  error,
+  words,
+}: {
+  readonly error: unknown;
+  readonly words: EngineWords;
+}) {
+  return (
+    <div role="status">
+      {isSignedOut(error) ? (
+        <p className="px-4 pb-2 text-small text-fg-muted">{failureReason(error, words)}</p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * The line over a list that failed to load again. Signed out, the engine still answers, so it says
  * to sign in again, as a first load that fails does (HAL-13371); otherwise it isn't answering and
  * the list is what it said last.

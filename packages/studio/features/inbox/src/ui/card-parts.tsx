@@ -178,8 +178,11 @@ export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps)
           <p className="text-small text-fg-muted">Nothing else is waiting for you.</p>
         ) : (
           <Button variant="primary" size={phone ? "touch" : "md"} block={phone} onClick={next.open}>
-            {`Next: ${next.title}`}
-            <span aria-hidden="true">{` · ${next.left} left`}</span>
+            {/* One run of text, so a phone wraps it between words as a sentence (HAL-13830 IN2). */}
+            <span>
+              {`Next: ${next.title}`}
+              <span aria-hidden="true">{` · ${next.left} left`}</span>
+            </span>
             <span className="sr-only">{`, ${next.left} left`}</span>
           </Button>
         )}
