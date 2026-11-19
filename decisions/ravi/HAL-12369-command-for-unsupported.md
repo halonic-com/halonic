@@ -2,6 +2,7 @@
 
 - Approval: the words are microcopy 11.4 B5 (approved on HAL-11629) and the UX check rows L7 and L8 (HAL-12363), a team decision with no new board card (HAL-2282 rule); Liam signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:o6fSfOikyTFjrTUx22GMYrsx+0KDT+EhZJoRk0iQl4kHhqPaJh5P4shEpTISh4wSEBLVAIAVLT8KHbCQ9yBZCQ==
 - Task: HAL-12369
 
 ## What changes
