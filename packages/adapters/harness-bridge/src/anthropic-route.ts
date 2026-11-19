@@ -36,10 +36,11 @@ const anthropicApi: ProviderApi = {
 /**
  * What a compatible provider is sent of a Messages request: the top-level
  * fields Anthropic's reference names, except `container`, which runs code on
- * the provider's side (`mcp_servers` is known, and removed as at Anthropic),
- * and only the tools the program runs itself: a tool without a `type` or of the
- * type `custom`, and Anthropic's client tools (`bash_*`, `text_editor_*`,
- * `computer_*`, `memory_*`).
+ * the provider's side, and `fallbacks`, whose models the host never resolved
+ * (`mcp_servers` is known, and removed as at Anthropic), and only the tools
+ * the program runs itself: a tool without a `type` or of the type `custom`,
+ * and Anthropic's dated client tools (`bash_20250124`, `text_editor_*`,
+ * `computer_*`, `memory_*`, each with an eight-digit date).
  */
 const anthropicKnown: KnownRequest = {
   name: "Anthropic",
@@ -47,7 +48,6 @@ const anthropicKnown: KnownRequest = {
     "cache_control",
     "context_management",
     "diagnostics",
-    "fallbacks",
     "inference_geo",
     "max_tokens",
     "mcp_servers",
@@ -71,7 +71,7 @@ const anthropicKnown: KnownRequest = {
   isProgramTool: (type) =>
     type === undefined ||
     type === "custom" ||
-    (typeof type === "string" && /^(bash|text_editor|computer|memory)_/.test(type)),
+    (typeof type === "string" && /^(bash|text_editor|computer|memory)_\d{8}$/.test(type)),
   isKnownToolChoice: (choice) =>
     isPlainObject(choice) && ["auto", "any", "tool", "none"].includes(String(choice["type"])),
 };
