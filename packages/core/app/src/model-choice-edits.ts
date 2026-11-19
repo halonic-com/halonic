@@ -6,6 +6,7 @@
 
 import { parseFile } from "@halonicjs/format";
 import { err, ok, type Result } from "@halonicjs/std";
+import { isOnThisMachine } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
 import {
   choiceModel,
@@ -134,7 +135,8 @@ export function choiceEdits(
  * provider file when it has one that fits, else the table's. A cloud
  * provider's file must have the table's address exactly, none for Anthropic
  * and OpenAI: the pasted key is tested and saved for that address, and must
- * never go to another one. Ollama may sit on another port.
+ * never go to another one. Ollama may sit on another port, but only on this
+ * machine, as a Local only run would accept it.
  */
 function providerSecretName(
   provider: FirstRunProvider,
@@ -144,7 +146,7 @@ function providerSecretName(
   const parsed = parseFile("provider", text, { id: provider.id });
   if (!parsed.ok) return err("differs");
   const file = parsed.value.value;
-  const sameAddress = provider.local || file.baseUrl === provider.baseUrl;
+  const sameAddress = provider.local ? isOnThisMachine(file) : file.baseUrl === provider.baseUrl;
   if (file.type !== provider.type || !sameAddress || file.local !== provider.local) {
     return err("differs");
   }
