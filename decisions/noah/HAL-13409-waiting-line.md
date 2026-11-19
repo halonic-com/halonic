@@ -3,6 +3,7 @@
 - Task: HAL-13409
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13409 (build task 6 of first-run-progress revision 2, HAL-7986, approved by the board on 19 Nov on HAL-7993; the line replacing the slow-step line, from 2 s, naming the wait, with the local reason at 10 s, is listed there under "Decided by the team"; Liam reviews the pull request on HAL-13409 and signs this note)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6S15WSevQBa19oMao6EVhk7r9z5aYVs0812uu0rZOkKu3/dlmqi9zFZNSV/SZIszxr0oP8QFgLrbBUScywRzDg==
 
 ## What changes
 
