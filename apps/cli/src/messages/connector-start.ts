@@ -11,8 +11,11 @@ import { phrase } from "./phrase.ts";
  */
 export const connectorStartMessages = defineMessages("connectorStart", {
   programMissing: (program: string) => phrase`The program ${program} isn't on this computer.`,
-  programMissingFix: (program: string, connector: string) =>
-    phrase`Install ${program}, or change the command in ${connector}'s file.`,
+  /** `file` is the connector's path in the workspace, or `undefined` when it has none (Sofia, HAL-13685). */
+  programMissingFix: (program: string, connector: string, file: string | undefined) =>
+    file === undefined
+      ? phrase`Install ${program}, or change the command in the ${connector} connector file.`
+      : phrase`Install ${program}, or change the command in ${file}.`,
   secretMissing: (secret: string) => phrase`The secret ${secret} isn't set on this computer.`,
   secretMissingFix: (secret: string) =>
     phrase`Save it with halonic secret set ${secret}, or set ${secretVariableName(secret)}, then try again.`,

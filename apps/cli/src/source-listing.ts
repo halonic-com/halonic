@@ -11,6 +11,7 @@ import {
   workspaceSecrets,
 } from "@halonicjs/ports";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
+import { connectorFileOf } from "./connector-file.ts";
 import type { ConnectorMachine } from "./connector-machine.ts";
 import { connectorStartError } from "./connector-start-error.ts";
 import type { Message } from "./messages/define.ts";
@@ -81,6 +82,8 @@ export async function readSourceListing(
     const tools = await machine.factories.listTools(connectorConfigOf(target.connector), context);
     return { tools, trust };
   } catch (error) {
-    throw connectorStartError(error, printable(target.connector.id)) ?? error;
+    const { id } = target.connector;
+    const file = connectorFileOf(target.workspace, id);
+    throw connectorStartError(error, printable(id), file) ?? error;
   }
 }
