@@ -4,6 +4,7 @@
 - Approval: the task asks for this change (HAL-12539, step 1b, decided on HAL-5327). `tooling/check/src/guard/` and `requirement-guard.ts` are trust roots, so this note needs both guardians: Liam (CTO) and Julian (security reviewer)
 - Kind: user-visible
 - Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:trnWJa422JgfTk4hU8A3HRnbTubEzfoMxyxmiPxhjUac+mYIJLDzsXIL2apepJCnap0Vkqop6XbzdlJL2sTNDQ==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:P9p1/ZbQbgIBErdVGuxC7AOu0CsdpmAeJjSVF/C+PG31ui1soCzUJGF5egaofcsorzH9gpvYttcsECDKKiLFBA==
 
 ## What changes
 
