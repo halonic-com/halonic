@@ -3,6 +3,7 @@
 - Task: HAL-1302 (T9, Create version extras, audit item 6)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-1360 (the T9 UX checklist, part 2, 2.6: "The suggested name is built from the items' sentences"; the exact form is a team decision on top of the approved screen, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vZqX7br+hC0VCEDTCXhIIV9ySs42zO+goq7wpFI78JLefZQKSFRMZRoUAHvOjw7d/T1BvoIte6MHLpR57YoyBQ==
 
 ## What changes
 
