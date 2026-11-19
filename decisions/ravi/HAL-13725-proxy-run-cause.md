@@ -3,7 +3,6 @@
 - Task: HAL-13725
 - Approval: decided by the team on HAL-13725 (error text on an approved screen, HAL-2282 rule; Sofia's check HAL-13691 of #3799). Liam signs on review; Elena agrees the Runs line on the pull request.
 - Kind: user-visible
-- Signature:
 
 In the desktop app, a model call that the shell refused at the proxy (`proxy_refused`,
 `plain_http_proxied`, `proxy`) failed the run with no typed cause, so the run page said "This
