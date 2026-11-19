@@ -35,8 +35,9 @@ import { TestsPage } from "../tests/tests-page.tsx";
 import { pageWords } from "./page-words.ts";
 import { type Dock, dockHasCard, RunDock, useShownRun } from "./run-dock.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
+import { useCanvasEdit } from "./use-canvas-edit.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
-import { WorkflowCanvas } from "./workflow-canvas.tsx";
+import { type CanvasEdit, WorkflowCanvas } from "./workflow-canvas.tsx";
 import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
 
 type WorkflowView = "flow" | "configuration" | "runs";
@@ -171,6 +172,7 @@ export function WorkflowScreen({
     setDock(undefined);
     setView("configuration");
   });
+  const canvasEdit = useCanvasEdit(host, { hubId, id }, name, phone);
   const gone = goneState(load, goToWorkflows);
   if (gone !== undefined) return gone;
   return (
@@ -285,6 +287,7 @@ export function WorkflowScreen({
                 setDock((now) => (typeof now === "object" ? undefined : now));
               }}
               onSelectStep={setPickedStep}
+              edit={canvasEdit}
               kept={kept}
               onView={keep}
             />
@@ -358,6 +361,8 @@ interface FlowViewProps {
   readonly strip: ShownRun | undefined;
   readonly onClearStrip: () => void;
   readonly onSelectStep: (stepId: string) => void;
+  /** How the canvas's toolbar changes the workflow; absent where it can't. */
+  readonly edit: CanvasEdit | undefined;
   readonly kept: { readonly of: string; readonly view: View } | undefined;
   readonly onView: (next: View) => void;
 }
@@ -373,6 +378,7 @@ function FlowView({
   strip,
   onClearStrip,
   onSelectStep,
+  edit,
   kept,
   onView,
 }: FlowViewProps) {
@@ -403,6 +409,7 @@ function FlowView({
           saved={kept?.of === workflowKey ? kept.view : undefined}
           onView={onView}
           onSelectStep={onSelectStep}
+          edit={edit}
         />
       )}
       {load.kind === "failed" && (

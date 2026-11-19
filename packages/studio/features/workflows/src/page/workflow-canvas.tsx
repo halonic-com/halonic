@@ -13,6 +13,7 @@ import {
 } from "../canvas/geometry.ts";
 import type { StepMark } from "../start/run-strip.ts";
 import { Arrows } from "./arrows.tsx";
+import { CanvasToolbar, newStepPlace, TOOLBAR_GUTTER } from "./canvas-toolbar.tsx";
 import { pageWords } from "./page-words.ts";
 import { PointOfLight } from "./point-of-light.tsx";
 import { cardExtent, DOT_VAR, dotCentre, StepCard } from "./step-card.tsx";
@@ -46,6 +47,7 @@ export function WorkflowCanvas({
   saved,
   onView,
   onSelectStep,
+  edit,
 }: {
   readonly workflow: WorkflowView;
   /** The zoom and pan the canvas had when it was last shown; absent the first time. */
@@ -64,6 +66,8 @@ export function WorkflowCanvas({
   readonly active?: string | undefined;
   /** Told when a card is picked, so the page can dock what it has to say about the step. */
   readonly onSelectStep?: ((stepId: string) => void) | undefined;
+  /** How the toolbar changes the workflow; absent where it can't, so the canvas has no toolbar. */
+  readonly edit?: CanvasEdit | undefined;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number } | undefined>(undefined);
@@ -93,10 +97,34 @@ export function WorkflowCanvas({
     width: viewport.current?.clientWidth || FALLBACK_VIEWPORT.width,
     height: viewport.current?.clientHeight || FALLBACK_VIEWPORT.height,
   });
+  // With a toolbar, a fit leaves its row at the top free too.
+  const top = edit === undefined ? 0 : TOOLBAR_GUTTER;
   const fitAll = () => {
     const { width, height } = size();
-    const fitted = fitView(boundsOf([...boxes.values()]), { width: width - ZOOM_GUTTER, height });
-    setView({ ...fitted, pan: { x: fitted.pan.x + ZOOM_GUTTER, y: fitted.pan.y } });
+    const room = { width: width - ZOOM_GUTTER, height: height - top };
+    const fitted = fitView(boundsOf([...boxes.values()]), room);
+    setView({ ...fitted, pan: { x: fitted.pan.x + ZOOM_GUTTER, y: fitted.pan.y + top } });
+  };
+  // Auto layout fits once the steps have their new places (flow-workflows 4.2).
+  const fitOnMove = useRef(false);
+  useLayoutEffect(() => {
+    if (!fitOnMove.current) return;
+    fitOnMove.current = false;
+    fitAll();
+  }, [boxes]);
+  const addStep = async (type: "task" | "wait") => {
+    const id = await edit?.addStep(type, newStepPlace(boxes.values()));
+    if (id === undefined) return;
+    setSelected(id);
+    onSelectStep?.(id);
+  };
+  const autoLayout = () => {
+    // With no places saved there is nothing to move, so it only fits.
+    if (Object.keys(workflow.layout).length === 0) return fitAll();
+    fitOnMove.current = true;
+    void edit?.autoLayout().then((moved) => {
+      if (!moved) fitOnMove.current = false;
+    });
   };
   // Fit once, before the first paint, so the canvas never shows its steps in the wrong place. A
   // view the page kept stays as it was.
@@ -149,6 +177,9 @@ export function WorkflowCanvas({
         setView((now) => zoomAround(now, event.deltaY < 0 ? 1.1 : 1 / 1.1, anchor));
       }}
     >
+      {edit !== undefined && (
+        <CanvasToolbar onAddStep={(type) => void addStep(type)} onAutoLayout={autoLayout} />
+      )}
       <div
         data-testid="canvas-surface"
         style={{
@@ -210,4 +241,15 @@ export function WorkflowCanvas({
       </div>
     </div>
   );
+}
+
+/** What the canvas's toolbar asks of the page. */
+export interface CanvasEdit {
+  /** Adds a step of the kind at the place; resolves to its id, or `undefined` when it wasn't added. */
+  readonly addStep: (
+    type: "task" | "wait",
+    at: { readonly x: number; readonly y: number },
+  ) => Promise<string | undefined>;
+  /** Forgets the steps' places, so each takes the automatic one; resolves to whether it did. */
+  readonly autoLayout: () => Promise<boolean>;
 }
