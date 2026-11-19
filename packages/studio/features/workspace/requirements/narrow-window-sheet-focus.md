@@ -12,4 +12,4 @@ While the desktop app's window is as narrow as a phone and a sheet of More is op
   when the user presses the workspace row,
   then the sheet "Workspace" opens as a modal dialog and its title has focus, so Tab can't reach the controls under it.
 - Given that, when the user presses Escape, then the sheet closes and the workspace row has focus.
-- Given the same window, when the user presses the chip "Sample · test model" and then Escape, then its sheet opens as a modal dialog, closes, and the chip has focus.
+- Given the same window, when the user presses the chip "Sample answers" and then Escape, then its sheet opens as a modal dialog, closes, and the chip has focus.

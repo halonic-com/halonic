@@ -2,7 +2,7 @@
 
 Acme is an invented shop. The docs, the demo scripts and the launch texts take
 their examples from this workspace, and `halonic init --example acme` copies
-it into a new `acme` folder. In the desktop app, **Try the Acme sample** on the
+it into a new `acme` folder. In the desktop app, **Open demo** on the
 Welcome screen copies it into `Acme sample` in Documents. Every name, email and order in it is made up.
 
 It runs on the test model (`providers/mock.yaml`): scripted replies, no

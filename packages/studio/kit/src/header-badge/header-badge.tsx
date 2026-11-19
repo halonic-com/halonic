@@ -19,7 +19,7 @@ export interface HeaderBadgeMenu {
   readonly as: "menu";
   /** Its line on a phone; `more` when left out. */
   readonly phoneLine?: HeaderBadgePhoneLine | undefined;
-  /** The badge's words: "Sample · test model". */
+  /** The badge's words: "Sample answers". */
   readonly children: string;
   /** The menu's first line: "Runs on the built-in test model, with scripted replies. No key, no cost." */
   readonly description?: string | undefined;
@@ -126,7 +126,7 @@ const phoneLines = {
  *
  * @example
  * <HeaderBadge as="menu" description={costLine} entries={sampleEntries} onOpenSheet={openSheet}>
- *   Sample · test model
+ *   Sample answers
  * </HeaderBadge>
  * <HeaderBadge as="button" action="Review" onClick={openTrustCheck}>Not trusted yet</HeaderBadge>
  * <HeaderBadge as="button" action="Review" phoneLine="strip" onClick={openTrustCheck}>

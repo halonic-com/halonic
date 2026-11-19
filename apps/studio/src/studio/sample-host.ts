@@ -23,7 +23,7 @@ const documentsName = "Documents";
 const mostCopies = 99;
 
 /**
- * The app's side of **Try the Acme sample** (flow-first-run 2.2): the first of `Acme sample`,
+ * The app's side of **Open demo** (flow-first-run 2.2, first-run-flow 3.2): the first of `Acme sample`,
  * `Acme sample 2`, … that isn't in Documents yet (or a sample the device already knows, which is
  * reopened instead), made through the shell, with the bundled
  * `examples/acme` copied in by `copyWorkspace` and trusted at once, since Halonic wrote every

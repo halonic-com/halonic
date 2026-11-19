@@ -33,7 +33,7 @@ function renderSheet(onClose = vi.fn()) {
   const { container } = render(
     <PresentationProvider presentation="phone">
       <HeaderBadgeSheet
-        title="Sample · test model"
+        title="Sample answers"
         description={costLine}
         entries={entries}
         onClose={onClose}
@@ -50,7 +50,7 @@ verifies("kit.header-badge-sheet", () => {
   it("is a panel sheet titled with the badge's words, Back at the top left", async () => {
     const onClose = vi.fn();
     const { container } = renderSheet(onClose);
-    expect(container.querySelector("h2")?.textContent).toBe("Sample · test model");
+    expect(container.querySelector("h2")?.textContent).toBe("Sample answers");
     expect(document.activeElement).toBe(container.querySelector("h2"));
     const back = container.querySelector("header button") as HTMLButtonElement;
     expect(back.getAttribute("aria-label")).toBe("Back");
@@ -105,7 +105,7 @@ verifies("kit.header-badge-sheet", () => {
     const { container } = render(
       <PresentationProvider presentation="phone">
         <HeaderBadgeSheet
-          title="Sample · test model"
+          title="Sample answers"
           description={costLine}
           entries={[{ id: "tests", label: "Run its tests", disabled: true, onSelect: wait }]}
           onClose={vi.fn()}
@@ -121,7 +121,7 @@ verifies("kit.header-badge-sheet", () => {
     const { container } = render(
       <PresentationProvider presentation="phone">
         <HeaderBadgeSheet
-          title="Sample · test model"
+          title="Sample answers"
           description={costLine}
           note={note}
           entries={[]}
