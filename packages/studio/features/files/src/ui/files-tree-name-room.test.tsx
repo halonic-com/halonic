@@ -5,10 +5,9 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { contextHost, contextOf, listing, rowNamed, settled } from "../test-support/sidebar.ts";
 import { FilesSidebarView } from "./files-sidebar-view.tsx";
-import { charsThatFit } from "./name-room.tsx";
 
-/** The widths jsdom can't lay out: one character, and the room each name has. */
-const drawn = { ch: 7.5, wideCh: 7.5, name: 120 };
+/** What jsdom can't lay out or draw: one character's width, the room each name has, a canvas. */
+const drawn = { ch: 7.5, name: 120, canvas: true };
 const observers = new Set<() => void>();
 
 /** Stands in for the browser's ResizeObserver; `resize` reports a new name width to every observer. */
@@ -33,22 +32,26 @@ function resize(name: number): void {
   });
 }
 
-/** Ten of the probe's letters are ten `ch` wide; a name is as wide as the room its row leaves. */
-function widthOf(element: Element): number {
-  if (element.hasAttribute("data-name")) return drawn.name;
-  if (element.textContent === "iiiiiiiiii") return 10 * drawn.ch;
-  if (element.textContent === "WWWWWWWWWW") return 10 * drawn.wideCh;
-  return 0;
+/** A canvas that draws every character `drawn.ch` wide, or none, as where text can't be measured. */
+function fakeContext() {
+  if (!drawn.canvas) return null;
+  return {
+    font: "10px sans-serif",
+    measureText: (text: string) => ({ width: text.length * drawn.ch }),
+  };
 }
 
 beforeEach(() => {
-  Object.assign(drawn, { ch: 7.5, wideCh: 7.5, name: 120 });
+  Object.assign(drawn, { ch: 7.5, name: 120, canvas: true });
   vi.stubGlobal("ResizeObserver", FakeResizeObserver);
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
     this: HTMLElement,
   ) {
-    return { width: widthOf(this) } as DOMRect;
+    return { width: this.hasAttribute("data-name") ? drawn.name : 0 } as DOMRect;
   });
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
+    fakeContext as unknown as HTMLCanvasElement["getContext"],
+  );
 });
 
 afterEach(() => {
@@ -80,13 +83,6 @@ async function showRoutines(): Promise<HTMLElement> {
 const nameIn = (row: HTMLElement) => row.querySelector<HTMLElement>("[data-name]");
 
 verifies("files.ui.tree-view", () => {
-  it("counts the characters that fit in a width", () => {
-    expect(charsThatFit(120, 7.5)).toBe(16);
-    expect(charsThatFit(119.9, 7.5)).toBe(15);
-    expect(charsThatFit(0, 7.5)).toBeUndefined();
-    expect(charsThatFit(120, 0)).toBeUndefined();
-  });
-
   it("cuts a deep name in the middle to its row's room, so its start and end show (HAL-13080)", async () => {
     const page = await showRoutines();
     const row = rowNamed(page, `${routines}/${quarterly}`);
@@ -116,8 +112,8 @@ verifies("files.ui.tree-view", () => {
     expect(nameIn(rowNamed(page, `${routines}/${weekly}`))?.textContent).toBe("weekl…e.yaml");
   });
 
-  it("keeps the fixed cut when the font isn't monospaced (HAL-13080)", async () => {
-    drawn.wideCh = 9;
+  it("keeps the fixed cut where text can't be measured (HAL-13080)", async () => {
+    drawn.canvas = false;
     const page = await showRoutines();
     const name = nameIn(rowNamed(page, `${routines}/${quarterly}`));
     expect(name?.textContent).toHaveLength(32);

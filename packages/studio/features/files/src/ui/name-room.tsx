@@ -1,100 +1,119 @@
 import { type RefObject, useLayoutEffect, useState } from "react";
 
-/** Ten narrow and ten wide letters: in a monospaced font both are as wide. */
-const narrowLetters = "i".repeat(10);
-const wideLetters = "W".repeat(10);
+/** The room each name in the tree has, and the drawn width of a text in the names' font. */
+export interface NameRoom {
+  /** The width each name may take, in pixels, by the path of its row. Empty until measured. */
+  readonly room: ReadonlyMap<string, number>;
+  /** Undefined where text can't be measured: names then keep their fixed cut. */
+  readonly widthOf: ((text: string) => number) | undefined;
+}
 
-/**
- * How many characters of `ch` each fit in `width`; undefined while nothing was measured, as in a
- * hidden tree.
- */
-export function charsThatFit(width: number, ch: number): number | undefined {
-  if (!(width > 0) || !(ch > 0)) return undefined;
-  return Math.floor(width / ch);
+/** How the names are drawn, from the parts of their style that change a text's width. */
+interface NamesFont {
+  /** A CSS `font` value; browsers leave the computed `font` shorthand empty, so it's built here. */
+  readonly font: string;
+  readonly letterSpacing: string;
 }
 
 /**
- * The width of one character in the tree's font, or undefined when the font isn't monospaced: a
- * count of characters would then be wrong, and the CSS cut at the end takes over.
+ * Measures text as the browser draws it in the names' font, with any font, monospaced or not.
+ * Undefined where there's no canvas to measure with, or it won't take the font.
  */
-function charWidth(probe: HTMLElement | null): number | undefined {
-  const [narrow, wide] = Array.from(probe?.children ?? []);
-  if (narrow === undefined || wide === undefined) return undefined;
-  const narrowWidth = narrow.getBoundingClientRect().width;
-  if (!(narrowWidth > 0) || Math.abs(narrowWidth - wide.getBoundingClientRect().width) > 0.5) {
+function textMeasure({ font, letterSpacing }: NamesFont): ((text: string) => number) | undefined {
+  if (font === "") return undefined;
+  let context: CanvasRenderingContext2D | null = null;
+  try {
+    context = document.createElement("canvas").getContext("2d");
+  } catch {
     return undefined;
   }
-  return narrowWidth / narrowLetters.length;
+  if (context === null) return undefined;
+  const defaultFont = context.font;
+  context.font = font;
+  // A canvas keeps its own font when it can't parse the one it's given.
+  if (context.font === defaultFont && font !== defaultFont) return undefined;
+  if (letterSpacing !== "normal" && "letterSpacing" in context)
+    context.letterSpacing = letterSpacing;
+  const widths = new Map<string, number>();
+  return (text) => {
+    let width = widths.get(text);
+    if (width === undefined) {
+      width = context.measureText(text).width;
+      widths.set(text, width);
+    }
+    return width;
+  };
 }
 
-/** The characters each name in the tree has room for, by the path of its row. */
-function measureRoom(tree: HTMLElement, probe: HTMLElement | null): ReadonlyMap<string, number> {
+/** The width each drawn name may take, by the path of its row. */
+function measureRoom(tree: HTMLElement): Map<string, number> {
   const room = new Map<string, number>();
-  const ch = charWidth(probe);
-  if (ch === undefined) return room;
   for (const name of tree.querySelectorAll<HTMLElement>("[data-name]")) {
     const path = name.closest<HTMLElement>("[data-path]")?.dataset["path"];
-    const fits = charsThatFit(name.getBoundingClientRect().width, ch);
-    if (path !== undefined && fits !== undefined) room.set(path, fits);
+    const width = name.getBoundingClientRect().width;
+    if (path !== undefined && width > 0) room.set(path, width);
   }
   return room;
 }
 
+/** The font the names are drawn in. */
+function namesFont(tree: HTMLElement): NamesFont {
+  const name = tree.querySelector<HTMLElement>("[data-name]");
+  if (name === null) return { font: "", letterSpacing: "normal" };
+  const style = getComputedStyle(name);
+  return {
+    font: [style.fontStyle, style.fontWeight, style.fontSize, style.fontFamily].join(" "),
+    letterSpacing: style.letterSpacing,
+  };
+}
+
+function sameFont(before: NamesFont, after: NamesFont): boolean {
+  return before.font === after.font && before.letterSpacing === after.letterSpacing;
+}
+
 function sameRoom(before: ReadonlyMap<string, number>, after: ReadonlyMap<string, number>) {
   return (
-    before.size === after.size && [...after].every(([path, fits]) => before.get(path) === fits)
+    before.size === after.size && [...after].every(([path, width]) => before.get(path) === width)
   );
 }
 
 /**
- * Hidden letters in the rows' font, to measure one character by. It takes no room in the tree, so
- * the sidebar never scrolls sideways for it.
+ * The room each row's name has and a way to measure text in its font, measured again when the
+ * tree's width changes (the sidebar's edge, the window, the zoom), when `rows` change and once the
+ * fonts have loaded. A name takes the room its row leaves after the indent, the marks and the ⋮,
+ * whatever its own length.
  */
-export function CharProbe({ probe }: { probe: RefObject<HTMLSpanElement | null> }) {
-  return (
-    <span
-      ref={probe}
-      aria-hidden="true"
-      className="pointer-events-none invisible absolute size-0 overflow-hidden text-sm whitespace-pre"
-    >
-      <span>{narrowLetters}</span>
-      <span>{wideLetters}</span>
-    </span>
-  );
-}
-
-/**
- * The characters each row's name has room for, by path, measured again when the tree's width
- * changes (the sidebar's edge, the window, the zoom), when `rows` change and once the fonts have
- * loaded. A name takes the room its row leaves after the indent, the marks and the ⋮, whatever its
- * own length. Empty until measured, and where the font isn't monospaced.
- */
-export function useNameRoom(
-  tree: RefObject<HTMLElement | null>,
-  probe: RefObject<HTMLElement | null>,
-  rows: unknown,
-): ReadonlyMap<string, number> {
-  const [room, setRoom] = useState<ReadonlyMap<string, number>>(new Map());
+export function useNameRoom(tree: RefObject<HTMLElement | null>, rows: unknown): NameRoom {
+  const [measured, setMeasured] = useState<NameRoom & { font: NamesFont }>({
+    room: new Map(),
+    widthOf: undefined,
+    font: { font: "", letterSpacing: "normal" },
+  });
   // `rows` is a dependency because it changes which names are drawn, and how much room each has.
   useLayoutEffect(() => {
     const target = tree.current;
     if (target === null) return;
     let live = true;
-    const measure = () => {
+    const measure = (fontsLoaded = false) => {
       if (!live) return;
-      const after = measureRoom(target, probe.current);
-      setRoom((before) => (sameRoom(before, after) ? before : after));
+      const room = measureRoom(target);
+      const font = namesFont(target);
+      setMeasured((before) => {
+        const fontKept = sameFont(before.font, font) && !fontsLoaded;
+        if (fontKept && sameRoom(before.room, room)) return before;
+        // A new font, or one that has just loaded, draws text at new widths: measure it afresh.
+        return { room, font, widthOf: fontKept ? before.widthOf : textMeasure(font) };
+      });
     };
     measure();
-    // A font that loads late changes a character's width but not the tree's.
-    void document.fonts?.ready.then(measure);
+    void document.fonts?.ready.then(() => measure(true));
     const observer =
-      typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(measure);
+      typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(() => measure());
     observer?.observe(target);
     return () => {
       live = false;
       observer?.disconnect();
     };
-  }, [tree, probe, rows]);
-  return room;
+  }, [tree, rows]);
+  return measured;
 }
