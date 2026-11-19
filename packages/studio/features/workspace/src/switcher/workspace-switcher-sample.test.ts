@@ -13,7 +13,7 @@ import {
 function opened(name: string): OpenedWorkspace {
   return {
     name,
-    workspace: { dispose: vi.fn() } as unknown as StudioWorkspace,
+    workspace: { dispose: vi.fn(), tabs: { openHere: vi.fn() } } as unknown as StudioWorkspace,
     dispose: async () => {},
   };
 }
