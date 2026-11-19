@@ -27,6 +27,7 @@ verifies("sandbox-srt.wsl-projects", () => {
       "x ",
       "x.",
       "a".repeat(101),
+      `import-${"0".repeat(32)}`,
     ])("refuses the name %j", (name) => {
       expect(() => wslProjectFolder("distro", name)).toThrow("the project name");
       expect(() => assertProjectName(name)).toThrow();

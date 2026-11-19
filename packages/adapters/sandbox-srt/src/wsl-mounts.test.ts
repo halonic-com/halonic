@@ -1,77 +1,96 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   assertWindowsFolder,
-  cleanupImportMounts,
   driveMountOptions,
   IMPORT_MOUNTS_FOLDER,
+  type ImportStep,
   mountCommand,
-  type WslRoot,
+  type WslDistro,
   withImportMount,
 } from "./wsl-mounts.ts";
 
 const folder = "C:\\Work\\acme"; // leak-guard: allow absolute-path a made-up Windows folder for a test
 
-function fakeRoot(answers: (argv: readonly string[]) => { code: number; stdout?: string }) {
-  const calls: string[][] = [];
-  const root: WslRoot = {
+const point = `${IMPORT_MOUNTS_FOLDER}/import-${"a".repeat(32)}`;
+
+/** A distro whose updater answers `steps`; commands as `halonic` aren't expected here. */
+function fakeDistro(
+  steps: (step: ImportStep) => { code: number; stdout?: string } = (step) =>
+    step[0] === "import-mount" ? { code: 0, stdout: `${point}\n` } : { code: 0 },
+) {
+  const calls: Array<{ step: ImportStep; input: string | undefined }> = [];
+  const distro: WslDistro = {
     async run(argv) {
-      calls.push([...argv]);
-      const { code, stdout = "" } = answers(argv);
+      throw new Error(`unexpected command ${argv.join(" ")}`);
+    },
+    async runtime(step, input) {
+      calls.push({ step, input });
+      const { code, stdout = "" } = steps(step);
       return { code, stdout };
     },
   };
-  return { root, calls };
+  return { distro, calls };
 }
 
 verifies("sandbox-srt.wsl-mounts", () => {
   describe("mounts", () => {
-    it("mounts the import read-only with noexec, nosuid and nodev", async () => {
-      const { root, calls } = fakeRoot(() => ({ code: 0 }));
-      await withImportMount(root, folder, async () => undefined);
-      const mount = calls.find((c) => c[0] === "mount");
-      const options = mount?.[mount.indexOf("-o") + 1]?.split(",");
-      expect(options).toEqual(expect.arrayContaining(["ro", "noexec", "nosuid", "nodev"]));
-      expect(mount).toContain(folder);
-    });
-
-    it("gives each import a fresh random mount point under its own folder", async () => {
+    it("mounts through the updater's fixed step, with the folder on standard input only", async () => {
+      const { distro, calls } = fakeDistro();
       const seen: string[] = [];
-      for (let i = 0; i < 2; i++) {
-        const { root } = fakeRoot(() => ({ code: 0 }));
-        await withImportMount(root, folder, async (point) => void seen.push(point));
-      }
-      expect(seen[0]).not.toBe(seen[1]);
-      for (const point of seen)
-        expect(point).toMatch(new RegExp(`^${IMPORT_MOUNTS_FOLDER}/import-[0-9a-f]{32}$`));
+      await withImportMount(distro, folder, async (mounted) => void seen.push(mounted));
+      expect(seen).toEqual([point]);
+      expect(calls).toEqual([
+        { step: ["import-mount"], input: `${folder}\n` },
+        { step: ["import-unmount", `import-${"a".repeat(32)}`], input: undefined },
+      ]);
     });
 
-    it("unmounts and removes the mount point when the use throws, and rethrows its error", async () => {
-      const { root, calls } = fakeRoot(() => ({ code: 0 }));
+    it("unmounts when the use throws, and rethrows its error", async () => {
+      const { distro, calls } = fakeDistro();
       await expect(
-        withImportMount(root, folder, async () => {
+        withImportMount(distro, folder, async () => {
           throw new Error("clone failed");
         }),
       ).rejects.toThrow("clone failed");
-      expect(calls.map((c) => c[0]).slice(-2)).toEqual(["umount", "rmdir"]);
+      expect(calls.at(-1)?.step[0]).toBe("import-unmount");
     });
 
-    it("removes the mount point without unmounting when the mount itself failed", async () => {
-      // like the real umount: it fails on a folder that isn't mounted
-      const { root, calls } = fakeRoot((a) => {
-        if (a[0] === "mount") return { code: 32 };
-        if (a[0] === "umount") return { code: 32 };
-        return { code: 0 };
-      });
-      await expect(withImportMount(root, folder, async () => 1)).rejects.toThrow("mount failed");
-      const names = calls.map((c) => c[0]);
-      expect(names).not.toContain("umount");
-      expect(names.at(-1)).toBe("rmdir");
+    it("unmounts nothing when the mount itself failed", async () => {
+      const { distro, calls } = fakeDistro(() => ({ code: 1 }));
+      await expect(withImportMount(distro, folder, async () => 1)).rejects.toThrow(
+        "import-mount failed",
+      );
+      expect(calls.map((c) => c.step[0])).toEqual(["import-mount"]);
+    });
+
+    it.each([
+      "/tmp/import-x", // leak-guard: allow absolute-path a made-up path in the distro for a test
+      `${IMPORT_MOUNTS_FOLDER}/acme`,
+      `${IMPORT_MOUNTS_FOLDER}/../import-${"a".repeat(32)}`,
+      "",
+    ])("refuses %j as the mount point the updater printed", async (printed) => {
+      const { distro } = fakeDistro(() => ({ code: 0, stdout: printed }));
+      const use = vi.fn(async () => 1);
+      await expect(withImportMount(distro, folder, use)).rejects.toThrow("not an import mount");
+      expect(use).not.toHaveBeenCalled();
     });
 
     it("reports a mount that can't be unmounted", async () => {
-      const { root } = fakeRoot((a) => ({ code: a[0] === "umount" ? 32 : 0 }));
-      await expect(withImportMount(root, folder, async () => 1)).rejects.toThrow("umount failed");
+      const { distro } = fakeDistro((step) =>
+        step[0] === "import-mount" ? { code: 0, stdout: point } : { code: 7 },
+      );
+      await expect(withImportMount(distro, folder, async () => 1)).rejects.toThrow(
+        "import-unmount failed",
+      );
+    });
+
+    it("refuses a bad folder before the updater runs", async () => {
+      const { distro, calls } = fakeDistro();
+      await expect(withImportMount(distro, "C:", async () => 1)).rejects.toThrow(
+        "Windows drive path",
+      );
+      expect(calls).toEqual([]);
     });
 
     it("mounts a drive project for the halonic user only, without set-id files or devices", () => {
@@ -95,6 +114,7 @@ verifies("sandbox-srt.wsl-mounts", () => {
       "C:\\a\\..\\b", // leak-guard: allow absolute-path a made-up Windows folder for a test
       "C:\\a\\", // leak-guard: allow absolute-path a made-up Windows folder for a test
       "C:\\a\u0000b", // leak-guard: allow absolute-path a made-up Windows folder for a test
+      "C:\\a\u007fb", // leak-guard: allow absolute-path a made-up Windows folder for a test
       "/mnt/c",
     ])("refuses the folder %j", (path) => {
       expect(() => assertWindowsFolder(path)).toThrow("Windows drive path");
@@ -111,31 +131,6 @@ verifies("sandbox-srt.wsl-mounts", () => {
         "-o",
         "ro",
       ]);
-    });
-  });
-
-  describe("cleanupImportMounts", () => {
-    it("unmounts and rmdirs leftovers with this module's names only", async () => {
-      const left = `import-${"a".repeat(32)}`;
-      const { root, calls } = fakeRoot((a) => ({
-        code: 0,
-        stdout: a[0] === "ls" ? `${left}\nsomething-else\n..\n` : "",
-      }));
-      expect(await cleanupImportMounts(root)).toEqual([]);
-      expect(calls.slice(1)).toEqual([
-        ["umount", "--", `${IMPORT_MOUNTS_FOLDER}/${left}`],
-        ["rmdir", "--", `${IMPORT_MOUNTS_FOLDER}/${left}`],
-      ]);
-    });
-
-    it("does nothing when there is no import folder, and lists what it couldn't remove", async () => {
-      expect(await cleanupImportMounts(fakeRoot(() => ({ code: 2 })).root)).toEqual([]);
-      const left = `import-${"b".repeat(32)}`;
-      const { root } = fakeRoot((a) => ({
-        code: a[0] === "rmdir" ? 1 : 0,
-        stdout: a[0] === "ls" ? left : "",
-      }));
-      expect(await cleanupImportMounts(root)).toEqual([`${IMPORT_MOUNTS_FOLDER}/${left}`]);
     });
   });
 });

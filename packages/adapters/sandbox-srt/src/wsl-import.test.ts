@@ -1,15 +1,23 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { importWindowsProject } from "./wsl-import.ts";
-import type { WslRoot } from "./wsl-mounts.ts";
+import type { ImportStep, WslDistro } from "./wsl-mounts.ts";
 
 // From parts, so the leak guard doesn't read the distro's fixed home as one machine's.
 const project = ["/home", "halonic", "projects", "acme"].join("/");
 const folder = "C:\\Work\\acme"; // leak-guard: allow absolute-path a made-up Windows folder for a test
 
+const mountName = `import-${"c".repeat(32)}`;
+const mountPoint = `/mnt/halonic/${mountName}`;
+
+/**
+ * A distro where `answers` answers the commands run as `halonic` (in `calls`)
+ * and the updater mounts at `mountPoint` (its steps in `rootSteps`).
+ */
 function fakeRoot(answers: (argv: readonly string[]) => { code: number; stdout?: string }) {
   const calls: string[][] = [];
-  const root: WslRoot = {
+  const rootSteps: ImportStep[] = [];
+  const root: WslDistro = {
     async run(argv) {
       calls.push([...argv]);
       const { code, stdout = "" } = answers(argv);
@@ -17,8 +25,12 @@ function fakeRoot(answers: (argv: readonly string[]) => { code: number; stdout?:
       if (argv[0] === "realpath" && stdout === "") return { code, stdout: `${argv.at(-1)}\n` };
       return { code, stdout };
     },
+    async runtime(step) {
+      rootSteps.push(step);
+      return { code: 0, stdout: step[0] === "import-mount" ? `${mountPoint}\n` : "" };
+    },
   };
-  return { root, calls };
+  return { root, calls, rootSteps };
 }
 
 /** A distro where the project doesn't exist and the source has no remote, except for what `special` answers. */
@@ -43,7 +55,7 @@ function answersBy(table: Record<string, { code: number; stdout?: string }>) {
 verifies("sandbox-srt.wsl-import", () => {
   describe("import", () => {
     it("clones from the read-only mount and puts the source's remotes back", async () => {
-      const { root, calls } = fakeRoot((argv) => {
+      const { root, calls, rootSteps } = fakeRoot((argv) => {
         if (argv[0] === "test") return { code: 1 };
         if (argv.includes("--get-regexp"))
           return { code: 0, stdout: "remote.origin.url\nhttps://example.com/acme.git\0" };
@@ -53,7 +65,7 @@ verifies("sandbox-srt.wsl-import", () => {
       expect(path).toBe(project);
       const clone = calls.find((c) => c.includes("clone"));
       expect(clone?.at(-1)).toBe(path);
-      expect(clone?.at(-2)).toMatch(/^\/mnt\/halonic-import\/import-[0-9a-f]{32}$/);
+      expect(clone?.at(-2)).toBe(mountPoint);
       expect(calls).toContainEqual([
         "git",
         "-C",
@@ -64,7 +76,8 @@ verifies("sandbox-srt.wsl-import", () => {
         "--",
         "https://example.com/acme.git",
       ]);
-      expect(calls.map((c) => c[0]).slice(-3)).toEqual(["umount", "rmdir", "chown"]);
+      expect(rootSteps).toEqual([["import-mount"], ["import-unmount", mountName]]);
+      expect(calls.map((c) => c[0])).not.toContain("chown");
     });
 
     it("copies modified and untracked files and deletes the deleted ones", async () => {
@@ -94,7 +107,7 @@ verifies("sandbox-srt.wsl-import", () => {
         expect(list.slice(0, 3)).toEqual([
           "git",
           `--git-dir=${project}/.git`,
-          expect.stringMatching(/^--work-tree=\/mnt\/halonic-import\/import-/),
+          `--work-tree=${mountPoint}`,
         ]);
         expect(list.join(" ")).not.toContain("safe.directory");
       }
@@ -151,8 +164,8 @@ verifies("sandbox-srt.wsl-import", () => {
       expect(fetch).toBeLessThan(drop);
     });
 
-    it("gives a projects folder it made to the halonic user, and says which remote it skipped", async () => {
-      const { root, calls } = fakeRoot((argv) => {
+    it("says which remote it skipped", async () => {
+      const { root } = fakeRoot((argv) => {
         if (argv[0] === "test") return { code: 1 };
         if (argv.includes("--get-regexp"))
           return { code: 0, stdout: "remote.-bad.url\nhttps://example.com/x.git\0" };
@@ -161,12 +174,30 @@ verifies("sandbox-srt.wsl-import", () => {
       const skipped: string[] = [];
       await importWindowsProject(root, folder, "acme", (remote) => skipped.push(remote));
       expect(skipped).toEqual(["-bad"]);
-      expect(calls).toContainEqual([
-        "chown",
-        "halonic:halonic",
-        "--",
-        expect.stringContaining("projects"),
-      ]);
+    });
+
+    it("writes nothing through a projects folder that halonic replaced with a link to a root-only folder", async () => {
+      // `projects` leads to /root-only, which only root can write. `mkdir -p`
+      // passes on the link (the folder exists); as `halonic`, every write
+      // inside is refused, as the kernel would refuse it.
+      const rootOnly = "/root-only"; // leak-guard: allow absolute-path a made-up folder in the distro for a test
+      const through = (arg: string) => arg.replace(project.replace(/\/acme$/, ""), rootOnly);
+      const refused: string[][] = [];
+      const { root, calls, rootSteps } = distro((argv) => {
+        const real = argv.map(through);
+        if (argv[0] === "realpath") return { code: 0, stdout: `${real.at(-1)}\n` };
+        // `test -e` finds nothing there, and neither does `rm -rf`
+        const finds = argv[0] === "test" || argv[0] === "rm";
+        if (finds || !real.some((arg) => arg.includes(`${rootOnly}/`))) return undefined;
+        refused.push(real);
+        return { code: argv[0] === "git" ? 128 : 1 };
+      });
+      await expect(importWindowsProject(root, folder, "acme")).rejects.toThrow("failed");
+      expect(calls.find((c) => c.includes("clone"))?.at(-1)).toBe(project);
+      // the one write through the link was the clone, as `halonic`, and it was refused
+      expect(refused.map((c) => c.slice(0, 2))).toEqual([["git", "clone"]]);
+      // root only mounted and unmounted, and was never given a path in the distro
+      expect(rootSteps).toEqual([["import-mount"], ["import-unmount", mountName]]);
     });
 
     it("refuses a file path that reaches out of the project", async () => {
@@ -180,7 +211,7 @@ verifies("sandbox-srt.wsl-import", () => {
     });
 
     it("removes what it made and unmounts when the folder isn't a git repository", async () => {
-      const { root, calls } = fakeRoot((argv) => {
+      const { root, calls, rootSteps } = fakeRoot((argv) => {
         if (argv[0] === "test") return { code: 1 };
         if (argv.includes("rev-parse")) return { code: 128 };
         return { code: 0 };
@@ -188,13 +219,15 @@ verifies("sandbox-srt.wsl-import", () => {
       await expect(importWindowsProject(root, folder, "acme")).rejects.toThrow(
         "isn't a git repository",
       );
-      expect(calls.map((c) => c[0])).toEqual(expect.arrayContaining(["umount", "rmdir", "rm"]));
+      expect(rootSteps.at(-1)).toEqual(["import-unmount", mountName]);
+      expect(calls).toContainEqual(["rm", "-rf", "--", project]);
     });
 
     it("refuses a project that already exists and touches nothing", async () => {
-      const { root, calls } = fakeRoot(() => ({ code: 0 }));
+      const { root, calls, rootSteps } = fakeRoot(() => ({ code: 0 }));
       await expect(importWindowsProject(root, folder, "acme")).rejects.toThrow("already exists");
       expect(calls).toHaveLength(1);
+      expect(rootSteps).toEqual([]);
     });
 
     it("refuses a bad project name", async () => {
