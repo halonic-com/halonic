@@ -35,7 +35,8 @@ export interface SidePanelProps {
   /**
    * The title's id, for a panel inside a dialog that the title names (a sheet's `<dialog>`). The
    * panel then draws no `complementary` region of its own, so a screen reader hears its name once,
-   * as the dialog's, and not again as a region's.
+   * as the dialog's, and not again as a region's. Its header and footer are plain blocks then:
+   * outside the region they'd be the window's `banner` and `contentinfo`.
    */
   readonly dialogTitleId?: string | undefined;
 }
@@ -64,12 +65,20 @@ export function SidePanel(props: SidePanelProps) {
   const sheet = usePresentation() === "phone";
   const ownTitleId = useId();
   const titleId = props.dialogTitleId ?? ownTitleId;
+  const inDialog = props.dialogTitleId !== undefined;
+  const Footer = inDialog ? "div" : "footer";
   const title = useRef<HTMLHeadingElement>(null);
   usePanelFocus(title, sheet ? undefined : props.initialFocus);
   const className = `flex h-full min-h-0 flex-col bg-surface text-fg ${edge(props, sheet)}`;
   const content = (
     <>
-      <PanelHeader props={props} sheet={sheet} titleId={titleId} title={title} />
+      <PanelHeader
+        props={props}
+        sheet={sheet}
+        inDialog={inDialog}
+        titleId={titleId}
+        title={title}
+      />
       <div
         aria-busy={props.loading === undefined ? undefined : true}
         className={`min-h-0 flex-1 overflow-y-auto px-4 py-3${props.halo === true ? " bg-halo-wash" : ""}`}
@@ -82,7 +91,7 @@ export function SidePanel(props: SidePanelProps) {
         </span>
       )}
       {props.footer === undefined ? null : (
-        <footer
+        <Footer
           className={
             sheet
               ? "flex flex-wrap gap-2 border-t border-border px-4 pt-3 pb-safe"
@@ -90,12 +99,12 @@ export function SidePanel(props: SidePanelProps) {
           }
         >
           {props.footer}
-        </footer>
+        </Footer>
       )}
     </>
   );
 
-  if (props.dialogTitleId !== undefined) {
+  if (inDialog) {
     return <div className={className}>{content}</div>;
   }
   return (
@@ -112,14 +121,16 @@ export function SidePanel(props: SidePanelProps) {
 interface PanelHeaderProps {
   readonly props: SidePanelProps;
   readonly sheet: boolean;
+  readonly inDialog: boolean;
   readonly titleId: string;
   readonly title: RefObject<HTMLHeadingElement | null>;
 }
 
 /** The title and the shell's actions; on a phone, the top bar with Back first. */
-function PanelHeader({ props, sheet, titleId, title }: PanelHeaderProps) {
+function PanelHeader({ props, sheet, inDialog, titleId, title }: PanelHeaderProps) {
+  const Header = inDialog ? "div" : "header";
   return (
-    <header
+    <Header
       className={
         sheet
           ? "flex phone-top-bar items-center gap-1 border-b border-border px-1"
@@ -146,7 +157,7 @@ function PanelHeader({ props, sheet, titleId, title }: PanelHeaderProps) {
       {props.actions === undefined ? null : (
         <div className="flex shrink-0 gap-1">{props.actions}</div>
       )}
-    </header>
+    </Header>
   );
 }
 
