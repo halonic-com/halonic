@@ -11,7 +11,8 @@ use halonic_update_state::{
 use tauri::{AppHandle, Runtime};
 use tauri_plugin_updater::{Error as UpdaterError, Update};
 
-use super::{lock, updater_on_proxy_rules};
+use super::lock;
+use super::proxy::updater_on_proxy_rules;
 
 /// Starts downloading what the last check found, unless a download runs,
 /// one is ready, or this version's signature failed too often.
