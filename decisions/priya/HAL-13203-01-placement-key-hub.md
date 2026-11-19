@@ -2,17 +2,17 @@
 
 - Approval: decided by Liam on HAL-13203; the package owner (Liam) approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:uNGI0446j+lvH8IfAtO+W1HDFV7ODD9SxNdbfPo+jAx90/xL1FShVvMpF9rul9B3FGaOisUyxubi2/y3yLA/Aw==
 
 ## What changes
 
 `AgentPlacementKey` is `{ location, hub, agent }` and the `AgentPlacementStore` port is at version 2
 (ADR `2026-11-19-agent-placements-are-keyed-by-hub`). The requirements below now name the hub: the
 port's key, the file store's file name (`[location, hub, agent]`) and error text, the contract
-suite's key, the agent host's routes (a body without the hub is 400) and the client (it sends six
-fields, not five). Examples were added, none removed or weakened.
+suite's key, the agent host's routes (a body without the hub is 400), the client (it sends six
+fields, not five) and Studio's New agents run (it records the choice for the new agent's hub).
+Examples were added or now name the hub, none removed or weakened.
 
-Four tests were renamed, each kept with the same check or a stricter one:
+Five tests were renamed, each kept with the same check or a stricter one:
 
 - "saves exactly the five fields of the choice" is now "… six fields …".
 - "keeps a location ending in / apart from an agent id starting with one" (file store) and the
@@ -21,6 +21,9 @@ Four tests were renamed, each kept with the same check or a stricter one:
   and the agent id.
 - "compares locations and agent ids exactly as given" is now "compares locations, hub ids and
   agent ids exactly as given", with a hub case added.
+- "records On this computer for the new agent's file as written, keyed by the workspace and its id"
+  (Studio) now ends "… keyed by the workspace, its hub and its id", and reads the choice back with
+  the hub.
 
 ## Why
 
@@ -36,6 +39,8 @@ the agent goes back to its sandbox and the person confirms again.
 - contracts.agent-placement-store
 - agent-host.placement-routes
 - agent-host-client.placement-store
+- studio.new-agents-run
+- apps/studio/src/agents/workspace-agents.test.ts
 - packages/adapters/agent-host-client/src/placement-store.test.ts
 - packages/adapters/fs-node/src/agent-placement-store.test.ts
 - packages/testing/contracts/src/agent-placement-store.ts

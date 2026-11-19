@@ -423,7 +423,7 @@ export class WorkspaceAgents implements AgentsHost {
     const text = newAgentText(id, name, instructions);
     this.#parts.files.change(`Created agent ${name}`, { [`${folder}/${id}${agentSuffix}`]: text });
     this.#names.set(`${hubId}/${id}`, name);
-    await this.#placeNew(id, text);
+    await this.#placeNew(hubId, id, text);
     return { hubId, id };
   }
 
@@ -432,10 +432,10 @@ export class WorkspaceAgents implements AgentsHost {
    * computer" records that choice for it, anything else leaves it in its sandbox. A choice that
    * can't be saved goes to `reportError` and leaves it in its sandbox too.
    */
-  async #placeNew(agent: string, text: string): Promise<void> {
+  async #placeNew(hub: string, agent: string, text: string): Promise<void> {
     const parts = this.#parts.newAgents;
     if (parts === undefined) return;
-    const subject = { location: parts.location, agent, file: encodeUtf8(text) };
+    const subject = { location: parts.location, hub, agent, file: encodeUtf8(text) };
     try {
       const placed = await newAgentPlacement(parts.settings, parts.placement, subject);
       if (!placed.ok) {

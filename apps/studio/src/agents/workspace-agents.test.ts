@@ -428,18 +428,18 @@ verifies("studio.workspace-agents-trash", () => {
 
 verifies("studio.new-agents-run", () => {
   describe("WorkspaceAgents and New agents run", () => {
-    it("records On this computer for the new agent's file as written, keyed by the workspace and its id", async () => {
+    it("records On this computer for the new agent's file as written, keyed by the workspace, its hub and its id", async () => {
       const { parts, placement, errors } = await newAgentsSetup("this-computer");
       const { host, store } = setup({ newAgents: parts });
 
       const ref = await host.create({ name: "Refund checker", hubId: "acme" });
 
       const file = encodeUtf8(store["hubs/acme/agents/refund-checker.agent.yaml"] ?? "");
-      expect(await placement.where({ location, agent: ref.id, file })).toMatchObject({
+      expect(await placement.where({ location, hub: "acme", agent: ref.id, file })).toMatchObject({
         runsOn: "this-computer",
         chosenAt: "2026-11-18T10:00:00.000Z",
       });
-      expect((await placement.where({ location, agent: "writer", file })).runsOn).toBe("sandbox");
+      expect((await placement.where({ location, hub: "acme", agent: "writer", file })).runsOn).toBe("sandbox");
       expect(errors).toEqual([]);
     });
 
@@ -451,7 +451,7 @@ verifies("studio.new-agents-run", () => {
         const ref = await host.create({ name: "Refund checker", hubId: "acme" });
 
         const file = encodeUtf8(store["hubs/acme/agents/refund-checker.agent.yaml"] ?? "");
-        expect(await placement.where({ location, agent: ref.id, file })).toMatchObject({
+        expect(await placement.where({ location, hub: "acme", agent: ref.id, file })).toMatchObject({
           runsOn: "sandbox",
           reason: "not-chosen",
         });
@@ -473,7 +473,7 @@ verifies("studio.new-agents-run", () => {
       expect(text).toContain("id: refund-checker");
       expect(errors).toEqual([refused]);
       expect(
-        (await placement.where({ location, agent: ref.id, file: encodeUtf8(text ?? "") })).runsOn,
+        (await placement.where({ location, hub: "acme", agent: ref.id, file: encodeUtf8(text ?? "") })).runsOn,
       ).toBe("sandbox");
     });
 
@@ -485,7 +485,7 @@ verifies("studio.new-agents-run", () => {
       await host.update(ref, { description: "Checks refunds." });
 
       const file = encodeUtf8(store["hubs/acme/agents/refund-checker.agent.yaml"] ?? "");
-      expect(await placement.where({ location, agent: ref.id, file })).toMatchObject({
+      expect(await placement.where({ location, hub: "acme", agent: ref.id, file })).toMatchObject({
         runsOn: "sandbox",
         reason: "file-changed",
       });
