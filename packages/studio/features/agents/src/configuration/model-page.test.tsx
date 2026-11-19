@@ -157,6 +157,13 @@ verifies("agents.configuration.model", () => {
     expect(page.textContent).not.toContain("in one run");
   });
 
+  it("sizes the model call limit's box for a small number, not the whole column", async () => {
+    const { limit } = await openModel();
+    // The kit's short Input (`kit.input-short`): the text is 6 characters wide and the box fits it.
+    expect(limit.className.split(" ")).toContain("w-input-short");
+    expect((limit.parentElement as HTMLElement).className.split(" ")).not.toContain("w-full");
+  });
+
   it("shows a turn limit's mistake after the pause or when the field is left, not on every key", async () => {
     const { page, limit } = await openModel();
     await typeInto(limit, "2.");
