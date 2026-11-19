@@ -3,6 +3,7 @@
 - Task: HAL-13179
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-11705 (Liam approved the T6 plan, which has the Agent steps page in Configuration, flow-agents 7); Liam reviews PR #3882 on HAL-13179 and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:J6l+iOAWDxZPBFcqcOP9GR/J23FJTcOSLqarmoghBlvL0GjYVr6s+eeK0lGq3rXcHkluxgYeniEvOA5G/f1eCQ==
 
 ## What changes
 
