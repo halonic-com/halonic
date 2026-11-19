@@ -2,7 +2,6 @@
 
 - Approval: HAL-13288; Liam approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QukQY2XPD8CbGImJ2o9ZZdEZAH29Y5bLEUZnttqtsjpy7Jmo+ZprwJn7NycFB8dqWkGcUqKj7zeXLEJpMU14AQ==
 
 ## What changes
 
