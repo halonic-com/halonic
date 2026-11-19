@@ -3,7 +3,6 @@
 - Task: HAL-12278
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12278 (Liam's design check on HAL-12234 against the approved phone layout 1.1 and UX 9.13; a team decision with no board card, HAL-2282 rule, because it builds on approved screens)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:S0L7YAR1BUfNLfNaYddtC8e81S91qK/yUx9C2WUnHpMzbzjRRTQ571U8V+NByUkQtOCYuc/gnOBDwCUZF3s9BA==
 
 ## What changes
 
