@@ -29,6 +29,15 @@ verifies("app.sandbox-start-words", () => {
     );
   });
 
+  it("names the thing in the can't-run Callout's phone fix too, never 'install it'", () => {
+    expect(sandboxStartWords("bubblewrap-missing").cantRunPhoneFix).toBe(
+      "On the computer Halonic runs on: install bubblewrap, for example on Ubuntu or Debian with sudo apt install bubblewrap.",
+    );
+    expect(sandboxStartWords("ripgrep-missing").cantRunPhoneFix).toBe(
+      sandboxStartWords("ripgrep-missing").phoneFix,
+    );
+  });
+
   it("has every part for every reason code, under a key of its own", () => {
     const keys = new Set<string>();
     for (const code of sandboxUnavailableReasons) {
@@ -39,6 +48,7 @@ verifies("app.sandbox-start-words", () => {
         words.calloutFix,
         words.cantRunFix,
         words.phoneFix,
+        words.cantRunPhoneFix,
         words.docsName,
       ]) {
         expect(part.length).toBeGreaterThan(0);
@@ -52,9 +62,11 @@ verifies("app.sandbox-start-words", () => {
 
   it("names the command each fix holds, word for word, so a screen can show it as code", () => {
     for (const code of sandboxUnavailableReasons) {
-      const { command, fix, cantRunFix, phoneFix } = sandboxStartWords(code);
+      const { command, fix, cantRunFix, phoneFix, cantRunPhoneFix } = sandboxStartWords(code);
       if (command === undefined) continue;
-      for (const part of [fix, cantRunFix, phoneFix]) expect(part).toContain(command);
+      for (const part of [fix, cantRunFix, phoneFix, cantRunPhoneFix]) {
+        expect(part).toContain(command);
+      }
     }
     expect(sandboxStartWords("bubblewrap-missing").command).toBe("sudo apt install bubblewrap");
     expect(sandboxStartWords("other").command).toBeUndefined();

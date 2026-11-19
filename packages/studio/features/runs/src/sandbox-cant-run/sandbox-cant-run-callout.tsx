@@ -1,5 +1,6 @@
 import { type SandboxStartWords, sandboxStartWords } from "@halonicjs/app";
 import { Button, Callout, ExternalLink, usePresentation } from "@halonicjs/studio-kit";
+import { copyDetailsWords, useCopyDetails } from "@halonicjs/studio-shell";
 import type { ReactNode } from "react";
 import { cantRunWords } from "./cant-run-words.ts";
 import type { SandboxStart } from "./use-sandbox-start.ts";
@@ -28,9 +29,10 @@ export interface SandboxCantRunCalloutProps {
 /**
  * Why a run can't start here and what fixes it (requirement `runs.sandbox-cant-run`, microcopy
  * 23.3): the first line, the reason only for `other`, the fix, then **Check again** and the guide,
- * then the page's own last line. The fix comes first because it is what the person does next. There
- * is no way to run anyway: the only button checks again, and it never runs or changes anything.
- * On a phone the fix says to do it on the computer.
+ * and for `other` **Copy details**, then the page's own last line. The fix comes first because it is
+ * what the person does next. There is no way to run anyway: **Check again** never runs or changes
+ * anything, and **Copy details** only copies. On a phone the fix says to do it on the computer.
+ * The check's own sentences go only to the clipboard, never on screen (HAL-2089).
  *
  * @example
  * const start = useSandboxStart(check, true);
@@ -47,6 +49,7 @@ export function SandboxCantRunCallout({
   children,
 }: SandboxCantRunCalloutProps) {
   const phone = usePresentation() === "phone";
+  const copyDetails = useCopyDetails();
   if (start.refused === undefined) return null;
   const words = sandboxStartWords(start.refused);
   // Only `other` says what is wrong, because its fix doesn't (microcopy 23.3, revision 51).
@@ -71,7 +74,7 @@ export function SandboxCantRunCallout({
       </span>
       {unknown ? <span className="block">{words.reason}</span> : null}
       <span className="block" data-part="fix">
-        <WithCommand text={phone ? words.phoneFix : words.cantRunFix} words={words} />
+        <WithCommand text={phone ? words.cantRunPhoneFix : words.cantRunFix} words={words} />
       </span>
       {start.checkFailed ? <span className="block">{cantRunWords.checkFailed}</span> : null}
       <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -87,12 +90,31 @@ export function SandboxCantRunCallout({
         <ExternalLink href={`${cantRunWords.docsBase}/${words.docsKey}`}>
           {cantRunWords.docs}
         </ExternalLink>
+        {unknown ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void copyDetails(detailsOf(name, words.reason, start.details))}
+          >
+            {copyDetailsWords.label}
+          </Button>
+        ) : null}
       </span>
       {children === undefined ? null : <span className="mt-2 block text-fg-muted">{children}</span>}
     </Callout>
   );
   if (!band) return callout;
   return <div className="border-b border-border px-6 py-3 phone:px-4">{callout}</div>;
+}
+
+/**
+ * What **Copy details** puts on the clipboard for `other`: the first line, the reason, then the
+ * check's own sentences when it gave any.
+ */
+function detailsOf(name: string, reason: string, details: string | undefined): string {
+  return [cantRunWords.cantRun(name), reason, details ?? ""]
+    .filter((line) => line !== "")
+    .join("\n");
 }
 
 /** The fix, with the command it names as code that can be selected and copied, and wraps. */

@@ -18,6 +18,7 @@ import { type SandboxUnavailableReason, sandboxUnavailableReasons } from "@halon
  * - `cantRunFix`: the fix for the can't-run Callout, which shows no reason before it, so it names
  *   the thing where the fix says "it" (microcopy 23.3, "Fix in the can't-run Callout").
  * - `phoneFix`: the fix for someone on a phone, who has to do it on the computer.
+ * - `cantRunPhoneFix`: the can't-run Callout's fix for someone on a phone, so it names the thing too.
  * - `settingsFix`: the fix as Settings › Agent sandbox shows it, or `null` where the section's own
  *   set-up button is the fix (microcopy 23.3a).
  * - `command`: the command the fixes name, word for word as they write it, so a screen can show it
@@ -32,6 +33,7 @@ export interface SandboxStartWords {
   readonly calloutFix: string;
   readonly cantRunFix: string;
   readonly phoneFix: string;
+  readonly cantRunPhoneFix: string;
   readonly settingsFix: string | null;
   readonly command?: string;
   readonly docsKey: string;
@@ -39,8 +41,8 @@ export interface SandboxStartWords {
 }
 
 /**
- * A reason's source words: the sentence, the fix fragment, the can't-run Callout's fix when the
- * fix alone says "it" (else the fix with a capital letter), the command the fix names, the docs
+ * A reason's source words: the sentence, the fix fragment, the can't-run Callout's fix fragment
+ * when the fix alone says "it" (else the fix itself), the command the fix names, the docs
  * section and the link's name, when it has its own.
  */
 type Words = Readonly<{
@@ -110,7 +112,7 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
     reason: "Ubuntu 24.04 blocks the user namespaces the sandbox needs.",
     fix: "allow them for bubblewrap with an AppArmor rule. The guide has the exact commands.",
     cantRunFix:
-      "Allow user namespaces for bubblewrap with an AppArmor rule. The guide has the exact commands.",
+      "allow user namespaces for bubblewrap with an AppArmor rule. The guide has the exact commands.",
     docsSection: "user-namespaces",
     docsName: "How to allow it on Ubuntu 24.04",
   },
@@ -118,7 +120,7 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
     reason: "bubblewrap isn't installed, and the sandbox needs it.",
     fix: "install it, for example on Ubuntu or Debian with sudo apt install bubblewrap.",
     cantRunFix:
-      "Install bubblewrap, for example on Ubuntu or Debian with sudo apt install bubblewrap.",
+      "install bubblewrap, for example on Ubuntu or Debian with sudo apt install bubblewrap.",
     command: "sudo apt install bubblewrap",
     docsSection: "bubblewrap",
     docsName: "How to install bubblewrap",
@@ -164,6 +166,11 @@ function capitalised(text: string): string {
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
 
+/** A fix for someone on a phone, who has to do it on the computer Halonic runs on. */
+function onTheComputer(fix: string): string {
+  return `On the computer Halonic runs on: ${fix}`;
+}
+
 /**
  * The words for a sandbox that can't start, by reason code (requirement
  * `app.sandbox-start-words`). A code Halonic doesn't know reads as `other`,
@@ -174,18 +181,22 @@ function capitalised(text: string): string {
  * // "Install it, for example on Ubuntu or Debian with sudo apt install bubblewrap."
  * sandboxStartWords("bubblewrap-missing").cantRunFix;
  * // "Install bubblewrap, for example on Ubuntu or Debian with sudo apt install bubblewrap."
+ * sandboxStartWords("bubblewrap-missing").cantRunPhoneFix;
+ * // "On the computer Halonic runs on: install bubblewrap, for example on Ubuntu or Debian with …"
  * sandboxStartWords("from-the-future").key; // "sandbox-start.other"
  */
 export function sandboxStartWords(code: string): SandboxStartWords {
   const reason = isSandboxStartReason(code) ? code : "other";
-  const { reason: sentence, fix, cantRunFix, command, docsSection, docsName } = words[reason];
+  const { reason: sentence, fix, cantRunFix = fix, command, docsSection, docsName } =
+    words[reason];
   return {
     key: `sandbox-start.${reason}`,
     reason: sentence,
     fix,
     calloutFix: capitalised(fix),
-    cantRunFix: cantRunFix ?? capitalised(fix),
-    phoneFix: `On the computer Halonic runs on: ${fix}`,
+    cantRunFix: capitalised(cantRunFix),
+    phoneFix: onTheComputer(fix),
+    cantRunPhoneFix: onTheComputer(cantRunFix),
     settingsFix: fix === inSettings ? null : capitalised(fix),
     ...(command === undefined ? {} : { command }),
     docsKey: docsSection === undefined ? "security/sandbox/" : `security/sandbox/#${docsSection}`,
