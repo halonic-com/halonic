@@ -44,8 +44,9 @@ export const fileCommands = {
   /**
    * `{ channel }` → `{ watchId }`. The channel sends
    * `{ type: "changed", paths }` batches of files that may have changed, and
-   * one `{ type: "failed", message }` if the watch stops. A folder that goes
-   * away sends each file that was in it.
+   * one `{ type: "failed", kind, message }` if the watch stops; `kind` is
+   * `too_many_files` for a folder over the shell's file limit. A folder that
+   * goes away sends each file that was in it.
    */
   watch: "fs_watch",
   /** `{ watchId }` → nothing. No message comes after it returns. */

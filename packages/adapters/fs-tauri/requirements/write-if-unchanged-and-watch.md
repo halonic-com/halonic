@@ -6,7 +6,7 @@
 
 The Tauri definition store shall implement `DefinitionStore` and pass its contract suite by calling the shell's `fs_list`, `fs_read`, `fs_write` and `fs_remove` commands, naming the workspace it was made for in every call, and checking every path with the port's rules before it calls the shell. It shall send a write's `expected` to the shell, which compares it with the file and renames the new text into place under one lock, and shall never compare and write in two calls. It shall send a remove's `expected` to the shell too, which compares it with the file under the same lock as a write and answers `removed` or `changed-on-disk` with the file's current text, and shall never read and then remove in two calls. When the shell refuses a path, which only it can see behind a link, the call shall reject with a `RangeError`; an unreadable folder with an `UnreadableWorkspaceFolderError` naming it; a workspace that isn't open with a `denied` error; a file that isn't UTF-8 text with an `invalid_input` error; an `io` refusal with an `unavailable` error that keeps the shell's message. A rejection that isn't the shell's refusal shape, or an answer that isn't the command's, shall reject with an `unavailable` error that doesn't repeat its text.
 
-While a watch is open, the store shall hear the shell's `fs_watch` channel, read each path it names and report it as `ports.definition-store-watch` says, keeping the digest of every file it has seen so its own writes and removes are never reported. When the shell says the watch failed, or sends a message that isn't one, the store shall tell the listener's `failed` once and report nothing more, and `close()` shall stop the shell's watch with `fs_unwatch`.
+While a watch is open, the store shall hear the shell's `fs_watch` channel, read each path it names and report it as `ports.definition-store-watch` says, keeping the digest of every file it has seen so its own writes and removes are never reported. When the shell says the watch failed, or sends a message that isn't one, the store shall tell the listener's `failed` once and report nothing more: a failure of kind `too_many_files` as a `limit_reached` error with the shell's sentence as is, and any other as an `unavailable` error. `close()` shall stop the shell's watch with `fs_unwatch`.
 
 ## Examples
 
@@ -19,6 +19,9 @@ While a watch is open, the store shall hear the shell's `fs_watch` channel, read
 - Given a watch,
   when Halonic writes `a.yaml` and another editor writes `c.yaml`,
   then the batch holds only `c.yaml changed`.
+- Given a watch,
+  when the shell says it failed with `too_many_files`,
+  then the listener's `failed` gets one `limit_reached` error whose message is the shell's sentence.
 - Given the served Studio, which has no `desktop-files` capability,
   when any method is called,
   then it rejects with an `unavailable` error that doesn't hold the shell's text.

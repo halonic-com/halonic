@@ -8,6 +8,7 @@ export function setup(
 ) {
   const watching: {
     changed?: (changes: { path: string; kind: "changed" | "removed" }[]) => void;
+    failed?: (error: Error) => void;
     closed: number;
   } = { closed: 0 };
   const settled: string[] = [];
@@ -26,6 +27,7 @@ export function setup(
       },
       watch: async (listener) => {
         watching.changed = listener.changed;
+        watching.failed = listener.failed;
         return {
           close: async () => {
             watching.closed++;

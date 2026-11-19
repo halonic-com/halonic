@@ -135,6 +135,13 @@ export interface FilesHost {
    * unsaved changes (a deleted one counts), after each batch. Returns a function that stops the calls.
    */
   onReloaded(listener: (paths: readonly string[]) => void): () => void;
+  /**
+   * Calls `listener` once with the reason, a sentence for the user, when the host stopped watching
+   * for outside changes because the workspace has too many files; at once when that has already
+   * happened. Other watch failures don't call it. Returns a function that stops the call. A host
+   * without a watch doesn't need it.
+   */
+  onWatchLimit?(listener: (reason: string) => void): () => void;
   /** Calls `listener` whenever a file, or a mark on one, may have changed. Returns a function that stops the calls. */
   subscribe(listener: () => void): () => void;
 }

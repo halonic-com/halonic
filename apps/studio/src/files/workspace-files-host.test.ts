@@ -1,5 +1,8 @@
 import { UnreadableWorkspaceFolderError } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
+import { followFilesHost } from "@halonicjs/studio-feature-files/api";
+import { createToastStore } from "@halonicjs/studio-kit";
+import { SaveState } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { setup } from "./workspace-files-host-fixture.ts";
@@ -129,6 +132,64 @@ verifies("studio.workspace-files-host", () => {
     await host.dispose();
 
     expect(watching.closed).toBe(1);
+  });
+});
+
+verifies("studio.workspace-files-watch-limit", () => {
+  const tooMany =
+    "This folder has more than 50,000 files, too many to watch for changes made outside Halonic. Open a smaller folder to see them as they happen.";
+
+  /** A host whose watch the shell stops, followed as the app follows it, with its toasts. */
+  function followed() {
+    const { host, watching } = setup([]);
+    const toasts = createToastStore();
+    const stop = followFilesHost({
+      host,
+      toasts,
+      saving: new SaveState(toasts),
+      open: () => undefined,
+    });
+    return { host, watching, toasts, stop };
+  }
+
+  it("says once, in a warning toast that stays, that the folder has too many files to watch", () => {
+    const { watching, toasts } = followed();
+
+    watching.failed?.(new KindedError("limit_reached", tooMany));
+    watching.failed?.(new KindedError("limit_reached", tooMany));
+
+    expect(toasts.list()).toEqual([
+      expect.objectContaining({ tone: "warning", title: tooMany, sticky: true }),
+    ]);
+    expect(toasts.list()[0]?.action).toBeUndefined();
+  });
+
+  it("tells a listener that comes later", () => {
+    const { host, watching } = setup([]);
+    watching.failed?.(new KindedError("limit_reached", tooMany));
+
+    const heard: string[] = [];
+    host.onWatchLimit((reason) => heard.push(reason));
+
+    expect(heard).toEqual([tooMany]);
+  });
+
+  it("shows no toast for another watch failure", () => {
+    const { watching, toasts } = followed();
+
+    watching.failed?.(new KindedError("unavailable", "The workspace watch stopped: gone"));
+
+    expect(toasts.list()).toEqual([]);
+  });
+
+  it("says nothing once the workspace is closed", async () => {
+    const { host, watching, toasts, stop } = followed();
+    stop();
+    await host.dispose();
+
+    watching.failed?.(new KindedError("limit_reached", tooMany));
+
+    expect(toasts.list()).toEqual([]);
   });
 });
 
