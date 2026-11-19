@@ -32,16 +32,18 @@ verifies("kit.status-chip", () => {
     expect(chip.hasAttribute("role")).toBe(false);
   });
 
-  it("keeps the coloured tones and the tag as they are on a muted fill", () => {
-    for (const tone of [
-      "accent",
-      "running",
-      "warning",
-      "attention",
-      "danger",
-      "success",
-      "outline",
-    ] as const) {
+  it.each(["accent", "running", "warning", "danger", "success"] as const)(
+    "lays %s's see-through soft fill over surface on a muted fill, so its text keeps 4.5:1",
+    (tone) => {
+      // HAL-12459: the "Needs you" counter on an unselected tab was 4.27:1 in light, 4.23:1 in dark.
+      expect(renderChip({ tone, children: "State" }).className).toContain(
+        `on-muted:bg-over-surface-${tone}-soft`,
+      );
+    },
+  );
+
+  it("keeps attention's opaque soft fill and the tag as they are on a muted fill", () => {
+    for (const tone of ["attention", "outline"] as const) {
       expect(renderChip({ tone, children: "State" }).className).not.toContain("on-muted:");
     }
   });

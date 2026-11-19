@@ -747,6 +747,11 @@ is muted (an unselected tab, the active menu item), or `data-hover-fill="muted"`
 hover and press (a sidebar row). With more contrast `border` is too dark under `fg`, so the step is
 `surface` instead (`contrast-more:on-muted:bg-surface`), set apart by the chip's own edge.
 
+A coloured chip's soft fill is see-through, so on a muted fill it would darken with it and drop
+its text below 4.5:1, as the "Needs you" counter on an unselected tab did. There it lays its soft
+fill over `surface` (`on-muted:bg-over-surface-warning-soft`) and looks just as it does on a page.
+Attention's soft fill is opaque, so it stays as it is.
+
 ## ListHeading
 
 The heading over a group of rows. The List draws it for its own `heading` and each group's; it's exported
