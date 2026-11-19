@@ -10,6 +10,7 @@ import {
 import type { SettingsSectionProps } from "@halonicjs/studio-shell";
 import { type ReactNode, useState } from "react";
 import { RemoteControlService } from "../api.ts";
+import { PairDialog } from "../pairing/pair-dialog.tsx";
 import { useRemoteState } from "../remote-state.ts";
 import { providerName, tunnelProblem, tunnelState } from "../tunnel-words.ts";
 import { PhoneList } from "./phone-list.tsx";
@@ -40,6 +41,8 @@ export interface RemoteSettingsViewProps {
 /** The section over one snapshot: the tunnel's problem, the switches, and the phones. */
 export function RemoteSettingsView({ remote, state, announce }: RemoteSettingsViewProps) {
   const [failed, setFailed] = useState<string>();
+  const [pairing, setPairing] = useState(false);
+  const openExternal = useOpenExternal();
   const run = (action: Promise<void>, failure: string): Promise<void> => {
     setFailed(undefined);
     return action.catch(() => {
@@ -77,7 +80,21 @@ export function RemoteSettingsView({ remote, state, announce }: RemoteSettingsVi
         </Row>
       </div>
       {failed === undefined ? null : <p className="text-small text-danger">{failed}</p>}
-      <PhoneList remote={remote} state={state} announce={announce} />
+      <PhoneList
+        remote={remote}
+        state={state}
+        announce={announce}
+        onPair={() => setPairing(true)}
+      />
+      {pairing ? (
+        <PairDialog
+          remote={remote}
+          provider={state.tunnelProviderId}
+          allowRisky={state.allowRiskyRemotely}
+          openExternal={openExternal}
+          onClose={() => setPairing(false)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -11,6 +11,8 @@ export interface PhoneListProps {
   readonly state: RemoteState;
   /** Says a result in the dialog: the settings container's live region. */
   readonly announce: (line: string) => void;
+  /** Opens Pair a phone, from the empty state or beside the list's heading. */
+  readonly onPair: () => void;
   /** Where "Last seen" counts from. Default the clock. */
   readonly now?: () => Date;
 }
@@ -24,7 +26,13 @@ type Revoking = { readonly phone: PairedPhone } | { readonly all: number };
  * from two phones on. Both ask once and say what they cut. With no phone, the empty state; the
  * dialog stays over it until the last Revoke has finished, so focus has somewhere to go.
  */
-export function PhoneList({ remote, state, announce, now = () => new Date() }: PhoneListProps) {
+export function PhoneList({
+  remote,
+  state,
+  announce,
+  onPair,
+  now = () => new Date(),
+}: PhoneListProps) {
   const [revoking, setRevoking] = useState<Revoking>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -64,6 +72,7 @@ export function PhoneList({ remote, state, announce, now = () => new Date() }: P
         <EmptyState
           title={text.EMPTY_TITLE}
           headingLevel={3}
+          action={{ label: text.PAIR, onClick: onPair }}
           description={
             // The kit wraps the description in a paragraph, so its two lines are blocks, not paragraphs.
             <>
@@ -77,6 +86,7 @@ export function PhoneList({ remote, state, announce, now = () => new Date() }: P
           state={state}
           now={now()}
           buttons={revokeButtons.current}
+          onPair={onPair}
           onRevoke={(phone) => open({ phone })}
           onRevokeAll={() => open({ all: state.phones.length })}
         />
@@ -126,6 +136,7 @@ function Phones({
   state,
   now,
   buttons,
+  onPair,
   onRevoke,
   onRevokeAll,
 }: {
@@ -133,15 +144,21 @@ function Phones({
   readonly now: Date;
   /** Each row's Revoke button by phone id, for where focus goes after one. */
   readonly buttons: Map<string, HTMLButtonElement>;
+  readonly onPair: () => void;
   readonly onRevoke: (phone: PairedPhone) => void;
   readonly onRevokeAll: () => void;
 }) {
   const headingId = useId();
   return (
     <div className="flex flex-col gap-2">
-      <h3 id={headingId} className="text-body-strong">
-        {text.phonesHeading(state.phones.length)}
-      </h3>
+      <div className="flex items-center justify-between gap-4">
+        <h3 id={headingId} className="text-body-strong">
+          {text.phonesHeading(state.phones.length)}
+        </h3>
+        <Button variant="secondary" size="sm" onClick={onPair}>
+          {text.PAIR}
+        </Button>
+      </div>
       <ul
         aria-labelledby={headingId}
         className="m-0 flex list-none flex-col divide-y divide-border rounded-lg border border-border p-0"
