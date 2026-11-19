@@ -282,12 +282,16 @@ As described above, AI tools are welcome here, with these rules:
 
 1. The automated checks run.
 2. A reviewer reads the change. Changes to tests, requirements, security, build
-   or docs also get a review from the owner of that area.
+   or docs also get a review from that area's reviewer: the security reviewer
+   for tests, requirements, security and dependencies, the CI reviewer for
+   build and CI, and the docs reviewer for docs.
    Every finding starts with a severity tag: `[blocker]`, `[major]`,
    `[minor]` or `[nit]`. The tags and the reviewer's checklist are in
    [docs/guides/review.md](docs/guides/review.md).
-3. The reviewer approves and merges. Pull requests merge one at a time, so
-   `main` always passes its checks.
+3. The reviewer approves and merges. Pull requests merge one at a time
+   through a merge queue that runs the Linux checks. The macOS and Windows
+   checks run on the pull request and on every push to `main`, and a failure
+   there goes to the area's owner to fix or revert.
 
 We aim to give a first response within 2 working days. If you haven't heard
 from us, a friendly comment on the pull request is welcome.
