@@ -254,7 +254,7 @@ function MailFields({
         />
       </Field>
       <fieldset className="m-0 flex min-w-0 flex-col gap-1 border-0 p-0">
-        <legend className="px-4 text-small text-fg-muted">{words.checkEvery}</legend>
+        <legend className="text-small text-fg-muted">{words.checkEvery}</legend>
         <EveryFields
           interval={trigger.every}
           onChange={(every) => onChange({ ...trigger, every })}
@@ -290,25 +290,37 @@ function EveryFields({
     onChange(intervalText({ count: parsed?.count ?? 1, unit: next as EveryUnit }));
   return (
     <div className="flex gap-3">
-      <Field label={words.everyCount}>
-        <Input
-          type="number"
-          min={1}
-          value={countText}
-          onChange={(event) => changeCount(event.target.value)}
-        />
-      </Field>
-      <Field label={words.everyUnit}>
-        <Select
-          options={EVERY_UNITS.map((value) => ({ value, label: words.units[value] }))}
-          value={parsed === undefined ? "" : unit}
-          placeholder={words.units[unit]}
-          onChange={changeUnit}
-        />
-      </Field>
+      <div className={COUNT_ON_A_PHONE}>
+        <Field label={words.everyCount}>
+          <Input
+            type="number"
+            min={1}
+            value={countText}
+            onChange={(event) => changeCount(event.target.value)}
+          />
+        </Field>
+      </div>
+      <div className={UNIT_ON_A_PHONE}>
+        <Field label={words.everyUnit}>
+          <Select
+            options={EVERY_UNITS.map((value) => ({ value, label: words.units[value] }))}
+            value={parsed === undefined ? "" : unit}
+            placeholder={words.units[unit]}
+            onChange={changeUnit}
+          />
+        </Field>
+      </div>
     </div>
   );
 }
+
+/**
+ * On a phone, Count and Unit share one row and both may shrink, so both end inside the card at
+ * 320px; a number input won't go below its own width otherwise (HAL-13527). Unit keeps the width
+ * of its word while there's room and Count takes the rest: half each cuts off "minutes" at 320px.
+ */
+const COUNT_ON_A_PHONE = "phone:min-w-0 phone:flex-1";
+const UNIT_ON_A_PHONE = "phone:min-w-0";
 
 /** What a New mail pick runs into: nothing to watch yet, or the list still being read. */
 function mailboxProblem(mailboxes: readonly RoutineMailbox[] | undefined): string | null {
