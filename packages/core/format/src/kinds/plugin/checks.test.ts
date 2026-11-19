@@ -216,6 +216,12 @@ verifies("format.plugin-checks", () => {
         "localTools.0.secrets.acme-key.hosts.2 secret-host-not-declared",
       ]);
     });
+
+    it("fails Halonic's own variables in another letter case at the schema", () => {
+      expect(
+        found(...withEnv("    env: { home: { secret: acme-key }, Path: { setting: root } }")),
+      ).toEqual(["localTools.0.env.home invalid_key", "localTools.0.env.Path invalid_key"]);
+    });
   });
 
   it("fails a secret field for a secret no part declares", () => {
