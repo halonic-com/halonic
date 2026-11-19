@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12405
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ms4QhUTlHeXtE5pda0N6nvYYqTGJ0580+wtx83epkQOka2bbhSoH34d866ydAi3MGtA7ICgxA2ABOHWyHwMpAA==
 
 A run's **Review in Inbox**, on the run page and on the workflow page's run card, used to open the Inbox with nothing
 selected, so the right pane showed the New request form and a person could start a second run by mistake. Now it opens
