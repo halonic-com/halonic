@@ -4,6 +4,7 @@
 - Task: HAL-6351, reviewed on HAL-6351 (one task per PR for Studio)
 - Approval: Liam asked for "Sign in for this agent" on HAL-6351 and reviews this PR there
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Hk2+rdh3+T3ZfN72wUjHXHsyHgXyBYm1NKLG3yGjG8ooY23OzgfFxyxg/nqLW9ckmQTiPk3GjQD8jufYHGoSAw==
 
 ## What changes
 
