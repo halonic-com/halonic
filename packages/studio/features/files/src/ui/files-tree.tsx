@@ -124,7 +124,7 @@ function RowMarks({ node }: { node: TreeNode }) {
 /**
  * The file tree as an ARIA tree with one Tab stop: the focused row is the only one in the tab
  * order, arrow keys move inside it (requirement `files.tree.keyboard`). Names are plain text, and
- * a long one is cut in the middle; its full name is the row's title.
+ * a long one is cut in the middle; its full name is the title of the cut name.
  */
 export function FilesTree({
   roots,
@@ -259,10 +259,10 @@ export function FilesTree({
               aria-label={rowLabel(node, label, renaming?.path)}
               // The marks are not read along with the name field while it is edited.
               aria-description={descriptionOf(node, label, renaming?.path)}
-              title={node.name.length > nameLimit ? node.name : undefined}
-              // In high contrast both marks are outlines: the open file's steps aside while the
-              // row has keyboard focus, so the focus outline shows.
-              className={`group flex min-h-8 cursor-pointer items-center gap-1 rounded-sm pr-2 text-body text-fg hover:bg-surface-muted focus-ring-inset aria-selected:bg-accent-soft aria-selected:not-focus-visible:selected-forced`}
+              // A row never grows past the tree: the name gives way, so the marks and ⋮ stay in
+              // sight. In high contrast both marks are outlines: the open file's steps aside while
+              // the row has keyboard focus, so the focus outline shows.
+              className={`group flex min-h-8 w-full min-w-0 cursor-pointer items-center gap-1 rounded-sm pr-2 text-body text-fg hover:bg-surface-muted focus-ring-inset aria-selected:bg-accent-soft aria-selected:not-focus-visible:selected-forced`}
               style={{ paddingLeft: `${row.depth * 16 + 4}px` }}
               onClick={(event) => {
                 event.stopPropagation();
@@ -286,7 +286,14 @@ export function FilesTree({
                   onCancel={renaming.onCancel}
                 />
               ) : (
-                <span className="min-w-0 truncate">{cutInMiddle(node.name, nameLimit)}</span>
+                // The full name shows on hover over the cut one. On the row, a screen reader would
+                // read it again after the row's name, as its description.
+                <span
+                  className="min-w-0 truncate"
+                  title={node.name.length > nameLimit ? node.name : undefined}
+                >
+                  {cutInMiddle(node.name, nameLimit)}
+                </span>
               )}
               <RowMarks node={node} />
               {hasMenuButton(node, renaming?.path) && (
