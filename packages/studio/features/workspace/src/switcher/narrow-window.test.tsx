@@ -234,8 +234,11 @@ const notTrusted: WorkspaceTrustControl = {
   subscribe: () => () => {},
 };
 
+// More's badge: the phone's notice strip above the page shows the same one first.
 const trustBadge = () =>
-  element.querySelector<HTMLButtonElement>('button[aria-label="Not trusted yet. Review"]');
+  [
+    ...element.querySelectorAll<HTMLButtonElement>('button[aria-label="Not trusted yet. Review"]'),
+  ].at(-1);
 
 verifies("workspace.narrow-window-trust", () => {
   it("shows Not trusted yet · Review on More in place of the sample chip", async () => {

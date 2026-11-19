@@ -153,6 +153,10 @@ verifies("shell.phone-notice-badges", () => {
       expect(chips.className.split(" ")).toContain(part);
     }
     expect(chips.querySelector(".min-h-touch")).toBeNull();
+    // Each chip keeps its own size, so the row wraps instead of stacking full-width chips.
+    for (const wrapper of chips.querySelectorAll("span:has(> button)")) {
+      expect(wrapper.className.split(" ")).not.toContain("phone:grow");
+    }
   });
 
   it("draws a line under each row, and leaves the rows out in a short window", () => {
