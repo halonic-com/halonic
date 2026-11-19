@@ -29,6 +29,8 @@ export function CanvasToolbar({ onAddStep, onAutoLayout }: CanvasToolbarProps) {
     <div
       role="group"
       aria-label={words.label}
+      // Tells the canvas a press here isn't on its background, so it doesn't close a step's card.
+      data-canvas-controls
       className="absolute top-3 left-3 z-10 flex items-center gap-1 rounded-md border border-border bg-surface p-1 shadow-1"
     >
       <Button variant="ghost" size="sm" icon={<PlusIcon />} onClick={() => onAddStep("task")}>

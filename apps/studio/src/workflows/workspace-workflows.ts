@@ -370,11 +370,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
    * one undoable change: each field given is set, and an empty one is taken out of the file.
    */
   async changeStep(ref: WorkflowRef, stepId: string, change: WorkflowStepChange): Promise<void> {
-    const workspace = await this.#load();
-    const file = filesOf(workspace, "workflow").find(
-      (one) => one.hub === ref.hubId && one.value.id === ref.id,
-    );
-    if (file === undefined) throw workflowGone();
+    const { file, text } = await this.#fileOf(ref);
     const state = Object.hasOwn(file.value.states, stepId) ? file.value.states[stepId] : undefined;
     if (state === undefined) {
       throw new KindedError("not_found", `This workflow has no step "${stepId}" any more.`);
@@ -398,15 +394,8 @@ export class WorkspaceWorkflows implements WorkflowsHost {
       else if (state[key] !== undefined) edits.push({ kind: "delete", path });
     }
     if (edits.length === 0) return;
-    const text = await this.#parts.files.read(file.path);
-    if (text === null) throw workflowGone();
     const edited = editYaml(text, edits);
-    if (!edited.ok) {
-      throw new KindedError(
-        "invalid_input",
-        "This workflow's file couldn't be changed as it is written.",
-      );
-    }
+    if (!edited.ok) throw cantChange();
     this.#parts.files.change(`Changed step ${stepId} of workflow ${file.value.name}`, {
       [file.path]: edited.value.text,
     });

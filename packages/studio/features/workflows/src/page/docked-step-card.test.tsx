@@ -46,9 +46,13 @@ type ChangeStep = NonNullable<WorkflowsHost["changeStep"]>;
 async function showPage(
   /** `null` for a host that can't change steps. */
   changeStep: ChangeStep | null = vi.fn<ChangeStep>(async () => {}),
-  { phone = false } = {},
+  { phone = false, toolbar = false } = {},
 ) {
-  const { host } = memoryHost([], [], [reply], [], changeStep === null ? {} : { changeStep });
+  const { host } = memoryHost([], [], [reply], [], {
+    ...(changeStep === null ? {} : { changeStep }),
+    // A host that can add steps gives the canvas its toolbar.
+    ...(toolbar ? { addStep: async () => "step", resetLayout: async () => {} } : {}),
+  });
   const toasts = createToastStore();
   const setFieldsNotSaved = vi.fn();
   const screen = (
@@ -234,6 +238,24 @@ verifies("workflows.page.step-card", () => {
       canvas.dispatchEvent(pointer("pointerup", 11));
     });
     expect(docked(page)).toBeNull();
+  });
+
+  it("stays open on a press on the toolbar or the zoom buttons' column, between their buttons", async () => {
+    const { page } = await showPage(undefined, { toolbar: true });
+    await pick(page, "write");
+    const toolbar = page.querySelector("[role=group][aria-label='Flow tools']") as HTMLElement;
+    const zoomColumn = page.querySelector("button[aria-label='Zoom in']")?.parentElement;
+    const divider = toolbar.querySelector("[aria-hidden=true]");
+    const pointer = (type: string) =>
+      new MouseEvent(type, { bubbles: true, clientX: 10, clientY: 10 });
+
+    for (const target of [toolbar, divider, zoomColumn]) {
+      await act(async () => {
+        target?.dispatchEvent(pointer("pointerdown"));
+        target?.dispatchEvent(pointer("pointerup"));
+      });
+      expect(docked(page)).not.toBeNull();
+    }
   });
 
   it("opens no card where the host can't change steps, nor on a phone", async () => {

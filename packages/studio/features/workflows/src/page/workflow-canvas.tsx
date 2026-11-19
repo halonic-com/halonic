@@ -172,8 +172,10 @@ export function WorkflowCanvas({
       // focus moves to a card outside it, and that shift is lost to the zoom and pan.
       className="relative min-h-80 flex-1 touch-none overflow-clip bg-canvas-grid"
       onPointerDown={(event) => {
-        // A press on a card or a button is theirs: capturing it here would steal their click.
-        if ((event.target as Element).closest("button") !== null) return;
+        // A press on a card, a button or the controls around them (the toolbar's padding and
+        // divider, the gaps between the zoom buttons) is theirs: it is neither a pan nor a click
+        // on the background, and capturing it here would steal a button's click.
+        if ((event.target as Element).closest("button, [data-canvas-controls]") !== null) return;
         drag.current = { x: event.clientX, y: event.clientY };
         pressedAt.current = { x: event.clientX, y: event.clientY };
         event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -241,7 +243,7 @@ export function WorkflowCanvas({
           color={activeDot === undefined ? "" : DOT_VAR[activeDot.mark]}
         />
       </div>
-      <div className="absolute bottom-3 left-3 flex flex-col gap-1">
+      <div data-canvas-controls className="absolute bottom-3 left-3 flex flex-col gap-1">
         <Button
           variant="secondary"
           size="sm"
