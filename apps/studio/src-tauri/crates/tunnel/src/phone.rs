@@ -69,7 +69,8 @@ pub enum PhoneStatus {
     /// says why the last try failed, once one has.
     Reconnecting { last_try: Option<ConnectError> },
     /// The phone couldn't confirm the computer. It keeps trying, and this
-    /// stays until a handshake succeeds.
+    /// stays until a handshake succeeds: a pause shows Paused, and the
+    /// resume shows Can't confirm again.
     CantConfirm,
     /// The host, after proving who it is, said it doesn't know this phone.
     /// Final: the transport is closed.
@@ -125,6 +126,7 @@ impl PhoneConnection {
             handshake_timeout: options.handshake_timeout,
             events,
             status: PhoneStatus::Connecting,
+            unconfirmed: false,
             connection: None,
             stage: Stage::Waiting,
         };
@@ -180,6 +182,10 @@ struct Worker {
     handshake_timeout: Duration,
     events: mpsc::UnboundedSender<PhoneEvent>,
     status: PhoneStatus,
+    /// The phone couldn't confirm the computer, and no handshake has
+    /// succeeded since. Kept apart from `status` because a pause hides
+    /// Can't confirm without ending it.
+    unconfirmed: bool,
     /// The open connection, which frames go out on; none between connections.
     connection: Option<ConnectionId>,
     stage: Stage,
@@ -192,6 +198,10 @@ impl Worker {
         mut commands: mpsc::UnboundedReceiver<Command>,
     ) {
         let mut rekey_check = tokio::time::interval(REKEY_CHECK);
+        // Set once the handle is dropped: the transport is closed then, and
+        // the command channel, which would only say `None` again, isn't
+        // read any more while the transport finishes closing.
+        let mut closing = false;
         loop {
             let deadline = match &self.stage {
                 Stage::Handshake { deadline, .. } => Some(*deadline),
@@ -202,9 +212,12 @@ impl Worker {
                     Some(event) => self.on_transport(event).await,
                     None => break,
                 },
-                command = commands.recv() => match command {
+                command = commands.recv(), if !closing => match command {
                     Some(command) => self.on_command(command).await,
-                    None => self.transport.close(),
+                    None => {
+                        closing = true;
+                        self.transport.close();
+                    }
                 },
                 () = sleep_until(deadline) => self.drop_connection(),
                 _ = rekey_check.tick() => self.rekey_if_due().await,
@@ -221,8 +234,16 @@ impl Worker {
             TransportEvent::Opened(connection) => self.start_handshake(connection).await,
             TransportEvent::State(TransportState::Reconnecting) => {
                 self.lost_connection();
-                if self.status != PhoneStatus::CantConfirm {
+                if self.unconfirmed {
+                    self.set_status(PhoneStatus::CantConfirm);
+                } else {
                     self.set_status(PhoneStatus::Reconnecting { last_try: None });
+                }
+            }
+            // Connecting again after a resume.
+            TransportEvent::State(TransportState::Connecting) => {
+                if self.unconfirmed {
+                    self.set_status(PhoneStatus::CantConfirm);
                 }
             }
             TransportEvent::State(TransportState::Paused) => {
@@ -233,7 +254,7 @@ impl Worker {
                 self.lost_connection();
                 self.set_status(PhoneStatus::Closed);
             }
-            TransportEvent::State(TransportState::Connecting | TransportState::Open) => {}
+            TransportEvent::State(TransportState::Open) => {}
             TransportEvent::TryFailed(reason) => {
                 if matches!(self.status, PhoneStatus::Reconnecting { .. }) {
                     self.set_status(PhoneStatus::Reconnecting {
@@ -245,20 +266,24 @@ impl Worker {
         }
     }
 
-    /// Each connection that opens is new: reconnect to the pinned key.
+    /// Each connection that opens is new: reconnect to the pinned key. The
+    /// time limit starts now, so it bounds sending message 1 as well as
+    /// waiting for message 2.
     async fn start_handshake(&mut self, connection: ConnectionId) {
+        let deadline = tokio::time::Instant::now() + self.handshake_timeout;
         self.connection = Some(connection);
         let Ok((reconnect, frame1)) = Reconnect::start(&self.keys, &self.host_key) else {
             self.drop_connection();
             return;
         };
-        if self.transport.send(connection, frame1).await.is_err() {
+        let sending = self.transport.send(connection, frame1);
+        if !matches!(tokio::time::timeout_at(deadline, sending).await, Ok(Ok(()))) {
             self.drop_connection();
             return;
         }
         self.stage = Stage::Handshake {
             reconnect: Box::new(reconnect),
-            deadline: tokio::time::Instant::now() + self.handshake_timeout,
+            deadline,
         };
     }
 
@@ -268,6 +293,7 @@ impl Worker {
             {
                 Ok(session) => {
                     self.stage = Stage::Session(Box::new(session));
+                    self.unconfirmed = false;
                     if self.status != PhoneStatus::Connected {
                         self.set_status(PhoneStatus::Connecting);
                     }
@@ -290,6 +316,7 @@ impl Worker {
 
     fn handshake_failed(&mut self, error: SessionError) {
         if error == SessionError::CantConfirm {
+            self.unconfirmed = true;
             self.set_status(PhoneStatus::CantConfirm);
         }
         self.drop_connection();
