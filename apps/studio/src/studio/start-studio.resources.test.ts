@@ -4,6 +4,13 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type StartedStudio, startStudio } from "./start-studio.ts";
 
+/** Welcome's **Open folder**, which no longer comes first once the app gives Welcome the demo. */
+function openFolderButton(root: HTMLElement): HTMLButtonElement | undefined {
+  return [...root.querySelectorAll("button")].find((each) =>
+    each.textContent?.startsWith("Open folder"),
+  );
+}
+
 /** A desktop window: jsdom has no `matchMedia`, and the shell follows the phone width with it. */
 function desktopMediaQueries(query: string): MediaQueryList {
   return {
@@ -78,7 +85,7 @@ verifies("studio.entry", () => {
     });
     await vi.waitFor(() => expect(element.querySelector("button")).not.toBeNull());
 
-    element.querySelector("button")?.click();
+    openFolderButton(element)?.click();
 
     await vi.waitFor(() => expect(element.textContent).toContain("230 MB · 48 GB free"), {
       timeout: 4_000,

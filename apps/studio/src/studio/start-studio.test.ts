@@ -26,6 +26,10 @@ import {
 } from "./start-studio.ts";
 import { phonePointerQuery } from "./studio-host.ts";
 
+/** Welcome's **Open folder**, which no longer comes first once the app gives Welcome the demo. */
+const openFolderButton = (root: HTMLElement) =>
+  [...root.querySelectorAll("button")].find((each) => each.textContent?.startsWith("Open folder"));
+
 /** A desktop window: jsdom has no `matchMedia`, and the shell follows the phone width with it. */
 function desktopMediaQueries(query: string): MediaQueryList {
   return {
@@ -278,7 +282,7 @@ verifies("studio.open-folder", () => {
     expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
     expect(started.host).toBe("desktop-app");
 
-    element.querySelector("button")?.click();
+    openFolderButton(element)?.click();
     await drawn(element);
 
     expect(webview.calls.map((call) => call.command)).toContain("pick_folder");
@@ -422,7 +426,7 @@ verifies("studio.settings", () => {
         timeout: settingsWait,
       });
       expect(element.querySelector("button")).not.toBeNull();
-      element.querySelector("button")?.click();
+      openFolderButton(element)?.click();
       await drawn(element);
 
       window.dispatchEvent(
@@ -478,9 +482,7 @@ verifies("studio.window-appearance", () => {
     document.documentElement.removeAttribute("data-theme");
     document.documentElement.removeAttribute("style");
   });
-});
 
-verifies("studio.window-appearance", () => {
   it("fails a save on a page without storage, so Settings says it and puts the value back", async () => {
     const settings = displaySettingsOf({ window: new EventTarget() });
     const outcome = await settings.set(themePref, "dark");
