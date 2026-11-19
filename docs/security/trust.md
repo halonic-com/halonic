@@ -140,21 +140,23 @@ marker.
 
 A Claude Code or Codex agent set to "On this computer" signs in with its own
 program, and Halonic never reads or passes on a key for it. A sandboxed one
-can't reach that sign-in, so the run's bridge gets the key of the workspace's
-provider of the type the program calls (requirement `cli.harness-provider-key`).
-When the agent's file names a `models.yaml` alias as its `model`, the bridge gets
-that alias's provider's key wherever the agent runs, because the program is
-asked for the alias's model on every call. Before the alias's key is named, it
-gets the same check as any other model call: a non-default address needs a
-trusted workspace, a key with a list goes only to an origin on it, and an
-untrusted workspace calls no real provider. The bridge sends the key only to
-the provider file's one origin, never to another host the program names and
-never after a redirect, and for an alias it refuses a call for any model but
-the alias's, so the key pays only for the model the alias prices. Give the
-alias a `price`: without one, its calls are unpriced, as in any other agent,
-and a cost limit or budget doesn't count them. The bridge reads only the keys
-the workspace's provider files name; a key you saved for anything else never
-reaches it. The CLI does this today; Studio still signs every harness agent in.
+can't reach that sign-in, so in the CLI the run's bridge gets the key of the
+workspace's provider of the type the program calls (requirement
+`cli.harness-provider-key`). When the agent's file names a `models.yaml` alias
+as its `model`, the bridge gets that alias's provider's key wherever the agent
+runs, in the CLI and in Studio (requirements `cli.harness-model-access` and
+`studio.harness-bridge-keys`), because the program is asked for the alias's
+model on every call. Before the alias's key is named, it gets the same check as
+any other model call: a non-default address needs a trusted workspace, a key
+with a list goes only to an origin on it, and an untrusted workspace calls no
+real provider. The bridge sends the key only to the provider file's one origin,
+never to another host the program names and never after a redirect, and for an
+alias it refuses a call for any model but the alias's, so the key pays only for
+the model the alias prices. Give the alias a `price`: without one, its calls
+are unpriced, as in any other agent, and a cost limit or budget doesn't count
+them. The bridge reads only the keys the workspace's provider files name; a key
+you saved for anything else never reaches it. A sandboxed Studio agent with no
+alias still has no key.
 
 ## What Studio asks for
 

@@ -3,10 +3,21 @@ import { type Schema, s } from "@halonicjs/schema-kit";
 import type { ChannelAnswer } from "../server/call-channel.ts";
 import { portSchema } from "../server/port-schema.ts";
 
-const access: Schema<BridgeProviderAccess> = s.discriminatedUnion("kind", [
-  s.object({ kind: s.literal("key"), secret: s.string().min(1) }).strict(),
-  s.object({ kind: s.literal("sign-in") }).strict(),
-]);
+const access = portSchema<BridgeProviderAccess>(
+  s.discriminatedUnion("kind", [
+    s
+      .object({
+        kind: s.literal("key"),
+        secret: s.string().min(1),
+        // A compatible provider's address and its file's id (HAL-12488): Studio
+        // has already checked the key may go there; the bridge checks the URL.
+        baseUrl: s.string().min(1).optional(),
+        providerId: s.string().min(1).optional(),
+      })
+      .strict(),
+    s.object({ kind: s.literal("sign-in") }).strict(),
+  ]),
+);
 
 const tokenPrice = s.number().min(0);
 const price = portSchema<ModelPrice>(

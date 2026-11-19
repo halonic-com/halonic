@@ -10,6 +10,7 @@ import type { BridgeApprovals, BridgeRecorder, SandboxProfile } from "@halonicjs
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { openStudioHarnessHost, type StudioHarnessInput } from "./studio-harness-host.ts";
+import { acmeKeychain, acmeWithOpenCoder, zaiAddress } from "./studio-harness-keys.test-helper.ts";
 
 const location = "/acme";
 
@@ -49,6 +50,7 @@ function fakeHost(
 ) {
   const answers: unknown[] = [];
   const asked: string[] = [];
+  const opened: unknown[] = [];
   const answered = Promise.withResolvers<void>();
   const routes: Partial<Record<AgentHostRequestRoute, (body: unknown) => AgentHostAnswer>> = {
     "GET /v1/harnesses": () => ({
@@ -75,15 +77,18 @@ function fakeHost(
       if (answer === undefined) throw new Error(`This test's host has no ${route}.`);
       return answer(body);
     },
-    stream: async () => ({
-      ok: true,
-      lines: bridgeStream(
-        [{ type: "opened", bridge: "b1", url: "http://127.0.0.1:4100", token: "t1" }, call],
-        answered.promise,
-      ),
-    }),
+    stream: async (_route, body) => {
+      opened.push(body);
+      return {
+        ok: true,
+        lines: bridgeStream(
+          [{ type: "opened", bridge: "b1", url: "http://127.0.0.1:4100", token: "t1" }, call],
+          answered.promise,
+        ),
+      };
+    },
   };
-  return { transport, answers, asked };
+  return { transport, answers, asked, opened };
 }
 
 function inputOn(
@@ -101,6 +106,8 @@ function inputOn(
       "hubs/support/library/skills/tone/SKILL.md":
         "---\nname: Tone\ndescription: The hub's.\n---\nThe hub's tone.\n",
     }),
+    secrets: { get: async () => null },
+    isTrusted: async () => true,
     digest: { sha256: async () => new Uint8Array(32) },
     clock: { now: () => new Date("2026-11-18T10:00:00.000Z") },
     instructionTrust: { check: async () => ({ kind: "trusted" }) },
@@ -241,6 +248,63 @@ verifies("studio.engine-service", () => {
       );
       await built.start(new Set(["run_1"]));
       expect(reported).toHaveLength(1);
+    });
+  });
+});
+
+/** The agent host asks Studio for a key on the bridge, as it does for a keyed provider's call. */
+const keyCall = (name: string) => ({
+  type: "call",
+  call: "c1",
+  method: "secrets.get",
+  params: { name },
+});
+
+verifies("studio.harness-bridge-keys", () => {
+  describe("the Studio's harness host, for an agent whose model is an alias", () => {
+    const coder = {
+      runId: "run_1",
+      agentId: "coder",
+      hubId: "support",
+      file: { model: "open-coder-agent" },
+    } as unknown as HarnessAgent;
+    const withKeys = (host: ReturnType<typeof fakeHost>) =>
+      inputOn(host, {
+        definitions: new MemoryDefinitionStore(acmeWithOpenCoder),
+        secrets: acmeKeychain,
+      });
+
+    it("opens its bridge with the alias's provider, key name and price, and answers that key", async () => {
+      const host = fakeHost({}, keyCall("zai-key"));
+      const built = await openStudioHarnessHost(withKeys(host));
+
+      const bridge = await built.harnesses.bridges.open(coder, recorder);
+      await bridge.close();
+
+      expect(host.opened).toEqual([
+        {
+          runId: "run_1",
+          agentId: "coder",
+          providers: {
+            anthropic: { kind: "key", secret: "zai-key", providerId: "zai", baseUrl: zaiAddress },
+          },
+          prices: { anthropic: { "glm-5.3": { input: 0.6, output: 2.2 } } },
+        },
+      ]);
+      expect(host.answers).toEqual([{ bridge: "b1", call: "c1", result: "fake-zai-key" }]);
+      expect(await built.harnesses.models?.providerModelOf("support", "open-coder-agent")).toBe(
+        "glm-5.3",
+      );
+    });
+
+    it("answers a key the bridge wasn't given with nothing", async () => {
+      const host = fakeHost({}, keyCall("other-key"));
+      const built = await openStudioHarnessHost(withKeys(host));
+
+      const bridge = await built.harnesses.bridges.open(coder, recorder);
+      await bridge.close();
+
+      expect(host.answers).toEqual([{ bridge: "b1", call: "c1", result: null }]);
     });
   });
 });

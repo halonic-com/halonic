@@ -73,7 +73,12 @@ import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { versionHistoryOf } from "../changes/version-history.ts";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
-import { answerChatOn, EngineService, engineServiceKey } from "../engine/engine-service.ts";
+import {
+  answerChatOn,
+  EngineService,
+  type EngineServiceOptions,
+  engineServiceKey,
+} from "../engine/engine-service.ts";
 import { openStudioHarnessHost } from "../engine/studio-harness-host.ts";
 import { WorkspaceFilesHost } from "../files/workspace-files-host.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
@@ -191,6 +196,10 @@ export function provideFolderServices(
   services.provide(ChangesSourceService, changes);
   services.provide(VersionHistoryHostService, versionHistoryOf(changes));
   const transport = tauriAgentHostTransport(window);
+  const secrets = shellKeychain(ipc);
+  const keyOrigins = shellKeyOrigins(ipc);
+  const isTrusted: EngineServiceOptions["isTrusted"] = async (workspace) =>
+    (await trust.checkLoaded(workspace)).status === "trusted";
   const engine = services.provide(
     engineServiceKey,
     new EngineService({
@@ -199,11 +208,11 @@ export function provideFolderServices(
       location,
       name,
       definitions: new TauriDefinitionStore(files, location),
-      secrets: shellKeychain(ipc),
-      keyOrigins: shellKeyOrigins(ipc),
+      secrets,
+      keyOrigins,
       http: new ShellHttpClient(ipc),
       clock: systemClock,
-      isTrusted: async (workspace) => (await trust.checkLoaded(workspace)).status === "trusted",
+      isTrusted,
       mayStart: (workspace) => trust.mayStart(workspace),
       // Removing the trust here or in Settings › Trusted sources checks it again.
       onTrustChange: (listener) => trust.subscribe(listener),
@@ -223,6 +232,9 @@ export function provideFolderServices(
                 transport,
                 location,
                 definitions: new TauriDefinitionStore(files, location),
+                secrets,
+                keyOrigins,
+                isTrusted,
                 digest: webCryptoDigest,
                 clock: systemClock,
                 instructionTrust,
