@@ -16,10 +16,8 @@ import { pageWords, phoneWords, stateWords } from "../changes-words.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { AddShareAddressDialog } from "./add-share-address-dialog.tsx";
 import { ChangeList, orderItems } from "./change-list.tsx";
-import { CreateVersionDialog } from "./create-version-dialog.tsx";
 import { GetUpdates } from "./get-updates.tsx";
 import { History } from "./history.tsx";
-import { IdentityDialog } from "./identity-dialog.tsx";
 import { MergeChoices, MergeStrip } from "./merge-choices.tsx";
 import {
   CouldntCheckStrip,
@@ -29,6 +27,7 @@ import {
 } from "./sharing-strip.tsx";
 import { type OpenItem, useOpenItem } from "./use-open-item.ts";
 import { type OpenVersion, useOpenVersion } from "./use-open-version.ts";
+import { VersionDialogs } from "./version-dialogs.tsx";
 import { VersionPage } from "./version-page.tsx";
 import { WhatChangedPage } from "./whats-changed-page.tsx";
 
@@ -113,18 +112,13 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
           returnFocus={() => heading.current}
         />
       ) : null}
-      {list.needsIdentity && state.identity !== undefined ? (
-        <IdentityDialog list={list} initial={state.identity} returnFocus={() => heading.current} />
-      ) : null}
-      {state.version === undefined || list.needsIdentity ? null : (
-        <CreateVersionDialog
-          list={list}
-          files={list.versionFiles}
-          first={hasNoVersions(state.history)}
-          returnFocus={() => heading.current}
-          onCreated={focusNewVersion}
-        />
-      )}
+      <VersionDialogs
+        list={list}
+        state={state}
+        opener="page"
+        returnFocus={() => heading.current}
+        onCreated={focusNewVersion}
+      />
     </div>
   );
 }
@@ -394,11 +388,6 @@ function Loading({ retry }: { readonly retry: () => void }) {
       onRetry={retry}
     />
   );
-}
-
-/** History has loaded and holds no version yet: the next one is the first. */
-function hasNoVersions(history: { loaded: boolean; versions: readonly unknown[] }): boolean {
-  return history.loaded && history.versions.length === 0;
 }
 
 /** The folder has no git history yet: one button makes it one. */

@@ -17,6 +17,19 @@ await source.read();
 // or { kind: "not-a-repository" }, or { kind: "no-git" }
 ```
 
+## Create version from another feature
+
+`VersionDialogService` opens Create version with only some items in it, over whatever page is open, for the agent page's "Review and make live" and a run dialog's "Make live first" (requirement `source-control.create-version-elsewhere`). "Who should versions be from?" comes first when the workspace has no name or email for versions. The answer comes when the dialog closes: `"made"` once the version is created, else `"cancelled"`, also at once when the folder has no history.
+
+```ts
+import { VersionDialogService } from "@halonicjs/studio-feature-source-control/api";
+
+const outcome = await context.services.get(VersionDialogService).open(["agents/triage.agent.yaml"]);
+if (outcome === "made") startRun();
+```
+
+The feature's dialog host draws this dialog; the Changes page draws only the Create version it opened itself, so the dialog never shows twice.
+
 ## The Changes page
 
 The feature keeps one `ChangesList` per open workspace, from `ChangesSourceService`. The Changes place's page and the sidebar's count ("Changes, 3 changes", nothing at zero) read it, so they change together (requirement `source-control.changes-page`). The list reads again when the window comes to the front and when a workspace file changes, and a read that fails later keeps what the page showed.
