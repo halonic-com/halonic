@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12519, where Liam is asked to approve the dependency; Julian reviews this PR as the security reviewer (HAL-12487)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5V2k2ZCs9C09rwaECKX8FM5OtklZAZkl7UwUDEJBU4NG8ttOGYGmIgmujPNQlnjMP20ExI8hk+IN4U71oPncCA==
 
 The phone's private key, the pairing code and the psk taken from it stayed in memory after use.
 Julian's security review on HAL-12485 asked for them to be wiped when dropped. `zeroize` does
