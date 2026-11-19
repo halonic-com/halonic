@@ -159,6 +159,9 @@ verifies("engine.offline-falls-back", () => {
       agent: "clerk",
       from: "smart",
       to: "local",
+      provider: "acme-local",
+      model: "acme-local-1",
+      alias: "local",
       error: "offline: acme-cloud can't be reached",
     });
     expect(log.events[2]).toMatchObject({ provider: "acme-local", latencyMs: 0 });
@@ -283,6 +286,9 @@ verifies("engine.busy-falls-back", () => {
       agent: "clerk",
       from: "smart",
       to: "local",
+      provider: "acme-local",
+      model: "acme-local-1",
+      alias: "local",
       error: "provider-busy: acme-cloud was busy (HTTP 529)",
     });
     expect(vi.getTimerCount()).toBe(0);
@@ -405,6 +411,9 @@ verifies("engine.provider-text", () => {
       agent: "clerk",
       from: "smart",
       to: "local",
+      provider: "acme-local",
+      model: "acme-local-1",
+      alias: "local",
       error: "offline: acme-cloud can't be reached",
       providerText: { status: 502, text: "upstream connect error" },
     });

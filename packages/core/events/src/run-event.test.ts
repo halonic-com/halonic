@@ -194,6 +194,8 @@ verifies("events.run-log-contract", () => {
       model: string;
       // Added after the reference by engine.llm-request-alias (HAL-1308).
       alias?: string;
+      // Added after the reference by engine.llm-event-address (HAL-13404).
+      address?: string;
       messages: number;
     }>();
     expectTypeOf<EventOf<"llm.response">>().toEqualTypeOf<{
@@ -219,6 +221,11 @@ verifies("events.run-log-contract", () => {
       agent: string;
       from: string;
       to: string;
+      // Added after the reference by engine.llm-event-address (HAL-13404).
+      provider?: string;
+      model?: string;
+      alias?: string;
+      address?: string;
       error: string;
       // Added after the reference by events.provider-text (HAL-3119).
       providerText?: ProviderText;

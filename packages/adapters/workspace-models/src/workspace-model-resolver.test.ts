@@ -351,3 +351,16 @@ verifies("cli.workspace-models", () => {
     });
   });
 });
+
+verifies("engine.llm-event-address", () => {
+  it("gives a provider on this computer its host and port, and no other model one", async () => {
+    const resolve = await resolverFor();
+
+    const local = await resolve(callOf({ agentId: "writer", alias: "local" }));
+    const smart = await resolve(callOf({ agentId: "writer" }));
+
+    expect(local.address).toBe("localhost:11434");
+    expect(smart).not.toHaveProperty("address");
+    expect(smart.fallback?.[0]).not.toHaveProperty("address");
+  });
+});

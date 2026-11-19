@@ -27,7 +27,7 @@ import {
   resolveModel,
 } from "@halonicjs/workspace";
 import { modelTexts } from "./model-texts.ts";
-import { keyDestination } from "./provider-origin.ts";
+import { keyDestination, localAddress } from "./provider-origin.ts";
 import {
   type ProviderFile,
   WorkspaceModelError,
@@ -290,11 +290,13 @@ function resolvedModel(
   target: ModelTarget,
 ): ResolvedModel {
   const params = layeredParams(target.params);
+  const address = localAddress(file);
   return {
     provider,
     model: target.model,
     local: file.local || file.type === "mock",
     ...(target.alias === undefined ? {} : { alias: target.alias }),
+    ...(address === undefined ? {} : { address }),
     ...(file.secret === undefined ? {} : { secret: file.secret }),
     ...(target.price === undefined ? {} : { price: modelPrice(target.price) }),
     ...(params === undefined ? {} : { params }),

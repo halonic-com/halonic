@@ -262,6 +262,7 @@ async function askModel(
     provider: asked.provider.id,
     model: asked.model,
     ...(asked.alias === undefined ? {} : { alias: asked.alias }),
+    ...(asked.address === undefined ? {} : { address: asked.address }),
     messages: sent.length,
   });
   const started = input.clock.now().getTime();
