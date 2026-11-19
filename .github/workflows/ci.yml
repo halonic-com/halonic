@@ -2149,6 +2149,11 @@ jobs:
       # The Gradle download and its dependencies, so a network blip on
       # services.gradle.org does not turn main red. Keyed on the files that
       # pin them; scoped per branch like the Turbo cache above.
+      # Tauri plugins bring their own Android dependencies (the barcode
+      # scanner pulls in androidx.camera), and those are pinned by Cargo.lock,
+      # not by the generated Gradle files. Without Cargo.lock in the key, a new
+      # plugin keeps an exact hit on the old cache, so every run downloads the
+      # plugin's packages from Maven Central and nothing saves them (HAL-13164).
       # Restore and save are separate so the save can run after a failed
       # build: what was downloaded before the failure is kept.
       - name: Restore the Gradle cache
@@ -2158,7 +2163,7 @@ jobs:
           path: |
             ~/.gradle/wrapper/dists
             ~/.gradle/caches
-          key: gradle-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/gen/android/**/*.gradle*', 'apps/studio/src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties') }}
+          key: gradle-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/gen/android/**/*.gradle*', 'apps/studio/src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties', 'apps/studio/src-tauri/Cargo.lock') }}
           restore-keys: gradle-${{ runner.os }}-
       # Fetches the Gradle distribution with retries, so a 5xx from
       # services.gradle.org on a cold cache does not fail the build.
