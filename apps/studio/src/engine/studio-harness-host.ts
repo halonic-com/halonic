@@ -2,7 +2,8 @@
 // agent host's parts, reached over its loopback routes. The page has no Node,
 // so the sandbox, the harness programs, the bridges, the profile builder, the
 // proposal folders and the placement choices all live in the agent host. The
-// engine, its recorder, the tools, the approvals and the keys stay here.
+// engine, its recorder, the tools, the approvals and the keys stay here: a
+// bridge asks for the one key its agent's alias names (HAL-12488).
 // A run's instructions are written in the host too, but whether a person
 // trusted them is checked here, against the shell's own records.
 //
@@ -39,16 +40,26 @@ import type {
   Digest,
   Sandbox,
   SandboxSession,
+  Secrets,
 } from "@halonicjs/ports";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
+import {
+  type StudioHarnessKeys,
+  type StudioHarnessKeysInput,
+  studioHarnessKeys,
+} from "./studio-harness-keys.ts";
 
 /** What {@link openStudioHarnessHost} builds from. */
 export interface StudioHarnessInput {
   readonly transport: AgentHostTransport;
   /** The workspace folder, which the launcher named to the host. */
   readonly location: string;
-  /** The workspace's files, which each agent's file is read from for its placement. */
+  /** The workspace's files, which each agent's file is read from for its placement and its model alias. */
   readonly definitions: DefinitionSource;
+  /** The keychain, as `Secrets`, which a bridge reads its agent's alias's key from. */
+  readonly secrets: Secrets;
+  /** Whether a person trusted exactly these files on this computer, checked before a key is named. */
+  readonly isTrusted: StudioHarnessKeysInput["isTrusted"];
   readonly digest: Digest;
   readonly clock: Clock;
   /** The person's trusted instructions, which the shell keeps; a run whose instructions aren't trusted doesn't start. */
@@ -96,8 +107,9 @@ const environments = { "claude-code": claudeCodeEnvironment, codex: codexEnviron
  */
 export async function openStudioHarnessHost(input: StudioHarnessInput): Promise<StudioHarnessHost> {
   const { transport, location } = input;
+  const keys = studioHarnessKeys(input);
   const bridges = new AgentHostBridges(transport, {
-    servicesFor: (agent) => bridgeServicesOf(agent, input),
+    servicesFor: (agent) => bridgeServicesOf(agent, input, keys),
   });
   const bridgeIdOf = bridges.idOf.bind(bridges);
   const proposalFolders = new AgentHostProposalFolders(transport, location);
@@ -126,6 +138,7 @@ export async function openStudioHarnessHost(input: StudioHarnessInput): Promise<
         skillTextOf: (agent, id) => skillTextOf(input.definitions, agent.hubId, id),
       }),
       instructionTrust: { service: input.instructionTrust, location },
+      models: keys.models,
       home: null,
     },
     proposalFolders,
@@ -137,17 +150,21 @@ export async function openStudioHarnessHost(input: StudioHarnessInput): Promise<
 }
 
 /**
- * What each agent's bridge serves, as the CLI's does: the program's own
- * sign-in for both providers, so no key passes through, and no Halonic
- * tools. Its approvals are the engine's for the agent's run, which a card
+ * What each agent's bridge serves, as the CLI's does: its alias's keyed
+ * provider, or the program's own sign-in for both providers, and no Halonic
+ * tools (requirement `studio.harness-bridge-keys`). Its approvals are the engine's for the agent's run, which a card
  * and a phone decide; until the engine is built, they refuse every request,
  * and a phone's decision is refused.
  */
-function bridgeServicesOf(agent: BridgeAgent, input: StudioHarnessInput): BridgeServices {
+async function bridgeServicesOf(
+  agent: BridgeAgent,
+  input: StudioHarnessInput,
+  keys: StudioHarnessKeys,
+): Promise<BridgeServices> {
+  const access = await keys.accessOf(agent);
   const remoteDecisions = input.remoteDecisionsOf(agent.runId);
   return {
-    providers: { anthropic: { kind: "sign-in" }, openai: { kind: "sign-in" } },
-    prices: {},
+    ...access,
     tools: {
       list: async () => [],
       check: async (name) => ({ kind: "refused", reason: `${name} isn't a tool of this agent.` }),
@@ -155,7 +172,7 @@ function bridgeServicesOf(agent: BridgeAgent, input: StudioHarnessInput): Bridge
     },
     approvals: input.approvalsOf(agent.runId) ?? refusingApprovals,
     ...(remoteDecisions === undefined ? {} : { remoteDecisions }),
-    secrets: { get: async () => null },
+    secrets: keys.secrets,
   };
 }
 

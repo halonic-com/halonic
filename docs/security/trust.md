@@ -135,8 +135,8 @@ marker.
 A Claude Code or Codex agent normally signs in with its own program, and
 Halonic never reads or passes on a key for it. When the agent's file names a
 `models.yaml` alias as its `model`, the run's bridge sends its calls to that
-alias's provider instead, with the provider's key (requirement
-`cli.harness-bridge-keys`). The key gets the same check as any other model
+alias's provider instead, with the provider's key (requirements
+`cli.harness-bridge-keys` and `studio.harness-bridge-keys`). The key gets the same check as any other model
 call, before the bridge is told its name: a non-default address needs a trusted
 workspace, a key with a list goes only to an origin on it, and an untrusted
 workspace calls no real provider. The bridge then sends that agent's calls and
@@ -146,7 +146,9 @@ but the alias's, so the key pays only for the model the alias prices. Give the
 alias a `price`: without one, its calls are unpriced, as in any other agent,
 and a cost limit or budget doesn't count them. The bridge reads only the keys it
 was given this way; a key you saved for anything else never reaches it. The
-CLI does this today; Studio still signs every harness agent in.
+CLI and Studio both do this. Studio's keychain keeps no list of allowed
+origins yet, so there a key with a non-default address goes only from a
+workspace you trusted.
 
 ## What Studio asks for
 

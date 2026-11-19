@@ -143,7 +143,7 @@ A session is named by an id the host makes; any other id gets `404 unknown_sessi
 
 ## The bridge over loopback
 
-`harness-bridge` runs here, next to the sandbox whose program calls it, but the engine's recorder, tools, approvals and provider keys stay in Studio. Studio opens a bridge for one run with `{ runId, agentId, providers, prices }`; `prices` is each provider's models with a price, because the bridge asks for a price without waiting. The answer stays open as a stream:
+`harness-bridge` runs here, next to the sandbox whose program calls it, but the engine's recorder, tools, approvals and provider keys stay in Studio. Studio opens a bridge for one run with `{ runId, agentId, providers, prices }`; `prices` is each provider's models with a price, because the bridge asks for a price without waiting. A provider is `{"kind":"sign-in"}`, the program's own sign-in, or `{"kind":"key","secret"}` with, for a harness agent whose `model` is a `models.yaml` alias (HAL-12488), the provider file's `baseUrl` and `providerId`; Studio has checked that the key may go to that address before it names it. The host reaches Anthropic's and OpenAI's own hosts through a client that may reach nothing else, and a `baseUrl` through one that checks its address as a connector's is, so a name can't lead the key onto the person's own network. The answer stays open as a stream:
 
 ```
 {"type":"opened","bridge":"<id>","url":"http://bridge.halonic.invalid","token":"<run token>","socketPath":"<profile>/bridges/<run>/bridge.sock"}

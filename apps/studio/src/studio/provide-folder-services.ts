@@ -60,7 +60,11 @@ import { agentHostHarnessDetect } from "../agents/agent-host-harness-detect.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
-import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
+import {
+  EngineService,
+  type EngineServiceOptions,
+  engineServiceKey,
+} from "../engine/engine-service.ts";
 import { openStudioHarnessHost } from "../engine/studio-harness-host.ts";
 import { WorkspaceFilesHost } from "../files/workspace-files-host.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
@@ -159,16 +163,19 @@ export function provideFolderServices(
     }),
   );
   const transport = tauriAgentHostTransport(window);
+  const secrets = shellKeychain(ipc);
+  const isTrusted: EngineServiceOptions["isTrusted"] = async (workspace) =>
+    (await trust.checkLoaded(workspace)).status === "trusted";
   const engine = services.provide(
     engineServiceKey,
     new EngineService({
       ipc,
       location,
       definitions: new TauriDefinitionStore(files, location),
-      secrets: shellKeychain(ipc),
+      secrets,
       http: new ShellHttpClient(ipc),
       clock: systemClock,
-      isTrusted: async (workspace) => (await trust.checkLoaded(workspace)).status === "trusted",
+      isTrusted,
       mayStart: (workspace) => trust.mayStart(workspace),
       ids: randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), systemClock),
       setTimer: (callback, delayMs) => {
@@ -185,6 +192,8 @@ export function provideFolderServices(
                 transport,
                 location,
                 definitions: new TauriDefinitionStore(files, location),
+                secrets,
+                isTrusted,
                 digest: webCryptoDigest,
                 clock: systemClock,
                 instructionTrust,
