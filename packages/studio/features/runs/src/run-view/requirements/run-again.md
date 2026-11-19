@@ -23,9 +23,9 @@ Limits, for the docs: the failed banner still has room for one button. **Open Mo
 - Given a failed real run and a desktop shell that gives no answer to the run call,
   when **Run again** is pressed,
   then the page shows "Couldn't start the run: the desktop shell gave no answer to the run call."
-- Given a failed real run and a host that refuses because Reporter runs in Claude Code,
+- Given a failed real run and a host that refuses because Reporter uses a connector,
   when **Run again** is pressed,
-  then the page shows "To run it in Halonic's own loop instead, run this in a terminal:" with `halonic run support-reply --harness halonic` and no **Try again**.
+  then the page shows "To start it, run this in a terminal:" with `halonic run reply` and no **Try again**.
 - Given a failed real run on a phone and a host that says the engine can't be reached,
   when **Run again** is pressed,
   then the page shows "Couldn't start the run: Halonic on your computer isn't answering."

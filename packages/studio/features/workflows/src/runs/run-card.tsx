@@ -32,8 +32,9 @@ export interface RunCardProps {
   /** What **Save as test** needs; absent where the host can't write test cases. */
   readonly saveAsTest?: SaveAsTestProps | undefined;
   /**
-   * Run again for the banner of a failed run: how to start it and what to do with the new run.
-   * Absent where the app can't start runs, and the banner then has no **Run again**.
+   * Run again for the banner of a failed run: how to start it, what to do with the new run and
+   * how to read why it didn't start (UX check RA1). Absent where the app can't start runs, and the
+   * banner then has no **Run again**.
    */
   readonly runAgain?:
     | {

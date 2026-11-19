@@ -77,6 +77,7 @@ verifies("runs.run-view.card-run-again", () => {
     expect(root.querySelector('section[aria-label="Run didn\'t start"]')?.textContent).toContain(
       "Couldn't start the run: the workflow changed.",
     );
+    expect(button(root, "Try again")).toBeDefined();
   });
 
   it("says why Run again didn't start to a screen reader once, as the run page does", async () => {

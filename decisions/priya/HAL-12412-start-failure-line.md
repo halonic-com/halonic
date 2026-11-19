@@ -6,14 +6,14 @@
 The run page's **Run again** and the Run panel's **Start run** said a failed start in two
 different ways. The UX check (row S2, rule E5) asks for one: the reason lower case after the colon
 unless it starts with a name, the refusal's next step and its command, and **Try again**, from one
-shared function. The requirement now says so, and its example changes from "Couldn't start the
-run: The workflow changed." to "Couldn't start the run: the workflow changed.". A new example
-covers a refusal's command.
+shared function. The requirement now says so, and a new example covers a refusal's next step and
+its command, which come without **Try again**. A lock another Halonic holds is worded as HAL-13758
+decided, also without **Try again**.
 
 ## Tests
 
-No test was weakened or removed. One expectation follows the new wording (lower case after the
-colon); one test was added for a refusal's next step, its command and **Try again** for a conflict.
+No test was weakened or removed. One test was added for a refusal's next step, its command, and a
+lock another Halonic holds, each without **Try again**.
 
 ## Covers
 

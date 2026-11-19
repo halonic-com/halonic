@@ -102,7 +102,9 @@ export function fakeShell(
     invoke: async (command: string, args?: Record<string, unknown>) => {
       calls.push(command);
       if (command === "engine_lock_hold" && holder !== undefined) {
-        throw "refusal" in holder ? holder.refusal : { kind: "conflict", message: "held", ...holder };
+        throw "refusal" in holder
+          ? holder.refusal
+          : { kind: "conflict", message: "held", ...holder };
       }
       return stores[command]?.(args ?? {});
     },
