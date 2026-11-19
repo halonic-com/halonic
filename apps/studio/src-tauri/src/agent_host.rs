@@ -49,6 +49,10 @@ use start::running_host;
 pub mod updates;
 pub use updates::DistroStartChecks;
 
+#[path = "agent_host_choice_save.rs"]
+mod choice_save;
+pub use choice_save::agent_host_sandbox_choice_save;
+
 #[path = "agent_host_life.rs"]
 mod life;
 pub use life::{end_page_streams, host_answers, stop_host};

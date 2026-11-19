@@ -155,6 +155,7 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "agent_host_stream",
         "agent_host_stream_end",
         "agent_host_security_updates",
+        "agent_host_sandbox_choice_save",
         "http_fetch",
         "http_fetch_abort",
         "fs_list",
@@ -354,6 +355,15 @@ fn served_page_test_sees_the_connect_page_allowed_the_agent_host_commands_on_des
         json!({"stream": 7}),
     );
     assert_eq!(ended, Ok(Value::Null));
+    // A backend that isn't one of the port's is refused before anything is saved.
+    let saved = invoke(
+        &window,
+        CONNECT_PAGE,
+        "agent_host_sandbox_choice_save",
+        json!({"backend": "docker"}),
+    );
+    let refusal = saved.expect_err("not a backend");
+    assert_eq!(refusal["kind"], "invalid_choice", "{refusal}");
 }
 
 #[cfg(desktop)]

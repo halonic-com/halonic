@@ -5,7 +5,7 @@
 
 use std::path::Path;
 
-use halonic_host_settings::read_sandbox_backend;
+use halonic_host_settings::{SandboxSetting, read_sandbox_setting};
 use halonic_profile::{Platform, ProfileFolder, join_path};
 
 /// The folder of the choice in the profile, `sandbox`, where
@@ -40,8 +40,21 @@ pub fn host_for(backend: Option<&str>, platform: Platform) -> HostKind {
 /// Naming the file, when it can't be read or isn't exactly a valid choice.
 /// That never counts as "no choice".
 pub fn saved_backend(profile: &ProfileFolder) -> Result<Option<&'static str>, String> {
-    let folder = join_path(profile.platform, &profile.root, &[SANDBOX_FOLDER_NAME]);
-    read_sandbox_backend(Path::new(&folder)).map_err(|error| error.to_string())
+    Ok(saved_setting(profile)?.map(|setting| setting.backend))
+}
+
+/// The person's saved choice, `None` when none is saved.
+///
+/// # Errors
+///
+/// As [`saved_backend`].
+pub fn saved_setting(profile: &ProfileFolder) -> Result<Option<SandboxSetting>, String> {
+    read_sandbox_setting(Path::new(&sandbox_folder(profile))).map_err(|error| error.to_string())
+}
+
+/// The folder in the profile that holds the choice.
+pub fn sandbox_folder(profile: &ProfileFolder) -> String {
+    join_path(profile.platform, &profile.root, &[SANDBOX_FOLDER_NAME])
 }
 
 #[cfg(test)]

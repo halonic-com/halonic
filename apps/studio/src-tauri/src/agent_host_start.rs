@@ -5,13 +5,14 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use halonic_agent_host::{
-    AgentHost, Handshake, distro_host_command, distro_installed, executable_beside, host_command,
-    wsl_exe,
+    AgentHost, Handshake, SettingCopy, copy_sandbox_setting, distro_host_command, distro_installed,
+    executable_beside, host_command, wsl_exe,
 };
 use halonic_git_guard::plain_path;
+use halonic_host_settings::SandboxSetting;
 use tauri::{AppHandle, Manager, Runtime};
 
-use super::choice::{HostKind, host_for, saved_backend};
+use super::choice::{HostKind, host_for, saved_setting};
 use super::updates::{clean_import_mounts, read_in_distro};
 use super::{
     AgentHostState, DistroCommand, HostRefusal, Launch, START_WAIT, poisoned, unavailable,
@@ -38,10 +39,11 @@ pub(super) async fn running_host<R: Runtime>(app: &AppHandle<R>) -> Result<Hands
             #[cfg(test)]
             Launch::Distro(command) => (start_in_distro(command)?, None),
             Launch::Real => match chosen_host(&app)? {
-                HostKind::Local => (start_local(real_host_command(&app)?)?, None),
-                HostKind::Distro => {
+                (HostKind::Local, _) => (start_local(real_host_command(&app)?)?, None),
+                (HostKind::Distro, setting) => {
                     let (wsl, command) = distro_host_command_for_real_wsl()?;
                     clean_import_mounts(&wsl);
+                    copy_into_distro(&wsl, setting.as_ref())?;
                     let started = start_in_distro(&command)?;
                     (started, Some(read_in_distro(&wsl)))
                 }
@@ -65,20 +67,41 @@ fn start_in_distro(command: &DistroCommand) -> Result<AgentHost, HostRefusal> {
     AgentHost::start_relayed(command, START_WAIT).map_err(unavailable)
 }
 
-/// Which host the person's sandbox choice asks for. Without a saved choice
-/// it is the platform's default, so on Windows a person who never opened the
-/// sandbox panel gets the distro, never a quiet move to the local host. A
-/// choice that can't be read refuses the start, naming the file.
-fn chosen_host<R: Runtime>(app: &AppHandle<R>) -> Result<HostKind, HostRefusal> {
+/// Which host the person's sandbox choice asks for, and the choice. Without
+/// a saved choice it is the platform's default, so on Windows a person who
+/// never opened the sandbox panel gets the distro, never a quiet move to the
+/// local host. A choice that can't be read refuses the start, naming the file.
+pub(super) fn chosen_host<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Result<(HostKind, Option<SandboxSetting>), HostRefusal> {
     let profile = cli_profile(app).map_err(|error| HostRefusal::new("io", error))?;
-    let backend = saved_backend(&profile).map_err(unavailable)?;
-    Ok(host_for(backend, profile.platform))
+    let setting = saved_setting(&profile).map_err(unavailable)?;
+    let backend = setting.as_ref().map(|setting| setting.backend);
+    Ok((host_for(backend, profile.platform), setting))
+}
+
+/// Makes the distro's copy of the choice match the one saved on Windows
+/// (HAL-13319): the host there reads only its copy. A copy that can't be
+/// made refuses, so the distro's host never runs on an older choice.
+pub(super) fn copy_into_distro(
+    wsl: &Path,
+    setting: Option<&SandboxSetting>,
+) -> Result<(), HostRefusal> {
+    let copy = match setting {
+        Some(setting) => SettingCopy::Save(&setting.text),
+        None => SettingCopy::Remove,
+    };
+    copy_sandbox_setting(wsl, copy).map_err(|error| {
+        unavailable(format!(
+            "the sandbox choice couldn't be copied into Halonic's WSL distro: {error}"
+        ))
+    })
 }
 
 /// `wsl.exe` and the command for the host in Halonic's distro, once `wsl.exe`
 /// is found and lists the distro. Refuses with the sandbox reason when it doesn't: a
 /// missing distro never falls back to the local host.
-fn distro_host_command_for_real_wsl() -> Result<(PathBuf, DistroCommand), HostRefusal> {
+pub(super) fn distro_host_command_for_real_wsl() -> Result<(PathBuf, DistroCommand), HostRefusal> {
     let system_root = std::env::var("SystemRoot").ok();
     let wsl = wsl_exe(system_root.as_deref())
         .map_err(|error| unavailable(error).with_reason("wsl-missing"))?;
