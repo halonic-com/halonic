@@ -218,6 +218,14 @@ export {
   type TrustPluginCommand,
 } from "./plugin-commands.ts";
 export {
+  PluginConnector,
+  type PluginConnectorOptions,
+  type PluginConnectorPart,
+  type PluginPartUnavailable,
+  type PluginPartUnavailableReason,
+  pluginPartUnavailableReason,
+} from "./plugin-connector.ts";
+export {
   type PluginToolSet,
   type PluginUiContribution,
   trustedPluginTools,
@@ -239,6 +247,7 @@ export {
 export {
   type LocalToolConfigInput,
   type LocalToolSettingsNotSet,
+  LocalToolSettingsNotSetError,
   localToolConnectorConfig,
 } from "./plugin-local-tool-config.ts";
 export {
