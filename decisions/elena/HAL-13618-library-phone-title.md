@@ -3,6 +3,7 @@
 - Task: HAL-13618
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13618 (decided by the team under HAL-2282, Sofia as designer; follows the approved phone layout 1.1, Back · name · ⋮)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Khp5hL08MIFOFdsc0m4a9WekMYG5HCPrljty7zgygICTt4gRUwOzU5gGv3PIpvg0aWm8AJXyHUZ6bs+kepY/AQ==
 
 The phone's top bar already names a skill, knowledge source or connector, so the page's own `h1` no
 longer repeats it in the title size: it is `sr-only` there and keeps `tabIndex={-1}`, so Undo and
