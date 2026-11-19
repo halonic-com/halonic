@@ -12,6 +12,7 @@ A rule that changes no call shall be stale, and so shall a known gap whose call 
 
 - Given an old and a new call that differ only in their output, run IDs and `definitionsVersion`, and entries that name `output-words`, `run-ids-by-start` and `no-definitions-version`, then the call is `allowed`.
 - Given the same calls without the entry that names `no-definitions-version`, then the call is `different`.
+- Given an old call that printed and a new call that printed nothing on stdout or stderr, then the call differs even with `output-words`; a new call that prints other words, or on the other stream, is `allowed`.
 - Given an old call that exited with 1 and a new one that exited with 0, then the call differs even with `output-words`.
 - Given a new call that exited with 3, then `exit-codes-by-kind` leaves the 3, so the call differs.
 - Given a known gap that names a call which is now the same, then the gap is stale.
