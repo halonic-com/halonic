@@ -3,6 +3,7 @@
 - Task: HAL-13041
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13041 (findings K2 and S3 of the C117 check HAL-13023 of #3658; follows the approved `shell.settings-without-host` and `studio.served-settings`, no new words; team decision under the HAL-2282 rule; Liam's code review)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Uul9l+WelU8XwVzGhdCg5oGADi9caWj7sLyS9lBVwhlTEnnm8KkDsSrBFM8EVLW5fsUGqqJ+pzR/1CSQAzgODg==
 
 ## What changes
 
