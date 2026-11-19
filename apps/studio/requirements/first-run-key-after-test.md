@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-13431; first-run-flow revision 7, section 3.3 and 10.2 R4, approved by the board on HAL-7993; the security rules are Liam's plan on HAL-13431
 
-Studio shall save a pasted key only when Continue names a test of it that passed, and shall keep the tested key only in memory until then. Continue shall take the test's id, never a key. A failed test, an unknown id, an id already continued, or the id of a test a newer test replaced, shall save nothing, and a test that ends after a newer one started shall keep no key.
+The Studio app shall save a pasted key only when Continue names a test of it that passed, and shall keep the tested key only in memory until then. Continue shall take the test's id, never a key. A failed test, an unknown id, an id already continued, or the id of a test a newer test replaced, shall save nothing, and a test that ends after a newer one started shall keep no key.
 
 ## Examples
 
