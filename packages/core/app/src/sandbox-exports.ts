@@ -22,6 +22,12 @@ export {
   type StartInSandbox,
 } from "./runner-start-gate.ts";
 export {
+  isRunnerUnfencedReason,
+  type RunnerUnfencedWords,
+  runnerUnfencedWords,
+  type UnfencedCode,
+} from "./runner-unfenced-words.ts";
+export {
   type BackendSetup,
   defaultBackendOrder,
   type LimitCode,
