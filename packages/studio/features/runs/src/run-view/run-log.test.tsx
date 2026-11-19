@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { RunsList } from "../runs-list.ts";
 import { fakeSource } from "../source.test-helper.ts";
 import { mondayMorning, summaryWith } from "../summary.test-helper.ts";
@@ -70,5 +70,30 @@ verifies("runs.run-view.run-log", () => {
 
     expect(root.querySelector('[aria-label="Run log"]')).toBeNull();
     expect(root.querySelector('[role="grid"]')).not.toBeNull();
+  });
+
+  it("scrolls the focused toggle into view after the swap, either way (HAL-13822)", async () => {
+    // jsdom lays nothing out, so the test checks the toggle asks to be scrolled to.
+    const scrolled: { name: string | null; options: unknown }[] = [];
+    Element.prototype.scrollIntoView = vi.fn(function (this: Element, options?: unknown) {
+      scrolled.push({ name: this.textContent, options });
+    });
+    try {
+      const root = await openRun();
+      expect(scrolled).toEqual([]);
+
+      const toggle = button(root, "Show the run log");
+      toggle.focus();
+      await act(async () => toggle.click());
+      expect(document.activeElement?.textContent).toBe("Show every step");
+      expect(scrolled).toEqual([{ name: "Show every step", options: { block: "nearest" } }]);
+
+      await act(async () => button(root, "Show every step").click());
+      expect(document.activeElement?.textContent).toBe("Show the run log");
+      expect(scrolled.at(-1)).toEqual({ name: "Show the run log", options: { block: "nearest" } });
+      expect(scrolled).toHaveLength(2);
+    } finally {
+      Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+    }
   });
 });
