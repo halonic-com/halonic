@@ -139,6 +139,39 @@ verifies("shell.palette-groups", () => {
     });
   });
 
+  it("shows a run its provider found by '#01jd', as runs.search says (HAL-13242)", () => {
+    const content = palette({
+      words: "#01jd",
+      found: [found("run", "run_a_01jd8q", "Run 01jd8q · Support reply", "Run · Acme")],
+    });
+    expect(read(content)).toEqual([
+      "Agents, workflows and more:",
+      "Run 01jd8q · Support reply · Run · Acme",
+    ]);
+    expect(content.groups[0]?.rows[0]?.match).toBeUndefined();
+    expect(content.nothingFound).toBe(false);
+  });
+
+  it("lists items found by something other than their name after the names that match, in the provider's order", () => {
+    const content = palette({
+      words: "billing",
+      openTabs: [home],
+      found: [
+        found("agent", "invoice-checker", "Invoice checker", "Agent · acme"),
+        found("agent", "refund-checker", "Refund checker", "Agent · acme"),
+        found("workflow", "billing", "Billing", "Workflow · acme"),
+      ],
+    });
+    expect(read(content)).toEqual([
+      "Agents, workflows and more:",
+      "Billing · Workflow · acme",
+      "Invoice checker · Agent · acme",
+      "Refund checker · Agent · acme",
+    ]);
+    const rows = content.groups[0]?.rows ?? [];
+    expect(rows.map((row) => row.match?.rank)).toEqual(["exact", undefined, undefined]);
+  });
+
   it("lists the Actions whose title matches after the items", () => {
     const content = palette({
       words: "tab",
