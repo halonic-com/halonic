@@ -251,7 +251,7 @@ verifies("runs.home-title-wraps", () => {
       (span) => span.textContent === "Support reply · run 2ff090",
     );
     // jsdom lays nothing out, so the classes stand in for the 320px check (C163 H2b).
-    expect(title?.className).toContain("break-words");
+    expect(title?.className).toContain("wrap-break-word");
     expect(title?.className).not.toContain("truncate");
     expect(title?.nextElementSibling?.className).toContain("truncate");
   });
