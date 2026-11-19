@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13402
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:1tmPS02cr7KprPamIo10qTYedaIEQkBBNBlaW12JUVr/X2cgcja/QswGhOe79yMT6Z3yal/zSKO5GrBcE60fDw==
 
 ## What changes
 
