@@ -122,6 +122,13 @@ verifies("agents.configuration.tools", () => {
     expect(buttonNamed(listNamed(page, "Skills"), "Add skill")).toBeDefined();
   });
 
+  it("draws a chip's ✕ round, so in high contrast its edge follows the chip's round end", async () => {
+    const page = await openTools(host({ skills: ["refunds"] }));
+    const remove = page.querySelector('[aria-label="Remove Refund policy"]');
+    expect(remove?.closest("li")?.className).toContain("rounded-full");
+    expect(remove?.className).toContain("rounded-full");
+  });
+
   it("shows an item the Library doesn't have by its id, says so, and lets ✕ remove it", async () => {
     const page = await openTools(host({ knowledge: ["old-notes"] }));
     const knowledge = listNamed(page, "Knowledge");
