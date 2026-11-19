@@ -1,6 +1,6 @@
 import { Button, Dialog, Field, Input, SecretText } from "@halonicjs/studio-kit";
 import { errorReasonFor } from "@halonicjs/studio-shell";
-import { useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { KeyEntry, ModelKeys } from "../api.ts";
 import {
   CHANGE_KEY,
@@ -37,6 +37,12 @@ export interface KeyBlockProps {
   readonly providerName: string;
   /** Called after a key is saved where none was stored (trigger (b) of the Prices and budget step). */
   readonly onFirstKey?: () => void;
+  /**
+   * Set when the page was asked to open at the key, as the run page's **Add key** asks
+   * (`models.api-keys.open-at-key`), and changed each time it is asked again. The field then
+   * takes the focus, or the heading when there is no field.
+   */
+  readonly focusRequest?: string | undefined;
 }
 
 /** What the block knows about the stored key; `unknown` after a failed check. */
@@ -76,16 +82,17 @@ type Confirm = "change" | "save" | "remove";
  * @example
  * <KeyBlock keys={keys} secretName={provider.secret} />
  */
-export function KeyBlock({ keys, secretName, providerName, onFirstKey }: KeyBlockProps) {
+export function KeyBlock({
+  keys,
+  secretName,
+  providerName,
+  onFirstKey,
+  focusRequest,
+}: KeyBlockProps) {
   const { entry } = keys;
   if (entry.kind === "unavailable") {
     return (
-      <section aria-labelledby="key-heading" className="flex flex-col gap-1">
-        <h2 id="key-heading" className="text-heading">
-          {KEY_HEADING}
-        </h2>
-        <HostCommandLine {...unavailableLine(entry.reason)} secretName={secretName ?? "<name>"} />
-      </section>
+      <UnavailableKey reason={entry.reason} secretName={secretName} focusRequest={focusRequest} />
     );
   }
   return (
@@ -95,7 +102,50 @@ export function KeyBlock({ keys, secretName, providerName, onFirstKey }: KeyBloc
       secretName={secretName}
       providerName={providerName}
       {...(onFirstKey === undefined ? {} : { onFirstKey })}
+      focusRequest={focusRequest}
     />
+  );
+}
+
+/**
+ * Scrolls to the element and focuses it once for each new request. It waits for the shell to
+ * focus the page's heading first, which it does as the tab is shown, so the focus stays here.
+ */
+function useFocusWhenAsked(
+  request: string | undefined,
+  target: RefObject<HTMLElement | null>,
+): void {
+  const reveal = useEffectEvent(() => {
+    const element = target.current;
+    element?.scrollIntoView?.({ block: "center" });
+    element?.focus({ preventScroll: true });
+  });
+  useEffect(() => {
+    if (request === undefined) return;
+    const timer = window.setTimeout(reveal, 0);
+    return () => window.clearTimeout(timer);
+  }, [request]);
+}
+
+/** The block where this Studio can't take a key: the heading and how to set it on the host. */
+function UnavailableKey({
+  reason,
+  secretName,
+  focusRequest,
+}: {
+  readonly reason: Extract<KeyEntry, { kind: "unavailable" }>["reason"];
+  readonly secretName: string | undefined;
+  readonly focusRequest: string | undefined;
+}) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  useFocusWhenAsked(focusRequest, heading);
+  return (
+    <section aria-labelledby="key-heading" className="flex flex-col gap-1">
+      <h2 ref={heading} id="key-heading" tabIndex={-1} className="text-heading outline-none">
+        {KEY_HEADING}
+      </h2>
+      <HostCommandLine {...unavailableLine(reason)} secretName={secretName ?? "<name>"} />
+    </section>
   );
 }
 
@@ -104,8 +154,18 @@ interface KeyFieldProps extends KeyBlockProps {
 }
 
 /** The status, the field and the buttons, for a Studio where a key can be typed. */
-function KeyField({ keys, entry, secretName, providerName, onFirstKey }: KeyFieldProps) {
+function KeyField({
+  keys,
+  entry,
+  secretName,
+  providerName,
+  onFirstKey,
+  focusRequest,
+}: KeyFieldProps) {
   const input = useRef<HTMLInputElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  // A provider with no secret name has no field; its heading's line says what is missing.
+  useFocusWhenAsked(focusRequest, secretName === undefined ? heading : input);
   const [stored, setStored, check] = useStoredKey(keys, secretName);
   const [hasText, setHasText] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -177,7 +237,7 @@ function KeyField({ keys, entry, secretName, providerName, onFirstKey }: KeyFiel
 
   return (
     <section aria-labelledby="key-heading" className="flex flex-col gap-2">
-      <h2 id="key-heading" className="text-heading">
+      <h2 ref={heading} id="key-heading" tabIndex={-1} className="text-heading outline-none">
         {KEY_HEADING}
       </h2>
       {secretName === undefined ? (
