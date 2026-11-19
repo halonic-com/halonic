@@ -33,7 +33,7 @@ export interface PollTimer {
 export interface WorkspaceRunsOptions {
   /** The workspace's runs, the same files the CLI reads. */
   readonly runs: Pick<RunStore, "list" | "events">;
-  /** The workspace's files, for the workflows' and routines' names and the currency. */
+  /** The workspace's files, for the workflows', routines' and hubs' names and the currency. */
   readonly definitions: DefinitionStore;
   /** Defaults to `setInterval`. */
   readonly timer?: PollTimer;
@@ -53,6 +53,8 @@ interface WorkspaceFacts {
   readonly providers: ReadonlyMap<string, ProviderKind>;
   /** By id, each agent's name as its file says. */
   readonly agentNames: ReadonlyMap<string, string>;
+  /** By id, each hub's name as its file says. */
+  readonly hubNames: ReadonlyMap<string, string>;
   readonly currency: string;
   readonly monthly: number | undefined;
 }
@@ -120,6 +122,10 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
 
   agentName(agentId: string): string | undefined {
     return this.#facts?.agentNames.get(agentId);
+  }
+
+  hubName(hubId: string): string | undefined {
+    return this.#facts?.hubNames.get(hubId);
   }
 
   routine(key: string): RunRoutine | undefined {
@@ -207,6 +213,7 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
           .toReversed()
           .map(({ value }) => [value.id, value.name]),
       ),
+      hubNames: new Map(filesOf(workspace, "hub").map(({ value }) => [value.id, value.name])),
       currency: settings?.budget?.currency ?? defaultCurrency,
       monthly: settings?.budget?.monthly,
     };

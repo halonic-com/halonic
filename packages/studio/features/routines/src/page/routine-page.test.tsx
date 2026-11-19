@@ -207,6 +207,7 @@ verifies("routines.page.frame-and-states", () => {
         item: { kind: "routine", hub: "acme", id: "daily" },
         label: "Daily",
         detail: "Routine · Acme",
+        hubName: "Acme",
         description: "Weekdays at 07:30 → Briefing",
       },
     ]);

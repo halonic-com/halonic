@@ -30,6 +30,8 @@ export interface PaletteRow {
   readonly label: string;
   /** The kind and hub, such as "Agent · Billing", when a search provider gave them. */
   readonly detail?: string;
+  /** The name of the hub the detail shows, such as "Billing", for a screen reader. */
+  readonly hubName?: string;
   /** Where an action comes from when that isn't Halonic, such as "Weather plugin". */
   readonly source?: string;
   /** Where the typed words are in `label`; none when nothing is typed. */
@@ -149,6 +151,7 @@ export function paletteGroups(sources: PaletteSources): PaletteContent {
       key,
       label: result.label,
       ...(result.detail === undefined ? {} : { detail: result.detail }),
+      ...(result.hubName === undefined ? {} : { hubName: result.hubName }),
       open: openKeys.has(key),
       target: { kind: "item", item: result.item },
     };

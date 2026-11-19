@@ -37,11 +37,26 @@ verifies("runs.search", () => {
       {
         item: { kind: "run", hub: "acme", id: "run_a_01jd8q" },
         label: "Run 01jd8q · Support reply",
-        detail: "Run · acme",
+        detail: "Run · Acme",
+        hubName: "Acme",
         description: "In Draft",
       },
     ]);
     expect(await provider?.search("zzz", context)).toEqual([]);
+  });
+
+  it("names the hub by its id when the workspace has no such hub any more", async () => {
+    const shell = createShell({ features: [runsFeature], hostServices: [RunsSourceService] });
+    const workspace = new WorkspaceServices();
+    workspace.provide(
+      RunsSourceService,
+      fakeSource([summaryWith({ id: "run_a_01jd8q", hubId: "gone" })]).source,
+    );
+    shell.services.instantiate(workspace);
+    const provider = shell.contributions.search.providers().find((added) => added.id === "runs");
+    const context = shell.services.contextFor("runs", workspace);
+    const [found] = (await provider?.search("01jd8q", context)) ?? [];
+    expect(found).toMatchObject({ detail: "Run · gone", hubName: "gone" });
   });
 
   it("fails when the runs can't be loaded, so Ctrl K doesn't read it as no results", async () => {

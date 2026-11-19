@@ -96,6 +96,18 @@ verifies("studio.workspace-runs", () => {
     expect(runs.agentName("gone")).toBeUndefined();
   });
 
+  it("names a hub as its file does, and not one the workspace doesn't have", async () => {
+    const { engine } = await waitingRun();
+    const definitions = new MemoryDefinitionStore({
+      "workspace.yaml": "id: acme\nname: Acme\n",
+      "hubs/reports/hub.yaml": "id: reports\nname: Reports\n",
+    });
+    const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions });
+    await runs.list();
+    expect(runs.hubName("reports")).toBe("Reports");
+    expect(runs.hubName("gone")).toBeUndefined();
+  });
+
   it("names the workflows as `halonic run` takes them, in the Workflows list's order", async () => {
     const { engine } = await waitingRun();
     const workflow = (id: string, name: string) =>

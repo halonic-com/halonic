@@ -86,6 +86,8 @@ export interface RunsSource {
   readonly workflow: (hubId: string, workflowId: string) => RunWorkflow | undefined;
   /** An agent's name as its file says; `undefined` when the workspace has no such agent. */
   readonly agentName?: (agentId: string) => string | undefined;
+  /** A hub's name as its file says; `undefined` when the workspace has no such hub. */
+  readonly hubName?: (hubId: string) => string | undefined;
   /**
    * The routine with the key a run's `trigger.routineId` holds; `undefined`
    * when it's no longer in the workspace.
