@@ -27,6 +27,9 @@ const START_GIVE_UP_MS = 45 * 60_000; // a job nobody could start for this long 
 const JOB_LIMIT_MS = 60 * 60_000; // the longest Linux job in ci.yml has a 35-minute timeout
 const RETRY_MS = 20_000;
 const POLL_MS = 60_000;
+// Cloudflare stops a container soon after its Durable Object goes idle, even mid-job, unless
+// given this. The alarms above run well within it.
+const INACTIVITY_MS = 10 * 60_000;
 
 export default {
   async fetch(request, env) {
@@ -147,6 +150,11 @@ export class RunnerJob {
   constructor(state, env) {
     this.state = state;
     this.env = env;
+    // A restarted Durable Object (a deploy, or between two alarms) starts without the timeout.
+    const container = state.container;
+    if (container?.running) {
+      state.blockConcurrencyWhile(() => container.setInactivityTimeout(INACTIVITY_MS));
+    }
   }
 
   async fetch(request) {
@@ -245,6 +253,7 @@ export class RunnerJob {
         env: { ACTIONS_RUNNER_INPUT_JITCONFIG: jit.encoded_jit_config },
         enableInternet: true,
       });
+      await this.state.container.setInactivityTimeout(INACTIVITY_MS);
       console.log(
         JSON.stringify({ msg: "started", job: job.id, name: job.name, runner: jit.runner.id }),
       );
