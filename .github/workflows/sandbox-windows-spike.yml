@@ -18,6 +18,8 @@ on:
       - packages/adapters/sandbox-srt/scripts/windows-isolation-probe.mjs
       - packages/adapters/sandbox-srt/scripts/windows-wsl-probe.mjs
       - packages/adapters/sandbox-srt/scripts/windows-token-probe.ps1
+      - packages/adapters/sandbox-srt/scripts/windows-loopback-probe.mjs
+      - packages/adapters/sandbox-srt/scripts/windows-basic-user.ps1
 
 permissions:
   contents: read
@@ -102,4 +104,69 @@ jobs:
             packages/adapters/sandbox-srt/windows-verdict-results.json
             packages/adapters/sandbox-srt/windows-isolation-results.json
             packages/adapters/sandbox-srt/windows-wsl-results.json
+          if-no-files-found: warn
+
+  # HAL-5398 (nit 4 of HAL-10590): does srt's check, run without elevation,
+  # still see an install made with loopback open? Halonic needs loopback
+  # closed and calls that install a setup conflict. Report-only: the answers
+  # are in the job summary and in windows-loopback-*.json.
+  loopback-check:
+    name: Native srt on Windows (loopback check without elevation)
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Not the shared setup action: its restored pnpm store fails on Windows.
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - name: Install the dependencies
+        run: pnpm install --frozen-lockfile --filter "@halonicjs/adapter-sandbox-srt..."
+        shell: bash
+      - name: Install the sandbox with loopback open (another program's setup)
+        working-directory: packages/adapters/sandbox-srt
+        shell: bash
+        run: node node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js windows-install --skip-profile-grant --allow-loopback
+      - name: Check, elevated
+        if: always()
+        working-directory: packages/adapters/sandbox-srt
+        shell: bash
+        run: node scripts/windows-loopback-probe.mjs open-elevated windows-loopback-open-elevated.json
+      - name: Check, not elevated
+        if: always()
+        working-directory: packages/adapters/sandbox-srt
+        shell: pwsh
+        run: |
+          $node = (Get-Command node).Source
+          $out = Join-Path $PWD 'windows-loopback-open-not-elevated.json'
+          ./scripts/windows-basic-user.ps1 -Directory $PWD -CommandLine "`"$node`" scripts\windows-loopback-probe.mjs open-not-elevated `"$out`""
+          Get-Content $out
+      # The control: with loopback closed, the same check must say ok.
+      - name: Install the sandbox again with loopback closed
+        if: always()
+        working-directory: packages/adapters/sandbox-srt
+        shell: bash
+        run: node node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js windows-install --skip-profile-grant --force
+      - name: Check again, not elevated
+        if: always()
+        working-directory: packages/adapters/sandbox-srt
+        shell: pwsh
+        run: |
+          $node = (Get-Command node).Source
+          $out = Join-Path $PWD 'windows-loopback-closed-not-elevated.json'
+          ./scripts/windows-basic-user.ps1 -Directory $PWD -CommandLine "`"$node`" scripts\windows-loopback-probe.mjs closed-not-elevated `"$out`""
+          Get-Content $out
+      - name: Summary
+        if: always()
+        working-directory: packages/adapters/sandbox-srt
+        shell: pwsh
+        run: |
+          foreach ($file in Get-ChildItem windows-loopback-*.json) {
+            "### $($file.Name)`n``````json`n$(Get-Content $file -Raw)`n``````" >> $env:GITHUB_STEP_SUMMARY
+          }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: windows-loopback-results
+          path: packages/adapters/sandbox-srt/windows-loopback-*.json
           if-no-files-found: warn

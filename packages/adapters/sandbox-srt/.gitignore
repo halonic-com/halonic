@@ -2,3 +2,4 @@ windows-spike-results.json
 windows-verdict-results.json
 windows-isolation-results.json
 windows-wsl-results.json
+windows-loopback-*.json
