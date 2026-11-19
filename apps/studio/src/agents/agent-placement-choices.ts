@@ -16,6 +16,11 @@ export interface AgentPlacementParts {
    * unsaved text. Throws when the hub has no such agent.
    */
   bytesOf(ref: AgentRef): Promise<Uint8Array>;
+  /**
+   * Whether this Studio's runs can start an agent outside its sandbox, as its harness host says
+   * (`studioStartsUnfenced`); it can't when left out.
+   */
+  readonly studioStartsUnfenced?: boolean;
 }
 
 /**
@@ -33,6 +38,11 @@ export class AgentPlacementChoices {
 
   constructor(parts: AgentPlacementParts) {
     this.#parts = parts;
+  }
+
+  /** Whether this Studio can itself start an agent set to On this computer. */
+  get studioStartsUnfenced(): boolean {
+    return this.#parts.studioStartsUnfenced ?? false;
   }
 
   /** Where the agent runs; a choice for an earlier version of its file is on hold. */
