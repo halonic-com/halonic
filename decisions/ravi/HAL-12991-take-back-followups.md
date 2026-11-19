@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12991 (a technical follow-up to the Take back change in #3568; nothing in Studio calls `allow()` or `takeBack()` yet, so no user sees a change; a team decision, reviewed by Liam)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:l7zV7O5zTLMT1XgZ/fY5UnLLL2NyUtTPrIyUHA6m8lAMmKjZZzovng9hO47cHBTqIUwUvVWW2YmGOMwRCW8fDQ==
 
 A run without the sandbox now registers with the whole yes it started under, its reason and its
 `allowedAt`. The check of the saved yes stops it when the saved yes has another reason or another
