@@ -239,11 +239,16 @@ export interface Harness {
    * with {@link addHarnessEnvironment}, so `session.profile` stays exactly
    * what the program gets.
    *
+   * `model` is the task's model, which the engine knows before the sandbox
+   * opens, so a harness can point its program's background models at it
+   * when `modelForEveryCall` is set. Left out, the task names no model.
+   *
    * Optional: the built-in loop starts no program, so it has none.
    */
   environment?(
     bridge: HarnessBridge,
     folders: Pick<SandboxProfile, "workingFolder" | "tempFolder" | "settingsFolder">,
+    model?: Pick<HarnessTask, "model" | "modelForEveryCall">,
   ): Record<string, string>;
   /**
    * Starts the agent on `task` inside the sandbox `session`, pointed at the

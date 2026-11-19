@@ -216,12 +216,13 @@ export function latestModelResolver(
  * The one check before a provider is called: the key check below, then, in a
  * workspace that isn't trusted, a refusal of every provider but the test
  * model. The key check goes first, so a key that would go to another address
- * is named as such.
+ * is named as such. A harness agent's keyed provider runs it too
+ * (`harness-model-access.ts`), so both decide the same way.
  *
  * @throws {WorkspaceModelError} what {@link requireKeyMayGo} throws, or
  *   `untrusted-workspace` naming the provider
  */
-async function requireMayCall(
+export async function requireMayCall(
   file: ProviderFile,
   context: { trusted: boolean; keyOrigins: KeyOrigins },
 ): Promise<void> {

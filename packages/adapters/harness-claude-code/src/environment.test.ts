@@ -87,3 +87,35 @@ verifies("harness-claude-code.environment", () => {
     });
   });
 });
+
+const modelVariables = [
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+  "ANTHROPIC_DEFAULT_SONNET_MODEL",
+  "ANTHROPIC_DEFAULT_OPUS_MODEL",
+  "ANTHROPIC_SMALL_FAST_MODEL",
+  "CLAUDE_CODE_SUBAGENT_MODEL",
+];
+
+verifies("harness-claude-code.model-variables", () => {
+  describe("Claude Code's own model variables", () => {
+    it("all name the task's model when it is for every call", () => {
+      const added = claudeCodeEnvironment(bridge, engineProfile, {
+        model: "glm-5.3",
+        modelForEveryCall: true,
+      });
+
+      for (const name of modelVariables) expect(added[name]).toBe("glm-5.3");
+      expect(() => addHarnessEnvironment(engineProfile.env, added)).not.toThrow();
+    });
+
+    it("are left to Claude Code for a model it knows, or none", () => {
+      const named = claudeCodeEnvironment(bridge, engineProfile, { model: "sonnet" });
+      const none = claudeCodeEnvironment(bridge, engineProfile, {});
+      const unasked = claudeCodeEnvironment(bridge, engineProfile);
+
+      for (const added of [named, none, unasked]) {
+        for (const name of modelVariables) expect(added).not.toHaveProperty(name);
+      }
+    });
+  });
+});
