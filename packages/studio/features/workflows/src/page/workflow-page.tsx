@@ -8,10 +8,7 @@ import {
 } from "@halonicjs/studio-feature-runs/api";
 import {
   Button,
-  CloseIcon,
-  EmptyState,
   LetterTile,
-  SkeletonBar,
   TabList,
   TabPanel,
   usePresentation,
@@ -29,10 +26,10 @@ import { RunsView } from "../runs/runs-view.tsx";
 import { useRuns } from "../runs/use-runs.ts";
 import { useSaveAsTest } from "../runs/use-save-as-test.ts";
 import { useAnnounceDockedRun } from "../start/run-announcement.ts";
-import type { ShownRun } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
 import { StepEditDock } from "./docked-step-card.tsx";
+import { FlowView } from "./flow-view.tsx";
 import { goneState } from "./gone-state.tsx";
 import { firstTestsPick, firstView, panelClass } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
@@ -42,7 +39,6 @@ import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
 import { useRename } from "./use-rename.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
-import { type CanvasEdit, WorkflowCanvas } from "./workflow-canvas.tsx";
 import { WorkflowName } from "./workflow-name.tsx";
 import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
 import { type WorkflowView, workflowTabs } from "./workflow-tabs.ts";
@@ -352,104 +348,5 @@ export function WorkflowScreen({
         />
       </div>
     </div>
-  );
-}
-
-interface FlowViewProps {
-  readonly load: ReturnType<typeof useWorkflow>["load"];
-  readonly retry: () => void;
-  readonly hubId: string;
-  readonly id: string;
-  readonly name: string;
-  readonly openStep: string | undefined;
-  /** The shown run's strip and the step it failed in (D8); absent when no run is shown. */
-  readonly strip: ShownRun | undefined;
-  readonly onClearStrip: () => void;
-  readonly onSelectStep: (stepId: string) => void;
-  /** How the canvas's toolbar changes the workflow; absent where it can't. */
-  readonly edit: CanvasEdit | undefined;
-  /** The step picked on the page; the canvas's selection follows it when a card closes. */
-  readonly pickedStep: string | undefined;
-  /** A click on the canvas's background: the picked step's card closes. */
-  readonly onClearStep: () => void;
-  readonly kept: { readonly of: string; readonly view: View } | undefined;
-  readonly onView: (next: View) => void;
-}
-
-/** The Flow tab's content: the canvas, a skeleton when the file is slow, or why it couldn't be read. */
-function FlowView({
-  load,
-  retry,
-  hubId,
-  id,
-  name,
-  openStep,
-  strip,
-  onClearStrip,
-  onSelectStep,
-  edit,
-  pickedStep,
-  onClearStep,
-  kept,
-  onView,
-}: FlowViewProps) {
-  const workflowKey = `${hubId}/${id}`;
-  return (
-    <>
-      {strip && (
-        <p className="flex items-center justify-between gap-3 border-b border-border px-6 py-2 text-small">
-          {strip.line}
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<CloseIcon />}
-            label={startWords.clearStrip}
-            onClick={onClearStrip}
-          />
-        </p>
-      )}
-      {load.kind === "ready" && load.value.id === id && load.value.hubId === hubId && (
-        <WorkflowCanvas
-          key={`${workflowKey}/${openStep}`}
-          workflow={load.value}
-          selectedStep={openStep}
-          failedStep={strip?.failedStep}
-          route={strip?.route}
-          marks={strip?.marks}
-          active={strip?.active}
-          saved={kept?.of === workflowKey ? kept.view : undefined}
-          onView={onView}
-          onSelectStep={onSelectStep}
-          edit={edit}
-          picked={pickedStep}
-          onBackgroundClick={onClearStep}
-        />
-      )}
-      {load.kind === "failed" && (
-        <EmptyState
-          tone="error"
-          title={pageWords.loadFailedTitle}
-          description={load.reason}
-          action={{ label: pageWords.tryAgain, onClick: retry, busy: load.retrying }}
-        />
-      )}
-      {load.kind === "loading" && load.skeleton && (
-        <div role="status" className="flex flex-1 flex-col gap-4 p-6">
-          <span className="sr-only">{pageWords.loading(name)}</span>
-          <div className="flex gap-6">
-            <SkeletonBar kind="value" />
-            <SkeletonBar kind="value" />
-          </div>
-          {load.slow && (
-            <p className="flex items-center gap-3 text-small text-fg-muted">
-              {pageWords.stillLoading}
-              <Button variant="secondary" size="sm" onClick={retry}>
-                {pageWords.tryAgain}
-              </Button>
-            </p>
-          )}
-        </div>
-      )}
-    </>
   );
 }
