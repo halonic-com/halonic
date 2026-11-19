@@ -10,6 +10,7 @@ import type { BudgetCheck } from "../budget/keep-to-budget.ts";
 import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import { type HarnessApprovals, runHarnessCall } from "../harness/run-harness-call.ts";
 import { SerialRunLog, type WaitedOnCall } from "../harness/serial-run-log.ts";
+import { unlessStopped } from "../harness/unless-stopped.ts";
 import { programHarnessOf } from "../kernel/agent-call.ts";
 import type { AnswerHarnessEffect, DecideInput } from "../kernel/decide-types.ts";
 import { definitionsOf } from "../kernel/kept-definitions.ts";
@@ -70,7 +71,8 @@ export class LocalHarnessCalls {
    * top-level run, which the run's child runs share. With a `budget`, each
    * model call the harness makes keeps to it, and the call stops once it is
    * reached. With `mayStart`, it asks right before the call starts, and on a
-   * no, or a check that rejects, starts nothing.
+   * no, or a check that rejects, starts nothing; an engine stop doesn't wait
+   * for the check.
    *
    * @throws when there are no `harnesses`, the definitions are gone, the
    *   agent names no harness, the top-level run has no proposal folder where
@@ -116,7 +118,10 @@ export class LocalHarnessCalls {
         ...(budget === undefined ? {} : { budget: new RunCallBudget(budget, run, clock) }),
       };
       // Last before the harness starts, so a trust removed meanwhile still stops it (HAL-12811).
-      if (mayStart !== undefined) await refuseUnlessMayStart(mayStart, call.agent, harness);
+      // Raced against `stop`, so a check that hangs doesn't hold the engine's close either.
+      if (mayStart !== undefined) {
+        await unlessStopped(stop, refuseUnlessMayStart(mayStart, call.agent, harness));
+      }
       const unlist = this.#bridgeApprovals.add(runId, { approvals, log, stop });
       try {
         return await runHarnessCall(harnesses, harnessCall, log, approvals, limits, stop);

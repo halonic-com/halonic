@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-12811 (Julian's follow-up from his security review of HAL-12799, decided on HAL-12810)
 
-When the host gives the local executor a `mayStartHarness` check, the executor shall ask it right before each harness step of a run starts, after everything else the step needs is ready. On a no, or when the check rejects, the step shall start nothing (no sandbox, no harness, no bridge) and the run shall fail with a `denied` error whose cause is `engine.untrusted-workspace`, naming the agent and its harness, in the shape the model resolver refuses a model call in a workspace that isn't trusted. Without the check, every harness step shall start as before.
+When the host gives the local executor a `mayStartHarness` check, the executor shall ask it right before each harness step of a run starts, after everything else the step needs is ready. On a no, or when the check rejects, the step shall start nothing (no sandbox, no harness, no bridge) and the run shall fail with a `denied` error whose cause is `engine.untrusted-workspace`, naming the agent and its harness, in the shape the model resolver refuses a model call in a workspace that isn't trusted. While the check is still running, an engine stop or a run's cancel shall not wait for it, and the step shall then start nothing. Without the check, every harness step shall start as before. The check covers the harness steps of runs only, not a chat turn with an agent in a harness; a host that starts chat turns must check those itself.
 
 ## Examples
 
@@ -17,3 +17,6 @@ When the host gives the local executor a `mayStartHarness` check, the executor s
 - Given the same run, and no check,
   when the harness step is due,
   then the harness starts and the run completes.
+- Given the same run, and a check that doesn't answer,
+  when the harness step is due and the engine closes,
+  then the close doesn't wait for the check, and no harness starts.

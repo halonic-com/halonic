@@ -90,13 +90,13 @@ export interface EngineServiceOptions {
   /**
    * Whether the workspace, as the engine loaded it, is trusted on this computer. Asked on every
    * model call, so a provider's stored key goes to a non-default address only after a person
-   * trusted exactly these files (HAL-11342).
+   * trusted exactly these files (HAL-11342), and right before each harness step (HAL-12811).
    */
   readonly isTrusted: (workspace: LoadedWorkspace) => Promise<boolean>;
   /**
    * Whether anything may start from the workspace, as the engine loaded it: it is trusted on this
-   * computer, or it reaches only the test model. Asked when the engine opens, before each start
-   * and right before each harness step (HAL-12811); a check that rejects is a no.
+   * computer, or it reaches only the test model. Asked when the engine opens and before each
+   * start; a check that rejects is a no.
    */
   readonly mayStart: (workspace: LoadedWorkspace) => Promise<boolean>;
   /**
@@ -382,8 +382,10 @@ export class EngineService {
               runDefinitionsOf(workspace, hubId, workflowId),
             budget: workspaceBudget(() => workspace),
             // Each harness step asks again, so trust removed where this window doesn't hear it
-            // (`halonic trust revoke`) still starts no harness program (HAL-12811).
-            mayStartHarness: () => this.#options.mayStart(workspace).catch(() => false),
+            // (`halonic trust revoke`) still starts no harness program (HAL-12811). The trust
+            // itself, not `mayStart`: a resumed run's step runs from its kept definitions, which
+            // can have a harness agent the loaded workspace no longer has.
+            mayStartHarness: () => this.#options.isTrusted(workspace).catch(() => false),
             ...(harnessHost === undefined
               ? {}
               : {

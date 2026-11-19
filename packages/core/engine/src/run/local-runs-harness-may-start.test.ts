@@ -1,4 +1,4 @@
-import { verifies } from "@halonicjs/testing-spec";
+import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { finished, harnessPorts } from "../harness/harness-test-kit.test-helper.ts";
 import { KernelRuns, writerAgent } from "../kernel/kernel-test-kit.test-helper.ts";
@@ -73,5 +73,32 @@ verifies("engine.harness-may-start", () => {
 
     expect(run).toMatchObject({ status: "completed", context: { reply: "Dear support" } });
     expect(ports.harness.tasks).toHaveLength(1);
+  });
+
+  it("doesn't hold the engine's close while the check hangs, and starts nothing after it", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [finished("Dear support")];
+    const answer = Promise.withResolvers<boolean>();
+    let asked = 0;
+    const { executor, runs, scheduler } = runsOn([], new KernelRuns(), {
+      agents,
+      harnesses: ports.options,
+      mayStartHarness: () => {
+        asked += 1;
+        return answer.promise;
+      },
+    });
+
+    await executor.start(replyStart);
+    const harnessCall = scheduler.deliver("run_1", "harness:call-1");
+    await waitUntil("the check was asked", () => asked === 1);
+    await executor.close();
+    await harnessCall;
+    answer.resolve(true);
+    await answer.promise;
+
+    expect(ports.steps).toEqual([]);
+    expect(ports.harness.tasks).toEqual([]);
+    expect(await runs.get("run_1")).toMatchObject({ status: "running" });
   });
 });
