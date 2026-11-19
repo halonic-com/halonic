@@ -133,15 +133,21 @@ export function RunsView({
                 }}
                 aria-pressed={picked === row.id}
                 aria-label={row.label}
-                className="focus-ring flex w-full items-center gap-3 py-2 text-start"
+                className="focus-ring flex w-full flex-wrap items-center gap-x-3 gap-y-1 py-2 text-start"
                 onClick={() => onPick(picked === row.id ? undefined : row.id)}
               >
-                <StatusChip tone={row.chip.tone} dot={row.chip.dot}>
-                  {row.chip.word}
-                </StatusChip>
-                <span className="text-small tabular-nums text-fg-muted">{row.shortId}</span>
-                <span className="min-w-0 flex-1 truncate">{row.line}</span>
-                <span className="text-small text-fg-muted">{row.time}</span>
+                {/* In a narrow window the summary and time go on a line under the chip and id,
+                    where the summary keeps at least 6rem rather than being cut to nothing. */}
+                <span className="flex items-center gap-3">
+                  <StatusChip tone={row.chip.tone} dot={row.chip.dot}>
+                    {row.chip.word}
+                  </StatusChip>
+                  <span className="text-small tabular-nums text-fg-muted">{row.shortId}</span>
+                </span>
+                <span className="flex min-w-0 flex-1 basis-48 items-center gap-3">
+                  <span className="min-w-24 flex-1 truncate">{row.line}</span>
+                  <span className="text-small text-fg-muted">{row.time}</span>
+                </span>
               </button>
             </li>
           ))}

@@ -142,6 +142,13 @@ export function WorkflowScreen({
   const [openStep, setOpenStep] = useState<string | undefined>();
   // The card docked at the right: the start form, then the run it started (C18, C25).
   const [dock, setDock] = useState<Dock>();
+  // A docked card that closes gives focus back to the Run button that opened it, or to the
+  // workflow's name on a page without one, rather than dropping it to the body (DK1).
+  const runButton = useRef<HTMLButtonElement>(null);
+  const closeDock = () => {
+    setDock(undefined);
+    (runButton.current ?? title.current)?.focus();
+  };
   const [shownId, setShownId] = useState<string | undefined>();
   // The run whose card the Runs view docks. The page keeps it with the dock's, so only one card
   // shows at a time: two side by side leave the list no room.
@@ -229,6 +236,7 @@ export function WorkflowScreen({
         {startRun && (
           <div className="ms-auto">
             <Button
+              ref={runButton}
               variant="primary"
               size="sm"
               onClick={() => {
@@ -333,6 +341,7 @@ export function WorkflowScreen({
           shown={shown}
           shownRuns={shownRuns}
           onDock={setDock}
+          onClose={closeDock}
           onStarted={(runId) => {
             setShownId(runId);
             // A step picked before the run isn't about this run: its card would hide the run's.

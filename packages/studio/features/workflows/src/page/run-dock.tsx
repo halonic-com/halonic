@@ -62,6 +62,8 @@ interface RunDockProps {
   /** Where the run card notes its run, so the Inbox leaves it out of its news; see `ShownRuns`. */
   readonly shownRuns?: ShownRuns | undefined;
   readonly onDock: (next: Dock) => void;
+  /** Closes the docked card and gives its focus back to the page (DK1). */
+  readonly onClose: () => void;
   readonly onStarted: (runId: string) => void;
   readonly openRun: ((runId: string, step?: string) => void) | undefined;
   /** Opens the workspace page at Models, for **Open Models** on the run card's banner. */
@@ -125,6 +127,7 @@ export function RunDock({
   shown,
   shownRuns,
   onDock,
+  onClose,
   onStarted,
   openRun,
   openModels,
@@ -165,12 +168,12 @@ export function RunDock({
         start={(input) => startRun.call(host, workflow, input)}
         notAnswering={notAnswering}
         onStarted={started}
-        onClose={() => onDock(undefined)}
+        onClose={onClose}
       />
     );
   }
   if (typeof dock === "object" && !shown) {
-    return <WaitingForRun onClose={() => onDock(undefined)} />;
+    return <WaitingForRun onClose={onClose} />;
   }
   if (typeof dock === "object" && shown) {
     return (
@@ -180,7 +183,7 @@ export function RunDock({
         runs={shown.runs}
         row={shown.row}
         run={shown.run}
-        onClose={() => onDock(undefined)}
+        onClose={onClose}
         onOpenLog={openRun && (() => openRun(shown.row.id))}
         saveAsTest={saveAsTest(shown.row)}
         {...(startRun && {
