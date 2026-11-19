@@ -332,7 +332,7 @@ verifies("shell.overview.used-by", () => {
     expect(text.indexOf("1 running")).toBeLessThan(text.indexOf("Used by 1 agent"));
   });
 
-  it("ends the line under the name with the used-by text on a phone, after the detail", () => {
+  it("ends the line under the name with the used-by text on a phone, after the detail, and cuts only the detail", () => {
     const page = render(
       <PresentationProvider presentation="phone">
         <OverviewPage
@@ -364,6 +364,16 @@ verifies("shell.overview.used-by", () => {
         ?.querySelector(".text-small")?.textContent;
     expect(lineUnder("Refund handling")).toBe("When an email asks for a refund · Not used yet");
     expect(lineUnder("Tone of voice")).toBe("Not used yet");
+    const row = [...page.querySelectorAll("tr")].find((each) =>
+      each.textContent?.includes("Refund handling"),
+    );
+    const cut = [...(row?.querySelectorAll(".truncate") ?? [])].map((each) => each.textContent);
+    expect(cut).toContain("When an email asks for a refund");
+    const usedBy = [...(row?.querySelectorAll("span") ?? [])].find(
+      (each) => each.textContent === "Not used yet",
+    );
+    expect(usedBy?.className).toContain("shrink-0");
+    expect(usedBy?.className).toContain("whitespace-nowrap");
   });
 
   it("doesn't search the used-by text", () => {
