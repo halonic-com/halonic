@@ -99,10 +99,17 @@ export type HarnessSignIn =
  * - `on-hold`: chosen here for an earlier version of the file, so it runs in its sandbox until the
  *   person confirms again.
  */
-export type AgentPlacementState =
+export type SavedFilePlacement =
   | { readonly runsOn: "sandbox"; readonly fingerprint: string }
   | { readonly runsOn: "this-computer"; readonly fingerprint: string; readonly chosenAt: string }
   | { readonly runsOn: "on-hold"; readonly fingerprint: string };
+
+/**
+ * {@link SavedFilePlacement}, and whether the agent's file has unsaved changes. A choice is for the
+ * saved file, which `halonic run` runs, so the warning asks the person to save first rather than
+ * let out a file they aren't looking at.
+ */
+export type AgentPlacementState = SavedFilePlacement & { readonly unsaved: boolean };
 
 /** What confirming On this computer came to: saved, or the file changed since the warning, and nothing was saved. */
 export type ThisComputerChoice =

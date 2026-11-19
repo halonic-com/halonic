@@ -1,5 +1,5 @@
 import { Callout, Dialog, Field, RadioGroup, type RadioOption } from "@halonicjs/studio-kit";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { AgentPlacementState, AgentSettings, AgentsHost } from "../api.ts";
 import { configurationWords } from "./configuration-words.ts";
 import { usePlacement } from "./use-placement.ts";
@@ -44,7 +44,9 @@ const options: RadioOption<RunsOn>[] = [
  * saves at once. On this computer saves only after the warning, for the file the person was
  * warned about: Cancel is focused and **Run on this computer** is the danger button. When the
  * agent's file changed since, the choice is on hold: a Callout with **Review and confirm** opens
- * the same warning. Not drawn where Studio can't choose (the browser).
+ * the same warning. While the agent's file has unsaved changes, the warning asks the person to
+ * save first: the choice is for the saved file, which may hold what they already took out. Not drawn
+ * where Studio can't choose (the browser).
  */
 export function WhereItRuns({ host, settings }: WhereItRunsProps) {
   const ref = { hubId: settings.hubId, id: settings.id };
@@ -52,6 +54,7 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
   const [warning, setWarning] = useState<Warning | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const saveFirstId = useId();
 
   if (load.kind === "loading" || load.kind === "unavailable") return null;
   if (load.kind === "failed") {
@@ -64,6 +67,7 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
     );
   }
   const { placement } = load;
+  const saveFirst = placement.unsaved ? { unavailable: { reason: saveFirstId } } : {};
 
   const pick = async (next: RunsOn) => {
     setError(null);
@@ -126,7 +130,12 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
       {warning !== null && (
         <Dialog
           title={words.warningTitle(settings.name)}
-          confirm={{ label: words.confirm, variant: "danger", busyLabel: words.saving }}
+          confirm={{
+            label: words.confirm,
+            variant: "danger",
+            busyLabel: words.saving,
+            ...saveFirst,
+          }}
           cancelLabel={words.cancel}
           busy={busy}
           {...(warning.error === undefined ? {} : { error: warning.error })}
@@ -135,6 +144,11 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
         >
           <p>{words.warningAccess(settings.name)}</p>
           <p>{words.warningTrust(settings.name)}</p>
+          {placement.unsaved && (
+            <Callout tone="warning">
+              <span id={saveFirstId}>{words.saveFirst(settings.name)}</span>
+            </Callout>
+          )}
         </Dialog>
       )}
     </>

@@ -15,7 +15,7 @@ const ref = { hubId: "acme", id: "writer" };
 beforeAll(openDialogsInJsdom);
 afterEach(unmount);
 
-function agentsHost(options: { placement?: boolean } = {}) {
+function agentsHost(options: { placement?: boolean; unsaved?: () => boolean } = {}) {
   return memoryAgentsHost({
     hubs: [{ id: "acme", name: "Acme" }],
     agents: [{ ...ref, name: "Writer", harness: "claude-code" }],
@@ -128,6 +128,35 @@ verifies("agents.configuration.where-it-runs", () => {
       expect(warning()).toBeUndefined();
       expect(radioNamed(page, words.inSandbox)?.checked).toBe(true);
       expect((await host.placement(ref))?.runsOn).toBe("sandbox");
+    });
+
+    // Julian's HAL-13201 review: the choice is for the saved file, which `halonic run` runs.
+    it("asks to save first while the agent's file has unsaved changes", async () => {
+      const host = agentsHost({ unsaved: () => true });
+      const page = await open(host);
+      await press(radioNamed(page, words.onThisComputer));
+      expect(warning()?.textContent).toContain(words.saveFirst("Writer"));
+      const confirm = buttonNamed(document.body, words.confirm);
+      expect(confirm?.getAttribute("aria-disabled")).toBe("true");
+      await press(confirm);
+      expect((await host.placement(ref))?.runsOn).toBe("sandbox");
+    });
+
+    it("says why it can't read the choice, and reads it again on Try again", async () => {
+      const memory = agentsHost();
+      let readable = false;
+      const host: AgentsHost = {
+        ...memory,
+        placement: async (asked) => {
+          if (!readable) throw new Error("The agent host isn't answering.");
+          return memory.placement(asked);
+        },
+      };
+      const page = await open(host);
+      expect(page.textContent).toContain(words.couldntRead("The agent host isn't answering."));
+      readable = true;
+      await press(buttonNamed(page, configurationWords.tryAgain));
+      expect(radioNamed(page, words.inSandbox)?.checked).toBe(true);
     });
 
     it("isn't drawn where Studio can't choose where agents run", async () => {

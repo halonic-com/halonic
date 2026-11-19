@@ -20,6 +20,7 @@ import type {
   AgentUser,
   HarnessReadiness,
   HarnessSignIn,
+  SavedFilePlacement,
 } from "./api.ts";
 import { loopRefusal } from "./api.ts";
 
@@ -76,6 +77,8 @@ export interface MemoryAgentsHostOptions {
   readonly placement?: boolean | undefined;
   /** Gives the time a person chose On this computer, as ISO text; a fixed day when left out. */
   readonly now?: (() => string) | undefined;
+  /** Whether an agent's file has unsaved changes, asked on each read; never when left out. */
+  readonly unsaved?: ((ref: AgentRef) => boolean) | undefined;
 }
 
 /** A choice of On this computer: for the file with this fingerprint, at this time. */
@@ -146,6 +149,14 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
     if (options.placement === false) {
       throw new Error("Halonic can't choose where agents run from here.");
     }
+  };
+
+  const savedFilePlacement = (ref: AgentRef): SavedFilePlacement => {
+    const fingerprint = fingerprintOf(ref);
+    const chosen = choices.get(keyOf(ref));
+    if (chosen === undefined) return { runsOn: "sandbox", fingerprint };
+    if (chosen.fingerprint !== fingerprint) return { runsOn: "on-hold", fingerprint };
+    return { runsOn: "this-computer", fingerprint, chosenAt: chosen.chosenAt };
   };
 
   const found = (ref: AgentRef): AgentSettings => {
@@ -246,11 +257,7 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
     placement: async (ref): Promise<AgentPlacementState | undefined> => {
       found(ref);
       if (options.placement === false) return undefined;
-      const fingerprint = fingerprintOf(ref);
-      const chosen = choices.get(keyOf(ref));
-      if (chosen === undefined) return { runsOn: "sandbox", fingerprint };
-      if (chosen.fingerprint !== fingerprint) return { runsOn: "on-hold", fingerprint };
-      return { runsOn: "this-computer", fingerprint, chosenAt: chosen.chosenAt };
+      return { ...savedFilePlacement(ref), unsaved: options.unsaved?.(ref) ?? false };
     },
     chooseThisComputer: async (ref, shownFingerprint) => {
       found(ref);
