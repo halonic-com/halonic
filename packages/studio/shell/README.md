@@ -280,8 +280,10 @@ The palette's content is worked out without a DOM (design-search 2, component sp
 `CommandPalette` draws it. `paletteGroups` takes the words, the open tabs'
 places, the recent places, what the search providers found and the commands. With nothing typed it
 gives Open tabs, then Recent places that no tab shows. With words typed it gives "Agents, workflows
-and more" (open and recent places and found items whose name matches, each once) and Actions (the
-commands whose title matches). `nothingFound` says when the "Nothing matches" line shows (no
+and more" (open and recent places whose name matches and every item a search provider found, each
+once) and Actions (the commands whose title matches). An item found by something other than its
+name, such as a run found by `#01jd` or an agent by its id, comes after the name matches, unmarked,
+in the provider's order. `nothingFound` says when the "Nothing matches" line shows (no
 place, item or action matches), and
 `couldNotSearch` when nothing matches because a search provider failed, so the palette says
 "Couldn't search" in its place. What other providers found still shows. Each
