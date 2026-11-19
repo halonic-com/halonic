@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this change (https://paperclip.halonic.com/HAL/issues/HAL-13589, found on HAL-12480); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bYRGAV/KTL4OTIM/pL5hx5yAYPBDWLxtPud7T0lky5KMvHmu6dUKFFWg3y1bV8F8qlL/2+b0POfC+Q6GhkAQAQ==
 
 ## What changes
 
