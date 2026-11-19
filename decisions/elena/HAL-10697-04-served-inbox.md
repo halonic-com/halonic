@@ -3,6 +3,7 @@
 - Task: HAL-10697 (continued on HAL-13322)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-10697 (team decision, no board card; Sofia's UX check on HAL-10741 and HAL-10747: no new screen, two added lines)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xVk79BdANFKW4vbyTjZH9mI1XoWB7nWWOOV+4SAlWh6WtTVa6Inor2uMRiwilfh+1uYuighF8f040RybIkMJCA==
 
 ## What changes
 
