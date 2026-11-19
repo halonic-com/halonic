@@ -75,7 +75,7 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
   const items = orderItems(state.files);
   const nav = useOpenItem(items, () => heading.current?.focus());
   const versionNav = useOpenVersion(state.history.versions);
-  useFocusAfterChoices(phone && state.choosing, () => heading.current?.focus());
+  useFocusAfterChoices(state.choosing, () => heading.current?.focus());
   const pageClass = `flex w-full flex-col gap-4 ${phone ? "p-4" : "px-6 py-5"}`;
   const pushed = pushedPage({ list, nav, versionNav, developer, openItem, phone, pageClass });
   if (pushed !== undefined) return pushed;
@@ -125,15 +125,23 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
 }
 
 /**
- * On a phone, the Get updates choices are a page of their own; when it closes (Back, Finish or
- * Cancel) focus goes to the Changes page's heading rather than being lost with the page.
+ * When the Get updates choices close (Finish or Cancel, or a phone's Back), focus goes to the
+ * Changes page's heading rather than being lost with the button that closed them: on a phone the
+ * choices are a page of their own, on the desktop a section of this page. Focus that is still
+ * somewhere on the page, as when a read finds the merge ended elsewhere, stays where it is.
  */
-function useFocusAfterChoices(pushed: boolean, focus: () => void) {
-  const wasPushed = useRef(pushed);
+function useFocusAfterChoices(open: boolean, focus: () => void) {
+  const wasOpen = useRef(open);
   useEffect(() => {
-    if (wasPushed.current && !pushed) focus();
-    wasPushed.current = pushed;
-  }, [pushed, focus]);
+    if (wasOpen.current && !open && focusIsLost()) focus();
+    wasOpen.current = open;
+  }, [open, focus]);
+}
+
+/** Focus fell back to the page, as it does when the focused element is removed. */
+function focusIsLost(): boolean {
+  const active = document.activeElement;
+  return active === null || active === document.body;
 }
 
 /**
