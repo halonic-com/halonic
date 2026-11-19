@@ -439,7 +439,9 @@ verifies("studio.new-agents-run", () => {
         runsOn: "this-computer",
         chosenAt: "2026-11-18T10:00:00.000Z",
       });
-      expect((await placement.where({ location, hub: "acme", agent: "writer", file })).runsOn).toBe("sandbox");
+      expect((await placement.where({ location, hub: "acme", agent: "writer", file })).runsOn).toBe(
+        "sandbox",
+      );
       expect(errors).toEqual([]);
     });
 
@@ -451,10 +453,12 @@ verifies("studio.new-agents-run", () => {
         const ref = await host.create({ name: "Refund checker", hubId: "acme" });
 
         const file = encodeUtf8(store["hubs/acme/agents/refund-checker.agent.yaml"] ?? "");
-        expect(await placement.where({ location, hub: "acme", agent: ref.id, file })).toMatchObject({
-          runsOn: "sandbox",
-          reason: "not-chosen",
-        });
+        expect(await placement.where({ location, hub: "acme", agent: ref.id, file })).toMatchObject(
+          {
+            runsOn: "sandbox",
+            reason: "not-chosen",
+          },
+        );
       }
     });
 
@@ -473,7 +477,14 @@ verifies("studio.new-agents-run", () => {
       expect(text).toContain("id: refund-checker");
       expect(errors).toEqual([refused]);
       expect(
-        (await placement.where({ location, hub: "acme", agent: ref.id, file: encodeUtf8(text ?? "") })).runsOn,
+        (
+          await placement.where({
+            location,
+            hub: "acme",
+            agent: ref.id,
+            file: encodeUtf8(text ?? ""),
+          })
+        ).runsOn,
       ).toBe("sandbox");
     });
 
