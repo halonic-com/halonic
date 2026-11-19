@@ -260,8 +260,11 @@ function AddSubagentDialog({
                 <li key={member.id}>
                   <button
                     type="button"
-                    disabled={busy}
-                    onClick={() => add(member.id)}
+                    aria-disabled={busy}
+                    onClick={() => {
+                      // While a new agent is being made the rows stay focusable; a click waits.
+                      if (!busy) add(member.id);
+                    }}
                     className="flex w-full flex-col items-start rounded-md px-2 py-1.5 text-start hover:bg-surface-subtle"
                   >
                     <span className="text-body text-fg">{member.name}</span>
