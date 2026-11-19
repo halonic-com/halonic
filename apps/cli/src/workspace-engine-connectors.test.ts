@@ -112,6 +112,29 @@ verifies("cli.local-engine", () => {
     expect(debugLines).toHaveLength(8);
   });
 
+  it("shows a bridge failure the run log couldn't record as its own --debug line", () => {
+    const stuck = stuckTimerWatch();
+    const debugLines: string[] = [];
+    const reportError = engineErrorReporter(stuck, (line) => debugLines.push(plainText(line)));
+
+    for (let failure = 0; failure < 4; failure += 1) {
+      reportError(
+        new Error("bridge failed (internal): boom", { cause: new Error("disk full") }),
+        "harness-bridge",
+      );
+    }
+    reportError(new Error("bridge failed (internal): boom"), "harness-bridge");
+
+    expect(stuck.signal.aborted).toBe(false);
+    expect(debugLines[0]).toBe(
+      "the engine couldn't write a harness bridge failure to the run log: bridge failed (internal): boom (caused by: disk full)",
+    );
+    expect(debugLines.at(-1)).toBe(
+      "the engine couldn't write a harness bridge failure to the run log: bridge failed (internal): boom",
+    );
+    expect(debugLines).toHaveLength(5);
+  });
+
   it("still counts a lost engine lock towards stopping the command", () => {
     const stuck = stuckTimerWatch();
     const reportError = engineErrorReporter(stuck, () => {});
