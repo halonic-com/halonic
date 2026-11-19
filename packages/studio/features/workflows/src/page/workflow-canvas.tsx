@@ -2,12 +2,20 @@ import { Button, MaximiseIcon, PlusIcon } from "@halonicjs/studio-kit";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowView } from "../api.ts";
 import { boxesFor } from "../canvas/auto-layout.ts";
-import { boundsOf, fitView, panBy, type View, zoomAround } from "../canvas/geometry.ts";
+import {
+  type Box,
+  boundsOf,
+  fitView,
+  panBy,
+  panToShow,
+  type View,
+  zoomAround,
+} from "../canvas/geometry.ts";
 import type { StepMark } from "../start/run-strip.ts";
 import { Arrows } from "./arrows.tsx";
 import { pageWords } from "./page-words.ts";
 import { PointOfLight } from "./point-of-light.tsx";
-import { DOT_VAR, dotCentre, StepCard } from "./step-card.tsx";
+import { cardExtent, DOT_VAR, dotCentre, StepCard } from "./step-card.tsx";
 import { MinusIcon } from "./zoom-icons.tsx";
 
 /**
@@ -96,12 +104,23 @@ export function WorkflowCanvas({
   }, []);
 
   const centre = () => ({ x: size().width / 2, y: size().height / 2 });
+  // A card reached with the keyboard pans into view, clear of the zoom buttons like a fit, so
+  // focus never lands out of sight (`workflows.canvas.focus-in-view`). A click doesn't pan: the
+  // card would move from under the pointer before the click lands.
+  const showFocused = (event: React.FocusEvent<HTMLButtonElement>, card: Box) => {
+    if (!event.currentTarget.matches(":focus-visible")) return;
+    const { width, height } = size();
+    const room = { x: ZOOM_GUTTER, y: 0, width: width - ZOOM_GUTTER, height };
+    setView((now) => panToShow(now, card, room));
+  };
   return (
     <div
       ref={viewport}
       role="application"
       aria-label={pageWords.canvas}
-      className="relative min-h-80 flex-1 touch-none overflow-hidden bg-canvas-grid"
+      // `overflow-clip`, not `overflow-hidden`: a box that hides its overflow still scrolls when
+      // focus moves to a card outside it, and that shift is lost to the zoom and pan.
+      className="relative min-h-80 flex-1 touch-none overflow-clip bg-canvas-grid"
       onPointerDown={(event) => {
         // A press on a card or a button is theirs: capturing it here would steal their click.
         if ((event.target as Element).closest("button") !== null) return;
@@ -137,12 +156,13 @@ export function WorkflowCanvas({
         <Arrows arrows={workflow.arrows} boxes={boxes} route={route} />
         {workflow.steps.map((step) => {
           const box = boxes.get(step.id);
+          const first = step.id === workflow.initial;
           return box === undefined ? null : (
             <StepCard
               key={step.id}
               step={step}
               box={box}
-              first={step.id === workflow.initial}
+              first={first}
               selected={selected === step.id}
               failed={failedStep === step.id}
               mark={marks?.[step.id]}
@@ -151,6 +171,7 @@ export function WorkflowCanvas({
                 setSelected(step.id);
                 onSelectStep?.(step.id);
               }}
+              onFocus={(event) => showFocused(event, cardExtent(box, first))}
             />
           );
         })}

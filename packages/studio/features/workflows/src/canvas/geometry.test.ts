@@ -1,6 +1,15 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { boundsOf, CARD_SIZE, fitView, MAX_ZOOM, MIN_ZOOM, panBy, zoomAround } from "./geometry.ts";
+import {
+  boundsOf,
+  CARD_SIZE,
+  fitView,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  panBy,
+  panToShow,
+  zoomAround,
+} from "./geometry.ts";
 
 const card = (x: number, y: number) => ({ x, y, ...CARD_SIZE });
 const screen = (view: ReturnType<typeof fitView>, x: number, y: number) => ({
@@ -60,5 +69,48 @@ verifies("workflows.canvas.fit-and-zoom", () => {
       zoom: 2,
       pan: { x: 6, y: -1 },
     });
+  });
+});
+
+verifies("workflows.canvas.focus-in-view", () => {
+  // At 200 %, in an 800 × 600 canvas whose left 56 pixels the zoom buttons take.
+  const zoomed = { zoom: 2, pan: { x: 0, y: 0 } };
+  const room = { x: 56, y: 0, width: 744, height: 600 };
+  /** Where `box` shows on screen in `view`: its top-left and bottom-right corners. */
+  const shown = (view: typeof zoomed, box: ReturnType<typeof card>) => ({
+    topLeft: screen(view, box.x, box.y),
+    bottomRight: screen(view, box.x + box.width, box.y + box.height),
+  });
+
+  it("pans a card above the view down until its top is 16 pixels in", () => {
+    const above = card(100, -200);
+    const view = panToShow(zoomed, above, room);
+    expect(shown(view, above).topLeft).toEqual({ x: 200, y: 16 });
+    expect(view.zoom).toBe(2);
+  });
+
+  it("pans a card below the view up until its bottom is 16 pixels in", () => {
+    const below = card(100, 400);
+    expect(shown(panToShow(zoomed, below, room), below).bottomRight.y).toBe(584);
+  });
+
+  it("pans a card left of the view clear of the zoom buttons", () => {
+    const left = card(-100, 100);
+    expect(shown(panToShow(zoomed, left, room), left).topLeft.x).toBe(72);
+  });
+
+  it("pans a card right of the view until its right edge is 16 pixels in", () => {
+    const right = card(300, 100);
+    expect(shown(panToShow(zoomed, right, room), right).bottomRight.x).toBe(784);
+  });
+
+  it("leaves the view as it is for a card that already shows", () => {
+    expect(panToShow(zoomed, card(50, 50), room)).toBe(zoomed);
+  });
+
+  it("lines up the top-left corner of a card bigger than the view", () => {
+    const small = { x: 56, y: 0, width: 300, height: 100 };
+    const big = card(100, 100);
+    expect(shown(panToShow(zoomed, big, small), big).topLeft).toEqual({ x: 72, y: 16 });
   });
 });
