@@ -26,6 +26,13 @@ import {
 } from "./start-studio.ts";
 import { phonePointerQuery } from "./studio-host.ts";
 
+/** Welcome's **Open folder**, which no longer comes first once the app gives Welcome the demo. */
+function openFolderButton(root: HTMLElement): HTMLButtonElement | undefined {
+  return [...root.querySelectorAll("button")].find((each) =>
+    each.textContent?.startsWith("Open folder"),
+  );
+}
+
 /** A desktop window: jsdom has no `matchMedia`, and the shell follows the phone width with it. */
 function desktopMediaQueries(query: string): MediaQueryList {
   return {
@@ -278,7 +285,7 @@ verifies("studio.open-folder", () => {
     expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
     expect(started.host).toBe("desktop-app");
 
-    element.querySelector("button")?.click();
+    openFolderButton(element)?.click();
     await drawn(element);
 
     expect(webview.calls.map((call) => call.command)).toContain("pick_folder");
@@ -422,7 +429,7 @@ verifies("studio.settings", () => {
         timeout: settingsWait,
       });
       expect(element.querySelector("button")).not.toBeNull();
-      element.querySelector("button")?.click();
+      openFolderButton(element)?.click();
       await drawn(element);
 
       window.dispatchEvent(
