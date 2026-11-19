@@ -6,8 +6,10 @@ port of `127.0.0.1`, or, given a socket folder, on a Unix socket of its own
 the `x-halonic-run-token` header. It passes the program's model
 requests on to the provider's one fixed host: Anthropic's (`POST
 /v1/messages`) to `https://api.anthropic.com` and OpenAI's (`POST
-/v1/responses`) to `https://api.openai.com`, so keys, integrations and
-approvals stay outside the sandbox. It also serves Halonic's tools for the
+/v1/responses`) to `https://api.openai.com`, or, for an agent whose key
+names a compatible provider's `baseUrl`, to that one address (see
+"Compatible providers" below), so keys, integrations and approvals stay
+outside the sandbox. It also serves Halonic's tools for the
 run's agent over MCP at `/mcp`.
 
 - **Layer:** adapters
@@ -30,6 +32,25 @@ try {
 ```
 
 `secrets` is the `Secrets` port the bridge reads the agent's provider key from.
+
+## Compatible providers
+
+A host can give an agent a keyed access with a `baseUrl`, such as
+`{ kind: "key", secret: "zai-key", baseUrl: "https://api.z.ai/api/anthropic" }`,
+for a provider that speaks the same API. The bridge then sends that agent's
+Messages calls to `<baseUrl>/v1/messages` (a `baseUrl` that ends in `/v1`
+doesn't get it twice) and its Responses calls to `<baseUrl>/responses`, with
+the agent's key, and to no other origin. It reads the `baseUrl` only from
+the host's access, never from the program's request, and checks it before it
+reads the key: `https`, or `http` only on this computer (`localhost`,
+`127.0.0.0/8`, `::1`), with no user name, password, query or fragment.
+
+Those calls go through the server's `compatibleFetch`, an `HttpClient` whose
+hosts are checked as a connector's are (`connectorHostClass`); every other
+call keeps `fetch`, which reaches only the two fixed hosts
+(`providerHostClass`). Without `compatibleFetch`, the bridge refuses them.
+Whether the key may go to that address at all (the workspace's trust and the
+key's allowed addresses) is the host's check, made before it opens the bridge.
 
 ## GitHub read tools
 
@@ -133,14 +154,14 @@ Its key should be short-lived and for that task alone, and is read from `Secrets
   twice is safe.
 
 The rules are in `requirements/`: `server.md`, `socket.md`, `pass-through.md`,
-`anthropic.md`, `openai.md`, `sign-in.md`, `spend.md`, `mcp.md` and `approvals.md`.
+`anthropic.md`, `openai.md`, `provider-base-url.md`, `sign-in.md`, `spend.md`, `mcp.md` and `approvals.md`.
 
 ## Options
 
 | Export | What it is |
 | --- | --- |
 | `NodeHarnessBridgeServer` | The `HarnessBridgeServer` port on Node's `http` server. |
-| `NodeHarnessBridgeServerOptions` | Its options: `secrets` (required), `limits`, `upstreamLimits`, `fetch`, `closeTimeoutMs`, `socketFolder`. |
+| `NodeHarnessBridgeServerOptions` | Its options: `secrets` (required), `limits`, `upstreamLimits`, `fetch`, `compatibleFetch`, `closeTimeoutMs`, `socketFolder`. |
 | `BodyLimits` | Request size (`maxBytes`) and arrival time (`timeoutMs`). |
 | `UpstreamLimits` | How long a provider may take to start (`responseTimeoutMs`) or go silent (`idleTimeoutMs`). |
 | `Fetch` | The `fetch` the bridge calls providers with; tests give a fake one. |
