@@ -9,6 +9,7 @@ import type {
   AgentRef,
   AgentSettings,
   AgentsHost,
+  AgentTeamMember,
   AgentToolList,
   AgentToolOption,
   AgentUser,
@@ -16,6 +17,7 @@ import type {
   NewAgent,
   TrashedAgent,
 } from "@halonicjs/studio-feature-agents/api";
+import { alreadyHandsWork, handOffPath } from "@halonicjs/studio-feature-agents/api";
 import {
   filesOf,
   loadWorkspace,
@@ -148,7 +150,21 @@ export class WorkspaceAgents implements AgentsHost {
       skills: agent.skills,
       knowledge: agent.knowledge,
       connectors: agent.connectors,
+      subagents: agent.subagents,
     };
+  }
+
+  /** The agents of the agent's hub with their subagents, sorted by name; throws `not_found` when the agent isn't there. */
+  async team(ref: AgentRef): Promise<readonly AgentTeamMember[]> {
+    await this.#find(ref);
+    return this.#team(ref.hubId);
+  }
+
+  async #team(hubId: string): Promise<AgentTeamMember[]> {
+    return filesOf(await this.#load(), "agent")
+      .filter((file) => file.hub === hubId)
+      .map((file) => ({ ...listingOf(hubId, file.value), subagents: file.value.subagents }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   /**
@@ -211,7 +227,9 @@ export class WorkspaceAgents implements AgentsHost {
     ) {
       throw new KindedError("invalid_input", "The turn limit is a whole number from 1 to 200.");
     }
-    const { path } = await this.#find(ref);
+    const { agent, path } = await this.#find(ref);
+    if (change.subagents !== undefined)
+      await this.#refuseLoops(ref, agent.subagents, change.subagents);
     const text = await this.#parts.files.read(path);
     if (text === null) throw agentGone();
     const edits: YamlEdit[] = [];
@@ -225,6 +243,7 @@ export class WorkspaceAgents implements AgentsHost {
       "skills",
       "knowledge",
       "connectors",
+      "subagents",
     ] as const) {
       const value = change[field];
       if (value !== undefined) edits.push({ kind: "set", path: [field], value });
@@ -243,6 +262,18 @@ export class WorkspaceAgents implements AgentsHost {
       { coalesceKey: `agent:${path}:${fields}` },
     );
     if (change.name !== undefined) this.#names.set(`${ref.hubId}/${ref.id}`, change.name);
+  }
+
+  /** Throws `conflict` when one of the subagents `next` adds would hand work back to the agent. */
+  async #refuseLoops(ref: AgentRef, now: readonly string[], next: readonly string[]) {
+    const team = await this.#team(ref.hubId);
+    for (const id of next.filter((each) => !now.includes(each))) {
+      const way = handOffPath(team, id, ref.id);
+      if (way !== undefined) {
+        const names = way.map((each) => team.find((member) => member.id === each)?.name ?? each);
+        throw new KindedError("conflict", `${alreadyHandsWork(names)}; that would be a loop.`);
+      }
+    }
   }
 
   /** The path of the agent's file; throws `not_found` when the agent isn't there. */

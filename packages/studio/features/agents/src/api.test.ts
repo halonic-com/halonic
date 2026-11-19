@@ -1,7 +1,7 @@
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { AgentsHostService } from "./api.ts";
+import { AgentsHostService, alreadyHandsWork, handOffPath } from "./api.ts";
 import { memoryAgentsHost } from "./memory-host.ts";
 
 const acme = { id: "acme", name: "Acme" };
@@ -82,5 +82,68 @@ verifies("agents.host", () => {
     await expect(host.update({ hubId: "acme", id: "ghost" }, {})).rejects.toMatchObject({
       kind: "not_found",
     });
+  });
+
+  it("gives the hub's team by name, and refuses a subagent that closes a loop", async () => {
+    const agent = (id: string, name: string, subagents: string[] = []) => ({
+      hubId: "acme",
+      id,
+      name,
+      subagents,
+    });
+    const host = memoryAgentsHost({
+      hubs: [acme],
+      agents: [
+        agent("triage", "Mail triage"),
+        agent("writer", "Writer", ["triage"]),
+        agent("sorter", "Sorter", ["writer"]),
+      ],
+    });
+    const triage = { hubId: "acme", id: "triage" };
+    expect((await host.team(triage)).map((member) => member.name)).toEqual([
+      "Mail triage",
+      "Sorter",
+      "Writer",
+    ]);
+    await expect(host.update(triage, { subagents: ["sorter"] })).rejects.toMatchObject({
+      kind: "conflict",
+      message: "Sorter already hands work to Mail triage through Writer; that would be a loop.",
+    });
+    expect((await host.settings(triage)).subagents).toEqual([]);
+    await expect(host.team({ hubId: "acme", id: "ghost" })).rejects.toMatchObject({
+      kind: "not_found",
+    });
+  });
+});
+
+verifies("agents.host", () => {
+  const member = (id: string, subagents: string[] = []) => ({
+    hubId: "acme",
+    id,
+    name: id,
+    subagents,
+  });
+
+  it("finds the shortest way work goes from one agent to another, or none", () => {
+    const team = [member("a", ["b", "c"]), member("b", ["c"]), member("c", ["d"]), member("d")];
+    expect(handOffPath(team, "a", "d")).toEqual(["a", "c", "d"]);
+    expect(handOffPath(team, "a", "a")).toEqual(["a"]);
+    expect(handOffPath(team, "d", "a")).toBeUndefined();
+    expect(handOffPath([member("a", ["b"]), member("b", ["a"])], "a", "x")).toBeUndefined();
+  });
+
+  it("says who already hands work to whom, and through whom", () => {
+    expect(alreadyHandsWork(["Sorter", "Mail triage"])).toBe(
+      "Sorter already hands work to Mail triage",
+    );
+    expect(alreadyHandsWork(["Sorter", "Writer", "Mail triage"])).toBe(
+      "Sorter already hands work to Mail triage through Writer",
+    );
+    expect(alreadyHandsWork(["A", "B", "C", "D"])).toBe(
+      "A already hands work to D through B and C",
+    );
+    expect(alreadyHandsWork(["A", "B", "C", "D", "E"])).toBe(
+      "A already hands work to E through B, C and D",
+    );
   });
 });

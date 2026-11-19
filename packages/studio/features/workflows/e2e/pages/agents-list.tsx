@@ -53,6 +53,7 @@ const host: AgentsHost = {
       skills: [],
       knowledge: [],
       connectors: [],
+      subagents: [],
       ...found,
     };
   },
@@ -61,6 +62,10 @@ const host: AgentsHost = {
   modelAliases: async () => ["fast", "smart"],
   defaultModel: async () => "fast",
   toolOptions: async () => ({ skills: [], knowledge: [], connectors: [] }),
+  team: async (ref) =>
+    agents
+      .filter((agent) => agent.hubId === ref.hubId)
+      .map((agent) => ({ ...agent, subagents: [] })),
   harnessReadiness: async () => ({ status: "ready", version: "1.0.0" }),
   filePath: async (ref) => `hubs/${ref.hubId}/agents/${ref.id}.agent.yaml`,
   trash: async () => ({ undo: async () => undefined }),
