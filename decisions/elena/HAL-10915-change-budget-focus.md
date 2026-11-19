@@ -3,6 +3,7 @@
 - Task: HAL-10915
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12749 (Liam's yes to the plan, with four changes; row B6 of the UX acceptance rows on HAL-12735, and Sofia's answer on HAL-12748 for B7: same tab, Back comes back)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QHNLOaCjI2/Zc49UmLMKW6+NoLQR7PIyTWjk+/OFfgcrS6ZcAyh7+ywhMB0GLr1/SMkGyAjJVfRaPd2bpAJKDg==
 
 ## What changes
 
