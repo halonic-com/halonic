@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-13647; C206 check NW2 (HAL-13638); decided by the team (HAL-2282) with Sofia as designer; WCAG 1.4.10
 
-On a phone, the kit's `HeaderBadge` with `as="button"` (the trust badge) or `as="menu"` (the sample chip) shall never be wider than its 48px line: it shall be able to shrink below the width of its words, its words shall wrap between words, its button shall grow in height, and its icons shall stay at the top, level with the first line of words. While its words fit on one line it shall stay 24px high, and its line shall keep its 60px start. On desktop it shall not change.
+Where Studio is laid out for a phone, the kit's `HeaderBadge` with `as="button"` (the trust badge) or `as="menu"` (the sample chip) shall never be wider than its 48px line: it shall be able to shrink below the width of its words, its words shall wrap between words, its button shall grow in height, and its icons shall stay at the top, level with the first line of words. While its words fit on one line it shall stay 24px high, and its line shall keep its 60px start. On desktop it shall not change.
 
 ## Examples
 
