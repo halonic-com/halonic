@@ -13,7 +13,7 @@ import {
   type WorkflowDefinition,
   workflowIn,
 } from "@halonicjs/app";
-import { type RunEvent, type RunSummary, sendsOf } from "@halonicjs/events";
+import { providerNotes, type RunEvent, type RunSummary, sendsOf } from "@halonicjs/events";
 import type { KindValues } from "@halonicjs/format";
 import { definitionsOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { columns, columnsAs, columnWidths, paddingAfter } from "./messages/columns.ts";
@@ -26,6 +26,23 @@ import { stepName } from "./messages/step-name.ts";
 import type { Mark } from "./output/paint.ts";
 import { printable } from "./output/printable.ts";
 import { dueAt, type RunClock, startedAt } from "./run-times.ts";
+
+/**
+ * The providers' notes on how they changed the run's model calls, each once
+ * and dimmed, after a blank line; none when no provider changed a call
+ * (requirement `cli.run-provider-notes`). They follow the step lines.
+ *
+ * @example
+ * providerNoteLines(events);
+ * // ["", "Left out temperature: claude-sonnet-5-5 doesn't take it."]
+ */
+export function providerNoteLines(events: readonly RunEvent[]): Phrase[] {
+  const notes = providerNotes(events);
+  if (notes.length === 0) {
+    return [];
+  }
+  return [[], ...notes.map((note) => dimmed(runMessages.providerNote(note).phrase))];
+}
 
 /** An agent as the workspace defines it. */
 export type AgentDefinition = KindValues["agent"];
