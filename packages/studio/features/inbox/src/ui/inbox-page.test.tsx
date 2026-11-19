@@ -291,6 +291,56 @@ verifies("inbox.page", () => {
       expect(root.textContent).toContain("Sign in again to list what waits for you.");
       expect(root.textContent).not.toContain("isn't answering");
     });
+
+    it("says on the open card to sign in again, as the reason its answers don't act (HAL-13801 SO1)", async () => {
+      const fake = fakeRuns([notes]);
+      const { root, inbox } = await openPage(fake.runs);
+      await click(rowCell(root, 0));
+      fake.fail(new KindedError("unauthenticated", "Sign in again to list what waits for you."));
+      await act(() => inbox.refresh());
+      const card = root.querySelector("section") as HTMLElement;
+      expect(card.textContent).toContain("Sign in again to send your answer.");
+      expect(card.textContent).not.toContain("isn't answering");
+      const approve = button(card, "Approve");
+      expect(approve.getAttribute("aria-disabled")).toBe("true");
+      const reason = root.querySelector(`[id="${approve.getAttribute("aria-describedby")}"]`);
+      expect(reason?.textContent).toBe("Sign in again to send your answer.");
+    });
+
+    it("keeps the card's not-answering line for any other failure", async () => {
+      const fake = fakeRuns([notes]);
+      const { root, inbox } = await openPage(fake.runs);
+      await click(rowCell(root, 0));
+      fake.fail(new Error("fetch failed"));
+      await act(() => inbox.refresh());
+      const card = root.querySelector("section") as HTMLElement;
+      expect(card.textContent).toContain(engineWords["desktop-app"].showingLast);
+      expect(card.textContent).not.toContain("Sign in again");
+    });
+
+    it("says the line over the list in a polite status that was there before it (HAL-13801 SO2)", async () => {
+      const fake = fakeRuns([notes]);
+      const { root, inbox } = await openPage(fake.runs);
+      const status = root.querySelector('[data-pane="list"] [role="status"]');
+      expect(status?.textContent).toBe("");
+      fake.fail(new KindedError("unauthenticated", "Sign in again to list what waits for you."));
+      await act(() => inbox.refresh());
+      expect(root.querySelector('[data-pane="list"] [role="status"]')).toBe(status);
+      expect(status?.textContent).toBe("Sign in again to list what waits for you.");
+    });
+
+    it("checks again when it opens over a failed load, so it doesn't say the old failure (HAL-13801 SO4)", async () => {
+      const fake = fakeRuns([notes]);
+      const inbox = new Inbox(fake.runs);
+      await inbox.refresh();
+      fake.fail(new Error("fetch failed"));
+      await inbox.refresh();
+      fake.answer();
+      const root = render(<InboxView inbox={inbox} now={() => new Date(2026, 10, 8, 10, 43)} />);
+      await settled();
+      expect(root.textContent).not.toContain("isn't answering");
+      expect(rows(root)).toHaveLength(1);
+    });
   });
 
   describe("on a phone", () => {
@@ -361,6 +411,32 @@ verifies("inbox.page", () => {
       await settled();
       expect(root.textContent).toContain("Halonic on your computer isn't answering.");
       expect(root.textContent).not.toContain("The engine isn't answering.");
+    });
+
+    it("gives the line over the list the list's top space, under the top bar (HAL-13801 SO3)", async () => {
+      const fake = fakeRuns([notes]);
+      const { root, inbox } = await openPhone(fake.runs);
+      fake.fail(new Error("fetch failed"));
+      await act(() => inbox.refresh());
+      const line = root.querySelector('[data-pane="list"] [role="status"] p');
+      expect(line?.classList.contains("pt-4")).toBe(true);
+    });
+
+    it("has Next take the card's width and wrap its label, so a long title isn't cut (HAL-13801 IN1)", async () => {
+      const clock = { now: new Date(2026, 10, 8, 10, 43) };
+      const root = render(
+        <PresentationProvider presentation="phone">
+          <InboxView inbox={new Inbox(fakeRuns([notes, review]).runs)} now={() => clock.now} />
+        </PresentationProvider>,
+      );
+      await settled();
+      await click(rowCell(root, 0));
+      clock.now = new Date(clock.now.getTime() + 2000);
+      await click(button(root, "Approve"));
+      await settled();
+      const next = button(root, "Next: Approve this reply?");
+      expect(next.classList.contains("w-full")).toBe(true);
+      expect(next.className).not.toContain("whitespace-nowrap");
     });
 
     it("has no Back link on the desktop", async () => {

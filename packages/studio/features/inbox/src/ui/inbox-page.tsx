@@ -4,7 +4,6 @@ import {
   type EngineWords,
   engineWords,
   engineWordsOf,
-  errorMessageFor,
   type PlaceViewProps,
 } from "@halonicjs/studio-shell";
 import {
@@ -28,6 +27,7 @@ import type { InboxRequests } from "../request/inbox-requests.ts";
 import { ApprovalCard } from "./approval-card.tsx";
 import type { NextItem } from "./card-parts.tsx";
 import { countDetail, inboxRow, itemTitle, lateCount } from "./inbox-row.tsx";
+import { failureReason, isSignedOut, loadFailed, StaleLine } from "./load-lines.tsx";
 import { NoticesSection } from "./notices-section.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
 import { SetupPane } from "./setup-pane.tsx";
@@ -40,8 +40,6 @@ import { WaitCard } from "./wait-card.tsx";
 /** The Library's command that opens New connector; the Inbox can't import the Library, so it runs it by id. */
 const newConnectorCommand = "library.new-connector";
 const openModelsCommand = "workspace.open-models";
-
-const loadFailed = "Couldn't load the Inbox";
 
 /**
  * The Inbox's empty state (microcopy 10.1). The desktop list says the short line and the right pane
@@ -151,6 +149,11 @@ export function InboxView({
   const state = useSyncExternalStore(subscribe, () => inbox.state);
   const { open, focus, openItem, openAt } = useOpenItem(inbox, state.items);
   const retry = () => void inbox.refresh();
+  // A list that opens over a failed load checks again at once, so it doesn't say the last poll's
+  // failure until the next one (HAL-13801 SO4).
+  useEffect(() => {
+    if (inbox.state.error !== undefined) void inbox.refresh();
+  }, [inbox]);
   const list = useRef<HTMLDivElement>(null);
   const needsYouHeading = useRef<HTMLHeadingElement>(null);
   // Not now: the pane empties and focus goes back to the row the item was open from.
@@ -192,9 +195,7 @@ export function InboxView({
     <div className="flex h-full min-h-0 w-full">
       <div data-pane="list" className={listPaneClass(phone, itemPage)}>
         <ListHeader phone={phone} newRequest={request.newRequest} />
-        {state.loaded && state.error !== undefined ? (
-          <p className="px-4 pb-2 text-small text-fg-muted">{staleReason(state.error, words)}</p>
-        ) : null}
+        <StaleLine error={state.loaded ? state.error : undefined} words={words} phone={phone} />
         <div ref={list} className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
           {failedFirst ? (
             <EmptyState
@@ -269,6 +270,7 @@ export function InboxView({
               announce={announce}
               now={now}
               answering={state.error === undefined}
+              signedOut={isSignedOut(state.error)}
               words={words}
               close={close}
             />
@@ -326,6 +328,7 @@ function OpenCard({
   next,
   now,
   answering,
+  signedOut,
   words,
   close,
   items,
@@ -347,6 +350,7 @@ function OpenCard({
   readonly next: NextItem | null;
   readonly now: () => Date;
   readonly answering: boolean;
+  readonly signedOut: boolean;
   readonly words: EngineWords;
   readonly close: () => void;
 }) {
@@ -402,6 +406,7 @@ function OpenCard({
         now={now}
         initialNote={aside}
         answering={answering}
+        signedOut={signedOut}
         words={words}
         {...(somewhereToGo ? { onGoToSecret: goToSecret } : {})}
         secretPlace={target.kind}
@@ -418,6 +423,7 @@ function OpenCard({
       back={null}
       now={now}
       answering={answering}
+      signedOut={signedOut}
       words={words}
       waiting={items.some((waiting) => waiting.key === item.key)}
     />
@@ -449,25 +455,4 @@ function NothingOpen({
   return (
     <p className="m-auto p-6 text-center text-body text-fg-muted">{nothingWaiting.description}</p>
   );
-}
-
-/**
- * Why the Inbox couldn't load: a kinded error's own reason, else that the engine isn't answering,
- * as mc 10.1 says it, since a load that fails without a kind never reached the engine.
- */
-function failureReason(error: unknown, words: EngineWords): string {
-  const message = errorMessageFor(error, { title: loadFailed });
-  const reason = message.body.trim();
-  return message.kind === "internal" || reason === "" ? words.notAnswering : reason;
-}
-
-/**
- * The line over a list that failed to load again. Signed out, the engine still answers, so it says
- * to sign in again, as a first load that fails does (HAL-13371); otherwise it isn't answering and
- * the list is what it said last.
- */
-function staleReason(error: unknown, words: EngineWords): string {
-  return errorMessageFor(error, { title: loadFailed }).kind === "unauthenticated"
-    ? failureReason(error, words)
-    : words.showingLast;
 }
