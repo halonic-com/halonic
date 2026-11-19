@@ -32,7 +32,7 @@ afterEach(tearDownRig);
 
 const coderFile = "hubs/lab/agents/coder.agent.yaml";
 // Windows serves every bridge on loopback, and the CLI can't find a harness there yet.
-const socketsHere = process.platform === "linux" || process.platform === "darwin";
+const onWindows = process.platform === "win32";
 
 /** A person chose "On this computer" for the coder, for its file as it is now. */
 async function chooseThisComputerForCoder(): Promise<void> {
@@ -54,8 +54,8 @@ function withRealLauncherAndBridges(fakes: Fakes): Fakes {
 }
 
 verifies("cli.local-harness-bridge-place", () => {
-  it.runIf(socketsHere)(
-    "starts a run on this computer through the launcher, with its bridge on loopback",
+  it.skipIf(onWindows)(
+    "[platform:win32] the CLI serves bridges on sockets only on Linux and macOS: starts a run on this computer through the launcher, with its bridge on loopback",
     async () => {
       await chooseThisComputerForCoder();
       const version = await commitWorkspace();
@@ -75,8 +75,8 @@ verifies("cli.local-harness-bridge-place", () => {
     gitTimeout,
   );
 
-  it.runIf(socketsHere)(
-    "keeps a fenced run's bridge on a Unix socket",
+  it.skipIf(onWindows)(
+    "[platform:win32] the CLI serves bridges on sockets only on Linux and macOS: keeps a fenced run's bridge on a Unix socket",
     async () => {
       const version = await commitWorkspace();
       const fakes = withRealLauncherAndBridges(fakesFor({ onStart: async () => {} }));
