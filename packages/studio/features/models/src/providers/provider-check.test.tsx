@@ -87,8 +87,18 @@ verifies("models.providers.check", () => {
       "Not answering at localhost:11434 · checked 10:42. Start Ollama, then check again.",
     );
     expect(view.querySelector("[role=status]")?.textContent).toBe(
-      "Ollama is not answering at localhost:11434, checked 10:42. Start Ollama, then check again.",
+      "Ollama isn't answering at localhost:11434, checked 10:42. Start Ollama, then check again.",
     );
+  });
+
+  it("reads Check at first and Check again once there is a result", async () => {
+    const view = await show(checkAnswering(true), ollama);
+    expect(button(view).textContent).toMatch(/^Check(?! again)/);
+
+    await act(async () => button(view).click());
+    await settle();
+
+    expect(button(view).textContent).toMatch(/^Check again/);
   });
 
   it("names LM Studio, or else the provider's own name, as the program to start", async () => {

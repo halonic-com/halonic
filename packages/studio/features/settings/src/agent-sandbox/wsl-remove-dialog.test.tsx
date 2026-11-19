@@ -95,6 +95,25 @@ verifies("settings.wsl-remove-dialog", () => {
     expect(document.body.textContent).toContain("Halonic's sandbox is gone from this computer.");
   });
 
+  it("ends a removal without a backup on Close alone", async () => {
+    const onClosed = vi.fn(async () => ({ state: "needs-setup" }) as const);
+    const host = fakeHost({
+      check: onClosed,
+      removeWslSetup: async () => ({ outcome: "removed" }),
+    });
+    await toChoice(host);
+    await click(radio("Remove without a backup") as HTMLElement);
+    await press("Remove sandbox without a backup");
+    const footer = document.querySelector("dialog[open] footer") as HTMLElement;
+    const buttons = [...footer.querySelectorAll("button")];
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]?.textContent).toMatch(/^Close/);
+    const checks = onClosed.mock.calls.length;
+    await press("Close");
+    expect(document.querySelector("dialog[open]")).toBeNull();
+    expect(onClosed.mock.calls.length).toBeGreaterThan(checks);
+  });
+
   it("has no Cancel choice, and says why Remove sandbox can't be used before one is picked", async () => {
     const removeWslSetup = vi.fn(async () => ({ outcome: "kept" }) as WslRemoveResult);
     await toChoice(fakeHost({ removeWslSetup }));

@@ -94,6 +94,16 @@ export interface ConfirmingDialogProps extends DialogCommonProps {
   readonly onConfirm: () => void;
   /** "Cancel", or what cancelling does: "Not now". */
   readonly cancelLabel?: string;
+  /**
+   * Default `true`. `false` for a result with one way on, such as "Sandbox removed" with nothing
+   * to show: the confirming button (**Close**) is the footer's only button and takes focus.
+   */
+  readonly cancelButton?: boolean;
+  /**
+   * A phone's form sheet only: Close stays available while `busy`, for a wait that closing
+   * doesn't stop, such as the request sheet waiting for the card of a run that has started.
+   */
+  readonly closeWhileBusy?: boolean;
   /** Default `true`. `false` for a decision whose cancel button says what it does. */
   readonly closeButton?: boolean;
   /** While the request runs: the confirming button is busy, Escape and the overlay do nothing. */
@@ -117,6 +127,8 @@ export interface FooterlessDialogProps extends DialogCommonProps {
   readonly confirm?: undefined;
   readonly onConfirm?: undefined;
   readonly cancelLabel?: undefined;
+  readonly cancelButton?: undefined;
+  readonly closeWhileBusy?: undefined;
   readonly closeButton?: undefined;
   readonly busy?: undefined;
   readonly footnote?: undefined;

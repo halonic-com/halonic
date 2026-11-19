@@ -18,8 +18,9 @@ import type {
 /**
  * Setting up fixes `setup-needed`; a repair fixes the two that say part of the setup is there but
  * wrong. Everything else is something the person or an administrator does outside Halonic, so the
- * section says what is wrong, in the catalogue's sentence (`sandboxStartWords`, the one the Inbox,
- * the run page and the CLI use), and offers only Check again (`studio.agent-sandbox-host`).
+ * section gets the reason's code and words it from the catalogue (`sandboxStartWords`, the one the
+ * Inbox, the run page and the CLI use), and offers only Check again (`studio.agent-sandbox-host`).
+ * The check's own sentence (`missing`) is for logs and support: no screen shows it (23.3).
  */
 
 /**
@@ -76,14 +77,12 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
   async check(): Promise<SandboxCheckFacts> {
     const check = await (await AgentHostSandbox.connect(this.#transport)).check();
     if (check.ok) return { state: "ready", checkedAt: this.#now().toISOString() };
-    const reason =
-      check.reason === "other" && check.missing[0] !== undefined
-        ? `${check.missing[0].replace(/\.+$/, "")}.`
-        : sandboxStartWords(check.reason).reason;
     if (check.reason === "setup-needed") return { state: "needs-setup" };
     if (check.reason === "restart-needed") return { state: "restart-needed" };
-    if (needsRepair.includes(check.reason)) return { state: "needs-repair", reason };
-    return { state: "unavailable", reason };
+    if (needsRepair.includes(check.reason)) {
+      return { state: "needs-repair", reason: sandboxStartWords(check.reason).reason };
+    }
+    return { state: "unavailable", code: check.reason };
   }
 
   async running(): Promise<"setup" | "remove" | null> {

@@ -86,6 +86,20 @@ verifies("settings.agent-sandbox-section", () => {
     expect(view.querySelectorAll("button")).toHaveLength(0);
   });
 
+  it("shows a reason the check found with its fix, Check again, the guide and the way round", async () => {
+    const { host } = fakeHost({ state: "unavailable", code: "bubblewrap-missing" });
+    const { view } = await show(host);
+    expect(view.textContent).toContain("Not available");
+    expect(view.textContent).toContain("bubblewrap isn't installed, and the sandbox needs it.");
+    expect(button(view, "Check again")).toBeDefined();
+    const guide = view.querySelector("a") as HTMLAnchorElement;
+    expect(guide.textContent).toContain("How to install bubblewrap");
+    expect(guide.getAttribute("href")).toBe(
+      "https://docs.halonic.dev/security/sandbox/#bubblewrap",
+    );
+    expect(view.textContent).toContain("You can run an agent on this computer after a warning.");
+  });
+
   it("shows view only, with Check again, in served Studio", async () => {
     const { host } = fakeHost(needsSetup);
     const { view } = await show(host, "served");

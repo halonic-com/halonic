@@ -54,25 +54,36 @@ verifies("studio.agent-sandbox-host", () => {
     expect((await new AgentHostSandboxFacts(transport).check()).state).toBe(state);
   });
 
-  it("words a reason with the catalogue's sentence, as the Inbox and the CLI do", async () => {
+  it("hands the section the reason's code, for the catalogue's words", async () => {
     const { transport } = host({
       "GET /v1/sandbox/capabilities": capabilities,
       "GET /v1/sandbox/check": failing("bubblewrap-missing"),
     });
     expect(await new AgentHostSandboxFacts(transport).check()).toEqual({
       state: "unavailable",
-      reason: sandboxStartWords("bubblewrap-missing").reason,
+      code: "bubblewrap-missing",
     });
   });
 
-  it("says what a check named when it gave only `other`", async () => {
+  it("never passes on the check's own sentence, also for `other`", async () => {
     const { transport } = host({
       "GET /v1/sandbox/capabilities": capabilities,
       "GET /v1/sandbox/check": failing("other", ["the helper is missing"]),
     });
     expect(await new AgentHostSandboxFacts(transport).check()).toEqual({
       state: "unavailable",
-      reason: "the helper is missing.",
+      code: "other",
+    });
+  });
+
+  it("words a repair's reason with the catalogue's sentence, as the Inbox and the CLI do", async () => {
+    const { transport } = host({
+      "GET /v1/sandbox/capabilities": capabilities,
+      "GET /v1/sandbox/check": failing("distro-missing"),
+    });
+    expect(await new AgentHostSandboxFacts(transport).check()).toEqual({
+      state: "needs-repair",
+      reason: sandboxStartWords("distro-missing").reason,
     });
   });
 

@@ -335,9 +335,11 @@ screen unmounts it to close it.
 | `confirm` | `{ label, variant?, busyLabel, unavailable? }`: "Delete agent", `primary` or `danger` |
 | `onConfirm` | The confirming button or a submit. Clear `error` first, then check the fields |
 | `cancelLabel` | "Cancel" by default, or what cancelling does: "Not now" |
+| `cancelButton` | `false` leaves only the confirming button, for a result with one way on: "Sandbox removed" · **Close** |
 | `onCancel` | Cancel, the ✕, Escape and the overlay. The screen unmounts the Dialog |
 | `closeButton` | `false` removes the ✕, for a decision whose cancel button says what it does |
-| `closeLabel` | The ✕'s name: "Close" and the title by default, without a trailing "?" |
+| `closeLabel` | The ✕'s name: "Close" and the title by default, without a trailing "?". On a phone's form sheet, Close's name: "Close, keeps your message" |
+| `closeWhileBusy` | A phone's form sheet only: Close works while busy, for a wait that closing doesn't stop |
 | `busy` | The request runs: the confirming button is busy and the rest of the Dialog waits |
 | `error` | A failed request's message, read through the alert slot at the end of the body |
 | `footnote` | One short line above the buttons, outside the body's scroll area: the trust check's last line |
