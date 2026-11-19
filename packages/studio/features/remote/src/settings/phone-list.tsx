@@ -157,7 +157,7 @@ function Phones({
               {seenLine(phone, state.on, now)}
             </span>
             <Button
-              variant="secondary"
+              variant="danger-outline"
               size="sm"
               ref={(node) => {
                 if (node) buttons.set(phone.id, node);
@@ -174,7 +174,7 @@ function Phones({
       </ul>
       {state.phones.length >= 2 ? (
         <div className="flex justify-end">
-          <Button variant="secondary" size="sm" onClick={onRevokeAll}>
+          <Button variant="danger-outline" size="sm" onClick={onRevokeAll}>
             {text.REVOKE_ALL}
           </Button>
         </div>
