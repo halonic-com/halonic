@@ -14,13 +14,14 @@ const base = {
 };
 const ours = {
   "worker halonic-dev": { marked: true },
+  "bucket halonic-dev-defs": { marked: true },
   "bucket halonic-dev-blobs": { marked: true },
   "database halonic-dev-data": { marked: true },
 };
 const deletes = (calls: string[]) => calls.filter((c) => c.startsWith("deleteResource"));
 
 verifies("deploy.destroy", () => {
-  it("deletes the Worker, then the bucket, then the database, after confirming", async () => {
+  it("deletes the Worker, then the buckets, then the database, after confirming", async () => {
     const api = fakeCloudflareApi({ accounts: [], resources: ours });
     const asked: number[] = [];
     const result = await destroy(api, {
@@ -31,9 +32,10 @@ verifies("deploy.destroy", () => {
       },
     });
     expect(result.mode).toBe("destroyed");
-    expect(asked).toEqual([3]);
+    expect(asked).toEqual([4]);
     expect(deletes(api.calls)).toEqual([
       "deleteResource worker halonic-dev",
+      "deleteResource bucket halonic-dev-defs",
       "deleteResource bucket halonic-dev-blobs",
       "deleteResource database halonic-dev-data",
     ]);
@@ -80,7 +82,10 @@ verifies("deploy.destroy", () => {
     const error = (await destroy(api, base).catch((e: unknown) => e)) as DeployError;
     expect(error.code).toBe("bucket-not-empty");
     expect(api.calls).toContain("releaseDeployLock mine");
-    expect(deletes(api.calls)).toEqual(["deleteResource worker halonic-dev"]);
+    expect(deletes(api.calls)).toEqual([
+      "deleteResource worker halonic-dev",
+      "deleteResource bucket halonic-dev-defs",
+    ]);
   });
 
   it("deletes nothing when a deploy finished while the user was confirming", async () => {

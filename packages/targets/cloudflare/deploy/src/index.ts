@@ -46,7 +46,7 @@ export { withDeployLock } from "./lock.ts";
 export type { MigrateOptions } from "./migrate.ts";
 export { migrate } from "./migrate.ts";
 export type { ProvisionAction, ProvisionOptions, ProvisionStep } from "./provision.ts";
-export { provision, resourcesFor } from "./provision.ts";
+export { definitionsBucketFor, provision, resourcesFor } from "./provision.ts";
 export type { RollbackOptions, RollbackResult } from "./rollback.ts";
 export { rollback } from "./rollback.ts";
 export type { DeployStatus, Health, StatusOptions, StatusVersion } from "./status.ts";

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import {
   type CloudflareApi,
+  definitionsBucketFor,
   provision,
   resourcesFor,
   type UploadAndSwitchOptions,
@@ -62,7 +63,7 @@ export async function deployAdapterRunner(
   const worker = fixtureWorkerName(prefix);
   const database = resourcesFor(worker)[0]?.name ?? "";
   const blobs = `${worker}-blobs`;
-  const definitions = `${worker}-defs`;
+  const definitions = definitionsBucketFor(worker);
   const destroy = teardownFor({
     api,
     rest,
@@ -74,7 +75,6 @@ export async function deployAdapterRunner(
 
   try {
     await provision(api, { accountId, worker });
-    await api.createResource(accountId, { kind: "bucket", name: definitions, markedIn: database });
     const databaseId = await rest.d1DatabaseId(accountId, database);
     const token = random();
     await uploadAndSwitch(api, {

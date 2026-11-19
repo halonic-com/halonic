@@ -13,11 +13,13 @@ verifies("deploy.provision", () => {
     expect(steps).toEqual([
       { kind: "database", name: "halonic-dev-data", action: "create" },
       { kind: "bucket", name: "halonic-dev-blobs", action: "create" },
+      { kind: "bucket", name: "halonic-dev-defs", action: "create" },
       { kind: "worker", name: "halonic-dev", action: "create" },
     ]);
     expect(api.calls.filter((c) => c.startsWith("createResource"))).toEqual([
       "createResource database halonic-dev-data",
       "createResource bucket halonic-dev-blobs",
+      "createResource bucket halonic-dev-defs",
     ]);
   });
 
@@ -27,6 +29,7 @@ verifies("deploy.provision", () => {
       resources: {
         "database halonic-dev-data": { marked: true },
         "bucket halonic-dev-blobs": { marked: true },
+        "bucket halonic-dev-defs": { marked: true },
         "worker halonic-dev": { marked: true },
       },
     });
@@ -69,7 +72,7 @@ verifies("deploy.provision", () => {
       failOnWrite: true,
     });
     const steps = await provision(api, { ...base, plan: true, adopt: true });
-    expect(steps.map((s) => s.action)).toEqual(["create", "adopt", "create"]);
+    expect(steps.map((s) => s.action)).toEqual(["create", "adopt", "create", "create"]);
   });
 
   it("rejects a worker name that isn't a plain name", async () => {
