@@ -2,6 +2,7 @@ export { FileAgentPlacementStore } from "./agent-placement-store.ts";
 export { FolderBlobStore } from "./blob-store.ts";
 export { FileConnectionSettingsStore } from "./connection-settings-store.ts";
 export { FolderDefinitionStore, type FolderStoreWatchOptions } from "./definition-store.ts";
+export { flushFolder } from "./flushed-folder.ts";
 export { writeFlushedFile } from "./flushed-write.ts";
 export { FileSystemFolderReader } from "./folder-reader.ts";
 export { type CopySide, FolderRunCopies } from "./folder-run-copies.ts";

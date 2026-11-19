@@ -4,6 +4,7 @@ import type { GoogleSetup } from "../../google-host.ts";
 import { googleMessages } from "../../messages/google.ts";
 import { dirOption } from "../../workspace-dir.ts";
 import { allowSending } from "./allow-sending.ts";
+import { resetGoogle } from "./reset.ts";
 import { saveGoogleSecret } from "./secret.ts";
 import { type GoogleSignInMachine, signInGoogle } from "./sign-in.ts";
 
@@ -28,6 +29,16 @@ export function googleCommandWith(
         action: () => googleMessages.allowSendingAction(),
         options: { dir: dirOption },
         run: (input, context) => allowSending(input, context, setup),
+      },
+      {
+        name: "reset",
+        usage: "[--yes]",
+        summary: googleMessages.resetSummary(),
+        action: () => googleMessages.resetAction(),
+        options: {
+          yes: { type: "boolean", description: googleMessages.resetYesOption() },
+        },
+        run: (input, context) => resetGoogle(input, context, setup),
       },
       {
         name: "secret",
