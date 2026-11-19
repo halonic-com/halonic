@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13373
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:VYeETdn7WYIhqRppWgA985QfN/fSvW3IdJfSHrP0DdaVkjjzzWXStKDa+MdEP7VwPCZ8v1DWFuyuVbLNxit0Cw==
 - Task: HAL-13373
 
 ## What changes
