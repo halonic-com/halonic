@@ -73,8 +73,19 @@ export interface HarnessTask {
   instructionsFolder?: string;
   /** What the agent is asked to do in this run: the task step's prompt, or the chat message. */
   prompt: string;
-  /** The model the agent's file names; the harness's own default when absent. */
+  /**
+   * The model the agent's file names, or for a `models.yaml` alias its
+   * provider's model id; the harness's own default when absent.
+   */
   model?: string;
+  /**
+   * True when `model` came from an alias: the file named exactly one model,
+   * so the harness uses it for every call of its program, its background
+   * and subagent calls too, rather than the program's own smaller models,
+   * which a compatible provider doesn't have. Absent for a name the program
+   * resolves itself, such as `sonnet`.
+   */
+  modelForEveryCall?: true;
 }
 
 /**
