@@ -73,6 +73,14 @@ const host: AgentsHost = {
   harnessReadiness: async () => ({ status: "ready", version: "1.0.0" }),
   openHarnessSignIn: async () => ({ opened: true }),
   answer: async () => ({ messages: [], end: { reason: "answered" } }),
+  // A browser page, so where agents run can't be chosen here.
+  placement: async () => undefined,
+  chooseThisComputer: async () => {
+    throw new Error("Halonic can't choose where agents run from here.");
+  },
+  chooseSandbox: async () => {
+    throw new Error("Halonic can't choose where agents run from here.");
+  },
   filePath: async (ref) => `hubs/${ref.hubId}/agents/${ref.id}.agent.yaml`,
   trash: async () => ({ undo: async () => undefined }),
   referencesTo: async () => [],

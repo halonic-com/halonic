@@ -89,6 +89,26 @@ export type HarnessSignIn =
   | { readonly opened: true }
   | { readonly opened: false; readonly reason: string; readonly command: string };
 
+/**
+ * Where an agent's harness runs on this computer, as a person chose it here (Harness › Where it
+ * runs; checklist 3.8). `fingerprint` is that of the agent's saved file now: the warning hands it
+ * back when the person confirms, so a file that changed while they read is never let out.
+ *
+ * - `sandbox`: nobody chose On this computer here, or the choice can't be read.
+ * - `this-computer`: chosen here, for the file as it is now, at `chosenAt` (ISO text).
+ * - `on-hold`: chosen here for an earlier version of the file, so it runs in its sandbox until the
+ *   person confirms again.
+ */
+export type AgentPlacementState =
+  | { readonly runsOn: "sandbox"; readonly fingerprint: string }
+  | { readonly runsOn: "this-computer"; readonly fingerprint: string; readonly chosenAt: string }
+  | { readonly runsOn: "on-hold"; readonly fingerprint: string };
+
+/** What confirming On this computer came to: saved, or the file changed since the warning, and nothing was saved. */
+export type ThisComputerChoice =
+  | { readonly saved: true }
+  | { readonly saved: false; readonly fingerprint: string };
+
 /** What the Configuration pages show of an agent. */
 export interface AgentSettings extends AgentListing {
   /** What the agent is told to do; empty before anyone writes it. */
@@ -401,6 +421,22 @@ export interface AgentsHost {
   askTrust?(): Promise<"trusted" | "declined">;
   /** The workspace's name, for "Not started: *Acme* isn't trusted yet"; `undefined` before it's read. */
   workspaceName?(): string | undefined;
+  /**
+   * Where the agent runs on this computer, from its saved file; `undefined` where Studio can't
+   * choose it (no agent host, as in the browser). A choice is kept on this computer only, so it
+   * never carries over to another one. Rejects like {@link AgentsHost.read}.
+   */
+  placement(ref: AgentRef): Promise<AgentPlacementState | undefined>;
+  /**
+   * Saves a person's choice, after the warning, to run the agent on this computer, for its file
+   * with `shownFingerprint`, the one {@link AgentsHost.placement} gave when the warning opened.
+   * When the file changed since, nothing is saved and the answer holds the new fingerprint. Only a
+   * person's own confirm calls this. Rejects like {@link AgentsHost.read}, and where Studio can't
+   * choose.
+   */
+  chooseThisComputer(ref: AgentRef, shownFingerprint: string): Promise<ThisComputerChoice>;
+  /** Puts the agent back in its sandbox on this computer. Rejects like {@link AgentsHost.chooseThisComputer}. */
+  chooseSandbox(ref: AgentRef): Promise<void>;
   /**
    * The path of the agent's file from the workspace folder, for **Open as file**. Rejects like
    * {@link AgentsHost.read}.
