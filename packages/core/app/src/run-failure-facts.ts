@@ -139,6 +139,12 @@ export type RunFailure =
       readonly code?: string;
     }
   | {
+      readonly reason: "this-computer-start-failed";
+      readonly agent: string;
+      /** Why the launcher on this computer didn't open, as the run log gives it; never a sandbox. */
+      readonly launcherReason: string;
+    }
+  | {
       readonly reason: "harness-start-failed";
       readonly agent: string;
       /** The harness program's id, such as "claude-code". */
@@ -204,7 +210,8 @@ export type RunFailure =
  * `harness-bridge.socket-path-too-long` (HAL-13862).
  *
  * @param model - from `failedModelOf`; `undefined` when the run called no model
- * @param started - from `failedStartOf`; read for `sandbox-start-failed` and `harness-start-failed`
+ * @param started - from `failedStartOf`; read for `sandbox-start-failed`,
+ *   `this-computer-start-failed` and `harness-start-failed`
  * @returns `undefined` for a cancelled run, which isn't a failure
  *
  * @example
@@ -269,6 +276,8 @@ export function runFailureOf(
       return outOfMemoryFailure(failed, model);
     case "sandbox-start-failed":
       return sandboxFailure(failed, started);
+    case "this-computer-start-failed":
+      return thisComputerFailure(failed, started);
     case "harness-start-failed":
       return harnessFailure(failed, started);
     case "budget":
@@ -330,6 +339,17 @@ function sandboxFailure(failed: RunFailedEvent, started: FailedStart | undefined
         // Left out for a log from before the engine named it.
         ...(failed.sandboxReason === undefined ? {} : { code: failed.sandboxReason }),
       };
+}
+
+/**
+ * `this-computer-start-failed` for the agent of the step whose launcher
+ * didn't open, with the launcher's reason, which the engine logs as the
+ * error (requirement `engine.this-computer-start-failed`).
+ */
+function thisComputerFailure(failed: RunFailedEvent, started: FailedStart | undefined): RunFailure {
+  return started === undefined
+    ? generalFailure(failed)
+    : { reason: "this-computer-start-failed", agent: started.agent, launcherReason: failed.error };
 }
 
 /** `harness-start-failed` for the program the step's `harness.started` names, and how long the engine waited for it. */
