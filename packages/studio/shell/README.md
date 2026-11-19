@@ -41,7 +41,7 @@ first, as for `needs`, but nobody providing it is no error.
 | `TitleBarBrand`, `HistoryButtons` | the Halonic Studio mark, and Back and Forward, in the title bar | `shell.title-bar` |
 | `shell.engine` | send and announce when the engine is lost and back | `shell.engine-connection` |
 | `EngineLine` | the one line while the engine isn't answering | `shell.engine-line` |
-| `shell.engine.supervise` | start the engine, restart it once, report why it failed | `shell.engine-start`, `shell.engine-report-interrupted-runs` |
+| `shell.engine.supervise` | start the engine process, restart it once, report why it failed; unused in 0.1 | `shell.engine-start` (parked), `shell.engine-report-interrupted-runs` |
 | `watchEngineRestart`, `stoppedRunsText` | toast when the engine started again, with the runs it stopped | `shell.engine-restarted-toast` |
 | `saveFailureFor` | turn a write error into a save reason | `shell.save-reasons` |
 | `SaveState` | the save note and the failed-save toast | `shell.save-state` |
@@ -588,7 +588,13 @@ with `shell.engine.words.notAnswering` as the reason. The words follow `createSh
 | `served` | Halonic on the server isn't answering. | Halonic on the server isn't answering. Showing what it said last. | Halonic is answering again. |
 | `phone` | Halonic on your computer isn't answering. | Halonic on your computer isn't answering. Showing what it said last. | Halonic is answering again. |
 
-On the desktop the app starts the engine process instead: it hands an `EngineLauncher` to
+In 0.1 the desktop app runs the engine in the page (HAL-6602): it opens the workspace's engine on
+the first start or answer and holds the workspace's `engine.lock` through the shell's Tauri commands.
+That local executor has no `connection`, so the shell counts it as always connected; a lost lock
+closes the engine and is reported as an error, not as `lost`. Nothing calls `supervise` in 0.1, and
+`shell.engine-start` is parked as a draft until an engine runs as its own process again.
+
+`supervise` is for an app that starts the engine as a process: it hands an `EngineLauncher` to
 `shell.engine.supervise(launcher)`. The shell sends `starting { attempt, since }` at once, then
 `connected` when the engine answers; `connected` can carry `interruptedRuns`, the number of runs
 the restart ended. A start that fails sends `failed { failure }` with one of
