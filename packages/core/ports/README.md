@@ -93,6 +93,12 @@ adapter throws when a step needs a change left out of the run, so the run ends
 as can't-try instead of failed (requirement `cant-try-error`). Check for it
 with `isCantTryError`.
 
+`denied-home-paths.ts` isn't a port either: it holds the one list of the paths
+a harness run's sandbox denies in a person's home folder, such as `.ssh` and
+`.aws`, which the sandbox's profile and a plugin's copy both use, and
+`isDeniedHomePath`, which finds them at any depth (requirement
+`denied-home-paths`).
+
 `remote-gateway-protocol.ts` isn't a port either: it holds the messages a phone
 and the host's remote gateway exchange (sessions, their events, approvals and
 prompt input, nothing else), with their own version, `gatewayProtocolVersion`,

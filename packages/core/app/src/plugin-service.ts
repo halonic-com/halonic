@@ -64,6 +64,17 @@ export type ReadPlugin = PluginTrustCheck & {
 /** One plugin folder, as {@link PluginService.load} found it. */
 export type PluginEntry = BrokenPlugin | ReadPlugin;
 
+/** A plugin {@link PluginService.add} placed, as `load` gives it, and what it left out of the copy. */
+export type AddedPluginEntry = PluginEntry & {
+  /**
+   * The paths the sandbox denies in a home folder that the source held and
+   * the copy leaves out, by path from the source folder and sorted, such as
+   * `.ssh` or `keys/.npmrc`. Private workspace names (`.git`, `.env`) are
+   * left out too, but not named here.
+   */
+  readonly leftOut: readonly string[];
+};
+
 /**
  * Why a person's trust in a plugin wasn't saved: the plugin changed since
  * they were shown it, or it can't be read or checked now.
@@ -196,12 +207,16 @@ export class PluginService {
    * it replaced one, until a person trusts it with {@link trust}.
    *
    * @param source - the plugin's folder, read through its own `FolderReader`
+   * A path the sandbox denies in a home folder, such as `.ssh`, is left out
+   * of the copy at any depth, as a private name such as `.env` is, and the
+   * entry names it in `leftOut`.
+   *
    * @returns the added plugin, as {@link load} gives it now
    */
   async add(
     source: FolderReader,
     options: AddPluginOptions,
-  ): Promise<Result<PluginEntry, PluginAddRefusal>> {
+  ): Promise<Result<AddedPluginEntry, PluginAddRefusal>> {
     if (await this.#overlapsHalonicData(source)) return err({ kind: "halonic-data" });
     const snapshot = new PluginSourceSnapshot(source);
     let read: Awaited<ReturnType<typeof readPluginFolder>>;
@@ -240,7 +255,7 @@ export class PluginService {
       await this.#options.writer.remove(plugin.id);
       return err({ kind: "broken", problems: entry.problems });
     }
-    return ok(entry);
+    return ok({ ...entry, leftOut: snapshot.deniedLeftOut() });
   }
 
   /**

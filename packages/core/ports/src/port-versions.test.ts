@@ -13,6 +13,7 @@ const notPorts = new Set([
   "agent-runs-not-available.ts",
   "chat.ts",
   "connector-start-failure.ts",
+  "denied-home-paths.ts",
   "connector-tool-error.ts",
   "definition-store-left-out.ts",
   "harness-sign-in-command.ts",

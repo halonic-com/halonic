@@ -295,6 +295,23 @@ verifies("cli.commands.plugin.add", () => {
     expect(await readFile(pluginsFolder(), "utf8")).toBe("a file, not a folder");
   });
 
+  it("leaves private folders out of the copy and says so in one line ahead of the check", async () => {
+    const source = await writeSource("weather");
+    await mkdir(join(source, ".ssh"));
+    await writeFile(join(source, ".ssh", "id_ed25519"), "fake key\n");
+    await mkdir(join(source, ".aws"));
+    await writeFile(join(source, ".aws", "credentials"), "fake key\n");
+
+    const { io } = await add([source]);
+
+    const printed = [...io.stdout, ...io.stderr];
+    expect(printed.filter((line) => line.includes("Not copied"))).toEqual([
+      "! Not copied, because they're private: .aws, .ssh",
+    ]);
+    expect(printed.join("\n")).not.toContain("id_ed25519");
+    expect(await readdir(join(pluginsFolder(), "weather"))).toEqual(["backend", "plugin.yaml"]);
+  });
+
   it("names the plugin's folder by its id, not by the source folder's name", async () => {
     await add([await writeSource("weather", "Weather-Plugin")]);
 

@@ -4,7 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { MAX_PLUGIN_ENTRIES } from "./plugin-folder.ts";
 import type { PluginSource } from "./plugin-installs.ts";
-import { type PluginEntry, PluginService } from "./plugin-service.ts";
+import { type AddedPluginEntry, PluginService } from "./plugin-service.ts";
 import { weatherManifest } from "./testing/plugin-fixtures.ts";
 import { TestFolderReader } from "./testing/test-folder-reader.ts";
 import { TestPluginFolder } from "./testing/test-plugin-folder.ts";
@@ -69,7 +69,7 @@ async function pathsIn(folder: TestPluginFolder): Promise<string[]> {
 }
 
 /** The entry `add` gave, which must have been added. */
-function added(result: Awaited<ReturnType<PluginService["add"]>>): PluginEntry {
+function added(result: Awaited<ReturnType<PluginService["add"]>>): AddedPluginEntry {
   if (!result.ok) throw new Error(`expected the plugin to be added: ${JSON.stringify(result)}`);
   return result.value;
 }
@@ -303,6 +303,66 @@ verifies("app.plugin-add", () => {
     expect(placed).toContain("weather/vendor/dep/lib.js");
     expect(placed.filter((path) => /\.(env|git|studio)/u.test(path))).toEqual([]);
     expect(read.filter((path) => /\.(env|git|studio)/u.test(path))).toEqual([]);
+  });
+
+  it("leaves out the private folders the sandbox denies at any depth, and names them", async () => {
+    const { folder, service } = setup();
+    const secrets = {
+      ".ssh/id_ed25519": "fake key",
+      ".gnupg/private-keys-v1.d/a.key": "fake key",
+      ".aws/credentials": "fake key",
+      ".config/gcloud/credentials.db": "fake key",
+      ".netrc": "fake key",
+      ".npmrc": "fake key",
+      ".pypirc": "fake key",
+      ".docker/config.json": "fake key",
+      ".kube/config": "fake key",
+      "home/.SSH/id_rsa": "fake key",
+      "home/AppData/Roaming/gcloud/credentials.db": "fake key",
+    };
+    const source = weatherSource({ ...secrets, ".config/app.json": "{}" });
+    const read: string[] = [];
+    source.beforeRead = (path) => {
+      read.push(path);
+    };
+    const entry = added(await service.add(source, { from, replace: false }));
+
+    expect(entry.leftOut).toEqual([
+      ".aws",
+      ".config/gcloud",
+      ".docker",
+      ".gnupg",
+      ".kube",
+      ".netrc",
+      ".npmrc",
+      ".pypirc",
+      ".ssh",
+      "home/.SSH",
+      "home/AppData/Roaming/gcloud",
+    ]);
+    if (entry.status === "broken") throw new Error("expected a checked plugin");
+    expect(entry.content.files.map((file) => file.path)).toEqual([
+      ".config/app.json",
+      "backend/index.js",
+      "plugin.yaml",
+    ]);
+    expect(await pathsIn(folder)).toEqual([
+      "weather",
+      "weather/.config",
+      "weather/.config/app.json",
+      "weather/backend",
+      "weather/backend/index.js",
+      "weather/plugin.yaml",
+    ]);
+    expect(read.filter((path) => Object.keys(secrets).includes(path))).toEqual([]);
+  });
+
+  it("names nothing left out for a source without denied paths", async () => {
+    const { service } = setup();
+    const entry = added(
+      await service.add(weatherSource({ ".env": "KEY=1" }), { from, replace: false }),
+    );
+    expect(entry.leftOut).toEqual([]);
   });
 
   it("counts only what it keeps, so a big .git hides no file after it", async () => {
