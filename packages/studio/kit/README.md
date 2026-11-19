@@ -501,7 +501,7 @@ didn't load: a Callout sits above content that's there). It has no close button.
 | `files` | File names or paths in mono, which wrap anywhere: three, then "and N more" |
 | `icon` | A 16px icon in place of the tone's own, in the tone's colour. The fill never changes |
 | `action` | One `{ label, onClick }`, a ghost button under the text, busy while a returned promise runs |
-| `announce` | `focus` for a Callout that appears because of something you did (below) |
+| `announce` | `focus` for a Callout that appears because of something you did, `polite` for one that comes and goes with a state (below) |
 
 The text is `fg`, not the tone's colour: the icon and the fill carry the tone. It wraps and is
 never cut, on both sizes. The box has a transparent 1px border, so Windows high contrast, which
@@ -513,6 +513,19 @@ focus. One that appears because of something you did, maybe out of sight, takes
 text and list, with `tabindex="-1"`. The screen scrolls its page to the top, then calls the ref's
 `focus()`, which doesn't scroll again. There's no `role="alert"`: a failure that must leave focus
 where it is goes through the alert slot that the Dialog and the text sheet own.
+
+**A Callout that comes and goes with a state** (a strip that says the chosen program can't run,
+a save that failed) takes `announce="polite"`. Its title, text and files are a `role="status"`
+region; its action sits after the region, outside it, so a screen reader hears the words once
+when they appear or change, never "Check again Checking…" with them. Keep it on the page and
+pass empty `children` while there's nothing to say: it then draws nothing but the empty region,
+which has to be there before the words arrive for them to be read.
+
+```tsx
+<Callout tone="warning" announce="polite" action={{ label: "Check again", onClick: check }}>
+  {strip}
+</Callout>;
+```
 
 **On a phone** it sits inside the 16px page inset, never flush. Its action's `sm` button draws at
 `lg` with a 48px hit area, as every `sm` button does there, and stays under the text.
@@ -1223,7 +1236,8 @@ Served Studio can open in Firefox, which gets `::-moz-range-progress`.
 One choice out of a few, shown all at once: how agents look things up, the ways to connect. For a
 long list, use a Select. A `role="radiogroup"` of native radios, so Tab reaches the group once,
 the arrow keys move the choice and Space picks. Put it in a Field: the Field's label names the
-group and its hint or error sits under it.
+group and its hint or error sits under it. When the options have notes, give the Field
+`hintAbove`, so the hint sits under the label and isn't read as the last option's.
 
 ```tsx
 <Field label="Connect with" error={connectError}>
@@ -1689,6 +1703,7 @@ them by hand.
 | `error` | A sentence that says what to do: "Give the agent a name." Replaces the hint |
 | `required` | Writes "Required" after the label in `fg-subtle`. No asterisk |
 | `prefix` | `{ symbol, name }`: a currency outside the box, such as "€", "in euros" |
+| `hintAbove` | Puts the hint (or the error) between the label and the control. For a RadioGroup whose options have notes |
 
 Screen readers hear "required" once, from the control's `aria-required`: the visible word is
 hidden from them.
