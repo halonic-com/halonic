@@ -2,6 +2,7 @@
 
 - Approval: the flow approved by the board on HAL-9332 (option 3 on HAL-6476); the package owner (Liam) approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:uLN6cqr/vDzvx7YhM1S76ZCUAPe1N8GJ99JSZyiMs4ffYzYmvw9yE6y88NIK44g6tIDOg0MAb5B41019PcLoBw==
 
 ## What changes
 
