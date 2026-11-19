@@ -53,6 +53,12 @@ export interface HarnessHostInput {
    * harnesses gives it.
    */
   readonly instructionTrust?: HarnessRunsOptions["instructionTrust"];
+  /**
+   * Turns an agent file's `model` alias into its provider's model id
+   * (requirement `engine.harness-model-alias`). Without it, every name goes
+   * to the program as written.
+   */
+  readonly models?: HarnessRunsOptions["models"];
   /** Where each agent runs, as a person chose. */
   readonly placement: {
     /** The choices in the person's profile. */
@@ -138,6 +144,7 @@ export function harnessHostOf(input: HarnessHostInput): HarnessHost {
     home: input.home,
     ...(input.instructions === undefined ? {} : { instructions: input.instructions }),
     ...(input.instructionTrust === undefined ? {} : { instructionTrust: input.instructionTrust }),
+    ...(input.models === undefined ? {} : { models: input.models }),
     ...(input.startTimeoutsMs === undefined ? {} : { startTimeoutsMs: input.startTimeoutsMs }),
   };
 

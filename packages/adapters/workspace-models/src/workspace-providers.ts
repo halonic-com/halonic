@@ -114,7 +114,8 @@ export type WorkspaceModelErrorCode =
   | "untrusted-provider-address"
   | "key-origin-not-allowed"
   | "not-on-this-machine"
-  | "unknown-model-alias";
+  | "unknown-model-alias"
+  | "not-for-harness";
 
 /** What {@link workspaceProvider} reads from a provider file, or from an agent's unsaved settings. */
 export type ProviderFile = Pick<

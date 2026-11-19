@@ -40,6 +40,14 @@ verifies("engine.harness-model-alias", () => {
     expect(asked).toEqual([["acme", "open-coder-agent"]]);
   });
 
+  it("gives the harness's environment the same model, before the sandbox opens", async () => {
+    const { ports } = await taskOf(namesWithOneAlias(), "open-coder-agent");
+
+    expect(ports.harness.environmentModels).toEqual([
+      { model: "glm-5.2", modelForEveryCall: true },
+    ]);
+  });
+
   it("passes a name that is no alias on as written", async () => {
     const { task } = await taskOf(namesWithOneAlias(), "sonnet");
 

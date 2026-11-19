@@ -258,6 +258,7 @@ async function runInBridge(
       sandbox,
       bridge,
       instructions?.folder ?? null,
+      model,
     );
     const blocked = new BlockedAccesses(
       log,

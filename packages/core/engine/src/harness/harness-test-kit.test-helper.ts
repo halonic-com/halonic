@@ -132,6 +132,8 @@ export class FakeHarness implements Harness {
   /** How many event streams ran their own clean-up, as a generator's `finally` does when it is ended. */
   streamsCleanedUp = 0;
   readonly tasks: HarnessTask[] = [];
+  /** The model each `environment()` call was given, in order. */
+  readonly environmentModels: (Pick<HarnessTask, "model" | "modelForEveryCall"> | undefined)[] = [];
   /** What `send` passed to its runs, in order. */
   readonly sent: HarnessInput[] = [];
   readonly #steps: FakeStep[];
@@ -149,7 +151,12 @@ export class FakeHarness implements Harness {
     return this.detection;
   }
 
-  environment(bridge: HarnessBridge): Record<string, string> {
+  environment(
+    bridge: HarnessBridge,
+    _folders: unknown,
+    model?: Pick<HarnessTask, "model" | "modelForEveryCall">,
+  ): Record<string, string> {
+    this.environmentModels.push(model);
     return { ANTHROPIC_BASE_URL: bridge.url };
   }
 

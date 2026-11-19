@@ -133,6 +133,15 @@ verifies("harness-host.builder", () => {
   });
 });
 
+verifies("harness-host.model-names", () => {
+  it("passes the host's model names on as they are, and gives none when the host has none", () => {
+    const models = { providerModelOf: async () => "glm-5.3" };
+
+    expect(harnessHostOf(inputOf({ models }).input).harnesses.models).toBe(models);
+    expect(harnessHostOf(inputOf().input).harnesses).not.toHaveProperty("models");
+  });
+});
+
 verifies("harness-host.proposal-service", () => {
   it("builds the proposal service on the host's records", async () => {
     const { input } = inputOf();
