@@ -1,11 +1,12 @@
 //! The behaviour every [`SecretBackend`] must show (agreed with Priya on
-//! HAL-229). CI runs it against [`crate::MemoryBackend`]; the desktop
+//! HAL-229), allowed origins included (HAL-11887). CI runs it against [`crate::MemoryBackend`]; the desktop
 //! keychain and the Android Keystore run the same check in their own tests.
 
 use crate::backend::{
     MAX_VALUE_BYTES, SecretBackend, delete_secret, get_secret, has_secret, set_secret,
 };
 use crate::error::SecretError;
+use crate::origins::{AllowOrigin, allow_origin, allowed_origins};
 
 /// The names the check writes to. They start with `halonic_contract_`, so
 /// a run against a real keychain can't touch a real secret, and the check
@@ -103,7 +104,86 @@ fn run_cases(backend: &dyn SecretBackend) -> Result<(), String> {
         false,
     )?;
     step("delete a missing secret", delete_secret(backend, FIRST))?;
+    run_origin_cases(backend)
+}
+
+/// The origins a key may go to: kept apart from the value, kept when the
+/// value changes, and removed with the key.
+fn run_origin_cases(backend: &dyn SecretBackend) -> Result<(), String> {
+    const ORIGIN: &str = "https://llm.example.com";
+    const GATEWAY: &str = "http://localhost:8080";
+    allowed(
+        "a missing key allows no origin",
+        allow_origin(backend, FIRST, ORIGIN),
+        AllowOrigin::NoKey,
+    )?;
+    origins("a missing key has no origins", backend, None)?;
+    step("set a key", set_secret(backend, FIRST, "key value"))?;
+    origins("a new key has no origins", backend, None)?;
+    allowed(
+        "allow an origin",
+        allow_origin(backend, FIRST, ORIGIN),
+        AllowOrigin::Added,
+    )?;
+    allowed(
+        "allow a second origin",
+        allow_origin(backend, FIRST, GATEWAY),
+        AllowOrigin::Added,
+    )?;
+    allowed(
+        "allow an origin twice",
+        allow_origin(backend, FIRST, ORIGIN),
+        AllowOrigin::AlreadyAllowed,
+    )?;
+    origins(
+        "the origins read back in order",
+        backend,
+        Some(&[ORIGIN, GATEWAY]),
+    )?;
+    expect(
+        "the origins leave the value alone",
+        get_secret(backend, FIRST),
+        Some("key value"),
+    )?;
+    step(
+        "change the key",
+        set_secret(backend, FIRST, "new key value"),
+    )?;
+    origins(
+        "a new value keeps the origins",
+        backend,
+        Some(&[ORIGIN, GATEWAY]),
+    )?;
+    step("delete the key", delete_secret(backend, FIRST))?;
+    step("set the key again", set_secret(backend, FIRST, "key value"))?;
+    origins("deleting the key removes its origins", backend, None)?;
+    step("delete the key again", delete_secret(backend, FIRST))?;
     Ok(())
+}
+
+fn allowed(
+    case: &str,
+    actual: Result<AllowOrigin, SecretError>,
+    expected: AllowOrigin,
+) -> Result<(), String> {
+    match actual {
+        Ok(outcome) if outcome == expected => Ok(()),
+        Ok(outcome) => Err(format!("{case}: the backend answered {outcome:?}")),
+        Err(error) => Err(format!("{case}: {error}")),
+    }
+}
+
+fn origins(
+    case: &str,
+    backend: &dyn SecretBackend,
+    expected: Option<&[&str]>,
+) -> Result<(), String> {
+    let expected = expected.map(|list| list.iter().map(|&origin| origin.to_owned()).collect());
+    match allowed_origins(backend, FIRST) {
+        Ok(found) if found == expected => Ok(()),
+        Ok(_) => Err(format!("{case}: the backend returned different origins")),
+        Err(error) => Err(format!("{case}: {error}")),
+    }
 }
 
 fn step(case: &str, result: Result<(), SecretError>) -> Result<(), String> {
