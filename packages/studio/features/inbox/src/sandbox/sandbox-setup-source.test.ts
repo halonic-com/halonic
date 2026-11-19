@@ -155,7 +155,11 @@ verifies("inbox.sandbox-fixed-notice", () => {
     if (item?.kind !== "setup") throw new Error("expected the fixed item");
     t.inbox.releaseSetup(item);
     const [notice] = await t.notices.list();
-    expect(notice).toMatchObject({ kind: "sandbox-fixed", at: "2026-11-10T12:00:00.000Z" });
+    expect(notice).toMatchObject({
+      kind: "sandbox-fixed",
+      at: "2026-11-10T12:00:00.000Z",
+      title: "The sandbox couldn't start on this computer · 1 routine didn't run",
+    });
     t.notices.dismiss("sandbox-fixed:other");
     expect(await t.notices.list()).toHaveLength(1);
     t.notices.dismiss(notice?.key ?? "");
@@ -163,12 +167,20 @@ verifies("inbox.sandbox-fixed-notice", () => {
   });
 
   it("goes straight to a notice when a check passed elsewhere, with no fixed row", async () => {
-    const t = sandboxInbox([refusedRun("a", "daily", "2026-11-10T06:00:00.000Z")]);
+    const t = sandboxInbox([
+      refusedRun("a", "daily", "2026-11-10T06:00:00.000Z"),
+      refusedRun("b", "weekly", "2026-11-10T07:00:00.000Z"),
+    ]);
     await settled();
     t.pass();
     await settled();
     expect(t.inbox.state.items).toEqual([]);
-    expect(await t.notices.list()).toMatchObject([{ kind: "sandbox-fixed" }]);
+    expect(await t.notices.list()).toMatchObject([
+      {
+        kind: "sandbox-fixed",
+        title: "The sandbox couldn't start on this computer · 2 routines didn't run",
+      },
+    ]);
   });
 
   it("makes no notice for a pass elsewhere when nothing was refused, or for the card's own check", async () => {

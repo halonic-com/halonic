@@ -17,8 +17,12 @@ export const sandboxInboxWords = {
     "Routines start again at their next time once the sandbox works. To let one agent run without the sandbox, change it in that agent's settings.",
   /** `sandbox-inbox.check-again` */
   checkAgain: "Check again",
-  /** `sandbox-inbox.fixed-notice`: the Notices row after the row was seen as Fixed. */
-  fixedNotice: "The sandbox is ready. Run each routine that didn't run again from its page.",
+  /**
+   * `sandbox-inbox.fixed-notice` (mc 23.3): the Notices row after the row was seen as Fixed, which
+   * says which routines didn't run; the row adds **Fixed**. They start again at their next time.
+   */
+  fixedNotice: (routines: number): string =>
+    `The sandbox couldn't start on this computer · ${sandboxInboxWords.title(routines)}`,
   /** `sandbox-inbox.checking` */
   checking: "Checking…",
   /** `sandbox-inbox.checked-ready`: said once when a press finds the sandbox ready. */

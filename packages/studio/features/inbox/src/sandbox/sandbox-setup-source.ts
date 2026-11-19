@@ -134,12 +134,12 @@ export function sandboxSetup(
   let notice: SandboxFixedNotice | undefined;
   // While the card's own check runs, a pass it reports through `passes` is the card's to show.
   let ownCheck = false;
-  const leaveNotice = (at: string) => {
+  const leaveNotice = (at: string, runs: readonly RunSummary[]) => {
     notice = {
       kind: "sandbox-fixed",
       key: `sandbox-fixed:${at}`,
       at,
-      title: sandboxInboxWords.fixedNotice,
+      title: sandboxInboxWords.fixedNotice(routineCount(runs)),
     };
     noticesChanged();
   };
@@ -187,7 +187,7 @@ export function sandboxSetup(
         if (listed.length === 0 || fixed !== undefined) return;
         passedAt = now().toISOString();
         refused = [];
-        leaveNotice(passedAt);
+        leaveNotice(passedAt, listed);
         changed();
       })().catch(() => {});
     });
@@ -241,7 +241,7 @@ export function sandboxSetup(
       };
     },
     release() {
-      if (fixed !== undefined) leaveNotice(fixed.at);
+      if (fixed !== undefined) leaveNotice(fixed.at, fixed.runs);
       fixed = undefined;
       changed();
     },

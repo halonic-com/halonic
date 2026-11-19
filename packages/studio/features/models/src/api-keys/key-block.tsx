@@ -202,7 +202,7 @@ function KeyField({
     if (secretName === undefined || value === "") return;
     const saved = await run(
       () => keys.save(secretName, new SecretText(value)),
-      saveFailedLine,
+      (reason) => saveFailedLine(reason, stored === "set"),
       savedLine(providerName),
       value,
     );
