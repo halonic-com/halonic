@@ -214,6 +214,7 @@ Its text is attacker text. The rules are the requirement
 | One integration reads another's tokens | Names are `i<n>_<integration>_<token>`; a policy declares what each may read | **On `main`** (`scoped-tokens`) |
 | A slow or huge response ties up the host | Header, idle and overall timeouts and a size limit on every request | **On `main`** (`request-limits`) |
 | Logs leak secrets | The request log holds method, host, path, status, time and outcome; no query, headers or bodies | **On `main`** (`request-log`) |
+| A plugin's backend in the agent host reads a secret that isn't its own, or the page plants one for another plugin | Studio hands the host one trusted plugin's declared secrets by their short names; the host checks its own trust record, builds `plugin__<id>__<secret>` itself, keeps the values in memory only and answers only `plugin__` names; the kit reads them only through `pluginSecrets(id)` | **Planned** (HAL-13652) |
 | A stored token is read from disk or a copy | AES-256-GCM, a new random nonce per write, bound to the token's name so a value can't be moved to another name; the key is the secret `token-key` (32 bytes) | **On `main`** (`packages/adapters/token-store`) |
 | A wrong key looks like "not signed in" | A value that won't open throws `UnreadableTokenError`, never `null`; the error names the token, not its value | **On `main`** |
 | Token names fold into each other | Case and `-` versus `_` are treated as the same name; bad names are refused before anything is read | **On `main`** |
@@ -440,7 +441,11 @@ until HAL-3403) answers `403 not_fenced` and starts nothing. The `halonic`
 command holds none either (`noUnfencedRunConsent`, HAL-12639): nothing offers
 that yes yet, so a file placed in the profile's `unfenced-runs` folder by hand
 starts no plugin backend or local integration. A plugin's
-backend gets no secret and no sign-in token through the host yet. The shipped
+backend gets no secret and no sign-in token through the host yet. Its
+secrets are to come from Studio, which hands a trusted plugin's declared
+secrets to the host before each use; the host builds their names itself and
+keeps the values in memory only (**Planned**, HAL-13652; ADR
+[Studio hands a plugin its secrets](../adr/2026-11-19-studio-hands-a-plugin-its-secrets.md)). The shipped
 single executable has no runner mode of its own (its `process.execPath` is the
 host, not Node), so there the route answers `403 not_in_this_build` and starts
 nothing, rather than start a second host without Node's permission layer.
