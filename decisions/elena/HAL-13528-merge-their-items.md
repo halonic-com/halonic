@@ -3,6 +3,7 @@
 - Task: HAL-13528
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13528 (Sofia's HAL-13469 check, GU3: a state of the approved Changes screen with no new words, a team decision under HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QpLCRi4vmRuO5crXbeHxR0br//LEx0RvUwpe+ZkRjZ2OfnsI2PKOuneCH9ckJzGrIbv7UdrOdvhVk2NAlzHADw==
 
 ## What changes
 
