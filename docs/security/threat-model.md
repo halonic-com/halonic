@@ -331,14 +331,16 @@ every approval a phone answers, until approvals reach the engine in a follow-up
 and the person can allow it on the desktop, which nothing offers yet. Its events are the narrow ones (prompt, answers,
 approvals, result), kept in memory only.
 
-**The phone's pairing scanner** (Android) reads the pairing code with Google's
-ML Kit (`play-services-mlkit-barcode-scanning`), which runs on the phone inside
-Google Play services. The camera image and the code it reads stay on the phone.
-ML Kit does send Google diagnostics and usage data about the API: device details
-(maker, model, OS version and build), the app's package name and version,
-per-installation identifiers (Google says they aren't meant to identify a user
-or a physical device), speed, settings such as image format and resolution, and
-the event type
+**The phone's pairing scanner** (Android, **On `main`**:
+`studio.connect.pair-scan`, `studio.src-tauri.crates.connect.pair-scan`) reads
+the pairing code with Google's ML Kit (`play-services-mlkit-barcode-scanning`),
+which runs on the phone inside Google Play services. The camera image and the
+code it reads stay on the phone. ML Kit does send Google diagnostics and usage
+data about the API: device details (maker, model, OS version and build), the
+app's package name and version, a device identifier and per-installation
+identifiers (Google says the per-installation ones aren't meant to identify a
+user or a physical device), speed, settings such as image format and
+resolution, and the event type
 ([Google's disclosure](https://developers.google.com/ml-kit/android-data-disclosure)).
 Halonic can't turn that off, so Google Play services is trusted on Android, and
 the README says so under "Models and privacy". The Play Data safety form must
