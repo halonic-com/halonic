@@ -130,6 +130,9 @@ export const configurationWords = {
     /** The file changed while the warning was open, so nothing was saved; the warning stays for the new file. */
     changedWhileOpen: (agent: string) =>
       `${agent}'s file changed while this was open, so nothing was saved. Read this again, then confirm.`,
+    /** The agent's file has unsaved changes: the choice is for the saved file, so save first (HAL-13201). */
+    saveFirst: (agent: string) =>
+      `${agent}'s file has changes that aren't saved. This choice is for the saved file, so save first, then confirm.`,
     notSaved: (reason: string) => `Couldn't save where it runs: ${reason}`,
     couldntRead: (reason: string) => `Couldn't read where it runs: ${reason}`,
   },

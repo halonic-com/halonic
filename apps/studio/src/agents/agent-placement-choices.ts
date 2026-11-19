@@ -1,7 +1,7 @@
 import type { AgentPlacement, PlacementSubject } from "@halonicjs/app";
 import type {
-  AgentPlacementState,
   AgentRef,
+  SavedFilePlacement,
   ThisComputerChoice,
 } from "@halonicjs/studio-feature-agents/api";
 
@@ -36,7 +36,7 @@ export class AgentPlacementChoices {
   }
 
   /** Where the agent runs; a choice for an earlier version of its file is on hold. */
-  async where(ref: AgentRef): Promise<AgentPlacementState> {
+  async where(ref: AgentRef): Promise<SavedFilePlacement> {
     const answer = await this.#parts.placement.where(await this.#subjectOf(ref));
     const fingerprint = answer.agentFingerprint;
     if (answer.runsOn === "this-computer") {
