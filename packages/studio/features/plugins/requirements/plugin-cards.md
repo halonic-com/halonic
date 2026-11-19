@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1740; plugin screens design section 8.2 and decision D3 (HAL-1739, HAL-1801); microcopy 24 T15 (HAL-751); UX acceptance checklist 8 (HAL-1952); T16-F22, F23 and F35
+- Source: HAL-1740; plugin screens design section 8.2 and decision D3 (HAL-1739, HAL-1801); microcopy 24 T15 (HAL-751); UX acceptance checklist 8 (HAL-1952); T16-F22, F23 and F35; UX check L11 (HAL-12363)
 
-The Studio shall add Home's Cards section with every card of every installed plugin, and shall leave the section out while no plugin has a card. Each card shall show the card's title, the footer "From the *name* plugin", and, while its plugin is on, its tool's answer as plain text, sanitised Markdown or a table. While the answer loads, the title and the footer shall already show. When the person presses ↻, named "Refresh *title*", the Studio shall call the card's tool again. If the call fails, then the card shall say "Couldn't get *title*: *reason*." with Try again, and only that line shall be announced. While the plugin isn't trusted, the card shall stay in its place and say "*name* isn't trusted yet, so this card is empty." with Review, and while it can't load, "*name* couldn't load, so this card is empty." with Details. Each card shall have a ⋮ menu, named "More actions for *title*", with **Open plugin**, which opens the plugin's page, and, on Home, **Hide on Home**.
+The Studio shall add Home's Cards section with every card of every installed plugin, and shall leave the section out while no plugin has a card. Each card shall show the card's title, the footer "From the *name* plugin", and, while its plugin is on, its tool's answer as plain text, sanitised Markdown or a table. While the answer loads, the title and the footer shall already show. When the person presses ↻, named "Refresh *title*", the Studio shall call the card's tool again. If the call fails, then the card shall say "Couldn't get *title*: *reason*." with Try again, and only that line shall be announced. If the host can't run plugin tools at all, then the card shall say so on its own, with neither Try again nor ↻: "Plugin tools aren't in this build of Halonic yet, so *title* can't show anything." when this build has none, or the host's line ("Plugin tools can't run on this computer yet: …") when this computer can't fence them. While the plugin isn't trusted, the card shall stay in its place and say "*name* isn't trusted yet, so this card is empty." with Review, and while it can't load, "*name* couldn't load, so this card is empty." with Details. Each card shall have a ⋮ menu, named "More actions for *title*", with **Open plugin**, which opens the plugin's page, and, on Home, **Hide on Home**.
 
 ## Examples
 
@@ -20,6 +20,9 @@ The Studio shall add Home's Cards section with every card of every installed plu
 - Given the tool fails with "the service is busy",
   when the card shows,
   then it says "Couldn't get Today's weather: the service is busy." with Try again.
+- Given a build of Halonic without plugin tools,
+  when the Today's weather card calls its tool,
+  then it says "Plugin tools aren't in this build of Halonic yet, so Today's weather can't show anything." with no Try again and no ↻.
 - Given the Weather plugin changed since it was trusted,
   when Home shows,
   then its card says "Weather isn't trusted yet, so this card is empty." with Review, and no tool is called.

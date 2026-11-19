@@ -1,10 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- From Android 17 the app can't reach the computer on the Wi-Fi without
          it. Connect asks for it before the first call to a home network
          address, never for a public one (LocalNetworkPlugin, HAL-12253). -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <!-- The pairing scanner (HAL-12246). The barcode-scanner plugin's own
+         manifest adds the camera; the shell asks for it only when the
+         scanner opens. The camera isn't required, so a phone without one
+         still installs the app and pairs with the typed code. The plugin's
+         vibrate command is never used, so its permission is left out.
+         The CAMERA permission implies android.hardware.camera, so that
+         feature is declared optional too, or Play still requires it. -->
+    <uses-feature
+        android:name="android.hardware.camera.any"
+        android:required="false"
+        tools:replace="android:required" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-permission
+        android:name="android.permission.VIBRATE"
+        tools:node="remove" />
 
     <!-- No backup or device transfer: the saved computer address stays on
          this phone, so uninstalling the app deletes it (HAL-6866). -->

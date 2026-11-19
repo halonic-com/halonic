@@ -74,7 +74,10 @@ export class WorkspaceNotices implements InboxNotices {
     ].sort(newestNoticeFirst);
     this.#reload();
     this.#forget(new Set(notices.map((notice) => notice.key)));
-    return notices.filter((notice) => !this.#dismissed.has(notice.key));
+    // The month's used-up budget can't be dismissed while it is true: a key kept from before it lost its × doesn't hide it.
+    return notices.filter(
+      (notice) => notice.kind === "budget-month" || !this.#dismissed.has(notice.key),
+    );
   }
 
   subscribe(listener: () => void): () => void {

@@ -245,6 +245,11 @@ export { SecretText } from "./secret-text/secret-text.ts";
 export { Select, type SelectOption, type SelectProps } from "./select/select.tsx";
 export { MAX_SERIES, OTHER_NAME, type Series } from "./series-chart/series.ts";
 export { SeriesChart, type SeriesChartProps } from "./series-chart/series-chart.tsx";
+export {
+  type SetupStep,
+  SetupSteps,
+  type SetupStepsProps,
+} from "./setup-steps/setup-steps.tsx";
 export { SheetFrame, type SheetFrameProps } from "./sheet/sheet-frame.tsx";
 export { SidePanel, type SidePanelProps } from "./side-panel/side-panel.tsx";
 export {
@@ -260,6 +265,7 @@ export {
   type StatusChipTone,
 } from "./status-chip/status-chip.tsx";
 export { Switch, type SwitchProps, type SwitchUnavailable } from "./switch/switch.tsx";
+export type { TabOrientation } from "./tabs/tab-keys.ts";
 export {
   type Tab,
   type TabCount,

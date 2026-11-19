@@ -53,6 +53,7 @@ export {
   pluginInstallCommands,
   pluginInstallRefusalKinds,
 } from "./plugin-install-commands.ts";
+export { isSourceNotPicked } from "./plugin-install-failure.ts";
 export { type ExportedPluginSource, TauriPluginInstallSource } from "./plugin-install-source.ts";
 export { TauriPluginSourceReader } from "./plugin-source-reader.ts";
 export {

@@ -33,10 +33,8 @@ export class SharedCopy {
    */
   async ref(): Promise<string | null> {
     if (await this.#exists("@{upstream}")) return "@{upstream}";
-    const branch = await this.#options.run(["rev-parse", "--abbrev-ref", "HEAD"]);
-    if (branch === "no-git") throw noGit();
-    const name = branch.stdout.trim();
-    if (branch.code !== 0 || name === "" || name === "HEAD") return null;
+    const name = await this.#branch();
+    if (name === null) return null;
     const sameName = `${this.#options.remoteName}/${name}`;
     return (await this.#exists(sameName)) ? sameName : null;
   }
@@ -50,6 +48,18 @@ export class SharedCopy {
     if (!(await this.#exists("HEAD"))) return null;
     const shared = await this.ref();
     return shared === null ? "HEAD" : `${shared}..HEAD`;
+  }
+
+  /**
+   * Where Get updates pulls from, as the arguments after `git pull`: none for a branch that tracks
+   * one, so git uses it; else the shared copy's branch of the same name. Someone who just joined a
+   * team often has a branch that tracks nothing (claim 10.2, HAL-12650); when the shared copy has
+   * no such branch either, git says so and the message stays "isn't set up to get updates".
+   */
+  async pullSource(): Promise<readonly string[]> {
+    if (await this.#tracksABranch()) return [];
+    const name = await this.#branch();
+    return name === null ? [] : [this.#options.remoteName, name];
   }
 
   /** How many versions `range` holds, counting at most the cap. */
@@ -74,6 +84,29 @@ export class SharedCopy {
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line !== "");
+  }
+
+  /** The branch the workspace is on, `null` when it is on no branch. */
+  async #branch(): Promise<string | null> {
+    const branch = await this.#options.run(["rev-parse", "--abbrev-ref", "HEAD"]);
+    if (branch === "no-git") throw noGit();
+    const name = branch.stdout.trim();
+    return branch.code !== 0 || name === "" || name === "HEAD" ? null : name;
+  }
+
+  /**
+   * Whether the branch has a tracked branch set, even one not fetched yet (`@{upstream}` alone
+   * doesn't resolve before the first fetch).
+   */
+  async #tracksABranch(): Promise<boolean> {
+    const upstream = await this.#options.run([
+      "rev-parse",
+      "--abbrev-ref",
+      "--symbolic-full-name",
+      "@{upstream}",
+    ]);
+    if (upstream === "no-git") throw noGit();
+    return upstream.code === 0;
   }
 
   async #exists(ref: string): Promise<boolean> {

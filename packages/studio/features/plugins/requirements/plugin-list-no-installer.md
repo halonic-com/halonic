@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1740; flow check HAL-11490; design check HAL-11503
+- Source: HAL-1740; flow check HAL-11490; design check HAL-11503; UX check L12 (HAL-12363)
 
-When the app can't add a plugin itself, the Studio shall leave out **Add plugin** (also in the empty state) and shall end the list with the line "This app can't add a plugin yet. Add one on this computer's command line:" and the command `halonic plugin add <folder or git address>` to copy, so that the empty state never points at a button that isn't there.
+When the app can't add a plugin itself, the Studio shall leave out **Add plugin** (also in the empty state) and shall end the list with the line "Studio can't add a plugin yet. To add one, run this in a terminal:" and the command `halonic plugin add <folder or git address>` to copy, so that the empty state never points at a button that isn't there.
 
 ## Examples
 

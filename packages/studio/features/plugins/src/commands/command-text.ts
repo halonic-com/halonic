@@ -47,3 +47,11 @@ export function commandSource(name: string): string {
 export function commandFailedLine(title: string, reason: string): string {
   return `Couldn't run ${title}: ${reason.replace(/[.!?]+$/u, "")}.`;
 }
+
+/**
+ * The host has no plugin tools in this build, so trying again can't help (UX check L11): "Plugin
+ * tools aren't in this build of Halonic yet, so Show forecast can't run."
+ */
+export function commandNotInThisBuildLine(title: string): string {
+  return `Plugin tools aren't in this build of Halonic yet, so ${title} can't run.`;
+}

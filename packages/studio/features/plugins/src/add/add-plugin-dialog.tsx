@@ -26,6 +26,7 @@ import {
   NOTE_LINE,
   offlineLine,
   openLine,
+  PICK_FOLDER,
   REF_FIELD,
   REF_HINT,
   SOURCE_LABEL,
@@ -56,7 +57,12 @@ type Failure =
       readonly text: string;
       readonly problems: readonly PluginLoadProblem[];
     }
-  | { readonly kind: "taken"; readonly text: string; readonly plugin: string };
+  | {
+      readonly kind: "taken";
+      readonly text: string;
+      readonly plugin: string;
+      readonly name: string;
+    };
 
 /**
  * "Add plugin" (design section 4, checklist 3): where it comes from, a folder or a git
@@ -80,10 +86,17 @@ export function AddPluginDialog({ installer, onAdded, onOpen, onCancel }: AddPlu
   const [failure, setFailure] = useState<Failure | undefined>(undefined);
   const sourceField = useRef<HTMLInputElement>(null);
   const aborter = useRef<AbortController | undefined>(undefined);
+  const focusField = useRef(false);
   const busy = busyName !== undefined;
 
   // Closing the dialog while it copies stops the copy.
   useEffect(() => () => aborter.current?.abort(), []);
+  // The field is unavailable while it copies, so it takes focus once the copy has stopped.
+  useEffect(() => {
+    if (busy || !focusField.current) return;
+    focusField.current = false;
+    sourceField.current?.focus();
+  }, [busy]);
 
   async function add() {
     const text = (kind === "folder" ? folder : address).trim();
@@ -105,7 +118,12 @@ export function AddPluginDialog({ installer, onAdded, onOpen, onCancel }: AddPlu
         onAdded(outcome.plugin);
         return;
       }
-      setFailure(failureOf(outcome, name));
+      if (outcome.kind === "not-picked") {
+        setFieldError(PICK_FOLDER);
+        focusField.current = true;
+      } else {
+        setFailure(failureOf(outcome, name));
+      }
     } catch (error) {
       if (controller.signal.aborted) return;
       setFailure({ kind: "line", text: failedLine(name, messageOf(error)) });
@@ -206,7 +224,7 @@ function FailureCallout({
         announce="focus"
         ref={callout}
         action={{
-          label: openLine(failure.plugin),
+          label: openLine(failure.name),
           onClick: () => {
             onOpen(failure.plugin);
           },
@@ -229,7 +247,10 @@ function FailureCallout({
   );
 }
 
-function failureOf(outcome: Exclude<PluginAddOutcome, { kind: "added" }>, name: string): Failure {
+function failureOf(
+  outcome: Exclude<PluginAddOutcome, { kind: "added" | "not-picked" }>,
+  name: string,
+): Failure {
   switch (outcome.kind) {
     case "broken":
       return {
@@ -238,7 +259,12 @@ function failureOf(outcome: Exclude<PluginAddOutcome, { kind: "added" }>, name: 
         problems: outcome.problems,
       };
     case "taken":
-      return { kind: "taken", text: takenLine(outcome.plugin), plugin: outcome.plugin };
+      return {
+        kind: "taken",
+        text: takenLine(outcome.plugin),
+        plugin: outcome.plugin,
+        name: outcome.name ?? outcome.plugin,
+      };
     case "offline":
       return { kind: "line", text: offlineLine(outcome.host) };
     case "no-manifest":

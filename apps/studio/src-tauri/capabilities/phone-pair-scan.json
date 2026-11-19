@@ -1,0 +1,15 @@
+{
+  "identifier": "phone-pair-scan",
+  "description": "On Android, the app's own page may open the pairing scanner through pair_scan and close it through pair_scan_cancel (HAL-12246). The shell drives the barcode-scanner plugin from Rust with fixed options: QR codes only, the back camera, the camera on only while the scanner is open. The page gets only a pairing code's text, never the plugin's commands. It is local only, so the Studio the computer serves gets no camera.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "android"
+  ],
+  "permissions": [
+    "allow-pair-scan",
+    "allow-pair-scan-cancel"
+  ]
+}

@@ -15,6 +15,7 @@ import { errorReasonFor } from "@halonicjs/studio-shell";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { fromPlugin, TRY_AGAIN } from "../commands/command-text.ts";
 import type { PluginToolCaller } from "../commands/plugin-command-dialog.tsx";
+import { cantRunLine } from "../commands/tools-cant-run.ts";
 import { PluginResult } from "../ui/plugin-result.tsx";
 import {
   cantLoadLine,
@@ -22,6 +23,7 @@ import {
   cardMenuLabel,
   DETAILS,
   HIDE_ON_HOME,
+  notInThisBuildLine,
   notTrustedLine,
   OPEN_PLUGIN,
   REVIEW,
@@ -60,13 +62,17 @@ export interface PluginCardProps {
 type Run =
   | { readonly kind: "loading" }
   | { readonly kind: "done"; readonly text: string; readonly refreshing: boolean }
-  | { readonly kind: "failed"; readonly reason: string };
+  | { readonly kind: "failed"; readonly reason: string }
+  /** The host can't run plugin tools at all here: the line, with no Try again and no ↻. */
+  | { readonly kind: "cant-run"; readonly line: string };
 
 /**
  * A plugin's card on Home (design 8.2, UX checklist 8): the card's title, its tool's answer as
  * plain text, sanitised Markdown or a table, and the footer "From the *name* plugin". While the
  * plugin is on, the card calls its tool when it shows, ↻ calls it again and a failure says why
- * with **Try again**; only a failure is announced. A plugin that isn't trusted or can't load
+ * with **Try again**; only a failure is announced. When the host can't run plugin tools at all
+ * (not in this build, or not fenced on this computer), the card says so with neither **Try
+ * again** nor ↻, since pressing them can't help. A plugin that isn't trusted or can't load
  * leaves the card in place, empty, with **Review** or **Details**, so Home doesn't jump when it
  * turns on. The title row is 28px in every state, so an empty card lines up with a live one
  * (T16-F23). The title and the footer show at once; only the answer has a skeleton, and ↻ turns
@@ -100,7 +106,13 @@ export function PluginCard({
         if (call === latest.current) setRun({ kind: "done", text, refreshing: false });
       },
       (error: unknown) => {
-        if (call === latest.current) setRun({ kind: "failed", reason: errorReasonFor(error) });
+        if (call !== latest.current) return;
+        const line = cantRunLine(error, notInThisBuildLine(card.title));
+        setRun(
+          line === undefined
+            ? { kind: "failed", reason: errorReasonFor(error) }
+            : { kind: "cant-run", line },
+        );
       },
     );
     return () => void ++latest.current;
@@ -115,7 +127,7 @@ export function PluginCard({
           <h3 className="min-w-0 flex-1 text-section wrap-anywhere">
             <bdi>{card.title}</bdi>
           </h3>
-          {status === "on" ? (
+          {status === "on" && run.kind !== "cant-run" ? (
             <Button
               variant="ghost"
               size="sm"
@@ -172,7 +184,7 @@ export function PluginCard({
   );
 }
 
-/** The tool's answer, its skeleton while it loads, or why it failed with Try again. */
+/** The tool's answer, its skeleton while it loads, or why it failed: with Try again when that can help. */
 function CardAnswer({
   card,
   run,
@@ -197,12 +209,13 @@ function CardAnswer({
             onAction={onTryAgain}
           />
         ) : null}
+        {run.kind === "cant-run" ? <CardEmpty icon={<WarningIcon />} line={run.line} /> : null}
       </div>
     </>
   );
 }
 
-/** A line with its mark, then one `secondary` sm button: an error, or why the card is empty. */
+/** A line with its mark, then one `secondary` sm button when there's something to do: an error, or why the card is empty. */
 function CardEmpty({
   icon,
   tone = "muted",
@@ -213,8 +226,8 @@ function CardEmpty({
   readonly icon: ReactNode;
   readonly tone?: "muted" | "danger";
   readonly line: string;
-  readonly action: string;
-  readonly onAction: () => void;
+  readonly action?: string;
+  readonly onAction?: () => void;
 }) {
   return (
     <div className="flex flex-col items-start gap-2">
@@ -226,9 +239,11 @@ function CardEmpty({
         </span>
         {line}
       </p>
-      <Button variant="secondary" size="sm" onClick={onAction}>
-        {action}
-      </Button>
+      {action === undefined ? null : (
+        <Button variant="secondary" size="sm" onClick={onAction}>
+          {action}
+        </Button>
+      )}
     </div>
   );
 }

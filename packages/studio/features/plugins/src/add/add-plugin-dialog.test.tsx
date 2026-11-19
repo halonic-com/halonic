@@ -187,6 +187,29 @@ verifies("plugins.plugin-add", () => {
     expect(seen.opened).toEqual(["weather"]);
   });
 
+  it("names the Open button after the plugin's name when the installer knows it", async () => {
+    const seen = fresh();
+    show(reply(seen, { kind: "taken", plugin: "weather", name: "Weather" }), seen);
+    await type(inputLabelled("Folder"), "/plugins/halonic-weather");
+    await press("Add");
+    expect(text()).toContain("A plugin called weather is already installed.");
+    await press("Open Weather");
+    expect(seen.opened).toEqual(["weather"]);
+  });
+
+  it("asks for Choose folder… under the field when the app can't read a typed path", async () => {
+    const seen = fresh();
+    show(reply(seen, { kind: "not-picked" }), seen, async () => undefined);
+    await type(inputLabelled("Folder"), "/plugins/halonic-weather");
+    await press("Add");
+    expect(text()).toContain(
+      "Halonic can't read a typed path. Choose the folder with Choose folder…",
+    );
+    expect(text()).not.toContain("plugin.yaml");
+    expect(document.activeElement).toBe(inputLabelled("Folder"));
+    expect(button("Add")).toBeDefined();
+  });
+
   it("moves focus to the Callout that says why it can't add", async () => {
     const seen = fresh();
     show(reply(seen, { kind: "taken", plugin: "weather" }), seen);

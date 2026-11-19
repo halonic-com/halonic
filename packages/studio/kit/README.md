@@ -617,6 +617,40 @@ skipped. Switching is instant, with no sliding indicator, and never adds to Back
 | Disabled | `fg-disabled`, clicks ignored, skipped by the arrow keys (`aria-disabled`) |
 | Error | A `danger` counter on the tab whose view has errors |
 
+**A column of pages.** For a list of pages beside the page itself (an agent's or a workflow's
+Configuration), give `TabList` `orientation="vertical"`. The page lays out the column (its width,
+padding and edge); the list fills it with rows, and its `TabPanel` sits beside it:
+
+```tsx
+const ids = useTabIds();
+<div className="flex">
+  <div className="w-52 shrink-0 border-e border-border px-2 py-4">
+    <TabList
+      label="Pages"
+      orientation="vertical"
+      tabs={pages}
+      selected={page}
+      onSelect={setPage}
+      ids={ids}
+    />
+  </div>
+  <TabPanel ids={ids} tabs={pages} selected={page} className="min-w-0 flex-1">
+    {pageContent}
+  </TabPanel>
+</div>;
+```
+
+The up and down arrow keys move and select instead of left and right; Home, End and the one Tab
+stop work as above. A counter or running dot sits at the end of its row. `fill` doesn't apply.
+
+| State | What shows |
+| --- | --- |
+| Default | `fg-muted` text, a row at least 32px high (48px on a touch screen), labels wrap |
+| Selected | An `accent-soft` fill, `fg` text at weight 500; a 1px `CanvasText` outline in high contrast |
+| Hover | Text `fg` on a `surface-subtle` fill |
+| Focus | The standard focus ring |
+| Disabled | As above |
+
 **On a phone** (`fill`, from the presentation context) the track spans the page column and the
 tabs share it equally, each at least 48px high with 4px 8px padding. A label wraps between words
 and the counter follows it like one more word; a word longer than its tab breaks with a hyphen.
@@ -809,7 +843,10 @@ List draws them.
 A row has a `title`, an optional `meta` line (cut with an ellipsis), a 20px `icon` (16px in a
 32px `dense` row, as in a Menu item) or a 28px `avatar` (both hidden from screen readers), a
 `trailing` chip or value, a `more` button (`{ label, onClick }`, its label naming the row),
-`unavailable` (`{ reason }`) and `error` (`{ reason, chip }`). Unlike the Button's, an unavailable row's `reason` is the text itself: the
+`unavailable` (`{ reason }`), `error` (`{ reason, chip }`), `muted`, a title in `fg-muted`
+for a finished step, and `inert`: a click, Enter or Space does nothing and the row has no hover or
+press tint, but the arrows still reach it, and Tab enters the List at the first row that isn't
+inert. Unlike the Button's, an unavailable row's `reason` is the text itself: the
 List draws it in place of the meta line and points `aria-describedby` at it.
 
 ```tsx
@@ -925,12 +962,34 @@ skeleton and an error together, and the screen focuses its title.
 />;
 ```
 
+## SetupSteps
+
+The steps of a setup card, as Home's Get set up and the sample's Try the sample (HAL-477 2.2,
+first-run 3.3, `kit.setup-steps`). It's a [List](#list) named by `label`, so it keeps the List's
+keyboard, focus and phone look. Each step is a 56px row: a 24px circle with its number, outlined
+while to do; the title in `text-body-strong` with its `hint` under it; and a chevron at the right
+edge while it isn't done. A done step has a filled `success` circle with a tick, its title in
+`fg-muted` (not struck through, which reads as "cancelled") and no chevron. Each row is read as its
+`label`. `onOpen` gets the steps still to do; a done step's row is `inert`, so it does nothing,
+doesn't look pressable, and Tab enters at the first step still to do. The card draws its
+"N of 3 done" line.
+
+```tsx
+<SetupSteps
+  label="Try the sample"
+  steps={[
+    { id: "start", title: "Start a support request", hint: "An invented customer asks for a refund.", done: true, label: "Step 1 of 3: Start a support request, done" },
+  ]}
+  onOpen={openStep}
+/>;
+```
+
 ## useGridNavigation
 
 The roving focus behind the List, for a `grid` the kit doesn't draw (the Inbox list). Pass each
-row's `id` and which of its cells can take focus (a second argument, `{ startColumn }`, picks the
-column that takes focus first, 0 by default); spread `gridProps` on the grid and
-`cell(row, column)` on each focusable element.
+row's `id` and which of its cells can take focus (a second argument, `{ startColumn, startRow }`,
+picks the column and the row that take focus first, by default column 0 of the first row); spread
+`gridProps` on the grid and `cell(row, column)` on each focusable element.
 
 ```tsx
 const grid = useGridNavigation(

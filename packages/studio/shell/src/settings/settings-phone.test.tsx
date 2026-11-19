@@ -294,9 +294,11 @@ verifies("shell.settings-list-page", () => {
 
   it("returns to the list scrolled where it was", async () => {
     const { container, back, tapRow, tapMore } = await renderPhone();
+    const main = container.querySelector("main") as HTMLElement;
+    // jsdom loads no styles, so `main` is told here that it scrolls, as the window's CSS does.
+    main.style.overflowY = "auto";
     tapMore();
     await tapRow("Settings");
-    const main = container.querySelector("main") as HTMLElement;
     act(() => {
       main.scrollTop = 120;
       main.dispatchEvent(new Event("scroll"));

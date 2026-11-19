@@ -1,7 +1,7 @@
 import type { InboxNotice, InboxNotices } from "./inbox-notices.ts";
 
 /**
- * Two sources of notices as one: the lists joined, newest first, and a dismissal going to the
+ * Two sources of notices as one: the lists joined in {@link newestFirst}'s order, and a dismissal going to the
  * source that holds the notice. With only one source, that one is returned as it is.
  *
  * @example
@@ -30,8 +30,13 @@ export function mergeNotices(
   };
 }
 
-/** Orders notices newest first. */
+/**
+ * Orders notices newest first, after the month's used-up budget, which stops runs from starting
+ * and so goes first whatever its time (flow-inbox 4.3).
+ */
 export function newestFirst(a: InboxNotice, b: InboxNotice): number {
+  const stopsStarts = Number(b.kind === "budget-month") - Number(a.kind === "budget-month");
+  if (stopsStarts !== 0) return stopsStarts;
   if (a.at === b.at) return 0;
   return a.at < b.at ? 1 : -1;
 }

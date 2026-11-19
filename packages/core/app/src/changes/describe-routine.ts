@@ -5,7 +5,7 @@ import { fieldOf, keysInOrder, wholeItemLine } from "./describe-fields.ts";
 import type { ChangeLine } from "./revert-parts.ts";
 
 /** The routine's fields, in the order their lines are listed. A field not listed here gets a line too, after these, under its key. */
-const ROUTINE_FIELDS: Readonly<Record<string, string>> = {
+export const ROUTINE_FIELDS: Readonly<Record<string, string>> = {
   name: "Name",
   description: "Description",
   enabled: "On",

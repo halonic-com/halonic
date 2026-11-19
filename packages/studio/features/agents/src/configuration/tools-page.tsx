@@ -145,7 +145,7 @@ function ToolList({ list, chosen, options, save, openLibrary }: ToolListProps) {
         </ul>
       )}
       {ids.filter(missing).map((id) => (
-        <p key={id} className="text-small text-danger-text">
+        <p key={id} className="text-small text-danger">
           {words.missingTool[list](id)}
         </p>
       ))}

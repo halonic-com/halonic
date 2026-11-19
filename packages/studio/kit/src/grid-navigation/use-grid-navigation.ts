@@ -32,6 +32,11 @@ export interface GridNavigationOptions {
    * a checkbox cell comes before it. Default 0.
    */
   readonly startColumn?: number;
+  /**
+   * The row that takes focus first, before the user has moved: the first setup step still to do.
+   * Default the first row with a focusable cell.
+   */
+  readonly startRow?: string | undefined;
 }
 
 /** What `useGridNavigation` returns: the props for the grid, and the props for each cell. */
@@ -80,14 +85,14 @@ const keepsColumn = new Set(["ArrowDown", "ArrowUp", "Home", "End"]);
  */
 export function useGridNavigation(
   rows: readonly GridRow[],
-  { startColumn = 0 }: GridNavigationOptions = {},
+  { startColumn = 0, startRow }: GridNavigationOptions = {},
 ): GridNavigation {
   const [remembered, setRemembered] = useState<Remembered | undefined>(undefined);
   const elements = useRef(new Map<string, HTMLElement>());
   const focusInside = useRef(false);
   // Set while ↑ ↓ Home End move focus, so the cell's focus keeps the chosen column.
   const movingInColumn = useRef(false);
-  const active = resolve(rows, remembered, startColumn);
+  const active = resolve(rows, remembered, { column: startColumn, row: startRow });
 
   /** With `keepColumn`, the cell's focus doesn't change the column the user chose. */
   const focusCell = (position: GridPosition, keepColumn: boolean) => {
@@ -191,15 +196,15 @@ function nearestCell(row: GridRow, column: number): number {
 
 /**
  * The cell in the Tab order now. The remembered row if it's still there; if it was removed, the
- * row now in its place or the nearest one before it; at the start, the first row's start column.
+ * row now in its place or the nearest one before it; at the start, the start row's start column.
  */
 function resolve(
   rows: readonly GridRow[],
   remembered: Remembered | undefined,
-  startColumn: number,
+  start: { readonly column: number; readonly row: string | undefined },
 ): GridPosition | undefined {
-  const column = remembered?.column ?? startColumn;
-  const kept = rows.find((row) => row.id === remembered?.row);
+  const column = remembered?.column ?? start.column;
+  const kept = rows.find((row) => row.id === (remembered?.row ?? start.row));
   if (kept !== undefined && focusable(kept)) {
     return { row: kept.id, column: nearestCell(kept, column) };
   }

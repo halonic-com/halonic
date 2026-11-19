@@ -197,6 +197,20 @@ verifies("inbox.page", () => {
       expect(rows(root)[0]?.getAttribute("aria-current")).toBe("true");
     });
 
+    it("turns an open wait card stale once its run is answered somewhere else", async () => {
+      const runs = fakeRuns([notes, review]);
+      const { root } = await openPage(runs.runs);
+      await click(rowCell(root, 1));
+      expect(root.querySelector("section")?.textContent).toContain("Waiting since");
+      await act(async () => runs.change([notes]));
+      await settled();
+      const card = root.querySelector("section") as HTMLElement;
+      expect(card.querySelector("h2")?.textContent).toBe("Approve this reply?");
+      expect(card.textContent).toContain("This is no longer waiting for you.");
+      expect(card.textContent).not.toMatch(/Waiting since|Approve(?! this)|Reject/);
+      expect(rows(root)).toHaveLength(1);
+    });
+
     it("has Next open the item after the decided one, not the first", async () => {
       const send = waitingRun("r3", {
         approvals: [pendingApproval("call-3", "mail-mcp__send_reply", at(10, 0))],

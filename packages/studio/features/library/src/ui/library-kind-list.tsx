@@ -12,7 +12,7 @@ export interface LibraryKindListProps {
 }
 
 const rowClass =
-  "flex min-h-11 w-full items-center justify-between gap-3 border-b border-line px-4 py-2 text-left";
+  "flex min-h-11 w-full items-center justify-between gap-3 border-b border-border px-4 py-2 text-left";
 
 /**
  * The Library on a phone (flow-library 8): a flush list of the four kinds, each with how many it has, and Plugins, each row

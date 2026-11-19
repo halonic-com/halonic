@@ -219,3 +219,33 @@ verifies("inbox.notices-section", () => {
     });
   });
 });
+
+verifies("inbox.budget-notices", () => {
+  const month: InboxNotice = {
+    kind: "budget-month",
+    key: "budget-month:2026-11:50",
+    at: "2026-11-16T06:00:00.000Z",
+    title: "This month's estimated spend reached its budget of €50.00.",
+  };
+  const failed = notice("r7", "Daily summary failed at 06:00");
+
+  it("gives the month's budget row no ×, and Delete on it dismisses nothing", async () => {
+    const { source, dismiss } = fakeNotices(async () => [month]);
+    const { root } = await open(source, vi.fn(), vi.fn());
+    expect(root.querySelector(`button[aria-label^="Dismiss"]`)).toBeNull();
+    const change = button(root, "Change budget");
+    change.focus();
+    await act(async () => {
+      change.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true }));
+    });
+    expect(dismiss).not.toHaveBeenCalled();
+    expect(root.textContent).toContain(month.title);
+  });
+
+  it("moves focus to Change budget when the notice after it is dismissed", async () => {
+    const { source } = fakeNotices(async () => [failed, month]);
+    const { root } = await open(source, vi.fn(), vi.fn());
+    await act(async () => button(root, `Dismiss ${failed.title}`).click());
+    expect(document.activeElement).toBe(button(root, "Change budget"));
+  });
+});

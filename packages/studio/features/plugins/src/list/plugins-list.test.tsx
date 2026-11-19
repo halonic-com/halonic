@@ -313,7 +313,7 @@ verifies("plugins.plugin-list-no-installer", () => {
     show([], { noAdd: true });
     expect(text()).toContain("No plugins yet");
     expect(text()).not.toContain("Add plugin");
-    expect(text()).toContain("This app can't add a plugin yet.");
+    expect(text()).toContain("Studio can't add a plugin yet.");
     expect(text()).toContain("halonic plugin add <folder or git address>");
   });
 });

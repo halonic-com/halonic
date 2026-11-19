@@ -31,7 +31,7 @@ export function pluginInstallFailure(reason: unknown): Error {
       return new RangeError(message, { cause: reason });
     case "source_not_picked":
     case "source_not_allowed":
-      return new KindedError("denied", said);
+      return new KindedError("denied", said, { cause: reason });
     case "too_big":
     case "too_many_files":
     case "export_too_large":
@@ -56,4 +56,14 @@ export function pluginInstallFailure(reason: unknown): Error {
     case "hooks_folder_unreadable":
       return new KindedError("unavailable", message);
   }
+}
+
+/**
+ * Whether `error` is the shell's refusal of a location the person never
+ * picked, such as a folder path typed in the Add plugin dialog: the one
+ * refusal the dialog answers under the field rather than as a failed add.
+ */
+export function isSourceNotPicked(error: unknown): boolean {
+  if (!(error instanceof KindedError)) return false;
+  return isPluginInstallRefusal(error.cause) && error.cause.kind === "source_not_picked";
 }

@@ -109,6 +109,43 @@ verifies("shell.frame", () => {
     expect(container.querySelector("footer")?.children).toHaveLength(0);
   });
 
+  it("shows a save problem on a phone in a strip under the top bar, with its soft fill", () => {
+    const { container } = renderFrame(undefined, {
+      phoneTopBar: <div data-testid="top-bar">Home</div>,
+      saveNote: <span data-problem="danger">Couldn't save Support reply</span>,
+    });
+    act(() => media.resize(400));
+    const strip = container.querySelector("[data-phone-notices]") as HTMLElement;
+    // Top bar, engine line, strip, then the page: the strip doesn't scroll away with the page.
+    const topBar = container.querySelector('[data-testid="top-bar"]') as HTMLElement;
+    const main = container.querySelector("main") as HTMLElement;
+    expect(topBar.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(strip.compareDocumentPosition(main) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(strip.contains(main)).toBe(false);
+
+    expect(strip.textContent).toBe("Couldn't save Support reply");
+    // Hidden unless the note inside is a problem, so "Saved" puts no bar on a phone.
+    expect(strip.className).toMatch(/(^| )hidden( |$)/);
+    expect(strip.className).toContain("has-[[data-problem]]:flex");
+    expect(strip.className).toContain("min-h-touch");
+    expect(strip.className).toContain("has-[[data-problem=danger]]:bg-danger-soft");
+    expect(strip.className).toContain("has-[[data-problem=warning]]:bg-warning-soft");
+    // The badges stay out of it for now.
+    expect(strip.textContent).not.toContain("Not trusted yet");
+  });
+
+  it("puts no strip on a phone without a save note", () => {
+    const { container } = renderFrame(undefined, { saveNote: null });
+    act(() => media.resize(400));
+    expect(container.querySelector("[data-phone-notices]")).toBeNull();
+  });
+
+  it("keeps the strip off the desktop, where the status bar holds the save note", () => {
+    const { container } = renderFrame();
+    expect(container.querySelector("[data-phone-notices]")).toBeNull();
+    expect(container.querySelector("footer")?.textContent).toContain("✓ Saved");
+  });
+
   it("shows only the page on a phone, and follows the width without a reload", () => {
     const { container } = renderFrame();
     act(() => media.resize(400));

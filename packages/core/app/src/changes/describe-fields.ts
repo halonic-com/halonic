@@ -62,10 +62,33 @@ export function listChange(was: readonly string[], is: readonly string[]): strin
  * sentencesChanged("Be brief. Use English.", "Be brief. Use Dutch."); // 1
  */
 export function sentencesChanged(was: string, is: string): number {
-  return diffLines(sentencesOf(was), sentencesOf(is)).reduce(
+  return sentenceChanges(was, is).reduce(
     (count, change) => count + Math.max(change.removed.length, change.added.length),
     0,
   );
+}
+
+/** A run of sentences of a text that changed: the ones it `removed` and the ones `added` in their place. */
+export interface SentenceChange {
+  readonly removed: readonly string[];
+  readonly added: readonly string[];
+}
+
+/**
+ * The sentences of a text that changed, in order, so a page can show those
+ * and leave out the ones that stayed the same. Splits sentences the way
+ * {@link sentencesChanged} counts them; empty when only the spacing changed.
+ *
+ * @example
+ * sentenceChanges("Be brief. Use English.", "Be brief. Use Dutch.");
+ * // [{ removed: ["Use English."], added: ["Use Dutch."] }]
+ */
+export function sentenceChanges(was: string, is: string): SentenceChange[] {
+  const withoutNewline = (sentence: string) => sentence.replace(/\n$/u, "");
+  return diffLines(sentencesOf(was), sentencesOf(is)).map((change) => ({
+    removed: change.removed.map(withoutNewline),
+    added: change.added.map(withoutNewline),
+  }));
 }
 
 /** Each sentence of a text on a line of its own, trimmed, without empty lines. */

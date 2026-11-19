@@ -1,15 +1,22 @@
-import { Button, Callout, Field, RadioGroup, type RadioOption } from "@halonicjs/studio-kit";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Button,
+  Callout,
+  ExternalLink,
+  Field,
+  RadioGroup,
+  type RadioOption,
+} from "@halonicjs/studio-kit";
+import { useEffect, useRef, useState } from "react";
 import {
   type AgentChange,
   type AgentHarnessId,
   type AgentSettings,
   type AgentsHost,
   agentHarnessIds,
-  type HarnessReadiness,
 } from "../api.ts";
 import { configurationWords as words } from "./configuration-words.ts";
-import { harnessStrip } from "./harness-strip.ts";
+import { type HarnessCheck, harnessSetupPages, harnessStrip } from "./harness-strip.ts";
+import { useHarnessCheck } from "./use-harness-check.ts";
 
 /** Props for {@link HarnessPage}. */
 export interface HarnessPageProps {
@@ -19,113 +26,112 @@ export interface HarnessPageProps {
   readonly save: (change: AgentChange) => Promise<boolean>;
 }
 
-type Readiness = Partial<Record<AgentHarnessId, HarnessReadiness>>;
-
-/** The line under a harness option, from what the check found; `null` when nothing needs saying. */
-function optionLine(id: AgentHarnessId, found: HarnessReadiness | undefined) {
+/** The line under a program's option, from what the check found; "Checking…" before the first answer. */
+function programLine(id: Exclude<AgentHarnessId, "halonic">, found: HarnessCheck | undefined) {
   const program = words.harnessNames[id];
-  if (found === undefined || found.status === "ready") return null;
+  const setup = harnessSetupPages[id];
+  if (found === undefined) return <span className="text-fg-subtle">{words.checking}</span>;
   switch (found.status) {
+    case "ready":
+      return words.found(program, found.version);
     case "missing":
-      return <span className="text-warning">{words.notInstalled(program)}</span>;
+      return (
+        <>
+          <span className="text-warning">{words.notInstalled(program)}</span>{" "}
+          <ExternalLink href={setup}>{words.howToInstall}</ExternalLink>
+        </>
+      );
     case "unsupported":
       return (
-        <span className="text-warning">
-          {words.tooOld(program, found.version, found.supported)}
-        </span>
+        <>
+          <span className="text-warning">
+            {words.tooOld(program, found.version, found.supported)}
+          </span>{" "}
+          <ExternalLink href={setup}>{words.howToUpdate}</ExternalLink>
+        </>
       );
     case "signed-out":
       return <span className="text-fg-muted">{words.signedOut(program, found.version)}</span>;
     case "failed":
-      return <span className="text-warning">{words.couldntCheck(program)}</span>;
+      return <span className="text-warning">{words.couldntAskVersion(program, found.error)}</span>;
+    case "unreachable":
+      return <span className="text-warning">{words.couldntCheck(program, found.error)}</span>;
   }
+}
+
+/** The strip's words and its link, or `null` when the chosen harness can run. */
+function stripText(agent: string, harness: AgentHarnessId, found: HarnessCheck | undefined) {
+  const strip = harnessStrip(harness, found);
+  if (strip === null || harness === "halonic") return null;
+  const program = words.harnessNames[harness];
+  const setup = harnessSetupPages[harness];
+  return strip === "not-installed" ? (
+    <>
+      {words.stripNotInstalled(agent, program)} ·{" "}
+      <ExternalLink href={setup}>{words.howToInstall}</ExternalLink>
+    </>
+  ) : (
+    <>
+      {words.stripTooOld(agent, program)} ·{" "}
+      <ExternalLink href={setup}>{words.howToUpdate}</ExternalLink>
+    </>
+  );
 }
 
 /**
  * The Harness page (`agents.configuration.harness`): which program the agent runs in, with what
  * the host found of each on this computer under its option, and one strip when the chosen one
- * can't run. The choice saves at once.
+ * can't run. The choice saves at once, and goes back to the saved one when the save fails.
  */
 export function HarnessPage({ host, settings, save }: HarnessPageProps) {
-  const { hubId, id } = settings;
   const [harness, setHarness] = useState(settings.harness);
   useEffect(() => setHarness(settings.harness), [settings.harness]);
-  const [found, setFound] = useState<Readiness>({});
-  const [checking, setChecking] = useState(false);
-  // Counts the checks, so only the newest one's answer is used: a slow answer for another agent,
-  // or one that arrives after the page is left, is dropped.
-  const newestCheck = useRef(0);
-  const check = useCallback(async () => {
-    const mine = ++newestCheck.current;
-    setChecking(true);
-    const others = agentHarnessIds.filter((each) => each !== "halonic");
-    try {
-      const answers = await Promise.all(
-        others.map((each) => host.harnessReadiness({ hubId, id }, each)),
-      );
-      if (mine === newestCheck.current) {
-        setFound(Object.fromEntries(others.map((each, index) => [each, answers[index]])));
-      }
-    } catch (error) {
-      // The host says a check that didn't work with `failed`; a throw is the same, and the page stays usable.
-      if (mine === newestCheck.current) {
-        const failed: HarnessReadiness = {
-          status: "failed",
-          error: error instanceof Error ? error.message : String(error),
-        };
-        setFound(Object.fromEntries(others.map((each) => [each, failed])));
-      }
-    } finally {
-      if (mine === newestCheck.current) setChecking(false);
-    }
-  }, [host, hubId, id]);
-  useEffect(() => {
-    void check();
-    return () => {
-      newestCheck.current += 1;
-    };
-  }, [check]);
+  const { found, checking, check } = useHarnessCheck(host, settings.hubId, settings.id);
 
-  const options: RadioOption<AgentHarnessId>[] = agentHarnessIds.map((id) => {
-    const line = optionLine(id, found[id]);
-    return {
-      value: id,
-      label: words.harnessNames[id],
-      ...(line === null ? {} : { note: line }),
-    };
-  });
-  const strip = harnessStrip(harness, found[harness]);
-  const program = words.harnessNames[harness];
-  const anyFailed = Object.values(found).some((one) => one.status === "failed");
+  const options: RadioOption<AgentHarnessId>[] = agentHarnessIds.map((id) => ({
+    value: id,
+    label: words.harnessNames[id],
+    note: id === "halonic" ? words.builtIn : programLine(id, found[id]),
+  }));
+  const strip = stripText(settings.name, harness, found[harness]);
+  // Counts the picks, so a slow failed save doesn't undo a newer pick.
+  const newestPick = useRef(0);
+  const pick = async (next: AgentHarnessId) => {
+    const mine = ++newestPick.current;
+    setHarness(next);
+    const saved = await save({ harness: next });
+    // The file still names the old harness, so the page shows it again (D2 on HAL-12697).
+    if (!saved && mine === newestPick.current) setHarness(settings.harness);
+  };
   return (
-    <div className="flex flex-col gap-4">
-      {strip !== null && (
-        <Callout
-          tone="warning"
-          action={{ label: words.checkAgain, busyLabel: words.checking, onClick: check }}
-        >
-          {strip === "not-installed"
-            ? words.stripNotInstalled(settings.name, program)
-            : words.stripTooOld(settings.name, program)}
-        </Callout>
-      )}
-      <Field label={words.harness}>
-        <RadioGroup
-          options={options}
-          value={harness}
-          onChange={(next) => {
-            setHarness(next);
-            void save({ harness: next });
-          }}
-        />
-      </Field>
-      {strip === null && anyFailed && (
-        <div>
-          <Button variant="ghost" busy={checking} onClick={() => void check()}>
+    <div className="flex flex-col">
+      {/* Always on the page, so a strip that appears after a change is read out (D5). */}
+      <div role="status" className={strip === null ? undefined : "mb-4"}>
+        {strip !== null && (
+          <Callout
+            tone="warning"
+            action={{ label: words.checkAgain, busyLabel: words.checking, onClick: check }}
+          >
+            {strip}
+          </Callout>
+        )}
+      </div>
+      <div className="relative">
+        <div className="absolute end-0 top-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            busy={checking}
+            busyLabel={words.checking}
+            onClick={() => void check()}
+          >
             {words.checkAgain}
           </Button>
         </div>
-      )}
+        <Field label={words.harness} hint={words.harnessHint}>
+          <RadioGroup options={options} value={harness} onChange={(next) => void pick(next)} />
+        </Field>
+      </div>
     </div>
   );
 }

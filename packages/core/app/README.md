@@ -114,6 +114,7 @@ Device-wide settings such as the theme live outside any scope.
 | `describeRoutineChange` | one line per changed routine field, each with its part; what it runs marked important | `app.change-line-important` |
 | `describeItemChange` | any kind: the workflow, agent or routine describer, or one "Changed", "New" or "Deleted" line without parts | `app.change-parts-cut` |
 | `describeFileChange` | what changed in one workspace file from its two texts: the kind from where it sits, `describeItemChange`'s lines with Important first, or one line without parts for a file that isn't an item, doesn't read, or changed only in comments | `app.change-file-lines` |
+| `newItemFields` | a new item's fields from its text, each with the label an edited item's line gives it (a skill's as the Library names them), without the id; nothing for a file no kind places or a text that doesn't read | `app.new-item-fields` |
 | `instructionTrust` | whether a run's instruction pin is the one a person trusted, or an ask that names the files added, removed and changed | `app.instruction-trust` |
 | `InstructionTrustService` | reads the trusted pin from the profile's store and checks a run's pin against it; saves a pin only when a person trusts it; a record it can't read or that isn't the agent's asks, with the reason | `app.instruction-trust-service` |
 | `DoctorService` | the lines of `halonic doctor`, checked at the same time, with the summary and whether it exits 1; no provider is called over the internet | `app.doctor-service` |

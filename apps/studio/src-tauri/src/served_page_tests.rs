@@ -6,7 +6,7 @@
 //! `create_workspace_folder`, the `trust_*` commands, the `host_settings_*`
 //! commands, the `run_*` commands, the `agent_host_*` commands, the `fs_*`
 //! commands, the `blob_*` and `record_*` commands and the `update_*`
-//! commands.
+//! commands, and, on Android, `pair_scan` and `pair_scan_cancel`.
 
 use serde_json::{Value, json};
 use tauri::ipc::{CallbackFn, InvokeBody};
@@ -16,6 +16,7 @@ use tauri::webview::{InvokeRequest, WebviewWindow};
 use crate::shell;
 
 mod engine_lock;
+mod pair_scan;
 mod runs;
 mod trust;
 #[cfg(desktop)]
@@ -143,6 +144,8 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "google_setup_read",
         "workspace_key",
         "resource_report",
+        "pair_scan",
+        "pair_scan_cancel",
         "agent_host_request",
         "agent_host_stream",
         "agent_host_stream_end",

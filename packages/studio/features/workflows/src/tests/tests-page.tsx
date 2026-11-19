@@ -152,7 +152,7 @@ export function TestsPage({
               >
                 <span
                   aria-hidden="true"
-                  className={row.state === "failed" ? "text-danger-text" : "text-fg-muted"}
+                  className={row.state === "failed" ? "text-danger" : "text-fg-muted"}
                 >
                   {row.glyph}
                 </span>
@@ -169,7 +169,7 @@ export function TestsPage({
                 >
                   {row.name}
                 </button>
-                {row.failure && <span className="text-small text-danger-text">{row.failure}</span>}
+                {row.failure && <span className="text-small text-danger">{row.failure}</span>}
                 {row.failure && runId !== undefined && openRun && (
                   <Button variant="ghost" size="sm" onClick={() => openRun(runId)}>
                     {words.openRun}

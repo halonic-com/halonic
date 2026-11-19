@@ -9,7 +9,7 @@ import type { ChangeLine, ItemPath } from "./revert-parts.ts";
  * listed here gets a line too, after these, under its key. `states` and
  * `layout` have their own lines.
  */
-const WORKFLOW_FIELDS: Readonly<Record<string, string>> = {
+export const WORKFLOW_FIELDS: Readonly<Record<string, string>> = {
   name: "Name",
   description: "Description",
   initial: "Starts at",

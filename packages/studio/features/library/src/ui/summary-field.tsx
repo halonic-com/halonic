@@ -35,6 +35,8 @@ export function SummaryField({
   const [text, setText] = useState("");
   const drafted = summarize.phase === "draft";
   const draftText = summarize.phase === "draft" ? summarize.text : "";
+  const problem =
+    summarize.phase === "failed" ? problemLine(summarize.reason, name, notAnswering) : undefined;
 
   // A new draft fills the box, takes focus and is read out.
   useEffect(() => {
@@ -43,6 +45,11 @@ export function SummaryField({
     box.current?.focus();
     announce(knowledgeWords.draftReady);
   }, [drafted, draftText, announce]);
+
+  // The line under the row is read out too; focus stays on Summarize (HAL-12534).
+  useEffect(() => {
+    if (problem !== undefined) announce(problem);
+  }, [problem, announce]);
 
   // Use and Discard return focus to Summarize (accessibility pass 9.3).
   const backToAsk = () => ask.current?.focus();
@@ -70,9 +77,8 @@ export function SummaryField({
       {summarize.phase === "failed" ? (
         <Problem
           reason={summarize.reason}
-          name={name}
+          line={problem ?? ""}
           openModels={openModels}
-          notAnswering={notAnswering}
           tryAgain={() => void model.summarize()}
         />
       ) : null}
@@ -106,18 +112,35 @@ export function SummaryField({
   );
 }
 
+type SummarizeFailure = Extract<SummarizeState, { phase: "failed" }>["reason"];
+
+/** The line under the row when Summarize ends without a draft. */
+function problemLine(reason: SummarizeFailure, name: string, notAnswering: string): string {
+  switch (reason) {
+    case "no-local-model":
+      return knowledgeWords.needsLocalModel;
+    case "no-documents":
+      return knowledgeWords.noDocuments(name);
+    case "too-large":
+      return knowledgeWords.summarizeFailed(name, knowledgeWords.tooLarge);
+    case "host-unreachable":
+      return knowledgeWords.summarizeFailed(name, knowledgeWords.hostUnreachable(notAnswering));
+    case "model-failed":
+      return knowledgeWords.summarizeFailed(name, knowledgeWords.modelFailed);
+  }
+}
+
+/** The failed line, with **Models** when a local model is missing and **Try again** when a retry may help. */
 function Problem({
   reason,
-  name,
+  line,
   openModels,
   tryAgain,
-  notAnswering,
 }: {
-  readonly reason: Exclude<SummarizeState, { phase: "idle" | "working" | "draft" }>["reason"];
-  readonly name: string;
+  readonly reason: SummarizeFailure;
+  readonly line: string;
   readonly openModels: (() => void) | undefined;
   readonly tryAgain: () => void;
-  readonly notAnswering: string;
 }) {
   if (reason === "no-local-model") {
     return (
@@ -127,27 +150,16 @@ function Problem({
           ? {}
           : { action: { label: knowledgeWords.models, onClick: openModels } })}
       >
-        {knowledgeWords.needsLocalModel}
+        {line}
       </Callout>
     );
   }
-  if (reason === "no-documents") {
-    return <Callout tone="danger">{knowledgeWords.noDocuments(name)}</Callout>;
+  if (reason === "no-documents" || reason === "too-large") {
+    return <Callout tone="danger">{line}</Callout>;
   }
-  if (reason === "too-large") {
-    return (
-      <Callout tone="danger">
-        {knowledgeWords.summarizeFailed(name, knowledgeWords.tooLarge)}
-      </Callout>
-    );
-  }
-  const why =
-    reason === "host-unreachable"
-      ? knowledgeWords.hostUnreachable(notAnswering)
-      : knowledgeWords.modelFailed;
   return (
     <Callout tone="danger" action={{ label: knowledgeWords.tryAgain, onClick: tryAgain }}>
-      {knowledgeWords.summarizeFailed(name, why)}
+      {line}
     </Callout>
   );
 }

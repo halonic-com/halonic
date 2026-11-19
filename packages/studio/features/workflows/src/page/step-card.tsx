@@ -61,7 +61,7 @@ export function StepCard({
       )}
       <span
         title={step.title ?? step.id}
-        className={`${step.type === "task" ? "truncate" : "line-clamp-2"} w-full min-w-0 break-words text-small-strong text-fg`}
+        className={`${step.type === "task" ? "truncate" : "line-clamp-2"} w-full min-w-0 break-words text-small font-medium text-fg`}
       >
         {step.title ?? step.id}
       </span>
