@@ -27,6 +27,7 @@ import {
   type AgentChange,
   type AgentListing,
   type AgentRef,
+  type AgentStep,
   type AgentsHost,
   AgentsHostService,
   type AgentToolList,
@@ -37,6 +38,7 @@ import { configurationWords } from "../configuration/configuration-words.ts";
 import { useConfigurationLoads } from "../configuration/use-configuration-loads.ts";
 import { fileItemOf } from "../trash/file-item.ts";
 import { useAgentTrash } from "../trash/use-agent-trash.tsx";
+import { AgentStepCard, agentStepCardKey, agentStepOfCard } from "./agent-step-card.tsx";
 import { forgetFreshAgent, isFreshAgent } from "./fresh-agents.ts";
 import { NotLiveLine } from "./not-live-line.tsx";
 import { pageWords } from "./page-words.ts";
@@ -261,6 +263,15 @@ export function AgentScreen({
             // No card on this page docks, so the panel's width doesn't change how they look.
             panelWidth={Number.POSITIVE_INFINITY}
             renderCard={(card) => {
+              const step = agentStepOfCard(card.key);
+              if (step !== undefined) {
+                const agentSettings =
+                  settings.load.kind === "ready" ? settings.load.value : undefined;
+                const found = agentSettings?.agentSteps.find((each) => each.id === step);
+                return found === undefined || agentSettings === undefined ? null : (
+                  <AgentStepCard step={found} agent={agentSettings} />
+                );
+              }
               const subagent = subagentOfCard(card.key);
               return subagent === undefined ? null : (
                 <SubagentCard
@@ -288,6 +299,7 @@ export function AgentScreen({
               openSubagent={cards.openSubagent}
               reportNotSaved={reportNotSaved}
               announce={announce}
+              openAgentStep={cards.openAgentStep}
             />
           </StackedCards>
         )}
@@ -326,12 +338,13 @@ interface AgentCards {
   readonly stack: CardStack;
   readonly set: (stack: CardStack) => void;
   readonly openSubagent: (agent: AgentListing) => void;
+  readonly openAgentStep: (step: AgentStep) => void;
   readonly close: () => void;
 }
 
 /**
- * The cards stacked on the agent page's panel (flow-agents 7): a subagent opens as a card, and a
- * card whose agent is gone drops with every card above it, saying so to screen readers. The stack
+ * The cards stacked on the agent page's panel (flow-agents 7): a subagent and an agent step open
+ * as cards, and a card whose agent or agent step is gone drops with every card above it, saying so to screen readers. The stack
  * is the page's state, so it stays across tab switches while the page stays mounted.
  */
 function useAgentCards(
@@ -348,18 +361,28 @@ function useAgentCards(
       setStack((now) => openCard(now, { key: subagentCardKey(sub), title: sub.name })),
     [],
   );
+  const openAgentStep = useCallback(
+    (step: AgentStep) =>
+      setStack((now) => openCard(now, { key: agentStepCardKey(step), title: step.id })),
+    [],
+  );
   const close = useCallback(() => setStack(noCards), []);
   const { hubId, id } = agent;
   useEffect(() => {
     let live = true;
     const check = async () => {
       if (latest.current.length === 0) return;
-      const team = await host.team({ hubId, id }).catch(() => undefined);
-      if (!live || team === undefined) return;
-      const ids = new Set(team.map((member) => member.id));
+      const [team, agentSettings] = await Promise.all([
+        host.team({ hubId, id }),
+        host.settings({ hubId, id }),
+      ]).catch(() => []);
+      if (!live || team === undefined || agentSettings === undefined) return;
+      const agents = new Set(team.map((member) => member.id));
+      const steps = new Set(agentSettings.agentSteps.map((step) => step.id));
       const { stack: kept, removed } = dropGoneCards(latest.current, (card) => {
         const sub = subagentOfCard(card.key);
-        return sub === undefined || ids.has(sub);
+        const step = agentStepOfCard(card.key);
+        return (sub === undefined || agents.has(sub)) && (step === undefined || steps.has(step));
       });
       if (removed === undefined) return;
       setStack(kept);
@@ -371,7 +394,7 @@ function useAgentCards(
       stop();
     };
   }, [host, hubId, id, announce]);
-  return { stack, set, openSubagent, close };
+  return { stack, set, openSubagent, openAgentStep, close };
 }
 
 /**

@@ -67,6 +67,7 @@ verifies("agents.configuration.tools", () => {
       "Harness",
       "Tools",
       "Subagents",
+      "Agent steps",
     ]);
     expect([...page.querySelectorAll("section h3")].map((h) => h.textContent)).toEqual([
       "Skills",

@@ -8,6 +8,7 @@ export const configurationWords = {
     harness: "Harness",
     tools: "Tools",
     subagents: "Subagents",
+    agentSteps: "Agent steps",
   },
   description: "Description",
   instructions: "Instructions",
@@ -144,6 +145,22 @@ export const configurationWords = {
   subagentCreated: (agent: string) => `${agent} created and added.`,
   subagentRemoved: (agent: string) => `${agent} removed.`,
   teamLoadFailedTitle: "Couldn't load the hub's agents",
+  /** The Agent steps page (flow-agents 5.2, microcopy 8.5). */
+  noAgentStepsTitle: "No agent steps yet",
+  noAgentStepsText:
+    "An agent step is a named piece of work inside this agent, with its own instructions, model and turn limit.",
+  newAgentStep: "New agent step",
+  agentStepName: "Name",
+  agentStepNameMissing: "Give it a name.",
+  create: "Create",
+  creating: "Creating…",
+  agentStepInstructions: "What should it do?",
+  /** Team decision (HAL-13179): the file can't hold an agent step without instructions. */
+  agentStepInstructionsMissing: "Write what it should do.",
+  agentStepCreateFailed: (reason: string) => `Couldn't create the agent step: ${reason}.`,
+  /** The agent step card (flow-agents 7). */
+  agentStepModelAgent: "The agent's model",
+  agentStepLimitAgent: (limit: number) => `The agent's, ${limit}`,
   /** The toast when a change of the subagents wasn't saved for another reason than a loop. */
   subagentsNotSaved: (agent: string) => `Couldn't save ${agent}'s subagents`,
   loading: (name: string) => `Loading ${name}'s settings`,

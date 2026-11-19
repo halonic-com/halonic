@@ -13,10 +13,12 @@ import type {
   AgentChange,
   AgentListing,
   AgentSettings,
+  AgentStep,
   AgentsHost,
   AgentToolList,
 } from "../api.ts";
 import type { Load } from "../page/use-load.ts";
+import { AgentStepsPage } from "./agent-steps-page.tsx";
 import { BehaviourPage } from "./behaviour-page.tsx";
 import { configurationWords as words } from "./configuration-words.ts";
 import { HarnessPage } from "./harness-page.tsx";
@@ -47,6 +49,8 @@ export interface ConfigurationProps {
   readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
   /** Opens a subagent as a card on top of the panel; absent where there are no cards. */
   readonly openSubagent?: ((agent: AgentListing) => void) | undefined;
+  /** Opens an agent step as a card on top of the panel; absent where there are no cards. */
+  readonly openAgentStep?: ((step: AgentStep) => void) | undefined;
   /**
    * In a narrow panel, such as a subagent's card, the page list is a Select at the top instead of
    * a list at the side (flow-agents 5.1).
@@ -56,11 +60,11 @@ export interface ConfigurationProps {
   readonly announce?: ((text: string) => void) | undefined;
 }
 
-type PageId = "behaviour" | "model" | "harness" | "tools" | "subagents";
+type PageId = "behaviour" | "model" | "harness" | "tools" | "subagents" | "agentSteps";
 
 /** The pages that are built, in the order of flow-agents 5.1. */
 const pages: readonly Tab<PageId>[] = (
-  ["behaviour", "model", "harness", "tools", "subagents"] as const
+  ["behaviour", "model", "harness", "tools", "subagents", "agentSteps"] as const
 ).map((id) => ({ id, label: words.pageNames[id] }));
 
 /**
@@ -82,6 +86,7 @@ export function Configuration({
   openLibrary,
   reportNotSaved,
   openSubagent,
+  openAgentStep,
   narrow = false,
   announce,
 }: ConfigurationProps) {
@@ -152,6 +157,9 @@ export function Configuration({
                 openSubagent={openSubagent}
                 announce={announce}
               />
+            )}
+            {page === "agentSteps" && (
+              <AgentStepsPage host={host} settings={load.value} openAgentStep={openAgentStep} />
             )}
           </div>
         ) : (
