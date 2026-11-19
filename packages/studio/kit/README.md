@@ -1328,6 +1328,20 @@ weight 500, no padding, underlined on hover, with a 48px hit area on touch. The 
 one group, so at 200% text the action goes under the text, starting where the text starts. The
 line keeps its frame.
 
+## NoteLines
+
+`NoteLines` shows calm facts at the end of a section, such as a provider's notes after a run's
+steps: one line per note, a 16px info mark and the sentence in `text-small` `fg-muted`, 4px apart,
+inset 16px so the mark lines up with a List's row icons. There's no box, fill or status colour, so
+it reads as a fact, not a warning; use a `Callout` when the user should act. It has no action, isn't
+dismissible and isn't live. A note is plain text, never shortened, and wraps under itself. Escape a
+note from outside Halonic with `escapeHidden` from `@halonicjs/std` first, as the run view does.
+With no notes it renders nothing and leaves no gap.
+
+```tsx
+<NoteLines label="Notes on this run" notes={providerNotes(log)} />;
+```
+
 ## LongText and TextSheet
 
 A long text field: Description, Instructions, an agent step's text. Put it in a `Field` like any
