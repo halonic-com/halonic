@@ -3,6 +3,7 @@
 - Task: HAL-13648
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13648 (Sofia's team decision on the approved Library screen, HAL-2282 rule, no new words; Liam approves this note in review on the task)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:I5Rwd6yf6bez4pcCedIZdggvMTJz0v+Sf7vEFaCaRTOPL0qWye131QhG+k29DYpsQ9E1NFIJ5fq4QIwi4fAOAQ==
 
 ## What changes
 
