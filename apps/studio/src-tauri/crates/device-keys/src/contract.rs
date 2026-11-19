@@ -1,6 +1,7 @@
 //! The behaviour every [`DeviceKeyStore`] and every [`KeyWrapper`] must
 //! show (requirement `device-keys`). CI runs both against the
-//! [`crate::FakeWrapper`]; the Android adapter runs them on a phone.
+//! [`crate::FakeWrapper`], and a debug build of the app runs them against
+//! the Android Keystore in an emulator (`device_key_check` in the shell).
 
 use crate::computer::ComputerId;
 use crate::error::DeviceKeyError;

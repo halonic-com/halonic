@@ -2408,6 +2408,47 @@ jobs:
             apps/studio/src-tauri/target
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
 
+  android-device-keys:
+    # The device key contract on the real Android Keystore (HAL-13784): the
+    # debug APK the android job just built runs check_wrapper_contract and
+    # check_store_contract in an emulator, through its debug-only
+    # device_key_check, and the job fails on any case that fails. Rust's
+    # own tests run the same contract with FakeWrapper only. Modelled on
+    # android-screens.yml; apps/studio/src-tauri/android/README.md has the
+    # details.
+    name: Android device keys (emulator)
+    needs: [changes, android]
+    if: needs.changes.outputs.android == 'true' && needs.changes.outputs.full == 'true'
+    # GitHub's Ubuntu runners have /dev/kvm, which the emulator needs.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: apps/studio/src-tauri/android
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: android-debug-apk
+          path: ${{ runner.temp }}/apk
+      - name: Let the emulator use KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' |
+            sudo tee /etc/udev/rules.d/99-kvm-for-all.rules >/dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # The runner's SDK brings the platform tools and the command-line tools,
+      # but no system image.
+      - name: Install the emulator and the Android 15 image
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$sdkmanager" --licenses >/dev/null || true
+          "$sdkmanager" --install emulator platform-tools "system-images;android-35;google_apis;x86_64" >/dev/null
+      - name: Run the device key contract on the Keystore
+        run: apps/studio/src-tauri/android/check-device-keys.sh "$RUNNER_TEMP/apk/app-universal-debug.apk"
+
   e2e:
     # What jsdom can't show, in real Chromium and WebKit (Tauri's engine on
     # macOS and Linux): the shell's pages in
@@ -2727,6 +2768,7 @@ jobs:
         installer-windows,
         update-windows,
         android,
+        android-device-keys,
         e2e,
         docs,
         live-cloud,

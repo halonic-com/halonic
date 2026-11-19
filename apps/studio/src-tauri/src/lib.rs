@@ -30,6 +30,9 @@ mod agent_host;
 mod blobs;
 mod command_paths;
 mod connect;
+// Debug builds only: the Keystore contract check (HAL-13784).
+#[cfg(all(target_os = "android", debug_assertions))]
+mod device_key_check;
 #[cfg(target_os = "android")]
 mod device_keys;
 mod engine_lock;

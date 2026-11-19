@@ -13,6 +13,9 @@
 //! The pair crosses to Kotlin and back as base64url JSON text. The shell
 //! wipes the copies it owns; the JSON and the JVM's strings it can't, and
 //! they stay in the app's own memory until they are reused.
+//!
+//! A debug build can also run the store and wrapper contracts against the
+//! real Keystore (`device_key_check`, HAL-13784).
 
 use halonic_blob_store::base64url;
 use halonic_device_keys::{DeviceKeyError, KeyWrapper, WrappedFileStore};
@@ -100,8 +103,13 @@ pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
     tauri::plugin::Builder::new("device-keys")
         .setup(|app, api| {
             let handle = api.register_android_plugin("com.halonic.studio", "DeviceKeyPlugin")?;
-            let folder = app.path().app_data_dir()?.join(FOLDER);
-            app.manage::<DeviceKeys<R>>(WrappedFileStore::new(folder, AndroidKeystore(handle)));
+            let data = app.path().app_data_dir()?;
+            #[cfg(debug_assertions)]
+            let check_wrapper = AndroidKeystore(handle.clone());
+            let store = WrappedFileStore::new(data.join(FOLDER), AndroidKeystore(handle));
+            app.manage::<DeviceKeys<R>>(store);
+            #[cfg(debug_assertions)]
+            crate::device_key_check::start_if_asked(app, &data, check_wrapper);
             Ok(())
         })
         .build()
