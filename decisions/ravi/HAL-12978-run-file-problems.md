@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews this on HAL-12978
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Cx78UtwEZvj/277BSFI66DGxFVPldpDBTu1+Gt+Jxm6/kEa32Zn4DxreXEUP8JkXcs6MYMzvWct2Y5oy18v8Bg==
 
 `halonic run` said a workflow didn't exist when its own file had an error, because it looked the workflow up
 before the file-problem check, and `halonic test` failed every test instead. Both now refuse right after
