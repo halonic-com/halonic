@@ -47,13 +47,13 @@ pub(crate) struct PickedFolder {
 }
 
 /// A folder's identity (`halonic-file-identity`): its device and inode on
-/// Unix, its volume serial number and file index on Windows. The shell
-/// writes one for every entry; a Windows entry from before it read them
-/// there has none until it is reopened.
+/// Unix, its volume serial number and file ID on Windows (128 bits, for
+/// ReFS). The shell writes one for every entry; a Windows entry from before
+/// it read them there has none until it is reopened.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct FolderIdentity {
     pub device: u64,
-    pub inode: u64,
+    pub inode: u128,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -212,4 +212,38 @@ fn temporary_for(file: &Path) -> PathBuf {
     let mut name = file.file_name().unwrap_or_default().to_owned();
     name.push(format!(".{}-{count}-{nanos}.tmp", std::process::id()));
     file.with_file_name(name)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A ReFS file ID uses the upper 64 bits, and no CI runner has a ReFS
+    /// volume, so this entry is made by hand (HAL-12329). Requirement
+    /// `trust-grants`.
+    #[test]
+    fn trust_grants_keep_a_file_id_wider_than_64_bits() {
+        let folder =
+            std::env::temp_dir().join(format!("picked-folders-wide-id-{}", std::process::id()));
+        // A crashed earlier run may have left it; it is ours to clear.
+        let _ = fs::remove_dir_all(&folder);
+        let list = PickedFolders::new(folder.join("picked-folders.json"));
+        let identity = FolderIdentity {
+            device: 0x0123_4567_89ab_cdef,
+            inode: 1 << 100 | 7,
+        };
+        list.remember(PickedFolder {
+            location: "/work/acme".to_owned(),
+            identity: Some(identity),
+        })
+        .expect("the list can be written");
+
+        let found = list.find("/work/acme").expect("the entry is read back");
+        let text = fs::read_to_string(folder.join("picked-folders.json"));
+        let _ = fs::remove_dir_all(&folder);
+        assert_eq!(found.identity, Some(identity));
+        // Written as the whole number, not rounded through a float.
+        let text = text.expect("the list was written");
+        assert!(text.contains(&identity.inode.to_string()), "{text}");
+    }
 }
