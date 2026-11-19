@@ -149,8 +149,8 @@ function clientStep(projectId: string | undefined): UnnumberedStep {
       { id: "create-client", url: consoleUrl("create-client", projectId) },
     ],
     copyValues: [copyValue("client-name", clientName)],
-    // The user goes straight on to step 6 with Google's dialog open, and a
-    // valid client ID there finishes this step.
+    // Google shows the secret only once, so the user goes straight on to step 6
+    // and a valid client ID there finishes this step.
     doneWhen: "client-id-saved",
   };
 }
@@ -158,8 +158,7 @@ function clientStep(projectId: string | undefined): UnnumberedStep {
 function credentialsStep(projectId: string | undefined): UnnumberedStep {
   return {
     ...stepBase("credentials"),
-    // The client's page, where the secret can be copied again when the user
-    // closed Google's window too soon (3.6).
+    // For "Add secret" when the user closed Google's window too soon (3.6).
     links: [{ id: "clients", url: consoleUrl("clients", projectId) }],
     doneWhen: "client-id-and-secret-saved",
   };
