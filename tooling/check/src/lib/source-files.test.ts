@@ -136,39 +136,6 @@ describe("readSourceFacts: functions", () => {
   });
 });
 
-describe("readSourceFacts: built-in members", () => {
-  /** The `builtInMembers` the parser finds in a TypeScript file. */
-  function members(text: string): string[] {
-    return readSourceFacts("a.ts", text).builtInMembers.map((member) => member.name);
-  }
-
-  it.each([
-    ["a call", "URL.parse(x);"],
-    ["a read without a call", "const parse = URL.parse;"],
-    ["a quoted name", 'URL["parse"](x);'],
-    ["the class on a global object", "globalThis.URL.parse(x);"],
-    ["the class in parentheses", "(URL as typeof URL).parse(x);"],
-  ])("finds URL.parse in %s", (_name, text) => {
-    expect(members(text)).toEqual(["URL.parse"]);
-  });
-
-  it("reports the line", () => {
-    expect(readSourceFacts("a.ts", "const a = 1;\nURL.canParse(a);\n").builtInMembers).toEqual([
-      { name: "URL.canParse", line: 2 },
-    ]);
-  });
-
-  it.each([
-    "new URL(x).href;",
-    "url.parse(x);",
-    "JSON.parse(x);",
-    "other.URL.parse(x);",
-    "const o = { URL: 1 }; o.URL;",
-  ])("leaves %s alone", (text) => {
-    expect(members(text)).toEqual([]);
-  });
-});
-
 describe("splitBareSpecifier", () => {
   it("splits a package name from its subpath", () => {
     expect(splitBareSpecifier("@halonicjs/std")).toEqual({ name: "@halonicjs/std", subpath: "." });

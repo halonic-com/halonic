@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { studioApp } from "../rules/webview-apis.ts";
+import { findBuiltInMembers, studioApp } from "../rules/webview-apis.ts";
 import { type FixturePackage, manifestFor, runChecks } from "./fixture-repo.ts";
 
 const usesUrlParse = "export const origin = (a: string) => URL.parse(a)?.origin;\n";
@@ -120,5 +120,38 @@ describe("tooling/check: webview-apis", () => {
       "packages/adapters/optional-used/src/origin.ts",
       "packages/adapters/peer-used/src/origin.ts",
     ]);
+  });
+});
+
+describe("findBuiltInMembers", () => {
+  /** The member names found in a TypeScript file. */
+  function members(text: string): string[] {
+    return findBuiltInMembers("a.ts", text).map((member) => member.name);
+  }
+
+  it.each([
+    ["a call", "URL.parse(x);"],
+    ["a read without a call", "const parse = URL.parse;"],
+    ["a quoted name", 'URL["parse"](x);'],
+    ["the class on a global object", "globalThis.URL.parse(x);"],
+    ["the class in parentheses", "(URL as typeof URL).parse(x);"],
+  ])("finds URL.parse in %s", (_name, text) => {
+    expect(members(text)).toEqual(["URL.parse"]);
+  });
+
+  it("reports the line", () => {
+    expect(findBuiltInMembers("a.ts", "const a = 1;\nURL.canParse(a);\n")).toEqual([
+      { name: "URL.canParse", line: 2 },
+    ]);
+  });
+
+  it.each([
+    "new URL(x).href;",
+    "url.parse(x);",
+    "JSON.parse(x);",
+    "other.URL.parse(x);",
+    "const o = { URL: 1 }; o.URL;",
+  ])("leaves %s alone", (text) => {
+    expect(members(text)).toEqual([]);
   });
 });
