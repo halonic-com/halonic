@@ -162,6 +162,8 @@ export {
   ollamaDownloadedModelSource,
   ollamaDownloadedModels,
 } from "./local-models.ts";
+// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
+export * from "./model-choice-exports.ts";
 export { defaultCurrency, type MoneyAmountOptions, moneyAmount } from "./money-amount.ts";
 export { lastMonths, type MonthSpend, monthOf, monthStartOf, spendByMonth } from "./month-spend.ts";
 export {
