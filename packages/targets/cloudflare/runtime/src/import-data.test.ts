@@ -6,7 +6,7 @@ import { answerAdmin } from "./admin.ts";
 import type { ImportDeps } from "./admin-routes.ts";
 import { adminRoutesOf } from "./admin-routes.ts";
 import type { RuntimeEnv } from "./env.ts";
-import { recordFileName, sha256Hex } from "./export-data.ts";
+import { buildManifest, type ExportSource, recordFileName, sha256Hex } from "./export-data.ts";
 
 const host = "halonic.example.com";
 const key = ["one", "job", "admin", "key", "for", "import", "tests"].join("-");
@@ -129,6 +129,45 @@ async function entries(collection = "leads"): Promise<Entry[]> {
   ];
 }
 
+/**
+ * The run and record logs of the example export of `@halonicjs/format`, byte for byte: the live
+ * round trip imports that example twice and exports it (HAL-13864). This file is checked against
+ * workerd's types, so it can't read the fixture folder.
+ */
+const exampleLogs = {
+  run: [
+    '{"runId":"r-invoice","seq":1,"at":"2026-11-05T07:00:00.000Z","type":"run.started","hubId":"acme","workflowId":"pay-invoice","input":{"invoice":"INV-7"},"kind":"run","definitionsVersion":"v1"}',
+    '{"runId":"r-invoice","seq":2,"at":"2026-11-05T07:00:01.000Z","type":"state.entered","state":"pay"}',
+    '{"runId":"r-invoice","seq":3,"at":"2026-11-05T07:00:05.000Z","type":"run.waiting","state":"pay","events":["approve","reject"]}',
+  ],
+  records: [
+    '{"at":"2026-11-05T07:00:04.000Z","collection":"leads","id":"lead-1","op":"add","values":{"company":"Example Ltd","stage":"new"},"by":{"runId":"r-invoice","agent":"payer"}}',
+  ],
+};
+
+async function exampleEntries(): Promise<Entry[]> {
+  const blobHash = await sha256Hex(blobBytes);
+  return [
+    { path: "runs/r-invoice.jsonl", bytes: encoder.encode(`${exampleLogs.run.join("\n")}\n`) },
+    {
+      path: await recordFileName("leads"),
+      bytes: encoder.encode(`${exampleLogs.records.join("\n")}\n`),
+    },
+    { path: `blobs/${blobHash.slice(0, 2)}/${blobHash}`, bytes: blobBytes },
+  ];
+}
+
+/** What an export reads, over the same maps the import wrote. */
+function exportSourceOf(stores: ReturnType<typeof memoryDeps>): ExportSource {
+  const { deps, records, runs, blobs } = stores;
+  return {
+    records: { changes: deps.target.records.changes, collections: async () => [...records.keys()] },
+    runs: { list: async () => [...runs.keys()].map((id) => ({ id })) },
+    runStore: { events: deps.target.runStore.events },
+    blobs: { get: deps.target.blobs.get, hashes: async () => [...blobs.keys()] },
+  };
+}
+
 async function stageAll(files: Entry[], deps: ImportDeps): Promise<void> {
   for (const { path, bytes } of files) {
     const answer = await send("PUT", `/admin/import/files/${path}`, bytes, deps);
@@ -204,6 +243,18 @@ verifies("runtime.import-data", () => {
       expect(again.status).toBe(200);
       expect(runs.get("r-invoice")).toHaveLength(1);
       expect(records.get("leads")).toHaveLength(1);
+    });
+
+    // HAL-13864: the live round trip imports the format's example twice, then exports.
+    it("gives the format's example back byte for byte after it is imported twice", async () => {
+      const stores = memoryDeps();
+      const files = await exampleEntries();
+      for (const _time of [1, 2]) {
+        await stageAll(files, stores.deps);
+        expect((await apply(files, stores.deps)).status).toBe(200);
+      }
+      const exported = await buildManifest(exportSourceOf(stores), "main", new Date());
+      expect(exported.files).toEqual((await manifestOf(files)).files);
     });
 
     it("answers 409 files_missing and applies nothing when a listed file isn't staged", async () => {

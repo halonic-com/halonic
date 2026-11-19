@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readdir, readFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import {
   RUNTIME_EXPORT_MANIFEST,
@@ -171,6 +171,21 @@ export interface RoundTripOptions extends Pick<WorkerTransferOptions, "baseUrl" 
   readonly source: string;
   /** An empty folder the Worker's export is written to. */
   readonly work: string;
+  /** How long to wait for every imported file to be listed in the export. */
+  readonly listed?: ListedWait;
+}
+
+/**
+ * How the round trip waits for the export to list every imported file: the export finds runs
+ * through the run list, which each run fills a moment after the import.
+ */
+export interface ListedWait {
+  /** How many exports to take at most. Defaults to 6. */
+  readonly attempts?: number;
+  /** Milliseconds between exports. Defaults to 5000. */
+  readonly delayMs?: number;
+  /** Tests inject this; defaults to a timer. */
+  readonly sleep?: (ms: number) => Promise<void>;
 }
 
 /** What a round trip carried. */
@@ -252,15 +267,54 @@ async function filesUnder(folder: string, prefix = ""): Promise<string[]> {
   return found.sort();
 }
 
+type Transfer = Pick<WorkerTransferOptions, "baseUrl" | "key" | "fetch">;
+
+/**
+ * Exports what the Worker holds into `work` until its manifest lists every path of `source`, and
+ * returns each listed path's SHA-256. Only a missing path is waited for: the Worker's export finds
+ * runs through the D1 run list, which each run object fills from its outbox a moment after the
+ * import (HAL-13864). Any other failure is thrown at once.
+ *
+ * @throws Error naming the paths the export still doesn't list after the last try
+ */
+async function exportListing(
+  transfer: Transfer,
+  source: RuntimeExportManifest,
+  work: string,
+  wait: ListedWait,
+): Promise<Map<string, string>> {
+  const {
+    attempts = 6,
+    delayMs = 5_000,
+    sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
+  } = wait;
+  for (let attempt = 1; ; attempt++) {
+    // The export writes only into an empty folder.
+    await rm(work, { recursive: true, force: true });
+    await mkdir(work, { recursive: true });
+    await exportFromWorker({ ...transfer, folder: work });
+    const back = new Map((await readManifest(work)).files.map((f) => [f.path, f.sha256]));
+    const missing = source.files.filter((file) => !back.has(file.path)).map((file) => file.path);
+    if (missing.length === 0) return back;
+    if (attempt >= attempts) {
+      throw new Error(
+        `After ${attempts} tries the export still doesn't list these files that were put in: ${missing.join(", ")}.`,
+      );
+    }
+    await sleep(delayMs);
+  }
+}
+
 /**
  * Puts the `source` export into the Worker (twice, since sending an import again is safe), exports
  * what the Worker now holds into `work`, and checks that every source file came back byte for byte
- * and that the result reads as a Node import would read it.
+ * and that the result reads as a Node import would read it. The export is taken again while a file
+ * isn't listed yet, never when one came back different.
  *
  * @throws Error naming the path that differs, never a key or file content
  */
 export async function roundTrip(options: RoundTripOptions): Promise<RoundTripResult> {
-  const transfer = {
+  const transfer: Transfer = {
     baseUrl: options.baseUrl,
     key: options.key,
     ...(options.fetch ? { fetch: options.fetch } : {}),
@@ -268,8 +322,7 @@ export async function roundTrip(options: RoundTripOptions): Promise<RoundTripRes
   const source = await readManifest(options.source);
   await importToWorker({ ...transfer, folder: options.source });
   await importToWorker({ ...transfer, folder: options.source });
-  await exportFromWorker({ ...transfer, folder: options.work });
-  const back = new Map((await readManifest(options.work)).files.map((f) => [f.path, f.sha256]));
+  const back = await exportListing(transfer, source, options.work, options.listed ?? {});
   const differing = source.files
     .filter((file) => back.get(file.path) !== file.sha256)
     .map((file) => file.path);

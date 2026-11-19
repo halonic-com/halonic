@@ -32,19 +32,28 @@ interface Behavior {
   readonly corrupt?: boolean;
   /** Answers /health with this. */
   readonly health?: number;
+  /** Leaves the run logs out of this many export manifests after an import, as the lagging run list does. */
+  readonly runListLag?: number;
 }
 
-type Held = { path: string; bytes: Uint8Array }[];
+/** What the fake Worker holds since the last import, and how many export manifests it has given since. */
+interface Held {
+  files: { path: string; bytes: Uint8Array }[];
+  exportsSinceImport: number;
+}
 
 /** The two export routes over what the Worker holds. */
 function exportAnswer(behavior: Behavior, held: Held, pathname: string): Response {
-  const files = [...held].sort((a, b) => (a.path < b.path ? -1 : 1));
+  const files = [...held.files].sort((a, b) => (a.path < b.path ? -1 : 1));
   if (pathname === "/admin/export") {
+    held.exportsSinceImport += 1;
+    const listsRuns = held.exportsSinceImport > (behavior.runListLag ?? 0);
+    const listed = listsRuns ? files : files.filter((f) => !f.path.startsWith("runs/"));
     return Response.json({
       formatVersion: 1,
       deployment: "hlt-1-1",
       exportedAt: "2026-11-15T10:00:00.000Z",
-      files: files.map((f) => ({ path: f.path, bytes: f.bytes.byteLength, sha256: sha(f.bytes) })),
+      files: listed.map((f) => ({ path: f.path, bytes: f.bytes.byteLength, sha256: sha(f.bytes) })),
     });
   }
   const wanted = files.find((f) => `/admin/export/files/${f.path}` === pathname);
@@ -71,9 +80,10 @@ function keyGiven(behavior: Behavior, url: URL, headers: Headers): boolean {
 function fakeWorker(behavior: Behavior = {}): {
   target: WorkerTarget;
   staged: Map<string, Uint8Array>;
+  exports: () => number;
 } {
   const staged = new Map<string, Uint8Array>();
-  let held: Held = [];
+  const held: Held = { files: [], exportsSinceImport: 0 };
   const send: typeof fetch = async (input, init) => {
     const url = new URL(String(input));
     const headers = new Headers(init?.headers);
@@ -92,12 +102,13 @@ function fakeWorker(behavior: Behavior = {}): {
       return new Response(null, { status: 204 });
     }
     if (method === "POST") {
-      held = [...staged].map(([path, bytes]) => ({ path, bytes }));
+      held.files = [...staged].map(([path, bytes]) => ({ path, bytes }));
+      held.exportsSinceImport = 0;
       return Response.json({ imported: { runs: 1, records: 1, blobs: 1 } });
     }
     return exportAnswer(behavior, held, url.pathname);
   };
-  return { target: { baseUrl: base, fetch: send }, staged };
+  return { target: { baseUrl: base, fetch: send }, staged, exports: () => held.exportsSinceImport };
 }
 
 verifies("cloudflare-live.transfer", () => {
@@ -262,6 +273,45 @@ verifies("cloudflare-live.transfer", () => {
         ...(target.fetch ? { fetch: target.fetch } : {}),
       }).catch((e: Error) => e);
       expect((error as Error).message).toMatch(/records\//);
+    });
+    // HAL-13864: the run list fills from each run's outbox a moment after the import.
+    it("exports again while an imported run log isn't listed yet", async () => {
+      const { target, exports } = fakeWorker({ runListLag: 2 });
+      const result = await roundTrip({
+        baseUrl: base,
+        key,
+        source: example,
+        work: await fresh(),
+        listed: { attempts: 3, sleep: async () => {} },
+        ...(target.fetch ? { fetch: target.fetch } : {}),
+      });
+      expect(result).toEqual({ files: 3, runs: 1, records: 1, blobs: 1 });
+      expect(exports()).toBe(3);
+    });
+    it("names the file the export still doesn't list after the given tries", async () => {
+      const { target, exports } = fakeWorker({ runListLag: 5 });
+      const error = await roundTrip({
+        baseUrl: base,
+        key,
+        source: example,
+        work: await fresh(),
+        listed: { attempts: 3, sleep: async () => {} },
+        ...(target.fetch ? { fetch: target.fetch } : {}),
+      }).catch((e: Error) => e);
+      expect((error as Error).message).toMatch(/doesn't list.*runs\/r-invoice\.jsonl/);
+      expect(exports()).toBe(3);
+    });
+    it("fails at once, with no new export, when a listed file came back different", async () => {
+      const { target, exports } = fakeWorker({ corrupt: true });
+      await roundTrip({
+        baseUrl: base,
+        key,
+        source: example,
+        work: await fresh(),
+        listed: { attempts: 3, sleep: async () => {} },
+        ...(target.fetch ? { fetch: target.fetch } : {}),
+      }).catch(() => undefined);
+      expect(exports()).toBe(1);
     });
   });
 
