@@ -111,9 +111,10 @@ export interface ConfirmingDialogProps extends DialogCommonProps {
   /**
    * One short line right above the buttons, outside the body's scroll area, in small muted text:
    * the trust check's last line. It's part of the decision, so it stays in sight while the body
-   * scrolls, and it describes the Dialog with the body. Plain text, not a Callout.
+   * scrolls, and it describes the Dialog with the body. Not a Callout: inline text only, such as
+   * the trust check's amber line with its reason and docs link, because it sits in a `<p>`.
    */
-  readonly footnote?: string;
+  readonly footnote?: ReactNode;
   readonly initialFocus?: undefined;
 }
 
