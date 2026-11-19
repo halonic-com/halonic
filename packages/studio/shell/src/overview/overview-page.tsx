@@ -106,7 +106,9 @@ type UsedByPlace = "right" | "line";
 
 /**
  * The line under an item's name: its detail, and on a phone its used-by text after a " · ", so the
- * kit doesn't move that text to the line's start as it does a chip.
+ * kit doesn't move that text to the line's start as it does a chip. When the line is too long, the
+ * detail is cut and the used-by text stays whole, as the kit's stacked rows keep their time
+ * (HAL-13066).
  */
 function metaOf(item: OverviewItem, usedByPlace: UsedByPlace): ReactNode {
   if (usedByPlace === "right" || item.usedBy === undefined) {
@@ -116,9 +118,12 @@ function metaOf(item: OverviewItem, usedByPlace: UsedByPlace): ReactNode {
     return item.usedBy;
   }
   return (
-    <>
-      {item.detail} · {item.usedBy}
-    </>
+    <span className="flex min-w-0">
+      <span className="min-w-0 truncate">{item.detail}</span>
+      {/* `whitespace-pre` keeps the spaces round the dot: a flex item would drop them. */}
+      <span className="shrink-0 whitespace-pre"> · </span>
+      <span className="shrink-0 whitespace-nowrap">{item.usedBy}</span>
+    </span>
   );
 }
 
