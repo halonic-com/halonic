@@ -45,6 +45,7 @@ export {
   type ToolRisk,
   type TrustGrant,
 } from "./connector-client.ts";
+export { ConnectorToolError, isConnectorToolError } from "./connector-tool-error.ts";
 export {
   type Coordination,
   type CounterResult,

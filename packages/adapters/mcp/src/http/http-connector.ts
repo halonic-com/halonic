@@ -1,14 +1,15 @@
-import type {
-  ConnectorClient,
-  ConnectorConfig,
-  ConnectorFactory,
-  ConnectorFactoryContext,
-  ConnectorTool,
+import {
+  type ConnectorClient,
+  type ConnectorConfig,
+  type ConnectorFactory,
+  type ConnectorFactoryContext,
+  type ConnectorTool,
+  ConnectorToolError,
 } from "@halonicjs/ports";
 import { McpError } from "../protocol/errors.ts";
 import { type ClientInfo, McpSession } from "../protocol/session.ts";
 import { SecretNotSetError } from "../stdio/start-errors.ts";
-import { ConnectorToolError, resultText, toConnectorTool } from "../stdio/tool-mapping.ts";
+import { resultText, toConnectorTool } from "../stdio/tool-mapping.ts";
 import { defaultHttpLimits, type HttpLimits, McpHttpTransport } from "./http-transport.ts";
 
 /** What an HTTP connector factory needs besides each connector's config. */
