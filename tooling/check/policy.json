@@ -57,7 +57,8 @@
     "@halonicjs/app": [
       "./listed-tools",
       "./outside-run",
-      "./routines"
+      "./routines",
+      "./run-failure"
     ],
     "@halonicjs/engine": [
       "./testing"

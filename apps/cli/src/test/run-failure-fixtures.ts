@@ -1,8 +1,13 @@
+import type {
+  FailedModel,
+  RunFailedEvent,
+  RunFailure,
+  WorkspaceModels,
+} from "@halonicjs/app/run-failure";
 import type { RunEvent, RunEventBody, RunFailureReason } from "@halonicjs/events";
 import type { ModelAlias, Provider } from "@halonicjs/format";
 import { plainText } from "../messages/phrase.ts";
-import { type RunFailure, runFailedLines } from "../messages/run-failures.ts";
-import type { FailedModel, RunFailedEvent, WorkspaceModels } from "../run-failure-of.ts";
+import { runFailedLines } from "../messages/run-failures.ts";
 
 export const ollama: Provider = {
   version: 1,
@@ -38,6 +43,7 @@ export const openaiModel = {
   model: "gpt-4o",
   providerId: "openai",
   provider: openai,
+  address: undefined,
 };
 
 export const workspace: WorkspaceModels = {
@@ -47,6 +53,10 @@ export const workspace: WorkspaceModels = {
     ["smart", alias("openai", "gpt-4o", ["local"])],
   ]),
   providers: new Map([ollama, lmStudio, openai].map((provider) => [provider.id, provider])),
+  addresses: new Map([
+    ["ollama", "localhost:11434"],
+    ["lmstudio", "localhost:1234"],
+  ]),
 };
 
 /** The model the run called last: `local` at Ollama unless the test says otherwise. */
@@ -58,6 +68,7 @@ export function calledModel(change: Partial<FailedModel> = {}): FailedModel {
     model: "llama3.2",
     providerId: "ollama",
     provider: ollama,
+    address: "localhost:11434",
     keyMissing: false,
     ...change,
   };

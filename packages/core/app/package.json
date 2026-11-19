@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./listed-tools": "./src/listed-tools.ts",
     "./outside-run": "./src/outside-run-gate.ts",
-    "./routines": "./src/routines.ts"
+    "./routines": "./src/routines.ts",
+    "./run-failure": "./src/run-failure.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

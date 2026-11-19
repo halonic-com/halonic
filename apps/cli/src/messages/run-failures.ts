@@ -1,9 +1,11 @@
 import { secretVariableName } from "@halonicjs/adapter-env-secrets";
 import { type MoneyAmountOptions, moneyAmount } from "@halonicjs/app";
+import type { BusyRetries, RunFailure } from "@halonicjs/app/run-failure";
 import type { ModelSkipReason } from "@halonicjs/events";
 import { counted, timesInWords } from "./counts.ts";
 import { defineMessages, type Message } from "./define.ts";
 import { errorMessages, issuesLink } from "./general.ts";
+import { harnessNames } from "./harness-names.ts";
 import { type Phrase, phrase } from "./phrase.ts";
 import { sandboxMessages } from "./sandbox.ts";
 import { suggestedCommand } from "./suggested-command.ts";
@@ -20,160 +22,6 @@ export interface FailedRun {
   /** `--debug` was given: the general lines' fix doesn't ask for it again (HAL-6613). */
   readonly debugging?: boolean;
 }
-
-/** What both key errors name: the provider, the secret that holds its key, and the alias that uses it. */
-interface KeyFacts {
-  readonly provider: string;
-  /** The secret's name in the provider file, such as `openai-key`. */
-  readonly secret: string;
-  readonly alias: string;
-}
-
-/** How often Halonic asked a busy provider again, and for how long. */
-export interface BusyRetries {
-  readonly tries: number;
-  /** How long it kept trying, as the output writes it, such as "2 minutes". */
-  readonly over: string;
-}
-
-/**
- * Why a run failed, by microcopy 15.3's reasons, with the names each
- * reason's two lines need. Only the reasons whose terminal words are settled
- * are here. The engine's other reasons (`RunFailureReason`) are elsewhere or
- * still wait for words:
- *
- * - `disk-full` and `interrupted` are general lines, line 1 only (HAL-6451);
- *   `harness-unavailable` has no line in cli-output 3.4, so it is general too;
- * - `instructions-not-trusted` waits for words too: the CLI prints the engine's own text;
- * - a run the sandbox check refused before it started is `sandboxMessages`;
- *   one that started and then found the sandbox can't start is `sandbox-not-ready`,
- *   in the same words by its code;
- * - `cancelled` isn't a failure: Ctrl C or SIGTERM prints "Stopped." with
- *   `runMessages.cancelledAfter` (cli-output 1.5), and `runs show` says
- *   `runsMessages.showCancelled` for a run cancelled somewhere else.
- */
-export type RunFailure =
-  | ({ readonly reason: "key-refused" } & KeyFacts)
-  | ({ readonly reason: "no-key" } & KeyFacts)
-  | { readonly reason: "signed-out"; readonly service: string; readonly account: string }
-  | { readonly reason: "out-of-credit"; readonly provider: string }
-  | {
-      readonly reason: "provider-busy";
-      readonly provider: string;
-      /**
-       * How often Halonic asked and for how long, only once the engine retries
-       * a busy provider. Left out, the line names no tries (revision 39).
-       */
-      readonly retried?: BusyRetries;
-    }
-  | {
-      readonly reason: "model-unreachable";
-      readonly provider: string;
-      readonly address: string;
-      readonly alias: string;
-      /** A model on this computer, such as Ollama, rather than a cloud provider. */
-      readonly local: boolean;
-    }
-  | {
-      readonly reason: "model-missing";
-      readonly provider: string;
-      readonly model: string;
-      readonly alias: string;
-      /** Only Ollama has a command that downloads a model; another local server, such as LM Studio, downloads it in its own window. */
-      readonly server: "ollama" | "other";
-    }
-  | {
-      readonly reason: "model-timeout";
-      readonly provider: string;
-      /** Such as "5 minutes". */
-      readonly within: string;
-      /** Only for a model on this computer, which may still be loading. */
-      readonly localAddress?: string;
-    }
-  | {
-      readonly reason: "budget";
-      readonly per: "run";
-      readonly budget: number;
-      readonly spent: number;
-      /** The workspace's `budget.currency`, such as "EUR", which both amounts are in. */
-      readonly currency: string;
-    }
-  | {
-      readonly reason: "budget";
-      readonly per: "month";
-      readonly budget: number;
-      readonly currency: string;
-      /** When the monthly budget starts again, such as "1 Dec". */
-      readonly resetsOn: string;
-    }
-  | {
-      readonly reason: "turn-limit";
-      readonly agent: string;
-      readonly turns: number;
-      readonly agentFile: string;
-      /** The tool its last turns called without getting anything back, when the run log has them. */
-      readonly emptyCallsTo?: string;
-    }
-  | {
-      readonly reason: "tool-timeout";
-      readonly tool: string;
-      readonly connector: string;
-      /** Such as "60 seconds". */
-      readonly within: string;
-    }
-  | {
-      readonly reason: "local-only";
-      readonly workspace: string;
-      readonly provider: string;
-      readonly agent: string;
-      readonly alias: string;
-    }
-  | { readonly reason: "site-blocked"; readonly agent: string; readonly site: string }
-  | {
-      readonly reason: "sandbox-not-ready";
-      /** The `Sandbox` port's reason code from the run log, such as `bubblewrap-missing`. */
-      readonly code: string;
-    }
-  | {
-      readonly reason: "model-out-of-memory";
-      readonly provider: string;
-      /** The model that didn't fit, such as "llama3.1:70b". */
-      readonly model: string;
-      readonly alias: string;
-    }
-  | {
-      readonly reason: "sandbox-start-failed";
-      readonly agent: string;
-      /** The `Sandbox` port's reason code from the run log; left out when the log has none. */
-      readonly code?: string;
-    }
-  | {
-      readonly reason: "harness-start-failed";
-      readonly agent: string;
-      /** The program, such as "Claude Code". */
-      readonly harness: string;
-      /** Why it didn't start, when the run log says; without it, line 1 stays general. */
-      readonly cause?: "not-installed" | "signed-out";
-      /** How long the engine waited for its first event, such as "60 seconds". */
-      readonly within: string;
-    }
-  | {
-      readonly reason: "model-no-tools";
-      /** The model the alias points at, such as "llama3.2". */
-      readonly model: string;
-      readonly alias: string;
-    }
-  | {
-      readonly reason: "error";
-      readonly message?: string;
-      /**
-       * The engine knows the cause, such as a full disk, so a bug report
-       * wouldn't help: the run gets line 1 without the "report it" line 2
-       * (HAL-6451).
-       */
-      readonly causeKnown?: true;
-    }
-  | { readonly reason: "internal" };
 
 /** A reason's sentence, given the run and that reason's own facts. */
 type ByReason = {
@@ -226,8 +74,8 @@ const lineOne = {
     failedIn(
       run,
       failure.localAddress === undefined
-        ? phrase`${failure.provider} didn't start answering within ${failure.within}.`
-        : phrase`${failure.provider} didn't start answering at ${failure.localAddress} within ${failure.within}. It may still be loading the model.`,
+        ? phrase`${failure.provider} didn't start answering within ${minutesInWords(failure.withinMs)}.`
+        : phrase`${failure.provider} didn't start answering at ${failure.localAddress} within ${minutesInWords(failure.withinMs)}. It may still be loading the model.`,
     ),
   budget: (run, failure) =>
     phrase`${run.title} stopped in the step ${run.step}: ${
@@ -252,7 +100,7 @@ const lineOne = {
   "tool-timeout": (run, failure) =>
     failedIn(
       run,
-      phrase`the tool ${failure.tool} in the ${failure.connector} connector didn't answer within ${failure.within}.`,
+      phrase`the tool ${failure.tool} in the ${failure.connector} connector didn't answer within ${secondsInWords(failure.withinMs)}.`,
     ),
   "local-only": (run, failure) =>
     failedIn(
@@ -292,17 +140,17 @@ const lineOne = {
       case "not-installed":
         return failedIn(
           run,
-          phrase`${failure.agent} didn't start, because ${failure.harness} isn't installed on this computer.`,
+          phrase`${failure.agent} didn't start, because ${harnessName(failure.harness)} isn't installed on this computer.`,
         );
       case "signed-out":
         return failedIn(
           run,
-          phrase`${failure.agent} didn't start, because ${failure.harness} isn't signed in on this computer.`,
+          phrase`${failure.agent} didn't start, because ${harnessName(failure.harness)} isn't signed in on this computer.`,
         );
       default:
         return failedIn(
           run,
-          phrase`${failure.agent} didn't start, because ${failure.harness} didn't start on this computer or didn't answer within ${failure.within}.`,
+          phrase`${failure.agent} didn't start, because ${harnessName(failure.harness)} didn't start on this computer or didn't answer within ${secondsInWords(failure.withinMs)}.`,
         );
     }
   },
@@ -347,7 +195,7 @@ const lineTwo = {
   budget: (_run, failure) =>
     failure.per === "run"
       ? phrase`Raise budget.perRun in workspace.yaml.`
-      : phrase`Raise budget.monthly in workspace.yaml, or wait until it resets on ${failure.resetsOn}.`,
+      : phrase`Raise budget.monthly in workspace.yaml, or wait until it resets on ${dayAndMonth(failure.resetsOn)}.`,
   "turn-limit": (run, failure) =>
     phrase`See what ${failure.agent} did with ${suggestedCommand("runs show", run.dir, run.runId)}. Raise its turn limit in ${failure.agentFile} if it needs more turns.`,
   "tool-timeout": () => tryLater(),
@@ -366,11 +214,11 @@ const lineTwo = {
   "harness-start-failed": (_run, failure) => {
     switch (failure.cause) {
       case "not-installed":
-        return phrase`Install ${failure.harness}, then run it again.`;
+        return phrase`Install ${harnessName(failure.harness)}, then run it again.`;
       case "signed-out":
-        return phrase`Sign in to ${failure.harness} in a terminal, then run it again.`;
+        return phrase`Sign in to ${harnessName(failure.harness)} in a terminal, then run it again.`;
       default:
-        return phrase`Check that ${failure.harness} starts in a terminal and is signed in, then run it again.`;
+        return phrase`Check that ${harnessName(failure.harness)} starts in a terminal and is signed in, then run it again.`;
     }
   },
   error: (run) => bugFix(run),
@@ -442,7 +290,31 @@ function busyInWords(provider: string, retried: BusyRetries | undefined): Phrase
   if (retried === undefined) {
     return busy;
   }
-  return phrase`${busy} Halonic tried ${timesInWords(retried.tries)} over ${retried.over}, then stopped.`;
+  return phrase`${busy} Halonic tried ${timesInWords(retried.tries)} over ${minutesInWords(retried.overMs)}, then stopped.`;
+}
+
+/** A harness program by its name, such as "Claude Code", or else by its id. */
+function harnessName(id: string): string {
+  return harnessNames.get(id) ?? id;
+}
+
+/** A wait in whole seconds, such as "60 seconds". */
+function secondsInWords(ms: number): string {
+  return counted(Math.round(ms / 1000), "second", "seconds");
+}
+
+/** A wait in whole minutes, such as "5 minutes". */
+function minutesInWords(ms: number): string {
+  return counted(Math.round(ms / 60_000), "minute", "minutes");
+}
+
+/** An ISO date as the lines write it, such as "1 Dec". */
+function dayAndMonth(isoDate: string): string {
+  return new Date(isoDate).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  });
 }
 
 /** `provider-busy`, `model-timeout` and `tool-timeout`: nothing the user set caused it. */

@@ -5,13 +5,14 @@
 // so both say the same about a run. The words are the catalogue's.
 
 import { type RunDetail, shortRunId } from "@halonicjs/app";
+import { workspaceModelsOf } from "@halonicjs/app/run-failure";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { CommandResult } from "../../command.ts";
+import { providerAddress } from "../../doctor-workspace.ts";
 import { type ExitCode, exitCode } from "../../exit-code.ts";
 import { dimmed, markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
-import { workspaceModelsOf } from "../../run-failure-of.ts";
 import type { RunClock } from "../../run-times.ts";
 import { type RunDefinitions, runViewDefinitions, stepColumns, stepLines } from "../../run-view.ts";
 import { workflowTitle } from "../runs/listed-run.ts";
@@ -126,7 +127,7 @@ function ending(
   definitions: RunDefinitions,
   facts: RunResultFacts,
 ): Phrase[] {
-  const models = () => workspaceModelsOf(facts.workspace, run.summary.hubId);
+  const models = () => workspaceModelsOf(facts.workspace, run.summary.hubId, providerAddress);
   const lines = showEnding(run, title, definitions, models, facts.dir, facts.debugging);
   if (run.summary.status !== "completed") {
     return lines;

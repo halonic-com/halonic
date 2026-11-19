@@ -1,9 +1,14 @@
+import {
+  failedStartOf,
+  type RunFailedEvent,
+  type RunFailure,
+  runFailureOf,
+} from "@halonicjs/app/run-failure";
 import type { RunEvent } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { plainText } from "./messages/phrase.ts";
-import { type RunFailure, runFailedLines } from "./messages/run-failures.ts";
-import { failedStartOf, type RunFailedEvent, runFailureOf } from "./run-failure-of.ts";
+import { runFailedLines } from "./messages/run-failures.ts";
 import { calledModel, failedWith, general, log } from "./test/run-failure-fixtures.ts";
 
 verifies("cli.run-failed-start-and-memory", () => {
@@ -110,8 +115,8 @@ verifies("cli.run-failed-start-and-memory", () => {
       expect(failure).toEqual({
         reason: "harness-start-failed",
         agent: "writer",
-        harness: "Claude Code",
-        within: "60 seconds",
+        harness: "claude-code",
+        withinMs: 60_000,
       });
       expect(wordsOf(failure)).toEqual([
         "Support reply failed in the step Build report: writer didn't start, because Claude Code didn't start on this computer or didn't answer within 60 seconds.",
@@ -149,7 +154,7 @@ verifies("cli.run-failed-start-and-memory", () => {
       });
       expect(runFailureOf(failed, undefined, started(failed, other))).toMatchObject({
         harness: "gemini",
-        within: "1 second",
+        withinMs: 1000,
       });
     });
 
