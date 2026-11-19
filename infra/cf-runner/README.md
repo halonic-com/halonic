@@ -30,7 +30,7 @@ setup), `prefill.sh` (image B's warm pnpm store). Tests: `node --test infra/cf-r
    the job is still queued, the Worker starts another container. If the job was cancelled or
    ran elsewhere and the runner is still idle, it stops the container.
 
-Nothing persists: no volume, no cache, a new container per job. The image holds no secret.
+Nothing persists between jobs: no volume, and a new container per job. The image holds no secret.
 Job secrets reach the container the same way they reach GitHub's runners, for that job only.
 
 ## Two images
@@ -64,6 +64,9 @@ Delete the repository variable `CF_RUNNER` (Settings > Secrets and variables > A
 Variables). New runs use GitHub's runners at once. A job already queued for `cf-linux` still
 needs a container: leave the Worker running until those are done, or take the pull request
 out of the queue and queue it again.
+
+Deleting `CF_RUNNER` doesn't stop image B's snapshot builds: the cron doesn't read it. To stop
+them too, set `IMAGE_B` to `off` in `wrangler.toml` and deploy, or turn `spend_ok:cf-runner` off.
 
 ## If the trial stays
 
