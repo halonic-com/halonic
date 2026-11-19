@@ -536,6 +536,9 @@ importers:
       '@halonicjs/routines':
         specifier: workspace:*
         version: link:../../packages/core/routines
+      '@halonicjs/schema-kit':
+        specifier: workspace:*
+        version: link:../../packages/core/schema-kit
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../packages/core/std
