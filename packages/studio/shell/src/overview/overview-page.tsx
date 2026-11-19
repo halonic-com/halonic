@@ -112,7 +112,8 @@ type UsedByPlace = "right" | "line";
  * The line under an item's name: its detail, and on a phone its used-by text after a " · ", so the
  * kit doesn't move that text to the line's start as it does a chip. When the line is too long, the
  * detail is cut and the used-by text stays whole, as the kit's stacked rows keep their time
- * (HAL-13066).
+ * (HAL-13066). When even a cut detail leaves no room, the used-by text has the line alone, whole and
+ * wrapping if it must, and the detail and its " · " aren't shown on that row (HAL-13648).
  */
 function metaOf(item: OverviewItem, usedByPlace: UsedByPlace): ReactNode {
   if (usedByPlace === "right" || item.usedBy === undefined) {
@@ -121,12 +122,33 @@ function metaOf(item: OverviewItem, usedByPlace: UsedByPlace): ReactNode {
   if (item.detail === undefined) {
     return item.usedBy;
   }
+  return <DetailThenUsedBy detail={item.detail} usedBy={item.usedBy} />;
+}
+
+/**
+ * A phone row's "detail · used-by" line. It is a wrapping flex line in which the detail and its dot
+ * need at least 5rem; when the used-by text leaves less, the detail wraps onto a line of its own.
+ * `flex-wrap-reverse` puts that line below the used-by text, and the detail's box is 0px high, so
+ * the line is 0px high too and `overflow-hidden` clips it: the row shows the used-by text alone,
+ * never a stray " · ". The text stays in the DOM in reading order, so a screen reader still hears
+ * the whole line.
+ */
+function DetailThenUsedBy({
+  detail,
+  usedBy,
+}: {
+  readonly detail: string;
+  readonly usedBy: ReactNode;
+}) {
   return (
-    <span className="flex min-w-0">
-      <span className="min-w-0 truncate">{item.detail}</span>
-      {/* `whitespace-pre` keeps the spaces round the dot: a flex item would drop them. */}
-      <span className="shrink-0 whitespace-pre"> · </span>
-      <span className="shrink-0 whitespace-nowrap">{item.usedBy}</span>
+    <span className="flex min-w-0 flex-wrap-reverse overflow-hidden">
+      {/* In a reversed wrap `self-end` is the line's top, so the 0px box's text hangs into the line. */}
+      <span className="flex h-0 min-w-20 flex-1 self-end">
+        <span className="min-w-0 truncate">{detail}</span>
+        {/* `whitespace-pre` keeps the spaces round the dot: a flex item would drop them. */}
+        <span className="shrink-0 whitespace-pre"> · </span>
+      </span>
+      <span className="min-w-0 whitespace-normal wrap-break-word">{usedBy}</span>
     </span>
   );
 }
