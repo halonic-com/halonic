@@ -58,6 +58,16 @@ export interface DeployLockHolder {
   readonly expiresAt: string;
 }
 
+/**
+ * One address the deployment talks to from the host, and the secret it sends
+ * there, by name only. `secret` is `undefined` when it sends none.
+ */
+export interface DeployReach {
+  /** A host name such as "api.anthropic.com", or "*" for any web address. */
+  readonly address: string;
+  readonly secret: string | undefined;
+}
+
 /** What a deploy uploads, taken by the caller from one commit. */
 export interface DeploySnapshot {
   readonly commit: string;
@@ -77,6 +87,11 @@ export interface DeployRequest {
    * result, an event, an error or a log.
    */
   readonly secrets: ReadonlyMap<string, string>;
+  /**
+   * What the workspace reaches, as the caller read it from the files. The
+   * target keeps it with the version, so the next `plan` can say what's new.
+   */
+  readonly reaches: readonly DeployReach[];
   /** Use resources with Halonic's names that Halonic didn't create. */
   readonly adopt?: boolean;
   /** Allow a database change that deletes data. Without it such a change is refused with `denied`. */
@@ -98,6 +113,8 @@ export interface DeployPlan {
   readonly deletesData: boolean;
   /** The live version, or `undefined` when nothing is live. */
   readonly live: DeployedVersion | undefined;
+  /** What the live version reaches, or `undefined` when nothing is live or it doesn't say. */
+  readonly liveReaches: readonly DeployReach[] | undefined;
   /** The lock's holder when another deploy is running, checked before any question is asked. */
   readonly lockedBy: DeployLockHolder | undefined;
   /** `true` when the live version has the same commit and Halonic version, so a deploy changes nothing. */

@@ -87,6 +87,7 @@ export {
   type DeploymentRef,
   type DeploymentStatus,
   type DeployPlan,
+  type DeployReach,
   type DeployRequest,
   type DeployResource,
   type DeployResult,
