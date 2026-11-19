@@ -325,6 +325,39 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     for (const listener of [...this.#nameListeners]) listener();
   }
 
+  /**
+   * Sets the workflow's `name` in its file, so comments and the order of its keys stay, as one
+   * undoable change; the id and the file's path stay. Throws `conflict` when another workflow of the
+   * hub has the name, whatever its case.
+   */
+  async rename(ref: WorkflowRef, name: string): Promise<void> {
+    const trimmed = name.trim();
+    if (trimmed === "") throw new KindedError("invalid_input", "A workflow needs a name.");
+    const workspace = await this.#load();
+    const inHub = filesOf(workspace, "workflow").filter((one) => one.hub === ref.hubId);
+    const file = inHub.find((one) => one.value.id === ref.id);
+    if (file === undefined) throw workflowGone();
+    const other = inHub.find(
+      (one) => one.value.id !== ref.id && one.value.name.toLowerCase() === trimmed.toLowerCase(),
+    );
+    if (other !== undefined) {
+      throw new KindedError("conflict", `A workflow called ${other.value.name} already exists.`);
+    }
+    const text = await this.#parts.files.read(file.path);
+    if (text === null) throw workflowGone();
+    const edited = editYaml(text, [{ kind: "set", path: ["name"], value: trimmed }]);
+    if (!edited.ok) {
+      throw new KindedError(
+        "invalid_input",
+        "This workflow's file couldn't be changed as it is written.",
+      );
+    }
+    this.#parts.files.change(`Renamed workflow ${file.value.name} to ${trimmed}`, {
+      [file.path]: edited.value.text,
+    });
+    this.#learnNames([{ hubId: ref.hubId, id: ref.id, name: trimmed }]);
+  }
+
   /** Creates the workflow in `hubId`; throws when the workspace has no such hub, so no stray folder is made. */
   async create({ name, hubId }: NewWorkflow): Promise<WorkflowRef> {
     await this.#load();

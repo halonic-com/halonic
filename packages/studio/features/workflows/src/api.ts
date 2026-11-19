@@ -213,6 +213,13 @@ export interface WorkflowsHost {
    */
   subscribe(listener: () => void): () => void;
   /**
+   * Gives the workflow a new display name, as one undoable change that saves itself. The id, the
+   * file and every routine or step that runs it stay as they are. Absent while the app can't change
+   * the workflow's file, so the page shows the name as a title, not a field. Rejects a name another
+   * workflow in the hub has, or with the reason the file couldn't be changed.
+   */
+  rename?(ref: WorkflowRef, name: string): Promise<void>;
+  /**
    * Makes the workflow `start → done` in the hub, with the id taken from its name (`-2` when the
    * id is taken), and returns where it is. Rejects with the reason it couldn't be written.
    */
