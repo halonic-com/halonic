@@ -37,6 +37,7 @@ import {
 import { useRunAgain } from "./run-again.ts";
 import { LogUnread, RunLayout } from "./run-layout.tsx";
 import type { RunPageContext } from "./run-page-model.ts";
+import { RunWaitingLine } from "./run-waiting-line.tsx";
 import { slowStepDueAt } from "./slow-step.ts";
 import { StepPanel } from "./step-panel.tsx";
 import { useRunChanges } from "./use-run-changes.ts";
@@ -109,6 +110,11 @@ export interface RunViewProps {
   readonly reviewInInbox?: () => void;
   /** Opens another run's page, for a child run; without it the button isn't there. */
   readonly openRun?: (runId: string) => void;
+  /**
+   * Opens Check this computer, for **Something wrong?** in the waiting line after 10 seconds;
+   * without it the line leaves it out. Nothing passes it until the dialog lands (HAL-13411).
+   */
+  readonly checkThisComputer?: () => void;
   /** The clock for the start time and due times; tests pass a fixed one. */
   readonly now?: () => Date;
   /** What the page calls the engine when it isn't answering, for this window's host; the desktop app's by default. */
@@ -149,6 +155,7 @@ export function RunView({
   goToRuns,
   reviewInInbox,
   openRun,
+  checkThisComputer,
   now = () => new Date(),
   engine = engineWordsOf({}),
 }: RunViewProps) {
@@ -213,6 +220,13 @@ export function RunView({
             }
           >
             <div className="flex min-w-0 flex-col gap-4">
+              <RunWaitingLine
+                log={log}
+                running={run.summary.status === "running"}
+                phone={phone}
+                somethingWrong={checkThisComputer}
+                now={now}
+              />
               <ReceiptAndSteps
                 run={run}
                 context={context}
@@ -361,7 +375,7 @@ function useOpenEntry(
 }
 
 /**
- * Draws the page again at the moment the log's last event turns 10 seconds old, so a step that
+ * Draws the page again at the moment the log's last event turns 2 seconds old, so a step that
  * waits gets its line (F3) although nothing new was written. A new event moves the moment on.
  */
 function useRedrawWhenSlow(

@@ -27,9 +27,10 @@ export interface LineFrameProps {
 
 /**
  * A text button in `accent-text` with no padding, so under the text it starts where the text
- * does; hover underlines it, and on touch its 48px hit area is a pseudo-element.
+ * does; hover underlines it, and on touch its 48px hit area is a pseudo-element. The WaitingLine's
+ * ways out are the same button.
  */
-const actionClasses = [
+export const lineActionClasses = [
   "max-w-full flex-none rounded-xs text-left text-small font-medium text-accent-text",
   "hover:underline focus-ring phone:hit-touch touch:hit-touch",
 ].join(" ");
@@ -65,7 +66,7 @@ export function LineFrame({ icon, muted = false, action, children }: LineFramePr
         // action would also push it to the right once it has wrapped.
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1">
           <p className="min-w-0 flex-[1_1_10rem] wrap-break-word">{children}</p>
-          <button type="button" className={actionClasses} onClick={action.onClick}>
+          <button type="button" className={lineActionClasses} onClick={action.onClick}>
             {action.label}
           </button>
         </div>
