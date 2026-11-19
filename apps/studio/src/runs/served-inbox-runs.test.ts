@@ -88,6 +88,52 @@ verifies("studio.served-inbox-runs", () => {
     });
   });
 
+  describe("agentName", () => {
+    function servedWith(...answers: unknown[]) {
+      const queue = [...answers];
+      return new ServedInboxRuns({ fetch: async () => Response.json(queue.shift()) });
+    }
+
+    it("names an agent as the list names it, and no other", async () => {
+      const runs = servedWith({ runs: [waitingRun("a")], agents: { writer: "Writer" } });
+      expect(runs.agentName("writer")).toBeUndefined();
+      await runs.waiting();
+      expect(runs.agentName("writer")).toBe("Writer");
+      expect(runs.agentName("sorter")).toBeUndefined();
+      expect(runs.agentName("constructor")).toBeUndefined();
+      expect(runs.agentName("__proto__")).toBeUndefined();
+    });
+
+    it("takes an id an object has, such as `__proto__`, only as a name's key", async () => {
+      const runs = new ServedInboxRuns({
+        fetch: async () =>
+          new Response(`{"runs":[],"agents":{"__proto__":"Proto","constructor":"Builder"}}`),
+      });
+      await runs.waiting();
+      expect(runs.agentName("__proto__")).toBe("Proto");
+      expect(runs.agentName("constructor")).toBe("Builder");
+      expect(runs.agentName("toString")).toBeUndefined();
+    });
+
+    it("never fails the list for names it can't read, and keeps the last good ones", async () => {
+      const runs = servedWith(
+        { runs: [waitingRun("a")], agents: { writer: "Writer", sorter: 7 } },
+        { runs: [waitingRun("a")], agents: ["Writer"] },
+        { runs: [waitingRun("a")] },
+        { runs: [waitingRun("a")], agents: {} },
+      );
+      await runs.waiting();
+      expect(runs.agentName("writer")).toBe("Writer");
+      expect(runs.agentName("sorter")).toBeUndefined();
+      for (const _ of [1, 2]) {
+        expect(await runs.waiting()).toHaveLength(1);
+        expect(runs.agentName("writer")).toBe("Writer");
+      }
+      await runs.waiting();
+      expect(runs.agentName("writer")).toBeUndefined();
+    });
+  });
+
   describe("send", () => {
     it("posts the answer with its call to the run's address", async () => {
       const calls: { path: string; init: RequestInit | undefined }[] = [];

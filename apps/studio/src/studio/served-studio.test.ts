@@ -135,6 +135,57 @@ verifies("studio.served-inbox", () => {
     });
   });
 
+  it("names the asking agent as the computer names it, not by its id", async () => {
+    const waiting = {
+      id: "run_acme1",
+      status: "waiting",
+      workflowId: "reply",
+      hubId: "support",
+      startedAt: "2026-11-19T10:00:00.000Z",
+      lastSeq: 4,
+      accepts: ["approve", "reject"],
+      approvals: [
+        {
+          agent: "writer",
+          tool: "read_note",
+          connector: "notes",
+          args: {},
+          callId: "call_1",
+          at: "2026-11-19T10:00:01.000Z",
+          state: "draft",
+          branch: null,
+          item: null,
+        },
+      ],
+    };
+    started = startStudio({
+      element,
+      window,
+      userAgent: "Mozilla/5.0 (X11; Linux x86_64)",
+      fetch: async (path) =>
+        path === "/api/workspace"
+          ? Response.json({ name: "Acme", sample: false, folder: "~/Projects/acme" })
+          : Response.json({ runs: [waiting], agents: { writer: "Writer" } }),
+    });
+
+    // With a run waiting, the Inbox row carries its count as well as its name.
+    const inbox = await vi.waitFor(
+      () => {
+        const link = [...element.querySelectorAll('nav[aria-label="Places"] a')].find((a) =>
+          a.textContent?.startsWith("Inbox"),
+        );
+        expect(link).toBeDefined();
+        return link as HTMLElement;
+      },
+      { timeout: 4_000 },
+    );
+    inbox.click();
+    await vi.waitFor(() => expect(element.textContent).toContain("Writer wants to use read_note"), {
+      timeout: 4_000,
+    });
+    expect(element.textContent).not.toContain("writer wants to use");
+  });
+
   it("reads again when the page's window comes to the front, and lets go when it stops", async () => {
     const page = new EventTarget();
     let asks = 0;
