@@ -7,7 +7,7 @@ const replyFile =
   "id: reply\nname: Reply\ninitial: first\nstates:\n  first:\n    agent: writer\n    on:\n      - to: done\n  done:\n    type: final\n";
 
 export function setup(
-  extra: Pick<WorkspaceAgentsParts, "newAgents" | "liveness" | "answerChat"> = {},
+  extra: Pick<WorkspaceAgentsParts, "newAgents" | "liveness" | "answerChat" | "detectHarness"> = {},
 ) {
   const store: Record<string, string> = {
     "models.yaml":

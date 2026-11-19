@@ -31,7 +31,8 @@ export const agentHarnessIds: readonly AgentHarnessId[] = ["halonic", "claude-co
 
 /**
  * Whether a harness can run on this computer, as the agent host's `detect()` finds it. `signed-out`
- * is for the agent's own settings folder; `failed` means the check itself didn't work.
+ * is for the agent's own settings folder; `failed` means the host found the program but its check
+ * didn't work.
  */
 export type HarnessReadiness =
   | { readonly status: "ready"; readonly version: string }
@@ -348,7 +349,9 @@ export interface AgentsHost {
   team(ref: AgentRef): Promise<readonly AgentTeamMember[]>;
   /**
    * Whether `harness` can run on this computer, for this agent (its sign-in is the agent's own).
-   * Never rejects: a check that didn't work answers `failed`. `halonic` is always `ready`.
+   * `failed` is the host's answer when it found the program but couldn't ask its version. Rejects
+   * with the reason when the host itself can't be asked, or there is none, and with `not_found`
+   * for an agent that isn't there. `halonic` is always `ready`.
    */
   harnessReadiness(ref: AgentRef, harness: AgentHarnessId): Promise<HarnessReadiness>;
   /**

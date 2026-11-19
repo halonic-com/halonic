@@ -93,17 +93,20 @@ export function HarnessPage({ host, settings, save }: HarnessPageProps) {
         />
       </div>
       <div className="relative">
-        <div className="absolute end-0 top-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            busy={checking}
-            busyLabel={words.checking}
-            onClick={() => void check()}
-          >
-            {words.checkAgain}
-          </Button>
-        </div>
+        {/* With a strip, the strip's Check again is the only one (H2 on HAL-13120). */}
+        {strip === null && (
+          <div className="absolute end-0 top-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              busy={checking}
+              busyLabel={words.checking}
+              onClick={() => void check()}
+            >
+              {words.checkAgain}
+            </Button>
+          </div>
+        )}
         <Field label={words.harness} hint={words.harnessHint}>
           <RadioGroup options={options} value={harness} onChange={(next) => void pick(next)} />
         </Field>
