@@ -52,6 +52,12 @@ function nameField(): HTMLInputElement {
 }
 
 const body = () => document.body.textContent ?? "";
+
+/** What the dialog's `aria-describedby` reads: empty when it names nothing. */
+function description(): string {
+  const ids = document.querySelector("dialog")?.getAttribute("aria-describedby")?.split(" ") ?? [];
+  return ids.map((id) => document.getElementById(id)?.textContent ?? "").join(" ");
+}
 const settle = () =>
   act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
 
@@ -80,6 +86,13 @@ verifies("routines.new.create", () => {
     expect(icon?.className).toContain("size-icon-sm");
     expect(icon?.className).toContain("*:size-full");
     expect(icon?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("reads what it runs on opening, as the dialog's description", async () => {
+    await show(dialog().node);
+    await settle();
+
+    expect(description()).toContain("It runs Briefing when you press Run now.");
   });
 
   it("names the hub's first agent when the host starts the routine with one", async () => {

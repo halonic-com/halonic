@@ -47,6 +47,12 @@ export {
   type FeatureDialogsProps,
 } from "./dialogs/feature-dialogs.tsx";
 export {
+  NameAndHubRow,
+  type NameAndHubRowProps,
+  NewItemNote,
+  type NewItemNoteProps,
+} from "./dialogs/new-item-parts.tsx";
+export {
   createShellEngine,
   type EngineConnectionEvent,
   type EngineConnectionListener,
