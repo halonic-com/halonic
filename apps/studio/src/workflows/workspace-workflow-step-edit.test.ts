@@ -1,3 +1,4 @@
+import type { WorkflowStepChange } from "@halonicjs/studio-feature-workflows/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { setup } from "./workspace-workflows.test-helper.ts";
@@ -71,6 +72,46 @@ verifies("studio.workspace-workflow-step-edit", () => {
 
     expect(changes).toHaveLength(1);
     expect(store[path]).not.toContain("description:");
+  });
+
+  it("gives the agents of the workflow's own hub, for the Agent picker", async () => {
+    const { host, store } = setup();
+    store[path] = twoSteps;
+    store["hubs/acme/agents/writer.agent.yaml"] = "id: writer\nname: Reply writer\nmodel: fast\n";
+    store["hubs/beta/agents/sorter.agent.yaml"] = "id: sorter\nname: Sorter\nmodel: fast\n";
+
+    const { agents } = await host.read({ hubId: "acme", id: "reply" });
+
+    expect(agents).toEqual([{ id: "writer", name: "Reply writer" }]);
+  });
+
+  it("changes the kind and keeps the old kind's keys, and sets or takes out the agent", async () => {
+    const { host, store, changes } = setup();
+    store[path] = twoSteps;
+    const reply = { hubId: "acme", id: "reply" };
+
+    await host.changeStep(reply, "draft", { type: "wait" });
+    expect(store[path]).toContain("    agent: writer\n");
+    expect((await host.read(reply)).steps[0]).toMatchObject({ type: "wait", agent: "writer" });
+
+    await host.changeStep(reply, "draft", { type: "task", agent: "" });
+    expect(store[path]).not.toContain("agent:");
+    await host.changeStep(reply, "draft", { agent: "sorter" });
+
+    expect(changes).toHaveLength(3);
+    expect(store[path]).toContain("    # Writes the answer.\n");
+    expect((await host.read(reply)).steps[0]).toMatchObject({ type: "task", agent: "sorter" });
+  });
+
+  it("refuses a kind the format doesn't have, writing nothing", async () => {
+    const { host, store, changes } = setup();
+    store[path] = twoSteps;
+    const change = { type: "loop" } as unknown as WorkflowStepChange;
+
+    await expect(
+      host.changeStep({ hubId: "acme", id: "reply" }, "draft", change),
+    ).rejects.toMatchObject({ kind: "invalid_input" });
+    expect(changes).toEqual([]);
   });
 
   it("refuses a step or a workflow that isn't there, and a prompt written as data, writing nothing", async () => {
