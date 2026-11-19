@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-195 (9a-2c); phase 4 plan on HAL-9 (`halonic secret` reads the value from a prompt or stdin, never an argument); `app.secret-service`, `cli.secret-prompt`
 
-The `halonic secret set <name>` command shall save the secret `<name>` through `SecretService.set` and print "✓ Saved <name>." with exit 0. It shall read the value from a hidden prompt, "Value for <name>: ", when stdin is a terminal, and from stdin, without its last line ending, when stdin is piped; it shall never take the value from an argument, and a second argument shall exit 2 with "A secret's value can't be given as an argument." It shall refuse a name the service refuses before it asks for a value, and a value the service refuses, with the service's reason and exit 2. For the sign-in password it shall ask "Sign-in password: " and "Sign-in password again: " at a terminal, and use the one piped value for both. With no value, or an empty one, on stdin it shall save nothing and exit 2. Where nobody can type, with `CI` set or `--json`, on a terminal, it shall ask nothing, save nothing and exit 2 with how to pipe the value in. It shall never print the value, also in an error or with `--debug`.
+The `halonic secret set <name>` command shall save the secret `<name>` through `SecretService.set` and print "✓ Saved <name>." with exit 0. It shall read the value from a hidden prompt, "Value for <name>: ", when stdin is a terminal, and from stdin, without its last line ending, when stdin is piped; it shall never take the value from an argument, and a second argument shall exit 2 with "A secret's value can't be given as an argument." It shall refuse a name the service refuses before it asks for a value, and a value the service refuses, with the service's reason and exit 2. For the sign-in password it shall ask "Sign-in password: " and "Sign-in password again: " at a terminal, and use the one piped value for both; after "✓ Saved serve-password." it shall print "  Every browser and phone that was signed in has to sign in again.", because a saved password ends every open sign-in. With no value, or an empty one, on stdin it shall save nothing and exit 2. Where nobody can type, with `CI` set or `--json`, on a terminal, it shall ask nothing, save nothing and exit 2 with how to pipe the value in. It shall never print the value, also in an error or with `--debug`.
 
 ## Examples
 
@@ -14,6 +14,9 @@ The `halonic secret set <name>` command shall save the secret `<name>` through `
 - Given `sk-live-1234` piped in,
   when `halonic secret set openai-key` is run,
   then the saved value is `sk-live-1234`, without the line ending.
+- Given the sign-in password typed twice,
+  when `halonic secret set serve-password` is run,
+  then it prints "✓ Saved serve-password." and "  Every browser and phone that was signed in has to sign in again."
 - Given `halonic secret set openai-key sk-live-1234`,
   when it is run,
   then nothing is saved, it exits 2 and neither line printed contains `sk-live-1234`.

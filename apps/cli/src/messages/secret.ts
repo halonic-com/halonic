@@ -19,6 +19,8 @@ export const secretMessages = defineMessages("secret", {
   listAction: () => phrase`list the secrets`,
 
   saved: (name: string) => phrase`${markPart("done")} Saved ${name}.`,
+  /** After a new sign-in password: saving it ended every open sign-in. */
+  signedOut: () => phrase`  Every browser and phone that was signed in has to sign in again.`,
   removed: (name: string) => phrase`${markPart("done")} Removed ${name}.`,
   noSecrets: () => phrase`No secrets are saved.`,
 
