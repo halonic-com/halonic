@@ -248,15 +248,18 @@ impl Worker {
     /// Each connection that opens is new: reconnect to the pinned key.
     async fn start_handshake(&mut self, connection: ConnectionId) {
         self.connection = Some(connection);
-        match Reconnect::start(&self.keys, &self.host_key) {
-            Ok((reconnect, frame1)) if self.transport.send(connection, frame1).await.is_ok() => {
-                self.stage = Stage::Handshake {
-                    reconnect: Box::new(reconnect),
-                    deadline: tokio::time::Instant::now() + self.handshake_timeout,
-                };
-            }
-            _ => self.drop_connection(),
+        let Ok((reconnect, frame1)) = Reconnect::start(&self.keys, &self.host_key) else {
+            self.drop_connection();
+            return;
+        };
+        if self.transport.send(connection, frame1).await.is_err() {
+            self.drop_connection();
+            return;
         }
+        self.stage = Stage::Handshake {
+            reconnect: Box::new(reconnect),
+            deadline: tokio::time::Instant::now() + self.handshake_timeout,
+        };
     }
 
     fn on_frame(&mut self, frame: &[u8]) {
