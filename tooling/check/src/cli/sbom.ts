@@ -192,6 +192,10 @@ function gradleEntries(root: string, path: string): { entries: NoticeEntry[]; pr
       const file = join(root, licenceTextPath(spdx));
       return existsSync(file) ? readFileSync(file, "utf8") : undefined;
     },
+    file: (relative) => {
+      const file = join(root, relative);
+      return existsSync(file) ? readFileSync(file, "utf8") : undefined;
+    },
   });
   return {
     entries: found.entries,

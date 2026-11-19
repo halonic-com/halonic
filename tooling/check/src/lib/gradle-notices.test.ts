@@ -26,6 +26,20 @@ const rules: GradleRules = {
   policy,
   allowed: new Set(["Apache-2.0", "MIT"]),
   text: (spdx) => (spdx === "Apache-2.0" ? "Apache License text" : undefined),
+  file: (path) =>
+    path === "texts/yuv.txt" ? "Copyright The Yuv Authors\nBSD-3 text\n" : undefined,
+};
+
+const yuv = { name: "BSD License", url: "https://example.com/yuv/README" };
+const bundled = {
+  artifact: "com.example:acme-camera",
+  name: yuv.name,
+  url: yuv.url,
+  component: "yuv",
+  licence: "MIT",
+  text: "texts/yuv.txt",
+  source: "https://example.com/yuv/LICENSE",
+  task: "HAL-1",
 };
 
 function library(name: string, extra: Partial<GradleArtifact> = {}): GradleArtifact {
@@ -33,6 +47,58 @@ function library(name: string, extra: Partial<GradleArtifact> = {}): GradleArtif
 }
 
 describe("gradleNoticeEntries", () => {
+  test("accepts a vague POM licence name only for the library and URL a bundled entry names", () => {
+    const withBundled = { ...rules, policy: { ...policy, bundled: [bundled] } };
+    const found = gradleNoticeEntries(
+      {
+        artifacts: [
+          library("acme-camera", { licences: [apache, yuv] }),
+          library("acme-other", { licences: [apache, yuv] }),
+          library("acme-camera", {
+            group: "com.example",
+            version: "2.0.0",
+            licences: [apache, { ...yuv, url: "https://example.com/other" }],
+          }),
+        ],
+      },
+      withBundled,
+    );
+    expect(found.entries).toEqual([
+      {
+        name: "com.example:acme-camera",
+        versions: ["1.0.0"],
+        licence: "Apache-2.0 AND MIT",
+        texts: [
+          "Apache License text",
+          "yuv, bundled in com.example:acme-camera, is under MIT:\n\nCopyright The Yuv Authors\nBSD-3 text",
+        ],
+      },
+    ]);
+    expect(found.problems).toEqual([
+      `com.example:acme-other@1.0.0 is under "BSD License", which "gradle.names" in tooling/check/licences.json doesn't map to an SPDX ID`,
+      `com.example:acme-camera@2.0.0 is under "BSD License", which "gradle.names" in tooling/check/licences.json doesn't map to an SPDX ID`,
+    ]);
+  });
+
+  test("fails bundled code whose text is missing or whose licence isn't allowed", () => {
+    const missing = { ...bundled, text: "texts/gone.txt" };
+    const gpl = { ...bundled, artifact: "com.example:acme-gpl", licence: "GPL-3.0-only" };
+    const found = gradleNoticeEntries(
+      {
+        artifacts: [
+          library("acme-camera", { licences: [apache, yuv] }),
+          library("acme-gpl", { licences: [yuv] }),
+        ],
+      },
+      { ...rules, policy: { ...policy, bundled: [missing, gpl] } },
+    );
+    expect(found.entries).toEqual([]);
+    expect(found.problems).toEqual([
+      "com.example:acme-camera@1.0.0 bundles yuv, but texts/gone.txt is missing: add its licence text there",
+      "com.example:acme-gpl@1.0.0 bundles yuv under GPL-3.0-only, which isn't allowed in shipped code",
+    ]);
+  });
+
   test("lists an open-source library with its SPDX ID, the stored text and its embedded notices", () => {
     const found = gradleNoticeEntries(
       { artifacts: [library("acme-core", { embedded: "  Guava: Apache-2.0\n" })] },
@@ -138,6 +204,24 @@ describe("gradleNoticeEntries", () => {
 });
 
 describe("gradlePolicyProblems", () => {
+  test("names an incomplete bundled entry and one under a licence that isn't shipped", () => {
+    expect(
+      gradlePolicyProblems(
+        {
+          ...policy,
+          bundled: [
+            { ...bundled, source: "" },
+            { ...bundled, component: "gpl-yuv", licence: "GPL-3.0-only" },
+          ],
+        },
+        rules.allowed,
+      ).filter((problem) => problem.includes("bundled")),
+    ).toEqual([
+      `tooling/check/licences.json: the bundled entry "yuv" needs "group:name", name, url, component, licence, text, source and task`,
+      `tooling/check/licences.json: the bundled entry "gpl-yuv" is under GPL-3.0-only, which isn't on the shipped list`,
+    ]);
+  });
+
   test("accepts a policy that maps only to shipped licences", () => {
     expect(
       gradlePolicyProblems({ ...policy, names: { [apache.name]: "Apache-2.0" } }, rules.allowed),

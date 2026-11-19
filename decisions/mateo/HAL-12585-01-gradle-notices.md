@@ -22,6 +22,14 @@ links ship no licence file (`jni`, `jni-macros`, `jni-sys-macros`, `ndk`, `ndk-s
 `ndk-context`, `rustls-platform-verifier-android`, `cesu8`); their texts are stored in
 `tooling/check/licence-texts/crates/`, pinned to the commit each crate was published from.
 
+CameraX's `androidx.camera:camera-core` names two licences in its POM: Apache-2.0 and a
+"BSD License" whose address is libyuv's `README.chromium`. The AAR's native code bundles libyuv,
+which is BSD-3-Clause and needs its copyright line passed on. "BSD License" is too vague to map
+for every library, so `gradle.bundled` accepts it only for `camera-core` with that exact address,
+and the notices print libyuv's own `LICENSE` (stored in
+`tooling/check/licence-texts/gradle/libyuv.txt`, copied from libyuv commit `8a0ee9fb`). Another
+library naming "BSD License", or `camera-core` with another address, fails the check.
+
 ## The exception: Google's ML Kit and Play services
 
 `gradle.proprietary` names nine Google libraries, each with the terms its POM must give:

@@ -9,7 +9,10 @@
  * `shipped` list. Google's ML Kit and Play services libraries are under
  * Google's own terms, not an open-source licence: each one is named in
  * `gradle.proprietary` with the terms its POM must name, and a decision note
- * says why we ship it.
+ * says why we ship it. A POM may also name the licence of code it bundles in
+ * words too vague to map for every library ("BSD License"): `gradle.bundled`
+ * accepts such a name for one library and one URL, with the bundled code's
+ * own licence text.
  */
 import type { NoticeEntry } from "./sbom.ts";
 
@@ -46,11 +49,31 @@ export interface ProprietaryArtifact {
   readonly task: string;
 }
 
+/** Code a library bundles, under a licence its POM names too vaguely to map for every library. */
+export interface BundledCode {
+  /** `group:name`, any version. */
+  readonly artifact: string;
+  /** The licence name and URL its POM gives for the bundled code. */
+  readonly name: string;
+  readonly url: string;
+  /** The bundled code, as the notices name it. */
+  readonly component: string;
+  /** Its SPDX ID. */
+  readonly licence: string;
+  /** Its licence text, with its copyright line, relative to the repository root. */
+  readonly text: string;
+  /** Where the text was copied from, pinned to a commit. */
+  readonly source: string;
+  /** The task that accepted it. */
+  readonly task: string;
+}
+
 /** The `gradle` part of `licences.json`. */
 export interface GradlePolicy {
   /** A POM licence name → its SPDX ID. */
   readonly names: Readonly<Record<string, string>>;
   readonly proprietary: readonly ProprietaryArtifact[];
+  readonly bundled?: readonly BundledCode[];
 }
 
 /** What `gradleNoticeEntries` needs besides the Gradle file. */
@@ -60,9 +83,14 @@ export interface GradleRules {
   readonly allowed: ReadonlySet<string>;
   /** The stored text of a licence, or `undefined` when none is stored. */
   readonly text: (spdx: string) => string | undefined;
+  /** A file relative to the repository root, or `undefined` when it is missing. */
+  readonly file: (path: string) => string | undefined;
 }
 
 type Found = { entry: NoticeEntry } | { problems: string[] };
+
+/** A POM licence accepted as an SPDX ID, with its own text when it is bundled code's. */
+type Licensed = { id: string; text?: string } | { problem: string };
 
 function proprietaryEntry(artifact: GradleArtifact, terms: ProprietaryArtifact): Found {
   const label = `${artifact.group}:${artifact.name}@${artifact.version}`;
@@ -93,6 +121,56 @@ function embeddedTexts(artifact: GradleArtifact): string[] {
   return text === "" ? [] : [text];
 }
 
+/**
+ * The bundled code a `gradle.bundled` entry accepts for this library's POM
+ * licence, with its notice text, or `undefined` when no entry names it.
+ */
+function bundledCode(
+  artifact: GradleArtifact,
+  licence: PomLicence,
+  rules: GradleRules,
+): Licensed | undefined {
+  const label = `${artifact.group}:${artifact.name}@${artifact.version}`;
+  const bundled = (rules.policy.bundled ?? []).find(
+    (entry) =>
+      entry.artifact === `${artifact.group}:${artifact.name}` &&
+      entry.name === licence.name &&
+      entry.url === licence.url,
+  );
+  if (bundled === undefined) {
+    return undefined;
+  }
+  if (!rules.allowed.has(bundled.licence)) {
+    return {
+      problem: `${label} bundles ${bundled.component} under ${bundled.licence}, which isn't allowed in shipped code`,
+    };
+  }
+  const text = rules.file(bundled.text)?.trim() ?? "";
+  if (text === "") {
+    return {
+      problem: `${label} bundles ${bundled.component}, but ${bundled.text} is missing: add its licence text there`,
+    };
+  }
+  return {
+    id: bundled.licence,
+    text: `${bundled.component}, bundled in ${artifact.group}:${artifact.name}, is under ${bundled.licence}:\n\n${text}`,
+  };
+}
+
+/** The SPDX ID `gradle.names` maps a POM licence name to, if it is allowed. */
+function mappedLicence(label: string, licence: PomLicence, rules: GradleRules): Licensed {
+  const id = rules.policy.names[licence.name];
+  if (id === undefined) {
+    return {
+      problem: `${label} is under "${licence.name}", which "gradle.names" in tooling/check/licences.json doesn't map to an SPDX ID`,
+    };
+  }
+  if (!rules.allowed.has(id)) {
+    return { problem: `${label} is under ${id}, which isn't allowed in shipped code` };
+  }
+  return { id };
+}
+
 function openEntry(artifact: GradleArtifact, rules: GradleRules): Found {
   const label = `${artifact.group}:${artifact.name}@${artifact.version}`;
   if (artifact.licences.length === 0) {
@@ -100,16 +178,15 @@ function openEntry(artifact: GradleArtifact, rules: GradleRules): Found {
   }
   const problems: string[] = [];
   const ids: string[] = [];
+  const bundled: { id: string; text: string }[] = [];
   for (const licence of artifact.licences) {
-    const id = rules.policy.names[licence.name];
-    if (id === undefined) {
-      problems.push(
-        `${label} is under "${licence.name}", which "gradle.names" in tooling/check/licences.json doesn't map to an SPDX ID`,
-      );
-    } else if (!rules.allowed.has(id)) {
-      problems.push(`${label} is under ${id}, which isn't allowed in shipped code`);
+    const found = bundledCode(artifact, licence, rules) ?? mappedLicence(label, licence, rules);
+    if ("problem" in found) {
+      problems.push(found.problem);
+    } else if (found.text !== undefined) {
+      bundled.push({ id: found.id, text: found.text });
     } else {
-      ids.push(id);
+      ids.push(found.id);
     }
   }
   const unique = [...new Set(ids)];
@@ -132,8 +209,8 @@ function openEntry(artifact: GradleArtifact, rules: GradleRules): Found {
       name: `${artifact.group}:${artifact.name}`,
       versions: [artifact.version],
       // A POM that lists several licences gives no operator, so each one is checked and named.
-      licence: unique.join(" AND "),
-      texts: [...texts, ...embeddedTexts(artifact)],
+      licence: [...new Set([...unique, ...bundled.map((code) => code.id)])].join(" AND "),
+      texts: [...texts, ...bundled.map((code) => code.text), ...embeddedTexts(artifact)],
     },
   };
 }
@@ -185,6 +262,20 @@ export function gradlePolicyProblems(policy: GradlePolicy, allowed: ReadonlySet<
     if (missing.length > 0 || !/^[^:\s]+:[^:\s]+$/.test(entry.artifact)) {
       problems.push(
         `tooling/check/licences.json: the proprietary entry "${String(entry.artifact)}" needs "group:name", terms, url and task`,
+      );
+    }
+  }
+  for (const entry of policy.bundled ?? []) {
+    const missing = (
+      ["artifact", "name", "url", "component", "licence", "text", "source", "task"] as const
+    ).filter((field) => typeof entry[field] !== "string" || entry[field] === "");
+    if (missing.length > 0 || !/^[^:\s]+:[^:\s]+$/.test(entry.artifact)) {
+      problems.push(
+        `tooling/check/licences.json: the bundled entry "${String(entry.component)}" needs "group:name", name, url, component, licence, text, source and task`,
+      );
+    } else if (!allowed.has(entry.licence)) {
+      problems.push(
+        `tooling/check/licences.json: the bundled entry "${entry.component}" is under ${entry.licence}, which isn't on the shipped list`,
       );
     }
   }
