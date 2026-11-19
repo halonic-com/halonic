@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13480 (security review of this change); the reviewer approves this note by signing it
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:pwaAKB8BugNoYYJi4861dVhbZ7trMF0XpfJ4sRqpsQ045/rPLqUSQOAaHVncQsTvxcx/nse5mYfw6LCObOFnBQ==
 - Task: HAL-13373
 
 ## What changes
