@@ -81,7 +81,7 @@ function WaitingForRun({ onClose }: { readonly onClose: () => void }) {
     <aside
       role="status"
       aria-label={startWords.cardKind}
-      className="flex w-80 shrink-0 items-start justify-between gap-3 border-s border-border p-4 text-small text-fg-muted"
+      className="flex w-80 max-w-full shrink-0 items-start justify-between gap-3 border-s border-border p-4 text-small text-fg-muted"
     >
       <p ref={line} tabIndex={-1} className="outline-none">
         {startWords.waitingForRun}
