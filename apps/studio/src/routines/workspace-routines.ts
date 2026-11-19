@@ -1,4 +1,5 @@
 import { shortRunId } from "@halonicjs/app";
+import type { RoutineVersions } from "@halonicjs/app/routines";
 import type { RunSummary } from "@halonicjs/events";
 import type { DefinitionSource } from "@halonicjs/ports";
 import { CronError, describeTrigger, nextRun, routineKey, routineStart } from "@halonicjs/routines";
@@ -49,6 +50,7 @@ import {
   routineGone,
   routineKeyOf,
   runsOf,
+  runTargetName,
   type StoredSkip,
   skipOf,
   startedByOf,
@@ -94,14 +96,10 @@ export interface WorkspaceRoutinesParts {
   /** The times the scheduler dropped for a routine, by its key; none when absent. */
   readonly skips?: (key: string) => Promise<readonly StoredSkip[]>;
   /**
-   * Whether the routine's file is in a live version and whether the saved file differs from it,
-   * with what the live version holds when it does. Without it a routine counts as live and unchanged.
+   * The routine at a path from the workspace folder, as the live version has it and as it is saved
+   * (core's `routineVersions`). Without it a routine counts as live and unchanged.
    */
-  readonly liveness?: (ref: RoutineRef) => Promise<{
-    readonly everLive: boolean;
-    readonly changesNotLive: boolean;
-    readonly live?: RoutineLiveValues | undefined;
-  }>;
+  readonly liveness?: (path: string) => Promise<RoutineVersions>;
   /**
    * Opens Create version with only `paths` in it (source control's `VersionDialogService`), and
    * answers once a version is made or the dialog is closed. Absent where the app can't offer that,
@@ -121,6 +119,9 @@ export interface WorkspaceRoutinesParts {
     ): Promise<{ readonly id: string }>;
   };
 }
+
+/** The fields of a {@link RoutineView} that say whether the saved routine is the live one. */
+type RoutineLiveness = Pick<RoutineView, "everLive" | "changesNotLive" | "liveSince" | "live">;
 
 /** How many of a routine's newest runs the Runs view lists. */
 const RUNS_SHOWN = 20;
@@ -208,10 +209,7 @@ export class WorkspaceRoutines implements RoutinesHost {
     const { value } = file;
     this.#names.set(nameKey(ref), value.name);
     const target = targetOfFile(value.run, file.hub);
-    const liveness = (await this.#parts.liveness?.(ref)) ?? {
-      everLive: true,
-      changesNotLive: false,
-    };
+    const liveness = await this.#liveness(workspace, file);
     return {
       ...ref,
       name: value.name,
@@ -427,6 +425,28 @@ export class WorkspaceRoutines implements RoutinesHost {
     );
     if (file === undefined) throw routineGone();
     return file;
+  }
+
+  /** The page's live fields for the routine's file: live and unchanged when the app can't tell. */
+  async #liveness(workspace: LoadedWorkspace, file: PlacedFile): Promise<RoutineLiveness> {
+    const versions = await this.#parts.liveness?.(file.path);
+    if (versions === undefined) return { everLive: true, changesNotLive: false };
+    const { liveState, live } = versions;
+    const liveValues: RoutineLiveValues | undefined =
+      live === null
+        ? undefined
+        : {
+            triggerSentence: describeTrigger(live.trigger),
+            targetName: runTargetName(workspace, live.run, file.hub),
+            overlap: live.overlap,
+            catchUp: live.catchUp,
+          };
+    return {
+      everLive: liveState.state !== "never-versioned",
+      changesNotLive: liveState.state === "not-live",
+      liveSince: liveState.state === "not-live" ? liveState.since : undefined,
+      live: liveValues,
+    };
   }
 
   /** Loads the workspace from its files as they are now, and keeps its hubs for {@link WorkspaceRoutines.hubs}. */

@@ -70,7 +70,9 @@ import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { shareChoiceMemory } from "../changes/share-choice.ts";
 import { versionHistoryOf } from "../changes/version-history.ts";
-import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
+import { WatchedChanges } from "../changes/watched-changes.ts";
+import type { GitAnswer } from "../changes/workspace-changes.ts";
+import { WorkspaceLiveness } from "../changes/workspace-liveness.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
 import { answerChatOn, EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
@@ -187,7 +189,7 @@ export function provideFolderServices(
     InstructionTrustHostService,
     new WorkspaceInstructionTrust(instructionTrust, location),
   );
-  const changes = new WorkspaceChanges({
+  const changes = new WatchedChanges({
     git: async (args) =>
       (await ipc.invoke("git", { root: location, args: [...args] })) as GitAnswer,
     files: new TauriDefinitionStore(files, location),
@@ -201,6 +203,21 @@ export function provideFolderServices(
   services.provide(ChangesSourceService, changes);
   services.provide(VersionHistoryHostService, versionHistoryOf(changes));
   services.provide(ShareChoiceService, shareChoiceMemory(storageOf(window), location));
+  const liveness = new WorkspaceLiveness({
+    history: changes,
+    saved: new TauriDefinitionStore(files, location),
+  });
+  // Whether an item is live changes with its saved file and with a new version.
+  const onLivenessChange = (listener: () => void) => {
+    const stops = [
+      scope.events.on("files.changed", listener),
+      scope.events.on("files.saved", listener),
+      changes.onNewVersion(listener),
+    ];
+    return () => {
+      for (const stop of stops) stop();
+    };
+  };
   const transport = tauriAgentHostTransport(window);
   const engine =
     remoteEngine ??
@@ -296,7 +313,8 @@ export function provideFolderServices(
     RoutinesHostService,
     new WorkspaceRoutines({
       files: services.get(workspaceFilesKey),
-      onChange: (listener) => scope.events.on("files.changed", listener),
+      onChange: onLivenessChange,
+      liveness: (path) => liveness.routineVersions(path),
       runs: services.get(RunsSourceService),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       now: () => new Date(),
