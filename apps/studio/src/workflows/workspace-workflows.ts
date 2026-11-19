@@ -401,12 +401,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     const text = await this.#parts.files.read(file.path);
     if (text === null) throw workflowGone();
     const edited = editYaml(text, [{ kind: "set", path: ["name"], value: trimmed }]);
-    if (!edited.ok) {
-      throw new KindedError(
-        "invalid_input",
-        "This workflow's file couldn't be changed as it is written.",
-      );
-    }
+    if (!edited.ok) throw cantChange();
     this.#parts.files.change(`Renamed workflow ${file.value.name} to ${trimmed}`, {
       [file.path]: edited.value.text,
     });
