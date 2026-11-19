@@ -85,6 +85,13 @@ export interface SettingsSectionContribution extends Ordered, ViewRef {
    * section. It may answer later; the row has no mark until then.
    */
   attention?(context: WorkspaceContext): boolean | Promise<boolean>;
+  /**
+   * Whether the section shows at all, for one that depends on what the host offers, as Remote
+   * does. A section with it is left out of the list, the dialog and Ctrl K until it calls `set`
+   * with `true`, and leaves again on `false`. The shell calls it once per window and calls the
+   * function it gives back when the window goes. A section without it always shows.
+   */
+  available?(context: WorkspaceContext, set: (available: boolean) => void): () => void;
   /** `false` leaves the section out on a phone, as Developer does. */
   readonly phone?: false;
   /**

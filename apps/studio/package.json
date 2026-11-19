@@ -37,6 +37,7 @@
     "@halonicjs/studio-feature-library": "workspace:*",
     "@halonicjs/studio-feature-models": "workspace:*",
     "@halonicjs/studio-feature-plugins": "workspace:*",
+    "@halonicjs/studio-feature-remote": "workspace:*",
     "@halonicjs/studio-feature-routines": "workspace:*",
     "@halonicjs/studio-feature-runs": "workspace:*",
     "@halonicjs/studio-feature-settings": "workspace:*",
