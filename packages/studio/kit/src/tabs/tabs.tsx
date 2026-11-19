@@ -1,7 +1,17 @@
 import { type KeyboardEvent, type ReactNode, useId, useRef } from "react";
 import { usePresentation } from "../presentation/presentation.tsx";
-import { StatusChip } from "../status-chip/status-chip.tsx";
+import { FillWidthCopy, TabLabel, TabSignal } from "./tab-extras.tsx";
 import { keyTarget, type TabOrientation } from "./tab-keys.ts";
+import {
+  iconClasses,
+  type Layout,
+  sizeClasses,
+  stateClasses,
+  stickyClasses,
+  type TabState,
+  tabClasses,
+  trackClasses,
+} from "./tab-styles.ts";
 
 /** The counter on a tab: how many things its view holds, or how many errors it has. */
 export interface TabCount {
@@ -93,90 +103,6 @@ export interface TabsProps<Id extends string = string>
   /** The tabs stay at the top of the scroll area while the page scrolls under them. */
   readonly sticky?: boolean;
 }
-
-/** The three looks: a track as wide as its tabs, a track across the column, and a column of rows. */
-type Layout = "inline" | "fill" | "vertical";
-
-const trackClasses = {
-  inline: "inline-flex max-w-full gap-0.5 rounded-sm bg-surface-muted p-0.5",
-  // A fill tab is never narrower than its longest word, so tabs whose words don't fit side by side
-  // (large text) go on to a second row rather than push the page sideways.
-  fill: "flex w-full flex-wrap gap-0.5 rounded-sm bg-surface-muted p-0.5",
-  vertical: "flex flex-col gap-1",
-} as const;
-
-const stickyClasses = "sticky top-0 z-(--layer-sticky) bg-surface";
-
-const tabClasses = {
-  inline: "rounded-segment text-small transition-colors focus-ring",
-  fill: "rounded-segment text-small transition-colors focus-ring",
-  vertical: "rounded-sm text-body transition-colors focus-ring",
-} as const;
-
-/**
- * On desktop a tab is as wide as its label. On a touch screen it renders at 40px with a 48px hit
- * area, like a small button.
- */
-const sizeClasses = {
-  // On one line at normal text. When the track is wider than its column (200% text), the labels
-  // wrap inside their tabs rather than overflow; the track keeps the tabs one height.
-  inline: [
-    "inline-flex min-h-control-sm min-w-0 items-center gap-1.5 px-3",
-    "text-center hyphens-auto wrap-break-word",
-    "touch:min-h-control-lg touch:hit-touch",
-  ].join(" "),
-  // The label wraps between words and the counter follows it like one more word. The tabs take
-  // equal parts, but a tab is never narrower than its longest word (a flex item's own minimum
-  // width), so "Behaviour" stays whole at 320px and the others share what's left (HAL-13044). No
-  // hyphens: a hyphenation point would shrink that minimum to the word's longest piece. Only a
-  // word wider than the whole track, where max-w-full caps the minimum, breaks.
-  fill: "min-h-touch max-w-full flex-1 basis-0 px-2 py-1 text-center wrap-break-word",
-  // A nav row: 32px, 48px on a touch screen. A long label wraps and the row grows with it.
-  vertical: [
-    "flex min-h-control-md w-full items-center gap-2 px-3 py-1",
-    "text-start hyphens-auto wrap-break-word touch:min-h-touch",
-  ].join(" "),
-} as const;
-
-/** The selected label's weight. `InlineLabel`'s width copy uses it too, so the two never drift. */
-const selectedWeight = "font-medium";
-
-const disabledClasses = "cursor-not-allowed text-fg-disabled text-forced-disabled";
-
-const segmentStateClasses = {
-  // selected-forced is the selected tab's edge in high contrast, which drops the fill and the
-  // shadow (component specs 23 A11, 23.5). The focus ring's own outline wins on focus.
-  selected: `bg-surface ${selectedWeight} text-fg shadow-1 selected-forced`,
-  default: "text-fg-muted hover:text-fg",
-  disabled: disabledClasses,
-} as const;
-
-/** A vertical list's rows look like the kit's selected list rows: an accent tint, no shadow. */
-const rowStateClasses = {
-  selected: `bg-accent-soft ${selectedWeight} text-fg selected-forced`,
-  default: "text-fg-muted hover:bg-surface-subtle hover:text-fg",
-  disabled: disabledClasses,
-} as const;
-
-type TabState = keyof typeof segmentStateClasses;
-
-const stateClasses = {
-  inline: segmentStateClasses,
-  fill: segmentStateClasses,
-  vertical: rowStateClasses,
-} as const;
-
-const iconSlot = "inline-grid size-icon-sm shrink-0 place-items-center *:size-full";
-
-/**
- * In `fill` the tab is laid out as text so the label can wrap, so the icon needs its own gap: the
- * same 6px as the `gap-1.5` of `inline`.
- */
-const iconClasses = {
-  inline: iconSlot,
-  fill: `${iconSlot} me-1.5 align-middle`,
-  vertical: iconSlot,
-} as const;
 
 /**
  * A page's own views: Flow / Configuration / Runs. Arrow keys move between the tabs and select
@@ -350,93 +276,4 @@ function tabState(isSelected: boolean, isDisabled: boolean): TabState {
     return "selected";
   }
   return isDisabled ? "disabled" : "default";
-}
-
-/**
- * The label as each look needs it: plain text that wraps in `fill`, the width-keeping grid in
- * `inline`, and in `vertical` a span that takes the row's free width, so a counter sits at its end.
- */
-function TabLabel({ label, layout }: { readonly label: string; readonly layout: Layout }) {
-  if (layout === "fill") {
-    return label;
-  }
-  if (layout === "vertical") {
-    return <span className="min-w-0 flex-1">{label}</span>;
-  }
-  return <InlineLabel label={label} />;
-}
-
-/**
- * An `inline` tab is as wide as its label, and the selected label is bolder. So the label sits in
- * a one-cell grid with an invisible bold copy that sets the width, and switching tabs doesn't move
- * the tabs after it. The visible copy keeps the weight of the tab's state.
- */
-function InlineLabel({ label }: { readonly label: string }) {
-  return (
-    <span className="inline-grid">
-      <span className="col-start-1 row-start-1">{label}</span>
-      <span aria-hidden="true" className={`invisible col-start-1 row-start-1 ${selectedWeight}`}>
-        {label}
-      </span>
-    </span>
-  );
-}
-
-/**
- * A `fill` tab is at least as wide as its longest word, and the selected label is bolder. So an
- * invisible bold copy with no height holds the bold word's width, and switching tabs doesn't move
- * the tabs beside it. The label itself stays plain text, so it still wraps with its counter.
- */
-function FillWidthCopy({ label }: { readonly label: string }) {
-  return (
-    <span aria-hidden="true" className={`invisible block h-0 overflow-hidden ${selectedWeight}`}>
-      {label}
-    </span>
-  );
-}
-
-/** What follows the label: the counter, else the running dot, else nothing. */
-function TabSignal({ tab, fill }: { readonly tab: Tab; readonly fill: boolean }) {
-  if (tab.count !== undefined) {
-    return <TabCounter count={tab.count} fill={fill} />;
-  }
-  if (tab.running !== undefined) {
-    return <RunningDot name={tab.running.name} fill={fill} />;
-  }
-  return null;
-}
-
-/**
- * The still running dot (never breathing). High contrast drops fills, so there it keeps its fill
- * in `CanvasText`. Screen readers hear its name after the tab's: "Runs, 1 running".
- */
-function RunningDot({ name, fill }: { readonly name: string; readonly fill: boolean }) {
-  return (
-    <>
-      {fill ? " " : null}
-      <span
-        aria-hidden="true"
-        className="inline-block size-1.5 shrink-0 rounded-full bg-running align-middle forced-color-adjust-none forced-colors:bg-[CanvasText]"
-      />
-      <span className="sr-only">, {name}</span>
-    </>
-  );
-}
-
-/**
- * The counter after the label. The chip hides its number from screen readers, which hear the
- * count's name instead: "Configuration, 2 errors". On a phone a space comes first, so it wraps like
- * a word.
- */
-function TabCounter({ count, fill }: { readonly count: TabCount; readonly fill: boolean }) {
-  return (
-    <>
-      {fill ? " " : null}
-      <span className="inline-flex align-middle">
-        <StatusChip tone={count.tone ?? "accent"} shape="count" name={count.name}>
-          {count.value}
-        </StatusChip>
-      </span>
-    </>
-  );
 }
