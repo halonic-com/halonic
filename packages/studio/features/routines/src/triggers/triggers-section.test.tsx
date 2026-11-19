@@ -16,15 +16,18 @@ function row(id: string, name: string, more: Partial<TriggerRow> = {}): TriggerR
   return { hubId: "acme", id, name, enabled: true, sentence: "Daily at 07:30", ...more };
 }
 
+const workflow: TriggerOwner = { kind: "workflow", hubId: "acme", id: "reply" };
+
 function hostWith(
   rows: readonly TriggerRow[],
-  addTrigger: (owner: TriggerOwner) => Promise<RoutineRef> = async () => ({
+  addTrigger: (owner: TriggerOwner, prompt?: string) => Promise<RoutineRef> = async () => ({
     hubId: "acme",
     id: "writer-2",
   }),
 ) {
   return {
     startingRoutines: async () => rows,
+    ownerName: async () => "Writer",
     addTrigger,
     subscribe: () => () => {},
   } as unknown as RoutinesHost;
@@ -33,6 +36,17 @@ function hostWith(
 const press = (element: Element | undefined) =>
   act(async () => {
     element?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+
+const button = (page: HTMLElement, label: string) =>
+  [...page.querySelectorAll("button")].find((one) => one.textContent === label);
+
+/** Types into a React text area, as a person would. */
+const type = (field: HTMLTextAreaElement, text: string) =>
+  act(async () => {
+    const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+    setValue?.call(field, text);
+    field.dispatchEvent(new Event("input", { bubbles: true }));
   });
 
 verifies("routines.triggers.lists-routines-that-start-it", () => {
@@ -149,17 +163,80 @@ verifies("routines.triggers.empty-state", () => {
 });
 
 verifies("routines.triggers.add-trigger-creates-routine", () => {
-  it("opens the routine the host made", async () => {
+  it("opens the routine the host made for a workflow, with no prompt", async () => {
     const opened: string[] = [];
+    const made: (string | undefined)[] = [];
     const page = await show(
       <TriggersView
-        host={hostWith([])}
+        host={hostWith([], async (_owner, prompt) => {
+          made.push(prompt);
+          return { hubId: "acme", id: "reply-2" };
+        })}
+        owner={workflow}
+        openRoutine={(hubId, id, step) => opened.push(`${hubId}/${id}/${step}`)}
+      />,
+    );
+    await press(button(page, "Add trigger"));
+    expect(page.querySelector("textarea")).toBeNull();
+    expect(made).toEqual([undefined]);
+    expect(opened).toEqual(["acme/reply-2/trigger"]);
+  });
+
+  it("asks an agent's prompt first, and makes the routine only with one", async () => {
+    const opened: string[] = [];
+    const made: (string | undefined)[] = [];
+    const page = await show(
+      <TriggersView
+        host={hostWith([], async (_owner, prompt) => {
+          made.push(prompt);
+          return { hubId: "acme", id: "writer-2" };
+        })}
         owner={agent}
         openRoutine={(hubId, id, step) => opened.push(`${hubId}/${id}/${step}`)}
       />,
     );
-    await press([...page.querySelectorAll("button")].find((b) => b.textContent === "Add trigger"));
+    await press(button(page, "Add trigger"));
+    const field = page.querySelector("textarea");
+    expect(field?.value).toBe("");
+    expect(field?.placeholder).toBe("Describe what to do.");
+    expect(document.activeElement).toBe(field);
+    expect(page.textContent).toContain("Say what Writer should do.");
+    expect(made).toEqual([]);
+
+    await press(button(page, "Add trigger"));
+    expect(made).toEqual([]);
+    expect(field?.getAttribute("aria-invalid")).toBe("true");
+
+    if (field) await type(field, "Draft the newsletter");
+    await press(button(page, "Add trigger"));
+    expect(made).toEqual(["Draft the newsletter"]);
     expect(opened).toEqual(["acme/writer-2/trigger"]);
+    expect(page.querySelector("textarea")).toBeNull();
+  });
+
+  it("hides an agent's prompt on Cancel, and makes nothing", async () => {
+    const made: (string | undefined)[] = [];
+    const page = await show(
+      <TriggersView
+        host={hostWith([], async (_owner, prompt) => {
+          made.push(prompt);
+          return { hubId: "acme", id: "writer-2" };
+        })}
+        owner={agent}
+      />,
+    );
+    await press(button(page, "Add trigger"));
+    await press(button(page, "Cancel"));
+    expect(page.querySelector("textarea")).toBeNull();
+    expect(button(page, "Cancel")).toBeUndefined();
+    expect(made).toEqual([]);
+  });
+
+  it("puts focus back on Add trigger after Cancel", async () => {
+    const page = await show(<TriggersView host={hostWith([])} owner={agent} />);
+    await press(button(page, "Add trigger"));
+    await press(button(page, "Cancel"));
+    expect(document.activeElement).toBe(button(page, "Add trigger"));
   });
 
   it("says why when the host can't, and keeps the rows", async () => {
@@ -168,10 +245,10 @@ verifies("routines.triggers.add-trigger-creates-routine", () => {
         host={hostWith([row("daily", "Daily")], async () => {
           throw new Error("The disk is full.");
         })}
-        owner={agent}
+        owner={workflow}
       />,
     );
-    await press([...page.querySelectorAll("button")].find((b) => b.textContent === "Add trigger"));
+    await press(button(page, "Add trigger"));
     expect(page.querySelector("[role=alert]")?.textContent).toContain("Couldn't add a trigger.");
     expect(page.querySelectorAll("li")).toHaveLength(1);
   });

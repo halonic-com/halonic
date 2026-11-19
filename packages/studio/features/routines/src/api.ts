@@ -340,8 +340,13 @@ export interface RoutinesHost {
   create(newRoutine: NewRoutine): Promise<RoutineRef>;
   /** The routines in the owner's hub that start it, sorted by name, for a Triggers section. */
   startingRoutines(owner: TriggerOwner): Promise<readonly TriggerRow[]>;
-  /** Makes a manual routine named after the owner that starts it, and returns where it is. */
-  addTrigger(owner: TriggerOwner): Promise<RoutineRef>;
+  /** The owner's name, as its hub lists it; `undefined` when the hub has no such owner. */
+  ownerName(owner: TriggerOwner): Promise<string | undefined>;
+  /**
+   * Makes a manual routine named after the owner that starts it, and returns where it is: a
+   * workflow with input `{}`, or an agent with `prompt`. Writes nothing for an agent without a prompt.
+   */
+  addTrigger(owner: TriggerOwner, prompt?: string): Promise<RoutineRef>;
 }
 
 /**

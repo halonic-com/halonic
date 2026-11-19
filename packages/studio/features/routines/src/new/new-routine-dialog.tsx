@@ -1,16 +1,9 @@
-import {
-  Button,
-  Dialog,
-  Field,
-  Input,
-  Select,
-  TextArea,
-  usePresentation,
-} from "@halonicjs/studio-kit";
+import { Button, Dialog, Field, Input, Select, usePresentation } from "@halonicjs/studio-kit";
 import { errorReasonFor, NameAndHubRow, NewItemNote } from "@halonicjs/studio-shell";
-import { type Ref, useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { NewRoutine, RoutineHub, RoutineRef, RoutineTargetChoice } from "../api.ts";
 import { newRoutineWords as words } from "./new-routine-words.ts";
+import { PromptField } from "./prompt-field.tsx";
 import { routineFilePath } from "./routine-file.ts";
 
 /** The props of {@link NewRoutineDialog}. */
@@ -224,44 +217,6 @@ export function NewRoutineDialog({
     >
       {fields}
     </Dialog>
-  );
-}
-
-/**
- * What the agent the routine runs is asked to do: empty until the person types it, with the hint
- * as a placeholder only, since a stand-in would be saved as the agent's real task.
- */
-function PromptField({
-  ref,
-  agentName,
-  prompt,
-  missing,
-  busy,
-  onChange,
-}: {
-  readonly ref: Ref<HTMLTextAreaElement>;
-  readonly agentName: string;
-  readonly prompt: string;
-  /** Create was pressed while it was empty. */
-  readonly missing: boolean;
-  readonly busy: boolean;
-  readonly onChange: (prompt: string) => void;
-}) {
-  return (
-    <Field
-      label={words.promptField}
-      hint={prompt.trim() === "" ? words.promptNeeded(agentName) : null}
-      error={missing ? words.promptNeeded(agentName) : null}
-    >
-      <TextArea
-        ref={ref}
-        readOnly={busy}
-        value={prompt}
-        placeholder={words.promptPlaceholder}
-        minRows={3}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </Field>
   );
 }
 

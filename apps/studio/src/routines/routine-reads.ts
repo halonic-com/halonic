@@ -28,9 +28,6 @@ export interface StoredSkip {
   readonly count: number;
 }
 
-/** The prompt of a routine an agent's **Add trigger** makes. */
-export const NEW_ROUTINE_PROMPT = "Describe what to do.";
-
 export type PlacedFile = ReturnType<typeof routineFiles>[number];
 
 /** The routine files of a loaded workspace, with the hub each sits in (`null` at the root). */

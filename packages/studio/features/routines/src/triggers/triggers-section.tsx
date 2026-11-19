@@ -6,7 +6,7 @@ import {
   usePresentation,
 } from "@halonicjs/studio-kit";
 import type { ItemPageSectionViewProps } from "@halonicjs/studio-shell";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   type RoutinesHost,
   RoutinesHostService,
@@ -14,6 +14,7 @@ import {
   type TriggerRow,
 } from "../api.ts";
 import { nextWhen } from "../list/list-words.ts";
+import { PromptField } from "../new/prompt-field.tsx";
 import { failureReason } from "../page/page-words.ts";
 import { TRIGGER_STEP } from "../page/trigger-step.ts";
 import { triggersWords } from "./triggers-words.ts";
@@ -50,19 +51,30 @@ export interface TriggersViewProps {
  * The section's body (`routines.triggers.lists-routines-that-start-it`,
  * `routines.triggers.empty-state`, `routines.triggers.add-trigger-creates-routine`): a row per
  * routine in the owner's hub that starts it, sorted by name, then **Add trigger**, which opens the
- * new routine with its Trigger picker focused.
+ * new routine with its Trigger picker focused. On an agent, **Add trigger** first asks for the
+ * agent's prompt, since that is the agent's real task, and makes the routine only once one is typed.
  */
 export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
   const { load, retry } = useTriggerRows(host, owner);
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string>();
+  /** The agent's name while the section asks for its prompt. */
+  const [asking, setAsking] = useState<string>();
+  const [prompt, setPrompt] = useState("");
+  const [promptMissing, setPromptMissing] = useState(false);
+  const promptField = useRef<HTMLTextAreaElement>(null);
+  const addButton = useRef<HTMLButtonElement>(null);
 
-  const add = async () => {
+  useEffect(() => {
+    if (asking !== undefined) promptField.current?.focus();
+  }, [asking]);
+
+  /** Runs `step` with the button busy, and says why when it fails. */
+  const attempt = async (step: () => Promise<void>) => {
     setAdding(true);
     setAddError(undefined);
     try {
-      const ref = await host.addTrigger(owner);
-      openRoutine?.(ref.hubId ?? owner.hubId, ref.id, TRIGGER_STEP);
+      await step();
     } catch (error) {
       setAddError(triggersWords.addFailed(failureReason(error)));
     } finally {
@@ -70,20 +82,73 @@ export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
     }
   };
 
+  const make = (withPrompt?: string) =>
+    attempt(async () => {
+      const ref = await host.addTrigger(owner, withPrompt);
+      setAsking(undefined);
+      setPrompt("");
+      openRoutine?.(ref.hubId ?? owner.hubId, ref.id, TRIGGER_STEP);
+    });
+
+  const add = () => {
+    if (owner.kind === "workflow") return make();
+    if (asking === undefined) {
+      return attempt(async () => setAsking((await host.ownerName(owner)) ?? owner.id));
+    }
+    if (prompt.trim() === "") {
+      setPromptMissing(true);
+      promptField.current?.focus();
+      return;
+    }
+    return make(prompt);
+  };
+
+  const cancel = () => {
+    setAsking(undefined);
+    setPrompt("");
+    setPromptMissing(false);
+    setAddError(undefined);
+    // Cancel removes itself, so put focus back where the user started rather than on the page body.
+    addButton.current?.focus();
+  };
+
   // A plain wrapper with no heading or name of its own: the section is a Configuration page, and
   // the page's tab panel already names it "Triggers", like the built pages.
   return (
     <div className="flex flex-col gap-2">
       <Rows load={load} owner={owner} retry={retry} openRoutine={openRoutine} />
+      {asking !== undefined && (
+        <PromptField
+          ref={promptField}
+          agentName={asking}
+          prompt={prompt}
+          missing={promptMissing}
+          busy={adding}
+          onChange={(next) => {
+            setPromptMissing(false);
+            setPrompt(next);
+          }}
+        />
+      )}
       {addError !== undefined && (
         <p role="alert" className="text-small text-danger">
           {addError}
         </p>
       )}
-      <div>
-        <Button variant="secondary" busy={adding} onClick={add}>
+      <div className="flex gap-2">
+        <Button
+          ref={addButton}
+          variant={asking === undefined ? "secondary" : "primary"}
+          busy={adding}
+          onClick={add}
+        >
           {triggersWords.addTrigger}
         </Button>
+        {asking !== undefined && (
+          <Button variant="secondary" onClick={cancel}>
+            {triggersWords.cancel}
+          </Button>
+        )}
       </div>
     </div>
   );
