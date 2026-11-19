@@ -17,8 +17,8 @@
 //! (capabilities/desktop-records.json) and the read-only `google_setup_read`
 //! command (capabilities/desktop-google-setups.json) and the read-only `workspace_key`
 //! command (capabilities/desktop-workspace-key.json) and the read-only `resource_report`
-//! command (capabilities/desktop-resources.json) and the read-only `lite_check` command
-//! (capabilities/desktop-lite-check.json) and the `update_*` commands
+//! command (capabilities/desktop-resources.json) and the `lite_check` command, which
+//! makes and removes a probe file in the profile (capabilities/desktop-lite-check.json) and the `update_*` commands
 //! (capabilities/desktop-updates.json) and the page's close request
 //! (capabilities/desktop-window.json) and the `wsl_*` commands of the sandbox
 //! backup (capabilities/desktop-sandbox-backup.json), and on Android the

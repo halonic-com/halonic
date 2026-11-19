@@ -221,11 +221,15 @@ mod wsl {
     use std::time::Duration;
 
     use halonic_agent_host::{
-        RuntimeStep, distro_installed, run_runtime_step_within, runtime_command, runtime_installed,
-        wsl_exe,
+        RuntimeStep, distro_installed_within, run_runtime_step_within, runtime_command,
+        runtime_installed, wsl_exe,
     };
 
     use super::{CheckId, CheckResult, Fact};
+
+    /// How long listing WSL's distros may take. A hung WSL service is one
+    /// reason the engine doesn't start, so the check must still answer then.
+    const LIST_LIMIT: Duration = Duration::from_secs(20);
 
     /// How long the updater's `status` may take: it only reads a few files.
     const STATUS_LIMIT: Duration = Duration::from_secs(20);
@@ -238,9 +242,10 @@ mod wsl {
                 CheckResult::new(CheckId::WslRuntime, Fact::NotChecked),
             ];
         };
-        let distro = match distro_installed(&wsl) {
+        let distro = match distro_installed_within(&wsl, LIST_LIMIT) {
             Ok(true) => Fact::Present,
             Ok(false) => Fact::Missing,
+            // Also when the listing timed out.
             Err(_) => Fact::Unknown,
         };
         let runtime = if distro == Fact::Present {
