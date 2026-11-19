@@ -8,8 +8,9 @@
 //! and keeps what the person picked in the shell's memory; every other
 //! command takes the location that call answered and refuses one the person
 //! didn't pick in this session. Otherwise a page could ask for `~/.ssh` and
-//! read it back. A pick that is the profile, the plugins folder or inside
-//! either is refused, and the profile is left out of a folder that holds it.
+//! read it back. A pick that is the profile or the plugins folder, holds
+//! either or is inside either is refused (HAL-13713). The reader still
+//! leaves the profile out of a folder that holds it, should one get past.
 //!
 //! Reading follows no link and never opens a special file (the
 //! `halonic-workspace-files` reader's rules), leaves out the `.git` folder
@@ -129,8 +130,8 @@ impl PluginSources {
 
 /// The real path and the location of the folder `chosen`, if a plugin may be
 /// added from it: a folder that is neither the profile nor the plugins
-/// folder nor inside either. A folder that holds the profile is fine; the
-/// reader leaves the profile out of it.
+/// folder, holds neither and is inside neither. A copy of a folder that
+/// overlaps them would hand a plugin Halonic's own data.
 pub(crate) fn check_source(
     chosen: &Path,
     profile: &ProfileFolder,
@@ -140,12 +141,13 @@ pub(crate) fn check_source(
         return Err(InstallRefusal::new("io", "That isn't a folder."));
     }
     let plugins = plugins_root(profile);
-    if profile_fence(profile, &real) == Fence::Whole
-        || Fence::around(&real, &plugins) == Fence::Whole
+    if profile_fence(profile, &real) != Fence::Outside
+        || Fence::around(&real, &plugins) != Fence::Outside
     {
         return Err(InstallRefusal::new(
             "source_not_allowed",
-            "A plugin can't be added from the Halonic profile folder or the plugins folder.",
+            "A plugin can't be added from the Halonic profile folder or the plugins folder, \
+             a folder that holds either, or a folder inside either.",
         ));
     }
     let location = plain_path(&real)
