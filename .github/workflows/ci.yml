@@ -2184,7 +2184,10 @@ jobs:
           restore-keys: rust-android-${{ runner.os }}-
       # One retry for a download that still fails after Gradle's own retries.
       # It also reruns a real compile error, so it stays at 2 attempts to keep
-      # a broken build well inside the job timeout.
+      # a broken build well inside the job timeout. Before the retry it stops
+      # the Gradle daemon and deletes the configuration cache: a broken cache
+      # entry (AGP's navigation task failing to serialize, HAL-13669) otherwise
+      # fails the retry the same way within a second.
       - name: Build the debug APK
         working-directory: apps/studio
         run: |
@@ -2193,7 +2196,11 @@ jobs:
           for attempt in 1 2; do
             pnpm exec tauri android build --debug --apk --target aarch64 --target x86_64 && exit 0
             echo "::warning title=android::Build attempt $attempt failed."
-            [ "$attempt" -lt 2 ] && sleep 20
+            if [ "$attempt" -lt 2 ]; then
+              sleep 20
+              (cd src-tauri/gen/android && ./gradlew --stop)
+              rm -rf src-tauri/gen/android/.gradle/configuration-cache
+            fi
           done
           exit 1
       # For trying a pull request's build on a phone or an emulator.
