@@ -10,8 +10,11 @@ The window shall only read. Every change (a step, a client secret, start over, d
 
 `signInEntry` shall be what the computer said about this window on the last read: `here` or `elsewhere`. Any other value counts as no answer, and the read fails. Until a read has answered, it is `elsewhere`, the safe side.
 
+The served window's Inbox shall list the Google setup next to the waiting runs (`studio.served-inbox`). The window has no Library connector page, so the setup has no badges and no connector block there. An open setup shall show the read-only layout in the served words ("This window only shows the setup. Finish it on the computer running Halonic."), with step 7's text and a Copy button for the command. The window shall read the setups again when it gets focus again, so a sign-in finished on the computer shows. Decided with Sofia on HAL-10747.
+
 ## Examples
 
 - Given the computer answers a list with one setup and `signIn: "elsewhere"`, then the accounts hold that setup with its address and `signInEntry` is `elsewhere`.
 - Given the computer answers 401, then reading the accounts fails.
 - Given any change is tried, then it is refused and no request is sent.
+- Given the served window has one setup, then its Inbox lists it, and opening it shows the read-only layout.

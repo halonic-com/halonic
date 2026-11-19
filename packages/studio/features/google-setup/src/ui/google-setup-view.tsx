@@ -140,8 +140,15 @@ function GoogleSetupBody({ item, answering, close, accounts, focus }: GoogleSetu
     );
   }
 
-  if (phone)
-    return <PhoneView account={account} steps={steps} signInEntry={accounts.signInEntry} />;
+  if (phone || accounts.readOnly === true)
+    return (
+      <PhoneView
+        account={account}
+        steps={steps}
+        signInEntry={accounts.signInEntry}
+        served={accounts.readOnly === true}
+      />
+    );
 
   const edit = (change: SetupEdit) => accounts.edit(account.record.accountRef, change);
   const asking = account.askAccountType;

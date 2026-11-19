@@ -1,1 +1,1 @@
-export { googleSetupFeature } from "./feature.ts";
+export { googleSetupFeature, servedGoogleSetupFeature } from "./feature.ts";

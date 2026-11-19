@@ -119,6 +119,11 @@ export interface GoogleSetupAccounts {
   readonly secretEntry: SecretEntry;
   /** Whether **Sign in with Google** can run in this window. It doesn't change while the workspace is open. */
   readonly signInEntry: SignInEntry;
+  /**
+   * Set when this window only reads the setup, as a served window does: it then shows the read-only
+   * layout the phone has, with the words for a desktop browser and a **Copy** button for step 7.
+   */
+  readonly readOnly?: true;
   /** Every connected account, whether its setup needs you or not. */
   list(): Promise<readonly GoogleSetupAccount[]>;
   /**
