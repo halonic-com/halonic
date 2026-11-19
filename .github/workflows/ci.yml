@@ -27,6 +27,12 @@ env:
   # turbo.json caps Turbo at 2 tasks at once for agent workspaces; CI keeps
   # Turbo's own default of 10.
   TURBO_CONCURRENCY: "10"
+  # "on": a pull request's build job tests only the packages it changes and
+  # their dependents (tooling/check's affected-tests); typecheck, lint and
+  # build still cover every package, and the merge queue and main test
+  # everything. Stays "off" until the merge base's tests and the requirement
+  # guard select the same packages (HAL-12539).
+  AFFECTED_TESTS: "off"
 
 jobs:
   changes:
@@ -419,6 +425,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # A pull request's merge ref with its parents, for affected-tests.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
       - uses: $/.github/actions/setup
       # Every task runs; unchanged packages are cache hits. The
       # cache is GitHub's own, scoped per branch, so a pull request can read
@@ -456,6 +464,19 @@ jobs:
           [ -n "$token" ] || off "The cache answered the token exchange without a token"
           echo "::add-mask::$token"
           echo "token=$token" >> "$GITHUB_OUTPUT"
+      # The merge ref's first parent is the main commit the pull request is
+      # tested on, the same commit the merge base's tests use (HAL-5568).
+      # Anything else (no merge commit) tests every package.
+      - id: affected
+        name: Choose the packages to test
+        if: github.event_name == 'pull_request' && env.AFFECTED_TESTS == 'on'
+        run: |
+          if [ "$(git rev-list --parents -n 1 HEAD | wc -w)" = 3 ]; then
+            node tooling/check/src/cli/affected-tests.ts --base HEAD^1
+          else
+            echo "::notice title=Affected tests::No merge commit, so every package is tested."
+            echo "all=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Run every task through the cache
         env:
           TURBO_API: ${{ vars.TURBO_API }}
@@ -463,6 +484,8 @@ jobs:
           TURBO_TOKEN: ${{ steps.cache-token.outputs.token }}
           TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ github.event_name != 'pull_request' && secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY || '' }}
           EVENT: ${{ github.event_name }}
+          AFFECTED: ${{ steps.affected.outputs.all == 'false' }}
+          TEST_FILTERS: ${{ steps.affected.outputs.filters }}
           # Give each test and hook 30 s on a loaded runner, as the other jobs
           # do (HAL-4241); this job had left it at Vitest's 5 s (HAL-12081).
           HALONIC_TEST_TIMEOUT: "30000"
@@ -478,7 +501,20 @@ jobs:
             # The merge queue: the queued change's own code runs here, so it only reads.
             cache=local:rw,remote:r
           fi
-          pnpm exec turbo run typecheck lint test build --continue --output-logs=new-only --summarize --cache="$cache"
+          flags=(--continue --output-logs=new-only --summarize --cache="$cache")
+          if [ "$AFFECTED" != true ]; then
+            pnpm exec turbo run typecheck lint test build "${flags[@]}"
+            exit 0
+          fi
+          status=0
+          pnpm exec turbo run typecheck lint build "${flags[@]}" || status=$?
+          read -ra filters <<< "$TEST_FILTERS"
+          if [ "${#filters[@]}" -gt 0 ]; then
+            pnpm exec turbo run test "${filters[@]}" "${flags[@]}" || status=$?
+          else
+            echo "::notice title=Affected tests::No package's tests are needed for this change."
+          fi
+          exit "$status"
       # On main and in the merge queue, the change checks itself: it reads
       # the result files the tests just wrote, even when a task failed (a
       # missing result file fails the check anyway). A queued change already
@@ -530,12 +566,15 @@ jobs:
       - name: Task timings
         if: always()
         run: |
-          summary=$(ls -t .turbo/runs/*.json 2>/dev/null | head -1)
-          [ -n "$summary" ] || exit 0
-          jq -r '"Tasks: \(.execution.attempted), cached: \(.execution.cached), failed: \(.execution.failed), \((.execution.endTime - .execution.startTime) / 1000)s"' "$summary" \
-            | tee -a "$GITHUB_STEP_SUMMARY"
-          jq '[.tasks[] | {taskId, task, package, cache: .cache.status, startTime: .execution.startTime, endTime: .execution.endTime, exitCode: .execution.exitCode}]' \
-            "$summary" > "$RUNNER_TEMP/task-timings.json"
+          # With affected tests on, the build and the tests are two turbo runs.
+          mapfile -t summaries < <(ls -t .turbo/runs/*.json 2>/dev/null)
+          [ "${#summaries[@]}" -gt 0 ] || exit 0
+          for summary in "${summaries[@]}"; do
+            jq -r '"Tasks: \(.execution.attempted), cached: \(.execution.cached), failed: \(.execution.failed), \((.execution.endTime - .execution.startTime) / 1000)s"' "$summary" \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+          jq -s '[.[].tasks[] | {taskId, task, package, cache: .cache.status, startTime: .execution.startTime, endTime: .execution.endTime, exitCode: .execution.exitCode}]' \
+            "${summaries[@]}" > "$RUNNER_TEMP/task-timings.json"
           jq -r '"",
             "| Task | Tasks | Run (not cached) | Seconds run | Longest |",
             "| --- | --- | --- | --- | --- |",
