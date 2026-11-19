@@ -2376,7 +2376,8 @@ A problem with what you're doing in the dialog goes in the dialog (a Field error
 never in a toast.
 
 **When the focused toast closes,** focus goes to the newest toast left, else back to where it was
-before F6.
+before F6 while that place is still in the page, else (focus came by Tab or a click, or that place
+is gone) to the shown page's `h1`, never the body.
 
 **On a phone** the region spans the width less 16px each side, 8px above the bar at the bottom,
 with nothing measured. One toast shows at a time and the rest wait in order. The close button is
