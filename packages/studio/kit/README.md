@@ -222,7 +222,7 @@ The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 
 | Prop | What it is |
 | --- | --- |
-| `variant` | `primary` once per view, `secondary` (the default), `ghost` for Cancel, `danger` only to confirm |
+| `variant` | `primary` once per view, `secondary` (the default), `ghost` for Cancel, `danger-outline` for a destructive action that opens a confirm, `danger` only to confirm it |
 | `size` | `xs` 20px in the caption type, only for the status bar; `sm` 28px, `md` 32px (the default), `lg` 40px, `touch` 48px for a phone's bottom bar or sheet |
 | `block` | Full width |
 | `icon` | A 16px icon before the label. With `label` and no children, the button is a square icon button |
@@ -245,12 +245,18 @@ only in a tooltip.
 
 | State | What shows |
 | --- | --- |
-| Default | `primary` fill, `secondary` white with a `border-strong` edge, `ghost` no fill, `danger` fill |
-| Hover | `primary-hover`, `surface-subtle`, `surface-muted` with `fg` text, `danger-hover`; a press the same |
+| Default | `primary` fill, `secondary` white with a `border-strong` edge, `ghost` no fill, `danger-outline` `surface` with a `danger` edge and `danger` text, `danger` fill |
+| Hover | `primary-hover`, `surface-subtle`, `surface-muted` with `fg` text, `danger-soft`, `danger-hover`; a press the same |
 | Focus | The standard focus ring |
 | Unavailable | 45% opacity, no hover change, `not-allowed` cursor; its reason is read with it |
 | Busy | The spinner in the icon's place (in front of the label when there's no icon); the label stays |
 | Error | None: a failed action shows a toast or a field error, never a red button |
+
+**Red means it cuts something off; filled red means you're confirming it.** A destructive action on
+a row or under a list (Revoke, Revoke all) is `danger-outline` and opens a confirm, whose confirming
+button is `danger`. Never use `danger-outline` for the confirm itself, in a menu (use the Menu's
+`danger` item) or on a tinted box (Callout, Toast). It always has words, never only an icon, and
+a row has at most one.
 
 **On a phone and on a touch screen** (`phone:` and `touch:`), `sm` and `md` render at `lg` (40px),
 and every size gets a 48px hit area (`hit-touch`), drawn round the button so its look doesn't

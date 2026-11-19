@@ -28,13 +28,16 @@ verifies("kit.button", () => {
     ["primary", "border-transparent"],
     ["secondary", "border-border-strong"],
     ["ghost", "border-transparent"],
+    ["danger-outline", "border-danger"],
     ["danger", "border-transparent"],
   ] as const)("gives %s a 1px edge high contrast can draw, %s", (variant, edge) => {
     const classes = renderButton({ variant, children: "Save" }).className.split(" ");
     expect(classes).toContain("border");
     expect(classes).toContain(edge);
     // One edge colour per button, so the stylesheet's order never decides which one shows.
-    const edges = classes.filter((name) => /^border-(?:transparent|border-strong)$/.test(name));
+    const edges = classes.filter((name) =>
+      /^border-(?:transparent|border-strong|danger)$/.test(name),
+    );
     expect(edges).toEqual([edge]);
   });
 
@@ -46,6 +49,7 @@ verifies("kit.button", () => {
     ["primary", "bg-primary text-on-primary", "hover:bg-primary-hover"],
     ["secondary", "bg-surface text-fg", "hover:bg-surface-subtle"],
     ["ghost", "text-fg-muted", "hover:bg-surface-muted"],
+    ["danger-outline", "border-danger bg-surface text-danger", "hover:bg-danger-soft"],
     ["danger", "bg-danger text-on-danger", "hover:bg-danger-hover"],
   ] as const)(
     "draws the %s variant from tokens, with the hover fill on press too",
