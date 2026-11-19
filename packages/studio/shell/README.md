@@ -255,7 +255,11 @@ page's `h1`. With nowhere to go, they stay in the Tab order as unavailable, and 
 Assistant (T14) lands; the window-wide Back and Forward keys come in a later pull request.
 
 The status bar starts with the frame's `badges` slot ("Not trusted yet") and ends with its
-`saveNote` slot (see `StatusBarSaveNote`); both take no room when they're empty. The item page's
+`saveNote` slot (see `StatusBarSaveNote`); both take no room when they're empty. On a phone the
+frame's `phoneBadges` slot takes `<HeaderBadges registry={shell.badges} layout="strip" />`: rows
+of the notice strip under the top bar, after a save problem, with the trust badge on its own line
+and the connector states in one row of chips that wraps. In a short window the rows are left out
+(`shell.phone-notice-badges`). The item page's
 name field, cut with "…", shows its full text as a tooltip on hover and keyboard focus, and none
 while it fits (`shell.cut-text-tooltips`). Such a tooltip never names or describes its element,
 whose own text is already the full text.
