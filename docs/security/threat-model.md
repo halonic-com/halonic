@@ -373,7 +373,14 @@ the address bar and the history (`agent-host.google-callback-over-frames`).
 
 An integration's sign-in (HAL-12191, HAL-8613) has a second token-free route of
 its own: `GET /sign-in/<random>`, a prefix route of `host-server`, whose path is
-new for each start and whose redirect names the host's own port. It has the
+new for each start and whose redirect names the host's own port. The host
+serves these routes only with a profile folder, and Studio starts it with one
+(`--profile-folder`), so they are live on a shipped host. It seals the grants
+with the profile's token key, as it does Google's tokens, in
+`<profile>/integration-sign-ins/tokens`. Its token and revoke requests go only
+to public hosts, follow no redirect and never reach the host's own ports. No
+integration can hold a sign-in yet (`noSignInIntegrations`), so for now every
+route answers `404 unknown_integration`. The callback has the
 same `Host` and `Origin` checks and the same defence, the sign-in's `state`
 (plus PKCE), and a path no sign-in waits on gets a plain 400 page that repeats
 nothing of the request. The relay passes only `/v1/google/callback` without the
