@@ -213,6 +213,22 @@ export interface WorkflowsHost {
    */
   subscribe(listener: () => void): () => void;
   /**
+   * Adds an agent step `step` (`task`) or a wait step `wait` to the workflow, `-2` when the name is
+   * taken, placed at `at` on the canvas, as one undoable change that saves itself; resolves to the
+   * new step's id. It has no arrows yet. Absent while the app can't change the workflow's file, so
+   * the canvas shows no toolbar. Rejects with the reason the file couldn't be changed.
+   */
+  addStep?(
+    ref: WorkflowRef,
+    type: "task" | "wait",
+    at: { readonly x: number; readonly y: number },
+  ): Promise<string>;
+  /**
+   * Forgets where a person put the steps, so every step takes the automatic place again (**Auto
+   * layout**), as one undoable change. Present whenever {@link WorkflowsHost.addStep} is.
+   */
+  resetLayout?(ref: WorkflowRef): Promise<void>;
+  /**
    * Makes the workflow `start → done` in the hub, with the id taken from its name (`-2` when the
    * id is taken), and returns where it is. Rejects with the reason it couldn't be written.
    */
