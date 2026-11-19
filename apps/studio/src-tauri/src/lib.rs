@@ -96,7 +96,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(engine_lock::EngineLockState::default())
         .manage(records::RecordState::default())
         .manage(agent_host::AgentHostState::default())
-        .manage(http_fetch::HttpFetchState::default())
+        .manage(http_fetch::HttpFetchState::from_env())
         .manage(sandbox_backup::BackupState::default())
         .manage(files::FileState::default())
         .manage(plugin_source::PluginSources::default())

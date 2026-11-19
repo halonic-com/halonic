@@ -8,7 +8,7 @@ use std::sync::mpsc::{Receiver, channel};
 use std::thread;
 use std::time::Duration;
 
-use halonic_http_guard::{PageRequest, check_request};
+use halonic_http_guard::{PageRequest, ProxySetting, check_request};
 
 use super::{CallKey, HttpFetchState, next_hop, run};
 
@@ -92,8 +92,20 @@ fn page_request(method: &str, url: &str, body: Option<&str>, follow: bool) -> Pa
 }
 
 fn fetch(request: PageRequest) -> Result<super::FetchAnswer, super::FetchRefusal> {
+    fetch_with(request, &ProxySetting::None)
+}
+
+fn fetch_with(
+    request: PageRequest,
+    proxy: &ProxySetting,
+) -> Result<super::FetchAnswer, super::FetchRefusal> {
     let checked = check_request(request).expect("the guard accepts it");
-    tauri::async_runtime::block_on(run(checked))
+    tauri::async_runtime::block_on(run(checked, proxy))
+}
+
+/// `HTTPS_PROXY` set to `value`, and nothing else.
+fn proxy_setting(value: &str) -> ProxySetting {
+    ProxySetting::from_env(|name| (name == "HTTPS_PROXY").then(|| value.to_owned()))
 }
 
 #[test]
@@ -231,7 +243,7 @@ fn http_fetch_test_changes_a_post_to_a_get_for_301_and_302_but_not_307() {
 fn http_fetch_test_abort_ends_only_the_named_call_of_that_page() {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    let state = HttpFetchState::default();
+    let state = HttpFetchState::with_proxy(ProxySetting::None);
     let aborted = Arc::new(AtomicUsize::new(0));
     let key = |page: &str, call| CallKey {
         page: page.to_owned(),
@@ -257,4 +269,52 @@ fn http_fetch_test_abort_ends_only_the_named_call_of_that_page() {
     state.forget(&key("other", 1));
     state.abort(|_| true);
     assert_eq!(aborted.load(Ordering::SeqCst), 2);
+}
+
+#[test]
+fn http_fetch_test_with_a_proxy_reaches_this_computer_directly() {
+    let server = Server::serve(vec![reply("200 OK", "", "direct")]);
+    let proxy = Server::serve(vec![reply("502 Bad Gateway", "", "")]);
+    let setting = proxy_setting(&proxy.url(""));
+    let url = server.url("/").replace("127.0.0.1", "localhost");
+    let answer = fetch_with(page_request("GET", &url, None, false), &setting).expect("an answer");
+    assert_eq!(answer.body, "direct");
+}
+
+#[test]
+fn http_fetch_test_asks_the_proxy_for_a_tunnel_to_the_name_on_a_redirect_hop() {
+    let server = Server::serve(vec![reply(
+        "302 Found",
+        "Location: https://model.test/v1?key=hunter2\r\n",
+        "",
+    )]);
+    let proxy = Server::serve(vec![reply("407 Proxy Authentication Required", "", "")]);
+    let with_login = proxy
+        .url("")
+        .replace("http://", &format!("http://made:up{}", '@'));
+    let setting = proxy_setting(&with_login);
+    let refusal = fetch_with(page_request("GET", &server.url("/"), None, true), &setting)
+        .expect_err("the proxy refused the tunnel");
+    assert_eq!(refusal.kind, "proxy", "{}", refusal.message);
+    assert!(!refusal.message.contains("hunter2"), "{}", refusal.message);
+    let connect = proxy.request();
+    assert!(connect.starts_with("CONNECT model.test:443 "), "{connect}");
+    // `made:up`, encoded for the CONNECT line only.
+    assert!(connect.contains("Basic bWFkZTp1cA=="), "{connect}");
+    assert!(
+        !connect.contains("hunter2") && !connect.contains("X-Test"),
+        "{connect}"
+    );
+}
+
+#[test]
+fn http_fetch_test_with_a_proxy_refuses_plain_http_to_a_public_name_and_an_unusable_setting() {
+    let proxied = proxy_setting("http://127.0.0.1:9");
+    let plain = page_request("GET", "http://api.example.com/", None, false);
+    let refusal = fetch_with(plain, &proxied).expect_err("refused");
+    assert_eq!(refusal.kind, "plain_http_proxied");
+    let unusable = proxy_setting("socks5://127.0.0.1:1080");
+    let secure = page_request("GET", "https://api.example.com/", None, false);
+    let refusal = fetch_with(secure, &unusable).expect_err("refused");
+    assert_eq!(refusal.kind, "proxy_refused");
 }
