@@ -83,7 +83,13 @@ verifies("cli.harness-model-access", () => {
     it("names the route, provider, key, address, model and price of the alias", async () => {
       const workspace = await workspaceWith({ zai, deepseek });
 
-      const access = await harnessModelAccess(workspace, "support", "open-coder-agent", trusted);
+      const access = await harnessModelAccess(
+        workspace,
+        "support",
+        "open-coder-agent",
+        "claude-code",
+        trusted,
+      );
 
       expect(access).toEqual({
         route: "anthropic",
@@ -98,7 +104,7 @@ verifies("cli.harness-model-access", () => {
     it("gives an openai-compatible provider the Responses route", async () => {
       const workspace = await workspaceWith({ openrouter });
 
-      const access = await harnessModelAccess(workspace, "support", "routed", trusted);
+      const access = await harnessModelAccess(workspace, "support", "routed", "codex", trusted);
 
       expect(access).toMatchObject({ route: "openai", providerId: "openrouter", secret: "or-key" });
       expect(access?.model).toBe("z-ai/glm-5.3");
@@ -107,9 +113,11 @@ verifies("cli.harness-model-access", () => {
     it("gives no keyed provider for a name that is no alias, or names a provider directly", async () => {
       const workspace = await workspaceWith({ zai, deepseek });
 
-      expect(await harnessModelAccess(workspace, "support", "sonnet", trusted)).toBeUndefined();
       expect(
-        await harnessModelAccess(workspace, "support", "zai/glm-5.3", trusted),
+        await harnessModelAccess(workspace, "support", "sonnet", "claude-code", trusted),
+      ).toBeUndefined();
+      expect(
+        await harnessModelAccess(workspace, "support", "zai/glm-5.3", "claude-code", trusted),
       ).toBeUndefined();
       expect(harnessProviderModel(workspace, "support", "sonnet")).toBeUndefined();
       expect(harnessProviderModel(workspace, "support", "zai/glm-5.3")).toBeUndefined();
@@ -125,7 +133,7 @@ verifies("cli.harness-model-access", () => {
       const workspace = await workspaceWith({ zai, deepseek });
 
       const error = await errorOf(
-        harnessModelAccess(workspace, "support", "open-coder-agent", untrusted),
+        harnessModelAccess(workspace, "support", "open-coder-agent", "claude-code", untrusted),
       );
 
       expect(error.code).toBe("untrusted-provider-address");
@@ -141,7 +149,7 @@ verifies("cli.harness-model-access", () => {
       };
 
       const error = await errorOf(
-        harnessModelAccess(workspace, "support", "open-coder-agent", checks),
+        harnessModelAccess(workspace, "support", "open-coder-agent", "claude-code", checks),
       );
 
       expect(error.code).toBe("key-origin-not-allowed");
@@ -154,7 +162,13 @@ verifies("cli.harness-model-access", () => {
         keyOrigins: listed({ "zai-key": ["https://api.z.ai"] }),
       };
 
-      const access = await harnessModelAccess(workspace, "support", "open-coder-agent", checks);
+      const access = await harnessModelAccess(
+        workspace,
+        "support",
+        "open-coder-agent",
+        "claude-code",
+        checks,
+      );
 
       expect(access?.providerId).toBe("zai");
     });
@@ -163,9 +177,11 @@ verifies("cli.harness-model-access", () => {
       const keyless = "type: anthropic\nbaseUrl: https://api.z.ai/api/anthropic\n";
       const workspace = await workspaceWith({ zai: keyless, deepseek, ollama });
 
-      const local = await errorOf(harnessModelAccess(workspace, "support", "local", trusted));
+      const local = await errorOf(
+        harnessModelAccess(workspace, "support", "local", "claude-code", trusted),
+      );
       const noKey = await errorOf(
-        harnessModelAccess(workspace, "support", "open-coder-agent", trusted),
+        harnessModelAccess(workspace, "support", "open-coder-agent", "claude-code", trusted),
       );
 
       expect(local.code).toBe("not-for-harness");
@@ -174,10 +190,30 @@ verifies("cli.harness-model-access", () => {
       expect(noKey.message).toContain("zai");
     });
 
+    it("refuses a provider whose API the agent's harness doesn't call, before the key check", async () => {
+      const workspace = await workspaceWith({ zai, deepseek, openrouter });
+
+      const codexOnAnthropic = await errorOf(
+        harnessModelAccess(workspace, "support", "open-coder-agent", "codex", untrusted),
+      );
+      const claudeOnOpenai = await errorOf(
+        harnessModelAccess(workspace, "support", "routed", "claude-code", trusted),
+      );
+
+      expect(codexOnAnthropic.code).toBe("not-for-harness");
+      expect(codexOnAnthropic.message).toContain("Codex");
+      expect(codexOnAnthropic.message).toContain("type anthropic");
+      expect(claudeOnOpenai.code).toBe("not-for-harness");
+      expect(claudeOnOpenai.message).toContain("Claude Code");
+      expect(claudeOnOpenai.message).toContain("openai-compatible");
+    });
+
     it("refuses an alias whose provider the workspace doesn't have", async () => {
       const workspace = await workspaceWith({ zai, deepseek });
 
-      const error = await errorOf(harnessModelAccess(workspace, "support", "ghost", trusted));
+      const error = await errorOf(
+        harnessModelAccess(workspace, "support", "ghost", "claude-code", trusted),
+      );
 
       expect(error.code).toBe("no-provider");
     });

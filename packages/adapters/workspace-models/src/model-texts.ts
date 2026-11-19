@@ -56,6 +56,10 @@ export const modelTexts = {
     `provider ${provider} has type ${type}, and Claude Code and Codex can only call a provider of type anthropic, openai or openai-compatible.`,
   harnessTypeFix: (provider: string): ModelText =>
     `Point the agent's model at an alias whose provider speaks Anthropic's Messages API or OpenAI's Responses API, or change the type in providers/${provider}.yaml.`,
+  harnessRoute: (harness: string, provider: string, type: string): ModelText =>
+    `${harness} can't call provider ${provider}, which has type ${type}: Claude Code calls a provider of type anthropic, Codex one of type openai or openai-compatible.`,
+  harnessRouteFix: (provider: string): ModelText =>
+    `Point the agent's model at an alias whose provider its harness can call, or choose the harness that calls providers/${provider}.yaml.`,
   harnessKey: (provider: string): ModelText =>
     `provider ${provider} names no secret, and Claude Code and Codex need a key for a provider Halonic chooses.`,
   harnessKeyFix: (provider: string): ModelText =>
