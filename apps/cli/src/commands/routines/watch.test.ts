@@ -227,7 +227,10 @@ verifies("cli.commands.routines.watch", () => {
     const code = await runCli(["routines", "watch"], io, [watchCommand(fakeTime(engineStart))]);
 
     expect(code).toBe(exitCode.unavailable);
-    expect(io.stderr.join("\n")).toContain("Writer is in Claude Code. Nothing ran.");
+    // `run` starts such agents now, so the line names routines rather than Halonic (HAL-13857).
+    expect(io.stderr.join("\n")).toContain(
+      "Routines can't run agents in Claude Code yet, and Writer is in Claude Code. Nothing ran.",
+    );
     expect(await storedRuns()).toEqual([]);
   });
 
