@@ -9,7 +9,10 @@ export interface AutoSaved {
   readonly onChange: (next: string) => void;
   /** Saves at once, as leaving the field does. */
   readonly flush: () => void;
-  /** The sentence for the field's red border, or `null` while the text is fine to save. */
+  /**
+   * The sentence for the field's red border, or `null` while the text is fine to save. It can
+   * appear while focus is in the field, so its Field sets `announceWhileFocused`.
+   */
   readonly error: string | null;
   /** Whether the box holds text that isn't in the file: a mistake that shows, or a failed save. */
   readonly notSaved: boolean;

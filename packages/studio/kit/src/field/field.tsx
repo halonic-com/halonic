@@ -78,6 +78,12 @@ export interface FieldProps {
   readonly align?: "control" | "text";
   /** Side layout only. Drops the value column's 560px limit, for long text (Instructions). */
   readonly wide?: boolean;
+  /**
+   * For a field that checks its value after a pause in typing: an error that appears while focus
+   * is still in the field is announced too, once (WCAG 4.1.3). Without it, only an error that
+   * appears after focus has left the Field is announced.
+   */
+  readonly announceWhileFocused?: boolean;
   /** One kit control: an Input, a TextArea or a Select. */
   readonly children: ReactNode;
 }
@@ -85,7 +91,8 @@ export interface FieldProps {
 /**
  * A label, a control and a hint or an error under it. The Field gives the control its `id`,
  * `aria-describedby` and `aria-invalid`, so a screen never writes them itself. Inside a
- * `FieldAnnounceProvider`, an error that appears after focus has left the Field is announced.
+ * `FieldAnnounceProvider`, an error that appears after focus has left the Field is announced, and
+ * with `announceWhileFocused` one that appears while focus is inside it too.
  *
  * @example
  * <Field label="Name" hint="Shown in the sidebar." error={nameError} required>
@@ -103,6 +110,7 @@ export function Field({
   layout,
   align = "control",
   wide = false,
+  announceWhileFocused = false,
   children,
 }: FieldProps) {
   const rows = useFormRows();
@@ -113,7 +121,12 @@ export function Field({
   const invalid = isShown(error);
   const hasLine = invalid || isShown(hint);
   const wrapper = useRef<HTMLDivElement>(null);
-  useFieldErrorAnnouncement(wrapper, label, invalid ? (error ?? undefined) : undefined);
+  useFieldErrorAnnouncement(
+    wrapper,
+    label,
+    invalid ? (error ?? undefined) : undefined,
+    announceWhileFocused,
+  );
 
   const control: FieldControl = {
     id: controlId,

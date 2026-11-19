@@ -50,11 +50,16 @@ export function FieldAnnounceProvider({ announce, children }: FieldAnnounceProvi
  * covers the forms that move focus to the field with the error. Focus is read a frame later, so a
  * form that moves it in an effect counts too. An error already there when the Field mounts isn't
  * news, and neither is the same error rendered again.
+ *
+ * `whileFocused` is for a field that checks its value after a pause in typing: there the error
+ * appears under a control that already has focus, and NVDA and JAWS don't re-read a description
+ * that changes under focus, so it's announced wherever focus is.
  */
 export function useFieldErrorAnnouncement(
   field: RefObject<HTMLElement | null>,
   label: string,
   error: string | undefined,
+  whileFocused = false,
 ): void {
   const announce = useContext(FieldAnnounceContext);
   const lastError = useRef(error);
@@ -66,10 +71,10 @@ export function useFieldErrorAnnouncement(
       return;
     }
     const frame = requestAnimationFrame(() => {
-      if (!field.current?.contains(document.activeElement)) {
+      if (whileFocused || !field.current?.contains(document.activeElement)) {
         announce(`${label}: ${error}`);
       }
     });
     return () => cancelAnimationFrame(frame);
-  }, [announce, field, label, error]);
+  }, [announce, field, label, error, whileFocused]);
 }

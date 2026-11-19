@@ -1776,6 +1776,21 @@ at its root; without a provider, a Field says nothing:
 </FieldAnnounceProvider>;
 ```
 
+**An error that appears after a pause in typing** shows under a control that still has focus, and
+NVDA and JAWS don't re-read a description that changes under focus. A Field that checks its value
+on a pause sets `announceWhileFocused`: it then announces a new error once wherever focus is. The
+same error isn't read again when focus leaves, and clearing it says nothing:
+
+```tsx
+<Field label="Model call limit" error={limit.error} announceWhileFocused>
+  <Input
+    value={limit.value}
+    onChange={(event) => limit.onChange(event.target.value)}
+    onBlur={limit.flush}
+  />
+</Field>
+```
+
 A `prefix` puts its symbol in `text-body` `fg-muted` 8px before the box, centred on it, and
 tapping it focuses the control. Screen readers skip the symbol and hear its `name` after the
 label: "Per run, in euros". The hint and the error still start at the Field's left edge, under
