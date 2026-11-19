@@ -3,6 +3,7 @@
 - Task: HAL-13042
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13042 (Sofia's C117 check, G3: a fallback line on the approved Changes screen, a team decision under HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2aWeHj5dFUw7JtEmJhJ9XzeRMVsVgyxNcb+Yqz/2Vzg6l9uuaL5XGEsu5tKp1odTI2fQw0g6sV1wwtFbdr2nBw==
 
 ## What changes
 
