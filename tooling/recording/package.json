@@ -9,7 +9,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "capture": "node src/cli/record.ts capture",
+    "render": "node src/cli/record.ts render"
   },
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",
