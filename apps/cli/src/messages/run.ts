@@ -248,6 +248,15 @@ export const runMessages = defineMessages("run", {
     return phrase`the engine couldn't sweep a leftover program copy: ${reason}`;
   },
   /**
+   * A `--debug` line when the run log couldn't record a failure of a harness
+   * run's bridge (requirement `harness-host.bridge-failures`): the failure,
+   * then the run log's own error when it named one.
+   */
+  bridgeFailureUnrecorded: (failure: string, cause: string | undefined) =>
+    cause === undefined
+      ? phrase`the engine couldn't write a harness bridge failure to the run log: ${failure}`
+      : phrase`the engine couldn't write a harness bridge failure to the run log: ${failure} (caused by: ${cause})`,
+  /**
    * Listed tools a turn left out because nobody approved them, with the
    * command that approves them. Nobody can answer in a run, so this is the
    * only place the command is named. The names arrive escaped.

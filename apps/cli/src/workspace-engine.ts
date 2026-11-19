@@ -326,7 +326,9 @@ export function waitingReporter(
  * goes to `stuck`, which counts it. A run's connectors that failed to close,
  * a leftover program copy that couldn't be swept, or what a harness run left that couldn't be cleaned up, goes to `debug`
  * instead: it is clean-up, nothing tries it again, and it must never stop the command,
- * however often it happens in a `routines watch` (Liam, HAL-7171).
+ * however often it happens in a `routines watch` (Liam, HAL-7171). So does a
+ * harness bridge failure the run log couldn't record: the program already got
+ * its answer, and the run goes on.
  *
  * @example
  * const reportError = engineErrorReporter(stuck, (line) => context.debug(line));
@@ -339,12 +341,22 @@ export function engineErrorReporter(
 ): (error: unknown, source: EngineErrorSource) => void {
   return (error, source) => {
     if (source === "run-connectors" || source === "program-copies" || source === "harness-host") {
-      const reason = printable(error instanceof Error ? error.message : String(error));
-      debug(runMessages.cleanUpFailed(source, reason).phrase);
+      debug(runMessages.cleanUpFailed(source, reasonOf(error)).phrase);
+      return;
+    }
+    if (source === "harness-bridge") {
+      const cause =
+        error instanceof Error && error.cause !== undefined ? reasonOf(error.cause) : undefined;
+      debug(runMessages.bridgeFailureUnrecorded(reasonOf(error), cause).phrase);
       return;
     }
     stuck.report(error, source);
   };
+}
+
+/** A thrown value's message, safe to print on one line. */
+function reasonOf(error: unknown): string {
+  return printable(error instanceof Error ? error.message : String(error));
 }
 
 /**

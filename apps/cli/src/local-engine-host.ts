@@ -98,14 +98,16 @@ export { engineLockFile, routineStateCollection, runTimerCollection };
 
 /**
  * What an error the engine handles itself came from: the scheduler, the
- * engine's lock, or a leftover program copy it couldn't sweep.
+ * engine's lock, a leftover program copy it couldn't sweep, what a harness
+ * run left, or a harness bridge failure the run log couldn't record.
  */
 export type EngineErrorSource =
   | SchedulerErrorSource
   | "engine-lock"
   | "program-copies"
   | "run-connectors"
-  | "harness-host";
+  | "harness-host"
+  | "harness-bridge";
 
 export type { RoutineEngine, RoutineTicks };
 
@@ -273,6 +275,7 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
       clock: input.clock ?? systemClock,
       openRuns: () => openRunsOf(new FolderRunStore(folders.runsFolder())),
       reportError: (error) => input.reportError(error, "harness-host"),
+      reportBridgeError: (error) => input.reportError(error, "harness-bridge"),
       ...(input.git === undefined ? {} : { git: input.git }),
       ...(input.harnessParts === undefined ? {} : { parts: input.harnessParts }),
     });
