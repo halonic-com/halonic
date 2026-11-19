@@ -1,6 +1,6 @@
 # Decision: an "On this computer" choice is keyed by hub as well as agent id
 
-- Approval: decided by Liam on [HAL-13203](/HAL/issues/HAL-13203); the package owner (Liam) approves this note in review
+- Approval: decided by Liam on HAL-13203; the package owner (Liam) approves this note in review
 - Kind: internal
 
 ## What changes
