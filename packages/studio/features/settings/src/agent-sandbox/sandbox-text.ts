@@ -20,6 +20,16 @@ export const VIEW_ONLY = "View only here. Set up the sandbox on the computer run
 
 export const NOT_AVAILABLE =
   "The sandbox isn't available on this computer, so Claude Code and Codex agents can't run here yet. Agents set to Halonic on their Harness page still run.";
+/**
+ * After the reason, the fix, Check again and the guide, when the check says why the sandbox can't
+ * start (microcopy 23.3, "Settings › Agent sandbox, not available"; placeholder until HAL-1784).
+ */
+export const RUN_AFTER_WARNING = "You can run an agent on this computer after a warning.";
+export const CHECKING_BUSY = "Checking…";
+export const GUIDE = "Read the guide";
+/** Where the guide lives; the catalogue's docs key follows it. */
+export const DOCS_BASE = "https://docs.halonic.dev";
+export const CHECK_FAILED = "Halonic couldn't check the sandbox. Try again.";
 export const NEEDS_SETUP =
   "The sandbox needs a one-time setup with administrator rights. Until then, agents set to run in a sandbox don't start.";
 export const needsRepair = (reason: string) =>

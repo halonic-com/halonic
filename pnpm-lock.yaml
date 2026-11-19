@@ -3262,6 +3262,9 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../../core/ports
+      '@halonicjs/studio-feature-runs':
+        specifier: workspace:*
+        version: link:../runs
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../kit

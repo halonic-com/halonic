@@ -1,4 +1,5 @@
-import type { HostSettings } from "@halonicjs/app";
+import { type HostSettings, type SandboxStartCheck, sandboxStartCheckKey } from "@halonicjs/app";
+import { useSandboxStart } from "@halonicjs/studio-feature-runs/api";
 import {
   Button,
   Callout,
@@ -12,6 +13,7 @@ import type { SettingsSectionProps } from "@halonicjs/studio-shell";
 import { type ReactNode, useState } from "react";
 import { type AgentSandboxHost, AgentSandboxService, HostSettingsService } from "../api.ts";
 import { NewAgentsRunControl } from "./new-agents-run.tsx";
+import { NotAvailableLines } from "./not-available-lines.tsx";
 import {
   type SandboxFacts,
   type SandboxStep,
@@ -31,6 +33,7 @@ export function AgentSandboxSection({ context, place }: SettingsSectionProps) {
       place={place}
       settings={context.services.get(HostSettingsService)}
       announce={(line) => context.announcer.announce(line)}
+      startCheck={context.services.find(sandboxStartCheckKey)}
     />
   );
 }
@@ -43,6 +46,11 @@ export interface AgentSandboxHostViewProps {
   readonly settings?: HostSettings | undefined;
   /** Says a result in the dialog: the settings container's live region. */
   readonly announce: (line: string) => void;
+  /**
+   * The sandbox's start check, which says why it can't start while the section reads Not available;
+   * without it the section has 13.1's one line there.
+   */
+  readonly startCheck?: SandboxStartCheck | undefined;
 }
 
 /** The section over a host: its state, its buttons and the Remove dialog. */
@@ -51,8 +59,10 @@ export function AgentSandboxHostView({
   place,
   settings,
   announce,
+  startCheck,
 }: AgentSandboxHostViewProps) {
   const sandbox = useAgentSandbox(host, place, announce);
+  const start = useSandboxStart(startCheck, !sandbox.facts.available);
   const [removing, setRemoving] = useState(false);
   const [removingWsl, setRemovingWsl] = useState(false);
   const [reloading, setReloading] = useState(false);
@@ -97,6 +107,7 @@ export function AgentSandboxHostView({
         onSetUp={sandbox.setUp}
         onRemove={() => setRemoving(true)}
         onCheckAgain={sandbox.checkAgain}
+        notAvailable={<NotAvailableLines start={start} announce={announce} />}
         newAgents={
           <>
             {wslRemoval}
@@ -141,6 +152,8 @@ export interface AgentSandboxViewProps {
   readonly onCheckAgain: () => void;
   /** **New agents run**, under the buttons, or nothing when it can't be shown. */
   readonly newAgents?: ReactNode;
+  /** What follows the Not available chip in place of 13.1's one line, when the section can say why. */
+  readonly notAvailable?: ReactNode;
 }
 
 const chipTones: Record<NonNullable<SandboxView["chip"]>["tone"], StatusChipTone> = {
@@ -162,6 +175,7 @@ export function AgentSandboxView({
   onRemove,
   onCheckAgain,
   newAgents = null,
+  notAvailable,
 }: AgentSandboxViewProps) {
   const view = sandboxView(facts, new Date());
   const buttons = {
@@ -176,7 +190,7 @@ export function AgentSandboxView({
           <StatusChip tone={chipTones[view.chip.tone]}>{view.chip.label}</StatusChip>
         </span>
       ) : null}
-      {view.lead === "" ? null : <p className="text-small">{view.lead}</p>}
+      <Lead lead={view.lead} notAvailable={facts.available ? undefined : notAvailable} />
       {facts.securityUpdatesOverdue && facts.available ? (
         <Callout tone="warning">{text.SECURITY_UPDATES_OVERDUE}</Callout>
       ) : null}
@@ -237,6 +251,12 @@ export function AgentSandboxView({
 }
 
 /** The app's sandbox host, or none when the app gives none (served Studio, or a build without it). */
+/** The words under the chip: the Not available lines where the section has them, else the view's lead. */
+function Lead({ lead, notAvailable }: { readonly lead: string; readonly notAvailable: ReactNode }) {
+  if (notAvailable !== undefined && notAvailable !== null) return notAvailable;
+  return lead === "" ? null : <p className="text-small">{lead}</p>;
+}
+
 function hostOf(context: SettingsSectionProps["context"]): AgentSandboxHost | undefined {
   return context.services.find(AgentSandboxService);
 }
