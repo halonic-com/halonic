@@ -28,7 +28,9 @@ and passes the shared `DefinitionStore` contract suite.
   `list()` leaves links out, with everything under them.
 - **Version:** `sha256:` and 16 hex characters over the files it serves,
   worked out as the memory adapter does, so the same files give the same
-  version in both.
+  version in both. It reads one file and one piece of it at a time, so a
+  workspace whose agents work in a large code folder, `node_modules` and
+  all, still has a version; it does read every byte of that folder.
 - **Limits:** a path is checked, then used. A program that swaps a folder
   for a link in between could get past the check; the store guards its own
   callers, not against other programs writing into its root.
