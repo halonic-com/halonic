@@ -1,6 +1,6 @@
 import { Field, Input, Select, type SelectOption } from "@halonicjs/studio-kit";
 import { useAutoSaved, useReportNotSaved } from "@halonicjs/studio-shell";
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { AgentChange, AgentSettings } from "../api.ts";
 import { configurationWords as words } from "./configuration-words.ts";
 import { MoreSettings } from "./more-settings.tsx";
@@ -36,6 +36,10 @@ export interface ModelPageProps {
   readonly save: (change: AgentChange) => Promise<boolean>;
   /** Hears how many fields aren't saved, for the toolbar's "1 field not saved". */
   readonly reportNotSaved?: ((count: number) => void) | undefined;
+  /** Whether the picker should take the focus, as when the page was opened at the model. */
+  readonly focus?: boolean;
+  /** Called once the picker took the focus. */
+  readonly onFocused?: () => void;
 }
 
 /**
@@ -49,8 +53,21 @@ export function ModelPage({
   defaultModel,
   save,
   reportNotSaved,
+  focus = false,
+  onFocused,
 }: ModelPageProps) {
   const [model, setModel] = useState(settings.model ?? "");
+  const picker = useRef<HTMLElement>(null);
+  const focusPicker = useEffectEvent(() => {
+    picker.current?.focus();
+    onFocused?.();
+  });
+  useEffect(() => {
+    if (!focus) return;
+    // A moment later, after the shell focuses the page's heading as the tab is shown.
+    const timer = window.setTimeout(focusPicker, 0);
+    return () => window.clearTimeout(timer);
+  }, [focus]);
   useEffect(() => setModel(settings.model ?? ""), [settings.model]);
   const turnLimit = useAutoSaved(
     String(settings.maxSteps),
@@ -71,6 +88,7 @@ export function ModelPage({
         error={modelCheck(model, aliases)}
       >
         <Select
+          ref={picker}
           options={options}
           value={model}
           placeholder={
