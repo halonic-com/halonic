@@ -36,7 +36,7 @@ export const EMPTY_LINE =
 
 /** The list that couldn't load. */
 export const LOAD_FAILED_TITLE = "Couldn't load your plugins";
-/** The reason under it when the error has no words a person can read (P3: never a raw error or a path). */
+/** The reason under it whatever the error said (P3: never a raw error or a path). */
 export const LOAD_FAILED_REASON = "Halonic couldn't read the plugins on this computer.";
 export const TRY_AGAIN = "Try again";
 export const LOADING_LABEL = "Loading plugins";

@@ -1,8 +1,4 @@
-import {
-  errorReasonFor,
-  focusSectionHeading,
-  type SettingsSectionProps,
-} from "@halonicjs/studio-shell";
+import { focusSectionHeading, type SettingsSectionProps } from "@halonicjs/studio-shell";
 import { type RefObject, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AddPluginDialog } from "../add/add-plugin-dialog.tsx";
 import { PluginsService } from "../api.ts";
@@ -26,7 +22,8 @@ const LOADED: PluginsLoad = { kind: "ready" };
 
 /**
  * The list's load state from the feed's first read (P2, P3), and **Try again**, which reads again.
- * Try again keeps the error on screen with its button busy; once the plugins read, the focus goes
+ * A failed read always shows {@link LOAD_FAILED_REASON}: the plugins folder reader's errors are
+ * written for developers and can name a path or an OS error, which P3 never shows. Try again keeps the error on screen with its button busy; once the plugins read, the focus goes
  * to the section's heading, since the button that had it is gone.
  */
 function useFirstRead(
@@ -53,8 +50,7 @@ function useFirstRead(
       .finally(() => setTrying(false));
   };
   if (read.kind === "failed") {
-    const reason = errorReasonFor(read.error, LOAD_FAILED_REASON);
-    return { load: { kind: "failed", reason, trying }, tryAgain };
+    return { load: { kind: "failed", reason: LOAD_FAILED_REASON, trying }, tryAgain };
   }
   return { load: read.kind === "reading" ? LOADING : LOADED, tryAgain };
 }

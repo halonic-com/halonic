@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { createShell, loadView, type SettingsSectionProps } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, type ComponentType } from "react";
@@ -114,6 +115,19 @@ verifies("plugins.plugin-settings-load", () => {
     expect(tryAgainButton(view)).toBeDefined();
   });
 
+  it("P3: never shows the desktop folder reader's own words, even when they are kinded", () => {
+    const { view } = showSection({
+      kind: "failed",
+      error: new KindedError(
+        "unavailable",
+        'The folder reader refused the call: "": Permission denied (os error 13)',
+      ),
+    });
+    expect(view.textContent).toContain("Halonic couldn't read the plugins on this computer.");
+    expect(view.textContent).not.toContain("folder reader");
+    expect(view.textContent).not.toContain("os error");
+  });
+
   it("P3: Try again is busy while it reads, then the focus goes to the section's heading", async () => {
     let answer = () => {};
     const reload = vi.fn(
@@ -137,7 +151,7 @@ verifies("plugins.plugin-settings-load", () => {
     expect(document.activeElement?.id).toBe("plugins-heading");
   });
 
-  it("P3: Try again that fails again keeps the error, with the new reason", async () => {
+  it("P3: Try again that fails again keeps the error and Try again", async () => {
     const { view, settle } = showSection({ kind: "failed", error: new Error("x") }, async () => {
       settle({ kind: "failed", error: new Error("y") });
       throw new Error("y");

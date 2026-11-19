@@ -32,7 +32,7 @@ A plugin's `secret` setting is saved to the keychain under the plugin's own name
 
 ## Settings → Plugins
 
-`PluginsSettingsSection` lists the installed plugins and the built-in ones in Settings (requirement `plugins.plugin-settings-list`). It follows the feed's optional `firstRead` (requirement `plugins.plugin-settings-load`): while the first read runs, the list shows the usual Settings skeleton after 300 ms, heard as "Loading plugins"; when it fails, "Couldn't load your plugins", a readable reason and **Try again**, which reads again through the actions' `reload`, stays busy and keeps the focus, then hands the focus to the section's heading once the plugins read. A feed without `firstRead` counts as read.
+`PluginsSettingsSection` lists the installed plugins and the built-in ones in Settings (requirement `plugins.plugin-settings-list`). It follows the feed's optional `firstRead` (requirement `plugins.plugin-settings-load`): while the first read runs, the list shows the usual Settings skeleton after 300 ms, heard as "Loading plugins"; when it fails, "Couldn't load your plugins", "Halonic couldn't read the plugins on this computer." (never the error's own words, which can name a path) and **Try again**, which reads again through the actions' `reload`, stays busy and keeps the focus, then hands the focus to the section's heading once the plugins read. A feed without `firstRead` counts as read.
 
 ## Command dialog
 
