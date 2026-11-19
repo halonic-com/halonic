@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12411 (UX check R8 on HAL-12390, microcopy 1.6 rule E6, revision 113 on HAL-751; small wording on an approved screen, a team decision under HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Sk43EjdgQnieWkqyzHFANgR6E5nOX8NNgautmV7KElcEVgrJbeP+1hD7vLVkSQa87F+npUSB4LIFulPCXEbvAw==
 - Task: HAL-12411
 
 `runs.run-view.failure-banners` named a provider by its id with a capital, which reads "Openai"
