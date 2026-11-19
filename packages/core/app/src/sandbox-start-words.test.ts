@@ -15,11 +15,29 @@ verifies("app.sandbox-start-words", () => {
     expect(words.docsKey).toBe("security/sandbox/#bubblewrap");
   });
 
-  it("has all five parts for every reason code, under a key of its own", () => {
+  it("names the thing in the can't-run Callout's fix where microcopy 23.3 words one", () => {
+    expect(sandboxStartWords("bubblewrap-missing").cantRunFix).toBe(
+      "Install bubblewrap, for example on Ubuntu or Debian with sudo apt install bubblewrap.",
+    );
+    expect(sandboxStartWords("user-namespaces-restricted").cantRunFix).toMatch(
+      /^Allow user namespaces for bubblewrap/,
+    );
+    expect(sandboxStartWords("ripgrep-missing").cantRunFix).toBe(
+      sandboxStartWords("ripgrep-missing").calloutFix,
+    );
+  });
+
+  it("has all six parts for every reason code, under a key of its own", () => {
     const keys = new Set<string>();
     for (const code of sandboxUnavailableReasons) {
       const words = sandboxStartWords(code);
-      for (const part of [words.reason, words.fix, words.calloutFix, words.phoneFix]) {
+      for (const part of [
+        words.reason,
+        words.fix,
+        words.calloutFix,
+        words.cantRunFix,
+        words.phoneFix,
+      ]) {
         expect(part.length).toBeGreaterThan(0);
       }
       expect(words.docsKey.startsWith("security/sandbox/")).toBe(true);
@@ -27,6 +45,16 @@ verifies("app.sandbox-start-words", () => {
       keys.add(words.key);
     }
     expect(keys.size).toBe(sandboxUnavailableReasons.length);
+  });
+
+  it("names the command each fix holds, word for word, so a screen can show it as code", () => {
+    for (const code of sandboxUnavailableReasons) {
+      const { command, fix, cantRunFix, phoneFix } = sandboxStartWords(code);
+      if (command === undefined) continue;
+      for (const part of [fix, cantRunFix, phoneFix]) expect(part).toContain(command);
+    }
+    expect(sandboxStartWords("bubblewrap-missing").command).toBe("sudo apt install bubblewrap");
+    expect(sandboxStartWords("other").command).toBeUndefined();
   });
 
   it("reads a code from a newer version, or any text, as other", () => {
