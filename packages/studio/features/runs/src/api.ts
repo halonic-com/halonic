@@ -21,6 +21,15 @@ export { RunCardReceipt, type RunCardReceiptProps } from "./run-view/card-receip
 export { type RunLogRead, useRunLog } from "./run-view/every-step.tsx";
 export { RunView } from "./run-view/run-page.tsx";
 export { RunsList, RunsListService, type RunsListState } from "./runs-list.ts";
+export {
+  SandboxCantRunCallout,
+  type SandboxCantRunCalloutProps,
+} from "./sandbox-cant-run/sandbox-cant-run-callout.tsx";
+export {
+  type CheckOutcome,
+  type SandboxStart,
+  useSandboxStart,
+} from "./sandbox-cant-run/use-sandbox-start.ts";
 
 /** One run as the Runs list reads it: its summary. */
 export interface SourcedRun {
