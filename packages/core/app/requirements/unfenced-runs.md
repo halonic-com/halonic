@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-3385; the "Runs" line design on HAL-1873 (section 7, and Julian's build conditions (a) and (d) in section 11), approved by the board on HAL-1949; I5 design 4.3.1 on HAL-958
 
-The app shall let plugin and integration code run without the sandbox only when the fence status, asked before every start, is `not-fenced` and the user's saved yes is for that same reason. It shall ask again (`needs-yes`) when there is no yes, when the reason differs from the saved one, when the saved yes can't be read, after the computer was seen in the sandbox (which removes the saved yes), and after Take back. A `stopped` status shall never run. Saving a yes shall keep its reason and time and replace any other. Take back shall remove the yes, wait for every start without the sandbox that is still in progress, and stop every registered run without the sandbox in this process before it returns, and report the runs that didn't stop. Every process keeps its own runs but shares the saved yes, so while runs without the sandbox are registered, each process shall read the saved yes again every second (`savedYesCheckMs`) and stop each run whose yes is gone, can't be read or is for another reason; a run that fails to stop is tried again at the next check. A Take back in Studio so stops a CLI runner too, within about a second (HAL-12344, finding M2 of the P10 security review on HAL-1743).
+The app shall let plugin and integration code run without the sandbox only when the fence status, asked before every start, is `not-fenced` and the user's saved yes is for that same reason. It shall ask again (`needs-yes`) when there is no yes, when the reason differs from the saved one, when the saved yes can't be read, after the computer was seen in the sandbox (which removes the saved yes), and after Take back. A `stopped` status shall never run. Saving a yes shall keep its reason and time and replace any other. Take back shall remove the yes, wait for every start without the sandbox that is still in progress, and stop every registered run without the sandbox in this process before it returns, and report the runs that didn't stop, or didn't stop within ten seconds (`stopTimeLimitMs`). Every process keeps its own runs but shares the saved yes, so while runs without the sandbox are registered, each process shall read the saved yes again every second (`savedYesCheckMs`) and stop each run whose yes is gone, can't be read, is for another reason or was given again since (another `allowedAt`); a run that fails to stop is tried again at the next check. A stop that never returns shall not hold up the checks for the other runs, and a run is never stopped twice at once. A start that finds its yes was given again while it was starting shall stop what it started and ask again. A Take back in Studio so stops a CLI runner too, within about a second (HAL-12344, finding M2 of the P10 security review on HAL-1743).
 
 ## Examples
 
@@ -43,3 +43,12 @@ The app shall let plugin and integration code run without the sandbox only when 
   then the run is stopped at the next check.
 - Given a run that fails to stop after its yes is gone,
   then the next check tries to stop it again.
+- Given a run for `windows` allowed at 10:00:00.000,
+  when another process takes the yes back and the user gives it again at 10:00:00.400, before the next check,
+  then the run is stopped at the next check.
+- Given a run whose stop never returns and a second run whose yes is still saved,
+  when the yes is taken back in another process,
+  then the second run is stopped at a later check, and the first isn't stopped again while its stop is in progress.
+- Given a run whose stop never returns,
+  when the user takes the yes back in this process,
+  then Take back rejects after `stopTimeLimitMs`, naming how many didn't stop.

@@ -68,7 +68,9 @@ export {
 export {
   type StopUnfencedRun,
   savedYesCheckMs,
+  stopTimeLimitMs,
   type UnfencedRunDecision,
   UnfencedRuns,
   type UnfencedRunsOptions,
+  type UnfencedRunYes,
 } from "./unfenced-runs.ts";
