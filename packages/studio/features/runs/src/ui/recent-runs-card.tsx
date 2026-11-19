@@ -111,13 +111,15 @@ export function RecentRunsView({
 /**
  * A run as one row: what ran and which run over its line, and its status chip at the right edge.
  * The title comes first in what a screen reader hears, as the run comes first in the Runs list's
- * row. A failed run's line is the kit's error reason, in `danger`, with the Failed chip, as in the
- * Runs list.
+ * row. It wraps rather than being cut, since its short id at the end is what tells two runs of
+ * one workflow apart, even beside the chip on a 320px phone (HAL-13305). A failed run's line is
+ * the kit's error reason, in `danger`, with the Failed chip, as in the Runs list.
  */
 function homeRow(row: RunRow): ListRow {
   return {
     id: row.id,
     title: homeWords.rowTitle(row.workflow, row.shortId),
+    wrapTitle: true,
     meta: row.line,
     trailing: (
       <StatusChip tone={row.chip.tone} dot={row.chip.dot}>

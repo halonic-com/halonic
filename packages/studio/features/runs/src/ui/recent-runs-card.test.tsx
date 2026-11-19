@@ -243,3 +243,17 @@ verifies("runs.home", () => {
     expect(openRuns).toHaveBeenCalledTimes(1);
   });
 });
+
+verifies("runs.home-title-wraps", () => {
+  it("wraps a row's title so the short id shows whole, and keeps its line cut and its chip right", async () => {
+    const waiting = summaryWith({ id: "run_f_2ff090", approvals: [approvalAt(1)] });
+    const { root } = await show(fakeSource([waiting]).source, { phone: true });
+    const title = [...root.querySelectorAll('[role="gridcell"] span')].find(
+      (span) => span.textContent === "Support reply · run 2ff090",
+    );
+    // jsdom lays nothing out, so the classes stand in for the 320px check (C163 H2b).
+    expect(title?.className).toContain("wrap-break-word");
+    expect(title?.className).not.toContain("truncate");
+    expect(title?.nextElementSibling?.className).toContain("truncate");
+  });
+});
