@@ -1,5 +1,5 @@
 diff --git a/dist/cli.js b/dist/cli.js
-index b6833932f6e30b4377c52a74ecd9b768354234d0..af3e3422f283cb97997a7cc0666a1a8f936e689d 100644
+index b6833932f6e30b4377c52a74ecd9b768354234d0..065a32abd53c41f555ca7ab1690bcf8642d8f65b 100644
 --- a/dist/cli.js
 +++ b/dist/cli.js
 @@ -120,6 +120,40 @@ function parseControlFd(value) {
@@ -122,7 +122,18 @@ index b6833932f6e30b4377c52a74ecd9b768354234d0..af3e3422f283cb97997a7cc0666a1a8f
              // Read config updates only now. The stream has been waiting
              // unread, so nothing the caller wrote meanwhile is lost, and an
              // update applied before initialize() would have been overwritten
-@@ -562,7 +623,7 @@ async function main() {
+@@ -548,6 +609,10 @@ async function main() {
+                     shell: false,
+                     stdio: 'inherit',
+                     env,
++                    // srt-win is a console program: started by a process
++                    // with no console of its own (a GUI app's host), it
++                    // would open a console window for every command.
++                    windowsHide: true,
+                 });
+                 child = spawned;
+                 spawned.on('exit', onCommandExit);
+@@ -562,7 +627,7 @@ async function main() {
                  aboutToSpawn();
                  const spawned = spawn(sandboxedCommand, {
                      shell: true,

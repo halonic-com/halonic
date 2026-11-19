@@ -45,6 +45,12 @@ interface StartSite {
  * Each entry gives a reason and names a test that shows the file never
  * starts a file under a skill's `scripts/` folder. Tests and testing and
  * tooling packages are exempt: they never ship.
+ *
+ * Each program such a file starts with `child_process` passes
+ * `windowsHide: true` in an options object literal (HAL-13197): the agent
+ * host runs without a console on Windows, so a console program it starts
+ * without the option opens a console window. Build and CI scripts in a
+ * `scripts/` folder are exempt: they run in a terminal, never in the app.
  */
 export function checkProcessStarts(context: CheckContext): Report {
   const report = new Report("process-starts");
@@ -56,6 +62,7 @@ export function checkProcessStarts(context: CheckContext): Report {
       continue;
     }
     starting.add(file);
+    checkWindowHidden(context, file, report);
     if (Object.hasOwn(starters, file)) {
       continue;
     }
@@ -101,6 +108,22 @@ function startSites(context: CheckContext, file: string): StartSite[] {
     .filter((load) => !load.what.startsWith("/// <reference"))
     .map((load) => ({ what: `uses ${load.what}`, line: load.line }));
   return [...imports, ...hidden];
+}
+
+/** Reports each program `file` starts without `windowsHide: true`, unless it is a build or CI script. */
+function checkWindowHidden(context: CheckContext, file: string, report: Report): void {
+  if (file.split("/").includes("scripts")) {
+    return;
+  }
+  for (const call of context.sourceFacts(file).processCalls) {
+    if (!call.hidesWindow) {
+      report.error(
+        file,
+        `${call.name}() without windowsHide: true in its options object. On Windows the program would open a console window, as the agent host has none (HAL-13197). Add windowsHide: true to the object literal passed to ${call.name}(). ${guide}`,
+        call.line,
+      );
+    }
+  }
 }
 
 function checkEntry(
