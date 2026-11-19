@@ -3,6 +3,7 @@
 - Task: HAL-13724
 - Approval: team decision under the HAL-2282 rule for a fallback state and small wording on approved screens (Sofia, from Mara's UX check C217 on HAL-13691, rows RN1 and RW1); Liam reviews the pull request on HAL-13724 and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Qv+qk0kVJAfOhQ3UniCYOMzIp4w3VFSR4UoH0wYDMtcbG74HpqYVe7R4MFn6uM5TJcXXV2BB4jw6gTPMsx/pAQ==
 
 ## What changes
 
