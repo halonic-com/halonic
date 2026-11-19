@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1063; HAL-998
+- Source: HAL-1063; HAL-998; HAL-12413 (UX check C4)
 
-The Library feature shall turn one refusal into one line of plain text in a single function, `refusalLine`. The line shall name the source, what was refused and, when the refusal has one, the tool's name in straight quotes, then the reason. The status view shall show the line as text only and shall never pass it to the model.
+The Library feature shall turn one refusal into one line in a single function, `refusalLine`, as parts of plain text. A refused tool, listing or keyword shall name the source, what was refused and, when the refusal has one, the tool's name in straight quotes, then the reason. A refused call shall be one sentence: the source, "refused a call to", the tool's name as its own part set in code type, then the reason with one full stop at the end. The status view shall show each part as text only and shall never pass the line to the model.
 
 ## Examples
 
@@ -14,3 +14,6 @@ The Library feature shall turn one refusal into one line of plain text in a sing
 - Given a refusal of a whole listing, which has no tool name,
   when it is turned into a line,
   then the line has no quotes.
+- Given a refused call to `create_note` from the source "notes-mcp" because the folder is read-only,
+  when it is turned into a line,
+  then the line reads `notes-mcp refused a call to create_note: the folder is read-only.`, with `create_note` in code type.

@@ -281,7 +281,7 @@ verifies("google-setup.check-again", () => {
       checkAgain: async () => ({ kind: "no-network" }),
     });
     await press(button(container, "Check again"));
-    expect(container.textContent).toContain("Studio couldn't reach Google to check.");
+    expect(container.textContent).toContain("Halonic couldn't reach Google to check.");
     expect(button(container, "Check again")).toBeDefined();
   });
 
