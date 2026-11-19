@@ -143,6 +143,49 @@ verifies("services.shell-http-client", () => {
       expect((error as Error).cause).toBe(refusal);
     });
 
+    it.each([
+      [
+        "proxy_refused",
+        "Halonic supports an http:// proxy; yours is socks5://proxy.acme.example:1080. Use http://host:port. Nothing was sent.",
+        "proxy.setting",
+        "invalid_input",
+      ],
+      [
+        "plain_http_proxied",
+        "the host uses plain http and a proxy is set, so nothing was sent. Use https://, or add the host to NO_PROXY.",
+        "proxy.plain-http",
+        "denied",
+      ],
+      [
+        "proxy",
+        "couldn't reach the host through the proxy: check HTTPS_PROXY and the proxy",
+        "proxy.unreachable",
+        "unavailable",
+      ],
+    ])(
+      "throws the shell's %s refusal as the CLI's proxy cause, with the shell's sentence",
+      async (shellKind, message, code, kind) => {
+        const refusal = { kind: shellKind, message };
+        const shell = new FakeShell().answer("http_fetch", () => {
+          throw refusal;
+        });
+
+        const error = await new ShellHttpClient(shell)
+          .fetch("https://api.anthropic.com/v1/messages")
+          .catch((caught: unknown) => caught);
+
+        expect(error).toBeInstanceOf(Error);
+        expect(error).toMatchObject({
+          message,
+          code: "proxy-failed",
+          refusal: shellKind,
+          kind,
+          failureCause: { code, detail: { message } },
+        });
+        expect((error as Error).cause).toBe(refusal);
+      },
+    );
+
     it("passes on a failure that isn't a refusal as it is", async () => {
       const shell = new FakeShell().answer("http_fetch", () => {
         throw "command http_fetch not allowed";
