@@ -31,6 +31,12 @@ import { SectionSkeleton } from "./home-loading.tsx";
 /** What a Home card's view gets: the context of the feature that added the card. */
 export interface HomeCardProps {
   readonly context: WorkspaceContext;
+  /**
+   * How many times the section's Try again was pressed, `0` at first. A view that keeps a failed
+   * load across renders, so React's retries throw the same error rather than load again, loads
+   * again when this changes.
+   */
+  readonly attempt: number;
 }
 
 /** The heading of each section's error when its card can't load (microcopy 3.3). */
@@ -126,7 +132,7 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
       >
         <Suspense fallback={skeletonFor(card.id)}>
           <HomeSectionEmptyReport value={setEmpty}>
-            <CardView context={context} />
+            <CardView context={context} attempt={attempt} />
           </HomeSectionEmptyReport>
           {focusPending ? <FocusOnShow target={headingRef} onFocused={focusMoved} /> : null}
         </Suspense>

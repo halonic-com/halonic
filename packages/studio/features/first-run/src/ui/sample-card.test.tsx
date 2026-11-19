@@ -342,7 +342,7 @@ verifies("first-run.sample-card", () => {
     const context = {
       services: limitedLookup(firstRunFeature, { get: () => firstRun }),
     } as unknown as WorkspaceContext;
-    const root = render(<SampleCard context={context} />);
+    const root = render(<SampleCard context={context} attempt={0} />);
     expect(root.textContent).toBe("");
   });
 
@@ -354,7 +354,7 @@ verifies("first-run.sample-card", () => {
         key.name === "first-run" ? firstRun : context.services.get(key as never),
     };
     const root = render(
-      <SampleCard context={{ ...context, services } as unknown as WorkspaceContext} />,
+      <SampleCard context={{ ...context, services } as unknown as WorkspaceContext} attempt={0} />,
     );
     expect(root.querySelector("p")?.textContent).toBe("1 of 3 done");
   });
