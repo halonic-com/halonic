@@ -27,6 +27,7 @@ import { shellWord } from "../../output/shell-word.ts";
 import { type ApprovedEntry, approvedEntry, leftOutEntry } from "./json.ts";
 import {
   checkToolSource,
+  isOffered,
   noToolsToApprove,
   openToolSource,
   type ToolSource,
@@ -125,12 +126,6 @@ async function approveAll(
     lines: [...rows, ...leftOutLines, allSummary(approved.length, offered.length, source)],
     json: { approved: approved.map(approvedEntry), leftOut: leftOut.map(leftOutEntry) },
   };
-}
-
-/** Whether the connector's `tools.allow` offers the tool, or it has no `allow`. */
-function isOffered(source: ToolSource, listedName: string): boolean {
-  const { allow } = source.connector.tools;
-  return allow === undefined || allow.includes(listedName);
 }
 
 /**
