@@ -24,7 +24,7 @@ function Connected(props: {
   source: RunsSource;
   openRun?: (id: string) => void;
   seeAll?: () => void;
-  reviewInInbox?: () => void;
+  reviewInInbox?: (runId: string) => void;
 }) {
   const { load, retry } = useRuns(props.source);
   return <RunsView {...props} load={load} retry={retry} workflow={reply} />;
@@ -222,7 +222,7 @@ verifies("workflows.runs.card-receipt", () => {
     expect(card.textContent).not.toContain("Done");
   });
 
-  it("shows the banner of a run that waits for you, and Review in Inbox opens the Inbox", async () => {
+  it("shows the banner of a run that waits for you, and Review in Inbox opens the Inbox on that run", async () => {
     const waiting = runSummary({
       id: "run_a_01wait1",
       approvals: [
@@ -248,7 +248,7 @@ verifies("workflows.runs.card-receipt", () => {
     const card = page.querySelector("aside") as HTMLElement;
     expect(card.querySelector('section[aria-label="Waiting for you"]')).not.toBeNull();
     await act(async () => buttonNamed(card, "Review in Inbox")?.click());
-    expect(reviewInInbox).toHaveBeenCalledOnce();
+    expect(reviewInInbox).toHaveBeenCalledExactlyOnceWith("run_a_01wait1");
   });
 
   it("shows Every step under the receipt, with Show the run log in it", async () => {

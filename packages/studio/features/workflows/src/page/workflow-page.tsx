@@ -77,7 +77,10 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       })}
       {...(openPlace && {
         goToWorkflows: () => openPlace("workflows"),
-        reviewInInbox: () => openPlace("inbox"),
+        reviewInInbox: (runId: string) => {
+          runsList.reviewInInbox(runId);
+          openPlace("inbox");
+        },
         seeAllRuns: () => {
           runsList.showWorkflow({ hubId: item.hub, id: item.id });
           openPlace("runs");
