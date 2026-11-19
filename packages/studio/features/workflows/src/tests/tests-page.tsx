@@ -148,7 +148,7 @@ export function TestsPage({
             return (
               <li
                 key={at}
-                className={`flex items-center gap-3 py-2 ${picked === at ? "bg-accent-soft" : ""}`}
+                className={`flex items-center gap-3 py-2 ${picked === at ? "bg-accent-soft selected-forced" : ""}`}
               >
                 <span
                   aria-hidden="true"

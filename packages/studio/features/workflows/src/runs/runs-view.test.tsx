@@ -126,6 +126,15 @@ verifies("workflows.runs.runs-view", () => {
     });
     expect(page.querySelector("aside")).toBeNull();
   });
+
+  it("outlines the open run's row in high contrast, where its soft fill doesn't show", async () => {
+    const page = await show(<Connected source={memoryRuns([finished]).source} />);
+    const row = page.querySelector("li");
+    expect(row?.className).not.toContain("selected-forced");
+
+    await act(async () => row?.querySelector("button")?.click());
+    expect(row?.className).toContain("selected-forced");
+  });
 });
 
 verifies("workflows.runs.card-receipt", () => {

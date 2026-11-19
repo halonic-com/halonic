@@ -172,6 +172,15 @@ verifies("workflows.tests.page", () => {
     expect(document.activeElement).toBe(buttonNamed(page, "personal mail"));
   });
 
+  it("outlines the open test's row in high contrast, where its soft fill doesn't show", async () => {
+    const { page } = await open({ tests: async () => afterRun });
+    await act(async () => buttonNamed(page, "personal mail")?.click());
+
+    const rows = [...page.querySelectorAll("li")];
+    expect(rows[2]?.className).toContain("selected-forced");
+    expect(rows[0]?.className).not.toContain("selected-forced");
+  });
+
   it("tells apart tests with the same name", async () => {
     const twins: WorkflowTests = {
       cases: [

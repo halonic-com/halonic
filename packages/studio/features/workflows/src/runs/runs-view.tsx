@@ -101,7 +101,7 @@ export function RunsView({
         <h2 className="text-caption text-fg-muted">{title}</h2>
         <ul className="flex flex-col divide-y divide-border">
           {list.map((row) => (
-            <li key={row.id} className={picked === row.id ? "bg-accent-soft" : ""}>
+            <li key={row.id} className={picked === row.id ? "bg-accent-soft selected-forced" : ""}>
               <button
                 type="button"
                 ref={(node) => {
