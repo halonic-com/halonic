@@ -1,6 +1,14 @@
-import { Button, Dialog, Field, Input, Select, usePresentation } from "@halonicjs/studio-kit";
+import {
+  Button,
+  Dialog,
+  Field,
+  Input,
+  Select,
+  TextArea,
+  usePresentation,
+} from "@halonicjs/studio-kit";
 import { errorReasonFor, NameAndHubRow, NewItemNote } from "@halonicjs/studio-shell";
-import { useEffect, useId, useRef, useState } from "react";
+import { type Ref, useEffect, useId, useRef, useState } from "react";
 import type { NewRoutine, RoutineHub, RoutineRef, RoutineTargetChoice } from "../api.ts";
 import { newRoutineWords as words } from "./new-routine-words.ts";
 import { routineFilePath } from "./routine-file.ts";
@@ -59,9 +67,11 @@ function useStarterTarget(
 
 /**
  * "New routine" (`routines.new.create`): a name, a hub when there is more than one, the file the
- * routine will be written to and the line saying what it will run. **Create** stays pressable while
- * the name is empty and says what is wrong under the field. A hub with no workflow and no agent
- * has nothing to run, so the dialog says so, with **New workflow**, instead of a Create button.
+ * routine will be written to and the line saying what it will run. When it runs an agent, the
+ * dialog asks for the agent's prompt too, since that is the agent's real task. **Create** stays
+ * pressable while the name or the prompt is empty and says what is wrong under the field. A hub
+ * with no workflow and no agent has nothing to run, so the dialog says so, with **New workflow**,
+ * instead of a Create button.
  *
  * @example
  * <NewRoutineDialog hubs={hubs} takenIds={ids} starterTarget={host.starterTarget} create={host.create} onCreated={open} onCancel={close} />
@@ -82,11 +92,15 @@ export function NewRoutineDialog({
   const hubId = hubs.some((hub) => hub.id === chosenHub) ? chosenHub : (hubs[0]?.id ?? "");
   const phone = usePresentation() === "phone";
   const [problem, setProblem] = useState<string>();
+  const [prompt, setPrompt] = useState("");
+  const [promptMissing, setPromptMissing] = useState(false);
   const [failure, setFailure] = useState<string>();
   const [busy, setBusy] = useState(false);
   const nameField = useRef<HTMLInputElement>(null);
+  const promptField = useRef<HTMLTextAreaElement>(null);
   const noteId = useId();
   const target = useStarterTarget(hubId, starterTarget);
+  const agent = target?.kind === "agent" ? target : undefined;
 
   const file = routineFilePath(hubId, name, takenIds(hubId));
   const fileText = file.kind === "file" ? words.file(file.path) : words.folder(file.path);
@@ -100,9 +114,16 @@ export function NewRoutineDialog({
       nameField.current?.focus();
       return;
     }
+    if (agent !== undefined && prompt.trim() === "") {
+      setPromptMissing(true);
+      promptField.current?.focus();
+      return;
+    }
     setBusy(true);
     try {
-      onCreated(await create({ name: name.trim(), hubId }));
+      onCreated(
+        await create({ name: name.trim(), hubId, ...(agent === undefined ? {} : { prompt }) }),
+      );
     } catch (error) {
       const reason = errorReasonFor(error);
       setFailure(words.createFailed(reason.replace(/\.$/, "")));
@@ -149,6 +170,19 @@ export function NewRoutineDialog({
           {target.kind === "agent" ? words.agentCantRun(target.name) : words.runs(target.name)}
         </NewItemNote>
       )}
+      {agent && (
+        <PromptField
+          ref={promptField}
+          agentName={agent.name}
+          prompt={prompt}
+          missing={promptMissing}
+          busy={busy}
+          onChange={(next) => {
+            setPromptMissing(false);
+            setPrompt(next);
+          }}
+        />
+      )}
     </div>
   );
 
@@ -178,6 +212,44 @@ export function NewRoutineDialog({
     >
       {fields}
     </Dialog>
+  );
+}
+
+/**
+ * What the agent the routine runs is asked to do: empty until the person types it, with the hint
+ * as a placeholder only, since a stand-in would be saved as the agent's real task.
+ */
+function PromptField({
+  ref,
+  agentName,
+  prompt,
+  missing,
+  busy,
+  onChange,
+}: {
+  readonly ref: Ref<HTMLTextAreaElement>;
+  readonly agentName: string;
+  readonly prompt: string;
+  /** Create was pressed while it was empty. */
+  readonly missing: boolean;
+  readonly busy: boolean;
+  readonly onChange: (prompt: string) => void;
+}) {
+  return (
+    <Field
+      label={words.promptField}
+      hint={prompt.trim() === "" ? words.promptNeeded(agentName) : null}
+      error={missing ? words.promptNeeded(agentName) : null}
+    >
+      <TextArea
+        ref={ref}
+        readOnly={busy}
+        value={prompt}
+        placeholder={words.promptPlaceholder}
+        minRows={3}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </Field>
   );
 }
 

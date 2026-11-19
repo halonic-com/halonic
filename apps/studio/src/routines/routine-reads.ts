@@ -26,7 +26,7 @@ export interface StoredSkip {
   readonly count: number;
 }
 
-/** The prompt of a routine made in a hub that has no workflow. */
+/** The prompt of a routine an agent's **Add trigger** makes. */
 export const NEW_ROUTINE_PROMPT = "Describe what to do.";
 
 export type PlacedFile = ReturnType<typeof routineFiles>[number];
@@ -116,11 +116,11 @@ export function mailboxesOf(workspace: LoadedWorkspace, hubId: string | null): R
   );
 }
 
-/** What a routine made from `choice` runs: a workflow with no input, or an agent with a stand-in prompt. */
-export function targetFor(choice: RoutineTargetChoice): RoutineTarget {
+/** What a routine made from `choice` runs: a workflow with no input, or an agent with `prompt`. */
+export function targetFor(choice: RoutineTargetChoice, prompt: string): RoutineTarget {
   return choice.kind === "workflow"
     ? { kind: "workflow", hubId: choice.hubId, id: choice.id, input: "{}" }
-    : { kind: "agent", hubId: choice.hubId, id: choice.id, prompt: NEW_ROUTINE_PROMPT };
+    : { kind: "agent", hubId: choice.hubId, id: choice.id, prompt };
 }
 
 export function targetFound(workspace: LoadedWorkspace, target: RoutineTarget): boolean {

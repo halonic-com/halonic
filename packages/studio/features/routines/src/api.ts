@@ -202,6 +202,8 @@ export interface RoutineHub {
 export interface NewRoutine {
   readonly name: string;
   readonly hubId: string;
+  /** What the agent is asked to do, when the routine starts the hub's first agent; not empty. */
+  readonly prompt?: string;
 }
 
 /** Something a routine can start; what the Starts card's picker lists, in the hub's order. */
@@ -326,8 +328,8 @@ export interface RoutinesHost {
   starterTarget(hubId: string): Promise<RoutineTargetChoice | undefined>;
   /**
    * Makes a manual routine in the hub that runs the hub's first workflow with input `{}`, or with
-   * no workflow its first agent with the prompt "Describe what to do.", and returns where it is.
-   * Rejects with {@link NothingToRun} when the hub has neither.
+   * no workflow its first agent with the routine's prompt, and returns where it is. Rejects with
+   * {@link NothingToRun} when the hub has neither, and writes nothing for an agent without a prompt.
    */
   create(newRoutine: NewRoutine): Promise<RoutineRef>;
   /** The routines in the owner's hub that start it, sorted by name, for a Triggers section. */
