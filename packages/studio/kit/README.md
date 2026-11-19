@@ -1405,6 +1405,45 @@ weight 500, no padding, underlined on hover, with a 48px hit area on touch. The 
 one group, so at 200% text the action goes under the text, starting where the text starts. The
 line keeps its frame.
 
+## WaitingLine
+
+`WaitingLine` is the one line Studio shows wherever it waits: a still dot in `running`, what it
+waits for, the time waited, the reason when Studio knows it, and its ways out. Mount it when the
+wait starts and keep it until the wait ends; it draws nothing before 2 seconds, so a quick wait
+never flashes, and the reason joins at 10 seconds. The time reads "14 s", and "2:10" from a minute.
+It's never a bar: Studio doesn't know how long the wait will be.
+
+```tsx
+function ModelWait({ since }: { since: Date }) {
+  const waitedMs = useWaitedMs(since); // draws this component again every second
+  return (
+    <WaitingLine
+      placement="banner"
+      waitedMs={waitedMs}
+      what="Waiting for Ollama on this computer"
+      reason="It loads the model first, so the start is slow."
+    />
+  );
+}
+```
+
+- **Say what, not "please wait".** `what` names the thing: the provider for a cloud key ("Waiting
+  for Anthropic"), the model and "on this computer" for a local one, the harness for an agent that
+  runs one. An address only for a server on this computer, as code (`localhost:11434`).
+- **One line per wait.** An escalation (20 s, 60 s) changes `what`, `reason` and `actions` on the
+  same line; it never adds a second notice.
+- **Placement**: `inline` stands on its own in a page's flow (Welcome); `row` sits in a row's text
+  column, 4px under its hint (a setup row); `banner` is a box on `surface-muted` above a page's
+  content (the run page).
+- **Actions** are text buttons under the text, as on the LineFrame: **Something wrong?** after 10
+  seconds, **Pick another model** at the last escalation. Cancel or Stop stays where the user
+  started the wait.
+- **Screen readers** hear what it waits for and the reason when the line appears and when they
+  change, never the counting time: the time sits outside its status region. Call `useWaitedMs` in a
+  small component of its own, as above, so only the line draws again each second.
+- The dot never pulses: nothing in the Studio moves on its own but the busy spinner, so reduced
+  motion has nothing to stop.
+
 ## NoteLines
 
 `NoteLines` shows calm facts at the end of a section, such as a provider's notes after a run's
