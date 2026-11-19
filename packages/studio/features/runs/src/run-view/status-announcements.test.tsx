@@ -64,11 +64,12 @@ async function openRun(summary: RunSummary, bodies: readonly RunEventBody[] = []
     ),
   });
   const announceState = vi.fn<(key: string, text: string) => void>();
+  const clock = { now: mondayMorning };
   const root = render(
     <RunView
       list={new RunsList(fake.source)}
       runId={runId}
-      now={() => mondayMorning}
+      now={() => clock.now}
       announceState={announceState}
       reviewInInbox={() => undefined}
     />,
@@ -84,7 +85,7 @@ async function openRun(summary: RunSummary, bodies: readonly RunEventBody[] = []
     await settled();
     await settled();
   };
-  return { root, announceState, change };
+  return { root, announceState, change, clock };
 }
 
 verifies("runs.run-view.status-announcements", () => {
@@ -168,6 +169,21 @@ verifies("runs.run-view.status-announcements", () => {
 
       expect(announceState).toHaveBeenCalledTimes(1);
       expect(announceState).toHaveBeenCalledWith(`run:${runId}`, "Run 650704 finished.");
+    });
+
+    it("reads nothing when only the words for the time change, such as at midnight", async () => {
+      const timer = summaryWith({
+        id: runId,
+        status: "waiting",
+        nextTimer: new Date(2026, 10, 10, 14, 0).toISOString(),
+      });
+      const { announceState, change, clock } = await openRun(timer);
+
+      // "waiting until tomorrow 14:00" becomes "waiting until 14:00"; the run is as it was.
+      clock.now = new Date(2026, 10, 10, 0, 5);
+      await change({ ...timer, lastSeq: 8 });
+
+      expect(announceState).not.toHaveBeenCalled();
     });
 
     it("moves focus to the h1 when the banner's button it was on goes", async () => {
