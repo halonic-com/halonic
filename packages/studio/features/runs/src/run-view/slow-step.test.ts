@@ -63,6 +63,15 @@ verifies("runs.run-view.slow-step-line", () => {
     });
   });
 
+  it("says Ollama runs on the computer on a phone, and names LM Studio as people do", () => {
+    const ollama = { ...call, provider: "ollama", model: "llama3.2" } as RunEvent;
+    expect(slowStepLine([ollama], later(10), true)).toBe(
+      "Waiting for Ollama on your computer. The first answer can take a minute while it loads the model.",
+    );
+    const lmStudio = { ...call, provider: "lmstudio", model: "qwen" } as RunEvent;
+    expect(slowStepLine([lmStudio], later(10))).toBe("Waiting for LM Studio to answer.");
+  });
+
   it("stays quiet before 10 seconds, and when the last event names no wait", () => {
     expect(slowStepLine([call], later(9.9))).toBeUndefined();
     const answered = event({ type: "agent.completed", state: "draft", agent: "reporter" }, 2);

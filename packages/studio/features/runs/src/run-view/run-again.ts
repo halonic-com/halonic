@@ -65,7 +65,7 @@ export function useRunAgain(
       openRun(started.runId);
     } catch (error) {
       setProblem({ error });
-      announce?.(runPageWords.runAgainFailed(loadFailureReason(error, engine)));
+      announce?.(runPageWords.runAgainFailed(loadFailureReason(error, engine, true)));
     } finally {
       pending.current = false;
       setBusy(false);
