@@ -33,7 +33,6 @@ import { nodeSchedulerFactory, type SetTimer } from "@halonicjs/adapter-schedule
 import {
   routineStateCollection,
   runTimerCollection,
-  startsAProgram,
   type WorkflowRef,
   workflowAgentsOf,
   workspaceBudget,
@@ -58,7 +57,6 @@ import {
   type Secrets,
 } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
-import { StartInTerminal } from "@halonicjs/studio-feature-workflows/api";
 import type { TauriIpc } from "@halonicjs/studio-services";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import {
@@ -67,7 +65,12 @@ import {
   loadWorkspace,
   runDefinitionsOf,
 } from "@halonicjs/workspace";
-import { harnessName } from "../studio/harness-name.ts";
+import {
+  type PageRefusal,
+  runCommandOf,
+  startRefusal,
+  whyThePageCantStart,
+} from "./page-refusal.ts";
 import type { EngineDecisions, StudioHarnessHost } from "./studio-harness-host.ts";
 
 /** What a routine starts, with its placeholders filled in: what the routine scheduler would start. */
@@ -480,55 +483,4 @@ function pidOf(refusal: unknown): number | undefined {
   if (typeof refusal !== "object" || refusal === null) return undefined;
   const { pid } = refusal as Record<string, unknown>;
   return typeof pid === "number" ? pid : undefined;
-}
-
-/** Why the page can't start an agent (rule N1 of the UX check, HAL-12363). */
-interface PageRefusal {
-  readonly reason: string;
-  /**
-   * The step inside Studio that lets the page start it, for an agent in a harness program. A step
-   * in Studio wins over a terminal command (rule N3), and the command line refuses that agent too.
-   */
-  readonly studioStep?: string;
-}
-
-/**
- * Why the page can't start an agent in a harness program, when it runs no agent host, or one
- * that lists a connector; `undefined` when it can.
- */
-function whyThePageCantStart(agent: Agent, runsHarnesses: boolean): PageRefusal | undefined {
-  if (agent.harness !== undefined && startsAProgram(agent.harness) && !runsHarnesses) {
-    const program = harnessName(agent.harness);
-    return {
-      reason: `${agent.name} runs in ${program}, which Halonic can't start yet.`,
-      studioStep: `Set ${agent.name} to Halonic on its Harness page to run it now.`,
-    };
-  }
-  if (agent.connectors.length > 0) {
-    return {
-      reason: `${agent.name} uses a connector, which Studio can't start yet.`,
-    };
-  }
-  return undefined;
-}
-
-/**
- * The refusal with its next step: the step inside Studio when there is one (HAL-12642), otherwise
- * the command that starts the run in a terminal (rule N2).
- */
-function startRefusal({ reason, studioStep }: PageRefusal, runCommand: string): KindedError {
-  if (studioStep !== undefined) return new KindedError("unavailable", reason, { fix: studioStep });
-  return new StartInTerminal({
-    reason,
-    lead: "To start it, run this in a terminal:",
-    command: runCommand,
-  });
-}
-
-/** `halonic run reply`, or `halonic run acme/reply` when another hub has a `reply` too, as the workflow page writes it. */
-function runCommandOf(workspace: LoadedWorkspace, { hubId, workflowId }: WorkflowRef): string {
-  const inSeveralHubs = filesOf(workspace, "workflow").some(
-    (file) => file.value.id === workflowId && file.hub !== null && file.hub !== hubId,
-  );
-  return inSeveralHubs ? `halonic run ${hubId}/${workflowId}` : `halonic run ${workflowId}`;
 }
