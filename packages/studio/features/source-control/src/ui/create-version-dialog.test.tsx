@@ -212,7 +212,7 @@ verifies("source-control.create-version", () => {
     it("describes each item's checkbox by what changed in it", async () => {
       await openDialog();
       const box = [...(dialog()?.querySelectorAll("label") ?? [])]
-        .find((label) => label.textContent === "Triage")
+        .find((label) => label.textContent?.startsWith("Triage"))
         ?.querySelector("input");
       const description = document.getElementById(box?.getAttribute("aria-describedby") ?? "");
       expect(description?.closest("li")).toBe(box?.closest("li"));

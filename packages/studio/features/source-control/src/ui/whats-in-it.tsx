@@ -84,7 +84,9 @@ function ItemRow({
           onTick={onTick}
           describedBy={lines.length === 0 ? undefined : changesId}
         />
-        {inline ? <InlineSentence id={changesId} item={item} sentence={only?.line.sentence} /> : null}
+        {inline ? (
+          <InlineSentence id={changesId} item={item} sentence={only?.line.sentence} />
+        ) : null}
         <span className="flex-1" />
         {item.files.some(hasImportant) ? (
           <span className="text-small shrink-0 rounded-full border border-border px-2 text-fg-muted">
