@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-12236 (B1); Julian's conditions 1 and 6 on HAL-12355
 
-Each session shall have its own WebAssembly instance. When the session ends or fails, its whole
+The adapter shall give each session its own WebAssembly instance. When the session ends or fails, its whole
 memory shall be zeroed and the instance dropped. The private key and the psk passed in shall be
 zeroed once the instance has them.
 

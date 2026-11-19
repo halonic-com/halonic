@@ -4,8 +4,8 @@
 - Since: unreleased
 - Source: HAL-12236 (B1); Julian's test plan on HAL-12355
 
-`noise.wasm` shall produce, for our prologue and a psk from a pairing code, exactly the bytes plain
-`snow` produces natively, as the phone runs it: both handshakes, transport messages both ways and a
+The `noise.wasm` module shall produce, for our prologue and a psk from a pairing code, exactly the
+bytes plain `snow` produces natively, as the phone runs it: both handshakes, transport messages both ways and a
 rekey of each direction.
 
 ## Examples

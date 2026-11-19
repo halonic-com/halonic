@@ -4,9 +4,9 @@
 - Since: unreleased
 - Source: HAL-12236 (B1); Julian's conditions 2 and 3 on HAL-12355
 
-After any failure (an error from `snow`, a trap, a size over 65,535 bytes, a call out of order, or
-keys that don't fit the handshake) the session shall end, and every later call shall throw
-`NoiseSessionError` without saying why. A size over the limit shall be refused before any byte is
+If any failure happens (an error from `snow`, a trap, a size over 65,535 bytes, a call out of
+order, or keys that don't fit the handshake), then the session shall end, and every later call
+shall throw `NoiseSessionError` without saying why. A size over the limit shall be refused before any byte is
 copied.
 
 ## Examples
