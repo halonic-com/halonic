@@ -3,6 +3,7 @@
 - Task: HAL-13401
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13401 (finding SH1 of the C180 check HAL-13384; same rule as S3 in HAL-13041, no new words; team decision under the HAL-2282 rule, Sofia as designer; Liam's code review)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:eT2MU0pbb9/A2gf40D4or9eZXjQcm9GHnJQvP6bM7ZUawDsJxMUCaBjEHjf2AifFZ/n7dFaApvjPoysGwkO+CQ==
 
 ## What changes
 
