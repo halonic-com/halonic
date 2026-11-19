@@ -18,6 +18,7 @@ import { exitCode } from "../../exit-code.ts";
 import { modelsMessages } from "../../messages/models.ts";
 import { plainText } from "../../messages/phrase.ts";
 import { printable } from "../../output/printable.ts";
+import { shellWord } from "../../output/shell-word.ts";
 import { openSecretStore, type SecretSetup } from "../../secret-host.ts";
 import { nodeProfileEnvironment } from "../../workspace-runs.ts";
 import { insideRun } from "./inside-run.ts";
@@ -46,9 +47,8 @@ export async function allowAddress(
   if (name === undefined || typed === undefined || extra.length > 0) {
     throw new UsageError(modelsMessages.needsKeyAndAddress(), modelsMessages.allowAddressUsage());
   }
-  const key = printable(name);
   const outcome = await addAddress(setup, name, typed);
-  return resultOf(outcome, { key, typed });
+  return resultOf(outcome, { key: printable(name), keyWord: shellWord(name), typed });
 }
 
 async function addAddress(
@@ -66,7 +66,14 @@ async function addAddress(
   }
 }
 
-function resultOf(outcome: AddOriginResult, shown: { key: string; typed: string }): CommandResult {
+/** The key as it is shown, the key as one word of a command to copy, and the address as typed. */
+interface Shown {
+  readonly key: string;
+  readonly keyWord: string;
+  readonly typed: string;
+}
+
+function resultOf(outcome: AddOriginResult, shown: Shown): CommandResult {
   switch (outcome.result) {
     case "added":
       return allowed(outcome.origin, shown, true);
@@ -77,7 +84,7 @@ function resultOf(outcome: AddOriginResult, shown: { key: string; typed: string 
         json: { key: shown.key, address: outcome.origin, changed: false },
       };
     case "no-key":
-      throw new OwnLineError("not_found", modelsMessages.noKey(shown.key));
+      throw new OwnLineError("not_found", modelsMessages.noKey(shown.key, shown.keyWord));
     case "full":
       throw new OwnLineError(
         "limit_reached",

@@ -15,7 +15,7 @@ import { nodeToolsMachine, type ToolsMachine } from "./source.ts";
 export function toolsCommandWith(machine: () => ToolsMachine): CliCommand {
   return {
     name: "tools",
-    usage: "review | approve | revoke",
+    usage: "",
     summary: toolsMessages.summary(),
     options: {},
     subcommands: [
