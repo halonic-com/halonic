@@ -17,7 +17,7 @@ import {
   usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
-import { engineWordsOf, ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
+import { engineWordsOf, ItemGone, type ItemViewProps, NameField } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useRef, useState } from "react";
 import { type WorkflowsHost, WorkflowsHostService } from "../api.ts";
 import type { View } from "../canvas/geometry.ts";
@@ -37,6 +37,7 @@ import { pageWords } from "./page-words.ts";
 import { dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
+import { type Rename, useRename } from "./use-rename.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
 import { type CanvasEdit, WorkflowCanvas } from "./workflow-canvas.tsx";
 import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
@@ -188,6 +189,7 @@ export function WorkflowScreen({
     showView("configuration");
   });
   const canvasEdit = useCanvasEdit(host, { hubId, id }, name, phone);
+  const rename = useRename(host, { hubId, id }, name, everyWorkflow.load, announce);
   const gone = goneState(load, goToWorkflows);
   if (gone !== undefined) return gone;
   return (
@@ -205,7 +207,12 @@ export function WorkflowScreen({
           <div className="flex flex-col">
             <p className="text-caption text-fg-muted">{pageWords.kind}</p>
             <h1 ref={title} tabIndex={-1} className={phone ? "sr-only" : "text-title"}>
-              {name}
+              <WorkflowName
+                name={name}
+                rename={rename}
+                ready={load.kind === "ready"}
+                phone={phone}
+              />
             </h1>
           </div>
         </div>
@@ -346,6 +353,32 @@ export function WorkflowScreen({
         />
       </div>
     </div>
+  );
+}
+
+/**
+ * The workflow's name in the header: a rename field once the workflow is read, where it can be
+ * renamed; else the name. A phone's top bar names the workflow, so its title stays text.
+ */
+function WorkflowName({
+  name,
+  rename,
+  ready,
+  phone,
+}: {
+  readonly name: string;
+  readonly rename: Rename | undefined;
+  readonly ready: boolean;
+  readonly phone: boolean;
+}) {
+  if (rename === undefined || !ready || phone) return name;
+  return (
+    <NameField
+      name={name}
+      label={pageWords.nameField}
+      onRename={rename.apply}
+      check={rename.check}
+    />
   );
 }
 

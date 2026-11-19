@@ -3,6 +3,11 @@ import type { WorkflowStepType } from "../api.ts";
 /** The workflow page's words (microcopy 9.3, flow-workflows 3 and 4; states C9, C16). */
 export const pageWords = {
   kind: "WORKFLOW",
+  /** The header's name field (UX checklist 10.2, microcopy 9.1). */
+  nameField: "Workflow name",
+  nameTaken: (name: string) => `A workflow called ${name} already exists.`,
+  renamed: (name: string) => `Renamed to ${name}.`,
+  couldntRename: (name: string) => `Couldn't rename ${name}`,
   loading: (name: string) => `Loading ${name}`,
   stillLoading: "Still loading",
   loadFailedTitle: "Couldn't load this workflow",
