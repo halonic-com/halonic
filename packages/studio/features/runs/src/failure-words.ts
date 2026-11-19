@@ -147,6 +147,17 @@ export const failureWords = {
   modelsPlace: "Models",
   diskFull: (workflow: string, step: string) =>
     `${workflow} stopped in the step ${step}: the disk is full, so Halonic couldn't write the run log. Free some space, then run again.`,
+  /** `answer-not-an-option`: names the agent, never its answer, which is the model's own text. */
+  answerNotAnOption: (workflow: string, step: string, agent: string) =>
+    `${workflow} stopped in the step ${step}: ${capitalised(agent)} answered with something that isn't one of its options. Make its instructions stricter, or pick a larger model, then run again.`,
+  /** `harness-bridge.socket-path-too-long`: the figures are left out when the cause doesn't give them all. */
+  socketPathTooLong: (
+    workflow: string,
+    step: string,
+    limit: { readonly bytes: string; readonly most: string; readonly system: string } | undefined,
+    phone: boolean,
+  ) =>
+    `${workflow} stopped in the step ${step}: the path to Halonic's data is too long for the bridge's socket${limit === undefined ? "" : ` (${limit.bytes} bytes, and ${limit.system} takes at most ${limit.most})`}. Move Halonic's data to a shorter path${phone ? " on your computer" : ""}, then run again.`,
   engineStopped: (workflow: string, step: string) =>
     `${workflow} stopped because Halonic's engine stopped during the step ${step}. Nothing after that step ran.`,
   engineStoppedBeforeFirstStep: (workflow: string) =>
