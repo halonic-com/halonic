@@ -289,7 +289,10 @@ function findSubcommand(path: CommandPath, args: readonly string[]): FoundComman
   }
   const subcommand = subcommands.find((candidate) => candidate.name === word);
   if (subcommand === undefined) {
-    return unknownSubcommand(path, word);
+    // `deploy web`: the word is the command's own argument when it takes one.
+    return lastOf(path).argumentsBesideSubcommands === true
+      ? { path, args }
+      : unknownSubcommand(path, word);
   }
   return findSubcommand([...path, subcommand], rest);
 }
@@ -313,10 +316,9 @@ async function runCommand(
     if (!options.json && input.options[command.jsonLinesOption ?? ""] === true) {
       throw new UsageError(usageMessages.needsJson(`--${command.jsonLinesOption}`));
     }
-    const [word] = input.positionals;
-    // A command with subcommands takes no arguments, so a word after its options names a subcommand.
-    if (command.subcommands !== undefined && word !== undefined) {
-      throw wordAfterOptions(path, word);
+    const misplaced = misplacedWord(path, input.positionals[0]);
+    if (misplaced !== undefined) {
+      throw misplaced;
     }
     if (command.run === undefined) {
       return exitCode.usage;
@@ -427,4 +429,22 @@ function wordAfterOptions(path: CommandPath, word: string): UsageError {
     usageMessages.subcommandPlacement(word, commandWords(path)),
     usageLine([...path, subcommand]),
   );
+}
+
+/**
+ * The usage error for the first word after a command's options, if that word
+ * can't be there. A command with subcommands takes no arguments, so the word
+ * names a subcommand, unless the command takes arguments of its own and the
+ * word names none of them.
+ */
+function misplacedWord(path: CommandPath, word: string | undefined): UsageError | undefined {
+  const command = lastOf(path);
+  if (command.subcommands === undefined || word === undefined) {
+    return undefined;
+  }
+  const isSubcommand = command.subcommands.some((candidate) => candidate.name === word);
+  if (command.argumentsBesideSubcommands === true && !isSubcommand) {
+    return undefined;
+  }
+  return wordAfterOptions(path, word);
 }
