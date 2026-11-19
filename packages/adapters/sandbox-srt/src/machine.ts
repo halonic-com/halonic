@@ -22,13 +22,13 @@ import {
   sessionTempParents,
 } from "./profile-parents.ts";
 
+/** What srt's Windows install allows: see {@link Machine.windowsSandboxState}. */
+export type WindowsSandboxState = "ok" | "setup-needed" | "setup-conflict";
+
 /**
  * What the sandbox asks of the machine it runs on. A test hands the adapter a
  * fake one; {@link systemMachine} is the real one.
  */
-/** What srt's Windows install allows: see {@link Machine.windowsSandboxState}. */
-export type WindowsSandboxState = "ok" | "setup-needed" | "setup-conflict";
-
 export interface Machine {
   /** The operating system, as Node names it (`linux`, `darwin`, `win32`). */
   platform: NodeJS.Platform;
@@ -72,7 +72,9 @@ export interface Machine {
    * network filters and a matching setup version. `setup-conflict` is an
    * install whose loopback mode isn't the closed one Halonic needs (another
    * program set srt up with loopback open); Halonic doesn't change that
-   * machine-wide mode itself. `setup-needed` is everything else that blocks
+   * machine-wide mode itself; it stays `setup-conflict` when the install has
+   * other errors too, so the loopback mode is the first reason the person
+   * reads. `setup-needed` is everything else that blocks
    * (not installed, set up by a different release, not readable).
    */
   windowsSandboxState(): Promise<WindowsSandboxState>;

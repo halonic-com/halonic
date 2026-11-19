@@ -1,45 +1,23 @@
-import type { SandboxProfile } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import type { Machine } from "./machine.ts";
+import type { Machine, WindowsSandboxState } from "./machine.ts";
 import { SrtSandbox } from "./srt-sandbox.ts";
-import { endedProgram } from "./srt-session.test-helper.ts";
+import { endedProgram, linux, makeProfile } from "./srt-session.test-helper.ts";
 
 /** A Windows machine whose srt install is in `state`; nothing else is asked of it here. */
 function windows(
-  state: Awaited<ReturnType<Machine["windowsSandboxState"]>>,
+  state: WindowsSandboxState,
   profileReadGranted: Machine["profileReadGranted"] = async () => false,
 ): Machine {
   return {
+    ...linux,
     platform: "win32",
-    insideContainer: async () => false,
-    isWsl1: async () => false,
-    hasBubblewrap: async () => false,
-    missingLinuxHelpers: async () => [],
-    hasRipgrep: async () => false,
-    bubblewrapUserNamespaceError: async () => null,
-    appArmorRestrictsUserNamespaces: async () => false,
-    hasSeatbelt: async () => false,
-    packageManager: async () => null,
     windowsSandboxState: async () => state,
     profileReadGranted,
-    installWindowsSandbox: async () => "installed" as const,
-    letSandboxReadParents: async () => undefined,
-    uninstallWindowsSandbox: async () => "removed" as const,
-    forgetSandboxParents: async () => undefined,
   };
 }
 
-const profile: SandboxProfile = {
-  workingFolder: "/contract/work",
-  tempFolder: "/contract/temp",
-  settingsFolder: null,
-  readOnlyPaths: [],
-  deniedPaths: [],
-  env: {},
-  network: { bridge: { kind: "loopback", host: "127.0.0.1", port: 4100 }, allowedSites: [] },
-  timeLimitMs: 1000,
-};
+const profile = makeProfile("/contract", { env: {}, timeLimitMs: 1000 });
 
 verifies("sandbox-srt.check", () => {
   describe("SrtSandbox.check on Windows", () => {
