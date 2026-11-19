@@ -16,7 +16,7 @@ The claims check C52 (HAL-12632) found lines in Studio that don't match `main`. 
 - Changes: the empty page says "Keep versions of this workspace…" (10.5); the email hint says the address is saved with each version (10.3); a staged file says another program got it ready for a version (10.4); and when choosing item by item can't start because only one side is ahead by then, Get updates says the shared copy or this workspace got a new version meanwhile, without repeating Try again (10.1). Unused `include` and `tryAgain` words, and the refusal reasons core never gives a skill or a connector, are gone, with a general fallback (10.6).
 - About: an update that couldn't download promises another try only when automatic updates are on, and otherwise says to try again (11.5); Halonic checks when it starts and once a day (11.6); the `disk` reason says "something went wrong", since every IO error maps to it (11.7); and the unused `DOWNLOAD_BUSY` is gone (11.8).
 
-The requirements `app.sandbox-start-words`, `settings.new-agents-run` (its first line only), `runs.run-view.sandbox-panel`, `workspace.trusted-sources`, `library.knowledge-page`, `source-control.get-updates` and `source-control.identity` change their quoted text to match; `app.sandbox-start-words` gains examples for `windows` and `sign-in-needed`, with two new tests. `plugins.plugin-list-no-installer` is retired, and its test in `packages/studio/features/plugins/src/list/plugins-list.test.tsx` is removed with it. The test of `whatChanged` in `packages/studio/features/library/src/listed-tools-words.test.ts` (`library.listed-tools-review`) is removed with the function, which no screen used. Every other changed test checks the new line the screen shows; none was skipped.
+The requirements `app.sandbox-start-words`, `settings.new-agents-run` (its first line only), `runs.run-view.sandbox-panel`, `workspace.trusted-sources`, `library.knowledge-page`, `source-control.get-updates` and `source-control.identity` change their quoted text to match; `app.sandbox-start-words` gains examples for `windows` and `sign-in-needed`, with two new tests. `plugins.plugin-list-no-installer` is retired, and its test in `packages/studio/features/plugins/src/list/plugins-list.test.tsx` is removed with it. The test of `whatChanged` in `packages/studio/features/library/src/listed-tools-words.test.ts` (`library.listed-tools-review`) is removed with the function, which no screen used. The Settings test for a reason whose fix is the section's own set-up button (`settings.agent-sandbox-state`) now uses `distro-missing`, since `windows` points to another sandbox, and a new test checks that Settings shows the `windows` fix. Every other changed test checks the new line the screen shows; none was skipped.
 
 ## Why
 
@@ -32,6 +32,7 @@ These lines promised more than the code does: an offline network that is allow-l
 - library.listed-tools-review
 - source-control.get-updates
 - source-control.identity
+- settings.agent-sandbox-state
 - plugins.plugin-list-no-installer
 - packages/studio/features/plugins/src/list/plugins-list.test.tsx
 - packages/studio/features/library/src/listed-tools-words.test.ts
