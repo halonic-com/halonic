@@ -104,6 +104,35 @@ export const configurationWords = {
   couldntOpenTerminal: "Couldn't open a terminal. Run this, then choose Check again:",
   /** When the host couldn't be asked to open it at all (team decision on HAL-6351). */
   couldntOpenSignIn: (reason: string) => `Couldn't open the sign-in: ${reason}`,
+  /**
+   * Harness › Where it runs (microcopy 8.5 and 23.4; checklist 3.8). Placeholders until the board
+   * approves HAL-1784, except `inSandboxNote` (team, revision 59): reviewers check the keys.
+   */
+  whereItRuns: {
+    label: "Where it runs",
+    inSandbox: "In a sandbox (recommended)",
+    inSandboxNote: "Can only write to its working folder and reach its allowed sites.",
+    onThisComputer: "On this computer",
+    onThisComputerNote: "Has your access to files and the network, without the sandbox.",
+    /** Microcopy 23.4, the warning: title, two sentences, and its danger button. */
+    warningTitle: (agent: string) => `Run ${agent} on this computer, without the sandbox?`,
+    warningAccess: (agent: string) =>
+      `${agent} will have your access: it can read, change and delete any file you can, use your SSH keys and sign-ins, and reach any site.`,
+    warningTrust: (agent: string) =>
+      `Only choose this for an agent you trust. It applies on this computer only, and you'll be asked again if ${agent}'s file changes.`,
+    confirm: "Run on this computer",
+    cancel: "Cancel",
+    saving: "Saving…",
+    /** Microcopy 23.4, "File changed, Harness page": the Callout while the choice is on hold. */
+    onHold: (agent: string) =>
+      `${agent}'s file changed since you chose On this computer, so it won't run until you confirm again.`,
+    reviewAndConfirm: "Review and confirm",
+    /** The file changed while the warning was open, so nothing was saved; the warning stays for the new file. */
+    changedWhileOpen: (agent: string) =>
+      `${agent}'s file changed while this was open, so nothing was saved. Read this again, then confirm.`,
+    notSaved: (reason: string) => `Couldn't save where it runs: ${reason}`,
+    couldntRead: (reason: string) => `Couldn't read where it runs: ${reason}`,
+  },
   /** The Tools page's lists (flow-agents 5.2). */
   toolLists: { skills: "Skills", knowledge: "Knowledge", connectors: "Connectors" },
   /** The picker's button under each list; an empty list shows only this (microcopy 8.5, MA16). */
