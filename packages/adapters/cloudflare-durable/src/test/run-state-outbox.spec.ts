@@ -11,7 +11,7 @@ export { StateHostObject } from "./state-host.ts";
 describe("RunState run list update", () => {
   const events = [started("r1"), entered("r1", 2)];
 
-  it("notes an append in the outbox and sends the summary from the alarmAt, once", () =>
+  it("notes an append in the outbox and sends the summary from the alarm, once", () =>
     inObjectState(async ({ storage }) => {
       const { state, clock, alarmAt, published } = newState(storage);
       await state.append("r1", 0, events);
