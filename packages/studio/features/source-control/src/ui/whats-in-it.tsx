@@ -33,55 +33,84 @@ export function WhatsInIt({ items, first = false, ticked, onTick }: WhatsInItPro
   const ordered = [...items].sort(
     (a, b) => Number(b.files.some(hasImportant)) - Number(a.files.some(hasImportant)),
   );
+  // The dialog's title is its h2, so this is an h3; it names the list too (a11y C3, C4).
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
-      <h2 id={headingId} className="text-heading">
+      <h3 id={headingId} className="text-heading">
         {versionWords.whatsInIt}
-      </h2>
-      <ul className="flex flex-col gap-3">
-        {ordered.map((item) => {
-          const lines = item.files.flatMap((file) =>
-            file.description.lines.map((line) => ({ file, line })),
-          );
-          const [only] = lines;
-          const inline = lines.length === 1 && only?.line.important !== true;
-          return (
-            <li key={item.id} className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <ItemCheckbox
-                  item={item}
-                  ticked={ticked.has(item.id)}
-                  onTick={(on) => onTick(item.id, on)}
-                />
-                {inline ? <InlineSentence item={item} sentence={only?.line.sentence} /> : null}
-                <span className="flex-1" />
-                {item.files.some(hasImportant) ? (
-                  <span className="text-small shrink-0 rounded-full border border-border px-2 text-fg-muted">
-                    {versionWords.important}
-                  </span>
-                ) : null}
-              </div>
-              {first && item.id === "file:.gitignore" ? (
-                <p className="text-small text-fg-muted">{versionWords.addedByHistory}</p>
-              ) : null}
-              {inline ? null : (
-                <ul className="flex flex-col gap-1">
-                  {lines.map(({ file, line }) => (
-                    <li key={`${file.path}:${line.id}`}>
-                      {line.important === true ? (
-                        <ImportantChange file={file} line={line} />
-                      ) : (
-                        <span className="text-body">{line.sentence}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          );
-        })}
+      </h3>
+      <ul aria-labelledby={headingId} className="flex flex-col gap-3">
+        {ordered.map((item) => (
+          <ItemRow
+            key={item.id}
+            item={item}
+            first={first}
+            ticked={ticked.has(item.id)}
+            onTick={(on) => onTick(item.id, on)}
+          />
+        ))}
       </ul>
     </section>
+  );
+}
+
+/**
+ * One item of the version. Its checkbox is named by the item and described by what changed in
+ * it, "Deleted" or the list of its changes, so a screen reader says both (a11y C4).
+ */
+function ItemRow({
+  item,
+  first,
+  ticked,
+  onTick,
+}: {
+  readonly item: ChangeItem;
+  readonly first: boolean;
+  readonly ticked: boolean;
+  readonly onTick: (on: boolean) => void;
+}) {
+  const changesId = useId();
+  const lines = item.files.flatMap((file) =>
+    file.description.lines.map((line) => ({ file, line })),
+  );
+  const [only] = lines;
+  const inline = lines.length === 1 && only?.line.important !== true;
+  return (
+    <li className="flex flex-col gap-1">
+      <div className="flex items-center gap-2">
+        <ItemCheckbox
+          item={item}
+          ticked={ticked}
+          onTick={onTick}
+          describedBy={lines.length === 0 ? undefined : changesId}
+        />
+        {inline ? (
+          <InlineSentence id={changesId} item={item} sentence={only?.line.sentence} />
+        ) : null}
+        <span className="flex-1" />
+        {item.files.some(hasImportant) ? (
+          <span className="text-small shrink-0 rounded-full border border-border px-2 text-fg-muted">
+            {versionWords.important}
+          </span>
+        ) : null}
+      </div>
+      {first && item.id === "file:.gitignore" ? (
+        <p className="text-small text-fg-muted">{versionWords.addedByHistory}</p>
+      ) : null}
+      {inline ? null : (
+        <ul id={changesId} className="flex flex-col gap-1">
+          {lines.map(({ file, line }) => (
+            <li key={`${file.path}:${line.id}`}>
+              {line.important === true ? (
+                <ImportantChange file={file} line={line} />
+              ) : (
+                <span className="text-body">{line.sentence}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
   );
 }
 
@@ -93,13 +122,16 @@ function ItemCheckbox({
   item,
   ticked,
   onTick,
+  describedBy,
 }: {
   readonly item: ChangeItem;
   readonly ticked: boolean;
   readonly onTick: (on: boolean) => void;
+  /** The id of what changed in the item, which describes the checkbox. */
+  readonly describedBy?: string | undefined;
 }) {
   return (
-    <Checkbox checked={ticked} onChange={onTick}>
+    <Checkbox checked={ticked} onChange={onTick} describedBy={describedBy}>
       <span className="inline-flex items-center gap-2">
         <span className="inline-grid size-icon-md shrink-0 text-fg-muted *:size-full">
           <ItemIcon kind={item.kind} />
@@ -115,15 +147,17 @@ function ItemCheckbox({
 
 /** The one plain change of an item, beside its checkbox: "· New" after a kind. */
 function InlineSentence({
+  id,
   item,
   sentence = "",
 }: {
+  readonly id: string;
   readonly item: ChangeItem;
   readonly sentence?: string | undefined;
 }) {
   if (sentence === "") return null;
   return (
-    <span className="text-body text-fg-muted">
+    <span id={id} className="text-body text-fg-muted">
       {item.kind === undefined ? sentence : itemWords.sentenceAfterKind(sentence)}
     </span>
   );

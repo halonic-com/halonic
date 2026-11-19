@@ -24,12 +24,14 @@ export function AddShareAddressDialog({ list, onClose, returnFocus }: AddShareAd
   const [busy, setBusy] = useState(false);
   // The dialog may close while git is still answering; nothing is set on a closed dialog.
   const open = useRef(true);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // Set here as well as in the ref: StrictMode runs the cleanup and the effect again on mount,
+    // and without this every answer would be dropped in the dev server.
+    open.current = true;
+    return () => {
       open.current = false;
-    },
-    [],
-  );
+    };
+  }, []);
 
   async function add() {
     if (busy) return;

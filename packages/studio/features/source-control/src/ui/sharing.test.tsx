@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ChangesList } from "../changes-list.ts";
 import { fakeSource, settle } from "../source.test-helper.ts";
@@ -14,11 +14,12 @@ afterEach(() => {
   restoreModal();
 });
 
-async function openPage(options: { remote: boolean }) {
+async function openPage(options: { remote: boolean; strict?: boolean }) {
   const fake = fakeSource({ kind: "ready", changes: [] });
   fake.setRemote(options.remote);
   const list = new ChangesList(fake.source);
-  const root = render(<ChangesView list={list} />);
+  const view = <ChangesView list={list} />;
+  const root = render(options.strict === true ? <StrictMode>{view}</StrictMode> : view);
   await act(settle);
   return { fake, root };
 }
@@ -125,6 +126,17 @@ verifies("source-control.share-address", () => {
       fake.failRemote(undefined);
       await press(button("Try again"));
       expect(fake.remotes).toEqual(["https://github.com/acme/agents.git"]);
+      expect(dialog()).toBeNull();
+    });
+
+    it("answers Add under StrictMode, as in the dev server, and doesn't stay on Adding", async () => {
+      const { fake } = await openPage({ remote: false, strict: true });
+      await press(button("Add where to share"));
+      await press(button("Add"));
+      expect(document.body.textContent).toContain("Enter a git address, like https://github.com/");
+      await type("git@github.com:acme/agents.git");
+      await press(button("Add"));
+      expect(fake.remotes).toEqual(["git@github.com:acme/agents.git"]);
       expect(dialog()).toBeNull();
     });
 
