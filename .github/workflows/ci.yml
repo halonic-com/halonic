@@ -2,6 +2,14 @@
 # `ci-ok`: it runs unless the run was cancelled, waits for every other job and fails if any of
 # them failed. Jobs that only run for some changes can then be skipped
 # without blocking the merge.
+#
+# macOS and Windows jobs don't run in merge groups (board decision on
+# HAL-5327, 19 Nov): the queue tests the full Linux suite only, so it doesn't
+# wait on the few macOS and Windows runners. Pull requests still run them as
+# before, and every push to main runs all of them. The daily "Failures on
+# main, by area" job in scheduled.yml reads that run and opens a
+# nightly:<area> issue for each failing job, which the area's owner gets as a
+# task. A skipped job counts as passed for ci-ok.
 
 name: CI
 
@@ -114,7 +122,8 @@ jobs:
             # as a pull request. Each entry ahead checks its own areas before
             # it can merge, and every push to main runs every job, so a gap
             # in the area rules still shows on main. An empty diff or a diff
-            # that can't be read runs every job.
+            # that can't be read runs every job. macOS and Windows jobs skip
+            # in merge groups whatever the areas say (see the top of this file).
             if changed=$(git diff --name-only "$BASE...HEAD") && [ -n "$changed" ]; then
               by_area=true
             fi
@@ -1102,7 +1111,7 @@ jobs:
     # so they run only in the Linux job.
     name: Tauri shell on Windows (build and tests)
     needs: changes
-    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: windows-2025
     timeout-minutes: 40
     permissions:
@@ -1428,7 +1437,7 @@ jobs:
     # and its dependencies, so no cache is restored.
     name: Keychain contract on macOS
     needs: changes
-    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.tauri == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: macos-15
     timeout-minutes: 15
     permissions:
@@ -1544,7 +1553,7 @@ jobs:
     # in the fence, not a flaky test. No cache is restored.
     name: Sandbox fence (Seatbelt)
     needs: changes
-    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: macos-15
     timeout-minutes: 15
     permissions:
@@ -1606,7 +1615,7 @@ jobs:
     # script from passing silently. No cache: see the setup action.
     name: Sandbox fence (MXC on Windows 11)
     needs: changes
-    if: needs.changes.outputs.sandbox-mxc == 'true' && needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.sandbox-mxc == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: windows-11-arm
     timeout-minutes: 30
     permissions:
@@ -1639,15 +1648,15 @@ jobs:
     #
     # The Windows leg also runs the tests of the other packages that touch
     # paths, files and processes (HAL-4348, step 1 of HAL-4343; agent-host added in HAL-4672). Pull requests
-    # and merge groups run the listed packages that changed or depend on a
-    # changed one; a push to main runs the whole list plus the parity and
+    # run the listed packages that changed or depend on a changed one (merge
+    # groups skip this job, see the top of this file); a push to main runs the whole list plus the parity and
     # integration kits. A test that fails there today skips itself with
     # `it.skipIf(process.platform === 'win32')` and a reason naming its task.
     # The job name is a required check (#1352): don't rename it without a
     # ruleset change.
     name: Sandbox packages on ${{ matrix.name }}
     needs: changes
-    if: (needs.changes.outputs.sandbox == 'true' || needs.changes.outputs.windows == 'true') && needs.changes.outputs.full == 'true'
+    if: (needs.changes.outputs.sandbox == 'true' || needs.changes.outputs.windows == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     permissions:
@@ -1788,7 +1797,7 @@ jobs:
     # the job summary.
     name: Sandbox fence on Windows (canary probes)
     needs: changes
-    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.sandbox-fence == 'true' && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: windows-2025
     timeout-minutes: 30
     permissions:
@@ -1870,10 +1879,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { name: Linux, os: ubuntu-24.04 }
-          - { name: macOS, os: macos-15 }
-          - { name: Windows, os: windows-2025 }
+        # Linux only in a merge group: macOS and Windows don't run there (see the top of this file).
+        include: ${{ fromJSON(github.event_name == 'merge_group' && '[{"name":"Linux","os":"ubuntu-24.04"}]' || '[{"name":"Linux","os":"ubuntu-24.04"},{"name":"macOS","os":"macos-15"},{"name":"Windows","os":"windows-2025"}]') }}
     defaults:
       run:
         shell: bash
@@ -1908,7 +1915,7 @@ jobs:
     # and that the uninstaller removes the agent sandbox. Signing is later.
     name: Windows installer (build, install, uninstall)
     needs: changes
-    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true'
+    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: windows-2025
     timeout-minutes: 45
     permissions:
@@ -2100,7 +2107,7 @@ jobs:
     # only and are never uploaded.
     name: Windows update (0.1.0 to 0.1.1)
     needs: changes
-    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true'
+    if: (needs.changes.outputs.tauri == 'true' || needs.changes.outputs.agent_host == 'true') && needs.changes.outputs.full == 'true' && github.event_name != 'merge_group'
     runs-on: windows-2025
     timeout-minutes: 75
     permissions:
