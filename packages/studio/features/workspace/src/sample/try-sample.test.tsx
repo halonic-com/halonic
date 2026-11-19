@@ -105,13 +105,13 @@ function start(made: CreatedSample, remembered: readonly RememberedWorkspace[] =
 
 function chip(): HTMLButtonElement | undefined {
   return [...element.querySelectorAll("button")].find((each) =>
-    each.textContent?.includes("Sample · test model"),
+    each.textContent?.includes("Sample answers"),
   );
 }
 
-function trySample(): HTMLButtonElement | undefined {
+function openDemo(): HTMLButtonElement | undefined {
   return [...element.querySelectorAll("button")].find((each) =>
-    each.textContent?.includes("Try the Acme sample"),
+    each.textContent?.includes("Open demo"),
   );
 }
 
@@ -124,7 +124,7 @@ verifies("workspace.try-sample", () => {
       trust: { kind: "trusted" },
     });
 
-    await act(async () => trySample()?.click());
+    await act(async () => openDemo()?.click());
 
     expect(
       element.querySelector('button[aria-label^="Workspace: "]')?.getAttribute("aria-label"),
@@ -139,7 +139,7 @@ verifies("workspace.try-sample", () => {
       name: "Acme sample",
       trust: { kind: "trusted" },
     });
-    await act(async () => trySample()?.click());
+    await act(async () => openDemo()?.click());
 
     await act(async () => switcher.closeShown());
 
@@ -153,11 +153,9 @@ verifies("workspace.try-sample", () => {
       reason: "permission denied",
     });
 
-    await act(async () => trySample()?.click());
+    await act(async () => openDemo()?.click());
 
-    expect(element.textContent).toContain(
-      "Can't create the sample in Documents: permission denied.",
-    );
+    expect(element.textContent).toContain("Can't copy the demo to Documents: permission denied.");
     expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
     expect(shell.toasts.list()).toEqual([]);
   });
@@ -170,10 +168,10 @@ verifies("workspace.try-sample", () => {
       trust: { kind: "trusted" },
     });
 
-    await act(async () => trySample()?.click());
+    await act(async () => openDemo()?.click());
 
     expect(create).toHaveBeenCalledWith([]);
-    expect(chip()?.textContent).toBe("Sample · test model");
+    expect(chip()?.textContent).toBe("Sample answers");
   });
 
   it("takes the chip away once the demo's default model is a real one", async () => {
@@ -183,7 +181,7 @@ verifies("workspace.try-sample", () => {
       name: "Acme sample",
       trust: { kind: "trusted" },
     });
-    await act(async () => trySample()?.click());
+    await act(async () => openDemo()?.click());
 
     act(() => pickRealModel());
 
@@ -205,7 +203,7 @@ verifies("workspace.try-sample", () => {
     const known = { location: "/docs/Acme sample", name: "Acme", sample: true } as const;
     const { shell, create } = start({ kind: "existing", folder: known.location }, [known]);
 
-    await act(async () => trySample()?.click());
+    await act(async () => openDemo()?.click());
 
     expect(create).toHaveBeenCalledWith([known.location]);
     expect(shell.toasts.list().map((toast) => toast.title)).toEqual(["Opened Acme sample"]);
@@ -227,7 +225,7 @@ verifies("workspace.try-sample", () => {
 
     await act(async () => chip()?.click());
     const row = [...document.querySelectorAll('[role="menuitem"]')].find((each) =>
-      each.textContent?.includes("Fresh copy of the sample"),
+      each.textContent?.includes("Fresh copy of the demo"),
     );
     await act(async () => (row as HTMLElement | undefined)?.click());
 
@@ -246,12 +244,12 @@ verifies("workspace.try-sample", () => {
 
     await act(async () => chip()?.click());
     const row = [...document.querySelectorAll('[role="menuitem"]')].find((each) =>
-      each.textContent?.includes("Fresh copy of the sample"),
+      each.textContent?.includes("Fresh copy of the demo"),
     );
     await act(async () => (row as HTMLElement | undefined)?.click());
 
     expect(shell.toasts.list().map((toast) => toast.title)).toContain(
-      "Couldn't create a fresh copy of the sample: permission denied.",
+      "Couldn't create a fresh copy of the demo: permission denied.",
     );
     expect(shell.toasts.list().find((toast) => toast.sticky === true)?.action?.label).toBe(
       "Try again",

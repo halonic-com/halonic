@@ -73,6 +73,7 @@ export { servedServices } from "./served-studio.ts";
 
 import { keyboardPlatform, studioHost } from "./studio-host.ts";
 import { followSystemRegion } from "./system-region.ts";
+import { demoModelWatch } from "./test-model-watch.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
 import {
   closeLimitMs,
@@ -336,6 +337,7 @@ export async function openFolder(
     });
   }
   shell.services.instantiate(services);
+  const testModel = demoModelWatch(services, device.recent.isSample(location));
   const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name });
   const outside = showFilesOutside(services, shell.toasts, workspace);
   const saving = scope === undefined ? undefined : savingOf(scope, workspace, name, outside.onHeld);
@@ -344,8 +346,10 @@ export async function openFolder(
     workspace,
     saving,
     trust: trustView,
+    testModel,
     dispose: () => {
       if (trust !== undefined) open.delete(trust);
+      testModel?.dispose();
       outside.stop();
       assistant?.dispose();
       return scope === undefined ? services.dispose() : scope.close();

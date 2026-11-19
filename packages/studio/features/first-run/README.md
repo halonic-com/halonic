@@ -6,7 +6,7 @@ The First Run feature of the Studio: Home's **Try the sample** card.
 - **Owner:** elena
 - **Public API:** `@halonicjs/studio-feature-first-run` (the feature) and `@halonicjs/studio-feature-first-run/api`
 
-In the Acme sample, the feature fills Home's Get set up slot with three steps: start a support request, approve
+In the demo (the copy of Acme that Welcome's **Open demo** makes), the feature fills Home's Get set up slot with three steps: start a support request, approve
 or reject the reply, see what it did. Each is done by what happens in the workspace, by any route, and stays done on
 this device. In any other workspace the slot stays empty. The app gives it the sample facts of each open folder
 with `SampleWorkspaceService`.

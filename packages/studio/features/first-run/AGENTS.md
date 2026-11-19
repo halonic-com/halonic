@@ -4,7 +4,7 @@ Owner: elena · Layer: studio · Read the root `AGENTS.md` first; this file adds
 
 ## Scope
 
-Home's Try the sample card: the three steps of the Acme sample and their done rules
+Home's Try the sample card: the three steps of the demo (the copy of Acme that **Open demo** makes) and their done rules
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`, plus `src/api.ts` for other features;
 everything else is internal.

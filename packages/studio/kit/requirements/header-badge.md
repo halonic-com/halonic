@@ -12,7 +12,7 @@ On a phone the badge shall sit on its own 48px line with a 1px `border` under it
 
 ## Examples
 
-- Given the sample chip "Sample · test model" with the description "Runs on the built-in test model, with scripted replies. No key, no cost." and the items Use a real model…, About the sample and Remove the sample,
+- Given the sample chip "Sample answers" with the description "Runs on the built-in test model, with scripted replies. No key, no cost." and the items Use a real model…, About the sample and Remove the sample,
   when the user clicks it on desktop,
   then its Menu opens with the description first, and the badge has `aria-expanded="true"`.
 - Given the trust badge "Not trusted yet" with the action "Review",

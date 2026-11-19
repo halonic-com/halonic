@@ -9,7 +9,7 @@ import { usePresentation } from "../presentation/presentation.tsx";
 /** The sample chip: it opens a Menu, or on a phone the panel sheet with the same items. */
 export interface HeaderBadgeMenu {
   readonly as: "menu";
-  /** The badge's words: "Sample · test model". */
+  /** The badge's words: "Sample answers". */
   readonly children: string;
   /** The menu's first line: "Runs on the built-in test model, with scripted replies. No key, no cost." */
   readonly description?: string | undefined;
@@ -102,7 +102,7 @@ const phoneLine = "flex min-h-touch items-center border-b border-border pe-4 ps-
  *
  * @example
  * <HeaderBadge as="menu" description={costLine} entries={sampleEntries} onOpenSheet={openSheet}>
- *   Sample · test model
+ *   Sample answers
  * </HeaderBadge>
  * <HeaderBadge as="button" action="Review" onClick={openTrustCheck}>Not trusted yet</HeaderBadge>
  * <HeaderBadge as="status" tone="attention" action="Details" onClick={openDetails}>

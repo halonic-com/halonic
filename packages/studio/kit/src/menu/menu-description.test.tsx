@@ -26,7 +26,7 @@ const entries: readonly MenuEntry[] = [
 function renderMenu(description?: string) {
   const { container } = render(
     <Menu
-      trigger={(props) => <Button {...props}>Sample · test model</Button>}
+      trigger={(props) => <Button {...props}>Sample answers</Button>}
       entries={entries}
       description={description}
       align="end"

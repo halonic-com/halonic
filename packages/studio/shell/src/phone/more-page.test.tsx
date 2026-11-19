@@ -109,16 +109,16 @@ verifies("shell.more-page", () => {
   });
 
   it("shows a header badge on its own line, outside the switcher's button", () => {
-    const { container } = renderMore(places, "Sample · test model");
+    const { container } = renderMore(places, "Sample answers");
     const [switcher, badge] = [...container.querySelectorAll("button")];
 
-    expect(badge?.textContent).toBe("Sample · test model");
+    expect(badge?.textContent).toBe("Sample answers");
     expect(switcher?.contains(badge as Node)).toBe(false);
   });
 
   it("stretches each badge line across the page, so its divider runs full width like the rest", () => {
     // jsdom has no layout: a column with the default stretch is what gives the line its width.
-    const { container } = renderMore(places, "Sample · test model");
+    const { container } = renderMore(places, "Sample answers");
     const line = [...container.querySelectorAll("button")][1]?.parentElement;
 
     expect(line?.classList.contains("flex-col")).toBe(true);

@@ -32,7 +32,7 @@ function onPhone(element: ReactNode): ReactNode {
 function sampleChip(onOpenSheet = vi.fn()) {
   return (
     <HeaderBadge as="menu" description={costLine} entries={entries} onOpenSheet={onOpenSheet}>
-      Sample · test model
+      Sample answers
     </HeaderBadge>
   );
 }
@@ -105,7 +105,7 @@ verifies("kit.header-badge", () => {
     const { container } = render(sampleChip());
     const badge = badgeIn(container);
     const menu = container.querySelector("[role=menu]") as HTMLElement;
-    expect(badge.textContent).toBe("Sample · test model");
+    expect(badge.textContent).toBe("Sample answers");
     expect(badge.querySelectorAll("svg")).toHaveLength(2);
     expect(badge.className).toContain("pr-1.5 pl-2");
     expect(badge.getAttribute("aria-haspopup")).toBe("menu");

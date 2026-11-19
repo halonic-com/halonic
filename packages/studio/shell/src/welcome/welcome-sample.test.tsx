@@ -15,7 +15,7 @@ const costLine = "Runs on the built-in test model, with scripted replies. No key
 
 function sampleButton(root: HTMLElement): HTMLButtonElement | undefined {
   return [...root.querySelectorAll("button")].find((each) =>
-    /Try the Acme sample|Creating the sample…/.test(each.textContent ?? ""),
+    /Open demo|Copying the demo…/.test(each.textContent ?? ""),
   );
 }
 
@@ -55,11 +55,11 @@ verifies("shell.welcome-sample", () => {
 
     expect(root.textContent).not.toContain(costLine);
     expect(root.textContent?.indexOf("Recent")).toBeLessThan(
-      root.textContent?.indexOf("Try the Acme sample") ?? -1,
+      root.textContent?.indexOf("Open demo") ?? -1,
     );
   });
 
-  it("is busy while the sample is created and ignores more presses", async () => {
+  it("is busy while the demo is copied and ignores more presses", async () => {
     let finish: (problem: WelcomeSampleProblem | undefined) => void = () => {};
     const onTrySample = vi.fn(
       () => new Promise<WelcomeSampleProblem | undefined>((resolve) => (finish = resolve)),
@@ -72,14 +72,14 @@ verifies("shell.welcome-sample", () => {
     await act(async () => sampleButton(root)?.click());
 
     expect(onTrySample).toHaveBeenCalledTimes(1);
-    expect(sampleButton(root)?.textContent).toContain("Creating the sample…");
+    expect(sampleButton(root)?.textContent).toContain("Copying the demo…");
     expect(sampleButton(root)?.getAttribute("aria-busy")).toBe("true");
     expect(document.activeElement).toBe(sampleButton(root));
     await act(async () => finish(undefined));
     expect(sampleButton(root)?.getAttribute("aria-busy")).not.toBe("true");
   });
 
-  it("keeps Open folder and New workspace… usable while the sample is created", async () => {
+  it("keeps Open folder and New workspace… usable while the demo is copied", async () => {
     let finish: (problem: WelcomeSampleProblem | undefined) => void = () => {};
     const onOpenFolder = vi.fn(async () => undefined);
     const onNewWorkspace = vi.fn();
@@ -103,7 +103,7 @@ verifies("shell.welcome-sample", () => {
     await act(async () => finish(undefined));
   });
 
-  it("says why under the text when the sample can't be created", async () => {
+  it("says why under the text when the demo can't be copied", async () => {
     const root = render(
       <Welcome
         onOpenFolder={async () => undefined}
@@ -114,7 +114,7 @@ verifies("shell.welcome-sample", () => {
     await act(async () => sampleButton(root)?.click());
 
     expect(root.querySelector('[role="alert"]')?.textContent).toBe(
-      "Can't create the sample in Documents: permission denied.",
+      "Can't copy the demo to Documents: permission denied.",
     );
     expect(sampleButton(root)?.getAttribute("aria-busy")).not.toBe("true");
   });
@@ -141,7 +141,7 @@ verifies("shell.welcome-sample", () => {
 
       const line = root.querySelector('[role="alert"]')?.textContent;
       expect(line).toBe(
-        "Can't create the sample in Documents: the engine isn't answering. It may still be starting.",
+        "Can't copy the demo to Documents: the engine isn't answering. It may still be starting.",
       );
       expect(line).not.toMatch(/shell/i);
       expect(sampleButton(root)?.getAttribute("aria-busy")).not.toBe("true");

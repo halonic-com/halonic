@@ -32,8 +32,8 @@ export interface WelcomeProps {
    */
   readonly onNewWorkspace?: (() => void) | undefined;
   /**
-   * Creates the Acme sample and opens it. Resolves with the problem when it couldn't, else with
-   * `undefined`; without it Welcome has no **Try the Acme sample** action.
+   * Copies the demo and opens it. Resolves with the problem when it couldn't, else with
+   * `undefined`; without it Welcome has no **Open demo** action.
    */
   readonly onTrySample?: (() => Promise<WelcomeSampleProblem | undefined>) | undefined;
   /** The workspaces remembered on this device; without it, or while it's empty, none show. */
@@ -93,7 +93,7 @@ type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly
  */
 export function Welcome({ onOpenFolder, onNewWorkspace, onTrySample, recent }: WelcomeProps) {
   const [opening, setOpening] = useState<Opening | undefined>(undefined);
-  /** True while the sample is being written; Open folder and New workspace… stay usable. */
+  /** True while the demo is being copied; Open folder and New workspace… stay usable. */
   const [creatingSample, setCreatingSample] = useState(false);
   const [shownProblem, setShownProblem] = useState<ShownProblem | undefined>(undefined);
   const [sampleProblem, setSampleProblem] = useState<WelcomeSampleProblem | undefined>(undefined);

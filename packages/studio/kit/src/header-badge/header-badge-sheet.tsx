@@ -7,7 +7,7 @@ import { StatusChip } from "../status-chip/status-chip.tsx";
 
 /** Props of the kit's `HeaderBadgeSheet`. */
 export interface HeaderBadgeSheetProps {
-  /** The badge's words, as the sheet's title: "Sample · test model". */
+  /** The badge's words, as the sheet's title: "Sample answers". */
   readonly title: string;
   /** The Menu's description line, as the sheet's first body line. */
   readonly description?: string | undefined;
@@ -45,7 +45,7 @@ const DISABLED_ROW = "text-fg-disabled text-forced-disabled";
  * checked item has a tick and `aria-current`.
  *
  * @example
- * <HeaderBadgeSheet title="Sample · test model" description={costLine} entries={sampleEntries} onClose={back} />
+ * <HeaderBadgeSheet title="Sample answers" description={costLine} entries={sampleEntries} onClose={back} />
  */
 export function HeaderBadgeSheet({
   title,

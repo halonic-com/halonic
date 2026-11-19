@@ -21,7 +21,7 @@ function Badges() {
         ]}
         onOpenSheet={ignore}
       >
-        Sample · test model
+        Sample answers
       </HeaderBadge>
       <HeaderBadge as="button" action="Review" onClick={ignore}>
         Not trusted yet
@@ -62,7 +62,7 @@ function Sheet() {
     <div className="h-80 w-82 overflow-hidden rounded-sm border border-border phone:w-full">
       <PresentationProvider presentation="phone">
         <HeaderBadgeSheet
-          title="Sample · test model"
+          title="Sample answers"
           description={costLine}
           entries={[
             { id: "real", label: "Use a real model…", onSelect: ignore },

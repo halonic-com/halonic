@@ -10,6 +10,7 @@ import {
   type StudioWorkspace,
   type WelcomeOpenProblem,
 } from "@halonicjs/studio-shell";
+import type { TestModelWatch } from "../sample/test-model-watch.ts";
 import type { WorkspaceTrustControl } from "../trust/workspace-trust-control.ts";
 import { OpenWorkspaces } from "./open-workspaces.ts";
 import type { RecentWorkspaces } from "./recent-workspaces.ts";
@@ -28,6 +29,8 @@ export interface OpenedWorkspace {
   readonly saving?: WorkspaceSaving | undefined;
   /** Whether it is trusted and the way to trust it; absent when there is no folder to trust. */
   readonly trust?: WorkspaceTrustControl | undefined;
+  /** Whether its `default` model is the test model; absent when its models can't be read. */
+  readonly testModel?: TestModelWatch | undefined;
   /** Stops its services. Called once, when it closes. */
   dispose(): Promise<void>;
 }
