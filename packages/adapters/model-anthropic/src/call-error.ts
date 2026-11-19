@@ -54,7 +54,7 @@ const statusOfErrorType: Readonly<Record<string, number>> = {
  * is busy: 501 Not Implemented, such as a `baseUrl` with a wrong path or a
  * server that doesn't speak this API, and 505 HTTP Version Not Supported.
  * Waiting won't fix them, so they are `refused`, and the message points at
- * the provider's `baseUrl` in models.yaml.
+ * the `baseUrl` in the provider's file, providers/<id>.yaml.
  */
 const notSupportedStatuses: ReadonlySet<number> = new Set([501, 505]);
 
@@ -163,7 +163,7 @@ function errorForVendorError(
 /** "acme at proxy.test doesn't support …": the server answered, but not to this API. */
 function notSupportedMessage(call: FailedCall, label: string): string {
   const where = call.host === undefined ? "" : ` at ${call.host}`;
-  return `${call.providerId}${where} doesn't support the call to the model "${call.model}", so check the baseUrl of ${call.providerId} in models.yaml (${label})`;
+  return `${call.providerId}${where} doesn't support the call to the model "${call.model}", so check the baseUrl in providers/${call.providerId}.yaml (${label})`;
 }
 
 /**

@@ -180,14 +180,14 @@ verifies("model-anthropic.call-errors", () => {
       "a 501 Not Implemented",
       (v) => v.replyNext(501, { detail: "Not Implemented" }),
       "refused",
-      /^acme at api\.anthropic\.com doesn't support the call to the model "acme-small", so check the baseUrl of acme in models\.yaml \(HTTP 501\)$/,
+      /^acme at api\.anthropic\.com doesn't support the call to the model "acme-small", so check the baseUrl in providers\/acme\.yaml \(HTTP 501\)$/,
       '{"detail":"Not Implemented"}',
     ],
     [
       "a 505 HTTP Version Not Supported",
       (v) => v.replyNext(505, { detail: "HTTP Version Not Supported" }),
       "refused",
-      /baseUrl of acme in models\.yaml \(HTTP 505\)$/,
+      /baseUrl in providers\/acme\.yaml \(HTTP 505\)$/,
       '{"detail":"HTTP Version Not Supported"}',
     ],
     [
