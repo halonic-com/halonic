@@ -32,8 +32,8 @@ const badgeIcons: Partial<Record<SandboxBadge["tone"], ReactNode>> = {
 
 /**
  * The header badge (`settings.sandbox-status-ui`): the state in words and an icon, and a press
- * opens Settings › Agent sandbox. Screen readers hear "Sandbox status: *state*. Opens sandbox
- * settings." instead of the short words.
+ * opens Settings › Agent sandbox. Screen readers hear its words, then "Opens sandbox settings."
+ * ("Sandbox: on. Opens sandbox settings."), so voice control finds it by what it shows.
  */
 export function SandboxBadgeButton({ badge, onOpen }: SandboxBadgeButtonProps) {
   if (badge === null) return null;

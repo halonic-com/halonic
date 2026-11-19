@@ -56,7 +56,7 @@ verifies("settings.sandbox-status-view", () => {
     expect(view.badge).toMatchObject({
       label: "Sandbox: on",
       tone: "success",
-      name: "Sandbox status: ready. Opens sandbox settings.",
+      name: "Sandbox: on. Opens sandbox settings.",
     });
     expect(view.row).toMatchObject({
       state: "Ready",
@@ -67,8 +67,12 @@ verifies("settings.sandbox-status-view", () => {
 
   it("says No sandbox, with the asking promise only when the host keeps it", () => {
     const without = sandboxStatusView(answered("none", []));
-    expect(without.badge).toMatchObject({ label: "No sandbox", tone: "attention" });
-    expect(without.row.line).toBe("No sandbox.");
+    expect(without.badge).toMatchObject({
+      label: "No sandbox",
+      tone: "attention",
+      name: "No sandbox. Opens sandbox settings.",
+    });
+    expect(without.row).toMatchObject({ state: "No sandbox", line: null });
     const asking = sandboxStatusView(answered("none", [], { agentsAsk: true }));
     expect(asking.row.line).toBe(
       "No sandbox. Agents ask before running commands or touching files outside the project.",
@@ -82,7 +86,11 @@ verifies("settings.sandbox-status-view", () => {
         backend("srt-wsl", { state: "setup-needed", reason: "restart-needed" }),
       ]),
     );
-    expect(view.badge?.label).toBe("Sandbox: setup unfinished");
+    expect(view.badge).toMatchObject({
+      label: "Sandbox: setup unfinished",
+      tone: "attention",
+      name: "Sandbox: setup unfinished. Opens sandbox settings.",
+    });
     expect(view.row).toMatchObject({ state: "Restart needed", actions: ["restart", "change"] });
   });
 
@@ -90,18 +98,62 @@ verifies("settings.sandbox-status-view", () => {
     const view = sandboxStatusView(
       answered("srt-wsl", [backend("srt-wsl", { state: "check-failed" })]),
     );
-    expect(view.badge).toMatchObject({ label: "Sandbox: check failed", tone: "danger" });
+    expect(view.badge).toMatchObject({
+      label: "Sandbox: check failed",
+      tone: "danger",
+      name: "Sandbox: check failed. Opens sandbox settings.",
+    });
     expect(view.row.line).toBe(
       "The sandbox isn't ready: its safety test didn't pass, so it's off until Halonic starts again.",
     );
     expect(view.row.actions).toEqual(["check-again", "change"]);
   });
 
+  it("keeps a red badge when a saved backend is no longer available, and keeps a name's capital", () => {
+    const view = sandboxStatusView(
+      answered("srt-wsl", [backend("srt-wsl", { state: "not-available", reason: "wsl-missing" })]),
+    );
+    expect(view.badge).toMatchObject({ label: "Sandbox: check failed", tone: "danger" });
+    expect(view.row).toMatchObject({
+      state: "Needs repair",
+      line: "The sandbox isn't ready: WSL isn't installed yet.",
+      actions: ["check-again", "change"],
+    });
+    const restart = sandboxStatusView(
+      answered("srt-wsl", [
+        backend("srt-wsl", { state: "not-available", reason: "restart-needed" }),
+      ]),
+    );
+    expect(restart.row.line).toBe(
+      "The sandbox isn't ready: Windows needs to restart to finish setup.",
+    );
+  });
+
+  it("keeps the setup unfinished badge when a saved backend needs setting up again", () => {
+    const view = sandboxStatusView(
+      answered("srt-wsl", [
+        backend("srt-wsl", { state: "setup-needed", reason: "distro-missing" }),
+      ]),
+    );
+    expect(view.badge).toMatchObject({ label: "Sandbox: setup unfinished", tone: "attention" });
+    expect(view.row).toMatchObject({ state: "Needs setting up", actions: ["set-up", "change"] });
+  });
+
   it("is Checking, never red, when nothing is proven yet", () => {
     const view = sandboxStatusView(answered("srt-wsl", [backend("srt-wsl")]));
     expect(view.badge).toBeNull();
-    expect(view.row).toMatchObject({ state: "Checking", checkBusy: true });
-    expect(sandboxStatusView({ kind: "checking" }).badge).toBeNull();
+    expect(view.row).toMatchObject({
+      state: "Checking",
+      actions: ["check-again"],
+      checkBusy: true,
+    });
+    const asking = sandboxStatusView({ kind: "checking" });
+    expect(asking.badge).toBeNull();
+    expect(asking.row).toMatchObject({
+      state: "Checking",
+      actions: ["check-again"],
+      checkBusy: true,
+    });
   });
 
   it("offers a busy Check again while the host is still asking, like a saved backend with no proof", () => {
@@ -117,13 +169,13 @@ verifies("settings.sandbox-status-view", () => {
     expect(unproven).toEqual(asking);
   });
 
-  it("says why a saved backend can't run, with no badge", () => {
+  it("says why a saved backend can't run, under a red badge", () => {
     const view = sandboxStatusView(
       answered("srt-wsl", [
         backend("srt-wsl", { state: "not-available", reason: "virtualisation-off" }),
       ]),
     );
-    expect(view.badge).toBeNull();
+    expect(view.badge).toMatchObject({ label: "Sandbox: check failed", tone: "danger" });
     expect(view.row).toMatchObject({
       state: "Needs repair",
       tone: "danger",
@@ -145,7 +197,7 @@ verifies("settings.sandbox-status-view", () => {
         platform: "linux",
       }),
     );
-    expect(view.badge).toBeNull();
+    expect(view.badge).toMatchObject({ label: "Sandbox: setup unfinished", tone: "attention" });
     expect(view.row).toMatchObject({
       state: "Needs setting up",
       line: null,
@@ -158,5 +210,10 @@ verifies("settings.sandbox-status-view", () => {
     expect(view.badge).toBeNull();
     expect(view.row.line).toBe("Couldn't check the sandbox: Halonic isn't running.");
     expect(view.row.actions).toEqual(["check-again"]);
+    const engine = sandboxStatusView({
+      kind: "unreachable",
+      reason: "The engine isn't answering.",
+    });
+    expect(engine.row.line).toBe("Couldn't check the sandbox: the engine isn't answering.");
   });
 });
