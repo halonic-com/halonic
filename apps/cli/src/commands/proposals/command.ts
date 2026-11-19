@@ -26,6 +26,7 @@ export function proposalsCommandWith(setup: ProposalsSetup): CliCommand {
       {
         name: "show",
         usage: "<run-id> [--dir <folder>]",
+        takesArguments: true,
         summary: proposalsMessages.showSummary(),
         action: (input) => proposalsMessages.showAction(printable(input.positionals[0] ?? "")),
         options: { dir: dirOption },

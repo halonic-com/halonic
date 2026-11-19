@@ -22,6 +22,23 @@ function runnableCommands(
   });
 }
 
+/**
+ * Whether a usage line names an argument: a word such as `<run-id>` or
+ * `[folder]` that is neither an option nor an option's value. Options and
+ * their values, such as `[--dir <folder>]`, don't count.
+ */
+function usageNamesArgument(usage: string): boolean {
+  const words = usage
+    .replaceAll(/[[\]]|\.\.\./g, " ")
+    .split(" ")
+    .filter((word) => word !== "" && word !== "|");
+  return words.some((word, index) => {
+    const isOption = word.startsWith("--");
+    const isOptionValue = index > 0 && (words[index - 1] ?? "").startsWith("--") && !isOption;
+    return !isOption && !isOptionValue;
+  });
+}
+
 /** Runs the real CLI in a folder that holds no workspace, so a command that ignored the argument would fail differently. */
 async function run(args: readonly string[]) {
   const io = captureIo("/nowhere");
@@ -77,6 +94,14 @@ verifies("cli.no-stray-arguments", () => {
         expect(code, words.join(" ")).toBe(exitCode.usage);
         expect(stderr[0]).toBe(
           `✕ halonic ${words.join(" ")} takes no arguments, and you gave stray.`,
+        );
+      }
+    });
+
+    it("is declared by exactly the commands whose usage line names an argument", () => {
+      for (const { words, command } of runnableCommands(everyCommand)) {
+        expect(command.takesArguments === true, words.join(" ")).toBe(
+          usageNamesArgument(command.usage),
         );
       }
     });
