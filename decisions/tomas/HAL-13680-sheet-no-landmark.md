@@ -2,6 +2,7 @@
 
 - Approval: decided by the team (HAL-2282) on HAL-13680, Sofia as designer, from the C210 check of #3852 (HAL-13658); Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7Clfshz0pDRRCWDfhnVKRPU6oQU6u1pvMosvxZGji49KnFG4ac0P5bkIWV3HT8JlqqBidCZWDg3Itry3307JCw==
 - Task: HAL-13680
 
 ## What changes
