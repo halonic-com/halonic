@@ -31,6 +31,12 @@ export {
 export { Card, type CardProps, type CardState } from "./card/card.tsx";
 export type { ChatAction } from "./chat/chat-actions.tsx";
 export {
+  ChatBoxLine,
+  type ChatBoxLineProps,
+  type ChatBoxLineTone,
+} from "./chat/chat-box-line.tsx";
+export { ChatComposer, type ChatComposerProps } from "./chat/chat-composer.tsx";
+export {
   ChatEndLine,
   type ChatEndLineProps,
   type ChatEndLineTone,
