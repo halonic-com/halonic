@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-1299 (T6 PR 5b); HAL-12697; HAL-13120 (H1, H2); flow-agents 5.3; microcopy 8.5; harness-states rules 1 and 4
+- Source: HAL-1299 (T6 PR 5b); HAL-12697; HAL-13120 (H1, H2); HAL-13185 (HF1); flow-agents 5.3; microcopy 8.5; harness-states rules 1 and 4
 
-The agents feature shall give the agent's Configuration a Harness page that lists Halonic, Claude Code and Codex as a choice under the hint "What drives this agent", saves the choice when it is made and puts it back to the saved harness when the save fails, writes under Claude Code and Codex what the host found on this computer (found with its version, not installed with **How to install**, too old with **How to update**, not signed in, couldn't check with the reason) and "Checking…" until the first answer, keeps the last answers while Studio is open and checks again behind them, always offers exactly one **Check again** (the strip's while a strip shows, else the group's), shows one strip above the choice in a polite live region, with **How to install** or **How to update** and **Check again**, when the chosen program isn't installed or is too old, and, when the check itself didn't work, shows only the option's line, with no strip.
+The agents feature shall give the agent's Configuration a Harness page that lists Halonic, Claude Code and Codex as a choice under the hint "What drives this agent", saves the choice when it is made and puts it back to the saved harness when the save fails, writes under Claude Code and Codex what the host found on this computer (found with its version, not installed with **How to install**, too old with **How to update**, not signed in, couldn't check with the reason) and "Checking…" until the first answer, keeps the last answers while Studio is open and checks again behind them, always offers exactly one **Check again** (the strip's while a strip shows, else the group's) and, when a check started from one shows or clears the strip and so takes that one away, moves focus to the Check again now on the page, shows one strip above the choice in a polite live region, with **How to install** or **How to update** and **Check again**, when the chosen program isn't installed or is too old, and, when the check itself didn't work, shows only the option's line, with no strip.
 
 ## Examples
 
@@ -19,3 +19,4 @@ The agents feature shall give the agent's Configuration a Harness page that list
 - Given asking the host throws "The host didn't answer.", or there is no host to ask, then the option says "Couldn't check Codex: The host didn't answer." (never "Found Codex") and there is no strip.
 - Given the chosen Codex isn't installed, then the page has one Check again, in the strip; once Halonic is chosen and the strip goes, the group's Check again is the one.
 - Given the person picks a program that isn't installed, then the strip appears inside a status region that was already on the page, so it is read out.
+- Given focus is on the group's Check again and the check finds the chosen Codex missing, then focus is on the strip's Check again; given focus is on the strip's and the check finds Codex installed, then focus is on the group's. A check that doesn't change the strip leaves focus where it is.

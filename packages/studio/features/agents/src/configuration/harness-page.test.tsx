@@ -306,6 +306,46 @@ verifies("agents.configuration.harness", () => {
     expect(checkAgain()[0]?.closest("[role=status]")).toBeNull();
   });
 
+  it("keeps focus on Check again when the check makes the pressed one go", async () => {
+    const base = memoryAgentsHost({
+      hubs: [{ id: "acme", name: "acme" }],
+      agents: [{ ...ref, name: "Sorter", harness: "codex" }],
+    });
+    let codex: HarnessReadiness = { status: "ready", version: "1.0.0" };
+    const host = {
+      ...base,
+      harnessReadiness: async (to: typeof ref, harness: "halonic" | "claude-code" | "codex") =>
+        harness === "codex" ? codex : base.harnessReadiness(to, harness),
+    };
+    const page = await show(<AgentScreen host={host} hubId="acme" id="sorter" />);
+    await act(async () => buttonNamed(page, "Configuration")?.click());
+    await act(async () => tabNamed(page, "Harness")?.click());
+    const checkAgain = () => buttonNamed(page, "Check again");
+
+    // The group's Check again, and Codex is now missing: the strip's takes over.
+    checkAgain()?.focus();
+    codex = { status: "missing" };
+    await act(async () => checkAgain()?.click());
+    expect(page.textContent).toContain("Sorter can't run until Codex is installed.");
+    expect(document.activeElement).toBe(checkAgain());
+    expect(document.activeElement?.closest("[role=status]")).not.toBeNull();
+
+    // The strip's Check again, and Codex is now installed: the group's takes over.
+    codex = { status: "ready", version: "1.0.0" };
+    await act(async () => checkAgain()?.click());
+    expect(page.textContent).not.toContain("can't run until");
+    expect(document.activeElement).toBe(checkAgain());
+    expect(document.activeElement?.closest("[role=status]")).toBeNull();
+  });
+
+  it("leaves focus alone when the check doesn't change the strip", async () => {
+    const { page } = await openHarness("codex", { codex: { status: "missing" } });
+    const checkAgain = buttonNamed(page, "Check again");
+    checkAgain?.focus();
+    await act(async () => checkAgain?.click());
+    expect(document.activeElement).toBe(checkAgain);
+  });
+
   it("puts the strip in a polite live region that is there before it", async () => {
     const { page } = await openHarness("halonic", { codex: { status: "missing" } });
     const region = page.querySelector("[role=status]");

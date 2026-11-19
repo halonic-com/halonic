@@ -79,6 +79,35 @@ function stripText(agent: string, harness: AgentHarnessId, found: HarnessCheck |
 }
 
 /**
+ * The page has two Check again buttons, the strip's and the group's, and only one shows. A check
+ * that shows or clears the strip takes away the one that was pressed, and focus with it, so focus
+ * goes to the Check again that's now on the page (HF1 on HAL-13185). A check that leaves the
+ * strip as it was, or one after focus moved elsewhere, leaves focus alone.
+ */
+function useFocusFollowsCheckAgain(
+  check: () => Promise<void>,
+  checking: boolean,
+  stripShown: boolean,
+) {
+  const stripRegion = useRef<HTMLDivElement>(null);
+  const groupCorner = useRef<HTMLDivElement>(null);
+  const fromCheckAgain = useRef(false);
+  const checkAgain = () => {
+    fromCheckAgain.current = true;
+    return check();
+  };
+  useEffect(() => {
+    if (checking || !fromCheckAgain.current) return;
+    fromCheckAgain.current = false;
+    const focused = document.activeElement;
+    if (focused !== null && focused !== document.body) return;
+    const now = stripShown ? stripRegion.current : groupCorner.current;
+    now?.querySelector("button")?.focus();
+  }, [checking, stripShown]);
+  return { stripRegion, groupCorner, checkAgain };
+}
+
+/**
  * The Harness page (`agents.configuration.harness`): which program the agent runs in, with what
  * the host found of each on this computer under its option, and one strip when the chosen one
  * can't run. The choice saves at once, and goes back to the saved one when the save fails.
@@ -94,6 +123,12 @@ export function HarnessPage({ host, settings, save }: HarnessPageProps) {
     note: id === "halonic" ? words.builtIn : programLine(id, found[id]),
   }));
   const strip = stripText(settings.name, harness, found[harness]);
+  const stripShown = strip !== null;
+  const { stripRegion, groupCorner, checkAgain } = useFocusFollowsCheckAgain(
+    check,
+    checking,
+    stripShown,
+  );
   // Counts the picks, so a slow failed save doesn't undo a newer pick.
   const newestPick = useRef(0);
   const pick = async (next: AgentHarnessId) => {
@@ -106,11 +141,11 @@ export function HarnessPage({ host, settings, save }: HarnessPageProps) {
   return (
     <div className="flex flex-col">
       {/* Always on the page, so a strip that appears after a change is read out (D5). */}
-      <div role="status" className={strip === null ? undefined : "mb-4"}>
-        {strip !== null && (
+      <div ref={stripRegion} role="status" className={stripShown ? "mb-4" : undefined}>
+        {stripShown && (
           <Callout
             tone="warning"
-            action={{ label: words.checkAgain, busyLabel: words.checking, onClick: check }}
+            action={{ label: words.checkAgain, busyLabel: words.checking, onClick: checkAgain }}
           >
             {strip}
           </Callout>
@@ -118,14 +153,14 @@ export function HarnessPage({ host, settings, save }: HarnessPageProps) {
       </div>
       <div className="relative">
         {/* With a strip, the strip's Check again is the only one (H2 on HAL-13120). */}
-        {strip === null && (
-          <div className="absolute end-0 top-0">
+        {!stripShown && (
+          <div ref={groupCorner} className="absolute end-0 top-0">
             <Button
               variant="ghost"
               size="sm"
               busy={checking}
               busyLabel={words.checking}
-              onClick={() => void check()}
+              onClick={() => void checkAgain()}
             >
               {words.checkAgain}
             </Button>
