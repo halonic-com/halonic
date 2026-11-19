@@ -289,6 +289,22 @@ verifies("cli.run-failure", () => {
       expect(runFailureOf(failed, undefined)).toEqual(general);
     });
 
+    it("names a model alias the hub doesn't have, with a fix and no report link (HAL-12377)", () => {
+      const failed = {
+        ...failedWith("error"),
+        cause: {
+          kind: "not_found" as const,
+          code: "models.unknown-model-alias",
+          detail: { alias: "default", hub: "notes" },
+        },
+      };
+      const failure = runFailureOf(failed, undefined);
+      expect(failure).toEqual({ reason: "unknown-model-alias", alias: "default", hub: "notes" });
+      expect(fixLine(failure)).toBe(
+        "Add default to models.yaml, or set a model on the agent. For a test model with no key, copy models.yaml and providers/mock.yaml from the Acme example.",
+      );
+    });
+
     it("gives an older log's run.failed without a reason the general lines", () => {
       expect(runFailureOf(failedWith(undefined), calledModel())).toEqual(general);
     });
