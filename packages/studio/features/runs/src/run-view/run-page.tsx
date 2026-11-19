@@ -24,9 +24,11 @@ import { detailRows } from "./details-model.ts";
 import { EveryStep, useRunLog } from "./every-step.tsx";
 import { entryIdOfStep, everyStep, type StepEntry } from "./every-step-model.ts";
 import { PageBanner } from "./page-banner.tsx";
-import { Receipt } from "./receipt.tsx";
+import { AgentSays, Receipt } from "./receipt.tsx";
 import {
+  agentSays,
   approvalLines,
+  itemLines,
   messageLines,
   modelLines,
   readLines,
@@ -117,7 +119,7 @@ export interface RunViewProps {
  *
  * Under them, Every step, from the run's log.
  *
- * Above them, the receipt's summary line; its sections come in the next pull requests.
+ * Above them, the receipt, then what the agent says it did in its dashed frame.
  *
  * **Run again** starts a new run of the same workflow with the same input and opens it. It is in
  * the header of an ended real run, and on the failed banner that has no button of its own.
@@ -303,15 +305,18 @@ function ReceiptAndSteps({
   if (log === undefined) {
     return <LogUnread failure={logRead.failure} retry={logRead.retry} engine={engine} />;
   }
+  const said = agentSays(log);
   return (
     <>
       <Receipt
         summary={summaryLine(run, log, context)}
         approvals={approvalLines(log)}
+        items={itemLines(log)}
         messages={messageLines(log)}
         reads={readLines(log)}
         models={modelLines(log, run.summary, context.currency)}
       />
+      {said === undefined ? null : <AgentSays text={said} />}
       <EveryStep log={log} entries={entries} openEntry={openEntry} onOpenEntry={onOpenEntry} />
     </>
   );
