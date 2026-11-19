@@ -2,7 +2,6 @@
 
 - Approval: the plan on HAL-9808 (Liam approved Option 1, pull requests only, step 1); Liam approves this note in review on HAL-9808 and signs it
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7pgQm5OqvhnWrk4G0ijuVk9LoZRhLR/95yp0+wsK9B3WCAqQsmtld5ihxsLo/sRckj/1kUlgrxmmceWujNrsCA==
 
 ## What changes
 
@@ -16,9 +15,13 @@ and the cache save.
 - `checks` first runs `turbo run test --dry=json` for all packages and for each test shard,
   and fails unless the shards add up to every test task exactly once and each listed package
   has a test task.
+- With affected tests on (HAL-12539), each test shard runs only the affected packages of its
+  half: test-1 the affected packages in `TEST_1_PACKAGES`, test-2 the rest. A shard with no
+  affected package runs no tests.
 - Each test shard uploads `pull-request-test-results-<shard>`. The guard downloads both by
-  exact name, fails if either is missing or empty, and unpacks each with the same plain-files
-  check as before. It also fails when the build job ended as skipped or cancelled. The merge
+  exact name, fails if either is missing, and unpacks each with the same plain-files check as
+  before. With affected tests off it also fails on an empty archive; with them on, a shard may
+  rightly have none, and the guard already fails each affected package without a result file. It also fails when the build job ended as skipped or cancelled. The merge
   base's archive is still read by ID and checked against its sha256.
 - `ci-ok` keeps `build` as one entry in `needs`: a matrix job reports one result, failed if a
   shard failed.
@@ -35,8 +38,8 @@ long chain, so three jobs cut a cold run to about 7 to 11 minutes.
 
 ## Tests
 
-No test was weakened or skipped. Every test still runs on every pull request, and the dry-run
-check proves it.
+No test was weakened or skipped. The shards run the same tests one job would (every test, or
+the affected packages' tests with affected tests on), and the dry-run check proves the split.
 
 ## Covers
 
