@@ -112,12 +112,22 @@ export type SandboxCheck =
   | { ok: false; reason: SandboxUnavailableReason; missing: string[]; fix?: SandboxFix };
 
 /**
- * A limit an `ok` check found on this machine that isn't a fact of the backend:
- * `kept-roots-readable` is srt on Windows set up by another program with its
- * profile read grant (or a setup that couldn't be read), so every sandboxed
- * session can read the profile. The list is closed, and a new one is a port change.
+ * Every limit an `ok` check can find on this machine that isn't a fact of the backend:
+ *
+ * - `kept-roots-readable` is srt on Windows set up by another program with its
+ *   profile read grant (or a setup that couldn't be read), so every sandboxed
+ *   session can read the profile.
+ * - `docker-desktop-visible` is srt in Halonic's WSL distro where Docker
+ *   Desktop's socket or its `/mnt/wsl/docker-desktop*` folders show (HAL-12445).
+ *
+ * The list is closed, and a new one is a port change. Readers that check a
+ * check's shape, such as the agent host's client, take the list from here so
+ * a new code reaches them too (HAL-12932).
  */
-export type SandboxResidual = "kept-roots-readable";
+export const sandboxResiduals = ["kept-roots-readable", "docker-desktop-visible"] as const;
+
+/** A limit an `ok` check found on this machine: one of {@link sandboxResiduals}. */
+export type SandboxResidual = (typeof sandboxResiduals)[number];
 
 /**
  * Every package manager a {@link SandboxFix} can name: `apt` (Debian,

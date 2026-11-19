@@ -42,7 +42,7 @@ The sandbox choice shall read the person's saved sandbox setting and report whic
   then the trust check runs again, and the backend is off for this start if it fails.
 - Given MXC in use,
   then its limits are listed and `name-lookups-leave` is a residual when the trust check saw it.
-- Given a backend whose `ok` check brings residuals of its own (today `kept-roots-readable`),
+- Given a backend whose `ok` check brings residuals of its own (today `kept-roots-readable` and `docker-desktop-visible`),
   then they are listed next to those of the trust check, and neither replaces the other.
 - Given a store that gives back `{ backend: "docker" }`,
   then the choice throws and `current()` stays as it was.
