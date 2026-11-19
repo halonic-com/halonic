@@ -42,6 +42,7 @@ import { TitleBarBrand } from "../title-bar/title-bar-brand.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { activeItemOf } from "./active-item.ts";
 import { useClosingGoneItemTabs } from "./gone-item-tabs.ts";
+import { useOpenPageAcrossLayouts } from "./layout-crossing.ts";
 import { useShownPlaces } from "./shown-places.ts";
 import { StudioPage } from "./studio-page.tsx";
 import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
@@ -125,8 +126,8 @@ function DesktopResourceItem({
  *
  * On a phone (`shell.studio-phone`): the top bar with Back and **Search**, the page of the phone
  * place the user is in, and the bottom navigation, with Android's back handled by the shell. The
- * phone keeps its own places (`usePhonePlaces`) next to the desktop's tabs, so a window that
- * crosses `PHONE_MAX_WIDTH` comes back to where each layout was.
+ * phone keeps its own places (`usePhonePlaces`) next to the desktop's tabs, and a window that
+ * crosses `PHONE_MAX_WIDTH` keeps the page that's open (`useOpenPageAcrossLayouts`).
  *
  * @example
  * <StudioWindow shell={shell} workspace={workspace} host="desktop-app" platform="windows" language="en" />
@@ -289,6 +290,13 @@ function StudioWindowBody(props: StudioWindowProps) {
   const kinds = useMemo(() => contributions.itemKinds.list(), [contributions]);
   useClosingGoneItemTabs(tabs, kinds, contextFor);
   usePhoneBackButton(!desktop, shell.closeStack, phone);
+  useOpenPageAcrossLayouts({
+    desktop,
+    tabs,
+    phone,
+    placeOfKind: (kind) => contributions.itemKinds.get(kind)?.place,
+    showSettings: showSettingsDialog,
+  });
   // Read again on every phone move and whenever a place's signal changes, so the bottom
   // navigation's counts follow, such as the Inbox's right after an answer (HAL-13371).
   const shown = useShownPlaces(places, contextFor);
