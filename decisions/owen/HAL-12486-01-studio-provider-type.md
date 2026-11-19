@@ -22,6 +22,8 @@ Set type in providers/weird.yaml to one of anthropic, openai, openai-compatible,
   `@halonicjs/format` (next to the provider file's schema), because Studio's features may not
   import an adapter. The models adapter builds providers from it and still exports it, so the CLI
   doesn't change.
+- The cause is read in one place, `unknownProviderTypeOf` in `@halonicjs/app`, which the CLI's
+  failure facts (`runFailureOf`, HAL-12411) and the run page both call, so they can't drift.
 - A phone shows the same two lines: the fix is an edit to a file, which the person makes on the
   computer either way.
 

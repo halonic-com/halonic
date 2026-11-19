@@ -432,6 +432,7 @@ export {
   type TrustedRunnerSubject,
 } from "./trusted-runner-start.ts";
 export { UndoHistory, undoLimit } from "./undo-history.ts";
+export { type UnknownProviderType, unknownProviderTypeOf } from "./unknown-provider-type.ts";
 export { fenceEnd, fenceStart, fenceUntrusted } from "./untrusted-fence.ts";
 export { type ActiveRun, type Wait, waitsInProgress } from "./waits-in-progress.ts";
 export {

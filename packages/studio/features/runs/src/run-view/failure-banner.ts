@@ -4,6 +4,7 @@
 // program and its limit from the last `harness.started`. Run again is the banner's button
 // (`run-again.ts`); the local-model banners add Copy command and Open Models before it.
 
+import { unknownProviderTypeOf } from "@halonicjs/app";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { escapeHidden } from "@halonicjs/std";
 import { failureWords } from "../failure-words.ts";
@@ -12,7 +13,6 @@ import { providerNameOf } from "../provider-name.ts";
 import { capitalised, runPageWords } from "../run-words.ts";
 import { apiOffOf } from "./api-off.ts";
 import type { BannerFix, RunBanner, RunPageContext } from "./run-page-model.ts";
-import { unknownProviderTypeOf } from "./unknown-provider-type.ts";
 
 /** What a failure banner may need from the log. */
 interface FailureFacts {
@@ -159,7 +159,7 @@ function unknownProviderTypeBanner(
   workflow: string,
   step: string,
 ): RunBanner | undefined {
-  const unknown = unknownProviderTypeOf(summary);
+  const unknown = summary.status === "failed" ? unknownProviderTypeOf(summary.cause) : undefined;
   if (unknown === undefined) {
     return undefined;
   }

@@ -9,6 +9,7 @@ import { assertNever } from "@halonicjs/std";
 import type { FailedModel, FailedStart, RunFailedEvent } from "./failed-model.ts";
 import { budgetStopOf, nextMonthStart } from "./run-failure-budget.ts";
 import { type ProxyFailure, proxyFailureOf } from "./run-failure-proxy.ts";
+import { unknownProviderTypeOf } from "./unknown-provider-type.ts";
 
 /** What both key failures name: the provider, the secret that holds its key, and the alias that uses it. */
 interface KeyFacts {
@@ -382,10 +383,10 @@ function setupFailureOf(cause: RunFailureCause | undefined): RunFailure | undefi
   const { code, detail = {} } = cause ?? {};
   switch (code) {
     case "models.unknown-provider-type": {
-      const { provider, type } = detail;
-      return provider === undefined || type === undefined
+      const unknownType = unknownProviderTypeOf(cause);
+      return unknownType === undefined
         ? undefined
-        : { reason: "unknown-provider-type", provider, type };
+        : { reason: "unknown-provider-type", ...unknownType };
     }
     case "models.unknown-model-alias": {
       const { alias, hub } = detail;
