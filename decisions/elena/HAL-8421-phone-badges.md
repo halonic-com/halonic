@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12557 (Noah's answer, option 1 narrowed, after his spec on https://paperclip.halonic.com/HAL/issues/HAL-8692; a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lG/NX+8ZVGkAeUTHTU+gi+Sn+RBMmabqt1MRdaivapHQvHdX+jvUluEoMN/FfaXureJysTXiDc5s3cL6SFpZBA==
 - Task: HAL-8421
 
 ## What changes
