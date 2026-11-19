@@ -35,7 +35,7 @@ const distroSlot = "<distro>";
 
 const refusedFixes: Readonly<Record<WordedReason, string>> = {
   windows:
-    "The sandbox can't start on this version of Windows. Use Halonic inside WSL 2 on this computer.",
+    "The sandbox doesn't work on Windows in this version of Halonic. Use Halonic inside WSL 2 on this computer.",
   [windowsNodeInWsl]:
     "This is Windows' Node.js, running in a WSL folder, and the sandbox can't start with it. Install Node.js inside WSL and run halonic from a WSL terminal.",
   container:
@@ -71,7 +71,7 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
 
 /** sandbox-screens 3.1's reason, by code: what's wrong, for `halonic doctor`'s Sandbox line. */
 const reasons: Readonly<Record<WordedReason, string>> = {
-  windows: "The sandbox can't start on this version of Windows.",
+  windows: "The sandbox doesn't work on Windows in this version of Halonic.",
   [windowsNodeInWsl]: "Windows' Node.js can't start the sandbox in a WSL folder.",
   container: "Halonic is running inside a container, and the sandbox can't start there.",
   "not-supported": "This distro runs on WSL 1, and the sandbox needs WSL 2.",

@@ -31,7 +31,7 @@ describe("the sandbox sentences", () => {
     expect(
       sandboxUnavailableReasons.map((code) => words(sandboxMessages.refusedFix(code))),
     ).toEqual([
-      "The sandbox can't start on this version of Windows. Use Halonic inside WSL 2 on this computer.",
+      "The sandbox doesn't work on Windows in this version of Halonic. Use Halonic inside WSL 2 on this computer.",
       "Halonic is running inside a container, and the sandbox can't start there. Run halonic run on the computer itself, not in a container. halonic validate and halonic test work in a container.",
       "This distro runs on WSL 1, and the sandbox needs WSL 2. Switch it with wsl --set-version <distro> 2 in PowerShell on Windows, then run it again.",
       "A company policy on this computer blocks the sandbox. Ask whoever manages this computer to allow it, then run it again.",
@@ -67,7 +67,7 @@ describe("the sandbox sentences", () => {
       ]),
     ).toEqual([
       [
-        "The sandbox can't start on this version of Windows.",
+        "The sandbox doesn't work on Windows in this version of Halonic.",
         "Fix: use Halonic inside WSL 2 on this computer. Then run halonic doctor again.",
       ],
       [
