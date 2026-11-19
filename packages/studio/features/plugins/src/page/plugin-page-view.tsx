@@ -21,6 +21,7 @@ export function pageView(
         plugin={plugin}
         settings={options.settings}
         secrets={options.secrets}
+        signIns={options.signIns}
         actions={options.actions}
         {...(options.place === undefined ? {} : { place: options.place })}
         onOpenPanel={() => options.openPanel(plugin.plugin)}

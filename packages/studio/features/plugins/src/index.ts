@@ -58,3 +58,10 @@ export {
   pluginPanelItem,
   pluginPanelKind,
 } from "./panel/plugin-panels.ts";
+export type {
+  PluginSignInState,
+  PluginSignInStatus,
+  PluginSignIns,
+  PluginSignOutResult,
+} from "./sign-in/plugin-sign-ins-section.tsx";
+export type { SignInOutcome as PluginSignInOutcome } from "./sign-in/sign-in-text.ts";

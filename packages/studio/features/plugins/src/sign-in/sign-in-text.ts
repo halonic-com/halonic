@@ -59,6 +59,27 @@ export function signedOutNotConfirmed(service: string): string {
   return `You're signed out here. ${service} didn't confirm, so the token may still work there until it expires.`;
 }
 
+/** The client secret a sign-in needs isn't set (team wording). */
+export const CLIENT_SECRET_NOT_SET = "The client secret isn't set. Set it in Settings.";
+
+/** The host can't take a sign-in's callback where it runs now, such as inside WSL (team wording). */
+export const SIGN_IN_UNAVAILABLE_HERE = "Signing in doesn't work in this setup yet.";
+
+/** Reading where the sign-ins stand failed, in the shape of `settingsNotLoadedTitle` (team wording). */
+export function signInsNotLoaded(name: string, reason: string): string {
+  return `Couldn't load ${name}'s sign-ins: ${reason}`;
+}
+
+/** **Sign in** failed before the browser opened (team wording, microcopy 1.1 "Action failed"). */
+export function signInNotStarted(reason: string): string {
+  return `Couldn't start the sign-in: ${reason}`;
+}
+
+/** **Sign out** failed; nothing was removed (team wording, microcopy 1.1 "Action failed"). */
+export function signOutFailed(reason: string): string {
+  return `Couldn't sign out: ${reason}`;
+}
+
 /**
  * How the last sign-in ended, as the host keeps it. It has the shape of the
  * agent host client's `IntegrationSignInOutcome`; none of it is a secret.
@@ -109,7 +130,7 @@ export function outcomeLine(service: string, outcome: SignInOutcome): string | u
     case "signInChanged":
       return SIGN_IN_CHANGED;
     case "clientSecretMissing":
-      return "The client secret isn't set. Set it in Settings.";
+      return CLIENT_SECRET_NOT_SET;
     case "incompleteCallback":
     case "linkNoLongerValid":
       return "The sign-in didn't finish. Try again.";
