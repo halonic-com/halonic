@@ -1,4 +1,5 @@
 import {
+  AgentHostIntegrationSignIns,
   AgentHostPluginSecrets,
   AgentHostPluginToolCaller,
   type AgentHostTransport,
@@ -15,10 +16,10 @@ import { type DesktopPluginsHost, desktopPluginsHost } from "./desktop-plugins-h
 const hosts = new WeakMap<object, DesktopPluginsHost>();
 
 /**
- * Gives the open folder the plugins feature's host (`studio.desktop-plugins-host`). Tool calls go
- * through the agent host, which refuses them where plugins can't run fenced. The plugins folder
- * is read again whenever the window comes to the front, so a plugin added with `halonic plugin add`
- * shows up without a restart. Without the agent host's transport there is no host to give, and
+ * Gives the open folder the plugins feature's host (`studio.desktop-plugins-host`). Tool calls and
+ * sign-ins go through the agent host, which refuses tool calls where plugins can't run fenced. The
+ * plugins folder is read again whenever the window comes to the front, so a plugin added with
+ * `halonic plugin add` shows up without a restart. Without the agent host's transport there is no host to give, and
  * nothing is provided.
  *
  * The focus listener and the window's entry in `hosts` live as long as the window, on purpose:
@@ -48,6 +49,7 @@ export function providePlugins(
     secrets: shellKeychain(parts.ipc),
     caller: new AgentHostPluginToolCaller(transport),
     handOver: new AgentHostPluginSecrets(transport),
+    signIns: new AgentHostIntegrationSignIns(transport),
     onReloadFailed: parts.onReloadFailed,
   });
   hosts.set(parts.window, plugins);

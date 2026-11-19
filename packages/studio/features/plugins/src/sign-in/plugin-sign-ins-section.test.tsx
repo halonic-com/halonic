@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import type { Plugin } from "@halonicjs/format";
+import { type ExternalAddress, OpenExternalProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -18,11 +19,15 @@ afterEach(unmountAll);
 
 const authorizeUrl = "https://auth.example.com/oauth/authorize?client_id=abc123";
 
-/** The host's sign-ins as a test sets them, with every call written down. */
+/**
+ * The host's sign-ins as a test sets them, with every call written down, and
+ * the pages the browser opened.
+ */
 class FakeSignIns implements PluginSignIns {
   readonly calls: string[] = [];
   readonly opened: string[] = [];
   statuses: PluginSignInStatus[] = [{ signIn: "account", state: "signedOut" }];
+  startAnswer = authorizeUrl;
   startError: unknown;
   signOutResult: PluginSignOutResult = { kind: "signedOut", revoke: "revoked" };
 
@@ -33,16 +38,17 @@ class FakeSignIns implements PluginSignIns {
   async start(plugin: string, signIn: string) {
     this.calls.push(`start ${plugin} ${signIn}`);
     if (this.startError !== undefined) throw this.startError;
-    return authorizeUrl;
+    return this.startAnswer;
   }
   async signOut(plugin: string, signIn: string) {
     this.calls.push(`signOut ${plugin} ${signIn}`);
     this.statuses = [{ signIn: "account", state: "signedOut" }];
     return this.signOutResult;
   }
-  async openInBrowser(url: string) {
-    this.opened.push(url);
-  }
+  /** The kit's `openExternal`, as the shell gives it: it opens the address once it arrives. */
+  readonly openExternal = async (address: ExternalAddress) => {
+    this.opened.push(await address);
+  };
 }
 
 /** Settings with the client ID set, unless the test leaves it out. */
@@ -60,13 +66,15 @@ async function show(
   } = {},
 ) {
   const view = render(
-    <PluginSignInsSection
-      plugin={options.plugin ?? acmeWithSignIn()}
-      settings={settingsWith(options.values ?? { clientId: "abc123" })}
-      signIns={signIns}
-      off={options.off}
-      viewOnly={options.viewOnly ?? false}
-    />,
+    <OpenExternalProvider openExternal={signIns.openExternal}>
+      <PluginSignInsSection
+        plugin={options.plugin ?? acmeWithSignIn()}
+        settings={settingsWith(options.values ?? { clientId: "abc123" })}
+        signIns={signIns}
+        off={options.off}
+        viewOnly={options.viewOnly ?? false}
+      />
+    </OpenExternalProvider>,
   );
   await act(async () => {});
   return view;
@@ -233,5 +241,36 @@ verifies("plugins.plugin-sign-ins", () => {
     const view = await show(signIns);
 
     expect(view.textContent).toContain("Couldn't load acme's sign-ins:");
+  });
+});
+
+verifies("plugins.plugin-sign-in-page", () => {
+  it("opens the address the host answers on the approved host", async () => {
+    const signIns = new FakeSignIns();
+    signIns.statuses = [{ signIn: "account", state: "approvalChanged" }];
+    await show(signIns);
+
+    await press("Sign in again");
+
+    expect(signIns.opened).toEqual([authorizeUrl]);
+  });
+
+  it.each([
+    ["another host", "https://evil.example.net/oauth/authorize?client_id=abc123"],
+    ["the approved host over http", "http://auth.example.com/oauth/authorize?client_id=abc123"],
+    ["the approved host on another port", "https://auth.example.com:8443/oauth/authorize"],
+    ["the approved host as a user name", "https://auth.example.com@evil.example.net/oauth"],
+    ["no address", "auth.example.com/oauth/authorize"],
+  ])("opens nothing when the host answers %s, and names the approved host", async (_, answer) => {
+    const signIns = new FakeSignIns();
+    signIns.startAnswer = answer;
+    const view = await show(signIns);
+
+    await press("Sign in");
+
+    expect(signIns.opened).toEqual([]);
+    expect(view.querySelector('[role="status"]')?.textContent).toBe(
+      "Couldn't start the sign-in: the page to open isn't on auth.example.com.",
+    );
   });
 });

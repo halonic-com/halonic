@@ -15,6 +15,7 @@ import type {
   PluginSecretStore,
   PluginSettingsReader,
 } from "./settings/plugin-settings-section.tsx";
+import type { PluginSignIns } from "./sign-in/plugin-sign-ins-section.tsx";
 
 /**
  * What the app gives the plugins feature for an open workspace: the installed plugins as they
@@ -28,6 +29,8 @@ export interface PluginsHost {
   readonly settings: PluginSettingsReader;
   /** The keychain: `TauriSecrets` on the desktop. */
   readonly secrets: PluginSecretStore;
+  /** The agent host's integration sign-ins; without them a plugin's page shows no sign-ins. */
+  readonly signIns?: PluginSignIns;
   /** Remove trust, Remove plugin, Check again and Open folder, from a plugin's page. */
   readonly actions: PluginActions;
   /** `served` when the app is open in a browser the Studio serves; the page is then view only. */
@@ -48,6 +51,7 @@ export interface StudioPlugins {
   readonly opener: PluginCommandOpener;
   readonly settings: PluginSettingsReader;
   readonly secrets: PluginSecretStore;
+  readonly signIns?: PluginSignIns;
   readonly actions: PluginActions;
   readonly place?: "app" | "served";
   readonly installer?: PluginInstaller;
@@ -63,6 +67,7 @@ export function studioPlugins(host: PluginsHost): StudioPlugins {
     settings: host.settings,
     secrets: host.secrets,
     actions: host.actions,
+    ...(host.signIns === undefined ? {} : { signIns: host.signIns }),
     ...(host.place === undefined ? {} : { place: host.place }),
     ...(host.installer === undefined ? {} : { installer: host.installer }),
     ...(host.builtIn === undefined ? {} : { builtIn: host.builtIn }),
@@ -88,6 +93,7 @@ export function pageOptions(plugins: StudioPlugins, context: WorkspaceContext): 
     settings: plugins.settings,
     secrets: plugins.secrets,
     actions: plugins.actions,
+    ...(plugins.signIns === undefined ? {} : { signIns: plugins.signIns }),
     ...(plugins.place === undefined ? {} : { place: plugins.place }),
     openPanel: (plugin) => context.openItem?.(pluginPanelItem(plugin)),
   };
