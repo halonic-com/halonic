@@ -129,6 +129,32 @@ function Write-ReopenReport([datetime]$Since, [hashtable]$Seen) {
   Get-ChildItem $dir -ErrorAction SilentlyContinue | ForEach-Object { "$($_.Name)  $($_.LastWriteTime.ToString('HH:mm:ss'))" } | Write-Output
 }
 
+# The text of a window and of every control in it, through WM_GETTEXT, which
+# also reads another process's controls. A hung window gives up after 1 s.
+Add-Type @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class WindowText {
+  delegate bool EnumProc(IntPtr hwnd, IntPtr lParam);
+  [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr parent, EnumProc proc, IntPtr lParam);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+  static extern IntPtr SendMessageTimeout(IntPtr hwnd, uint msg, IntPtr wParam, StringBuilder lParam, uint flags, uint timeout, out IntPtr result);
+  static string Text(IntPtr hwnd) {
+    var text = new StringBuilder(1024);
+    IntPtr result;
+    SendMessageTimeout(hwnd, 0x000D, (IntPtr)text.Capacity, text, 0x0002, 1000, out result);
+    return text.ToString();
+  }
+  public static string[] Of(IntPtr window) {
+    var texts = new List<string> { Text(window) };
+    EnumChildWindows(window, (hwnd, _) => { texts.Add(Text(hwnd)); return true; }, IntPtr.Zero);
+    return texts.ToArray();
+  }
+}
+'@
+
 # HAL-11982: the 0.1.2 installer sometimes doesn't finish within 120 s. Says
 # whether it never started, sits in a window nobody sees (title, children of
 # setup) or waits on a file: lists the installer and helper processes with
@@ -140,6 +166,10 @@ function Write-InstallReport([string]$Title) {
   Write-Output "installed: $(Get-InstalledVersion)"
   Get-Process | Where-Object { $_.Name -match 'Halonic|setup|installer|agent|srt|sandbox|whoami|uninstall|msedgewebview2' } | Sort-Object Name | Format-Table Id, Name, SessionId, StartTime, MainWindowTitle, Path -AutoSize | Out-String -Width 250 | Write-Output
   Get-CimInstance Win32_Process -Filter "Name like '%setup%' or Name like '%installer%' or Name like 'Halonic%' or Name like 'halonic%'" -ErrorAction SilentlyContinue | ForEach-Object { "$($_.ProcessId) parent $($_.ParentProcessId): $($_.CommandLine)" } | Write-Output
+  # What the installer's window says, e.g. an abort message on its page.
+  Get-Process | Where-Object { $_.Name -match 'setup|installer' -and $_.MainWindowHandle -ne 0 } | ForEach-Object {
+    Write-Output "window of $($_.Id): $(([WindowText]::Of($_.MainWindowHandle) | Where-Object { $_ }) -join ' | ')"
+  }
   Get-ChildItem $dir -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object {
     $locked = $false
     try { [IO.File]::Open($_.FullName, 'Open', 'ReadWrite', 'None').Close() } catch { $locked = $true }
