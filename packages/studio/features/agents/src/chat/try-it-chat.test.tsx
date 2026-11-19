@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
-import type { ChatAnswer } from "@halonicjs/app";
+import type { ChatAnswer, SandboxStartCheck, SandboxStartResult } from "@halonicjs/app";
 import { KindedError } from "@halonicjs/std";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import type { AgentChatRequest } from "../api.ts";
+import type { AgentChatRequest, AgentHarnessId } from "../api.ts";
 import type { HarnessStrip } from "../configuration/harness-strip.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { buttonNamed, show, typeIntoArea, unmount } from "../test-support.tsx";
@@ -52,10 +52,14 @@ function Chat({
   host,
   announce,
   harnessStrip = null,
+  harness = "claude-code",
+  sandboxStartCheck,
 }: {
   readonly host: ReturnType<typeof memoryAgentsHost>;
   readonly announce: (text: string, politeness?: "polite" | "assertive") => void;
   readonly harnessStrip?: HarnessStrip | null;
+  readonly harness?: AgentHarnessId;
+  readonly sandboxStartCheck?: SandboxStartCheck;
 }) {
   const chat = useTryItChat({ host, agent: sorter, name: "Sorter", announce });
   return (
@@ -63,9 +67,11 @@ function Chat({
       chat={chat}
       name="Sorter"
       description={sorter.description}
-      harness="claude-code"
+      harness={harness}
       harnessStrip={harnessStrip}
       ways={ways}
+      sandboxStartCheck={sandboxStartCheck}
+      announce={announce}
     />
   );
 }
@@ -348,5 +354,72 @@ verifies("agents.chat.not-trusted", () => {
     expect(requests).toHaveLength(0);
     expect(box()).toBe("Sort this mail");
     expect(toasts.list()[0]?.title).toBe("Not started: Acme isn't trusted yet");
+  });
+});
+
+verifies("agents.chat.sandbox", () => {
+  /** A check that answers each call with the next of `answers`; the last one repeats. */
+  function checkSaying(...answers: SandboxStartResult[]) {
+    return {
+      check: vi.fn(
+        async () => (answers.length > 1 ? answers.shift() : answers[0]) as SandboxStartResult,
+      ),
+    };
+  }
+  const refused: SandboxStartResult = { ok: false, reason: "bubblewrap-missing" };
+
+  async function chatWith(
+    check: SandboxStartCheck,
+    options: { harness?: AgentHarnessId; harnessStrip?: HarnessStrip } = {},
+  ) {
+    const { host, requests } = scriptedHost();
+    const announce = vi.fn();
+    const page = await show(
+      <ToastStoreProvider store={createToastStore()}>
+        <Chat host={host} announce={announce} sandboxStartCheck={check} {...options} />
+      </ToastStoreProvider>,
+    );
+    await act(async () => undefined);
+    return { page, requests, announce };
+  }
+
+  it("shows the Callout under the box and makes Send wait with its first line as the reason", async () => {
+    const { page, requests } = await chatWith(checkSaying(refused));
+    const firstLine = "Sorter can't run: the sandbox can't start on this computer.";
+    expect(page.textContent).toContain(firstLine);
+    const send = buttonNamed(page, "Send") as HTMLButtonElement;
+    expect(send.getAttribute("aria-disabled")).toBe("true");
+    const reason = page.querySelector(`[id="${send.getAttribute("aria-describedby")}"]`);
+    expect(reason?.textContent).toBe(firstLine);
+    await sendMessage(page, "Sort this mail");
+    const box = page.querySelector("textarea") as HTMLTextAreaElement;
+    await act(async () => {
+      box.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(requests).toHaveLength(0);
+    expect(box.value).toBe("Sort this mail");
+  });
+
+  it("lets the message go and puts focus in the box once Check again finds the sandbox ready", async () => {
+    const { page, requests, announce } = await chatWith(checkSaying(refused, { ok: true }));
+    await act(async () => buttonNamed(page, "Check again")?.click());
+    expect(page.textContent).not.toContain("can't run");
+    expect(document.activeElement).toBe(page.querySelector("textarea"));
+    expect(announce).toHaveBeenCalledWith("The sandbox works now. You can run Sorter.");
+    await sendMessage(page, "Sort this mail");
+    expect(requests).toHaveLength(1);
+  });
+
+  it("doesn't check the sandbox for an agent on Halonic's own loop", async () => {
+    const check = checkSaying(refused);
+    const { page } = await chatWith(check, { harness: "halonic" });
+    expect(check.check).not.toHaveBeenCalled();
+    expect(page.textContent).not.toContain("can't run");
+  });
+
+  it("puts a harness that isn't installed before the sandbox", async () => {
+    const { page } = await chatWith(checkSaying(refused), { harnessStrip: "not-installed" });
+    expect(page.textContent).toContain("Sorter can't run until Claude Code is installed.");
+    expect(page.textContent).not.toContain("the sandbox can't start");
   });
 });
