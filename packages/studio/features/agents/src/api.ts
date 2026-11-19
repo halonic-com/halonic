@@ -52,6 +52,61 @@ export interface AgentSettings extends AgentListing {
   readonly knowledge: readonly string[];
   /** The ids of the connectors whose tools it may use, in the file's order. */
   readonly connectors: readonly string[];
+  /** The ids of the agents of its hub it hands work to (its subagents), in the file's order. */
+  readonly subagents: readonly string[];
+}
+
+/**
+ * Why an agent can't be a subagent, from the names along its {@link handOffPath}: "Sorter already
+ * hands work to Mail triage", or "… to Mail triage through Writer" when work goes through others
+ * on the way (flow-agents 5.4).
+ */
+export function alreadyHandsWork(names: readonly string[]): string {
+  const [from = "", ...rest] = names;
+  const to = rest.pop() ?? from;
+  const through =
+    rest.length === 0
+      ? ""
+      : ` through ${rest.length === 1 ? rest[0] : `${rest.slice(0, -1).join(", ")} and ${rest.at(-1)}`}`;
+  return `${from} already hands work to ${to}${through}`;
+}
+
+/** An agent of a hub as the Subagents page sees it: its row and the agents it hands work to. */
+export interface AgentTeamMember extends AgentListing {
+  /** The ids of the agents of its hub it hands work to, in its file's order. */
+  readonly subagents: readonly string[];
+}
+
+/**
+ * The agents work goes through from `from` until it reaches `to`, both included, following each
+ * agent's subagents; `undefined` when work from `from` never reaches `to`. Adding `from` as a
+ * subagent of `to` closes a loop exactly when this finds a way, so the Subagents page and the
+ * host's refusal ask the same question. The shortest way is found, and an agent is `[from]`.
+ */
+export function handOffPath(
+  team: readonly AgentTeamMember[],
+  from: string,
+  to: string,
+): readonly string[] | undefined {
+  const subagentsOf = new Map(team.map((member) => [member.id, member.subagents]));
+  const cameFrom = new Map<string, string | null>([[from, null]]);
+  const queue = [from];
+  for (let at = queue.shift(); at !== undefined; at = queue.shift()) {
+    if (at === to) {
+      const path = [at];
+      for (let step = cameFrom.get(at); typeof step === "string"; step = cameFrom.get(step)) {
+        path.unshift(step);
+      }
+      return path;
+    }
+    for (const next of subagentsOf.get(at) ?? []) {
+      if (!cameFrom.has(next)) {
+        cameFrom.set(next, at);
+        queue.push(next);
+      }
+    }
+  }
+  return undefined;
 }
 
 /** The lists of the Tools page: what an agent uses of the Library. */
@@ -84,6 +139,8 @@ export interface AgentChange {
   readonly knowledge?: readonly string[] | undefined;
   /** The whole list of connector ids. */
   readonly connectors?: readonly string[] | undefined;
+  /** The whole list of subagent ids. */
+  readonly subagents?: readonly string[] | undefined;
 }
 
 /** A hub a new agent can go in. */
@@ -136,7 +193,9 @@ export interface AgentsHost {
   /**
    * Saves a change to an agent's file and keeps every comment and line of it that the change
    * doesn't touch. Typing in one field is one undo step. Rejects with `not_found` when the agent
-   * isn't there, with `invalid_input` when the name is empty, and with the reason it couldn't write.
+   * isn't there, with `invalid_input` when the name is empty, with `conflict` when a new subagent
+   * would close a loop (its message names who already hands work to whom), and with the reason it
+   * couldn't write.
    */
   update(ref: AgentRef, change: AgentChange): Promise<void>;
   /** The model aliases the agent's hub can use, by name, in the order the Models pages list them; empty when there are none. */
@@ -152,6 +211,12 @@ export interface AgentsHost {
    * Rejects with `not_found` when the agent isn't there, and with the reason it couldn't read them.
    */
   toolOptions(ref: AgentRef): Promise<Readonly<Record<AgentToolList, readonly AgentToolOption[]>>>;
+  /**
+   * Every agent of the agent's hub, itself included, with the agents each hands work to, sorted by
+   * name, for the Subagents page. Rejects with `not_found` when the agent isn't there, and with the
+   * reason it couldn't read them.
+   */
+  team(ref: AgentRef): Promise<readonly AgentTeamMember[]>;
   /**
    * Whether `harness` can run on this computer, for this agent (its sign-in is the agent's own).
    * Never rejects: a check that didn't work answers `failed`. `halonic` is always `ready`.

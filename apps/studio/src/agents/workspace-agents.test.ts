@@ -272,6 +272,33 @@ verifies("studio.workspace-agents", () => {
       expect((await host.settings(ref)).skills).toEqual([]);
     });
 
+    it("gives the hub's team, saves subagents in place and refuses one that closes a loop", async () => {
+      const { host, store, changes } = setup();
+      store["hubs/acme/agents/sorter.agent.yaml"] =
+        "id: sorter\nname: Sorter\nsubagents: [writer]\n";
+      store["hubs/acme/agents/lead.agent.yaml"] = "id: lead\nname: Lead\n";
+      const writer = { hubId: "acme", id: "writer" };
+      expect((await host.team(writer)).map(({ id, subagents }) => ({ id, subagents }))).toEqual([
+        { id: "lead", subagents: [] },
+        { id: "sorter", subagents: ["writer"] },
+        { id: "writer", subagents: [] },
+      ]);
+      expect((await host.settings({ hubId: "acme", id: "sorter" })).subagents).toEqual(["writer"]);
+
+      await expect(host.update(writer, { subagents: ["sorter"] })).rejects.toMatchObject({
+        kind: "conflict",
+        message: "Sorter already hands work to Writer; that would be a loop.",
+      });
+      expect(changes).toEqual([]);
+
+      await host.update({ hubId: "acme", id: "lead" }, { subagents: ["writer"] });
+      expect(store["hubs/acme/agents/lead.agent.yaml"]).toContain("subagents:");
+      expect((await host.settings({ hubId: "acme", id: "lead" })).subagents).toEqual(["writer"]);
+      await expect(host.team({ hubId: "acme", id: "gone" })).rejects.toMatchObject({
+        kind: "not_found",
+      });
+    });
+
     it("answers whether a harness can run: Halonic always, the others as the host finds, a failed check as failed", async () => {
       const { host } = setup();
       const ref = { hubId: "acme", id: "writer" };
