@@ -23,7 +23,7 @@ verifies("cli.commands.tools.connector-start", () => {
     expect(stdout).toEqual([]);
     expect(stderr).toEqual([
       "✕ The program notes-nope isn't on this computer.",
-      "  Install notes-nope, or change the command in notes-mcp's file.",
+      "  Install notes-nope, or change the command in library/connectors/notes-mcp.connector.yaml.",
     ]);
   });
 
@@ -36,7 +36,7 @@ verifies("cli.commands.tools.connector-start", () => {
     expect(JSON.parse(stdout.join("\n")).error).toEqual({
       kind: "unavailable",
       message: "The program notes-nope isn't on this computer.",
-      fix: "Install notes-nope, or change the command in notes-mcp's file.",
+      fix: "Install notes-nope, or change the command in library/connectors/notes-mcp.connector.yaml.",
       reason: "program-missing",
       program: "notes-nope",
     });

@@ -18,15 +18,21 @@ import { printable } from "./output/printable.ts";
  * - a missing secret is `invalid_input`: the user sets it first.
  *
  * @param connector - the connector's id, made safe to print
+ * @param file - the connector's path in the workspace, made safe to print,
+ *   or `undefined` when it has none
  * @returns the error to throw instead, or `undefined` for any other failure
  */
-export function connectorStartError(error: unknown, connector: string): OwnLineError | undefined {
+export function connectorStartError(
+  error: unknown,
+  connector: string,
+  file: string | undefined,
+): OwnLineError | undefined {
   if (error instanceof ProgramNotFoundError) {
     const program = printable(error.program);
     return new OwnLineError(
       "unavailable",
       connectorStartMessages.programMissing(program),
-      connectorStartMessages.programMissingFix(program, connector),
+      connectorStartMessages.programMissingFix(program, connector, file),
       { reason: "program-missing", program: error.program },
     );
   }
