@@ -433,7 +433,9 @@ jobs:
           echo "::notice title=Play signature::Signed with Play's app signing key $expected"
       # The release manifest keeps the settings HAL-1140 decided: plain
       # http:// to the user's own computer (and no network security config),
-      # and no backup of app data.
+      # and no backup of app data. It also asks for local network access:
+      # without ACCESS_LOCAL_NETWORK, Android 17 drops every connection to the
+      # user's computer before it leaves the phone (HAL-12253, HAL-13372).
       - name: Check the APK's manifest
         env:
           APK: apk/${{ steps.names.outputs.apk }}
@@ -446,6 +448,8 @@ jobs:
             || fail "The APK is not $PACKAGE with version code $VERSION_CODE."
           grep -Eq 'allowBackup\(0x[0-9a-f]+\)=(false|\(type 0x12\)0x0)$' "$RUNNER_TEMP/manifest.txt" \
             || fail "The APK allows backups of app data; the release manifest must keep allowBackup off."
+          grep -q "^uses-permission: name='android.permission.ACCESS_LOCAL_NETWORK'" "$RUNNER_TEMP/badging.txt" \
+            || fail "The APK doesn't ask for ACCESS_LOCAL_NETWORK; on Android 17 it can't reach the user's computer."
           # Cleartext: the same rule as the bundle's check (HAL-7175), read
           # from the APK's binary XML manifest (HAL-7561).
           unzip -p "$APK" AndroidManifest.xml > "$RUNNER_TEMP/manifest.xml"
