@@ -2,6 +2,7 @@
 
 - Approval: Liam's review of #3792 (HAL-12879), noted on HAL-13144 and split out as HAL-13147; Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:VdszgVTcP4Bl6bczd/Rq0WZgXvmSUietKBdHo8RL5pVF8liMjq60Nwr4rkJax1ETKZpmegXa7mQnl4vav9TzAQ==
 - Task: HAL-13147
 
 ## What changes
