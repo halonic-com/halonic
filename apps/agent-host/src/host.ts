@@ -425,7 +425,13 @@ function hostServices(
           log: (text) => process.stderr.write(text),
           ...(relayPort === undefined ? {} : { relayPort }),
         })),
-    ...(plugins === undefined ? [] : pluginRoutes({ plugins: plugins.table, log: logToError })),
+    ...(plugins === undefined
+      ? []
+      : pluginRoutes({
+          plugins: plugins.table,
+          secretValues: plugins.secretValues,
+          log: logToError,
+        })),
     ...hostIntegrationSignInRoutes({
       profile,
       relayPort,
