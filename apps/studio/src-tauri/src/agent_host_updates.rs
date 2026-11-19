@@ -57,11 +57,17 @@ fn default_distro(read: Result<Option<bool>, WslError>) -> bool {
     match read {
         Ok(Some(is_default)) => is_default,
         Ok(None) => {
-            eprintln!("default distro: WSL's list marks no default, so none is reported");
+            halonic_shell_log::record(
+                "wsl",
+                "default distro: WSL's list marks no default, so none is reported",
+            );
             false
         }
         Err(error) => {
-            eprintln!("default distro: couldn't read WSL's list, so none is reported: {error}");
+            halonic_shell_log::record(
+                "wsl",
+                format!("default distro: couldn't read WSL's list, so none is reported: {error}"),
+            );
             false
         }
     }
