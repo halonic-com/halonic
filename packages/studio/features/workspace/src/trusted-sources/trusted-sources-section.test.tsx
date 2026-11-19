@@ -224,7 +224,7 @@ verifies("workspace.trusted-sources", () => {
     const list = vi.fn().mockRejectedValueOnce(leak);
     list.mockResolvedValue([pdf]);
     await show({ list, remove: vi.fn().mockRejectedValue(leak) });
-    expect(element.textContent).toContain("The engine isn't answering");
+    expect(element.textContent).toContain("Halonic ran into a problem it can't explain yet");
     expect(element.textContent).not.toMatch(/srv|EACCES|trust\.ts/);
 
     await act(async () => button("Try again")?.click());
@@ -234,7 +234,9 @@ verifies("workspace.trusted-sources", () => {
       await vi.advanceTimersByTimeAsync(50);
     });
     const dialog = document.querySelector("dialog")?.textContent ?? "";
-    expect(dialog).toContain("Couldn't remove trust from pdf-tools: The engine isn't answering.");
+    expect(dialog).toContain(
+      "Couldn't remove trust from pdf-tools: Halonic ran into a problem it can't explain yet.",
+    );
     expect(dialog).not.toMatch(/srv|EACCES|trust\.ts/);
   });
 });

@@ -1,7 +1,13 @@
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { errorMessageFor, errorReasonFor } from "./error-message.ts";
+import { EngineNotAnswering } from "../engine/engine-not-answering.ts";
+import {
+  engineReasonFor,
+  errorMessageFor,
+  errorReasonFor,
+  isUnexplained,
+} from "./error-message.ts";
 
 const title = "Couldn't save Support reply.";
 
@@ -245,6 +251,29 @@ verifies("shell.error-messages", () => {
       expect(errorReasonFor(new KindedError("not_found", "No such source."), "x")).toBe(
         "No such source.",
       );
+    });
+  });
+
+  describe("engineReasonFor", () => {
+    const notAnswering = "Halonic on the server isn't answering.";
+
+    it("says the engine isn't answering only when the host says it can't be reached", () => {
+      expect(engineReasonFor(new EngineNotAnswering(), notAnswering)).toBe(notAnswering);
+      expect(isUnexplained(new EngineNotAnswering())).toBe(false);
+    });
+
+    it("gives an internal error the generic sentence, not the engine's words", () => {
+      const bug = new TypeError("Cannot read properties of undefined (reading 'cases')");
+      expect(engineReasonFor(bug, notAnswering)).toBe(
+        "Halonic ran into a problem it can't explain yet.",
+      );
+      expect(isUnexplained(bug)).toBe(true);
+    });
+
+    it("gives a kinded error's own message", () => {
+      const refused = new KindedError("denied", "Only the owner can remove this.");
+      expect(engineReasonFor(refused, notAnswering)).toBe("Only the owner can remove this.");
+      expect(isUnexplained(refused)).toBe(false);
     });
   });
 });
