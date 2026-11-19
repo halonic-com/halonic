@@ -23,6 +23,18 @@ export const pageWords = {
     title: (stepId: string) => `Step ${stepId}`,
     breadcrumb: (workflowName: string, stepId: string) => `${workflowName} › ${stepId}`,
     close: "Close step",
+    type: "Type",
+    /** The six kinds, as the Type picker names them (flow-workflows 5.2). */
+    types: {
+      task: "Agent step",
+      wait: "Wait",
+      final: "End",
+      workflow: "Workflow",
+      parallel: "Parallel",
+      foreach: "For each",
+    } satisfies Record<WorkflowStepType, string>,
+    agent: "Agent",
+    noAgent: "No agent: this step passes the data straight on.",
     prompt: "Prompt",
     promptEmpty: "The agent gets the run input.",
     output: "Save output as",

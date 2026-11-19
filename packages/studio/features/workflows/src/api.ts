@@ -70,6 +70,10 @@ export interface WorkflowStep {
  * removes it from the file.
  */
 export interface WorkflowStepChange {
+  /** The step's kind. The file keeps the keys of the old kind, so changing back finds them. */
+  readonly type?: WorkflowStepType;
+  /** The agent the step runs, by its id in the hub; empty for none. */
+  readonly agent?: string;
   readonly description?: string;
   readonly prompt?: string;
   readonly output?: string;
@@ -93,6 +97,18 @@ export interface WorkflowView extends WorkflowRef {
   readonly arrows: readonly WorkflowArrow[];
   /** Where a person put steps on the canvas; a step not in it takes the automatic place. */
   readonly layout: Readonly<Record<string, { readonly x: number; readonly y: number }>>;
+  /**
+   * The agents of the workflow's hub, which a step can run, for the docked card's **Agent**
+   * picker. Absent is none.
+   */
+  readonly agents?: readonly WorkflowAgentChoice[] | undefined;
+}
+
+/** An agent a step can run. */
+export interface WorkflowAgentChoice {
+  /** What the step's file names it by. */
+  readonly id: string;
+  readonly name: string;
 }
 
 /** One problem the checks found in a workflow. */

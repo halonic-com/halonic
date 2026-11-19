@@ -4,18 +4,27 @@ import {
   CloseIcon,
   Field,
   Input,
+  Select,
+  type SelectOption,
   SidePanel,
   TextArea,
   useToastStore,
 } from "@halonicjs/studio-kit";
 import {
+  type AutoSaved,
   errorReasonFor,
   type SaveState,
   useAutoSaved,
   useReportNotSaved,
 } from "@halonicjs/studio-shell";
 import { type KeyboardEvent, useCallback } from "react";
-import type { WorkflowStep, WorkflowStepChange, WorkflowStepType, WorkflowsHost } from "../api.ts";
+import type {
+  WorkflowAgentChoice,
+  WorkflowStep,
+  WorkflowStepChange,
+  WorkflowStepType,
+  WorkflowsHost,
+} from "../api.ts";
 import { pageWords } from "./page-words.ts";
 import type { Dock } from "./run-dock.tsx";
 import type { WorkflowLoad } from "./use-workflow.ts";
@@ -27,6 +36,8 @@ export interface DockedStepCardProps {
   readonly step: WorkflowStep;
   /** The workflow's name, for the breadcrumb. */
   readonly workflowName: string;
+  /** The agents of the workflow's hub, for the Agent picker. */
+  readonly agents: readonly WorkflowAgentChoice[];
   /** Saves one change of the step; resolves to whether it was written. */
   readonly save: (change: WorkflowStepChange) => Promise<boolean>;
   /** Hears how many of its fields aren't saved, for the toolbar's "1 field not saved". */
@@ -43,6 +54,41 @@ const writesOutput: ReadonlySet<WorkflowStepType> = new Set([
   "foreach",
 ]);
 
+/** The kinds that run an agent, and so have **Agent**; a parallel step's branches name their own. */
+const runsAgent: ReadonlySet<WorkflowStepType> = new Set(["task", "foreach"]);
+
+/** The Type picker's six kinds, in the order flow-workflows 5.2 lists them. */
+const typeOptions: readonly SelectOption[] = Object.entries(words.types).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+/**
+ * The Agent picker: "No agent" first, then the hub's agents. An agent the file names that the hub
+ * doesn't have stays in the list by its id, so it isn't lost; the canvas says it's missing.
+ */
+function agentOptions(
+  agents: readonly WorkflowAgentChoice[],
+  picked: string,
+): readonly SelectOption[] {
+  const options = [
+    { value: "", label: pageWords.noAgent },
+    ...agents.map((one) => ({ value: one.id, label: one.name })),
+  ];
+  if (picked !== "" && !agents.some((one) => one.id === picked)) {
+    options.push({ value: picked, label: picked });
+  }
+  return options;
+}
+
+/** A picker's change: the pick is a finished edit, so it is saved at once. */
+const pickNow =
+  (field: AutoSaved) =>
+  (next: string): void => {
+    field.onChange(next);
+    field.flush();
+  };
+
 /** Save model 8.4: a key pasted into a field is not saved. */
 const keyCheck = (text: string): string | null =>
   findSecretShape(text) === undefined ? null : words.looksLikeKey;
@@ -58,10 +104,15 @@ const noCheck = (): null => null;
 export function DockedStepCard({
   step,
   workflowName,
+  agents,
   save,
   reportNotSaved,
   onClose,
 }: DockedStepCardProps) {
+  // A pick is a finished edit, so the pickers save at once; they are auto-saved fields still, so a
+  // pick that couldn't be written stays shown and counts as not saved.
+  const type = useAutoSaved(step.type, (next) => save({ type: next as WorkflowStepType }), noCheck);
+  const agent = useAutoSaved(step.agent ?? "", (next) => save({ agent: next }), noCheck);
   const description = useAutoSaved(
     step.description ?? "",
     (next) => save({ description: next }),
@@ -69,9 +120,14 @@ export function DockedStepCard({
   );
   const prompt = useAutoSaved(step.prompt ?? "", (next) => save({ prompt: next }), keyCheck);
   const output = useAutoSaved(step.output ?? "", (next) => save({ output: next }), noCheck);
-  const hasPrompt = step.type === "task" && step.promptIsData !== true;
-  const hasOutput = writesOutput.has(step.type);
+  // The fields follow the kind picked, so they change with the pick and not after the save.
+  const kind = type.value as WorkflowStepType;
+  const hasAgent = runsAgent.has(kind);
+  const hasPrompt = kind === "task" && step.promptIsData !== true;
+  const hasOutput = writesOutput.has(kind);
   useReportNotSaved(reportNotSaved, [
+    type,
+    ...(hasAgent ? [agent] : []),
     description,
     ...(hasPrompt ? [prompt] : []),
     ...(hasOutput ? [output] : []),
@@ -98,6 +154,18 @@ export function DockedStepCard({
       >
         <div className="flex flex-col gap-4">
           <p className="text-caption text-fg-muted">{words.breadcrumb(workflowName, step.id)}</p>
+          <Field label={words.type}>
+            <Select options={typeOptions} value={type.value} onChange={pickNow(type)} />
+          </Field>
+          {hasAgent && (
+            <Field label={words.agent} hint={agent.value === "" ? words.noAgent : undefined}>
+              <Select
+                options={agentOptions(agents, agent.value)}
+                value={agent.value}
+                onChange={pickNow(agent)}
+              />
+            </Field>
+          )}
           {hasPrompt && (
             <Field
               label={words.prompt}
@@ -225,6 +293,7 @@ export function StepEditDock({
       key={step.id}
       step={step}
       workflowName={view.name}
+      agents={view.agents ?? []}
       save={save}
       reportNotSaved={reportNotSaved}
       onClose={onClose}

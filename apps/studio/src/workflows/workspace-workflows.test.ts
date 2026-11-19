@@ -189,6 +189,7 @@ verifies("studio.workspace-workflow-read", () => {
       ],
       arrows: [{ from: "first", to: "done", label: "ok" }],
       layout: { done: { x: 5, y: 7 } },
+      agents: [],
     });
   });
 
