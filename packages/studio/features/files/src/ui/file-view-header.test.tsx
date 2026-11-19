@@ -44,6 +44,7 @@ afterEach(() => {
 
 async function showFile(path: string, host: FilesHost = contextHost()) {
   const written: string[] = [];
+  const shownViews: string[] = [];
   const toasts: ToastStore = createToastStore();
   // One host for the whole render: a new object on each read would restart the tab's effects.
   const readable: FilesHost = { ...host, read: async () => "name: a\n" };
@@ -52,6 +53,7 @@ async function showFile(path: string, host: FilesHost = contextHost()) {
       get: () => readable,
     }),
     announcer: { announce: () => {} },
+    showSidebarView: (viewId: string) => shownViews.push(viewId),
   } as unknown as WorkspaceContext;
   const page = render(
     <ClipboardProvider
@@ -70,7 +72,7 @@ async function showFile(path: string, host: FilesHost = contextHost()) {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
   }
-  return { page, written, toasts };
+  return { page, written, toasts, shownViews };
 }
 
 const pick = async (label: string) => {
@@ -104,10 +106,11 @@ verifies("files.ui.file-tab-header", () => {
     ).toEqual(["RenameF2", "Copy path", "DeleteDelete"]);
   });
 
-  it("asks the tree to rename the file on Rename and on F2", async () => {
-    const { page } = await showFile("hubs/a.yaml");
+  it("asks the tree to rename the file on Rename and on F2, and shows the tree", async () => {
+    const { page, shownViews } = await showFile("hubs/a.yaml");
     await pick("Rename");
     expect(takeRenameAsked()).toBe("hubs/a.yaml");
+    expect(shownViews).toEqual(["files"]);
 
     await act(async () => {
       page
@@ -115,6 +118,7 @@ verifies("files.ui.file-tab-header", () => {
         ?.dispatchEvent(new KeyboardEvent("keydown", { key: "F2", bubbles: true }));
     });
     expect(takeRenameAsked()).toBe("hubs/a.yaml");
+    expect(shownViews).toEqual(["files", "files"]);
   });
 
   it("copies the path and says so", async () => {
