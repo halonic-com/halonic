@@ -126,7 +126,7 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
       refuseStoredPrompt(request);
       refuseUrlInputs(request);
       const call = readModelCall("openai", request, "input");
-      const body = withoutProviderReach(sent, request, openAiReach);
+      const body = withoutProviderReach(request, openAiReach);
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);
       const reply = new OpenAiReplyReader();
       await recordModelCall(context.run, call, reply, () =>

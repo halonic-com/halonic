@@ -50,42 +50,34 @@ export function parseModelRequest(body: Uint8Array): unknown {
 }
 
 /**
- * Removes the fields and the tools that `reach` names from a model request.
- * The match on a tool is on its `type`, never on its `name`, so a renamed web
- * tool still goes. A `tool_choice` that forces a removed tool, or forces some
- * tool when none is left, is set back to `auto` by `reach.keptToolChoice`.
+ * The model request the provider gets: `request` without the fields and the
+ * tools that `reach` names. The match on a tool is on its `type`, never on its
+ * `name`, so a renamed web tool still goes. A `tool_choice` that forces a
+ * removed tool, or forces some tool when none is left, is set back to `auto`
+ * by `reach.keptToolChoice`.
  *
- * `request` is `body` already parsed. A request with nothing to remove goes on
- * byte for byte, unchanged.
+ * The provider always gets the request serialized again from what the bridge
+ * parsed and checked, never the program's own bytes. Where our parse and the
+ * provider's could differ, such as a key given twice or bytes that aren't
+ * UTF-8, the provider would otherwise read a request the bridge never checked.
+ * So whitespace and number formatting can change, and an integer beyond 2^53
+ * loses precision; no field the bridge passes on needs either.
  */
-export function withoutProviderReach(
-  body: Uint8Array,
-  request: unknown,
-  reach: ProviderReach,
-): Uint8Array {
-  if (!isPlainObject(request)) return body;
+export function withoutProviderReach(request: unknown, reach: ProviderReach): Uint8Array {
+  if (!isPlainObject(request)) return encodeUtf8(JSON.stringify(request));
 
   const kept: Record<string, unknown> = { ...request };
-  let removed = false;
   for (const field of reach.removedFields) {
-    if (Object.hasOwn(kept, field)) {
-      delete kept[field];
-      removed = true;
-    }
+    delete kept[field];
   }
   const tools = splitTools(kept["tools"], reach);
   if (tools.removed.length > 0) {
     kept["tools"] = tools.kept;
-    removed = true;
   }
   if (Object.hasOwn(kept, "tool_choice")) {
-    const choice = reach.keptToolChoice(kept["tool_choice"], tools);
-    if (choice !== kept["tool_choice"]) {
-      kept["tool_choice"] = choice;
-      removed = true;
-    }
+    kept["tool_choice"] = reach.keptToolChoice(kept["tool_choice"], tools);
   }
-  return removed ? encodeUtf8(JSON.stringify(kept)) : body;
+  return encodeUtf8(JSON.stringify(kept));
 }
 
 /** Splits a request's `tools` by whether `reach` removes them. Anything but a list has no tools. */

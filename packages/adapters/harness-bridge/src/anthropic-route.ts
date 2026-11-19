@@ -118,7 +118,7 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
       const request = parseModelRequest(sent);
       refuseUrlSources(request);
       const call = readModelCall("anthropic", request, "messages");
-      const body = withoutProviderReach(sent, request, anthropicReach);
+      const body = withoutProviderReach(request, anthropicReach);
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);
       const reply = new AnthropicReplyReader();
       await recordModelCall(context.run, call, reply, () =>
