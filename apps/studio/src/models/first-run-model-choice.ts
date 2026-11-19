@@ -59,6 +59,8 @@ interface PassedTest {
 export class FirstRunModelChoice implements ModelChoiceService {
   readonly #parts: FirstRunModelChoiceParts;
   #passed: PassedTest | undefined;
+  /** The fingerprint `preview` gave for a passed test: the only one Continue may trust. */
+  #shown: { readonly testId: string; readonly fingerprint: string | undefined } | undefined;
   /** Counts the tests, so one that ends after a newer one started keeps no key. */
   #latest = 0;
 
@@ -68,6 +70,7 @@ export class FirstRunModelChoice implements ModelChoiceService {
 
   async test(choice: ModelChoice, key?: SecretText): Promise<ModelChoiceTest> {
     this.#passed = undefined;
+    this.#shown = undefined;
     const mine = ++this.#latest;
     let tested: SecretText | undefined;
     if (choice.kind === "key") {
@@ -93,7 +96,7 @@ export class FirstRunModelChoice implements ModelChoiceService {
     if (!edits.ok) return undefined;
     await this.#parts.trust.refresh();
     const { trust, digest } = this.#parts;
-    return choicePreview({
+    const preview = await choicePreview({
       before: trust.check,
       needsNoTrust: trust.needsNoTrust,
       added: edits.added,
@@ -101,11 +104,19 @@ export class FirstRunModelChoice implements ModelChoiceService {
       localOnlyOff: edits.value.changes.some((change) => change.kind === "local-only-off"),
       digest,
     });
+    if (this.#passedTest(testId) !== undefined) {
+      this.#shown = { testId, fingerprint: preview.fingerprint };
+    }
+    return preview;
   }
 
   async continue(testId: string, shownFingerprint: string | undefined): Promise<ModelChoiceSaved> {
     const passed = this.#passedTest(testId);
+    // Trust only what this service's own preview showed for this test, never a fingerprint the caller brought.
+    const shown = this.#shown?.testId === testId ? this.#shown.fingerprint : undefined;
+    const fingerprint = shownFingerprint === shown ? shown : undefined;
     this.#passed = undefined;
+    this.#shown = undefined;
     if (passed === undefined) {
       return {
         ok: false,
@@ -144,7 +155,7 @@ export class FirstRunModelChoice implements ModelChoiceService {
     } catch (error) {
       return { ok: false, failed: "write", keySaved, reason: reasonOf(error) };
     }
-    return { ok: true, changes, trusted: await this.#trust(shownFingerprint) };
+    return { ok: true, changes, trusted: await this.#trust(fingerprint) };
   }
 
   /** Trusts the folder when its files now lead to the fingerprint the line showed; never another. */

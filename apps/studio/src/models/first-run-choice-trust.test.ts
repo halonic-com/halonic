@@ -1,4 +1,4 @@
-import type { ModelChoice } from "@halonicjs/app";
+import { choiceProvider, type ModelChoice } from "@halonicjs/app";
 import { SecretText } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -66,6 +66,43 @@ verifies("studio.first-run-choice-trust", () => {
     expect(preview?.fingerprint).toBeUndefined();
 
     expect(await folder.service.continue(testId, preview?.fingerprint)).toMatchObject({
+      ok: true,
+      trusted: false,
+    });
+    expect(folder.steps).not.toContain("grant");
+  });
+
+  it("trusts nothing when Continue gets a fingerprint the preview didn't show", async () => {
+    const files = {
+      ...acmeFiles,
+      "connectors/mail.yaml": "name: Mail\ntransport:\n  stdio:\n    command: acme-mail\n",
+    };
+    // The fingerprint of the files as Continue writes them, worked out apart from the service.
+    const written = acmeFolder({
+      files: { ...files, "providers/anthropic.yaml": choiceProvider(anthropic).fileText },
+    });
+    await written.trust.refresh();
+    const check = written.trust.check;
+    if (check === undefined || check.status === "refused") throw new Error("no trust check");
+    const afterChange = check.fingerprint;
+
+    const folder = acmeFolder({ files });
+    const testId = await passed(folder, anthropic);
+    expect((await folder.service.preview(testId))?.fingerprint).toBeUndefined();
+
+    expect(await folder.service.continue(testId, afterChange)).toMatchObject({
+      ok: true,
+      trusted: false,
+    });
+    expect(folder.steps).not.toContain("grant");
+  });
+
+  it("trusts nothing when Continue comes without a preview for its test", async () => {
+    const folder = acmeFolder();
+    const shown = await folder.service.preview(await passed(folder, anthropic));
+    const testId = await passed(folder, anthropic);
+
+    expect(await folder.service.continue(testId, shown?.fingerprint)).toMatchObject({
       ok: true,
       trusted: false,
     });
