@@ -4,6 +4,8 @@
 
 import { escapeHidden } from "@halonicjs/std";
 
+import { scheduleWords } from "./schedule-words.ts";
+
 /** The status chip's word for each standing (mc 15.2, Status chips). */
 export const chipWords = {
   running: "Running",
@@ -56,9 +58,7 @@ export const startedByWords = {
   mail: "A message arrived",
   signal: "A signal arrived",
   webhook: "A web request arrived",
-  /** The routine's schedule, in `halonic routines`' words: "Schedule · weekdays at 08:00". */
-  schedule: (when: string | undefined) =>
-    when === undefined ? "Schedule" : `Schedule · ${when.charAt(0).toLowerCase()}${when.slice(1)}`,
+  schedule: scheduleWords.startedBy,
   catchUp: "Caught up after sleep",
   test: (testCase: string) => `Test “${testCase}”`,
   /** A test run whose case the run log doesn't name. */
@@ -83,10 +83,7 @@ export const rowLabelWords = {
     mail: "a message",
     signal: "a signal",
     webhook: "a web request",
-    schedule: (when: string | undefined) =>
-      when === undefined
-        ? "the schedule"
-        : `the schedule for ${when.charAt(0).toLowerCase()}${when.slice(1)}`,
+    schedule: scheduleWords.rowLabel,
     catchUp: "a catch-up after sleep",
     test: (testCase: string) => `the test case “${testCase}”`,
     testCase: "a test case",
