@@ -51,7 +51,6 @@ async function openDialog() {
       remote={remote}
       provider="tailscale"
       allowRisky={false}
-      openExternal={() => undefined}
       onClose={closed}
       now={() => Date.parse("2026-11-16T08:00:00.000Z")}
     />,
@@ -103,7 +102,6 @@ verifies("remote.pair-a-phone", () => {
         remote={new FakeRemoteControl()}
         provider="tailscale"
         allowRisky={false}
-        openExternal={() => undefined}
         onClose={() => undefined}
         now={() => now}
       />,

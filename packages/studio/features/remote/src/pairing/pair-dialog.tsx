@@ -1,8 +1,8 @@
 import type { RemoteControl } from "@halonicjs/ports";
 import { Dialog } from "@halonicjs/studio-kit";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { type PairingView, usePairing } from "./pairing-flow.ts";
-import { CheckStep, CodeStep, EndedStep, FailedStep, PairedStep } from "./pairing-steps.tsx";
+import { CheckStep, CodeStep, PairedStep } from "./pairing-steps.tsx";
 import * as words from "./pairing-words.ts";
 
 /** The props of {@link PairDialog}. */
@@ -14,8 +14,6 @@ export interface PairDialogProps {
   readonly allowRisky: boolean;
   /** Runs once the dialog has closed its pairing; the opener unmounts it. */
   readonly onClose: () => void;
-  /** Opens a provider's web page, such as "Open Tailscale setup". */
-  readonly openExternal: (url: string) => void;
   /** Where the timer counts from. Default the clock. */
   readonly now?: () => number;
 }
@@ -24,25 +22,28 @@ export interface PairDialogProps {
  * Pair a phone (`remote.pair-a-phone`): it opens a pairing while it is open, which turns remote
  * on, and closing it ends the pairing, which turns remote off again when no phone is paired
  * (decisions 1 and 10). One dialog walks through the steps, so focus stays inside it: the code to
- * scan or type, Check the code with Allow, Paired, and what went wrong.
+ * scan or type, Check the code with Allow, and Paired. A pairing that ends without a phone closes
+ * the dialog.
  */
 export function PairDialog(props: PairDialogProps) {
   const pairing = usePairing(props.remote);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
   const view = pairing.view;
 
   const close = () => {
     void pairing.close().finally(props.onClose);
   };
 
-  const answer = (allow: boolean, phoneName: string) => {
+  useEffect(() => {
+    if (view.stage === "ended") props.onClose();
+  }, [view.stage, props.onClose]);
+
+  const answer = (allow: boolean) => {
     setBusy(true);
-    setError(undefined);
-    (allow ? pairing.allow() : pairing.deny())
-      .catch(() => setError(allow ? words.allowFailed(phoneName) : words.denyFailed(phoneName)))
-      .finally(() => setBusy(false));
+    void (allow ? pairing.allow() : pairing.deny()).finally(() => setBusy(false));
   };
+
+  if (view.stage === "ended") return null;
 
   if (view.stage === "check") {
     return (
@@ -53,10 +54,9 @@ export function PairDialog(props: PairDialogProps) {
         confirm={{ label: words.ALLOW, busyLabel: words.ALLOWING }}
         cancelLabel={words.DONT_ALLOW}
         busy={busy}
-        {...(error === undefined ? {} : { error })}
-        onConfirm={() => answer(true, view.check.phoneName)}
+        onConfirm={() => answer(true)}
         // Don't allow refuses the phone; Escape and the ✕ only close, which ends the pairing too.
-        onCancel={(reason) => (reason === "button" ? answer(false, view.check.phoneName) : close())}
+        onCancel={(reason) => (reason === "button" ? answer(false) : close())}
       >
         <CheckStep check={view.check} provider={props.provider} />
       </Dialog>
@@ -75,12 +75,11 @@ function Step({
   view,
   provider,
   allowRisky,
-  openExternal,
   now = Date.now,
   newCode,
   onDone,
 }: PairDialogProps & {
-  readonly view: Exclude<PairingView, { readonly stage: "check" }>;
+  readonly view: Exclude<PairingView, { readonly stage: "check" | "ended" }>;
   readonly newCode: () => void;
   readonly onDone: () => void;
 }) {
@@ -88,27 +87,8 @@ function Step({
     case "starting":
       return <p role="status">{words.STARTING}</p>;
     case "code":
-      return (
-        <CodeStep
-          code={view.code}
-          refused={view.refused}
-          provider={provider}
-          now={now}
-          onNewCode={newCode}
-        />
-      );
+      return <CodeStep code={view.code} provider={provider} now={now} onNewCode={newCode} />;
     case "paired":
       return <PairedStep phone={view.phone} allowRisky={allowRisky} onDone={onDone} />;
-    case "ended":
-      return (
-        <EndedStep
-          ended={view.ended}
-          provider={provider}
-          openExternal={openExternal}
-          onNewCode={newCode}
-        />
-      );
-    case "failed":
-      return <FailedStep onTryAgain={newCode} />;
   }
 }
