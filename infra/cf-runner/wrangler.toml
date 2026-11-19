@@ -1,0 +1,37 @@
+# Deployed through the Cloudflare connection (main account). See README.md.
+name = "halonic-cf-runner"
+main = "worker.mjs"
+compatibility_date = "2026-11-18"
+rules = [{ type = "Text", globs = ["**/*.sh"] }]
+
+[vars]
+GH_APP_ID = "5833992" # the GitHub App halonic-cf-runner (not a secret); empty refuses every webhook
+CAP_USD = "18"    # the trial stops starting containers before $20 (HAL-13578)
+MAX_RUNNERS = "4" # containers at the same time
+
+# Secrets, entered by Timothy in the dashboard (Workers > halonic-cf-runner > Settings):
+#   GH_APP_PRIVATE_KEY  the GitHub App's private key (.pem, as downloaded)
+#   GH_WEBHOOK_SECRET   the GitHub App's webhook secret
+
+[[durable_objects.bindings]]
+name = "RUNNER_JOB"
+class_name = "RunnerJob"
+
+[[durable_objects.bindings]]
+name = "LEDGER"
+class_name = "Ledger"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RunnerJob", "Ledger"]
+
+[[containers]]
+class_name = "RunnerJob"
+image = "docker.io/library/ubuntu:24.04@sha256:73b999393d07f2bf65a40373778a44dc9a6d54ad7718d29247d8ff9413c4d6a8"
+instance_type = "standard-4"
+max_instances = 4
+
+# The spend switch (see ../spend-guard/README.md); key spend_ok:cf-runner.
+[[kv_namespaces]]
+binding = "SPEND_KV"
+id = "646a6e2ba633475da4ecf9502cd8ce25"
