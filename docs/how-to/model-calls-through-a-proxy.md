@@ -74,6 +74,11 @@ restart Halonic.
 - **A proxy that re-signs HTTPS** only works if Halonic trusts your company's
   certificate (`NODE_EXTRA_CA_CERTS=<path-to-certificate>`). A re-signing proxy
   sees your provider key. Whether to allow that is your company's decision.
+  The Studio desktop app doesn't read `NODE_EXTRA_CA_CERTS`. Its model calls
+  trust only the certificates built into it, so they don't work through a
+  re-signing proxy. Its update checks and downloads trust the certificates
+  installed on the computer. An app that Scoop updates is the exception: its
+  version check trusts only the built-in certificates too.
 - **The Studio desktop app reads the variables only if it can see them.** An
   app started from the Start menu, the Dock or Finder usually doesn't get
   variables set in a terminal. Start Studio from the shell where you set them,
