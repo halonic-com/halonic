@@ -59,7 +59,7 @@ fn save_choice<R: Runtime>(app: &AppHandle<R>, backend: Option<&str>) -> Result<
     // A choice that can't be read counts as another host, so it is restarted.
     let before = chosen_host(app).ok().map(|(kind, _)| kind);
     let after = host_for(
-        setting.as_ref().map(|setting| setting.backend),
+        setting.as_ref().map(|setting| setting.backend()),
         profile.platform,
     );
     if after == HostKind::Distro {

@@ -76,7 +76,7 @@ pub(super) fn chosen_host<R: Runtime>(
 ) -> Result<(HostKind, Option<SandboxSetting>), HostRefusal> {
     let profile = cli_profile(app).map_err(|error| HostRefusal::new("io", error))?;
     let setting = saved_setting(&profile).map_err(unavailable)?;
-    let backend = setting.as_ref().map(|setting| setting.backend);
+    let backend = setting.as_ref().map(|setting| setting.backend());
     Ok((host_for(backend, profile.platform), setting))
 }
 
@@ -88,7 +88,7 @@ pub(super) fn copy_into_distro(
     setting: Option<&SandboxSetting>,
 ) -> Result<(), HostRefusal> {
     let copy = match setting {
-        Some(setting) => SettingCopy::Save(&setting.text),
+        Some(setting) => SettingCopy::Save(setting.text()),
         None => SettingCopy::Remove,
     };
     copy_sandbox_setting(wsl, copy).map_err(|error| {

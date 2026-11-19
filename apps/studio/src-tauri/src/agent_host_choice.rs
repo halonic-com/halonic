@@ -7,6 +7,7 @@ use std::path::Path;
 
 use halonic_host_settings::{SandboxSetting, read_sandbox_setting};
 use halonic_profile::{Platform, ProfileFolder, join_path};
+use tauri::{AppHandle, Runtime};
 
 /// The folder of the choice in the profile, `sandbox`, where
 /// `FileSandboxSettingStore` in `packages/adapters/fs-node` keeps
@@ -33,6 +34,19 @@ pub fn host_for(backend: Option<&str>, platform: Platform) -> HostKind {
     }
 }
 
+/// Whether the host the shell starts runs beside it, which is where the
+/// removal of Halonic's WSL setup is served (the host in the distro can't
+/// unregister the distro it runs in). A choice that can't be read says no.
+pub fn host_runs_beside_shell<R: Runtime>(app: &AppHandle<R>) -> bool {
+    let Ok(profile) = crate::profile::cli_profile(app) else {
+        return false;
+    };
+    matches!(
+        saved_backend(&profile).map(|backend| host_for(backend, profile.platform)),
+        Ok(HostKind::Local)
+    )
+}
+
 /// The backend the person's saved choice names, `None` when none is saved.
 ///
 /// # Errors
@@ -40,7 +54,7 @@ pub fn host_for(backend: Option<&str>, platform: Platform) -> HostKind {
 /// Naming the file, when it can't be read or isn't exactly a valid choice.
 /// That never counts as "no choice".
 pub fn saved_backend(profile: &ProfileFolder) -> Result<Option<&'static str>, String> {
-    Ok(saved_setting(profile)?.map(|setting| setting.backend))
+    Ok(saved_setting(profile)?.map(|setting| setting.backend()))
 }
 
 /// The person's saved choice, `None` when none is saved.
