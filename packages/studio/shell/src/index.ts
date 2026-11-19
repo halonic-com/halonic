@@ -156,6 +156,7 @@ export {
   type PageErrorBoundaryProps,
   pageStoppedWords,
 } from "./page/page-error-boundary.tsx";
+export { unreachableWords } from "./page/page-unreachable.tsx";
 export { CommandPalette, type CommandPaletteProps } from "./palette/command-palette.tsx";
 export {
   compareNameMatches,

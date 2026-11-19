@@ -1,9 +1,11 @@
 import { EmptyState } from "@halonicjs/studio-kit";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { useStudioHost } from "../engine/studio-host-context.ts";
 import { copyDetailsWords, detailsOf } from "../errors/copy-details-words.ts";
 import { focusPageHeading } from "../tabs/history-moves.ts";
 import { ViewErrorBoundary } from "../view-error-boundary.tsx";
 import { useCopyDetails } from "./copy-details.ts";
+import { isUnreachable, PageUnreachable } from "./page-unreachable.tsx";
 
 /** The words of a page that stopped working (microcopy 22 F14). */
 export const pageStoppedWords = {
@@ -36,6 +38,10 @@ export interface PageErrorBoundaryProps {
  * own `h1`, never to a heading elsewhere in the window. The error's own message never shows: it
  * goes only into Copy details.
  *
+ * On the served Studio and the phone, a page whose code couldn't load shows "Couldn't load this
+ * page" instead, since the computer can't be reached (`shell.page-unreachable`): its **Try again**
+ * imports the code again in place, as Reload page does, without reloading the window.
+ *
  * @example
  * <PageErrorBoundary pageKey={item.id} pageName={item.title}>
  *   <WorkflowPage item={item} />
@@ -49,13 +55,21 @@ export function PageErrorBoundary({ pageKey, ...page }: PageErrorBoundaryProps) 
 function PageArea({ pageName, children }: Omit<PageErrorBoundaryProps, "pageKey">) {
   const [attempt, setAttempt] = useState(0);
   const areaRef = useRef<HTMLDivElement>(null);
+  const host = useStudioHost();
+  // `lazyView` forgets a failed import, so drawing the page again imports its code again.
   const reload = () => setAttempt((count) => count + 1);
   return (
     <div ref={areaRef} className="contents">
       <ViewErrorBoundary
         // A new attempt starts a new boundary, which forgets the error and draws the page again.
         key={attempt}
-        fallback={(error) => <PageStopped pageName={pageName} error={error} onReload={reload} />}
+        fallback={(error) =>
+          isUnreachable(host, error) ? (
+            <PageUnreachable pageName={pageName} onRetry={reload} />
+          ) : (
+            <PageStopped pageName={pageName} error={error} onReload={reload} />
+          )
+        }
       >
         {children}
         {/* Commits only when the page drew, so a Reload page that fails again moves no focus. */}
