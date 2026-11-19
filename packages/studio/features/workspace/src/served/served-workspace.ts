@@ -4,7 +4,7 @@
  */
 export interface ServedWorkspace {
   readonly name: string;
-  /** Whether it is the sample workspace; the picker marks it with the Sample tag. */
+  /** Whether it is the sample workspace; the picker marks it with the Demo tag. */
   readonly sample: boolean;
   readonly folder: string;
 }
