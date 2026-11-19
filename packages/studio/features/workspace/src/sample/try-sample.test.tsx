@@ -39,8 +39,26 @@ afterEach(() => {
   element.remove();
 });
 
+/** A `default` model that is the test model until `pickRealModel` changes `models.yaml`. */
+function testModelWatch() {
+  const listeners = new Set<() => void>();
+  const watch = {
+    onTestModel: true,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+  };
+  const pickRealModel = () => {
+    watch.onTestModel = false;
+    for (const listener of listeners) listener();
+  };
+  return { watch, pickRealModel };
+}
+
 /** The window with a sample host that answers `made`, on Welcome unless `remembered` shows it. */
 function start(made: CreatedSample, remembered: readonly RememberedWorkspace[] = []) {
+  const models = testModelWatch();
   const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
   const storage = new Map<string, string>(
     remembered.length === 0 ? [] : [["halonic.workspace.recent", JSON.stringify(remembered)]],
@@ -57,7 +75,13 @@ function start(made: CreatedSample, remembered: readonly RememberedWorkspace[] =
         services: services as never,
         name,
       });
-      return { name, workspace, saving: undefined, dispose: async () => {} };
+      return {
+        name,
+        workspace,
+        saving: undefined,
+        testModel: models.watch,
+        dispose: async () => {},
+      };
     },
     recent: new RecentWorkspaces({
       getItem: (key) => storage.get(key) ?? null,
@@ -76,7 +100,7 @@ function start(made: CreatedSample, remembered: readonly RememberedWorkspace[] =
       sample: { create },
     });
   });
-  return { shell, create, switcher };
+  return { shell, create, switcher, pickRealModel: models.pickRealModel };
 }
 
 function chip(): HTMLButtonElement | undefined {
@@ -150,6 +174,20 @@ verifies("workspace.try-sample", () => {
 
     expect(create).toHaveBeenCalledWith([]);
     expect(chip()?.textContent).toBe("Sample · test model");
+  });
+
+  it("takes the chip away once the demo's default model is a real one", async () => {
+    const { pickRealModel } = start({
+      kind: "created",
+      folder: "/docs/Acme sample",
+      name: "Acme sample",
+      trust: { kind: "trusted" },
+    });
+    await act(async () => trySample()?.click());
+
+    act(() => pickRealModel());
+
+    expect(chip()).toBeUndefined();
   });
 
   it("shows no chip for a workspace that is not remembered as a sample", async () => {
