@@ -3,6 +3,7 @@
 - Task: HAL-13863 (follow-up from HAL-13372)
 - Approval: the task asks for this change; Liam approves this note in his review of this pull request on HAL-13863
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:38zLKnz9dyz3RkYLwESpTFy02gmxtdRhlZ+N+lx2ehm5w9Deg3MtStwKu4d8dVoGAGzg9c99rU9CRKM/sNWIAw==
 
 ## What changes
 
