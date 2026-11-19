@@ -179,4 +179,42 @@ verifies("workflows.configuration.pages", () => {
     expect(tab(page, "Tests")?.className).toContain("selected-forced");
     expect(tab(page, "General")?.className).not.toContain("selected-forced");
   });
+
+  it("wraps round with the arrow keys, jumps with Home and End, and focus follows", async () => {
+    const page = await open([configuration]);
+    const press = async (from: string, key: string) =>
+      act(async () => {
+        tab(page, from)?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      });
+
+    await press("General", "ArrowUp");
+    expect(tab(page, "Problems")?.getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(tab(page, "Problems"));
+    await press("Problems", "ArrowDown");
+    expect(tab(page, "General")?.getAttribute("aria-selected")).toBe("true");
+    await press("General", "End");
+    expect(tab(page, "Problems")?.getAttribute("aria-selected")).toBe("true");
+    await press("Problems", "Home");
+    expect(tab(page, "General")?.getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(tab(page, "General"));
+  });
+
+  it("keeps one Tab stop in the page list, on the picked page", async () => {
+    const page = await open([configuration]);
+    const list = page.querySelector<HTMLElement>(
+      '[role=tablist][aria-label="Configuration pages"]',
+    );
+
+    expect(list?.getAttribute("aria-orientation")).toBe("vertical");
+    const stops = [...(list?.querySelectorAll("[role=tab]") ?? [])].filter(
+      (one) => one.getAttribute("tabindex") === "0",
+    );
+    expect(stops.map((one) => one.textContent)).toEqual(["General"]);
+  });
+
+  it("names the Problems count for screen readers", async () => {
+    const page = await open([configuration]);
+
+    expect(tab(page, "Problems")?.textContent).toContain("1 error");
+  });
 });
