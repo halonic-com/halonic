@@ -5,6 +5,7 @@ import {
   MemorySecrets,
   MemoryTokenStore,
 } from "@halonicjs/adapter-memory";
+import { ProgramCopyUnavailableError } from "@halonicjs/app";
 import type { ConnectorsRun } from "@halonicjs/engine";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -91,5 +92,21 @@ verifies("engine.run-connectors", () => {
     await expect(notes?.callTool("read_note", {})).rejects.toThrow("isn't trusted");
     expect(sent).toEqual([]);
     await connectors.end(run.runId);
+  });
+
+  it("refuses a run of the live version, and starts nothing in the saved files instead", async () => {
+    const { connectors, sent } = fixture(true);
+    const live: ConnectorsRun = {
+      ...run,
+      runId: "run_2",
+      version: {
+        reads: "live-version",
+        commit: "4f2a9c0de1b2",
+        versionDate: "2026-11-11T10:42:00.000Z",
+      },
+    };
+
+    await expect(connectors.open(live)).rejects.toThrow(ProgramCopyUnavailableError);
+    expect(sent).toEqual([]);
   });
 });

@@ -1,5 +1,5 @@
 import type { AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
-import { ConnectorFactories } from "@halonicjs/app";
+import { ConnectorFactories, ProgramCopyUnavailableError } from "@halonicjs/app";
 import { FolderRunConnectors, type RunProgramFolders } from "@halonicjs/engine";
 import {
   type DefinitionSource,
@@ -35,10 +35,11 @@ export interface StudioRunConnectorsInput {
  * the executor as `runs.runConnectors`, and `closeAll()` it once the executor has closed.
  *
  * A run reads the workspace as saved, and its programs start in the workspace folder: the page
- * can't make a copy at the run's commit as the CLI does. The workspace must be trusted as it is
- * when the run needs a connector. Without a grant the connector is created without one, and the
- * agent host refuses to start its program, as the CLI's `stdio` factory does. A person is never
- * asked here: trust is granted on the workspace's own page.
+ * can't make a copy at the run's commit as the CLI does, so a run of the live version starts
+ * none. The workspace must be trusted as it is when the run needs a connector. Without a grant
+ * the connector is created without one, and the agent host refuses to start its program, as the
+ * CLI's `stdio` factory does. A person is never asked here: trust is granted on the workspace's
+ * own page.
  *
  * @example
  * const connectors = studioRunConnectors(input);
@@ -84,10 +85,20 @@ export async function resolveWorkingFolders(
   );
 }
 
-/** The workspace folder as the place programs start in; there is no copy to make or to release. */
+/**
+ * The workspace folder as the place programs start in; there is no copy to make or to release.
+ * A run of the live version is refused, never started in the saved files in its place, as the
+ * CLI's program folders refuse it.
+ */
 function workspaceFolder(folder: Pick<FolderReader, "locationOf">): RunProgramFolders {
   return {
-    folderFor: async () => {
+    folderFor: async (version) => {
+      if (version.reads !== "saved-files") {
+        throw new ProgramCopyUnavailableError(
+          version.commit,
+          new Error("Studio runs only the saved files, so it makes no copy at a commit."),
+        );
+      }
       const path = await folder.locationOf();
       if (path === null) throw new Error("the workspace folder has no location");
       return { path, release: async () => undefined };
