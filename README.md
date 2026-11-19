@@ -219,7 +219,9 @@ to add the first one.
 
 ## Something failed?
 
-Run `halonic doctor` and fix what it lists. A red ✕ Sandbox line is normal on
+Run `halonic doctor` and fix what it lists:
+[Check your setup with `halonic doctor`](docs/how-to/check-your-setup-with-doctor.md)
+explains each line and its fix. A red ✕ Sandbox line is normal on
 a fresh install and doesn't stop the steps above. Then run the command that failed
 again with `--debug`. Still stuck? Open an
 [Install problem](https://github.com/halonic-com/halonic/issues/new?template=install-problem.yml)
