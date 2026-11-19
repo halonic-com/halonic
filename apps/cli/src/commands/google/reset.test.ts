@@ -95,7 +95,7 @@ verifies("cli.commands.google.reset", () => {
     expect(code).toBe(exitCode.ok);
     expect(written.join("")).toContain("Remove the Google accounts set up on this computer");
     expect(io.stdout).toEqual([
-      "✓ Removed. Set up Google again in the Studio; a new token key is made then.",
+      "✓ Removed. Set up Google again in the Studio to make a new token key.",
     ]);
     expect(await exists(folders().google)).toBe(false);
     expect(await exists(folders().signIns)).toBe(false);

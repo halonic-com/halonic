@@ -87,7 +87,8 @@ Set `HALONIC_SECRET_TOKEN_KEY` everywhere Halonic runs for a profile, or nowhere
 environment wins over the one in the secrets file, so when they disagree, tokens sealed under one
 can't be opened under the other. For example, the Studio started from the desktop without the
 variable makes a key in the file, and the CLI run later with the variable set can't open those
-tokens.
+tokens. If tokens can't be opened and you no longer have the old key, run
+`halonic google reset` and set up Google again.
 
 ## Stored format
 

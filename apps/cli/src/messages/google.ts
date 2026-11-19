@@ -48,7 +48,7 @@ export const googleMessages = defineMessages("google", {
   tokenKeyMissingFix: () =>
     phrase`Set HALONIC_SECRET_TOKEN_KEY to the key you used before. Without it, run halonic google reset and set up Google again.`,
 
-  resetSummary: () => phrase`Remove the Google setup and saved sign-ins of this computer`,
+  resetSummary: () => phrase`Remove this computer's Google setup and saved sign-ins`,
   /** What `reset` was doing, for "✕ Couldn't remove them: …". */
   resetAction: () => phrase`remove them`,
   resetTakesNothing: () => phrase`halonic google reset takes no account or other argument.`,
@@ -56,15 +56,15 @@ export const googleMessages = defineMessages("google", {
   resetYesOption: () => phrase`Remove them without asking.`,
   /** `reset`'s question, framed with [y/N]. Nothing can be brought back afterwards. */
   resetQuestion: () =>
-    phrase`Remove the Google accounts set up on this computer, their saved secrets and every saved sign-in? You'll set up Google again afterwards.`,
+    phrase`Remove the Google accounts set up on this computer, their saved secrets and every integration's saved sign-in? Your other secrets stay. You'll need to set up Google again afterwards.`,
   /** Answer No, or Enter: exit 1. */
   notReset: () => phrase`Nothing was removed.`,
   /** No terminal, or `CI` set, without `--yes`: exit 2. */
   resetNoTerminal: () =>
-    phrase`Resetting removes the Google setup and saved sign-ins, and there's no terminal to ask you.`,
+    phrase`Resetting removes this computer's Google setup and saved sign-ins, and there's no terminal to ask you to confirm.`,
   resetNoTerminalFix: () => phrase`To remove them anyway, pass --yes.`,
   resetDone: () =>
-    phrase`${markPart("done")} Removed. Set up Google again in the Studio; a new token key is made then.`,
+    phrase`${markPart("done")} Removed. Set up Google again in the Studio to make a new token key.`,
   /** The account has signed in, or shares its client: a new secret has to be checked first. */
   secretNeedsStaging: () =>
     phrase`This account has signed in, so its secret can't be replaced here.`,
