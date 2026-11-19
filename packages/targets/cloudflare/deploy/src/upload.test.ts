@@ -140,6 +140,34 @@ verifies("deploy.upload", () => {
     expect(api.calls.at(-1)).toBe("deployVersions old:100");
   });
 
+  it("waits up to two minutes for a workers.dev address it just turned on (HAL-13834)", async () => {
+    const { api, options } = setup({ accounts: [] }, passing);
+    const { attempts: _attempts, ...defaults } = options;
+    const sleeps: number[] = [];
+    let calls = 0;
+    await uploadAndSwitch(api, {
+      ...defaults,
+      sleep: async (ms: number) => {
+        sleeps.push(ms);
+      },
+      // A brand-new address answers 404 from Cloudflare's edge until it reaches the Worker.
+      fetch: (async () => {
+        calls += 1;
+        return calls <= 12 ? new Response("", { status: 404 }) : Response.json(passing);
+      }) as unknown as typeof fetch,
+    });
+    expect(calls).toBe(13);
+    expect(Math.max(...sleeps)).toBe(10_000);
+    expect(sleeps.reduce((sum, ms) => sum + ms, 0)).toBeGreaterThanOrEqual(100_000);
+  });
+
+  it("keeps the short wait when workers.dev was already on", async () => {
+    const { api, options, requests } = setup({ accounts: [], deployment: live }, {}, 404);
+    const { attempts: _attempts, ...defaults } = options;
+    await uploadAndSwitch(api, defaults).catch(() => {});
+    expect(requests).toHaveLength(5);
+  });
+
   it("uploads a never-deployed Worker live and tests it", async () => {
     const { api, options, requests } = setup({ accounts: [] }, passing);
     await uploadAndSwitch(api, {
