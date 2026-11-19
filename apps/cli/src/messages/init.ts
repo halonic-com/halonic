@@ -46,7 +46,7 @@ export const initMessages = defineMessages("init", {
   nextRun: (workflow: string, input: string) => phrase`halonic run ${workflow} --input ${input}`,
   /** The last step of `init --example` when the copy has routines: they start on time only while `watch` runs. */
   nextWatch: () => phrase`halonic routines watch`,
-  nextWatchWhy: () => [dim("routines start on time only while this runs")],
+  nextWatchWhy: () => [dim("routines start on time only while it runs")],
   /**
    * The last `Next:` line of a plain `init`, dimmed: the guide to a first
    * agent. It named Studio until 0.1.0, which has no Studio (HAL-6007).
