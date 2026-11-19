@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-13670 (from Liam's triage of HAL-13667; the design is recorded on the task); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:igEi+8MkHY59cOqkZgcWiizs5WqCek4TeFfWzgacrmdswl6jIXmbgQkU3eo9WICP/S2Nl9INCfMcBTRU320dAQ==
 
 A run whose agent lists a connector whose program isn't on this computer ended "✓" with no word
 about the connector: the turn left its tools out and kept the reason only for the model. Now:
