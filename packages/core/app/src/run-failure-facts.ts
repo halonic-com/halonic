@@ -8,6 +8,7 @@ import type { RunFailureCause } from "@halonicjs/events";
 import { assertNever } from "@halonicjs/std";
 import type { FailedModel, FailedStart, RunFailedEvent } from "./failed-model.ts";
 import { budgetStopOf, nextMonthStart } from "./run-failure-budget.ts";
+import { type ProxyFailure, proxyFailureOf } from "./run-failure-proxy.ts";
 
 /** What both key failures name: the provider, the secret that holds its key, and the alias that uses it. */
 interface KeyFacts {
@@ -56,6 +57,7 @@ export type RunFailure =
       /** A model on this computer, such as Ollama, rather than a cloud provider. */
       readonly local: boolean;
     }
+  | ProxyFailure
   | {
       readonly reason: "model-missing";
       readonly provider: string;
@@ -329,10 +331,20 @@ function keyFailure(failed: RunFailedEvent, model: FailedModel | undefined): Run
   };
 }
 
-/** `model-unreachable` at the host the engine names, or else at the provider's own address. */
+/**
+ * `model-unreachable`: the proxy's facts when the engine logged a proxy cause,
+ * otherwise at the host the engine names, or else at the provider's own address.
+ */
 function unreachableFailure(failed: RunFailedEvent, model: FailedModel | undefined): RunFailure {
-  const address = failed.host ?? model?.address;
-  if (model === undefined || address === undefined) {
+  if (model === undefined) {
+    return generalFailure(failed);
+  }
+  const viaProxy = proxyFailureOf(failed.cause, providerName(model));
+  if (viaProxy !== undefined) {
+    return viaProxy;
+  }
+  const address = failed.host ?? model.address;
+  if (address === undefined) {
     return generalFailure(failed);
   }
   return {
