@@ -40,7 +40,7 @@ import { TitleBarBrand } from "../title-bar/title-bar-brand.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { activeItemOf } from "./active-item.ts";
 import { useClosingGoneItemTabs } from "./gone-item-tabs.ts";
-import { shownPlaces } from "./shown-places.ts";
+import { useShownPlaces } from "./shown-places.ts";
 import { StudioPage } from "./studio-page.tsx";
 import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
 import { StudioSidebar } from "./studio-sidebar.tsx";
@@ -273,8 +273,9 @@ export function StudioWindow(props: StudioWindowProps) {
   const kinds = useMemo(() => contributions.itemKinds.list(), [contributions]);
   useClosingGoneItemTabs(tabs, kinds, contextFor);
   usePhoneBackButton(!desktop, shell.closeStack, phone);
-  // Read again on every phone move, so the bottom navigation's signals follow.
-  const shown = shownPlaces(contributions.places.list(), contextFor);
+  // Read again on every phone move and whenever a place's signal changes, so the bottom
+  // navigation's counts follow, such as the Inbox's right after an answer (HAL-13371).
+  const shown = useShownPlaces(places, contextFor);
   useWindowKeys({ host, platform, tabs, toasts: shell.toasts, onNewTab: palette.show });
   // Ctrl K's palette closes as it opens a page, and its focus return mustn't win over the `h1`.
   const focusPageOpenedFromPalette = usePageHeadingFocusAfterDialog();
