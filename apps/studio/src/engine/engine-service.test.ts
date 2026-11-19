@@ -51,8 +51,23 @@ verifies("studio.engine-service", () => {
       const refusal = await service.open().catch((error: unknown) => error);
 
       expect(refusal).toBeInstanceOf(KindedError);
-      expect(refusal).toMatchObject({ kind: "conflict" });
-      expect((refusal as Error).message).toContain("4242");
+      expect(refusal).toMatchObject({
+        kind: "conflict",
+        message: "Acme is already running in another Halonic on this computer (process 4242).",
+        fix: "Stop that one, then try again.",
+      });
+    });
+
+    it("refuses without a process when the shell names none", async () => {
+      const service = serviceOn(fakeShell({}));
+
+      const refusal = await service.open().catch((error: unknown) => error);
+
+      expect(refusal).toMatchObject({
+        kind: "conflict",
+        message: "Acme is already running in another Halonic on this computer.",
+        fix: "Stop that one, then try again.",
+      });
     });
 
     it("closes the engine when the shell loses the lock, and is taken again by the next open", async () => {

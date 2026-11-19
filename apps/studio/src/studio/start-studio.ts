@@ -52,10 +52,12 @@ import {
   createShell,
   itemLocationKey,
   type KeyboardPlatform,
+  placeNames,
   type Shell,
   type StudioHost,
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
+import { showEngineLockLost } from "../engine/engine-lock-lost-toast.ts";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import { desktopFeatures } from "./desktop-features.ts";
@@ -328,12 +330,19 @@ export async function openFolder(
       window,
       trust,
       location,
+      name,
       scope,
       // Run waits through the workspace's own save, which is made below, once the workspace is.
       settle: async () => {
         if (!((await saving?.saveNow()) ?? true))
           throw new Error("The workspace is still unsaved.");
       },
+      onEngineLockLost: () =>
+        showEngineLockLost({
+          toasts: shell.toasts,
+          name,
+          openRuns: () => workspace.tabs.openHere({ key: "runs", title: placeNames.runs.label }),
+        }),
     });
   }
   shell.services.instantiate(services);

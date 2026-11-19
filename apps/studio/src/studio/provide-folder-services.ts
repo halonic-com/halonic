@@ -99,6 +99,8 @@ export interface FolderServiceParts {
   readonly window: object;
   readonly trust: WorkspaceTrust;
   readonly location: string;
+  /** The workspace's name, as the window shows it. */
+  readonly name: string;
   /** The open workspace, whose files and events the Models feature reads. */
   readonly scope: WorkspaceScope;
   /**
@@ -106,12 +108,24 @@ export interface FolderServiceParts {
    * failure has its toast; rejects when the save fails. Absent: Run starts without waiting.
    */
   readonly settle?: () => Promise<void>;
+  /** Hears when another process took the workspace's engine lock over (`studio.engine-lock-lost-toast`). */
+  readonly onEngineLockLost?: () => void;
 }
 
 /** Gives the folder in `location` the services its features read through the shell. */
 export function provideFolderServices(
   services: ServiceRegistry,
-  { ipc, files, window, trust, location, scope, settle }: FolderServiceParts,
+  {
+    ipc,
+    files,
+    window,
+    trust,
+    location,
+    name,
+    scope,
+    settle,
+    onEngineLockLost,
+  }: FolderServiceParts,
 ): void {
   services.provide(
     ModelsFilesService,
@@ -170,6 +184,7 @@ export function provideFolderServices(
       ipc,
       lock: new TauriEngineLock(files, location),
       location,
+      name,
       definitions: new TauriDefinitionStore(files, location),
       secrets: shellKeychain(ipc),
       http: new ShellHttpClient(ipc),
@@ -185,6 +200,7 @@ export function provideFolderServices(
       },
       newToken: () => crypto.randomUUID(),
       reportError: (error) => console.error("The engine", error),
+      ...(onEngineLockLost === undefined ? {} : { onLockLost: onEngineLockLost }),
       ...(transport === undefined
         ? {}
         : {
