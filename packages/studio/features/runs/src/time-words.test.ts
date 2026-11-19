@@ -10,6 +10,16 @@ verifies("runs.row", () => {
       expect(tookWords(360_000)).toBe("6 min");
       expect(tookWords(400)).toBe("1 s");
     });
+
+    it("writes hours and minutes from an hour on, and days and hours from 48 hours", () => {
+      expect(tookWords(59 * 60_000 + 59_999)).toBe("59 min 59 s");
+      expect(tookWords(60 * 60_000)).toBe("1 h");
+      expect(tookWords((36 * 60 + 2) * 60_000 + 32_000)).toBe("36 h 2 min");
+      expect(tookWords(36 * 3_600_000)).toBe("36 h");
+      expect(tookWords(47 * 3_600_000 + 59 * 60_000 + 59_999)).toBe("47 h 59 min");
+      expect(tookWords(48 * 3_600_000)).toBe("2 days");
+      expect(tookWords(52 * 3_600_000 + 59 * 60_000)).toBe("2 days 4 h");
+    });
   });
 
   describe("dueWords", () => {
