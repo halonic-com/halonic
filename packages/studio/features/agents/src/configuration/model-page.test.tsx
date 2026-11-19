@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { FieldAnnounceProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -34,7 +35,11 @@ async function openModel(
   readAliases?: () => Promise<readonly string[]>,
   agent: { model?: string } = { model: "fast" },
   defaultModel?: string,
-  screen: { saving?: ReturnType<typeof fieldCounts>["saving"]; failSaves?: boolean } = {},
+  screen: {
+    saving?: ReturnType<typeof fieldCounts>["saving"];
+    failSaves?: boolean;
+    announced?: string[];
+  } = {},
 ) {
   const memory = memoryAgentsHost({
     hubs: [{ id: "acme", name: "acme" }],
@@ -53,7 +58,9 @@ async function openModel(
         }
       : read;
   const page = await show(
-    <AgentScreen host={agents} saving={screen.saving} hubId="acme" id="sorter" />,
+    <FieldAnnounceProvider announce={(text) => screen.announced?.push(text)}>
+      <AgentScreen host={agents} saving={screen.saving} hubId="acme" id="sorter" />
+    </FieldAnnounceProvider>,
   );
   await act(async () => buttonNamed(page, "Configuration")?.click());
   await act(async () =>
@@ -170,6 +177,21 @@ verifies("agents.configuration.model", () => {
     expect(page.textContent).not.toContain("Enter a whole number from 1 to 200.");
     await blur(limit);
     expect(page.textContent).toContain("Enter a whole number from 1 to 200.");
+  });
+
+  it("reads a turn limit's mistake once when it shows after the pause, and not again on leaving", async () => {
+    const announced: string[] = [];
+    const { limit } = await openModel(undefined, undefined, undefined, { announced });
+    limit.focus();
+    await typeInto(limit, "500");
+    await act(async () => vi.advanceTimersByTime(SAVE_PAUSE_MS));
+    await act(async () => vi.advanceTimersToNextFrame());
+    expect(announced).toEqual(["Model call limit: Enter a whole number from 1 to 200."]);
+
+    await blur(limit);
+    limit.blur();
+    await act(async () => vi.advanceTimersToNextFrame());
+    expect(announced).toHaveLength(1);
   });
 
   it("counts a turn limit with a mistake as a field not saved, until it is fixed", async () => {

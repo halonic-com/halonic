@@ -34,7 +34,7 @@ export function BehaviourPage({ settings, save, reportNotSaved }: BehaviourPageP
   useReportNotSaved(reportNotSaved, [description, instructions]);
   return (
     <div className="flex flex-col gap-6">
-      <Field label={words.description} error={description.error}>
+      <Field label={words.description} error={description.error} announceWhileFocused>
         <Input
           value={description.value}
           onChange={(event) => description.onChange(event.target.value)}
@@ -45,6 +45,7 @@ export function BehaviourPage({ settings, save, reportNotSaved }: BehaviourPageP
         label={words.instructions}
         hint={instructions.value === "" ? words.instructionsHint : undefined}
         error={instructions.error}
+        announceWhileFocused
       >
         <TextArea
           minRows={4}
