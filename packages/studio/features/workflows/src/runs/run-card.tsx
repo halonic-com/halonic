@@ -33,7 +33,12 @@ export interface RunCardProps {
    * Absent where the app can't start runs, and the banner then has no **Run again**.
    */
   readonly runAgain?:
-    | { readonly runStart: RunStartHost; readonly onStarted: (runId: string) => void }
+    | {
+        readonly runStart: RunStartHost;
+        readonly onStarted: (runId: string) => void;
+        /** Says why a Run again didn't start to a screen reader, as the run page does. */
+        readonly announce?: ((line: string) => void) | undefined;
+      }
     | undefined;
   /** Opens the workspace page at Models, for the banner's **Open Models**; absent where it can't. */
   readonly openModels?: (() => void) | undefined;
@@ -107,6 +112,7 @@ export function RunCard({
         onOpenStep={onOpenLog}
         runStart={runAgain?.runStart}
         openStartedRun={runAgain?.onStarted}
+        announce={runAgain?.announce}
         openModels={openModels}
       />
       {(onOpenLog || saveAsTest) && (

@@ -72,6 +72,50 @@ async function open(
   return { page, runs };
 }
 
+/** A run that failed because Ollama wasn't running, with the log Run again reads its input from. */
+function failedRunWithLog() {
+  const failed = runSummary({
+    status: "failed",
+    state: "draft",
+    reason: "model-unreachable",
+    endedAt: "2026-11-09T10:45:00.000Z",
+  });
+  const memory = memoryRuns([failed]);
+  const at = failed.startedAt;
+  const runs = {
+    ...memory,
+    source: {
+      ...memory.source,
+      providerKind: () => "local" as const,
+      log: async () => [
+        {
+          type: "run.started" as const,
+          hubId: "acme",
+          workflowId: "reply",
+          input: { a: 1 },
+          kind: "run" as const,
+          definitionsVersion: "v1",
+          runId: failed.id,
+          seq: 1,
+          at,
+        },
+        { type: "state.entered" as const, state: "draft", runId: failed.id, seq: 2, at },
+        {
+          type: "llm.request" as const,
+          agent: "writer",
+          provider: "ollama",
+          model: "llama3.1",
+          messages: 1,
+          runId: failed.id,
+          seq: 3,
+          at,
+        },
+      ],
+    },
+  };
+  return { failed, runs };
+}
+
 verifies("workflows.start.start-run", () => {
   it("gives the dock's card the whole page on a phone, with the tab's view back once it closes", async () => {
     const { host } = memoryHost([], [], [reply], [], { startRun: async () => ({ runId: "x" }) });
@@ -239,45 +283,7 @@ verifies("workflows.start.start-run", () => {
   });
 
   it("offers Run again and Open Models on the shown run's failed banner, and docks the new run", async () => {
-    const failed = runSummary({
-      status: "failed",
-      state: "draft",
-      reason: "model-unreachable",
-      endedAt: "2026-11-09T10:45:00.000Z",
-    });
-    const memory = memoryRuns([failed]);
-    const at = failed.startedAt;
-    const runs = {
-      ...memory,
-      source: {
-        ...memory.source,
-        providerKind: () => "local" as const,
-        log: async () => [
-          {
-            type: "run.started" as const,
-            hubId: "acme",
-            workflowId: "reply",
-            input: { a: 1 },
-            kind: "run" as const,
-            definitionsVersion: "v1",
-            runId: failed.id,
-            seq: 1,
-            at,
-          },
-          { type: "state.entered" as const, state: "draft", runId: failed.id, seq: 2, at },
-          {
-            type: "llm.request" as const,
-            agent: "writer",
-            provider: "ollama",
-            model: "llama3.1",
-            messages: 1,
-            runId: failed.id,
-            seq: 3,
-            at,
-          },
-        ],
-      },
-    };
+    const { failed, runs } = failedRunWithLog();
     const started = vi
       .fn<(input: Record<string, unknown>) => Promise<{ runId: string }>>()
       .mockResolvedValueOnce({ runId: failed.id })
@@ -308,6 +314,30 @@ verifies("workflows.start.start-run", () => {
       runs.change([runSummary({ id: "run_mfx3k2a1_02kq7w", status: "running" }), failed]);
     });
     expect(page.querySelector("aside[aria-label='Run 02kq7w']")).not.toBeNull();
+  });
+
+  it("says why the card's Run again didn't start to a screen reader once", async () => {
+    const { failed, runs } = failedRunWithLog();
+    const started = vi
+      .fn<(input: Record<string, unknown>) => Promise<{ runId: string }>>()
+      .mockResolvedValueOnce({ runId: failed.id })
+      .mockRejectedValueOnce(
+        Object.assign(new Error("The workflow changed."), { kind: "invalid_input" }),
+      );
+    const announce = vi.fn();
+    const { host } = memoryHost([], [], [reply], [], {
+      startRun: async (_ref, input) => started(input),
+    });
+    const page = await show(
+      <WorkflowScreen host={host} runs={runs.source} hubId="acme" id="reply" announce={announce} />,
+    );
+
+    await click(runButton(page));
+    await click(buttonNamed(page, "Start run"));
+    await click(buttonNamed(page, "Run again"));
+    expect(announce).toHaveBeenCalledExactlyOnceWith(
+      "Couldn't start the run: The workflow changed.",
+    );
   });
 
   it("starts nothing when the input isn't a JSON object", async () => {
