@@ -12,7 +12,12 @@ import {
   openBridgeBody,
   priceIn,
 } from "./bridge-schemas.ts";
-import { type ApprovalObserver, studioSecrets, studioServices } from "./studio-services.ts";
+import {
+  type ApprovalObserver,
+  studioFailureReport,
+  studioSecrets,
+  studioServices,
+} from "./studio-services.ts";
 
 /** Makes the bridge server of one run, which reads its provider keys from `secrets`. */
 export type BridgeServerFactory = (secrets: Secrets) => HarnessBridgeServer;
@@ -225,6 +230,7 @@ async function openBridge(
       providers: body.providers,
       price: (provider, model) => priceIn(body.prices, provider, model),
       ...studioServices(channel, observerFor?.(body.runId, body.agentId)),
+      reportError: studioFailureReport(channel, body.agentId, (text) => process.stderr.write(text)),
     });
   } catch (error) {
     stream.send({

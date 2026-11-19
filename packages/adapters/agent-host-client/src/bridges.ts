@@ -10,6 +10,7 @@ import type {
 import { type Infer, parse, s } from "@halonicjs/schema-kit";
 import { isPlainObject } from "@halonicjs/std";
 import { answerBridgeCall, type BridgeCallServices } from "./bridge-calls.ts";
+import { hostBridgeRecorder } from "./bridge-failures.ts";
 import { AgentHostError, type AgentHostTransport, answerError, checked } from "./transport.ts";
 
 /**
@@ -154,7 +155,11 @@ export class AgentHostBridges {
     }
     this.#ids.set(opened.token, opened.bridge);
     const secrets = providerKeys(services.providers, services.secrets);
-    const serving = this.#serve(opened.bridge, lines, { ...services, secrets, recorder });
+    const serving = this.#serve(opened.bridge, lines, {
+      ...services,
+      secrets,
+      recorder: hostBridgeRecorder(recorder, opened.token),
+    });
     const { url, token, socketPath } = opened;
     return {
       url,

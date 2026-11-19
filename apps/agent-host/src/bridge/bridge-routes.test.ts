@@ -230,6 +230,40 @@ describe("bridgeRoutes", () => {
     );
   });
 
+  it("records a request that failed for a reason it didn't name to the program in Studio's run log", async () => {
+    const url = await started();
+    const studio = await FakeStudio.open(url, {
+      // Not a key's shape: the host can't use it, and the bridge doesn't say why.
+      "secrets.get": () => 42,
+      "recorder.record": () => null,
+    });
+    const reply = await fetch(`${studio.bridge.url}/v1/messages`, {
+      method: "POST",
+      headers: {
+        [harnessBridgeTokenHeader]: studio.bridge.token,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ model: "claude-sonnet-5-5", max_tokens: 10, messages: [] }),
+    });
+    expect(reply.status).toBe(500);
+    expect(await reply.text()).toContain("The run log has the details.");
+    await post(url, "/v1/bridge/close", { bridge: studio.bridge.bridge });
+    await studio.done;
+    const failures = studio.calls
+      .filter((call) => call.method === "recorder.record")
+      .map((call) => call.params)
+      .filter((event) => (event as { type: string }).type === "bridge.failed");
+    expect(failures).toEqual([
+      {
+        type: "bridge.failed",
+        agent: "writer",
+        kind: "internal",
+        message: "Studio answered a call with a value of the wrong shape.",
+      },
+    ]);
+    expect(JSON.stringify(failures)).not.toContain(studio.bridge.token);
+  });
+
   it("ends the stream and stops the bridge when Studio closes it", async () => {
     const url = await started();
     const studio = await FakeStudio.open(url, {});

@@ -154,6 +154,34 @@ function listen(tell: () => void): void {
 }
 
 /**
+ * The bridge's `reportError`: sends each failure the bridge told the program
+ * the run log has the details of to Studio's recorder as a `bridge.failed`,
+ * through the recorder's own call, so a Studio from before this event needs
+ * nothing new. The bridge's hook must not throw and can't wait, so a record
+ * Studio doesn't take goes to `log` rather than back to the bridge.
+ */
+export function studioFailureReport(
+  channel: CallChannel,
+  agentId: string,
+  log: (text: string) => void,
+): (failure: { kind: string; message: string }) => void {
+  return (failure) => {
+    const event = {
+      type: "bridge.failed",
+      agent: agentId,
+      kind: failure.kind,
+      message: failure.message,
+    };
+    channel.call(studioMethods.record, event, quick).catch((error: unknown) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      log(
+        `The run log couldn't record a failure of the harness bridge (${failure.kind}): ${failure.message} (${reason})\n`,
+      );
+    });
+  };
+}
+
+/**
  * The provider keys of one bridge, which Studio keeps. Only the secrets the
  * bridge's providers name are asked for: any other name is `null` without a
  * call, so the bridge can't read the person's other secrets through it.

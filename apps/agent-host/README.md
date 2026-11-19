@@ -156,6 +156,8 @@ The first line is `opened`, or `{"type":"failed","message"}` when the bridge cou
 
 Studio must answer `recorder.record`, `tools.list`, `tools.check` and `secrets.get` within 30 seconds, or the host sends a `cancel` and the bridge's request fails, so a Studio that hangs can't hold it forever. `tools.call` and `approvals.request` have no limit, because a tool's run and a person's approval rightly take long. A call fails too when Studio answers it with an error, or when the stream ends (Studio crashed or reloaded) before it answers.
 
+When the bridge fails a request for a reason it doesn't name to the program, which is told "The run log has the details.", the host sends Studio a `recorder.record` call with `{"type":"bridge.failed","agent","kind","message"}`, so the run log has them; the message never holds the run token, and Studio takes it out again if it does. When Studio doesn't take that call, the host writes the failure to its standard error.
+
 The bridge closes on `POST /v1/bridge/close`, which waits until its last events are recorded and then ends the stream; when Studio goes away, which ends the stream; and when the host stops.
 
 Each bridge listens on a port or socket of its own, so the host keeps at most 64 bridges open, counting those still opening and those still closing; past that, opening one answers `429 too_many_bridges` before any stream starts.
