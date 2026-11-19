@@ -2,6 +2,7 @@
 
 - Approval: Julian's follow-up from his security review of PR #3756 (HAL-12792), accepted by Liam and filed as HAL-12799; Julian reviews the security change, Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gg+lrGc2dY4j6TESwYBOb0aCkGDjcgGlhSkaFDAO+9nWVbewd5p+2fR0vr7ZlGVKfHjqlHPy1YiU2RJFWfovDw==
 - Task: HAL-12799
 
 ## What changes
