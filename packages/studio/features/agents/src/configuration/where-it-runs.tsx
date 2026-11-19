@@ -34,10 +34,24 @@ function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-const options: RadioOption<RunsOn>[] = [
-  { value: "sandbox", label: words.inSandbox, note: words.inSandboxNote },
-  { value: "this-computer", label: words.onThisComputer, note: words.onThisComputerNote },
-];
+/**
+ * The two options. While this Studio can't start an agent outside its sandbox, On this computer
+ * also says where such an agent does run, as its host reports it (HAL-13194).
+ */
+function optionsFor(placement: AgentPlacementState): RadioOption<RunsOn>[] {
+  const thisComputerNote = placement.studioStartsUnfenced ? (
+    words.onThisComputerNote
+  ) : (
+    <>
+      {words.onThisComputerNote}
+      <span className="block">{words.studioCantStart}</span>
+    </>
+  );
+  return [
+    { value: "sandbox", label: words.inSandbox, note: words.inSandboxNote },
+    { value: "this-computer", label: words.onThisComputer, note: thisComputerNote },
+  ];
+}
 
 /**
  * Harness › Where it runs (`agents.configuration.where-it-runs`; checklist 3.8). The sandbox
@@ -121,7 +135,7 @@ export function WhereItRuns({ host, settings }: WhereItRunsProps) {
             </Callout>
           )}
           <RadioGroup
-            options={options}
+            options={optionsFor(placement)}
             value={shownChoice(placement)}
             onChange={(next) => void pick(next)}
           />

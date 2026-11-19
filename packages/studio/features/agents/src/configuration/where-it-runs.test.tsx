@@ -15,7 +15,9 @@ const ref = { hubId: "acme", id: "writer" };
 beforeAll(openDialogsInJsdom);
 afterEach(unmount);
 
-function agentsHost(options: { placement?: boolean; unsaved?: () => boolean } = {}) {
+function agentsHost(
+  options: { placement?: boolean; unsaved?: () => boolean; studioStartsUnfenced?: boolean } = {},
+) {
   return memoryAgentsHost({
     hubs: [{ id: "acme", name: "Acme" }],
     agents: [{ ...ref, name: "Writer", harness: "claude-code" }],
@@ -138,8 +140,21 @@ verifies("agents.configuration.where-it-runs", () => {
       expect(warning()?.textContent).toContain(words.saveFirst("Writer"));
       const confirm = buttonNamed(document.body, words.confirm);
       expect(confirm?.getAttribute("aria-disabled")).toBe("true");
+      // Sofia (HAL-13232): a screen reader hears why the button is unavailable.
+      const reason = document.getElementById(confirm?.getAttribute("aria-describedby") ?? "");
+      expect(reason?.textContent).toBe(words.saveFirst("Writer"));
       await press(confirm);
       expect((await host.placement(ref))?.runsOn).toBe("sandbox");
+    });
+
+    // Liam's condition 4 (HAL-13194): the hint follows what the host reports.
+    it("says under On this computer that Studio can't start it, only while the host says so", async () => {
+      const cant = await open(agentsHost());
+      expect(cant.textContent).toContain(words.studioCantStart);
+      unmount();
+      const can = await open(agentsHost({ studioStartsUnfenced: true }));
+      expect(can.textContent).toContain(words.onThisComputerNote);
+      expect(can.textContent).not.toContain(words.studioCantStart);
     });
 
     it("says why it can't read the choice, and reads it again on Try again", async () => {

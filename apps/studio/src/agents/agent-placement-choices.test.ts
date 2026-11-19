@@ -37,7 +37,7 @@ function filesOf({ saved, unsaved }: ReturnType<typeof workspace>) {
 }
 
 /** Studio on one computer: its own placement choices, over the workspace's files. */
-function computer(files: ReturnType<typeof workspace>) {
+function computer(files: ReturnType<typeof workspace>, studioStartsUnfenced?: boolean) {
   const placement = new AgentPlacement({
     store: new MemoryAgentPlacementStore(),
     digest: webCryptoDigest,
@@ -54,6 +54,7 @@ function computer(files: ReturnType<typeof workspace>) {
         if (text === undefined) throw new Error("no such agent");
         return new TextEncoder().encode(text);
       },
+      ...(studioStartsUnfenced === undefined ? {} : { studioStartsUnfenced }),
     }),
   });
 }
@@ -73,6 +74,7 @@ verifies("studio.agent-placement-choices", () => {
         runsOn: "sandbox",
         fingerprint: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
         unsaved: false,
+        studioStartsUnfenced: false,
       });
     });
 
@@ -147,6 +149,16 @@ verifies("studio.agent-placement-choices", () => {
     });
 
     // Julian's HAL-13201 review: the warning must not let out a saved file the person isn't looking at.
+    // Liam's condition 4 (HAL-13194): the page's hint follows what the host says, not a constant.
+    it("says whether this Studio can start the agent outside its sandbox, as its host says", async () => {
+      expect(await computer(workspace()).placement(writer)).toMatchObject({
+        studioStartsUnfenced: false,
+      });
+      expect(await computer(workspace(), true).placement(writer)).toMatchObject({
+        studioStartsUnfenced: true,
+      });
+    });
+
     it("says when the agent's file has unsaved changes, and not for another file's", async () => {
       const files = workspace();
       const host = computer(files);

@@ -9,7 +9,7 @@ import {
 } from "@halonicjs/adapter-fs-tauri";
 import { AgentPlacement } from "@halonicjs/app";
 import { systemClock } from "@halonicjs/std";
-import { savedAgentBytes } from "../engine/studio-harness-host.ts";
+import { savedAgentBytes, studioStartsUnfenced } from "../engine/studio-harness-host.ts";
 import { AgentPlacementChoices } from "./agent-placement-choices.ts";
 
 /** The "On this computer" choices of one workspace, kept by the agent host. */
@@ -45,6 +45,7 @@ export function agentHostPlacement(
     placement,
     location,
     bytesOf: ({ hubId, id }) => savedAgentBytes(definitions, hubId, id),
+    studioStartsUnfenced,
   });
   return { placement, choices };
 }

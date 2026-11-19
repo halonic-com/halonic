@@ -222,6 +222,15 @@ async function skillTextOf(
   return text;
 }
 
+/**
+ * Whether the Studio's runs start an agent set to "On this computer" outside
+ * its sandbox: not while its `this-computer` sandbox is
+ * {@link noUnfencedSandbox}. The Harness page reads this to say where such an
+ * agent runs instead, so the session that lets Studio start it (HAL-13195)
+ * changes both here.
+ */
+export const studioStartsUnfenced = false;
+
 /** Why an agent set to "On this computer" doesn't start from the Studio. */
 const noUnfencedReason =
   "Halonic can't run Claude Code or Codex agents outside the sandbox yet. Set this agent back to the sandbox.";

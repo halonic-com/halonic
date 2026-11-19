@@ -79,6 +79,8 @@ export interface MemoryAgentsHostOptions {
   readonly now?: (() => string) | undefined;
   /** Whether an agent's file has unsaved changes, asked on each read; never when left out. */
   readonly unsaved?: ((ref: AgentRef) => boolean) | undefined;
+  /** Whether this Studio can start an agent outside its sandbox; it can't when left out, as today. */
+  readonly studioStartsUnfenced?: boolean | undefined;
 }
 
 /** A choice of On this computer: for the file with this fingerprint, at this time. */
@@ -257,7 +259,11 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
     placement: async (ref): Promise<AgentPlacementState | undefined> => {
       found(ref);
       if (options.placement === false) return undefined;
-      return { ...savedFilePlacement(ref), unsaved: options.unsaved?.(ref) ?? false };
+      return {
+        ...savedFilePlacement(ref),
+        unsaved: options.unsaved?.(ref) ?? false,
+        studioStartsUnfenced: options.studioStartsUnfenced ?? false,
+      };
     },
     chooseThisComputer: async (ref, shownFingerprint) => {
       found(ref);

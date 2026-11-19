@@ -318,8 +318,13 @@ export class WorkspaceAgents implements AgentsHost {
   /** Where the agent runs on this computer; `undefined` without an agent host. */
   async placement(ref: AgentRef): Promise<AgentPlacementState | undefined> {
     const { path } = await this.#find(ref);
-    const saved = await this.#parts.placement?.where(ref);
-    return saved && { ...saved, unsaved: Object.hasOwn(this.#parts.files.pending, path) };
+    const choices = this.#parts.placement;
+    if (choices === undefined) return undefined;
+    return {
+      ...(await choices.where(ref)),
+      unsaved: Object.hasOwn(this.#parts.files.pending, path),
+      studioStartsUnfenced: choices.studioStartsUnfenced,
+    };
   }
 
   /** Saves On this computer for the file the person was warned about. */
