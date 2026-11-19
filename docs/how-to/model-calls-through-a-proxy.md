@@ -31,18 +31,26 @@ the steps below instead.
   connectors. Halonic asks the proxy for a tunnel to the host's name and
   checks the host's certificate itself, so the proxy cannot read the traffic.
 - **Never through the proxy:** this computer (`localhost`), hosts on your home
-  network that you typed in yourself, and any host that `NO_PROXY` lists.
-  Those connect directly, with Halonic's usual address check.
+  network written as an IP address, such as `http://192.168.1.20:11434`, and
+  any host that `NO_PROXY` lists. Those connect directly, with Halonic's usual
+  address check.
+- **A name counts as public.** Only `localhost` and IP addresses count as this
+  computer or your home network. A name such as `gpu-box.lan` counts as a
+  public host, and if its address turns out to be on this computer or your
+  home network, the address check refuses it, with or without a proxy and
+  even when `NO_PROXY` lists it. Write the IP address instead.
 - **Refused when a proxy is set:** a public host over plain `http://`. Without
   TLS nothing ties the name to the server the proxy reached. Use `https://`,
-  or add the host to `NO_PROXY` if it must be reached directly.
+  or, for a host whose address is public, add it to `NO_PROXY` if it must be
+  reached directly.
 
 ## If it does not work
 
 Halonic never goes around a proxy it can't use. If the setting is unusable
 (for example `socks5://…`, or no `http://` in front), or the proxy refuses or
-drops the tunnel, or the provider's address starts with `http://` while a
-proxy is set (see "Refused when a proxy is set" above), each request that
+drops the tunnel, or the provider's address starts with `http://` and isn't
+`localhost` or an IP address on your network while a proxy is set (see
+"Refused when a proxy is set" above), each request that
 needs it fails, and nothing goes directly instead. For now the command line
 doesn't give the reason: a model call that fails this way says only that
 Halonic couldn't reach the provider and to check your internet connection, in
