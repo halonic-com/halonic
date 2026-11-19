@@ -9,9 +9,9 @@ use halonic_update_state::{
     Version, notes_url,
 };
 use tauri::{AppHandle, Runtime};
-use tauri_plugin_updater::{Error as UpdaterError, Update, UpdaterExt};
+use tauri_plugin_updater::{Error as UpdaterError, Update};
 
-use super::lock;
+use super::{lock, updater_on_proxy_rules};
 
 /// Starts downloading what the last check found, unless a download runs,
 /// one is ready, or this version's signature failed too often.
@@ -47,15 +47,13 @@ pub(super) fn start_download<R: Runtime>(app: &AppHandle<R>) {
 /// it as stalled.
 async fn download<R: Runtime>(app: &AppHandle<R>, found: &Update) {
     let version = found.version.clone();
-    let update = app
-        .updater_builder()
-        .configure_client(|client| {
-            client
-                .connect_timeout(CHECK_TIME_LIMIT)
-                .read_timeout(DOWNLOAD_STALL_LIMIT)
-        })
-        .build()
-        .and_then(|updater| updater.restore_update(found.raw_json.clone()));
+    let update = updater_on_proxy_rules(app, |client| {
+        client
+            .connect_timeout(CHECK_TIME_LIMIT)
+            .read_timeout(DOWNLOAD_STALL_LIMIT)
+    })
+    .and_then(|builder| builder.build())
+    .and_then(|updater| updater.restore_update(found.raw_json.clone()));
     let result = match update {
         Ok(Some(update)) => {
             let mut done: u64 = 0;

@@ -39,6 +39,10 @@ use check::{available, check_failure};
 #[path = "updates_managed.rs"]
 mod managed;
 
+#[path = "updates_proxy.rs"]
+mod proxy;
+use proxy::updater_on_proxy_rules;
+
 #[path = "updates_way_back.rs"]
 mod way_back;
 use way_back::{log_way_back, prove_started};
@@ -330,7 +334,9 @@ async fn check<R: Runtime>(app: &AppHandle<R>) {
     if is_managed {
         return managed::check(app).await;
     }
-    let result = match app.updater_builder().timeout(CHECK_TIME_LIMIT).build() {
+    let updater = updater_on_proxy_rules(app, |client| client)
+        .and_then(|builder| builder.timeout(CHECK_TIME_LIMIT).build());
+    let result = match updater {
         Ok(updater) => updater.check().await,
         Err(error) => Err(error),
     };

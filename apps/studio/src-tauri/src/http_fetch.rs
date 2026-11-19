@@ -64,6 +64,12 @@ impl HttpFetchState {
         }
     }
 
+    /// The proxy setting read at start. The updater uses it too, so the
+    /// whole app reads the environment once and follows one set of rules.
+    pub fn proxy(&self) -> Arc<ProxySetting> {
+        Arc::clone(&self.proxy)
+    }
+
     fn add(&self, key: CallKey, abort: Abort) -> Result<(), FetchRefusal> {
         let mut calls = self.calls.lock().unwrap_or_else(|e| e.into_inner());
         if calls.contains_key(&key) {
