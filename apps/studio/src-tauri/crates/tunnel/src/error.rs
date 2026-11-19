@@ -28,6 +28,9 @@ pub enum SessionError {
     MessageTooLarge,
     /// The phone's own crypto or random source failed.
     Crypto,
+    /// An earlier error ended the session, so it reads and sends nothing
+    /// more. The phone connects again with a new handshake.
+    Ended,
 }
 
 impl SessionError {
@@ -59,6 +62,7 @@ impl fmt::Display for SessionError {
             Self::NameTooLong => "the phone's name is too long for the handshake",
             Self::MessageTooLarge => "the message is too large for one Noise message",
             Self::Crypto => "the phone's crypto failed",
+            Self::Ended => "the session already ended",
         };
         formatter.write_str(text)
     }
