@@ -3,6 +3,7 @@
 - Task: HAL-12345 (finding L5 of the P10 security review, HAL-1743)
 - Approval: the task asks for this change; Liam approves this note in review on HAL-12345
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:1AVVuNEWr7NN1b2WQ886SATMalzPsMi00fNoPSEqb7ArETKs7zgTImWgilotMwSgqvKQWOe7X70/CU5oCmAODw==
 
 ## What changes
 
