@@ -2,6 +2,7 @@ import { Callout, Card, Switch } from "@halonicjs/studio-kit";
 import { useId, useState } from "react";
 import type { RoutinesHost, RoutineTrigger, RoutineView } from "../api.ts";
 import { failureReason } from "../page/page-words.ts";
+import { OnTimeHint } from "./on-time-hint.tsx";
 import { TriggerFields } from "./trigger-fields.tsx";
 import { useMailboxes } from "./use-mailboxes.ts";
 import { useNextTimes } from "./use-next-times.ts";
@@ -23,9 +24,10 @@ export interface WhenCardProps {
 
 /**
  * The When card (`routines.when.when-card`): the trigger in words, the On/Off switch that applies
- * at once, and the next start times from the live version. A routine that has never been live
- * can't be turned on here yet, and says so; a change that can't be saved is shown in the card and
- * the switch goes back to what is saved.
+ * at once, and the next start times from the live version, with the line that only
+ * `halonic routines watch` keeps them; a mail routine says mail doesn't start it yet. A routine
+ * that has never been live can't be turned on here yet, and says so; a change that can't be saved
+ * is shown in the card and the switch goes back to what is saved.
  */
 export function WhenCard({
   host,
@@ -43,7 +45,8 @@ export function WhenCard({
   const neverLive = !routine.everLive;
   const times = useNextTimes(host, routine, routine.enabled && !neverLive && !manual, routine);
   const timeZone = routine.trigger.kind === "schedule" ? routine.trigger.timeZone : undefined;
-  const shown = times?.times.map((iso) => nextTime(iso, timeZone, deviceTimeZone()));
+  const shown = times?.times.map((iso) => nextTime(iso, timeZone, deviceTimeZone())) ?? [];
+  const mail = routine.trigger.kind === "mail";
 
   const newTriggerNotLive = notLiveLine(routine);
 
@@ -116,16 +119,8 @@ export function WhenCard({
           <p className="text-small text-fg-muted">{newTriggerNotLive}</p>
         )}
         {manual && <p className="text-small text-fg-muted">{words.manualOnly}</p>}
-        {shown !== undefined && shown.length > 0 && (
-          <p className="text-small">
-            <span className="text-fg-muted">{words.next}</span> {shown.join(" · ")}
-          </p>
-        )}
-        {times?.atNextCheck === true && (
-          <p className="text-small">
-            <span className="text-fg-muted">{words.next}</span> {words.atNextCheck}
-          </p>
-        )}
+        <NextTimesLines shown={shown} atNextCheck={times?.atNextCheck === true} />
+        {mail && <p className="text-small text-fg-muted">{words.mailNotChecked}</p>}
         {failure !== undefined && <Callout tone="danger">{failure}</Callout>}
       </div>
     </Card>
@@ -138,4 +133,35 @@ function notLiveLine(routine: RoutineView): string | undefined {
   if (live === undefined || live === routine.triggerSentence) return undefined;
   const scheduled = routine.trigger.kind === "schedule" || routine.trigger.kind === "every";
   return (scheduled ? words.newScheduleNotLive : words.newTriggerNotLive)(live);
+}
+
+/**
+ * The next start times in words, or "at the next check", followed by the line that only
+ * `halonic routines watch` starts them on time. Shows nothing when there is no next start.
+ */
+function NextTimesLines({
+  shown,
+  atNextCheck,
+}: {
+  readonly shown: readonly string[];
+  readonly atNextCheck: boolean;
+}) {
+  if (shown.length === 0 && !atNextCheck) return null;
+  return (
+    <>
+      {shown.length > 0 && (
+        <p className="text-small">
+          <span className="text-fg-muted">{words.next}</span> {shown.join(" · ")}
+        </p>
+      )}
+      {atNextCheck && (
+        <p className="text-small">
+          <span className="text-fg-muted">{words.next}</span> {words.atNextCheck}
+        </p>
+      )}
+      <p className="text-small text-fg-muted">
+        <OnTimeHint of="routine" />
+      </p>
+    </>
+  );
 }
