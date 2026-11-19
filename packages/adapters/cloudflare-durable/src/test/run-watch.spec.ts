@@ -2,8 +2,8 @@ import { waitUntil } from "@halonicjs/testing-spec";
 /**
  * Watching a run through a real `RunObject` in workerd: the byte stream `watch` returns has to
  * cross the Durable Object call, carry the events a client appends meanwhile, and close after the
- * ending event, and `DurableRunEvents` has to follow a run through that stream. The Node tests cover
- * the rest of the behaviour over `node:sqlite`.
+ * ending event, and `DurableRunEvents` has to follow a run through that stream. `run-watchers.spec.ts`
+ * covers the rest of the behaviour.
  */
 
 import { env } from "cloudflare:workers";

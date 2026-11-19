@@ -15,7 +15,7 @@ import { isEndingEvent, RunWatchers } from "./run-watchers.ts";
 import { TimerDelivery } from "./timer-delivery.ts";
 import { TimerTable } from "./timer-table.ts";
 
-/** Where the object's one alarm is kept: a Durable Object's storage, or a fake in tests. */
+/** Where the object's one alarm is kept: a Durable Object's storage. */
 export interface AlarmSlot {
   /** Sets the alarm to a time in ms since 1970, replacing the one set; a past time fires at once. */
   set(atMs: number): Promise<void>;
@@ -42,7 +42,7 @@ export interface RunStateOptions {
 /**
  * One run's log and timers, and the alarm that delivers the timers, over
  * storage the caller gives. `RunObject` runs it inside a Durable Object;
- * the Node tests run it over `node:sqlite`.
+ * the run-state specs give it a test object's storage and alarm.
  *
  * The one alarm is always set to the earliest time a timer is due or a run
  * list update is due. When it fires, {@link RunState.alarm} delivers what is
