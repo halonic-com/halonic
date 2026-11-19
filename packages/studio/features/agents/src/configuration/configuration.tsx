@@ -4,6 +4,7 @@ import {
   type Tab,
   TabList,
   TabPanel,
+  usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
 import { useState } from "react";
@@ -44,7 +45,9 @@ const pages: readonly Tab<PageId>[] = (["behaviour", "model", "harness", "tools"
 
 /**
  * The agent's Configuration (`agents.configuration.pages`): a list of pages on the left and the
- * picked page beside it. A page that isn't built is absent, not empty (flow-agents 5.1).
+ * picked page beside it. A page that isn't built is absent, not empty (flow-agents 5.1). On a
+ * phone the list goes across the top instead, so the page keeps the full width
+ * (`agents.configuration.pages-phone`).
  */
 export function Configuration({
   host,
@@ -60,6 +63,7 @@ export function Configuration({
 }: ConfigurationProps) {
   const [page, setPage] = useState<PageId>("behaviour");
   const ids = useTabIds();
+  const phone = usePresentation() === "phone";
   if (load.kind === "failed") {
     return (
       <EmptyState
@@ -71,11 +75,17 @@ export function Configuration({
     );
   }
   return (
-    <div className="flex min-h-0 flex-1">
-      <div className="w-52 shrink-0 border-e border-border px-2 py-4">
+    <div className={phone ? "flex min-h-0 flex-1 flex-col" : "flex min-h-0 flex-1"}>
+      <div
+        className={
+          phone
+            ? "border-b border-border px-4 py-3"
+            : "w-52 shrink-0 border-e border-border px-2 py-4"
+        }
+      >
         <TabList
           label={words.pages}
-          orientation="vertical"
+          orientation={phone ? "horizontal" : "vertical"}
           tabs={pages}
           selected={page}
           onSelect={setPage}
