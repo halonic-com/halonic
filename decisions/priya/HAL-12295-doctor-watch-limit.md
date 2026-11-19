@@ -2,6 +2,7 @@
 
 - Approval: HAL-12295
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:1BcQqQH5eUUODfKZ0avT4xLi/TBEcJnEU176EO03j29eEhq9f13/U45iWT0hxnaW7FLWl0jXMs77lVZ2s3tjAQ==
 
 The doctor's Workspace tests now live in their own file,
 `apps/cli/src/output/doctor-report.workspace.test.ts`, next to the new tests for the file-watch
