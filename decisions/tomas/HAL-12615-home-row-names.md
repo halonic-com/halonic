@@ -3,6 +3,7 @@
 - Task: HAL-12615
 - Approval: a team decision with no board card (HAL-2282 rule), building on the team's HAL-12461 decision (option a); Liam placed the scope on HAL-12615 and approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kCoHiNZ4JB5KRTLkGG8vrgckN7AbgufqmuMTWOvv2Jh3YcvzOt2Goxai35pV0JqZE8lN+6q1cWIpRno2Dq2zBQ==
 
 ## What changes
 
