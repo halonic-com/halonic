@@ -1,3 +1,4 @@
+import { sandboxStartCheckKey } from "@halonicjs/app";
 import { defineFeature } from "@halonicjs/studio-shell";
 import { RoutinesHostService } from "./api.ts";
 import { listWords, searchWords } from "./list/list-words.ts";
@@ -12,6 +13,8 @@ export const routinesFeature = defineFeature({
   id: "routines",
   title: "Routines",
   needs: [RoutinesHostService],
+  // Run now is unavailable while the sandbox can't start, for a routine whose target needs it.
+  wants: [sandboxStartCheckKey],
   register(studio) {
     studio.places.add({
       id: "routines",

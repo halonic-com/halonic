@@ -152,6 +152,27 @@ verifies("studio.workspace-routines", () => {
     });
   });
 
+  it("says whether what a routine starts runs a program, through the workflow's agents", async () => {
+    const coder = "id: coder\nname: Coder\nharness: claude-code\n";
+    const startsReply = weeklyFile.replace(
+      "  agent: analyst\n  prompt: Write the report.",
+      "  workflow: reply",
+    );
+    const own = setup();
+    expect((await own.host.read(weekly)).startsProgram).toBe(false);
+    const agent = setup({}, [], {
+      "hubs/acme/agents/analyst.agent.yaml": `${analystFile}harness: codex\n`,
+    });
+    expect((await agent.host.read(weekly)).startsProgram).toBe(true);
+    const workflow = setup({}, [], {
+      "hubs/acme/agents/coder.agent.yaml": coder,
+      "hubs/acme/workflows/reply.workflow.yaml":
+        "id: reply\nname: Reply\ninitial: first\nstates:\n  first:\n    agent: coder\n    on: [{ to: done }]\n  done:\n    type: final\n",
+      "hubs/acme/workflows/routines/weekly-report.routine.yaml": startsReply,
+    });
+    expect((await workflow.host.read(weekly)).startsProgram).toBe(true);
+  });
+
   it("rejects a routine the workspace doesn't have as not found", async () => {
     const { host } = setup();
     await expect(host.read({ hubId: "acme", id: "gone" })).rejects.toMatchObject({

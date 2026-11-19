@@ -1,3 +1,4 @@
+import { startsAProgram, workflowAgentsOf } from "@halonicjs/adapter-workspace-models";
 import type { RunSummary } from "@halonicjs/events";
 import { describeTrigger, routineKey } from "@halonicjs/routines";
 import { KindedError } from "@halonicjs/std";
@@ -127,6 +128,20 @@ export function targetFound(workspace: LoadedWorkspace, target: RoutineTarget): 
   return targetsOf(workspace, target.hubId).some(
     (one) => one.kind === target.kind && one.id === target.id,
   );
+}
+
+/**
+ * Whether what a routine starts runs an agent in a program of its own (Claude Code or Codex), which
+ * needs the sandbox: the agent itself, or any agent of the workflow and the workflows it starts.
+ */
+export function targetStartsProgram(workspace: LoadedWorkspace, target: RoutineTarget): boolean {
+  const agents =
+    target.kind === "workflow"
+      ? workflowAgentsOf(workspace, { hubId: target.hubId, workflowId: target.id })
+      : filesOf(workspace, "agent").filter(
+          (file) => file.hub === target.hubId && file.value.id === target.id,
+        );
+  return agents.some((agent) => startsAProgram(agent.value.harness));
 }
 
 /** The name of what a routine starts, for the row's summary; its id when the file is missing. */

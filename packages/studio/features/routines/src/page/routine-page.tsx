@@ -1,3 +1,5 @@
+import { type SandboxStartCheck, sandboxStartCheckKey } from "@halonicjs/app";
+import { SandboxCantRunCallout } from "@halonicjs/studio-feature-runs/api";
 import {
   Button,
   Callout,
@@ -27,6 +29,7 @@ import { WhenCard } from "../when/when-card.tsx";
 import { failureReason, pageWords } from "./page-words.ts";
 import { RunDialog, runDialogReason } from "./run-dialog.tsx";
 import { runRoutineNow } from "./run-now.ts";
+import { type RunNowGate, useRunNowGate } from "./run-now-gate.ts";
 import { TRIGGER_STEP } from "./trigger-step.ts";
 import { useRoutine } from "./use-routine.ts";
 import { useTriggerFocus } from "./use-trigger-focus.ts";
@@ -44,6 +47,7 @@ export function RoutinePage({ item, context, step, asked }: ItemViewProps) {
       hubId={item.hub}
       id={item.id}
       announce={(text) => context.announcer.announce(text)}
+      sandboxStartCheck={context.services.find(sandboxStartCheckKey)}
       {...(step === TRIGGER_STEP && { triggerAsked: asked ?? 0 })}
       {...(openPlace && { goToRoutines: () => openPlace("routines") })}
       {...(runCommand && { addConnector: () => void runCommand("library.new-connector") })}
@@ -75,6 +79,11 @@ export interface RoutineScreenProps {
    * wasn't. The picker takes the focus once it is drawn, again each time this changes.
    */
   readonly triggerAsked?: number;
+  /**
+   * Checks whether the sandbox can start, for a routine whose target runs a program; where it is
+   * absent, Run now is never unavailable for the sandbox (the engine still refuses such a run).
+   */
+  readonly sandboxStartCheck?: SandboxStartCheck | undefined;
 }
 
 /**
@@ -93,6 +102,7 @@ export function RoutineScreen({
   addConnector,
   openFile,
   triggerAsked,
+  sandboxStartCheck,
 }: RoutineScreenProps) {
   // After a Try again reads, the routine's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -106,6 +116,7 @@ export function RoutineScreen({
   const phone = usePresentation() === "phone";
   const routine = load.kind === "ready" ? load.routine : undefined;
   const runs = useRoutineRuns(host, routine);
+  const gate = useRunNowGate(host, routine, sandboxStartCheck);
   const views = routineTabs(runs.load);
   // After Undo brings a deleted routine back, its name takes the focus once the page is drawn again.
   const focusWhenBack = useRef(false);
@@ -133,6 +144,7 @@ export function RoutineScreen({
         onRestored={restored}
         openRun={openRun}
         openFile={openFile}
+        gate={gate}
       />
       {load.kind === "ready" ? (
         <TabPanel
@@ -141,6 +153,13 @@ export function RoutineScreen({
           selected={view}
           className={`flex min-h-0 flex-1 flex-col gap-3 overflow-auto py-4 ${phone ? "px-4" : "px-6"}`}
         >
+          <SandboxCantRunCallout
+            name={name}
+            start={gate.sandbox}
+            firstLineId={gate.cantRunId}
+            announce={announce}
+            onReady={() => gate.runNow.current?.focus()}
+          />
           {view === "schedule" && (
             <ScheduleView
               host={host}
@@ -283,6 +302,7 @@ function RoutineHeader({
   onRestored,
   openRun,
   openFile,
+  gate,
 }: {
   readonly host: RoutinesHost;
   /** The routine, once it is read; before that the header shows the id and has no menu. */
@@ -300,6 +320,8 @@ function RoutineHeader({
   readonly onRestored: () => void;
   readonly openRun: ((runId: string) => void) | undefined;
   readonly openFile: ((path: string) => void) | undefined;
+  /** Whether Run now can start a run while the sandbox can't start, and its button. */
+  readonly gate: RunNowGate;
 }) {
   const phone = usePresentation() === "phone";
   const toasts = useToastStore();
@@ -309,7 +331,7 @@ function RoutineHeader({
   // Run now on a routine that isn't fully live asks first, in the run dialog.
   const [asking, setAsking] = useState(false);
   const start = () => {
-    if (routine === undefined || starting) return;
+    if (routine === undefined || starting || gate.unavailable !== undefined) return;
     setAsking(false);
     setStarting(true);
     void runRoutineNow(host, toasts, routine, openRun).finally(() => setStarting(false));
@@ -400,7 +422,14 @@ function RoutineHeader({
       )}
       {routine !== undefined && host.runNow !== undefined && (
         <div className="ml-auto">
-          <Button variant="secondary" size="sm" busy={starting} onClick={pressRunNow}>
+          <Button
+            ref={gate.runNow}
+            variant="secondary"
+            size="sm"
+            busy={starting}
+            unavailable={gate.unavailable}
+            onClick={pressRunNow}
+          >
             {pageWords.runNow}
           </Button>
         </div>
