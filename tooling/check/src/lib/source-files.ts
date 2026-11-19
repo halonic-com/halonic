@@ -25,11 +25,20 @@ export interface HiddenLoad {
   readonly line: number;
 }
 
+/** A read of a static member of a built-in class, such as `URL.parse`. */
+export interface BuiltInMember {
+  /** The class and the member, such as `URL.parse`. */
+  readonly name: string;
+  readonly line: number;
+}
+
 /** The facts the rules need from one TypeScript or JavaScript file. */
 export interface SourceFacts {
   readonly imports: readonly ImportReference[];
   readonly hiddenLoads: readonly HiddenLoad[];
   readonly functions: readonly FunctionSpan[];
+  /** Static members of the classes in `watchedBuiltIns`, which the `webview-apis` check reads. */
+  readonly builtInMembers: readonly BuiltInMember[];
 }
 
 /** True when the file is code, docs or config that people read and review as text. */
@@ -65,6 +74,7 @@ export function readSourceFacts(fileName: string, text: string): SourceFacts {
   const imports: ImportReference[] = [];
   const hiddenLoads: HiddenLoad[] = [];
   const functions: FunctionSpan[] = [];
+  const builtInMembers: BuiltInMember[] = [];
   const lineOf = (position: number): number =>
     source.getLineAndCharacterOfPosition(position).line + 1;
   for (const directive of source.typeReferenceDirectives) {
@@ -94,10 +104,14 @@ export function readSourceFacts(fileName: string, text: string): SourceFacts {
       const end = lineOf(node.getEnd());
       functions.push({ name: functionName(node), line: start, lineCount: end - start + 1 });
     }
+    const member = builtInMemberOf(node);
+    if (member !== undefined) {
+      builtInMembers.push({ name: member, line: lineOf(node.getStart(source)) });
+    }
     ts.forEachChild(node, visit);
   };
   visit(source);
-  return { imports, hiddenLoads, functions };
+  return { imports, hiddenLoads, functions, builtInMembers };
 }
 
 function scriptKind(fileName: string): ts.ScriptKind {
@@ -224,6 +238,35 @@ function globalEscape(node: ts.Node): string | undefined {
     }
   }
   return undefined;
+}
+
+/** The built-in classes whose static members `builtInMembers` lists. */
+const watchedBuiltIns = new Set(["URL"]);
+
+/**
+ * Names the static member of a watched built-in class that a node reads, such
+ * as `URL.parse` for `URL.parse(…)`, `URL["parse"]` or `globalThis.URL.parse`.
+ */
+function builtInMemberOf(node: ts.Node): string | undefined {
+  if (!ts.isPropertyAccessExpression(node) && !ts.isElementAccessExpression(node)) {
+    return undefined;
+  }
+  const base = unwrap(node.expression);
+  const className = ts.isIdentifier(base) || isOnGlobalObject(base) ? memberName(base) : undefined;
+  const key = memberName(node);
+  if (className === undefined || key === undefined || !watchedBuiltIns.has(className)) {
+    return undefined;
+  }
+  return `${className}.${key}`;
+}
+
+/** True for `globalThis.name`, `window.name` and the like. */
+function isOnGlobalObject(node: ts.Expression): boolean {
+  if (!ts.isPropertyAccessExpression(node)) {
+    return false;
+  }
+  const owner = unwrap(node.expression);
+  return ts.isIdentifier(owner) && globalObjects.has(owner.text);
 }
 
 /** The expression inside parentheses, casts, `satisfies` and `!`. */

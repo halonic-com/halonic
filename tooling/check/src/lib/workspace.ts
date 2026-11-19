@@ -199,6 +199,11 @@ export function listRepoFiles(root: string): string[] {
   return [...files].filter((file) => existsSync(join(root, file))).sort();
 }
 
+/** The path of `file` relative to its package's folder. */
+export function inPackagePath(file: string, pkg: WorkspacePackage): string {
+  return pkg.directory === "." ? file : file.slice(pkg.directory.length + 1);
+}
+
 /** Finds the package that owns a file: the one with the longest matching folder. */
 export function owningPackage(
   file: string,

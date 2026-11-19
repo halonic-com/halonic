@@ -62,6 +62,10 @@ Linux), Chromium 123 (WebView2 on Windows, Android WebView) and Firefox 120. If 
 strict for the Linux versions we support, the fallback is a `[data-theme="dark"]` block with the
 dark values; that decision belongs to the first `apps/studio` pull request.
 
+The same minimum holds for every script the Studio page loads, not only for CSS. The
+`webview-apis` check (`pnpm check`) fails code the page loads that uses a newer web API, such as
+`URL.parse`.
+
 ## What the tokens give you
 
 | Token | Classes |

@@ -123,7 +123,7 @@ export function loadContext(
     read,
     sourceFacts(file) {
       if (!isSourceFile(file)) {
-        return { imports: [], hiddenLoads: [], functions: [] };
+        return { imports: [], hiddenLoads: [], functions: [], builtInMembers: [] };
       }
       let found = facts.get(file);
       if (found === undefined) {

@@ -17,7 +17,7 @@ import {
   namesToolConfig,
   splitBareSpecifier,
 } from "../lib/source-files.ts";
-import { owningPackage, type WorkspacePackage } from "../lib/workspace.ts";
+import { inPackagePath, owningPackage, type WorkspacePackage } from "../lib/workspace.ts";
 import { apiTypesProblem, isApiTypes } from "./api-types.ts";
 import { type EdgeKind, layerOf, layerProblem } from "./layer-table.ts";
 import { exportKeys } from "./packages.ts";
@@ -68,11 +68,6 @@ export function isDevFile(file: string, pkg: WorkspacePackage, layer: Layer | un
     return true;
   }
   return /^[^/]+\.config\.[cm]?[jt]s$/.test(inPackagePath(file, pkg));
-}
-
-/** The path of `file` relative to its package's folder. */
-function inPackagePath(file: string, pkg: WorkspacePackage): string {
-  return pkg.directory === "." ? file : file.slice(pkg.directory.length + 1);
 }
 
 /** The layers whose code must stay free of loads the check can't follow. */

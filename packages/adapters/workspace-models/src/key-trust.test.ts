@@ -188,6 +188,20 @@ const file = (each: Case) => ({
   ...(each.secret === undefined ? {} : { secret: each.secret }),
 });
 
+/** Runs `run` with `URL.parse` taken away, as on Studio's oldest webviews, then puts it back. */
+function withoutUrlParse<T>(run: () => T): T {
+  const parse = Object.getOwnPropertyDescriptor(URL, "parse");
+  Reflect.deleteProperty(URL, "parse");
+  try {
+    expect("parse" in URL).toBe(false);
+    return run();
+  } finally {
+    if (parse !== undefined) {
+      Object.defineProperty(URL, "parse", parse);
+    }
+  }
+}
+
 /** A workspace whose `agent` alias is served by the `main` provider of `each`. */
 async function workspaceFor(each: Case): Promise<LoadedWorkspace> {
   return await workspaceOf({
@@ -230,6 +244,17 @@ verifies("cli.workspace-provider-key-trust", () => {
   describe("where a provider's stored key goes", () => {
     it.each(cases)("$name", (each) => {
       expect(keyDestination(file(each))).toEqual({
+        provider: "main",
+        origin: each.origin ?? "an address that can't be read",
+        isDefault: each.isDefault,
+      });
+    });
+
+    // Studio's oldest webviews (Safari 17.5, Chromium 123) have no URL.parse (HAL-13797).
+    it.each(cases)("$name, the same on a webview without URL.parse", (each) => {
+      const destination = withoutUrlParse(() => keyDestination(file(each)));
+
+      expect(destination).toEqual({
         provider: "main",
         origin: each.origin ?? "an address that can't be read",
         isDefault: each.isDefault,
