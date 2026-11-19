@@ -36,6 +36,7 @@ export interface ToolsKit {
 export interface ReviewJson {
   readonly on: string[];
   readonly waiting: { name: string; state: string; fingerprint: string; serverChanged: boolean }[];
+  readonly refused: { name: string; reason: string }[];
 }
 
 /** What {@link ToolsKit.listedNow} gives back. */

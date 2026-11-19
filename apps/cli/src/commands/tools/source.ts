@@ -165,6 +165,16 @@ export async function checkToolSource(
 }
 
 /**
+ * Whether the connector's `tools.allow` offers the tool to agents, or it has
+ * no `allow`. A tool `allow` leaves out is never offered, so `review` doesn't
+ * ask about it and `approve --all` doesn't approve it.
+ */
+export function isOffered(source: ToolSource, listedName: string): boolean {
+  const { allow } = source.connector.tools;
+  return allow === undefined || allow.includes(listedName);
+}
+
+/**
  * What `review` and `approve` say, and exit 0 on, for a connector with no
  * listed tools to approve. `--json` gets the reason as `needsNoApproval`.
  */
