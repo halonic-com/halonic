@@ -36,11 +36,11 @@ export function PairDialog(props: PairDialogProps) {
     void pairing.close().finally(props.onClose);
   };
 
-  const answer = (allow: boolean) => {
+  const answer = (allow: boolean, phoneName: string) => {
     setBusy(true);
     setError(undefined);
     (allow ? pairing.allow() : pairing.deny())
-      .catch(() => setError(allow ? words.ALLOW_FAILED : words.DENY_FAILED))
+      .catch(() => setError(allow ? words.allowFailed(phoneName) : words.denyFailed(phoneName)))
       .finally(() => setBusy(false));
   };
 
@@ -54,9 +54,9 @@ export function PairDialog(props: PairDialogProps) {
         cancelLabel={words.DONT_ALLOW}
         busy={busy}
         {...(error === undefined ? {} : { error })}
-        onConfirm={() => answer(true)}
+        onConfirm={() => answer(true, view.check.phoneName)}
         // Don't allow refuses the phone; Escape and the ✕ only close, which ends the pairing too.
-        onCancel={(reason) => (reason === "button" ? answer(false) : close())}
+        onCancel={(reason) => (reason === "button" ? answer(false, view.check.phoneName) : close())}
       >
         <CheckStep check={view.check} provider={props.provider} />
       </Dialog>

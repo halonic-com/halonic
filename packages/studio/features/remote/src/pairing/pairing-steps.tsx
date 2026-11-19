@@ -195,7 +195,7 @@ export function EndedStep({
           action={
             actions.length > 0
               ? actions
-              : { label: words.TRY_AGAIN, onClick: onNewCode, focus: true }
+              : { label: words.CHECK_AGAIN, onClick: onNewCode, focus: true }
           }
         >
           {problem.line ?? ""}
@@ -216,15 +216,18 @@ export function EndedStep({
   );
 }
 
-/** The host couldn't open a pairing: say so, and offer to try again. */
+/** The host couldn't open a pairing: say so, and offer to try again, over the usual footer. */
 export function FailedStep({ onTryAgain }: { readonly onTryAgain: () => void }) {
   return (
-    <Callout
-      tone="danger"
-      title={words.START_FAILED}
-      action={{ label: words.TRY_AGAIN, onClick: onTryAgain, focus: true }}
-    >
-      {words.NOTHING_SHARED}
-    </Callout>
+    <div className="flex flex-col gap-4">
+      <Callout
+        tone="danger"
+        title={words.START_FAILED}
+        action={{ label: words.TRY_AGAIN, onClick: onTryAgain, focus: true }}
+      >
+        {null}
+      </Callout>
+      <p>{words.NOTHING_SHARED}</p>
+    </div>
   );
 }
