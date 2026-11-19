@@ -11,6 +11,7 @@ import {
 import { loadWorkspace } from "@halonicjs/workspace";
 import { type CliCommand, type CommandInput, type JsonFields, UsageError } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
+import { runMessages } from "../../messages/run.ts";
 import { testMessages } from "../../messages/test.ts";
 import {
   listJson,
@@ -20,6 +21,7 @@ import {
   testLines,
 } from "../../output/test-report.ts";
 import { dirOption, givenDir, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
+import { refuseFileProblems } from "../../workspace-problems.ts";
 
 /** What `halonic test` takes from the computer: only the clock its times are measured with. */
 export interface TestSetup {
@@ -44,6 +46,9 @@ export function testCommandWith(setup: TestSetup): CliCommand {
     async run(input, context) {
       const workspace = await openWorkspaceDir(input, context);
       const loaded = await loadWorkspace(workspace.store);
+      // A file with an error is left out, so its workflow's tests would all
+      // fail as if it were missing (HAL-12978): point at validate instead.
+      refuseFileProblems(workspace, loaded, runMessages.nothingRan(), givenDir(input, workspace));
       const filter = input.options["filter"];
       const tests: TestInput = {
         workspace: loaded,
