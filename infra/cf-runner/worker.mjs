@@ -12,6 +12,7 @@
 
 import { checkSpend } from "../spend-guard/src/check-spend.mjs";
 import bootstrap from "./bootstrap.sh";
+import { JOB_LIMIT_MS, ledger, USD_PER_SECOND } from "./ledger.mjs";
 import {
   b64url,
   imageFor,
@@ -27,7 +28,6 @@ import {
   validSignature,
   wantedJob,
 } from "./lib.mjs";
-import { JOB_LIMIT_MS, ledger, USD_PER_SECOND } from "./ledger.mjs";
 import prefill from "./prefill.sh";
 
 export { Ledger } from "./ledger.mjs";
