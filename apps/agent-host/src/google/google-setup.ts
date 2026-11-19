@@ -1,14 +1,13 @@
 import { join } from "node:path";
-import { EnvSecrets, firstSecret } from "@halonicjs/adapter-env-secrets";
 import { FileRecordStore } from "@halonicjs/adapter-fs-node";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
-import { FileSecretStore } from "@halonicjs/adapter-secrets-file";
 import { createTokenStore } from "@halonicjs/adapter-token-store";
 import { clientSecretStore, setupRecords } from "@halonicjs/google-setup";
 import type { GoogleSetupPorts } from "@halonicjs/host-server";
-import type { HttpClient, Secrets } from "@halonicjs/ports";
-import { type ProfileFolder, secretsFile } from "@halonicjs/profile";
+import type { HttpClient } from "@halonicjs/ports";
+import type { ProfileFolder } from "@halonicjs/profile";
 import { randomIds, systemClock } from "@halonicjs/std";
+import { tokenKeySecrets, webCryptoDigest } from "../profile-token-key.ts";
 import { proxySetting } from "../proxy-setting.ts";
 import { googleAccountActions } from "./google-actions.ts";
 import { workspaceConnectorSource } from "./workspace-connector-source.ts";
@@ -33,22 +32,6 @@ function googleHostClass(url: URL) {
 }
 
 /**
- * The secrets the token key is read from: the environment first, then the
- * profile's secrets file, as the CLI reads them, so the host opens what the
- * CLI sealed. The file is opened on the first name the environment doesn't
- * have.
- */
-function tokenKeySecrets(options: GoogleSetupOptions): Secrets {
-  let file: FileSecretStore | undefined;
-  return firstSecret(new EnvSecrets(options.env), {
-    get: (name) => {
-      file ??= new FileSecretStore(secretsFile(options.profile));
-      return file.get(name);
-    },
-  });
-}
-
-/**
  * What the Google routes work with, over the profile's `google` folder, the
  * same one the CLI's `halonic google` commands use. Nothing is created until
  * something is saved.
@@ -62,7 +45,7 @@ export function openGoogleSetup(options: GoogleSetupOptions): GoogleSetupPorts {
   const googleFolder = join(options.profile.root, "google");
   const tokens = createTokenStore({
     records: new FileRecordStore(join(googleFolder, "tokens")),
-    secrets: tokenKeySecrets(options),
+    secrets: tokenKeySecrets(options.profile, options.env),
     clock,
   });
   const http =
@@ -87,10 +70,3 @@ export function openGoogleSetup(options: GoogleSetupOptions): GoogleSetupPorts {
     signInEvents: { publish: () => undefined },
   };
 }
-
-const webCryptoDigest = {
-  async sha256(data: Uint8Array): Promise<Uint8Array> {
-    // A copy on its own ArrayBuffer: Web Crypto refuses views of a SharedArrayBuffer.
-    return new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(data)));
-  },
-};

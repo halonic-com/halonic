@@ -117,4 +117,12 @@ describe("serveHostOverFrames", () => {
     relay.streams.input.end();
     expect(await server?.ended).toBeUndefined();
   });
+
+  it("refuses to start with a prefix route whose path doesn't end in a slash", () => {
+    const relay = new TestRelay();
+    const unbounded: HostRoute = { ...twoLines, path: "/v1/lin", prefix: true };
+    expect(() => serveHostOverFrames(token, [unbounded], relay.streams, relayPort)).toThrow(
+      'The prefix route GET /v1/lin must end in "/".',
+    );
+  });
 });

@@ -1,5 +1,4 @@
 import type { Readable, Writable } from "node:stream";
-import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { NodeHarnessBridgeServer, providerHostClass } from "@halonicjs/adapter-harness-bridge";
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
@@ -12,8 +11,8 @@ import {
 } from "@halonicjs/adapter-sandbox-srt";
 import type { SandboxChoiceService } from "@halonicjs/app";
 import type { GoogleSetupPorts } from "@halonicjs/host-server";
-import type { Harness, TrustStore } from "@halonicjs/ports";
-import { type ProfileFolder, type ProfilePlatform, trustFolder } from "@halonicjs/profile";
+import type { Harness } from "@halonicjs/ports";
+import type { ProfileFolder } from "@halonicjs/profile";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { bridgeSocketFolder, sweepLeftOverBridges } from "./bridge/socket-folder.ts";
 import { hostConnectorRoutes } from "./connector/connector-factory.ts";
@@ -22,7 +21,6 @@ import { type GatewaySettings, gatewayFor, gatewayOff } from "./gateway/gateway-
 import { RemoteGateway } from "./gateway/remote-gateway.ts";
 import { RunLedger } from "./gateway/run-ledger.ts";
 import { googleRoutes } from "./google/google-routes.ts";
-import { openGoogleSetup } from "./google/google-setup.ts";
 import { harnessFolders } from "./harness/harness-folders.ts";
 import { harnessRoutes } from "./harness/harness-routes.ts";
 import { RunTable } from "./harness/run-table.ts";
@@ -31,6 +29,7 @@ import { hostModelRoutes } from "./model/host-model-routes.ts";
 import { modelRoutes } from "./model/model-routes.ts";
 import { hostPlugins } from "./plugin/host-plugins.ts";
 import { pluginRoutes } from "./plugin/plugin-routes.ts";
+import { optionalProfileOf, profileGoogleSetup, profileTrustStore } from "./profile-folder.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { hostSandboxChoice } from "./sandbox/choice-host.ts";
 import { sandboxChoiceRoutes } from "./sandbox/choice-routes.ts";
@@ -42,6 +41,7 @@ import { hostWslRemover, type WslRemover } from "./sandbox/wsl-remove-host.ts";
 import { healthRoute } from "./server/health-route.ts";
 import { type HostRoute, serveHostOverFrames, startHostServer } from "./server/host-server.ts";
 import { randomLaunchToken } from "./server/launch-token.ts";
+import { hostIntegrationSignInRoutes } from "./sign-in/host-sign-ins.ts";
 import { takeStandardOutput } from "./stdio/standard-output.ts";
 import { openTerminal } from "./terminal/open-terminal.ts";
 
@@ -245,33 +245,6 @@ function connectorPlaces(roots: readonly string[], profileFolder: string | undef
   };
 }
 
-function profileTrustStore(profileFolder: string): TrustStore {
-  return new FileTrustStore(trustFolder(profileOf(profileFolder)));
-}
-
-/** The Google setup of the profile folder, or `undefined` without one. */
-function profileGoogleSetup(
-  profileFolder: string | undefined,
-  workspaceRoots: readonly string[],
-): GoogleSetupPorts | undefined {
-  if (profileFolder === undefined) return undefined;
-  return openGoogleSetup({ profile: profileOf(profileFolder), env: process.env, workspaceRoots });
-}
-
-/** The profile folder `--profile-folder` names, or `undefined` without one. */
-function optionalProfileOf(root: string | undefined): ProfileFolder | undefined {
-  return root === undefined ? undefined : profileOf(root);
-}
-
-/** The profile folder `--profile-folder` names, with the system its path belongs to. */
-function profileOf(root: string): ProfileFolder {
-  const platforms: Partial<Record<NodeJS.Platform, ProfilePlatform>> = {
-    win32: "windows",
-    darwin: "macos",
-  };
-  return { platform: platforms[process.platform] ?? "linux", root };
-}
-
 /** The value after `name` in `args`, when there is one. */
 function argumentAfter(args: readonly string[], name: string): string | undefined {
   const at = args.indexOf(name);
@@ -369,7 +342,7 @@ interface HostServices {
  * @param connectors - the folders the launcher named as workspaces, what a workspace connector's program may never reach, and the trust records it is checked against
  * @param google - the Google setup of the profile, or `undefined` without a profile folder (no Google route is served)
  * @param profile - the profile folder plugins and their trust are read from; `undefined` without one, and then no plugin call is served
- * @param relayPort - the relay's port in `--stdio` mode, which the Google sign-in's redirect names; `undefined` when the host listens on its own port
+ * @param relayPort - the relay's port in `--stdio` mode, which the Google sign-in's redirect names (an integration's sign-in can't start there yet); `undefined` when the host listens on its own port
  * @param choice - the choice service of this host's backend, `undefined` without a profile folder (no choice route is served)
  * @param wslRemover - removes Halonic's WSL distro, `undefined` without a profile folder (no `remove-wsl` route is served)
  * @param gateway - whether and where the remote gateway listens (requirement `agent-host.remote-gateway`)
@@ -453,6 +426,12 @@ function hostServices(
           ...(relayPort === undefined ? {} : { relayPort }),
         })),
     ...(plugins === undefined ? [] : pluginRoutes({ plugins: plugins.table, log: logToError })),
+    ...hostIntegrationSignInRoutes({
+      profile,
+      relayPort,
+      ownPorts: () => [...listeningPorts, ...bridges.ports()],
+      log: logToError,
+    }),
     signInRoute({ harnesses, openTerminal: (command) => openTerminal(command) }),
   ];
   const stop = async () => {
