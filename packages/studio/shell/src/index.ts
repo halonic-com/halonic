@@ -126,6 +126,11 @@ export { ItemPage, type ItemPageChat, type ItemPageProps } from "./item-page/ite
 export { NameField, type NameFieldProps } from "./item-page/name-field.tsx";
 export { useRememberedView } from "./item-page/remembered-view.ts";
 export {
+  RenameSheet,
+  type RenameSheetProps,
+  renameSheetWords,
+} from "./item-page/rename-sheet.tsx";
+export {
   allFilter,
   type OverviewChip,
   type OverviewHub,
