@@ -25,7 +25,35 @@ function afterColon(sentence: string): string {
   const opened = trimmed.startsWith("Halonic")
     ? trimmed
     : `${trimmed.charAt(0).toLowerCase()}${trimmed.slice(1)}`;
-  return /[.!?]$/.test(opened) ? opened : `${opened}.`;
+  return asSentence(opened);
+}
+
+/**
+ * How the shell's sentence for an unreachable proxy (`proxy` in `http_fetch.rs`) starts. The banner
+ * already says it, so it gives only what follows (HAL-13770). Other callers show the shell's
+ * sentence on its own, so the shell keeps it.
+ */
+const unreachableThroughProxy = "couldn't reach the host through the proxy";
+
+/**
+ * The end of the proxy line: the shell's sentence after a colon, or, when that sentence only
+ * repeats that the proxy couldn't be reached, what it says to do as a sentence of its own.
+ */
+function proxyLineEnd(reason: string | undefined): string {
+  if (reason === undefined) {
+    return ".";
+  }
+  const trimmed = reason.trim();
+  if (!trimmed.startsWith(unreachableThroughProxy)) {
+    return `: ${afterColon(trimmed)}`;
+  }
+  const rest = trimmed.slice(unreachableThroughProxy.length).replace(/^:\s*/, "");
+  return rest === "" ? "." : `. ${asSentence(capitalised(rest))}`;
+}
+
+/** A sentence with a full stop at the end, unless it already ends a sentence. */
+function asSentence(sentence: string): string {
+  return /[.!?]$/.test(sentence) ? sentence : `${sentence}.`;
 }
 
 /**
@@ -47,14 +75,15 @@ export const failureWords = {
     `Halonic couldn't reach ${provider}${host === undefined ? "" : ` at ${host}`} for ${modelOrAlias(model, alias)}. This computer may be offline. Check your internet connection, then run again.`,
   /**
    * F7 when the call failed at the proxy (`proxy.*`, HAL-13725): the shell's own sentence says
-   * what to change, after a colon; without one the sentence ends at the proxy.
+   * what to change, after a colon; without one the sentence ends at the proxy. An unreachable
+   * proxy's sentence follows as a sentence of its own, without its first part (HAL-13770).
    */
   modelUnreachableThroughProxy: (
     provider: string,
     host: string | undefined,
     reason: string | undefined,
   ) =>
-    `Halonic couldn't reach ${provider}${host === undefined ? "" : ` at ${host}`} through your proxy${reason === undefined ? "." : `: ${afterColon(reason)}`}`,
+    `Halonic couldn't reach ${provider}${host === undefined ? "" : ` at ${host}`} through your proxy${proxyLineEnd(reason)}`,
   proxyHowTo: "Model calls through a proxy",
   /** The how-to #3799 updated, until docs.halonic.dev has it. */
   proxyHowToAddress:

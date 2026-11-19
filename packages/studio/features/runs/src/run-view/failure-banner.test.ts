@@ -135,7 +135,7 @@ verifies("runs.run-view.failure-banners", () => {
         [
           "proxy.unreachable",
           "couldn't reach the host through the proxy: check HTTPS_PROXY and the proxy",
-          "Halonic couldn't reach Claude at api.anthropic.com through your proxy: couldn't reach the host through the proxy: check HTTPS_PROXY and the proxy.",
+          "Halonic couldn't reach Claude at api.anthropic.com through your proxy. Check HTTPS_PROXY and the proxy.",
         ],
       ])("says it was the proxy for %s, with the shell's sentence", (code, message, line) => {
         const banner = causeBanner(proxied(code, message), log, context, false);
@@ -149,6 +149,19 @@ verifies("runs.run-view.failure-banners", () => {
             opens: "Opens GitHub",
           },
         ]);
+      });
+
+      it("says an unreachable proxy once, even when the shell's sentence gives nothing more", () => {
+        expect(
+          lines(
+            causeBanner(
+              proxied("proxy.unreachable", "couldn't reach the host through the proxy"),
+              log,
+              context,
+              false,
+            ),
+          ),
+        ).toEqual(["Halonic couldn't reach Claude at api.anthropic.com through your proxy."]);
       });
 
       it("ends at the proxy for a cause without a sentence, and never says offline", () => {

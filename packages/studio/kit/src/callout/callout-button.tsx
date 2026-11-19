@@ -3,6 +3,13 @@ import { Button, OnTintContext } from "../button/button.tsx";
 import { Tooltip, type TooltipTriggerProps } from "../tooltip/tooltip.tsx";
 import type { CalloutAction } from "./callout.tsx";
 
+/**
+ * On a phone the label wraps between words and the button grows in height, so at 200 % a long
+ * label isn't cut by the Callout (WCAG 1.4.10, HAL-13770). The kit's buttons never wrap
+ * elsewhere, and the desktop keeps one line. The button's own height is a minimum already.
+ */
+const labelClasses = "phone:whitespace-normal phone:text-start";
+
 /** Puts focus on an action that asks for it when it is drawn. */
 function focusOnMount(button: HTMLButtonElement | null): void {
   button?.focus();
@@ -41,13 +48,15 @@ export function CalloutButton({
       {...(focused && describedBy !== undefined ? { "aria-describedby": describedBy } : {})}
       {...trigger}
     >
-      {action.label}
-      {action.opens === undefined ? null : (
-        <>
-          <span aria-hidden="true"> ↗</span>
-          <span className="sr-only">. {action.opens}</span>
-        </>
-      )}
+      <span className={labelClasses}>
+        {action.label}
+        {action.opens === undefined ? null : (
+          <>
+            <span aria-hidden="true"> ↗</span>
+            <span className="sr-only">. {action.opens}</span>
+          </>
+        )}
+      </span>
     </Button>
   );
 
