@@ -15,8 +15,8 @@ import {
 } from "./trusted-runner-start.ts";
 import { UnfencedRuns } from "./unfenced-runs.ts";
 
-/** These tests never take a yes back in another process, so the saved yes is never read again. */
-const noSavedYesChecks = { set: () => undefined, clear: () => undefined };
+/** These tests never take a yes back in another process and no start hangs, so no timer goes off. */
+const idleTimers = { set: () => undefined, clear: () => undefined };
 
 /** SHA-256 from Web Crypto, as the platforms' `Digest` adapters give it. */
 const digest: Digest = {
@@ -91,13 +91,14 @@ async function setup(
   const runs = new UnfencedRuns({
     store: new TestUnfencedRunConsentStore(),
     clock,
-    timers: noSavedYesChecks,
+    timers: idleTimers,
   });
   const gate = new RunnerStartGate({
     platform: "linux",
     fenced: sandbox("fenced", check),
     launcher: sandbox("launcher"),
     runs,
+    timers: idleTimers,
   });
   const starts = new TrustedRunnerStart({ workspace, digest, gate });
   const started: FakeRunner[] = [];

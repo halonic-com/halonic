@@ -16,7 +16,24 @@ import {
   type RunnerUnfencedReason,
   runnerFence,
 } from "./runner-fence.ts";
+import type { SaveTimers } from "./save-scheduler.ts";
 import { isSameYes, type UnfencedRunDecision, type UnfencedRuns } from "./unfenced-runs.ts";
+
+/**
+ * How long a runner has to start, in milliseconds, unless the host sets its
+ * own limit. It covers the sandbox opening and the runner's ready message,
+ * which has 10 s of its own, with room for a slow computer.
+ */
+export const runnerStartTimeoutMs = 30_000;
+
+/** A runner start that ran past its time limit. Nothing runs: a runner that arrives later is stopped. */
+export class RunnerStartTimeoutError extends Error {
+  override readonly name = "TimeoutError";
+
+  constructor(timeoutMs: number) {
+    super(`The plugin or integration didn't start within ${timeoutMs / 1000} s.`);
+  }
+}
 
 /** The sandbox a start is fenced by, and what decides whether it counts as a fence. */
 interface FencedSandbox {
@@ -92,6 +109,10 @@ export interface RunnerStartGateOptions {
   readonly launcher: Sandbox;
   /** The user's saved yes, and the runs Take back stops. */
   readonly runs: UnfencedRuns;
+  /** What a start's time limit waits with: `setTimeout` and `clearTimeout`, or a test's own. */
+  readonly timers: SaveTimers;
+  /** How long a runner has to start, in milliseconds; {@link runnerStartTimeoutMs} when left out. */
+  readonly startTimeoutMs?: number;
 }
 
 /**
@@ -99,7 +120,7 @@ export interface RunnerStartGateOptions {
  * it there.
  *
  * @example
- * const gate = new RunnerStartGate({ platform: process.platform, fenced: srt, launcher: host, runs });
+ * const gate = new RunnerStartGate({ platform: process.platform, fenced: srt, launcher: host, runs, timers });
  * const start = await gate.start((sandbox) => startRunner({ ...options, sandbox }));
  * if (start.run === "needs-yes") showTrustCheck(start.reason);
  */
@@ -109,19 +130,31 @@ export class RunnerStartGate {
   readonly #launcher: Sandbox;
   readonly #mxc: MxcFence | undefined;
   readonly #runs: UnfencedRuns;
+  readonly #timers: SaveTimers;
+  readonly #startTimeoutMs: number;
 
+  /** @throws RangeError when `startTimeoutMs` isn't a whole number of milliseconds of 1 or more */
   constructor(options: RunnerStartGateOptions) {
+    const startTimeoutMs = options.startTimeoutMs ?? runnerStartTimeoutMs;
+    if (!(Number.isInteger(startTimeoutMs) && startTimeoutMs >= 1)) {
+      throw new RangeError(
+        `startTimeoutMs must be a whole number of milliseconds of 1 or more, not ${startTimeoutMs}.`,
+      );
+    }
     this.#platform = options.platform;
     this.#fenced = options.fenced;
     this.#launcher = options.launcher;
     this.#mxc = options.mxc;
     this.#runs = options.runs;
+    this.#timers = options.timers;
+    this.#startTimeoutMs = startTimeoutMs;
   }
 
   /**
    * Starts a runner through `startIn` in the sandbox this start may use, or
    * starts nothing and says why.
    *
+   * @throws {@link RunnerStartTimeoutError} when `startIn` doesn't settle within the start's time limit
    * @throws what `startIn` throws, or the store's error when a saved yes can't be removed after the computer passed
    */
   async start<Runner extends GatedRunner>(
@@ -180,7 +213,7 @@ export class RunnerStartGate {
     check: SandboxCheck,
     { sandbox, backend, mxcFences }: FencedSandbox,
   ): Promise<GatedStart<Runner>> {
-    const runner = await startIn(sandbox, backend);
+    const runner = await this.#startWithin(startIn, sandbox, backend);
     const proven = runnerFence({
       platform: this.#platform,
       check,
@@ -201,7 +234,7 @@ export class RunnerStartGate {
     fence: RunnerFence,
     allowed: Allowed,
   ): Promise<GatedStart<Runner>> {
-    const runner = await startIn(this.#launcher, "srt");
+    const runner = await this.#startWithin(startIn, this.#launcher, "srt");
     if (runner.fence.state !== "off") {
       await runner.close();
       throw new Error(
@@ -226,5 +259,43 @@ export class RunnerStartGate {
         : { run: "stopped" };
     }
     return { run: "unfenced", reason: allowed.reason, allowedAt: allowed.allowedAt, runner };
+  }
+
+  /**
+   * Starts the runner within the start's time limit. When the time is up the
+   * start fails closed: a start without the sandbox no longer holds up Take
+   * back, and a runner that arrives later is stopped at once.
+   */
+  async #startWithin<Runner extends GatedRunner>(
+    startIn: StartInSandbox<Runner>,
+    sandbox: Sandbox,
+    backend: RunnerBackend,
+  ): Promise<Runner> {
+    return await new Promise<Runner>((resolve, reject) => {
+      let timedOut = false;
+      const timer = this.#timers.set(() => {
+        timedOut = true;
+        reject(new RunnerStartTimeoutError(this.#startTimeoutMs));
+      }, this.#startTimeoutMs);
+      startIn(sandbox, backend).then(
+        (runner) => {
+          if (!timedOut) {
+            this.#timers.clear(timer);
+            resolve(runner);
+            return;
+          }
+          // Nobody waits for it any more. If it fails to stop, the runner's
+          // own limit ends it: nothing ever calls it, and it stops after two
+          // minutes without a call.
+          runner.close().catch(() => undefined);
+        },
+        (error: unknown) => {
+          // After the time is up, the start's own error has nobody to go to.
+          if (timedOut) return;
+          this.#timers.clear(timer);
+          reject(error);
+        },
+      );
+    });
   }
 }
