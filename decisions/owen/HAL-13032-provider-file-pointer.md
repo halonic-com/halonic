@@ -4,6 +4,7 @@
 - Task: HAL-13032, a follow-up to HAL-12608, from the C119 claims check on HAL-13025
 - Approval: Liam's review on HAL-13032
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:NWxLFrk+mIQrl22B8iOkoOg5DyqRmdKC/DSDHFNmQkBTY0PcSn0JCEH3VcZyV4hzEHyTSEp4UraDL192JAnQBQ==
 
 ## What changes
 
