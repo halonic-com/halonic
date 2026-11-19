@@ -3,7 +3,6 @@
 - Task: HAL-12642
 - Approval: team decision under the HAL-2282 rule for small wording on approved screens; Liam reviews the pull request on HAL-12642 and signs this note
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LBCNs+5nVpjJNQvZdrkU+/QL+jn0bwMlGyPzITD2JGv7v8iXu7PraxbgudHsOXfVkN0wkynu8TiLijU8h1VVDw==
 
 ## What changes
 
