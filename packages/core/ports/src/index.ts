@@ -76,36 +76,8 @@ export {
   type WriteOptions,
   type WriteResult,
 } from "./definition-store.ts";
-export {
-  type DeployAccount,
-  type DeployDone,
-  type DeployEvent,
-  type DeployedVersion,
-  type DeployFailure,
-  type DeployFailureCode,
-  type DeployLockHolder,
-  type DeploymentRef,
-  type DeploymentStatus,
-  type DeployPlan,
-  type DeployReach,
-  type DeployRequest,
-  type DeployResource,
-  type DeployResult,
-  type DeployRollback,
-  type DeployRunCounts,
-  type DeploySelfTestFailed,
-  type DeploySnapshot,
-  type DeployStep,
-  type DeployTarget,
-  type DeployTargetContext,
-  type DeployTargetEntry,
-  type DeployTransferCounts,
-  type DeployUnchanged,
-  type DestroyItem,
-  type DestroyRequest,
-  type DestroyResult,
-  deployTargetVersion,
-} from "./deploy-target.ts";
+// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
+export * from "./deploy-target.ts";
 export { type Digest, digestVersion } from "./digest.ts";
 export {
   type FolderEntriesOptions,
