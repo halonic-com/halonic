@@ -15,6 +15,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { runnerFence, runnerUnfencedReasons } from "./runner-fence.ts";
 import { type GatedRunner, RunnerStartGate } from "./runner-start-gate.ts";
+import { HandTimers } from "./testing/hand-timers.ts";
 import { TestUnfencedRunConsentStore } from "./testing/test-unfenced-run-consent-store.ts";
 import { UnfencedRuns } from "./unfenced-runs.ts";
 
@@ -70,7 +71,7 @@ interface Setup {
 /** A gate on Linux whose fenced sandbox's check can change between the dialog and the start. */
 function setup({ proof = { state: "fenced" }, holdClose = false }: Setup = {}) {
   const store = new TestUnfencedRunConsentStore();
-  const runs = new UnfencedRuns({ store, clock });
+  const runs = new UnfencedRuns({ store, clock, timers: new HandTimers() });
   const state = { check: passes };
   const sandbox = (name: string): Sandbox & { name: string } => ({
     name,
