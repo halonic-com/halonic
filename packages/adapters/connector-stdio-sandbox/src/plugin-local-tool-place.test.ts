@@ -68,6 +68,12 @@ verifies("connector-stdio-sandbox.plugin-local-tool-place", () => {
     ["the plugin's own folder in Halonic's data", "/halonic/data/plugins/notes"],
     ["a folder in the working folder", "/halonic/launch-1/plugin"],
     ["a denied path itself", "/person/.ssh"],
+    ["the working folder itself", "/halonic/launch-1"],
+    // Spellings that lead into a denied path (HAL-13056).
+    ["a way back into Halonic's data", "/halonic/launch-3/../data/plugins/notes"],
+    ["a denied path with a trailing slash", "/person/.ssh/"],
+    ["a denied path with doubled slashes", "//halonic//data//plugins"],
+    ["a way into the working folder through a dot", "/halonic/./launch-1/plugin"],
   ])("refuses %s as the plugin's copy", (_, pluginCopy) => {
     expect(() => pluginLocalToolPlace(script, { ...setting, pluginCopy })).toThrow(RangeError);
   });
