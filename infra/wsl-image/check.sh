@@ -140,9 +140,13 @@ code=0; chroot "$root" su halonic -s /bin/sh -c "$updater rollback" 2>/dev/null 
 # half-configured, and its package script sets a file capability. Offline, so
 # a stand-in apt-get fails on update: the next security-update still finishes
 # socat and drops the capability, and doesn't say updates ran.
-sed -i '/^Package: socat$/,/^$/ s/^Status: install ok installed$/Status: install ok half-configured/' \
-  "$root/var/lib/dpkg/status"
-[ "$(chroot "$root" dpkg-query -W -f "\${Status}" socat)" = "install ok half-configured" ] || fail "couldn't cut off socat"
+socat_status() { chroot "$root" dpkg-query -W -f "\${Status}" socat; }
+cut_off_socat() {
+  sed -i '/^Package: socat$/,/^$/ s/^Status: install ok installed$/Status: install ok half-configured/' \
+    "$root/var/lib/dpkg/status"
+  [ "$(socat_status)" = "install ok half-configured" ] || fail "couldn't cut off socat"
+}
+cut_off_socat
 postinst="$root/var/lib/dpkg/info/socat.postinst"
 [ ! -e "$postinst" ] || mv "$postinst" "$postinst.orig"
 printf '#!/bin/sh\nprintf "#!/bin/sh\\n" > /usr/bin/cut-off-cap\nsetcap cap_net_raw+ep /usr/bin/cut-off-cap\n' > "$postinst"
@@ -151,11 +155,36 @@ printf '#!/bin/sh\necho offline >&2\nexit 100\n' > "$root/usr/sbin/apt-get"
 chmod 0755 "$root/usr/sbin/apt-get"
 code=0; chroot "$root" "$updater" security-update >/dev/null 2>&1 || code=$?
 [ "$code" -ne 0 ] || fail "security updates succeeded offline"
-[ "$(chroot "$root" dpkg-query -W -f "\${Status}" socat)" = "install ok installed" ] ||
-  fail "a cut-off update wasn't finished: $(chroot "$root" dpkg-query -W -f "\${Status}" socat)"
+[ "$(socat_status)" = "install ok installed" ] || fail "a cut-off update wasn't finished: $(socat_status)"
 [ -z "$(getcap -r "$root/usr")" ] || fail "finishing a cut-off update left a file capability: $(getcap -r "$root/usr")"
 chroot "$root" "$updater" status | grep -q '"securityUpdated":""' || fail "a failed update says updates ran"
-rm -f "$postinst" "$root/usr/bin/cut-off-cap"
+# A package script that sets a capability and then fails (HAL-12766): first
+# while finishing socat, then in the upgrade. Each run fails, and still drops
+# the setuid bit and the capability before it stops.
+printf '#!/bin/sh\nsetcap cap_net_raw+ep /usr/bin/cut-off-cap\nexit 1\n' > "$postinst"
+cut_off_socat
+code=0; chroot "$root" "$updater" security-update >/dev/null 2>&1 || code=$?
+[ "$code" -ne 0 ] || fail "a failing package script didn't fail the update"
+[ "$(socat_status)" = "install ok half-configured" ] || fail "socat's failing script didn't run: $(socat_status)"
+[ -z "$(getcap -r "$root/usr")" ] || fail "a failing package script left a file capability: $(getcap -r "$root/usr")"
+sed -i '/^Package: socat$/,/^$/ s/^Status: install ok half-configured$/Status: install ok installed/' \
+  "$root/var/lib/dpkg/status"
+cat > "$root/usr/sbin/apt-get" <<'APT'
+#!/bin/sh
+case " $* " in *" upgrade "*)
+  printf '#!/bin/sh\n' > /usr/bin/failed-suid
+  chmod 4755 /usr/bin/failed-suid
+  setcap cap_net_raw+ep /usr/bin/cut-off-cap
+  exit 1 ;;
+esac
+APT
+code=0; chroot "$root" "$updater" security-update >/dev/null 2>&1 || code=$?
+[ "$code" -ne 0 ] || fail "a failing upgrade succeeded"
+[ "$(stat -c %a "$root/usr/bin/failed-suid")" = 755 ] || fail "a failing upgrade left a setuid program"
+[ -z "$(getcap -r "$root/usr")" ] || fail "a failing upgrade left a file capability: $(getcap -r "$root/usr")"
+chroot "$root" "$updater" status | grep -q '"securityUpdated":""' || fail "a failed upgrade says updates ran"
+rm -f "$postinst" "$root/usr/bin/cut-off-cap" "$root/usr/bin/failed-suid"
+chroot "$root" dpkg-statoverride --remove /usr/bin/failed-suid
 [ ! -e "$postinst.orig" ] || mv "$postinst.orig" "$postinst"
 # Security updates, with a stand-in apt-get (first on the updater's PATH) whose
 # upgrade brings a new setuid program, a setgid program of another system user
