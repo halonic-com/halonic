@@ -10,6 +10,15 @@ import { DeployError, type LiveReason, redact, SmokeTestFailedError } from "./er
 /** The variable that opens the Worker's `/self-test` route; the same name the runtime reads. */
 const selfTestTokenVariable = "HALONIC_SELFTEST_TOKEN";
 const overrideHeader = "Cloudflare-Workers-Version-Overrides";
+/** Self-test tries on an address that was already on: about 20 s. */
+const attemptsWhenOpen = 5;
+/**
+ * Self-test tries on a workers.dev address this deploy turned on: about two minutes. Cloudflare's
+ * edge answers 404 for a new address until it reaches the Worker, longer than 20 s (HAL-13834).
+ */
+const attemptsWhenNew = 16;
+/** The longest wait between two tries. */
+const longestWaitMs = 10_000;
 
 /** What one upload step reports. The CLI formats these later. */
 export type UploadProgress =
@@ -44,7 +53,10 @@ export interface UploadAndSwitchOptions {
   readonly fetch?: typeof fetch;
   readonly sleep?: (ms: number) => Promise<void>;
   readonly randomToken?: () => string;
-  /** How often the self-test is tried while the new address starts answering. Defaults to 5. */
+  /**
+   * How often the self-test is tried while the address starts answering. Defaults to 5 (about
+   * 20 s), or 16 (about two minutes) when the deploy turned workers.dev on.
+   */
   readonly attempts?: number;
 }
 
@@ -161,7 +173,10 @@ async function selfTestOpen(
   const putBack = () => (closeAfter ? api.closeWorkersDev(accountId, worker) : Promise.resolve());
   let result: Awaited<ReturnType<typeof selfTest>>;
   try {
-    result = await selfTest(url, worker, run.versionId, run.token, options);
+    // A first deploy's address, or one that was off, is new: give Cloudflare's edge time to route it.
+    const attempts =
+      options.attempts ?? (run.keepOpen || closeAfter ? attemptsWhenNew : attemptsWhenOpen);
+    result = await selfTest(url, worker, run.versionId, run.token, { ...options, attempts });
   } catch (error) {
     await putBack().catch(() => run.report({ step: "workers-dev-left-open" }));
     throw error;
@@ -298,7 +313,7 @@ async function selfTest(
 ): Promise<{ ok: boolean; failed: string[] }> {
   const doFetch = options.fetch ?? fetch;
   const sleep = options.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
-  const attempts = options.attempts ?? 5;
+  const attempts = options.attempts ?? attemptsWhenOpen;
   let failed: string[] = [];
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
@@ -323,7 +338,7 @@ async function selfTest(
     } catch {
       failed = ["no answer"];
     }
-    if (attempt < attempts) await sleep(2000 * attempt);
+    if (attempt < attempts) await sleep(Math.min(2000 * attempt, longestWaitMs));
   }
   return { ok: false, failed };
 }
