@@ -148,7 +148,7 @@ verifies("studio.workspace-listed-tools", () => {
       });
     });
 
-    it("names a refused secret only when the connector has just one", async () => {
+    it("passes on all the connector's secrets with a refused one, since the server doesn't say which", async () => {
       const withSecrets = (env: string) =>
         acmeFiles({
           "library/connectors/notes.connector.yaml": `${notesFile}    secretEnv:\n${env}`,
@@ -160,7 +160,7 @@ verifies("studio.workspace-listed-tools", () => {
         listError: refused,
       });
       await expect(one.host.review("notes")).rejects.toMatchObject({
-        failure: { reason: "secret-refused", secret: "notes-token" },
+        failure: { reason: "secret-refused", secrets: ["notes-token"] },
       });
 
       const two = hostOf({
@@ -168,9 +168,13 @@ verifies("studio.workspace-listed-tools", () => {
         listError: refused,
       });
       await expect(two.host.review("notes")).rejects.toMatchObject({
-        failure: { reason: "secret-refused" },
+        failure: { reason: "secret-refused", secrets: ["notes-token", "notes-key"] },
       });
-      await expect(two.host.review("notes")).rejects.not.toHaveProperty("failure.secret");
+
+      const none = hostOf({ listError: refused });
+      await expect(none.host.review("notes")).rejects.toMatchObject({
+        failure: { reason: "secret-refused", secrets: [] },
+      });
     });
 
     it("passes on an engine that isn't answering as it is", async () => {

@@ -43,26 +43,53 @@ verifies("library.listed-tools-waiting", () => {
       expect(line).toMatchObject({ button: "try-again", copyDetails: false });
     });
 
-    it("names a refused secret when it is known, else says its secret", () => {
-      const named = loadFailureLine(
-        new ConnectorCouldntList({ reason: "secret-refused", secret: "NOTES_TOKEN" }),
+    it("names a connector's one refused secret and gives the command that sets it", () => {
+      const line = loadFailureLine(
+        new ConnectorCouldntList({ reason: "secret-refused", secrets: ["NOTES_TOKEN"] }),
         "notes-mcp",
         desktop,
       );
-      expect(refusalLineText(named.parts)).toBe(
+
+      expect(refusalLineText(line.parts)).toBe(
         "Couldn't list the tools: notes-mcp didn't accept the secret NOTES_TOKEN. Set it again in a terminal, then try again:",
       );
-      expect(named.command).toBe("halonic secret set NOTES_TOKEN");
+      expect(line.command).toBe("halonic secret set NOTES_TOKEN");
+      expect(line).toMatchObject({ button: "try-again", copyDetails: false });
+    });
 
-      const unnamed = loadFailureLine(
-        new ConnectorCouldntList({ reason: "secret-refused" }),
+    it("names all of a connector's secrets when it can't tell which was refused", () => {
+      const refusedOneOf = (secrets: readonly string[]) =>
+        loadFailureLine(
+          new ConnectorCouldntList({ reason: "secret-refused", secrets }),
+          "notes-mcp",
+          desktop,
+        );
+
+      const two = refusedOneOf(["NOTES_TOKEN", "NOTES_SPACE"]);
+      expect(refusalLineText(two.parts)).toBe(
+        "Couldn't list the tools: notes-mcp didn't accept one of its secrets, NOTES_TOKEN or NOTES_SPACE. Set the right one again in a terminal with halonic secret set, then try again.",
+      );
+      expect(two.parts).toContainEqual({ text: "halonic secret set", code: true });
+      expect(two.command).toBeUndefined();
+      expect(two).toMatchObject({ button: "try-again", copyDetails: false });
+
+      expect(refusalLineText(refusedOneOf(["A", "B", "C"]).parts)).toContain(
+        "didn't accept one of its secrets, A, B or C.",
+      );
+    });
+
+    it("says the server asked for a secret the connector doesn't send, with Copy details", () => {
+      const line = loadFailureLine(
+        new ConnectorCouldntList({ reason: "secret-refused", secrets: [] }),
         "notes-mcp",
         desktop,
       );
-      expect(refusalLineText(unnamed.parts)).toBe(
-        "Couldn't list the tools: notes-mcp didn't accept its secret. Set it again in a terminal, then try again.",
+
+      expect(refusalLineText(line.parts)).toBe(
+        "Couldn't list the tools: the server for notes-mcp asked for a secret, and notes-mcp doesn't send one.",
       );
-      expect(unnamed.command).toBeUndefined();
+      expect(line.command).toBeUndefined();
+      expect(line).toMatchObject({ button: "try-again", copyDetails: true });
     });
 
     it("says a program stopped, with Copy details", () => {

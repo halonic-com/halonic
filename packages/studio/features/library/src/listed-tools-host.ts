@@ -105,13 +105,13 @@ export class WorkspaceNotTrusted extends Error {
 
 /**
  * Why a connector's program couldn't list its tools, as the agent host says it: the cause and the
- * one name the page needs to word it (UX check C2). A refused secret is named only when the
- * connector declares just one, since the server doesn't say which one it refused.
+ * names the page needs to word it (UX check C2). The server doesn't say which secret it refused,
+ * so a refused secret carries every secret the connector declares, in the order it declares them.
  */
 export type ListingFailure =
   | { readonly reason: "program-missing"; readonly program: string }
   | { readonly reason: "secret-missing"; readonly secret: string }
-  | { readonly reason: "secret-refused"; readonly secret?: string }
+  | { readonly reason: "secret-refused"; readonly secrets: readonly string[] }
   | { readonly reason: "stopped" };
 
 /** How each cause reads to any error-aware code: the same kinds the agent host's client gives. */

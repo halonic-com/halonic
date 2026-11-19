@@ -239,7 +239,7 @@ export class WorkspaceListedTools implements ListedToolsHost {
 
 /**
  * The cause the agent host named, for the connector page's words (UX check C2). The server doesn't
- * say which secret it refused, so a refused secret is named only when the connector has just one.
+ * say which secret it refused, so a refused secret carries all the connector's secrets.
  */
 function listingFailureOf(
   { failure }: ConnectorFailedError,
@@ -250,8 +250,7 @@ function listingFailureOf(
     ...(config.secret === undefined ? [] : [config.secret]),
     ...Object.values(config.secretEnv),
   ]);
-  const [secret] = secrets;
-  return secrets.size === 1 && secret !== undefined ? { reason: failure.reason, secret } : failure;
+  return { reason: failure.reason, secrets: [...secrets] };
 }
 
 /** The folder's own name, as the CLI names an unnamed workspace: the last part of its path. */

@@ -10,6 +10,12 @@ function staysOff(count: number): string {
   return count === 1 ? "stays off" : "stay off";
 }
 
+/** "A or B", "A, B or C". */
+function oneOf(names: readonly string[]): string {
+  const last = names.at(-1) ?? "";
+  return names.length < 2 ? last : `${names.slice(0, -1).join(", ")} or ${last}`;
+}
+
 /** The words of the listed-tools review screen (microcopy 27, HAL-751). */
 export const listedToolsWords = {
   title: (source: string) => `Review the tools from ${source}`,
@@ -123,8 +129,19 @@ export const listedToolsWords = {
     secretRefused: (source: string, secret: string) =>
       `Couldn't list the tools: ${source} didn't accept the secret ${secret}. Set it again in a terminal, then try again:`,
     /** When the connector declares more than one secret, so Halonic can't tell which one was refused. */
-    secretRefusedUnnamed: (source: string) =>
-      `Couldn't list the tools: ${source} didn't accept its secret. Set it again in a terminal, then try again.`,
+    secretRefusedOneOf: (
+      source: string,
+      secrets: readonly string[],
+    ): readonly RefusalLinePart[] => [
+      {
+        text: `Couldn't list the tools: ${source} didn't accept one of its secrets, ${oneOf(secrets)}. Set the right one again in a terminal with `,
+      },
+      { text: "halonic secret set", code: true },
+      { text: ", then try again." },
+    ],
+    /** When the server asks for a secret the connector doesn't declare: setting one can't help. */
+    secretRefusedNoneSent: (source: string) =>
+      `Couldn't list the tools: the server for ${source} asked for a secret, and ${source} doesn't send one.`,
     stopped: (source: string) => `Couldn't list the tools: ${source} stopped before it answered.`,
   },
   setSecret: (secret: string) => `halonic secret set ${secret}`,

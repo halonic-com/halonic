@@ -58,14 +58,30 @@ function causeLine({ failure }: ConnectorCouldntList, source: string): LoadFailu
     case "secret-missing":
       return withSetSecret(words.secretMissing(source, failure.secret), failure.secret);
     case "secret-refused":
-      return failure.secret === undefined
-        ? plainLine(words.secretRefusedUnnamed(source), false)
-        : withSetSecret(words.secretRefused(source, failure.secret), failure.secret);
+      return secretRefusedLine(failure.secrets, source);
     case "stopped":
       return plainLine(words.stopped(source), true);
     default:
       return failure satisfies never;
   }
+}
+
+/**
+ * The server doesn't say which secret it refused: one declared secret is named with the command
+ * that sets it, several are all named, and none means setting a secret can't help.
+ */
+function secretRefusedLine(secrets: readonly string[], source: string): LoadFailureLine {
+  const words = listedToolsWords.couldntList;
+  const [only] = secrets;
+  if (secrets.length === 0) return plainLine(words.secretRefusedNoneSent(source), true);
+  if (secrets.length === 1 && only !== undefined) {
+    return withSetSecret(words.secretRefused(source, only), only);
+  }
+  return {
+    parts: words.secretRefusedOneOf(source, secrets),
+    button: "try-again",
+    copyDetails: false,
+  };
 }
 
 function plainLine(text: string, copyDetails: boolean): LoadFailureLine {

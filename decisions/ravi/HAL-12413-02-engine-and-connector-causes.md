@@ -18,12 +18,16 @@
   connector couldn't list its tools (`ConnectorFailedError`, HAL-12410),
   the desktop app passes the cause and its name to the page as
   `ConnectorCouldntList`, the same way it passes `WorkspaceNotTrusted`.
-  The server doesn't say which secret it refused, so a refused secret is
-  named only when the connector declares just one.
+  The server doesn't say which secret it refused, so a refused secret
+  carries every secret the connector declares.
 - `library.listed-tools-waiting` (C2, G2): the connector page words each
   cause: a missing program by its name in code type; a secret that isn't
   set, or was refused, by its name with `halonic secret set NAME` in a
-  command box; a program that stopped, with **Copy details**; any other
+  command box; a refused secret of a connector with several secrets names
+  them all, with `halonic secret set` in code type in the line; a refused
+  secret of a connector with none says the server asked for a secret the
+  connector doesn't send, with **Copy details** (Sofia's word check on
+  HAL-12413); a program that stopped, with **Copy details**; any other
   failure as before, with **Copy details** when Halonic can't explain it.
   An engine that isn't answering gets the words for where Studio runs.
 
