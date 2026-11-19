@@ -1,6 +1,7 @@
 import type { ReactNode, Ref } from "react";
 import { Button, type ButtonSize } from "../button/button.tsx";
 import { inlineLinkClasses } from "../external-link/external-link.tsx";
+import { assignRef } from "../field/control.ts";
 import { AlertIcon } from "../icons/alert-icon.tsx";
 
 /**
@@ -27,14 +28,15 @@ interface EmptyStateBase {
   readonly description?: ReactNode;
   /**
    * The title's heading level. Default 2: the Empty state stands in for a page's content. 5 is for
-   * a list that is itself an h4 under a Settings section's h3.
+   * a list that is itself an h4 under a Settings section's h3. A `plain` title is a paragraph, so
+   * it has no level.
    */
   readonly headingLevel?: 2 | 3 | 4 | 5;
   /**
    * The title, which takes focus when the last row of a list goes while focus was in it
    * (component specs 23 A2). It has `tabindex="-1"`, so only code can focus it.
    */
-  readonly titleRef?: Ref<HTMLHeadingElement>;
+  readonly titleRef?: Ref<HTMLElement>;
 }
 
 /** Nothing here yet: an optional icon tile, the halo wash, and up to two buttons. */
@@ -43,7 +45,10 @@ interface Nothing extends EmptyStateBase {
   readonly align?: "center";
   /** A 20px icon, drawn in `accent` on a tile. Without one there's no tile. */
   readonly icon?: ReactNode;
-  /** For no search results and small panels: no wash and no tile, only the text. */
+  /**
+   * For no search results and small panels: no wash and no tile, only the text. Its title is a
+   * paragraph: it's one line under a heading that's already there, not a section of its own.
+   */
   readonly plain?: boolean;
   /** The one primary button: "New agent". */
   readonly action?: EmptyStateAction;
@@ -57,7 +62,7 @@ interface CentredError extends EmptyStateBase {
   readonly tone: "error";
   readonly align?: "center";
   readonly icon?: never;
-  /** Inside a small panel or the width of a file tree: no wash and no tile. */
+  /** Inside a small panel or the width of a file tree: no wash and no tile, and no heading. */
   readonly plain?: boolean;
   /** Try again. */
   readonly action?: EmptyStateAction;
@@ -111,7 +116,7 @@ export function EmptyState(props: EmptyStateProps) {
 
   const error = props.tone === "error";
   const plain = props.plain === true;
-  const Heading = `h${props.headingLevel ?? 2}` as const;
+  const Title = plain ? "p" : (`h${props.headingLevel ?? 2}` as const);
   const tile = plain ? null : iconTile(error ? <AlertIcon /> : props.icon, error);
   const primary = error ? "secondary" : "primary";
 
@@ -121,8 +126,8 @@ export function EmptyState(props: EmptyStateProps) {
     >
       <div className="flex max-w-empty flex-col items-center gap-1.5 text-center">
         {tile}
-        <Heading
-          ref={props.titleRef}
+        <Title
+          ref={(element) => assignRef(props.titleRef, element)}
           tabIndex={-1}
           className={`flex items-start gap-2 text-section ${titleFocus}`}
         >
@@ -132,7 +137,7 @@ export function EmptyState(props: EmptyStateProps) {
             </span>
           ) : null}
           {props.title}
-        </Heading>
+        </Title>
         {isShown(props.description) ? (
           <p className="text-body text-fg-muted">{props.description}</p>
         ) : null}
@@ -163,7 +168,7 @@ function SectionErrorState({
   return (
     <div className="flex flex-col items-start gap-1.5 px-4 py-3 text-left">
       <Heading
-        ref={titleRef}
+        ref={(element) => assignRef(titleRef, element)}
         tabIndex={-1}
         className={`flex items-start gap-2 text-body-strong ${titleFocus}`}
       >

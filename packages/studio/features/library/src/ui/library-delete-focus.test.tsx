@@ -139,7 +139,8 @@ verifies("library.library-delete", () => {
     const { page } = await showLibrary(changingHost(["Alpha", "Beta"]));
     search(page, "alp");
     await deleteRow(page, "Alpha");
-    expect(document.activeElement?.tagName).toBe("H2");
+    // No search results is a plain Empty state: its title is a line of text, not a heading.
+    expect(document.activeElement?.tagName).toBe("P");
     expect(document.activeElement?.textContent).toContain("No skills match");
   });
 

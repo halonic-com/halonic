@@ -448,7 +448,7 @@ broke". It's centred in the space it replaces, in a 360px column (`max-w-empty`)
 
 | Prop | What it is |
 | --- | --- |
-| `title` | A heading in `text-section` (`headingLevel`, 2 by default) |
+| `title` | A heading in `text-section` (`headingLevel`, 2 by default); a paragraph when `plain` |
 | `description` | One or two sentences that say what the thing is for; for an error, the reason |
 | `icon` | A 20px icon in `accent` on a 40px tile. Without one there's no tile |
 | `action` | The one primary button: `{ label, onClick, busy? }`. For an error, Try again |
