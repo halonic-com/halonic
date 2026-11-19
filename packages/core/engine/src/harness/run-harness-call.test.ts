@@ -98,7 +98,7 @@ verifies("engine.run-harness", () => {
       filesFolder: null,
     };
     expect(placed).toHaveBeenCalledWith(agent);
-    expect(opened).toHaveBeenCalledWith(agent, expect.anything());
+    expect(opened).toHaveBeenCalledWith(agent, expect.anything(), "sandbox");
     expect(built).toHaveBeenCalledWith(agent, expect.anything(), null);
   });
 

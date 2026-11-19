@@ -220,6 +220,7 @@ export class FakeHarness implements Harness {
 export function harnessPorts() {
   const steps: FakeStep[] = [];
   const recorders: BridgeRecorder[] = [];
+  const bridgePlacements: Placement[] = [];
   const sandbox = new FakeSandbox("sandbox", steps);
   const thisComputer = new FakeSandbox("this-computer", steps);
   const harness = new FakeHarness(steps);
@@ -236,9 +237,10 @@ export function harnessPorts() {
     sandboxes: { sandbox, "this-computer": thisComputer },
     harnesses: { "claude-code": harness },
     bridges: {
-      open: async (_agent, recorder) => {
+      open: async (_agent, recorder, runsOn) => {
         steps.push("bridge.open");
         recorders.push(recorder);
+        bridgePlacements.push(runsOn);
         return bridge;
       },
     },
@@ -266,6 +268,8 @@ export function harnessPorts() {
     options,
     steps,
     recorders,
+    /** The placement each bridge was opened for, in order. */
+    bridgePlacements,
     sandbox,
     thisComputer,
     harness,
