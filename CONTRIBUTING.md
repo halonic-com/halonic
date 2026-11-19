@@ -249,12 +249,13 @@ and we are moving that work step by step onto Halonic itself. That is why
 commits come from the shared `halonic-dev` account, name a task such as
 `HAL-1234`, and list the AI model as co-author.
 
+Agents review and test every change. Each one goes through a pull request, a
+review by a second agent and the automated checks before it reaches `main`.
+
 There are always people in the loop:
 
 - People set the direction. Product, design and release decisions are made and
   approved by people.
-- Every change goes through a pull request, a review and the automated checks
-  before it reaches `main`.
 - Nothing is released or published without a person's yes.
 - A person can stop or override anything an agent does.
 
@@ -281,11 +282,11 @@ As described above, AI tools are welcome here, with these rules:
 
 1. The automated checks run.
 2. A reviewer reads the change. Changes to tests, requirements, security, build
-   or docs also get a review from the person who looks after that area.
+   or docs also get a review from the owner of that area.
    Every finding starts with a severity tag: `[blocker]`, `[major]`,
    `[minor]` or `[nit]`. The tags and the reviewer's checklist are in
    [docs/guides/review.md](docs/guides/review.md).
-3. A maintainer approves and merges. Pull requests merge one at a time, so
+3. The reviewer approves and merges. Pull requests merge one at a time, so
    `main` always passes its checks.
 
 We aim to give a first response within 2 working days. If you haven't heard
