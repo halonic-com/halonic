@@ -3,6 +3,7 @@
 - Task: HAL-12215
 - Approval: Liam approves this change on HAL-12215, for HAL-12215. Liam decided to add an optional `showSidebarView(viewId)` to `WorkspaceContext` and call it from the tab's Rename and F2 on HAL-12215; it completes the approved Rename of files flow 6.1, so there is no board card.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:VRVi0akuNJwAt4chgs0C0ewvkp/tjbVxpfoetlKezKFwGOkN8AJ99eaPZLpckKiWBsdaY12R8Q3odZ1HdlerBA==
 
 ## What changes
 
