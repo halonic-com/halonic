@@ -1,4 +1,5 @@
 import { Disclosure, Field, Input, Select, TextArea } from "@halonicjs/studio-kit";
+import { type AutoSaved, useAutoSaved, useReportNotSaved } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
 import {
   type AgentChange,
@@ -8,7 +9,6 @@ import {
   agentReasoningEfforts,
 } from "../api.ts";
 import { configurationWords as words } from "./configuration-words.ts";
-import { type AutoSaved, useAutoSaved, useReportNotSaved } from "./use-auto-saved.ts";
 
 /** The check of a number box: `null` when it is empty, or a number from `min` to `max`. */
 const numberFrom =

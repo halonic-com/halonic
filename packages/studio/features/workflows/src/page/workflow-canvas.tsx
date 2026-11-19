@@ -48,6 +48,8 @@ export function WorkflowCanvas({
   onView,
   onSelectStep,
   edit,
+  picked,
+  onBackgroundClick,
 }: {
   readonly workflow: WorkflowView;
   /** The zoom and pan the canvas had when it was last shown; absent the first time. */
@@ -68,12 +70,28 @@ export function WorkflowCanvas({
   readonly onSelectStep?: ((stepId: string) => void) | undefined;
   /** How the toolbar changes the workflow; absent where it can't, so the canvas has no toolbar. */
   readonly edit?: CanvasEdit | undefined;
+  /**
+   * The step the page has picked. When it changes (the step's card closed), the selection follows;
+   * absent, the canvas keeps its own.
+   */
+  readonly picked?: string | undefined;
+  /** A click on the background, not a drag: the page closes the picked step's card. */
+  readonly onBackgroundClick?: (() => void) | undefined;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number } | undefined>(undefined);
   const [view, setView] = useState<View>(saved ?? { zoom: 1, pan: { x: 0, y: 0 } });
   useEffect(() => onView?.(view), [view, onView]);
   const [selected, setSelected] = useState<string | undefined>(selectedStep);
+  // Only a change of the page's pick moves the selection, so a card a problem's link selected stays.
+  const lastPicked = useRef(picked);
+  useEffect(() => {
+    if (picked === lastPicked.current) return;
+    lastPicked.current = picked;
+    setSelected(picked);
+  }, [picked]);
+  // Where a press on the background started, to tell a click from a pan.
+  const pressedAt = useRef<{ x: number; y: number } | undefined>(undefined);
 
   const boxes = useMemo(
     () =>
@@ -157,6 +175,7 @@ export function WorkflowCanvas({
         // A press on a card or a button is theirs: capturing it here would steal their click.
         if ((event.target as Element).closest("button") !== null) return;
         drag.current = { x: event.clientX, y: event.clientY };
+        pressedAt.current = { x: event.clientX, y: event.clientY };
         event.currentTarget.setPointerCapture?.(event.pointerId);
       }}
       onPointerMove={(event) => {
@@ -165,11 +184,17 @@ export function WorkflowCanvas({
         drag.current = { x: event.clientX, y: event.clientY };
         setView((now) => panBy(now, delta));
       }}
-      onPointerUp={() => {
+      onPointerUp={(event) => {
         drag.current = undefined;
+        const from = pressedAt.current;
+        pressedAt.current = undefined;
+        if (from === undefined || !isClick(from, event)) return;
+        setSelected(undefined);
+        onBackgroundClick?.();
       }}
       onPointerCancel={() => {
         drag.current = undefined;
+        pressedAt.current = undefined;
       }}
       onWheel={(event) => {
         const rect = event.currentTarget.getBoundingClientRect();
@@ -252,4 +277,12 @@ export interface CanvasEdit {
   ) => Promise<string | undefined>;
   /** Forgets the steps' places, so each takes the automatic one; resolves to whether it did. */
   readonly autoLayout: () => Promise<boolean>;
+}
+
+/** How far the pointer may move between press and release for a click, in px; further is a pan. */
+const CLICK_SLOP = 4;
+
+/** Whether a press and its release were a click, not a drag. */
+function isClick(from: { x: number; y: number }, to: { clientX: number; clientY: number }) {
+  return Math.hypot(to.clientX - from.x, to.clientY - from.y) <= CLICK_SLOP;
 }

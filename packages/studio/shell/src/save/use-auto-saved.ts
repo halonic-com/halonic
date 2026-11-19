@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-/** How long typing pauses before the text is saved (flow-agents 5.1). */
+/** How long typing pauses before the text is saved (flow-agents 5.1, save model 1). */
 export const SAVE_PAUSE_MS = 800;
 
 /** What {@link useAutoSaved} hands a field. */
@@ -19,8 +19,8 @@ export interface AutoSaved {
 }
 
 /**
- * A text field that saves by itself: after a pause in typing, and when the person leaves the
- * field. A text with a mistake (`check` returns its sentence) is not saved; it stays in the box
+ * A text field that saves by itself, as the agent and workflow pages' fields do: after a pause in
+ * typing, and when the person leaves the field. A text with a mistake (`check` returns its sentence) is not saved; it stays in the box
  * with the error until it's fixed. The error shows after the pause or when the field is left,
  * not on every key, and goes as soon as the text is fixed. A save that fails is tried again at
  * the next pause or when the field is left. The saved value arriving from outside replaces the

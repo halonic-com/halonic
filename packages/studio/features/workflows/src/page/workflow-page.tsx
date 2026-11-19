@@ -32,6 +32,7 @@ import { useAnnounceDockedRun } from "../start/run-announcement.ts";
 import type { ShownRun } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
+import { StepEditDock } from "./docked-step-card.tsx";
 import { goneState } from "./gone-state.tsx";
 import { firstTestsPick, firstView, panelClass } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
@@ -65,6 +66,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       announceState={(key, text) => context.announcer.announceState(key, text)}
       announce={(line) => context.announcer.announce(line)}
       {...(openModels && { openModels })}
+      saving={context.saving}
       {...(context.runCommand && {
         openBudget: () => void context.runCommand?.(openBudgetCommand),
       })}
@@ -110,6 +112,7 @@ export function WorkflowScreen({
   testsAsked = 0,
   announceState,
   announce,
+  saving,
 }: WorkflowScreenProps) {
   // After a Try again reads, the workflow's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -307,6 +310,8 @@ export function WorkflowScreen({
               }}
               onSelectStep={setPickedStep}
               edit={canvasEdit}
+              pickedStep={pickedStep}
+              onClearStep={() => setPickedStep(undefined)}
               kept={kept}
               onView={keep}
             />
@@ -335,6 +340,16 @@ export function WorkflowScreen({
           pickedStep={dockStep}
           onClosePickedStep={() => setPickedStep(undefined)}
         />
+        <StepEditDock
+          host={host}
+          workflow={load}
+          pickedStep={dockStep}
+          dock={dock}
+          runShown={shown !== undefined}
+          phone={phone}
+          saving={saving}
+          onClose={() => setPickedStep(undefined)}
+        />
       </div>
     </div>
   );
@@ -353,6 +368,10 @@ interface FlowViewProps {
   readonly onSelectStep: (stepId: string) => void;
   /** How the canvas's toolbar changes the workflow; absent where it can't. */
   readonly edit: CanvasEdit | undefined;
+  /** The step picked on the page; the canvas's selection follows it when a card closes. */
+  readonly pickedStep: string | undefined;
+  /** A click on the canvas's background: the picked step's card closes. */
+  readonly onClearStep: () => void;
   readonly kept: { readonly of: string; readonly view: View } | undefined;
   readonly onView: (next: View) => void;
 }
@@ -369,6 +388,8 @@ function FlowView({
   onClearStrip,
   onSelectStep,
   edit,
+  pickedStep,
+  onClearStep,
   kept,
   onView,
 }: FlowViewProps) {
@@ -400,6 +421,8 @@ function FlowView({
           onView={onView}
           onSelectStep={onSelectStep}
           edit={edit}
+          picked={pickedStep}
+          onBackgroundClick={onClearStep}
         />
       )}
       {load.kind === "failed" && (

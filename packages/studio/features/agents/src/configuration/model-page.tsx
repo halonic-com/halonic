@@ -1,9 +1,9 @@
 import { Field, Input, Select, type SelectOption } from "@halonicjs/studio-kit";
+import { useAutoSaved, useReportNotSaved } from "@halonicjs/studio-shell";
 import { useEffect, useState } from "react";
 import type { AgentChange, AgentSettings } from "../api.ts";
 import { configurationWords as words } from "./configuration-words.ts";
 import { MoreSettings } from "./more-settings.tsx";
-import { useAutoSaved, useReportNotSaved } from "./use-auto-saved.ts";
 
 /** The turn limit a file gets when the field is left empty (`agents.editor.max-steps-default`). */
 export const DEFAULT_TURN_LIMIT = 6;

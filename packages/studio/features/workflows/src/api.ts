@@ -86,6 +86,27 @@ export interface WorkflowStep {
   readonly title?: string | undefined;
   /** The agent a task step runs; `undefined` when it has none (the step passes the data on). */
   readonly agent?: string | undefined;
+  /** The step's whole description, as its docked card edits it; `undefined` when it has none. */
+  readonly description?: string | undefined;
+  /**
+   * What the step's agent is asked, when the file gives it as text; `undefined` when it has none.
+   * A prompt given as data (a mapping) isn't text, so it is `undefined` too, and `promptIsData` says so.
+   */
+  readonly prompt?: string | undefined;
+  /** The file gives the prompt as data, which the docked card can't edit as text. */
+  readonly promptIsData?: boolean | undefined;
+  /** The name later steps pick the step's output by (`output`, **Save output as**); `undefined` when it has none. */
+  readonly output?: string | undefined;
+}
+
+/**
+ * One change of a step from its docked card. Each field that is present is set; an empty text
+ * removes it from the file.
+ */
+export interface WorkflowStepChange {
+  readonly description?: string;
+  readonly prompt?: string;
+  readonly output?: string;
 }
 
 /** One arrow between two steps. */
@@ -282,6 +303,13 @@ export interface WorkflowsHost {
    * workflow in the hub has, or with the reason the file couldn't be changed.
    */
   rename?(ref: WorkflowRef, name: string): Promise<void>;
+  /**
+   * Changes one step of the workflow, as one undoable change that saves itself; the file keeps its
+   * comments and the order of its keys. Absent while the app can't change the workflow's file, so
+   * the canvas opens no card to edit a step. Rejects with the reason the file couldn't be changed,
+   * a step that isn't there, and a prompt the file gives as data.
+   */
+  changeStep?(ref: WorkflowRef, stepId: string, change: WorkflowStepChange): Promise<void>;
   /**
    * Makes the workflow `start → done` in the hub, with the id taken from its name (`-2` when the
    * id is taken), and returns where it is. Rejects with the reason it couldn't be written.
