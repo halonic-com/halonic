@@ -40,6 +40,7 @@ verifies("app.plugin-trust-sections", () => {
       "Tools for agents",
       "Programs",
       "Secrets",
+      "Sign-ins",
       "Addresses",
       "In Studio",
     ]);

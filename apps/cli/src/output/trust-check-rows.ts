@@ -31,7 +31,7 @@ const firstColumn = 14;
 export const rowIndent = "  ";
 
 /** Where the lines under a row start: under its second column. */
-const underRow = " ".repeat(rowIndent.length + firstColumn);
+export const underRow = " ".repeat(rowIndent.length + firstColumn);
 
 /**
  * "  mail-mcp      npx @acme/mail-mcp 2.3.1 · gets the secret GMAIL_TOKEN ·

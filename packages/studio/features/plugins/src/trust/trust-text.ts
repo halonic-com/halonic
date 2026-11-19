@@ -6,6 +6,7 @@ import {
   type LocalToolState,
   pluginTrustLocationHeadings,
   pluginTrustMoreFilesText,
+  pluginTrustSectionHeadings,
   pluginTrustToolsIntro,
 } from "@halonicjs/app";
 import { hostFromSetting } from "../settings/settings-text.ts";
@@ -107,6 +108,7 @@ export const TRUST_CHECK_LAST_LINE =
 export const TOOLS_SECTION = "Tools for agents";
 export const PROGRAMS_SECTION = "Programs";
 export const SECRETS_SECTION = "Secrets";
+export const SIGN_INS_SECTION = pluginTrustSectionHeadings["sign-ins"];
 export const ADDRESSES_SECTION = "Addresses";
 export const IN_STUDIO_SECTION = "In Studio";
 /** The headings of the folder and its files, from core, which the CLI reads too. */

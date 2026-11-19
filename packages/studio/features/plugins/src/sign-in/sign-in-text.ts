@@ -4,6 +4,7 @@
 // and are listed on HAL-8613 (HAL-2282 rule). The plugin's own text
 // (its name, a purpose, a scope's reason) is only ever a value here.
 
+import { signInTokenHostWarning, signInTrustLine } from "@halonicjs/app";
 import type { SignInFacts } from "./sign-in-facts.ts";
 
 /** The section's heading on the plugin page, next to Settings. */
@@ -20,27 +21,18 @@ const list = new Intl.ListFormat("en-GB", { type: "conjunction" });
  * The trust check line, shown before **Sign in**: "Signs in to your Acme
  * account at auth.example.com. Halonic gets the tokens from
  * auth.example.com. It can: read your projects. The sign-in is used only
- * with api.example.com."
- *
- * A sign-in that asks for no scopes leaves out "It can: …".
+ * with api.example.com." The trust check shows the same line (core's
+ * `signInTrustLine`).
  *
  * @param service - the plugin's name
  */
 export function trustLine(service: string, facts: SignInFacts): string {
-  const can = facts.scopeReasons.length === 0 ? "" : ` It can: ${facts.scopeReasons.join("; ")}.`;
-  return (
-    `Signs in to your ${service} account at ${facts.authorizeHost}. ` +
-    `Halonic gets the tokens from ${facts.tokenHost}.${can} ` +
-    `The sign-in is used only with ${list.format(facts.accessHosts)}.`
-  );
+  return signInTrustLine(service, facts);
 }
 
 /** The token host warning, when the sign-in page and the token address are different services. */
 export function tokenHostWarning(facts: SignInFacts): string {
-  return (
-    `The sign-in page and the token address are different services: ` +
-    `${facts.authorizeHost} and ${facts.tokenHost}. Only continue if you expect that.`
-  );
+  return signInTokenHostWarning(facts);
 }
 
 /** Why **Sign in again** shows: the saved sign-in is for one the person no longer sees. */

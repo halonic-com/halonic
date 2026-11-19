@@ -330,9 +330,12 @@ verifies("app.plugin-trust-sections", () => {
     const content = pluginTrustContent({ plugin: weather, files: [] });
     open(weather);
 
-    expect(pluginTrustSections(content)).toEqual(pluginTrustSectionOrder);
+    // Every section but Sign-ins, which plugin-trust-sign-ins.test.tsx checks with a plugin that signs in.
+    expect(pluginTrustSections(content)).toEqual(
+      pluginTrustSectionOrder.filter((section) => section !== "sign-ins"),
+    );
     expect(headings()).toEqual(
-      pluginTrustSectionOrder.map((section) => pluginTrustSectionHeadings[section]),
+      pluginTrustSections(content).map((section) => pluginTrustSectionHeadings[section]),
     );
   });
 
