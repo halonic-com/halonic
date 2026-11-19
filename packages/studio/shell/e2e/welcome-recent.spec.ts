@@ -12,12 +12,17 @@ test.use({ viewport: { width: 320, height: 800 } });
 /**
  * How far, in px, any part of `row` or its text reaches past the row's left or right edge; 0 when
  * none does. Text a part clips itself, as the folder's start cut with "…" does, draws nothing past it.
+ * A part with no box, such as the `<wbr>` between folder names, draws nothing and is skipped: its
+ * box would read as the window's corner.
  */
 async function overflow(row: Locator): Promise<number> {
   return row.evaluate((button) => {
     const edges = button.getBoundingClientRect();
     let furthest = 0;
     for (const part of button.querySelectorAll("*")) {
+      if (part.getClientRects().length === 0) {
+        continue;
+      }
       const box = part.getBoundingClientRect();
       furthest = Math.max(furthest, box.right - edges.right, edges.left - box.left);
       if (getComputedStyle(part).overflowX === "visible") {
@@ -29,9 +34,22 @@ async function overflow(row: Locator): Promise<number> {
 }
 
 /** The folder's line in `row`: its start, cut with "…", and its kept end. */
-function folderParts(row: Locator): { start: Locator; end: Locator } {
+function folderParts(row: Locator): { line: Locator; start: Locator; end: Locator } {
   const line = row.locator(".text-caption").first();
-  return { start: line.locator("> span").first(), end: line.locator("> span").last() };
+  return { line, start: line.locator("> span").first(), end: line.locator("> span").last() };
+}
+
+/**
+ * The height, in px, of one line of `text`. Read from its style, not a box: the folder's start
+ * stretches to the height of its end, so its box is as tall as all the end's lines.
+ */
+async function lineHeightOf(text: Locator): Promise<number> {
+  return Number.parseFloat(await text.evaluate((element) => getComputedStyle(element).lineHeight));
+}
+
+/** The height, in px, of `element`'s box. */
+async function heightOf(element: Locator): Promise<number> {
+  return element.evaluate((part) => part.getBoundingClientRect().height);
 }
 
 const rows = [
@@ -54,10 +72,8 @@ for (const { kind, name } of rows) {
     await expect(row).toBeVisible();
 
     expect(await overflow(row)).toBeLessThanOrEqual(0);
-    const { start, end } = folderParts(row);
-    const lineHeight = await start.evaluate((element) => element.getBoundingClientRect().height);
-    const endHeight = await end.evaluate((element) => element.getBoundingClientRect().height);
-    expect(endHeight).toBeGreaterThan(lineHeight * 1.5);
+    const { line, start, end } = folderParts(row);
+    expect(await heightOf(end)).toBeGreaterThan((await lineHeightOf(line)) * 1.5);
     // The start keeps room for its "…", so the end doesn't read as a folder of its own.
     const startWidth = await start.evaluate((element) => element.getBoundingClientRect().width);
     expect(startWidth).toBeGreaterThan(0);
@@ -67,10 +83,8 @@ for (const { kind, name } of rows) {
 test("a short folder stays on one line, whole", async ({ page }) => {
   await page.goto("/welcome-recent.html");
   const row = page.getByRole("button", { name: "Acme, ~/Work/acme", exact: true });
-  const { start, end } = folderParts(row);
-  const lineHeight = await start.evaluate((element) => element.getBoundingClientRect().height);
-  const endHeight = await end.evaluate((element) => element.getBoundingClientRect().height);
-  expect(endHeight).toBe(lineHeight);
+  const { line, end } = folderParts(row);
+  expect(await heightOf(end)).toBe(await lineHeightOf(line));
   expect(await overflow(row)).toBeLessThanOrEqual(0);
 });
 
@@ -86,10 +100,7 @@ test("a name too long for one line wraps and shows in full", async ({ page }) =>
     clipped:
       element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight,
   }));
-  const lineHeight = Number.parseFloat(
-    await nameLine.evaluate((element) => getComputedStyle(element).lineHeight),
-  );
   expect(clipped).toBe(false);
-  expect(height).toBeGreaterThan(lineHeight * 1.5);
+  expect(height).toBeGreaterThan((await lineHeightOf(nameLine)) * 1.5);
   expect(await overflow(row)).toBeLessThanOrEqual(0);
 });
