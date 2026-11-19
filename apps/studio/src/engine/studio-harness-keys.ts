@@ -59,7 +59,7 @@ const signIn: BridgeAccess = {
  *
  * @example
  * const keys = studioHarnessKeys({ definitions, secrets, isTrusted });
- * await keys.accessOf({ runId, agentId: "coder", hubId: "support", model: "open-coder-agent" });
+ * await keys.accessOf({ runId, agentId: "coder", harness: "claude-code", hubId: "support", model: "open-coder-agent" });
  */
 export function studioHarnessKeys(input: StudioHarnessKeysInput): StudioHarnessKeys {
   return {
@@ -82,7 +82,7 @@ export function studioHarnessKeys(input: StudioHarnessKeysInput): StudioHarnessK
 async function accessOf(input: StudioHarnessKeysInput, agent: BridgeAgent): Promise<BridgeAccess> {
   if (agent.hubId === undefined || agent.model === undefined) return signIn;
   const workspace = await loadWorkspace(input.definitions);
-  const access = await harnessModelAccess(workspace, agent.hubId, agent.model, {
+  const access = await harnessModelAccess(workspace, agent.hubId, agent.model, agent.harness, {
     isTrusted: () => input.isTrusted(workspace),
     keyOrigins: noKeyOrigins,
   });

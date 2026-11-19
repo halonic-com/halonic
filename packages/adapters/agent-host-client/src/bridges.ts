@@ -37,6 +37,11 @@ export const bridgeOpenLimitMs = 30_000;
 export interface BridgeAgent {
   readonly runId: string;
   readonly agentId: string;
+  /**
+   * The harness the agent's call runs in, as the engine gives it, so Studio
+   * gives only a provider that harness's program can speak.
+   */
+  readonly harness: string;
   /** The hub whose workspace the agent's file is in, where Studio resolves its model. */
   readonly hubId?: string;
   /**
@@ -51,6 +56,8 @@ export interface BridgeAgent {
 export interface OpeningAgent {
   readonly runId: string;
   readonly agentId: string;
+  /** The harness the agent's call runs in. */
+  readonly harness: string;
   readonly hubId?: string;
   /** The agent's file as the call reads it, whose `model` Studio is told. */
   readonly file?: { readonly model?: string | undefined };
@@ -377,6 +384,7 @@ function bridgeAgentOf(agent: OpeningAgent): BridgeAgent {
   return {
     runId: agent.runId,
     agentId: agent.agentId,
+    harness: agent.harness,
     ...(agent.hubId === undefined ? {} : { hubId: agent.hubId }),
     ...(model === undefined ? {} : { model }),
   };

@@ -13,9 +13,10 @@ function keysOf(overrides: Partial<StudioHarnessKeysInput> = {}) {
   });
 }
 
-const coder = (model?: string) => ({
+const coder = (model?: string, harness = "claude-code") => ({
   runId: "run_1",
   agentId: "coder",
+  harness,
   hubId: "support",
   ...(model === undefined ? {} : { model }),
 });
@@ -59,6 +60,17 @@ verifies("studio.harness-bridge-keys", () => {
         kind: "denied",
       });
       expect(asked).toBe(1);
+    });
+
+    it("refuses before the program starts an alias whose provider the agent's harness can't call", async () => {
+      const keys = keysOf();
+
+      const refusal = await keys
+        .accessOf(coder("open-coder-agent", "codex"))
+        .catch((error) => error);
+
+      expect(refusal).toMatchObject({ code: "not-for-harness" });
+      expect(refusal.message).toMatch(/^Codex can't call provider zai, which has type anthropic/);
     });
 
     it("never reads a key of Halonic's own or a plugin's", async () => {

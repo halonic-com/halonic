@@ -118,7 +118,7 @@ function inputOn(
   };
 }
 
-const agent = { runId: "run_1", agentId: "coder" } as HarnessAgent;
+const agent = { runId: "run_1", agentId: "coder", harness: "claude-code" } as HarnessAgent;
 const recorder: BridgeRecorder = { record: async () => {} };
 
 /** Opens the agent's bridge, waits for its one call to be answered, then closes it. */
@@ -265,6 +265,7 @@ verifies("studio.harness-bridge-keys", () => {
     const coder = {
       runId: "run_1",
       agentId: "coder",
+      harness: "claude-code",
       hubId: "support",
       file: { model: "open-coder-agent" },
     } as unknown as HarnessAgent;
