@@ -170,7 +170,10 @@ verifies("fs-node.plugin-folder-plain", () => {
     if (name === "plugins.staging") await mkdir(join(profile, "plugins"));
     await symlink(outside, join(profile, name), folderLinkType);
     const writer = new FileSystemPluginFolder(join(profile, "plugins"));
-    await expect(writer.place("weather", weather, { replace: false })).rejects.toThrow(/is a link/);
+    await expect(writer.place("weather", weather, { replace: false })).rejects.toMatchObject({
+      kind: "conflict",
+      message: expect.stringMatching(/is a link/),
+    });
     expect(await readdir(outside)).toEqual([]);
   });
 

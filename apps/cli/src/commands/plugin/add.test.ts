@@ -258,6 +258,22 @@ verifies("cli.commands.plugin.add", () => {
     expect(await readdir(pluginsFolder())).toEqual(["weather"]);
   });
 
+  it("says why when the plugins folder is a link, and writes nothing through it", async () => {
+    const outside = join(folder, "outside");
+    await mkdir(outside);
+    await mkdir(join(folder, "profile"));
+    await symlink(outside, pluginsFolder(), process.platform === "win32" ? "junction" : "dir");
+
+    const { code, io } = await add([await writeSource("weather")]);
+
+    expect(code).toBe(exitCode.conflict);
+    const stderr = io.stderr.join("\n");
+    expect(stderr).toContain("is a link; plugins are written only into a plain folder.");
+    expect(stderr).toContain("Replace it with a plain folder, then try again.");
+    expect(stderr).not.toContain("can't explain yet");
+    expect(await readdir(outside)).toEqual([]);
+  });
+
   it("names the plugin's folder by its id, not by the source folder's name", async () => {
     await add([await writeSource("weather", "Weather-Plugin")]);
 
