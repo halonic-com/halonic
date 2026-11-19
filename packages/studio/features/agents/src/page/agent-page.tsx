@@ -1,6 +1,7 @@
 import {
   Button,
   EmptyState,
+  inlineLinkClasses,
   LetterTile,
   SkeletonBar,
   type Tab,
@@ -47,7 +48,10 @@ export function AgentPage({ item, context }: ItemViewProps) {
       host={context.services.get(AgentsHostService)}
       hubId={item.hub}
       id={item.id}
-      {...(openPlace && { goToAgents: () => openPlace("agents") })}
+      {...(openPlace && {
+        goToAgents: () => openPlace("agents"),
+        openRuns: () => openPlace("runs"),
+      })}
       {...(openItem && { openFile: (path: string) => openItem(fileItemOf(path)) })}
       {...(runCommand && {
         openLibrary: (list: AgentToolList) => runCommand(libraryTabCommands[list]),
@@ -64,6 +68,8 @@ export interface AgentScreenProps extends AgentRef {
   readonly openFile?: ((path: string) => void) | undefined;
   /** Opens Library on a Tools list's tab, for **Open Library ›**; absent where the app can't. */
   readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
+  /** Opens the Runs page, for **Open the Runs page ›**; absent where the app can't open a place. */
+  readonly openRuns?: (() => void) | undefined;
 }
 
 /**
@@ -79,6 +85,7 @@ export function AgentScreen({
   goToAgents,
   openFile,
   openLibrary,
+  openRuns,
 }: AgentScreenProps) {
   // After a Try again reads, the agent's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -245,6 +252,14 @@ export function AgentScreen({
               {runsLines(name, users.load).map((line) => (
                 <p key={line} className="text-small text-fg-muted">
                   {line}
+                  {line === pageWords.noRuns && openRuns && (
+                    <>
+                      {" "}
+                      <button type="button" className={inlineLinkClasses} onClick={openRuns}>
+                        {pageWords.openRuns}
+                      </button>
+                    </>
+                  )}
                 </p>
               ))}
             </section>

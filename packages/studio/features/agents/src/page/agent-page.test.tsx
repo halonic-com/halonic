@@ -40,12 +40,23 @@ verifies("agents.page.frame", () => {
     const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
     await act(async () => buttonNamed(page, "Runs")?.click());
 
-    expect(page.textContent).toContain(
-      "Runs aren't listed by agent yet. See them on the Runs page.",
-    );
+    expect(page.textContent).toContain("Runs aren't listed by agent yet.");
+    expect(buttonNamed(page, "Open the Runs page ›")).toBeUndefined();
     expect(page.textContent).toContain(
       "Sorter runs as a step in a workflow. Add it to one in Workflows.",
     );
+  });
+
+  it("ends the Runs line in Open the Runs page ›, which opens the Runs page", async () => {
+    const openRuns = vi.fn();
+    const page = await show(
+      <AgentScreen host={hostWith()} hubId="acme" id="sorter" openRuns={openRuns} />,
+    );
+    await act(async () => buttonNamed(page, "Runs")?.click());
+
+    expect(page.textContent).toContain("Runs aren't listed by agent yet. Open the Runs page ›");
+    await act(async () => buttonNamed(page, "Open the Runs page ›")?.click());
+    expect(openRuns).toHaveBeenCalledOnce();
   });
 
   it("doesn't say an agent a workflow runs has no runs, and points to that workflow's runs", async () => {
