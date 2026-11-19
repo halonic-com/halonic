@@ -6,6 +6,7 @@ import {
   type LocalToolState,
   pluginTrustLocationHeadings,
   pluginTrustMoreFilesText,
+  pluginTrustToolsIntro,
 } from "@halonicjs/app";
 import { hostFromSetting } from "../settings/settings-text.ts";
 
@@ -120,9 +121,8 @@ export function sectionRow(title: string, count: number): string {
   return `${title} (${count})`;
 }
 
-/** The first line in Tools for agents (T8). */
-export const TOOLS_INTRO =
-  "Agents can use these through a connector. Each one asks a person first unless you change that.";
+/** The first line in Tools for agents (T8), worded in core, which the CLI reads too. */
+export const TOOLS_INTRO = pluginTrustToolsIntro;
 
 /** After a tool whose answers the plugin marks as untrusted (T8). */
 export const OUTSIDE_TEXT = "its answers aren't trusted as instructions";

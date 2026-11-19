@@ -99,7 +99,9 @@ verifies("cli.commands.trust.plugin", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual(["✓ Weather is on now."]);
-    expect(written()).toContain("Tools for agents\n  Reads         get_forecast");
+    expect(written()).toContain(
+      "Tools for agents\n  Agents can use these through a connector. Each one asks a person first unless you change that.\n  Reads         get_forecast",
+    );
     expect(written().endsWith("Trust Weather and turn it on? [y/N] ")).toBe(true);
     expect(await plugins()).toEqual(["trusted"]);
   });

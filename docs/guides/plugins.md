@@ -262,7 +262,8 @@ Both leave private names out of the copy, at any depth: `.git`, `.studio`, `.env
 The check lists what the plugin can do and reach:
 
 - **Tools for agents:** every tool, as **Reads**, **Changes things** or
-  **Sends**. A tool that changes or sends asks a person first.
+  **Sends**. Agents get them through a connector, and each one asks a person
+  first, a tool that reads too, until the connector file's `read` list names it.
 - **Programs:** local tools, each with its command and
   arguments.
 - **Secrets:** each by name and the addresses it goes to, never its value.
