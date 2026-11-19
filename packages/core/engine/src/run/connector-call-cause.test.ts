@@ -1,3 +1,4 @@
+import { maxCauseNameLength } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { reviewedTools } from "../agent/listed-tool-approval.test-helper.ts";
@@ -38,6 +39,11 @@ function mailConnector() {
 }
 
 const sendMail = callOf("send_mail", { to: "support" });
+
+/** A start error as a connector adapter throws it (`ports.connector-start-failure`). */
+function startError(name: string, fields: Record<string, unknown>, message = "didn't start") {
+  return Object.assign(new Error(message), { name, ...fields });
+}
 
 verifies("engine.tool-result-cause", () => {
   describe("a call the engine doesn't make", () => {
@@ -95,6 +101,66 @@ verifies("engine.tool-result-cause", () => {
     expect(result.outcome).toBe("error");
     expect(result.cause).toStrictEqual({ code: "connector-not-started", why: "other" });
     expect(JSON.stringify(result.cause)).not.toContain(secretValue);
+  });
+
+  describe("names why the connectors didn't start", () => {
+    it("names the program that isn't on this computer", async () => {
+      const open = async () => {
+        throw startError("ProgramNotFoundError", { program: "npx" });
+      };
+
+      const result = await makeRunConnectorCall(open, sendingOn, sendMail, reviewedTools);
+
+      expect(result.outcome).toBe("error");
+      expect(result.cause).toStrictEqual({
+        code: "connector-not-started",
+        why: "program-missing",
+        name: "npx",
+      });
+    });
+
+    it("names the secret that isn't set, and nothing of the error's message", async () => {
+      const mail = mailConnector();
+      mail.listTools = async () => {
+        throw startError(
+          "SecretNotSetError",
+          { secretName: "MAIL_TOKEN" },
+          "invented-token-0000 in the profile folder",
+        );
+      };
+
+      const result = await makeConnectorCall([mail], sendingOn, sendMail, reviewedTools);
+
+      expect(result.outcome).toBe("error");
+      expect(result.cause).toStrictEqual({
+        code: "connector-not-started",
+        why: "secret-not-set",
+        name: "MAIL_TOKEN",
+      });
+      expect(JSON.stringify(result.cause)).not.toContain("invented-token-0000");
+      expect(mail.calls).toEqual([]);
+    });
+
+    it("says `other` when the listing failed for a reason it can't name", async () => {
+      const mail = mailConnector();
+      mail.listTools = async () => {
+        throw new Error("mail exited");
+      };
+
+      const result = await makeConnectorCall([mail], sendingOn, sendMail, reviewedTools);
+
+      expect(result.cause).toStrictEqual({ code: "connector-not-started", why: "other" });
+    });
+
+    it("cuts a long name to the longest a cause carries", async () => {
+      const open = async () => {
+        throw startError("ProgramNotFoundError", { program: "p".repeat(maxCauseNameLength + 5) });
+      };
+
+      const result = await makeRunConnectorCall(open, sendingOn, sendMail, reviewedTools);
+
+      expect(result.cause).toMatchObject({ name: "p".repeat(maxCauseNameLength) });
+    });
   });
 
   it("gives no cause to a call that was made", async () => {
