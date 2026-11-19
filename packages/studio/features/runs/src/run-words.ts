@@ -179,6 +179,8 @@ export const pageWords = {
   workflow: (name: string) => `Workflow: ${name}`,
   testTag: "Test",
   running: (count: number) => `${count} running`,
+  /** Read once the list settles after a filter change (mc 19.3, revision 115); none reads the filter's own line. */
+  shown: (count: number) => (count === 1 ? "1 run." : `${count.toLocaleString("en-US")} runs.`),
 };
 
 /**

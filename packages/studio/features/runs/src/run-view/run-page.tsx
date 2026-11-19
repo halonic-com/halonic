@@ -39,6 +39,7 @@ import { LogUnread, RunLayout } from "./run-layout.tsx";
 import type { RunPageContext } from "./run-page-model.ts";
 import { slowStepDueAt } from "./slow-step.ts";
 import { StepPanel } from "./step-panel.tsx";
+import { useRunChanges } from "./use-run-changes.ts";
 
 /** The command that opens the workspace page at Models (`features/workspace`). */
 const openModelsCommand = "workspace.open-models";
@@ -59,6 +60,7 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
       {...(instructionTrust === undefined ? {} : { instructionTrust })}
       {...(sandboxStartCheck === undefined ? {} : { sandboxStartCheck })}
       announce={(line) => context.announcer.announce(line)}
+      announceState={(key, text) => context.announcer.announceState(key, text)}
       {...(context.runCommand === undefined
         ? {}
         : { openModels: () => void context.runCommand?.(openModelsCommand) })}
@@ -95,6 +97,8 @@ export interface RunViewProps {
   readonly sandboxStartCheck?: SandboxStartCheck;
   /** Says a line to a screen reader, for the answer to a press in a banner; absent in tests that don't listen. */
   readonly announce?: (line: string) => void;
+  /** Reads the run's new state when it changes (`announcer.announceState`); absent in tests that don't listen. */
+  readonly announceState?: (key: string, text: string) => void;
   /** Starts a run, for Run again; absent where there is no engine, and the button isn't there. */
   readonly runStart?: RunStartHost;
   /** Opens the workspace page at Models, for **Open Models** on a failed banner; without it the button isn't there. */
@@ -139,6 +143,7 @@ export function RunView({
   instructionTrust,
   sandboxStartCheck,
   announce,
+  announceState,
   runStart,
   openModels,
   goToRuns,
@@ -159,6 +164,12 @@ export function RunView({
   const title = runPageWords.title(shortRunId(runId));
   const retry = () => void list.refresh();
   const runAgain = useRunAgain(runStart, run, log, openRun, engine, announce);
+  const page = useRunChanges(
+    run,
+    log,
+    (shown) => pageContext(list, state.runs, shown, now()),
+    announceState,
+  );
 
   if (run !== undefined) {
     const context = pageContext(list, state.runs, run, now());
@@ -169,7 +180,7 @@ export function RunView({
         : everyStep(log, summarize(log) ?? run.summary, context.workflow, context.now);
     const open = entries.find((entry) => entry.id === openEntry);
     return (
-      <div className="flex min-h-full w-full items-start">
+      <div ref={page} className="flex min-h-full w-full items-start">
         <RunLayout
           run={run}
           context={context}

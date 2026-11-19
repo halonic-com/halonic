@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
-import { createRef } from "react";
+import { createRef, StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EmptyState } from "../empty-state/empty-state.tsx";
 import { PresentationProvider } from "../presentation/presentation.tsx";
@@ -111,6 +111,21 @@ verifies("kit.side-panel", () => {
       expect(document.activeElement).toBe(parts(container).title);
       rerender(null);
       expect(document.activeElement).toBe(opener);
+      opener.remove();
+    });
+
+    // The Studio window mounts in StrictMode, which runs the open effect a second time while
+    // the title already has focus (HAL-12456, A3).
+    it("goes back to the opener in StrictMode too, not to the page's h1", () => {
+      const heading = document.createElement("h1");
+      heading.tabIndex = -1;
+      const opener = document.createElement("button");
+      document.body.append(heading, opener);
+      opener.focus();
+      const { rerender } = render(<StrictMode>{panel()}</StrictMode>);
+      rerender(<StrictMode>{null}</StrictMode>);
+      expect(document.activeElement).toBe(opener);
+      heading.remove();
       opener.remove();
     });
 
