@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-11253
+- Source: HAL-11253, HAL-13251 (whole printed lines)
 
-When the shell records an error, it shall write one line, the time in UTC, where it comes from and what happened, to `studio/shell.log` in the profile, as well as to stderr, so that a release build without a console keeps it. A line shall hold no line break, and a message longer than 4 KiB shall be cut and marked. When the file would grow past 1 MiB, the shell shall rename it to `shell.log.1`, replacing an older one, and start a new file. The file shall be readable and writable by its owner only on macOS and Linux. A line the shell records itself shall name things and give error kinds; it shall never hold a secret's value or a token. A line the agent host or `wsl.exe` prints on stderr shall be recorded as printed, except that a line holding text shaped like a key (the formats `findSecretShape` in `@halonicjs/std` spots) shall be replaced by a note that names the key's kind.
+When the shell records an error, it shall write one line, the time in UTC, where it comes from and what happened, to `studio/shell.log` in the profile, as well as to stderr, so that a release build without a console keeps it. A line shall hold no line break, and a message longer than 4 KiB shall be cut and marked. When the file would grow past 1 MiB, the shell shall rename it to `shell.log.1`, replacing an older one, and start a new file. The file shall be readable and writable by its owner only on macOS and Linux. A line the shell records itself shall name things and give error kinds; it shall never hold a secret's value or a token. A line the agent host or `wsl.exe` prints on stderr shall be recorded as printed, except that a line holding text shaped like a key (the formats `findSecretShape` in `@halonicjs/std` spots) shall be replaced by a note that names the key's kind. The key-shape check shall see each printed line whole, however many reads it takes to come in; of a printed line longer than 64 KiB, only the first 64 KiB shall be kept.
 
 ## Examples
 

@@ -10,7 +10,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Condvar, Mutex, PoisonError};
 use std::thread;
@@ -104,8 +104,9 @@ pub enum WatchMessage {
 /// Where a watch's messages go; `false` once no one reads them.
 type Sink = Box<dyn FnMut(WatchMessage) -> bool + Send>;
 
-/// The folders looked at, by key, each with its look.
-type Folders = Mutex<HashMap<String, Arc<FolderLook>>>;
+/// The folders looked at, each with its look. Keyed by the path itself, not
+/// its text, so two folders whose names aren't UTF-8 never share a look.
+type Folders = Mutex<HashMap<PathBuf, Arc<FolderLook>>>;
 
 /// The open watches, by the folder they watch. Each folder has one
 /// [`FolderLook`], with one thread, shared by every watch on it.
@@ -161,7 +162,7 @@ impl Watches {
     pub fn start<Scan>(
         &self,
         owner: &str,
-        folder: &str,
+        folder: &Path,
         interval: Duration,
         mut scan: Scan,
         send: impl FnMut(WatchMessage) -> bool + Send + 'static,
@@ -199,10 +200,10 @@ impl Watches {
             stopped: Mutex::new(false),
             wake: Condvar::new(),
         });
-        folders.insert(folder.to_owned(), Arc::clone(&look));
+        folders.insert(folder.to_path_buf(), Arc::clone(&look));
         drop(folders);
         let all = Arc::clone(&self.folders);
-        let key = folder.to_owned();
+        let key = folder.to_path_buf();
         let thread_look = Arc::clone(&look);
         let started = thread::Builder::new()
             .name(format!("halonic-fs-watch-{id}"))
@@ -277,7 +278,7 @@ impl FolderLook {
         first: FolderSnapshot,
         scan: &mut Scan,
         all: &Folders,
-        key: &str,
+        key: &Path,
     ) where
         Scan: FnMut() -> Result<FolderSnapshot, FileError>,
     {
@@ -310,7 +311,7 @@ impl FolderLook {
     /// Takes the look off `all` when no watch is left on it; `true` then.
     /// Decided under the folders' lock, so a watch that joins now isn't
     /// left on a look that ended.
-    fn end_if_unwatched(&self, all: &Folders, key: &str) -> bool {
+    fn end_if_unwatched(&self, all: &Folders, key: &Path) -> bool {
         let mut folders = lock(all);
         if !lock(&self.watchers).is_empty() {
             return false;
@@ -321,7 +322,7 @@ impl FolderLook {
 
     /// Ends the look with one `Failed` to every watch on it, those that
     /// joined at the last moment included.
-    fn fail(&self, all: &Folders, key: &str, error: &FileError) {
+    fn fail(&self, all: &Folders, key: &Path, error: &FileError) {
         let mut folders = lock(all);
         self.leave(&mut folders, key);
         let mut watchers = lock(&self.watchers);
@@ -334,7 +335,7 @@ impl FolderLook {
 
     /// Takes this look off `folders` under `key`, unless a newer look is
     /// there already.
-    fn leave(&self, folders: &mut HashMap<String, Arc<FolderLook>>, key: &str) {
+    fn leave(&self, folders: &mut HashMap<PathBuf, Arc<FolderLook>>, key: &Path) {
         if folders
             .get(key)
             .is_some_and(|kept| std::ptr::eq(Arc::as_ptr(kept), self))
