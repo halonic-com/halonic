@@ -9,6 +9,8 @@ export const pageWords = {
   nameMissing: "Give it a name.",
   nameTaken: (name: string) => `An agent called ${name} already exists.`,
   views: "Agent views",
+  /** Microcopy 2 and flow-agents 3.1: under the header while saved changes aren't in a version. */
+  changesNotLive: "Changes not live yet",
   saveFailed: "The file couldn't be written.",
   couldntSave: (reason: string) => `Couldn't save: ${reason}`,
   /** Read when a card drops because its part is gone (a11y 6.5, checklist 1.10). */

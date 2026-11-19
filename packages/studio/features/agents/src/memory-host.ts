@@ -3,6 +3,7 @@ import type {
   AgentHarnessId,
   AgentHub,
   AgentListing,
+  AgentLiveState,
   AgentModelParams,
   AgentModelParamsChange,
   AgentOutput,
@@ -48,6 +49,8 @@ export interface MemoryAgentsHostOptions {
   readonly toolOptions?:
     | Readonly<Partial<Record<AgentToolList, readonly AgentToolOption[]>>>
     | undefined;
+  /** What `liveState` answers for each agent, keyed by `hubId/id`; `live` when left out. */
+  readonly liveStates?: Readonly<Record<string, AgentLiveState>> | undefined;
   /** The workflows that run each agent, keyed by `hubId/id` of the agent. */
   readonly users?: Readonly<Record<string, readonly AgentUser[]>> | undefined;
 }
@@ -190,6 +193,10 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
     openHarnessSignIn: async (ref) => {
       found(ref);
       return options.signIn ?? { opened: true };
+    },
+    liveState: async (ref) => {
+      found(ref);
+      return options.liveStates?.[keyOf(ref)] ?? "live";
     },
     filePath: async (ref) => {
       found(ref);

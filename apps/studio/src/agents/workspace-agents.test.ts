@@ -325,6 +325,27 @@ verifies("studio.workspace-agents", () => {
   });
 });
 
+verifies("studio.workspace-agents-live", () => {
+  describe("WorkspaceAgents live state", () => {
+    it("asks for the live state of the agent's file, and counts an agent as live without a way to ask", async () => {
+      const asked: string[] = [];
+      const { host } = setup({
+        liveness: async (path) => {
+          asked.push(path);
+          return "not-live";
+        },
+      });
+      expect(await host.liveState({ hubId: "acme", id: "writer" })).toBe("not-live");
+      expect(asked).toEqual(["hubs/acme/agents/writer.agent.yaml"]);
+      await expect(host.liveState({ hubId: "acme", id: "nobody" })).rejects.toMatchObject({
+        kind: "not_found",
+      });
+
+      expect(await setup().host.liveState({ hubId: "acme", id: "writer" })).toBe("live");
+    });
+  });
+});
+
 verifies("studio.workspace-agents-trash", () => {
   describe("WorkspaceAgents trash", () => {
     it("gives the path of the agent's file, and not_found for an agent that isn't there", async () => {
@@ -371,7 +392,7 @@ verifies("studio.new-agents-run", () => {
   describe("WorkspaceAgents and New agents run", () => {
     it("records On this computer for the new agent's file as written, keyed by the workspace and its id", async () => {
       const { parts, placement, errors } = await newAgentsSetup("this-computer");
-      const { host, store } = setup(parts);
+      const { host, store } = setup({ newAgents: parts });
 
       const ref = await host.create({ name: "Refund checker", hubId: "acme" });
 
@@ -387,7 +408,7 @@ verifies("studio.new-agents-run", () => {
     it("leaves the new agent in its sandbox when the setting says so, or nothing is saved", async () => {
       for (const run of ["sandbox", undefined] as const) {
         const { parts, placement } = await newAgentsSetup(run);
-        const { host, store } = setup(parts);
+        const { host, store } = setup({ newAgents: parts });
 
         const ref = await host.create({ name: "Refund checker", hubId: "acme" });
 
@@ -406,7 +427,7 @@ verifies("studio.new-agents-run", () => {
         throw refused;
       };
       const { parts, placement, errors } = await newAgentsSetup("this-computer", store);
-      const { host, store: files } = setup(parts);
+      const { host, store: files } = setup({ newAgents: parts });
 
       const ref = await host.create({ name: "Refund checker", hubId: "acme" });
 
@@ -420,7 +441,7 @@ verifies("studio.new-agents-run", () => {
 
     it("asks again once the new agent's file is edited", async () => {
       const { parts, placement } = await newAgentsSetup("this-computer");
-      const { host, store } = setup(parts);
+      const { host, store } = setup({ newAgents: parts });
 
       const ref = await host.create({ name: "Refund checker", hubId: "acme" });
       await host.update(ref, { description: "Checks refunds." });

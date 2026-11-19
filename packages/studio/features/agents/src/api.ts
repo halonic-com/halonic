@@ -187,6 +187,13 @@ export function handOffPath(
   return undefined;
 }
 
+/**
+ * Whether the agent's saved file is what runs (save model 2.4, `app.live-state`): `live` when the
+ * latest version has it as saved, or when the workspace keeps no history; `not-live` when the saved
+ * file differs from it; `never-versioned` when no version has the agent yet.
+ */
+export type AgentLiveState = "never-versioned" | "live" | "not-live";
+
 /** The lists of the Tools page: what an agent uses of the Library. */
 export type AgentToolList = "skills" | "knowledge" | "connectors";
 
@@ -320,6 +327,11 @@ export interface AgentsHost {
     ref: AgentRef,
     harness: Exclude<AgentHarnessId, "halonic">,
   ): Promise<HarnessSignIn>;
+  /**
+   * Whether the agent's saved file is in the live version, for the "Changes not live yet" line.
+   * Absent where the app can't tell, which shows no line. Rejects like {@link AgentsHost.read}.
+   */
+  liveState?(ref: AgentRef): Promise<AgentLiveState>;
   /**
    * The path of the agent's file from the workspace folder, for **Open as file**. Rejects like
    * {@link AgentsHost.read}.
