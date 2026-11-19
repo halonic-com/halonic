@@ -129,6 +129,7 @@ verifies("harness-host.bridge-placement", () => {
     const host = new LocalBridgeHost({
       servers: { sandbox: fenced, "this-computer": unfenced },
       services: { servicesFor: () => services },
+      reportError: () => {},
     });
 
     await host.open(writer, recorder, "this-computer");
