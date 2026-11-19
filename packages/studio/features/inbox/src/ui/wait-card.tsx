@@ -1,5 +1,7 @@
+import { isHostTooOld } from "@halonicjs/ports";
 import { markHiddenName } from "@halonicjs/std";
 import { Button, type ButtonUnavailable, type CalloutHandle, Tooltip } from "@halonicjs/studio-kit";
+import { engineWords } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState } from "react";
 import { type AfterAnswer, afterAnswer, type InboxDecisions } from "../decide.ts";
 import type { WaitItem } from "../inbox-items.ts";
@@ -51,6 +53,8 @@ type CardState =
       /** The answer was refused because the run isn't waiting at this step any more. */
       readonly elsewhere: boolean;
       readonly manual: ManualAnswer | null;
+      /** The host is too old to check which wait step the answer is for, so it wasn't sent. */
+      readonly tooOld: boolean;
     }
   | { readonly kind: "answering"; readonly event: string }
   | {
@@ -136,6 +140,7 @@ export function WaitCard(props: WaitCardProps) {
     failed: null,
     elsewhere: false,
     manual: null,
+    tooOld: false,
   });
   const [usableAt] = useState(() => now().getTime());
   const guard = useDecisionGuard(usableAt, () => now().getTime());
@@ -163,6 +168,7 @@ export function WaitCard(props: WaitCardProps) {
         failed: event,
         elsewhere: wasDecidedElsewhere(error),
         manual: manualAnswerOf(error),
+        tooOld: isHostTooOld(error),
       });
     }
   }
@@ -268,6 +274,11 @@ function AnswerBar({ accepts, labels, state, guard, engine, onAnswer, onOpenRun 
         onRetry={failed === null ? null : () => onAnswer(failed)}
         manual={state.kind === "open" ? state.manual : null}
         elsewhere={state.kind === "open" && state.elsewhere ? { openRun: onOpenRun } : null}
+        tooOld={
+          state.kind === "open" && state.tooOld
+            ? (engine.words ?? engineWords["desktop-app"]).tooOldToAnswer
+            : null
+        }
       />
       {first === undefined ? null : answerButton(first, true)}
       {others.length === 0 ? null : (

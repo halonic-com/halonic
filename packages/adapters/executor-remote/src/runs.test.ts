@@ -1,4 +1,4 @@
-import { isRunTargetNotFound, runExecutorVersion } from "@halonicjs/ports";
+import { isHostTooOld, isRunTargetNotFound, runExecutorVersion } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { RemoteHostError } from "./errors.ts";
@@ -134,10 +134,10 @@ verifies("executor-remote.runs", () => {
       ])("refuses to send it to a host that %s, and sends nothing", async (_name, hello) => {
         const host = hostWithVersion(hello);
 
-        await expect(
-          executorFor(host).send("run_1", "approve", undefined, { wait }),
-        ).rejects.toThrow(RangeError);
+        const sent = executorFor(host).send("run_1", "approve", undefined, { wait });
 
+        await expect(sent).rejects.toThrow(RangeError);
+        await expect(sent.catch(isHostTooOld)).resolves.toBe(true);
         expect(host.calls.map((call) => call.path)).toEqual(["/api/hello"]);
       });
 

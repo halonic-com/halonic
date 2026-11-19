@@ -15,6 +15,12 @@ export interface EngineWords {
   readonly showingLast: string;
   /** Read once when the engine answers again after it went. */
   readonly answeringAgain: string;
+  /**
+   * In place of "Couldn't record your decision." when the host is too old to check which wait
+   * step an answer is for, so **Try again** can't work (UX check R15). The desktop app's engine
+   * comes with it, so only a served Studio and the phone can show theirs.
+   */
+  readonly tooOldToAnswer: string;
 }
 
 /**
@@ -27,18 +33,23 @@ export const engineWords: Readonly<Record<StudioHost, EngineWords>> = {
     notAnswering: "The engine isn't answering. It may still be starting.",
     showingLast: "The engine isn't answering. Showing what it said last.",
     answeringAgain: "The engine is answering again.",
+    tooOldToAnswer: "The engine is too old for this answer. Update Halonic, then answer again.",
   },
   served: {
     reason: "Halonic on the server isn't answering.",
     notAnswering: "Halonic on the server isn't answering.",
     showingLast: "Halonic on the server isn't answering. Showing what it said last.",
     answeringAgain: "Halonic is answering again.",
+    tooOldToAnswer:
+      "Halonic on the server is too old for this answer. Update Halonic on the server, then answer again.",
   },
   phone: {
     reason: "Halonic on your computer isn't answering.",
     notAnswering: "Halonic on your computer isn't answering.",
     showingLast: "Halonic on your computer isn't answering. Showing what it said last.",
     answeringAgain: "Halonic is answering again.",
+    tooOldToAnswer:
+      "Halonic on your computer is too old for this answer. Update Halonic on your computer, then answer again.",
   },
 };
 
