@@ -23,6 +23,7 @@ import type { KeyboardPlatform } from "../points/keybindings.ts";
 import { ResourceStatusItem } from "../resources/resource-status-item.tsx";
 import type { ResourceWatch } from "../resources/resource-watch.ts";
 import { announceSaveNotes } from "../save/save-note-words.ts";
+import { useAvailableSections } from "../settings/available-sections.ts";
 import { SettingsDialog } from "../settings/settings-dialog.tsx";
 import { listedSections, settingsGroups } from "../settings/settings-groups.ts";
 import { useSettingsOpening } from "../settings/settings-opening.ts";
@@ -137,10 +138,15 @@ export function StudioWindow(props: StudioWindowProps) {
   const settings = useSettingsOpening(host, platform);
   const showSettingsDialog = settings.show;
   // The sections this window has, so the list, the dialog and Ctrl K all leave out the same ones.
-  const sections = useMemo(() => {
+  const placeSections = useMemo(() => {
     const all = contributions.settings.list();
     return withoutHostSettings === true ? all.filter(({ scope }) => scope !== "host") : all;
   }, [contributions, withoutHostSettings]);
+  const baseContextFor = useCallback(
+    (featureId: string) => shell.services.contextFor(featureId, workspace.services),
+    [shell, workspace.services],
+  );
+  const sections = useAvailableSections(placeSections, baseContextFor);
   const settingsSections = useMemo(
     () => sections.map(({ id, title }) => ({ id, title })),
     [sections],
