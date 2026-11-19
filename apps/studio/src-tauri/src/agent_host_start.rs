@@ -14,9 +14,7 @@ use tauri::{AppHandle, Manager, Runtime};
 
 use super::choice::{HostKind, host_for, saved_setting};
 use super::progress::{FailureCause, StartFailure};
-use super::updates::{
-    SecurityUpdatesAnswer, clean_import_mounts, read_in_distro, run_security_update,
-};
+use super::updates::{DistroStartChecks, clean_import_mounts, read_in_distro, run_security_update};
 use super::{
     AgentHostState, DistroCommand, HostRefusal, Launch, START_WAIT, poisoned, unavailable,
 };
@@ -57,11 +55,11 @@ pub(super) async fn running_host<R: Runtime>(app: &AppHandle<R>) -> Result<Hands
 }
 
 /// Starts the host the launch asks for, and for the host in the distro reads
-/// its security updates. Notes when WSL is ready, before the host starts in it.
+/// its start checks. Notes when WSL is ready, before the host starts in it.
 fn start_host<R: Runtime>(
     app: &AppHandle<R>,
     state: &AgentHostState,
-) -> Result<(AgentHost, Option<SecurityUpdatesAnswer>), HostRefusal> {
+) -> Result<(AgentHost, Option<DistroStartChecks>), HostRefusal> {
     match &state.launch {
         #[cfg(test)]
         Launch::Local(command) => Ok((start_local(command())?, None)),
