@@ -170,6 +170,8 @@ export function provideFolderServices(
       clock: systemClock,
       isTrusted: async (workspace) => (await trust.checkLoaded(workspace)).status === "trusted",
       mayStart: (workspace) => trust.mayStart(workspace),
+      // Removing the trust here or in Settings › Trusted sources checks it again.
+      onTrustChange: (listener) => trust.subscribe(listener),
       ids: randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), systemClock),
       setTimer: (callback, delayMs) => {
         const timer = setTimeout(callback, delayMs);

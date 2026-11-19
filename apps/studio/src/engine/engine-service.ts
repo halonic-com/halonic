@@ -17,7 +17,8 @@
 // runs, a workflow with one is refused the same way.
 // Nothing starts from a workspace that isn't trusted, unless it reaches only
 // the test model, the CLI's rule (HAL-1984, HAL-12409): the engine checks it
-// on the workspace it loaded, when it opens and before each start.
+// on the workspace it loaded, when it opens and before each start, and it
+// closes when the trust is removed while it is open (HAL-12799).
 
 import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
 import { TauriBlobStore, TauriRecordStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
@@ -98,6 +99,12 @@ export interface EngineServiceOptions {
    * start; a check that rejects is a no.
    */
   readonly mayStart: (workspace: LoadedWorkspace) => Promise<boolean>;
+  /**
+   * Calls `listener` whenever the workspace's trust may have changed, such as when a person
+   * removes it; returns the way to stop. The open engine then asks {@link mayStart} again and
+   * closes on a no (HAL-12799).
+   */
+  onTrustChange?(listener: () => void): () => void;
   readonly ids: IdGenerator;
   /** How the scheduler wakes itself up. */
   readonly setTimer: SetTimer;
@@ -124,9 +131,13 @@ interface OpenEngine {
 export class EngineService {
   readonly #options: EngineServiceOptions;
   #opening: Promise<OpenEngine> | undefined;
+  readonly #stopHearingTrust: (() => void) | undefined;
 
   constructor(options: EngineServiceOptions) {
     this.#options = options;
+    this.#stopHearingTrust = options.onTrustChange?.(() => {
+      this.#closeIfUntrusted().catch((error: unknown) => options.reportError(error));
+    });
   }
 
   /**
@@ -277,7 +288,23 @@ export class EngineService {
 
   /** Lets the workspace's service registry close the engine with the workspace. */
   dispose(): Promise<void> {
+    this.#stopHearingTrust?.();
     return this.close();
+  }
+
+  /**
+   * Closes the open engine, as {@link EngineService.close} does, when the workspace it loaded may
+   * start nothing now: its runs in progress stop, and no timer of theirs, harness step included,
+   * runs again in this window. A check that rejects is a no.
+   */
+  async #closeIfUntrusted(): Promise<void> {
+    const opening = this.#opening;
+    if (opening === undefined) return;
+    const open = await opening.catch(() => undefined);
+    if (open === undefined) return;
+    const may = await this.#options.mayStart(open.workspace).catch(() => false);
+    // Not when the engine was closed or opened afresh meanwhile: that one was checked as it opened.
+    if (!may && this.#opening === opening) await this.close();
   }
 
   /**
