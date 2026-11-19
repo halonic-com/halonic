@@ -23,7 +23,9 @@ export {
   workspaceExecutorOptions,
 } from "./workspace-executor-options.ts";
 export {
+  type KeyCheckContext,
   latestModelResolver,
+  requireKeyMayGo,
   type WorkspaceModelResolverInput,
   workspaceModelResolver,
 } from "./workspace-model-resolver.ts";

@@ -18,7 +18,7 @@ import { contractGrant } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { HarnessProviderKeys } from "./harness-provider-keys.ts";
+import { cliProviderKeys } from "./cli-provider-keys.ts";
 import {
   acme,
   commitWorkspace,
@@ -260,7 +260,7 @@ verifies("cli.harness-provider-key", () => {
     await writeFile(join(acme, "providers/claude.yaml"), claudeProvider);
     const workspace = await loadWorkspace(new FolderDefinitionStore(acme));
     const asked: string[] = [];
-    const keys = new HarnessProviderKeys({
+    const keys = cliProviderKeys({
       workspace: () => workspace,
       secrets: {
         get: async (name) => {
@@ -268,8 +268,8 @@ verifies("cli.harness-provider-key", () => {
           return key;
         },
       },
-      keyOrigins: noKeyOrigins,
       trusted: true,
+      keyOrigins: noKeyOrigins,
     });
 
     expect(await keys.bridgeSecrets.get("github-token")).toBeNull();

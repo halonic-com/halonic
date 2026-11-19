@@ -1,36 +1,22 @@
-// What each harness agent's bridge serves in the CLI (HAL-12784): the access
+// What each harness agent's bridge serves (HAL-12784, HAL-13795): the access
 // `providerAccessOf` decides, the prices of the chosen provider's models, no
-// Halonic tools, and approvals that refuse. For a key, the bridge reads its
-// value itself, through `bridgeSecrets`, which answers only the secrets the
-// workspace's provider files name and remembers each value it hands out, so
-// the bridge's failures are scrubbed of it before the run log gets them.
-// The program never sees the value: the bridge puts it in place of the
-// program's own key, only on calls to the chosen provider's address.
-// An agent whose `model` is an alias passes the built-in loop's key check
-// first (HAL-12488), and its bridge spends the key on the alias's model only.
+// Halonic tools, and approvals that refuse. The CLI and Studio share it, and
+// each passes in its own check that a key may go to an address and its own
+// words for a missing key, so the host never handles trust itself.
+//
+// For a key, the bridge reads its value itself, through `bridgeSecrets`,
+// which answers only the secrets the workspace's provider files name and
+// remembers each value it hands out, so the bridge's failures are scrubbed of
+// it before the run log gets them. The program never sees the value: the
+// bridge puts it in place of the program's own key, only on calls to the
+// chosen provider's address. An agent whose `model` is an alias passes the
+// built-in loop's key check first (HAL-12488), and its bridge spends the key
+// on the alias's model only.
 
-import {
-  type HarnessModelAccess,
-  harnessModelAccess,
-  harnessProviderModel,
-  keyDestination,
-} from "@halonicjs/adapter-workspace-models";
 import type { HarnessModelNames } from "@halonicjs/engine";
-import {
-  type BridgeAgent,
-  type BridgeServices,
-  type ProviderAccessChoice,
-  providerAccessOf,
-  refusingApprovals,
-} from "@halonicjs/host-harness-host";
-import type {
-  BridgeProvider,
-  BridgeProviderAccess,
-  KeyOrigins,
-  ModelPrice,
-  Secrets,
-} from "@halonicjs/ports";
-import { KindedError, SecretScrubber } from "@halonicjs/std";
+import type { Provider } from "@halonicjs/format";
+import type { BridgeProvider, BridgeProviderAccess, ModelPrice, Secrets } from "@halonicjs/ports";
+import { errorKindOf, KindedError, SecretScrubber } from "@halonicjs/std";
 import {
   definitionsOf,
   filesOf,
@@ -38,35 +24,70 @@ import {
   modelPrice,
   resolveModel,
 } from "@halonicjs/workspace";
+import type { BridgeAgent, BridgeServices } from "./bridge-host.ts";
+import { refusingApprovals } from "./not-wired.ts";
+import { type ProviderAccessChoice, providerAccessOf } from "./provider-access.ts";
 
-/** What {@link HarnessProviderKeys} reads. */
-export interface HarnessProviderKeysInput {
+/** What {@link ProviderKeyServices} reads. */
+export interface ProviderKeyServicesInput {
   /** The workspace the engine runs now, for its provider files and model aliases. */
   workspace(): LoadedWorkspace;
-  /** The CLI's remembered secrets, never a raw adapter (`apps/cli/AGENTS.md`). */
+  /** The app's secrets; in the CLI, the remembered ones, never a raw adapter (`apps/cli/AGENTS.md`). */
   readonly secrets: Secrets;
-  /** The addresses each saved key may be sent to. */
-  readonly keyOrigins: KeyOrigins;
-  /** Whether the command's trust check granted trust, so a key may go to a provider's own `baseUrl`. */
-  readonly trusted: boolean;
+  /**
+   * The check a model call makes before it sends a saved key: the key's
+   * address is its type's own or the workspace is trusted, and it is on the
+   * key's allowed addresses. The app binds it to its own trust and key
+   * origins, so the bridge and the model calls refuse with the same words.
+   *
+   * @throws an error, with a `fix` when there is one, when the key may not go
+   */
+  requireKeyMayGo(file: Provider): Promise<void>;
+  /** The app's words for a key whose secret holds no value, naming how to save it there. */
+  missingKeyText(secret: string, providerId: string): string;
+  /** The model calls' rules for an agent whose `model` is an alias (HAL-12488). */
+  readonly aliases: ModelAliasRules;
   /** Hears the access each agent's bridge got, by provider and secret name, never a value. */
   reportAccess?(agent: BridgeAgent, choice: ProviderAccessChoice): void;
+}
+
+/**
+ * How the app's model calls read an agent's `model` when it is an alias. The
+ * host can't import those rules, so the app passes them in, `access` already
+ * bound to its trust and key origins.
+ */
+export interface ModelAliasRules {
+  /** The provider's own model id for an alias of the hub, else `undefined`. */
+  providerModel(workspace: LoadedWorkspace, hubId: string, name: string): string | undefined;
+  /**
+   * The keyed provider of an alias, after the check the built-in loop's calls
+   * get: trust for an address other than the type's own, the key's allowed
+   * addresses, and the route the harness calls. `undefined` when the name is no alias.
+   *
+   * @throws an error when the alias's key may not be used for the harness
+   */
+  access(
+    workspace: LoadedWorkspace,
+    hubId: string,
+    name: string,
+    harness: string,
+  ): Promise<{ readonly providerId: string } | undefined>;
 }
 
 /** The program's own sign-in: Halonic never reads it and spends nothing on it. */
 const signIn: BridgeProviderAccess = { kind: "sign-in" };
 
 /**
- * The bridge services of the CLI's harness agents, and the secrets and the
+ * The bridge services of an app's harness agents, and the secrets and the
  * scrub the bridge server is built with.
  *
  * @example
- * const keys = new HarnessProviderKeys({ workspace, secrets, keyOrigins, trusted: true });
+ * const keys = new ProviderKeyServices({ workspace, secrets, requireKeyMayGo, missingKeyText, aliases });
  * new NodeHarnessBridgeServer({ secrets: keys.bridgeSecrets, fetch });
  * harnessHostOf({ services: keys, scrub: keys.scrub, ... });
  */
-export class HarnessProviderKeys {
-  readonly #input: HarnessProviderKeysInput;
+export class ProviderKeyServices {
+  readonly #input: ProviderKeyServicesInput;
   readonly #scrubber = new SecretScrubber();
   /** The workspace each alias's model was read from for the program, until its bridge opens. */
   readonly #readFor = new Map<string, LoadedWorkspace>();
@@ -81,14 +102,14 @@ export class HarnessProviderKeys {
     providerModelOf: async (hubId, name) => {
       const workspace = this.#input.workspace();
       this.#readFor.set(aliasKey(hubId, name), workspace);
-      return harnessProviderModel(workspace, hubId, name);
+      return this.#input.aliases.providerModel(workspace, hubId, name);
     },
   };
 
   /**
    * What the bridge server reads keys from: only a secret a provider file of
    * the workspace names, else nothing, so the bridge can't read any other
-   * secret the CLI keeps. Each value it hands out is remembered for {@link scrub}.
+   * secret the app keeps. Each value it hands out is remembered for {@link scrub}.
    */
   readonly bridgeSecrets: Secrets = {
     get: async (name) => {
@@ -102,23 +123,24 @@ export class HarnessProviderKeys {
   /** Removes every key value the bridge was handed from a text. */
   readonly scrub = (text: string): string => this.#scrubber.scrub(text);
 
-  constructor(input: HarnessProviderKeysInput) {
+  constructor(input: ProviderKeyServicesInput) {
     this.#input = input;
   }
 
   /**
-   * What the agent's bridge serves (requirement `cli.harness-provider-key`).
+   * What the agent's bridge serves (requirement `harness-host.provider-key-services`).
    * For a key, it checks the key may go to the provider's address and that
    * its value is saved before the bridge opens, so the program never starts
-   * without a way to call its model. The run log keeps only an error's
-   * message, so each message ends with what to do.
+   * without a way to call its model.
    *
    * @throws KindedError `invalid_input` from `providerAccessOf`, or when the
-   *   key may not go to the provider's address, or its secret holds no value
-   * @throws what `harnessModelAccess` throws for an alias, before any key is read
+   *   key's secret holds no value; what the app's `requireKeyMayGo` throws,
+   *   with its fix added to the message
+   * @throws what the app's `aliases.access` throws for an alias, before any key is read
    */
   async servicesFor(agent: BridgeAgent): Promise<BridgeServices> {
     const workspace = this.#workspaceFor(agent);
+    const providers = filesOf(workspace, "provider").map((file) => file.value);
     const target =
       agent.model === undefined
         ? undefined
@@ -127,7 +149,7 @@ export class HarnessProviderKeys {
     const choice = providerAccessOf({
       harness: agent.harness,
       runsOn: agent.runsOn,
-      providers: filesOf(workspace, "provider").map((file) => file.value),
+      providers,
       ...(target === undefined ? {} : { modelProvider: target.provider }),
       ...(alias === undefined ? {} : { aliasProvider: alias.providerId }),
     });
@@ -135,7 +157,7 @@ export class HarnessProviderKeys {
     const models =
       choice.kind === "key" && target?.provider === choice.providerId ? [target.model] : [];
     if (choice.kind === "key") {
-      await this.#requireKeyMayGo(choice);
+      await this.#requireKeyMayGo(choice, providers);
       requireModelAtAddress(choice, models);
     }
     this.#input.reportAccess?.(agent, choice);
@@ -156,57 +178,37 @@ export class HarnessProviderKeys {
   }
 
   /**
-   * The checks a model call makes before it sends a saved key (HAL-11342,
-   * HAL-11871), then that the key's value is saved. Reading it through
-   * {@link bridgeSecrets} remembers it for {@link scrub} before the bridge opens.
+   * The app's check that the key may go to the provider's address, then that
+   * its value is saved. Reading it through {@link bridgeSecrets} remembers it
+   * for {@link scrub} before the bridge opens.
    */
-  async #requireKeyMayGo(choice: ProviderAccessChoice & { kind: "key" }): Promise<void> {
-    const destination = keyDestination({
-      id: choice.providerId,
-      type: choice.provider,
-      secret: choice.secret,
-      ...(choice.baseUrl === undefined ? {} : { baseUrl: choice.baseUrl }),
-    });
-    if (destination !== undefined && !destination.isDefault && !this.#input.trusted) {
-      throw new KindedError(
-        "invalid_input",
-        `Provider ${choice.providerId} would send its key to ${destination.origin}, and this workspace isn't trusted on this computer. Check providers/${choice.providerId}.yaml, then trust the workspace, or point it at the type's own address.`,
-      );
-    }
-    const allowed = await this.#input.keyOrigins.allowedOrigins(choice.secret);
-    if (
-      destination !== undefined &&
-      allowed !== undefined &&
-      !allowed.includes(destination.origin)
-    ) {
-      throw new KindedError(
-        "invalid_input",
-        `Provider "${choice.providerId}" can't send key "${choice.secret}" to ${destination.origin}. That address isn't allowed for this key. To allow it, run: halonic models allow-address "${choice.secret}" ${destination.origin}`,
-      );
+  async #requireKeyMayGo(
+    choice: ProviderAccessChoice & { kind: "key" },
+    providers: readonly Provider[],
+  ): Promise<void> {
+    // The choice was made from these files, so its file is always among them.
+    const file = providers.find((each) => each.id === choice.providerId);
+    if (file === undefined) throw new Error(`No provider file ${choice.providerId}.`);
+    try {
+      await this.#input.requireKeyMayGo(file);
+    } catch (error) {
+      throw withFixInMessage(error);
     }
     if ((await this.bridgeSecrets.get(choice.secret)) === null) {
       throw new KindedError(
         "invalid_input",
-        `The secret "${choice.secret}" that holds provider ${choice.providerId}'s key isn't saved on this computer, so the sandboxed agent can't call its model. Save it with: halonic secret set ${choice.secret}`,
+        this.#input.missingKeyText(choice.secret, choice.providerId),
       );
     }
   }
 
-  /**
-   * The keyed provider of an agent whose `model` is an alias, after the check
-   * the built-in loop's calls get (`cli.harness-model-access`): trust for an
-   * address other than the type's own, the key's allowed addresses, and the
-   * route the harness calls. `undefined` when the name is no alias.
-   */
+  /** The keyed provider of an agent whose `model` is an alias, after the app's check. */
   async #aliasAccess(
     workspace: LoadedWorkspace,
     agent: BridgeAgent,
-  ): Promise<HarnessModelAccess | undefined> {
+  ): Promise<{ readonly providerId: string } | undefined> {
     if (agent.hubId === undefined || agent.model === undefined) return undefined;
-    return await harnessModelAccess(workspace, agent.hubId, agent.model, agent.harness, {
-      isTrusted: () => this.#input.trusted,
-      keyOrigins: this.#input.keyOrigins,
-    });
+    return await this.#input.aliases.access(workspace, agent.hubId, agent.model, agent.harness);
   }
 
   /** The version the program's model was read from for this agent, else the workspace now. */
@@ -225,6 +227,25 @@ export class HarnessProviderKeys {
     }
     return names;
   }
+}
+
+/**
+ * The error with its fix at the end of its message, as one sentence after
+ * another. The run log keeps only an error's message, so a refusal there
+ * still ends with what to do. Its kind stays the same.
+ */
+function withFixInMessage(error: unknown): unknown {
+  if (!(error instanceof Error)) return error;
+  const fix = "fix" in error && typeof error.fix === "string" ? error.fix : undefined;
+  const message = sentence(error.message);
+  return new KindedError(errorKindOf(error), fix === undefined ? message : `${message} ${fix}`, {
+    cause: error,
+  });
+}
+
+/** The text starting with a capital, as a sentence on its own. */
+function sentence(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 /**
