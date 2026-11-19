@@ -72,6 +72,12 @@ export interface LocalToolOpening {
   readonly config: ConnectorConfig;
   /** The profile to open the session with, built by Halonic from the manifest and the trust record. */
   readonly profile: SandboxProfile;
+  /**
+   * Removes what `prepare` made for this session, such as its folders.
+   * Called once: after the session and its connector have closed, or when
+   * the session didn't open or start. Its own failure is ignored.
+   */
+  release?(): Promise<void>;
 }
 
 /**
@@ -213,10 +219,11 @@ class UnavailableConnector implements ConnectorClient {
   async close(): Promise<void> {}
 }
 
-/** A session and the connector running in it. */
+/** A session, the connector running in it, and what `prepare` made for it. */
 interface Opened {
   readonly session: SandboxSession;
   readonly client: ConnectorClient;
+  readonly opening: LocalToolOpening;
 }
 
 /**
@@ -298,7 +305,18 @@ class SessionConnector implements ConnectorClient {
 
   async #open(): Promise<Opened> {
     const trusted = await this.#trustedNow();
-    const { config, profile } = await this.#options.prepare(this.#set, trusted);
+    const opening = await this.#options.prepare(this.#set, trusted);
+    try {
+      return await this.#openPrepared(opening);
+    } catch (error) {
+      await release(opening);
+      throw error;
+    }
+  }
+
+  /** Opens the session `prepare` built and starts the connector in it; closes the session again on any failure. */
+  async #openPrepared(opening: LocalToolOpening): Promise<Opened> {
+    const { config, profile } = opening;
     if (config.id !== this.id) {
       throw new Error(
         `Local tool "${this.id}" was prepared as connector "${config.id}", so Halonic doesn't open it.`,
@@ -326,7 +344,7 @@ class SessionConnector implements ConnectorClient {
         trust: this.#set.trust,
         sandbox: session,
       });
-      this.#opened = { session, client };
+      this.#opened = { session, client, opening };
       return this.#opened;
     } catch (error) {
       await session.close();
@@ -394,9 +412,19 @@ class SessionConnector implements ConnectorClient {
   }
 }
 
+/** Closes the connector and the session, then removes what `prepare` made for them. */
 async function closeBoth(opened: Opened): Promise<void> {
-  await opened.client.close();
-  await opened.session.close();
+  try {
+    await opened.client.close();
+    await opened.session.close();
+  } finally {
+    await release(opened.opening);
+  }
+}
+
+/** Calls the opening's `release`, ignoring its failure: a folder left behind mustn't hide why a call failed. */
+async function release(opening: LocalToolOpening): Promise<void> {
+  await opening.release?.().catch(() => undefined);
 }
 
 function describe(state: LocalToolUnavailable): string {
