@@ -326,9 +326,13 @@ it until pairing (phase B) gives the person a switch. It can list the host's run
 send a prompt, and nothing else: no command, file or secret of its own. A
 prompt steers a live agent run, though, so the agent can do whatever its run
 allows without asking for approval. The host, not the
-phone, judges an approval `risky` (every tool, for now), and the host refuses
-every approval a phone answers, until approvals reach the engine in a follow-up
-and the person can allow it on the desktop, which nothing offers yet. Its events are the narrow ones (prompt, answers,
+phone, judges an approval `risky` (every tool, for now), and the gateway
+refuses every risky approval a phone answers until the person allows that on
+the desktop, which nothing offers yet. So for now a phone answers no approval.
+Behind that check, a phone's decision goes to the run's own approvals in
+Studio, the card's path, where the first answer wins: **On `main`**
+(`studio-harness-host.ts`, `agent-host` `src/bridge/studio-services.ts`,
+HAL-10849). Its events are the narrow ones (prompt, answers,
 approvals, result), kept in memory only.
 
 The **Halonic** harness, the default, starts no program for the agent, so this
