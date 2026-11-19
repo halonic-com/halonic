@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12618 (rows C3 and C4 of the keyboard and screen-reader check, HAL-12584; a team decision under HAL-2282, no new words)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0LiM2uTEgcx4za4+n5yebywwkoqsp+mmd7bCuB0clPpeOoKQhlWYsRzy+NkFqGGGzzhVjQIAhRf62om8ooqRDg==
 
 Nothing on screen changes; what a screen reader hears does (WCAG 1.3.1).
 
