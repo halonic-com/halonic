@@ -3,6 +3,7 @@
 - Task: HAL-12445 (finding F3 of the srt-wsl security review, HAL-12434)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12512 (Liam approved the plan on HAL-12445: the new residual in `core/ports` and the new codes in `core/app`); Liam signs this note as the reviewer of `core/app`
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8ouUFI5+x4cHd2dAP0yIsdPnctcYXo2yAr8IZl9INtsVRa9Z5x7MbK/KBx7itrCYK1HmPysuiGp7YyCwilleDg==
 
 ## What changes
 
