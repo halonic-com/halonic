@@ -232,6 +232,7 @@ export function StudioWindow(props: StudioWindowProps) {
       },
       badges: shell.badges,
       saving: workspace.saving,
+      closeStack: shell.closeStack,
       openItem: (item, options) => openHere.current(locationOfItem(item, options)),
       openItemInNewTab: (item) => openItemInNewTab.current(locationOfItem(item)),
       openSettings,
