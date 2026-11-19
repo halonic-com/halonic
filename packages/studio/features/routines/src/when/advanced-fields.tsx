@@ -94,6 +94,7 @@ function CronField({
         label={words.cron}
         hint={check.valid ? check.words : undefined}
         error={showError && !check.valid ? check.error : null}
+        announceWhileFocused
       >
         <Input
           value={text}
