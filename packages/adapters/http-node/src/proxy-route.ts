@@ -28,7 +28,10 @@ export function routeFor(url: URL, hostClass: HostClass, setting: ProxyFromEnv):
     return { kind: "direct" };
   }
   if (setting.kind === "refused") {
-    throw new ProxyError(`${setting.message} Nothing was sent to ${url.host}.`);
+    throw new ProxyError(`${setting.message} Nothing was sent to ${url.host}.`, "setting", {
+      variable: setting.variable,
+      host: url.hostname,
+    });
   }
   if (setting.proxy.noProxy.matches(url)) {
     return { kind: "direct" };
@@ -37,6 +40,8 @@ export function routeFor(url: URL, hostClass: HostClass, setting: ProxyFromEnv):
     throw new ProxyError(
       `${url.host} uses plain http and a proxy is set, so nothing was sent. ` +
         "Use https://, or add the host to NO_PROXY.",
+      "plain-http",
+      { variable: setting.proxy.variable, host: url.hostname },
     );
   }
   return { kind: "tunnel", proxy: setting.proxy };

@@ -45,6 +45,31 @@ verifies("workflows.canvas.status-dots", () => {
     expect(page.querySelector("[data-testid=point-of-light]")).toBeNull();
   });
 
+  it("gives every dot its mark and an edge, so colour is never alone (HAL-12946)", async () => {
+    const step = reply.steps[0];
+    if (step === undefined) throw new Error("fixture has no step");
+    const drawn: (string | undefined)[] = [];
+    for (const mark of ["done", "failed", "waiting", "running", "stopped"] as const) {
+      const page = await show(
+        <StepCard
+          step={step}
+          box={{ x: 0, y: 0, width: 200, height: 72 }}
+          first={false}
+          selected={false}
+          mark={mark}
+          onSelect={() => {}}
+        />,
+      );
+      const dot = page.querySelector("[data-testid=status-dot]");
+      expect(dot?.className).toContain("border-[1.5px]");
+      drawn.push(dot?.firstElementChild?.outerHTML);
+      unmount();
+    }
+    // Five different marks: ✓, ×, ‖ as glyphs, the live dot and the square as shapes.
+    expect(new Set(drawn).size).toBe(5);
+    expect(drawn.every((mark) => mark !== undefined && !mark.includes("sr-only"))).toBe(true);
+  });
+
   it("places the dot where the light aims: its centre is dotCentre", async () => {
     const box = { x: 40, y: 30, width: 200, height: 72 };
     const step = reply.steps[0];

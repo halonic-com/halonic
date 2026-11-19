@@ -63,7 +63,7 @@ verifies("studio.try-sample", () => {
 
     expect(await host.create([])).toEqual({
       kind: "cant",
-      folder: "~/Documents",
+      folder: "Documents",
       reason: "Halonic keeps its own files there",
     });
     expect(await store.list()).toEqual([]);
@@ -75,7 +75,7 @@ verifies("studio.try-sample", () => {
 
     expect(await host.create([])).toEqual({
       kind: "cant",
-      folder: "~/Documents",
+      folder: "Documents",
       reason: "the desktop shell gave no answer",
       unavailable: true,
     });

@@ -648,6 +648,9 @@ importers:
       '@halonicjs/studio-feature-plugins':
         specifier: workspace:*
         version: link:../../packages/studio/features/plugins
+      '@halonicjs/studio-feature-remote':
+        specifier: workspace:*
+        version: link:../../packages/studio/features/remote
       '@halonicjs/studio-feature-routines':
         specifier: workspace:*
         version: link:../../packages/studio/features/routines
@@ -3060,6 +3063,52 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/studio/features/remote:
+    dependencies:
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../../core/ports
+      '@halonicjs/studio-kit':
+        specifier: workspace:*
+        version: link:../../kit
+      '@halonicjs/studio-shell':
+        specifier: workspace:*
+        version: link:../../shell
+      react:
+        specifier: 'catalog:'
+        version: 19.3.1
+    devDependencies:
+      '@halonicjs/testing-contracts':
+        specifier: workspace:*
+        version: link:../../../testing/contracts
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../../testing/spec
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.3.0(@types/react@19.3.0)
+      jsdom:
+        specifier: 'catalog:'
+        version: 30.1.3(@noble/hashes@2.4.0)
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.3.1(react@19.3.1)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
       vitest:
         specifier: 'catalog:'
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))

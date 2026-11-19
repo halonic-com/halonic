@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { RunEventBody } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { RunsList } from "../runs-list.ts";
@@ -56,14 +56,54 @@ async function openRun(openOther?: (runId: string) => void, step?: string) {
   const list = new RunsList(
     fakeSource([summaryWith({ id: runId, lastSeq: log.length })], { [runId]: log }).source,
   );
+  // In StrictMode, as the Studio window mounts every page (`mountStudioWindow`).
   const root = render(
-    <RunView
-      list={list}
-      runId={runId}
-      now={() => mondayMorning}
-      {...(step === undefined ? {} : { step })}
-      {...(openOther === undefined ? {} : { openRun: openOther })}
-    />,
+    <StrictMode>
+      <RunView
+        list={list}
+        runId={runId}
+        now={() => mondayMorning}
+        {...(step === undefined ? {} : { step })}
+        {...(openOther === undefined ? {} : { openRun: openOther })}
+      />
+    </StrictMode>,
+  );
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  return root;
+}
+
+/** A `sandbox.opened` event of step Install, in a sandbox of `strength`; `"damaged"` can't be read. */
+function opened(strength: "os" | "vm" | "remote" | "damaged"): RunEventBody {
+  return {
+    type: "sandbox.opened",
+    state: "install",
+    agent: "writer",
+    sandbox:
+      strength === "damaged"
+        ? strength
+        : {
+            strength,
+            workingFolder: "~/work/acme",
+            readOnlyPaths: [],
+            deniedGroups: [],
+            deniedPaths: [],
+            allowedSites: [],
+            timeLimitMs: 1_800_000,
+          },
+  } as RunEventBody;
+}
+
+/** A run of `events`, open at step Install's entry. */
+async function openLog(events: Parameters<typeof logOf>[1]) {
+  const list = new RunsList(
+    fakeSource([summaryWith({ id: runId, lastSeq: events.length })], {
+      [runId]: logOf(runId, events),
+    }).source,
+  );
+  const root = render(
+    <RunView list={list} runId={runId} now={() => mondayMorning} step="install" />,
   );
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -217,13 +257,42 @@ verifies("runs.run-view.blocked-sites", () => {
     );
   });
 
-  it("has no action and never says no connection was made, until the panel can know both", async () => {
+  it("has no action, and doesn't say no connection was made for a step with no sandbox.opened", async () => {
     const root = await openRun();
     act(() => entry(root, 2).click());
 
     const blocked = root.querySelector("aside section");
     expect(blocked?.querySelector("button, a")).toBeNull();
     expect(blocked?.textContent).not.toContain("your computer");
+    expect(blocked?.textContent).not.toContain("No connection was made.");
+  });
+
+  it("says no connection was made when the step ran in an os sandbox (srt, HAL-12658)", async () => {
+    const root = await openLog([
+      [0, entered("install")],
+      [0, opened("os")],
+      [0, refused("registry.npmjs.org", 1)],
+    ]);
+
+    expect(root.querySelector("aside section")?.textContent).toContain(
+      "This site isn't in Writer's allowed sites. No connection was made. To allow it,",
+    );
+  });
+
+  it.each([
+    ["a virtual machine", [opened("vm")]],
+    ["another machine", [opened("remote")]],
+    ["a sandbox.opened it can't read", [opened("damaged")]],
+    ["an os sandbox and one it can't prove", [opened("os"), opened("vm")]],
+  ])("doesn't say no connection was made for a step that ran in %s", async (_, sandboxes) => {
+    const root = await openLog([
+      [0, entered("install")],
+      ...sandboxes.map((event): [number, RunEventBody] => [0, event]),
+      [0, refused("registry.npmjs.org", 1)],
+    ]);
+
+    const blocked = root.querySelector("aside section");
+    expect(blocked?.textContent).toContain("Blocked sites");
     expect(blocked?.textContent).not.toContain("No connection was made.");
   });
 
@@ -283,6 +352,33 @@ verifies("runs.run-view.blocked-sites", () => {
     );
     act(() => see?.click());
     expect(root.querySelector("aside")?.textContent).toContain("registry.npmjs.org");
+  });
+
+  it("says no connection was made in the banner when the failed step ran in an os sandbox", async () => {
+    const failedLog = logOf(runId, [
+      [0, entered("install")],
+      [0, opened("os")],
+      [0, refused("registry.npmjs.org", 12)],
+      [1, { type: "run.failed", error: "fetch failed" } as RunEventBody],
+    ]);
+    const failed = summaryWith({
+      id: runId,
+      status: "failed",
+      endedAt: new Date(mondayMorning.getTime() + 60_000).toISOString(),
+      error: "fetch failed",
+      lastSeq: failedLog.length,
+      state: null,
+      statesVisited: ["install"],
+    });
+    const list = new RunsList(fakeSource([failed], { [runId]: failedLog }).source);
+    const root = render(<RunView list={list} runId={runId} now={() => mondayMorning} />);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(root.querySelector('section[aria-label="Run failed"]')?.textContent).toContain(
+      "which isn't in its allowed sites. No connection was made.",
+    );
   });
 });
 

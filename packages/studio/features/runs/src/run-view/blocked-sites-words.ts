@@ -6,6 +6,9 @@
  * "No connection was made." replaces the design's "nothing reached them": on Windows a blocked
  * name may still be looked up outside the sandbox, so only "no connection" is true everywhere
  * (Julian, HAL-6208).
+ *
+ * The phone line names the agent's file, not "Harness › Allowed sites": the agent page has no
+ * Allowed sites field yet, and the file's `allowedSites` is where a site is added (HAL-12658).
  */
 export const blockedSitesWords = {
   "sandbox.blocked-sites.step-summary.one": "Blocked 1 site",
@@ -24,7 +27,7 @@ export const blockedSitesWords = {
   "sandbox.blocked-sites.hint.allow.many":
     "To allow one, add it to {agent}'s allowed sites. {agent} can then send that site anything it can read.",
   "sandbox.blocked-sites.action": "Open {agent}'s allowed sites",
-  "sandbox.blocked-sites.phone-fix": "Fix this on your computer: {agent} › Harness › Allowed sites",
+  "sandbox.blocked-sites.phone-fix": "Fix this on your computer, in {agent}'s file.",
   "sandbox.blocked-sites.log-line": "Blocked: {site} ({tries})",
   "sandbox.blocked-sites.log-more.one": "and 1 more site",
   "sandbox.blocked-sites.log-more.many": "and {count} more sites",

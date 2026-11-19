@@ -18,13 +18,14 @@ import {
 import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
 import { makeRunnerTempFolder, sandboxRuntimeFolder } from "@halonicjs/adapter-sandbox-srt";
 import {
+  noUnfencedRunConsent,
   PluginSettings,
   RunnerStartGate,
   type SaveTimers,
   TrustService,
   UnfencedRuns,
 } from "@halonicjs/app";
-import type { Sandbox, UnfencedRunConsentStore } from "@halonicjs/ports";
+import type { Sandbox } from "@halonicjs/ports";
 import {
   type ProfileFolder,
   pluginRecordsFolder,
@@ -39,14 +40,7 @@ import { proxySetting } from "../proxy-setting.ts";
 /** How long one runner may live, in milliseconds; a start after it asks the trust check and the gate again. */
 const runnerTimeLimitMs = 10 * 60 * 1000;
 
-/** A saved yes for running without the sandbox that is never there: the host has no way to ask for one. */
-const noConsent: UnfencedRunConsentStore = {
-  get: async () => null,
-  save: async () => undefined,
-  remove: async () => undefined,
-};
-
-/** Node's timers for reading the saved yes again; with {@link noConsent} no run ever needs them. */
+/** Node's timers for reading the saved yes again; with {@link noUnfencedRunConsent} no run ever needs them. */
 const unfencedRunTimers: SaveTimers = {
   set: (callback, delayMs) => setTimeout(callback, delayMs).unref(),
   clear: (handle) => clearTimeout(handle as NodeJS.Timeout),
@@ -108,7 +102,12 @@ export function hostPluginMachine(options: HostPluginMachineOptions): HostPlugin
       platform: process.platform,
       fenced: options.fenced,
       launcher: refusingLauncher(),
-      runs: new UnfencedRuns({ store: noConsent, clock: systemClock, timers: unfencedRunTimers }),
+      // The host has no way to ask for a yes to run without the sandbox, so it never holds one.
+      runs: new UnfencedRuns({
+        store: noUnfencedRunConsent,
+        clock: systemClock,
+        timers: unfencedRunTimers,
+      }),
     }),
     runtime: {
       node: process.execPath,

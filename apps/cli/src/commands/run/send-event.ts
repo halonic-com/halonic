@@ -50,7 +50,7 @@ export async function sendEvent(
       case "event-not-taken": {
         const states = runViewDefinitions(place.workspace, run.summary).workflow?.states;
         const step = stepName(refusal.step, states?.[refusal.step]?.description);
-        throw eventNotTaken(event, runId, step, refusal.accepts);
+        throw eventNotTaken(event, runId, step, refusal.accepts, place.dir);
       }
     }
   }
@@ -74,6 +74,7 @@ function eventNotTaken(
   runId: string,
   step: string,
   accepts: readonly string[],
+  dir: string | undefined,
 ): OwnLineError {
   const near = nearMatch(event, accepts);
   return new OwnLineError(
@@ -82,6 +83,6 @@ function eventNotTaken(
       runsMessages.sendAction(event, runId).phrase,
       runsMessages.eventNotTaken(step, accepts).phrase,
     ),
-    near === undefined ? runsMessages.seeTheStep(runId) : runsMessages.eventNear(near),
+    near === undefined ? runsMessages.seeTheStep(runId, dir) : runsMessages.eventNear(near),
   );
 }

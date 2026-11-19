@@ -58,6 +58,8 @@ verifies("format.hub-file", () => {
       "uses.collections.1 invalid_format 4",
       "uses.collections.2 invalid_format 4",
     ]);
-    expect(problems[0]?.message).toBe("use lowercase letters, digits or '-'");
+    expect(problems[0]?.message).toBe(
+      "use lowercase letters, digits or '-', starting with a letter or digit",
+    );
   });
 });

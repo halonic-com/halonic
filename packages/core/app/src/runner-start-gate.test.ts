@@ -220,6 +220,30 @@ verifies("app.runner-start-gate", () => {
       expect(await start).toEqual({ run: "needs-yes", reason: "container" });
     });
 
+    it("stops a runner whose yes was taken back and given again while it was starting", async () => {
+      const { gate, runs, store, timers, started } = setup({ check: inContainer });
+      await runs.allow("container");
+      const start = gate.start(async (picked) => {
+        // Studio takes the yes back and the user gives it again, during the start.
+        const studio = new UnfencedRuns({
+          store,
+          clock: { now: () => new Date("2026-11-09T10:00:00.400Z") },
+          timers: new HandTimers(),
+        });
+        await studio.takeBack();
+        await studio.allow("container");
+        const runner = new FakeRunner((picked as Sandbox & { name: string }).name, {
+          state: "off",
+        });
+        started.push(runner);
+        return runner;
+      });
+
+      expect(await start).toEqual({ run: "needs-yes", reason: "container" });
+      expect(started[0]?.closed).toBe(1);
+      expect(timers.delays()).toEqual([]);
+    });
+
     it("stops a runner here when the yes is taken back in another process", async () => {
       const { gate, runs, store, timers, started, startIn } = setup({ check: inContainer });
       await runs.allow("container");

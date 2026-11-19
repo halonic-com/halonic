@@ -37,6 +37,12 @@ function clockTime(date: Date): string {
   return `${two(date.getHours())}:${two(date.getMinutes())}`;
 }
 
+/**
+ * The filled dot of an answering provider. In high contrast a fill turns into the background, so
+ * it's drawn in the text colour there; the hollow ring's edge is kept by the system (HAL-12946).
+ */
+const ANSWERING_DOT = "bg-success forced-color-adjust-none forced-colors:bg-[CanvasText]";
+
 /** The props of {@link ResultLine}. */
 interface ResultLineProps {
   readonly result: Result;
@@ -66,7 +72,7 @@ function ResultLine({ result, phone, program }: ResultLineProps) {
     <p className="flex items-center gap-2">
       <span
         aria-hidden="true"
-        className={`size-2 shrink-0 rounded-full ${result.answering ? "bg-success" : "border border-fg-muted"}`}
+        className={`size-2 shrink-0 rounded-full ${result.answering ? ANSWERING_DOT : "border border-fg-muted"}`}
       />
       {checkResultLine(result.answering, result.address, result.checkedAt, program)}
     </p>

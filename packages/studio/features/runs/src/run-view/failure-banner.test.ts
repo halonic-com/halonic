@@ -143,7 +143,7 @@ verifies("runs.run-view.failure-banners", () => {
         false,
       );
       expect(lines(banner)).toEqual([
-        "Lmstudio is answering, but it doesn't have qwen yet. Download it in Lmstudio, or pick another model in Models.",
+        "LM Studio is answering, but it doesn't have qwen yet. Download it in LM Studio, or pick another model in Models.",
       ]);
       expect(fixes(banner)).toEqual([{ kind: "open-models" }]);
     });

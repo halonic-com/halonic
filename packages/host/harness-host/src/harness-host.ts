@@ -7,6 +7,7 @@
 import {
   AgentPlacement,
   ProposalFolders,
+  type ProposalRecordLock,
   type ProposalVcs,
   type RunCopies,
   RunProposals,
@@ -38,6 +39,8 @@ export interface HarnessHostInput {
   readonly bridgeServer: HarnessBridgeServer;
   /** What each agent's bridge serves: its providers, prices, tools and approvals. */
   readonly services: BridgeServicesSource;
+  /** Hears of a bridge failure the run log couldn't record (requirement `harness-host.bridge-failures`); it must not throw. */
+  readonly reportError: (error: unknown) => void;
   readonly profiles: HarnessProfileBuilder;
   /** The person's home folder, for `~` in sandbox events; `null` when unknown. */
   readonly home: string | null;
@@ -73,6 +76,12 @@ export interface RunProposalsParts {
   readonly copies: RunCopies | null;
   /** The proposal records' own store, in the profile, never the workspace's. */
   readonly records: DefinitionStore;
+  /**
+   * Keeps other processes off a run's record while one decides it: required
+   * on a host where a command or a second app can decide the same proposals
+   * while the engine runs.
+   */
+  readonly recordLock?: ProposalRecordLock;
   /** The workspace's files, which Accept writes. */
   readonly store: DefinitionStore;
   /** Where Accept moves a file the run deleted: `refusingTrash` on a host without Accept. */
@@ -120,7 +129,11 @@ export function harnessHostOf(input: HarnessHostInput): HarnessHost {
     placement,
     sandboxes: input.sandboxes,
     harnesses: input.harnesses,
-    bridges: new LocalBridgeHost({ server: input.bridgeServer, services: input.services }),
+    bridges: new LocalBridgeHost({
+      server: input.bridgeServer,
+      services: input.services,
+      reportError: input.reportError,
+    }),
     profiles: input.profiles,
     home: input.home,
     ...(input.instructions === undefined ? {} : { instructions: input.instructions }),

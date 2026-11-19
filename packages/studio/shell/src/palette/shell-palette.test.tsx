@@ -13,7 +13,7 @@ import type {
 } from "../points/commands.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { Registered } from "../points/point-store.ts";
-import { type TabLocation, TabSet } from "../tabs/tab-set.ts";
+import { currentLocation, type TabLocation, TabSet } from "../tabs/tab-set.ts";
 import { fakeShowModal } from "../test-support/fake-show-modal.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -83,6 +83,8 @@ function renderPalette({ commands = [], platform = "windows" }: PaletteSetup = {
     return { featureId } as unknown as WorkspaceContext;
   };
 
+  const openedHere: string[] = [];
+
   function Window() {
     const [open, setOpen] = useState(false);
     usePaletteKey(platform, () => setOpen(true));
@@ -99,6 +101,7 @@ function renderPalette({ commands = [], platform = "windows" }: PaletteSetup = {
         notAnswering="The engine isn't answering."
         platform={platform}
         onClose={() => setOpen(false)}
+        onOpenedHere={() => openedHere.push(currentLocation(tabs.active).title)}
       />
     ) : null;
   }
@@ -109,6 +112,7 @@ function renderPalette({ commands = [], platform = "windows" }: PaletteSetup = {
     tabs,
     toasts,
     ranWith,
+    openedHere,
     questions: held.questions,
     box,
     /** Presses keys on the window, Ctrl K unless told otherwise. */
@@ -235,9 +239,12 @@ verifies("shell.palette-wiring", () => {
     expect(palette.tabs.state.tabs).toHaveLength(2);
     expect(palette.box()).not.toBeNull();
     expect(palette.heard()).toContain("Opened Refund checker in a new tab.");
+    expect(palette.openedHere).toEqual([]);
 
     palette.press("Enter");
     expect(palette.box()).toBeNull();
+    // The window moves focus to the page's `h1` after the tab shows it.
+    expect(palette.openedHere).toEqual(["Refund checker"]);
     expect(palette.tabs.active.history.at(-1)).toEqual({
       key: "agent/acme/refund-checker",
       title: "Refund checker",

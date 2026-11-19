@@ -32,6 +32,17 @@ verifies("app.run-proposal-list", () => {
       expect(await setup.proposals.list()).toEqual([]);
     });
 
+    it("leaves out a record that can't be read and lists the others", async () => {
+      const setup = setUpProposals(digest);
+      await proposeRun(setup, "01JD8Q", (files) => files.set("notes/a.md", "A\n"));
+      await proposeRun(setup, "7KQ2MX", (files) => files.set("notes/b.md", "B\n"));
+      await setup.records.write("7KQ2MX.json", "{ not a record");
+
+      const listed = await setup.proposals.list();
+
+      expect(listed.map((record) => record.proposal.runId)).toEqual(["01JD8Q"]);
+    });
+
     it("is empty after a run that changed nothing", async () => {
       const setup = setUpProposals(digest);
       await setup.proposals.open("01JD8Q", setup.startAt);

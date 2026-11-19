@@ -81,6 +81,9 @@ export class WorkspaceFilesHost implements FilesHost {
   readonly #outside = new Map<string, OutsideChange>();
   readonly #listeners = new Set<() => void>();
   readonly #reloadListeners = new Set<(paths: readonly string[]) => void>();
+  readonly #watchLimitListeners = new Set<(reason: string) => void>();
+  /** Why the watch stopped, when it was the workspace's file limit. */
+  #watchLimit: string | undefined;
   #watch: Promise<DefinitionWatch | undefined> | undefined;
   #disposed = false;
 
@@ -89,8 +92,11 @@ export class WorkspaceFilesHost implements FilesHost {
     this.#watch = parts.store
       .watch?.({
         changed: (changes) => void this.#took(changes),
-        // Without a watch only a save that finds the file changed shows it.
-        failed: () => undefined,
+        // Without a watch only a save that finds the file changed shows it. Only the file limit
+        // is said, because the user can do something about it: open a smaller folder.
+        failed: (error) => {
+          if (errorKindOf(error) === "limit_reached") this.#reachedWatchLimit(error.message);
+        },
       })
       .catch(() => undefined);
   }
@@ -114,6 +120,7 @@ export class WorkspaceFilesHost implements FilesHost {
     this.#disposed = true;
     this.#listeners.clear();
     this.#reloadListeners.clear();
+    this.#watchLimitListeners.clear();
     const watch = this.#watch;
     this.#watch = undefined;
     await (await watch)?.close();
@@ -129,6 +136,22 @@ export class WorkspaceFilesHost implements FilesHost {
   onReloaded(listener: (paths: readonly string[]) => void): () => void {
     this.#reloadListeners.add(listener);
     return () => this.#reloadListeners.delete(listener);
+  }
+
+  onWatchLimit(listener: (reason: string) => void): () => void {
+    if (this.#watchLimit !== undefined) {
+      listener(this.#watchLimit);
+      return () => undefined;
+    }
+    this.#watchLimitListeners.add(listener);
+    return () => this.#watchLimitListeners.delete(listener);
+  }
+
+  #reachedWatchLimit(reason: string): void {
+    if (this.#disposed || this.#watchLimit !== undefined) return;
+    this.#watchLimit = reason;
+    for (const listener of this.#watchLimitListeners) listener(reason);
+    this.#watchLimitListeners.clear();
   }
 
   /** Takes in one batch of outside changes: files without unsaved changes are reloaded, the others are held. */

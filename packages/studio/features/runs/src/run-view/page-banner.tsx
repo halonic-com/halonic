@@ -124,6 +124,7 @@ export function PageBanner({
       reviewInInbox={reviewInInbox}
       openRun={openRun}
       runAgain={runAgain}
+      openModels={openModels}
     />
   );
 }

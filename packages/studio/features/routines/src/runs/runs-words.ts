@@ -113,7 +113,7 @@ export function skipSentence(skip: RoutineSkip, targetName: string, now: Date): 
     case "target-never-live":
       return `${when}: ${targetName} isn't live yet`;
     case "target-in-trash":
-      return `${when}: ${targetName} is in the trash`;
+      return `${when}: ${targetName} was deleted`;
     default:
       return `${when}: ${skipReasons[skip.reason]}`;
   }

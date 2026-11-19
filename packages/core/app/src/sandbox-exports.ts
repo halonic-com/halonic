@@ -2,6 +2,7 @@
 // `index.ts` to keep that file under the size limit.
 export { type NoSandboxLine, noSandboxLine } from "./doctor-no-sandbox-line.ts";
 export { type NoSandboxOptions, NoSandboxService } from "./no-sandbox.ts";
+export { noUnfencedRunConsent } from "./no-unfenced-run-consent.ts";
 export {
   mxcFencesLocalTools,
   mxcFencesRunner,
@@ -20,6 +21,12 @@ export {
   type RunnerStartGateOptions,
   type StartInSandbox,
 } from "./runner-start-gate.ts";
+export {
+  isRunnerUnfencedReason,
+  type RunnerUnfencedWords,
+  runnerUnfencedWords,
+  type UnfencedCode,
+} from "./runner-unfenced-words.ts";
 export {
   type BackendSetup,
   defaultBackendOrder,
@@ -61,7 +68,9 @@ export {
 export {
   type StopUnfencedRun,
   savedYesCheckMs,
+  stopTimeLimitMs,
   type UnfencedRunDecision,
   UnfencedRuns,
   type UnfencedRunsOptions,
+  type UnfencedRunYes,
 } from "./unfenced-runs.ts";

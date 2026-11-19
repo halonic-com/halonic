@@ -9,6 +9,7 @@ import { type DefinitionSource, isUnreadableWorkspaceFolderError } from "@haloni
 import { KindedError } from "@halonicjs/std";
 import type { ReadFile } from "./checks/check-context.ts";
 import { checkWorkspace } from "./checks/check-workspace.ts";
+import { misplacedFile } from "./misplaced-files.ts";
 import { placeOf } from "./places.ts";
 
 /**
@@ -56,19 +57,24 @@ export interface LoadedWorkspace {
   readonly ignored: readonly string[];
 }
 
-/** What one file gave: its parsed value, its issues, or nothing because no kind places it. */
+/**
+ * What one file gave: its parsed value and its issues, or nothing because no
+ * kind places it, with a warning when it looks meant for a kind's place.
+ */
 type FileOutcome =
   | {
       readonly read: ReadFile;
       readonly loaded: LoadedFile | null;
       readonly issues: readonly WorkspaceIssue[];
     }
-  | { readonly ignored: string };
+  | { readonly ignored: string; readonly misplaced: WorkspaceIssue | undefined };
 
 /**
  * Loads one workspace: lists the source, finds each file's kind from where
  * it sits (the registered kinds' places drive it), and parses it with that
- * kind. Files in the reserved `.halonic/` folders are skipped.
+ * kind. Files in the reserved `.halonic/` folders are skipped. A file no
+ * kind places is listed as ignored, with a warning when it plainly belongs
+ * somewhere else, such as a provider inside a hub or `agents/clerk.yaml`.
  *
  * Then it checks across files: what one file names in another, such as an
  * agent's model alias, and rules over several files, such as agents that
@@ -99,6 +105,9 @@ export async function loadWorkspace(source: DefinitionSource): Promise<LoadedWor
     }
     if ("ignored" in outcome) {
       ignored.push(outcome.ignored);
+      if (outcome.misplaced !== undefined) {
+        issues.push(outcome.misplaced);
+      }
       continue;
     }
     read.push(outcome.read);
@@ -114,7 +123,7 @@ export async function loadWorkspace(source: DefinitionSource): Promise<LoadedWor
 async function loadFile(source: DefinitionSource, path: string): Promise<FileOutcome | null> {
   const place = placeOf(path);
   if (place === undefined) {
-    return { ignored: path };
+    return { ignored: path, misplaced: misplacedFile(path) };
   }
   const text = await readText(source, path);
   if (text === null) {

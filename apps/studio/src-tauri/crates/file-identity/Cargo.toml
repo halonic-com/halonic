@@ -1,16 +1,16 @@
 [package]
 name = "halonic-file-identity"
-description = "What names a file or folder on this computer, whatever name reached it: the device and inode on Unix, the volume and file index on Windows."
+description = "What names a file or folder on this computer, whatever name reached it: the device and inode on Unix, the volume and file ID on Windows."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
-# The standard library can't read a Windows file index yet, so this crate
-# makes one Windows call directly. Like `process-probe` (HAL-2719) and
+# The standard library can't read a Windows file ID yet, so this crate
+# makes two Windows calls directly. Like `process-probe` (HAL-2719) and
 # `sandbox-elevate`, it turns the workspace's `unsafe_code = "forbid"` off
-# in its own Cargo.toml (approval asked on HAL-11253): the one `unsafe`
+# in its own Cargo.toml (approval asked on HAL-11253): each `unsafe`
 # block has a `// SAFETY:` comment, and the API is one safe function.
 # These are the workspace lints with that one change.
 [lints.rust]

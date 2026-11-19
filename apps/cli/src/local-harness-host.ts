@@ -194,6 +194,7 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
     harnesses,
     bridgeServer: parts.bridgeServer ?? (await nodeBridgeServer(input)),
     services: { servicesFor: () => bridgeServices },
+    reportError: input.reportError,
     profiles,
     home: input.environment.homeFolder,
     instructions: new RunInstructions({

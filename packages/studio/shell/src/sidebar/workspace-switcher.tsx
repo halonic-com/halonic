@@ -1,5 +1,6 @@
 import { ChevronDownIcon, Menu, type MenuEntry, Spinner } from "@halonicjs/studio-kit";
 import type { MouseEvent } from "react";
+import { MiddleCut } from "../cut-text/middle-cut.tsx";
 
 /** The open workspace, as its switcher shows it. */
 export interface SwitcherWorkspace {
@@ -23,8 +24,9 @@ export interface WorkspaceSwitcherProps {
 
 /**
  * The sidebar's first block (component specs 24.4): the workspace's letter mark, its name over its
- * folder, each one line ending in "…", and a chevron. It is one button, named "Workspace: Acme",
- * that opens the workspace menu. While {@link WorkspaceSwitcherProps.busy} it keeps focus and
+ * folder, each one line, the name ending in "…" and the folder cut in the middle so its end stays
+ * (`…\Documents\Acme sample`), and a chevron. It is one button, named "Workspace: Acme", that
+ * opens the workspace menu. While {@link WorkspaceSwitcherProps.busy} it keeps focus and
  * ignores presses, as a busy kit `Button` does.
  *
  * @example
@@ -57,7 +59,7 @@ export function WorkspaceSwitcher({ workspace, menu, busy = false }: WorkspaceSw
           </span>
           <span className="flex min-w-0 flex-1 flex-col text-start">
             <span className="truncate text-body-strong text-fg">{workspace.name}</span>
-            <span className="truncate text-caption text-fg-subtle">{workspace.folder}</span>
+            <MiddleCut text={workspace.folder} />
           </span>
           <span aria-hidden="true" className="size-icon-sm shrink-0 text-fg-subtle *:size-full">
             {busy ? <Spinner /> : <ChevronDownIcon />}

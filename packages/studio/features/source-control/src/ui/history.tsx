@@ -1,5 +1,5 @@
 import { Button, List, StatusChip } from "@halonicjs/studio-kit";
-import { useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, type RefObject, useEffect, useId, useRef, useState } from "react";
 import type { Version } from "../api.ts";
 import type { ChangesList, HistoryState } from "../changes-list.ts";
 import { historyWords } from "../changes-words.ts";
@@ -32,7 +32,8 @@ export interface HistoryProps {
  * History on the Changes page (checklist part 2, 2.9): the newest versions that touch the
  * workspace folder, grouped by day, newest first, with Show more for older ones. ↑ ↓ move and
  * Enter or a click shows the version's details beside the list: who, when, the notes and what's
- * in it. No branch graph.
+ * in it. Focus moves to the details' title, so a screen reader reads them, and Escape there puts
+ * focus back on the version's row. No branch graph.
  *
  * On a phone (2.14) a version opens as its own page through `versionPage`, and coming back puts
  * focus on its row, unfolding See all history if the row is past the newest 5. There (2.12) each
@@ -54,6 +55,12 @@ export function History({
     versionPage === undefined
       ? history.versions.find((version) => version.id === pickedId)
       : undefined;
+  const listRegion = useRef<HTMLDivElement>(null);
+  const detailsFocus = useDetailsFocus(listRegion, picked?.id);
+  const pick = (id: string) => {
+    setPickedId(id);
+    detailsFocus.request();
+  };
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3">
       <h2 id={headingId} className="text-heading">
@@ -65,7 +72,7 @@ export function History({
           picked === undefined ? "flex flex-col" : "grid gap-4 wide:grid-cols-2 wide:items-start"
         }
       >
-        <div data-part="history-list" className="flex min-w-0 flex-col gap-3">
+        <div ref={listRegion} data-part="history-list" className="flex min-w-0 flex-col gap-3">
           <HistoryBody
             list={list}
             history={history}
@@ -73,12 +80,18 @@ export function History({
             now={now}
             phone={phone}
             pickedId={picked?.id}
-            onPick={versionPage?.show ?? setPickedId}
+            onPick={versionPage?.show ?? pick}
             returnTo={versionPage?.returnTo}
             onReturned={versionPage?.focusPlaced}
           />
         </div>
-        {picked === undefined ? null : <Details version={picked} />}
+        {picked === undefined ? null : (
+          <Details
+            version={picked}
+            titleRef={detailsFocus.title}
+            onEscape={detailsFocus.backToRow}
+          />
+        )}
       </div>
     </section>
   );
@@ -213,6 +226,29 @@ function useFocusRow(initialId: string | undefined, onPlaced: (() => void) | und
 /** The chip on a version the shared copy lacks; the kit puts it at the start of the meta line. */
 const notSharedChip = <StatusChip tone="neutral">{historyWords.notShared}</StatusChip>;
 
+/**
+ * Opening a version shows its details beside the list, which a screen reader wouldn't read while
+ * focus stayed on the row, and Tab from the row would leave the page (WCAG 2.4.3, a11y check C2).
+ * So focus moves to the details' title once they're drawn, as in the Inbox and a run's step panel,
+ * and Escape in the details puts it back on the version's row.
+ */
+function useDetailsFocus(listRegion: RefObject<HTMLElement | null>, pickedId: string | undefined) {
+  const title = useRef<HTMLHeadingElement>(null);
+  const [pending, setPending] = useState(false);
+  useEffect(() => {
+    if (!pending) return;
+    title.current?.focus();
+    setPending(false);
+  }, [pending]);
+  const backToRow = () => {
+    if (pickedId === undefined) return;
+    listRegion.current
+      ?.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(pickedId)}"] [role="gridcell"]`)
+      ?.focus();
+  };
+  return { title, request: () => setPending(true), backToRow };
+}
+
 /** See all history (a folded phone list) or Show more (older versions to read): one or neither. */
 function HistoryFooter({
   folded,
@@ -254,14 +290,33 @@ function HistoryFooter({
   );
 }
 
-/** The picked version: who, when, its notes and what's in it. Never only on hover. */
-function Details({ version }: { readonly version: Version }) {
+/**
+ * The picked version: who, when, its notes and what's in it. Never only on hover. Its title takes
+ * focus when it opens, and Escape puts focus back on the version's row.
+ */
+function Details({
+  version,
+  titleRef,
+  onEscape,
+}: {
+  readonly version: Version;
+  readonly titleRef: RefObject<HTMLHeadingElement | null>;
+  readonly onEscape: () => void;
+}) {
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== "Escape" || event.defaultPrevented) return;
+    event.preventDefault();
+    onEscape();
+  };
   return (
     <section
       aria-label={historyWords.detailsLabel(version.name)}
       className="flex min-w-0 flex-col gap-2 rounded-md border border-border p-4 wide:sticky wide:top-4"
+      onKeyDown={onKeyDown}
     >
-      <h3 className="text-heading">{version.name}</h3>
+      <h3 ref={titleRef} tabIndex={-1} className="text-heading">
+        {version.name}
+      </h3>
       <VersionFacts version={version} level="details" />
     </section>
   );

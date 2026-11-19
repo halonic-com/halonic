@@ -1,10 +1,11 @@
 import { errorMessageFor } from "@halonicjs/studio-shell";
-import type {
-  ListedToolPick,
-  ListedToolRow,
-  ListedToolsHost,
-  ListedToolsSnapshot,
-  RefusedListedToolRow,
+import {
+  type ListedToolPick,
+  type ListedToolRow,
+  type ListedToolsHost,
+  type ListedToolsSnapshot,
+  type RefusedListedToolRow,
+  WorkspaceNotTrusted,
 } from "./listed-tools-host.ts";
 import { listedToolsWords } from "./listed-tools-words.ts";
 
@@ -46,6 +47,8 @@ export interface ListedToolsReviewState {
   readonly phase: "loading" | "ready" | "failed";
   /** Why the list couldn't be read, while `phase` is `failed`. */
   readonly loadError?: string;
+  /** The list couldn't be read because the workspace isn't trusted, so trying again can't help. */
+  readonly loadNeedsTrust?: boolean;
   readonly snapshot?: ListedToolsSnapshot;
   readonly search: string;
   /** The names ticked. A tick on a row the search hides is kept, and not approved. */
@@ -130,7 +133,13 @@ export class ListedToolsReviewModel {
     } catch (error) {
       if (ticket !== this.latest) return;
       this.set(
-        this.state.snapshot === undefined ? { phase: "failed", loadError: reasonOf(error) } : {},
+        this.state.snapshot === undefined
+          ? {
+              phase: "failed",
+              loadError: reasonOf(error),
+              loadNeedsTrust: error instanceof WorkspaceNotTrusted,
+            }
+          : {},
       );
     }
   }

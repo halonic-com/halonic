@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { EngineNotAnswering, engineWords, limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -83,7 +84,27 @@ verifies("workflows.list.rows-and-states", () => {
     const glyph = [...page.querySelectorAll('[aria-hidden="true"]')].find((each) =>
       each.textContent?.startsWith("✕"),
     );
-    expect(glyph).toBeDefined();
+    expect(glyph?.className).toBe("text-danger");
+  });
+
+  it("draws a failed last run's ✕ in danger and a completed one's ✓ quiet (HAL-12946)", async () => {
+    const rows = [
+      listing("acme", "mail-triage", "Mail triage", {
+        lastRun: { startedAt: new Date().toISOString(), outcome: "cant-try" },
+      }),
+      listing("acme", "invoice-intake", "Invoice intake", {
+        lastRun: { startedAt: new Date().toISOString(), outcome: "completed" },
+      }),
+    ];
+    const page = await show(<WorkflowsView host={memoryHost(hubs, rows).host} />);
+
+    const glyphs = [...page.querySelectorAll('[aria-hidden="true"]')].filter((each) =>
+      /^[✓✕]/.test(each.textContent ?? ""),
+    );
+    expect(glyphs.map((each) => [each.textContent?.trim(), each.className])).toEqual([
+      ["✓", ""],
+      ["✕", "text-danger"],
+    ]);
   });
 
   it("opens the workflow of the chosen row", async () => {
@@ -350,5 +371,19 @@ verifies("workflows.list.rows-and-states", () => {
 
     expect(page.textContent).toContain("Mail triage");
     expect(page.textContent).not.toContain("No workflows yet");
+  });
+});
+
+verifies("workflows.list.rows-and-states", () => {
+  it("offers no New workflow on a phone, with workflows or without", async () => {
+    for (const listed of [workflows, []]) {
+      const page = await show(
+        <PresentationProvider presentation="phone">
+          <WorkflowsView host={memoryHost(hubs, listed).host} />
+        </PresentationProvider>,
+      );
+      expect(buttonNamed(page, "New workflow")).toBeUndefined();
+      unmount();
+    }
   });
 });

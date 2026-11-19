@@ -46,6 +46,21 @@ function onSoftFill(foreground: string, softFill: string): ContrastPair[] {
   }));
 }
 
+/**
+ * A coloured chip in a muted fill, such as an unselected tab's counter (HAL-12459). A see-through
+ * soft fill would darken with the muted grey, so the chip lays it over surface there
+ * (`bg-over-surface-*`), and that is what its text sits on.
+ */
+function inMutedFill(foreground: string, softFill: string): ContrastPair {
+  return {
+    name: `${foreground} on ${softFill} laid over surface in a muted fill`,
+    foreground,
+    background: softFill,
+    beneath: "surface",
+    minimum: text,
+  };
+}
+
 function onFill(foreground: string, fill: string): ContrastPair {
   return {
     name: `${foreground} on ${fill}`,
@@ -88,6 +103,16 @@ const contrastPairs: ContrastPair[] = [
   { ...onFill("attention", "surface-muted"), minimum: control },
   // The QR tile's modules on its white tile, the same in both themes (HAL-12240).
   onFill("qr-dark", "qr-light"),
+  // A coloured chip or count in a muted fill. Attention's soft fill is opaque, so it stays as is.
+  inMutedFill("accent-text", "accent-soft"),
+  ...["running", "warning", "danger", "success"].map((status) =>
+    inMutedFill(status, `${status}-soft`),
+  ),
+  {
+    ...onFill("attention", "attention-soft"),
+    name: "attention on attention-soft in a muted fill",
+    beneath: "surface-muted",
+  },
   // A neutral chip, count or Kbd on a muted fill steps up to border (the on-muted: variant).
   onFill("fg", "border"),
   { ...onFill("fg", "border"), name: "fg on border over surface-muted", beneath: "surface-muted" },

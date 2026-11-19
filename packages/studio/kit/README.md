@@ -222,7 +222,7 @@ The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 
 | Prop | What it is |
 | --- | --- |
-| `variant` | `primary` once per view, `secondary` (the default), `ghost` for Cancel, `danger` only to confirm |
+| `variant` | `primary` once per view, `secondary` (the default), `ghost` for Cancel, `danger-outline` for a destructive action that opens a confirm, `danger` only to confirm it |
 | `size` | `xs` 20px in the caption type, only for the status bar; `sm` 28px, `md` 32px (the default), `lg` 40px, `touch` 48px for a phone's bottom bar or sheet |
 | `block` | Full width |
 | `icon` | A 16px icon before the label. With `label` and no children, the button is a square icon button |
@@ -245,12 +245,18 @@ only in a tooltip.
 
 | State | What shows |
 | --- | --- |
-| Default | `primary` fill, `secondary` white with a `border-strong` edge, `ghost` no fill, `danger` fill |
-| Hover | `primary-hover`, `surface-subtle`, `surface-muted` with `fg` text, `danger-hover`; a press the same |
+| Default | `primary` fill, `secondary` white with a `border-strong` edge, `ghost` no fill, `danger-outline` `surface` with a `danger` edge and `danger` text, `danger` fill |
+| Hover | `primary-hover`, `surface-subtle`, `surface-muted` with `fg` text, `danger-soft`, `danger-hover`; a press the same |
 | Focus | The standard focus ring |
 | Unavailable | 45% opacity, no hover change, `not-allowed` cursor; its reason is read with it |
 | Busy | The spinner in the icon's place (in front of the label when there's no icon); the label stays |
 | Error | None: a failed action shows a toast or a field error, never a red button |
+
+**Red means it cuts something off; filled red means you're confirming it.** A destructive action on
+a row or under a list (Revoke, Revoke all) is `danger-outline` and opens a confirm, whose confirming
+button is `danger`. Never use `danger-outline` for the confirm itself, in a menu (use the Menu's
+`danger` item) or on a tinted box (Callout, Toast). It always has words, never only an icon, and
+a row has at most one.
 
 **On a phone and on a touch screen** (`phone:` and `touch:`), `sm` and `md` render at `lg` (40px),
 and every size gets a 48px hit area (`hit-touch`), drawn round the button so its look doesn't
@@ -448,7 +454,7 @@ broke". It's centred in the space it replaces, in a 360px column (`max-w-empty`)
 
 | Prop | What it is |
 | --- | --- |
-| `title` | A heading in `text-section` (`headingLevel`, 2 by default) |
+| `title` | A heading in `text-section` (`headingLevel`, 2 by default); a paragraph when `plain` |
 | `description` | One or two sentences that say what the thing is for; for an error, the reason |
 | `icon` | A 20px icon in `accent` on a 40px tile. Without one there's no tile |
 | `action` | The one primary button: `{ label, onClick, busy? }`. For an error, Try again |
@@ -501,7 +507,7 @@ didn't load: a Callout sits above content that's there). It has no close button.
 | `files` | File names or paths in mono, which wrap anywhere: three, then "and N more" |
 | `icon` | A 16px icon in place of the tone's own, in the tone's colour. The fill never changes |
 | `action` | One `{ label, onClick }`, a ghost button under the text, busy while a returned promise runs |
-| `announce` | `focus` for a Callout that appears because of something you did (below) |
+| `announce` | `focus` for a Callout that appears because of something you did, `polite` for one that comes and goes with a state (below) |
 
 The text is `fg`, not the tone's colour: the icon and the fill carry the tone. It wraps and is
 never cut, on both sizes. The box has a transparent 1px border, so Windows high contrast, which
@@ -513,6 +519,19 @@ focus. One that appears because of something you did, maybe out of sight, takes
 text and list, with `tabindex="-1"`. The screen scrolls its page to the top, then calls the ref's
 `focus()`, which doesn't scroll again. There's no `role="alert"`: a failure that must leave focus
 where it is goes through the alert slot that the Dialog and the text sheet own.
+
+**A Callout that comes and goes with a state** (a strip that says the chosen program can't run,
+a save that failed) takes `announce="polite"`. Its title, text and files are a `role="status"`
+region; its action sits after the region, outside it, so a screen reader hears the words once
+when they appear or change, never "Check again Checking…" with them. Keep it on the page and
+pass empty `children` while there's nothing to say: it then draws nothing but the empty region,
+which has to be there before the words arrive for them to be read.
+
+```tsx
+<Callout tone="warning" announce="polite" action={{ label: "Check again", onClick: check }}>
+  {strip}
+</Callout>;
+```
 
 **On a phone** it sits inside the 16px page inset, never flush. Its action's `sm` button draws at
 `lg` with a 48px hit area, as every `sm` button does there, and stays under the text.
@@ -643,6 +662,11 @@ const ids = useTabIds();
 The up and down arrow keys move and select instead of left and right; Home, End and the one Tab
 stop work as above. A counter or running dot sits at the end of its row. `fill` doesn't apply.
 
+On a phone a side column leaves the page too little width, so there the same list goes across the
+top as a horizontal `TabList` (the segmented look) and the page sits below it at the full width. Pick
+the orientation from `usePresentation()`, so it stays one list:
+`orientation={usePresentation() === "phone" ? "horizontal" : "vertical"}`.
+
 | State | What shows |
 | --- | --- |
 | Default | `fg-muted` text, a row at least 32px high (48px on a touch screen), labels wrap |
@@ -653,7 +677,10 @@ stop work as above. A counter or running dot sits at the end of its row. `fill` 
 
 **On a phone** (`fill`, from the presentation context) the track spans the page column and the
 tabs share it equally, each at least 48px high with 4px 8px padding. A label wraps between words
-and the counter follows it like one more word; a word longer than its tab breaks with a hyphen.
+and the counter follows it like one more word. A tab is never narrower than its longest word, in
+the selected weight, so switching doesn't move the tabs: at 320px "Behaviour" keeps its word and
+Model, Harness and Tools share the rest. When the words don't fit side by side, as at 200% text,
+the tabs go on to another row. Only a word wider than the whole track breaks, without a hyphen.
 Labels are never shortened and the tabs never scroll sideways. **On a touch screen** at desktop
 width a tab renders at 40px with a 48px hit area.
 
@@ -746,6 +773,11 @@ A neutral fill on a `surface-muted` fill disappears, so it steps up with `on-mut
 is muted (an unselected tab, the active menu item), or `data-hover-fill="muted"` when it's muted only on
 hover and press (a sidebar row). With more contrast `border` is too dark under `fg`, so the step is
 `surface` instead (`contrast-more:on-muted:bg-surface`), set apart by the chip's own edge.
+
+A coloured chip's soft fill is see-through, so on a muted fill it would darken with it and drop
+its text below 4.5:1, as the "Needs you" counter on an unselected tab did. There it lays its soft
+fill over `surface` (`on-muted:bg-over-surface-warning-soft`) and looks just as it does on a page.
+Attention's soft fill is opaque, so it stays as it is.
 
 ## ListHeading
 
@@ -1031,6 +1063,21 @@ the grey fill is dropped.
 `width` is one of a fixed set (`1/3`, `2/5`, `1/2`, `3/5`, `2/3`, `7/10`, `full`), never random,
 so tests and screenshots stay the same.
 
+## ChatStart and ChatLoading
+
+Two states of a chat's transcript, for an agent's Try it chat and the Assistant.
+
+```tsx
+<ChatStart figure={orb} heading="Chat with Sorter" description="Sorts incoming mail by topic" />;
+<ChatLoading label="Loading this chat" onRetry={load} />;
+```
+
+`ChatStart` is an empty chat before its first message: the figure (the orb at 64px, hidden from
+screen readers), the heading in `text-heading`, and the muted description when there is one.
+`ChatLoading` is a chat's first load, on the List's clock: nothing for 300ms, then three still
+lines and the status line's label, and after 10 seconds "Still loading" with **Try again**. A chat
+already shown in this session opens at once, without it.
+
 ## SidePanel
 
 The frame every side panel shares: step details, the assistant, the list of changes. The shell
@@ -1061,6 +1108,7 @@ panel fills what it's given and never sets its own width.
 | `facing` | The side facing the main view, which gets the 1px line: `start` (default), `end` |
 | `initialFocus` | A field to focus instead of the title, for a panel you open to type in |
 | `onClose` | The phone's Back. On desktop, close is in `actions` and the shell binds Escape |
+| `dialogTitleId` | For a panel inside a dialog its title names: the title's id. The panel then draws no region, so its name is read once |
 
 | State | What happens |
 | --- | --- |
@@ -1223,7 +1271,8 @@ Served Studio can open in Firefox, which gets `::-moz-range-progress`.
 One choice out of a few, shown all at once: how agents look things up, the ways to connect. For a
 long list, use a Select. A `role="radiogroup"` of native radios, so Tab reaches the group once,
 the arrow keys move the choice and Space picks. Put it in a Field: the Field's label names the
-group and its hint or error sits under it.
+group and its hint or error sits under it. When the options have notes, give the Field
+`hintAbove`, so the hint sits under the label and isn't read as the last option's.
 
 ```tsx
 <Field label="Connect with" error={connectError}>
@@ -1322,6 +1371,20 @@ An `action` (`{ label, onClick }`) is a text button at the right of the line: `a
 weight 500, no padding, underlined on hover, with a 48px hit area on touch. The text and the action wrap as
 one group, so at 200% text the action goes under the text, starting where the text starts. The
 line keeps its frame.
+
+## NoteLines
+
+`NoteLines` shows calm facts at the end of a section, such as a provider's notes after a run's
+steps: one line per note, a 16px info mark and the sentence in `text-small` `fg-muted`, 4px apart,
+inset 16px so the mark lines up with a List's row icons. There's no box, fill or status colour, so
+it reads as a fact, not a warning; use a `Callout` when the user should act. It has no action, isn't
+dismissible and isn't live. A note is plain text, never shortened, and wraps under itself. Escape a
+note from outside Halonic with `escapeHidden` from `@halonicjs/std` first, as the run view does.
+With no notes it renders nothing and leaves no gap.
+
+```tsx
+<NoteLines label="Notes on this run" notes={providerNotes(log)} />;
+```
 
 ## LongText and TextSheet
 
@@ -1552,8 +1615,9 @@ item stays listed and does nothing, an unavailable one with its reason under its
 A screen with no page stack to put the sheet on, such as More in a desktop window as narrow as a
 phone, mounts **`HeaderBadgeSheetDialog`** instead, with the same props. It shows the sheet over the
 whole window in a `<dialog>` opened with `showModal()`, so everything behind it is inert and Tab
-never reaches a control hidden under it (WCAG 2.4.11). Focus moves to the title, Escape calls
-`onClose`, and unmounting it closes it and gives focus back to the opener.
+never reaches a control hidden under it (WCAG 2.4.11). The title names the dialog, and the panel
+inside draws no region of its own, so a screen reader reads the name once. Focus moves to the
+title, Escape calls `onClose`, and unmounting it closes it and gives focus back to the opener.
 
 ## Tooltip
 
@@ -1689,6 +1753,7 @@ them by hand.
 | `error` | A sentence that says what to do: "Give the agent a name." Replaces the hint |
 | `required` | Writes "Required" after the label in `fg-subtle`. No asterisk |
 | `prefix` | `{ symbol, name }`: a currency outside the box, such as "€", "in euros" |
+| `hintAbove` | Puts the hint (or the error) between the label and the control. For a RadioGroup whose options have notes |
 
 Screen readers hear "required" once, from the control's `aria-required`: the visible word is
 hidden from them.
@@ -2093,8 +2158,8 @@ The promise `openExternal` returns rejects only when a pending address fails; th
 
 | State | What shows |
 | --- | --- |
-| Default | `accent-text`, like every inline link |
-| Hover | Underlined |
+| Default | `accent-text`, like every inline link, underlined in a softer line (`accent-text` at 50%) |
+| Hover | The underline in full `accent-text` |
 | Focus | The standard focus ring |
 | Phone | At least 48px high (`min-h-touch`), so the whole line is the target |
 
@@ -2226,8 +2291,8 @@ The icons `AlertIcon`, `BackIcon`, `ForwardIcon`, `InfoIcon`, `MaximiseIcon` (�
 the place icons) and `WarningIcon` are outline icons in `currentColor`, hidden from screen readers; the slot
 they sit in gives them their size.
 `useOpenExternal()` reads the `openExternal` service in force, and `placeIconNames` lists the
-names a `PlaceIcon` knows. `inlineLinkClasses` is the inline link style (accent text, underlined on
-hover), for a button that must look like a link, such as Welcome's **Copy details**. `packageName` is `"@halonicjs/studio-kit"`. The timings and counts the
+names a `PlaceIcon` knows. `inlineLinkClasses` is the inline link style (accent text, underlined: a
+softer line at rest so a link in a sentence isn't told by colour alone, a full one on hover), for a button that must look like a link, such as Welcome's **Copy details**. `packageName` is `"@halonicjs/studio-kit"`. The timings and counts the
 components share are exported, so a test reads them instead of copying the number:
 
 | Export | Value | What it is |

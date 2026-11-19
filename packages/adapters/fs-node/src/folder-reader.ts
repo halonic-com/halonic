@@ -1,4 +1,4 @@
-import { constants, type Stats } from "node:fs";
+import { type BigIntStats, constants, type Stats } from "node:fs";
 import { open, readdir, realpath, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
@@ -26,7 +26,8 @@ const openFlags = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.
  *
  * A file is read from one open handle that is checked to be the same
  * regular file `lstat` saw, so a file swapped for a link or a pipe between
- * the check and the open is refused rather than read.
+ * the check and the open is refused rather than read. Both are compared by
+ * every bit of their file ids, which a plain number can't hold on Windows.
  */
 export class FileSystemFolderReader implements FolderReader {
   readonly location: string;
@@ -61,7 +62,7 @@ export class FileSystemFolderReader implements FolderReader {
 
   async read(path: string): Promise<Uint8Array | null> {
     checkWorkspacePath(path);
-    const checked = await entryAt(this.#root, path);
+    const checked = await entryAt(this.#root, path, { bigint: true });
     if (checked === null || checked.isDirectory()) return null;
     if (!checked.isFile()) {
       throw new RangeError(
@@ -70,7 +71,7 @@ export class FileSystemFolderReader implements FolderReader {
     }
     const handle = await open(join(this.#root, path), openFlags);
     try {
-      const opened = await handle.stat();
+      const opened = await handle.stat({ bigint: true });
       if (!opened.isFile() || !sameFile(checked, opened)) {
         throw new RangeError(`${JSON.stringify(path)} changed while it was opened: read it again.`);
       }
@@ -148,8 +149,8 @@ function entryOf(path: string, stats: Stats): FolderEntry {
   return { path, kind: "other" };
 }
 
-/** Whether two stats describe the same file: same device and inode. */
-function sameFile(first: Stats, second: Stats): boolean {
+/** Whether two stats describe the same file: same device and inode, every bit of them. */
+function sameFile(first: BigIntStats, second: BigIntStats): boolean {
   return first.dev === second.dev && first.ino === second.ino;
 }
 

@@ -1,0 +1,403 @@
+{
+  "about": "Halonic's proxy rules, as cases both sides test against: proxyFromEnv, NoProxy and routeFor here, and the Studio shell's halonic-http-guard (apps/studio/src-tauri/crates/http-guard). Change a rule in both, and add its case here. 'setting' is 'none', 'refused' or the proxy as http://host:port. 'route' is 'direct', 'tunnel' or 'refused'. Cases with a user name and password live in each side's own tests.",
+  "settings": [
+    {
+      "env": {},
+      "setting": "none"
+    },
+    {
+      "env": {
+        "HTTP_PROXY": "http://proxy.corp:3128"
+      },
+      "setting": "none"
+    },
+    {
+      "env": {
+        "ALL_PROXY": "http://proxy.corp:3128"
+      },
+      "setting": "none"
+    },
+    {
+      "env": {
+        "https_proxy": "http://lower:1",
+        "HTTPS_PROXY": "http://upper:2"
+      },
+      "setting": "http://lower:1"
+    },
+    {
+      "env": {
+        "https_proxy": "",
+        "HTTPS_PROXY": "http://proxy.corp:3128"
+      },
+      "setting": "http://proxy.corp:3128"
+    },
+    {
+      "env": {
+        "https_proxy": "  ",
+        "HTTPS_PROXY": ""
+      },
+      "setting": "none"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": " http://proxy.corp:3128 "
+      },
+      "setting": "http://proxy.corp:3128"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://Proxy.Corp"
+      },
+      "setting": "http://proxy.corp:80"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128/"
+      },
+      "setting": "http://proxy.corp:3128"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://[::1]:3128"
+      },
+      "setting": "http://[::1]:3128"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://10.0.0.5:8080"
+      },
+      "setting": "http://10.0.0.5:8080"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "proxy.corp:3128"
+      },
+      "setting": "refused"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "socks5://proxy.corp:1080"
+      },
+      "setting": "refused"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "https://proxy.corp:3129"
+      },
+      "setting": "refused"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://"
+      },
+      "setting": "refused"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "not a url"
+      },
+      "setting": "refused"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128/path"
+      },
+      "setting": "refused"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128/?x=1"
+      },
+      "setting": "refused"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128/#x"
+      },
+      "setting": "refused"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:0"
+      },
+      "setting": "refused"
+    }
+  ],
+  "noProxy": [
+    {
+      "list": "",
+      "url": "https://example.com/",
+      "matches": false
+    },
+    {
+      "list": " , ,",
+      "url": "https://example.com/",
+      "matches": false
+    },
+    {
+      "list": "*",
+      "url": "https://example.com/",
+      "matches": true
+    },
+    {
+      "list": "example.com",
+      "url": "https://example.com/",
+      "matches": true
+    },
+    {
+      "list": "example.com",
+      "url": "https://API.Example.com/",
+      "matches": true
+    },
+    {
+      "list": ".example.com",
+      "url": "https://example.com/",
+      "matches": true
+    },
+    {
+      "list": ".example.com",
+      "url": "https://api.example.com/",
+      "matches": true
+    },
+    {
+      "list": "*.example.com",
+      "url": "https://api.example.com/",
+      "matches": true
+    },
+    {
+      "list": "EXAMPLE.com",
+      "url": "https://example.com/",
+      "matches": true
+    },
+    {
+      "list": "example.com",
+      "url": "https://badexample.com/",
+      "matches": false
+    },
+    {
+      "list": "example.com",
+      "url": "https://example.com.evil.test/",
+      "matches": false
+    },
+    {
+      "list": "example.com",
+      "url": "https://example.com./",
+      "matches": true
+    },
+    {
+      "list": "other.test, example.com",
+      "url": "https://example.com/",
+      "matches": true
+    },
+    {
+      "list": "example.com:8443",
+      "url": "https://example.com:8443/",
+      "matches": true
+    },
+    {
+      "list": "example.com:8443",
+      "url": "https://example.com/",
+      "matches": false
+    },
+    {
+      "list": "example.com:443",
+      "url": "https://example.com/",
+      "matches": true
+    },
+    {
+      "list": "example.com:80",
+      "url": "http://example.com/",
+      "matches": true
+    },
+    {
+      "list": "10.0.0.1",
+      "url": "https://10.0.0.1/",
+      "matches": true
+    },
+    {
+      "list": "10.0.0.1",
+      "url": "https://10.0.0.10/",
+      "matches": false
+    },
+    {
+      "list": "10.0.0.1:8443",
+      "url": "https://10.0.0.1:8443/",
+      "matches": true
+    },
+    {
+      "list": "10.0.0.1:8443",
+      "url": "https://10.0.0.1/",
+      "matches": false
+    },
+    {
+      "list": "::1",
+      "url": "https://[::1]/",
+      "matches": true
+    },
+    {
+      "list": "[::1]:8443",
+      "url": "https://[0:0:0:0:0:0:0:1]:8443/",
+      "matches": true
+    },
+    {
+      "list": "[::1]:8443",
+      "url": "https://[::1]/",
+      "matches": false
+    },
+    {
+      "list": "10.0.0.0/8",
+      "url": "https://10.1.2.3/",
+      "matches": false
+    },
+    {
+      "list": "10.0.0.0/8",
+      "url": "https://10.0.0.0/",
+      "matches": false
+    },
+    {
+      "list": "example.com:notaport,[::zz]",
+      "url": "https://example.com/",
+      "matches": false
+    },
+    {
+      "list": "example.com:99999",
+      "url": "https://example.com/",
+      "matches": false
+    },
+    {
+      "list": "example.com:0",
+      "url": "https://example.com/",
+      "matches": false
+    }
+  ],
+  "routes": [
+    {
+      "env": {},
+      "url": "https://api.example.com/v1",
+      "route": "direct"
+    },
+    {
+      "env": {},
+      "url": "http://192.168.1.20:11434/",
+      "route": "direct"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128"
+      },
+      "url": "https://api.example.com/v1",
+      "route": "tunnel"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128"
+      },
+      "url": "https://93.184.215.14/",
+      "route": "tunnel"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128"
+      },
+      "url": "http://localhost:11434/",
+      "route": "direct"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128"
+      },
+      "url": "http://127.0.0.1:11434/",
+      "route": "direct"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128"
+      },
+      "url": "http://[::1]:11434/",
+      "route": "direct"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128"
+      },
+      "url": "http://192.168.1.20:11434/",
+      "route": "direct"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128"
+      },
+      "url": "https://10.0.0.7/",
+      "route": "direct"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128"
+      },
+      "url": "http://api.example.com/",
+      "route": "refused"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128"
+      },
+      "url": "http://ollama.lan:11434/",
+      "route": "refused"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128",
+        "NO_PROXY": "ollama.lan"
+      },
+      "url": "http://ollama.lan:11434/",
+      "route": "direct"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128",
+        "NO_PROXY": "internal.example.com"
+      },
+      "url": "https://models.internal.example.com/",
+      "route": "direct"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128",
+        "no_proxy": "a.test",
+        "NO_PROXY": "b.test"
+      },
+      "url": "https://b.test/",
+      "route": "tunnel"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "http://proxy.corp:3128",
+        "NO_PROXY": "*"
+      },
+      "url": "https://api.example.com/",
+      "route": "direct"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "socks5://proxy.corp:1080"
+      },
+      "url": "https://api.example.com/",
+      "route": "refused"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "socks5://proxy.corp:1080",
+        "NO_PROXY": "api.example.com"
+      },
+      "url": "https://api.example.com/",
+      "route": "refused"
+    },
+    {
+      "env": {
+        "HTTPS_PROXY": "socks5://proxy.corp:1080"
+      },
+      "url": "http://localhost:11434/",
+      "route": "direct"
+    }
+  ]
+}

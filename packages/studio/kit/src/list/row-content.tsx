@@ -3,22 +3,26 @@ import { ChevronRightIcon } from "../icons/chevron-right-icon.tsx";
 import { StatusChip } from "../status-chip/status-chip.tsx";
 import type { AnyListRow, ListColumn } from "./list-props.ts";
 import { RowColumns } from "./row-columns.tsx";
-import { Leading, MetaLine } from "./row-parts.tsx";
+import { Leading, lineFit, MetaLine } from "./row-parts.tsx";
 
 /*
  * The inside of a List row's main cell. Split out of list.tsx, which keeps the cells and their
  * classes, to keep it under the size limit.
  */
 
-/** The row's height, from the presentation, the density and whether it has a meta line. */
-function heightClasses(phone: boolean, dense: boolean, hasMeta: boolean): string {
+/**
+ * The row's height, from the presentation, the density and whether it has a meta line. A row that
+ * wraps grows past it, so on a desktop it gets padding too, keeping its text off the lines.
+ */
+function heightClasses(phone: boolean, dense: boolean, hasMeta: boolean, wrap: boolean): string {
   if (phone) {
     return dense ? "min-h-touch py-2" : "min-h-14 py-3";
   }
+  const padding = wrap ? "py-2" : "";
   if (dense) {
-    return "min-h-control-md touch:min-h-touch";
+    return `min-h-control-md touch:min-h-touch ${padding}`;
   }
-  return hasMeta ? "min-h-14" : "min-h-control-lg touch:min-h-touch";
+  return `${hasMeta ? "min-h-14" : "min-h-control-lg touch:min-h-touch"} ${padding}`;
 }
 
 /**
@@ -49,7 +53,10 @@ export interface RowContentProps {
   readonly dense: boolean;
   /** The row opens a page of its own: it ends in a chevron (a phone List's `chevrons`). */
   readonly chevron: boolean;
-  /** The id of the meta line, which an unavailable row's cell names with `aria-describedby`. */
+  /**
+   * The id of the meta line, which the cell names with `aria-describedby` when the row is
+   * unavailable or its meta line describes it.
+   */
   readonly reasonId: string;
   /** A checkbox cell comes first and holds the gap, so the cell has no left padding. */
   readonly afterCheck: boolean;
@@ -84,14 +91,15 @@ export function RowContent({
   // the meta line.
   const trailingBelow = phone && (row.more !== undefined || chevron);
   const showTrailingRight = !trailingBelow && trailing !== undefined;
+  const wrap = row.wrap === true;
 
   return (
     <div
-      className={`flex items-center gap-3 ${afterCheck ? "pr-4" : "px-4"} ${heightClasses(phone, dense, meta !== undefined)}`}
+      className={`flex items-center gap-3 ${afterCheck ? "pr-4" : "px-4"} ${heightClasses(phone, dense, meta !== undefined, wrap)}`}
     >
       <Leading row={row} small={dense && !phone} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <span className={`truncate text-body-strong ${titleColour(row)}`}>{row.title}</span>
+        <span className={`${lineFit(row)} text-body-strong ${titleColour(row)}`}>{row.title}</span>
         <MetaLine row={row} text={meta} id={reasonId} chip={trailingBelow ? trailing : undefined} />
       </div>
       {showTrailingRight ? <span className="flex shrink-0 items-center">{trailing}</span> : null}

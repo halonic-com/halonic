@@ -36,6 +36,11 @@ export class MergeSteps {
     if (state.merge !== undefined) this.#host.set({ ...state, choosing: true });
   }
 
+  /** Closes the choices but keeps the merge started, as a phone's Back does; Continue opens them again. */
+  leave(): void {
+    this.#host.set({ ...this.#host.state(), choosing: false });
+  }
+
   /** Settles one item: Keep mine, Use theirs or Keep both. */
   choose(path: string, choice: UpdateChoice): Promise<MergeOutcome> {
     const label = copyLabel(this.#host.state().merge?.people ?? []);

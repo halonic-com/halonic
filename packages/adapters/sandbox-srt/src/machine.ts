@@ -3,6 +3,7 @@ import { access, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { SandboxPackageManager } from "@halonicjs/ports";
+import { dockerDesktopShows, dockerSocket, sharedWslFolder } from "./docker-desktop.ts";
 import {
   findHelper,
   HELPER_DIDNT_START,
@@ -21,13 +22,13 @@ import {
   sessionTempParents,
 } from "./profile-parents.ts";
 
+/** What srt's Windows install allows: see {@link Machine.windowsSandboxState}. */
+export type WindowsSandboxState = "ok" | "setup-needed" | "setup-conflict";
+
 /**
  * What the sandbox asks of the machine it runs on. A test hands the adapter a
  * fake one; {@link systemMachine} is the real one.
  */
-/** What srt's Windows install allows: see {@link Machine.windowsSandboxState}. */
-export type WindowsSandboxState = "ok" | "setup-needed" | "setup-conflict";
-
 export interface Machine {
   /** The operating system, as Node names it (`linux`, `darwin`, `win32`). */
   platform: NodeJS.Platform;
@@ -71,7 +72,9 @@ export interface Machine {
    * network filters and a matching setup version. `setup-conflict` is an
    * install whose loopback mode isn't the closed one Halonic needs (another
    * program set srt up with loopback open); Halonic doesn't change that
-   * machine-wide mode itself. `setup-needed` is everything else that blocks
+   * machine-wide mode itself; it stays `setup-conflict` when the install has
+   * other errors too, so the loopback mode is the first reason the person
+   * reads. `setup-needed` is everything else that blocks
    * (not installed, set up by a different release, not readable).
    */
   windowsSandboxState(): Promise<WindowsSandboxState>;
@@ -83,6 +86,15 @@ export interface Machine {
    * machine without it counts as no grant.
    */
   profileReadGranted?(): Promise<boolean>;
+  /**
+   * Whether Docker Desktop shows on this Linux machine: its socket at
+   * `/var/run/docker.sock`, or a `docker-desktop*` entry in `/mnt/wsl`, which
+   * every WSL 2 distro shares while Docker Desktop runs (W6 of HAL-5407). It
+   * reads the file system only, follows no link and starts no program. Also
+   * true when `/mnt/wsl` is there but can't be read: the answer errs on
+   * reporting a limit. A machine without it counts as no Docker Desktop.
+   */
+  dockerDesktopVisible?(): Promise<boolean>;
   /**
    * Runs srt's Windows install (`srt windows-install`): the sandbox account and
    * its network filters, for the whole machine. It asks for an administrator
@@ -289,6 +301,7 @@ export const systemMachine: Machine = {
       return "setup-needed"; // No srt-win, or it did not answer: not installed, as far as we can tell.
     }
   },
+  dockerDesktopVisible: () => dockerDesktopShows(dockerSocket, sharedWslFolder),
   async profileReadGranted() {
     if (process.platform !== "win32") return false;
     try {

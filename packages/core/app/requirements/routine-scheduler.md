@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: no timers in core; ticks can come late or twice; catch-up policy for missed ticks
 
-When the `Scheduler` port ticks, the routine scheduler shall ask the routines tick function what is due between the last tick and the clock's time, start each due run through the `RunExecutor` with the routine's trigger and a run id made from the workspace, the routine key and the due time, and then store the clock's time as the workspace's last tick in `Coordination`. The workspace shall be named by an id that stays the same on every host that ticks it, not by where a host keeps the files. If the clock's time is not after the stored last tick, then the tick shall start nothing. While a tick runs, another tick of the same scheduler shall start nothing. If a due run fails to start, then the scheduler shall report it and still start the others. When the scheduler is disposed during a tick, it shall start no more runs in that tick, store no last tick if it left due runs unstarted, and resolve only once that tick has settled. Run ids shall be names every run store keeps as a file name, of the same length however long the routine key or workspace id is, and the last-tick key shall stay within 256 UTF-8 bytes.
+When the `Scheduler` port ticks, the routine scheduler shall ask the routines tick function what is due between the last tick and the clock's time, start each due run through the `RunExecutor` with the routine's trigger and a run id made from the workspace, the routine key and the due time, and then store the clock's time as the workspace's last tick in `Coordination`. The workspace shall be named by an id that stays the same on every host that ticks it, not by where a host keeps the files. If the clock's time is not after the stored last tick, then the tick shall start nothing. While a tick runs, another tick of the same scheduler shall start nothing. If a due run fails to start, then the scheduler shall report it and still start the others. When the scheduler is disposed during a tick, it shall start no more runs in that tick, store no last tick if it left due runs unstarted, and resolve only once that tick has settled. Run ids shall be names every run store keeps as a file name and that name a run's proposal ref, of the same length however long the routine key or workspace id is, and the last-tick key shall stay within 256 UTF-8 bytes.
 
 ## Examples
 
@@ -37,4 +37,4 @@ When the `Scheduler` port ticks, the routine scheduler shall ask the routines ti
   then the dispose resolves only after that start settles, the second run doesn't start, and the last tick stays as it was.
 - Given a routine key of 240 characters with accents and emoji,
   when it is due,
-  then its run id holds only letters, digits, "-" and ".", is 62 characters long, and the folder run store accepts it.
+  then its run id holds only letters, digits and "-", is 58 characters long, and both the folder run store and the proposal refs accept it.

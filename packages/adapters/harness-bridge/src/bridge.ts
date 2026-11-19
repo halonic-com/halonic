@@ -150,7 +150,8 @@ async function serve(context: ServeContext, request: IncomingMessage, response: 
       body ??= readRequestBody(request, settings.limits);
       return body;
     };
-    await route.handle({ run, request, response, readBody, signal });
+    const reportError = (error: unknown) => reportFailure(run, token, error);
+    await route.handle({ run, request, response, readBody, signal, reportError });
   } catch (error) {
     if (response.headersSent) {
       // The reply has begun, so the program can't be told: end it, and tell the run.
@@ -174,6 +175,11 @@ async function serve(context: ServeContext, request: IncomingMessage, response: 
  */
 function reportUnnamedFailure(run: HarnessBridgeOptions, token: string, error: unknown) {
   if (error instanceof KindedError && errorKindOf(error) !== "internal") return;
+  reportFailure(run, token, error);
+}
+
+/** Tells the run about a failure through its `reportError` hook, without the run token. */
+function reportFailure(run: HarnessBridgeOptions, token: string, error: unknown) {
   const text = error instanceof Error ? error.message : String(error);
   try {
     run.reportError?.({

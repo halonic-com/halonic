@@ -27,7 +27,7 @@ import { secretTarget } from "../plain/secret-target.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
 import { ApprovalCard } from "./approval-card.tsx";
 import type { NextItem } from "./card-parts.tsx";
-import { countDetail, itemTitle, lateCount, rowFor } from "./inbox-row.tsx";
+import { countDetail, inboxRow, itemTitle, lateCount } from "./inbox-row.tsx";
 import { NoticesSection } from "./notices-section.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
 import { SetupPane } from "./setup-pane.tsx";
@@ -211,9 +211,7 @@ export function InboxView({
                 headingRef: needsYouHeading,
                 ...countDetail(waitingCount(state.items), lateCount(state.items, now())),
               }}
-              rows={state.items.map((item) =>
-                rowFor(item, now(), item.kind === "setup" ? undefined : runFacts?.(item.runId)),
-              )}
+              rows={state.items.map((item) => inboxRow(item, now(), runFacts))}
               onOpen={(key) => openItem(state.items.find((item) => item.key === key) ?? null)}
               {...(open === null ? {} : { current: open.key })}
               empty={

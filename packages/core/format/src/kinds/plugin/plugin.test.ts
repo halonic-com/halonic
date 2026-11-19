@@ -117,6 +117,50 @@ verifies("format.plugin-file", () => {
     ]);
   });
 
+  describe("refuses control characters and text-direction marks in text a person reads", () => {
+    // A right-to-left override can make "Weather\u202Etxt.exe" look like another name.
+    const marks = ["\u202E", "\u2066", "\u200F", "\u061C", "\u0007", "\u001B", "\u0085", "\t"];
+
+    it.each(marks.map((mark) => [JSON.stringify(mark), mark]))(
+      "refuses %s in the name, the description, a label, a title and a help text",
+      (_shown, mark) => {
+        const field = { type: "text", label: `City${mark}`, help: `Where${mark}` };
+        const parsed = parse(Plugin, {
+          id: "weather",
+          version: "1.0.0",
+          sdk: 1,
+          name: `Weather${mark}`,
+          description: `Forecasts${mark}`,
+          ui: {
+            settings: { city: field },
+            cards: [{ id: "today", title: `Today${mark}`, tool: "forecast", show: "text" }],
+            panel: { title: `Radar${mark}` },
+          },
+        });
+        expect(parsed.ok ? [] : parsed.error.map((problem) => problem.path.join("."))).toEqual([
+          "name",
+          "description",
+          "ui.settings.city.label",
+          "ui.settings.city.help",
+          "ui.cards.0.title",
+          "ui.panel.title",
+        ]);
+      },
+    );
+
+    it("takes a line break in longer text, and right-to-left text and emoji everywhere", () => {
+      const parsed = parse(Plugin, {
+        id: "weather",
+        version: "1.0.0",
+        sdk: 1,
+        name: "מזג אוויר ☀️",
+        description: "Forecasts for the cities you name.\nUpdated hourly.",
+        ui: { settings: { city: { type: "text", label: "مدينة", help: "One\nper line" } } },
+      });
+      expect(parsed.ok).toBe(true);
+    });
+  });
+
   describe("refuses an unknown key at every depth", () => {
     it.each([
       ["the top", yaml(...head, "author: someone"), "", 1],

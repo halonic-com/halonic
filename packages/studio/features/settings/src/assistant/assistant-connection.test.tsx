@@ -147,7 +147,7 @@ verifies("settings.ai-agent-view-only", () => {
   it("says Not set up under the view-only line while no provider is set", async () => {
     const view = await viewOnly("window");
     expect(view.textContent).toContain(
-      "Not set up. Assistant chats use each workspace's model aliases.",
+      "Not set up. Assistant chats will use each workspace's model aliases.",
     );
   });
 

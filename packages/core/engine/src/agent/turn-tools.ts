@@ -4,12 +4,13 @@
 // caller or Halonic already uses.
 
 import type { Connector } from "@halonicjs/format";
-import type {
-  ChatTurnRefusal,
-  ChatTurnWaiting,
-  ConnectorClient,
-  ToolDefinition,
-  ToolRisk,
+import {
+  type ChatTurnRefusal,
+  type ChatTurnWaiting,
+  type ConnectorClient,
+  isConnectorToolError,
+  type ToolDefinition,
+  type ToolRisk,
 } from "@halonicjs/ports";
 import { approveConnectorListing, type ListedToolApproval } from "./listed-tool-approval.ts";
 import { type DeclaredTool, type DeclaredTools, offerListedTools } from "./offer-listed-tools.ts";
@@ -265,6 +266,19 @@ class ToolListBuilder {
 /** The message of a thrown value, which needn't be an `Error`. */
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Why a tool call failed, as its result: the error's message, and for a tool
+ * that answered with an error of its own (`ConnectorToolError`), the tool's
+ * text after it, such as "ENOENT: no such file or directory", so the model
+ * and the run log see the cause (HAL-12342). A server wrote that text, so it
+ * goes to the model only inside the untrusted fence, as any of its results.
+ */
+export function toolErrorText(error: unknown): string {
+  if (!isConnectorToolError(error)) return errorMessage(error);
+  const said = error.toolText.trim();
+  return said === "" ? error.message : `${error.message} It said: ${said}`;
 }
 
 // A server wrote names and error texts, so a refusal keeps only the start of them.

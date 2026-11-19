@@ -7,6 +7,7 @@ import type {
   ConnectorTool,
 } from "@halonicjs/ports";
 import { s } from "@halonicjs/schema-kit";
+import { ConnectorFailedError, readConnectorAnswer } from "./connector-failure.ts";
 import { type AgentHostTransport, readAnswer } from "./transport.ts";
 
 const openedSchema = s.object({ connector: s.string().min(1) }).strict();
@@ -80,7 +81,7 @@ class AgentHostConnector implements ConnectorClient {
     const route = "POST /v1/connectors/tools";
     const connector = await this.#open();
     const answer = await this.#transport.request(route, { connector });
-    return readAnswer(route, answer, toolsSchema) as ConnectorTool[];
+    return readConnectorAnswer(route, answer, toolsSchema) as ConnectorTool[];
   }
 
   async callTool(
@@ -97,7 +98,8 @@ class AgentHostConnector implements ConnectorClient {
       args,
       ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
     };
-    return readAnswer(route, await this.#transport.request(route, body), calledSchema).text;
+    const answer = await this.#transport.request(route, body);
+    return readConnectorAnswer(route, answer, calledSchema).text;
   }
 
   async close(): Promise<void> {
@@ -149,21 +151,22 @@ class AgentHostConnector implements ConnectorClient {
       trust,
     };
     const answer = await this.#transport.request(route, body);
-    return readAnswer(route, answer, openedSchema).connector;
+    return readConnectorAnswer(route, answer, openedSchema).connector;
   }
 
   /**
    * The values of the secrets the connector's own `secretEnv` names, by secret name.
    *
-   * @throws naming the first secret that isn't set
+   * @throws {@link ConnectorFailedError} naming the first secret that isn't set
    */
   async #readSecrets(): Promise<Record<string, string>> {
     const values: Record<string, string> = {};
     for (const secretName of Object.values(this.#config.secretEnv)) {
       const value = await this.#context.secrets.get(secretName);
       if (value === null) {
-        throw new Error(
-          `Connector "${this.id}" needs the secret "${secretName}", which isn't set.`,
+        throw new ConnectorFailedError(
+          { reason: "secret-missing", secret: secretName },
+          { message: `Connector "${this.id}" needs the secret "${secretName}", which isn't set.` },
         );
       }
       values[secretName] = value;

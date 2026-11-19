@@ -1,10 +1,17 @@
 import type { LineChange } from "@halonicjs/std";
 import { diffLines } from "@halonicjs/std";
-import { Button, LineFrame, TickIcon, useToastStore, WarningIcon } from "@halonicjs/studio-kit";
+import {
+  ActionBar,
+  Button,
+  LineFrame,
+  TickIcon,
+  useToastStore,
+  WarningIcon,
+} from "@halonicjs/studio-kit";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { UpdateChoice, UpdateItem } from "../api.ts";
 import type { ChangesList } from "../changes-list.ts";
-import { mergeWords } from "../changes-words.ts";
+import { mergeWords, pageWords } from "../changes-words.ts";
 
 /** The lines of a side's text a tile shows before it cuts. */
 const previewLines = 8;
@@ -29,6 +36,10 @@ export function MergeStrip({ list }: { readonly list: ChangesList }) {
  * Choosing for each item both sides changed (checklist part 2, 2.8): the changed lines, then
  * Keep mine, Use Sam's and, where both sides still have the item, Keep both, with neither as
  * the default. Finish getting updates waits until every item is chosen; Cancel puts it all back.
+ *
+ * On a phone (2.14) it is its own page in place of the Changes page: Back to Changes keeps the
+ * merge started, the tiles are stacked with Yours first, and "Choose for 1 more item.", Finish
+ * and Cancel are the bottom bar.
  */
 export function MergeChoices({
   list,
@@ -42,32 +53,32 @@ export function MergeChoices({
   const heading = useRef<HTMLHeadingElement>(null);
   const descriptionId = useId();
   const [failure, setFailure] = useState<string>();
+  // Which of Finish and Cancel is running, so the phone's bar marks only that one busy.
+  const [ending, setEnding] = useState<"finish" | "cancel">();
   useEffect(() => heading.current?.focus(), []);
   if (merge === undefined) return null;
   const left = merge.items.filter((item) => item.choice === undefined).length;
 
   async function finish() {
     setFailure(undefined);
+    setEnding("finish");
     const reason = await list.merge.finish();
+    setEnding(undefined);
     if (reason !== undefined) return setFailure(`${mergeWords.finishFailed}. ${reason}`);
     toasts?.show({ tone: "success", title: mergeWords.merged(merge?.people ?? []) });
   }
   async function cancel() {
     setFailure(undefined);
+    setEnding("cancel");
     const reason = await list.merge.cancel();
+    setEnding(undefined);
     if (reason !== undefined) return setFailure(`${mergeWords.cancelFailed}. ${reason}`);
     toasts?.show({ tone: "success", title: mergeWords.cancelled });
   }
-  return (
-    <section aria-labelledby={`${descriptionId}-title`} className="flex flex-col gap-3">
-      <h2
-        id={`${descriptionId}-title`}
-        ref={heading}
-        tabIndex={-1}
-        className="text-heading focus-ring"
-      >
-        {mergeWords.heading}
-      </h2>
+
+  const titleId = `${descriptionId}-title`;
+  const body = (
+    <>
       <p className="text-body">{mergeWords.intro(merge.people, merge.items.length)}</p>
       <ul className="flex flex-col gap-4">
         {merge.items.map((item) => (
@@ -76,35 +87,76 @@ export function MergeChoices({
           </li>
         ))}
       </ul>
-      <div className={`flex gap-3 ${phone ? "flex-col" : "flex-row flex-wrap items-center"}`}>
+    </>
+  );
+  const failed =
+    failure === undefined ? null : (
+      <span role="alert" className="text-small text-danger">
+        {failure}
+      </span>
+    );
+  const waiting = (
+    <span id={descriptionId} className="text-small text-fg-muted empty:hidden">
+      {left > 0 ? mergeWords.chooseForMore(left) : null}
+    </span>
+  );
+
+  if (phone) {
+    return (
+      <section aria-labelledby={titleId} className="flex min-h-full flex-col">
+        <div className="flex flex-1 flex-col gap-4 p-4">
+          <span className="self-start">
+            <Button variant="ghost" size="touch" onClick={() => list.merge.leave()}>
+              {pageWords.back}
+            </Button>
+          </span>
+          <h1 id={titleId} ref={heading} tabIndex={-1} className="text-title focus-ring">
+            {mergeWords.heading}
+          </h1>
+          {body}
+          {failed}
+        </div>
+        <ActionBar
+          whileTyping="hide"
+          lead={waiting}
+          rows={[
+            [
+              {
+                label: mergeWords.finish,
+                variant: "primary",
+                busy: ending === "finish",
+                unavailable: left > 0 ? { reason: descriptionId } : undefined,
+                onClick: () => void finish(),
+              },
+            ],
+            [{ label: mergeWords.cancel, busy: ending === "cancel", onClick: () => void cancel() }],
+          ]}
+        />
+      </section>
+    );
+  }
+  return (
+    <section aria-labelledby={titleId} className="flex flex-col gap-3">
+      <h2 id={titleId} ref={heading} tabIndex={-1} className="text-heading focus-ring">
+        {mergeWords.heading}
+      </h2>
+      {body}
+      <div className="flex flex-row flex-wrap items-center gap-3">
         <Button
           variant="primary"
-          size={phone ? "touch" : "sm"}
-          block={phone}
+          size="sm"
           busy={mergeBusy}
           unavailable={left > 0 ? { reason: descriptionId } : undefined}
           onClick={() => void finish()}
         >
           {mergeWords.finish}
         </Button>
-        <Button
-          variant="ghost"
-          size={phone ? "touch" : "sm"}
-          block={phone}
-          busy={mergeBusy}
-          onClick={() => void cancel()}
-        >
+        <Button variant="ghost" size="sm" busy={mergeBusy} onClick={() => void cancel()}>
           {mergeWords.cancel}
         </Button>
-        <span id={descriptionId} className="text-small text-fg-muted empty:hidden">
-          {left > 0 ? mergeWords.chooseForMore(left) : null}
-        </span>
+        {waiting}
       </div>
-      {failure === undefined ? null : (
-        <span role="alert" className="text-small text-danger">
-          {failure}
-        </span>
-      )}
+      {failed}
     </section>
   );
 }
@@ -130,6 +182,8 @@ function ItemChoice({
   const changes = useMemo(() => diffLines(item.mine ?? "", item.theirs ?? ""), [item]);
   const canBoth = item.mine !== null && item.theirs !== null;
   const done = item.choice !== undefined;
+  // One level under the page's heading: an h1 on a phone's own page, an h2 on the Changes page.
+  const ItemHeading = phone ? "h2" : "h3";
 
   // Focus follows what changed: to "Keeping yours" after a choice, to the button used after Undo.
   const wasDone = useRef(done);
@@ -169,7 +223,7 @@ function ItemChoice({
   );
   return (
     <section aria-label={item.path} className="flex flex-col gap-2">
-      <h3 className="text-label break-all">{item.path}</h3>
+      <ItemHeading className="text-label break-all">{item.path}</ItemHeading>
       <Changes changes={changes} />
       <div className={`flex gap-4 ${phone ? "flex-col" : "flex-row items-stretch"}`}>
         <Tile
@@ -182,6 +236,7 @@ function ItemChoice({
           busy={busy}
           action={keep("mine", mergeWords.keepMine)}
           notUsed={item.choice === "both" ? mergeWords.yours : undefined}
+          phone={phone}
         />
         <Tile
           title={mergeWords.theirsName(people)}
@@ -195,6 +250,7 @@ function ItemChoice({
           notUsed={
             item.choice === "both" ? mergeWords.theirsName(people) : mergeWords.notUsed(people)
           }
+          phone={phone}
         />
         {canBoth ? (
           <Tile
@@ -208,6 +264,7 @@ function ItemChoice({
             action={keep("both", mergeWords.keepBoth)}
             note={item.copy === undefined ? undefined : mergeWords.copySavedAs(item.copy)}
             notUsed={mergeWords.keepBoth}
+            phone={phone}
           />
         ) : null}
       </div>
@@ -239,6 +296,7 @@ function Tile({
   action,
   note,
   notUsed,
+  phone,
 }: {
   readonly title: string;
   /** The side's text; `null` for a side that deleted the item, `undefined` for a tile with no text. */
@@ -251,7 +309,9 @@ function Tile({
   readonly action: React.ReactNode;
   readonly note?: string | undefined;
   readonly notUsed?: string | undefined;
+  readonly phone: boolean;
 }) {
+  const TileHeading = phone ? "h3" : "h4";
   if (state === "unused") {
     return (
       <div className="text-small text-fg-muted flex flex-1 items-start rounded-md border border-border p-3">
@@ -261,7 +321,7 @@ function Tile({
   }
   return (
     <div className="flex flex-1 flex-col gap-2 rounded-md border border-border p-3">
-      <h4 className="text-label text-fg-muted">{title}</h4>
+      <TileHeading className="text-label text-fg-muted">{title}</TileHeading>
       {text === undefined ? null : <Preview text={text} />}
       {state === "open" ? (
         action

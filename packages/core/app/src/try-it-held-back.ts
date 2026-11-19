@@ -58,6 +58,7 @@ function fixedParts(parts: readonly HeldBackPart[]): HeldBack {
  */
 const agentParts: readonly HeldBackPart[] = [
   { path: ["maxSteps"], group: "permissions" },
+  { path: ["harnessLimits"], group: "permissions" },
   { path: ["runLogs"], group: "permissions" },
   { path: ["collections"], group: "permissions" },
   { path: ["subagents"], group: "permissions" },

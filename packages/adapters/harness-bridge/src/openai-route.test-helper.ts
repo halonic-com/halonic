@@ -30,14 +30,19 @@ const keyed: BridgeProviderAccess = { kind: "key", secret: "openai-key" };
  * Opens a bridge that serves only the OpenAI route, for an agent with the
  * given access (`null`: none), and keeps what it records. Only `gpt-5.5` has
  * a price: 1.25 for input, 10 for output and 0.125 for cache reads, per
- * million tokens.
+ * million tokens. `compatibleFetch` reaches a provider at a `baseUrl`.
  */
-export async function open(fetch: Fetch, openai: BridgeProviderAccess | null = keyed) {
+export async function open(
+  fetch: Fetch,
+  openai: BridgeProviderAccess | null = keyed,
+  compatibleFetch?: Fetch,
+) {
   const recorded: BridgeEvent[] = [];
   const secrets = { get: async (name: string) => secretValues.get(name) ?? null };
   const route = openAiRoute({
     secrets,
     fetch,
+    compatibleFetch,
     limits: { responseTimeoutMs: 2_000, idleTimeoutMs: 500 },
   });
   const run = {

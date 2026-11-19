@@ -4,7 +4,9 @@ import { expect, it } from "vitest";
 import type { SourcedRun } from "../api.ts";
 import { approvalAt, minutesLater, mondayMorning, summaryWith } from "../summary.test-helper.ts";
 import {
+  agentSays,
   approvalLines,
+  itemLines,
   messageLines,
   modelLines,
   readLines,
@@ -350,5 +352,85 @@ verifies("runs.run-view.receipt-models-cost", () => {
 
   it("has no lines for a run that made no model call", () => {
     expect(lines([])).toEqual([]);
+  });
+});
+
+const saved = (name: string): RunEventBody => ({
+  type: "artifact.created",
+  state: "write",
+  name,
+  hash: "a".repeat(64),
+  mediaType: "text/markdown",
+  size: 12,
+});
+
+const answered = (output: unknown, error?: string): RunEventBody => ({
+  type: "agent.finished",
+  state: "write",
+  agent: "reporter",
+  output,
+  ...(error === undefined ? {} : { error }),
+});
+
+const logWith = (...bodies: RunEventBody[]) =>
+  logOf(
+    id,
+    bodies.map((body) => [1, body] as const),
+  );
+
+verifies("runs.run-view.receipt-items", () => {
+  it("lists the file a Weekly report run saved", () => {
+    expect(itemLines(logWith(saved("weekly-report.md")))).toEqual([
+      "Created 1 file: weekly-report.md",
+    ]);
+  });
+
+  it("names each file once, in the order saved", () => {
+    expect(itemLines(logWith(saved("notes.md"), saved("summary.md"), saved("notes.md")))).toEqual([
+      "Created 2 files: notes.md and summary.md",
+    ]);
+    expect(itemLines(logWith(saved("a.md"), saved("b.md"), saved("c.md")))).toEqual([
+      "Created 3 files: a.md, b.md and c.md",
+    ]);
+  });
+
+  it("escapes a hidden character in a name", () => {
+    expect(itemLines(logWith(saved(`report${String.fromCodePoint(0x202e)}.md`)))).toEqual([
+      "Created 1 file: report\\u202e.md",
+    ]);
+  });
+
+  it("has no lines for a run that saved no file", () => {
+    expect(itemLines(logWith())).toEqual([]);
+  });
+});
+
+verifies("runs.run-view.agent-says", () => {
+  it("gives the last answer, as written with its line breaks", () => {
+    expect(
+      agentSays(logWith(answered("Sorted"), answered("This week: 12 emails.\nAll answered."))),
+    ).toBe("This week: 12 emails.\nAll answered.");
+  });
+
+  it("gives an answer that isn't text as its JSON", () => {
+    expect(agentSays(logWith(answered({ emails: 12 })))).toBe('{\n  "emails": 12\n}');
+  });
+
+  it("passes over a failed or empty answer for the one before it", () => {
+    expect(agentSays(logWith(answered("Sorted as refund"), answered(null, "Model refused")))).toBe(
+      "Sorted as refund",
+    );
+    expect(agentSays(logWith(answered("Sorted as refund"), answered("  ")))).toBe(
+      "Sorted as refund",
+    );
+  });
+
+  it("escapes hidden characters and keeps Markdown as text", () => {
+    const text = `Pay ${String.fromCodePoint(0x202e)}![x](https://example.com/x.png)`;
+    expect(agentSays(logWith(answered(text)))).toBe("Pay \\u202e![x](https://example.com/x.png)");
+  });
+
+  it("is undefined when no agent answered", () => {
+    expect(agentSays(logWith(saved("a.md")))).toBeUndefined();
   });
 });

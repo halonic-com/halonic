@@ -2,7 +2,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it } from "vitest";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { Receipt } from "./receipt.tsx";
+import { AgentSays, Receipt } from "./receipt.tsx";
 
 afterEach(unmountAll);
 
@@ -60,6 +60,41 @@ verifies("runs.run-view.receipt-messages-read", () => {
   it("leaves out sections without lines", () => {
     const root = render(<Receipt summary="Finished in 2 min" approvals={[]} />);
     expect(root.querySelector("h3")).toBeNull();
+  });
+});
+
+verifies("runs.run-view.receipt-items", () => {
+  it("draws the Items section first, and leaves it out with no lines", () => {
+    const root = render(
+      <Receipt
+        summary="Finished in 1 min"
+        approvals={[]}
+        items={["Created 1 file: weekly-report.md"]}
+        reads={["Read 12 emails"]}
+      />,
+    );
+    expect([...root.querySelectorAll("h3")].map((heading) => heading.textContent)).toEqual([
+      "Items",
+      "Read",
+    ]);
+    expect(root.querySelector("li")?.textContent).toBe("Created 1 file: weekly-report.md");
+    expect(render(<Receipt summary="Finished" approvals={[]} />).querySelector("h3")).toBeNull();
+  });
+});
+
+verifies("runs.run-view.agent-says", () => {
+  it("draws the agent's words as plain text in a dashed, named frame", () => {
+    const text =
+      "This week: 12 emails.\n![x](https://example.com/x.png) [link](https://example.com)";
+    const root = render(<AgentSays text={text} />);
+    const frame = root.querySelector("section");
+    expect(frame?.classList.contains("border-dashed")).toBe(true);
+    expect(frame?.getAttribute("aria-labelledby")).toBe("run-agent-says");
+    expect(root.querySelector("h2")?.textContent).toBe(
+      "What the agent says it did (its own words, not checked)",
+    );
+    expect(root.querySelector("p")?.textContent).toBe(text);
+    expect(root.querySelector("img, a")).toBeNull();
   });
 });
 

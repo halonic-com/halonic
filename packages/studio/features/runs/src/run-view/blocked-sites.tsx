@@ -42,15 +42,16 @@ export interface BlockedSitesPanelProps {
   /** The agent's name as the person sees it: "Writer". */
   readonly agent: string;
   /**
-   * Whether the hint may say "No connection was made.". False for a run on Windows until the
-   * blocked-site suite runs green there (Julian, HAL-6208; HAL-6219).
+   * Whether the hint may say "No connection was made.": `noConnectionProven` of the step, true
+   * only where its sandbox's blocked-site suite proves it (Julian, HAL-6208; HAL-6219).
    */
   readonly noConnectionProven: boolean;
   /** On a phone the action is a line naming where to fix it, with no link. */
   readonly place: "desktop" | "phone";
   /**
    * Opens the agent at Configuration › Harness with focus on the allowed sites field. Desktop
-   * only; without it a desktop panel has no action, never the phone's "your computer" line.
+   * only; without it a desktop panel has no action, never the phone's "your computer" line. The
+   * run page doesn't pass it yet: the agent page has no Allowed sites field (HAL-12658).
    */
   readonly onOpenAllowedSites?: () => void;
   /** Takes focus when the "Blocked 3 sites" line opened the entry. */

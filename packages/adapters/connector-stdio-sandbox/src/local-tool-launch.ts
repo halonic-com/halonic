@@ -67,7 +67,8 @@ const pypiFilesHost = "files.pythonhosted.org";
  * - The environment holds only the tool's own `env` (its settings), its
  *   secrets, and what Halonic sets: `PATH`, and its home and temp folders
  *   inside the session. Halonic's variables win over the tool's settings
- *   and its secrets, so a secret named `HOME` can't move the home folder.
+ *   and its secrets in any letter case, so a secret named `HOME` or `home`
+ *   can't move the home folder.
  *   The plugin check refuses those names already (`format.plugin-checks`).
  * - A pinned package starts as the host's pinned launcher starts it
  *   (`mcp.pinned-launcher`), with nothing inherited but `PATH`, in the
@@ -120,15 +121,31 @@ function scriptLaunch(
   place: LocalToolPlace,
   secretEnv: Readonly<Record<string, string>>,
 ): Planned {
-  const own = {
+  const own: Record<string, string> = {
     PATH: place.path,
     HOME: place.workingFolder,
     TMPDIR: place.tempFolder,
     TEMP: place.tempFolder,
     TMP: place.tempFolder,
   };
-  const env = { ...stdio.env, ...secretEnv, ...own };
+  const env = { ...withoutOwnNames({ ...stdio.env, ...secretEnv }, own), ...own };
   return { command: { program: stdio.command, args: [...stdio.args] }, env };
+}
+
+/**
+ * `env` without the variables `own` sets, in any letter case. Windows reads
+ * `Path` as `PATH`, and with both a program gets only one of them, which
+ * need not be Halonic's. A plugin's `env` names are capitals only
+ * (`ENV_NAME_PATTERN`), so this holds even for a config that skipped the check.
+ */
+function withoutOwnNames(
+  env: Readonly<Record<string, string>>,
+  own: Readonly<Record<string, string>>,
+): Record<string, string> {
+  const ownNames = new Set(Object.keys(own).map((name) => name.toUpperCase()));
+  return Object.fromEntries(
+    Object.entries(env).filter(([name]) => !ownNames.has(name.toUpperCase())),
+  );
 }
 
 /**

@@ -1,3 +1,4 @@
+import type { RunFailureCause, RunFailureKind } from "@halonicjs/events";
 import type { ChatRequest, ChatResponse, ChatStreamEvent } from "./chat.ts";
 import type { HttpClient } from "./http-client.ts";
 import type { Secrets } from "./secrets.ts";
@@ -110,22 +111,69 @@ export class ModelCallError extends Error {
    * such as `localhost:11434`. Never a URL with a path, a query or a key.
    */
   readonly host: string | undefined;
+  /**
+   * The kind of the typed cause, when the call failed for one the engine
+   * logs (requirement `ports.model-call-cause`). Absent otherwise, so
+   * `errorKindOf` reads such an error as `internal` and logs no cause.
+   */
+  declare readonly kind?: RunFailureKind;
+  /** The code and detail of the typed cause, such as `proxy.refused`; absent without one. */
+  declare readonly failureCause?: Pick<RunFailureCause, "code" | "detail">;
 
   /**
    * @param reason - why the call failed
    * @param message - plain text for the run log, never a key
    * @param options - `cause` keeps the error this one wraps; `host` names the
-   * host that didn't answer, and is kept only with `offline` and `timeout`
+   * host that didn't answer, and is kept only with `offline` and `timeout`;
+   * `failureCause` is the typed cause the engine puts in `run.failed`, such
+   * as {@link networkCauseOf} finds on a network error
    */
   constructor(
     reason: ModelCallErrorReason,
     message: string,
-    options?: { cause?: unknown; host?: string },
+    options?: { cause?: unknown; host?: string; failureCause?: RunFailureCause | undefined },
   ) {
     super(message, options);
     this.reason = reason;
     this.host = reason === "offline" || reason === "timeout" ? options?.host : undefined;
+    const typed = options?.failureCause;
+    if (typed !== undefined) {
+      const { kind, ...named } = typed;
+      this.kind = kind;
+      this.failureCause = named;
+    }
   }
+}
+
+/**
+ * The typed cause a network error carries, so a provider can pass it on in a
+ * {@link ModelCallError} (requirement `ports.model-call-cause`). The HTTP
+ * client's `ProxyError` has one, such as `proxy.refused` with the proxy and
+ * the host: without it, a proxy that refused reads as no internet.
+ *
+ * It reads the error's own `kind` and `failureCause` by their fields, not
+ * `instanceof`, because the error comes from another package. It doesn't
+ * check them: the engine checks every cause before it logs it.
+ *
+ * @returns `undefined` for an error without a string `kind` and an object `failureCause`
+ *
+ * @example
+ * new ModelCallError("offline", message, { cause, failureCause: networkCauseOf(cause) });
+ */
+export function networkCauseOf(error: unknown): RunFailureCause | undefined {
+  if (!(error instanceof Error)) return undefined;
+  const { kind, failureCause } = error as { kind?: unknown; failureCause?: unknown };
+  if (typeof kind !== "string" || typeof failureCause !== "object" || failureCause === null) {
+    return undefined;
+  }
+  const { code, detail } = failureCause as { code?: unknown; detail?: unknown };
+  return {
+    kind: kind as RunFailureKind,
+    ...(typeof code === "string" ? { code } : {}),
+    ...(typeof detail === "object" && detail !== null
+      ? { detail: detail as Record<string, string> }
+      : {}),
+  };
 }
 
 /**

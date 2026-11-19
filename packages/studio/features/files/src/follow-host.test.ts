@@ -9,6 +9,7 @@ function setup() {
   const outside = new Map<string, OutsideChange>();
   const listeners = new Set<() => void>();
   const reloads = new Set<(paths: readonly string[]) => void>();
+  const watchLimits = new Set<(reason: string) => void>();
   const host = {
     outside: () => outside,
     subscribe: (listener: () => void) => (
@@ -16,6 +17,9 @@ function setup() {
     ),
     onReloaded: (listener: (paths: readonly string[]) => void) => (
       reloads.add(listener), () => reloads.delete(listener)
+    ),
+    onWatchLimit: (listener: (reason: string) => void) => (
+      watchLimits.add(listener), () => watchLimits.delete(listener)
     ),
   };
   const toasts = createToastStore();
@@ -33,7 +37,10 @@ function setup() {
   const reload = (paths: string[]) => {
     for (const listener of reloads) listener(paths);
   };
-  return { toasts, saving, opened, stop, hold, release, reload };
+  const reachLimit = (reason: string) => {
+    for (const listener of watchLimits) listener(reason);
+  };
+  return { toasts, saving, opened, stop, hold, release, reload, reachLimit };
 }
 
 verifies("files.follow-host", () => {
@@ -68,10 +75,23 @@ verifies("files.follow-host", () => {
     expect(saving.note).toEqual({ kind: "saved" });
   });
 
+  it("gives the watch's file limit in one warning toast that stays", () => {
+    const { toasts, reachLimit } = setup();
+    reachLimit("This folder has too many files to watch.");
+    expect(toasts.list()).toEqual([
+      expect.objectContaining({
+        tone: "warning",
+        title: "This folder has too many files to watch.",
+        sticky: true,
+      }),
+    ]);
+  });
+
   it("shows nothing after it stops", () => {
-    const { toasts, stop, reload } = setup();
+    const { toasts, stop, reload, reachLimit } = setup();
     stop();
     reload(["a.md"]);
+    reachLimit("This folder has too many files to watch.");
     expect(toasts.list()).toEqual([]);
   });
 });

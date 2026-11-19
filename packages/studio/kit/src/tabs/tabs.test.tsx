@@ -364,13 +364,37 @@ verifies("kit.tabs", () => {
     const list = container.querySelector('[role="tablist"]') as HTMLElement;
     const [configuration] = tabsIn(container);
     expect(list.className).toContain("flex w-full");
-    expect(configuration?.className).toContain("min-h-touch min-w-0 flex-1 basis-0 px-2 py-1");
-    expect(configuration?.className).toContain("hyphens-auto wrap-break-word");
+    expect(configuration?.className).toContain("min-h-touch");
+    expect(configuration?.className).toContain("flex-1 basis-0 px-2 py-1");
+    expect(configuration?.className).toContain("wrap-break-word");
     expect(configuration?.className).not.toContain("whitespace-nowrap");
-    // Equal parts already, so no width copy.
-    expect(configuration?.querySelector(".invisible")).toBeNull();
     // The counter follows the label like one more word.
-    expect(configuration?.textContent).toBe("Configuration 2, 2 errors");
+    expect(labelOf(configuration)).toBe("Configuration 2, 2 errors");
+  });
+
+  it("keeps a fill tab as wide as its longest word, and wraps the tabs rather than overflow", () => {
+    const { container } = render(
+      <PresentationProvider presentation="phone">
+        <Page start="configuration" />
+      </PresentationProvider>,
+    );
+    const list = container.querySelector('[role="tablist"]') as HTMLElement;
+    const [flow, configuration] = tabsIn(container);
+    // A flex item's own minimum width is its longest word, so "Behaviour" doesn't break inside
+    // the word at 320px (HAL-13044). Hyphenation would lower that minimum to the word's longest
+    // piece, so there is none, and max-w-full caps the minimum at the track's width.
+    expect(configuration?.className).not.toContain("min-w-0");
+    expect(configuration?.className).not.toContain("hyphens-auto");
+    expect(configuration?.className).toContain("max-w-full");
+    // When the words don't fit side by side, the tabs go on to another row, never sideways.
+    expect(list.className).toContain("flex-wrap");
+    // An invisible bold copy holds the selected weight's width, so switching moves no tab.
+    for (const tab of [flow, configuration]) {
+      const widthCopy = tab?.querySelector(".invisible") as HTMLElement;
+      expect(widthCopy.getAttribute("aria-hidden")).toBe("true");
+      expect(widthCopy.className).toBe("invisible block h-0 overflow-hidden font-medium");
+      expect(widthCopy.textContent).toBe(labelOf(tab));
+    }
   });
 
   it("takes fill as a prop, over the presentation", () => {

@@ -16,7 +16,7 @@ export interface EmptyListProps {
   readonly empty: ListEmpty;
   /** The List's heading level, or none when the List is named by a label. */
   readonly listHeadingLevel: 2 | 3 | 4 | undefined;
-  readonly titleRef: RefObject<HTMLHeadingElement | null>;
+  readonly titleRef: RefObject<HTMLElement | null>;
 }
 
 /** The List's `empty` prop, drawn in place of the box. */
@@ -32,7 +32,7 @@ export function EmptyList({ empty, listHeadingLevel, titleRef }: EmptyListProps)
  */
 export function useFocusOnEmpty(isEmpty: boolean) {
   const focusInside = useRef(false);
-  const titleRef = useRef<HTMLHeadingElement>(null);
+  const titleRef = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
     if (!isEmpty || !focusInside.current) {

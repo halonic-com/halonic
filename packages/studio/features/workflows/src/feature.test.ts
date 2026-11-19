@@ -48,6 +48,7 @@ describe("workflowsFeature", () => {
         item: { kind: "workflow", hub: "acme", id: "mail-triage" },
         label: "Mail triage",
         detail: "Workflow · Acme",
+        hubName: "Acme",
         description: "Sorts the inbox",
       },
     ]);

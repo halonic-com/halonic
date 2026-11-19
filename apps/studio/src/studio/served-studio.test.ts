@@ -198,7 +198,7 @@ verifies("studio.served-settings", () => {
 
     const headings = await vi.waitFor(
       () => {
-        const found = [...element.querySelectorAll("main h3")].map((h) => h.textContent);
+        const found = [...element.querySelectorAll("main h2")].map((h) => h.textContent);
         expect(found).toContain("On this phone");
         return found;
       },
@@ -214,7 +214,7 @@ verifies("studio.served-settings", () => {
     expect(element.textContent).not.toContain("Assistant");
   });
 
-  it("offers no Ctrl K command that opens Assistant or Agent sandbox", async () => {
+  it("offers no Ctrl K command that opens Assistant, Agent sandbox or About Halonic", async () => {
     restoreDialogs = fakeModalDialogs();
     started = startAcme();
     await inboxLink();
@@ -248,5 +248,6 @@ verifies("studio.served-settings", () => {
     expect((await search("Appearance", "1 result")).join()).toContain("Appearance");
     expect(await search("Assistant", "No results")).toEqual([]);
     expect(await search("Agent sandbox", "No results")).toEqual([]);
+    expect(await search("About Halonic", "No results")).toEqual([]);
   });
 });

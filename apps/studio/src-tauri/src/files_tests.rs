@@ -165,11 +165,15 @@ fn files_answer_in_the_shapes_the_adapter_reads() {
         as_json(batch),
         json!({"type": "changed", "paths": ["a.yaml"]})
     );
-    let failed = WatchEvent::from(WatchMessage::Failed("gone".to_owned()));
+    let failed = WatchEvent::from(WatchMessage::Failed(FileError::Io {
+        message: "gone".to_owned(),
+    }));
     assert_eq!(
         as_json(failed),
-        json!({"type": "failed", "message": "gone"})
+        json!({"type": "failed", "kind": "io", "message": "gone"})
     );
+    let too_many = WatchEvent::from(WatchMessage::Failed(FileError::TooManyFiles { limit: 2 }));
+    assert_eq!(as_json(too_many)["kind"], "too_many_files");
 }
 
 #[test]

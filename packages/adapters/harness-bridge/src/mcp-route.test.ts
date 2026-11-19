@@ -2,6 +2,7 @@ import {
   type BridgeApprovals,
   type BridgeEvent,
   type BridgeToolCheck,
+  type BridgeTools,
   harnessBridgeTokenHeader,
   type OpenHarnessBridge,
 } from "@halonicjs/ports";
@@ -16,17 +17,22 @@ afterEach(async () => {
   await Promise.all(opened.splice(0).map((bridge) => bridge.close()));
 });
 
-/** How the run's check and approvals answer; each part left out lets the call run. */
+/** How the run's tools, check and approvals answer; each part left out lets the call run. */
 interface RunWith {
+  list?: BridgeTools["list"];
   check?: BridgeToolCheck;
   approvals?: BridgeApprovals;
   signal?: AbortSignal;
 }
 
-/** A bridge whose run offers one tool, `read_issue`, and keeps what it records and runs. */
+/**
+ * A bridge whose run offers one tool, `read_issue`, and keeps what it records,
+ * what it runs and the failures it reports.
+ */
 async function openWithTools(run: RunWith = {}) {
   const recorded: BridgeEvent[] = [];
   const ran: string[] = [];
+  const failures: { kind: string; message: string }[] = [];
   const server = new NodeHarnessBridgeServer({
     secrets: { get: async () => null },
     fetch: noOutsideCall,
@@ -35,7 +41,9 @@ async function openWithTools(run: RunWith = {}) {
     ...fakeRun(run.signal),
     recorder: { record: async (event) => void recorded.push(event) },
     tools: {
-      list: async () => [{ name: "read_issue", description: "Reads one issue.", parameters: {} }],
+      list:
+        run.list ??
+        (async () => [{ name: "read_issue", description: "Reads one issue.", parameters: {} }]),
       check: async () => run.check ?? { kind: "run" },
       call: async (name) => {
         ran.push(name);
@@ -43,9 +51,10 @@ async function openWithTools(run: RunWith = {}) {
       },
     },
     ...(run.approvals === undefined ? {} : { approvals: run.approvals }),
+    reportError: (failure) => failures.push(failure),
   });
   opened.push(bridge);
-  return { bridge, recorded, ran };
+  return { bridge, recorded, ran, failures };
 }
 
 const callReadIssue = {
@@ -123,6 +132,20 @@ verifies("harness-bridge.mcp", () => {
     expect(recorded.map((event) => event.type)).toEqual(["tool.called", "tool.result"]);
     for (const reply of [initialized, listed, called])
       expect(reply.text).not.toContain(bridge.token);
+  });
+
+  it("reports why listing failed to the run, without the run token", async () => {
+    const sent = { token: "" };
+    const { bridge, failures } = await openWithTools({
+      list: () => Promise.reject(new Error(`the tool store rejected ${sent.token}`)),
+    });
+    sent.token = bridge.token;
+    const reply = await post(bridge, { jsonrpc: "2.0", id: 2, method: "tools/list" });
+    expect(reply.status).toBe(200);
+    expect(reply.text).not.toContain("tool store");
+    expect(failures).toEqual([
+      { kind: "internal", message: "the tool store rejected [run token]" },
+    ]);
   });
 
   it("refuses an MCP version it doesn't speak with a 400", async () => {

@@ -16,4 +16,4 @@ The Google setup view shall show **Check again** under the result lines of step 
   then there is no **Check again**.
 - Given Google can't be reached,
   when you choose **Check again**,
-  then the step says Studio couldn't reach Google, and the button stays.
+  then the step says Halonic couldn't reach Google, and the button stays.

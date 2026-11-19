@@ -102,10 +102,71 @@ export function pairCommitInput(phoneStaticKey: Uint8Array, payload3: Uint8Array
 
 /**
  * The payload of pairing message 2, from the host, encrypted: the name the
- * phone shows for it. JSON, UTF-8.
+ * phone shows for it, as {@link gatewayHostName} gives it. JSON, UTF-8.
  */
 export interface PairHostPayload {
   readonly hostName: string;
+}
+
+/** The name a host sends when nothing of its own name is left to show. */
+export const gatewayFallbackHostName = "Computer";
+
+/**
+ * The code points the phone refuses in a host name, as unreadable (requirement
+ * `ports.remote-gateway-host-name`): control characters, the line and
+ * paragraph separators, the bidi marks, embeddings, overrides and isolates,
+ * the zero width space, the word joiner and invisible operators, and the byte
+ * order mark. The zero width non-joiner and joiner (U+200C, U+200D) stay:
+ * Persian, the Indic scripts and emoji need them. Written as numbers, so the
+ * source holds no invisible character itself.
+ */
+const notPlainRanges: readonly (readonly [number, number])[] = [
+  [0x0000, 0x001f],
+  [0x007f, 0x009f],
+  [0x061c, 0x061c],
+  [0x200b, 0x200b],
+  [0x200e, 0x200f],
+  [0x2028, 0x202e],
+  [0x2060, 0x2064],
+  [0x2066, 0x2069],
+  [0xfeff, 0xfeff],
+];
+
+/**
+ * The host's own name as it sends it in pairing message 2, so the phone can
+ * read it: without the code points the phone refuses, without spaces at either
+ * end, and cut at a whole code point to {@link gatewayMaxNameBytes} bytes of
+ * UTF-8. A lone surrogate becomes U+FFFD, since JSON can't carry it as UTF-8.
+ * When nothing is left, it is {@link gatewayFallbackHostName}.
+ *
+ * @example
+ * gatewayHostName(`Desk${String.fromCodePoint(0x202e)}kseD`); // "DeskkseD"
+ * gatewayHostName("\n"); // "Computer"
+ */
+export function gatewayHostName(name: string): string {
+  let plain = "";
+  for (const character of name.toWellFormed()) {
+    const point = character.codePointAt(0) ?? 0;
+    if (!notPlainRanges.some(([first, last]) => point >= first && point <= last)) {
+      plain += character;
+    }
+  }
+  let kept = "";
+  let bytes = 0;
+  for (const character of plain.trim()) {
+    bytes += utf8Length(character.codePointAt(0) ?? 0);
+    if (bytes > gatewayMaxNameBytes) break;
+    kept += character;
+  }
+  return kept.trimEnd() || gatewayFallbackHostName;
+}
+
+/** How many bytes of UTF-8 a code point takes. */
+function utf8Length(point: number): number {
+  if (point < 0x80) return 1;
+  if (point < 0x800) return 2;
+  if (point < 0x10000) return 3;
+  return 4;
 }
 
 /**

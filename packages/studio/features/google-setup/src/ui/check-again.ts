@@ -13,7 +13,7 @@ export function checkAgainText(answer: CheckAgainAnswer): string | null {
     case "client-refused":
       return "Google doesn't accept the saved client ID or secret. Check them in step 6, then sign in again.";
     case "no-network":
-      return "Studio couldn't reach Google to check. Check your connection, then check again.";
+      return "Halonic couldn't reach Google to check. Check your connection, then check again.";
     case "not-checked":
       return "Couldn't check just now. Try again in a moment.";
   }

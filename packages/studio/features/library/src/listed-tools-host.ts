@@ -89,9 +89,23 @@ export interface ListedToolsApproval {
   readonly changed: readonly string[];
 }
 
+/**
+ * What {@link ListedToolsHost.review} rejects with when the workspace isn't trusted yet, so no
+ * server was started. Trying again can't help, so the page offers **Review**, the trust check,
+ * in its place (UX check C3). Its `kind` is `denied`, as for any error with a kind.
+ */
+export class WorkspaceNotTrusted extends Error {
+  override readonly name = "WorkspaceNotTrusted";
+  readonly kind = "denied";
+
+  constructor() {
+    super("this workspace isn't trusted yet, so nothing was started");
+  }
+}
+
 /** The listed tools of the open workspace's connectors. The app provides it. */
 export interface ListedToolsHost {
-  /** Reads the connector's tools again from its server. */
+  /** Reads the connector's tools again from its server. Rejects with {@link WorkspaceNotTrusted} in a workspace that isn't trusted. */
   review(connectorId: string): Promise<ListedToolsSnapshot>;
   /** Approves each pick at the version given, as `halonic tools approve` does. A pick that waits at another version is returned in `changed`. */
   approve(connectorId: string, picks: readonly ListedToolPick[]): Promise<ListedToolsApproval>;

@@ -31,6 +31,9 @@ verifies("kit.list", () => {
       <List label="Inbox" rows={agents} onOpen={onOpen} current="writer" />,
     );
     expect(rowsIn(container)[1]?.getAttribute("aria-current")).toBe("true");
+    // Also on the cell that takes focus, so a screen reader says it.
+    expect(mainCell(container, 1).getAttribute("aria-current")).toBe("true");
+    expect(mainCell(container, 0).hasAttribute("aria-current")).toBe(false);
     expect(mainCell(container, 1).className).toContain("bg-accent-soft");
     expect(mainCell(container, 1).className).toContain("selected-bar");
     expect(rowsIn(container)[0]?.hasAttribute("aria-current")).toBe(false);

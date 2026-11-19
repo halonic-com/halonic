@@ -1,7 +1,8 @@
-import type { GoogleSecretReplaced } from "@halonicjs/adapter-agent-host-client";
+import { AgentHostError, type GoogleSecretReplaced } from "@halonicjs/adapter-agent-host-client";
 import { readLocalIntegrations } from "@halonicjs/app";
 import type { AccountType, SetupEdit, SetupRecord, SetupRecords } from "@halonicjs/google-setup";
 import type { DefinitionStore, DefinitionWatch, Digest, FolderReader } from "@halonicjs/ports";
+import { type ErrorKind, KindedError } from "@halonicjs/std";
 import type {
   DisconnectAnswer,
   GoogleSetupAccount,
@@ -63,7 +64,10 @@ export interface WorkspaceGoogleSetupAccountsOptions {
   readonly onWatchError?: (error: unknown) => void;
 }
 
-/** Said when a change is tried that the desktop app can't make yet, or has no agent host to make. */
+/**
+ * Said when a change is tried that the desktop app can't make yet. It is kinded, so the page shows
+ * it after "Couldn't check again:" rather than the sentence for a problem Halonic can't explain.
+ */
 const notYet =
   "This can't be saved in the Halonic app yet. Use the halonic google commands in a terminal for now.";
 
@@ -202,15 +206,15 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
   }
 
   async checkAgain(): Promise<never> {
-    throw new Error(notYet);
+    throw new KindedError("unavailable", notYet);
   }
 
   async wrongAccount(): Promise<never> {
-    throw new Error(notYet);
+    throw new KindedError("unavailable", notYet);
   }
 
   async changeAddress(): Promise<never> {
-    throw new Error(notYet);
+    throw new KindedError("unavailable", notYet);
   }
 
   subscribe(listener: () => void): () => void {
@@ -243,11 +247,18 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
   /**
    * Runs one change on the host and tells the listeners afterwards, also when it failed: the
    * host may have finished before the answer was lost, so the page reads the accounts again.
+   * A refusal the host words itself keeps its words and gets its kind, so the page shows it after
+   * the colon ("Couldn't start the sign-in: there is no Google setup for this account.").
+   * Any other failure is one the page can't explain: its detail goes only to Copy details.
    */
   async #asked<T>(what: string, change: () => Promise<T>): Promise<T> {
     try {
       return await change();
     } catch (error) {
+      const kind = refusalKindOf(error);
+      if (kind !== undefined && error instanceof Error) {
+        throw new KindedError(kind, error.message, { cause: error });
+      }
       throw new Error(`Halonic couldn't ${what}. ${reasonOf(error)}`, { cause: error });
     } finally {
       this.#tellListeners();
@@ -283,6 +294,24 @@ export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
     this.#stopWatching = undefined;
   }
 }
+
+/**
+ * The kind of a refusal the host words itself, from its status: the shared Google routes answer
+ * these with fixed sentences of their own, such as "There is no Google setup for this account."
+ * `undefined` for anything else, such as 502 `google_failed`, whose fixed sentence names the agent
+ * host, or a request that never reached the host (status `0`).
+ */
+function refusalKindOf(error: unknown): ErrorKind | undefined {
+  return error instanceof AgentHostError ? refusalKinds[error.status] : undefined;
+}
+
+/** The statuses whose refusal the page can word, and the kind each stands for. */
+const refusalKinds: Readonly<Record<number, ErrorKind>> = {
+  400: "invalid_input",
+  403: "denied",
+  404: "not_found",
+  409: "conflict",
+};
 
 /** Said when the check of a new client secret couldn't finish; the old secret is still in use. */
 const replaceUnfinished =

@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { PressedKey } from "../tabs/window-keys.ts";
-import type { PaletteContent, PaletteRow } from "./palette-groups.ts";
+import { type PaletteContent, type PaletteRow, paletteGroups } from "./palette-groups.ts";
 import {
   keptActive,
   movedActive,
@@ -179,6 +179,37 @@ verifies("shell.palette-options", () => {
       expect(paletteOptionName(refundChecker, kindNames)).toBe("Refund checker, agent");
       expect(paletteOptionName(inbox, kindNames)).toBe("Inbox");
       expect(paletteOptionName(newTab, kindNames)).toBe("New tab");
+    });
+
+    it("names an item found in a hub with the hub's name after its kind, as the row shows it", () => {
+      const writers = paletteGroups({
+        words: "writer",
+        openTabs: [],
+        recent: [],
+        found: [
+          {
+            item: { kind: "agent", hub: "reports", id: "writer" },
+            label: "Writer",
+            detail: "Agent · Reports",
+            hubName: "Reports",
+          },
+          {
+            item: { kind: "agent", hub: "support", id: "writer" },
+            label: "Writer",
+            detail: "Agent · Support",
+            hubName: "Support",
+          },
+        ],
+        searchFailed: false,
+        actions: [],
+      });
+      expect(paletteOptions(writers).map((row) => paletteOptionName(row, kindNames))).toEqual([
+        "Writer, agent, Reports",
+        "Writer, agent, Support",
+      ]);
+      expect(
+        paletteOptionName({ ...refundChecker, open: true, hubName: "Support" }, kindNames),
+      ).toBe("Refund checker, agent, Support, switch to tab");
     });
 
     it("reads an item's kind by the name it was registered with, never its id", () => {

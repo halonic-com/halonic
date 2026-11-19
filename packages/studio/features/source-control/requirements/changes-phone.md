@@ -14,6 +14,8 @@ On a phone, an item row shall have its ⋮ in the row's padding and no chevron.
 
 When the screen is a phone, a version in History shall open as its own page in place of the Changes page, with Back to History, the version's name as the page's heading, who made it and when, its notes and what's in it. When Back to History is pressed, the Changes page shall put focus on that version's row and shall show all of History when the row is past the newest 5. When a later read no longer has the open version, the Changes page shall show again and shall stay when a still later read has the version back.
 
+When the screen is a phone and Get updates opens the choices, they shall open as their own page in place of the Changes page, with Back to Changes, "Getting updates" as the page's heading (with focus), and each item's tiles stacked with Yours first. The bottom bar shall hold "Choose for 1 more item." while an item is not chosen, Finish getting updates, unavailable with that line as its reason, and Cancel getting updates. When Back to Changes is pressed, the merge shall stay started, the Changes page shall show "You're in the middle of getting Sam's updates." with Continue and shall put focus on its heading, and Continue shall bring the choices back as they were left.
+
 ## Examples
 
 - Given a phone and one changed file,
@@ -42,3 +44,9 @@ When the screen is a phone, a version in History shall open as its own page in p
 - Given a phone with "Version 2" open,
   when a later read no longer has it and a still later read has it back,
   then the Changes page shows and stays.
+- Given a phone and both sides changed 2 items,
+  when the person presses Get updates,
+  then "Getting updates" is the page's heading with focus, Yours is the first tile of each item, and the bottom bar says "Choose for 2 more items." with Finish getting updates unavailable and Cancel getting updates.
+- Given a phone with the choices open and one item chosen,
+  when the person presses Back to Changes,
+  then the merge is not cancelled, the page says "You're in the middle of getting Sam's updates." with focus on its heading, and Continue shows the choice again.

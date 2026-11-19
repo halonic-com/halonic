@@ -23,6 +23,11 @@ export interface HeaderBadgeSheetProps {
   readonly onClose: () => void;
 }
 
+/** A `HeaderBadgeSheet` inside a dialog, which its title names (`SidePanel`'s `dialogTitleId`). */
+interface DialogSheetProps extends HeaderBadgeSheetProps {
+  readonly dialogTitleId?: string | undefined;
+}
+
 /**
  * 48px, divided by a `border` line, edge to edge, with a chevron at the right: rows that each
  * open something. Focus is the inset ring, so the list's edges don't clip it.
@@ -33,6 +38,9 @@ const rowClasses = [
   "not-aria-disabled:hover:bg-surface-subtle not-aria-disabled:active:bg-surface-subtle",
   "aria-disabled:cursor-not-allowed",
 ].join(" ");
+
+/** A disabled row's words: `GrayText` in forced colours, as Button's, so it doesn't look usable there (HAL-12946). */
+const DISABLED_ROW = "text-fg-disabled text-forced-disabled";
 
 /**
  * What the header badge's menu becomes on a phone (component specs 20.1, 20.2): a panel sheet
@@ -55,10 +63,11 @@ export function HeaderBadgeSheet({
   note,
   entries,
   onClose,
-}: HeaderBadgeSheetProps) {
+  dialogTitleId,
+}: DialogSheetProps) {
   const groups = sheetGroups(entries);
   return (
-    <SidePanel title={title} onClose={onClose}>
+    <SidePanel title={title} onClose={onClose} dialogTitleId={dialogTitleId}>
       {description === undefined ? null : (
         <p className="pb-3 text-small text-fg-muted">{description}</p>
       )}
@@ -144,7 +153,7 @@ function LinkRow({ item }: { readonly item: MenuItem }) {
   return (
     <button
       type="button"
-      className={`${rowClasses} ${item.disabled === true ? "text-fg-disabled" : tone}`}
+      className={`${rowClasses} ${item.disabled === true ? DISABLED_ROW : tone}`}
       aria-disabled={unusable ? true : undefined}
       aria-describedby={describedBy([
         item.detail === undefined ? undefined : detailId,

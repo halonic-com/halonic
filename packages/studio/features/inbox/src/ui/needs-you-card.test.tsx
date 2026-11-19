@@ -135,6 +135,33 @@ verifies("inbox.home", () => {
     expect(root.querySelector('[role="grid"] button')).toBeNull();
   });
 
+  it("shows each row as the Inbox page does, with its run's workflow", async () => {
+    const facts = { hubId: "acme", workflow: "Support reply", startedBy: "a message" };
+    const runFacts = (runId: string) => (runId.startsWith("r") ? facts : undefined);
+    const other = waitingRun("r3", {
+      lastWaitingAt: at(9, 0),
+      waitingFor: { title: "Approve this reply?", body: "" },
+    });
+    const home = await renderSuspending(
+      <NeedsYouView
+        inbox={new Inbox(fakeRuns([review, other]).runs)}
+        runFacts={runFacts}
+        now={now}
+      />,
+    );
+    await settled();
+    const page = render(
+      <InboxView inbox={new Inbox(fakeRuns([review, other]).runs)} runFacts={runFacts} now={now} />,
+    );
+    await settled();
+    expect(rows(home)).toEqual([
+      "Approve this reply?Support reply · a person step · Waiting 1 h",
+      "Approve this reply?Support reply · a person step · Waiting 1 h",
+    ]);
+    // One line for both, so the run's id that the Inbox's line gains (HAL-12528) shows here too.
+    expect(rows(home)).toEqual(rows(page).slice(0, 2));
+  });
+
   it("opens the Inbox with the item's card open when you press Enter on its row", async () => {
     const inbox = new Inbox(fakeRuns([notes, review]).runs);
     const openInbox = vi.fn();

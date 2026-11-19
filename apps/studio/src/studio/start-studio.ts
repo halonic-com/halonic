@@ -71,6 +71,7 @@ import { startServedStudio } from "./served-studio.ts";
 
 export { servedServices } from "./served-studio.ts";
 
+import { keyboardPlatform, studioHost } from "./studio-host.ts";
 import { followSystemRegion } from "./system-region.ts";
 import { trustedSourcesOf } from "./trusted-sources.ts";
 import {
@@ -111,25 +112,6 @@ export interface StartedStudio {
   readonly host: StudioHost;
   /** Takes the window off the page and disposes the open workspaces' services. */
   stop(): Promise<void>;
-}
-
-/**
- * Where this Studio runs (`studio.entry`): the desktop app when the page is in Tauri's
- * webview, else the Studio served to a browser. The Android app never loads this page.
- */
-export function studioHost(page: object): StudioHost {
-  return tauriIpc(page) === undefined ? "served" : "desktop-app";
-}
-
-/** Whether `Mod` means ⌘ or Ctrl here, read from the browser's user agent. */
-export function keyboardPlatform(userAgent: string): KeyboardPlatform {
-  if (userAgent.includes("Mac")) {
-    return "macos";
-  }
-  if (userAgent.includes("Windows")) {
-    return "windows";
-  }
-  return "linux";
 }
 
 /**

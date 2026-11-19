@@ -24,9 +24,11 @@ import { detailRows } from "./details-model.ts";
 import { EveryStep, useRunLog } from "./every-step.tsx";
 import { entryIdOfStep, everyStep, type StepEntry } from "./every-step-model.ts";
 import { PageBanner } from "./page-banner.tsx";
-import { Receipt } from "./receipt.tsx";
+import { AgentSays, Receipt } from "./receipt.tsx";
 import {
+  agentSays,
   approvalLines,
+  itemLines,
   messageLines,
   modelLines,
   readLines,
@@ -37,6 +39,7 @@ import { LogUnread, RunLayout } from "./run-layout.tsx";
 import type { RunPageContext } from "./run-page-model.ts";
 import { slowStepDueAt } from "./slow-step.ts";
 import { StepPanel } from "./step-panel.tsx";
+import { useRunChanges } from "./use-run-changes.ts";
 
 /** The command that opens the workspace page at Models (`features/workspace`). */
 const openModelsCommand = "workspace.open-models";
@@ -57,6 +60,7 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
       {...(instructionTrust === undefined ? {} : { instructionTrust })}
       {...(sandboxStartCheck === undefined ? {} : { sandboxStartCheck })}
       announce={(line) => context.announcer.announce(line)}
+      announceState={(key, text) => context.announcer.announceState(key, text)}
       {...(context.runCommand === undefined
         ? {}
         : { openModels: () => void context.runCommand?.(openModelsCommand) })}
@@ -93,6 +97,8 @@ export interface RunViewProps {
   readonly sandboxStartCheck?: SandboxStartCheck;
   /** Says a line to a screen reader, for the answer to a press in a banner; absent in tests that don't listen. */
   readonly announce?: (line: string) => void;
+  /** Reads the run's new state when it changes (`announcer.announceState`); absent in tests that don't listen. */
+  readonly announceState?: (key: string, text: string) => void;
   /** Starts a run, for Run again; absent where there is no engine, and the button isn't there. */
   readonly runStart?: RunStartHost;
   /** Opens the workspace page at Models, for **Open Models** on a failed banner; without it the button isn't there. */
@@ -117,7 +123,7 @@ export interface RunViewProps {
  *
  * Under them, Every step, from the run's log.
  *
- * Above them, the receipt's summary line; its sections come in the next pull requests.
+ * Above them, the receipt, then what the agent says it did in its dashed frame.
  *
  * **Run again** starts a new run of the same workflow with the same input and opens it. It is in
  * the header of an ended real run, and on the failed banner that has no button of its own.
@@ -137,6 +143,7 @@ export function RunView({
   instructionTrust,
   sandboxStartCheck,
   announce,
+  announceState,
   runStart,
   openModels,
   goToRuns,
@@ -157,6 +164,12 @@ export function RunView({
   const title = runPageWords.title(shortRunId(runId));
   const retry = () => void list.refresh();
   const runAgain = useRunAgain(runStart, run, log, openRun, engine, announce);
+  const page = useRunChanges(
+    run,
+    log,
+    (shown) => pageContext(list, state.runs, shown, now()),
+    announceState,
+  );
 
   if (run !== undefined) {
     const context = pageContext(list, state.runs, run, now());
@@ -164,10 +177,10 @@ export function RunView({
     const entries =
       log === undefined
         ? []
-        : everyStep(log, summarize(log) ?? run.summary, context.workflow, context.now);
+        : everyStep(log, summarize(log) ?? run.summary, context.workflow, context.now, phone);
     const open = entries.find((entry) => entry.id === openEntry);
     return (
-      <div className="flex min-h-full w-full items-start">
+      <div ref={page} className="flex min-h-full w-full items-start">
         <RunLayout
           run={run}
           context={context}
@@ -303,15 +316,18 @@ function ReceiptAndSteps({
   if (log === undefined) {
     return <LogUnread failure={logRead.failure} retry={logRead.retry} engine={engine} />;
   }
+  const said = agentSays(log);
   return (
     <>
       <Receipt
         summary={summaryLine(run, log, context)}
         approvals={approvalLines(log)}
+        items={itemLines(log)}
         messages={messageLines(log)}
         reads={readLines(log)}
         models={modelLines(log, run.summary, context.currency)}
       />
+      {said === undefined ? null : <AgentSays text={said} />}
       <EveryStep log={log} entries={entries} openEntry={openEntry} onOpenEntry={onOpenEntry} />
     </>
   );

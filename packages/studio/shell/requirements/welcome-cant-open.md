@@ -8,7 +8,7 @@ If a folder fails to open from the welcome screen, then the shell shall show "Ca
 
 The reason shall depend on the error's kind: `not_found` reads "the folder is gone.", `denied` reads "you don't have permission to read it.", an error without a kind reads "Halonic ran into a problem it can't explain yet." with **Copy details**, which copies the error, `unavailable` reads "the engine isn't answering. It may still be starting." and never the error's own message, and any other kind reads the error's own message as a sentence.
 
-A press made while the engine doesn't answer shall keep its button busy and try again by itself; only after 10 seconds shall the message appear. The same sentence is the reason when **Try the Acme sample** can't create the sample ("Can't create the sample in ~/Documents: the engine isn't answering. It may still be starting.").
+A press made while the engine doesn't answer shall keep its button busy and try again by itself; only after 10 seconds shall the message appear. The same sentence is the reason when **Try the Acme sample** can't create the sample ("Can't create the sample in Documents: the engine isn't answering. It may still be starting.").
 
 ## Examples
 

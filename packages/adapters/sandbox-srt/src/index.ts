@@ -13,12 +13,11 @@ export { type SandboxRemoval, type SandboxSetup, SrtSandbox } from "./srt-sandbo
 export { importWindowsProject } from "./wsl-import.ts";
 export {
   assertWindowsFolder,
-  cleanupImportMounts,
   driveMountOptions,
-  IMPORT_MOUNT_OPTIONS,
   IMPORT_MOUNTS_FOLDER,
+  type ImportStep,
   mountCommand,
-  type WslRoot,
+  type WslDistro,
   withImportMount,
 } from "./wsl-mounts.ts";
 export {

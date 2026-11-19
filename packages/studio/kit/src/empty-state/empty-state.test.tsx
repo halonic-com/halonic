@@ -125,9 +125,25 @@ verifies("kit.empty-state", () => {
     expect(button.className).not.toContain("bg-primary");
   });
 
+  it("makes a plain title a paragraph, not a heading, which code can still focus", () => {
+    const titleRef = createRef<HTMLElement>();
+    const { container } = render(
+      <EmptyState plain title="Nothing is waiting for you." headingLevel={3} titleRef={titleRef} />,
+    );
+    expect(container.querySelector("h1, h2, h3, h4, h5, h6, [role='heading']")).toBeNull();
+    const title = container.querySelector("p") as HTMLElement;
+    expect(title.textContent).toBe("Nothing is waiting for you.");
+    expect(title.className).toContain("text-section");
+    expect(titleRef.current).toBe(title);
+    expect(title.getAttribute("tabindex")).toBe("-1");
+    act(() => titleRef.current?.focus());
+    expect(document.activeElement).toBe(title);
+  });
+
   it("puts a plain error's alert mark inline with its title", () => {
     const { container } = render(<EmptyState tone="error" plain title="Couldn't load files" />);
-    const title = container.querySelector("h2") as HTMLElement;
+    expect(container.querySelector("h2")).toBeNull();
+    const title = container.querySelector("p") as HTMLElement;
     const mark = title.firstElementChild as HTMLElement;
     expect(mark.className).toContain("size-icon-md");
     expect(mark.className).toContain("text-danger");
@@ -209,7 +225,9 @@ verifies("kit.empty-state", () => {
     expect(reload.textContent).toBe("Reload page");
     expect(copy.textContent).toBe("Copy details");
     expect(copy.className).toContain("text-body");
-    expect(copy.className).toContain("text-accent-text underline-offset-2 hover:underline");
+    expect(copy.className).toContain(
+      "text-accent-text underline decoration-accent-text/50 underline-offset-2",
+    );
     expect(copy.parentElement?.className).toContain("items-center");
     await click(copy);
     expect(onCopy).toHaveBeenCalledTimes(1);

@@ -46,6 +46,7 @@ verifies("agents.list.find", () => {
         item: { kind: "agent", hub: "acme", id: "sorter" },
         label: "Sorter",
         detail: "Agent · Acme",
+        hubName: "Acme",
         description: "Sorts the inbox",
       },
     ]);

@@ -15,8 +15,14 @@ import {
  * so any other failure isn't the engine's. That failure gives a kinded error's own reason, else
  * "Halonic ran into a problem it can't explain yet."
  */
-export function loadFailureReason(error: unknown, engine: EngineWords): string {
-  return error instanceof EngineNotAnswering ? engine.notAnswering : errorReasonFor(error);
+export function loadFailureReason(error: unknown, engine: EngineWords, afterColon = false): string {
+  if (!(error instanceof EngineNotAnswering)) return errorReasonFor(error);
+  return afterColon ? lowerAfterColon(engine.notAnswering) : engine.notAnswering;
+}
+
+/** "The engine isn't answering." reads after a colon as "the engine …"; a name such as Halonic keeps its capital. */
+function lowerAfterColon(reason: string): string {
+  return reason.startsWith("The ") ? `the ${reason.slice(4)}` : reason;
 }
 
 /** Props for {@link FailureReason}. */
@@ -25,15 +31,17 @@ export interface FailureReasonProps {
   readonly what: string;
   readonly error: unknown;
   readonly engine: EngineWords;
+  /** The reason follows a colon, as in "Couldn't start the run: the engine isn't answering." */
+  readonly afterColon?: boolean;
 }
 
 /**
  * The reason of {@link loadFailureReason}, then **Copy details** when the failure has no reason of
  * its own to show (F13): the error itself goes only to the clipboard, never on screen.
  */
-export function FailureReason({ what, error, engine }: FailureReasonProps) {
+export function FailureReason({ what, error, engine, afterColon = false }: FailureReasonProps) {
   const copyDetails = useCopyDetails();
-  const reason = loadFailureReason(error, engine);
+  const reason = loadFailureReason(error, engine, afterColon);
   const unexplained = !(error instanceof EngineNotAnswering) && errorReasonFor(error, "") === "";
   if (!unexplained) return reason;
   return (

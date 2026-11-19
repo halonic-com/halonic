@@ -179,6 +179,8 @@ export const pageWords = {
   workflow: (name: string) => `Workflow: ${name}`,
   testTag: "Test",
   running: (count: number) => `${count} running`,
+  /** Read once the list settles after a filter change (mc 19.3, revision 115); none reads the filter's own line. */
+  shown: (count: number) => (count === 1 ? "1 run." : `${count.toLocaleString("en-US")} runs.`),
 };
 
 /**
@@ -227,6 +229,7 @@ export const runPageWords = {
   runAgainFailedName: "Run didn't start",
   runAgainFailedTitle: "Couldn't start the run",
   runAgainFailed: (reason: string) => `Couldn't start the run: ${reason}`,
+  tryAgain: "Try again",
   openRun: (shortId: string) => `Open run ${shortId}`,
   waitingForYouName: "Waiting for you",
   waitingName: "Waiting",
@@ -481,4 +484,17 @@ export const receiptWords = {
   approvalNotAnswered: (action: string) => `${capitalised(action)}: not answered`,
   approvalByPerson: "you",
   approvalByRule: "a rule",
+  itemsHeading: "Items",
+  /** The Items section's line for the files a run saved (RCPT-2.1): "Created 1 file: weekly-report.md". */
+  createdFiles: (names: readonly string[]) =>
+    `Created ${names.length === 1 ? "1 file" : `${names.length} files`}: ${namesInWords(names)}`,
+  /** The heading of the agent's own words after the receipt (RCPT-3.4). */
+  agentSaysHeading: "What the agent says it did (its own words, not checked)",
 };
+
+/** "a.md", or "a.md and b.md", or "a.md, b.md and c.md". */
+function namesInWords(names: readonly string[]): string {
+  return names.length <= 1
+    ? names.join("")
+    : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}

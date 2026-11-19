@@ -3,17 +3,23 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import { FileUnfencedRunConsentStore, FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
 import { nodeProgramStarter } from "@halonicjs/adapter-mcp";
 import { MemoryTrustStore } from "@halonicjs/adapter-memory";
-import { type ProfileEnvironment, profileFolder, runnerTempFolder } from "@halonicjs/profile";
+import type { Sandbox } from "@halonicjs/ports";
+import {
+  type ProfileEnvironment,
+  profileFolder,
+  runnerTempFolder,
+  unfencedRunsFolder,
+} from "@halonicjs/profile";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cliConnectorFactories } from "./connector-machine.ts";
 import { IntegrationConnectorFactory } from "./integration-connector-factory.ts";
-import { computerIntegrationMachine } from "./local-integration-machine.ts";
+import { computerIntegrationMachine, computerPluginMachine } from "./local-integration-machine.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { profilePlatformOf } from "./workspace-runs.ts";
@@ -40,8 +46,18 @@ const environment = (): ProfileEnvironment => ({
   variables: { HALONIC_HOME: join(base, "profile") },
 });
 
-async function machine() {
+/** A fenced sandbox whose check fails, as on a computer where the sandbox can't start. */
+const failingFence: Sandbox = {
+  check: async () => ({ ok: false, reason: "bubblewrap-missing", missing: ["bubblewrap"] }),
+  capabilities: () => ({ files: "shared", strength: "os" }),
+  open: async () => {
+    throw new Error("a sandbox whose check fails opens nothing");
+  },
+};
+
+async function machine(fenced?: Sandbox) {
   return computerIntegrationMachine({
+    ...(fenced === undefined ? {} : { fenced }),
     dir,
     workspace: await loadWorkspace(dir.store),
     trust: {
@@ -113,6 +129,43 @@ verifies("cli.open-local-integration", () => {
       });
       expect(opened.serves("integration")).toBe(true);
       expect(IntegrationConnectorFactory).toBeDefined();
+    });
+  });
+});
+
+verifies("cli.no-unfenced-run-yes", () => {
+  describe("a yes to run without the sandbox, placed in the profile by hand", () => {
+    it("starts no integration or plugin backend, and stays where it was", async () => {
+      const computer = await machine(failingFence);
+      const plugins = computerPluginMachine(computer, {
+        trust: {
+          trustStore: new MemoryTrustStore(),
+          clock: fixedClock(Date.UTC(2026, 10, 13)),
+          commandSearch: { path: undefined, endings: [] },
+        },
+        environment: environment(),
+      });
+      let starts = 0;
+      const startIn = async () => {
+        starts += 1;
+        throw new Error("nothing may start without the sandbox");
+      };
+      const asked = await computer.gate.start(startIn);
+      if (asked.run !== "needs-yes") throw new Error(`expected needs-yes, got ${asked.run}`);
+      const saved = new FileUnfencedRunConsentStore(
+        unfencedRunsFolder(profileFolder(environment())),
+      );
+      const handPlaced = { reason: asked.reason, allowedAt: "2026-11-09T10:00:00.000Z" };
+      await saved.save(handPlaced);
+
+      expect(await computer.gate.start(startIn)).toEqual({
+        run: "needs-yes",
+        reason: asked.reason,
+      });
+      expect(await plugins.gate.start(startIn)).toEqual({ run: "needs-yes", reason: asked.reason });
+      expect(starts).toBe(0);
+      expect(await saved.get()).toEqual(handPlaced);
+      await computer.dispose();
     });
   });
 });

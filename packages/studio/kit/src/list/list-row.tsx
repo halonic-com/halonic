@@ -7,6 +7,7 @@ import { type ListLook, lineClasses } from "./list-lines.ts";
 import type { AnyListRow, ListColumn, ListSelection } from "./list-props.ts";
 import { RowContent } from "./row-content.tsx";
 import { rowHandlers } from "./row-handlers.ts";
+import { describesRow } from "./row-parts.tsx";
 
 /*
  * One row of a List: its checkbox cell, main cell and More cell, with their fills, lines, corners
@@ -260,8 +261,10 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
         // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a cell of the grid above
         role="gridcell"
         {...grid.cell(row.id, mainColumn)}
+        // Also on the cell, where focus is, so a screen reader says the row is the current one.
+        aria-current={isCurrent ? true : undefined}
         aria-label={shared.columns === undefined ? row.label : undefined}
-        aria-describedby={isUnavailable ? reasonId : undefined}
+        aria-describedby={describesRow(row) ? reasonId : undefined}
         className={`p-0 ${cells.main} ${cursorOf(isUnavailable, isInert)}`}
         onClick={onClick}
         onAuxClick={onAuxClick}

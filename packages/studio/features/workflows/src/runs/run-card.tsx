@@ -33,7 +33,12 @@ export interface RunCardProps {
    * Absent where the app can't start runs, and the banner then has no **Run again**.
    */
   readonly runAgain?:
-    | { readonly runStart: RunStartHost; readonly onStarted: (runId: string) => void }
+    | {
+        readonly runStart: RunStartHost;
+        readonly onStarted: (runId: string) => void;
+        /** Says why a Run again didn't start to a screen reader, as the run page does. */
+        readonly announce?: ((line: string) => void) | undefined;
+      }
     | undefined;
   /** Opens the workspace page at Models, for the banner's **Open Models**; absent where it can't. */
   readonly openModels?: (() => void) | undefined;
@@ -69,7 +74,7 @@ export function RunCard({
     <aside
       aria-label={words.card(row.shortId)}
       onKeyDown={onKeyDown}
-      className="flex w-120 shrink-0 flex-col gap-4 overflow-auto border-s border-border bg-surface-raised p-6 shadow-2"
+      className="flex w-120 max-w-full shrink-0 flex-col gap-4 overflow-auto border-s border-border bg-surface-raised p-6 shadow-2"
     >
       <div className="flex items-center justify-between gap-3">
         <div>
@@ -107,10 +112,11 @@ export function RunCard({
         onOpenStep={onOpenLog}
         runStart={runAgain?.runStart}
         openStartedRun={runAgain?.onStarted}
+        announce={runAgain?.announce}
         openModels={openModels}
       />
       {(onOpenLog || saveAsTest) && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {onOpenLog && (
             <Button variant="secondary" size="sm" onClick={onOpenLog}>
               {words.openLog}

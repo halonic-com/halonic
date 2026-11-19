@@ -2,15 +2,15 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-6517, decided by Liam on HAL-6513 from the WSL2 first-run research (HAL-6504, microsoft/WSL #4197); the words agreed by Elena and Sofia on HAL-6517; `More:` added on HAL-6552
+- Source: HAL-6517, decided by Liam on HAL-6513 from the WSL2 first-run research (HAL-6504, microsoft/WSL #4197); the words agreed by Elena and Sofia on HAL-6517; `More:` added on HAL-6552; the edits half dropped and the Studio folder kept on HAL-12873 (the CLI watches no workspace files, so microsoft/WSL #4739 doesn't apply); the Fix line worded to stand on its own on HAL-12890
 
-While the CLI runs on Linux under WSL (`/proc/version` names Microsoft) and the workspace's real path is on a Windows drive (`/mnt/<letter>`), `halonic doctor` shall mark the Workspace line with ! and, under the workspace's trust, say which drive it is on and why that matters, then the fix: move it into the Linux home folder, then `More:` with the sandbox page's `#wsl2-folder` section. It shall still exit with 0 for it. Outside WSL, and for a workspace in Linux's own files, the Workspace line shall be as before. With `--json`, the Workspace check shall carry `windowsDrive`.
+While the CLI runs on Linux under WSL (`/proc/version` names Microsoft) and the workspace's real path is on a Windows drive (`/mnt/<letter>`), `halonic doctor` shall mark the Workspace line with ! and, under the workspace's trust, say which drive it is on, that runs are slower there, and that a folder Studio on Windows opens stays there, then the fix for a folder used only from the command line: move it into the Linux home folder, then `More:` with the sandbox page's `#wsl2-folder` section. It shall still exit with 0 for it. Outside WSL, and for a workspace in Linux's own files, the Workspace line shall be as before. With `--json`, the Workspace check shall carry `windowsDrive`.
 
 ## Examples
 
 - Given WSL and the trusted workspace Acme in a folder on `/mnt/c`,
   when `halonic doctor --dir acme` runs,
-  then it prints "! Workspace   Acme · trusted on this computer", then "The workspace is on the Windows drive /mnt/c, so runs are slow and Halonic doesn't notice edits made in Windows." and "Fix: move it into your Linux home folder (~), then run halonic doctor again." and "More: https://docs.halonic.dev/security/sandbox/#wsl2-folder", counts one warning, and exits with 0.
+  then it prints "! Workspace   Acme · trusted on this computer", then "The workspace is on the Windows drive /mnt/c, so runs are slower. If Studio on Windows opens this folder, keep it there." and "Fix: if you use it only from the command line, move it into your Linux home folder (~), then run halonic doctor again." and "More: https://docs.halonic.dev/security/sandbox/#wsl2-folder", counts one warning, and exits with 0.
 - Given WSL and a workspace in `~/acme`,
   when `halonic doctor` runs,
   then the Workspace line says nothing about a drive.

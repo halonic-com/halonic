@@ -5,8 +5,8 @@ import { runPageWords } from "../run-words.ts";
 import type { RunAgain } from "./run-again.ts";
 
 /**
- * Why the last **Run again** didn't start, in a danger Callout named "Run didn't start"; nothing
- * while it hasn't failed. The run page shows it under its header, the run card over its banner.
+ * Why the last **Run again** didn't start, in a danger Callout named "Run didn't start", with
+ * **Try again** (microcopy 9.6); nothing while it hasn't failed. The run page shows it under its header, the run card over its banner.
  */
 export function RunAgainFailed({
   runAgain,
@@ -18,12 +18,13 @@ export function RunAgainFailed({
   if (runAgain?.problem === undefined) return null;
   return (
     <section aria-label={runPageWords.runAgainFailedName}>
-      <Callout tone="danger">
+      <Callout tone="danger" action={{ label: runPageWords.tryAgain, onClick: runAgain.start }}>
         {runPageWords.runAgainFailedTitle}:{" "}
         <FailureReason
           what={runPageWords.runAgainFailedTitle}
           error={runAgain.problem.error}
           engine={engine}
+          afterColon
         />
       </Callout>
     </section>

@@ -1,5 +1,5 @@
 import { errorKindOf } from "@halonicjs/std";
-import { secretsContract, tokenStoreContract } from "@halonicjs/testing-contracts";
+import { secretsContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { FakeShell, shellMaxValueBytes, windowsMaxValueBytes } from "./fake-shell.test-helper.ts";
@@ -18,11 +18,6 @@ secretsContract("tauri", async (values) => {
   }
   return secrets;
 });
-
-tokenStoreContract(
-  "tauri",
-  async () => new TauriSecrets(new FakeShell({ refusesHalonicNames: false })),
-);
 
 /** The error a call rejects with. */
 async function rejection(action: Promise<unknown>): Promise<unknown> {

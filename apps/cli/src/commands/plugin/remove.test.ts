@@ -205,23 +205,22 @@ verifies("cli.commands.plugin.remove", () => {
     expect(await readdir(outside)).toEqual(["keep.txt"]);
   });
 
-  it("escapes a control character in the plugin's name on every line", async () => {
-    // YAML's "\e" is the escape character, which would start a terminal sequence.
-    const source = await writeSource("weather", true, String.raw`"Wea\e[31mther"`);
-    expect((await plugin(["add", source], terminalTyping("y").terminal)).code).toBe(exitCode.ok);
-    const shown = String.raw`Wea\u001b[31mther`;
-
-    const asked = terminalTyping("n");
-    const no = await plugin(["remove", "weather"], asked.terminal);
-    const noTerminal = await plugin(["remove", "weather"]);
-    const yes = await plugin(["remove", "weather"], terminalTyping("y").terminal);
-
-    expect(asked.written()).toContain(`Remove ${shown}?`);
-    expect(no.io.stdout).toEqual([`Not removed. ${shown} is still added.`]);
-    expect(noTerminal.io.stderr[0]).toBe(
-      `✕ Removing ${shown} deletes its settings, and there's no terminal to ask you.`,
+  it("removes a plugin whose name has a control character by its id, and never writes that name", async () => {
+    expect(
+      (await plugin(["add", await writeSource("weather")], terminalTyping("y").terminal)).code,
+    ).toBe(exitCode.ok);
+    // An edit after adding: YAML's "\e" is the escape character, which would start a terminal sequence.
+    await writeFile(
+      join(pluginsFolder(), "weather", "plugin.yaml"),
+      manifest("weather", true, String.raw`"Wea\e[31mther"`),
     );
-    expect(yes.io.stdout).toEqual([`✓ Removed ${shown} 1.2.0 and its trust.`]);
+
+    const { code, io } = await plugin(["remove", "weather", "--yes"]);
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout).toEqual(["✓ Removed weather and its trust."]);
+    expect(await readdir(pluginsFolder())).toEqual([]);
+    expect([...io.stdout, ...io.stderr].join("\n")).not.toContain("\u001b");
   });
 
   it("says the id is missing, with the usage line under it, when no id is given", async () => {

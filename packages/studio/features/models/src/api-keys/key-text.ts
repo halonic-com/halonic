@@ -7,14 +7,22 @@ export const NO_KEY = "No key";
 export const KEY_CHECKING = "Checking for a key";
 export const KEY_CHECK_FAILED = "Couldn't check whether a key is stored.";
 
-/** The line when a key action fails; `reason` is the error's words, with the key already removed. */
-function failedLine(what: string, reason: string): string {
+/**
+ * The line when a key action fails; `reason` is the error's words, with the key already removed.
+ * `then` is the sentence after it: "Try again.", or what is still true.
+ */
+function failedLine(what: string, reason: string, then = "Try again."): string {
   const why = reason.trim().replace(/\.$/, "");
-  return why === "" ? `Couldn't ${what}. Try again.` : `Couldn't ${what}: ${why}. Try again.`;
+  return why === "" ? `Couldn't ${what}. ${then}` : `Couldn't ${what}: ${why}. ${then}`;
 }
 
-export function saveFailedLine(reason: string): string {
-  return failedLine("save the key", reason);
+/** A failed save over a stored key says that key is still the one in use (microcopy 6.3). */
+export function saveFailedLine(reason: string, keyStored: boolean): string {
+  return failedLine(
+    "save the key",
+    reason,
+    keyStored ? "Your old key is still in use." : undefined,
+  );
 }
 
 export function removeFailedLine(reason: string): string {

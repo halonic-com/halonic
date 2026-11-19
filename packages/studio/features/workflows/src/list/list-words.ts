@@ -26,18 +26,27 @@ export const listWords = {
   lastRun: "Last run",
 } as const;
 
-/**
- * A finished run's outcome before its time: the glyph sighted people see, so the outcome never
- * rests on colour alone, and the words a screen reader hears in its place. A run still going has none.
- */
-export const lastRunOutcome: Record<WorkflowRunOutcome, { glyph: string; spoken: string } | null> =
-  {
-    completed: { glyph: "✓", spoken: "completed" },
-    failed: { glyph: "✕", spoken: "failed" },
-    "cant-try": { glyph: "✕", spoken: "couldn't start" },
-    running: null,
-    waiting: null,
-  };
+/** How a finished run's outcome is drawn before its time. */
+export interface LastRunOutcome {
+  /** The glyph sighted people see, so the outcome never rests on colour alone. */
+  readonly glyph: string;
+  /** The words a screen reader hears in the glyph's place. */
+  readonly spoken: string;
+  /**
+   * The glyph is drawn in danger, so a run that went wrong doesn't read as grey metadata next to
+   * its time (HAL-12946). Done is the quiet normal and stays muted.
+   */
+  readonly danger: boolean;
+}
+
+/** A finished run's outcome before its time. A run still going has none. */
+export const lastRunOutcome: Record<WorkflowRunOutcome, LastRunOutcome | null> = {
+  completed: { glyph: "✓", spoken: "completed", danger: false },
+  failed: { glyph: "✕", spoken: "failed", danger: true },
+  "cant-try": { glyph: "✕", spoken: "couldn't start", danger: true },
+  running: null,
+  waiting: null,
+};
 
 const shortDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const shortMonths = [

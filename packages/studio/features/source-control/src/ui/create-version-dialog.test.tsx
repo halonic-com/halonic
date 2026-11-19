@@ -156,6 +156,32 @@ verifies("source-control.create-version", () => {
       expect(rows[1]?.querySelector("span.rounded-full")).toBeNull();
     });
 
+    it("names each item with its icon and kind as the list does, so two of one name differ", async () => {
+      const testPath = "workflows/triage.test.yaml";
+      const fake = fakeSource({
+        kind: "ready",
+        changes: [
+          { path: agentPath, status: "modified", staged: false },
+          { path: testPath, status: "untracked", staged: false },
+        ],
+      });
+      fake.setTexts(agentPath, { before, after });
+      fake.setTexts(testPath, { before: null, after: "workflow: triage\ncases: []\n" });
+      const list = new ChangesList(fake.source);
+      render(<ChangesView list={list} />);
+      await act(settle);
+      await act(async () => list.startVersion());
+      const labels = [...(dialog()?.querySelectorAll("section label") ?? [])].map((label) => ({
+        text: label.textContent,
+        icon: label.querySelector("svg[data-place-icon]")?.getAttribute("data-place-icon"),
+      }));
+      expect(labels).toEqual([
+        { text: "TriageAgent", icon: "agents" },
+        { text: "TriageWorkflow test", icon: "workflows" },
+      ]);
+      expect(dialog()?.textContent).not.toContain("triage.test");
+    });
+
     it("has a ticked checkbox on each item, and creates only the ticked ones", async () => {
       const { fake } = await openDialog();
       const boxes = [

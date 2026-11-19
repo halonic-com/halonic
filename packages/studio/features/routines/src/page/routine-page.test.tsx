@@ -207,6 +207,7 @@ verifies("routines.page.frame-and-states", () => {
         item: { kind: "routine", hub: "acme", id: "daily" },
         label: "Daily",
         detail: "Routine · Acme",
+        hubName: "Acme",
         description: "Weekdays at 07:30 → Briefing",
       },
     ]);
@@ -412,7 +413,7 @@ verifies("routines.page.run-now", () => {
   it("says the one reason a refusal gives, and the toast stays", async () => {
     const refusals: [RunNowRefusal, string][] = [
       [{ reason: "target-never-live" }, "Not started: Briefing isn't live yet."],
-      [{ reason: "target-in-trash" }, "Not started: Briefing is in the trash."],
+      [{ reason: "target-in-trash" }, "Not started: Briefing was deleted."],
       [{ reason: "target-not-found" }, "Not started: Briefing isn't in this hub any more."],
       [{ reason: "not-trusted" }, "Not started: Daily isn't trusted yet."],
       [

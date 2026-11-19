@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import type { TabSet } from "./tab-set.ts";
 
 /** Back and Forward through the active tab's history, as {@link useHistoryMoves} gives them. */
@@ -39,6 +39,22 @@ export function usePageHeadingFocus(): () => void {
   // Counts the requests, so the effect runs after the commit that shows the new page.
   const [requests, setRequests] = useState(0);
   useLayoutEffect(() => {
+    if (requests > 0) {
+      focusPageHeading();
+    }
+  }, [requests]);
+  return useCallback(() => setRequests((count) => count + 1), []);
+}
+
+/**
+ * As {@link usePageHeadingFocus}, for a page opened from a modal dialog that closes in the same
+ * commit, as Ctrl K's palette does when it opens a place here (a11y check S1). The dialog gives
+ * focus back to its opener once it's gone (`useModal`, in a passive effect), so this focus waits
+ * for the passive effects too: React runs the dialog's cleanup first, and the heading wins.
+ */
+export function usePageHeadingFocusAfterDialog(): () => void {
+  const [requests, setRequests] = useState(0);
+  useEffect(() => {
     if (requests > 0) {
       focusPageHeading();
     }

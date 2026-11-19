@@ -198,4 +198,23 @@ export interface HarnessRunsOptions {
    * its own `localOnly`.
    */
   readonly localOnly?: boolean;
+  /**
+   * The model the harness program is asked for, from the agent file's
+   * `model` (requirement `engine.harness-model-alias`): for an alias of the
+   * agent's hub, its provider's own model id, such as `glm-5.2`; `undefined`
+   * for a name that is no alias, which goes to the program as written.
+   * Without it, every name goes as written.
+   */
+  readonly models?: HarnessModelNames;
+}
+
+/** Turns an agent file's `model` into the model id its provider knows. */
+export interface HarnessModelNames {
+  /**
+   * The provider's model id for the alias `name` in hub `hubId`, or
+   * `undefined` when `name` is no alias there.
+   *
+   * @throws when the workspace's model files can't be read
+   */
+  providerModelOf(hubId: string, name: string): Promise<string | undefined>;
 }

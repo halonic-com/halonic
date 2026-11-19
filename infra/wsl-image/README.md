@@ -33,14 +33,16 @@ runs it as root from Windows, with `wsl.exe` by its full path and no shell:
 | `install <version> <sha256>` | reads the archive on standard input, checks its SHA-256, unpacks it as root's files, switches `current`, keeps the version before as `previous` and removes older ones |
 | `rollback` | swaps `current` and `previous` |
 | `security-update` | `apt-get upgrade` from Debian's security archive only, at most once a day, and never while a sandbox session (`bwrap`) runs; then drops the setuid and setgid bit from any file under `/usr` the upgrade brought, whoever owns it, with a `dpkg-statoverride` that keeps it off, and removes every file capability under `/usr` (a package script may run `setcap`) |
-| `cleanup-import-mounts` | no arguments, no input. Unmounts and removes the read-only import mounts a crash or kill left under `/mnt/halonic-import` (HAL-5402). It only touches a real folder (never a link) directly under it, named `import-` and 32 lowercase hex digits, and only with `umount` and `rmdir`, so it never deletes a file. A mount point it can't clean is reported on standard error and the others go on; running it again changes nothing more. Studio runs it before it starts the host, with a 20-second limit, and starts the host whatever it says |
+| `import-mount` | reads one Windows drive folder (one line) on standard input, never from the command line (W7), and checks it as the engine does: an absolute drive path with at least one folder, no empty, `.` or `..` segment and no control character. Mounts it with `ro,noexec,nosuid,nodev,uid=<halonic>,gid=<halonic>,umask=077` at a fresh `/mnt/halonic/import-<32 hex digits>` and prints that path. The files belong to `halonic`, so the engine runs `git` and the copy as `halonic`, never as root (W2b, HAL-12443). `/mnt/halonic` must be a real folder of root's that nobody else can write (`wsl.conf` makes it at every start), and every session denies it as a whole (W1). A failed mount removes its mount point |
+| `import-unmount <name>` | unmounts the import mount `<name>` (`import-` and 32 lowercase hex digits, a name, never a path) and removes its mount point with `rmdir` |
+| `cleanup-import-mounts` | no arguments, no input. Unmounts and removes the import mounts a crash or kill left under `/mnt/halonic` (HAL-5402). It only touches a real folder (never a link) directly under it, named `import-` and 32 lowercase hex digits, and only with `umount` and `rmdir`, so it never deletes a file. A mount point it can't clean is reported on standard error and the others go on; running it again changes nothing more. Studio runs it before it starts the host, with a 20-second limit, and starts the host whatever it says |
 | `status` | prints `{"current":"<version>","previous":"<version>","securityUpdated":"<UTC time>"}`; any user may run it, but only root sees when security updates last ran. Any process named `bwrap` holds them off, so Studio can warn when that is long ago |
 
 Exit codes: 0 done, 1 anything else (such as `/opt/halonic` missing or not root's),
 2 wrong use (also: not root, or the version is already current), 3 a sandbox session
 runs, 4 the SHA-256 differs, 5 the archive is refused (it can't be unpacked, has no
 `bin` folder, holds device, pipe or socket files, or a link that is absolute or leads
-out of the version folder), 6 nothing to roll back to, 7 a mount point could not be cleaned up (the others were).
+out of the version folder), 6 nothing to roll back to, 7 a mount point could not be unmounted or removed (by `cleanup-import-mounts`: the others were).
 
 It runs as root, so it never runs or sources a file the `halonic` user can write
 (security review W2 on HAL-5407): it ships in the image, root-owned, and every
@@ -51,7 +53,7 @@ and checks owners and modes after each step, refuses archives with links that
 leave the version folder, and runs `security-update` with a stand-in `apt-get`
 that brings a new setuid program, a setgid program of another system user and a
 program with a file capability, and checks that a setuid file in `halonic`'s home
-folder is left alone: the updater only looks under `/usr`. It also runs `cleanup-import-mounts` with no import folder, with a matching mount point, a wrong name, a link and a folder that holds a file, and as `halonic`.
+folder is left alone: the updater only looks under `/usr`. It runs `import-mount` with a stand-in `mount` (the chroot has no `drvfs`): with good and bad folders, two folders, a folder on the command line, a failed mount, and with `/mnt/halonic` missing, a link or writable by others; `import-unmount` with names that aren't one; and `cleanup-import-mounts` with no `/mnt/halonic`, with a matching mount point, a project's folder, a wrong name, a link and a folder that holds a file. `halonic` can run none of the three.
 
 Locally (Debian or Ubuntu, as root): `apt-get install mmdebstrap libcap2-bin` then
 `sudo infra/wsl-image/build.sh out && sudo infra/wsl-image/check.sh out/halonic-wsl.tar.gz`.

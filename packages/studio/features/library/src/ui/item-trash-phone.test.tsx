@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { LibraryItemKind } from "@halonicjs/app";
 import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
-import type { ItemViewProps } from "@halonicjs/studio-shell";
+import { type ItemViewProps, PhoneTopBarSlot } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -68,4 +68,21 @@ verifies("library.library-phone", () => {
       expect(entries).toEqual(["Open as file", "Delete"]);
     },
   );
+
+  it("puts the page's ⋮ in the phone's top bar, not in the page", () => {
+    const topBar = document.createElement("div");
+    document.body.append(topBar);
+    const page = render(
+      <PresentationProvider presentation="phone">
+        <ToastStoreProvider store={createToastStore()}>
+          <PhoneTopBarSlot value={topBar}>
+            <Page kind="skill" />
+          </PhoneTopBarSlot>
+        </ToastStoreProvider>
+      </PresentationProvider>,
+    );
+    expect(page.querySelector(menuButton)).toBeNull();
+    expect(topBar.querySelector(menuButton)).not.toBeNull();
+    topBar.remove();
+  });
 });

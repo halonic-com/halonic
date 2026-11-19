@@ -180,14 +180,14 @@ verifies("model-anthropic.call-errors", () => {
       "a 501 Not Implemented",
       (v) => v.replyNext(501, { detail: "Not Implemented" }),
       "refused",
-      /^acme at api\.anthropic\.com doesn't support the call to the model "acme-small", so check the baseUrl of acme in models\.yaml \(HTTP 501\)$/,
+      /^acme at api\.anthropic\.com doesn't support the call to the model "acme-small", so check the baseUrl in providers\/acme\.yaml \(HTTP 501\)$/,
       '{"detail":"Not Implemented"}',
     ],
     [
       "a 505 HTTP Version Not Supported",
       (v) => v.replyNext(505, { detail: "HTTP Version Not Supported" }),
       "refused",
-      /baseUrl of acme in models\.yaml \(HTTP 505\)$/,
+      /baseUrl in providers\/acme\.yaml \(HTTP 505\)$/,
       '{"detail":"HTTP Version Not Supported"}',
     ],
     [
@@ -351,6 +351,31 @@ verifies("model-anthropic.call-error-details", () => {
     vendor.unreachableNext();
     const error = await provider.chat(chatRequest()).catch((thrown: unknown) => thrown);
     expect(isModelCallError(error) && error.host).toBe("localhost:8080");
+  });
+  it("passes on a proxy failure's cause and message, so the run log says it was the proxy", async () => {
+    const { vendor, provider } = providerWith();
+    const message = "Your proxy refused to connect to acme.test (status 403).";
+    vendor.unreachableNext(
+      Object.assign(new Error(message), {
+        name: "ProxyError",
+        kind: "denied",
+        failureCause: { code: "proxy.refused", detail: { variable: "HTTPS_PROXY", status: "403" } },
+      }),
+    );
+    const error = await provider.chat(chatRequest()).catch((thrown: unknown) => thrown);
+    expect(error).toMatchObject({
+      reason: "offline",
+      kind: "denied",
+      failureCause: { code: "proxy.refused", detail: { variable: "HTTPS_PROXY", status: "403" } },
+    });
+    expect(isModelCallError(error) && error.message).toMatch(/: Your proxy refused to connect/);
+  });
+  it("keeps a plain network error's own text out of the message", async () => {
+    const { vendor, provider } = providerWith();
+    vendor.unreachableNext(new TypeError("fetch failed"));
+    const error = await provider.chat(chatRequest()).catch((thrown: unknown) => thrown);
+    expect(isModelCallError(error) && error.message).not.toContain("fetch failed");
+    expect(error).not.toHaveProperty("failureCause");
   });
   it("says only the provider when the address gives no host", async () => {
     const { vendor, provider } = providerWith({ baseUrl: "not an address" });

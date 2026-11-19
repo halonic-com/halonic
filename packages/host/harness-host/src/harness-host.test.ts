@@ -41,6 +41,7 @@ function inputOf(overrides: Partial<HarnessHostInput> = {}) {
     services: {
       servicesFor: () => ({ providers: {}, prices: {}, tools: noTools, approvals: approveAll }),
     },
+    reportError: () => {},
     profiles,
     home: "<home>",
     placement: {

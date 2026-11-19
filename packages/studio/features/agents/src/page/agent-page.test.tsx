@@ -2,6 +2,7 @@
 
 import { KindedError } from "@halonicjs/std";
 import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
+import { PhoneTopBarSlot } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -40,12 +41,23 @@ verifies("agents.page.frame", () => {
     const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
     await act(async () => buttonNamed(page, "Runs")?.click());
 
-    expect(page.textContent).toContain(
-      "Runs aren't listed by agent yet. See them on the Runs page.",
-    );
+    expect(page.textContent).toContain("Runs aren't listed by agent yet.");
+    expect(buttonNamed(page, "Open the Runs page ›")).toBeUndefined();
     expect(page.textContent).toContain(
       "Sorter runs as a step in a workflow. Add it to one in Workflows.",
     );
+  });
+
+  it("ends the Runs line in Open the Runs page ›, which opens the Runs page", async () => {
+    const openRuns = vi.fn();
+    const page = await show(
+      <AgentScreen host={hostWith()} hubId="acme" id="sorter" openRuns={openRuns} />,
+    );
+    await act(async () => buttonNamed(page, "Runs")?.click());
+
+    expect(page.textContent).toContain("Runs aren't listed by agent yet. Open the Runs page ›");
+    await act(async () => buttonNamed(page, "Open the Runs page ›")?.click());
+    expect(openRuns).toHaveBeenCalledOnce();
   });
 
   it("doesn't say an agent a workflow runs has no runs, and points to that workflow's runs", async () => {
@@ -285,6 +297,28 @@ verifies("agents.page.menu", () => {
     const noFile = await open(hostWith());
     act(() => menuButton(noFile.page)?.click());
     expect(entries()).toEqual(["Delete"]);
+  });
+
+  it("puts the ⋮ in the phone's top bar, not the header, and takes it away after Delete", async () => {
+    const topBar = document.createElement("div");
+    document.body.append(topBar);
+    const page = await show(
+      <PresentationProvider presentation="phone">
+        <PhoneTopBarSlot value={topBar}>
+          <AgentScreen host={hostWith()} hubId="acme" id="sorter" />
+        </PhoneTopBarSlot>
+      </PresentationProvider>,
+    );
+    await settled();
+    expect(menuButton(page)).toBeNull();
+    expect(menuButton(topBar)).not.toBeNull();
+
+    await pick(topBar, "Delete");
+
+    expect(page.textContent).toContain("This agent was deleted");
+    expect(menuButton(topBar)).toBeNull();
+    expect(document.activeElement?.textContent).toBe("Undo");
+    topBar.remove();
   });
 
   it("opens the agent's file in a tab", async () => {

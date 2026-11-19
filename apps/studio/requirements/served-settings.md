@@ -13,4 +13,4 @@ The served Studio shall have Settings with the sections this browser keeps, Appe
   then the list has "On this phone" with Appearance and Formats, and no "On your computer" group.
 - Given the served Studio in a wide window,
   when Ctrl K lists its commands,
-  then it has Settings, and no command to open Assistant or Agent sandbox.
+  then it has Settings, and no command to open Assistant, Agent sandbox or About Halonic.

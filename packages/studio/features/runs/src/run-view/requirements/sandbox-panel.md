@@ -17,11 +17,11 @@ The run view shall show what each sandboxed step could do, read only from the st
   - **Reaches**: Halonic, then up to 10 allowed sites as plain text with the registrable domain in bold, then "and 3 more";
   - **Time limit**: "Stops after 30 minutes", in minutes under an hour, otherwise "2 hours" or "1 hour 30 minutes";
 - under the rows, the kind of sandbox ("A process sandbox on this computer, not a virtual machine.") and the line on what isn't covered, which always shows and names the working folder;
-- on a phone the entry fills the screen, rows have their label above the value, "your computer" replaces "this computer", and the action is the line "Change this on your computer: *Writer* › Harness", with no link. On the desktop the action "Change in *Writer*'s settings" shows only where the page can open the agent.
+- on a phone the entry fills the screen, rows have their label above the value, "your computer" replaces "this computer", and the action is the line "Change this on your computer, in *Writer*'s file.", with no link. On the desktop the action "Change in *Writer*'s settings" shows only where the page can open the agent's sandbox settings.
 
 No path from a denied group and no value of the step's environment shall appear on the page: the event never holds them (Julian, HAL-1673). Every value from the log is escaped for hidden and direction-changing characters. Every sentence comes from the sandbox words table by key; the words are placeholders until the board approves the sandbox screens (HAL-1784).
 
-Not in this requirement: **Your sign-in** (waits for HAL-1710), the workflow's run card, and the agent page the action opens.
+Not in this requirement: **Your sign-in** (waits for HAL-1710), the workflow's run card, and the agent page the action opens. Not here yet: the desktop action, because the agent's Harness page has no sandbox settings to open (HAL-12658).
 
 ## Examples
 

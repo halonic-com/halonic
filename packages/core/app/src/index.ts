@@ -230,6 +230,11 @@ export {
   pluginInstallsCollection,
 } from "./plugin-installs.ts";
 export {
+  type LocalToolConfigInput,
+  type LocalToolSettingsNotSet,
+  localToolConnectorConfig,
+} from "./plugin-local-tool-config.ts";
+export {
   isLocalToolSet,
   type LocalToolMxc,
   type LocalToolOpening,
@@ -299,6 +304,7 @@ export {
   pluginTrustSectionHeadings,
   pluginTrustSectionOrder,
   pluginTrustSections,
+  pluginTrustToolsIntro,
 } from "./plugin-trust-sections.ts";
 export {
   ProgramCopies,

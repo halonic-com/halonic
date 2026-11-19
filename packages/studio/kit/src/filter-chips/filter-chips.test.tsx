@@ -118,6 +118,23 @@ verifies("kit.filter-chips", () => {
     expect(on.textContent).toBe("Test runs");
   });
 
+  it("names a toggle by its words, or by its full name when it's given one", () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <FilterChips
+        label="Days"
+        toggles={[
+          { label: "Mo", name: "Monday", pressed: true, onChange },
+          { label: "Test runs", pressed: false, onChange },
+        ]}
+      />,
+    );
+    const [day, plain] = [...container.querySelectorAll("button")];
+    expect(day?.getAttribute("aria-label")).toBe("Monday");
+    expect(day?.textContent).toBe("Mo");
+    expect(plain?.hasAttribute("aria-label")).toBe(false);
+  });
+
   it("keeps an unavailable toggle focusable, ignores presses and points at its reason", async () => {
     const onChange = vi.fn();
     const { container } = render(
@@ -136,6 +153,9 @@ verifies("kit.filter-chips", () => {
     expect(chip.hasAttribute("disabled")).toBe(false);
     expect(chip.getAttribute("aria-describedby")).toBe("why");
     expect(chip.className).toContain("aria-disabled:text-fg-disabled");
+    // In forced colours fg-disabled is ordinary text: GrayText there, as Button (HAL-12946).
+    expect(chip.className).toContain("aria-disabled:text-forced-disabled");
+    expect(chip.className).toContain("aria-disabled:border-forced-disabled");
     await click(chip);
     expect(onChange).not.toHaveBeenCalled();
   });

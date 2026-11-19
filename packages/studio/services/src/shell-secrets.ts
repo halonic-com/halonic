@@ -1,11 +1,11 @@
-import {
-  maxTokenNameLength,
-  type SecretPresence,
-  TauriSecrets,
-  TauriTokens,
-} from "@halonicjs/adapter-secrets-tauri";
+import { type SecretPresence, TauriSecrets, TauriTokens } from "@halonicjs/adapter-secrets-tauri";
 import { type ServiceRegistry, serviceKey } from "@halonicjs/app";
-import { type Secrets, type TokenStore, workspaceSecrets } from "@halonicjs/ports";
+import {
+  type SecretStore,
+  type Secrets,
+  type TokenStore,
+  workspaceSecrets,
+} from "@halonicjs/ports";
 import { type TauriIpc, tauriIpc } from "./tauri-ipc.ts";
 
 /** The configured secrets, such as provider API keys. */
@@ -13,9 +13,6 @@ export const secretsKey = serviceKey<Secrets>("platform.secrets");
 
 /** The sign-in tokens, such as a Google refresh token. */
 export const tokenStoreKey = serviceKey<TokenStore>("platform.tokens");
-
-/** The longest token name that still fits the keychain's name rule once prefixed. */
-export const maxShellTokenNameLength = maxTokenNameLength;
 
 /**
  * Gives a workspace's services the OS keychain as their `Secrets` and
@@ -62,6 +59,8 @@ export function provideShellSecrets(
  *
  * @param ipc - the shell's IPC, from `tauriIpc`
  */
-export function shellKeychain(ipc: TauriIpc): Secrets & TokenStore & SecretPresence {
+export function shellKeychain(
+  ipc: TauriIpc,
+): Secrets & Pick<SecretStore, "set" | "remove"> & SecretPresence {
   return new TauriSecrets(ipc);
 }

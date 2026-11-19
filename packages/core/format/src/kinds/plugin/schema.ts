@@ -28,8 +28,25 @@ const argumentName = s
   .string()
   .regex(ARGUMENT_NAME_PATTERN, "use the tool argument's name, such as 'city' or 'folderId'");
 
+/**
+ * A control character, or a mark that turns the direction of the text around it.
+ * In text a person reads, either can make one name look like another, in the
+ * Plugins list and in the trust dialog. A line break is the one exception, and
+ * only in longer text.
+ */
+const HIDDEN_MARK = /[\p{Cc}\p{Bidi_Control}]/u;
+const HIDDEN_MARK_BUT_LINE_BREAK = /(?!\n)[\p{Cc}\p{Bidi_Control}]/u;
+const NO_HIDDEN_MARKS = "don't use control characters or text-direction marks";
+
+/** Whether a description or help text has no hidden mark. It may break lines. */
+const withoutHiddenMarks = (text: string) => !HIDDEN_MARK_BUT_LINE_BREAK.test(text);
+
 /** Text a person reads: a title or a label. Studio shows it as untrusted text. */
-const label = s.string().min(1).max(80);
+const label = s
+  .string()
+  .min(1)
+  .max(80)
+  .refine((text) => !HIDDEN_MARK.test(text), NO_HIDDEN_MARKS);
 
 /**
  * Why a local tool's `network` entry can't be used, or `null` when it can.
@@ -221,7 +238,7 @@ const LocalTool = s
 /** What every field says, whatever its type. */
 const fieldBase = {
   label,
-  help: s.string().min(1).max(500).optional(),
+  help: s.string().min(1).max(500).refine(withoutHiddenMarks, NO_HIDDEN_MARKS).optional(),
   required: s.boolean().default(false),
 };
 
@@ -304,7 +321,7 @@ export const Plugin = s
     sdk: IntegrationSheet.shape.kit,
     name: label,
     /** Empty for an `integration.yaml` read as a plugin, which has no description. */
-    description: s.string().max(500).default(""),
+    description: s.string().max(500).refine(withoutHiddenMarks, NO_HIDDEN_MARKS).default(""),
     backend: Backend.optional(),
     localTools: s.array(LocalTool).min(1).optional(),
     ui: Ui.optional(),

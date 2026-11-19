@@ -163,6 +163,16 @@ verifies("fs-tauri.write-if-unchanged-and-watch", () => {
       expect(shell.openWatches).toBe(0);
     });
 
+    it("passes the shell's sentence on as is when the folder has too many files to watch", async () => {
+      const sentence = "This folder has more than 50,000 files, too many to watch.";
+      const { shell, heard } = await watched({ "a.yaml": "1" });
+      shell.send({ type: "failed", kind: "too_many_files", message: sentence });
+      await heard.until(1);
+      expect(heard.failures.map((error) => error.message)).toEqual([sentence]);
+      expect(errorKindOf(heard.failures[0])).toBe("limit_reached");
+      expect(shell.openWatches).toBe(0);
+    });
+
     it("fails on a message that isn't the shell's", async () => {
       for (const message of [null, { type: "changed", paths: [1] }, { type: "failed" }]) {
         const { shell, heard } = await watched({});

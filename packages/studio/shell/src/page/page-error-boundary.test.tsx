@@ -91,7 +91,9 @@ verifies("shell.page-stopped", () => {
       "Halonic ran into a problem showing Support reply. Nothing in your workspace changed.",
     );
     expect(button(container, "Reload page")).toBeDefined();
-    expect(button(container, "Copy details").className).toContain("hover:underline");
+    expect(button(container, "Copy details").className).toContain(
+      "underline decoration-accent-text/50",
+    );
     expect(container.textContent).not.toContain("steps is undefined");
     expect(button(container, "Inbox")).toBeDefined();
   });

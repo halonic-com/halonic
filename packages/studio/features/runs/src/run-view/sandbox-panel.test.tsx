@@ -170,7 +170,7 @@ verifies("runs.run-view.sandbox-panel", () => {
       <SandboxPanel view={view} agent="Writer" live={false} place="phone" />,
     );
     expect(container.textContent).toContain("A process sandbox on your computer");
-    expect(container.textContent).toContain("Change this on your computer: Writer › Harness");
+    expect(container.textContent).toContain("Change this on your computer, in Writer's file.");
     expect(container.querySelector("button[class*=accent]")).toBeNull();
   });
 

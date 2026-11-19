@@ -32,7 +32,7 @@ export const refusingApprovals: BridgeApprovals = {
 /** Thrown by {@link refusingTrash}: this host can't accept a proposal yet. */
 export class ProposalAcceptNotWiredError extends Error {
   constructor() {
-    super("This host can't accept a run's proposal yet, so no file was moved to the trash.");
+    super("This host can't accept a run's proposal yet, so no file was deleted.");
     this.name = "ProposalAcceptNotWiredError";
   }
 }

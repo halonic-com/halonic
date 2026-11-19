@@ -4,11 +4,19 @@ import type { ReactNode } from "react";
 import type { InboxItem, SetupItem } from "../inbox-items.ts";
 import { approvalTitle } from "../plain/approval-text.ts";
 import { isLate, movesOnMeta, waitingFor } from "../plain/waiting-time.ts";
-import type { RunFacts } from "./run-facts.ts";
+import type { RunFacts, RunFactsOf } from "./run-facts.ts";
 
 /** An item's title, as its row and its card show it. */
 export function itemTitle(item: InboxItem): string {
   return item.kind === "approval" ? approvalTitle(item) : markHiddenName(item.title);
+}
+
+/**
+ * An item's row with its run's facts, as the Inbox page and Home's Needs you both show it, so
+ * the two read the same and two runs of one workflow read apart in both (a11y check H2).
+ */
+export function inboxRow(item: InboxItem, now: Date, runFacts: RunFactsOf | undefined): ListRow {
+  return rowFor(item, now, item.kind === "setup" ? undefined : runFacts?.(item.runId));
 }
 
 /**
@@ -70,7 +78,7 @@ export function countDetail(waiting: number, late = 0): { detail?: ReactNode } {
             <span className="text-attention">
               <span
                 aria-hidden="true"
-                className="me-1 inline-block size-1.5 rounded-full bg-attention-fill"
+                className="me-1 inline-block size-1.5 rounded-full bg-attention-fill forced-color-adjust-none forced-colors:bg-[CanvasText]"
               />
               {late} late
             </span>

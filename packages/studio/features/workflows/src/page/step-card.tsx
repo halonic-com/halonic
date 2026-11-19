@@ -5,6 +5,7 @@ import type { Box } from "../canvas/geometry.ts";
 import type { StepMark } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import { pageWords } from "./page-words.ts";
+import { StatusDot } from "./status-dot.tsx";
 
 /** Props for {@link StepCard}. */
 export interface StepCardProps {
@@ -20,6 +21,8 @@ export interface StepCardProps {
   /** Take focus on mount, for the card a problem's link opened. */
   readonly focusOnMount?: boolean;
   readonly onSelect: () => void;
+  /** Told when the card takes focus, so the canvas can bring it into view. */
+  readonly onFocus?: ((event: React.FocusEvent<HTMLButtonElement>) => void) | undefined;
 }
 
 /**
@@ -36,6 +39,7 @@ export function StepCard({
   mark,
   focusOnMount,
   onSelect,
+  onFocus,
 }: StepCardProps) {
   const button = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -48,6 +52,7 @@ export function StepCard({
       type="button"
       aria-pressed={selected}
       onClick={onSelect}
+      onFocus={onFocus}
       // Dragging the background pans; a press on a card must not start that.
       onPointerDown={(event) => event.stopPropagation()}
       style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
@@ -66,19 +71,15 @@ export function StepCard({
         {step.title ?? step.id}
       </span>
       {mark !== undefined && (
-        <span
-          data-testid="status-dot"
-          data-mark={mark}
+        <StatusDot
+          mark={mark}
           style={{
             left: box.width - DOT_INSET - DOT / 2 - CARD_BORDER,
             top: DOT_INSET - DOT / 2 - CARD_BORDER,
             width: DOT,
             height: DOT,
           }}
-          className={`absolute rounded-full ${DOT_COLOUR[mark]}`}
-        >
-          <span className="sr-only">{startWords.mark[mark]}</span>
-        </span>
+        />
       )}
       {failed && <StatusChip tone="danger">{startWords.failedChip}</StatusChip>}
       {step.type === "task" && (
@@ -88,19 +89,20 @@ export function StepCard({
   );
 }
 
+/** How far the Start chip rises above its card's top edge, in px: its `-top-5`. */
+const START_CHIP_RISE = 20;
+
+/** All that a card draws, its Start chip included, in the canvas surface's coordinates. */
+export function cardExtent(box: Box, first: boolean): Box {
+  if (!first) return box;
+  return { ...box, y: box.y - START_CHIP_RISE, height: box.height + START_CHIP_RISE };
+}
+
 /** The status dot's size and its centre's distance from the card's top-right corner, in px. */
 export const DOT = 10;
 const DOT_INSET = 14;
 /** The card's border width: an absolute child is placed from inside it, `dotCentre` from the outer edge. */
 export const CARD_BORDER = 1;
-
-const DOT_COLOUR: Record<StepMark, string> = {
-  done: "bg-success",
-  running: "bg-accent",
-  waiting: "bg-warning",
-  failed: "bg-danger",
-  stopped: "bg-fg-muted",
-};
 
 /** The colour the point of light takes on a step's dot: the dot's own. */
 export const DOT_VAR: Record<StepMark, string> = {

@@ -4,7 +4,7 @@ Owner: priya · Layer: adapters · Read the root `AGENTS.md` first; this file ad
 
 ## Scope
 
-The Secrets and TokenStore ports over the OS keychain, through the Studio shell's secret_* commands.
+The Secrets and TokenStore ports over the OS keychain, through the Studio shell's secret_* and token_* commands.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

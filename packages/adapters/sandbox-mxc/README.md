@@ -18,6 +18,11 @@ in Studio or the CLI turns it on yet: the Settings switch waits for the approved
 (HAL-3290), and MXC stays opt-in until the check on a real PC has passed (HAL-2546). No release
 ships MXC before then.
 
+Before something turns MXC on: the run page says "No connection was made." for a blocked site
+of any `os` sandbox, because srt's blocked-site suites prove it (`runs.run-view.blocked-sites`).
+MXC is `os` too and has no such suite, so either MXC passes one, or `sandbox.opened` has to
+tell MXC apart from srt (HAL-12658).
+
 ## Loading MXC's SDK
 
 The SDK (`@microsoft/mxc-sdk`) is not a dependency. It is downloaded once, on Windows only,

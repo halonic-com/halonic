@@ -13,6 +13,7 @@ import type {
   SendGroup,
 } from "@halonicjs/events";
 import { draftsOf, readsOf, sendsOf } from "@halonicjs/events";
+import { escapeHidden } from "@halonicjs/std";
 import type { SourcedRun } from "../api.ts";
 import { costParts, currentStepName, enteredAStep, took, waitingLine } from "../list/run-row.ts";
 import {
@@ -216,6 +217,49 @@ export function messageLines(events: readonly RunEvent[]): string[] {
 export function readLines(events: readonly RunEvent[]): string[] {
   const reads = readsOf(events);
   return reads.length === 0 ? [] : [receiptWords.read(countsInWords(reads))];
+}
+
+/**
+ * The receipt's Items section (RCPT-2.1): the files the run saved, in the
+ * order it saved them, each name once, as one line. Names are plain text with
+ * hidden characters escaped. Empty when it saved none, which hides the section.
+ *
+ * @example
+ * itemLines(events);
+ * // ["Created 1 file: weekly-report.md"]
+ */
+export function itemLines(events: readonly RunEvent[]): string[] {
+  const names = new Set<string>();
+  for (const event of events) {
+    if (event.type === "artifact.created") names.add(escapeHidden(event.name));
+  }
+  return names.size === 0 ? [] : [receiptWords.createdFiles([...names])];
+}
+
+/**
+ * What the agent said last, for the frame after the receipt (RCPT-3.4): the
+ * output of the run's last agent that answered, as plain text with hidden
+ * characters escaped. Text stays as written, line breaks included; any other
+ * output is shown as its JSON. It is model output, never a source for the
+ * receipt's lines (RCPT-3.1). Undefined when no agent answered with something.
+ *
+ * @example
+ * agentSays(events);
+ * // "This week: 12 emails, 3 refunds."
+ */
+export function agentSays(events: readonly RunEvent[]): string | undefined {
+  for (let index = events.length - 1; index >= 0; index--) {
+    const event = events[index];
+    if (event?.type !== "agent.finished" || event.error !== undefined) continue;
+    const text = outputText(event.output).trim();
+    if (text !== "") return escapeHidden(text);
+  }
+  return undefined;
+}
+
+function outputText(output: unknown): string {
+  if (output === null || output === undefined) return "";
+  return typeof output === "string" ? output : (JSON.stringify(output, null, 2) ?? "");
 }
 
 /**

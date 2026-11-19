@@ -1,6 +1,6 @@
 import type { LibraryItemKind } from "@halonicjs/app";
 import { requestFilesReveal } from "@halonicjs/studio-feature-files/api";
-import { usePresentation } from "@halonicjs/studio-kit";
+import { type ToastStore, usePresentation, useToastStore } from "@halonicjs/studio-kit";
 import type { PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useState } from "react";
 import type { CollectionRef } from "../collection-host.ts";
@@ -10,7 +10,7 @@ import { type LibraryItemsHost, LibraryItemsHostService } from "../library-items
 import type { LibraryEntryPlace } from "../library-overview.ts";
 import { LibraryTabMemoryService } from "../library-tab-memory.ts";
 import { takeLibraryTabRequests } from "../library-tab-request.ts";
-import { libraryKinds, tabLabel } from "../library-words.ts";
+import { libraryKinds, noDocsFolderToast, tabLabel } from "../library-words.ts";
 import { NewCollectionHostService } from "../new-collection-host.ts";
 import { type ConnectorRef, NewConnectorHostService } from "../new-connector-host.ts";
 import { type NewConnectorRequest, takeNewConnectorRequests } from "../new-connector-request.ts";
@@ -33,15 +33,19 @@ const docsFolder = "docs";
 /**
  * The empty Knowledge tab's "Open the docs folder" (requirement `library.open-docs-folder`):
  * shows the Files view with the workspace's docs folder revealed in the tree, or the deepest
- * folder above it when there is none. Only the desktop's sidebar has the Files view.
+ * folder above it when there is none, and then a toast says there's no docs folder. Only the
+ * desktop's sidebar has the Files view.
  */
 function openDocsFolder(
   showSidebarView: PlaceViewProps["context"]["showSidebarView"],
+  toasts: ToastStore | null,
 ): Pick<LibraryPageProps, "onOpenDocsFolder"> {
   if (showSidebarView === undefined) return {};
   return {
     onOpenDocsFolder: () => {
-      requestFilesReveal(docsFolder);
+      void requestFilesReveal(docsFolder).then((answer) => {
+        if (answer === "nearest") toasts?.show({ tone: "info", title: noDocsFolderToast });
+      });
       showSidebarView("files");
     },
   };
@@ -148,6 +152,7 @@ function LibraryKindView({ context, sub }: PlaceViewProps) {
   const memory = context.services.get(LibraryTabMemoryService);
   const [chosen, setKind] = useState<LibraryItemKind>(() => memory.get() ?? "skill");
   const desktop = usePresentation() === "desktop";
+  const toasts = useToastStore();
   // A phone shows the list of kinds, and a kind's list as a page of its own (flow-library 8).
   const phoneKind = desktop ? undefined : libraryKinds.find((each) => each === sub);
   const kind = phoneKind ?? chosen;
@@ -222,7 +227,7 @@ function LibraryKindView({ context, sub }: PlaceViewProps) {
         onOpen={(each, entry) => openItem?.(refOf(each, entry))}
         onOpenInNewTab={(each, entry) => openItemInNewTab?.(refOf(each, entry))}
         {...openAsFile}
-        {...(desktop ? openDocsFolder(context.showSidebarView) : {})}
+        {...(desktop ? openDocsFolder(context.showSidebarView, toasts) : {})}
         {...(onNew === undefined ? {} : { onNew })}
       />
       {openedFile !== undefined && (

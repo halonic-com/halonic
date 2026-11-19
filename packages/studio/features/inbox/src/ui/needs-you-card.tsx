@@ -1,9 +1,12 @@
+import { RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { Button, List, usePresentation } from "@halonicjs/studio-kit";
 import type { HomeCardProps } from "@halonicjs/studio-shell";
 import { use, useCallback, useSyncExternalStore } from "react";
 import { InboxService } from "../api.ts";
 import type { Inbox } from "../inbox.ts";
-import { rowFor } from "./inbox-row.tsx";
+import { inboxRow } from "./inbox-row.tsx";
+import type { RunFactsOf } from "./run-facts.ts";
+import { useRunFacts } from "./use-run-facts.ts";
 
 /** How many rows Needs you shows on a phone before "See all N in Inbox" (PH 2.3). */
 export const PHONE_ROWS = 3;
@@ -11,9 +14,11 @@ export const PHONE_ROWS = 3;
 /** Home's Needs you card: the open workspace's Inbox, from `InboxService`. */
 export function NeedsYouCard({ context }: HomeCardProps) {
   const { openPlace } = context;
+  const runFacts = useRunFacts(context.services.find(RunsListService));
   return (
     <NeedsYouView
       inbox={context.services.get(InboxService)}
+      runFacts={runFacts}
       {...(openPlace === undefined ? {} : { openInbox: () => openPlace("inbox") })}
     />
   );
@@ -22,6 +27,8 @@ export function NeedsYouCard({ context }: HomeCardProps) {
 /** Props for {@link NeedsYouView}. */
 export interface NeedsYouViewProps {
   readonly inbox: Inbox;
+  /** The facts of the run behind an item, so a row reads as the Inbox page's; without them it has none. */
+  readonly runFacts?: RunFactsOf | undefined;
   /** Opens the Inbox place; left out where the card isn't in a window, so rows can't open. */
   readonly openInbox?: () => void;
   /** The clock for the waiting times; tests pass a fixed one. */
@@ -29,15 +36,20 @@ export interface NeedsYouViewProps {
 }
 
 /**
- * Home's Needs you (UX checklist T2 1.9, PH 2.3): the Inbox's rows, newest first, under the
- * heading the shell draws with the Inbox's count. Rows have no button: Enter or a click opens the
+ * Home's Needs you (UX checklist T2 1.9, PH 2.3): the Inbox's rows, newest first, as the Inbox page
+ * shows them, with their run's workflow, under the heading the shell draws with the Inbox's count. Rows have no button: Enter or a click opens the
  * item's card in the Inbox. On a phone, the first three, then **See all N in Inbox**. With nothing
  * waiting, the one line "Nothing is waiting for you." and the heading stays.
  *
  * The section shows its skeleton until the Inbox's first list loads, and its error with **Try
  * again** if that load fails; a later failed load keeps the rows as they were.
  */
-export function NeedsYouView({ inbox, openInbox, now = () => new Date() }: NeedsYouViewProps) {
+export function NeedsYouView({
+  inbox,
+  runFacts,
+  openInbox,
+  now = () => new Date(),
+}: NeedsYouViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
   const state = useSyncExternalStore(subscribe, () => inbox.state);
   const phone = usePresentation() === "phone";
@@ -55,7 +67,7 @@ export function NeedsYouView({ inbox, openInbox, now = () => new Date() }: Needs
     <>
       <List
         label="Needs you"
-        rows={shown.map((item) => rowFor(item, now()))}
+        rows={shown.map((item) => inboxRow(item, now(), runFacts))}
         {...(openInbox === undefined ? {} : { onOpen: open })}
         empty={{ title: "Nothing is waiting for you.", plain: true }}
       />

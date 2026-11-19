@@ -125,14 +125,14 @@ verifies("workspace.try-sample", () => {
   it("says why on Welcome and opens nothing when it can't", async () => {
     const { shell } = start({
       kind: "cant",
-      folder: "~/Documents",
+      folder: "Documents",
       reason: "permission denied",
     });
 
     await act(async () => trySample()?.click());
 
     expect(element.textContent).toContain(
-      "Can't create the sample in ~/Documents: permission denied.",
+      "Can't create the sample in Documents: permission denied.",
     );
     expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
     expect(shell.toasts.list()).toEqual([]);
@@ -153,7 +153,7 @@ verifies("workspace.try-sample", () => {
   });
 
   it("shows no chip for a workspace that is not remembered as a sample", async () => {
-    start({ kind: "cant", folder: "~/Documents", reason: "x" }, [
+    start({ kind: "cant", folder: "Documents", reason: "x" }, [
       { location: "/work/acme", name: "Acme" },
     ]);
 
@@ -201,7 +201,7 @@ verifies("workspace.try-sample", () => {
 
   it("says in a toast why Fresh copy couldn't write", async () => {
     const known = { location: "/docs/Acme sample", name: "Acme", sample: true } as const;
-    const { shell } = start({ kind: "cant", folder: "~/Documents", reason: "permission denied" }, [
+    const { shell } = start({ kind: "cant", folder: "Documents", reason: "permission denied" }, [
       known,
     ]);
     await act(async () => element.querySelector<HTMLButtonElement>("li button")?.click());

@@ -21,7 +21,9 @@ function LastRun({ lastRun, now }: { readonly lastRun: WorkflowLastRun; readonly
       {listWords.lastRun}{" "}
       {outcome !== null && (
         <>
-          <span aria-hidden="true">{outcome.glyph} </span>
+          <span aria-hidden="true" className={outcome.danger ? "text-danger" : undefined}>
+            {outcome.glyph}{" "}
+          </span>
           <span className="sr-only">{outcome.spoken}, </span>
         </>
       )}

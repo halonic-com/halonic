@@ -42,18 +42,23 @@ interface CountChip extends StatusChipBase {
 /** The props of `StatusChip`. */
 export type StatusChipProps = WordChip | CountChip;
 
-/** Each coloured tone is its colour on its own `-soft` fill, which passes AA on every surface. */
+/**
+ * Each coloured tone is its colour on its own `-soft` fill, which passes AA on every surface. The
+ * soft fills are see-through, so on a muted fill (an unselected tab, a hovered row) they would
+ * darken with it and drop their text below 4.5:1 (HAL-12459). There the chip lays its soft fill
+ * over surface and looks just as it does on a page. Attention's soft fill is opaque already.
+ */
 const toneClasses: Record<StatusChipTone, string> = {
-  // On a muted fill (an unselected tab, a hovered row) the neutral box steps up to stay visible.
-  // With more contrast border is too dark for the text, so it's surface, set apart by its edge.
+  // On a muted fill the neutral box steps up to stay visible. With more contrast border is too
+  // dark for the text, so it's surface, set apart by its edge.
   neutral:
     "bg-surface-muted text-fg-muted on-muted:bg-border on-muted:text-fg contrast-more:on-muted:bg-surface",
-  accent: "bg-accent-soft text-accent-text",
-  running: "bg-running-soft text-running",
-  warning: "bg-warning-soft text-warning",
+  accent: "bg-accent-soft text-accent-text on-muted:bg-over-surface-accent-soft",
+  running: "bg-running-soft text-running on-muted:bg-over-surface-running-soft",
+  warning: "bg-warning-soft text-warning on-muted:bg-over-surface-warning-soft",
   attention: "bg-attention-soft text-attention",
-  danger: "bg-danger-soft text-danger",
-  success: "bg-success-soft text-success",
+  danger: "bg-danger-soft text-danger on-muted:bg-over-surface-danger-soft",
+  success: "bg-success-soft text-success on-muted:bg-over-surface-success-soft",
   outline: "text-fg-muted",
 };
 

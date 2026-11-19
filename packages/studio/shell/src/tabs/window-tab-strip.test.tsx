@@ -138,6 +138,18 @@ verifies("shell.window-tab-strip", () => {
       expect(selected).toEqual(["false", "true", "false"]);
     });
 
+    it("leaves the kind out of the name when it only repeats the title", () => {
+      const { tabs, container } = renderStrip();
+      act(() => {
+        tabs.openInNewTab({
+          key: "workspace/local/settings",
+          title: "Workspace settings",
+          kind: "workspace settings",
+        });
+      });
+      expect(names(container)).toContain("Workspace settings");
+    });
+
     it("adds needs you to the name and shows the dot only on a tab whose item waits", () => {
       const { container } = renderStrip({ needsYou: (location) => location.key === reply.key });
       expect(names(container)[2]).toBe("Support reply, workflow, needs you");

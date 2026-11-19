@@ -181,6 +181,7 @@ function SimpleScheduleFields({
           label={words.days}
           toggles={WEEK_DAYS.map((day) => ({
             label: day.label,
+            name: day.name,
             pressed: schedule.days.has(day.cron),
             onChange: (pressed) => toggleDay(day.cron, pressed),
           }))}

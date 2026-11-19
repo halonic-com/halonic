@@ -79,5 +79,12 @@ verifies("sandbox-srt.wsl-setup", () => {
       expect(script).toContain("-FilePath 'C:\\Win''; Remove-Item x; ''"); // leak-guard: allow absolute-path made-up folder
       expect(script).toContain("-ArgumentList '--update'");
     });
+
+    it("quotes PowerShell's typographic single quotes in SystemRoot too", async () => {
+      vi.stubEnv("SystemRoot", "C:\\Win\u2019; Remove-Item x; \u2018"); // leak-guard: allow absolute-path made-up folder
+      await systemWslHost().updateWsl();
+      const script = started[0]?.args.at(-1) ?? "";
+      expect(script).toContain("-FilePath 'C:\\Win\u2019\u2019; Remove-Item x; \u2018\u2018"); // leak-guard: allow absolute-path made-up folder
+    });
   });
 });

@@ -8,6 +8,7 @@
 //! and output instead (`relay.rs`). Nothing here knows Tauri, so it builds
 //! and tests anywhere.
 
+mod default_distro;
 mod handshake;
 mod relay;
 mod routes;
@@ -21,6 +22,7 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
+pub use default_distro::halonic_is_default;
 pub use handshake::{Handshake, read_handshake};
 use relay::Relay;
 pub use routes::{Answer, LineSplitter, LineTooLong, Method, Route, find_route};

@@ -41,12 +41,14 @@ the steps below instead.
 
 Halonic never goes around a proxy it can't use. If the setting is unusable
 (for example `socks5://…`, or no `http://` in front), or the proxy refuses or
-drops the tunnel, each request that needs it fails, and nothing goes
-directly instead. For now the command line doesn't give the proxy's reason: a
-model call that fails this way says only that Halonic couldn't reach the
-provider and to check your internet connection, in the run log and with
-`--debug` too. If you see that with a proxy set, check the variable and the
-proxy first. Fix the variable and restart Halonic.
+drops the tunnel, or the provider's address starts with `http://` while a
+proxy is set (see "Refused when a proxy is set" above), each request that
+needs it fails, and nothing goes directly instead. For now the command line
+doesn't give the reason: a model call that fails this way says only that
+Halonic couldn't reach the provider and to check your internet connection, in
+the run log and with `--debug` too. If you see that with a proxy set, check
+the variable, the proxy and the provider's address first. Fix the setting and
+restart Halonic.
 
 ## Good to know
 
@@ -54,6 +56,10 @@ proxy first. Fix the variable and restart Halonic.
   as in curl. An empty value counts as not set.
 - **`HTTP_PROXY` is not read.** Halonic tunnels only `https`.
 - **`https://` and SOCKS proxies are not supported yet.**
+- **The Studio desktop app doesn't use the proxy yet.** Its model calls connect
+  directly, so behind a proxy that blocks direct traffic they fail. Studio in
+  the browser (`halonic serve`) and the command line do use it.
+  <!-- CHECK (HAL-12966): remove when the desktop app reads HTTPS_PROXY. -->
 - **A password in the proxy URL travels unencrypted to an `http://` proxy.**
   That is normal for company proxies, but know it. Halonic never prints the
   user name or password, and never sends them to anything but the proxy.

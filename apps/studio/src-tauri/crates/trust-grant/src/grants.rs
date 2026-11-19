@@ -221,9 +221,9 @@ impl TrustState {
     /// Opens a folder the person picked before, as a pick does, without the
     /// dialog. Only a location in the list opens, and only while it is
     /// still the folder they picked: the same canonical path and the same
-    /// identity (device and inode on Unix, volume and file index on
-    /// Windows). Otherwise it is refused, and the entry stays so they can
-    /// pick the folder again:
+    /// identity (device and inode on Unix, volume and file ID on Windows).
+    /// Otherwise it is refused, and the entry stays so they can pick the
+    /// folder again:
     ///
     /// - `not_picked`: the location isn't in the list;
     /// - `folder_missing`: nothing is at the path any more;

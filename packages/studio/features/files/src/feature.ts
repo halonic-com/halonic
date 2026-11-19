@@ -1,5 +1,5 @@
 import { defineFeature } from "@halonicjs/studio-shell";
-import { FILE_KIND, fileName } from "./file-item.ts";
+import { FILE_KIND, FILES_VIEW, fileName } from "./file-item.ts";
 import { FilesHostService } from "./files-host.ts";
 import { filesWords } from "./files-words.ts";
 
@@ -13,7 +13,7 @@ export const filesFeature = defineFeature({
   needs: [FilesHostService],
   register(studio) {
     studio.sidebarViews.add({
-      id: "files",
+      id: FILES_VIEW,
       order: 1,
       label: filesWords.treeLabel,
       view: "FilesSidebarView",

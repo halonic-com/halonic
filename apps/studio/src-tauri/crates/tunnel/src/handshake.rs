@@ -156,7 +156,9 @@ impl Pairing {
         let host_name = serde_json::from_slice::<HostPayload>(&payload2)
             .map_err(|_| SessionError::Unreadable)?
             .host_name;
-        if host_name.len() > MAX_NAME_BYTES {
+        // On the typed route a fake host chooses the name, so it must show
+        // as the plain text it is. The check code is the real defence.
+        if host_name.len() > MAX_NAME_BYTES || !is_plain_name(&host_name) {
             return Err(SessionError::Unreadable);
         }
 
@@ -229,6 +231,47 @@ fn handshake_body(
         Some((kind, _)) if kind == refusal => Err(SessionError::from_cleartext(bytes)),
         _ => Err(SessionError::Unreadable),
     }
+}
+
+/// Whether `name` shows as the plain text it is: no control characters, none
+/// that change how the text around them is laid out and none that are there
+/// without showing.
+fn is_plain_name(name: &str) -> bool {
+    name.chars().all(|character| {
+        !character.is_control() && !is_layout_control(character) && !is_invisible(character)
+    })
+}
+
+/// The format characters that show as nothing and join nothing: the soft
+/// hyphen, the Mongolian vowel separator, the zero width space, the word
+/// joiner, the invisible operators, the deprecated shaping and mirroring
+/// controls, the byte order mark, the interlinear annotation marks and the
+/// tag characters, which can make two names that look alike differ or hide
+/// text. The zero width joiner and non-joiner stay allowed: Persian, the
+/// Indic scripts and emoji need them. Blocking the tags means a subdivision
+/// flag emoji (England, Scotland) can't be part of a computer name.
+fn is_invisible(character: char) -> bool {
+    matches!(
+        character,
+        '\u{00AD}'
+            | '\u{180E}'
+            | '\u{200B}'
+            | '\u{2060}'..='\u{2064}'
+            | '\u{206A}'..='\u{206F}'
+            | '\u{FEFF}'
+            | '\u{FFF9}'..='\u{FFFB}'
+            | '\u{E0000}'..='\u{E007F}'
+    )
+}
+
+/// The characters that lay text out rather than show as text: the line and
+/// paragraph separators, and the bidi marks, embeddings, overrides and
+/// isolates, which can show a name's letters in another order.
+fn is_layout_control(character: char) -> bool {
+    matches!(
+        character,
+        '\u{061C}' | '\u{200E}' | '\u{200F}' | '\u{2028}'..='\u{202E}' | '\u{2066}'..='\u{2069}'
+    )
 }
 
 fn write_handshake(noise: &mut HandshakeState, payload: &[u8]) -> Result<Vec<u8>, SessionError> {

@@ -4,6 +4,7 @@ import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import { PhoneTopBarSlot } from "../phone/phone-top-bar-actions.tsx";
 import { installFakePopover } from "../test-support/fake-popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import type { OverviewHub } from "./overview-model.ts";
@@ -331,7 +332,7 @@ verifies("shell.overview.used-by", () => {
     expect(text.indexOf("1 running")).toBeLessThan(text.indexOf("Used by 1 agent"));
   });
 
-  it("ends the line under the name with the used-by text on a phone, after the detail", () => {
+  it("ends the line under the name with the used-by text on a phone, after the detail, and cuts only the detail", () => {
     const page = render(
       <PresentationProvider presentation="phone">
         <OverviewPage
@@ -363,6 +364,16 @@ verifies("shell.overview.used-by", () => {
         ?.querySelector(".text-small")?.textContent;
     expect(lineUnder("Refund handling")).toBe("When an email asks for a refund · Not used yet");
     expect(lineUnder("Tone of voice")).toBe("Not used yet");
+    const row = [...page.querySelectorAll("tr")].find((each) =>
+      each.textContent?.includes("Refund handling"),
+    );
+    const cut = [...(row?.querySelectorAll(".truncate") ?? [])].map((each) => each.textContent);
+    expect(cut).toContain("When an email asks for a refund");
+    const usedBy = [...(row?.querySelectorAll("span") ?? [])].find(
+      (each) => each.textContent === "Not used yet",
+    );
+    expect(usedBy?.className).toContain("shrink-0");
+    expect(usedBy?.className).toContain("whitespace-nowrap");
   });
 
   it("doesn't search the used-by text", () => {
@@ -390,5 +401,30 @@ verifies("shell.overview.phone-head", () => {
     );
     expect(button?.className).toContain("min-h-touch");
     expect(button?.parentElement?.className).toContain("flex-col");
+  });
+
+  it("puts the create button in the phone top bar as a 48px +, with nothing under the search field", () => {
+    const topBar = document.createElement("div");
+    document.body.append(topBar);
+    const onClick = vi.fn();
+    const page = render(
+      <PresentationProvider presentation="phone">
+        <PhoneTopBarSlot value={topBar}>
+          <OverviewPage
+            hubs={hubs}
+            words={words}
+            onOpen={() => undefined}
+            onOpenInNewTab={() => undefined}
+            newButton={{ label: "New skill", onClick }}
+          />
+        </PhoneTopBarSlot>
+      </PresentationProvider>,
+    );
+    const plus = topBar.querySelector<HTMLButtonElement>('button[aria-label="New skill"]');
+    expect(plus?.className).toContain("phone:size-touch");
+    expect(page.textContent).not.toContain("New skill");
+    act(() => plus?.click());
+    expect(onClick).toHaveBeenCalledOnce();
+    topBar.remove();
   });
 });

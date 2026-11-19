@@ -152,11 +152,16 @@ export function createNodeHttpClient(options: NodeHttpOptions): AddressCheckingH
     ).catch((error: unknown) => {
       throw error instanceof AddressRefusedError
         ? error
-        : new ProxyError(`Could not find your proxy ${proxy.endpoint}: ${String(error)}`);
+        : new ProxyError(
+            `Could not find your proxy ${proxy.endpoint}: ${String(error)}`,
+            "unreachable",
+            { variable: proxy.variable, proxy: proxy.endpoint.toString(), host: target.hostname },
+          );
     });
     signal?.throwIfAborted();
     const socket = await openTunnel({
       proxy: proxy.endpoint,
+      variable: proxy.variable,
       lookup: fixedLookup(addresses),
       target,
       connectTimeoutMs: options.proxyConnectTimeoutMs ?? 20_000,

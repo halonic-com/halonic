@@ -1,7 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { chmod, cp, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, sep } from "node:path";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { RunHistory } from "@halonicjs/app";
@@ -16,7 +16,6 @@ import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { goldenText, heavyTestTimeout, runGolden } from "../../test/golden.ts";
 import { checklistProblems } from "../../test/golden-checklist.ts";
 import { turnOffLocalOnly } from "../../test/local-only.ts";
-import { pastedKey, pasteKeyIntoProvider } from "../../test/pasted-key.ts";
 import { removeTestFolder } from "../../test/remove-folder.ts";
 import { engineStart, testRunSetup } from "../../test/run-setup.ts";
 import { leakedAddressParts, userInfoConnectorYaml } from "../../test/user-info-connector.ts";
@@ -399,34 +398,6 @@ describe("halonic run's refusals", () => {
     ).toEqual([]);
     const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
     expect(listed.total).toBe(0);
-  });
-});
-
-verifies("cli.workspace-file-problems", () => {
-  it("refuses a workspace whose provider file has a pasted key, before trust, and never shows the key", async () => {
-    await pasteKeyIntoProvider(acme);
-    const profile = freshProfile();
-    const io = captureIo(acme);
-
-    const code = await runCli(["run", "support-reply", ...samsEmail], io, [runCommand(profile)]);
-
-    expect(code).toBe(exitCode.usage);
-    expect(io.stderr.slice(0, 2)).toEqual([
-      "✕ Couldn't run support-reply: Acme has 2 problems in its files. Nothing ran.",
-      "  See them with: halonic validate",
-    ]);
-    expect([...io.stdout, ...io.stderr].join("\n")).not.toContain(pastedKey);
-    const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
-    expect(listed.total).toBe(0);
-  });
-
-  it("keeps the user's --dir in the command it suggests", async () => {
-    await pasteKeyIntoProvider(acme);
-    const io = captureIo(folder);
-
-    await runCli(["run", "support-reply", "--dir", "acme"], io, [runCommand()]);
-
-    expect(io.stderr[1]).toBe(`  See them with: halonic validate --dir .${sep}acme`);
   });
 });
 

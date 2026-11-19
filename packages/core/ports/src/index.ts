@@ -45,6 +45,7 @@ export {
   type ToolRisk,
   type TrustGrant,
 } from "./connector-client.ts";
+export { ConnectorToolError, isConnectorToolError } from "./connector-tool-error.ts";
 export {
   type Coordination,
   type CounterResult,
@@ -170,6 +171,7 @@ export {
   ModelCallError,
   type ModelCallErrorReason,
   modelCallErrorReasons,
+  networkCauseOf,
   type ProviderConfig,
   type ProviderFactoryContext,
   VendorErrorText,
@@ -260,7 +262,9 @@ export {
   encodeCleartextFrame,
   type GatewayCleartextFrame,
   type GatewayFrameKind,
+  gatewayFallbackHostName,
   gatewayFrameKinds,
+  gatewayHostName,
   gatewayMaxFrameBytes,
   gatewayMaxHandshakeBytes,
   gatewayMaxNameBytes,
@@ -354,6 +358,7 @@ export {
   type SandboxStrength,
   type SandboxUnavailableReason,
   sandboxPackageManagers,
+  sandboxResiduals,
   sandboxUnavailableReasons,
   sandboxVersion,
 } from "./sandbox.ts";

@@ -72,6 +72,11 @@ export interface SearchResult {
   readonly label: string;
   /** The kind and hub, such as "Agent · acme". */
   readonly detail?: string;
+  /**
+   * The name of the item's hub as `detail` shows it, such as "Reports", so a screen reader hears
+   * which hub it is in, as the row shows it.
+   */
+  readonly hubName?: string;
   /** The item's description, which the Search page also searches and shows under the name. */
   readonly description?: string;
 }

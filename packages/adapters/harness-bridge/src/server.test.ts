@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import { fakeProvider } from "./fake-provider.test-helper.ts";
 import { fakeRun, noOutsideCall, send } from "./fakes.test-helper.ts";
 import { socketBridgeName } from "./listener.ts";
 import { sendToSocket } from "./raw-client.test-helper.ts";
@@ -87,6 +88,32 @@ verifies("harness-bridge.openai", () => {
       // The run's agent doesn't use OpenAI: the route is there and refuses it.
       const reply = await send(bridge, "/v1/responses", { token: bridge.token, body: "{}" });
       expect(reply.status).toBe(403);
+    } finally {
+      await bridge.close();
+    }
+  });
+});
+
+verifies("harness-bridge.provider-base-url", () => {
+  it("calls a baseUrl through compatibleFetch, never through fetch", async () => {
+    const secrets = { get: async () => "compatible-test-value" };
+    const ownHosts = fakeProvider(() => Response.json({ output: [] }));
+    const compatible = fakeProvider(() => Response.json({ output: [] }));
+    const server = new NodeHarnessBridgeServer({
+      secrets,
+      fetch: ownHosts.fetch,
+      compatibleFetch: compatible.fetch,
+    });
+    const openai = { kind: "key", secret: "k", baseUrl: "https://compatible.example/v1" } as const;
+    const recorder = { record: async () => {} };
+    const bridge = await server.open({ ...fakeRun(), providers: { openai }, recorder });
+    try {
+      const body = JSON.stringify({ model: "glm-5.2", input: "hi" });
+      expect((await send(bridge, "/v1/responses", { token: bridge.token, body })).status).toBe(200);
+      expect(compatible.calls.map((call) => call.url)).toEqual([
+        "https://compatible.example/v1/responses",
+      ]);
+      expect(ownHosts.calls).toEqual([]);
     } finally {
       await bridge.close();
     }

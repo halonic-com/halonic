@@ -1,8 +1,10 @@
+import { ConnectorToolError } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { ApprovalDesk, reviewedTools } from "../agent/listed-tool-approval.test-helper.ts";
 import type { EffectBoundary } from "../agent/run-tool-call.ts";
 import type { CallToolEffect } from "../kernel/decide-types.ts";
+import { brokeOff } from "../kernel/requested-effect.ts";
 import { ScriptedConnector } from "../testing/scripted-model.ts";
 import { makeConnectorCall } from "./connector-calls.ts";
 
@@ -22,15 +24,19 @@ function sendMail(args: unknown): CallToolEffect {
   };
 }
 
-function mailConnector() {
-  return new ScriptedConnector("mail", [
-    {
-      name: "send_mail",
-      description: "Sends a mail",
-      parameters: { type: "object" },
-      risk: "send",
-    },
-  ]);
+function mailConnector(answer?: () => string) {
+  return new ScriptedConnector(
+    "mail",
+    [
+      {
+        name: "send_mail",
+        description: "Sends a mail",
+        parameters: { type: "object" },
+        risk: "send",
+      },
+    ],
+    answer,
+  );
 }
 
 verifies("engine.run-connector-calls", () => {
@@ -58,6 +64,7 @@ verifies("engine.run-connector-calls", () => {
       type: "tool",
       result: "The call wasn't made: the arguments of send_mail aren't an object.",
       outcome: "error",
+      cause: { code: "not-made", why: "bad-arguments" },
     });
     expect(mail.calls).toEqual([]);
   });
@@ -77,6 +84,7 @@ verifies("engine.run-connector-calls", () => {
       type: "tool",
       result: 'The call wasn\'t made: the connector "mail" no longer offers send_mail.',
       outcome: "error",
+      cause: { code: "not-made", why: "tool-gone" },
     });
     expect(mail.calls).toEqual([]);
   });
@@ -95,5 +103,46 @@ verifies("engine.run-connector-calls", () => {
 
     expect(result).toMatchObject({ outcome: "ok" });
     expect(mail.calls).toHaveLength(1);
+  });
+
+  it("logs a tool that answered with an error as failed, with the tool's own text (HAL-12342)", async () => {
+    const mail = mailConnector(() => {
+      throw new ConnectorToolError("mail", "send_mail", "ENOENT: no such file or directory\n");
+    });
+
+    const result = await makeConnectorCall(
+      [mail],
+      sendingOn,
+      sendMail({ to: "support" }),
+      reviewedTools,
+    );
+
+    expect(result).toEqual({
+      type: "tool",
+      result:
+        'Connector "mail" says its tool "send_mail" failed. It said: ENOENT: no such file or directory',
+      outcome: "error",
+      risk: "send",
+    });
+  });
+
+  it("keeps a call that broke off without an answer as unknown", async () => {
+    const mail = mailConnector(() => {
+      throw new Error("The MCP server stopped.");
+    });
+
+    const result = await makeConnectorCall(
+      [mail],
+      sendingOn,
+      sendMail({ to: "support" }),
+      reviewedTools,
+    );
+
+    expect(result).toEqual({
+      type: "tool",
+      result: brokeOff("The MCP server stopped."),
+      outcome: "unknown",
+      risk: "send",
+    });
   });
 });

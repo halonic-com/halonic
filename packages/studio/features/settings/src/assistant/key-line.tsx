@@ -98,11 +98,13 @@ export function KeyLine(props: KeyLineProps) {
         {dot(text.DOT_MISSING)}
         {text.KEY_MISSING}.{" "}
         {link(
-          <>
+          // One span, so on a phone, where the link is a flex row, the words wrap as one sentence,
+          // starting at the left like the line's other words rather than centred like a button's.
+          <span className="text-left">
             {added.before}
             <code className="font-mono">{secretName}</code>
             {added.after}
-          </>,
+          </span>,
           press(() => navigate?.addProvider(provider, secretName)),
         )}
       </>

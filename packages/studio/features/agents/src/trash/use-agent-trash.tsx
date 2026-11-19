@@ -1,6 +1,13 @@
-import { Button, Menu, MoreIcon, usePresentation, useToastStore } from "@halonicjs/studio-kit";
-import { errorReasonFor } from "@halonicjs/studio-shell";
-import { type ReactNode, useEffect, useId, useState } from "react";
+import {
+  Button,
+  Menu,
+  MoreIcon,
+  TrashStrip,
+  usePresentation,
+  useToastStore,
+} from "@halonicjs/studio-kit";
+import { errorReasonFor, PhoneTopBarActions, useInPhoneTopBar } from "@halonicjs/studio-shell";
+import { type ReactNode, useEffect, useState } from "react";
 import type { AgentRef, AgentsHost, TrashedAgent } from "../api.ts";
 import { deleteWords } from "./delete-words.ts";
 import { putBackAgent, trashAgent } from "./trash-agent.ts";
@@ -22,15 +29,13 @@ export interface AgentTrashInput {
 
 /** What {@link useAgentTrash} gives the page. */
 export interface AgentTrash {
-  /** The page's ⋮ button, with Open as file and Delete. */
+  /**
+   * The page's ⋮ button, with Open as file and Delete. Under a phone top bar it goes there, after
+   * the agent's name (UX 9.13), wherever the page puts it.
+   */
   readonly menu: ReactNode;
   /** The strip with Undo that replaces the page after Delete, or `null` while the agent is there. */
   readonly strip: ReactNode;
-}
-
-/** Puts focus on Undo when the strip appears: the page and its ⋮ button, where focus was, are gone. */
-function focusOnMount(button: HTMLButtonElement | null): void {
-  button?.focus();
 }
 
 /**
@@ -47,13 +52,13 @@ export function useAgentTrash({
 }: AgentTrashInput): AgentTrash {
   const toasts = useToastStore();
   const phone = usePresentation() === "phone";
+  const inTopBar = useInPhoneTopBar();
   // The name is the one shown at Delete: once the agent is in the trash, the page can't read it.
   const [removed, setRemoved] = useState<{
     trashed: TrashedAgent;
     line: string | undefined;
     name: string;
   }>();
-  const stripTextId = useId();
   const { hubId, id } = agent;
 
   // The workspace's undo (Ctrl Z) can bring the agent back past the strip; then the page returns.
@@ -103,7 +108,7 @@ export function useAgentTrash({
         }),
     );
 
-  const menu = (
+  const moreMenu = (
     <Menu
       align="end"
       trigger={(props) => (
@@ -123,27 +128,20 @@ export function useAgentTrash({
       ]}
     />
   );
+  const menu = inTopBar ? <PhoneTopBarActions>{moreMenu}</PhoneTopBarActions> : moreMenu;
+  // Undo takes focus: the page and its ⋮ button, where focus was, are gone. The strip is the
+  // first thing on the page, so it gets 16px above it, like the page's sides.
   const strip =
     removed === undefined ? null : (
-      <p className="flex flex-wrap items-center gap-2 px-4 py-5">
-        <span id={stripTextId}>
-          {deleteWords.pageMoved(removed.line !== undefined)}
-          {removed.line === undefined ? null : (
-            <>
-              {" "}
-              <span className="block">{removed.line}</span>
-            </>
-          )}
-        </span>
-        <Button
-          ref={focusOnMount}
-          variant="ghost"
-          aria-describedby={stripTextId}
-          onClick={() => void onUndo()}
-        >
-          {deleteWords.undo}
-        </Button>
-      </p>
+      <div className="pt-4">
+        <TrashStrip
+          text={deleteWords.pageMoved(removed.line !== undefined)}
+          detail={removed.line}
+          undoLabel={deleteWords.undo}
+          onUndo={onUndo}
+          focusUndo
+        />
+      </div>
     );
   return { menu, strip };
 }
