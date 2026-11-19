@@ -3,6 +3,7 @@
 - Task: HAL-13242
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13242 (Iris's C157 check, HAL-13229, PS1; decided by the team under HAL-2282, Sofia as designer, with no new words; Liam reviews the pull request on HAL-13242 and signs this note)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:o2+hLNgpBuuMJap3GG6UPc4QWAGtj2gR6z0cjgHi5Tzfgx5hcSzx7F4fvEWLpOFhNxnDOljeb8L66Wb3Lro0AA==
 
 ## What changes
 
