@@ -104,7 +104,7 @@ const SECURITY_UPDATE_LIMIT: Duration = Duration::from_secs(180);
 pub(super) fn run_security_update(wsl: &Path) {
     let result = runtime_command(wsl, RuntimeStep::SecurityUpdate)
         .and_then(|command| run_runtime_step_within(command, SECURITY_UPDATE_LIMIT));
-    eprintln!("{}", security_update_log(result));
+    halonic_shell_log::record("wsl", security_update_log(result));
 }
 
 /// The log line for the security updates' ending: the updater's last line,
