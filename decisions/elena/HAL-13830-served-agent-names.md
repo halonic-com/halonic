@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13830 (AG1, decided by the team; plan approved by Liam with conditions on HAL-13833)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:dXDl76lr9Jsfozsah2lXUCub0I4D6yOxsAijy3e838K33Y9ECehso0U/AB2Mfucsz+aXTdPr2V5ZXfYRiaD4Cg==
 
 ## What changes
 
