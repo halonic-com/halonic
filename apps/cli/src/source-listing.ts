@@ -12,7 +12,9 @@ import {
 } from "@halonicjs/ports";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { ConnectorMachine } from "./connector-machine.ts";
+import { connectorStartError } from "./connector-start-error.ts";
 import type { Message } from "./messages/define.ts";
+import { printable } from "./output/printable.ts";
 import { realWorkingFolders } from "./working-folders.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { trustedGrant } from "./workspace-trust.ts";
@@ -51,6 +53,8 @@ export interface SourceListing {
  * @param secrets - the command's `context.secrets`, so every value read is scrubbed from what it prints
  * @param nothingDone - the end of line 1 of a refusal, saying nothing happened
  * @throws NotTrustedError when the workspace isn't trusted as it is now (exit 3)
+ * @throws OwnLineError when the connector's program or a secret it names
+ *   isn't on this computer, naming which ({@link connectorStartError})
  */
 export async function readSourceListing(
   target: SourceListingTarget,
@@ -65,13 +69,18 @@ export async function readSourceListing(
     nothingDone,
     target.workspace,
   );
-  const tools = await machine.factories.listTools(connectorConfigOf(target.connector), {
+  const context = {
     secrets: workspaceSecrets(secrets),
     tokens: machine.tokens,
     http: machine.http,
     workspaceRoot: target.dir.root,
     workingFolders: await realWorkingFolders(target.dir.root, target.workspace),
     trust,
-  });
-  return { tools, trust };
+  };
+  try {
+    const tools = await machine.factories.listTools(connectorConfigOf(target.connector), context);
+    return { tools, trust };
+  } catch (error) {
+    throw connectorStartError(error, printable(target.connector.id)) ?? error;
+  }
 }
