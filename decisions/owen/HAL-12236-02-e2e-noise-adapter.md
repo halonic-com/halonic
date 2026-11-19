@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12236 (B1), Julian's condition 7 on HAL-12355 and his review on HAL-12450; Julian and Liam review this note
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:uIKYSRaYaYYMthgzQXpLFCG47qgZoWZr6nj31y+FVPbsOKPNl/XR/saa0Rlz++LBL5Ku85ONzLlDECivArlwCw==
 
 The adapter `packages/adapters/e2e-noise` commits `src/noise.wasm`, the build of the crate `apps/studio/src-tauri/crates/e2e-noise-wasm` that the note for #3578 (`decisions/owen/HAL-12236-e2e-noise.md`) added to the `tauri` job. This pull request changes `ci.yml` in three places, and nothing else in it:
 
