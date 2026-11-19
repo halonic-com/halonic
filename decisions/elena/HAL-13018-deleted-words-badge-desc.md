@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13018 (Sofia's C113 check on HAL-13003; words decided by the team under HAL-2282, building on the signed HAL-12646 note)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:x2Nnjjcsw6KDKfcgzmauU3dLhdsXpSgj6Cxg6vfLWnL5VwlFbbitj9KJ5aF0DZ3xYzqg9BlJZ9QUuVpahWseBA==
 
 Same reason as HAL-12646: there is no trash. The scheduler's `in-trash` means the target is in the live
 version but its saved file is gone, which on the desktop means it was deleted, and nothing can be put
