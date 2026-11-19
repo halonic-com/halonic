@@ -90,7 +90,7 @@ writing is up to the caller.
 ## Editing
 
 `editYaml(text, edits, limits?)` takes a list of `YamlEdit`s and answers with a `YamlEdited`
-(`text` and `layout`, a `YamlLayout`) or with a `YamlProblem` or `YamlEditProblem`. It applies `set`, `delete` and `insert` edits to a file
+(`text` and `layout`, a `YamlLayout`) or with a `YamlProblem` or `YamlEditProblem`. It applies `set`, `delete`, `insert` and `rename` edits to a file
 and keeps everything the edits don't touch, so a structured editor can save
 while the user watches the file.
 
@@ -101,6 +101,7 @@ const edited = editYaml(text, [
   { kind: "set", path: ["steps", 0, "model"], value: "fast" },
   { kind: "insert", path: ["steps", 1], value: { id: "review" } },
   { kind: "delete", path: ["draft"] },
+  { kind: "rename", path: ["env", "REGION"], to: "AWS_REGION" },
 ]);
 if (!edited.ok) {
   // a readYaml problem, or { kind: "bad-edit", edit: 1, message }
@@ -125,6 +126,11 @@ save(edited.value.text);
   top of a file that is a list, `insert [0]` goes above a header comment that
   sits right over the first item; leave a blank line under the header to keep
   it first.
+- `rename` gives a map key a new name in its place: only the key's characters
+  change, so its value and the comments inside and around it stay. A quoted
+  key stays quoted; a plain one gets quotes when the new name needs them.
+  Renaming to a key the map already has is a problem; renaming to the same
+  name changes nothing.
 - If any edit doesn't fit, nothing is applied and the problem names that edit.
 
 **Setting a whole map or list.** A `set` with a whole object changes only what
