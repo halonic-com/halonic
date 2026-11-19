@@ -32,6 +32,7 @@ import { useAnnounceDockedRun } from "../start/run-announcement.ts";
 import type { ShownRun } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
+import { StepEditDock } from "./docked-step-card.tsx";
 import { pageWords } from "./page-words.ts";
 import { type Dock, dockHasCard, RunDock, useShownRun } from "./run-dock.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
@@ -69,6 +70,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       notAnswering={engineWordsOf(context).notAnswering}
       announceState={(key, text) => context.announcer.announceState(key, text)}
       announce={(line) => context.announcer.announce(line)}
+      saving={context.saving}
       {...(context.runCommand && {
         openModels: () => void context.runCommand?.(openModelsCommand),
       })}
@@ -108,6 +110,7 @@ export function WorkflowScreen({
   testsAsked = 0,
   announceState,
   announce,
+  saving,
 }: WorkflowScreenProps) {
   // After a Try again reads, the workflow's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -292,6 +295,8 @@ export function WorkflowScreen({
                 setDock((now) => (typeof now === "object" ? undefined : now));
               }}
               onSelectStep={setPickedStep}
+              pickedStep={pickedStep}
+              onClearStep={() => setPickedStep(undefined)}
               kept={kept}
               onView={keep}
             />
@@ -316,6 +321,16 @@ export function WorkflowScreen({
           saveAsTest={saveAsTest}
           pickedStep={dockStep}
           onClosePickedStep={() => setPickedStep(undefined)}
+        />
+        <StepEditDock
+          host={host}
+          workflow={load}
+          pickedStep={dockStep}
+          dock={dock}
+          runShown={shown !== undefined}
+          phone={phone}
+          saving={saving}
+          onClose={() => setPickedStep(undefined)}
         />
       </div>
     </div>
@@ -391,6 +406,10 @@ interface FlowViewProps {
   readonly strip: ShownRun | undefined;
   readonly onClearStrip: () => void;
   readonly onSelectStep: (stepId: string) => void;
+  /** The step picked on the page; the canvas's selection follows it when a card closes. */
+  readonly pickedStep: string | undefined;
+  /** A click on the canvas's background: the picked step's card closes. */
+  readonly onClearStep: () => void;
   readonly kept: { readonly of: string; readonly view: View } | undefined;
   readonly onView: (next: View) => void;
 }
@@ -406,6 +425,8 @@ function FlowView({
   strip,
   onClearStrip,
   onSelectStep,
+  pickedStep,
+  onClearStep,
   kept,
   onView,
 }: FlowViewProps) {
@@ -436,6 +457,8 @@ function FlowView({
           saved={kept?.of === workflowKey ? kept.view : undefined}
           onView={onView}
           onSelectStep={onSelectStep}
+          picked={pickedStep}
+          onBackgroundClick={onClearStep}
         />
       )}
       {load.kind === "failed" && (

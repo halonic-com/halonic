@@ -7,12 +7,13 @@ import type {
   WorkflowHub,
   WorkflowListing,
   WorkflowRef,
+  WorkflowStepChange,
   WorkflowsHost,
   WorkflowTests,
   WorkflowView,
 } from "@halonicjs/studio-feature-workflows/api";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
-import { editYaml, readYaml, writeYamlFile } from "@halonicjs/yaml";
+import { editYaml, readYaml, writeYamlFile, type YamlEdit } from "@halonicjs/yaml";
 
 /** What {@link WorkspaceWorkflows} needs of the workspace's files, events and runs. */
 export interface WorkspaceWorkflowsParts {
@@ -189,6 +190,10 @@ export class WorkspaceWorkflows implements WorkflowsHost {
         type: state.type,
         title: stepTitle(state.description),
         agent: state.agent,
+        description: state.description,
+        prompt: typeof state.input === "string" ? state.input : undefined,
+        promptIsData: state.input !== undefined && typeof state.input !== "string",
+        output: state.output,
       })),
       arrows: Object.entries(value.states).flatMap(([from, state]) =>
         state.on.map((arrow) => ({ from, to: arrow.to, label: arrow.label })),
@@ -300,6 +305,53 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     this.#parts.files.change(`Saved a run as the test ${name}`, { [path]: edited.value.text });
   }
 
+  /**
+   * Edits the step in the workflow's file in place, so comments and the order of its keys stay, as
+   * one undoable change: each field given is set, and an empty one is taken out of the file.
+   */
+  async changeStep(ref: WorkflowRef, stepId: string, change: WorkflowStepChange): Promise<void> {
+    const workspace = await this.#load();
+    const file = filesOf(workspace, "workflow").find(
+      (one) => one.hub === ref.hubId && one.value.id === ref.id,
+    );
+    if (file === undefined) throw workflowGone();
+    const state = Object.hasOwn(file.value.states, stepId) ? file.value.states[stepId] : undefined;
+    if (state === undefined) {
+      throw new KindedError("not_found", `This workflow has no step "${stepId}" any more.`);
+    }
+    if (
+      change.prompt !== undefined &&
+      state.input !== undefined &&
+      typeof state.input !== "string"
+    ) {
+      throw new KindedError(
+        "invalid_input",
+        "This step's prompt is written as data in its file, so it can only be changed there.",
+      );
+    }
+    const edits: YamlEdit[] = [];
+    for (const [field, key] of stepFieldKeys) {
+      const next = change[field];
+      if (next === undefined) continue;
+      const path = ["states", stepId, key];
+      if (next.trim() !== "") edits.push({ kind: "set", path, value: next });
+      else if (state[key] !== undefined) edits.push({ kind: "delete", path });
+    }
+    if (edits.length === 0) return;
+    const text = await this.#parts.files.read(file.path);
+    if (text === null) throw workflowGone();
+    const edited = editYaml(text, edits);
+    if (!edited.ok) {
+      throw new KindedError(
+        "invalid_input",
+        "This workflow's file couldn't be changed as it is written.",
+      );
+    }
+    this.#parts.files.change(`Changed step ${stepId} of workflow ${file.value.name}`, {
+      [file.path]: edited.value.text,
+    });
+  }
+
   subscribe(listener: () => void): () => void {
     this.#nameListeners.add(listener);
     const stops = [this.#parts.onChange(listener), this.#parts.runs.subscribe(listener)];
@@ -401,6 +453,13 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     };
   }
 }
+
+/** The key in the step's part of the file that each field of the docked step card changes. */
+const stepFieldKeys = [
+  ["description", "description"],
+  ["prompt", "input"],
+  ["output", "output"],
+] as const satisfies readonly (readonly [keyof WorkflowStepChange, string])[];
 
 /** What a read of a workflow the workspace doesn't have rejects with: Studio shows the item-gone state for it. */
 function workflowGone(): KindedError {

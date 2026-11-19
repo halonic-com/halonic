@@ -375,6 +375,12 @@ export {
   type SavingItem,
 } from "./save/save-state.ts";
 export {
+  type AutoSaved,
+  SAVE_PAUSE_MS,
+  useAutoSaved,
+  useReportNotSaved,
+} from "./save/use-auto-saved.ts";
+export {
   isInWorkspaceContent,
   workspaceContentAttribute,
   workspaceContentProps,
