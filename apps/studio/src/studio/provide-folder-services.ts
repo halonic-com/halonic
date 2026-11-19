@@ -11,7 +11,6 @@ import {
 import { workspaceProvider } from "@halonicjs/adapter-workspace-models";
 import {
   AgentPlacement,
-  ChatService,
   InstructionTrustService,
   type ServiceRegistry,
   type WorkspaceScope,
@@ -72,7 +71,7 @@ import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { versionHistoryOf } from "../changes/version-history.ts";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
-import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
+import { answerChatOn, EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import { openStudioHarnessHost } from "../engine/studio-harness-host.ts";
 import { WorkspaceFilesHost } from "../files/workspace-files-host.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
@@ -235,8 +234,7 @@ export function provideFolderServices(
     new WorkspaceAgents({
       files: services.get(workspaceFilesKey),
       onChange: (listener) => scope.events.on("files.changed", listener),
-      answerChat: async (request) =>
-        new ChatService((await engine.open()).executor).answer(request),
+      answerChat: answerChatOn(engine),
       ...(transport === undefined
         ? {}
         : {

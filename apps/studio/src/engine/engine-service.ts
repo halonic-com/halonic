@@ -34,7 +34,12 @@ import {
   workspaceBudget,
   workspaceExecutorOptions,
 } from "@halonicjs/adapter-workspace-models";
-import type { startOfDueRun } from "@halonicjs/app";
+import {
+  type ChatAnswer,
+  type ChatAnswerRequest,
+  ChatService,
+  type startOfDueRun,
+} from "@halonicjs/app";
 import {
   type AssembledEngine,
   assembleEngine,
@@ -128,12 +133,13 @@ export class EngineService {
   }
 
   /**
-   * The open engine, for a start: refuses when its workspace may start nothing now, such as after
-   * a person removed their trust while the engine was open.
+   * The open engine, for a start: opens it as {@link EngineService.open} does, and refuses each
+   * time it's asked when its workspace may start nothing now, such as after a person removed their
+   * trust while the engine was open. Everything that starts on the engine goes through here.
    *
    * @throws KindedError `denied`, or what {@link EngineService.open} throws
    */
-  async #forStart(): Promise<AssembledEngine> {
+  async openForStart(): Promise<AssembledEngine> {
     const { engine, workspace } = await this.#open();
     await this.#refuseUntrusted(workspace);
     return engine;
@@ -206,7 +212,7 @@ export class EngineService {
     from: "manual" | "inbox" = "manual",
   ): Promise<{ readonly id: string }> {
     await this.check(run);
-    const engine = await this.#forStart();
+    const engine = await this.openForStart();
     // A run started from the window is the person's own, so it names a trigger: with none, the
     // Runs list says it was started in the terminal.
     const trigger = { type: from, at: this.#options.clock.now().toISOString() };
@@ -232,13 +238,13 @@ export class EngineService {
     if ("workflow" in start) {
       const { hubId, workflowId } = start.workflow;
       await this.check({ hubId, workflowId });
-      const { executor } = await this.#forStart();
+      const { executor } = await this.openForStart();
       const { id } = await executor.start({ ...start.workflow, trigger: runTrigger });
       return { id };
     }
     await this.checkAgent(start.agent);
     // As the port: the local executor's own `startAgent` takes no request until agent runs are built.
-    const executor: RunExecutor = (await this.#forStart()).executor;
+    const executor: RunExecutor = (await this.openForStart()).executor;
     try {
       const { id } = await executor.startAgent({ ...start.agent, trigger: runTrigger });
       return { id };
@@ -250,7 +256,7 @@ export class EngineService {
 
   /** Answers a waiting run (an Inbox Approve or Reject) as `halonic runs send` does, with a start's checks. */
   async send(...args: Parameters<LocalExecutor["send"]>): ReturnType<LocalExecutor["send"]> {
-    return (await this.#forStart()).executor.send(...args);
+    return (await this.openForStart()).executor.send(...args);
   }
 
   /**
@@ -422,4 +428,15 @@ export class EngineService {
 async function openRunsOf(runs: TauriRunStore): Promise<ReadonlySet<string>> {
   const open = await runs.list({ status: ["running", "waiting"] });
   return new Set(open.map((run) => run.id));
+}
+
+/**
+ * Answers a chat, such as an agent's Try it, on the engine's executor. It counts as a start, so
+ * each answer is refused as `denied` when the workspace may start nothing now, before any model
+ * turn: the chat gives the agent its own connectors and tools.
+ */
+export function answerChatOn(
+  engine: Pick<EngineService, "openForStart">,
+): (request: ChatAnswerRequest) => Promise<ChatAnswer> {
+  return async (request) => new ChatService((await engine.openForStart()).executor).answer(request);
 }
