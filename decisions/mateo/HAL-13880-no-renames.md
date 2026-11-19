@@ -3,6 +3,7 @@
 - Task: HAL-13880
 - Approval: Julian's follow-up from the #4083 review (HAL-13851). It changes `tooling/check/` and `.github/workflows/ci.yml`, so this note needs both guardians: Liam (CTO) and Julian (security reviewer)
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:wlCCv85FWymweTyKu4qx8io6nXUBPX1SmbvKMExMWyJ5689w5uCdJVgPvvFNQkDSLeMhdEudmC1QS6kL/RICBA==
 
 ## What changes
 
