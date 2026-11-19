@@ -23,8 +23,9 @@ const LOADED: PluginsLoad = { kind: "ready" };
 /**
  * The list's load state from the feed's first read (P2, P3), and **Try again**, which reads again.
  * A failed read always shows {@link LOAD_FAILED_REASON}: the plugins folder reader's errors are
- * written for developers and can name a path or an OS error, which P3 never shows. Try again keeps the error on screen with its button busy; once the plugins read, the focus goes
- * to the section's heading, since the button that had it is gone.
+ * written for developers and can name a path or an OS error, which P3 never shows. Try again
+ * keeps the error on screen with its button busy; once the plugins read, the focus goes to the
+ * section's heading, since the button that had it is gone.
  */
 function useFirstRead(
   feed: InstalledPluginFeed,
