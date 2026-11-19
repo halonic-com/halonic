@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12709 (the follow-up Liam filed from HAL-12704; a team decision with no board card, HAL-2282 rule)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:g36WU5QSpAvZoJh8AcaNOP2DSwQr/1QaJ2f9vD93shuaN8a1qu41Eh+3r4ZUCW4HQzcm7tWw4HZNjXLH5eMLCQ==
 - Task: HAL-12709
 
 ## What changes
