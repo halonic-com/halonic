@@ -98,6 +98,18 @@ function box(): HTMLInputElement | null {
   return dialog().querySelector('input[type="checkbox"]');
 }
 
+/** The element holding a text, the deepest one that starts with it. */
+function textNode(within: HTMLElement, start: string): HTMLElement | null {
+  const all = [...within.querySelectorAll<HTMLElement>("*")];
+  return all.findLast((element) => element.textContent?.startsWith(start) === true) ?? null;
+}
+
+/** Whether `first` comes before `second` in the DOM, the order Tab and a screen reader follow. */
+function precedes(first: Element | null, second: Element | null): boolean {
+  if (first === null || second === null) return false;
+  return (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+}
+
 /** Whether a section is open, by its row. */
 function isOpen(row: string): boolean | undefined {
   return [...dialog().querySelectorAll("details")].find((details) =>
@@ -125,7 +137,8 @@ verifies("plugins.plugin-trust-runs-line", () => {
       expect(line.textContent).toBe(
         "Plugin code runs apart from Studio, but not in the sandbox on this computer, so it may be able to use your files, programs and sign-ins, and reach addresses not listed above." +
           "On Windows, plugin code can't run in the sandbox in this version of Halonic. Use Halonic inside WSL 2 on this computer. How to run Halonic in WSL 2 ↗ (opens in your browser)" +
-          "Halonic doesn't check what the plugin does with what it's given.",
+          "Halonic doesn't check what the plugin does with what it's given." +
+          checkbox,
       );
       expect(line.querySelector(".text-attention svg")).not.toBeNull();
       expect(line.querySelector("a")?.getAttribute("href")).toBe(
@@ -154,6 +167,33 @@ verifies("plugins.plugin-trust-runs-line", () => {
       act(() => trustButton().click());
       expect(trusted).toEqual(["windows"]);
     });
+
+    it("puts the checkbox after the words it confirms, last before the buttons, for Tab too (RL1)", () => {
+      open(weather, windows);
+
+      const line = lastLine();
+      const input = box();
+      if (input === null) throw new Error("No checkbox");
+      // The footnote is the last thing above the footer; the checkbox is its last part.
+      expect(line.lastElementChild?.contains(input)).toBe(true);
+      expect(precedes(textNode(line, "Halonic doesn't check"), input)).toBe(true);
+      const tabOrder = [...dialog().querySelectorAll<HTMLElement>("summary, a, input, button")];
+      const at = tabOrder.indexOf(input);
+      expect(tabOrder[at - 1]).toBe(line.querySelector("a"));
+      expect(tabOrder[at + 1]?.textContent).toBe("Not now");
+    });
+  });
+
+  it("shows the saved yes inside the warning, after the docs link and before the last sentence (R6, RL1)", () => {
+    open(weather, windows, { reason: "windows", on: "9 Nov" });
+
+    const line = lastLine();
+    const allowed = textNode(line, "You allowed");
+    expect(precedes(line.querySelector("a"), allowed)).toBe(true);
+    expect(precedes(allowed, textNode(line, "Halonic doesn't check"))).toBe(true);
+    expect(line.lastElementChild?.textContent).toBe(
+      "Halonic doesn't check what the plugin does with what it's given.",
+    );
   });
 
   it("shows the saved yes instead of the checkbox once allowed for this reason (R6)", () => {

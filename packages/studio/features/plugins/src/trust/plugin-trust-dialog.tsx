@@ -19,7 +19,7 @@ import {
   trustLastLine,
   type UnfencedYes,
 } from "./runs-line.ts";
-import { Checking, LastLine, UnfencedConsent, useUnfencedYes } from "./runs-line-parts.tsx";
+import { Checking, LastLine, useUnfencedYes } from "./runs-line-parts.tsx";
 import { type TrustCheckContent, type TrustSecret, trustCheckContent } from "./trust-check.ts";
 import {
   ADDRESSES_SECTION,
@@ -130,7 +130,7 @@ export function PluginTrustDialog(props: PluginTrustDialogProps) {
       size="md"
       closeButton={false}
       cancelLabel={props.update === undefined ? NOT_NOW : keepButton(props.update.keep)}
-      footnote={<LastLine line={trustLastLine(fence, code)} />}
+      footnote={<LastLine line={trustLastLine(fence, code)} yes={yes} />}
       confirm={{
         label: trustButton(reason),
         busyLabel: TRUSTING,
@@ -172,7 +172,6 @@ export function PluginTrustDialog(props: PluginTrustDialogProps) {
             <Location folder={props.folder} files={props.files} />
           </>
         )}
-        <UnfencedConsent yes={yes} />
       </div>
     </Dialog>
   );
