@@ -11,6 +11,8 @@ export const agentHostRequestRoutes = [
   "GET /v1/sandbox/capabilities",
   "POST /v1/sandbox/sessions/open",
   "POST /v1/sandbox/sessions/close",
+  "GET /v1/sandbox/choice",
+  "POST /v1/sandbox/choice/settings-changed",
   "GET /v1/sandbox/setup",
   "POST /v1/sandbox/setup",
   "POST /v1/sandbox/remove",

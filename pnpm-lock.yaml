@@ -727,6 +727,9 @@ importers:
 
   packages/adapters/agent-host-client:
     dependencies:
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../core/app
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../core/events
