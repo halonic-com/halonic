@@ -1067,8 +1067,9 @@ jobs:
           set -o pipefail
           rust=$(sed -n '/^Rust crates$/,/^Vendored files$/p' "$RUNNER_TEMP/notices/THIRD-PARTY-NOTICES.txt")
           # Our own crate prints with its path and a repeat with "(*)"; both
-          # are left out.
-          crates=$(cargo tree --locked -p halonic-e2e-noise-wasm --target wasm32-unknown-unknown \
+          # are left out. `--color never`: the job sets CARGO_TERM_COLOR, and
+          # a coloured "(*)" wouldn't match ' ('.
+          crates=$(cargo tree --locked --color never -p halonic-e2e-noise-wasm --target wasm32-unknown-unknown \
             -e normal --prefix none --format '{p}' | grep -v ' (' | sort -u)
           missing=""
           while read -r name version; do
