@@ -2,6 +2,7 @@
 
 - Approval: Liam approves the change on HAL-13320 (https://paperclip.halonic.com/HAL/issues/HAL-13320#comment-46e15a0e-8b50-4729-89e2-16b7e16faa06), the continuation of HAL-7728. A team decision with no board card (HAL-2282 rule).
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:UaFFLGy0VR7IDfiROi3Fwbhvv4huILls8zD1b1mUnCZo+GIrXxXm8Wkj4+0iDvomzztPsBjLAieHluFPgbiuDA==
 
 Since part 1 (`decisions/tomas/HAL-7728-01-workerd-coverage.md`), a `"runtime": "workers"`
 package gets its coverage from workerd, so adapter-cloudflare-storage no longer needs Node tests
