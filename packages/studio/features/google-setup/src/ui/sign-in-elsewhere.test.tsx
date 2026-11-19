@@ -89,4 +89,56 @@ verifies("google-setup.sign-in-elsewhere", () => {
     expect(container.querySelectorAll("button")).toHaveLength(1);
     expect(container.querySelector(`button[aria-label="Copy the command"]`)).not.toBeNull();
   });
+
+  it("moves focus to the title as it opens, served or on a phone", async () => {
+    const fake = fakeAccounts([signedOut()], {
+      signInEntry: { kind: "elsewhere", commandExists: true },
+    });
+    for (const layout of ["served", "phone"] as const) {
+      const view = (
+        <GoogleSetupView
+          item={item}
+          answering
+          close={vi.fn()}
+          accounts={layout === "served" ? { ...fake.source, readOnly: true } : fake.source}
+        />
+      );
+      const container = render(
+        layout === "phone" ? (
+          <PresentationProvider presentation="phone">{view}</PresentationProvider>
+        ) : (
+          view
+        ),
+      );
+      await settle();
+      const title = container.querySelector("#google-setup-phone-title");
+      expect(title?.textContent).toMatch(/^Google for /);
+      expect(document.activeElement).toBe(title);
+      expect(title?.getAttribute("tabindex")).toBe("-1");
+      expect(title?.className).toContain("focus-ring");
+      unmountAll();
+    }
+  });
+
+  it("lets the title and the command wrap on a narrow window", async () => {
+    const fake = fakeAccounts([signedOut()], {
+      signInEntry: { kind: "elsewhere", commandExists: true },
+    });
+    const container = render(
+      <GoogleSetupView
+        item={item}
+        answering
+        close={vi.fn()}
+        accounts={{ ...fake.source, readOnly: true }}
+      />,
+    );
+    await settle();
+    // An address has no spaces, so the title may break inside it; the command breaks at its spaces first.
+    expect(container.querySelector("#google-setup-phone-title")?.className).toContain(
+      "wrap-anywhere",
+    );
+    const code = container.querySelector("code");
+    expect(code?.className).toContain("wrap-anywhere");
+    expect(code?.className).not.toContain("break-all");
+  });
 });
