@@ -130,6 +130,21 @@ boundary. The boundary is the sandbox, which denies a run the profile folder
 where the list is kept, so a tool can't edit the list even by removing the
 marker.
 
+### A harness agent's key
+
+A Claude Code or Codex agent normally signs in with its own program, and
+Halonic never reads or passes on a key for it. When the agent's file names a
+`models.yaml` alias as its `model`, the run's bridge sends its calls to that
+alias's provider instead, with the provider's key (requirement
+`cli.harness-bridge-keys`). The key gets the same check as any other model
+call, before the bridge is told its name: a non-default address needs a trusted
+workspace, a key with a list goes only to an origin on it, and an untrusted
+workspace calls no real provider. The bridge then sends that agent's calls and
+the key to the provider file's one origin only, never to another host the
+program names, and never after a redirect. The bridge reads only the keys it
+was given this way; a key you saved for anything else never reaches it. The
+CLI does this today; Studio still signs every harness agent in.
+
 ## What Studio asks for
 
 Studio shows this check too (`apps/studio`, `src/studio/workspace-trust.ts`,

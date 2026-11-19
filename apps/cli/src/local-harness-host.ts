@@ -28,18 +28,13 @@ import {
   RunInstructions,
   WorkspaceHarnessHost,
 } from "@halonicjs/adapter-harness-kit";
+import { connectorHostClass } from "@halonicjs/adapter-http-kit";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { createHostSandbox, createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import { keptGrantsRecordFolder, SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { InstructionTrustService } from "@halonicjs/app";
 import type { HarnessAgent, HarnessRunsOptions } from "@halonicjs/engine";
-import {
-  type AgentFiles,
-  type BridgeServices,
-  type HarnessHost,
-  harnessHostOf,
-  refusingApprovals,
-} from "@halonicjs/host-harness-host";
+import { type AgentFiles, type HarnessHost, harnessHostOf } from "@halonicjs/host-harness-host";
 import type {
   Clock,
   DefinitionStore,
@@ -54,6 +49,7 @@ import {
   type WorkspaceFolders,
 } from "@halonicjs/profile";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import { type HarnessKeysInput, harnessBridgeKeys } from "./harness-bridge-keys.ts";
 import { localProposalParts } from "./local-proposals.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
@@ -92,7 +88,7 @@ export interface LocalHarnessParts {
   readonly launcher?: HarnessRunsOptions["sandboxes"]["this-computer"];
   /** The harnesses, by their `id`. */
   readonly harnesses?: HarnessRunsOptions["harnesses"];
-  /** Opens each run's bridge; Node's, which reads no secret, by default. */
+  /** Opens each run's bridge; Node's, which reads only the keys a bridge was given, by default. */
   readonly bridgeServer?: HarnessBridgeServer;
   /** The system the CLI runs on; `process.platform` by default. */
   readonly platform?: NodeJS.Platform;
@@ -118,6 +114,12 @@ export interface LocalHarnessInput {
   readonly versions?: Pick<WorkspaceVersions, "agentFileOf" | "skillTextOf">;
   /** The workspace's files, which Accept writes and a proposal's base is read from. */
   readonly store: DefinitionStore;
+  /**
+   * The keys of the harness agents whose file's `model` is an alias
+   * (requirement `cli.harness-bridge-keys`): the CLI's remembered secrets,
+   * each key's allowed origins and the command's trust.
+   */
+  readonly keys: Omit<HarnessKeysInput, "workspace">;
   readonly digest: Digest;
   readonly clock: Clock;
   /** Which git makes the worktrees; the one on the `PATH` by default. */
@@ -158,6 +160,7 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
   await makePrivateFolder(folders.proposalRecordsFolder());
 
   const harnesses = parts.harnesses ?? nodeHarnesses();
+  const keys = harnessBridgeKeys({ ...input.keys, workspace: input.workspace });
   const host = new WorkspaceHarnessHost({
     settingsFolders: folders,
     tempRoot,
@@ -192,8 +195,9 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
       "this-computer": host.removingTempFolders(parts.launcher ?? createHostSandbox()),
     },
     harnesses,
-    bridgeServer: parts.bridgeServer ?? (await nodeBridgeServer(input)),
-    services: { servicesFor: () => bridgeServices },
+    bridgeServer: parts.bridgeServer ?? (await nodeBridgeServer(input, keys.secrets)),
+    services: keys.services,
+    models: keys.models,
     reportError: input.reportError,
     profiles,
     home: input.environment.homeFolder,
@@ -247,33 +251,6 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
   };
 }
 
-/**
- * What every agent's bridge serves until the CLI has settings for it
- * (HAL-6477): the program's own sign-in for both providers, which Halonic
- * never reads and spends nothing on; no Halonic tools; and approvals that
- * refuse every request, so a call that needs a person fails with its own
- * error. No key passes through here.
- */
-const bridgeServices: BridgeServices = {
-  providers: { anthropic: { kind: "sign-in" }, openai: { kind: "sign-in" } },
-  prices: {},
-  tools: {
-    list: async () => [],
-    check: async (name) => ({ kind: "refused", reason: `${name} isn't a tool of this agent.` }),
-    call: async (name) => ({ result: `${name} isn't a tool of this agent.`, outcome: "error" }),
-  },
-  approvals: refusingApprovals,
-};
-
-/**
- * What the bridge reads provider keys from: nothing. Every agent signs in
- * with its own program (`bridgeServices`), so no key is needed, and a key
- * the CLI remembers never reaches the bridge. A host that serves a provider
- * key must pass the secrets it reads it from, and the HAL-6477 sign-in
- * decision comes first.
- */
-const noSecrets: Secrets = { get: async () => null };
-
 /** Claude Code and Codex, found where the launcher would start them. */
 function nodeHarnesses(): NonNullable<LocalHarnessParts["harnesses"]> {
   const probe = createProgramProbe();
@@ -301,17 +278,26 @@ async function installOf(harness: string, platform: NodeJS.Platform): Promise<Ha
 /**
  * The bridge server, serving each run's bridge on a Unix socket in the
  * profile where the platform lets a sandboxed program reach one, as the
- * agent host does, else on a loopback port.
+ * agent host does, else on a loopback port. It reads keys from `secrets`,
+ * which gives only those a bridge was given. Anthropic's and OpenAI's own
+ * hosts are reached through a client that may reach nothing else; a
+ * compatible provider's `baseUrl` through one checked as a connector's
+ * address is, where a name may not lead onto the person's own network.
  */
-async function nodeBridgeServer(input: LocalHarnessInput): Promise<HarnessBridgeServer> {
+async function nodeBridgeServer(
+  input: LocalHarnessInput,
+  secrets: Secrets,
+): Promise<HarnessBridgeServer> {
   const platform = input.parts?.platform ?? process.platform;
   const sockets = platform === "linux" || platform === "darwin";
   const socketFolder = join(input.profile.root, bridgeSocketsFolder);
   if (sockets) await makePrivateFolder(socketFolder);
   const providers = createNodeHttpClient({ hostClass: providerHostClass, proxy: proxySetting });
+  const compatible = createNodeHttpClient({ hostClass: connectorHostClass, proxy: proxySetting });
   return new NodeHarnessBridgeServer({
-    secrets: noSecrets,
+    secrets,
     fetch: (url, init) => providers.fetch(url, init),
+    compatibleFetch: (url, init) => compatible.fetch(url, init),
     ...(sockets ? { socketFolder } : {}),
   });
 }

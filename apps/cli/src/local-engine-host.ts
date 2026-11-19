@@ -269,6 +269,7 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
       workspace: () => input.versions?.latest() ?? input.workspace,
       ...(input.versions === undefined ? {} : { versions: input.versions }),
       store: new FolderDefinitionStore(location),
+      keys: { secrets: input.secrets, keyOrigins: input.keyOrigins, trusted: input.trusted },
       digest: webCryptoDigest,
       clock: input.clock ?? systemClock,
       openRuns: () => openRunsOf(new FolderRunStore(folders.runsFolder())),
