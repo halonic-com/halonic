@@ -78,6 +78,8 @@ export interface RunPageContext {
   readonly workflowOfRun: (runId: string) => string | undefined;
   /** Whether a model provider runs on this computer or elsewhere; `undefined` when it isn't in the workspace. */
   readonly providerKind: (providerId: string) => ProviderKind | undefined;
+  /** A provider's `name` as its file gives it; `undefined` when the file names none or it isn't in the workspace. */
+  readonly providerName?: (providerId: string) => string | undefined;
   /** An agent's name as its file says; `undefined` when the workspace has no such agent. */
   readonly agentName?: (agentId: string) => string | undefined;
   readonly currency: string;

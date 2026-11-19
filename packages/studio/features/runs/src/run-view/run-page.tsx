@@ -435,6 +435,9 @@ function pageContext(
       return source.workflow(other.hubId, other.workflowId)?.name ?? other.workflowId;
     },
     providerKind: (id: string) => source.providerKind(id),
+    ...(source.providerName === undefined
+      ? {}
+      : { providerName: (id: string) => source.providerName?.(id) }),
     ...(source.agentName === undefined
       ? {}
       : { agentName: (id: string) => source.agentName?.(id) }),

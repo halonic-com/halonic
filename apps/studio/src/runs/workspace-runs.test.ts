@@ -148,6 +148,22 @@ verifies("studio.workspace-runs", () => {
     expect(runs.providerKind("gone")).toBeUndefined();
   });
 
+  it("names a provider as its file does, and nothing for one without a name or the workspace lacks", async () => {
+    const { engine } = await waitingRun();
+    const definitions = new MemoryDefinitionStore({
+      "workspace.yaml": "id: acme\nname: Acme\n",
+      "providers/openai.yaml": "id: openai\nname: OpenAI\ntype: openai\nsecret: openai-key\n",
+      "providers/studio.yaml": "id: studio\ntype: lmstudio\n",
+    });
+    const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions });
+
+    await runs.list();
+
+    expect(runs.providerName("openai")).toBe("OpenAI");
+    expect(runs.providerName("studio")).toBeUndefined();
+    expect(runs.providerName("gone")).toBeUndefined();
+  });
+
   it("reads the workspace's monthly budget, and none when it sets none", async () => {
     const { engine } = await waitingRun();
     const capped = new WorkspaceRuns({

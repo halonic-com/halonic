@@ -3,7 +3,10 @@ import { capitalised } from "./run-words.ts";
 /** The model programs by the name a person knows (microcopy 5): "LM Studio", not "Lmstudio". */
 const providerNames: Readonly<Record<string, string>> = { lmstudio: "LM Studio", openai: "OpenAI" };
 
-/** A provider as a sentence names it: its known name, or its own name with a capital. */
+/**
+ * A provider as the slow-step line names it: its known name, or its own name with a capital.
+ * The banners get the name from the provider's file instead (`providerNameOf`).
+ */
 export function providerName(provider: string): string {
   return providerNames[provider] ?? capitalised(provider);
 }
@@ -29,14 +32,14 @@ export const failureWords = {
     model: string,
     alias: string | undefined,
   ) =>
-    `Halonic couldn't reach ${providerName(provider)}${host === undefined ? "" : ` at ${host}`} for ${modelOrAlias(model, alias)}. This computer may be offline. Check your internet connection, then run again.`,
+    `Halonic couldn't reach ${provider}${host === undefined ? "" : ` at ${host}`} for ${modelOrAlias(model, alias)}. This computer may be offline. Check your internet connection, then run again.`,
   localModelUnreachable: (
     provider: string,
     host: string | undefined,
     model: string,
     alias: string | undefined,
   ) =>
-    `Halonic couldn't reach ${providerName(provider)}${host === undefined ? "" : ` at ${host}`} for ${modelOrAlias(model, alias)}. ${providerName(provider)} may not be running on this computer. Start ${providerName(provider)}, then run again.`,
+    `Halonic couldn't reach ${provider}${host === undefined ? "" : ` at ${host}`} for ${modelOrAlias(model, alias)}. ${provider} may not be running on this computer. Start ${provider}, then run again.`,
   /** On a phone, "localhost" is the computer: the sentence says so (microcopy 15.3, revision 96). */
   localModelUnreachableOnPhone: (
     provider: string,
@@ -44,24 +47,24 @@ export const failureWords = {
     model: string,
     alias: string | undefined,
   ) =>
-    `Halonic couldn't reach ${providerName(provider)} on your computer${host === undefined ? "" : ` (${host})`} for ${modelOrAlias(model, alias)}. Start ${providerName(provider)} there, then run again.`,
+    `Halonic couldn't reach ${provider} on your computer${host === undefined ? "" : ` (${host})`} for ${modelOrAlias(model, alias)}. Start ${provider} there, then run again.`,
   /** F6 (microcopy 15.3, `model-missing`): the server answers, but the model isn't in its list. */
   modelMissingOllama: (model: string) =>
     `Ollama is answering, but it doesn't have ${model} yet. Run ollama pull ${model} in a terminal, or pick another model in Models.`,
   modelMissingOther: (provider: string, model: string) =>
-    `${providerName(provider)} is answering, but it doesn't have ${model} yet. Download it in ${providerName(provider)}, or pick another model in Models.`,
+    `${provider} is answering, but it doesn't have ${model} yet. Download it in ${provider}, or pick another model in Models.`,
   modelMissingOllamaOnPhone: (model: string) =>
     `Ollama on your computer doesn't have ${model} yet. Run ollama pull ${model} in a terminal there, or pick another model in Models.`,
   modelMissingOtherOnPhone: (provider: string, model: string) =>
-    `${providerName(provider)} on your computer doesn't have ${model} yet. Download it there, or pick another model in Models.`,
+    `${provider} on your computer doesn't have ${model} yet. Download it there, or pick another model in Models.`,
   ollamaPullCommand: (model: string) => `ollama pull ${model}`,
   /** `model-timeout`: a local provider names its address, a cloud one the step it stopped. */
   localModelTimeout: (provider: string, host: string | undefined) =>
-    `${providerName(provider)} didn't start answering${host === undefined ? "" : ` at ${host}`} within 5 minutes. It may still be loading the model.`,
+    `${provider} didn't start answering${host === undefined ? "" : ` at ${host}`} within 5 minutes. It may still be loading the model.`,
   localModelTimeoutOnPhone: (provider: string) =>
-    `${providerName(provider)} on your computer didn't start answering within 5 minutes. It may still be loading the model.`,
+    `${provider} on your computer didn't start answering within 5 minutes. It may still be loading the model.`,
   cloudModelTimeout: (provider: string, step: string) =>
-    `${providerName(provider)} didn't start answering within 5 minutes, so the step ${step} stopped. Nothing you set caused this.`,
+    `${provider} didn't start answering within 5 minutes, so the step ${step} stopped. Nothing you set caused this.`,
   /** `model-no-tools`: cli-output 3.4's lines 1 and 2; without the alias the log didn't give. */
   modelNoTools: (model: string, alias: string | undefined, step: string) =>
     alias === undefined
@@ -70,7 +73,7 @@ export const failureWords = {
   copyCommand: "Copy command",
   openModels: "Open Models",
   modelOutOfMemory: (provider: string, model: string) =>
-    `${providerName(provider)} couldn't load ${model}: this computer doesn't have enough free memory for it.`,
+    `${provider} couldn't load ${model}: this computer doesn't have enough free memory for it.`,
   modelOutOfMemoryFix: "Close other programs, or pick a smaller model in Models.",
   modelOutOfMemoryFixOnPhone: "Close other programs, or pick a smaller model.",
   /** The Google APIs by the name a person knows, as "the ___ API" reads (microcopy 10.4). */

@@ -105,6 +105,12 @@ export interface RunsSource {
    * has no such provider. The run page's banners read it to tell a local model from a cloud one.
    */
   readonly providerKind: (providerId: string) => ProviderKind | undefined;
+  /**
+   * The provider's `name` as its file gives it, such as "OpenAI" or "LM Studio"; `undefined` when
+   * the file names none or the workspace has no such provider. The run page's banners name a
+   * provider by it, so they never write its id with a capital ("Openai").
+   */
+  readonly providerName?: (providerId: string) => string | undefined;
   /** The workspace's currency (`budget.currency`, EUR when it names none). */
   readonly currency: () => string;
   /** The workspace's monthly budget (`budget.monthly`); `undefined` when it sets none. */
