@@ -9,7 +9,7 @@ import {
   usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
-import { ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
+import { ItemGone, type ItemViewProps, type SaveState } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type AgentChange,
@@ -45,6 +45,7 @@ export function AgentPage({ item, context }: ItemViewProps) {
   return (
     <AgentScreen
       host={context.services.get(AgentsHostService)}
+      saving={context.saving}
       hubId={item.hub}
       id={item.id}
       {...(openPlace && { goToAgents: () => openPlace("agents") })}
@@ -58,6 +59,8 @@ export function AgentPage({ item, context }: ItemViewProps) {
 
 export interface AgentScreenProps extends AgentRef {
   readonly host: AgentsHost;
+  /** The window's save state, for the toolbar's "1 field not saved"; absent without a window. */
+  readonly saving?: Pick<SaveState, "setFieldsNotSaved"> | undefined;
   /** Leaves an agent that is gone for the Agents list; absent where the shell can't open a place. */
   readonly goToAgents?: (() => void) | undefined;
   /** Opens a workspace file in a tab, for **Open as file**; absent where the app can't, which leaves it out of the menu. */
@@ -74,6 +77,7 @@ export interface AgentScreenProps extends AgentRef {
  */
 export function AgentScreen({
   host,
+  saving,
   hubId,
   id,
   goToAgents,
@@ -159,6 +163,11 @@ export function AgentScreen({
     }
   };
   const name = load.kind === "ready" ? load.value.name : id;
+  const reportNotSaved = useCallback(
+    (count: number) =>
+      saving?.setFieldsNotSaved({ key: `agent/${hubId}/${id}`, title: name }, count),
+    [saving, hubId, id, name],
+  );
   // Until the agent is read, its read speaks for the page whichever view is open.
   const panel: AgentView | "read" = load.kind === "ready" ? view : "read";
   // After Undo brings a deleted agent back, its name takes the focus once the page is drawn again.
@@ -236,6 +245,7 @@ export function AgentScreen({
             retry={settings.retry}
             save={save}
             openLibrary={openLibrary}
+            reportNotSaved={reportNotSaved}
           />
         )}
         {panel === "runs" && (
