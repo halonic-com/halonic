@@ -3,6 +3,7 @@
 - Task: HAL-12413
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12413 (rows G2 and C2 of Sofia's UX check of the error lines on HAL-12390; small wording on approved screens, a team decision with no board card, HAL-2282 rule)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:dGhdNNjUlFVUGvKC9afDxWAjnnCslBugopsjVmKvYCKtyx6Zw67tsFQt99XqMKF92NvPesDDntScJdsXa6xzCw==
 
 ## What changes
 
