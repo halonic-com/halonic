@@ -78,7 +78,8 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef, failed }: W
                 }}
               >
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-body text-fg">{workspace.name}</span>
+                  {/* The whole name wraps rather than ending in "…": nowhere else shows it to a sighted user. */}
+                  <span className="text-body text-fg wrap-break-word">{workspace.name}</span>
                   <MiddleCut text={workspace.location} />
                 </span>
                 {workspace.sample === true ? (
