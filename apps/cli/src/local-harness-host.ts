@@ -18,7 +18,11 @@ import {
   makePrivateFolder,
 } from "@halonicjs/adapter-fs-node";
 import { type GitRunnerOptions, lazyGitVcs } from "@halonicjs/adapter-git";
-import { NodeHarnessBridgeServer, providerHostClass } from "@halonicjs/adapter-harness-bridge";
+import {
+  NodeHarnessBridgeServer,
+  type NodeHarnessBridgeServerOptions,
+  providerHostClass,
+} from "@halonicjs/adapter-harness-bridge";
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
 import {
@@ -37,6 +41,7 @@ import {
   type AgentFiles,
   type BridgeServices,
   type HarnessHost,
+  type HarnessHostInput,
   harnessHostOf,
   refusingApprovals,
 } from "@halonicjs/host-harness-host";
@@ -94,6 +99,12 @@ export interface LocalHarnessParts {
   readonly harnesses?: HarnessRunsOptions["harnesses"];
   /** Opens each run's bridge; Node's, which reads no secret, by default. */
   readonly bridgeServer?: HarnessBridgeServer;
+  /**
+   * Opens the bridge of an agent set to "On this computer"; by default
+   * Node's on a loopback port when a part `bridgeServer` isn't given, and
+   * that `bridgeServer` when it is.
+   */
+  readonly thisComputerBridgeServer?: HarnessBridgeServer;
   /** The system the CLI runs on; `process.platform` by default. */
   readonly platform?: NodeJS.Platform;
   /** The variables every harness program gets; `PATH` and the locale from `process.env` by default. */
@@ -192,7 +203,7 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
       "this-computer": host.removingTempFolders(parts.launcher ?? createHostSandbox()),
     },
     harnesses,
-    bridgeServer: parts.bridgeServer ?? (await nodeBridgeServer(input)),
+    ...(await bridgeServersOf(input)),
     services: { servicesFor: () => bridgeServices },
     reportError: input.reportError,
     profiles,
@@ -299,21 +310,43 @@ async function installOf(harness: string, platform: NodeJS.Platform): Promise<Ha
 }
 
 /**
- * The bridge server, serving each run's bridge on a Unix socket in the
- * profile where the platform lets a sandboxed program reach one, as the
- * agent host does, else on a loopback port.
+ * The bridge servers: for agents in the sandbox, each run's bridge on a Unix
+ * socket in the profile where the platform lets a sandboxed program reach
+ * one, as the agent host does, else on a loopback port; for agents set to
+ * "On this computer", always on a loopback port, since a program started
+ * without a fence has no sandbox proxy to reach a socket through. A test's
+ * `bridgeServer` serves both unless it gives one for this computer too.
  */
-async function nodeBridgeServer(input: LocalHarnessInput): Promise<HarnessBridgeServer> {
-  const platform = input.parts?.platform ?? process.platform;
-  const sockets = platform === "linux" || platform === "darwin";
-  const socketFolder = join(input.profile.root, bridgeSocketsFolder);
-  if (sockets) await makePrivateFolder(socketFolder);
+async function bridgeServersOf(
+  input: LocalHarnessInput,
+): Promise<Pick<HarnessHostInput, "bridgeServer" | "thisComputerBridgeServer">> {
+  const parts = input.parts ?? {};
   const providers = createNodeHttpClient({ hostClass: providerHostClass, proxy: proxySetting });
-  return new NodeHarnessBridgeServer({
-    secrets: noSecrets,
-    fetch: (url, init) => providers.fetch(url, init),
-    ...(sockets ? { socketFolder } : {}),
-  });
+  // The bridge reads no key: every agent signs in with its own program.
+  const nodeServer = (options: Pick<NodeHarnessBridgeServerOptions, "socketFolder"> = {}) =>
+    new NodeHarnessBridgeServer({
+      secrets: noSecrets,
+      fetch: (url, init) => providers.fetch(url, init),
+      ...options,
+    });
+  const bridgeServer = parts.bridgeServer ?? nodeServer(await socketFolderOf(input));
+  return {
+    bridgeServer,
+    thisComputerBridgeServer: parts.thisComputerBridgeServer ?? parts.bridgeServer ?? nodeServer(),
+  };
+}
+
+/**
+ * Where the sandbox's bridges serve their sockets: a private folder in the
+ * profile on Linux and macOS, and nowhere elsewhere, where they serve on
+ * loopback ports.
+ */
+async function socketFolderOf(input: LocalHarnessInput): Promise<{ socketFolder?: string }> {
+  const platform = input.parts?.platform ?? process.platform;
+  if (platform !== "linux" && platform !== "darwin") return {};
+  const socketFolder = join(input.profile.root, bridgeSocketsFolder);
+  await makePrivateFolder(socketFolder);
+  return { socketFolder };
 }
 
 /**

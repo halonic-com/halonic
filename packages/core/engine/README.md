@@ -318,7 +318,9 @@ check again and, if it now fails, puts its code on `sandbox-start-failed` too; w
 start, it asks `detect()` for the agent's settings folder and puts `harnessCause` (`not-installed` or
 `signed-out`) on `harness-start-failed`, both through its own `StartFailedError`. A step logs `sandbox.started`, then `sandbox.opened` or, for a
 step on this computer, `sandbox.off` with `chosenAt` (never both), then `harness.started`
-(requirements `engine.run-harness`, `engine.run-harness-failures`).
+(requirements `engine.run-harness`, `engine.run-harness-failures`). The engine opens the bridge for
+the placement too, so a host can serve a program on this computer, which has no sandbox proxy to reach a
+Unix socket through, on a loopback port instead (requirement `engine.harness-bridge-placement`).
 
 The local executor takes these from the host as `HarnessRunsOptions`: the `PlacementPolicy`, a
 sandbox for each `Placement`, the harnesses, the `HarnessBridgeHost` that opens each run's bridge and

@@ -75,12 +75,21 @@ export interface PlacementPolicy {
 /**
  * Opens the Halonic bridge of one harness run. The host fills in what the
  * bridge serves (the providers, prices, tools and approvals); the engine
- * gives it the run, the agent and where its events go, and closes it when
- * the harness call ends.
+ * gives it the run, the agent, where its events go and where the agent
+ * runs, and closes it when the harness call ends.
  */
 export interface HarnessBridgeHost {
-  /** @throws when the bridge can't listen on loopback */
-  open(agent: HarnessAgent, recorder: BridgeRecorder): Promise<OpenHarnessBridge>;
+  /**
+   * @param runsOn - where the program runs: one on this computer has no
+   *   sandbox proxy, so it reaches a bridge on a loopback port only, never one
+   *   on a Unix socket
+   * @throws when the bridge can't listen
+   */
+  open(
+    agent: HarnessAgent,
+    recorder: BridgeRecorder,
+    runsOn: PlacementAnswer["runsOn"],
+  ): Promise<OpenHarnessBridge>;
 }
 
 /** A sandbox profile for one harness run, with what its `sandbox.opened` event shows. */

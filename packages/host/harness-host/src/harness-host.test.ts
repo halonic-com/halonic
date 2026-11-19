@@ -102,7 +102,11 @@ verifies("harness-host.builder", () => {
   it("opens each run's bridge on the host's bridge server", async () => {
     const { input, bridgeServer } = inputOf();
 
-    await harnessHostOf(input).harnesses.bridges.open(writer, { record: async () => {} });
+    await harnessHostOf(input).harnesses.bridges.open(
+      writer,
+      { record: async () => {} },
+      "sandbox",
+    );
 
     expect(bridgeServer.opened.map(({ runId, agentId }) => ({ runId, agentId }))).toEqual([
       { runId: "01JD8Q", agentId: "writer" },
@@ -130,6 +134,22 @@ verifies("harness-host.builder", () => {
 
   it("starts with nothing to clear", async () => {
     await expect(harnessHostOf(inputOf().input).start(new Set())).resolves.toBeUndefined();
+  });
+});
+
+verifies("harness-host.bridge-this-computer", () => {
+  it("opens the bridge of an agent on this computer on the host's server for this computer", async () => {
+    const thisComputerBridgeServer = new RecordingBridgeServer();
+    const { input, bridgeServer } = inputOf({ thisComputerBridgeServer });
+
+    await harnessHostOf(input).harnesses.bridges.open(
+      writer,
+      { record: async () => {} },
+      "this-computer",
+    );
+
+    expect(bridgeServer.opened).toEqual([]);
+    expect(thisComputerBridgeServer.opened.map(({ agentId }) => agentId)).toEqual(["writer"]);
   });
 });
 

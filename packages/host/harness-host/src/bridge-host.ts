@@ -4,7 +4,7 @@
 // that agent. Same shape as the Studio's `AgentHostBridges`, so one
 // `servicesFor` serves either.
 
-import type { HarnessAgent, HarnessBridgeHost } from "@halonicjs/engine";
+import type { HarnessAgent, HarnessBridgeHost, PlacementAnswer } from "@halonicjs/engine";
 import type {
   BridgeApprovals,
   BridgeProvider,
@@ -50,7 +50,9 @@ export interface BridgeServicesSource {
 
 /**
  * Opens each harness run's bridge on this computer, with the services the
- * host gives for its agent.
+ * host gives for its agent: on `thisComputerServer` for an agent a person
+ * chose to run on this computer, when the host gives one, and otherwise on
+ * `server` (requirement `harness-host.bridge-this-computer`).
  *
  * A request the bridge failed without naming the reason to the program goes
  * to the run log as a `bridge.failed`, and to `reportError` when the run log
@@ -58,35 +60,44 @@ export interface BridgeServicesSource {
  *
  * @example
  * const bridges = new LocalBridgeHost({ server, services, reportError });
- * const bridge = await bridges.open(agent, recorder);
+ * const bridge = await bridges.open(agent, recorder, "sandbox");
  */
 export class LocalBridgeHost implements HarnessBridgeHost {
   readonly #server: HarnessBridgeServer;
+  readonly #thisComputerServer: HarnessBridgeServer;
   readonly #services: BridgeServicesSource;
   readonly #reportError: (error: unknown) => void;
 
   /**
+   * @param options.thisComputerServer - opens the bridges of agents that run on this computer, which have no sandbox proxy; `server` when left out
    * @param options.reportError - hears of a bridge failure the run log couldn't record; it must not throw
    */
   constructor(options: {
     server: HarnessBridgeServer;
+    thisComputerServer?: HarnessBridgeServer;
     services: BridgeServicesSource;
     reportError: (error: unknown) => void;
   }) {
     this.#server = options.server;
+    this.#thisComputerServer = options.thisComputerServer ?? options.server;
     this.#services = options.services;
     this.#reportError = options.reportError;
   }
 
   /** @throws what `servicesFor` throws, or the server's `open` when it can't listen */
-  async open(agent: HarnessAgent, recorder: BridgeRecorder): Promise<OpenHarnessBridge> {
+  async open(
+    agent: HarnessAgent,
+    recorder: BridgeRecorder,
+    runsOn: PlacementAnswer["runsOn"],
+  ): Promise<OpenHarnessBridge> {
     const services = await this.#services.servicesFor({
       runId: agent.runId,
       agentId: agent.agentId,
       hubId: agent.hubId,
       ...(agent.file.model === undefined ? {} : { model: agent.file.model }),
     });
-    return await this.#server.open({
+    const server = runsOn === "this-computer" ? this.#thisComputerServer : this.#server;
+    return await server.open({
       runId: agent.runId,
       agentId: agent.agentId,
       providers: services.providers,

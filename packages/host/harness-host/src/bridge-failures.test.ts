@@ -21,7 +21,7 @@ async function openWith(recorder: BridgeRecorder) {
     },
     reportError: reported.resolve,
   });
-  await host.open(writer, recorder);
+  await host.open(writer, recorder, "sandbox");
   const reportError = server.opened[0]?.reportError;
   if (reportError === undefined) throw new Error("expected the host to pass reportError");
   return { reportError, reported: reported.promise };

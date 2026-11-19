@@ -35,8 +35,15 @@ export interface HarnessHostInput {
   readonly sandboxes: HarnessRunsOptions["sandboxes"];
   /** The harnesses the host offers, by their `id`. */
   readonly harnesses: HarnessRunsOptions["harnesses"];
-  /** Opens each run's bridge on loopback. */
+  /** Opens each run's bridge, on loopback or on a Unix socket. */
   readonly bridgeServer: HarnessBridgeServer;
+  /**
+   * Opens the bridge of an agent a person chose to run on this computer;
+   * `bridgeServer` when left out. A program without a fence has no sandbox
+   * proxy, so a host whose `bridgeServer` serves Unix sockets gives one on a
+   * loopback port here.
+   */
+  readonly thisComputerBridgeServer?: HarnessBridgeServer;
   /** What each agent's bridge serves: its providers, prices, tools and approvals. */
   readonly services: BridgeServicesSource;
   /** Hears of a bridge failure the run log couldn't record (requirement `harness-host.bridge-failures`); it must not throw. */
@@ -131,6 +138,9 @@ export function harnessHostOf(input: HarnessHostInput): HarnessHost {
     harnesses: input.harnesses,
     bridges: new LocalBridgeHost({
       server: input.bridgeServer,
+      ...(input.thisComputerBridgeServer === undefined
+        ? {}
+        : { thisComputerServer: input.thisComputerBridgeServer }),
       services: input.services,
       reportError: input.reportError,
     }),

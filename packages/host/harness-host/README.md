@@ -17,7 +17,7 @@ The CLI's local engine calls it (HAL-7747); the Studio doesn't yet.
 | `harnessHostOf` | builds `{ harnesses, proposalFolders, start }` (`HarnessHost`, from a `HarnessHostInput`) from the host's sandboxes, harnesses, bridge server, services, profile builder, person's choices, agent files and proposal parts | `harness-host.builder` |
 | `FilePlacementPolicy` | the engine's `PlacementPolicy` on `AgentPlacement`: reads the agent's file as it is on disk and answers `sandbox`, or `this-computer` when a person chose that for those bytes | `harness-host.placement` |
 | `AgentFiles` | the port it reads agents' files through, by hub and id, as raw bytes | `harness-host.placement` |
-| `LocalBridgeHost` | the engine's `HarnessBridgeHost` on the `HarnessBridgeServer` port, with what `servicesFor` gives the agent; a failure the bridge doesn't name to the program goes to the run log as `bridge.failed`, or to the host's `reportError` when the log can't take it | `harness-host.bridge`, `harness-host.bridge-failures` |
+| `LocalBridgeHost` | the engine's `HarnessBridgeHost` on the `HarnessBridgeServer` port, with what `servicesFor` gives the agent; an agent on this computer gets its bridge on the host's `thisComputerBridgeServer` when it gives one, since a program without a fence can't reach a Unix socket; a failure the bridge doesn't name to the program goes to the run log as `bridge.failed`, or to the host's `reportError` when the log can't take it | `harness-host.bridge`, `harness-host.bridge-this-computer`, `harness-host.bridge-failures` |
 | `BridgeServicesSource`, `BridgeServices`, `BridgeAgent` | the `servicesFor(agent)` port: providers, prices, tools and approvals, the same shape as the Studio's `AgentHostBridges` takes, without keys | `harness-host.bridge` |
 | `HistoryProposalFolders`, `ProposalsNeedHistoryError` | refuses a run with no version to start from on a host without run copies, when its folder opens, with an error that says how to turn history on | `harness-host.history-off` |
 | `refusingApprovals`, `HarnessApprovalsNotWiredError` | approvals for a host that can't ask a person yet: each request fails with its own error | `harness-host.not-wired` |
@@ -30,8 +30,9 @@ prices' own entries, so a model named `toString` has none.
 ## Where it is wired
 
 - **CLI:** wired (HAL-7747). `apps/cli/src/local-harness-host.ts` passes the
-  CLI's Node parts: the srt sandbox, the host sandbox, the Node bridge server,
-  the harness profiles, git with worktrees in the profile and the folder's
+  CLI's Node parts: the srt sandbox, the host sandbox, the Node bridge servers
+  (on a Unix socket for the sandbox on Linux and macOS, on a loopback port for
+  an agent on this computer), the harness profiles, git with worktrees in the profile and the folder's
   files, and `apps/cli/src/local-engine-host.ts` gives the engine its
   `harnesses` and `proposalFolders`. `halonic run` still refuses a harness
   agent until HAL-6477 turns them on, so only a test starts such a run today.
@@ -70,5 +71,6 @@ await host.start(openRuns);
 - [`harness-host.builder`](requirements/builder.md)
 - [`harness-host.placement`](requirements/placement.md)
 - [`harness-host.bridge`](requirements/bridge.md)
+- [`harness-host.bridge-this-computer`](requirements/bridge-this-computer.md)
 - [`harness-host.history-off`](requirements/history-off.md)
 - [`harness-host.not-wired`](requirements/not-wired.md)

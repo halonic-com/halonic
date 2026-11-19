@@ -16,6 +16,7 @@ import {
   noKeyOrigins,
   type Sandbox,
   type SandboxProfile,
+  type SandboxSession,
   type TrustGrant,
 } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
@@ -126,8 +127,8 @@ export async function commitWorkspace(): Promise<RunVersion> {
 
 /** What the fake program does in its working folder, and what the fakes saw. */
 export interface Program {
-  /** Runs once the program has started, with its sandbox profile. */
-  readonly onStart: (profile: SandboxProfile) => Promise<void>;
+  /** Runs once the program has started, with its sandbox profile and the session it runs in. */
+  readonly onStart: (profile: SandboxProfile, session: SandboxSession) => Promise<void>;
   /** Holds the program until its call is cancelled, as a stuck one would. */
   readonly hangs?: boolean;
 }
@@ -176,7 +177,7 @@ export function fakesFor(program: Program): Fakes {
       const cancelled = Promise.withResolvers<void>();
       return {
         async *[Symbol.asyncIterator]() {
-          await program.onStart(session.profile);
+          await program.onStart(session.profile, session);
           started.resolve();
           if (program.hangs === true) {
             await cancelled.promise;

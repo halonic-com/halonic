@@ -98,7 +98,7 @@ verifies("engine.run-harness", () => {
       filesFolder: null,
     };
     expect(placed).toHaveBeenCalledWith(agent);
-    expect(opened).toHaveBeenCalledWith(agent, expect.anything());
+    expect(opened).toHaveBeenCalledWith(agent, expect.anything(), "sandbox");
     expect(built).toHaveBeenCalledWith(agent, expect.anything(), null);
   });
 
@@ -227,6 +227,29 @@ verifies("engine.run-harness", () => {
     expect(error).toMatchObject({ sandboxReason: "bubblewrap-missing" });
     expect(written).toEqual([]);
     expect(ports.steps).toEqual([]);
+  });
+});
+
+verifies("engine.harness-bridge-placement", () => {
+  it("asks for the bridge of an agent in the sandbox there", async () => {
+    const ports = harnessPorts();
+    ports.harness.events = [finished("ok")];
+    const opened = vi.spyOn(ports.options.bridges, "open");
+
+    await runOn(ports);
+
+    expect(opened).toHaveBeenCalledWith(expect.anything(), expect.anything(), "sandbox");
+  });
+
+  it("asks for the bridge of an agent a person chose to run on this computer there", async () => {
+    const ports = harnessPorts();
+    ports.placeOnThisComputer();
+    ports.harness.events = [finished("ok")];
+    const opened = vi.spyOn(ports.options.bridges, "open");
+
+    await runOn(ports);
+
+    expect(opened).toHaveBeenCalledWith(expect.anything(), expect.anything(), "this-computer");
   });
 });
 

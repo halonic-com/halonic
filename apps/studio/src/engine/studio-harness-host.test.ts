@@ -117,7 +117,7 @@ const recorder: BridgeRecorder = { record: async () => {} };
 /** Opens the agent's bridge, waits for its one call to be answered, then closes it. */
 async function answerOfApproval(host: ReturnType<typeof fakeHost>, input: StudioHarnessInput) {
   const built = await openStudioHarnessHost(input);
-  const bridge = await built.harnesses.bridges.open(agent, recorder);
+  const bridge = await built.harnesses.bridges.open(agent, recorder, "sandbox");
   await bridge.close();
   return host.answers;
 }
