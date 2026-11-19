@@ -232,7 +232,6 @@ export const runPageWords = {
   runAgainFailedTitle: "Couldn't start the run",
   runAgainFailed: (reason: string) => `Couldn't start the run: ${reason}`,
   tryAgain: "Try again",
-  /** The trust check's own word, under a start refused because the workspace isn't trusted (C144 RT1). */
   review: "Review",
   openRun: (shortId: string) => `Open run ${shortId}`,
   waitingForYouName: "Waiting for you",
