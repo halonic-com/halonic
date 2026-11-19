@@ -86,6 +86,8 @@ export const itemWords = {
     sentence === "" ? kind : `${kind} · ${sentence}`,
   /** Over a new item's fields on its What changed page: "New skill". */
   newOfKind: (kind: string) => `New ${kind.toLowerCase()}`,
+  /** Create version's sentence after the kind in an item's checkbox: "· New". */
+  sentenceAfterKind: (sentence: string) => `· ${sentence}`,
   /** `.gitignore`: the file Halonic writes when history is turned on. */
   historyLeavesOut: "Files history leaves out",
   /** The sentence of an item that moved: "Renamed from Support". */
