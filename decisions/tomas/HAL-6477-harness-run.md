@@ -2,7 +2,6 @@
 
 - Approval: the flow approved by the board on HAL-9332 (option 3 on HAL-6476); the package owner (Liam) approves this note in review
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JiXzccWdccMXz7EYusf0ZXppZVy4L3VTs/2P/kucweeOxKSbpTlf9DBYykDJTEyqBGVPfd/K2VFlLCmUSBS4Bg==
 
 ## What changes
 
@@ -43,3 +42,5 @@ them on is its own step.
 - cli.run-sandbox-gate
 - cli.local-harness-host
 - cli.run-proposal
+- apps/cli/src/commands/run/harness.test.ts
+- apps/cli/src/commands/run/sandbox.test.ts
