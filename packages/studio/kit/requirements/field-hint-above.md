@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-13125; Harness page check H3 (HAL-13120)
 
-With `hintAbove`, the kit's `Field` shall draw its hint, or its error in the hint's place, between the label and the control instead of under the control, with the same look, and the control shall still be described by it. In the side layout, the label shall then line up with that line's text rather than with a control's text line.
+Where a `Field` has `hintAbove`, the kit's `Field` shall draw its hint, or its error in the hint's place, between the label and the control instead of under the control, with the same look, and the control shall still be described by it. In the side layout, the label shall then line up with that line's text rather than with a control's text line.
 
 ## Examples
 
