@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import v8CoverageModule from "@vitest/coverage-v8";
+// A private path, like the members used below: check this file on every Vitest upgrade (see README).
 import { V8CoverageProvider } from "@vitest/coverage-v8/dist/provider.js";
 import type { CoverageProviderModule, ReportContext, Vitest } from "vitest/node";
 
@@ -40,6 +41,15 @@ class WorkerdCoverageProvider extends V8CoverageProvider {
     // `options` is Vitest's resolved `coverage` setting. Workers started from now on inherit the variable.
     this.#directory = join(this["options"].reportsDirectory, ".workerd");
     process.env[workerdCoverageDirVariable] = this.#directory;
+  }
+
+  /**
+   * Vitest calls this before every run. The workerd folder is cleared even when `coverage.clean`
+   * is off, so counts an aborted run left behind never reach the next run's report.
+   */
+  override async clean(clean = true): Promise<void> {
+    await super.clean(clean);
+    await rm(this.#directory, { recursive: true, force: true });
   }
 
   override async generateCoverage(context: ReportContext) {

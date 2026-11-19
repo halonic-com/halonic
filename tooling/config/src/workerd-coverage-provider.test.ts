@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -166,6 +166,45 @@ describe("the workerd coverage provider", () => {
 
   it("gives the same report when its own code runs in this process", async () => {
     expect(await reportedByProviderInThisProcess()).toEqual([5]);
+  }, 60_000);
+
+  it("clears what an earlier run left in the workerd folder, even with clean off", async () => {
+    const root = mkdtempSync(join(tmpdir(), "halonic-workerd-coverage-"));
+    const previous = process.env[workerdCoverageDirVariable];
+    try {
+      const vitest = await createVitest("test", {
+        root,
+        watch: false,
+        reporters: [],
+        coverage: {
+          enabled: true,
+          clean: false,
+          provider: "custom",
+          customProviderModule: providerPath,
+          reportsDirectory: join(root, "coverage"),
+        },
+      });
+      const provider = (await workerdCoverageModule.getProvider()) as unknown as {
+        initialize(ctx: unknown): void;
+        clean(clean?: boolean): Promise<void>;
+      };
+      provider.initialize(vitest);
+      const directory = process.env[workerdCoverageDirVariable] ?? "";
+      mkdirSync(directory, { recursive: true });
+      writeFileSync(join(directory, "coverage-left-behind.json"), workerdCoverage("left.ts"));
+
+      await provider.clean(false);
+      await vitest.close();
+
+      expect(existsSync(directory)).toBe(false);
+    } finally {
+      if (previous === undefined) {
+        delete process.env[workerdCoverageDirVariable];
+      } else {
+        process.env[workerdCoverageDirVariable] = previous;
+      }
+      rmSync(root, { recursive: true, force: true });
+    }
   }, 60_000);
 
   it("is a Vitest coverage module that starts and takes coverage like the V8 one", () => {
