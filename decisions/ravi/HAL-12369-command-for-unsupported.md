@@ -18,7 +18,9 @@
   each host says so through a new `checkAgainEntry`. The desktop refusal for the checks becomes
   "Studio can't save this change yet.", still of kind `unavailable` as HAL-12413 (halonic#3604)
   made it, so the page shows it after its colon. Both requirements also keep HAL-12413's
-  untrusted-workspace **Review** line and the host's own refusal words.
+  untrusted-workspace **Review** line and the host's own refusal words. The served host's
+  `checkAgainEntry` sits next to HAL-10697's `readOnly` (halonic#3085): a served window shows the
+  read-only layout, so it never reaches **Check again**, and the entry stays on the safe side.
 
 ## Why
 
