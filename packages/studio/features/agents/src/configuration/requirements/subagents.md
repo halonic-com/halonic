@@ -12,5 +12,5 @@ The agents feature shall give the agent's Configuration a Subagents page that sa
 - Given Sorter hands work to Mail triage, then Sorter shows as a disabled chip with "Sorter already hands work to Mail triage", and the dialog doesn't offer it.
 - Given Refund checker with the description "Checks refunds." and Archive with none, then the dialog lists "Archive" then "Refund checker" with "Checks refunds." under it; clicking Archive saves Archive as a subagent and closes the dialog.
 - Given every other agent is a subagent already, then the dialog's create heading is "New agent".
-- When the person presses Create with the box empty, then "Give it a name." shows and no agent is made; with "Sorter 2" it makes the agent `sorter-2` in the hub, adds it and closes.
+- Given the dialog is open, when the person presses Create with the box empty, then "Give it a name." shows and no agent is made; with "Sorter 2" it makes the agent `sorter-2` in the hub, adds it and closes.
 - Given the host refuses the change as a loop, then the toast says the host's sentence and the chips stay as they were.
