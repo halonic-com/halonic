@@ -1,5 +1,6 @@
 // The engine service's tests' fakes: Acme's files and a shell that keeps runs in memory.
 
+import { TauriEngineLock } from "@halonicjs/adapter-fs-tauri";
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import type { Clock, IdGenerator, Secrets } from "@halonicjs/ports";
 import { EngineService, type EngineServiceOptions } from "./engine-service.ts";
@@ -86,21 +87,38 @@ function shellStores(): Record<string, Handler> {
   };
 }
 
-/** A shell that holds the engine lock for one process and records each call. */
+/**
+ * A shell that holds the engine lock for this window, or refuses it when `holder` holds it, and
+ * records each call. `loseLock` plays another process taking the lock over.
+ */
 export function fakeShell(holder?: { pid: number }) {
   const calls: string[] = [];
   const stores = shellStores();
+  let onLost: ((message: unknown) => void) | undefined;
+  const ipc = {
+    invoke: async (command: string, args?: Record<string, unknown>) => {
+      calls.push(command);
+      if (command === "engine_lock_hold" && holder !== undefined) {
+        throw { kind: "conflict", message: "held", pid: holder.pid };
+      }
+      return stores[command]?.(args ?? {});
+    },
+  };
   return {
     calls,
-    ipc: {
-      invoke: async (command: string, args?: unknown) => {
-        calls.push(command);
-        if (command === "engine_lock_hold" && holder !== undefined) {
-          throw { kind: "conflict", message: "held", pid: holder.pid };
-        }
-        return stores[command]?.((args ?? {}) as Record<string, unknown>);
+    ipc,
+    lock: new TauriEngineLock(
+      {
+        ...ipc,
+        openChannel: (onMessage) => {
+          onLost = onMessage;
+          return { argument: "__CHANNEL__:0", close: () => (onLost = undefined) };
+        },
       },
-    },
+      location,
+    ),
+    /** Tells the page holding the lock that another process took it over. */
+    loseLock: () => onLost?.({ message: "The engine lock was taken over by another process." }),
   };
 }
 
@@ -120,6 +138,7 @@ export function serviceOn(
   const ids: IdGenerator = { next: (prefix) => `${prefix}1` };
   return new EngineService({
     ipc: shell.ipc,
+    lock: shell.lock,
     location,
     definitions,
     secrets,

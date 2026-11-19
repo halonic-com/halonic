@@ -41,7 +41,7 @@ export class TauriEngineLock {
    * Holds the lock until it is released.
    *
    * @param onLost - called once, if another process takes the lock over; the engine must stop
-   * @throws KindedError `conflict` when another engine holds the lock, `denied` for a workspace that isn't open, `unavailable` otherwise
+   * @throws KindedError `conflict` when another engine holds the lock (its `cause` is the shell's refusal, with the other process's `pid` when known), `denied` for a workspace that isn't open, `unavailable` otherwise
    */
   async hold(onLost: (error: Error) => void): Promise<TauriHeldEngineLock> {
     let channel: TauriChannelHandle | undefined;
@@ -91,7 +91,8 @@ function refusalError(reason: unknown): KindedError {
       "The desktop shell gave no answer to the engine lock call.",
     );
   }
-  return new KindedError(errorKinds[reason.kind], reason.message);
+  // The refusal is the cause, so a caller can name the other engine's `pid`.
+  return new KindedError(errorKinds[reason.kind], reason.message, { cause: reason });
 }
 
 function lostError(message: unknown): Error {

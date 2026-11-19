@@ -72,6 +72,7 @@ verifies("fs-tauri.engine-lock", () => {
       const error = await rejection(lock.hold(() => {}));
       expect(errorKindOf(error)).toBe("conflict");
       expect((error as Error).message).toBe("Another engine is open on this workspace.");
+      expect((error as Error).cause).toMatchObject({ kind: "conflict", pid: 4242 });
       expect(shell.openChannels).toBe(0);
     });
 
