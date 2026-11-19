@@ -12,7 +12,12 @@ import type {
 } from "./run-basics.ts";
 import type { RunEventBody, RunEventType } from "./run-event.ts";
 import type { LoggedSandboxBlock } from "./sandbox-blocked.ts";
-import type { DeniedPathGroupCode, SandboxOpenedView, SandboxStrength } from "./sandbox-opened.ts";
+import type {
+  DeniedPathGroupCode,
+  SandboxOpenedView,
+  SandboxSignIn,
+  SandboxStrength,
+} from "./sandbox-opened.ts";
 
 // Type tests for the run log fields added after the reference shapes in
 // run-event.test.ts, one requirement each.
@@ -133,7 +138,11 @@ verifies("events.sandbox-opened", () => {
       deniedPaths: string[];
       allowedSites: string[];
       timeLimitMs: number;
+      signIn?: SandboxSignIn;
     }>();
+    expectTypeOf<SandboxSignIn>().toEqualTypeOf<
+      { kind: "key"; provider: string } | { kind: "subscription"; provider: "anthropic" | "openai" }
+    >();
     expectTypeOf<SandboxStrength>().toEqualTypeOf<"os" | "vm" | "remote">();
     expectTypeOf<DeniedPathGroupCode>().toEqualTypeOf<
       | "ssh-keys"

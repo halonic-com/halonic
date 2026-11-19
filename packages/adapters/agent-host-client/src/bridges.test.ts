@@ -36,6 +36,7 @@ verifies("agent-host-client.bridges", () => {
         body: { ...agent, providers: served.providers, prices },
       });
       expect(bridge).toMatchObject({ url: opened.url, token: opened.token });
+      expect(bridge.providers).toBe(served.providers);
       expect(bridges.idOf(bridge)).toBe("b1");
       expect(bridges.idOf({ url: opened.url, token: "another" })).toBeUndefined();
     });

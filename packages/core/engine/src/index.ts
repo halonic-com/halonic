@@ -31,6 +31,7 @@ export type {
   HarnessProfile,
   HarnessProfileBuilder,
   HarnessRunsOptions,
+  HostedHarnessBridge,
   OpenInstructions,
   Placement,
   PlacementAnswer,

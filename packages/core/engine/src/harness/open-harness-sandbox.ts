@@ -2,17 +2,28 @@
 // and `sandbox.opened` (or `sandbox.off`) events, and the time limit on the
 // opening. Split from `run-harness-call.ts`, which starts the harness in it.
 
-import { type DeniedPathGroup, type RunEventBody, sandboxOpenedView } from "@halonicjs/events";
+import {
+  type DeniedPathGroup,
+  type RunEventBody,
+  type SandboxSignIn,
+  sandboxOpenedView,
+} from "@halonicjs/events";
 import {
   addHarnessEnvironment,
+  type BridgeProvider,
   type Harness,
-  type OpenHarnessBridge,
   type Sandbox,
   type SandboxSession,
 } from "@halonicjs/ports";
 import type { StopSignal } from "@halonicjs/std";
+import type { ProgramHarness } from "../kernel/decide-types.ts";
 import { StartFailedError } from "../run/start-failed-error.ts";
-import type { HarnessAgent, HarnessRunsOptions, PlacementAnswer } from "./harness-host.ts";
+import type {
+  HarnessAgent,
+  HarnessRunsOptions,
+  HostedHarnessBridge,
+  PlacementAnswer,
+} from "./harness-host.ts";
 import type { HarnessApprovals, HarnessCall, HarnessEventLog } from "./run-harness-call.ts";
 import { sandboxWhyOf } from "./start-failure-causes.ts";
 import {
@@ -55,7 +66,7 @@ export async function openSandbox(
   { options, call, agent: subject, harness, log, limits, stop }: StartedCall,
   placement: PlacementAnswer,
   sandbox: Sandbox,
-  bridge: OpenHarnessBridge,
+  bridge: HostedHarnessBridge,
   instructionsFolder: string | null,
 ): Promise<SandboxSession> {
   stop.throwIfStopped();
@@ -88,13 +99,34 @@ export async function openSandbox(
     );
   }
   try {
-    await log.append(openedEvent(placement, session, sandbox, deniedGroups, options.home, call));
+    const signIn = signInOf(subject.harness, bridge);
+    const shown = { deniedGroups, home: options.home, ...(signIn === undefined ? {} : { signIn }) };
+    await log.append(openedEvent(placement, session, sandbox, shown, call));
   } catch (error) {
     // The caller closes only a session it got back.
     await session.close();
     throw error;
   }
   return session;
+}
+
+/** The provider whose model each harness's program calls through the bridge. */
+const providerOfHarness: Readonly<Record<ProgramHarness, BridgeProvider>> = {
+  "claude-code": "anthropic",
+  codex: "openai",
+};
+
+/**
+ * How the agent signs in to its harness's provider, as the bridge reaches
+ * it: the person's own subscription, or a key Halonic keeps, named by the
+ * provider file it comes from. `undefined` when the host doesn't say.
+ */
+function signInOf(harness: ProgramHarness, bridge: HostedHarnessBridge): SandboxSignIn | undefined {
+  const provider = providerOfHarness[harness];
+  const access = bridge.providers?.[provider];
+  if (access === undefined) return undefined;
+  if (access.kind === "sign-in") return { kind: "subscription", provider };
+  return { kind: "key", provider: access.providerId ?? provider };
 }
 
 /**
@@ -106,8 +138,11 @@ function openedEvent(
   placement: PlacementAnswer,
   session: SandboxSession,
   sandbox: Sandbox,
-  deniedGroups: readonly DeniedPathGroup[],
-  home: string | null,
+  shown: {
+    deniedGroups: readonly DeniedPathGroup[];
+    home: string | null;
+    signIn?: SandboxSignIn;
+  },
   { effect: { state, agent } }: HarnessCall,
 ): RunEventBody {
   if (placement.runsOn === "this-computer") {
@@ -119,10 +154,6 @@ function openedEvent(
   if (strength === "none") {
     throw new Error(`The sandbox for agent "${agent}" has no fence.`);
   }
-  const view = sandboxOpenedView(session.profile, {
-    strength,
-    home,
-    deniedGroups,
-  });
+  const view = sandboxOpenedView(session.profile, { strength, ...shown });
   return { type: "sandbox.opened", state, agent, sandbox: view };
 }

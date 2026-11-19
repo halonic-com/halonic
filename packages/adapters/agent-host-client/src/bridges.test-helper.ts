@@ -1,11 +1,6 @@
 // Shared by the bridge tests: services that answer nothing, a host that
 // takes every answer, and a bridge opened on it.
-import type {
-  BridgeApprovals,
-  BridgeRecorder,
-  BridgeTools,
-  OpenHarnessBridge,
-} from "@halonicjs/ports";
+import type { BridgeApprovals, BridgeRecorder, BridgeTools } from "@halonicjs/ports";
 import { AgentHostBridges, type BridgeServices } from "./bridges.ts";
 import { FakeHost, type FakeStream, ok } from "./fake-host.test-helper.ts";
 
@@ -49,7 +44,11 @@ export async function openOn(
   served: BridgeServices = services(),
   events: BridgeRecorder = recorder,
   first: object = opened,
-): Promise<{ bridges: AgentHostBridges; bridge: OpenHarnessBridge; stream: FakeStream }> {
+): Promise<{
+  bridges: AgentHostBridges;
+  bridge: Awaited<ReturnType<AgentHostBridges["open"]>>;
+  stream: FakeStream;
+}> {
   const bridges = new AgentHostBridges(host, { servicesFor: () => served });
   const streamOpened = host.nextStream("POST /v1/bridge/open");
   const opening = bridges.open(agent, events);

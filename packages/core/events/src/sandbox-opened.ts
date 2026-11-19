@@ -25,6 +25,27 @@ export const deniedPathGroupCodes = [
   "agent-settings",
 ] as const;
 
+/** The model providers a person can sign in to with their own subscription: Claude, and ChatGPT. */
+export type SubscriptionProvider = "anthropic" | "openai";
+
+/**
+ * How a sandboxed step's agent signs in to its model, for the run page's
+ * Your sign-in row. It names the kind and the provider only: never a key,
+ * the name of the secret that holds it, an address or a path.
+ */
+export type SandboxSignIn =
+  /**
+   * With a key Halonic keeps: the agent never sees it, and Halonic adds it to
+   * requests on their way to `provider`, the id of the provider the key is
+   * for, such as `anthropic` or `zai`.
+   */
+  | { kind: "key"; provider: string }
+  /**
+   * With the person's own subscription, saved in the agent's own settings
+   * folder, which the agent can read while it runs.
+   */
+  | { kind: "subscription"; provider: SubscriptionProvider };
+
 /** A group of denied paths: one of {@link deniedPathGroupCodes}. */
 export type DeniedPathGroupCode = (typeof deniedPathGroupCodes)[number];
 
@@ -53,6 +74,11 @@ export interface SandboxOpenedView {
   allowedSites: string[];
   /** How long the step may last, in milliseconds. */
   timeLimitMs: number;
+  /**
+   * How the agent signs in to its model. Absent when the host didn't say,
+   * and in events logged before it was recorded.
+   */
+  signIn?: SandboxSignIn;
 }
 
 /**
@@ -84,13 +110,16 @@ export interface SandboxOpenedOptions {
   home: string | null;
   /** The groups the profile's denied paths were built from. */
   deniedGroups: readonly DeniedPathGroup[];
+  /** How the agent signs in to its model, when the host knows. */
+  signIn?: SandboxSignIn;
 }
 
 /**
  * Makes the display copy of a sandbox profile that a `sandbox.opened` event
  * carries (requirement `events.sandbox-opened`). It copies a fixed list of
  * fields and nothing else, so the profile's `env`, its temp and settings
- * folders and any field added later never reach the run log. A group is named when it has paths and all of them
+ * folders and any field added later never reach the run log; of the sign-in
+ * it copies only the kind and the provider. A group is named when it has paths and all of them
  * are denied, so a group with no paths never claims something was blocked;
  * the denied paths outside the named groups are listed one by one. Paths in
  * the person's home folder start with `~`.
@@ -125,5 +154,13 @@ export function sandboxOpenedView(
     deniedPaths: [...denied].filter((path) => !inNamedGroup.has(path)).map(shorten),
     allowedSites: [...profile.network.allowedSites],
     timeLimitMs: profile.timeLimitMs,
+    ...(options.signIn === undefined ? {} : { signIn: signInOf(options.signIn) }),
   };
+}
+
+/** The sign-in's kind and provider, and nothing else it may carry. */
+function signInOf(signIn: SandboxSignIn): SandboxSignIn {
+  return signIn.kind === "key"
+    ? { kind: "key", provider: signIn.provider }
+    : { kind: "subscription", provider: signIn.provider };
 }

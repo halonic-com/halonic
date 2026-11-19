@@ -47,8 +47,10 @@ export type {
   DeniedPathGroupCode,
   SandboxOpenedOptions,
   SandboxOpenedView,
+  SandboxSignIn,
   SandboxStrength,
   ShownSandboxProfile,
+  SubscriptionProvider,
 } from "./sandbox-opened.ts";
 export { deniedPathGroupCodes, sandboxOpenedView } from "./sandbox-opened.ts";
 export { readSandboxOpened } from "./sandbox-opened-read.ts";

@@ -50,6 +50,17 @@ verifies("harness-host.bridge", () => {
     expect(options?.recorder).toBe(recorder);
   });
 
+  it("tells the engine how the bridge reaches each provider, and closes the server's bridge", async () => {
+    const { server, host } = setup();
+
+    const bridge = await host.open(writer, recorder);
+    await bridge.close();
+
+    expect(bridge.providers).toBe(services.providers);
+    expect(bridge.token).toBe("test-token");
+    expect(server.closed).toBe(1);
+  });
+
   it("prices a model from the host's prices, and gives no price for one they don't name", async () => {
     const { server, host } = setup();
 
