@@ -1,5 +1,9 @@
 import type { PluginEntry, PluginInstall } from "@halonicjs/app";
-import type { InstalledPlugin, InstalledPluginFeed } from "@halonicjs/studio-feature-plugins";
+import type {
+  InstalledPlugin,
+  InstalledPluginFeed,
+  InstalledPluginsRead,
+} from "@halonicjs/studio-feature-plugins";
 import { installedPluginOf } from "./installed-plugin.ts";
 
 /** What {@link PluginFeed} reads: core's `PluginService`, as far as the feed uses it. */
@@ -11,7 +15,8 @@ export interface PluginFeedSource {
 /**
  * The installed plugins as the plugins feature's feed. `current` gives the same array until a
  * reload finds something different, as `useSyncExternalStore` needs. A reload that fails keeps the
- * plugins it had and says why, so a failed read never empties Home's cards.
+ * plugins it had and says why, so a failed read never empties Home's cards. `firstRead` says
+ * whether any read has worked yet, so Settings can show a skeleton or why it can't list them.
  *
  * @example
  * const feed = new PluginFeed(service);
@@ -23,6 +28,7 @@ export class PluginFeed implements InstalledPluginFeed {
   readonly #listeners = new Set<() => void>();
   #plugins: readonly InstalledPlugin[] = [];
   #fingerprints = new Map<string, string>();
+  #firstRead: InstalledPluginsRead = { kind: "reading" };
   #reading: Promise<void> | undefined;
   #readAgain: Promise<void> | undefined;
 
@@ -31,6 +37,8 @@ export class PluginFeed implements InstalledPluginFeed {
   }
 
   readonly current = (): readonly InstalledPlugin[] => this.#plugins;
+
+  readonly firstRead = (): InstalledPluginsRead => this.#firstRead;
 
   readonly subscribe = (listener: () => void): (() => void) => {
     this.#listeners.add(listener);
@@ -78,6 +86,25 @@ export class PluginFeed implements InstalledPluginFeed {
   }
 
   async #read(): Promise<void> {
+    let next: readonly InstalledPlugin[];
+    try {
+      next = await this.#readPlugins();
+    } catch (error) {
+      // Once a read has worked, the plugins it found stay; only a feed with none says why.
+      if (this.#firstRead.kind !== "ready") {
+        this.#firstRead = { kind: "failed", error };
+        this.#tell();
+      }
+      throw error;
+    }
+    const firstToWork = this.#firstRead.kind !== "ready";
+    const changed = !sameJson(next, this.#plugins);
+    if (changed) this.#plugins = next;
+    if (firstToWork) this.#firstRead = { kind: "ready" };
+    if (changed || firstToWork) this.#tell();
+  }
+
+  async #readPlugins(): Promise<readonly InstalledPlugin[]> {
     const entries = await this.#source.load();
     const next = await Promise.all(
       entries.map(async (entry) =>
@@ -92,8 +119,10 @@ export class PluginFeed implements InstalledPluginFeed {
         entry.status === "broken" ? [] : [[entry.folder, entry.fingerprint] as const],
       ),
     );
-    if (sameJson(next, this.#plugins)) return;
-    this.#plugins = next;
+    return next;
+  }
+
+  #tell(): void {
     for (const listener of [...this.#listeners]) listener();
   }
 }

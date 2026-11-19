@@ -52,11 +52,25 @@ export interface InstalledPlugin extends PluginPanelUi {
 }
 
 /**
+ * How a feed's first read of the installed plugins went. Until one read works, the list can't say
+ * which plugins there are; once one has, a later read that fails keeps the plugins it had.
+ */
+export type InstalledPluginsRead =
+  | { readonly kind: "reading" }
+  | { readonly kind: "failed"; readonly error: unknown }
+  | { readonly kind: "ready" };
+
+/**
  * The installed plugins as they change while Studio runs, with what their pages need. It also
  * serves as the panels' `PluginPanelFeed` and Home's `PluginCardFeed`.
  */
 export interface InstalledPluginFeed extends PluginPanelFeed {
   readonly current: () => readonly InstalledPlugin[];
+  /**
+   * How the first read went: the same object until it changes, and the listeners are called when
+   * it does. A feed without it has its plugins from the start.
+   */
+  readonly firstRead?: () => InstalledPluginsRead;
 }
 
 /** What a plugin's page needs from the Studio. */
