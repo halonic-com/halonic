@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for this follow-up in his review of HAL-12344 (halonic#3568) and assigned HAL-12494; Liam signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8cHH/dV+wTc5XlqC7rMEPHkmLEMFYrvEdO1fM8NUl4LuM3l12VJmjYW/xJm353ce4yBfS77wpGyBRabp8cF7Dw==
 - Task: HAL-12494
 
 ## What changes
