@@ -79,7 +79,10 @@ function itemOf(listing: WorkflowListing, now: Date): OverviewItem {
     ...(listing.description === undefined || listing.description === ""
       ? {}
       : { description: listing.description, detail: listing.description }),
-    ...(lastRun === undefined ? {} : { usedBy: <LastRun lastRun={lastRun} now={now} /> }),
+    // On a phone, Last run takes its own line, so the name and description keep the width (HAL-13100).
+    ...(lastRun === undefined
+      ? {}
+      : { usedBy: <LastRun lastRun={lastRun} now={now} />, usedByOwnLine: true }),
     avatar: <LetterTile name={listing.name} />,
     ...(hasChips(listing) ? { chips: <Chips listing={listing} /> } : {}),
   };

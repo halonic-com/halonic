@@ -113,7 +113,8 @@ type UsedByPlace = "right" | "line";
  * kit doesn't move that text to the line's start as it does a chip. When the line is too long, the
  * detail is cut and the used-by text stays whole, as the kit's stacked rows keep their time
  * (HAL-13066). When even a cut detail leaves no room, the used-by text has the line alone, whole and
- * wrapping if it must, and the detail and its " · " aren't shown on that row (HAL-13648).
+ * wrapping if it must, and the detail and its " · " aren't shown on that row (HAL-13648). An item that
+ * asks for it gets its used-by text on a line of its own, whole and wrapping if it must (HAL-13100).
  */
 function metaOf(item: OverviewItem, usedByPlace: UsedByPlace): ReactNode {
   if (usedByPlace === "right" || item.usedBy === undefined) {
@@ -121,6 +122,14 @@ function metaOf(item: OverviewItem, usedByPlace: UsedByPlace): ReactNode {
   }
   if (item.detail === undefined) {
     return item.usedBy;
+  }
+  if (item.usedByOwnLine === true) {
+    return (
+      <>
+        <span className="block truncate">{item.detail}</span>
+        <span className="block whitespace-normal wrap-break-word">{item.usedBy}</span>
+      </>
+    );
   }
   return <DetailThenUsedBy detail={item.detail} usedBy={item.usedBy} />;
 }
