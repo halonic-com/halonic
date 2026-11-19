@@ -719,15 +719,22 @@ jobs:
       # testing more here is harmless and testing fewer fails it. So when
       # the merge base's copy fails (an older copy without --head, say),
       # every package is tested; the later lines win in $GITHUB_OUTPUT.
+      # After the lockfile walk-back above, an older commit's copy would
+      # choose, so every package is tested then too, as after the test
+      # walk-back below.
       - id: affected
         name: Choose the packages to test
         if: env.AFFECTED_TESTS == 'on'
         env:
           MERGE_BASE: ${{ steps.merge-base.outputs.sha }}
           MERGE_REF: ${{ steps.merge-base.outputs.merge-ref }}
+          INSTALLED: ${{ steps.install.outputs.sha }}
         run: |
           cli=tooling/check/src/cli/affected-tests.ts
-          if [ -n "$MERGE_REF" ] && [ -f "$cli" ]; then
+          if [ "$INSTALLED" != "$MERGE_BASE" ]; then
+            echo "::notice title=Affected tests::The merge base's lockfile doesn't install, so every package is tested."
+            echo "all=true" >> "$GITHUB_OUTPUT"
+          elif [ -n "$MERGE_REF" ] && [ -f "$cli" ]; then
             if ! pnpm exec node "$cli" --base "$MERGE_BASE" --head "$MERGE_REF"; then
               echo "::notice title=Affected tests::The merge base's affected-tests failed, so every package is tested."
               printf 'all=true\nfilters=\nfolders=\n' >> "$GITHUB_OUTPUT"
@@ -760,8 +767,8 @@ jobs:
       # then fail) and use its tests as the baseline. As with the lockfile, the
       # baseline is always a commit on main, and the guard installs and
       # compares against exactly this commit. API and network errors fail.
-      # It runs every package's tests: the guard compares only the affected
-      # ones, and a red main is rare.
+      # Like the lockfile walk-back, it runs every package's tests: the guard
+      # compares only the affected ones, and a red main is rare.
       - id: walk-back
         name: Walk back to main's newest green commit
         if: steps.base-test-run.outcome == 'failure'
