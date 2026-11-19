@@ -70,6 +70,7 @@ workspace.
 | ! "not trusted yet" | You haven't trusted this workspace on this computer yet, or Halonic couldn't read its trust record. Runs won't start. | Run `halonic trust` (the line shows the command with your `--dir`). |
 | ! "changed since you trusted it" | A file that trust covers changed since you trusted it. | Run `halonic trust` and confirm the change. |
 | ! "can't be trusted" | A file names something that can't be trusted. | Run `halonic trust`: it says which file and why. |
+| ! "more than 50,000 files" | The folder has too many files for Studio to watch, so Studio won't show changes made outside Halonic as they happen. Runs and Studio still work. | Open a smaller folder, or move files the workspace doesn't use out of this one. |
 | ✕ "problems in its files" | Some of the workspace's files have errors. Halonic leaves those files out, and no run starts here. | Run `halonic validate`, fix each error it lists, then run `doctor` again. |
 
 **On Windows, inside WSL:** if the workspace is on a Windows drive (under
