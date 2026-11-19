@@ -1,6 +1,13 @@
 import type { WindowCount } from "@halonicjs/ports";
 import type { RequestContext, ServerPorts } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
+import {
+  passwordFingerprint,
+  readStoredSession,
+  type StoredSession,
+  sha256Hex,
+  toHex,
+} from "./stored-session.ts";
 
 /** The secret that holds the sign-in password hash. No value means the server has no password. */
 export const passwordSecretName = "serve-password";
@@ -56,13 +63,20 @@ export function createSignIn(ports: SignInPorts): SignIn {
     return `session:${await sha256Hex(token)}`;
   }
 
-  async function startSession(request: Request, context: RequestContext): Promise<Response> {
+  async function startSession(
+    request: Request,
+    context: RequestContext,
+    passwordHash: string,
+  ): Promise<Response> {
     const token = newSessionToken();
-    const expiresAt = new Date(clock.now().getTime() + sessionLifetimeMs);
+    const session: StoredSession = {
+      expiresAt: new Date(clock.now().getTime() + sessionLifetimeMs).toISOString(),
+      password: await passwordFingerprint(passwordHash),
+    };
     const stored = await coordination.compareAndSet(
       await sessionKey(token),
       null,
-      expiresAt.toISOString(),
+      JSON.stringify(session),
     );
     if (!stored) {
       // 256 random bits never collide; a store that says otherwise is broken.
@@ -74,6 +88,19 @@ export function createSignIn(ports: SignInPorts): SignIn {
       sessionCookie(request, context, token, sessionLifetimeMs / 1000),
     );
     return response;
+  }
+
+  /**
+   * A session lives until its end time, and only while the password it was started with is
+   * still the one set. Anything else stored under its key, such as the plain date of the old
+   * form, has ended.
+   */
+  async function isLive(stored: string, passwordHash: string): Promise<boolean> {
+    const session = readStoredSession(stored);
+    if (session === null || clock.now().getTime() >= Date.parse(session.expiresAt)) {
+      return false;
+    }
+    return session.password === (await passwordFingerprint(passwordHash));
   }
 
   /** Counts one attempt: the client's own count first, so a refused client never uses up the server's. */
@@ -112,16 +139,17 @@ export function createSignIn(ports: SignInPorts): SignIn {
       if (!(await passwordHasher.verify(password, hash))) {
         return errorResponse(serverErrors.wrongPassword);
       }
-      return startSession(request, context);
+      return startSession(request, context, hash);
     },
 
     async logout(request, context) {
       const token = readSessionToken(request, context);
       if (token !== null) {
         const key = await sessionKey(token);
-        const expiresAt = await coordination.read(key);
-        if (expiresAt !== null) {
-          await coordination.compareAndSet(key, expiresAt, null);
+        // Deletes whatever is stored, so a session in the old form (a plain date) ends too.
+        const stored = await coordination.read(key);
+        if (stored !== null) {
+          await coordination.compareAndSet(key, stored, null);
         }
       }
       const response = new Response(null, { status: 204 });
@@ -130,7 +158,8 @@ export function createSignIn(ports: SignInPorts): SignIn {
     },
 
     async isSignedIn(request, context) {
-      if ((await secrets.get(passwordSecretName)) === null) {
+      const hash = await secrets.get(passwordSecretName);
+      if (hash === null) {
         return true;
       }
       const token = readSessionToken(request, context);
@@ -138,12 +167,12 @@ export function createSignIn(ports: SignInPorts): SignIn {
         return false;
       }
       const key = await sessionKey(token);
-      const expiresAt = await coordination.read(key);
-      if (expiresAt === null) {
+      const stored = await coordination.read(key);
+      if (stored === null) {
         return false;
       }
-      if (clock.now().getTime() >= Date.parse(expiresAt)) {
-        await coordination.compareAndSet(key, expiresAt, null);
+      if (!(await isLive(stored, hash))) {
+        await coordination.compareAndSet(key, stored, null);
         return false;
       }
       return true;
@@ -215,11 +244,6 @@ function parseIpv6(text: string): number[] | null {
   return missing < 1 ? null : [...first, ...new Array<number>(missing).fill(0), ...second];
 }
 
-async function sha256Hex(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return toHex(new Uint8Array(digest));
-}
-
 /** The password from a JSON body of the form `{ "password": "…" }`, or `null` when the body is anything else. */
 function readPassword(request: Request, body: Uint8Array): string | null {
   if (mediaType(request.headers.get("content-type")) !== "application/json") {
@@ -272,8 +296,4 @@ function sessionCookie(
 /** 32 random bytes as hex text. These come from the system's random source, never from `ports.ids`. */
 function newSessionToken(): string {
   return toHex(crypto.getRandomValues(new Uint8Array(32)));
-}
-
-function toHex(bytes: Uint8Array): string {
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }

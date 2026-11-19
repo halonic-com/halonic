@@ -76,6 +76,25 @@ describe("the API in workerd", () => {
     expect(right.headers.get("set-cookie")).toContain("HttpOnly");
   });
 
+  it("ends a session in the Durable Object once the password is set again", async () => {
+    const scope = nextScope();
+    const login = await ask("/api/login", { method: "POST", body: { password }, scope });
+    const cookie = (login.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
+    const session = async (env: object = {}) =>
+      serveRequest(
+        new Request(`https://${host}/api/session`, {
+          headers: { host, cookie, "cf-connecting-ip": "203.0.113.7" },
+        }),
+        { ...(await deployment()), ...env } as RuntimeEnv,
+        { scope },
+      );
+    expect((await session()).status).toBe(200);
+    // The same password hashed again gets a new salt, as `halonic secret set` gives it.
+    const rehashed = await createPbkdf2ChainHasher().hash(password);
+    expect((await session({ HALONIC_SECRET_SERVE_PASSWORD: rehashed })).status).toBe(401);
+    expect((await session()).status).toBe(401);
+  });
+
   it("gives no API route without a session", async () => {
     expect((await ask("/api/trust")).status).toBe(401);
   });
