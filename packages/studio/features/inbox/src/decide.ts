@@ -43,6 +43,19 @@ export function inboxDecisions(executor: Pick<RunExecutor, "send">): InboxDecisi
   };
 }
 
+/**
+ * What the run did with an answer, from the run as `send` returns it: it goes on (running, or
+ * waiting again), it finished, or it ended another way (failed, or couldn't try). The decided line
+ * says so, so it never says the run continues when the answer ended it (HAL-13919).
+ */
+export type AfterAnswer = "continues" | "finished" | "ended";
+
+/** {@link AfterAnswer} for the run `send` returned. */
+export function afterAnswer(run: Pick<RunSummary, "status">): AfterAnswer {
+  if (run.status === "running" || run.status === "waiting") return "continues";
+  return run.status === "completed" ? "finished" : "ended";
+}
+
 /** The engine's refusals that mean "not waiting for this answer any more", so trying again can't work. */
 const staleAnswerCodes: ReadonlySet<string> = new Set([
   "engine.decision-callid-must-match",
