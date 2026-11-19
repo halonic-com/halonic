@@ -31,6 +31,7 @@ class TestRunObject extends RunObject {
 }
 
 /** A run object with no listener or run list, on a clock years ahead, so its alarm never fires. */
+// @ts-expect-error No `runList`, as a Worker that exports the base class itself runs it.
 class UnwiredRunObject extends RunObject {
   protected override clock = new SuiteClock();
 }

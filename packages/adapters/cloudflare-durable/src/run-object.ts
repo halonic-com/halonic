@@ -10,7 +10,7 @@ import type {
 import { type Clock, systemClock } from "@halonicjs/std";
 import type { RunHealth, RunObjectApi } from "./run-object-api.ts";
 import { sqlOfStorage } from "./run-sql.ts";
-import { type RunListSink, RunState } from "./run-state.ts";
+import { type RunListFailure, type RunListSink, RunState } from "./run-state.ts";
 import { napFor } from "./timer-delivery.ts";
 
 /**
@@ -19,15 +19,17 @@ import { napFor } from "./timer-delivery.ts";
  * method of {@link RunState}, and callers use them through `DurableScheduler`
  * and `DurableRunStore`.
  *
- * The Worker subclasses it and overrides {@link RunObject.timerListener} and
+ * The Worker subclasses it, overrides {@link RunObject.timerListener} and implements
  * {@link RunObject.runList}: the platform wakes the object at the alarm, and the
- * object has no engine or database of its own to call.
+ * object has no engine or database of its own to call. `runList` is abstract, so a
+ * subclass without one doesn't compile (HAL-13900): the run list stayed empty for
+ * weeks when the Worker had none.
  *
  * Never rename or delete this class once it has been deployed: Cloudflare
  * deletes a Durable Object class's data with it. The names are fixed in
  * `durableObjectClassNames` and in the package README.
  */
-export class RunObject extends DurableObject implements RunObjectApi {
+export abstract class RunObject extends DurableObject implements RunObjectApi {
   /** The time timers are due by. Only a test replaces it. */
   protected clock: Clock = systemClock;
   /** How the delivery loop waits for the next timer. Only a test replaces it. */
@@ -46,7 +48,8 @@ export class RunObject extends DurableObject implements RunObjectApi {
       clock: () => this.clock,
       nap: (ms, signal) => this.nap(ms, signal),
       listener: () => this.timerListener(),
-      runList: () => this.runList(),
+      runList: () => this.#runListOrFail(),
+      onRunListFailure: (failure) => this.reportRunListFailure(failure),
     });
   }
 
@@ -58,8 +61,30 @@ export class RunObject extends DurableObject implements RunObjectApi {
   }
 
   /** Where run summaries go for the run list. The Worker's subclass answers with a `D1RunList`. */
-  protected runList(): RunListSink {
-    throw new Error("This RunObject has no run list: subclass it and override runList().");
+  protected abstract runList(): RunListSink;
+
+  /**
+   * Where a failed run list update goes; it is tried again with the backoff all the same. The
+   * default writes the run, the attempt and the error's name and message to the Worker's log,
+   * never its stack or its cause, which may name things of the run.
+   */
+  protected reportRunListFailure(failure: RunListFailure): void {
+    const { error } = failure;
+    const what = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    const retryInSeconds = Math.round(failure.retryInMs / 1000);
+    console.error(
+      `The run list update of run ${failure.runId} failed (attempt ${failure.attempt}, next try in ${retryInSeconds} s). ${what}`,
+    );
+  }
+
+  /** The subclass's run list. TypeScript lets a Worker export this class itself, so say what is missing. */
+  #runListOrFail(): RunListSink {
+    if (typeof this.runList !== "function") {
+      throw new Error(
+        "This RunObject has no run list: the Worker must export a subclass that implements runList().",
+      );
+    }
+    return this.runList();
   }
 
   append(
