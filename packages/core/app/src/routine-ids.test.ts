@@ -1,4 +1,4 @@
-import { checkRunId } from "@halonicjs/ports";
+import { checkProposalRef, checkRunId } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { lastTickKey, routineRunId, shortHash, utf8Length } from "./routine-ids.ts";
@@ -9,14 +9,14 @@ verifies("app.routine-scheduler", () => {
   it("gives the same id for the same workspace, routine and time, and a new one otherwise", () => {
     const id = routineRunId("memory:a", "p/daily", at);
     expect(id).toBe(
-      `routine-${shortHash("memory:a")}-20261103T080000.000Z-${shortHash("p/daily@2026-11-03T08:00:00.000Z")}`,
+      `routine-${shortHash("memory:a")}-20261103T080000Z-${shortHash("p/daily@2026-11-03T08:00:00.000Z")}`,
     );
     expect(routineRunId("memory:a", "p/daily", at)).toBe(id);
     expect(routineRunId("memory:b", "p/daily", at)).not.toBe(id);
     expect(routineRunId("memory:a", "p/daily", new Date("2026-11-04T08:00:00Z"))).not.toBe(id);
   });
 
-  it("gives ids every run store keeps as a file name, however long or odd the routine key", () => {
+  it("gives ids every run store keeps as a file name and a proposal ref takes, however long or odd the routine key", () => {
     const keys = [
       "acme/daily-report",
       "@workspace/backup",
@@ -26,7 +26,8 @@ verifies("app.routine-scheduler", () => {
     for (const key of keys) {
       const id = routineRunId("memory:a", key, at);
       expect(() => checkRunId(id)).not.toThrow();
-      expect(id).toHaveLength(62);
+      expect(() => checkProposalRef(`refs/halonic/proposals/${id}`)).not.toThrow();
+      expect(id).toHaveLength(58);
     }
     const longKey = keys[3] ?? "";
     expect(routineRunId("memory:a", `${longKey}x`, at)).not.toBe(
@@ -46,19 +47,20 @@ verifies("app.routine-scheduler", () => {
   });
 
   it("keeps the run ids and last-tick key it gave before, so stored runs still match", () => {
-    // Written down when the ids became file names (HAL-4844). If one of these
-    // changes, a host would start a run again that already ran.
+    // Written down when the ids became file names (HAL-4844) and lost their
+    // "." to name proposal refs (HAL-12383). If one of these changes, a host
+    // would start a run again that already ran.
     expect(routineRunId("ws-7f3a2c", "acme/daily-report", at)).toBe(
-      "routine-9f67cab0a2a7258c-20261103T080000.000Z-a9686c3d856d20f5",
+      "routine-9f67cab0a2a7258c-20261103T080000Z-a9686c3d856d20f5",
     );
     expect(routineRunId("ws-7f3a2c", "acme/résumé-😀", at)).toBe(
-      "routine-9f67cab0a2a7258c-20261103T080000.000Z-df8fb9387bb60c84",
+      "routine-9f67cab0a2a7258c-20261103T080000Z-df8fb9387bb60c84",
     );
     expect(routineRunId("ws-7f3a2c", `${"h".repeat(200)}/${"é".repeat(40)}`, at)).toBe(
-      "routine-9f67cab0a2a7258c-20261103T080000.000Z-1fe1f169a131850d",
+      "routine-9f67cab0a2a7258c-20261103T080000Z-1fe1f169a131850d",
     );
     expect(routineRunId("ws-\ud800", "acme/daily-report", at)).toBe(
-      "routine-91f0ef6d848d1503-20261103T080000.000Z-a9686c3d856d20f5",
+      "routine-91f0ef6d848d1503-20261103T080000Z-a9686c3d856d20f5",
     );
     expect(lastTickKey("ws-7f3a2c")).toBe("routines/9f67cab0a2a7258c/last-tick");
   });
