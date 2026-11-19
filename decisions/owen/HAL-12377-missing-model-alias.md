@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12377 (Liam, CTO; decided in the task)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:IOAMR9XKJcTlQ6WVbpDyl1Z6fiE9bqt5YxcRrT+lvY/4TlPqmL0+i6uh4JtMKUfcJWE+f0Xdm07QZVeqchRwBg==
 - Task: HAL-12377
 
 A run of a workspace made with plain `halonic init` stopped at its first agent step with
