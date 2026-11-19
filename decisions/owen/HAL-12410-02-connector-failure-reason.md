@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12410
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2dZtO2bEYy3BUn/fcgnwqggBO/57krpwQ3YeAQUGwQluxTXSu1xZBHs+CScZ+OK8UVjCRs1v0PB17jjKMPXuDA==
 
 Sofia's UX check (HAL-12390, row C2) asks the connector page to say why a local program's tools
 couldn't be listed (program missing, secret missing or refused, program stopped), instead of
