@@ -517,6 +517,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
           overwrite: true
+      # Time per task type, to balance the planned test shards (HAL-9808).
+      # The uploaded file keeps only names, cache status and times: Turbo's
+      # full summary also holds the runner's user, git details and hashed
+      # environment variables, which nobody needs for this.
       - name: Task timings
         if: always()
         run: |
@@ -524,6 +528,25 @@ jobs:
           [ -n "$summary" ] || exit 0
           jq -r '"Tasks: \(.execution.attempted), cached: \(.execution.cached), failed: \(.execution.failed), \((.execution.endTime - .execution.startTime) / 1000)s"' "$summary" \
             | tee -a "$GITHUB_STEP_SUMMARY"
+          jq '[.tasks[] | {taskId, task, package, cache: .cache.status, startTime: .execution.startTime, endTime: .execution.endTime, exitCode: .execution.exitCode}]' \
+            "$summary" > "$RUNNER_TEMP/task-timings.json"
+          jq -r '"",
+            "| Task | Tasks | Run (not cached) | Seconds run | Longest |",
+            "| --- | --- | --- | --- | --- |",
+            (group_by(.task)[]
+              | map(select(.cache == "MISS" and .endTime != null)) as $run
+              | ($run | map((.endTime - .startTime) / 1000)) as $seconds
+              | "| \(.[0].task) | \(length) | \($run | length) | \($seconds | add // 0 | round) | \($seconds | max // 0 | round) |")' \
+            "$RUNNER_TEMP/task-timings.json" | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        continue-on-error: true
+        with:
+          name: turbo-task-timings
+          path: ${{ runner.temp }}/task-timings.json
+          if-no-files-found: ignore
+          retention-days: 30
+          overwrite: true
       # Only main saves, like the pnpm, Gradle and Rust caches. A pull
       # request's or queue entry's copy is scoped to its own ref, so only a
       # re-run of the same pull request could read it, and the 155 copies
