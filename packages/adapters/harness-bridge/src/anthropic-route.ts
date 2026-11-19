@@ -2,6 +2,7 @@ import type { Secrets } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 import { AnthropicReplyReader } from "./anthropic-reply.ts";
 import { refuseUrlSources } from "./anthropic-sources.ts";
+import { type KnownRequest, refuseUnknownAtCompatible } from "./compatible-request.ts";
 import { type Fetch, passThrough, pickHeaders, type UpstreamLimits } from "./pass-through.ts";
 import { type ProviderApi, providerTarget } from "./provider-address.ts";
 import { providerAccess, providerAuthorization } from "./provider-key.ts";
@@ -29,7 +30,50 @@ const anthropicApi: ProviderApi = {
   name: "Anthropic",
   ownOrigin: anthropicOrigin,
   ownPath: "/v1/messages",
-  pathUnder: (baseUrl) => `${baseUrl.replace(/\/v1$/, "")}/v1/messages`,
+  pathUnder: (basePath) => `${basePath.replace(/\/v1$/, "")}/v1/messages`,
+};
+
+/**
+ * What a compatible provider is sent of a Messages request: the top-level
+ * fields Anthropic's reference names, except `container`, which runs code on
+ * the provider's side (`mcp_servers` is known, and removed as at Anthropic),
+ * and only the tools the program runs itself: a tool without a `type` or of the
+ * type `custom`, and Anthropic's client tools (`bash_*`, `text_editor_*`,
+ * `computer_*`, `memory_*`).
+ */
+const anthropicKnown: KnownRequest = {
+  name: "Anthropic",
+  fields: new Set([
+    "cache_control",
+    "context_management",
+    "diagnostics",
+    "fallbacks",
+    "inference_geo",
+    "max_tokens",
+    "mcp_servers",
+    "messages",
+    "metadata",
+    "model",
+    "output_config",
+    "output_format",
+    "service_tier",
+    "speed",
+    "stop_sequences",
+    "stream",
+    "system",
+    "temperature",
+    "thinking",
+    "tool_choice",
+    "tools",
+    "top_k",
+    "top_p",
+  ]),
+  isProgramTool: (type) =>
+    type === undefined ||
+    type === "custom" ||
+    (typeof type === "string" && /^(bash|text_editor|computer|memory)_/.test(type)),
+  isKnownToolChoice: (choice) =>
+    isPlainObject(choice) && ["auto", "any", "tool", "none"].includes(String(choice["type"])),
 };
 
 /** The request headers that go on to Anthropic. The program's key and the run token stay behind. */
@@ -117,6 +161,7 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
       const sent = await context.readBody();
       const request = parseModelRequest(sent);
       refuseUrlSources(request);
+      if (target.atCompatibleProvider) refuseUnknownAtCompatible(request, anthropicKnown);
       const call = readModelCall("anthropic", request, "messages");
       const body = withoutProviderReach(sent, request, anthropicReach);
       const headers = pickHeaders(context.request.headers, forwardedRequestHeaders);
