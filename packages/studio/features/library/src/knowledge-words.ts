@@ -21,6 +21,8 @@ export const knowledgeWords = {
   hostUnreachable: (notAnswering: string) =>
     notAnswering.replace(/\.$/, "").replace(/^The /, "the "),
   tooLarge: "it has more text than one summary can take",
+  /** The engine's "isn't trusted yet" refusal, saying what Summarize didn't do. */
+  untrusted: "this workspace isn't trusted yet, so nothing was sent",
   tryAgain: "Try again",
   removeSummary: "Remove summary",
   lookup: "How agents look things up",
