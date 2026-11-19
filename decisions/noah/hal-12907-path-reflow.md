@@ -3,6 +3,7 @@
 - Task: HAL-12907
 - Approval: team decision under the HAL-2282 rule for a layout detail on an approved screen (Sofia and Noah); Liam reviews the pull request on HAL-12907 and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:w0bxqsDt06HLbUV+t5tESKIn1JKs4NnbhSajx0w6c3egYNB9GZjgDNAVLJmA6SV4qL5dJBBsw/buj2vVw3ntBQ==
 
 ## What changes
 
