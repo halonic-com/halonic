@@ -3,6 +3,7 @@
 - Task: HAL-12875
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12875 (claims check C88, HAL-12844, row 18; Chief's wording decision; small wording of an approved screen, team decision, HAL-2282 rule; follows HAL-12400; Liam's code review)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bqPTpnjB3ATTcBrH3w8jYjsINXkx96Z1DGegWP55CFyGC/qe+EVSxTt4fCTvSzYIcw3AHCCILZolGMMYqzYsCQ==
 
 ## What changes
 
