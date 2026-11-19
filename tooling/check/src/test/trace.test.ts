@@ -125,6 +125,27 @@ verifies("check.trace-active-needs-passing-test", () => {
 });
 
 verifies("check.trace-tests-name-live-requirements", () => {
+  test("finds a requirement outside the --package folders that a test in them verifies", () => {
+    const pkg = workflow({ "requirements/timer-fires.md": requirementText(id) });
+    const routinesTest = "packages/core/routines/src/timer.test.ts";
+    const other: FixturePackage = {
+      directory: "packages/core/routines",
+      manifest: manifestFor("@halonicjs/routines", "core"),
+      files: {
+        "src/index.ts": "export const x = 1;\n",
+        "src/timer.test.ts": testText(id),
+        [testResultsFile]: resultFile("packages/core/routines", [
+          { requirement: id, file: "src/timer.test.ts" },
+        ]),
+      },
+    };
+    expect(traceErrors([pkg, other], ["packages/core/routines"])).toEqual([]);
+    const retired = workflow({ "requirements/timer-fires.md": requirementText(id, "retired") });
+    expect(traceErrors([retired, other], ["packages/core/routines"])).toContain(
+      `${routinesTest}: verifies("${id}") names the retired requirement "${id}". Remove these tests, or point them at the requirement that replaced it.`,
+    );
+  });
+
   test("fails on a test that names a missing requirement", () => {
     const pkg = workflow({ [testFile]: testText(id), ...results([{ requirement: id }]) });
     expect(traceErrors([pkg])).toEqual([

@@ -1,6 +1,10 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
-import { testSelection } from "./affected-tests.ts";
+import { selectedFolders, selectTests, testSelection, verifierPackages } from "./affected-tests.ts";
+import type { CheckContext } from "./context.ts";
 import type { WorkspacePackage } from "./workspace.ts";
 
 function workspacePackage(
@@ -91,11 +95,65 @@ verifies("check.affected-tests", () => {
       });
     });
 
+    test("selects a package whose tests verify a changed package's requirements", () => {
+      const verifiers = new Map([["@halonicjs/format", ["@halonicjs/workspace"]]]);
+      expect(testSelection(["packages/core/format/src/a.ts"], packages, verifiers)).toEqual({
+        kind: "some",
+        packages: [
+          "@halonicjs/format",
+          "@halonicjs/test-runner",
+          "@halonicjs/workspace",
+          "halonic",
+        ],
+      });
+    });
+
     test("counts a README inside a package as a change to that package", () => {
       expect(testSelection(["packages/core/format/README.md"], packages)).toEqual({
         kind: "some",
         packages: ["@halonicjs/format"],
       });
     });
+  });
+
+  describe("verifierPackages", () => {
+    test("maps a package to the packages whose tests verify its requirements", () => {
+      const source = `import { verifies } from "@halonicjs/testing-spec";\nverifies("format.round-trip", () => {});\n`;
+      const files: Record<string, string> = {
+        "packages/core/format/requirements/round-trip.md": "# format.round-trip\n",
+        "packages/core/format/src/a.test.ts": source,
+        "apps/cli/src/format.test.ts": source,
+        "packages/core/workspace/src/w.test.ts": source,
+      };
+      const context = {
+        files: Object.keys(files),
+        packages,
+        read: (file: string) => files[file] ?? "",
+      };
+      expect(verifierPackages(context)).toEqual(
+        new Map([["@halonicjs/format", ["halonic", "@halonicjs/workspace"]]]),
+      );
+    });
+  });
+
+  describe("selectTests", () => {
+    test("selects every package when git can't list the changes", () => {
+      const root = mkdtempSync(join(tmpdir(), "affected-tests-"));
+      try {
+        const context = { root, files: [], packages, read: () => "" } as unknown as CheckContext;
+        const selection = selectTests(context, "no-such-commit");
+        expect(selection.kind).toBe("all");
+        expect(selectedFolders(selection, packages)).toBeUndefined();
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+  });
+
+  test("selectedFolders gives the selected packages' folders", () => {
+    const selection = testSelection(["packages/core/ports/src/blob-store.ts"], packages);
+    expect(selectedFolders(selection, packages)).toEqual(
+      new Set(["packages/core/ports", "packages/adapters/fs-node"]),
+    );
   });
 });
