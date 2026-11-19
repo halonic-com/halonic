@@ -23,7 +23,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `ConnectionSettingsStore` | `connection-settings-store.ts` | 1 | each connector's "allow sending" setting in the user's profile; `ConnectionSettings` decides | `connection-settings-store` |
 | `ConnectorClient` | `connector-client.ts` | 1 | connector tools (MCP over HTTP or stdio, built-in Google), and their factory | `connector-client` |
 | `Coordination` | `coordination.ts` | 1 | leases, compare-and-set values, counters and windowed counts | `coordination` |
-| `DefinitionStore` | `definition-store.ts` | 2 | the workspace files; `DefinitionSource` is its read-only side | `definition-store` |
+| `DefinitionStore` | `definition-store.ts` | 3 | the workspace files; `DefinitionSource` is its read-only side | `definition-store` |
 | `DeployTarget` | `deploy-target.ts` | 1 | deploys a workspace to a host such as Cloudflare: plan, deploy with step events, status, rollback, export and import, unlock, sign everyone out, destroy; `halonic deploy` loads a target by name through its `DeployTargetEntry` (planned, not in 0.1.0) | `deploy-target` (with the fake target) |
 | `Digest` | `digest.ts` | 1 | SHA-256 from the platform's WebCrypto | `digest` (with first adapter) |
 | `FolderReader` | `folder-reader.ts` | 1 | every entry and byte of a folder, links listed but never followed; the plugin service hashes plugins | `folder-reader` |
@@ -115,6 +115,7 @@ next to the ports:
 | `workspaceSecrets`, `halonicSecretNames`, `isHalonicSecretName`, `tokenNamePrefix`, `isPluginSecretName`, `pluginSecretNamePrefix` | a view of `Secrets` for the names a workspace picks; it refuses Halonic's own secrets, token names and plugin secrets | `workspace-secrets` |
 | `pluginSecrets`, `pluginSecretSeparator` | a view of `Secrets` for one plugin's backend; it reads only the names stored for that plugin and refuses every other | `plugin-secrets` |
 | `checkWorkspacePath`, `checkPublicWorkspacePath`, `isPrivateWorkspacePath` | the path rules of `DefinitionSource`: refuse unsafe paths, and private ones for the public check | `workspace-path-checks` |
+| `checkLeaveOut`, `isLeftOut` | the opt-in `leaveOut` of `list()` and `version()`: refuse an unsafe folder or name, and tell whether a path is in a left-out folder or under a left-out name | `definition-store-left-out` |
 | `segmentAsOpened` | a path segment as the private-entry rule compares names: without the code points HFS+ ignores, case folded, without trailing dots and spaces | `segment-as-opened` |
 | `checkRunAppend`, `matchesRunFilter`, `startedAtOrAfter`, `compareRunSummaries`, `runLockFormat`, `runLockStaleAfterMs` | the append checks, list filter (`startedAtOrAfter` compares two ISO times as times), order and lock rules of `RunStore` | `run-store-checks` |
 | `foldRecords`, `compactedChanges` | fold record changes into the current records, and into one `seed` each when compacting | `record-fold` |

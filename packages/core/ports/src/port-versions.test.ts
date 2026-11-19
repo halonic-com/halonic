@@ -14,6 +14,7 @@ const notPorts = new Set([
   "chat.ts",
   "connector-start-failure.ts",
   "connector-tool-error.ts",
+  "definition-store-left-out.ts",
   "harness-sign-in-command.ts",
   "index.ts",
   "model-price.ts",

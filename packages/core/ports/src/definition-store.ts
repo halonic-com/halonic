@@ -1,5 +1,7 @@
+import type { ListOptions, VersionOptions } from "./definition-store-left-out.ts";
+
 /** Version of the {@link DefinitionStore} and {@link DefinitionSource} ports. A breaking change bumps it and comes with an ADR. */
-export const definitionStoreVersion = 2;
+export const definitionStoreVersion = 3;
 
 /**
  * Read access to the workspace files (agents, workflows, hubs …), wherever
@@ -46,15 +48,24 @@ export interface DefinitionSource {
    * gives `[]`. A folder under the root that the account may not read
    * throws an `UnreadableWorkspaceFolderError` naming it, rather than being
    * left out.
+   *
+   * With `options.leaveOut`, it also leaves out the folders and folder
+   * names it gives (see `LeaveOut`), and a store that walks folders doesn't
+   * step into them. It refuses an unsafe folder or name with a `RangeError`.
    */
-  list(dir?: string): Promise<string[]>;
+  list(dir?: string, options?: ListOptions): Promise<string[]>;
   /** The file's text, or `null` when there is no such file. */
   read(path: string): Promise<string | null>;
   /**
    * Identifier of the current version of the definitions (git commit, content
    * hash). Runs record it so they can be explained and replayed later.
+   *
+   * With `options.leaveOut`, it covers only what `list()` gives with the
+   * same options, so a change to a left-out file alone doesn't change it. A
+   * store whose version names a whole snapshot (a commit) keeps naming it:
+   * any change makes a new snapshot.
    */
-  version(): Promise<string>;
+  version(options?: VersionOptions): Promise<string>;
 }
 
 /**
