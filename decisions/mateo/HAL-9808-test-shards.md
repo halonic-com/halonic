@@ -2,6 +2,7 @@
 
 - Approval: the plan on HAL-9808 (Liam approved Option 1, pull requests only, step 1); Liam approves this note in review on HAL-9808 and signs it
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7pgQm5OqvhnWrk4G0ijuVk9LoZRhLR/95yp0+wsK9B3WCAqQsmtld5ihxsLo/sRckj/1kUlgrxmmceWujNrsCA==
 
 ## What changes
 
