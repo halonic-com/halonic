@@ -16,6 +16,7 @@ mod security_updates;
 mod stderr_log;
 mod wsl;
 
+use std::ffi::OsStr;
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
@@ -112,7 +113,7 @@ pub fn executable_beside(program: &Path) -> Result<PathBuf, AgentHostError> {
 /// the profile's lock, the host forgets the kept Windows grants inside each
 /// of `sweep_roots` that crashed sessions left (HAL-6256).
 pub fn host_command(executable: &Path, profile_folder: &Path, sweep_roots: &[PathBuf]) -> Command {
-    let mut command = Command::new(executable);
+    let mut command = new_command(executable);
     command.arg("--profile-folder").arg(profile_folder);
     for root in sweep_roots {
         command.arg("--sweep-root").arg(root);
@@ -367,6 +368,18 @@ fn read_relayed_handshake_line(
     receiver
 }
 
+/// The crate's one way to make a command: `program` started, on Windows,
+/// without a console window of its own (HAL-13197).
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the crate's one Command::new, which hides the console window"
+)]
+fn new_command(program: impl AsRef<OsStr>) -> Command {
+    let mut command = Command::new(program);
+    without_console_window(&mut command);
+    command
+}
+
 /// On Windows, starts `command` without a console window of its own.
 fn without_console_window(command: &mut Command) {
     #[cfg(windows)]
@@ -386,6 +399,10 @@ fn kill(child: &mut Child) {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
 mod tests {
     use std::io::Cursor;
     use std::process::{Command, Stdio};

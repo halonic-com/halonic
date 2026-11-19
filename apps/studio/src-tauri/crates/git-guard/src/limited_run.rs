@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::io::Read;
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
@@ -7,6 +8,28 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::error::GitError;
+
+/// Windows' `CREATE_NO_WINDOW` process flag. The release shell is a GUI
+/// program, so git, or `taskkill`, would otherwise open a console window of
+/// its own on every call (HAL-13197).
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+/// The crate's one way to make a command: `program` started, on Windows,
+/// without a console window of its own.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the crate's one Command::new, which hides the console window"
+)]
+pub(crate) fn new_command(program: impl AsRef<OsStr>) -> Command {
+    let mut command = Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    command
+}
 
 /// How long git may run and how much it may write.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -188,7 +211,7 @@ fn stop_group(child: &Child) {
     // signalled through the shell's own `kill`, which every Unix has, even
     // where no `kill` program is installed. The id is a number the shell
     // reads as nothing else.
-    let _ = Command::new("/bin/sh")
+    let _ = new_command("/bin/sh")
         .args([
             "-c",
             "kill -s KILL -- \"-$1\"",
@@ -214,7 +237,7 @@ fn stop_group(child: &Child) {
     let taskkill = std::path::Path::new(&system_root)
         .join("System32")
         .join("taskkill.exe");
-    let _ = Command::new(taskkill)
+    let _ = new_command(taskkill)
         .args(["/F", "/T", "/PID", &child.id().to_string()])
         .stdin(Stdio::null())
         .stdout(Stdio::null())

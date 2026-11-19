@@ -25,7 +25,7 @@ use std::time::Duration;
 
 use sha2::{Digest, Sha256};
 
-use crate::without_console_window;
+use crate::new_command;
 
 mod run;
 
@@ -221,13 +221,12 @@ fn send_setting(command: Command, copy: SettingCopy<'_>) -> Result<(), WslError>
 ///
 /// When `wsl.exe` can't start, or ends with an error.
 pub fn distro_installed(wsl: &Path) -> Result<bool, WslError> {
-    let mut command = Command::new(wsl);
+    let mut command = new_command(wsl);
     command.env_remove("WSLENV").args(["--list", "--quiet"]);
     command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null());
-    without_console_window(&mut command);
     let output = command
         .output()
         .map_err(|error| WslError::Start(format!("wsl.exe could not start: {error}.")))?;
@@ -374,7 +373,7 @@ fn reader_sha256(file: &mut File) -> Result<String, WslError> {
 }
 
 fn distro_command(wsl: &Path, user: &str, program: &str) -> Command {
-    let mut command = Command::new(wsl);
+    let mut command = new_command(wsl);
     // `WSLENV` names Windows variables that wsl.exe copies into the distro.
     command.env_remove("WSLENV");
     command.args(["-d", DISTRO, "-u", user]);

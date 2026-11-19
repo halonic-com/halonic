@@ -324,6 +324,10 @@ fn same_file(_: &Metadata, _: &Metadata) -> bool {
 }
 
 #[cfg(all(test, unix))]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
 mod tests {
     use super::*;
     use std::process::Command;

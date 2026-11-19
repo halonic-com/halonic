@@ -1,6 +1,11 @@
 //! Requirement `plugin-source`: the folder a person picks to add a plugin
 //! from, and what the shell reads of it for the page, whatever the page asks.
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+
 use std::path::{Path, PathBuf};
 
 use halonic_git_guard::plain_path;

@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use crate::check_args::{CheckedCall, check_args};
 use crate::error::GitError;
-use crate::limited_run::{GitOutput, Limits, run_limited};
+use crate::limited_run::{GitOutput, Limits, new_command, run_limited};
 use crate::opened_folders::{OpenedFolders, canonical, plain_path};
 use crate::repo_config::{
     ConfigEntry, add_repository_filters, blank_filters, blank_merge_options, check_listing,
@@ -363,7 +363,7 @@ impl GitRunner {
         repository: Option<&Repository>,
         overrides: &[(String, String)],
     ) -> Command {
-        let mut command = Command::new(&self.git);
+        let mut command = new_command(&self.git);
         command.current_dir(root).stdin(Stdio::null());
         remove_git_variables(&mut command, std::env::vars_os().map(|(name, _)| name));
         command.envs(HARDENING_ENVIRONMENT.iter().copied());
