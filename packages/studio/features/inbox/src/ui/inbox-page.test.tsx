@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+
+import { KindedError } from "@halonicjs/std";
 import { PresentationProvider } from "@halonicjs/studio-kit";
 import { createShell, engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
@@ -278,6 +280,16 @@ verifies("inbox.page", () => {
       await act(() => inbox.refresh());
       expect(rows(root)).toHaveLength(1);
       expect(root.textContent).toContain("The engine isn't answering. Showing what it said last.");
+    });
+
+    it("keeps the items when a later load is signed out, and says to sign in again", async () => {
+      const fake = fakeRuns([notes]);
+      const { root, inbox } = await openPage(fake.runs);
+      fake.fail(new KindedError("unauthenticated", "Sign in again to list what waits for you."));
+      await act(() => inbox.refresh());
+      expect(rows(root)).toHaveLength(1);
+      expect(root.textContent).toContain("Sign in again to list what waits for you.");
+      expect(root.textContent).not.toContain("isn't answering");
     });
   });
 

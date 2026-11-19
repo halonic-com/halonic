@@ -193,7 +193,7 @@ export function InboxView({
       <div data-pane="list" className={listPaneClass(phone, itemPage)}>
         <ListHeader phone={phone} newRequest={request.newRequest} />
         {state.loaded && state.error !== undefined ? (
-          <p className="px-4 pb-2 text-small text-fg-muted">{words.showingLast}</p>
+          <p className="px-4 pb-2 text-small text-fg-muted">{staleReason(state.error, words)}</p>
         ) : null}
         <div ref={list} className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
           {failedFirst ? (
@@ -459,4 +459,15 @@ function failureReason(error: unknown, words: EngineWords): string {
   const message = errorMessageFor(error, { title: loadFailed });
   const reason = message.body.trim();
   return message.kind === "internal" || reason === "" ? words.notAnswering : reason;
+}
+
+/**
+ * The line over a list that failed to load again. Signed out, the engine still answers, so it says
+ * to sign in again, as a first load that fails does (HAL-13371); otherwise it isn't answering and
+ * the list is what it said last.
+ */
+function staleReason(error: unknown, words: EngineWords): string {
+  return errorMessageFor(error, { title: loadFailed }).kind === "unauthenticated"
+    ? failureReason(error, words)
+    : words.showingLast;
 }
