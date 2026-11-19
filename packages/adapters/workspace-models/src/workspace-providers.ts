@@ -82,7 +82,8 @@ export function workspaceProvider(
 
 /**
  * Why a run's model call has no model to go to, as the CLI prints it:
- * `not_found`, so exit 4, or `denied` for `untrusted-provider-address` and `key-origin-not-allowed`. Its
+ * `not_found`, so exit 4, or `denied` for `untrusted-workspace`, `untrusted-provider-address` and
+ * `key-origin-not-allowed`. Its
  * message is the reason and its fix the next step; the command's own action
  * makes line 1.
  */
@@ -92,7 +93,9 @@ export class WorkspaceModelError extends KindedError {
 
   constructor(code: WorkspaceModelErrorCode, reason: ModelText, fix: ModelText) {
     super(
-      code === "untrusted-provider-address" || code === "key-origin-not-allowed"
+      code === "untrusted-workspace" ||
+        code === "untrusted-provider-address" ||
+        code === "key-origin-not-allowed"
         ? "denied"
         : "not_found",
       reason,
@@ -107,6 +110,7 @@ export type WorkspaceModelErrorCode =
   | "unknown-provider-type"
   | "no-provider-address"
   | "no-provider"
+  | "untrusted-workspace"
   | "untrusted-provider-address"
   | "key-origin-not-allowed"
   | "not-on-this-machine"

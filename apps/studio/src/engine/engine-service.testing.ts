@@ -126,6 +126,7 @@ export function serviceOn(
     http: { fetch },
     clock,
     isTrusted: async () => true,
+    mayStart: async () => true,
     ids,
     setTimer: () => () => {},
     newToken: () => "token",

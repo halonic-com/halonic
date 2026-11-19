@@ -314,7 +314,7 @@ verifies("cli.workspace-provider-key-trust", () => {
           workspace: await workspaceOf(provider),
           secrets,
           http,
-          isTrusted: () => false,
+          isTrusted: () => true,
           keyOrigins: origins,
         });
         await expect(resolve(call)).resolves.toBeDefined();
