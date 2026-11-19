@@ -161,6 +161,7 @@ function ToolList({ list, chosen, options, save, openLibrary }: ToolListProps) {
               <Button
                 variant="ghost"
                 size="sm"
+                round
                 icon={<CloseIcon />}
                 label={words.removeTool(nameOf(id))}
                 {...(missing(id) && { "aria-describedby": missingLineId(id) })}

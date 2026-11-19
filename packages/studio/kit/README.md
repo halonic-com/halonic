@@ -227,6 +227,7 @@ The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 | `block` | Full width |
 | `icon` | A 16px icon before the label. With `label` and no children, the button is a square icon button |
 | `label` | An icon button's name, saying what and which: "Close Support reply", never just "Close" |
+| `round` | An icon button only: a circle instead of a square, for the ✕ at the end of a round chip (a Tools chip), so its high-contrast edge and hover fill follow the chip's round end |
 | `busy` | While its request runs: the spinner takes the icon's place, `aria-busy`, clicks ignored |
 | `busyLabel` | The label while busy ("Creating…"). Both labels share one cell, so the width never changes |
 | `unavailable` | `{ reason }`: the `id` of the visible text that says why the button can't be used now |
