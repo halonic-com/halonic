@@ -20,7 +20,7 @@ const entries: readonly MenuEntry[] = [
     id: "sample",
     label: "Acme sample",
     detail: "~/Documents/Acme sample",
-    tag: "Sample",
+    tag: "Demo",
     onSelect: vi.fn(),
   },
   { id: "beta", label: "Beta", detail: "~/Work/beta", onSelect: vi.fn() },
@@ -46,14 +46,14 @@ verifies("kit.menu-tag", () => {
   it("shows the tag after the label as an outline tag, and reads it after the name", () => {
     const [sample] = rows();
     const tag = sample?.querySelector("[aria-hidden=true] > span.border-border-strong");
-    expect(tag?.textContent).toBe("Sample");
-    expect(spoken(sample as HTMLElement)).toBe("Acme sample, Sample");
+    expect(tag?.textContent).toBe("Demo");
+    expect(spoken(sample as HTMLElement)).toBe("Acme sample, Demo");
   });
 
-  it('names the item "Acme sample, Sample" itself, so no browser adds a space before the comma', () => {
+  it('names the item "Acme sample, Demo" itself, so no browser adds a space before the comma', () => {
     // Chromium puts a space around a hidden, positioned span when it builds a name from content.
     const [sample, beta] = rows();
-    expect(sample?.getAttribute("aria-label")).toBe("Acme sample, Sample");
+    expect(sample?.getAttribute("aria-label")).toBe("Acme sample, Demo");
     expect(sample?.querySelector(".sr-only")).toBeNull();
     expect(beta?.hasAttribute("aria-label")).toBe(false);
   });

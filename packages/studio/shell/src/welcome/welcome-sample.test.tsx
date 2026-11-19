@@ -34,6 +34,20 @@ verifies("shell.welcome-sample", () => {
     expect(document.activeElement?.textContent).toMatch(/^Open folder/);
   });
 
+  it("puts the time line right under the buttons, above the New workspace… link", () => {
+    const root = render(
+      <Welcome
+        onOpenFolder={async () => undefined}
+        onNewWorkspace={() => {}}
+        onTrySample={async () => undefined}
+      />,
+    );
+    const text = root.textContent ?? "";
+
+    expect(text.indexOf("Open folder")).toBeLessThan(text.indexOf(timeLine));
+    expect(text.indexOf(timeLine)).toBeLessThan(text.indexOf("New workspace…"));
+  });
+
   it("leads with Open demo, then Open folder and the New workspace… link, while Recent is empty", () => {
     const root = render(
       <Welcome
@@ -191,7 +205,7 @@ verifies("shell.welcome-sample", () => {
     }
   });
 
-  it("ends a sample's Recent row in a Sample tag, and names it in the row's label", () => {
+  it("ends a sample's Recent row in a Demo tag, and names it in the row's label", () => {
     const root = render(
       <Welcome
         onOpenFolder={async () => undefined}
@@ -207,10 +221,10 @@ verifies("shell.welcome-sample", () => {
 
     const rows = [...root.querySelectorAll("li button")];
     expect(rows.map((row) => row.getAttribute("aria-label"))).toEqual([
-      "Acme, ~/Documents/Acme sample, Sample",
+      "Acme, ~/Documents/Acme sample, Demo",
       "Acme, ~/Work/Acme",
     ]);
-    expect(rows[0]?.textContent).toBe("Acme~/Documents/Acme sampleSample");
+    expect(rows[0]?.textContent).toBe("Acme~/Documents/Acme sampleDemo");
     expect(rows[1]?.textContent).toBe("Acme~/Work/Acme");
   });
 });

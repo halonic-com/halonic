@@ -13,7 +13,7 @@ export interface MenuItem {
    */
   readonly detail?: string | undefined;
   /**
-   * A fact about the item as an outline tag after its label, read after its name: the "Sample"
+   * A fact about the item as an outline tag after its label, read after its name: the "Demo"
    * of the Acme sample in the workspace menu (flow-first-run 8).
    */
   readonly tag?: string | undefined;
@@ -62,9 +62,9 @@ export function isMenuItem(entry: MenuEntry): entry is MenuItem {
 }
 
 /**
- * The name of a tagged item, "Acme, Sample", or none when its content names it. Set as its
+ * The name of a tagged item, "Acme, Demo", or none when its content names it. Set as its
  * `aria-label`: Chromium puts a space around a hidden, positioned `sr-only` span when it builds a
- * name from content, which reads "Acme , Sample".
+ * name from content, which reads "Acme , Demo".
  */
 export function taggedItemName(item: MenuItem, extra?: string): string | undefined {
   if (item.tag === undefined) {

@@ -115,11 +115,11 @@ verifies("workspace.workspace-menu", () => {
 });
 
 verifies("workspace.menu-sample-tag", () => {
-  it("ends the sample's Recent row in the Sample tag, as Welcome does, and no other row", () => {
+  it("ends the sample's Recent row in the Demo tag, as Welcome does, and no other row", () => {
     const sample = { location: "/docs/Acme sample", name: "Acme sample", sample: true as const };
     const menu = workspaceMenu(options({ recent: [sample, beta], shown: sample.location }));
 
-    expect(item(menu, "Acme sample").tag).toBe("Sample");
+    expect(item(menu, "Acme sample").tag).toBe("Demo");
     expect(item(menu, "Beta").tag).toBeUndefined();
   });
 });

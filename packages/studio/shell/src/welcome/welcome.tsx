@@ -81,9 +81,9 @@ type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly
  * The window while no workspace is open (`shell.welcome.open-action`, microcopy 3.2): "Halonic
  * Studio", what a workspace is, and **Open folder**, centred with no sidebar and no tabs. With the
  * app's demo and an empty Recent, **Open demo** is the primary button beside it and "New here? The
- * demo takes about 4 minutes." sits under the buttons (`shell.welcome-sample`); else **Open
- * folder** is the primary button. With the app's New workspace dialog, **New workspace…** sits
- * under them as a quiet link. The column hangs a fixed 18% of the window height from the top rather than
+ * demo takes about 4 minutes." sits right under the buttons (`shell.welcome-sample`); else **Open
+ * folder** is the primary button. With the app's New workspace dialog, **New workspace…** comes
+ * last as a quiet link. The column hangs a fixed 18% of the window height from the top rather than
  * centring, so nothing above a new line (Recent, an error) moves under the pointer. While the
  * folder opens the button reads "Opening…" and is busy: it keeps focus and ignores presses. A
  * folder that fails to open says why under the text in the danger colour, and the button works
@@ -284,8 +284,8 @@ interface WelcomeActionsProps {
 
 /**
  * Welcome's buttons: **Open demo** and **Open folder** side by side when the demo leads, else
- * **Open folder** alone as the primary button; then the **New workspace…** link, and the time line
- * while the demo leads (`shell.welcome-sample`).
+ * **Open folder** alone as the primary button; then the time line while the demo leads, right under
+ * the button it describes, and last the **New workspace…** link (`shell.welcome-sample`).
  */
 function WelcomeActions({
   demo,
@@ -319,16 +319,16 @@ function WelcomeActions({
           Open folder
         </Button>
       </div>
-      {onNewWorkspace === undefined ? null : (
-        <Button variant="ghost" onClick={() => opening || onNewWorkspace()}>
-          New workspace…
-        </Button>
-      )}
       {demoLeads ? (
         <p id={timeId} className="text-small text-fg-muted">
           {trySampleWords.time}
         </p>
       ) : null}
+      {onNewWorkspace === undefined ? null : (
+        <Button variant="ghost" onClick={() => opening || onNewWorkspace()}>
+          New workspace…
+        </Button>
+      )}
     </>
   );
 }

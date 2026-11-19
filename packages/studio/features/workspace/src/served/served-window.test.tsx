@@ -103,15 +103,15 @@ verifies("workspace.served-picker", () => {
       expect(sheet()?.textContent).toContain(
         "To open another workspace, open it on your computer.",
       );
-      expect(sheet()?.textContent).not.toContain("Sample");
+      expect(sheet()?.textContent).not.toContain("Demo");
     });
 
-    it("marks the sample with the Sample tag", async () => {
+    it("marks the sample with the Demo tag", async () => {
       const sample = { ...acme, sample: true };
       start(sample, async () => sample);
       await pressRow();
       await act(async () => {});
-      expect(sheet()?.textContent).toContain("Sample");
+      expect(sheet()?.textContent).toContain("Demo");
     });
 
     it("says it is loading while it asks the computer", async () => {

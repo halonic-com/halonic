@@ -1,5 +1,5 @@
 import { Button, SheetFrame, StatusChip } from "@halonicjs/studio-kit";
-import { letterMark } from "@halonicjs/studio-shell";
+import { letterMark, sampleTag } from "@halonicjs/studio-shell";
 import { useEffect, useState } from "react";
 import type { LoadServedWorkspace, ServedWorkspace } from "./served-workspace.ts";
 
@@ -25,7 +25,7 @@ type Answer =
 
 /**
  * The phone's workspace picker sheet (flow-workspace 2.5, component specs 15.3): the one
- * workspace the computer serves, with the Sample tag on a sample, and the line that says where
+ * workspace the computer serves, with the Demo tag on a sample, and the line that says where
  * to open another. It asks the computer each time it opens, so it never shows a stale row.
  * Loading and "Couldn't load workspaces" have their own states, with **Try again**.
  *
@@ -71,7 +71,7 @@ function WorkspaceRow({ workspace }: { readonly workspace: ServedWorkspace }) {
         <span className="truncate text-body-strong text-fg">{workspace.name}</span>
         <span className="truncate text-small text-fg-muted">{workspace.folder}</span>
       </span>
-      {workspace.sample ? <StatusChip tone="outline">Sample</StatusChip> : null}
+      {workspace.sample ? <StatusChip tone="outline">{sampleTag}</StatusChip> : null}
     </div>
   );
 }
