@@ -3,6 +3,7 @@
 - Task: HAL-12371
 - Approval: team decision under the HAL-2282 rule for small wording on an approved screen (row L14 of Sofia's UX check on HAL-12363, microcopy revision 109 on HAL-751); Liam reviews the pull request on HAL-12371 and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:RwR496A1OURfacKe+C8Tl48tLmKKOESi8ALGPMBImOnNy6psYC9SW8kAYIN6WiYq8rFYMMjKTUnFkbMbYOW3BA==
 
 ## What changes
 
