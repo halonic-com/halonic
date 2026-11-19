@@ -51,6 +51,16 @@ export {
   unsafeDefinitionPaths,
 } from "./definition-store.ts";
 export {
+  type DeployTargetHarness,
+  deployTargetContract,
+  type MakeDeployTarget,
+} from "./deploy-target.ts";
+export {
+  FakeDeployTarget,
+  type FakeDeployTargetOptions,
+  fakeDeployTargetEntry,
+} from "./fake-deploy-target.ts";
+export {
   type FakePhone,
   FakeRemoteControl,
   type FakeRemoteControlOptions,
