@@ -18,7 +18,6 @@ import {
 } from "../test-support.tsx";
 import { AgentScreen } from "./agent-page.tsx";
 import { markFreshAgent } from "./fresh-agents.ts";
-import { pageWords } from "./page-words.ts";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
 afterEach(() => {
@@ -435,26 +434,26 @@ verifies("agents.page.menu", () => {
 verifies("agents.page.new-agent", () => {
   const instructionsBox = (page: HTMLElement) => page.querySelector("textarea");
 
-  it("opens a just-made agent on Behaviour with Instructions focused, and later opens on Runs", async () => {
+  it("focuses Instructions on Behaviour for a just-made agent, and not when it opens later", async () => {
     markFreshAgent("acme", "sorter");
     const first = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
 
     const box = instructionsBox(first);
     expect(box).not.toBeNull();
     expect(document.activeElement).toBe(box);
-    expect(first.textContent).not.toContain(pageWords.noRuns);
     unmount();
 
     const later = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
-    expect(later.textContent).toContain(pageWords.noRuns);
-    expect(instructionsBox(later)).toBeNull();
+    expect(instructionsBox(later)).not.toBeNull();
+    expect(document.activeElement).not.toBe(instructionsBox(later));
   });
 
-  it("leaves other agents on Runs", async () => {
+  it("opens other agents on Behaviour without taking the focus", async () => {
     markFreshAgent("acme", "someone-else");
     const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
 
-    expect(page.textContent).toContain(pageWords.noRuns);
+    expect(instructionsBox(page)).not.toBeNull();
+    expect(document.activeElement).not.toBe(instructionsBox(page));
   });
 
   it("doesn't take the focus again when the person leaves Behaviour and comes back", async () => {

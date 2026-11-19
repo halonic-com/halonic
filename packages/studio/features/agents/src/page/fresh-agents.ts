@@ -1,8 +1,8 @@
 /**
  * The agents just made from the New agent dialog with nothing written in it. Their page opens on
- * Configuration › Behaviour with Instructions focused (`agents.page.new-agent`), because Runs has
- * nothing to show yet. The dialog marks the agent before its tab opens; the page asks, and
- * forgets it once it is drawn, so reopening the agent later starts on Runs as usual.
+ * Configuration › Behaviour with Instructions focused (`agents.page.new-agent`), so the person can
+ * write what the agent does straight away. The dialog marks the agent before its tab opens; the
+ * page asks, and forgets it once it is drawn, so reopening the agent later doesn't take the focus.
  */
 const fresh = new Set<string>();
 
