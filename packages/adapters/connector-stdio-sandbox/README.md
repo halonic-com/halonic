@@ -30,6 +30,11 @@ The `stdio` connector for a plugin's local tool: it starts the tool's MCP progra
 - **A program that stops starts again** on the next call, in the same session, up to the restart
   limit, as on this computer. Its error output is read and dropped, never kept: the profile gave
   it secrets.
+- **A script runs from a checked copy.** `copyCheckedPlugin` copies a plugin's files into a new
+  folder for the session, each only when its bytes still hash to what the trust check listed, and
+  the host starts the script from that copy, so a change to the plugin's folder after the check
+  never runs. It stops at the first file that differs with `PluginFileChangedError`, naming the
+  file, never its contents.
 - **A plugin's local tool reads only its checked copy.** `pluginLocalToolPlace` builds a local
   tool's place from what the host set up: new working and temp folders, the session's copy of the
   plugin read-only (a script only), the host's denied paths, which cover all of Halonic's data, and

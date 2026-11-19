@@ -11,6 +11,13 @@ export {
 } from "./local-tool-launch.ts";
 export { readSecretEnv } from "./plan-launch.ts";
 export {
+  type CheckedPluginFile,
+  copyCheckedPlugin,
+  type PluginCopyDisk,
+  PluginFileChangedError,
+  pluginCopyOnThisMachine,
+} from "./plugin-copy.ts";
+export {
   type PluginLocalToolSetting,
   pluginLocalToolPlace,
 } from "./plugin-local-tool-place.ts";
