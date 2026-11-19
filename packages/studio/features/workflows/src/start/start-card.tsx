@@ -25,14 +25,22 @@ export interface StartRunCardProps {
   readonly onClose: () => void;
 }
 
-/** "The engine isn't answering." reads after a colon as "the engine …"; a name such as Halonic keeps its capital. */
+/**
+ * Any reason after the colon, as the run page's **Run again** reads it: a sentence that starts
+ * with a common word reads on in lower case ("The desktop shell gave no answer …" reads "the
+ * desktop shell …"). Any other first word may be a name, such as Halonic or an agent called
+ * Writer, and keeps its capital.
+ */
 function afterColon(reason: string): string {
-  return reason.startsWith("The ") ? `the ${reason.slice(4)}` : reason;
+  return leadingCommonWord.test(reason) ? reason.charAt(0).toLowerCase() + reason.slice(1) : reason;
 }
 
+/** The first words a reason may start with that are never a name. */
+const leadingCommonWord =
+  /^(?:The|A|An|This|That|These|Those|It|Its|There|No|Nothing|Your|You|Some|Something)\b/u;
+
 function reasonOf(error: unknown, notAnswering: string): string {
-  if (error instanceof EngineNotAnswering) return afterColon(notAnswering);
-  return errorReasonFor(error);
+  return afterColon(error instanceof EngineNotAnswering ? notAnswering : errorReasonFor(error));
 }
 
 /**
