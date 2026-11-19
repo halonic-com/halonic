@@ -79,6 +79,40 @@ verifies("recording.svg", () => {
       expect(tape.lines[0]?.at(-1)?.spans[0]?.text).toBe("abcxyz");
     });
 
+    test.each([
+      ["a tab to the next stop of 8", "a\tb", "a       b"],
+      ["a backspace", "ab\bc", "ac"],
+      ["a move to a column (ESC[G)", "abcdef\x1b[2Gx", "axcdef"],
+      ["a move right (ESC[C)", "a\x1b[2Cb", "a  b"],
+      ["a move up (ESC[A)", "a\r\nb\x1b[Ac", "ac"],
+    ])("moves the cursor for %s", (_name, output, firstLine) => {
+      const tape = playCast(castOf([[0, output]]));
+      expect(tape.lines[0]?.at(-1)?.spans[0]?.text).toBe(firstLine);
+    });
+
+    test("erases from the start of the line to the cursor (erase mode 1)", () => {
+      const tape = playCast(castOf([[0, "abcdef\x1b[3D\x1b[1K"]], 6, 3));
+      expect(tape.lines[0]?.at(-1)?.spans).toEqual([
+        { column: 4, text: "ef", style: { colour: "default", bold: false, dim: false } },
+      ]);
+    });
+
+    test("erases the whole line (erase mode 2)", () => {
+      const tape = playCast(castOf([[0, "abc\x1b[2K"]]));
+      expect(tape.lines[0]?.at(-1)?.spans).toEqual([]);
+    });
+
+    test("reads the bright colours as colours 8 to 15", () => {
+      const tape = playCast(castOf([[0, "\x1b[92mx"]]));
+      expect(tape.lines[0]?.at(-1)?.spans[0]?.style.colour).toBe(10);
+    });
+
+    test("stops when the session ends inside an escape code", () => {
+      expect(() => playCast(castOf([[0, "a\x1b["]]))).toThrow(
+        'The session ends inside an escape code: "\\u001b[".',
+      );
+    });
+
     test("stops at a line wider than the window, naming the line", () => {
       expect(() => playCast(castOf([[0, "ok\r\nabcdefg"]], 6, 3))).toThrow(
         'Line 2 is wider than the 6 columns: "abcdefg…".',
@@ -91,8 +125,18 @@ verifies("recording.svg", () => {
       expect(() => playCast(castOf([[0, "\x1b[4mx"]]))).toThrow(/SGR 4/);
     });
 
-    test("stops at a character two columns wide", () => {
-      expect(() => playCast(castOf([[0, "🙂"]]))).toThrow(/two columns/);
+    test.each([
+      ["an emoji", "🙂"],
+      ["an emoji below U+1F300", "✅"],
+      ["another emoji below U+1F300", "⏳"],
+      ["a symbol asking for emoji presentation", "⏸\u{fe0f}"],
+    ])("stops at a character two columns wide: %s", (_name, output) => {
+      expect(() => playCast(castOf([[0, output]]))).toThrow(/two columns/);
+    });
+
+    test("draws the done mark and the dot in one column each", () => {
+      const tape = playCast(castOf([[0, "✓ a · b"]]));
+      expect(tape.lines[0]?.at(-1)?.spans[0]?.text).toBe("✓ a · b");
     });
   });
 });

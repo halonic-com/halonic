@@ -14,6 +14,7 @@ const plain: TextStyle = { colour: "default", bold: false, dim: false };
 const controlSequence = /\x1b\[([0-9;]*)([A-Za-z])/y;
 // biome-ignore lint/suspicious/noControlCharactersInRegex: escape codes are what this reads
 const anyEscapePrefix = /^\x1b(\[[0-9;?]*)?$/;
+const emojiPresentation = /^\p{Emoji_Presentation}$/u;
 
 interface Cell {
   readonly character: string;
@@ -269,8 +270,14 @@ function replaceOrPush<Entry extends { readonly time: number }>(
   list.push(entry);
 }
 
-/** Characters most terminals draw two columns wide: CJK, Hangul, full-width forms and emoji. */
+/**
+ * Characters most terminals draw two columns wide: CJK, Hangul, full-width
+ * forms and emoji. Emoji below U+1F300, like ✅ and ⏳, are wide by their
+ * emoji presentation, and U+FE0F asks for that presentation on the
+ * character before it, so it counts as wide too.
+ */
 function isWide(character: string): boolean {
+  if (emojiPresentation.test(character) || character === "\u{fe0f}") return true;
   const code = character.codePointAt(0) ?? 0;
   return (
     (code >= 0x1100 && code <= 0x115f) ||
