@@ -1,12 +1,16 @@
 import {
+  checkLeaveOut,
   checkPublicWorkspacePath,
   checkWorkspacePath,
   type DefinitionStore,
   type DefinitionWatch,
   type DefinitionWatchListener,
+  isLeftOut,
   isPrivateWorkspacePath,
+  type ListOptions,
   type RemoveOptions,
   type RemoveResult,
+  type VersionOptions,
   type WorkspaceFileChange,
   type WriteOptions,
   type WriteResult,
@@ -46,13 +50,15 @@ export class MemoryDefinitionStore implements DefinitionStore {
     }
   }
 
-  async list(dir?: string): Promise<string[]> {
-    const paths = [...this.#files.keys()].filter((path) => !isPrivateWorkspacePath(path));
-    if (dir === undefined) {
-      return paths.sort();
+  async list(dir?: string, options: ListOptions = {}): Promise<string[]> {
+    if (dir !== undefined) {
+      checkPublicWorkspacePath(dir);
     }
-    checkPublicWorkspacePath(dir);
-    return paths.filter((path) => path.startsWith(`${dir}/`)).sort();
+    checkLeaveOut(options.leaveOut);
+    return [...this.#files.keys()]
+      .filter((path) => !isPrivateWorkspacePath(path) && !isLeftOut(path, options.leaveOut))
+      .filter((path) => dir === undefined || path.startsWith(`${dir}/`))
+      .sort();
   }
 
   async read(path: string): Promise<string | null> {
@@ -103,9 +109,16 @@ export class MemoryDefinitionStore implements DefinitionStore {
     this.#files.set(path, content);
   }
 
-  /** `sha256:` and the first 16 hex characters of a hash over every path and its text, as in the old adapter. */
-  async version(): Promise<string> {
-    const paths = [...this.#files.keys()].sort();
+  /**
+   * `sha256:` and the first 16 hex characters of a hash over every path and
+   * its text, as in the old adapter; with `leaveOut`, without the paths it
+   * leaves out.
+   */
+  async version(options: VersionOptions = {}): Promise<string> {
+    checkLeaveOut(options.leaveOut);
+    const paths = [...this.#files.keys()]
+      .filter((path) => !isLeftOut(path, options.leaveOut))
+      .sort();
     // Kept as in the old adapter: a file whose text contains "\n\0" can make two different workspaces share a version.
     const listing = paths.map((path) => `${path}\n${this.#files.get(path)}`).join("\n\0");
     return `sha256:${(await sha256Hex(listing)).slice(0, 16)}`;
