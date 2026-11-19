@@ -81,7 +81,7 @@ function WaitingForRun({ onClose }: { readonly onClose: () => void }) {
     <aside
       role="status"
       aria-label={startWords.cardKind}
-      className="flex w-80 shrink-0 items-start justify-between gap-3 border-s border-border p-4 text-small text-fg-muted"
+      className="flex w-80 max-w-full shrink-0 items-start justify-between gap-3 border-s border-border p-4 text-small text-fg-muted"
     >
       <p ref={line} tabIndex={-1} className="outline-none">
         {startWords.waitingForRun}
@@ -95,6 +95,17 @@ function WaitingForRun({ onClose }: { readonly onClose: () => void }) {
       />
     </aside>
   );
+}
+
+/** Whether {@link RunDock} shows a card for these props, following its branches; on a phone the card then takes the page's body. */
+export function dockHasCard({
+  dock,
+  host,
+  shown,
+  pickedStep,
+}: Pick<RunDockProps, "dock" | "host" | "shown" | "pickedStep">): boolean {
+  if (dock === "start") return host.startRun !== undefined;
+  return typeof dock === "object" || (shown !== undefined && pickedStep !== undefined);
 }
 
 /** The card docked at the right: the start form, then the simple card of the run it started. */

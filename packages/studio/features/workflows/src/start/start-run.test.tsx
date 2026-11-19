@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -72,6 +73,24 @@ async function open(
 }
 
 verifies("workflows.start.start-run", () => {
+  it("gives the dock's card the whole page on a phone, with the tab's view back once it closes", async () => {
+    const { host } = memoryHost([], [], [reply], [], { startRun: async () => ({ runId: "x" }) });
+    const page = await show(
+      <PresentationProvider presentation="phone">
+        <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />
+      </PresentationProvider>,
+    );
+    const panel = () => page.querySelector<HTMLElement>("[role=tabpanel]");
+    expect(panel()?.className).not.toBe("hidden");
+
+    await click(runButton(page));
+    expect(page.querySelector("textarea")).not.toBeNull();
+    expect(panel()?.className).toBe("hidden");
+
+    await click(buttonNamed(page, "Cancel"));
+    expect(panel()?.className).not.toBe("hidden");
+  });
+
   it("shows Run only when the host can start runs", async () => {
     const without = await open(undefined);
     expect(runButton(without.page)).toBeUndefined();

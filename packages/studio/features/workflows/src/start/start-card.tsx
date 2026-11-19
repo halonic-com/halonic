@@ -140,7 +140,7 @@ export function StartRunCard({
     <aside
       aria-label={words.startRun}
       onKeyDown={onKeyDown}
-      className="flex w-120 shrink-0 flex-col gap-4 overflow-auto border-s border-border bg-surface-raised p-6 shadow-2"
+      className="flex w-120 max-w-full shrink-0 flex-col gap-4 overflow-auto border-s border-border bg-surface-raised p-6 shadow-2"
     >
       <div className="flex items-center justify-between gap-3">
         <div>
