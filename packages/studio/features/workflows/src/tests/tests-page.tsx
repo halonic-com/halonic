@@ -160,8 +160,10 @@ export function TestsPage({
                 >
                   {row.glyph}
                 </span>
+                {/* The colon only leads into a failed test's sentence; on its own it's read out. */}
                 <span id={stateId} className="sr-only">
-                  {stateWords[row.state]}:
+                  {stateWords[row.state]}
+                  {row.failure ? ":" : null}
                 </span>
                 <button
                   type="button"
