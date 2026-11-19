@@ -27,6 +27,8 @@ The stand-ins call the host through an `AgentHostTransport`. It names a route fr
 
 `new AgentHostConnectorFactory(transport)` is the engine's `stdio` connector factory in Studio. A connector it makes is a stand-in for a program the host runs in a sandbox session of its own. It opens in the host on its first call with the connector's file fields, the workspace folder, the agents' working folders and the trust grant, never a sandbox profile: the host builds the program's place itself. Studio keeps the secrets: the stand-in reads only the ones the connector's own `secretEnv` names and sends their values with the open request. It refuses to open, without calling the host, when the context has no workspace folder or no trust grant, or a secret isn't set. `close` closes it in the host once.
 
+When the host answers `connector_failed` with a `reason`, or a secret isn't set, the stand-in throws a `ConnectorFailedError`: a kinded error whose `failure` says why (`program-missing` with `program`, `secret-missing` with `secret`, `secret-refused`, `stopped`), so a page can word the cause. Any other refusal stays an `AgentHostError`.
+
 ## Example
 
 ```ts

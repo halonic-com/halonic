@@ -14,6 +14,7 @@ export {
 } from "./bridges.ts";
 export { AgentHostChat } from "./chat.ts";
 export { AgentHostConnectorFactory } from "./connector.ts";
+export { ConnectorFailedError, type ConnectorFailure } from "./connector-failure.ts";
 export {
   AgentHostGoogleSetup,
   type GoogleAccountType,
