@@ -38,6 +38,7 @@ import {
   type LocalExecutor,
   noListedToolApproval,
 } from "@halonicjs/engine";
+import type { RunSummary } from "@halonicjs/events";
 import type { Agent } from "@halonicjs/format";
 import {
   type Clock,
@@ -48,6 +49,7 @@ import {
   noKeyOrigins,
   type RunExecutor,
   type Secrets,
+  type SendOptions,
 } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { TauriIpc } from "@halonicjs/studio-services";
@@ -261,6 +263,26 @@ export class EngineService {
       if (!isAgentRunsNotAvailable(error)) throw error;
       throw new KindedError("unavailable", "This window can't start an agent yet.");
     }
+  }
+
+  /**
+   * Sends `event` to a run waiting for a person, such as an Inbox card's Approve or Reject, as
+   * `halonic runs send` does, with the executor's `payload` and `options` (the call or wait step it
+   * answers): opens the engine, with the checks of a start, since the run goes on
+   * from here, and returns once the event is recorded, not when the run ends.
+   *
+   * @returns the run as it is after the event
+   * @throws what {@link EngineService.open} throws, KindedError `denied` for a workspace that may
+   *   start nothing, or the executor's refusal when the run doesn't take the event now
+   */
+  async send(
+    runId: string,
+    event: string,
+    payload?: unknown,
+    options?: SendOptions,
+  ): Promise<RunSummary> {
+    const engine = await this.#forStart();
+    return engine.executor.send(runId, event, payload, options);
   }
 
   /**

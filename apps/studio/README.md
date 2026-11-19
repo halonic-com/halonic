@@ -19,15 +19,16 @@ page listens, it reads the runs again every 10 seconds and when the window
 comes to the front, and tells the page only when a run changed. The window
 runs an engine of its own in the page (`src/engine/engine-service.ts`) with
 models and secrets only: a workflow that needs a connector or an agent in a
-harness is refused as `unavailable`, and so is answering such a run in the Inbox
-(`studio.workspace-runs`).
+harness is refused as `unavailable`. An answer from the Inbox, such as Approve
+or Reject, goes to that engine, and the runs are read again so the Inbox shows
+the run moved on (`studio.workspace-runs`).
 
 ## Library in the desktop app
 
 The desktop app registers the Library feature. For each open folder it gives the feature the
 folder's connector files, each shown as connected, and a list of what the engine refused from
 them. The page's engine can't start a connector yet, so nothing records a refusal and that list stays
-empty until it can, the way the Inbox fails as `unavailable`. It reads the files again when one changes
+empty until it can. It reads the files again when one changes
 or the window comes to the front. Google connectors are left out until the app reads the account's
 sign-in (`studio.workspace-connector-status`).
 
