@@ -1,4 +1,5 @@
 import { Button, Callout, Dialog, type DialogCancelReason } from "@halonicjs/studio-kit";
+import type { EngineWords } from "@halonicjs/studio-shell";
 import { useCallback, useRef, useSyncExternalStore } from "react";
 import {
   type ListedToolsReviewModel,
@@ -20,6 +21,8 @@ export interface ListedToolsReviewDialogProps {
    * dialog), or `null` for nothing: Esc, the ✕ and the overlay close without one (N7).
    */
   readonly onClose: (toast: string | null) => void;
+  /** The words for an engine that isn't answering, for where Studio runs; the desktop app's by default. */
+  readonly engine?: EngineWords;
 }
 
 /**
@@ -32,6 +35,7 @@ export function ListedToolsReviewDialog({
   model,
   sourceName,
   onClose,
+  engine,
 }: ListedToolsReviewDialogProps) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
   const state = useSyncExternalStore(subscribe, () => model.state);
@@ -66,6 +70,7 @@ export function ListedToolsReviewDialog({
           fallback={fallback}
           error={state.approveError}
           sourceName={snapshot?.sourceName ?? sourceName}
+          {...(engine === undefined ? {} : { engine })}
           onTryAgain={() => model.refresh()}
           onRemoveApproval={async (toolName) => {
             removedToast.current = (await model.removeApproval(toolName)) ?? removedToast.current;
