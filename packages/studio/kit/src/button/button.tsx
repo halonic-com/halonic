@@ -8,8 +8,11 @@ import {
 } from "react";
 import { Spinner } from "./spinner.tsx";
 
-/** What the button does: `primary` once per view, `ghost` for Cancel, `danger` only to confirm. */
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+/**
+ * What the button does: `primary` once per view, `ghost` for Cancel, `danger-outline` for a
+ * destructive action that opens a confirm, and `danger` only to confirm it.
+ */
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger-outline" | "danger";
 
 /**
  * The button's height: `xs` 20px, only for the status bar, `sm` 28px, `md` 32px (the default),
@@ -99,8 +102,9 @@ const shared = [
 
 /**
  * Hover changes only a fill or a text colour, and a press shows the hover fill at once. Neither
- * applies while the button is unavailable. Only `secondary` shows its edge; the others keep it
- * see-through, each in its own variant so two edge colours never meet on one button.
+ * applies while the button is unavailable. Only `secondary` and `danger-outline` show their edge;
+ * the others keep it see-through, each in its own variant so two edge colours never meet on one
+ * button.
  */
 const variantClasses: Record<ButtonVariant, string> = {
   primary: [
@@ -115,6 +119,10 @@ const variantClasses: Record<ButtonVariant, string> = {
     "border-transparent text-fg-muted",
     "not-aria-disabled:hover:bg-surface-muted not-aria-disabled:hover:text-fg",
     "not-aria-disabled:active:bg-surface-muted not-aria-disabled:active:text-fg",
+  ].join(" "),
+  "danger-outline": [
+    "border-danger bg-surface text-danger",
+    "not-aria-disabled:hover:bg-danger-soft not-aria-disabled:active:bg-danger-soft",
   ].join(" "),
   danger: [
     "border-transparent bg-danger text-on-danger",
