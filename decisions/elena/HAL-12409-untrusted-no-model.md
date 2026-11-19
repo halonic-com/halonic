@@ -2,6 +2,7 @@
 
 - Approval: Liam's rule on HAL-1984 and HAL-12011 (starting anything needs trust unless the workspace reaches only the test model), applied to the Studio on HAL-12409; Julian reviews the security change, Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:XN0/9IixxMV/Zz+XtVoQCdS6E2Y4gE+S6ac7ozVGbupe4LjMGXhHOz1pt8pcCNlNvK3Cryxj3MVevhaKo7S+DA==
 - Task: HAL-12409
 
 ## What changes
