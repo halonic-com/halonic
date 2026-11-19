@@ -14,13 +14,13 @@ export interface HarnessCheckState {
 }
 
 /**
- * The last answers for each host and hub, kept while Studio is open, so the next visit to a
- * Harness page shows them at once while it checks again (flow-agents 5.3 rule 5). Weak, so a
- * host that is gone takes its answers with it.
+ * The last answers for each host and agent, kept while Studio is open, so the next visit to a
+ * Harness page shows them at once while it checks again (flow-agents 5.3 rule 5). By agent, as
+ * each agent has its own sign-in (HAL-6351). Weak, so a host that is gone takes its answers with it.
  */
 const lastFound = new WeakMap<AgentsHost, Map<string, KeptChecks>>();
 
-/** Answers kept for a hub, with the number of the check that got them. */
+/** Answers kept for an agent, with the number of the check that got them. */
 interface KeptChecks {
   readonly started: number;
   readonly found: HarnessChecks;
@@ -29,18 +29,18 @@ interface KeptChecks {
 /** Numbers every check in this Studio, so an older answer never replaces a newer kept one. */
 let checksStarted = 0;
 
-/** The answers kept for the hub, or none. */
-function keptFor(host: AgentsHost, hubId: string): HarnessChecks {
-  return lastFound.get(host)?.get(hubId)?.found ?? {};
+/** The answers kept for the agent (`hubId/id`), or none. */
+function keptFor(host: AgentsHost, agent: string): HarnessChecks {
+  return lastFound.get(host)?.get(agent)?.found ?? {};
 }
 
-/** Keeps `found` for the hub, unless a check that started later already kept its answers. */
-function keep(host: AgentsHost, hubId: string, kept: KeptChecks): void {
-  const byHub = lastFound.get(host) ?? new Map<string, KeptChecks>();
-  const before = byHub.get(hubId);
+/** Keeps `found` for the agent, unless a check that started later already kept its answers. */
+function keep(host: AgentsHost, agent: string, kept: KeptChecks): void {
+  const byAgent = lastFound.get(host) ?? new Map<string, KeptChecks>();
+  const before = byAgent.get(agent);
   if (before !== undefined && before.started > kept.started) return;
-  byHub.set(hubId, kept);
-  lastFound.set(host, byHub);
+  byAgent.set(agent, kept);
+  lastFound.set(host, byAgent);
 }
 
 /** The programs the host checks; Halonic is built in and needs no check. */
@@ -53,11 +53,12 @@ function reasonOf(error: unknown): string {
 
 /**
  * Checks Claude Code and Codex on this computer when the page opens and on `check`, starting
- * from the last answers this Studio got for the hub. A program whose check throws is
+ * from the last answers this Studio got for the agent. A program whose check throws is
  * `unreachable`, with the reason, and the others keep their answers.
  */
 export function useHarnessCheck(host: AgentsHost, hubId: string, id: string): HarnessCheckState {
-  const [found, setFound] = useState<HarnessChecks>(() => keptFor(host, hubId));
+  const agent = `${hubId}/${id}`;
+  const [found, setFound] = useState<HarnessChecks>(() => keptFor(host, agent));
   const [checking, setChecking] = useState(false);
   // Counts the checks, so only the newest one's answer is used: a slow answer for another agent,
   // or one that arrives after the page is left, is dropped.
@@ -79,18 +80,18 @@ export function useHarnessCheck(host: AgentsHost, hubId: string, id: string): Ha
     const next: HarnessChecks = Object.fromEntries(
       checkedIds.map((each, index) => [each, answers[index]]),
     );
-    keep(host, hubId, { started, found: next });
+    keep(host, agent, { started, found: next });
     if (mine === newestCheck.current) {
       setFound(next);
       setChecking(false);
     }
-  }, [host, hubId, id]);
+  }, [host, hubId, id, agent]);
   useEffect(() => {
-    setFound(keptFor(host, hubId));
+    setFound(keptFor(host, agent));
     void check();
     return () => {
       newestCheck.current += 1;
     };
-  }, [check, host, hubId]);
+  }, [check, host, agent]);
   return { found, checking, check };
 }

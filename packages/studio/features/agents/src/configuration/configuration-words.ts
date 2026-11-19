@@ -94,6 +94,15 @@ export const configurationWords = {
     `${agent} can't run until ${program} is installed.`,
   stripTooOld: (agent: string, program: string) =>
     `${agent} can't run until ${program} is updated.`,
+  /** The strip's third state, in the words of the two above (team decision on HAL-6351). */
+  stripSignedOut: (agent: string, program: string) =>
+    `${agent} can't run until it's signed in to ${program}.`,
+  /** Opens the program's own sign-in for this agent in a terminal (HAL-5395, board option 1). */
+  signInForAgent: "Sign in for this agent",
+  /** Above the command, when no terminal opened (team decision on HAL-5395). */
+  couldntOpenTerminal: "Couldn't open a terminal. Run this, then choose Check again:",
+  /** When the host couldn't be asked to open it at all (team decision on HAL-6351). */
+  couldntOpenSignIn: (reason: string) => `Couldn't open the sign-in: ${reason}`,
   /** The Tools page's lists (flow-agents 5.2). */
   toolLists: { skills: "Skills", knowledge: "Knowledge", connectors: "Connectors" },
   /** The picker's button under each list; an empty list shows only this (microcopy 8.5, MA16). */

@@ -78,6 +78,14 @@ export type AgentModelParamsChange = {
   readonly [Key in keyof AgentModelParams]?: Exclude<AgentModelParams[Key], undefined> | null;
 };
 
+/**
+ * What opening an agent's own sign-in did: a terminal the person can see opened, or none did, with
+ * why and the command to run by hand in their own terminal (HAL-5395).
+ */
+export type HarnessSignIn =
+  | { readonly opened: true }
+  | { readonly opened: false; readonly reason: string; readonly command: string };
+
 /** What the Configuration pages show of an agent. */
 export interface AgentSettings extends AgentListing {
   /** What the agent is told to do; empty before anyone writes it. */
@@ -303,6 +311,15 @@ export interface AgentsHost {
    * Never rejects: a check that didn't work answers `failed`. `halonic` is always `ready`.
    */
   harnessReadiness(ref: AgentRef, harness: AgentHarnessId): Promise<HarnessReadiness>;
+  /**
+   * Opens `harness`'s own sign-in for this agent, in its own settings folder, in a terminal the
+   * person can see; Halonic never sees or copies the sign-in. Rejects with the reason it couldn't
+   * ask, such as no agent host here.
+   */
+  openHarnessSignIn(
+    ref: AgentRef,
+    harness: Exclude<AgentHarnessId, "halonic">,
+  ): Promise<HarnessSignIn>;
   /**
    * The path of the agent's file from the workspace folder, for **Open as file**. Rejects like
    * {@link AgentsHost.read}.

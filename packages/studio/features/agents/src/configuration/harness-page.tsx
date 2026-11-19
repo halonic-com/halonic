@@ -1,11 +1,4 @@
-import {
-  Button,
-  Callout,
-  ExternalLink,
-  Field,
-  RadioGroup,
-  type RadioOption,
-} from "@halonicjs/studio-kit";
+import { Button, ExternalLink, Field, RadioGroup, type RadioOption } from "@halonicjs/studio-kit";
 import { useEffect, useRef, useState } from "react";
 import {
   type AgentChange,
@@ -16,6 +9,7 @@ import {
 } from "../api.ts";
 import { configurationWords as words } from "./configuration-words.ts";
 import { type HarnessCheck, harnessSetupPages, harnessStrip } from "./harness-strip.ts";
+import { HarnessStripCallout } from "./harness-strip-callout.tsx";
 import { useHarnessCheck } from "./use-harness-check.ts";
 
 /** Props for {@link HarnessPage}. */
@@ -59,25 +53,6 @@ function programLine(id: Exclude<AgentHarnessId, "halonic">, found: HarnessCheck
   }
 }
 
-/** The strip's words and its link, or `null` when the chosen harness can run. */
-function stripText(agent: string, harness: AgentHarnessId, found: HarnessCheck | undefined) {
-  const strip = harnessStrip(harness, found);
-  if (strip === null || harness === "halonic") return null;
-  const program = words.harnessNames[harness];
-  const setup = harnessSetupPages[harness];
-  return strip === "not-installed" ? (
-    <>
-      {words.stripNotInstalled(agent, program)} ·{" "}
-      <ExternalLink href={setup}>{words.howToInstall}</ExternalLink>
-    </>
-  ) : (
-    <>
-      {words.stripTooOld(agent, program)} ·{" "}
-      <ExternalLink href={setup}>{words.howToUpdate}</ExternalLink>
-    </>
-  );
-}
-
 /**
  * The Harness page (`agents.configuration.harness`): which program the agent runs in, with what
  * the host found of each on this computer under its option, and one strip when the chosen one
@@ -93,7 +68,7 @@ export function HarnessPage({ host, settings, save }: HarnessPageProps) {
     label: words.harnessNames[id],
     note: id === "halonic" ? words.builtIn : programLine(id, found[id]),
   }));
-  const strip = stripText(settings.name, harness, found[harness]);
+  const strip = harnessStrip(harness, found[harness]);
   // Counts the picks, so a slow failed save doesn't undo a newer pick.
   const newestPick = useRef(0);
   const pick = async (next: AgentHarnessId) => {
@@ -107,14 +82,15 @@ export function HarnessPage({ host, settings, save }: HarnessPageProps) {
     <div className="flex flex-col">
       {/* Always on the page, so a strip that appears after a change is read out (D5). */}
       <div role="status" className={strip === null ? undefined : "mb-4"}>
-        {strip !== null && (
-          <Callout
-            tone="warning"
-            action={{ label: words.checkAgain, busyLabel: words.checking, onClick: check }}
-          >
-            {strip}
-          </Callout>
-        )}
+        <HarnessStripCallout
+          key={`${settings.hubId}/${settings.id}/${harness}`}
+          host={host}
+          agent={{ hubId: settings.hubId, id: settings.id }}
+          name={settings.name}
+          harness={harness}
+          found={found[harness]}
+          check={check}
+        />
       </div>
       <div className="relative">
         <div className="absolute end-0 top-0">

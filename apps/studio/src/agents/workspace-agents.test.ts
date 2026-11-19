@@ -433,3 +433,15 @@ verifies("studio.new-agents-run", () => {
     });
   });
 });
+
+verifies("studio.workspace-agents-sign-in", () => {
+  it("refuses to open a sign-in without an agent host, and for an agent that isn't there", async () => {
+    const { host } = setup();
+    await expect(
+      host.openHarnessSignIn({ hubId: "acme", id: "writer" }, "claude-code"),
+    ).rejects.toThrow("Halonic can't open a terminal on this computer from here.");
+    await expect(
+      host.openHarnessSignIn({ hubId: "acme", id: "gone" }, "claude-code"),
+    ).rejects.toMatchObject({ kind: "not_found" });
+  });
+});
