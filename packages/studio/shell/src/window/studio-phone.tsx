@@ -126,6 +126,7 @@ function PhonePageBody({
         places={shown}
         onOpen={(place) => places.openPlace(place)}
         onSettings={onSettings}
+        inDesktopApp={settingsPlace === "app"}
       />
     );
   }

@@ -792,7 +792,8 @@ workspace switcher row ("Workspace: Acme. Change workspace", which opens T3's pi
 the app passes one, the
 header badge on its own line when there is one, a flush List of the places that live under More,
 in the sidebar's order and only where a feature added them, and the line "Editing workflows is
-easier on a computer.". Changes shows its count in place of the chevron. The top bar says "More",
+easier on a computer." (in the desktop app, where More shows only in a narrow window, "Editing
+workflows is easier in a wider window." with `inDesktopApp`). Changes shows its count in place of the chevron. The top bar says "More",
 so the page's `h1` is for screen readers only.
 
 ```tsx
