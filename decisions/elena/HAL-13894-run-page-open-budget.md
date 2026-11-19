@@ -3,6 +3,7 @@
 - Task: HAL-13894
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13894 (Liam's review on this task; it carries row B6, which Liam approved for the Inbox on HAL-12749, over to the run page of row B11 in the UX acceptance rows on HAL-12735)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Qi5YhoiDo/4rua9SGe5H8LSnmc8Cph6WWQqTIPC3wODPOv3IW8kNbTMfcA0bC89hzxOUKxK774RIe9JJmwSACQ==
 
 ## What changes
 
