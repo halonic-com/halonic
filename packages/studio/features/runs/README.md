@@ -72,7 +72,7 @@ const [step] = stepSandboxes(events, "step-1");
 
 A step with neither event (an old run, or a step with no program) has no line; a damaged `sandbox.opened` says it couldn't be read. Every sentence comes from `sandbox-words.ts` by key; the words are placeholders until the board approves the sandbox screens (HAL-1784).
 
-Not built yet: **Your sign-in** (HAL-1710), the workflow run card's line, and the desktop action "Change in *Writer*'s settings", which needs an agent page to open (`onOpenHarness`).
+Not built yet: **Your sign-in** (HAL-1710), the workflow run card's line, and the desktop action "Change in *Writer*'s settings" (`onOpenHarness`), which needs sandbox settings on the agent's Harness page to open (HAL-12658). Until then a phone says to change it in the agent's file.
 
 ## Blocked sites
 
@@ -92,8 +92,8 @@ const [install] = blockedSites(events, { limit: entrySiteLimit });
 `BlockedSitesLogLines` writes the run log view's "Blocked: registry.npmjs.org (12 tries)" lines (`logSiteLimit`, 20 per step), and `BlockedSitesBannerText` the failed banner's several-sites sentence. Every sentence comes from `blocked-sites-words.ts` by key; the words are placeholders until the board approves the sandbox screens (HAL-1784).
 
 - Site names are plain text, never links, with the registrable domain in bold (`SiteNameText`, from `siteName` in `@halonicjs/std`).
-- Studio never adds a site: the action opens the agent's allowed sites, and the person adds it.
-- Pass `noConnectionProven={false}` for a run on Windows until the blocked-site suite runs green there (HAL-6219): on Windows a blocked name may still be looked up outside the sandbox, so the hint leaves out "No connection was made."
+- Studio never adds a site: the action opens the agent's allowed sites, and the person adds it. The run page doesn't pass `onOpenAllowedSites` yet: the agent page has no Allowed sites field to open (HAL-12658).
+- Pass `noConnectionProven={noConnectionProven(events, entryId)}` (`sandbox-model.ts`): true only when every program of the step ran in an `os` sandbox, which today is srt, whose blocked-site suites prove no connection is made on Linux, macOS and Windows (HAL-6219). On Windows a blocked name may still be looked up outside the sandbox, so the hint says "No connection was made." and never that nothing reached the site.
 - Only traffic through the sandbox's proxy has a site name. A block without one gets no row yet.
 
 ## The run page
