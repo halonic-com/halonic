@@ -20,6 +20,8 @@ verifies("check.cloud-affected", () => {
       "packages/host/server/src/handler.ts",
       "packages/core/ports/src/blob-store.ts",
       "packages/testing/contracts/target/live/r2.test.ts",
+      "packages/testing/cloudflare-live/src/fixture.ts",
+      "packages/testing/cloudflare-live/live/fixture.setup.ts",
       "apps/cli/src/commands/deploy/plan.ts",
       ".github/workflows/live-cloud.yml",
       "tooling/check/src/cli/live-sweep.ts",
@@ -31,6 +33,7 @@ verifies("check.cloud-affected", () => {
     test.each([
       "packages/core/format/src/deployments.ts",
       "packages/adapters/fs-node/src/store.ts",
+      "packages/testing/spec/src/verifies.ts",
       "apps/cli/src/commands/run/run.ts",
       ".github/workflows/ci.yml",
       "tooling/check/src/cli/pr-title.ts",
