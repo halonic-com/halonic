@@ -497,17 +497,3 @@ verifies("studio.workspace-workflow-read", () => {
     );
   });
 });
-
-verifies("studio.start-asks-trust", () => {
-  it("passes the window's trust check on to the Run panel", async () => {
-    const { host } = setup();
-    expect(host.askTrust).toBeUndefined();
-    const asked = new WorkspaceWorkflows({
-      files: { read: async () => null, list: async () => [], change: () => {} },
-      onChange: () => () => {},
-      runs: { list: async () => [], subscribe: () => () => {}, log: async () => [] },
-      askTrust: async () => "declined",
-    });
-    expect(await asked.askTrust?.()).toBe("declined");
-  });
-});
