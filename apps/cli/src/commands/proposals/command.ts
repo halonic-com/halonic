@@ -35,5 +35,5 @@ export function proposalsCommandWith(setup: ProposalsSetup): CliCommand {
   };
 }
 
-/** `halonic proposals`: what agents' runs propose to change, and accepting or discarding it. */
+/** `halonic proposals`: what agents' runs propose to change. */
 export const proposalsCommand: CliCommand = proposalsCommandWith(computerProposalsSetup);

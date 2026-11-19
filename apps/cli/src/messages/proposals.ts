@@ -22,7 +22,7 @@ const decisionWords: Readonly<Record<ShownDecision, string>> = {
  * changes in the person's files until they accept.
  */
 export const proposalsMessages = defineMessages("proposals", {
-  summary: () => phrase`See what agents' runs propose to change, and accept or discard it`,
+  summary: () => phrase`See what agents' runs propose to change`,
   action: (workspace: string) => phrase`list the proposals in ${workspace}`,
   showSummary: () => phrase`Show what one run proposes, file by file`,
   showAction: (runId: string) => phrase`show the proposal of run ${runId}`,
