@@ -13,6 +13,8 @@ export const pageWords = {
   couldntSave: (reason: string) => `Couldn't save: ${reason}`,
   /** Read when a card drops because its part is gone (a11y 6.5, checklist 1.10). */
   cardRemoved: (title: string) => `${title} was removed.`,
+  /** The team chart's accessible name (flow-agents 5.4). */
+  teamChart: (name: string) => `Who works with ${name}`,
   runsHeading: "Runs",
   /**
    * R9: the Runs list can't show one agent's runs yet, so the line leads there with

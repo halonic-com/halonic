@@ -73,6 +73,9 @@ export function AgentPage({ item, context }: ItemViewProps) {
       })}
       closeStack={closeStack}
       announce={announce}
+      {...(openItem && {
+        openAgent: (agent: AgentRef) => openItem({ kind: "agent", hub: agent.hubId, id: agent.id }),
+      })}
     />
   );
 }
@@ -93,6 +96,8 @@ export interface AgentScreenProps extends AgentRef {
   readonly closeStack?: CloseStack | undefined;
   /** Reads a sentence to screen readers, such as "*Writer* was removed." when its card drops. */
   readonly announce?: ((text: string) => void) | undefined;
+  /** Opens another agent's page, from a card's team chart; absent where the app can't. */
+  readonly openAgent?: ((agent: AgentRef) => void) | undefined;
 }
 
 /**
@@ -112,6 +117,7 @@ export function AgentScreen({
   openRuns,
   closeStack,
   announce,
+  openAgent,
 }: AgentScreenProps) {
   // After a Try again reads, the agent's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -260,6 +266,7 @@ export function AgentScreen({
                   agent={{ hubId, id: subagent }}
                   name={card.title}
                   openSubagent={cards.openSubagent}
+                  openAgent={openAgent}
                 />
               );
             }}

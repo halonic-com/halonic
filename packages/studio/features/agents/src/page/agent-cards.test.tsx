@@ -5,6 +5,7 @@ import { createCloseStack } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
+import type { AgentRef } from "../api.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { buttonNamed, openDialogsInJsdom, show, unmount } from "../test-support.tsx";
 import { AgentScreen } from "./agent-page.tsx";
@@ -29,7 +30,7 @@ const host = () =>
     ],
   });
 
-async function openSubagents(agents = host()) {
+async function openSubagents(agents = host(), openAgent?: (agent: AgentRef) => void) {
   const closeStack = createCloseStack();
   const said: string[] = [];
   const page = await show(
@@ -40,6 +41,7 @@ async function openSubagents(agents = host()) {
         id="triage"
         closeStack={closeStack}
         announce={(text) => said.push(text)}
+        openAgent={openAgent}
       />
     </ToastStoreProvider>,
   );
@@ -122,5 +124,35 @@ verifies("agents.page.cards", () => {
     });
     expect(topCard(page)).toBeNull();
     expect(said).toEqual(["Writer was removed."]);
+  });
+
+  it("shows the subagent's team chart in its card: who hands it work above, its subagents below", async () => {
+    const opened: AgentRef[] = [];
+    const { page } = await openSubagents(host(), (agent) => opened.push(agent));
+    await openCardOf(page, "Writer");
+    const chart = topCard(page)?.querySelector(
+      "[aria-label='Who works with Writer']",
+    ) as HTMLElement;
+    const rows = [...chart.querySelectorAll("ul")].map((row) => row.textContent);
+    expect(rows).toEqual(["Mail triage", "Fact checker"]);
+    expect(chart.querySelector("[aria-current]")?.textContent).toBe("Writer");
+    await act(async () => buttonNamed(chart, "Fact checker")?.click());
+    expect(opened).toEqual([expect.objectContaining({ hubId: "acme", id: "checker" })]);
+  });
+
+  it("shows no team chart once the agent works alone", async () => {
+    const agents = memoryAgentsHost({
+      hubs: [{ id: "acme", name: "Acme Mail" }],
+      agents: [agent("triage", "Mail triage", ["writer"]), agent("writer", "Writer")],
+    });
+    const { page } = await openSubagents(agents);
+    await openCardOf(page, "Writer");
+    const chart = () => topCard(page)?.querySelector("[aria-label='Who works with Writer']");
+    expect(chart()).not.toBeNull();
+    await act(async () => {
+      await agents.update({ hubId: "acme", id: "triage" }, { subagents: [] });
+    });
+    expect(topCard(page)).not.toBeNull();
+    expect(chart()).toBeNull();
   });
 });
