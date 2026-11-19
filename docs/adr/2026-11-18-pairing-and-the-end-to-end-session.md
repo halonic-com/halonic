@@ -181,7 +181,13 @@ not phase B.
 **No crypto of our own.** We write no primitives. The phone uses `snow`; the
 host's Noise library is chosen in B1 against the published Noise test vectors
 and an interop test against `snow`, and sits behind one adapter. Our own code
-is the framing, the codecs, the rules above and the tests.
+is the framing, the codecs, the rules above and the tests. B1 chose `snow` for
+the host too, built to WebAssembly (`adapters/e2e-noise`), with one instance
+per session whose memory is zeroed when the session ends, because `snow`
+doesn't wipe its own keys. The risk it keeps: WebAssembly gives no formal
+constant-time guarantee, so a JIT could in theory turn `snow`'s branch-free
+selects into branches; none is known in V8 for these integer operations, and a
+network attacker also faces Node and WebSocket jitter (Julian, HAL-12355).
 
 ## Consequences
 
