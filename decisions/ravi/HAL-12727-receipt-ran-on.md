@@ -3,6 +3,7 @@
 - Task: HAL-12727, from the in-Studio first-run check (HAL-12721 L8 and L9, findings F13 and F14)
 - Approval: Liam, in review of HAL-12727 (his signature is added there)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mAEe80jSg0PS4FBDRZAbftDw5OMZWcJVSAqb27QW7jVA+LMPKWgJhn3on9XatokQlouuOa6actn4yyev9HCDAQ==
 
 ## What changes
 
