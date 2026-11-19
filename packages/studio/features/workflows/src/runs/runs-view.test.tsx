@@ -4,7 +4,7 @@ import { KindedError } from "@halonicjs/std";
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
 import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { buttonNamed, memoryRuns, runSummary, show, unmount } from "../test-support.tsx";
 import { RunsView } from "./runs-view.tsx";
@@ -27,7 +27,17 @@ function Connected(props: {
   reviewInInbox?: () => void;
 }) {
   const { load, retry } = useRuns(props.source);
-  return <RunsView {...props} load={load} retry={retry} workflow={reply} />;
+  const [picked, setPicked] = useState<string | undefined>();
+  return (
+    <RunsView
+      {...props}
+      load={load}
+      retry={retry}
+      workflow={reply}
+      picked={picked}
+      onPick={setPicked}
+    />
+  );
 }
 
 const finished = runSummary({

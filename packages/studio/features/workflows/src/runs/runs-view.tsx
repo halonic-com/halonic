@@ -6,7 +6,7 @@ import {
   StatusChip,
   usePresentation,
 } from "@halonicjs/studio-kit";
-import { type ReactNode, useMemo, useRef, useState } from "react";
+import { type ReactNode, useMemo, useRef } from "react";
 import { flushSync } from "react-dom";
 import type { WorkflowRef } from "../api.ts";
 import { RunCard } from "./run-card.tsx";
@@ -23,6 +23,10 @@ export interface RunsViewProps {
   readonly load: RunsLoad;
   readonly retry: () => void;
   readonly workflow: WorkflowRef;
+  /** The id of the run whose card is docked; the page keeps it, so its own dock can close this card. */
+  readonly picked: string | undefined;
+  /** Opens a row's card, or closes it with `undefined`. */
+  readonly onPick: (runId: string | undefined) => void;
   /** Opens a run's page, where its log is; absent where the app has no run page. */
   readonly openRun?: ((runId: string) => void) | undefined;
   /** Opens the Inbox, for the card's **Review in Inbox**; absent where it can't be opened. */
@@ -42,12 +46,13 @@ export function RunsView({
   load,
   retry,
   workflow,
+  picked,
+  onPick,
   openRun,
   reviewInInbox,
   seeAll,
   saveAsTest,
 }: RunsViewProps) {
-  const [picked, setPicked] = useState<string | undefined>();
   const phone = usePresentation() === "phone";
   const rowButtons = useRef(new Map<string, HTMLButtonElement>());
   const { hubId, id } = workflow;
@@ -107,7 +112,7 @@ export function RunsView({
   const openedRun = open && openRunOf(open);
   const closeCard = () => {
     // The list shows again first: on a phone it was hidden behind the card, and a hidden row can't take focus.
-    flushSync(() => setPicked(undefined));
+    flushSync(() => onPick(undefined));
     if (picked !== undefined) rowButtons.current.get(picked)?.focus();
   };
   const section = (title: string, list: readonly RunRow[]) =>
@@ -126,7 +131,7 @@ export function RunsView({
                 aria-pressed={picked === row.id}
                 aria-label={row.label}
                 className="focus-ring flex w-full items-center gap-3 py-2 text-start"
-                onClick={() => setPicked(picked === row.id ? undefined : row.id)}
+                onClick={() => onPick(picked === row.id ? undefined : row.id)}
               >
                 <StatusChip tone={row.chip.tone} dot={row.chip.dot}>
                   {row.chip.word}
