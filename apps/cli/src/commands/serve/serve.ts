@@ -52,6 +52,7 @@ import type { RunSetup } from "../run/run.ts";
 import { workspaceGoogleRead } from "./google-read.ts";
 import { startsOnLiveVersion } from "./live-version-runs.ts";
 import { workspaceModelSettings } from "./model-settings-gate.ts";
+import { studioPageIsOutdated } from "./studio-page-age.ts";
 
 /** What `serve` uses on this computer, so tests can fix the password hasher and the network. */
 export interface ServeSetup extends RunSetup {
@@ -59,6 +60,11 @@ export interface ServeSetup extends RunSetup {
   readonly hasher?: PasswordHasher;
   /** Where the built Studio page is; `apps/studio/dist/studio` next to this command by default. */
   readonly studioFolder?: string;
+  /**
+   * The Studio app the page is built from, to tell an outdated page; `apps/studio` next to this
+   * command by default, and none when only `studioFolder` is given.
+   */
+  readonly studioApp?: string;
 }
 
 /**
@@ -68,6 +74,9 @@ export interface ServeSetup extends RunSetup {
  * is there.
  */
 const builtStudioFolder = fileURLToPath(new URL("../../../../studio/dist/studio", import.meta.url));
+
+/** The Studio app that build reads, to tell when the page is older than it. */
+const studioAppFolder = fileURLToPath(new URL("../../../../studio", import.meta.url));
 
 /** The port when `--port` isn't given. */
 export const defaultPort = 4747;
@@ -172,6 +181,8 @@ async function serveVersions(
       if (!(await passwordIsSet(context))) context.printAhead(serveMessages.noPassword().phrase);
       if (!(await isBuilt(studioFolderOf(setup)))) {
         context.printAhead(serveMessages.studioNotBuilt().phrase);
+      } else if (await isOutdated(setup)) {
+        context.printAhead(serveMessages.studioOutdated().phrase);
       }
       await stopped(engine.signal);
     } finally {
@@ -194,6 +205,12 @@ async function isBuilt(studioFolder: string): Promise<boolean> {
     () => true,
     () => false,
   );
+}
+
+/** Whether the built page is older than the app it is built from, such as after a `git pull`. */
+async function isOutdated(setup: ServeSetup): Promise<boolean> {
+  const app = setup.studioApp ?? (setup.studioFolder === undefined ? studioAppFolder : undefined);
+  return app !== undefined && (await studioPageIsOutdated(studioFolderOf(setup), app));
 }
 
 async function passwordIsSet(context: CommandContext): Promise<boolean> {
