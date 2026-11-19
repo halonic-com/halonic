@@ -160,15 +160,15 @@ describe("a plugin's local tool attacking the place the host built for it", () =
   it("can't change its copy, the plugin's own folder or the credentials", async () => {
     const copy = folder("launch-3/plugin/server.ts");
     const before = await readFile(copy, "utf8");
-    for (const path of [
-      "launch-3/plugin/server.ts",
-      "launch-3/plugin/added.js",
-      "halonic/plugins/acme-notes/server.ts",
-      "home/.ssh/authorized_keys",
-    ]) {
+    for (const path of ["launch-3/plugin/server.ts", "launch-3/plugin/added.js"]) {
       expect(await call("write_file", { path: folder(path), text: "changed" })).toMatch(
         /^refused:/,
       );
+    }
+    // On Linux a denied folder is an empty tmpfs, so a write may succeed in
+    // there; what counts is that nothing reaches the disk.
+    for (const path of ["halonic/plugins/acme-notes/server.ts", "home/.ssh/authorized_keys"]) {
+      await call("write_file", { path: folder(path), text: "changed" });
     }
     expect(await readFile(copy, "utf8")).toBe(before);
     expect(await readFile(folder("halonic/plugins/acme-notes/server.ts"), "utf8")).toBe(before);
