@@ -60,6 +60,17 @@ export interface MemoryAgentsHostOptions {
   readonly answer?: ((ref: AgentRef, request: AgentChatRequest) => Promise<ChatAnswer>) | undefined;
   /** The workflows that run each agent, keyed by `hubId/id` of the agent. */
   readonly users?: Readonly<Record<string, readonly AgentUser[]>> | undefined;
+  /**
+   * The workspace's trust, for Try it: whether it may start now, the gate a test answers, and the
+   * workspace's name. Left out, there is no folder to trust and every message may start.
+   */
+  readonly trust?:
+    | {
+        readonly mayStart: () => boolean;
+        readonly ask?: (() => Promise<"trusted" | "declined">) | undefined;
+        readonly workspaceName?: string | undefined;
+      }
+    | undefined;
 }
 
 /** The key a map uses for an agent. */
@@ -206,6 +217,11 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       request.listener?.onMessage?.(message);
       return { messages: [message], end: { reason: "answered" } };
     },
+    ...(options.trust && {
+      mayStart: options.trust.mayStart,
+      ...(options.trust.ask && { askTrust: options.trust.ask }),
+      workspaceName: () => options.trust?.workspaceName,
+    }),
     filePath: async (ref) => {
       found(ref);
       return `hubs/${ref.hubId}/agents/${ref.id}.agent.yaml`;

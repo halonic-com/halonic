@@ -1,4 +1,5 @@
 import type { ChatAnswerEnd } from "@halonicjs/app";
+import { useToastStore } from "@halonicjs/studio-kit";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentRef, AgentsHost } from "../api.ts";
 import {
@@ -29,6 +30,12 @@ export interface TryItChat {
   readonly transcript: Transcript;
   /** A reply is being written. */
   readonly answering: boolean;
+  /**
+   * Whether a message may start now (H16). In a workspace this computer doesn't trust, it opens
+   * the trust gate where there is one; on Not now, or with no gate, it shows "Not started: *Acme*
+   * isn't trusted yet" and answers no, so the message stays in the box.
+   */
+  mayStart(): Promise<boolean>;
   /** Sends `message` as the person's next message. */
   send(message: string): void;
   /** Stops the reply being written; it ends with "Stopped by you.". */
@@ -51,6 +58,7 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
   const [transcript, setShown] = useState<Transcript>(emptyTranscript);
   const [answering, setAnswering] = useState(false);
   const running = useRef<AbortController | undefined>(undefined);
+  const toasts = useToastStore();
   const said = useRef({ name, announce });
   said.current = { name, announce };
 
@@ -90,6 +98,13 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
     [host, agent, update],
   );
 
+  const mayStart = useCallback(async () => {
+    if (host.mayStart === undefined || host.mayStart()) return true;
+    if (host.askTrust !== undefined && (await host.askTrust()) === "trusted") return true;
+    toasts?.show({ tone: "warning", title: tryItWords.notTrusted(host.workspaceName?.()) });
+    return false;
+  }, [host, toasts]);
+
   const stop = useCallback(() => running.current?.abort(), []);
 
   const tryAgain = useCallback(() => {
@@ -100,7 +115,7 @@ export function useTryItChat({ host, agent, name, announce }: TryItChatOptions):
     send(message);
   }, [send, update]);
 
-  return { transcript, answering, send, stop, tryAgain };
+  return { transcript, answering, mayStart, send, stop, tryAgain };
 }
 
 /** How the chat service's end reads in the transcript. */
