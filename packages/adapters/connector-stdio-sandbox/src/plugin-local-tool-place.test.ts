@@ -1,6 +1,9 @@
+import { mkdir, mkdtemp, realpath, rm, symlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { ConnectorPin } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { localToolLaunch, type StdioConfig } from "./local-tool-launch.ts";
 import { type PluginLocalToolSetting, pluginLocalToolPlace } from "./plugin-local-tool-place.ts";
 
@@ -74,6 +77,12 @@ verifies("connector-stdio-sandbox.plugin-local-tool-place", () => {
     ["a denied path with a trailing slash", "/person/.ssh/"],
     ["a denied path with doubled slashes", "//halonic//data//plugins"],
     ["a way into the working folder through a dot", "/halonic/./launch-1/plugin"],
+    ["a folder holding a denied path", "/person"],
+    ["the root", "/"],
+    ["a folder holding the working folder", "/halonic"],
+    ["the temp folder", "/halonic/launch-2"],
+    ["a folder in the temp folder", "/halonic/launch-2/plugin"],
+    ["a denied path in other letter case", "/Person/.SSH/plugin"],
   ])("refuses %s as the plugin's copy", (_, pluginCopy) => {
     expect(() => pluginLocalToolPlace(script, { ...setting, pluginCopy })).toThrow(RangeError);
   });
@@ -91,5 +100,45 @@ verifies("connector-stdio-sandbox.plugin-local-tool-place", () => {
     const place = pluginLocalToolPlace(script, { ...setting, pluginCopy: "/person/.ssh-notes" });
 
     expect(place.readOnlyPaths).toEqual(["/person/.ssh-notes"]);
+  });
+
+  describe("with links", () => {
+    let root: string;
+
+    beforeAll(async () => {
+      root = await realpath(await mkdtemp(join(tmpdir(), "plugin-local-tool-place-")));
+      await mkdir(join(root, "data", "plugins", "notes"), { recursive: true });
+      await mkdir(join(root, "launch-3"));
+      // A junction on Windows, which needs no extra rights there.
+      const kind = process.platform === "win32" ? "junction" : "dir";
+      await symlink(join(root, "data"), join(root, "launch-3", "into-data"), kind);
+      await symlink(join(root, "launch-3"), join(root, "launches"), kind);
+    });
+
+    afterAll(async () => {
+      await rm(root, { recursive: true, force: true });
+    });
+
+    function placeIn(pluginCopy: string): PluginLocalToolSetting {
+      return {
+        ...setting,
+        workingFolder: join(root, "launch-1"),
+        tempFolder: join(root, "launch-2"),
+        pluginCopy,
+        deniedPaths: [join(root, "data")],
+      };
+    }
+
+    it("refuses a copy reached through a link into a denied path", () => {
+      const copy = join(root, "launch-3", "into-data", "plugins", "notes");
+
+      expect(() => pluginLocalToolPlace(script, placeIn(copy))).toThrow(RangeError);
+    });
+
+    it("takes a copy reached through a link that stays clear of every denied path", () => {
+      const copy = join(root, "launches", "plugin");
+
+      expect(pluginLocalToolPlace(script, placeIn(copy)).readOnlyPaths).toEqual([copy]);
+    });
   });
 });
