@@ -111,6 +111,12 @@ export const RUN_IN_SANDBOX = "In a sandbox (recommended)";
 export const RUN_ON_THIS_COMPUTER = "On this computer";
 export const NEW_AGENTS_HINT =
   "Each agent can be changed on its Harness page. This applies on this computer only.";
+/**
+ * The hint's second line while this Studio can't start an agent outside its sandbox. Team
+ * decision by Sofia on HAL-13232, the same fact as the Harness page's `studioCantStart`.
+ */
+export const NEW_AGENTS_STUDIO_CANT_START =
+  "Studio can't start agents this way; halonic serve on this computer can.";
 export const NEW_AGENTS_VIEW_ONLY =
   "View only here. Change where agents run on the computer running Halonic.";
 export const newAgentsNotSaved = "Couldn't save where new agents run on this computer.";

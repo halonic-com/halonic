@@ -115,6 +115,12 @@ export interface AgentSandboxHost {
   chooseBackupFile?(suggestedName: string): Promise<string | null>;
   /** Shows a saved backup in the system's file manager. */
   showInFolder?(path: string): Promise<void>;
+  /**
+   * Whether this Studio can itself start an agent set to On this computer outside its sandbox.
+   * Absent reads as can't. While it can't, **New agents run** says that `halonic serve` can
+   * (HAL-13194).
+   */
+  readonly studioStartsUnfenced?: boolean;
 }
 
 /** The agent sandbox the host runs, when the app has one. */

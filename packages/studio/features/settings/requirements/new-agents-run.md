@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-9451 (HAL-9385 B12); flow-settings 9.1 (HAL-646); ux-checklists-t4-t5-t11 3.15 and 3.16 (HAL-1185)
+- Source: HAL-9451 (HAL-9385 B12); flow-settings 9.1 (HAL-646); ux-checklists-t4-t5-t11 3.15 and 3.16 (HAL-1185); HAL-4295 (Liam's condition 1 on HAL-13194, Sofia's words on HAL-13232)
 
-The Settings feature shall show, in Agent sandbox, the first line "Claude Code and Codex agents run in a sandbox. There they write only to their working folder and their own temp and settings folders, and reach only Halonic and the sites you allow." and under the status a Select **New agents run** with **In a sandbox (recommended)** and **On this computer**, saved at once as the host setting `sandbox.new-agents`, with the hint "Each agent can be changed on its Harness page. This applies on this computer only.". A value that can't be read shall read as the sandbox. Picking **On this computer** shall save nothing and open the dialog "Run new agents on this computer?" with **Cancel** focused and **Run new agents on this computer** in `danger`; **Cancel** or Escape shall close it, keep the Select on its saved value and return focus to the Select; confirming shall save the choice. When the save fails, the Select shall keep its value and say "Couldn't save where new agents run on this computer.". In served Studio the Select shall be unavailable and the hint shall read "View only here. Change where agents run on the computer running Halonic.". Agents that already exist shall keep their setting.
+The Settings feature shall show, in Agent sandbox, the first line "Claude Code and Codex agents run in a sandbox. There they write only to their working folder and their own temp and settings folders, and reach only Halonic and the sites you allow." and under the status a Select **New agents run** with **In a sandbox (recommended)** and **On this computer**, saved at once as the host setting `sandbox.new-agents`, with the hint "Each agent can be changed on its Harness page. This applies on this computer only.". While the host doesn't report that this Studio can start an agent outside its sandbox, the hint shall have the second line "Studio can't start agents this way; halonic serve on this computer can." (HAL-13194, HAL-13232). A value that can't be read shall read as the sandbox. Picking **On this computer** shall save nothing and open the dialog "Run new agents on this computer?" with **Cancel** focused and **Run new agents on this computer** in `danger`; **Cancel** or Escape shall close it, keep the Select on its saved value and return focus to the Select; confirming shall save the choice. When the save fails, the Select shall keep its value and say "Couldn't save where new agents run on this computer.". In served Studio the Select shall be unavailable and the hint shall read "View only here. Change where agents run on the computer running Halonic.". Agents that already exist shall keep their setting.
 
 ## Examples
 
@@ -20,3 +20,6 @@ The Settings feature shall show, in Agent sandbox, the first line "Claude Code a
 - Given Studio is served to another device,
   when the section opens,
   then the Select is unavailable and the view-only hint shows.
+- Given the host doesn't report that this Studio can start an agent outside its sandbox,
+  when the section opens,
+  then the hint's second line reads "Studio can't start agents this way; halonic serve on this computer can."; once the host reports it can, or in served Studio, that line isn't shown.

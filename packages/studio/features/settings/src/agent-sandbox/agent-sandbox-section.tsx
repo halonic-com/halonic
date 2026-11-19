@@ -82,7 +82,11 @@ export function AgentSandboxHostView({
   if (settings?.loaded) {
     newAgents = (
       <div className="max-w-90">
-        <NewAgentsRunControl settings={settings} viewOnly={place === "served"} />
+        <NewAgentsRunControl
+          settings={settings}
+          viewOnly={place === "served"}
+          studioStartsUnfenced={host?.studioStartsUnfenced ?? false}
+        />
       </div>
     );
   } else if (settings) {

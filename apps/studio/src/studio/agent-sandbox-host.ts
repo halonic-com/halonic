@@ -14,6 +14,7 @@ import type {
   WslRemoveRequest,
   WslRemoveResult,
 } from "@halonicjs/studio-feature-settings";
+import { studioStartsUnfenced } from "../engine/studio-harness-host.ts";
 import type { ElevateSetup, ShellElevation } from "./sandbox-elevate-shell.ts";
 
 /**
@@ -45,6 +46,8 @@ const needsRepair: readonly SandboxUnavailableReason[] = ["distro-missing", "set
  */
 export class AgentHostSandboxFacts implements AgentSandboxHost {
   readonly available = true;
+  /** Whether the Studio's runs start an agent outside its sandbox: the Harness page's answer too. */
+  readonly studioStartsUnfenced = studioStartsUnfenced;
   readonly #transport: AgentHostTransport;
   readonly #setup: AgentHostSandboxSetup;
   readonly #now: () => Date;

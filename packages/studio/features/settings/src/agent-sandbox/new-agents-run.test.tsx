@@ -3,6 +3,7 @@ import { HostSettings } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
+import type { AgentSandboxHost } from "../api.ts";
 import { change, click } from "../test-support/controls.ts";
 import { MemoryHostSettingsStore } from "../test-support/memory-host-settings-store.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
@@ -16,18 +17,37 @@ afterEach(() => {
   restoreModal();
 });
 
-async function show(place: "app" | "served" = "app", saved?: string) {
+async function show(
+  place: "app" | "served" = "app",
+  saved?: string,
+  host: AgentSandboxHost | undefined = undefined,
+) {
   const store = new MemoryHostSettingsStore();
   if (saved !== undefined) store.stored.set("sandbox.new-agents", saved);
   const settings = new HostSettings(store);
   await settings.load();
   const view = render(
-    <AgentSandboxHostView host={undefined} place={place} settings={settings} announce={() => {}} />,
+    <AgentSandboxHostView host={host} place={place} settings={settings} announce={() => {}} />,
   );
   await act(async () => {});
   const select = view.querySelector("select") as HTMLSelectElement;
   return { view, store, select, settings };
 }
+
+/** A host whose sandbox is ready and that reports whether this Studio starts agents outside it. */
+function readyHost(studioStartsUnfenced: boolean): AgentSandboxHost {
+  return {
+    available: true,
+    check: async () => ({ state: "ready", checkedAt: "1970-01-01T00:00:00.000Z" }),
+    running: async () => null,
+    setUp: async () => null,
+    remove: async () => null,
+    follow: async () => null,
+    studioStartsUnfenced,
+  };
+}
+
+const studioCantStart = "Studio can't start agents this way; halonic serve on this computer can.";
 
 const button = (label: string) =>
   [...document.querySelectorAll("button")].find((each) => each.textContent?.startsWith(label));
@@ -86,5 +106,24 @@ verifies("settings.new-agents-run", () => {
     expect(view.textContent).toContain(
       "View only here. Change where agents run on the computer running Halonic.",
     );
+  });
+
+  it("says Studio can't start these agents while its host says so, or doesn't say", async () => {
+    const unsaid = await show();
+    expect(unsaid.view.textContent).toContain(studioCantStart);
+    unmountAll();
+    const cant = await show("app", undefined, readyHost(false));
+    expect(cant.view.textContent).toContain(studioCantStart);
+  });
+
+  it("drops that line once the host can start them, and in served Studio", async () => {
+    const can = await show("app", undefined, readyHost(true));
+    expect(can.view.textContent).toContain(
+      "Each agent can be changed on its Harness page. This applies on this computer only.",
+    );
+    expect(can.view.textContent).not.toContain(studioCantStart);
+    unmountAll();
+    const served = await show("served", undefined, readyHost(false));
+    expect(served.view.textContent).not.toContain(studioCantStart);
   });
 });
