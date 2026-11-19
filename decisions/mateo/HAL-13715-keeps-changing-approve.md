@@ -3,6 +3,7 @@
 - Task: HAL-13715
 - Approval: HAL-13715 (bug from the real-run QA pass on HAL-13712; team decision under the HAL-2282 rule for small wording on an approved flow)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:s808MW8RboMdw0oOnSLzeISvqA7t+BjYIobT5VkE2v8hvSW0BHfdxDMIJMIjRti4+nO0LBu41DzvXP8/DXNDBQ==
 
 ## What changes
 
