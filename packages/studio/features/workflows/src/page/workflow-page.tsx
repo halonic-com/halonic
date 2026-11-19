@@ -41,6 +41,9 @@ import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
 
 type WorkflowView = "flow" | "configuration" | "runs";
 
+/** The command that opens the workspace page at Models (`features/workspace`), as the run page runs it. */
+const openModelsCommand = "workspace.open-models";
+
 /** The tab a page opens on: Configuration when asked for its Tests, else Flow. */
 function firstView(startOnTests: boolean | undefined): WorkflowView {
   return startOnTests ? "configuration" : "flow";
@@ -64,6 +67,9 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       {...(step === "tests" && { startOnTests: true, testsAsked: asked ?? 0 })}
       notAnswering={engineWordsOf(context).notAnswering}
       announceState={(key, text) => context.announcer.announceState(key, text)}
+      {...(context.runCommand && {
+        openModels: () => void context.runCommand?.(openModelsCommand),
+      })}
       {...(openItem && {
         openRun: (runId: string, step?: string) =>
           openItem({ kind: "run", hub: item.hub, id: runId }, step === undefined ? {} : { step }),
@@ -92,6 +98,7 @@ export function WorkflowScreen({
   id,
   notAnswering = engineWordsOf({}).notAnswering,
   openRun,
+  openModels,
   seeAllRuns,
   goToWorkflows,
   reviewInInbox,
@@ -285,6 +292,7 @@ export function WorkflowScreen({
             setPickedStep(undefined);
           }}
           openRun={openRun}
+          openModels={openModels}
           saveAsTest={saveAsTest}
           pickedStep={view === "flow" ? pickedStep : undefined}
           onClosePickedStep={() => setPickedStep(undefined)}

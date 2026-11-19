@@ -1,11 +1,12 @@
 import { shortRunId } from "@halonicjs/app";
-import { Button, Callout, EmptyState, List, StatusChip } from "@halonicjs/studio-kit";
+import { Button, EmptyState, List, StatusChip } from "@halonicjs/studio-kit";
 import { type EngineWords, PageBackLinkSlot } from "@halonicjs/studio-shell";
 import type { ReactNode } from "react";
 import type { SourcedRun } from "../api.ts";
 import { FailureReason, RefreshFailedLine } from "../load-failure.tsx";
 import { runPageWords } from "../run-words.ts";
 import type { RunAgain } from "./run-again.ts";
+import { RunAgainFailed } from "./run-again-failed.tsx";
 import { type RunPageContext, runHeader } from "./run-page-model.ts";
 
 /** What stands where the receipt and Every step go while the log isn't read: a skeleton, or why not. */
@@ -80,18 +81,7 @@ export function RunLayout({
           <p className="text-small text-fg-muted">{header.catchUpLine}</p>
         )}
       </header>
-      {runAgain?.problem === undefined ? null : (
-        <section aria-label={runPageWords.runAgainFailedName}>
-          <Callout tone="danger">
-            {runPageWords.runAgainFailedTitle}:{" "}
-            <FailureReason
-              what={runPageWords.runAgainFailedTitle}
-              error={runAgain.problem.error}
-              engine={engine}
-            />
-          </Callout>
-        </section>
-      )}
+      <RunAgainFailed runAgain={runAgain} engine={engine} />
       {refreshError === undefined ? null : (
         <RefreshFailedLine
           what={runPageWords.refreshFailed(shortRunId(run.summary.id))}

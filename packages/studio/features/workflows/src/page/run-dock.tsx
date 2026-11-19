@@ -61,6 +61,8 @@ interface RunDockProps {
   readonly onDock: (next: Dock) => void;
   readonly onStarted: (runId: string) => void;
   readonly openRun: ((runId: string, step?: string) => void) | undefined;
+  /** Opens the workspace page at Models, for **Open Models** on the run card's banner. */
+  readonly openModels: (() => void) | undefined;
   readonly saveAsTest: (row: RunRow) => SaveAsTestProps | undefined;
   /** The step picked on the canvas; while a run is shown its card replaces the run's. */
   readonly pickedStep: string | undefined;
@@ -106,11 +108,16 @@ export function RunDock({
   onDock,
   onStarted,
   openRun,
+  openModels,
   saveAsTest,
   pickedStep,
   onClosePickedStep,
 }: RunDockProps) {
   const { startRun } = host;
+  const started = (runId: string) => {
+    onStarted(runId);
+    onDock({ runId });
+  };
   if (shown && pickedStep !== undefined && dock !== "start") {
     return (
       <StepInRunCard
@@ -129,10 +136,7 @@ export function RunDock({
         firstTestInput={() => firstTestInput(host, workflow)}
         start={(input) => startRun.call(host, workflow, input)}
         notAnswering={notAnswering}
-        onStarted={(runId) => {
-          onStarted(runId);
-          onDock({ runId });
-        }}
+        onStarted={started}
         onClose={() => onDock(undefined)}
       />
     );
@@ -151,6 +155,17 @@ export function RunDock({
         onClose={() => onDock(undefined)}
         onOpenLog={openRun && (() => openRun(shown.row.id))}
         saveAsTest={saveAsTest(shown.row)}
+        {...(startRun && {
+          // Run again shows the new run here, as Start run does (C18).
+          runAgain: {
+            runStart: {
+              startRun: ({ hubId, workflowId }, input) =>
+                startRun.call(host, { hubId, id: workflowId }, input),
+            },
+            onStarted: started,
+          },
+        })}
+        openModels={openModels}
       />
     );
   }
