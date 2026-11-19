@@ -1,7 +1,7 @@
 import { defaultCurrency } from "@halonicjs/app";
 import { type Models, type Provider, parseFile, type WorkspaceSettings } from "@halonicjs/format";
 import type { ModelsFiles } from "../api.ts";
-import { rememberProviderNames } from "../providers/provider-names.ts";
+import { listenToProviderNames, rememberProviderNames } from "../providers/provider-names.ts";
 
 /** What the provider views know of the workspace; it doesn't depend on `models.yaml`. */
 export interface ProvidersState {
@@ -101,6 +101,20 @@ async function readProviderEntries(files: ModelsFiles) {
   }
   if (!found.failed) rememberProviderNames(files, entries);
   return { entries, unreadable, failed: found.failed };
+}
+
+/**
+ * Calls `listener` each time a provider's name in `files` changes, reading `providers/` now and
+ * again on each change while anyone listens, so open tabs take the names (HAL-12963). Returns the
+ * way to stop.
+ */
+export function subscribeProviderNames(files: ModelsFiles, listener: () => void): () => void {
+  return listenToProviderNames(files, listener, () => {
+    const read = () => void readProviderEntries(files);
+    const stop = files.subscribe(read);
+    read();
+    return stop;
+  });
 }
 
 /** A provider's id: its file's name without the folder or `.yaml`. */

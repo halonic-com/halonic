@@ -12,7 +12,7 @@ import { GitProposalTexts, type ProposalVcs } from "./run-proposal-git-texts.ts"
 import { ProposalParts } from "./run-proposal-parts.ts";
 import type { ProposedRecord, RunningRecord } from "./run-proposal-record.ts";
 import { ProposalSettling, type SettleResult } from "./run-proposal-settle.ts";
-import { ProposalRecordStore } from "./run-proposal-store.ts";
+import { type ProposalRecordLock, ProposalRecordStore } from "./run-proposal-store.ts";
 import type { ProposalTexts } from "./run-proposal-texts.ts";
 import { ProposalTextsByHistory } from "./run-proposal-texts-by-history.ts";
 import type {
@@ -31,6 +31,7 @@ import type {
 
 export type { RunCopies } from "./run-proposal-copy-texts.ts";
 export type { ProposalVcs } from "./run-proposal-git-texts.ts";
+export type { ProposalRecordLock } from "./run-proposal-store.ts";
 
 /** What the run proposal service needs from the host. */
 export interface RunProposalsOptions {
@@ -50,6 +51,12 @@ export interface RunProposalsOptions {
    * record in from there (HAL-3417).
    */
   readonly records: DefinitionStore;
+  /**
+   * Keeps other processes off a run's record while one decides it. Pass one
+   * when another process can open the same records; without it, only this
+   * process's turns keep the work on a record apart.
+   */
+  readonly recordLock?: ProposalRecordLock;
   /** Hashes each file's base for the write-if-unchanged check. */
   readonly digest: Digest;
   /** Dates a proposal, so its ref can go after 30 days. */
@@ -101,7 +108,7 @@ export class RunProposals {
         ? null
         : new CopyProposalTexts(options.copies, options.store, options.digest),
     );
-    this.records = new ProposalRecordStore(options.records);
+    this.records = new ProposalRecordStore(options.records, options.recordLock);
     this.clock = options.clock;
     this.onEndFailed = options.onEndFailed;
     const context = {

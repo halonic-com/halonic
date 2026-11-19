@@ -2,6 +2,7 @@
 
 import { KindedError } from "@halonicjs/std";
 import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
+import { PhoneTopBarSlot } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -285,6 +286,28 @@ verifies("agents.page.menu", () => {
     const noFile = await open(hostWith());
     act(() => menuButton(noFile.page)?.click());
     expect(entries()).toEqual(["Delete"]);
+  });
+
+  it("puts the ⋮ in the phone's top bar, not the header, and takes it away after Delete", async () => {
+    const topBar = document.createElement("div");
+    document.body.append(topBar);
+    const page = await show(
+      <PresentationProvider presentation="phone">
+        <PhoneTopBarSlot value={topBar}>
+          <AgentScreen host={hostWith()} hubId="acme" id="sorter" />
+        </PhoneTopBarSlot>
+      </PresentationProvider>,
+    );
+    await settled();
+    expect(menuButton(page)).toBeNull();
+    expect(menuButton(topBar)).not.toBeNull();
+
+    await pick(topBar, "Delete");
+
+    expect(page.textContent).toContain("This agent was deleted");
+    expect(menuButton(topBar)).toBeNull();
+    expect(document.activeElement?.textContent).toBe("Undo");
+    topBar.remove();
   });
 
   it("opens the agent's file in a tab", async () => {
