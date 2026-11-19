@@ -107,6 +107,15 @@ function renderWindow(
   return { container, workspace, link };
 }
 
+/** Types `words` into a field as a user does, so React's `onChange` sees them. */
+function typeInto(field: HTMLInputElement | null, words: string) {
+  if (field === null) {
+    return;
+  }
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(field, words);
+  field.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 /** Lets the lazily imported views resolve and React draw them. */
 async function settle() {
   await act(async () => {
@@ -235,6 +244,33 @@ verifies("shell.studio-window", () => {
     act(() => search?.click());
 
     expect(container.querySelector('dialog[open][aria-label="Search"]')).not.toBeNull();
+  });
+
+  it("moves focus to the h1 of a page the Ctrl K palette opens here, not back to Search", async () => {
+    const { container, link } = renderWindow();
+    // Inbox goes into Recent, so the palette finds it by name.
+    act(() => link("Inbox")?.click());
+    await settle();
+    act(() => link("Home")?.click());
+    await settle();
+
+    const search = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.getAttribute("aria-keyshortcuts") === "Control+K",
+    );
+    act(() => {
+      search?.focus();
+      search?.click();
+    });
+    const box = () => container.querySelector<HTMLInputElement>('[role="combobox"]');
+    act(() => typeInto(box(), "Inbox"));
+    await settle();
+    act(() => {
+      box()?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    await settle();
+
+    expect(container.querySelector("dialog[open]")).toBeNull();
+    expect(document.activeElement?.className).toBe("inbox-view");
   });
 
   it("opens a new tab on Home with the palette over it from +", () => {

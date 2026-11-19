@@ -57,7 +57,7 @@ const footCurves = {
 export function WindowTabView(props: WindowTabViewProps) {
   const { tab, active, focusable, icon, needsYou } = props;
   const location = currentLocation(tab);
-  const name = [location.title, location.kind, needsYou ? "needs you" : undefined]
+  const name = [location.title, spokenKind(location), needsYou ? "needs you" : undefined]
     .filter((part) => part !== undefined)
     .join(", ");
   const tooltip = useTooltip({
@@ -163,4 +163,16 @@ function CloseTabButton({ title, shown, onClose }: CloseTabButtonProps) {
       </span>
     </button>
   );
+}
+
+/**
+ * The kind a tab's name says after its title, left out when it only repeats the title (a11y check
+ * S2): the Workspace settings tab is "Workspace settings", not "Workspace settings, workspace settings".
+ */
+function spokenKind(location: TabLocation): string | undefined {
+  const kind = location.kind;
+  if (kind === undefined || kind.toLowerCase() === location.title.toLowerCase()) {
+    return undefined;
+  }
+  return kind;
 }

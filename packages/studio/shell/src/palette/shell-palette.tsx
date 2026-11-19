@@ -38,6 +38,11 @@ export interface ShellPaletteProps {
   readonly platform: KeyboardPlatform;
   /** Esc, a click outside, and a pick that opens here or runs an action. */
   readonly onClose: () => void;
+  /**
+   * After a pick opened here, in the same update as `onClose`: moves focus to the new page's `h1`
+   * once it's drawn, so a screen reader says where the user is (a11y A3).
+   */
+  readonly onOpenedHere: () => void;
 }
 
 /**
@@ -45,9 +50,10 @@ export interface ShellPaletteProps {
  * words, asks the search providers as they change, and ranks the open tabs, the recent places,
  * what the providers found and the commands with `paletteGroups`.
  *
- * A place or an item opens here, which closes the palette, or with Mod in a new tab next to the
- * active one: the palette stays open with the focus in its search row, and the announcer says
- * "Opened *Refund checker* in a new tab." A place a tab already shows becomes the active tab.
+ * A place or an item opens here, which closes the palette and moves focus to the new page's `h1`,
+ * or with Mod in a new tab next to the active one: the palette stays open with the focus in its
+ * search row, and the announcer says "Opened *Refund checker* in a new tab." A place a tab already
+ * shows becomes the active tab.
  * An action closes the palette and then runs with its own feature's context; one that fails says
  * so in a danger toast.
  *
@@ -59,11 +65,11 @@ export interface ShellPaletteProps {
  *     providers={shell.contributions.search.providers()} commands={shell.contributions.commands.list()}
  *     kinds={shell.contributions.itemKinds} contextFor={contextFor} announcer={shell.announcer}
  *     toasts={shell.toasts} notAnswering={shell.engine.words.notAnswering} platform={platform}
- *     onClose={() => setPaletteOpen(false)} />
+ *     onClose={() => setPaletteOpen(false)} onOpenedHere={focusNewPage} />
  * ) : null}
  */
 export function ShellPalette(props: ShellPaletteProps) {
-  const { tabs, recent, kinds, contextFor, announcer, onClose } = props;
+  const { tabs, recent, kinds, contextFor, announcer, onClose, onOpenedHere } = props;
   const [words, setWords] = useState("");
   const openTabs = useOpenTabs(tabs);
   const recentPlaces = useRecentPlaces(recent);
@@ -86,10 +92,13 @@ export function ShellPalette(props: ShellPaletteProps) {
     }
     const location =
       target.kind === "location" ? target.location : itemLocation(target.item, row.label, kinds);
-    if (!inNewTab) {
-      onClose();
+    if (inNewTab) {
+      openLocation(tabs, announcer, location, true);
+      return;
     }
-    openLocation(tabs, announcer, location, inNewTab);
+    onClose();
+    openLocation(tabs, announcer, location, false);
+    onOpenedHere();
   };
 
   return (

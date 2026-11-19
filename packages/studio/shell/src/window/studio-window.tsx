@@ -29,7 +29,7 @@ import { useSettingsOpening } from "../settings/settings-opening.ts";
 import type { Shell } from "../shell.ts";
 import { studioTab } from "../sidebar/sidebar-views.tsx";
 import type { WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
-import { usePageHeadingFocus } from "../tabs/history-moves.ts";
+import { usePageHeadingFocus, usePageHeadingFocusAfterDialog } from "../tabs/history-moves.ts";
 import { openLocation } from "../tabs/open-location.ts";
 import { TabPages } from "../tabs/tab-pages.tsx";
 import type { TabLocation } from "../tabs/tab-set.ts";
@@ -276,6 +276,8 @@ export function StudioWindow(props: StudioWindowProps) {
   // Read again on every phone move, so the bottom navigation's signals follow.
   const shown = shownPlaces(contributions.places.list(), contextFor);
   useWindowKeys({ host, platform, tabs, toasts: shell.toasts, onNewTab: palette.show });
+  // Ctrl K's palette closes as it opens a page, and its focus return mustn't win over the `h1`.
+  const focusPageOpenedFromPalette = usePageHeadingFocusAfterDialog();
   // The palette is the desktop's: one opened on a phone (Mod K on a keyboard) or left open when the
   // window narrows is closed, so it doesn't pop up when the window widens again.
   const { open: paletteOpen, close: closePalette } = palette;
@@ -411,6 +413,7 @@ export function StudioWindow(props: StudioWindowProps) {
           notAnswering={shell.engine.words.notAnswering}
           platform={platform}
           onClose={palette.close}
+          onOpenedHere={focusPageOpenedFromPalette}
         />
       ) : null}
       {settings.opening === undefined ? null : (
