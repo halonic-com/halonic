@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12486 (Liam, CTO; asked for in his review on HAL-12342)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:b6R75pMnV24O49BBiU8/N49T1uofMhgj5fX/PrtsnEFbu04XJssaOwVi5OjPJbsyFOd0Tlf0eJ6VsCTY/FQgCA==
 - Task: HAL-12486
 
 Since HAL-12342, the engine logs a connector tool that answered with an error of its own as a
