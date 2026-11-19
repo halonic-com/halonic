@@ -2,6 +2,7 @@
 
 - Approval: HAL-12564, follow-up of HAL-11272, reviewed by the CTO (maintainer)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bgCSh4kVAv7OydKVQjN91q/eCRnGFNufZeTedy7j1vmmkFwfOY0P4bePaEyPQdqT7aDE++PdQUrKbSZcCIaSBw==
 
 ## What changes
 
