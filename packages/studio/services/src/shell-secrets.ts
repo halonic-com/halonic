@@ -1,6 +1,12 @@
-import { type SecretPresence, TauriSecrets, TauriTokens } from "@halonicjs/adapter-secrets-tauri";
+import {
+  type SecretPresence,
+  TauriKeyOrigins,
+  TauriSecrets,
+  TauriTokens,
+} from "@halonicjs/adapter-secrets-tauri";
 import { type ServiceRegistry, serviceKey } from "@halonicjs/app";
 import {
+  type KeyOrigins,
   type SecretStore,
   type Secrets,
   type TokenStore,
@@ -63,4 +69,14 @@ export function shellKeychain(
   ipc: TauriIpc,
 ): Secrets & Pick<SecretStore, "set" | "remove"> & SecretPresence {
   return new TauriSecrets(ipc);
+}
+
+/**
+ * The origins each key in the OS keychain may be sent to, kept beside the key by the shell
+ * (HAL-11887). The model resolver asks it on every call with a key.
+ *
+ * @param ipc - the shell's IPC, from `tauriIpc`
+ */
+export function shellKeyOrigins(ipc: TauriIpc): KeyOrigins {
+  return new TauriKeyOrigins(ipc);
 }

@@ -1,5 +1,6 @@
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import type { LocalExecutorOptions } from "@halonicjs/engine";
+import { noKeyOrigins } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { EngineService } from "./engine-service.ts";
@@ -29,6 +30,7 @@ function serviceOf(settings: string): EngineService {
     name: "Acme",
     definitions: new MemoryDefinitionStore({ "workspace.yaml": settings }),
     secrets: { get: async () => null },
+    keyOrigins: noKeyOrigins,
     http: { fetch },
     clock: { now: () => new Date("2026-11-15T10:00:00.000Z") },
     ids: { next: (prefix) => `${prefix}1` },

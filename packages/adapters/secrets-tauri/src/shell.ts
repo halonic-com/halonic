@@ -28,6 +28,27 @@ export const secretCommands = {
 } as const;
 
 /**
+ * The shell's commands for the origins a stored key may be sent to
+ * (`apps/studio/src-tauri/src/secrets.rs`, HAL-11887). The shell keeps them
+ * beside the key and makes each origin from the address itself.
+ */
+export const keyOriginCommands = {
+  /** `{ name }` → the key's origins, or `null` when none is recorded. */
+  allowed: "secret_allowed_origins",
+  /** `{ name, address }` → an {@link AllowOriginResult}; adds the address' origin to the key's list. */
+  allow: "secret_allow_origin",
+} as const;
+
+/** Why an address can't be an allowed origin, as the shell and the CLI's secrets file say it. */
+export type AddressProblem = "not-an-address" | "has-user-info";
+
+/** What allowing an origin for a key did: the shell's answer, in the shape the CLI's secrets file uses. */
+export type AllowOriginResult =
+  | { readonly result: "added" | "already-allowed"; readonly origin: string }
+  | { readonly result: "no-key" | "full" }
+  | { readonly result: "bad-address"; readonly problem: AddressProblem };
+
+/**
  * The shell's token commands (`apps/studio/src-tauri/src/secrets.rs`), the
  * page's only way to a token. The shell keeps each token under the token
  * prefix and the token's canonical name; the page names the token only.
