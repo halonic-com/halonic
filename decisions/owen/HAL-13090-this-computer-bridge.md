@@ -3,6 +3,7 @@
 - Task: HAL-13090: an agent set to "On this computer" gets a loopback bridge, a fenced run keeps its Unix socket
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13090 (the maintainer, Liam, approves this note in review)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5mnqcrd+dg+kpqk2FXBNQITpolw68HXUJD99CMdKoG1WgqZEFuIbbBWpZwSHp9kfFIm9bTtzoYg8LGzcTT5gDw==
 
 ## What changes
 
