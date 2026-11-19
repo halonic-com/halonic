@@ -146,6 +146,11 @@ verifies("app.model-choice-provider-file", () => {
       { kind: "key", provider: "gemini" },
       "id: gemini\ntype: openai-compatible\nbaseUrl: https://proxy.acme.test/v1\nsecret: k\n",
     ],
+    [
+      "an address where the provider's own is meant",
+      { kind: "key", provider: "anthropic" },
+      "id: anthropic\ntype: anthropic\nbaseUrl: https://proxy.acme.test\nsecret: k\n",
+    ],
     ["Ollama not local", { kind: "local", model: "llama3.2" }, "id: ollama\ntype: ollama\n"],
     ["a file that doesn't read", { kind: "key", provider: "openai" }, "id: [openai\n"],
   ] as const)("stops at a provider file with %s", (_, choice, provider) => {

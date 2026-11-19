@@ -131,7 +131,10 @@ export function choiceEdits(
 
 /**
  * The secret name the choice's key goes under: the one in the workspace's own
- * provider file when it has one that fits, else the table's.
+ * provider file when it has one that fits, else the table's. A cloud
+ * provider's file must have the table's address exactly, none for Anthropic
+ * and OpenAI: the pasted key is tested and saved for that address, and must
+ * never go to another one. Ollama may sit on another port.
  */
 function providerSecretName(
   provider: FirstRunProvider,
@@ -141,8 +144,7 @@ function providerSecretName(
   const parsed = parseFile("provider", text, { id: provider.id });
   if (!parsed.ok) return err("differs");
   const file = parsed.value.value;
-  const sameAddress =
-    provider.baseUrl === undefined || provider.local || file.baseUrl === provider.baseUrl;
+  const sameAddress = provider.local || file.baseUrl === provider.baseUrl;
   if (file.type !== provider.type || !sameAddress || file.local !== provider.local) {
     return err("differs");
   }
