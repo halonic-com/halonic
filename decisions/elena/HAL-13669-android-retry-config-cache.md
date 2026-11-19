@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-13669 (a follow-up from the nightly failure on HAL-13664); Liam approves this note in review on HAL-13669 and signs it
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/NBAEhZRfOWM0hbDORLDdNc7OPPNI9vhmVtiR3FFqbP9oxJEdBEU7/ttq8XwnTH4zaKMtgfNAJznGp1bUt/ZCA==
 
 ## What changes
 
