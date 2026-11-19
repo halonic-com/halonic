@@ -24,7 +24,10 @@ mod store;
 mod unlinked;
 
 pub use error::HostSettingsError;
-pub use sandbox_choice::{SANDBOX_BACKENDS, read_sandbox_backend};
+pub use sandbox_choice::{
+    SANDBOX_BACKENDS, SandboxSetting, read_sandbox_backend, read_sandbox_setting,
+    remove_sandbox_setting, save_sandbox_setting,
+};
 pub use saved::{
     MAX_BYTES, SavedChange, change_saved_host_settings, is_host_setting_key,
     read_saved_host_settings,
