@@ -92,9 +92,9 @@ verifies("inbox.setup-pane", () => {
   it("shows the loading skeleton, then the source's view with the current step focused", async () => {
     const loader = controlledView();
     const { root } = await openFirst({ view: loader.view });
-    expect(root.querySelector('[role="status"]')?.getAttribute("aria-label")).toBe(
-      "Loading the Google setup",
-    );
+    expect(
+      root.querySelector('[data-pane="item"] [role="status"]')?.getAttribute("aria-label"),
+    ).toBe("Loading the Google setup");
     await loader.finish();
     const title = root.querySelector("section h2");
     expect(title?.textContent).toBe("Step 4 of 7 · Scopes");
