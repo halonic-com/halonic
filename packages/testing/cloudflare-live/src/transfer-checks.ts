@@ -50,15 +50,24 @@ const adminRoutes = [
   ["POST", "/admin/import"],
 ] as const;
 
+/** A check got another status than it wanted; `status` is what it got. */
+export class UnexpectedStatus extends Error {
+  /** The status the Worker answered. */
+  readonly status: number;
+  constructor(what: string, got: { status: number; code: string | undefined }, want: number) {
+    const code = got.code === undefined ? "" : ` ${got.code}`;
+    super(`${what} was answered ${got.status}${code}, expected ${want}.`);
+    this.name = "UnexpectedStatus";
+    this.status = got.status;
+  }
+}
+
 function expectStatus(
   what: string,
   got: { status: number; code: string | undefined },
   want: number,
 ) {
-  if (got.status !== want) {
-    const code = got.code === undefined ? "" : ` ${got.code}`;
-    throw new Error(`${what} was answered ${got.status}${code}, expected ${want}.`);
-  }
+  if (got.status !== want) throw new UnexpectedStatus(what, got, want);
 }
 
 /** Checks of a deployed Worker that need no key. Each throws an `Error` naming what differed, never a key or a body. */
@@ -131,40 +140,6 @@ export const workerChecks = {
     }
   },
 };
-
-export interface EventuallyOptions {
-  /** How many times to try the check. Defaults to 12. */
-  readonly attempts?: number;
-  /** Milliseconds between tries. Defaults to 5000. */
-  readonly delayMs?: number;
-  /** Tests inject this; defaults to a timer. */
-  readonly sleep?: (ms: number) => Promise<void>;
-}
-
-/**
- * Runs `check` until it passes. Setting or removing a Workers secret makes a new Worker version,
- * which takes a few seconds to answer everywhere.
- *
- * @throws the last error of `check` when every try failed
- */
-export async function eventually(
-  check: () => Promise<void>,
-  options: EventuallyOptions = {},
-): Promise<void> {
-  const {
-    attempts = 12,
-    delayMs = 5_000,
-    sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
-  } = options;
-  for (let attempt = 1; ; attempt++) {
-    try {
-      return await check();
-    } catch (error) {
-      if (attempt >= attempts) throw error;
-      await sleep(delayMs);
-    }
-  }
-}
 
 export interface RoundTripOptions extends Pick<WorkerTransferOptions, "baseUrl" | "key" | "fetch"> {
   /** A complete export folder to put into the Worker. */
