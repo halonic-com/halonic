@@ -53,12 +53,13 @@ export function TryItChatView(props: TryItChatViewProps) {
     setDraft("");
     setHeldForKey(false);
   };
-  const send = () => {
+  const send = async () => {
     if (findSecretShape(draft) !== undefined) {
       setHeldForKey(true);
       return;
     }
-    sendNow();
+    // A workspace that isn't trusted keeps the message in the box (H16).
+    if (await chat.mayStart()) sendNow();
   };
   const edit = (text: string) => {
     setDraft(text);
@@ -95,7 +96,7 @@ export function TryItChatView(props: TryItChatViewProps) {
           placeholder={tryItWords.placeholder(name)}
           value={draft}
           onChange={edit}
-          onSend={send}
+          onSend={() => void send()}
           onStop={chat.stop}
           answering={chat.answering}
           // A program that isn't ready makes Send wait, with the line as its reason (H27).

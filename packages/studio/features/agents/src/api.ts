@@ -179,6 +179,19 @@ export interface AgentsHost {
    */
   answer(ref: AgentRef, request: AgentChatRequest): Promise<ChatAnswer>;
   /**
+   * Whether the workspace may start anything now: `false` while this computer doesn't trust it
+   * (states H16). Absent where there is no folder to trust, which counts as yes.
+   */
+  mayStart?(): boolean;
+  /**
+   * Opens the workspace's one trust gate, and answers `"trusted"` once the person trusted the
+   * workspace, `"declined"` on Not now. Absent where the gate can't be opened, so a Try it message
+   * in a workspace that isn't trusted only says it wasn't started.
+   */
+  askTrust?(): Promise<"trusted" | "declined">;
+  /** The workspace's name, for "Not started: *Acme* isn't trusted yet"; `undefined` before it's read. */
+  workspaceName?(): string | undefined;
+  /**
    * The path of the agent's file from the workspace folder, for **Open as file**. Rejects like
    * {@link AgentsHost.read}.
    */
