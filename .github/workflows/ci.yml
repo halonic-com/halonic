@@ -2102,6 +2102,11 @@ jobs:
       # The Gradle download and its dependencies, so a network blip on
       # services.gradle.org does not turn main red. Keyed on the files that
       # pin them; scoped per branch like the Turbo cache above.
+      # Tauri plugins bring their own Android dependencies (the barcode
+      # scanner pulls in androidx.camera), and those are pinned by Cargo.lock,
+      # not by the generated Gradle files. Without Cargo.lock in the key, a new
+      # plugin keeps an exact hit on the old cache, so every run downloads the
+      # plugin's packages from Maven Central and nothing saves them (HAL-13164).
       # Restore and save are separate so the save can run after a failed
       # build: what was downloaded before the failure is kept.
       - name: Restore the Gradle cache
@@ -2111,7 +2116,7 @@ jobs:
           path: |
             ~/.gradle/wrapper/dists
             ~/.gradle/caches
-          key: gradle-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/gen/android/**/*.gradle*', 'apps/studio/src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties') }}
+          key: gradle-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/gen/android/**/*.gradle*', 'apps/studio/src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties', 'apps/studio/src-tauri/Cargo.lock') }}
           restore-keys: gradle-${{ runner.os }}-
       # Fetches the Gradle distribution with retries, so a 5xx from
       # services.gradle.org on a cold cache does not fail the build.
@@ -2144,30 +2149,15 @@ jobs:
       # One retry for a download that still fails after Gradle's own retries.
       # It also reruns a real compile error, so it stays at 2 attempts to keep
       # a broken build well inside the job timeout.
-      # Gradle remembers a "not found" from a repository, so a plain retry
-      # fails again within a second without asking the network (HAL-13164).
-      # `tauri android build` can't pass Gradle flags, so before the retry
-      # a separate resolve with --refresh-dependencies fetches the app's
-      # dependencies again. Attempt 1 keeps using the cache. The resolve
-      # needs tauri.settings.gradle, which attempt 1 writes; if attempt 1
-      # failed before that, the resolve fails too and the retry runs anyway.
       - name: Build the debug APK
         working-directory: apps/studio
         run: |
           export JAVA_HOME="$JAVA_HOME_17_X64"
           export NDK_HOME="$ANDROID_NDK_LATEST_HOME"
-          refresh_dependencies() {
-            (cd src-tauri/gen/android &&
-              ./gradlew --refresh-dependencies :app:dependencies --configuration universalDebugRuntimeClasspath) ||
-              echo "::warning title=android::Refreshing the Gradle dependencies failed."
-          }
           for attempt in 1 2; do
             pnpm exec tauri android build --debug --apk --target aarch64 --target x86_64 && exit 0
             echo "::warning title=android::Build attempt $attempt failed."
-            if [ "$attempt" -lt 2 ]; then
-              sleep 20
-              refresh_dependencies
-            fi
+            [ "$attempt" -lt 2 ] && sleep 20
           done
           exit 1
       # For trying a pull request's build on a phone or an emulator.
