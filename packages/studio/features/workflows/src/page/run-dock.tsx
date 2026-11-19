@@ -63,6 +63,8 @@ interface RunDockProps {
   readonly openRun: ((runId: string, step?: string) => void) | undefined;
   /** Opens the workspace page at Models, for **Open Models** on the run card's banner. */
   readonly openModels: (() => void) | undefined;
+  /** Opens the workspace page at its Budget block, for **Change budget** on the run card's banner. */
+  readonly openBudget: (() => void) | undefined;
   /** Says a line to a screen reader, for why the run card's **Run again** didn't start. */
   readonly announce: ((line: string) => void) | undefined;
   readonly saveAsTest: (row: RunRow) => SaveAsTestProps | undefined;
@@ -122,6 +124,7 @@ export function RunDock({
   onStarted,
   openRun,
   openModels,
+  openBudget,
   announce,
   saveAsTest,
   pickedStep,
@@ -181,6 +184,7 @@ export function RunDock({
           },
         })}
         openModels={openModels}
+        openBudget={openBudget}
       />
     );
   }

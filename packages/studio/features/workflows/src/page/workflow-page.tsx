@@ -44,6 +44,9 @@ type WorkflowView = "flow" | "configuration" | "runs";
 /** The command that opens the workspace page at Models (`features/workspace`), as the run page runs it. */
 const openModelsCommand = "workspace.open-models";
 
+/** The command that opens the workspace page at its Budget block (`features/workspace`). */
+const openBudgetCommand = "workspace.open-budget";
+
 /** The tab a page opens on: Configuration when asked for its Tests, else Flow. */
 function firstView(startOnTests: boolean | undefined): WorkflowView {
   return startOnTests ? "configuration" : "flow";
@@ -70,6 +73,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       announce={(line) => context.announcer.announce(line)}
       {...(context.runCommand && {
         openModels: () => void context.runCommand?.(openModelsCommand),
+        openBudget: () => void context.runCommand?.(openBudgetCommand),
       })}
       {...(openItem && {
         openRun: (runId: string, step?: string) =>
@@ -100,6 +104,7 @@ export function WorkflowScreen({
   notAnswering = engineWordsOf({}).notAnswering,
   openRun,
   openModels,
+  openBudget,
   seeAllRuns,
   goToWorkflows,
   reviewInInbox,
@@ -305,6 +310,7 @@ export function WorkflowScreen({
           }}
           openRun={openRun}
           openModels={openModels}
+          openBudget={openBudget}
           announce={announce}
           saveAsTest={saveAsTest}
           pickedStep={dockStep}
