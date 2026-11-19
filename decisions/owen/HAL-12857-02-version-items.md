@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12857 (a detail of the approved History screen, so a team decision under HAL-2282; found in the re-walk HAL-12840, C86)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vsvyCahdiIcbWucApXGbPnfOSOnEHcOFqYiNEMoFD81dMoRFgyjnGXiDj86Q6SDu7BqQ+/k/U/n1LtJl9OyTAw==
 
 A version's details (beside History on a desktop, its own page on a phone) list "What's in it" as
 the version's items, counted as items, each with the icon, name and kind the Changes list gives it,
