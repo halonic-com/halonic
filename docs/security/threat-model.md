@@ -331,6 +331,17 @@ every approval a phone answers, until approvals reach the engine in a follow-up
 and the person can allow it on the desktop, which nothing offers yet. Its events are the narrow ones (prompt, answers,
 approvals, result), kept in memory only.
 
+**The phone's pairing scanner** (Android, **Lands with #3585**) reads the pairing
+code with Google's ML Kit (`play-services-mlkit-barcode-scanning`), which runs
+on the phone inside Google Play services. The camera image and the code it reads
+stay on the phone. ML Kit does send Google diagnostics and usage data about the
+API: device details (maker, model, OS version), the app's package name and
+version, speed, and settings such as image format and resolution
+([Google's disclosure](https://developers.google.com/ml-kit/android-data-disclosure)).
+Halonic can't turn that off, so Google Play services is trusted on Android, the
+README says so under "Models and privacy", and the Play Data safety form
+declares it.
+
 The **Halonic** harness, the default, starts no program for the agent, so this
 boundary doesn't apply to it. Stdio connectors a workspace starts are
 [4.1](#41-workspace-code-b1). The host opens their sandbox sessions itself,

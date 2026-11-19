@@ -228,6 +228,11 @@ output can include your home folder.
 - No account.
 - Halonic talks only to the models and services you set up. Local models keep
   your prompts on your computer.
+- One exception, on Android: scanning a pairing code uses Google's ML Kit
+  through Google Play services. The camera image stays on your phone, but
+  Google may receive usage statistics about the scanner (device and app
+  details, speed, image settings). See
+  [Google's ML Kit data disclosure](https://developers.google.com/ml-kit/android-data-disclosure).
 - The 0.1.0 command line doesn't check for updates.
 
 ## How Halonic is built
