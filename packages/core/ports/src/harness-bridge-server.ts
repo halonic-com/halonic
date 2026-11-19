@@ -31,8 +31,13 @@ export type BridgeProviderAccess =
    * as `zai`. The bridge names it as the call's `provider` in `llm.request`
    * and `llm.response`, so the run log shows where the call went; without
    * it, the API's own name (`anthropic`, `openai`).
+   *
+   * `model` is the one model the agent may call with this key, such as
+   * `glm-5.3`. The bridge refuses a call that names any other model before
+   * it reads the key, so the program can't spend the key on a model the
+   * host didn't price; without it, any model goes.
    */
-  | { kind: "key"; secret: string; baseUrl?: string; providerId?: string }
+  | { kind: "key"; secret: string; baseUrl?: string; providerId?: string; model?: string }
   /**
    * With the person's own subscription: the bridge passes the program's own
    * sign-in to the provider unchanged and never reads, logs or stores it.

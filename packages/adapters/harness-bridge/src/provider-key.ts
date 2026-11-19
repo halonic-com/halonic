@@ -58,6 +58,27 @@ export function providerAccess(
 }
 
 /**
+ * Refuses a keyed call to a model other than the one the access names
+ * (requirement `harness-bridge.keyed-model`). The program chooses the
+ * request's `model`, so without this it could spend the key on a model the
+ * host gave no price, which no cost limit or budget would count. Call it
+ * before the key is read.
+ *
+ * @throws KindedError `denied` when the access names a model and `model` isn't it
+ */
+export function refuseOtherModel(
+  access: BridgeProviderAccess,
+  model: string,
+  provider: BridgeProvider,
+): void {
+  if (access.kind !== "key" || access.model === undefined || access.model === model) return;
+  throw new KindedError(
+    "denied",
+    `This agent may call only the model "${access.model}" with its ${providerNames[provider]} key, not "${model}".`,
+  );
+}
+
+/**
  * The program's own sign-in, as the one `authorization` header the call to
  * the provider gets. Node's server keeps only the first of two
  * `authorization` headers, so it is always one value.

@@ -52,6 +52,12 @@ call keeps `fetch`, which reaches only the two fixed hosts
 Whether the key may go to that address at all (the workspace's trust and the
 key's allowed addresses) is the host's check, made before it opens the bridge.
 
+A keyed access can also name the one `model` the agent may call with the
+key, such as `glm-5.3`. The program chooses each request's `model`, so the
+bridge then refuses a request for any other model (`denied`, a 403) before
+it reads the key: the key is spent only on the model the host priced, and
+every call counts towards the run's cost limit and budget.
+
 ## GitHub read tools
 
 `GitHubReadTools` is a `BridgeTools` with four read-only tools on one repository fixed when it is made
@@ -154,7 +160,7 @@ Its key should be short-lived and for that task alone, and is read from `Secrets
   twice is safe.
 
 The rules are in `requirements/`: `server.md`, `socket.md`, `pass-through.md`,
-`anthropic.md`, `openai.md`, `provider-base-url.md`, `sign-in.md`, `spend.md`, `mcp.md` and `approvals.md`.
+`anthropic.md`, `openai.md`, `provider-base-url.md`, `keyed-model.md`, `sign-in.md`, `spend.md`, `mcp.md` and `approvals.md`.
 
 ## Options
 
