@@ -187,6 +187,14 @@ verifies("shell.palette-dialog", () => {
     expect(palette.view.querySelector("mark")?.textContent).toBe("check");
   });
 
+  it("gives the marked words a solid Mark fill in high contrast, where the soft one hides them", () => {
+    const palette = renderPalette();
+    palette.show({ words: "check", found: [refundChecker] });
+    const mark = palette.view.querySelector("mark");
+    expect(mark?.className).toContain("forced-colors:bg-[Mark]");
+    expect(mark?.className).toContain("forced-colors:text-[MarkText]");
+  });
+
   it("selects the words with Ctrl K rather than closing", () => {
     const palette = renderPalette();
     palette.show({ words: "refund" });

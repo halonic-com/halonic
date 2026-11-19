@@ -30,6 +30,19 @@ export function render(element: ReactNode): HTMLElement {
 }
 
 /**
+ * Renders `element` like {@link render}, with `update` to render a changed element into the same
+ * root, as a parent's new props would.
+ */
+export function renderWithUpdate(element: ReactNode): {
+  readonly container: HTMLElement;
+  readonly update: (next: ReactNode) => void;
+} {
+  const container = render(element);
+  const entry = mounted.at(-1);
+  return { container, update: (next) => act(() => entry?.root.render(next)) };
+}
+
+/**
  * Renders `element` like {@link render}, in an awaited `act`, for a view that suspends: React
  * retries a suspended view only when the `act` it first rendered in was awaited.
  */

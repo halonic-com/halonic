@@ -38,6 +38,7 @@ export function listedToolsSnapshot(
     keepsChanging: review.keepsChanging.map(row),
     refused: review.refused,
     approved: review.on,
+    approvedWithoutAsking: review.on.filter((name) => !trust.asksBeforeUse(name)),
     listingRefused: review.listingRefused,
     unreadable: unreadableApproval(review),
     hasApprovals: hasApprovals(review),

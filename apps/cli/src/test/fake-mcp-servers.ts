@@ -6,6 +6,8 @@ export interface ListedMcpTool {
   readonly name: string;
   readonly description?: string;
   readonly inputSchema: Readonly<Record<string, unknown>>;
+  /** What the server adds about the tool, such as its risk under `com.halonic/risk`. */
+  readonly _meta?: Readonly<Record<string, unknown>>;
 }
 
 /**

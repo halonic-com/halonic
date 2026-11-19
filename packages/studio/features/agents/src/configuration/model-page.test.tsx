@@ -92,6 +92,26 @@ verifies("agents.configuration.model", () => {
     expect((await agents.settings(ref)).model).toBe("smart");
   });
 
+  it("says when the file names an alias the hub doesn't have, until one is picked", async () => {
+    const unknown = "smrt isn't a model alias in this workspace. Choose one, or add it in Models.";
+    const { page, select } = await openModel(undefined, { model: "smrt" });
+    expect(select.value).toBe("smrt");
+    expect(page.textContent).toContain(unknown);
+    expect(select.getAttribute("aria-invalid")).toBe("true");
+
+    await act(async () => {
+      select.value = "smart";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(page.textContent).not.toContain(unknown);
+  });
+
+  it("takes a provider/model name as it is, with no error", async () => {
+    const { page, select } = await openModel(undefined, { model: "ollama/llama3.2" });
+    expect(select.value).toBe("ollama/llama3.2");
+    expect(page.textContent).not.toContain("isn't a model alias");
+  });
+
   it("saves a turn limit after a pause, and 6 when it is emptied", async () => {
     const { agents, limit } = await openModel();
     await typeInto(limit, "25");

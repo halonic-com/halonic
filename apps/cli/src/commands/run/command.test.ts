@@ -180,7 +180,7 @@ verifies("cli.run", () => {
     const failed = io.stdout.findLastIndex((line) => line.startsWith("✕"));
     expect(io.stdout.slice(failed, failed + 2)).toEqual([
       "✕ Support reply failed in the step Read the email: there's no key in the secret anthropic (HALONIC_SECRET_ANTHROPIC), used by the model alias smart.",
-      "  Set HALONIC_SECRET_ANTHROPIC to your Anthropic key, then run again.",
+      "  Save your Anthropic key with halonic secret set anthropic, or set HALONIC_SECRET_ANTHROPIC, then run again.",
     ]);
   });
 });

@@ -49,9 +49,9 @@ export function viewOnlyLine(phone: boolean): string {
     : "View only here. Add, trust and remove plugins on the computer that runs Halonic:";
 }
 
-/** The line above the command when this app can't add a plugin itself: the command line can. */
+/** The line above the command when Studio can't add a plugin itself: the command line can (N1, N2). */
 export function noInstallerLine(): string {
-  return "This app can't add a plugin yet. Add one on this computer's command line:";
+  return "Studio can't add a plugin yet. To add one, run this in a terminal:";
 }
 
 /** The ⋮ menu's items. */

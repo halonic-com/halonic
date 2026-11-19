@@ -104,7 +104,7 @@ verifies("agents.list.row-menu", () => {
     expect(document.querySelector("dialog[open]")).toBeNull();
     expect(page.textContent).not.toContain("Sorter");
     expect(toasts.list()[0]).toMatchObject({
-      title: "Moved Sorter to the trash",
+      title: "Deleted Sorter",
       action: { label: "Undo" },
     });
 
@@ -134,7 +134,7 @@ verifies("agents.list.row-menu", () => {
 
     await pick(page, "Sorter", "Delete");
     expect(toasts.list()[0]).toMatchObject({
-      title: "Moved Sorter to the trash.",
+      title: "Deleted Sorter.",
       text: "1 workflow step now shows an error until you pick another agent.",
     });
 
@@ -174,7 +174,7 @@ verifies("agents.list.row-menu", () => {
 
     await pick(page, "Sorter", "Delete");
 
-    expect(toasts.list()[0]?.title).toBe("Moved Sorter to the trash");
+    expect(toasts.list()[0]?.title).toBe("Deleted Sorter");
   });
 
   it("says why it couldn't move the agent, and Try again moves it", async () => {
@@ -190,7 +190,7 @@ verifies("agents.list.row-menu", () => {
     await pick(page, "Sorter", "Delete");
     expect(toasts.list()[0]).toMatchObject({
       tone: "danger",
-      title: "Couldn't move Sorter to the trash: the disk is full.",
+      title: "Couldn't delete Sorter: the disk is full.",
       sticky: true,
       action: { label: "Try again" },
     });

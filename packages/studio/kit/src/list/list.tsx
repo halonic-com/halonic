@@ -63,6 +63,8 @@ export function List<Id extends string>({
   const hasCheck = onOpen !== undefined && selection !== undefined;
   const grid = useGridNavigation(gridRows(sections, hasCheck, hasMore), {
     startColumn: firstFocusColumn(hasCheck),
+    // Tab enters at the first row that does something; the arrows still reach the inert ones.
+    startRow: allRows.find((row) => row.inert !== true)?.id,
   });
   const showEmpty = empty !== undefined && allRows.length === 0;
   const emptyFocus = useFocusOnEmpty(showEmpty);

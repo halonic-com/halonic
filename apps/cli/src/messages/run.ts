@@ -80,6 +80,13 @@ export const runMessages = defineMessages("run", {
   },
   /** Its fix: `--harness halonic` runs every agent in Halonic's own loop (Liam, HAL-5367). */
   harnessNotAvailableFix: () => phrase`Run it with --harness halonic.`,
+  /**
+   * After the sandbox's fix when it can't start for an agent in a harness:
+   * Halonic's own loop starts no program, so it needs no sandbox. Only `run`
+   * has the option, and "On this computer" is never the way out (HAL-12597).
+   */
+  sandboxRefusedHarnessHint: () =>
+    phrase`Or run it with --harness halonic, which runs every agent in Halonic's own loop and needs no sandbox.`,
   /** `--input`'s line in the help. */
   inputOption: () => phrase`The run's input: a JSON file, or the JSON itself.`,
   /** `--event`'s line in the help. */
@@ -160,6 +167,12 @@ export const runMessages = defineMessages("run", {
       events.map((event) => `--event ${event}`),
       "and",
     )}: the run ended first.`,
+  /**
+   * A provider's note on how it changed the run's model calls, in its own
+   * words, such as "Left out temperature: claude-sonnet-5-5 doesn't take it."
+   * (requirement `cli.run-provider-notes`).
+   */
+  providerNote: (note: string) => phrase`${printable(note)}`,
   /** The fix under a missing `--input` file: most often a typo in the path. */
   noInputFileFix: () =>
     phrase`Check the file name. It's looked for from the folder you ran the command in.`,

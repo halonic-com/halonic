@@ -223,6 +223,30 @@ verifies("plugins.plugin-commands", () => {
     expect(dialog().textContent).not.toContain("Couldn't run");
   });
 
+  it("says plugin tools aren't in this build on its own, without Try again", async () => {
+    const refusal = Object.assign(new Error("Plugin tools aren't available in this build."), {
+      kind: "not_in_this_build",
+    });
+    open(forecast, callerAnswering(refusal).caller);
+    type(fieldNamed("Place"), "Ghent");
+    await press("Run command");
+    expect(dialog().textContent).toContain(
+      "Plugin tools aren't in this build of Halonic yet, so Show the forecast can't run.",
+    );
+    expect(dialog().textContent).not.toContain("Couldn't run");
+    expect(buttonWords()).not.toContain("Try again");
+  });
+
+  it("keeps the host's line when this computer can't fence plugin tools, without Try again", async () => {
+    const line = "Plugin tools can't run on this computer yet: the sandbox isn't available here.";
+    open(forecast, callerAnswering(Object.assign(new Error(line), { kind: "not_fenced" })).caller);
+    type(fieldNamed("Place"), "Ghent");
+    await press("Run command");
+    expect(dialog().textContent).toContain(line);
+    expect(dialog().textContent).not.toContain("Couldn't run");
+    expect(buttonWords()).not.toContain("Try again");
+  });
+
   it("runs a command without a form at once, under Halonic's button words", async () => {
     const { caller, calls } = callerAnswering("<b>Done</b>");
     const opened = open(today, caller);

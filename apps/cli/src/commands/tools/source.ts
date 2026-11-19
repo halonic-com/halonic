@@ -9,8 +9,15 @@ import type { Connector } from "@halonicjs/format";
 import type { Digest, ToolApprovalStore } from "@halonicjs/ports";
 import { profileFolder, toolApprovalFolder } from "@halonicjs/profile";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
-import { type CommandContext, type CommandInput, OwnLineError, UsageError } from "../../command.ts";
+import {
+  type CommandContext,
+  type CommandInput,
+  type JsonFields,
+  OwnLineError,
+  UsageError,
+} from "../../command.ts";
 import { type ConnectorMachine, nodeConnectorMachine } from "../../connector-machine.ts";
+import type { Phrase } from "../../messages/phrase.ts";
 import { suggestedCommand } from "../../messages/suggested-command.ts";
 import { toolsMessages } from "../../messages/tools.ts";
 import { nearMatch } from "../../near-match.ts";
@@ -106,9 +113,16 @@ export async function openToolSource(
 }
 
 /**
- * The source's listed tools now, checked against its approvals. A
- * connector whose tools are built in, such as Google, lists none, and gets
- * `built_in`.
+ * Why a connector has no listed tools to approve: its tools are built into
+ * Halonic (`built_in`, such as Google's), or it is a plugin's connector,
+ * whose tools the plugin's trust already covers (`plugin`).
+ */
+export type NoToolsToApprove = "built_in" | "plugin";
+
+/**
+ * The source's listed tools now, checked against its approvals, or why it
+ * has none to approve. A plugin's connector isn't started for this: its
+ * tools need no approval.
  *
  * @throws NotTrustedError when the workspace isn't trusted as it is now (exit 3): nothing starts
  * @throws OwnLineError when Halonic refused the whole listing, or an approval can't be read
@@ -117,9 +131,12 @@ export async function checkToolSource(
   source: ToolSource,
   machine: ToolsMachine,
   context: Pick<CommandContext, "secrets">,
-): Promise<ListedToolApprovalCheck | "built_in"> {
+): Promise<ListedToolApprovalCheck | NoToolsToApprove> {
   if ("google" in source.connector.transport) {
     return "built_in";
+  }
+  if ("plugin" in source.connector.transport) {
+    return "plugin";
   }
   const listing = await readSourceListing(
     {
@@ -145,6 +162,21 @@ export async function checkToolSource(
     throw new OwnLineError("denied", toolsMessages.cantList(source.shown, printable(check.error)));
   }
   return usableCheck(check.value, source);
+}
+
+/**
+ * What `review` and `approve` say, and exit 0 on, for a connector with no
+ * listed tools to approve. `--json` gets the reason as `needsNoApproval`.
+ */
+export function noToolsToApprove(
+  why: NoToolsToApprove,
+  source: ToolSource,
+): { readonly line: Phrase; readonly json: JsonFields } {
+  const said =
+    why === "plugin"
+      ? toolsMessages.pluginTools(source.shown)
+      : toolsMessages.onlyBuiltIn(source.shown);
+  return { line: said.phrase, json: { needsNoApproval: why } };
 }
 
 /** The check, unless none of its listed tools can be on: then why, as the error. */

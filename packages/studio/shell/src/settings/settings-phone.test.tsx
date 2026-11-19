@@ -77,6 +77,9 @@ function OpenAssistantCard({ context }: HomeCardProps) {
       >
         Developer
       </button>
+      <output className="settings-sections">
+        {(context.settingsSections ?? []).map(({ id }) => id).join(",")}
+      </output>
     </>
   );
 }
@@ -109,6 +112,7 @@ const sectionsFeature = defineFeature({
 async function renderPhone(
   name: string | null = "Acme",
   host: "desktop-app" | "served" = "served",
+  withoutHostSettings = false,
 ) {
   const shell = createShell({ features: [sectionsFeature], timers: new FakeTimers() });
   const services = new MapTarget();
@@ -119,7 +123,14 @@ async function renderPhone(
     name: name ?? undefined,
   });
   const container = render(
-    <StudioWindow shell={shell} workspace={workspace} host={host} platform="linux" language="en" />,
+    <StudioWindow
+      shell={shell}
+      workspace={workspace}
+      host={host}
+      platform="linux"
+      language="en"
+      withoutHostSettings={withoutHostSettings}
+    />,
   );
   await settle();
   const title = () => container.querySelector("header p")?.textContent;
@@ -283,9 +294,11 @@ verifies("shell.settings-list-page", () => {
 
   it("returns to the list scrolled where it was", async () => {
     const { container, back, tapRow, tapMore } = await renderPhone();
+    const main = container.querySelector("main") as HTMLElement;
+    // jsdom loads no styles, so `main` is told here that it scrolls, as the window's CSS does.
+    main.style.overflowY = "auto";
     tapMore();
     await tapRow("Settings");
-    const main = container.querySelector("main") as HTMLElement;
     act(() => {
       main.scrollTop = 120;
       main.dispatchEvent(new Event("scroll"));
@@ -296,6 +309,44 @@ verifies("shell.settings-list-page", () => {
     back();
 
     expect((container.querySelector("main") as HTMLElement).scrollTop).toBe(120);
+  });
+});
+
+verifies("shell.settings-without-host", () => {
+  it("lists only the phone's group where the place has no host settings yet", async () => {
+    const { tapRow, tapMore, groupHeadings, rowNames } = await renderPhone(null, "served", true);
+    tapMore();
+    await tapRow("Settings");
+
+    expect(groupHeadings()).toEqual(["On this phone"]);
+    expect(rowNames()).toEqual(["AppearanceSystem theme · characters on", "Formats"]);
+  });
+
+  it("opens no host section from a link, only the list", async () => {
+    const { container, title } = await renderPhone("Acme", "served", true);
+
+    act(() => container.querySelector<HTMLElement>(".open-assistant")?.click());
+    await settle();
+
+    expect(title()).toBe("Settings");
+    expect(container.querySelector(".section-view")).toBeNull();
+  });
+
+  it("gives features no host section, so Ctrl K has no command to open one", async () => {
+    const { container } = await renderPhone("Acme", "served", true);
+
+    expect(container.querySelector(".settings-sections")?.textContent).toBe(
+      "models,appearance,formats,developer",
+    );
+  });
+
+  it("lists the host sections when the window isn't told so", async () => {
+    const { container, tapRow, tapMore, groupHeadings } = await renderPhone(null);
+    expect(container.querySelector(".settings-sections")?.textContent).toContain("assistant");
+    tapMore();
+    await tapRow("Settings");
+
+    expect(groupHeadings()).toEqual(["On this phone", "On your computer"]);
   });
 });
 
@@ -342,6 +393,6 @@ verifies("shell.settings-workspace-line", () => {
     const lineUnder = () => container.querySelector("section h1 + p")?.textContent ?? "";
 
     await tapRow("Models");
-    expect(lineUnder()).toBe("Part of Acme. Changes here show in Changes and can be undone.");
+    expect(lineUnder()).toBe("Part of Acme.");
   });
 });

@@ -49,6 +49,15 @@ const statusOfErrorType: Readonly<Record<string, number>> = {
   overloaded_error: 529,
 };
 
+/**
+ * The 5xx statuses that say the server doesn't do what was asked, not that it
+ * is busy: 501 Not Implemented, such as a `baseUrl` with a wrong path or a
+ * server that doesn't speak this API, and 505 HTTP Version Not Supported.
+ * Waiting won't fix them, so they are `refused`, and the message points at
+ * the provider's `baseUrl` in models.yaml.
+ */
+const notSupportedStatuses: ReadonlySet<number> = new Set([501, 505]);
+
 /** A masked key, such as OpenAI's `sk-proj-****abcd`: `sk-`, then a star before any space. */
 const maskedKey = /sk-[\w-]*\*/;
 
@@ -58,8 +67,9 @@ const maskedKey = /sk-[\w-]*\*/;
  * in this order: `out-of-credit` when the body or the status says so (see
  * {@link isOutOfCredit}), `key-refused` for 401 and for a 403 that doesn't
  * name a country, region, moderation or the model, `model-missing` for 404,
- * `provider-busy` for any other 429, a 5xx and the 529 of an overload, and
- * `refused` for anything else.
+ * `refused` with a pointer to the `baseUrl` for a 501 or 505 (see
+ * {@link notSupportedStatuses}), `provider-busy` for any other 429, a 5xx and
+ * the 529 of an overload, and `refused` for anything else.
  *
  * The vendor's own text goes on the error's `cause`, shortened, except when
  * the key is refused, when a 401 or 403 repeats a masked key, whenever it
@@ -133,6 +143,9 @@ function errorForVendorError(
       options,
     );
   }
+  if (status !== undefined && notSupportedStatuses.has(status)) {
+    return new ModelCallError("refused", notSupportedMessage(call, label), options);
+  }
   if (status !== undefined && (status === 429 || status >= 500)) {
     return new ModelCallError(
       "provider-busy",
@@ -145,6 +158,12 @@ function errorForVendorError(
     `${call.providerId} refused the call to the model "${call.model}" (${label})`,
     options,
   );
+}
+
+/** "acme at proxy.test doesn't support …": the server answered, but not to this API. */
+function notSupportedMessage(call: FailedCall, label: string): string {
+  const where = call.host === undefined ? "" : ` at ${call.host}`;
+  return `${call.providerId}${where} doesn't support the call to the model "${call.model}", so check the baseUrl of ${call.providerId} in models.yaml (${label})`;
 }
 
 /**

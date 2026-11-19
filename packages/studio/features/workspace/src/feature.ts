@@ -6,6 +6,7 @@ import {
   WORKSPACE_PAGE_TAB,
   WORKSPACE_PAGE_TITLE,
 } from "./page/workspace-page-text.ts";
+import { trustSummary } from "./trust/trust-summary.ts";
 import * as trustedSourcesText from "./trusted-sources/trusted-sources-text.ts";
 
 /** The command that opens the workspace page; the menu's **Workspace settings…** runs it. */
@@ -44,6 +45,7 @@ export const workspaceFeature = defineFeature({
       scope: "workspace",
       order: 20,
       workspaceLine: false,
+      summary: trustSummary,
       view: "TrustSettingsSection",
       load: () => import("./trust/trust-settings-section.tsx"),
     });

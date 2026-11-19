@@ -66,6 +66,8 @@ export interface ListedToolsSnapshot {
   readonly refused: readonly RefusedListedToolRow[];
   /** The names of the listed tools that are on. */
   readonly approved: readonly string[];
+  /** The ones of {@link approved} that run without asking, because the connector's `read` list marks them. */
+  readonly approvedWithoutAsking: readonly string[];
   /** Why Halonic refused the whole listing, or `null`. */
   readonly listingRefused: string | null;
   /** An approval that can't be read, so none of the listed tools is on, or `null`. `toolName` is absent until the service gives it. */

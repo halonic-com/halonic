@@ -64,6 +64,21 @@ export function toWireBody(request: ChatRequest, options: RequestOptions): Recor
 }
 
 /**
+ * The sampling settings, under their wire names, that `request` sets in
+ * `params` or `params.extra` but {@link toWireBody} leaves out, because the
+ * model refuses them. Empty for a model that takes them.
+ *
+ * @example
+ * leftOutSampling({ model: "claude-sonnet-5-5", messages, params: { temperature: 0.3 } });
+ * // => ["temperature"]
+ */
+export function leftOutSampling(request: ChatRequest): string[] {
+  if (takesSampling(request.model)) return [];
+  const asked = { ...request.params?.extra, ...wireParams(request.params ?? {}) };
+  return samplingWireNames.filter((name) => Object.hasOwn(asked, name));
+}
+
+/**
  * The conversation as Messages API messages. Tool results go in a user
  * message, as the API wants, and turns of the same role in a row become one
  * message, because the API wants user and assistant to take turns.

@@ -81,6 +81,7 @@ export function StartRunCard({
 }: StartRunCardProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   const callout = useRef<CalloutHandle>(null);
+  const field = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState("{}");
   // Set while the input still holds what the first test gave, so the note says where it came from.
   const [filled, setFilled] = useState(false);
@@ -106,11 +107,18 @@ export function StartRunCard({
   useEffect(() => {
     if (failure !== undefined) callout.current?.focus();
   }, [failure]);
+  // Each rejected input sends focus to the field once its error is its description, so the error
+  // is read, as the Inbox request form's Send does (A7). A count, as the same error can come twice.
+  const [rejected, setRejected] = useState(0);
+  useEffect(() => {
+    if (rejected > 0) field.current?.focus();
+  }, [rejected]);
 
   const submit = async () => {
     const input = parseInput(text);
     if (input === undefined) {
       setProblem(words.inputNotObject);
+      setRejected((count) => count + 1);
       return;
     }
     setBusy(true);
@@ -155,6 +163,7 @@ export function StartRunCard({
         {...(filled ? { hint: words.filledFromFirstTest } : {})}
       >
         <TextArea
+          ref={field}
           value={text}
           readOnly={busy}
           submitOnCtrlEnter

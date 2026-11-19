@@ -124,6 +124,20 @@ verifies("app.plugin-add", () => {
     expect(await service.install("weather")).toBeNull();
   });
 
+  it("refuses a source whose reader fails with its reason, given one full stop", async () => {
+    const { folder, service } = setup();
+    const source = weatherSource();
+    source.entries = async () => {
+      throw new Error("Pick the folder again.");
+    };
+    const result = await service.add(source, { from, replace: false });
+    if (result.ok || result.error.kind !== "broken") throw new Error("expected a broken refusal");
+    expect(result.error.problems.map((problem) => problem.message)).toEqual([
+      "Halonic couldn't read the plugin: Pick the folder again. Load it again; if it keeps failing, remove the plugin and install it again.",
+    ]);
+    expect(await pathsIn(folder)).toEqual([]);
+  });
+
   it("refuses a source with a link out of it, and writes nothing", async () => {
     const { folder, service } = setup();
     const source = weatherSource().putLink("backend/secrets");
@@ -178,7 +192,7 @@ verifies("app.plugin-add", () => {
     for (const replace of [false, true]) {
       expect(await service.add(weatherSource(), { from, replace })).toEqual({
         ok: false,
-        error: { kind: "taken", id: "weather" },
+        error: { kind: "taken", id: "weather", name: "Weather" },
       });
     }
     expect(await pathsIn(folder)).toEqual(["Weather", "Weather/plugin.yaml"]);
@@ -189,7 +203,7 @@ verifies("app.plugin-add", () => {
     const { folder, service } = setup();
     added(await service.add(weatherSource({ "old.js": code }), { from, replace: false }));
     const again = await service.add(weatherSource(), { from, replace: false });
-    expect(again).toEqual({ ok: false, error: { kind: "taken", id: "weather" } });
+    expect(again).toEqual({ ok: false, error: { kind: "taken", id: "weather", name: "Weather" } });
 
     const newCommit: PluginSource = {
       kind: "git",

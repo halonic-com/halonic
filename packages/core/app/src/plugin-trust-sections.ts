@@ -71,11 +71,58 @@ function addsToStudio(content: PluginTrustContent): boolean {
 /**
  * The headings of the two lines under the sections: where the plugin sits
  * on disk and the files its fingerprint covers. Studio adds nothing after them.
+ * "Files", not "Backend files": a plugin's programs are files too (HAL-12638).
  */
 export const pluginTrustLocationHeadings = {
   folder: "Folder",
-  files: "Backend files",
+  files: "Files",
 } as const;
+
+/** What {@link pluginProgramSecretText} reads of a program: its id, its `env` and its `network`. */
+export interface PluginProgramSecretSource {
+  readonly id: string;
+  /** Each environment variable by name, and the setting or secret it reads. */
+  readonly env: Readonly<Record<string, unknown>>;
+  readonly network: readonly string[];
+}
+
+/**
+ * Where a program's secret goes, as the trust check says it after the
+ * secret's name: the program that gets it, as which variable, and where that
+ * program may connect (HAL-12638). A backend's secret says "goes only to"
+ * its hosts instead, because Halonic's kit puts it in each request; a
+ * program is handed the value and can send it anywhere it can reach.
+ * `halonic plugin add` and Studio both show this text. The program's id and
+ * hosts come from the workspace, so a host escapes the text before it shows it.
+ *
+ * @example
+ * pluginProgramSecretText({ id: "files", env: { LF_TOKEN: { secret: "lf-token" } }, network: ["api.example.com"] }, "lf-token");
+ * // "given to files as LF_TOKEN; files can reach api.example.com"
+ */
+export function pluginProgramSecretText(
+  program: PluginProgramSecretSource,
+  secret: string,
+): string {
+  const variables = Object.entries(program.env)
+    .filter(([, value]) => readsSecret(value, secret))
+    .map(([variable]) => variable);
+  const given =
+    variables.length === 0
+      ? `${program.id} doesn't get it: no variable takes it`
+      : `given to ${program.id} as ${variables.join(" and ")}`;
+  const reach =
+    program.network.length === 0
+      ? `${program.id} can't reach the internet`
+      : `${program.id} can reach ${program.network.join(", ")}`;
+  return `${given}; ${reach}`;
+}
+
+/** Whether an `env` value reads `secret`: `{ secret: "lf-token" }`. */
+function readsSecret(value: unknown, secret: string): boolean {
+  return (
+    typeof value === "object" && value !== null && "secret" in value && value.secret === secret
+  );
+}
 
 /** The last row of the file list: how many files come after the ones shown. */
 export function pluginTrustMoreFilesText(count: number): string {

@@ -19,7 +19,8 @@ import {
 import { type CallLimits, CallTimer, defaultCallLimits } from "./call-timer.ts";
 import { BodyTooLargeError, bodyWithin, readTextWithin } from "./read-body.ts";
 import { ReplyFormatError, readReply } from "./reply.ts";
-import { toWireBody } from "./request.ts";
+import { leftOutSampling, toWireBody } from "./request.ts";
+import { samplingNotes } from "./sampling.ts";
 import { readServerSentEvents } from "./server-sent-events.ts";
 import { MessageStreamReader, StreamedVendorError } from "./stream-reply.ts";
 
@@ -127,7 +128,7 @@ export class AnthropicProvider implements LlmProvider {
       timer.end();
     }
     try {
-      return readReply(body);
+      return withNotes(readReply(body), request);
     } catch (error) {
       throw errorForReply(error, call);
     }
@@ -166,7 +167,7 @@ export class AnthropicProvider implements LlmProvider {
     }
     let answer: ChatResponse;
     try {
-      answer = reader.finish();
+      answer = withNotes(reader.finish(), request);
     } catch (error) {
       throw errorForReply(error, call);
     }
@@ -216,6 +217,16 @@ export class AnthropicProvider implements LlmProvider {
     timer.signal.throwIfAborted();
     throw errorForStatus(response.status, text, call, key);
   }
+}
+
+/**
+ * `answer` with the notes on what the call left out of `request`, such as a
+ * sampling setting the model refuses (requirement
+ * `model-anthropic.sampling-notes`); as it was when nothing was left out.
+ */
+function withNotes(answer: ChatResponse, request: ChatRequest): ChatResponse {
+  const notes = samplingNotes(request.model, leftOutSampling(request));
+  return notes.length === 0 ? answer : { ...answer, notes };
 }
 
 /**

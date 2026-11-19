@@ -54,7 +54,7 @@ export function runExample(): {
 
 | Export | What it is |
 | --- | --- |
-| `s` | Zod's builders, limited to the ones the file format uses: `string`, `number`, `boolean`, `null`, `unknown`, `literal`, `enum`, `object`, `array`, `tuple`, `record`, `union`, `discriminatedUnion`, `intersection`, `lazy` and `json`, plus `url`. The schemas they build have Zod's methods (`.min()`, `.optional()`, `.default()`, `.strict()`, `.passthrough()`, `.extend()`, `.partial()`, `.superRefine()`, …). |
+| `s` | Zod's builders, limited to the ones the file format uses: `string`, `number`, `boolean`, `null`, `unknown`, `literal`, `enum`, `object`, `array`, `tuple`, `record`, `union`, `discriminatedUnion`, `intersection`, `lazy`, `json` and `preprocess`, plus `url`. The schemas they build have Zod's methods (`.min()`, `.optional()`, `.default()`, `.strict()`, `.passthrough()`, `.extend()`, `.partial()`, `.superRefine()`, …). |
 | `s.url()` | An absolute `http` or `https` URL as `URL` writes it: lower-case scheme and host, no user or password, only RFC 3986 characters. Stricter than Zod's `z.url()`, which also takes `mailto:` and `HTTPS://…`. |
 | `s.json()` | Any JSON value: null, a boolean, a finite number, text, or a list or map of those. |
 | `Schema<Output, Input>` | The type of any schema. Give a recursive schema this type: `const Guard: Schema<Guard> = s.lazy(() => …)`. |

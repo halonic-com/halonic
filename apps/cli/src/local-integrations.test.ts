@@ -34,6 +34,9 @@ import {
   workspaceIntegrations,
 } from "./workspace-trust.ts";
 
+/** These tests never take a yes back in another process, so the saved yes is never read again. */
+const noSavedYesChecks = { set: () => undefined, clear: () => undefined };
+
 const acmeExample = fileURLToPath(new URL("../../../examples/acme", import.meta.url));
 const clock = fixedClock(Date.UTC(2026, 10, 11, 9));
 const noCommands = { path: undefined, endings: [] };
@@ -111,7 +114,11 @@ function runnerStarts() {
     platform: "linux",
     fenced: sandbox("os"),
     launcher: sandbox("none"),
-    runs: new UnfencedRuns({ store: new MemoryUnfencedRunConsentStore(), clock }),
+    runs: new UnfencedRuns({
+      store: new MemoryUnfencedRunConsentStore(),
+      clock,
+      timers: noSavedYesChecks,
+    }),
   });
   const starts = new TrustedRunnerStart({
     workspace: new FileSystemFolderReader(acme),

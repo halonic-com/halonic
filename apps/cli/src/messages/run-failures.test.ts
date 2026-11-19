@@ -1,9 +1,10 @@
 import { moneyAmount } from "@halonicjs/app";
+import type { RunFailure } from "@halonicjs/app/run-failure";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { listInWords, timesInWords } from "./counts.ts";
 import { plainText } from "./phrase.ts";
-import { type FailedRun, type RunFailure, runFailedLines } from "./run-failures.ts";
+import { type FailedRun, runFailedLines } from "./run-failures.ts";
 
 const draftReply: FailedRun = { title: "Support reply", step: "Draft a reply", runId: "01JD8Q" };
 
@@ -27,7 +28,7 @@ verifies("cli.messages", () => {
     expect(fix?.key).toBe("runFailedFix.key-refused");
     expect(lines(failure)).toEqual([
       "Support reply failed in the step Draft a reply: OpenAI didn't accept the key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model alias smart.",
-      "Set HALONIC_SECRET_OPENAI_KEY to a key OpenAI accepts, then run again.",
+      "Save a key OpenAI accepts with halonic secret set openai-key, or set HALONIC_SECRET_OPENAI_KEY, then run again.",
     ]);
   });
 
@@ -44,7 +45,7 @@ verifies("cli.messages", () => {
         per: "month",
         budget: 0.00001,
         currency: "EUR",
-        resetsOn: "1 Dec",
+        resetsOn: "2026-12-01",
       })[0],
     ).toBe(
       "Support reply stopped in the step Draft a reply: this month's estimated spend reached its budget of less than €0.001.",
@@ -59,7 +60,13 @@ verifies("cli.messages", () => {
       "Raise budget.perRun in workspace.yaml.",
     ]);
     expect(
-      lines({ reason: "budget", per: "month", budget: 50, currency: "USD", resetsOn: "1 Dec" }),
+      lines({
+        reason: "budget",
+        per: "month",
+        budget: 50,
+        currency: "USD",
+        resetsOn: "2026-12-01",
+      }),
     ).toEqual([
       "Support reply stopped in the step Draft a reply: this month's estimated spend reached its budget of $50.00.",
       "Raise budget.monthly in workspace.yaml, or wait until it resets on 1 Dec.",
@@ -77,7 +84,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
     };
     expect(lines(failure)).toEqual([
       "Support reply failed in the step Draft a reply: there's no key in the secret openai-key (HALONIC_SECRET_OPENAI_KEY), used by the model alias smart.",
-      "Set HALONIC_SECRET_OPENAI_KEY to your OpenAI key, then run again.",
+      "Save your OpenAI key with halonic secret set openai-key, or set HALONIC_SECRET_OPENAI_KEY, then run again.",
     ]);
   });
 
@@ -99,7 +106,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
       lines({
         reason: "provider-busy",
         provider: "Anthropic",
-        retried: { tries: 3, over: "2 minutes" },
+        retried: { tries: 3, overMs: 120_000 },
       }),
     ).toEqual([
       "Support reply failed in the step Draft a reply: Anthropic was busy and asked Halonic to slow down. Halonic tried 3 times over 2 minutes, then stopped.",
@@ -109,7 +116,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
       lines({
         reason: "provider-busy",
         provider: "Anthropic",
-        retried: { tries: 1, over: "1 minute" },
+        retried: { tries: 1, overMs: 60_000 },
       })[0],
     ).toBe(
       "Support reply failed in the step Draft a reply: Anthropic was busy and asked Halonic to slow down. Halonic tried once over 1 minute, then stopped.",
@@ -117,7 +124,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
     expect(lines({ reason: "provider-busy", provider: "Anthropic" })[0]).toBe(
       "Support reply failed in the step Draft a reply: Anthropic was busy and asked Halonic to slow down.",
     );
-    expect(lines({ reason: "model-timeout", provider: "Anthropic", within: "5 minutes" })).toEqual([
+    expect(lines({ reason: "model-timeout", provider: "Anthropic", withinMs: 300_000 })).toEqual([
       "Support reply failed in the step Draft a reply: Anthropic didn't start answering within 5 minutes.",
       "Run it again in a few minutes.",
     ]);
@@ -125,7 +132,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
       lines({
         reason: "model-timeout",
         provider: "Ollama",
-        within: "5 minutes",
+        withinMs: 300_000,
         localAddress: "localhost:11434",
       })[0],
     ).toBe(
@@ -137,7 +144,7 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
           reason: "tool-timeout",
           tool: "search_pages",
           connector: "Notion",
-          within: "60 seconds",
+          withinMs: 60_000,
         },
         "Find the page",
       ),

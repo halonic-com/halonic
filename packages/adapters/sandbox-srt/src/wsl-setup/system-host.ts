@@ -21,6 +21,43 @@ export function decodeWslOutput(bytes: Buffer): string {
   return text.replace(/^\uFEFF/, "").replace(/\0/g, "");
 }
 
+/**
+ * The environment for the programs the host starts: the person's own, but
+ * without `WSLENV`, which names Windows variables `wsl.exe` copies into the
+ * distro (as the Studio shell's launcher does, HAL-5407 W6). Windows names
+ * are case-insensitive, so every spelling goes.
+ */
+export function programEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const kept = Object.fromEntries(
+    Object.entries(env).filter(([name]) => name.toUpperCase() !== "WSLENV"),
+  );
+  return { ...kept, WSL_UTF8: "1" };
+}
+
+/**
+ * `SystemRoot` (or `windir`) when it is a folder on a drive (a letter, a
+ * colon and a slash), with no `..` part; `null` otherwise. Checked as the Studio
+ * shell's `wsl_exe` does, because the host names its programs by full path
+ * and puts this one in an elevated PowerShell line.
+ */
+export function systemRootOf(env: NodeJS.ProcessEnv): string | null {
+  const root = env["SystemRoot"] ?? env["windir"];
+  if (root === undefined || !/^[A-Za-z]:[\\/]/.test(root)) return null;
+  if (root.split(/[\\/]/).includes("..")) return null;
+  return root;
+}
+
+/** A PowerShell string literal: in single quotes, a quote is written twice. */
+function psQuote(text: string): string {
+  return `'${text.replaceAll("'", "''")}'`;
+}
+
+/** What every program "returns" when `SystemRoot` isn't usable: nothing starts. */
+const noSystemRoot: Run = async () => ({
+  code: null,
+  output: "SystemRoot isn't a folder on a drive, so no Windows program was started",
+});
+
 function systemRun(file: string, args: string[]): Promise<ProgramResult> {
   return new Promise((resolve) => {
     execFile(
@@ -30,7 +67,7 @@ function systemRun(file: string, args: string[]): Promise<ProgramResult> {
         encoding: "buffer",
         windowsHide: true,
         timeout: 30 * 60_000,
-        env: { ...process.env, WSL_UTF8: "1" },
+        env: programEnv(process.env),
       },
       (error, stdout, stderr) => {
         const output = decodeWslOutput(Buffer.concat([stdout, stderr]));
@@ -45,11 +82,15 @@ function systemRun(file: string, args: string[]): Promise<ProgramResult> {
   });
 }
 
-/** Reads `wsl --list --verbose`: a header line, then `* halonic  Running  2` per distro. */
+/**
+ * Reads `wsl --list --verbose`: a header line, then `* halonic  Running  2`
+ * per distro. The state is translated and can be more than one word, such as
+ * German `Wird ausgeführt`, so it is whatever stands between the name and the version.
+ */
 export function parseDistroList(text: string): WslDistro[] {
   const distros: WslDistro[] = [];
   for (const line of text.split(/\r?\n/).slice(1)) {
-    const found = /^\s*(\*)?\s*(\S+)\s+(\S+)\s+([12])\s*$/.exec(line);
+    const found = /^\s*(\*)?\s*(\S+)\s+(\S.*?)\s+([12])\s*$/.exec(line);
     if (found?.[2] === undefined || found[3] === undefined) continue;
     distros.push({
       name: found[2],
@@ -73,18 +114,21 @@ export function parseRegDword(text: string): number | undefined {
  * Elevation goes through PowerShell's `Start-Process -Verb RunAs`, so the
  * administrator prompt is Windows' own and the elevated program's text isn't
  * captured: `code` is its exit code, and the setup asks `wsl --status` after.
+ * When `SystemRoot` isn't a folder on a drive, nothing starts: every program
+ * ends with `code: null`, so the setup fails closed.
  */
-export function systemWslHost(run: Run = systemRun): WslHost {
-  const root = process.env["SystemRoot"] ?? process.env["windir"] ?? "%SystemRoot%";
-  const system32 = join(root, "System32");
+export function systemWslHost(given: Run = systemRun): WslHost {
+  const root = systemRootOf(process.env);
+  const run = root === null ? noSystemRoot : given;
+  const system32 = join(root ?? "", "System32");
   const wsl = join(system32, "wsl.exe");
   const reg = join(system32, "reg.exe");
   const powershell = join(system32, "WindowsPowerShell", "v1.0", "powershell.exe");
   const psArgs = ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command"];
 
   const elevated = async (...args: string[]) => {
-    const list = args.map((arg) => `'${arg}'`).join(",");
-    const script = `try { $p = Start-Process -FilePath '${wsl}' -ArgumentList ${list} -Verb RunAs -Wait -PassThru; exit $p.ExitCode } catch { Write-Output $_.Exception.Message; exit ${ERROR_CANCELLED} }`;
+    const list = args.map(psQuote).join(",");
+    const script = `try { $p = Start-Process -FilePath ${psQuote(wsl)} -ArgumentList ${list} -Verb RunAs -Wait -PassThru; exit $p.ExitCode } catch { Write-Output $_.Exception.Message; exit ${ERROR_CANCELLED} }`;
     const result = await run(powershell, [...psArgs, script]);
     return { ...result, cancelled: result.code === ERROR_CANCELLED };
   };

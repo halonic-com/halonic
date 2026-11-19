@@ -1,6 +1,7 @@
 import {
   RunCardReceipt,
   type RunRow,
+  type RunStartHost,
   type RunsSource,
   type SourcedRun,
   useRunLog,
@@ -27,12 +28,22 @@ export interface RunCardProps {
   readonly reviewInInbox?: (() => void) | undefined;
   /** What **Save as test** needs; absent where the host can't write test cases. */
   readonly saveAsTest?: SaveAsTestProps | undefined;
+  /**
+   * Run again for the banner of a failed run: how to start it and what to do with the new run.
+   * Absent where the app can't start runs, and the banner then has no **Run again**.
+   */
+  readonly runAgain?:
+    | { readonly runStart: RunStartHost; readonly onStarted: (runId: string) => void }
+    | undefined;
+  /** Opens the workspace page at Models, for the banner's **Open Models**; absent where it can't. */
+  readonly openModels?: (() => void) | undefined;
 }
 
 /**
  * The run card (UX 10.14, W-D3), docked at the right over the Runs view: the status, who started
  * it, the run's receipt at card width (its banner, summary and Every step), then **Open the run
- * log** (the footer link to the run's page) and **Save as test**. Only the toggle inside Every step says **Show the run log**.
+ * log** (the footer link to the run's page) and **Save as test**. A failed run's banner offers
+ * **Run again** and **Open Models** as the run page does, where the card is given them (UX check R10). Only the toggle inside Every step says **Show the run log**.
  */
 export function RunCard({
   source,
@@ -44,6 +55,8 @@ export function RunCard({
   openRun,
   reviewInInbox,
   saveAsTest,
+  runAgain,
+  openModels,
 }: RunCardProps) {
   const read = useRunLog(source, run.summary.id, run.summary.lastSeq, run);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -92,6 +105,9 @@ export function RunCard({
         reviewInInbox={reviewInInbox}
         openRun={openRun}
         onOpenStep={onOpenLog}
+        runStart={runAgain?.runStart}
+        openStartedRun={runAgain?.onStarted}
+        openModels={openModels}
       />
       {(onOpenLog || saveAsTest) && (
         <div className="flex gap-2">

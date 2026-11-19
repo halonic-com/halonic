@@ -238,6 +238,7 @@ export {
   type LocalToolUnavailable,
   LocalToolUnavailableError,
   localToolConnectorId,
+  PluginLocalToolNotTrustedError,
   PluginLocalTools,
   type PluginLocalToolsOptions,
 } from "./plugin-local-tools.ts";
@@ -259,6 +260,13 @@ export {
   type PluginSettingValues,
   pluginSettingsCollection,
 } from "./plugin-settings.ts";
+export {
+  checkPluginTrustNow,
+  type PluginStartTrustOptions,
+  type PluginStartTrustReason,
+  type PluginStartTrustRefusal,
+  type TrustedPluginFolder,
+} from "./plugin-start-trust.ts";
 export type { PluginTrustCheck, PluginTrustSubject } from "./plugin-trust.ts";
 export {
   type PluginFileChanges,
@@ -280,8 +288,10 @@ export {
   pluginTrustFingerprintPrefix,
 } from "./plugin-trust-content.ts";
 export {
+  type PluginProgramSecretSource,
   type PluginTrustFiles,
   type PluginTrustSection,
+  pluginProgramSecretText,
   pluginTrustFileCap,
   pluginTrustFiles,
   pluginTrustLocationHeadings,

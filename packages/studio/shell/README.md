@@ -635,7 +635,9 @@ politely, once, when it becomes items not saved, and never for Saving… or Save
 for a failure too, since the danger toast is an alert that already reads it, with its reason.
 `saveNoteWords` holds the words. While the note is a problem it carries `data-problem="warning"` or
 `"danger"`, and the status bar takes that tone's soft fill from it, so the frame doesn't need the
-save state. Its buttons are the kit's 20px `xs` size, which fits the bar.
+save state. Its buttons are the kit's 20px `xs` size, which fits the bar. On a phone, which has no
+status bar, the frame shows the note in a strip under the top bar, only while it's a problem, with
+the same fill.
 
 ```tsx
 announceSaveNotes(workspace.saving, shell.announcer);
@@ -1005,6 +1007,11 @@ the desktop app opens it on Mod , as well; Mod , while it is open puts the focus
 section's row. The window draws `SettingsDialog` with `contributions.settings.list()`, places it
 as the app's or the served Studio's, and remembers the section shown last for the next opening
 (`useSettingsOpening`). Closing it gives the focus back to the opener.
+
+A place that has no host settings yet passes `withoutHostSettings` to `StudioWindow`
+(`shell.settings-without-host`): the dialog, the phone's list, `openSettings(id)` and
+`settingsSections` then leave out every `host` section, so Ctrl K offers none of them either. The
+served Studio does this until `halonic serve` gives the page the computer's settings.
 
 On a phone the same window shows the phone's layout (`shell.studio-phone`): `StudioPhoneTopBar`
 (the page's title, Back under a place's top, and **Search** at a place's top, opening the Search

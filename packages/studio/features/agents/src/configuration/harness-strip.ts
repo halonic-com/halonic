@@ -4,6 +4,23 @@ import type { AgentHarnessId, HarnessReadiness } from "../api.ts";
 export type HarnessStrip = "not-installed" | "too-old";
 
 /**
+ * What the Harness page knows of a program: the host's answer, or `unreachable` when the host
+ * itself couldn't be asked (the call threw), with the reason.
+ */
+export type HarnessCheck =
+  | HarnessReadiness
+  | { readonly status: "unreachable"; readonly error: string };
+
+/**
+ * Where each program says how to install and update it, for **How to install** and **How to
+ * update** until Halonic's own docs pages exist (HAL-2350 CHECK M1).
+ */
+export const harnessSetupPages: Readonly<Record<Exclude<AgentHarnessId, "halonic">, string>> = {
+  "claude-code": "https://code.claude.com/docs/en/setup",
+  codex: "https://developers.openai.com/codex/cli",
+};
+
+/**
  * The one strip the chosen harness needs, or `null`. The rule is harness-states rule 1: one strip
  * at a time, in the order not installed, too old, signed out, sandbox, model. Only the first two
  * are built; a harness whose check failed shows no strip, only its option line (rule 4).
@@ -13,7 +30,7 @@ export type HarnessStrip = "not-installed" | "too-old";
  */
 export function harnessStrip(
   harness: AgentHarnessId,
-  readiness: HarnessReadiness | undefined,
+  readiness: HarnessCheck | undefined,
 ): HarnessStrip | null {
   if (harness === "halonic" || readiness === undefined) return null;
   if (readiness.status === "missing") return "not-installed";

@@ -5,6 +5,7 @@ import { useId, useMemo, useRef, useState } from "react";
 import type { ChangeItem } from "../change-items.ts";
 import type { ChangedFile, ChangesList } from "../changes-list.ts";
 import { discardWords, listWords, mergeWords, undoWords } from "../changes-words.ts";
+import { fieldsOfNew, NewFileLines, NewItemFields, WholeFile } from "./new-file.tsx";
 import { PartChanges } from "./part-change.tsx";
 import { type DiscardToasts, useDiscardToasts } from "./use-discard-toasts.ts";
 
@@ -57,8 +58,7 @@ function FileChanges({
   readonly showLineDiff: boolean;
 }) {
   const hunks = useMemo(() => list.hunks(file), [list, file]);
-  // Advanced starts open when Halonic can't say in words what changed: the lines are all there is.
-  const [showLines, setShowLines] = useState(!file.description.described);
+  const fields = useMemo(() => fieldsOfNew(file), [file]);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string>();
   const discarding = useDiscardToasts();
@@ -88,35 +88,80 @@ function FileChanges({
           {discardWords.failed}. {failure}
         </span>
       )}
+      {fields === undefined ? (
+        <ChangedItemLines list={list} file={file} level={showPath ? 3 : 2} />
+      ) : (
+        <NewItemFields file={file} fields={fields} />
+      )}
+      {showLineDiff ? (
+        <Advanced
+          list={list}
+          file={file}
+          hunks={hunks}
+          newItem={fields !== undefined}
+          discarding={developer ? discarding : undefined}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * Advanced: a new item's whole file, or the line diff of any other file that has one. It starts
+ * open when Halonic can't say in words what changed, since the lines are all there is.
+ */
+function Advanced({
+  list,
+  file,
+  hunks,
+  newItem,
+  discarding,
+}: {
+  readonly list: ChangesList;
+  readonly file: ChangedFile;
+  readonly hunks: readonly LineChange[];
+  readonly newItem: boolean;
+  readonly discarding: DiscardToasts | undefined;
+}) {
+  const [open, setOpen] = useState(!file.description.described && !newItem);
+  if (!newItem && hunks.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="self-start">
+        <Button variant="ghost" size="sm" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {discardWords.advanced}
+        </Button>
+      </span>
+      {open && newItem ? <WholeFile file={file} /> : null}
+      {open && !newItem ? (
+        <LineDiff list={list} file={file} hunks={hunks} discarding={discarding} />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * What changed in a file that isn't a new item: the first lines of a new file, then the changes in
+ * words, or the can't-describe layout.
+ */
+function ChangedItemLines({
+  list,
+  file,
+  level,
+}: {
+  readonly list: ChangesList;
+  readonly file: ChangedFile;
+  readonly level: 2 | 3;
+}) {
+  return (
+    <>
       <NewFileLines file={file} />
       {file.description.described ? (
-        <DescribedLines list={list} file={file} level={showPath ? 3 : 2} />
+        <DescribedLines list={list} file={file} level={level} />
       ) : (
         <CantDescribe file={file} />
       )}
-      {hunks.length === 0 || !showLineDiff ? null : (
-        <div className="flex flex-col gap-2">
-          <span className="self-start">
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-expanded={showLines}
-              onClick={() => setShowLines(!showLines)}
-            >
-              {discardWords.advanced}
-            </Button>
-          </span>
-          {showLines ? (
-            <LineDiff
-              list={list}
-              file={file}
-              hunks={hunks}
-              discarding={developer ? discarding : undefined}
-            />
-          ) : null}
-        </div>
-      )}
-    </section>
+    </>
   );
 }
 
@@ -229,27 +274,6 @@ function FileBar({
       </div>
       {onDiscard === undefined ? null : <WaitingNote list={list} id={waitingId} />}
     </>
-  );
-}
-
-/** How many lines of a new file are shown, so the person can tell what they would discard. */
-const previewLines = 8;
-
-/** The first lines of a file that is new; nothing for any other file. */
-function NewFileLines({ file }: { readonly file: ChangedFile }) {
-  const text = file.texts?.before === null ? file.texts.after : null;
-  if (text === null || text === undefined || text.trim() === "") return null;
-  const lines = text.replace(/\n$/u, "").split("\n");
-  const rest = lines.length - previewLines;
-  return (
-    <section aria-label={discardWords.firstLines(file.path)} className="flex flex-col gap-1">
-      <pre className="text-small overflow-x-auto rounded-md border border-border p-2">
-        {lines.slice(0, previewLines).join("\n")}
-      </pre>
-      {rest > 0 ? (
-        <span className="text-small text-fg-muted">{mergeWords.moreLines(rest)}</span>
-      ) : null}
-    </section>
   );
 }
 

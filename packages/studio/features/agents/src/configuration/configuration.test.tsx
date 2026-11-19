@@ -38,6 +38,27 @@ verifies("agents.configuration.behaviour", () => {
     expect(page.textContent).toContain("What it should do and how, in plain words.");
   });
 
+  it("moves to Model and selects it on ↓, with the list as one Tab stop", async () => {
+    const { page } = await openConfiguration();
+    const list = page.querySelector('[role=tablist][aria-orientation="vertical"]') as HTMLElement;
+    const [behaviour, model] = [...list.querySelectorAll<HTMLElement>("[role=tab]")];
+    expect([behaviour?.tabIndex, model?.tabIndex]).toEqual([0, -1]);
+
+    await act(async () => behaviour?.focus());
+    const down = new KeyboardEvent("keydown", {
+      key: "ArrowDown",
+      bubbles: true,
+      cancelable: true,
+    });
+    await act(async () => behaviour?.dispatchEvent(down));
+
+    expect(model?.getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(model);
+    expect([behaviour?.tabIndex, model?.tabIndex]).toEqual([-1, 0]);
+    const panel = page.querySelector(`#${CSS.escape(model?.getAttribute("aria-controls") ?? "")}`);
+    expect(panel?.getAttribute("aria-labelledby")).toBe(model?.id);
+  });
+
   it("saves Instructions after a pause in typing", async () => {
     const { page, agents } = await openConfiguration();
     await typeIntoArea(textarea(page), "Sort the mail.");

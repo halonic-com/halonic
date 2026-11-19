@@ -1,7 +1,8 @@
 /**
  * The open mark: a chevron pointing right, outline style, in the text colour. Used by the folded
  * long-text field, which opens the text sheet, and by a link row that opens another page.
- * Decoration: the field's name or the row's words say what it is.
+ * Decoration: the field's name or the row's words say what it is. It has no size of its own, so
+ * put it in a sized slot: in a 48px row, `size-icon-md shrink-0 text-fg-subtle *:size-full`.
  */
 export function ChevronRightIcon() {
   return (

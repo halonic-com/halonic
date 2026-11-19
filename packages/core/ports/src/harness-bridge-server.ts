@@ -1,4 +1,4 @@
-import type { ToolOutcome, Usage } from "@halonicjs/events";
+import type { RunEventBody, ToolOutcome, Usage } from "@halonicjs/events";
 import type { ToolDefinition } from "./chat.ts";
 import type { HarnessBridge, HarnessEvent } from "./harness.ts";
 import { type ModelPrice, priceOf } from "./model-price.ts";
@@ -6,7 +6,11 @@ import { type ModelPrice, priceOf } from "./model-price.ts";
 /** Version of the {@link HarnessBridgeServer} port. A breaking change bumps it and comes with an ADR. */
 export const harnessBridgeServerVersion = 1;
 
-/** A model provider the bridge passes requests to, each at one fixed host the adapter knows. */
+/**
+ * The API a model provider speaks, which the bridge passes requests on in:
+ * Anthropic's Messages API, or OpenAI's Responses API. Each is at a fixed
+ * host the adapter knows, unless a keyed access names its own `baseUrl`.
+ */
 export type BridgeProvider = "anthropic" | "openai";
 
 /** How the agent reaches one provider through the bridge. */
@@ -16,8 +20,19 @@ export type BridgeProviderAccess =
    * this name, from the `Secrets` port, in place of the program's key, and
    * records the cost from the model's price. A model without a price is
    * recorded without a cost, so the run shows it as unpriced.
+   *
+   * `baseUrl` is the provider file's address for a host that speaks the
+   * same API, such as `https://api.z.ai/api/anthropic`. The bridge sends
+   * this agent's calls, and the key, to that one origin only; without it,
+   * to the API's own host. The host has already checked that the key may
+   * go there (the workspace's trust and the key's allowed addresses).
+   *
+   * `providerId` is the id of the provider file the key comes from, such
+   * as `zai`. The bridge names it as the call's `provider` in `llm.request`
+   * and `llm.response`, so the run log shows where the call went; without
+   * it, the API's own name (`anthropic`, `openai`).
    */
-  | { kind: "key"; secret: string }
+  | { kind: "key"; secret: string; baseUrl?: string; providerId?: string }
   /**
    * With the person's own subscription: the bridge passes the program's own
    * sign-in to the provider unchanged and never reads, logs or stores it.
@@ -28,15 +43,21 @@ export type BridgeProviderAccess =
    */
   | { kind: "sign-in" };
 
-/** What the bridge records itself: the model calls and Halonic tool calls that go through it. */
-export type BridgeEvent = Extract<
-  HarnessEvent,
-  { type: "llm.request" | "llm.response" | "tool.called" | "tool.result" }
->;
+/**
+ * What is recorded of the bridge: the model calls and Halonic tool calls that
+ * go through it, and the failures it told the program the run log has the
+ * details of (`bridge.failed`, from {@link HarnessBridgeOptions.reportError}).
+ */
+export type BridgeEvent =
+  | Extract<HarnessEvent, { type: "llm.request" | "llm.response" | "tool.called" | "tool.result" }>
+  | Extract<RunEventBody, { type: "bridge.failed" }>;
 
 /** Writes the bridge's events to the run's log. The engine adds `runId`, `seq`, `at` and the `state`. */
 export interface BridgeRecorder {
   /**
+   * A `bridge.failed` never counts towards the budget, so recording one never
+   * throws `limit_reached`.
+   *
    * @throws KindedError `limit_reached` for an `llm.request` once the run's
    *   budget is reached: the bridge then sends the model call nowhere and
    *   answers the program with 429 and the error's message

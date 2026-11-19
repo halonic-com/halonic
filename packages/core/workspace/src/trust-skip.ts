@@ -3,8 +3,8 @@
 // `init --example acme` runs straight away. The rule reads the trust content
 // itself, so whatever trust comes to cover next turns the skip off too.
 // The CLI's `halonic run`, `routines watch`, `serve` and its trust gate ask
-// it through `needsNoTrust`, `doctor` and `trust` directly; Studio is meant
-// to ask it too (HAL-1984).
+// it through `needsNoTrust`, `doctor` and `trust` directly, and Studio's
+// engine through `WorkspaceTrust.mayStart` (HAL-1984, HAL-12409).
 //
 // A local integration turns it off even when it adds nothing to the trust
 // content (all its hosts are fixed): its code runs and reaches its hosts,

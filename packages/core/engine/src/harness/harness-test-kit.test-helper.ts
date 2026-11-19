@@ -290,8 +290,8 @@ export function startLimits() {
   return {
     limits: deadlines.of("run_1", "call-1"),
     scheduler,
-    /** Delivers the start limit's timer for `phase`, once it is set. */
-    timeUp: async (phase: StartPhase) => {
+    /** Delivers the start limit's timer for `phase`, or the running time's for `step`, once it is set. */
+    timeUp: async (phase: StartPhase | "step") => {
       const timer = await scheduler.waitFor("run_1", `start:${phase}:call-1`);
       deadlines.expire(timer);
     },

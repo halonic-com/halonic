@@ -108,6 +108,25 @@ verifies("workspace.trusted-sources", () => {
     expect(announce).toHaveBeenCalledWith("Removed trust from inbox-helper");
   });
 
+  it("says what stops: routines and connectors for a workspace, tools for a plugin", async () => {
+    const weather: TrustedSource = {
+      ...pdf,
+      location: "/plugins/weather",
+      name: "weather",
+      kind: "plugin",
+    };
+    await show(hostOf([inbox, weather]));
+    act(() => button("Remove", element.querySelectorAll("li")[1] as HTMLElement)?.click());
+    expect(document.querySelector("dialog")?.textContent).toContain(
+      "Its routines and connectors won't start until you trust it again.",
+    );
+    act(() => button("Cancel")?.click());
+    act(() => button("Remove", element.querySelectorAll("li")[0] as HTMLElement)?.click());
+    const dialog = document.querySelector("dialog")?.textContent;
+    expect(dialog).toContain("Its tools won't run until you trust it again.");
+    expect(dialog).not.toContain("routines");
+  });
+
   it("puts the folder under the name in mono and moves focus to the next row's Remove", async () => {
     const host = hostOf([inbox, pdf]);
     await show(host);

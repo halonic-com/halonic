@@ -60,6 +60,7 @@ export {
 } from "./sandbox-trust-check.ts";
 export {
   type StopUnfencedRun,
+  savedYesCheckMs,
   type UnfencedRunDecision,
   UnfencedRuns,
   type UnfencedRunsOptions,

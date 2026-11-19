@@ -1,5 +1,6 @@
 import { AgentHostError } from "@halonicjs/adapter-agent-host-client";
 import type { ChatRequest } from "@halonicjs/ports";
+import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { WorkspaceKnowledge } from "./workspace-knowledge.ts";
@@ -140,6 +141,7 @@ verifies("studio.workspace-knowledge", () => {
     [new AgentHostError(413, "request_too_large", "x"), "too-large"],
     [new AgentHostError(502, "model_failed", "http://localhost:11434 refused"), "model-failed"],
     [new AgentHostError(0, "unreachable", "x"), "host-unreachable"],
+    [new EngineNotAnswering(), "host-unreachable"],
   ])("says why the host refused: %s", async (error, kind) => {
     const { host } = setup({}, error);
     expect(await host.summarize(handbook)).toEqual({ kind });

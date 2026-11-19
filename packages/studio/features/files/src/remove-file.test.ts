@@ -12,7 +12,7 @@ function toastsOf() {
 }
 
 verifies("files.ui.delete-file", () => {
-  it("says the file went to the trash with Undo, and brings it back on Undo", async () => {
+  it("says the file was deleted with Undo, and brings it back on Undo", async () => {
     const undo = vi.fn(async () => {});
     const { show, store } = toastsOf();
 
@@ -21,7 +21,7 @@ verifies("files.ui.delete-file", () => {
     const toast = show.mock.calls[0]?.[0];
     expect(toast).toMatchObject({
       tone: "success",
-      title: "Moved agents/models.yaml to the trash",
+      title: "Deleted agents/models.yaml",
     });
     expect(toast.text).toBeUndefined();
     toast.action.onClick();
@@ -37,11 +37,11 @@ verifies("files.ui.delete-file", () => {
     await removeFile({ remove }, many.store, "SKILL.md");
 
     expect(one.show.mock.calls[0]?.[0]).toMatchObject({
-      title: "Moved a to the trash.",
+      title: "Deleted a.",
       text: "1 place now shows an error until you update it.",
     });
     expect(many.show.mock.calls[0]?.[0]).toMatchObject({
-      title: "Moved SKILL.md to the trash.",
+      title: "Deleted SKILL.md.",
       text: "2 places now show an error until you update them.",
     });
   });
@@ -78,13 +78,13 @@ verifies("files.ui.delete-file", () => {
     const toast = show.mock.calls[0]?.[0];
     expect(toast).toMatchObject({
       tone: "danger",
-      title: "Couldn't move dir/a.md to the trash: a.md isn't here any more.",
+      title: "Couldn't delete dir/a.md: a.md isn't here any more.",
       sticky: true,
     });
     toast.action.onClick();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(remove).toHaveBeenCalledTimes(2);
-    expect(show.mock.calls[1]?.[0]).toMatchObject({ title: "Moved dir/a.md to the trash" });
+    expect(show.mock.calls[1]?.[0]).toMatchObject({ title: "Deleted dir/a.md" });
   });
 
   it("tells the tree when the file is in the trash and when Undo brought it back", async () => {

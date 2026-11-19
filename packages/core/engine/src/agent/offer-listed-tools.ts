@@ -9,7 +9,7 @@
 
 import { toolForModel } from "@halonicjs/app";
 import { escapeListedText, type KeptListedTool, readListedTool } from "@halonicjs/app/listed-tools";
-import { type Connector, type IntegrationTool, marksRead } from "@halonicjs/format";
+import { asksBeforeEachUse, type Connector, type IntegrationTool } from "@halonicjs/format";
 import type { ChatTurnRefusal, ConnectorTool, ToolDefinition, ToolRisk } from "@halonicjs/ports";
 
 /**
@@ -33,7 +33,7 @@ export interface ListedToolsInput {
   readonly otherNames: ReadonlySet<string>;
   /**
    * The `tools` lists of the connector's file, which a person wrote: a tool
-   * its `read` list names counts as reading ({@link marksRead}). Absent
+   * its `read` list names counts as reading ({@link countedRisk}). Absent
    * outside a run, or when the run kept no file for the connector.
    */
   readonly lists?: Pick<Connector["tools"], "approve" | "read">;
@@ -124,10 +124,7 @@ function offeredTool(
   const declared = declaredOf(input.declared, read.name);
   const loggedRisk =
     tool.risk === undefined ? declared?.risk : higherRisk(tool.risk, declared?.risk);
-  const risk = higherRisk(
-    countedRisk(tool.risk, isMarkedRead(input.lists, read.name)),
-    declared?.risk,
-  );
+  const risk = higherRisk(countedRisk(tool.risk, input.lists, read.name), declared?.risk);
   return {
     definition: fencedDefinition(read),
     listedName: read.name,
@@ -165,35 +162,33 @@ function nameForRefusal(name: unknown): string {
 }
 
 /**
- * Whether the connector file's `read` list marks the tool a server listed
- * under `name` as reading. Only the file's lists are asked: nothing in the
- * listing, its `risk` included, can add a tool to them.
- */
-export function isMarkedRead(
-  lists: Pick<Connector["tools"], "approve" | "read"> | undefined,
-  name: string,
-): boolean {
-  return lists !== undefined && marksRead(lists, name);
-}
-
-/**
  * What the engine counts a call to a connector's tool as doing, given the
- * risk its listing says. The server wrote the listing, so it can raise the
- * risk but never lower it below `write` (requirement
- * `ports.untrusted-tool-listings`): a tool listed as `send` stays `send`, so
- * the "allow sending" check still applies to it, and every other tool,
- * one listed as `read` too, counts as `write`. Only the workspace counts a
- * tool as `read`, by naming it in the `read` list of the connector's file
- * (`markedRead`), and even then a tool its server lists as `send` stays `send`.
+ * risk its listing says and the `tools` lists of the connector's file. The
+ * server wrote the listing, so it can raise the risk but never lower it below
+ * `write` (requirement `ports.untrusted-tool-listings`): a tool listed as
+ * `send` stays `send`, so the "allow sending" check still applies to it, and
+ * every other tool, one listed as `read` too, counts as `write`. Only the
+ * workspace counts a tool as `read`, by naming it in the `read` list of the
+ * connector's file, and even then a tool its server lists as `send` stays
+ * `send`. Whether it counts as `read` is `asksBeforeEachUse` from
+ * `@halonicjs/format`, the rule `halonic tools review` and Studio show, so
+ * the screens and the engine can't drift apart (HAL-12545). Only the file's
+ * lists are asked: nothing in the listing, its `risk` included, can add a
+ * tool to them. `lists` is absent outside a run, or when the run kept no
+ * file for the connector; then no tool counts as `read`.
  *
  * @example
- * countedRisk("read", false); // "write"
- * countedRisk(undefined, true); // "read"
- * countedRisk("send", true); // "send"
+ * countedRisk("read", { approve: [] }, "lookup"); // "write"
+ * countedRisk(undefined, { approve: [], read: ["lookup"] }, "lookup"); // "read"
+ * countedRisk("send", { approve: [], read: ["mail"] }, "mail"); // "send"
  */
-export function countedRisk(listed: ToolRisk | undefined, markedRead: boolean): ToolRisk {
+export function countedRisk(
+  listed: ToolRisk | undefined,
+  lists: Pick<Connector["tools"], "approve" | "read"> | undefined,
+  name: string,
+): ToolRisk {
   if (listed === "send") return "send";
-  return markedRead ? "read" : "write";
+  return lists !== undefined && !asksBeforeEachUse(lists, name, listed) ? "read" : "write";
 }
 
 /** The sheet's entry for the tool a server listed under `name`, if the sheet declares it. */

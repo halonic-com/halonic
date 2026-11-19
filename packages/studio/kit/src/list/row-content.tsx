@@ -35,6 +35,14 @@ function trailingOf(row: AnyListRow): ReactNode {
   );
 }
 
+/** The title's colour: `fg`, `fg-muted` for a muted row, `fg-disabled` for an unavailable one. */
+function titleColour(row: AnyListRow): string {
+  if (row.unavailable !== undefined) {
+    return "text-fg-disabled text-forced-disabled";
+  }
+  return row.muted === true ? "text-fg-muted" : "text-fg";
+}
+
 export interface RowContentProps {
   readonly row: AnyListRow;
   readonly phone: boolean;
@@ -83,11 +91,7 @@ export function RowContent({
     >
       <Leading row={row} small={dense && !phone} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <span
-          className={`truncate text-body-strong ${row.unavailable === undefined ? "text-fg" : "text-fg-disabled text-forced-disabled"}`}
-        >
-          {row.title}
-        </span>
+        <span className={`truncate text-body-strong ${titleColour(row)}`}>{row.title}</span>
         <MetaLine row={row} text={meta} id={reasonId} chip={trailingBelow ? trailing : undefined} />
       </div>
       {showTrailingRight ? <span className="flex shrink-0 items-center">{trailing}</span> : null}

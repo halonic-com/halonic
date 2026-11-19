@@ -27,8 +27,8 @@ Plugins arrive in steps, and not every step is in 0.1:
   in [Add and trust a plugin in Studio](https://halonic.dev/docs/guides/studio-plugins).
   A plugin's `ui` (settings, commands, cards, the panel) is drawn by those
   screens, so you can see your own settings and cards in a Studio build.
-- Security tests for local tools are still being built. A local tool is
-  fenced by the sandbox, but check for yourself that yours lists only the
+- The sandbox's attack tests for local tools are on `main`. A local tool is
+  fenced by the sandbox; still check for yourself that yours lists only the
   tools you declared.
 
 The [plugin sample](../../packages/testing/integration/examples/acme-orders-plugin/README.md)
@@ -56,7 +56,10 @@ is the reference.
 
 ## Run it and see errors
 
-- **Check the folder:** `halonic validate ./my-plugin` reports schema and manifest errors.
+- **Check the manifest:** `halonic plugin add ./my-plugin` reports schema and
+  manifest errors, for example
+  `✕ Couldn't add the plugin: Invalid option: expected one of "read"|"write"|"send"`.
+  `halonic validate` checks a workspace, not a plugin folder.
 - **After you edit:** a changed file changes the fingerprint, so the plugin is
   off until you trust it again. `halonic plugin list` shows it as "changed
   since you trusted it"; run `halonic trust --plugin <id>` and read the check.
@@ -106,8 +109,8 @@ At least one of `backend` and `localTools` is required. A plugin with only
 `ui` has nothing for its forms and cards to call.
 
 Every object is strict: an unknown field is an error, so a typo in `risk` can
-never make a tool look harmless. `halonic validate` checks a plugin folder
-like any other file, and `plugin.schema.json` in `core/format` gives editors
+never make a tool look harmless. `halonic plugin add` checks the manifest,
+and `plugin.schema.json` in `core/format` gives editors
 the schema.
 
 ### `backend`
@@ -170,7 +173,8 @@ localTools:
   declares in its own `secrets`. A literal value is not allowed, and a secret
   declared on another local tool or on the backend doesn't count. A secret
   named here is given to that program, so it does get the value; the trust
-  check lists it.
+  check lists it. `HOME`, `PATH`, `TMPDIR`, `TEMP` and `TMP` aren't allowed:
+  Halonic sets those itself, to folders inside the sandbox.
 - **`secrets`** declares the secrets this local tool may use, each with a
   `purpose` (what it is for, shown in the trust check) and its `hosts`. Every
   host of a secret must also be in the tool's `network`.
@@ -184,7 +188,8 @@ localTools:
 
 Local tools run only in a session whose sandbox is proven: the desktop app,
 the CLI and `serve`. Windows is a preview: the sandbox there has limits, and
-a plugin's backend worker has no operating-system fence on Windows. On Android
+a plugin's backend worker starts there only when MXC fences it, on Windows
+11, and no app uses MXC yet, so for now it doesn't start on Windows. On Android
 and in the browser the plugin still loads, and its local tools show as needing
 the desktop app. Halonic builds the sandbox's rules; a plugin can't ask for
 more. See [the plugins page of the
@@ -242,7 +247,9 @@ clones the repository at one commit) into the plugins folder in your profile
 trust check and asks. In the Studio desktop app, **Settings → Plugins → Add plugin** does the same
 from a folder you pick with **Choose folder…** or from a git address: the app exports one commit
 of the repository (files only, with no `.git`, no submodules and none of your git settings), checks it
-as `plugin add` does, and adds the plugin not trusted, so you review the check next.
+as `plugin add` does, and adds the plugin not trusted, so you review the check next. The desktop
+app reads only a folder you picked: for a path typed into **Folder**, it asks you to use
+**Choose folder…**.
 
 Both leave private names out of the copy, at any depth: `.git`, `.studio`, `.env`, `.env.*` and
 `.envrc`. Keep them out of your plugin's folder and they never reach anyone else's profile.

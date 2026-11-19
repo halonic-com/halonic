@@ -73,10 +73,6 @@ const circleStateClasses = {
   unavailable: "cursor-not-allowed border-border-control",
 } as const;
 
-/**
- * 45% on the circle and the words (60% with more contrast), `GrayText` at full strength in high
- * contrast. The note keeps its full strength, because it says why.
- */
 /** Each layout's group, row and field classes. A row's circle sits mid-row, beside its two lines. */
 const layouts = {
   stack: {
@@ -96,6 +92,10 @@ const layouts = {
 
 type RadioLayout = keyof typeof layouts;
 
+/**
+ * 45% on the circle and the words (60% with more contrast), `GrayText` at full strength in high
+ * contrast. The note keeps its full strength, because it says why.
+ */
 const unavailableFade = "opacity-45 contrast-more:opacity-60 forced-colors:opacity-100";
 
 /**

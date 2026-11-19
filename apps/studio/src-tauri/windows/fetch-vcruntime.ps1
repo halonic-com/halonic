@@ -30,7 +30,22 @@ $work = Join-Path ([IO.Path]::GetTempPath()) "halonic-vcruntime-$([guid]::NewGui
 New-Item -ItemType Directory $work | Out-Null
 try {
   $redist = Join-Path $work 'VC_redist.x64.exe'
-  Invoke-WebRequest -Uri $pin.redistributable.url -OutFile $redist
+  # Microsoft's server sometimes drops the download partway (HAL-12561), and
+  # Invoke-WebRequest's own -MaximumRetryCount only retries error responses,
+  # not a cut connection. So: four tries, waiting 5, 10 and 20 s between them,
+  # each from an empty file. The hash check below still decides.
+  for ($attempt = 1; ; $attempt++) {
+    try {
+      Invoke-WebRequest -Uri $pin.redistributable.url -OutFile $redist
+      break
+    } catch {
+      Remove-Item $redist -Force -ErrorAction SilentlyContinue
+      if ($attempt -ge 4) { throw }
+      $wait = 5 * (1 -shl ($attempt - 1))
+      Write-Warning "downloading the Visual C++ Redistributable failed (try $attempt of 4), retrying in $wait s: $($_.Exception.Message)"
+      Start-Sleep -Seconds $wait
+    }
+  }
   if ((Get-FileHash $redist -Algorithm SHA256).Hash.ToLowerInvariant() -ne $pin.redistributable.sha256) {
     throw "the Visual C++ Redistributable isn't the pinned one (windows/vcruntime.json)"
   }

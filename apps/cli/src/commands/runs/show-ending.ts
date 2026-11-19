@@ -4,6 +4,13 @@
 // Every sentence is the catalogue's.
 
 import { type RunDetail, runWait, shortRunId } from "@halonicjs/app";
+import {
+  failedModelOf,
+  failedStartOf,
+  type RunFailedEvent,
+  runFailureOf,
+  type WorkspaceModels,
+} from "@halonicjs/app/run-failure";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { duration } from "../../messages/duration.ts";
 import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
@@ -12,13 +19,6 @@ import { runFailedLines } from "../../messages/run-failures.ts";
 import { type CancelledAt, runsMessages } from "../../messages/runs.ts";
 import { stepName } from "../../messages/step-name.ts";
 import { runFailureDetails } from "../../run-failure-details.ts";
-import {
-  failedModelOf,
-  failedStartOf,
-  type RunFailedEvent,
-  runFailureOf,
-  type WorkspaceModels,
-} from "../../run-failure-of.ts";
 import { hasAgentOutput, type RunDefinitions, receiptOf } from "../../run-view.ts";
 import { waitDescription } from "./listed-run.ts";
 

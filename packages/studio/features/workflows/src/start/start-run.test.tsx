@@ -219,6 +219,78 @@ verifies("workflows.start.start-run", () => {
     expect(page.textContent).not.toContain("Try again");
   });
 
+  it("offers Run again and Open Models on the shown run's failed banner, and docks the new run", async () => {
+    const failed = runSummary({
+      status: "failed",
+      state: "draft",
+      reason: "model-unreachable",
+      endedAt: "2026-11-09T10:45:00.000Z",
+    });
+    const memory = memoryRuns([failed]);
+    const at = failed.startedAt;
+    const runs = {
+      ...memory,
+      source: {
+        ...memory.source,
+        providerKind: () => "local" as const,
+        log: async () => [
+          {
+            type: "run.started" as const,
+            hubId: "acme",
+            workflowId: "reply",
+            input: { a: 1 },
+            kind: "run" as const,
+            definitionsVersion: "v1",
+            runId: failed.id,
+            seq: 1,
+            at,
+          },
+          { type: "state.entered" as const, state: "draft", runId: failed.id, seq: 2, at },
+          {
+            type: "llm.request" as const,
+            agent: "writer",
+            provider: "ollama",
+            model: "llama3.1",
+            messages: 1,
+            runId: failed.id,
+            seq: 3,
+            at,
+          },
+        ],
+      },
+    };
+    const started = vi
+      .fn<(input: Record<string, unknown>) => Promise<{ runId: string }>>()
+      .mockResolvedValueOnce({ runId: failed.id })
+      .mockResolvedValueOnce({ runId: "run_mfx3k2a1_02kq7w" });
+    const openModels = vi.fn();
+    const { host } = memoryHost([], [], [reply], [], {
+      startRun: async (_ref, input) => started(input),
+    });
+    const page = await show(
+      <WorkflowScreen
+        host={host}
+        runs={runs.source}
+        hubId="acme"
+        id="reply"
+        openModels={openModels}
+      />,
+    );
+
+    await click(runButton(page));
+    await click(buttonNamed(page, "Start run"));
+    expect(page.textContent).toContain("Start Ollama, then run again.");
+    await click(buttonNamed(page, "Open Models"));
+    expect(openModels).toHaveBeenCalledOnce();
+
+    await click(buttonNamed(page, "Run again"));
+    expect(started).toHaveBeenLastCalledWith({ a: 1 });
+    await act(async () => {
+      runs.change([runSummary({ id: "run_mfx3k2a1_02kq7w", status: "running" }), failed]);
+    });
+    expect(page.querySelector("aside[aria-label='Run 02kq7w']")).not.toBeNull();
+  });
+
   it("starts nothing when the input isn't a JSON object", async () => {
     const started = vi.fn(async () => ({ runId: "x" }));
     const { page } = await open(started);

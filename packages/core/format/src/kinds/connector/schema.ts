@@ -157,3 +157,25 @@ export function marksRead(
 ): boolean {
   return (tools.read?.includes(tool) ?? false) && !needsApproval(tools, tool);
 }
+
+/**
+ * Whether every call to `tool` waits for a person: the rule the engine
+ * counts a listed tool's risk by, so `halonic tools review` and Studio say
+ * what a run then does. A tool runs without asking only when the workspace
+ * marks it as only reading ({@link marksRead}) and its listing doesn't say
+ * `send`: a server can raise its tool's risk, and the `read` list can't lower
+ * `send`. `listedRisk` is the risk its listing gives, absent when it gives none.
+ *
+ * @example
+ * asksBeforeEachUse({ approve: [] }, "lookup"); // true
+ * asksBeforeEachUse({ approve: [], read: ["lookup"] }, "lookup"); // false
+ * asksBeforeEachUse({ approve: [], read: ["mail"] }, "mail", "send"); // true
+ */
+export function asksBeforeEachUse(
+  tools: Pick<Connector["tools"], "approve" | "read">,
+  tool: string,
+  // Written out rather than ports' `ToolRisk`: the connector entry imports only schema-kit and std.
+  listedRisk?: "read" | "write" | "send",
+): boolean {
+  return listedRisk === "send" || !marksRead(tools, tool);
+}

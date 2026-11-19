@@ -3,62 +3,14 @@ import { KindedError } from "@halonicjs/std";
 import { engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WaitItem } from "../inbox-items.ts";
-import { inboxItems } from "../inbox-items.ts";
 import { waitingRun } from "../test-runs.test-helper.ts";
-import { render, unmountAll } from "../test-support/render.tsx";
-import { answerLabel, WaitCard, type WaitCardProps } from "./wait-card.tsx";
+import { unmountAll } from "../test-support/render.tsx";
+import { button, openCard, press, reviewItem } from "./wait-card.test-helper.tsx";
+import { answerLabel } from "./wait-card.tsx";
 
 afterEach(unmountAll);
-
-// Local times, so the test reads the same in every time zone. Tue 10 Nov 2026.
-const waitingSinceAt = new Date(2026, 10, 10, 10, 40);
-
-function reviewItem(fields: Parameters<typeof waitingRun>[1] = {}): WaitItem {
-  const [item] = inboxItems([
-    waitingRun("r43", {
-      waitingFor: {
-        title: "Approve this reply?",
-        body: "Hi Sam, your refund is on its way.\nSee [our policy](https://evil.example) <script>alert(1)</script>",
-      },
-      lastWaitingAt: waitingSinceAt.toISOString(),
-      ...fields,
-    }),
-  ]);
-  if (item?.kind !== "wait") throw new Error("expected a wait item");
-  return item;
-}
-
-function openCard(overrides: Partial<WaitCardProps> = {}) {
-  const clock = { now: new Date(2026, 10, 10, 10, 43) };
-  const sent: string[] = [];
-  const props: WaitCardProps = {
-    item: reviewItem(),
-    decisions: {
-      answer: async (_item, event) => {
-        sent.push(event);
-        return waitingRun("r43");
-      },
-    },
-    onOpenRun: () => {},
-    next: null,
-    back: null,
-    now: () => clock.now,
-    ...overrides,
-  };
-  const root = render(<WaitCard {...props} />);
-  const later = (seconds: number) => {
-    clock.now = new Date(clock.now.getTime() + seconds * 1000);
-  };
-  return { root, sent, later };
-}
-
-function button(root: HTMLElement, name: string): HTMLButtonElement {
-  const found = [...root.querySelectorAll("button")].find((b) => b.textContent?.startsWith(name));
-  if (found === undefined) throw new Error(`no button "${name}"`);
-  return found;
-}
 
 /**
  * A button's accessible name, as far as these buttons need it: its `aria-label`, else the text a
@@ -77,13 +29,6 @@ function accessibleName(target: HTMLElement): string {
     return node.textContent ?? "";
   };
   return read(target);
-}
-
-async function press(target: HTMLElement) {
-  await act(async () => {
-    target.dispatchEvent(new Event("pointerdown", { bubbles: true }));
-    target.click();
-  });
 }
 
 verifies("inbox.wait-card", () => {
@@ -408,6 +353,38 @@ verifies("inbox.wait-card", () => {
       const { root } = openCard({ onOpenRun });
       await press(button(root, "Open run"));
       expect(onOpenRun).toHaveBeenCalledWith("r43");
+    });
+  });
+
+  describe("an answer's tooltip", () => {
+    beforeEach(() => {
+      HTMLElement.prototype.showPopover = vi.fn();
+      HTMLElement.prototype.hidePopover = vi.fn();
+    });
+    afterEach(() => {
+      Reflect.deleteProperty(HTMLElement.prototype, "showPopover");
+      Reflect.deleteProperty(HTMLElement.prototype, "hidePopover");
+    });
+
+    /** Gives the button's label a width, then focuses the button as the keyboard would. */
+    function focusWithLabel(target: HTMLButtonElement, widths: { full: number; shown: number }) {
+      const label = target.querySelector(".truncate") as HTMLElement;
+      Object.defineProperty(label, "scrollWidth", { configurable: true, value: widths.full });
+      Object.defineProperty(label, "clientWidth", { configurable: true, value: widths.shown });
+      vi.spyOn(target, "matches").mockImplementation((selector) => selector === ":focus-visible");
+      act(() => target.focus());
+    }
+
+    it("doesn't repeat a label the button shows in full", () => {
+      const { root } = openCard();
+      focusWithLabel(button(root, "Approve"), { full: 60, shown: 60 });
+      expect(HTMLElement.prototype.showPopover).not.toHaveBeenCalled();
+    });
+
+    it("shows the whole label when the button cuts it off", () => {
+      const { root } = openCard();
+      focusWithLabel(button(root, "Approve"), { full: 200, shown: 120 });
+      expect(HTMLElement.prototype.showPopover).toHaveBeenCalledOnce();
     });
   });
 

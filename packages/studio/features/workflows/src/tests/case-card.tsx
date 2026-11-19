@@ -119,7 +119,7 @@ function PathColumn({
 function stepTone(at: number, first: number, actual: boolean): string {
   if (at === first) {
     return actual
-      ? "border-s-2 border-current bg-danger-soft text-danger-text"
+      ? "border-s-2 border-current bg-danger-soft text-danger"
       : "border-s-2 border-current bg-surface-muted text-fg";
   }
   return actual && at > first ? "text-fg-muted" : "";

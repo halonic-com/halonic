@@ -19,6 +19,7 @@
     "react": "catalog:"
   },
   "devDependencies": {
+    "@halonicjs/ports": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@tailwindcss/vite": "catalog:",

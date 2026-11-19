@@ -1,4 +1,11 @@
-import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
+import {
+  EmptyState,
+  SkeletonBar,
+  type Tab,
+  TabList,
+  TabPanel,
+  useTabIds,
+} from "@halonicjs/studio-kit";
 import { useState } from "react";
 import type { AgentChange, AgentSettings, AgentsHost, AgentToolList } from "../api.ts";
 import type { Load } from "../page/use-load.ts";
@@ -20,7 +27,8 @@ export interface ConfigurationProps {
   readonly defaultModel: string | undefined;
   readonly retryAliases: () => void;
   readonly retry: () => void;
-  readonly save: (change: AgentChange) => Promise<void>;
+  /** Saves one change; resolves to whether it was written, and never rejects. */
+  readonly save: (change: AgentChange) => Promise<boolean>;
   /** Opens Library on a Tools list's tab, for **Open Library ›**; absent where the app can't. */
   readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
 }
@@ -28,7 +36,9 @@ export interface ConfigurationProps {
 type PageId = "behaviour" | "model" | "harness" | "tools";
 
 /** The pages that are built, in the order of flow-agents 5.1. */
-const pageIds: readonly PageId[] = ["behaviour", "model", "harness", "tools"];
+const pages: readonly Tab<PageId>[] = (["behaviour", "model", "harness", "tools"] as const).map(
+  (id) => ({ id, label: words.pageNames[id] }),
+);
 
 /**
  * The agent's Configuration (`agents.configuration.pages`): a list of pages on the left and the
@@ -46,6 +56,7 @@ export function Configuration({
   openLibrary,
 }: ConfigurationProps) {
   const [page, setPage] = useState<PageId>("behaviour");
+  const ids = useTabIds();
   if (load.kind === "failed") {
     return (
       <EmptyState
@@ -58,37 +69,17 @@ export function Configuration({
   }
   return (
     <div className="flex min-h-0 flex-1">
-      <div
-        role="tablist"
-        aria-orientation="vertical"
-        aria-label={words.pages}
-        className="flex w-52 shrink-0 flex-col gap-1 border-e border-border px-2 py-4"
-      >
-        {pageIds.map((id) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            id={`agent-config-${id}`}
-            aria-selected={id === page}
-            aria-controls="agent-config-panel"
-            onClick={() => setPage(id)}
-            className={`focus-ring flex h-control-md items-center rounded-sm px-3 text-start text-body ${
-              id === page
-                ? "bg-accent-soft font-medium text-fg"
-                : "text-fg-muted hover:bg-surface-subtle"
-            }`}
-          >
-            {words.pageNames[id]}
-          </button>
-        ))}
+      <div className="w-52 shrink-0 border-e border-border px-2 py-4">
+        <TabList
+          label={words.pages}
+          orientation="vertical"
+          tabs={pages}
+          selected={page}
+          onSelect={setPage}
+          ids={ids}
+        />
       </div>
-      <div
-        role="tabpanel"
-        id="agent-config-panel"
-        aria-labelledby={`agent-config-${page}`}
-        className="min-w-0 flex-1 overflow-auto p-6"
-      >
+      <TabPanel ids={ids} tabs={pages} selected={page} className="min-w-0 flex-1 overflow-auto p-6">
         {load.kind === "ready" ? (
           <div className="max-w-column">
             {page === "behaviour" && <BehaviourPage settings={load.value} save={save} />}
@@ -120,7 +111,7 @@ export function Configuration({
             <SkeletonBar kind="value" />
           </div>
         )}
-      </div>
+      </TabPanel>
     </div>
   );
 }

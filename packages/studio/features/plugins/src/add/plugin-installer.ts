@@ -14,9 +14,12 @@ export type PluginAddOutcome =
       readonly name?: string;
       readonly problems: readonly PluginLoadProblem[];
     }
-  | { readonly kind: "taken"; readonly plugin: string }
+  /** `name` is the manifest's, for **Open Weather**; the id when it is left out. */
+  | { readonly kind: "taken"; readonly plugin: string; readonly name?: string }
   | { readonly kind: "offline"; readonly host: string }
-  | { readonly kind: "no-manifest" };
+  | { readonly kind: "no-manifest" }
+  /** The app reads only a folder chosen with **Choose folder…**, and this one was typed. */
+  | { readonly kind: "not-picked" };
 
 /**
  * What the Add plugin dialog asks the app to do. `add` throws, with a message for the person,

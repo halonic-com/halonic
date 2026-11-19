@@ -6,8 +6,8 @@ export const FIRST_WSL2_BUILD = 19041;
 
 /**
  * The oldest WSL kernel the trust check accepts (W11). Below it the setup
- * offers `wsl --update`. **A placeholder until Security confirms the value**
- * (HAL-5394, W11): it is one number here so changing it changes nothing else.
+ * offers `wsl --update`. Security confirmed the value on HAL-10557; it is one
+ * number here so changing it changes nothing else.
  */
 export const WSL_KERNEL_FLOOR = "5.15.153.1";
 

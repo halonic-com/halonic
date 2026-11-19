@@ -170,7 +170,8 @@ function DialogBox(props: DialogProps) {
 
 /**
  * The body describes a confirmation, but not a form or a `flush` body, whose fields would all be
- * read out. The footnote is one short line, so it describes every Dialog that has one.
+ * read out; a line the screen names with `describedBy` does instead. The footnote is one short
+ * line, so it describes every Dialog that has one.
  */
 function describedBy(
   props: DialogProps,
@@ -179,6 +180,9 @@ function describedBy(
   const parts: string[] = [];
   if (props.form !== true && props.flush !== true) {
     parts.push(ids.body);
+  }
+  if (props.describedBy !== undefined) {
+    parts.push(props.describedBy);
   }
   if (props.footnote !== undefined) {
     parts.push(ids.footnote);

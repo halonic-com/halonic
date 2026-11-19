@@ -159,7 +159,7 @@ export function TrustedSourcesView({ host, readOnly, announce, engine }: Trusted
         {loaded.sources.map((source) => (
           <li
             key={source.location}
-            className="flex items-center gap-3 border-b border-line py-2 last:border-b-0"
+            className="flex items-center gap-3 border-b border-border py-2 last:border-b-0"
           >
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="text-body-strong">{source.name}</span>
@@ -218,7 +218,7 @@ export function TrustedSourcesView({ host, readOnly, announce, engine }: Trusted
           onConfirm={() => void confirmRemove(removing)}
           onCancel={() => setRemoving(undefined)}
         >
-          <p>{text.REMOVE_BODY}</p>
+          <p>{removing.kind === "plugin" ? text.REMOVE_PLUGIN_BODY : text.REMOVE_BODY}</p>
         </Dialog>
       )}
     </div>

@@ -3,6 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { FakePluginInstallShell } from "./fake-plugin-install-shell.test-helper.ts";
 import { TauriPluginFolderWriter } from "./plugin-folder-writer.ts";
+import { isSourceNotPicked } from "./plugin-install-failure.ts";
 import { TauriPluginInstallSource } from "./plugin-install-source.ts";
 import { TauriPluginSourceReader } from "./plugin-source-reader.ts";
 
@@ -138,7 +139,6 @@ verifies("fs-tauri.plugin-install", () => {
         "id: acme-weather\n",
       );
       expect(await reader.read("missing.txt")).toBeNull();
-      expect(await reader.locationOf()).toBeNull();
       for (const call of shell.calls) expect(call.args?.["source"]).toBe("pick:acme");
       expect(shell.calls.map((call) => call.command)).toEqual([
         "plugin_source_entries",
@@ -147,11 +147,24 @@ verifies("fs-tauri.plugin-install", () => {
       ]);
     });
 
+    it("gives the picked location as the folder's, and an entry's only when it is there", async () => {
+      const shell = new FakePluginInstallShell({ sources: { "pick:acme": acmeFolder } });
+      const reader = new TauriPluginInstallSource(shell).reader("pick:acme");
+      expect(await reader.locationOf()).toBe("pick:acme");
+      expect(await reader.locationOf("src/index.js")).toBe("pick:acme/src/index.js");
+      expect(await reader.locationOf("plugin.yaml")).toBe("pick:acme/plugin.yaml");
+      expect(await reader.locationOf("src/missing.js")).toBeNull();
+      expect(await reader.locationOf("missing/index.js")).toBeNull();
+      await expect(reader.locationOf("../secrets")).rejects.toThrow(RangeError);
+      for (const call of shell.calls) expect(call.args?.["source"]).toBe("pick:acme");
+    });
+
     it("refuses a location the person never picked with the shell's own sentence", async () => {
       const shell = new FakePluginInstallShell({ sources: { "pick:acme": acmeFolder } });
       const reader = new TauriPluginSourceReader(shell, "/somewhere/typed/secrets");
       const error = await rejection(reader.entries());
       expect(errorKindOf(error)).toBe("denied");
+      expect(isSourceNotPicked(error)).toBe(true);
       expect((error as Error).message).toBe(
         "A plugin can only be added from a folder chosen with Choose folder.",
       );

@@ -49,3 +49,4 @@ export { slugify, uniqueName } from "./text.ts";
 export { type UrlHost, urlHost } from "./url-host.ts";
 export { decodeUtf8, encodeUtf8 } from "./utf8.ts";
 export { compareVersions, formatVersion, isAtLeast, readVersion, type Version } from "./version.ts";
+export { diffWords, type WordDiff, type WordPiece } from "./word-diff.ts";

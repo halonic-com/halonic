@@ -71,6 +71,28 @@ export interface StartLimits {
    * @throws what `limit.start()` throws
    */
   within<T>(limit: StartLimit<T>): Promise<T>;
+  /**
+   * Sets a limit on how long the call runs once it has started: `timeUp`
+   * runs once `timeoutMs` of running time have passed. Time between
+   * `pause()` and `resume()` doesn't count.
+   *
+   * @throws when the scheduler doesn't take the timer
+   */
+  running(timeoutMs: number, timeUp: () => void): Promise<RunningLimit>;
+}
+
+/** The running-time limit of a call that has started, as {@link StartLimits.running} set it. */
+export interface RunningLimit {
+  /** Stops counting; a timer already due changes nothing until `resume()`. */
+  pause(): Promise<void>;
+  /**
+   * Counts again, with the time that was left at `pause()`.
+   *
+   * @throws when the scheduler doesn't take the timer
+   */
+  resume(): Promise<void>;
+  /** Stops counting for good. */
+  end(): Promise<void>;
 }
 
 /** A time limit as people read it, such as `30 s`. */

@@ -8,7 +8,7 @@ import {
   type SettingsSectionProps,
   type SettingsSurface,
 } from "@halonicjs/studio-shell";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import {
   type AssistantNavigation,
   type AssistantWorkspace,
@@ -17,7 +17,13 @@ import {
   HostSettingsService,
 } from "../api.ts";
 import { checkModel, checkTurnLimit } from "./assistant-checks.ts";
-import { LocalOnlyWarning, SetsItsOwn, ViewOnlyNotes } from "./assistant-notes.tsx";
+import {
+  LocalOnlyWarning,
+  localOnlyWarningLine,
+  SetsItsOwn,
+  useLocalOnlyAnnouncement,
+  ViewOnlyNotes,
+} from "./assistant-notes.tsx";
 import { assistantPrefs, turnLimitRange } from "./assistant-prefs.ts";
 import {
   type AssistantProvider,
@@ -287,6 +293,9 @@ function AssistantEditor({
   const reasoningEffort = useHostSetting(settings, assistantPrefs.reasoningEffort);
 
   const [focusBaseUrl, setFocusBaseUrl] = useState(false);
+  const warningId = useId();
+  const warning = localOnlyWarningLine(open, provider.value, local.value);
+  useLocalOnlyAnnouncement(warning, announce);
   const failedLine = (what: string, failed: boolean) => (failed ? text.notSaved(what) : null);
 
   async function pick(picked: string) {
@@ -354,7 +363,7 @@ function AssistantEditor({
   const turnLimitText = turnLimit.value === turnLimitRange.fallback ? "" : String(turnLimit.value);
   return (
     <div className="flex max-w-90 flex-col gap-4">
-      <LocalOnlyWarning open={open} provider={chosen} local={local.value} />
+      <LocalOnlyWarning open={open} provider={chosen} local={local.value} id={warningId} />
       {open === null || workspace === undefined ? null : (
         <SetsItsOwn
           open={open}
@@ -370,7 +379,12 @@ function AssistantEditor({
         hint={chosen === "not-set-up" ? text.NOT_SET_UP_LINE : undefined}
         error={failedLine("the provider", provider.failed)}
       >
-        <Select options={providerOptions} value={chosen} onChange={pick} />
+        <Select
+          options={providerOptions}
+          value={chosen}
+          onChange={pick}
+          describedBy={warning === null ? undefined : warningId}
+        />
       </Field>
       {chosen === "not-set-up" ? null : (
         <SavedTextField

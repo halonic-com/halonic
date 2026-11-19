@@ -8,6 +8,7 @@ import {
   type SandboxFence,
   type SandboxProcess,
   type SandboxProfile,
+  type SandboxResidual,
   type SandboxSession,
   sandboxUnavailableReasons,
 } from "@halonicjs/ports";
@@ -22,8 +23,18 @@ const capabilitiesSchema = s
   })
   .strict() satisfies Schema<SandboxCapabilities>;
 
+/** The residuals an `ok` check may name (HAL-5398); `SandboxResidual` is closed. */
+const sandboxResiduals = ["kept-roots-readable"] as const satisfies readonly SandboxResidual[];
+
 const checkSchema = s.discriminatedUnion("ok", [
-  s.object({ ok: s.literal(true), reason: s.null(), missing: s.tuple([]) }).strict(),
+  s
+    .object({
+      ok: s.literal(true),
+      reason: s.null(),
+      missing: s.tuple([]),
+      residuals: s.array(s.enum(sandboxResiduals)).optional(),
+    })
+    .strict(),
   s
     .object({
       ok: s.literal(false),
@@ -31,7 +42,7 @@ const checkSchema = s.discriminatedUnion("ok", [
       missing: s.array(s.string()),
     })
     .strict(),
-]) satisfies Schema<SandboxCheck>;
+]) as Schema<SandboxCheck>; // `as`: an optional key reads as `| undefined` to the compiler.
 
 const fenceSchema = s.discriminatedUnion("state", [
   s.object({ state: s.literal("fenced") }).strict(),

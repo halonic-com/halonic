@@ -252,7 +252,8 @@ export class WorkspaceChanges implements ChangesSource {
 
   async getUpdates(): Promise<UpdatesResult> {
     const before = await this.#head();
-    const pull = await this.#run(["pull", "--ff-only", "--quiet"]);
+    const from = await this.#sharedCopy.pullSource();
+    const pull = await this.#run(["pull", "--ff-only", "--quiet", ...from]);
     if (pull === "no-git") throw new KindedError("unavailable", "git isn't on this computer.");
     if (pull.code !== 0) {
       if (
@@ -426,7 +427,7 @@ function addressReason(answer: GitAnswer): string {
 function updatesReason(answer: GitAnswer): string {
   const said = `${answer.stderr}\n${answer.stdout}`;
   if (
-    /no tracking information|no upstream|no such remote|does not appear to be a git repository/i.test(
+    /no tracking information|no upstream|no such remote|couldn't find remote ref|does not appear to be a git repository/i.test(
       said,
     )
   ) {

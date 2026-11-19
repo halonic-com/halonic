@@ -18,4 +18,4 @@ The `halonic google allow-sending <connection> on|off` command shall switch send
   when `halonic google allow-sending bank on` is run,
   then it exits 2 and nothing is saved.
 - Given `halonic google allow-sending mailbox maybe`,
-  then it exits 2 with the usage "halonic google allow-sending <connection> on|off" and nothing is saved.
+  then it exits 2 with the usage "halonic google allow-sending <connection> on|off [--dir <folder>]" and nothing is saved.

@@ -622,7 +622,11 @@ fails the check until Julian has reviewed it and it has its own entry under
 task that accepted it. The check also fails when an entry's file is gone, or
 when `tooling/check/licence-texts/<SPDX ID>.txt` has no full text of its
 licence. `pnpm check:sbom --notices` adds one block per vendored file to
-`THIRD-PARTY-NOTICES.txt`. A vendored entry is an exception for that one
+`THIRD-PARTY-NOTICES.txt`, with that text. A licence like MIT or BSD carries
+the author's copyright line, which each copy must keep: when a vendored file
+comes from another author than the one in `<SPDX ID>.txt`, give its entry a
+`text` that names its own file in `tooling/check/licence-texts/` (for
+example `MIT-<author>.txt`), with its own copyright line. A vendored entry is an exception for that one
 file only: `MPL-2.0` stays on `devOnly` for packages.
 
 ## Package names and layers
@@ -822,7 +826,9 @@ marked ready for review, not when its title, body or labels change: that would c
 and build everything again. `.github/workflows/pr-details.yml` handles those
 changes. It checks the new title and, if CI's title, leak or coverage-floor
 job failed, re-runs CI's failed jobs, which read the pull request's current
-title, body and labels. Before a pull request merges, the merge queue runs the
+title, body and labels. A run can only be re-run once it has ended, and
+nothing waits for that on a runner: if CI is still running, the workflow's
+`Re-run CI after a details change` job does the re-run when CI ends. Before a pull request merges, the merge queue runs the
 leak guard again and checks the subject of the squash commit, which is what
 lands on `main`: the title as it was when the pull request was queued, or,
 for a single commit, that commit's own subject. A title changed after queueing

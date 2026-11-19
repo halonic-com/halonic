@@ -51,7 +51,7 @@ export const pluginMessages = defineMessages("plugin", {
   asksFirst: () => phrase`asks a person first`,
   programsHeading: () => phrase`Programs`,
   secretsHeading: () => phrase`Secrets`,
-  /** After a secret's name: "goes only to api.weather.example". */
+  /** After a backend secret's name: "goes only to api.weather.example". A program's says more (HAL-12638). */
   secretGoesTo: (host: string) => phrase`goes only to ${host}`,
   addressesHeading: () => phrase`Addresses`,
   /** The heading of the plugin's folder line, as the shared model words it. */
@@ -61,7 +61,7 @@ export const pluginMessages = defineMessages("plugin", {
   /** The last line of the file list when more files follow the ones shown. */
   moreFiles: (count: number) => phrase`${pluginTrustMoreFilesText(count)}`,
   /** The caption under a plugin's fingerprint: what it covers besides the files listed above it. */
-  fingerprintCovers: () => phrase`Covers the manifest and the backend files above.`,
+  fingerprintCovers: () => phrase`Covers the manifest and the files above.`,
   /** T9's last line, under every plugin trust check. */
   notChecked: () =>
     phrase`Plugin code runs apart from the rest of Halonic. Halonic doesn't check what the plugin does with what it's given.`,
@@ -139,9 +139,8 @@ export const pluginMessages = defineMessages("plugin", {
   removeNoTerminal: (name: string) =>
     phrase`Removing ${name} deletes its settings, and there's no terminal to ask you.`,
   removeNoTerminalFix: () => phrase`To remove it anyway, pass --yes.`,
-  /** `halonic plugin remove --help` (W11). No secrets: the CLI stores none. */
-  removeHelp: () =>
-    phrase`Removes the plugin and its settings. To only turn it off: halonic trust --plugin <id> --remove`,
+  /** `halonic plugin remove`'s line in the help (W11). No secrets: the CLI stores none. */
+  removeHelp: () => phrase`Remove a plugin and its settings`,
   unknownPlugin: (name: string) => phrase`There's no plugin called "${name}".`,
   unknownPluginNear: (name: string, near: string) =>
     phrase`There's no plugin called "${name}". Did you mean ${near}?`,

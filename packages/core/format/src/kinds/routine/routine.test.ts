@@ -40,9 +40,13 @@ verifies("format.routine-file", () => {
     });
   });
 
-  it("refuses an interval without a unit, at the trigger", () => {
+  it("refuses an interval that is a bare number at the interval, with the unit message", () => {
     const text = routine("trigger: { every: 15 }", "run: { workflow: invoice }");
-    expect(summary(problemsOf("routine", text))).toEqual(["trigger invalid_union 3"]);
+    const problems = problemsOf("routine", text);
+    expect(summary(problems)).toEqual(["trigger.every invalid_format 3"]);
+    expect(problems[0]?.message).toBe(
+      'use a number and a unit, e.g. "15m", "1h", "1d" (runs are placed from midnight UTC)',
+    );
   });
 
   it("refuses a run with neither a workflow nor an agent, and an unknown overlap", () => {
@@ -83,7 +87,9 @@ verifies("format.routine-mail-interval", () => {
     },
   );
 
-  it("refuses an interval that is a number, at the trigger", () => {
-    expect(summary(problemsOf("routine", mail("15")))).toEqual(["trigger invalid_union 4"]);
+  it("refuses an interval that is a bare number, at the interval", () => {
+    expect(summary(problemsOf("routine", mail("15")))).toEqual([
+      "trigger.mail.every invalid_format 6",
+    ]);
   });
 });

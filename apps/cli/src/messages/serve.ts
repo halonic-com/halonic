@@ -10,9 +10,9 @@ export const serveMessages = defineMessages("serve", {
   /** `serve`'s line in `halonic --help`. */
   summary: () => phrase`Serve the workspace to your phone or browser until you stop it`,
   /** `--network`'s line in `halonic serve --help`. */
-  networkOption: () => phrase`Also open it on your home network; needs a sign-in password`,
+  networkOption: () => phrase`Also open it on your home network; needs a sign-in password.`,
   /** `--port`'s line in `halonic serve --help`. */
-  portOption: () => phrase`The port to listen on (default 4747)`,
+  portOption: () => phrase`The port to listen on (default 4747).`,
   /** What `serve` was doing, for "✕ Couldn't serve acme: …". */
   action: (place: string) => phrase`serve ${place}`,
   /** The end of line 1 of a refusal: nothing was served. */

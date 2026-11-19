@@ -1,4 +1,8 @@
-import { TauriPluginInstallSource, type TauriShell } from "@halonicjs/adapter-fs-tauri";
+import {
+  isSourceNotPicked,
+  TauriPluginInstallSource,
+  type TauriShell,
+} from "@halonicjs/adapter-fs-tauri";
 import type { PluginAddRefusal, PluginService, PluginSource } from "@halonicjs/app";
 import type { FolderReader } from "@halonicjs/ports";
 import { errorKindOf, KindedError } from "@halonicjs/std";
@@ -33,9 +37,9 @@ const unreachable =
  * folder the person picked with **Choose folder…** or one commit of a git repository the shell
  * exported, core's `PluginService.add` reads that place once, checks and hashes it, and the
  * shell places exactly those bytes, not trusted. The person trusts it afterwards, in the
- * dialog that follows. A folder the person typed instead of picking is refused by the shell
- * with a sentence that says to use Choose folder. Closing the dialog stops git and removes the
- * exported folder; a finished add removes it too.
+ * dialog that follows. A folder the person typed instead of picking is refused by the shell,
+ * and the installer says `not-picked`, so the dialog asks for Choose folder under the field.
+ * Closing the dialog stops git and removes the exported folder; a finished add removes it too.
  *
  * @example
  * const installer = desktopPluginInstaller({ ipc, service, reload, onReloadFailed });
@@ -55,8 +59,11 @@ export function desktopPluginInstaller({
     signal: AbortSignal,
   ): Promise<PluginAddOutcome> {
     stopIfAborted(signal);
-    const added = await service.add(stoppable(reader, signal), { from, replace: false });
-    if (!added.ok) return refusedOutcome(added.error);
+    const watched = watchedReader(reader, signal);
+    const added = await service.add(watched.reader, { from, replace: false });
+    // Core words any failed read as a problem with the plugin; a path that was never picked isn't one.
+    if (!added.ok)
+      return watched.notPicked() ? { kind: "not-picked" } : refusedOutcome(added.error);
     // The plugin is in place; a failed re-read doesn't undo it, and the next reload shows it.
     await reload().catch(onReloadFailed);
     return { kind: "added", plugin: added.value.folder };
@@ -100,28 +107,38 @@ function stopIfAborted(signal: AbortSignal): void {
   if (signal.aborted) throw new KindedError("conflict", "Adding the plugin was stopped.");
 }
 
-/** `reader` that refuses every read once `signal` aborts, so a closed dialog stops a folder add before it is placed. */
-function stoppable(reader: FolderReader, signal: AbortSignal): FolderReader {
+/**
+ * `reader` that refuses every read once `signal` aborts, so a closed dialog stops a folder add
+ * before it is placed, and that notes when the shell refused a location that was never picked.
+ */
+function watchedReader(
+  reader: FolderReader,
+  signal: AbortSignal,
+): { reader: FolderReader; notPicked: () => boolean } {
+  let notPicked = false;
+  async function call<T>(read: () => Promise<T>): Promise<T> {
+    stopIfAborted(signal);
+    try {
+      return await read();
+    } catch (error) {
+      if (isSourceNotPicked(error)) notPicked = true;
+      throw error;
+    }
+  }
   return {
-    location: reader.location,
-    entries: async (dir, options) => {
-      stopIfAborted(signal);
-      return await reader.entries(dir, options);
+    reader: {
+      location: reader.location,
+      entries: async (dir, options) => await call(() => reader.entries(dir, options)),
+      read: async (path) => await call(() => reader.read(path)),
+      locationOf: async (path) => await call(() => reader.locationOf(path)),
     },
-    read: async (path) => {
-      stopIfAborted(signal);
-      return await reader.read(path);
-    },
-    locationOf: async (path) => {
-      stopIfAborted(signal);
-      return await reader.locationOf(path);
-    },
+    notPicked: () => notPicked,
   };
 }
 
 /** What core refused, as the dialog words it. */
 function refusedOutcome(refusal: PluginAddRefusal): PluginAddOutcome {
-  if (refusal.kind === "taken") return { kind: "taken", plugin: refusal.id };
+  if (refusal.kind === "taken") return { kind: "taken", plugin: refusal.id, name: refusal.name };
   const missing = refusal.problems.some((problem) => problem.code === "manifest-missing");
   if (missing) return { kind: "no-manifest" };
   return {

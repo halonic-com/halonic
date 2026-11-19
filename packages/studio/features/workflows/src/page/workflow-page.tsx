@@ -28,6 +28,7 @@ import { RunsView } from "../runs/runs-view.tsx";
 import { runsWords } from "../runs/runs-words.ts";
 import { useRuns } from "../runs/use-runs.ts";
 import { useSaveAsTest } from "../runs/use-save-as-test.ts";
+import { useAnnounceDockedRun } from "../start/run-announcement.ts";
 import type { ShownRun } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
@@ -39,6 +40,9 @@ import { WorkflowCanvas } from "./workflow-canvas.tsx";
 import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
 
 type WorkflowView = "flow" | "configuration" | "runs";
+
+/** The command that opens the workspace page at Models (`features/workspace`), as the run page runs it. */
+const openModelsCommand = "workspace.open-models";
 
 /** The tab a page opens on: Configuration when asked for its Tests, else Flow. */
 function firstView(startOnTests: boolean | undefined): WorkflowView {
@@ -62,6 +66,10 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       id={item.id}
       {...(step === "tests" && { startOnTests: true, testsAsked: asked ?? 0 })}
       notAnswering={engineWordsOf(context).notAnswering}
+      announceState={(key, text) => context.announcer.announceState(key, text)}
+      {...(context.runCommand && {
+        openModels: () => void context.runCommand?.(openModelsCommand),
+      })}
       {...(openItem && {
         openRun: (runId: string, step?: string) =>
           openItem({ kind: "run", hub: item.hub, id: runId }, step === undefined ? {} : { step }),
@@ -90,11 +98,13 @@ export function WorkflowScreen({
   id,
   notAnswering = engineWordsOf({}).notAnswering,
   openRun,
+  openModels,
   seeAllRuns,
   goToWorkflows,
   reviewInInbox,
   startOnTests,
   testsAsked = 0,
+  announceState,
 }: WorkflowScreenProps) {
   // After a Try again reads, the workflow's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -149,6 +159,7 @@ export function WorkflowScreen({
   const views = workflowTabs(errors, needYou);
   const shown = useShownRun(runsRead.load, { hubId, id }, runs, shownId);
   const strip = shown?.line;
+  useAnnounceDockedRun(strip, typeof dock === "object", announceState);
   const { startRun } = host;
   const saveAsTest = useSaveAsTest(host, { hubId, id }, (testName) => {
     testsMade.current += 1;
@@ -281,6 +292,7 @@ export function WorkflowScreen({
             setPickedStep(undefined);
           }}
           openRun={openRun}
+          openModels={openModels}
           saveAsTest={saveAsTest}
           pickedStep={view === "flow" ? pickedStep : undefined}
           onClosePickedStep={() => setPickedStep(undefined)}

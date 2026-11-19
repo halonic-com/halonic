@@ -4,9 +4,9 @@ If your network sends outgoing traffic through an `http://` proxy, tell Halonic
 with the usual environment variables. Model calls, Google sign-in, and
 connectors and MCP servers over `https` then go through it.
 
-This replaces the unsupported `NODE_USE_ENV_PROXY` workaround that Halonic
-0.1.x needed. If you used it, unset `NODE_USE_ENV_PROXY` and use the steps
-below instead.
+This replaces the unsupported `NODE_USE_ENV_PROXY` workaround that earlier
+builds of Halonic needed. If you used it, unset `NODE_USE_ENV_PROXY` and use
+the steps below instead.
 
 ## Steps
 

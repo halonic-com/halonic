@@ -7,7 +7,7 @@ import {
   reviewListedTools,
   revokeNamedTool,
 } from "@halonicjs/app/listed-tools";
-import { type Connector, marksRead } from "@halonicjs/format";
+import { asksBeforeEachUse, type Connector } from "@halonicjs/format";
 import type {
   Clock,
   DefinitionSource,
@@ -18,6 +18,7 @@ import type {
   Secrets,
   TokenStore,
   ToolApprovalStore,
+  ToolRisk,
 } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { ListedToolsHost, ListedToolsSnapshot } from "@halonicjs/studio-feature-library/api";
@@ -87,11 +88,14 @@ export class WorkspaceListedTools implements ListedToolsHost {
     if ("google" in source.connector.transport || "http" in source.connector.transport) {
       return nothingToReview(sourceName);
     }
-    return listedToolsSnapshot(sourceName, reviewListedTools(await this.#check(source)), {
+    const check = await this.#check(source);
+    const risks = listedRisksOf(check);
+    return listedToolsSnapshot(sourceName, reviewListedTools(check), {
       workspaceName:
         filesOf(source.workspace, "workspace")[0]?.value.name ?? folderNameOf(source.location),
-      // A run asks before every tool the `read` list doesn't mark (HAL-12339).
-      asksBeforeUse: (toolName) => !marksRead(source.connector.tools, toolName),
+      // The engine's rule, so the screen says what a run does (HAL-12545).
+      asksBeforeUse: (toolName) =>
+        asksBeforeEachUse(source.connector.tools, toolName, risks.get(toolName)),
     });
   }
 
@@ -229,6 +233,18 @@ function folderNameOf(location: string): string {
   );
 }
 
+/**
+ * Each listed tool's risk as the check read its listing, by the name its
+ * server lists it under: the tools that are on and the waiting ones.
+ */
+function listedRisksOf(check: ListedToolApprovalCheck): ReadonlyMap<string, ToolRisk> {
+  const on = check.tools.flatMap((tool) =>
+    tool.kind === "listed" ? [[tool.listedName, tool.risk] as const] : [],
+  );
+  const waiting = check.waiting.map((tool) => [tool.listedName, tool.risk] as const);
+  return new Map([...on, ...waiting]);
+}
+
 /** A connector whose tools are built in lists none, so there is nothing to approve. */
 function nothingToReview(sourceName: string): ListedToolsSnapshot {
   return {
@@ -238,6 +254,7 @@ function nothingToReview(sourceName: string): ListedToolsSnapshot {
     keepsChanging: [],
     refused: [],
     approved: [],
+    approvedWithoutAsking: [],
     listingRefused: null,
     unreadable: null,
     hasApprovals: false,

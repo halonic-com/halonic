@@ -11,6 +11,10 @@ export {
 } from "./local-tool-launch.ts";
 export { readSecretEnv } from "./plan-launch.ts";
 export {
+  type PluginLocalToolSetting,
+  pluginLocalToolPlace,
+} from "./plugin-local-tool-place.ts";
+export {
   type ConnectorBlock,
   type LocalToolSetup,
   SandboxStdioConnectorFactory,

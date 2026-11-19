@@ -400,6 +400,14 @@ verifies("runs.row-columns", () => {
     expect(columnsOf(root, "5c5c5c")[3]).toContain("Schedule · weekdays at 08:00");
     const tooltip = root.ownerDocument.querySelector('[role="tooltip"]');
     expect(tooltip?.textContent).toBe("Morning brief");
+    // Plain inline text, so a phone's row can cut it with "…" like any other (HAL-12829).
+    const words = Array.from(root.querySelectorAll("span")).filter(
+      (span) => span.textContent === "Schedule · weekdays at 08:00",
+    );
+    expect(words.length).toBeGreaterThan(0);
+    for (const span of words) {
+      expect(span.className).not.toContain("inline-flex");
+    }
   });
 
   it("gives a failed row the failed sentence in danger and the Failed chip", async () => {

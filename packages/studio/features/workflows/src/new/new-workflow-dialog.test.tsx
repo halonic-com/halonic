@@ -56,6 +56,20 @@ verifies("workflows.new.create", () => {
     expect(body()).not.toContain("Hub");
   });
 
+  it("draws the note's info icon in an icon-sized box, so it doesn't shrink to nothing", async () => {
+    await show(dialog().node);
+
+    const note = [...document.querySelectorAll("p")].find((line) =>
+      line.textContent?.startsWith("It starts with"),
+    );
+    // The kit's icons have no size of their own: in the note's flex row a bare one has no width.
+    const icon = note?.querySelector("svg")?.parentElement;
+    expect(icon).not.toBe(note);
+    expect(icon?.className).toContain("size-icon-sm");
+    expect(icon?.className).toContain("*:size-full");
+    expect(icon?.getAttribute("aria-hidden")).toBe("true");
+  });
+
   it("shows the file the name makes, with -2 when the id is taken, and follows the hub", async () => {
     await show(
       dialog({ hubs: [acme, beta], takenIds: (hub) => (hub === "acme" ? ["invoice-intake"] : []) })

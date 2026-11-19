@@ -77,11 +77,10 @@ WSL folder.
   is still there at the agent's next run.
 - **Allowed sites see what the agent can read.** The fence checks a site's
   name, not what is sent to it.
-- **Only blocked sites reached through the proxy have a name.** The run page
-  names each site a step was refused, once, with its tries. A program that
-  connects without the fence's proxy is still refused, but the log has no site
-  name for it, so in 0.1 the run page shows no row for it. A blocked site gets
-  no connection on any system; on Windows, the name may still be looked up.
+- **Blocked sites aren't reported yet.** The sandbox on Linux, macOS and
+  WSL 2 reports only refused writes, so neither the run log nor the run page
+  names a blocked site. A blocked site still gets no connection on any system;
+  on Windows, the name may still be looked up.
 - **A live run's program copy controls which code runs, not what it can
   reach.** A run that reads the live version starts a connector's program in a
   copy of the workspace at that version, so a change that isn't live, such as a
@@ -115,9 +114,10 @@ draft).
 
 ## "This computer" has none of it
 
-Nothing offers this choice yet: Studio has no screen for it and the CLI has
-no command that makes one. Today the CLI only reads such a choice. The limits
-below describe the choice once Studio offers it.
+Nothing makes this choice yet. Studio's Settings › Agent sandbox saves a
+**New agents run** choice, but nothing reads it, and Studio refuses an agent
+set to this computer. The CLI has no command that makes one; it only reads
+such a choice. The limits below describe the choice once it can be made.
 
 The choice is per agent and per computer: run an agent on this computer
 without the sandbox. That agent runs with all your rights: it can read your keys

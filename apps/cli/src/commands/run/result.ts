@@ -5,15 +5,22 @@
 // so both say the same about a run. The words are the catalogue's.
 
 import { type RunDetail, shortRunId } from "@halonicjs/app";
+import { workspaceModelsOf } from "@halonicjs/app/run-failure";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import type { CommandResult } from "../../command.ts";
+import { providerAddress } from "../../doctor-workspace.ts";
 import { type ExitCode, exitCode } from "../../exit-code.ts";
 import { dimmed, markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
-import { workspaceModelsOf } from "../../run-failure-of.ts";
 import type { RunClock } from "../../run-times.ts";
-import { type RunDefinitions, runViewDefinitions, stepColumns, stepLines } from "../../run-view.ts";
+import {
+  providerNoteLines,
+  type RunDefinitions,
+  runViewDefinitions,
+  stepColumns,
+  stepLines,
+} from "../../run-view.ts";
 import { workflowTitle } from "../runs/listed-run.ts";
 import { failedRunDebugText, outputHintLines, showEnding } from "../runs/show-ending.ts";
 
@@ -49,7 +56,7 @@ export function runResult(run: RunDetail, facts: RunResultFacts): CommandResult 
 
 /**
  * What {@link runResult} prints after the heading: a blank line and the step
- * lines, then the ending. `halonic runs send` prints the same once the run
+ * lines, the providers' notes on the run's model calls, then the ending. `halonic runs send` prints the same once the run
  * it answered ends or waits again. A failed run's log about its failure is
  * the result's `debugText`, which only `--debug` prints.
  */
@@ -64,6 +71,7 @@ export function runProgress(run: RunDetail, facts: RunResultFacts): CommandResul
     exitCode: runExitCode(summary),
     lines: [
       ...(steps.length === 0 ? [] : [[], ...steps]),
+      ...providerNoteLines(events),
       ...ending(run, title, definitions, facts),
       ...unusedEventsLines(facts.unusedEvents ?? []),
     ],
@@ -126,7 +134,7 @@ function ending(
   definitions: RunDefinitions,
   facts: RunResultFacts,
 ): Phrase[] {
-  const models = () => workspaceModelsOf(facts.workspace, run.summary.hubId);
+  const models = () => workspaceModelsOf(facts.workspace, run.summary.hubId, providerAddress);
   const lines = showEnding(run, title, definitions, models, facts.dir, facts.debugging);
   if (run.summary.status !== "completed") {
     return lines;

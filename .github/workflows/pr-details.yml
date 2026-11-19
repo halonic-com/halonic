@@ -5,25 +5,35 @@
 # Those jobs read the pull request's current text and labels, so a fixed title
 # or an added `coverage-floor-lowered` label turns `ci-ok` green. The merge
 # queue checks the title and runs the leak guard again before anything merges.
+#
+# A run can only be re-run once it has ended. Neither job waits for that on a
+# runner: runners are shared with the merge queue (HAL-12419). If CI has
+# ended, `details` re-runs it at once. If it is still running, `after-ci`
+# re-runs it when it ends, provided the details changed after that attempt
+# started: a later run of this workflow on the same head says they did.
 
 name: PR details
 
 on:
   pull_request:
     types: [edited, labeled, unlabeled]
+  # zizmor: ignore[dangerous-triggers] checks out nothing; it only reads job results and re-runs CI
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
 
 permissions: {}
 
 concurrency:
-  group: pr-details-${{ github.event.pull_request.number }}
+  group: pr-details-${{ github.event.pull_request.number || github.event.workflow_run.id }}
   cancel-in-progress: true
 
 jobs:
   details:
     name: Pull request details
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
-    # Waits for the CI run to end: its slowest jobs allow 40 minutes, plus queue time.
-    timeout-minutes: 75
+    timeout-minutes: 5
     permissions:
       actions: write
       contents: read
@@ -57,28 +67,62 @@ jobs:
             echo "No CI run for this commit yet; it will read the current details."
             exit 0
           fi
+          if [ "$(gh run view "$run" --json status --jq .status)" != "completed" ]; then
+            echo "CI run $run is still running. If a title, leak or coverage-floor job fails, it is re-run when the run ends."
+            exit 0
+          fi
+          if [ "$(gh run view "$run" --json conclusion --jq .conclusion)" = "cancelled" ]; then
+            echo "CI run $run was cancelled by a newer push; that run reads the current details."
+            exit 0
+          fi
           details='["Fast gates", "Leak guard", "Coverage floors don'"'"'t go down"]'
-          # A job that is running may have read the old details, so wait for all
-          # three to end (or the whole run, if one of them never starts).
-          while [ "$(gh run view "$run" --json status,jobs --jq "
-            .status != \"completed\" and
-            ([.jobs[] | select((.name | IN($details[])) and .status != \"completed\")] | length > 0)
-          ")" = "true" ]; do
-            sleep 30
-          done
           failed=$(gh run view "$run" --json jobs \
             --jq "[.jobs[] | select(.conclusion == \"failure\" and (.name | IN($details[])))] | length")
           if [ "$failed" = "0" ]; then
             echo "No title, leak or coverage-floor job failed in CI run $run: nothing to re-run."
             exit 0
           fi
-          # A run can only be re-run once it has ended.
-          while [ "$(gh run view "$run" --json status --jq .status)" != "completed" ]; do
-            sleep 30
-          done
-          if [ "$(gh run view "$run" --json conclusion --jq .conclusion)" = "cancelled" ]; then
-            echo "CI run $run was cancelled by a newer push; that run reads the current details."
+          echo "Re-running the failed jobs of CI run $run."
+          # after-ci may have re-run it a moment ago.
+          gh run rerun "$run" --failed || [ "$(gh run view "$run" --json status --jq .status)" != "completed" ]
+
+  after-ci:
+    name: Re-run CI after a details change
+    # Only a failed pull request run from this repository: a fork's run was
+    # never re-run here, because its pull_request token can't.
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Re-run CI's failed jobs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN: ${{ github.event.workflow_run.id }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          STARTED: ${{ github.event.workflow_run.run_started_at }}
+        run: |
+          details='["Fast gates", "Leak guard", "Coverage floors don'"'"'t go down"]'
+          failed=$(gh run view "$RUN" --json jobs \
+            --jq "[.jobs[] | select(.conclusion == \"failure\" and (.name | IN($details[])))] | length")
+          if [ "$failed" = "0" ]; then
+            echo "No title, leak or coverage-floor job failed in CI run $RUN: nothing to re-run."
             exit 0
           fi
-          echo "Re-running the failed jobs of CI run $run."
-          gh run rerun "$run" --failed
+          # Each title, body or label change starts a run of this workflow on
+          # the pull request's head. None since this attempt started means the
+          # failed jobs read the current details, so a re-run would fail again.
+          edits=$(gh api "repos/$GH_REPO/actions/workflows/pr-details.yml/runs?event=pull_request&head_sha=$HEAD_SHA&created=>$STARTED" \
+            --jq .total_count)
+          if [ "$edits" = "0" ]; then
+            echo "The details haven't changed since CI run $RUN started: nothing to re-run."
+            exit 0
+          fi
+          echo "The details changed while CI run $RUN was running. Re-running its failed jobs."
+          gh run rerun "$RUN" --failed || [ "$(gh run view "$RUN" --json status --jq .status)" != "completed" ]

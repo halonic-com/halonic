@@ -34,6 +34,7 @@ function serviceOf(settings: string): EngineService {
     newToken: () => "token",
     reportError: () => {},
     isTrusted: async () => true,
+    mayStart: async () => true,
   });
 }
 

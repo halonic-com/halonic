@@ -7,7 +7,7 @@ import {
   CommandBox,
 } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
-import { type RefObject, useEffect, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import { wasDecidedElsewhere } from "../decide.ts";
 import { PlainValue } from "./plain-value.tsx";
 
@@ -225,6 +225,37 @@ export function FailedLine({ onRetry, manual = null, elsewhere = null }: FailedL
           </Button>
         </span>
       )}
+    </div>
+  );
+}
+
+/**
+ * The bar of a card whose run no longer waits for it (flow-inbox 5.4, INBOX-CARD-31): "This is no
+ * longer waiting for you. …" with **Open run**, in place of the answers. The buttons that had
+ * focus are gone, so focus moves to it, but only from inside the card, never from elsewhere.
+ */
+export function StaleBar({
+  card,
+  openRun,
+}: {
+  readonly card: RefObject<HTMLElement | null>;
+  readonly openRun: (() => void) | undefined;
+}) {
+  const line = useRef<CalloutHandle>(null);
+  useEffect(() => {
+    const active = document.activeElement;
+    if (active === document.body || card.current?.contains(active)) line.current?.focus();
+  }, [card]);
+  return (
+    <div className="border-t border-border p-4">
+      <Callout
+        tone="info"
+        announce="focus"
+        ref={line}
+        {...(openRun === undefined ? {} : { action: { label: "Open run", onClick: openRun } })}
+      >
+        {decidedElsewhereText}
+      </Callout>
     </div>
   );
 }

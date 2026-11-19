@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readCheckCode, readPairingCode } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it } from "vitest";
 import { render, unmountAll } from "../test/render.tsx";
@@ -36,5 +37,16 @@ verifies("kit.code-display", () => {
     expect(shownIn(container)).toEqual(["7KQ2", "", "M4XD", "", "9TH6"]);
     expect(code.className).toContain("text-title");
     expect(code.className).not.toContain("border");
+  });
+});
+
+verifies("kit.code-display-copy", () => {
+  it("shows plain text a copied code reads back from, with nothing between the groups", () => {
+    const pairing = render(<CodeDisplay code="7KQ2M4XD9TH6" group={4} size="md" />).container;
+    const check = render(<CodeDisplay code="4F72KQ" group={3} label="Check code" />).container;
+    expect(pairing.textContent).toBe("7KQ2M4XD9TH6");
+    expect(readPairingCode(pairing.textContent ?? "")).toBe("7KQ2M4XD9TH6");
+    expect(check.textContent).toBe("4F72KQ");
+    expect(readCheckCode(check.textContent ?? "")).toBe("4F72KQ");
   });
 });

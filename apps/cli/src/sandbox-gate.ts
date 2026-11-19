@@ -48,26 +48,48 @@ export interface UnsandboxedAgent {
 /**
  * A run refused because the sandbox can't start on this computer: line 1
  * says so and that nothing ran (or was sent), line 2 is the reason and fix
- * for its code, line 3 the docs link and the code. The check's own
- * sentence is only in `cause`, so it shows with `--debug` and nowhere else.
+ * for its code, with a hint after it when the command has another way out,
+ * line 3 the docs link and the code. The check's own sentence is only in
+ * `cause`, so it shows with `--debug` and nowhere else.
  */
 export class SandboxRefusedError extends KindedError {
   /** The `Sandbox` port's reason code, such as `bubblewrap-missing`, shown after the docs link. */
   readonly code: string;
   /** The sandbox page of the docs, for the code's section. */
   readonly docs: string;
+  readonly #ending: Message;
+  readonly #missing: readonly string[];
+  readonly #wslDistro: string | undefined;
 
-  constructor(code: string, ending: Message, missing: readonly string[], wslDistro?: string) {
+  constructor(
+    code: string,
+    ending: Message,
+    missing: readonly string[],
+    wslDistro?: string,
+    hint?: Message,
+  ) {
+    const fix = plainText(sandboxMessages.refusedFix(code, { distro: wslDistro, missing }).phrase);
     super(
       "unavailable",
       `${plainText(sandboxMessages.cantStart().phrase)} ${plainText(ending.phrase)}`,
       {
-        fix: plainText(sandboxMessages.refusedFix(code, { distro: wslDistro, missing }).phrase),
+        fix: hint === undefined ? fix : `${fix} ${plainText(hint.phrase)}`,
         ...(missing.length === 0 ? {} : { cause: new Error(missing.join(" ")) }),
       },
     );
     this.code = code;
     this.docs = sandboxDocsLink(code);
+    this.#ending = ending;
+    this.#missing = missing;
+    this.#wslDistro = wslDistro;
+  }
+
+  /**
+   * The same refusal with `hint` after the fix on line 2, for a command that
+   * has another way out, such as `run`'s `--harness halonic` (HAL-12597).
+   */
+  withHint(hint: Message): SandboxRefusedError {
+    return new SandboxRefusedError(this.code, this.#ending, this.#missing, this.#wslDistro, hint);
   }
 }
 

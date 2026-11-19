@@ -161,6 +161,7 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
       <div className={`flex min-h-0 flex-1 flex-col bg-surface ${desktop ? panel : phoneColumn}`}>
         {desktop ? null : props.phoneTopBar}
         <EngineLine engine={props.engine} />
+        {desktop ? null : <PhoneNotices saveNote={props.saveNote} />}
         <div className={`relative flex min-h-0 flex-1 ${desktop ? "" : phoneContent}`}>
           {desktop ? (
             <SidebarSlot
@@ -207,6 +208,28 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
 const statusBarClasses = [
   "group/bar flex h-statusbar shrink-0 items-center gap-4 border-t border-border bg-surface-subtle px-3 text-caption text-fg-muted",
   "transition-colors has-[[data-problem=warning]]:bg-warning-soft has-[[data-problem=danger]]:bg-danger-soft",
+].join(" ");
+
+/**
+ * On a phone, which has no status bar, the save note shows in a strip under the top bar and the
+ * engine line, only while it's a problem: full width, with the problem's soft fill edge to edge.
+ * The strip is part of the frame, so it doesn't scroll away with the page. With no problem, no
+ * strip shows at all, not an empty one; "Saved" and "Saving…" don't show on a phone.
+ */
+function PhoneNotices({ saveNote }: Pick<ShellFrameProps, "saveNote">) {
+  if (!hasContent(saveNote)) {
+    return null;
+  }
+  return (
+    <div data-phone-notices="" className={phoneNoticesClasses}>
+      {saveNote}
+    </div>
+  );
+}
+
+const phoneNoticesClasses = [
+  "hidden min-h-touch shrink-0 items-center border-b border-border ps-4 pe-1 has-[[data-problem]]:flex",
+  "has-[[data-problem=warning]]:bg-warning-soft has-[[data-problem=danger]]:bg-danger-soft",
 ].join(" ");
 
 /** Whether a slot was given something to show; `null`, `false` and nothing take no room. */

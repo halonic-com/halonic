@@ -84,6 +84,8 @@ export const itemWords = {
   /** A row's second line: its kind word, then what changed. */
   kindAndSentence: (kind: string, sentence: string) =>
     sentence === "" ? kind : `${kind} · ${sentence}`,
+  /** Over a new item's fields on its What changed page: "New skill". */
+  newOfKind: (kind: string) => `New ${kind.toLowerCase()}`,
   /** `.gitignore`: the file Halonic writes when history is turned on. */
   historyLeavesOut: "Files history leaves out",
   /** The sentence of an item that moved: "Renamed from Support". */
@@ -139,6 +141,8 @@ export const discardWords = {
   fileDiscarded: "Discarded this file",
   /** The toast's link: puts back what the toast says was discarded. */
   undo: "Undo",
+  /** A new item's whole file under Advanced, read by a screen reader. */
+  wholeFile: (path: string) => `The whole of ${path}`,
   /** Over the first lines of a new file, read by a screen reader. */
   firstLines: (path: string) => `First lines of ${path}`,
   /** A part's heading: "Line 12" or "Lines 12 to 18"; `first` and `last` count from 1. */
@@ -234,9 +238,12 @@ export const updatesWords = {
   /** The toast's title when nothing could be got; the reason and "Nothing changed here." follow. */
   failed: "Couldn't get versions",
   nothingChanged: "Nothing changed here.",
-  /** Both sides have new versions; combining them, item by item, comes with Keep mine and Use theirs. */
+  /**
+   * Both sides have new versions and the choices didn't open; trying again can't help, so the
+   * toast has no Try again (UX check L13).
+   */
   bothMoved:
-    "The shared copy and this workspace both have new versions, so they can't be combined here yet.",
+    "The shared copy and this workspace both have new versions, and Halonic can't combine them yet.",
   tryAgain: "Try again",
   alreadyWorking: "Halonic is already getting updates.",
 };

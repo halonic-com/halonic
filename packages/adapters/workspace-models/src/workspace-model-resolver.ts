@@ -46,9 +46,10 @@ export interface WorkspaceModelResolverInput {
   readonly http: HttpClient;
   /**
    * Whether the workspace is trusted on this computer, asked on every model
-   * call. A provider's stored key goes only to its type's own address unless
-   * this says yes (HAL-11342). Required, so no host can forget it; a check
-   * that throws fails the call, as a no does.
+   * call. Unless this says yes, only the test model (`type: mock`) is called
+   * (HAL-12409), and a provider's stored key goes only to its type's own
+   * address (HAL-11342). Required, so no host can forget it; a check that
+   * throws fails the call, as a no does.
    */
   readonly isTrusted: () => boolean | Promise<boolean>;
   /**
@@ -75,9 +76,15 @@ export interface WorkspaceModelResolverInput {
  * keeps its script's place: a run gets a mock of its own, so every run starts
  * the script afresh, and a call without a run (a chat turn) gets a new mock each time.
  *
+ * In a workspace that isn't trusted, only the test model is called: starting
+ * anything else needs trust (Liam, HAL-1984), and this backs up each host's
+ * own check before a run starts, so a path that skips it still reaches no
+ * real model, a keyless one on this computer included (HAL-12409).
+ *
  * @throws {WorkspaceModelError} from the resolver when the call's model names
  *   an alias the hub doesn't have or a provider the workspace doesn't have,
  *   unsaved settings point away from this computer in a local-only workspace,
+ *   the workspace isn't trusted and the provider isn't the test model,
  *   or the provider can't be built (see `workspaceProvider`)
  * @throws RangeError from the resolver when the workspace has no such hub
  *
@@ -139,7 +146,7 @@ export function workspaceModelResolver(
         modelTexts.noProviderFix(target.provider),
       );
     }
-    await requireKeyMayGo(file, { trusted, keyOrigins: input.keyOrigins });
+    await requireMayCall(file, { trusted, keyOrigins: input.keyOrigins });
     let provider: LlmProvider | undefined;
     if (file.type === "mock") {
       provider = mockFor(file, scope);
@@ -203,6 +210,29 @@ export function latestModelResolver(
     }
     return await last.resolve(request, scope);
   };
+}
+
+/**
+ * The one check before a provider is called: the key check below, then, in a
+ * workspace that isn't trusted, a refusal of every provider but the test
+ * model. The key check goes first, so a key that would go to another address
+ * is named as such.
+ *
+ * @throws {WorkspaceModelError} what {@link requireKeyMayGo} throws, or
+ *   `untrusted-workspace` naming the provider
+ */
+async function requireMayCall(
+  file: ProviderFile,
+  context: { trusted: boolean; keyOrigins: KeyOrigins },
+): Promise<void> {
+  await requireKeyMayGo(file, context);
+  if (file.type !== "mock" && !context.trusted) {
+    throw new WorkspaceModelError(
+      "untrusted-workspace",
+      modelTexts.untrustedWorkspace(file.id),
+      modelTexts.untrustedWorkspaceFix(file.id),
+    );
+  }
 }
 
 /**
@@ -301,7 +331,7 @@ async function unsavedModel(
     ...(settings.baseUrl === undefined ? {} : { baseUrl: settings.baseUrl }),
     ...(settings.secret === undefined ? {} : { secret: settings.secret }),
   };
-  await requireKeyMayGo(file, context);
+  await requireMayCall(file, context);
   return resolvedModel(workspaceProvider(file, context), file, {
     provider: file.id,
     model: settings.model,

@@ -167,3 +167,41 @@ verifies("cli.run", () => {
     );
   });
 });
+
+verifies("cli.run-provider-notes", () => {
+  const facts = () => ({
+    workspace,
+    workspaceName: "acme",
+    dir: undefined,
+    clock: { now: new Date(run.summary.startedAt), timeZone: "UTC" },
+  });
+
+  /** The run, with `notes` on each of its model calls. */
+  function withNotes(notes: string[]): RunDetail {
+    const noted = events.map((event) =>
+      event.type === "llm.response" ? { ...event, notes } : event,
+    );
+    return { ...run, events: noted };
+  }
+
+  it("shows each note once, after the step lines and before the ending", () => {
+    const note = "Left out temperature: claude-sonnet-5-5 doesn't take it.";
+    expect(events.filter((event) => event.type === "llm.response").length).toBeGreaterThan(1);
+
+    const result = runResult(withNotes([note]), facts());
+
+    const lines = result.lines.map((line) => plainText(line));
+    const plain = runResult(run, facts()).lines.map((line) => plainText(line));
+    // The heading, a blank line, then the step lines up to the next blank line.
+    const stepsEnd = plain.indexOf("", 2);
+    expect(lines.filter((line) => line === note)).toHaveLength(1);
+    expect(lines).toEqual([...plain.slice(0, stepsEnd), "", note, ...plain.slice(stepsEnd)]);
+    expect(result.exitCode).toBe(exitCode.ok);
+  });
+
+  it("shows an escape code in a note as its code", () => {
+    const result = runResult(withNotes(["\u001b[2JLeft out top_p."]), facts());
+
+    expect(result.lines.map((line) => plainText(line))).toContain("\\u001b[2JLeft out top_p.");
+  });
+});

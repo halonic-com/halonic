@@ -1,5 +1,6 @@
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
 import type { WorkflowsHost } from "../api.ts";
+import type { AnnounceState } from "../start/run-announcement.ts";
 
 /** Props for `WorkflowScreen`. */
 export interface WorkflowScreenProps {
@@ -12,6 +13,8 @@ export interface WorkflowScreenProps {
   readonly notAnswering?: string;
   /** Opens a test run's card from the Tests page; absent where there is no run card. */
   readonly openRun?: (runId: string, step?: string) => void;
+  /** Opens the workspace page at Models, for **Open Models** on the Run panel's run card; without it the button isn't there. */
+  readonly openModels?: () => void;
   /** Opens the Runs list; absent where the app can't open it. */
   readonly seeAllRuns?: () => void;
   /** Opens the Workflows list, for a workflow that isn't there any more; absent where the app can't open it. */
@@ -25,4 +28,6 @@ export interface WorkflowScreenProps {
    * already goes to Tests again when this changes, also when it is asked for the same step twice.
    */
   readonly testsAsked?: number;
+  /** Reads a state change to screen readers (`announcer.announceState`); without it nothing is read. */
+  readonly announceState?: AnnounceState;
 }

@@ -28,8 +28,8 @@ const firstTabKey = 4;
 /**
  * The Library feature: the Library place with its four tabs (Alt+4 to Alt+7), the `skill` item
  * kind (its page edits a skill's name, when to use it and instructions), the `knowledge` kind
- * (its page sets a source's summary and lookup mode), and the `connector`
- * item kind, one tab per connector, whose page shows
+ * (its page sets a source's summary and lookup mode), the `collection` kind (its page shows the
+ * records in a grid, HAL-12534), and the `connector` item kind, one tab per connector, whose page shows
  * the connector's state and what the engine refused from it. The full connector page (HAL-751)
  * takes the page over and keeps the status section.
  */
@@ -102,6 +102,17 @@ export const libraryFeature = defineFeature({
       open: { view: "KnowledgePage", load: () => import("./ui/knowledge-page.tsx") },
       tab: {
         describe: (item, context) => ({ label: nameOfItem(context, "knowledge", item) }),
+        exists: () => true,
+      },
+    });
+    studio.itemKinds.add({
+      kind: "collection",
+      label: "Collection",
+      icon: "library",
+      place: "library",
+      open: { view: "CollectionPage", load: () => import("./ui/collection-page.tsx") },
+      tab: {
+        describe: (item, context) => ({ label: nameOfItem(context, "collection", item) }),
         exists: () => true,
       },
     });

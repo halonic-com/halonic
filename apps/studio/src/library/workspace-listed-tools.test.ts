@@ -181,6 +181,59 @@ verifies("studio.workspace-listed-tools", () => {
     });
   });
 
+  describe("asks before each use", () => {
+    const lookup: ConnectorTool = {
+      name: "lookup",
+      description: "Finds a note.",
+      parameters: { type: "object" },
+    };
+    const updateNote: ConnectorTool = {
+      name: "update_note",
+      description: "Changes a note.",
+      parameters: { type: "object" },
+    };
+
+    /** The rows' `asksBeforeUse`, by name, for the notes connector with these `tools:` lines. */
+    async function asksOf(toolsLines: string, tools: ConnectorTool[]) {
+      const files = acmeFiles({
+        "library/connectors/notes.connector.yaml": notesFile + toolsLines,
+      });
+      const snapshot = await hostOf({ files, tools }).host.review("notes");
+      return Object.fromEntries(snapshot.toReview.map((row) => [row.name, row.asksBeforeUse]));
+    }
+
+    it("asks before every tool of a connector with no tools section", async () => {
+      expect(await asksOf("", [lookup, updateNote])).toEqual({ lookup: true, update_note: true });
+    });
+
+    it("asks before a tool that approve and read both name", async () => {
+      const lines = "tools:\n  approve: [lookup]\n  read: [lookup]\n";
+      expect(await asksOf(lines, [lookup])).toEqual({ lookup: true });
+    });
+
+    it("asks before a tool its listing says sends, even when the read list marks it", async () => {
+      const sends: ConnectorTool = { ...lookup, risk: "send" };
+      expect(await asksOf("tools:\n  read: [lookup]\n", [sends])).toEqual({ lookup: true });
+    });
+
+    it("says an approved tool the read list marks runs without asking", async () => {
+      const files = acmeFiles({
+        "library/connectors/notes.connector.yaml": `${notesFile}tools:\n  read: [lookup]\n`,
+      });
+      const { host } = hostOf({ files, tools: [lookup, updateNote] });
+      const picks = (await host.review("notes")).toReview.map((row) => ({
+        name: row.name,
+        fingerprint: row.fingerprint,
+      }));
+      await host.approve("notes", picks);
+
+      const snapshot = await host.review("notes");
+
+      expect(snapshot.approved).toEqual(["lookup", "update_note"]);
+      expect(snapshot.approvedWithoutAsking).toEqual(["lookup"]);
+    });
+  });
+
   describe("approve", () => {
     it("approves the version shown, so the tool is on, and tells its listeners", async () => {
       const { host } = hostOf();

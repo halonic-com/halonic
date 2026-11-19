@@ -26,15 +26,28 @@ export const configurationWords = {
     "The most model calls in one step. Empty means 6. Claude Code and Codex agents don't use it.",
   /** Microcopy 8.5. */
   turnLimitInvalid: "Enter a whole number from 1 to 200.",
+  /** Microcopy 1.6: the field error for a model the file names that is no alias (HAL-12390 S8). */
+  unknownAlias: (name: string) =>
+    `${name} isn't a model alias in this workspace. Choose one, or add it in Models.`,
   harness: "Harness",
+  /** Flow-agents 5.3, the group's hint. */
+  harnessHint: "What drives this agent",
   harnessNames: { halonic: "Halonic", "claude-code": "Claude Code", codex: "Codex" },
+  /** Flow-agents 5.3, the lines under the options. */
+  builtIn: "Built in. Needs nothing installed.",
+  found: (program: string, version: string) => `Found ${program} ${version}`,
   /** Microcopy 8.5, the line under a harness option. */
   notInstalled: (program: string) => `${program} isn't installed.`,
   tooOld: (program: string, version: string, supported: string) =>
     `${program} ${version} isn't supported. Halonic needs ${supported.replace(/^>=/, "")} or newer.`,
   signedOut: (program: string, version: string) => `Found ${program} ${version} · not signed in`,
-  /** The check itself didn't work (harness-states rule 4): the option line and Check again only. */
-  couldntCheck: (program: string) => `Couldn't check ${program}.`,
+  howToInstall: "How to install",
+  howToUpdate: "How to update",
+  /** The host found the program but its check failed (harness-states rule 4; board P5). */
+  couldntAskVersion: (program: string, reason: string) =>
+    `Found ${program}, but couldn't ask its version: ${reason}`,
+  /** The host itself couldn't be asked (D3 on HAL-12697). Neither shows a strip. */
+  couldntCheck: (program: string, reason: string) => `Couldn't check ${program}: ${reason}`,
   checkAgain: "Check again",
   checking: "Checking…",
   /** Microcopy 8.5, the strip. */

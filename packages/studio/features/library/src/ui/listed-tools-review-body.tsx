@@ -103,7 +103,11 @@ export function ListedToolsReviewBody({ model, onRemoved, onOutcome }: ListedToo
                   <span className="font-mono text-body text-fg [overflow-wrap:anywhere]">
                     {name}
                   </span>
-                  <span className="block">{listedToolsWords.approvedAsks}</span>
+                  <span className="block">
+                    {snapshot.approvedWithoutAsking.includes(name)
+                      ? listedToolsWords.doesntAsk(snapshot.workspaceName)
+                      : listedToolsWords.approvedAsks}
+                  </span>
                 </span>
                 <Button
                   variant="ghost"

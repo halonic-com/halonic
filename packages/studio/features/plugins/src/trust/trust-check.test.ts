@@ -105,6 +105,7 @@ verifies("plugins.plugin-trust-check", () => {
         name: "api-key",
         goesTo: ["api.example.com"],
         how: "Authorization header",
+        givenTo: undefined,
         kind: "backend",
       },
     ]);

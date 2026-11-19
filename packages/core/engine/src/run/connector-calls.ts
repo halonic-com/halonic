@@ -8,7 +8,7 @@ import type { Agent, Connector } from "@halonicjs/format";
 import type { ConnectorClient } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 import type { ListedToolApproval } from "../agent/listed-tool-approval.ts";
-import { countedRisk, type DeclaredTools, isMarkedRead } from "../agent/offer-listed-tools.ts";
+import { countedRisk, type DeclaredTools } from "../agent/offer-listed-tools.ts";
 import type { EffectBoundary } from "../agent/run-tool-call.ts";
 import { collectTurnTools, errorMessage } from "../agent/turn-tools.ts";
 import type { CallToolEffect, ToolResult } from "../kernel/decide-types.ts";
@@ -69,7 +69,7 @@ export function readToolsOf(
     id: connector.id,
     listTools: async () =>
       (await connector.listTools()).filter(
-        (tool) => countedRisk(tool.risk, isMarkedRead(tools, tool.name)) === "read",
+        (tool) => countedRisk(tool.risk, tools, tool.name) === "read",
       ),
     callTool: (name, args, options) => connector.callTool(name, args, options),
     close: () => connector.close(),

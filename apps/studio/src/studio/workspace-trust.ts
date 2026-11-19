@@ -145,6 +145,28 @@ export class WorkspaceTrust {
     return (await this.#checkSubject(workspace)).check;
   }
 
+  /**
+   * Whether something may start from a workspace the caller already loaded, by the rule the CLI
+   * starts runs by (`needsNoTrust`, HAL-1984, HAL-12409): a person trusted exactly this content,
+   * or it can only reach the test model. Never rejects: a check that fails is a no.
+   */
+  async mayStart(workspace: LoadedWorkspace): Promise<boolean> {
+    try {
+      const { check, subject } = await this.#checkSubject(workspace);
+      return check.status === "trusted" || reachesOnlyTheTestModel(subject);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * {@link mayStart} from the last check, for a page that asks before it starts: no until the
+   * first check ends, while a check runs and after one that failed.
+   */
+  mayStartNow(): boolean {
+    return this.#settled && (this.#check?.status === "trusted" || this.needsNoTrust);
+  }
+
   /** Whether the last check found the workspace trusted. */
   isTrusted(): boolean {
     return this.#settled && this.#check?.status === "trusted";

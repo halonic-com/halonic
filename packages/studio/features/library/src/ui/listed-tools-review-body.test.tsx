@@ -61,6 +61,7 @@ const base: ListedToolsSnapshot = {
   keepsChanging: [row("sync_tags")],
   refused: [{ name: "look up", reason: "x".repeat(80) }],
   approved: ["read_note"],
+  approvedWithoutAsking: [],
   listingRefused: null,
   unreadable: null,
   hasApprovals: false,
@@ -202,6 +203,17 @@ describe("the review body", () => {
       expect(container.textContent).toContain(
         "Doesn't ask before each use: Acme marks it as read-only.",
       );
+    });
+
+    it("doesn't say an approved tool still asks when the read list marks it", async () => {
+      const { container } = await open({ ...base, approvedWithoutAsking: ["read_note"] });
+      const approved = [...container.querySelectorAll("li")].find((item) =>
+        item.textContent?.startsWith("read_note"),
+      );
+      expect(approved?.textContent).toContain(
+        "Doesn't ask before each use: Acme marks it as read-only.",
+      );
+      expect(container.textContent).not.toContain("Approved. It still asks before each use.");
     });
 
     it("shows no toast and keeps the approval when removing fails", async () => {

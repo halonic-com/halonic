@@ -167,6 +167,7 @@ export function provideFolderServices(
       http: new ShellHttpClient(ipc),
       clock: systemClock,
       isTrusted: async (workspace) => (await trust.checkLoaded(workspace)).status === "trusted",
+      mayStart: (workspace) => trust.mayStart(workspace),
       ids: randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), systemClock),
       setTimer: (callback, delayMs) => {
         const timer = setTimeout(callback, delayMs);
@@ -177,7 +178,7 @@ export function provideFolderServices(
       ...(transport === undefined
         ? {}
         : {
-            openHarnessHost: (approvalsOf) =>
+            openHarnessHost: (decisions) =>
               openStudioHarnessHost({
                 transport,
                 location,
@@ -185,7 +186,7 @@ export function provideFolderServices(
                 digest: webCryptoDigest,
                 clock: systemClock,
                 instructionTrust,
-                approvalsOf,
+                ...decisions,
                 reportError: (error) => console.error("The harness host", error),
               }),
           }),
@@ -221,6 +222,8 @@ export function provideFolderServices(
       runs: services.get(RunsSourceService),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       now: () => new Date(),
+      // Run now refuses with the routine's own words; the engine checks again before it starts.
+      trusted: async () => trust.mayStartNow(),
       engine: { start: (start, trigger) => engine.startRoutine(start, trigger) },
     }),
   );

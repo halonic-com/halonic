@@ -16,7 +16,13 @@ import { fakeModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { LibraryPlace } from "./library-place.tsx";
 
-afterEach(unmountAll);
+const filesApi = vi.hoisted(() => ({ requestFilesReveal: vi.fn() }));
+vi.mock("@halonicjs/studio-feature-files/api", () => filesApi);
+
+afterEach(() => {
+  unmountAll();
+  filesApi.requestFilesReveal.mockReset();
+});
 
 const noUsage = { agents: [], hubs: [], routines: [], collections: [] };
 
@@ -426,5 +432,36 @@ verifies("library.library-phone-kinds", () => {
     await show(context, "phone");
     await act(async () => requestLibraryTab("collection"));
     expect(openPlaceList).toHaveBeenCalledWith("library", "collection", "Collections");
+  });
+});
+
+verifies("library.open-docs-folder", () => {
+  const docsButton = (page: HTMLElement) =>
+    Array.from(page.querySelectorAll("button")).find(
+      (button) => button.textContent === "Open the docs folder",
+    );
+
+  it("shows Files with the workspace's docs folder revealed, writing nothing", async () => {
+    const showSidebarView = vi.fn();
+    const { context } = contextOf("knowledge", { showSidebarView });
+    const page = await show(context);
+
+    act(() => docsButton(page)?.click());
+
+    expect(filesApi.requestFilesReveal).toHaveBeenCalledExactlyOnceWith("docs");
+    expect(showSidebarView).toHaveBeenCalledExactlyOnceWith("files");
+  });
+
+  it("offers no button where the window has no sidebar views to show", async () => {
+    const page = await show(contextOf("knowledge").context);
+    expect(page.textContent).toContain("docs folder");
+    expect(docsButton(page)).toBeUndefined();
+  });
+
+  it("offers no button on a phone", async () => {
+    const { context } = contextOf("knowledge", { showSidebarView: vi.fn() });
+    const page = await show(context, "phone", "knowledge");
+    expect(page.textContent).toContain("docs folder");
+    expect(docsButton(page)).toBeUndefined();
   });
 });

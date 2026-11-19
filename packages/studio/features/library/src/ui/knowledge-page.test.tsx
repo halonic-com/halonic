@@ -353,13 +353,23 @@ verifies("library.knowledge-summarize", () => {
         "Couldn't summarize Handbook: the engine isn't answering. It may still be starting.",
       ],
       ["too-large", "Couldn't summarize Handbook: it has more text than one summary can take."],
-    ] as const)("gives a reason when Summarize ends with %s", async (kind, line) => {
-      const { props } = setup(undefined, nobody, { kind });
-      const root = render(<KnowledgePage {...props} />);
-      await settled();
-      await act(async () => button(root, "Summarize").click());
-      await settled();
-      expect(root.textContent).toContain(line);
-    });
+      ["no-local-model", "Summarize uses a local model, and the default model alias has none."],
+    ] as const)(
+      "gives a reason when Summarize ends with %s, and reads it out",
+      async (kind, line) => {
+        const { props, announceState } = setup(undefined, nobody, { kind });
+        const root = render(<KnowledgePage {...props} />);
+        await settled();
+        await act(async () => {
+          button(root, "Summarize").focus();
+          button(root, "Summarize").click();
+        });
+        await settled();
+        expect(root.textContent).toContain(line);
+        // Read out where it appears; focus stays on Summarize (HAL-12534).
+        expect(announceState).toHaveBeenCalledWith("knowledge-summary", line);
+        expect(document.activeElement).toBe(button(root, "Summarize"));
+      },
+    );
   });
 });

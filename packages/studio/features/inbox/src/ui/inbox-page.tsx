@@ -166,6 +166,7 @@ export function InboxView({
   const phone = usePresentation() === "phone";
   const itemPage = phone && open !== null;
   const requestSheetOpen = useRef(false);
+  const itemPane = useRef<HTMLDivElement>(null);
   const sentCard = useSentRequestCard({
     items: state.items,
     openItem,
@@ -184,6 +185,7 @@ export function InboxView({
     onStarted: sentCard.watch,
     sheetOpen: requestSheetOpen,
     cardOpen: open !== null,
+    focusCard: () => itemPane.current?.querySelector<HTMLElement>("section h2[tabindex]")?.focus(),
   });
 
   return (
@@ -239,6 +241,7 @@ export function InboxView({
       </div>
       {request.sheet}
       <div
+        ref={itemPane}
         data-pane="item"
         className={`${phone && open === null ? "hidden" : "flex"} min-w-0 flex-1 justify-center overflow-y-auto`}
       >
@@ -418,6 +421,7 @@ function OpenCard({
       now={now}
       answering={answering}
       words={words}
+      waiting={items.some((waiting) => waiting.key === item.key)}
     />
   );
 }

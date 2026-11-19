@@ -15,6 +15,8 @@ import { folderName, WorkspaceSwitcher } from "./workspace-switcher.ts";
 let element: HTMLElement;
 let mounted: MountedWorkspaceWindow | undefined;
 let restore: () => void = () => {};
+/** Every dialog opened with `showModal()`, which the browser makes the rest of the page inert for. */
+let modals: HTMLDialogElement[] = [];
 
 /** A desktop window as narrow as a phone: every `(width < Npx)` query matches. */
 beforeEach(() => {
@@ -28,8 +30,21 @@ beforeEach(() => {
       addEventListener: () => {},
       removeEventListener: () => {},
     }) as unknown as MediaQueryList;
+  // jsdom has `<dialog>` but no `showModal()`, nor the inert page behind one.
+  const { showModal, close } = HTMLDialogElement.prototype;
+  modals = [];
+  Object.assign(HTMLDialogElement.prototype, {
+    showModal(this: HTMLDialogElement) {
+      modals.push(this);
+      this.setAttribute("open", "");
+    },
+    close(this: HTMLDialogElement) {
+      this.removeAttribute("open");
+    },
+  });
   restore = () => {
     window.matchMedia = media;
+    Object.assign(HTMLDialogElement.prototype, { showModal, close });
   };
   element = document.createElement("div");
   document.body.append(element);
@@ -108,11 +123,11 @@ const workspaceRow = () =>
   element.querySelector<HTMLButtonElement>('button[aria-label^="Workspace: "]');
 const chip = () =>
   element.querySelector<HTMLButtonElement>('button[aria-label="Sample, test model"]');
-const sheetTitle = () => element.querySelector(".fixed h2")?.textContent;
+const sheetTitle = () => element.querySelector("dialog[open] h2")?.textContent;
 
 async function pressSheetRow(label: string): Promise<void> {
-  const row = [...element.querySelectorAll<HTMLButtonElement>(".fixed li > button")].find((each) =>
-    each.textContent?.startsWith(label),
+  const row = [...element.querySelectorAll<HTMLButtonElement>("dialog[open] li > button")].find(
+    (each) => each.textContent?.startsWith(label),
   );
   await act(async () => row?.click());
 }
@@ -147,10 +162,49 @@ verifies("workspace.narrow-window", () => {
 
     await act(async () => chip()?.click());
     expect(sheetTitle()).toBe("Sample · test model");
-    expect(element.querySelector(".fixed")?.textContent).toContain("New workspace…");
+    expect(element.querySelector("dialog[open]")?.textContent).toContain("New workspace…");
     await pressSheetRow("Fresh copy of the sample");
 
     expect(sheetTitle()).toBeUndefined();
     expect(create).toHaveBeenCalledWith([]);
+  });
+});
+
+/** Presses Escape in the open sheet, as the browser sends it: a `cancel` on the dialog. */
+async function pressEscape(): Promise<void> {
+  const dialog = element.querySelector("dialog[open]");
+  await act(async () => dialog?.dispatchEvent(new Event("cancel", { cancelable: true })));
+}
+
+verifies("workspace.narrow-window-sheet-focus", () => {
+  it.each([
+    ["the workspace row", "Workspace", workspaceRow],
+    ["the sample chip", "Sample · test model", chip],
+  ])("opens %s's sheet as a modal, so nothing behind it takes focus", async (_, title, opener) => {
+    await start();
+    opener()?.focus();
+
+    await act(async () => opener()?.click());
+
+    const dialog = element.querySelector("dialog[open]");
+    // Strict mode opens it twice; it's the one dialog opened as a modal all the same.
+    expect([...new Set(modals)]).toEqual([dialog]);
+    expect(dialog?.getAttribute("aria-label")).toBe(title);
+    expect(document.activeElement?.textContent).toBe(title);
+    expect(dialog?.contains(document.activeElement)).toBe(true);
+  });
+
+  it.each([
+    ["the workspace row", workspaceRow],
+    ["the sample chip", chip],
+  ])("closes %s's sheet on Escape and gives focus back to it", async (_, opener) => {
+    await start();
+    opener()?.focus();
+    await act(async () => opener()?.click());
+
+    await pressEscape();
+
+    expect(sheetTitle()).toBeUndefined();
+    expect(document.activeElement).toBe(opener());
   });
 });

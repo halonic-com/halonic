@@ -133,7 +133,10 @@ that go to the same state, one with the event and one with the timer.
   timer missed while nothing was running fires as soon as an engine opens.
 - **Task states have no timeout.** An agent is limited by `maxSteps`. An
   agent that uses all its steps and is still calling tools gave no answer,
-  so its state fails rather than going on with an unfinished one.
+  so its state fails rather than going on with an unfinished one. An agent
+  that runs in Claude Code or Codex is limited by its `harnessLimits`
+  instead: model calls, minutes (not counting waits for a person's answer)
+  and cost per step, each only when its file sets it.
 
 The functions are `stateTimers` (the timers and their due times) and
 `dueTimer` (the one to take now, or none).

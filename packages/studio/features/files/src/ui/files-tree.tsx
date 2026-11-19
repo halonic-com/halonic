@@ -81,11 +81,20 @@ function warningsShown(node: TreeNode): number {
   return node.marks.errors > 0 ? 0 : node.marks.warnings;
 }
 
-/** A folder's name with its marks, so a screen reader reads them as one label; files keep their own name. */
-function folderLabel(node: TreeNode, marks: string | undefined): string | undefined {
-  return marks !== undefined && node.kind === "folder"
-    ? filesWords.folderMarks(node.name, marks)
-    : undefined;
+/**
+ * The row's name for a screen reader. A folder with marks is named with them, so they read as one
+ * label. A file with a ⋮ is named by its full name alone: otherwise the button's own name joins the
+ * row's, and a long name would be read cut in the middle. Other rows are named by what they show.
+ */
+function rowLabel(
+  node: TreeNode,
+  marks: string | undefined,
+  renamingPath: string | undefined,
+): string | undefined {
+  if (node.kind === "folder") {
+    return marks === undefined ? undefined : filesWords.folderMarks(node.name, marks);
+  }
+  return hasMenuButton(node, renamingPath) ? node.name : undefined;
 }
 
 function marksLabel(node: TreeNode): string | undefined {
@@ -105,9 +114,9 @@ function RowMarks({ node }: { node: TreeNode }) {
   const warnings = warningsShown(node);
   return (
     <span className="ml-auto flex shrink-0 items-center gap-1" aria-hidden="true">
-      {outside && <span className="text-xs text-fg-muted">✎</span>}
-      {warnings > 0 && <span className="text-xs text-warning">△ {warnings}</span>}
-      {errors > 0 && <span className="text-xs text-danger">✕ {errors}</span>}
+      {outside && <span className="text-caption text-fg-muted">✎</span>}
+      {warnings > 0 && <span className="text-caption text-warning">△ {warnings}</span>}
+      {errors > 0 && <span className="text-caption text-danger">✕ {errors}</span>}
     </span>
   );
 }
@@ -247,11 +256,11 @@ export function FilesTree({
               aria-setsize={row.siblings}
               aria-expanded={node.kind === "folder" ? open : undefined}
               aria-selected={node.path === activePath}
-              aria-label={folderLabel(node, label)}
+              aria-label={rowLabel(node, label, renaming?.path)}
               // The marks are not read along with the name field while it is edited.
               aria-description={descriptionOf(node, label, renaming?.path)}
               title={node.name.length > nameLimit ? node.name : undefined}
-              className={`group flex min-h-8 cursor-pointer items-center gap-1 rounded-sm pr-2 text-sm text-fg outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-accent aria-selected:bg-accent-soft`}
+              className={`group flex min-h-8 cursor-pointer items-center gap-1 rounded-sm pr-2 text-body text-fg outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-accent aria-selected:bg-accent-soft`}
               style={{ paddingLeft: `${row.depth * 16 + 4}px` }}
               onClick={(event) => {
                 event.stopPropagation();

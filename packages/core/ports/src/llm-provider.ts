@@ -82,7 +82,8 @@ export const modelCallErrorReasons = [
  *   reached its spending limit, such as HTTP 402 or OpenAI's 429 with
  *   `insufficient_quota`. This is never Halonic's own budget.
  * - `provider-busy`: the provider is overloaded or asked the caller to slow
- *   down, such as any other HTTP 429, a 5xx or Anthropic's 529.
+ *   down, such as any other HTTP 429, a 500, 502, 503 or 504, or Anthropic's
+ *   529. A 501 or 505 says the server doesn't do what was asked, and is `refused`.
  * - `refused`: anything else the provider turned down or failed on.
  * - `local-only`: the workspace is local only (`privacy.localOnly: true`)
  *   and the model's provider isn't local, so the engine never called it.

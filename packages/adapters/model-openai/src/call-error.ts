@@ -44,6 +44,15 @@ const notTheKeyWording = /countr|region|territor|moderat|flagged|guardrail|model
 /** A masked key, such as OpenAI's `sk-proj-****abcd`: `sk-`, then a star before any space. */
 const maskedKey = /sk-[\w-]*\*/;
 
+/**
+ * The 5xx statuses that say the server doesn't do what was asked, not that it
+ * is busy: 501 Not Implemented, such as a `baseUrl` with a wrong path or a
+ * server that doesn't speak this API, and 505 HTTP Version Not Supported.
+ * Waiting won't fix them, so they are `refused`, and the message points at
+ * the provider's `baseUrl` in models.yaml.
+ */
+const notSupportedStatuses: ReadonlySet<number> = new Set([501, 505]);
+
 /** Groq's status when its flex tier is full. */
 const flexTierFull = 498;
 
@@ -55,8 +64,10 @@ const flexTierFull = 498;
  * name a country, region, moderation or the model, `model-missing` for 404,
  * `model-no-tools` when the server says so about a call that offered tools,
  * `out-of-memory` for a 5xx whose text says the model doesn't fit in memory
- * (Ollama answers 500 then, see {@link isModelOutOfMemory}), `provider-busy`
- * for any other 429, Groq's 498 and a 5xx, and `refused` for anything else.
+ * (Ollama answers 500 then, see {@link isModelOutOfMemory}), `refused` with a
+ * pointer to the `baseUrl` for a 501 or 505 (see {@link notSupportedStatuses}),
+ * `provider-busy` for any other 429, Groq's 498 and a 5xx, and `refused` for
+ * anything else.
  *
  * The vendor's own text goes on the error's `cause`, shortened, except when
  * the key is refused (OpenAI repeats part of a wrong key there), when a 401
@@ -108,6 +119,9 @@ export function errorForStatus(
       options,
     );
   }
+  if (notSupportedStatuses.has(status)) {
+    return new ModelCallError("refused", notSupportedMessage(call, http), options);
+  }
   if (status === 429 || status === flexTierFull || status >= 500) {
     return new ModelCallError(
       "provider-busy",
@@ -116,6 +130,12 @@ export function errorForStatus(
     );
   }
   return new ModelCallError("refused", refusedCall, options);
+}
+
+/** "acme at proxy.test doesn't support …": the server answered, but not to this API. */
+function notSupportedMessage(call: FailedCall, label: string): string {
+  const where = call.host === undefined ? "" : ` at ${call.host}`;
+  return `${call.providerId}${where} doesn't support the call to the model "${call.model}", so check the baseUrl of ${call.providerId} in models.yaml (${label})`;
 }
 
 /**

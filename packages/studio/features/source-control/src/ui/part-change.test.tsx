@@ -57,6 +57,39 @@ verifies("source-control.changed-words", () => {
       expect(page.querySelector("del")?.textContent).toBe("Before: gpt");
     });
 
+    it("shows only the sentence an edit changed, with the changed words in bold", async () => {
+      const page = await pageFor(
+        "id: triage\nname: Triage\ninstructions: |\n  Write short sentences.\n  Never promise money back.\n",
+        "id: triage\nname: Triage\ninstructions: |\n  Write short, warm sentences.\n  Never promise money back.\n",
+      );
+      expect(page.textContent).toContain("Instructions edited: 1 sentence changed");
+      expect([...page.querySelectorAll("del")].map((del) => del.textContent)).toEqual([
+        "Before: Write short sentences.",
+      ]);
+      expect([...page.querySelectorAll("ins")].map((ins) => ins.textContent)).toEqual([
+        "After: Write short, warm sentences.",
+      ]);
+      expect(page.querySelector("ins strong")?.textContent).toBe(", warm");
+      expect(page.querySelector("del strong")).toBeNull();
+      expect(page.textContent).not.toContain("Never promise money back");
+    });
+
+    it("shows each changed sentence once, an added one with no old value", async () => {
+      const page = await pageFor(
+        "id: triage\nname: Triage\ninstructions: Be brief. Use English.\n",
+        "id: triage\nname: Triage\ninstructions: Be brief. Use Dutch. Sign as Triage.\n",
+      );
+      expect([...page.querySelectorAll("del")].map((del) => del.textContent)).toEqual([
+        "Before: Use English.",
+      ]);
+      expect([...page.querySelectorAll("ins")].map((ins) => ins.textContent)).toEqual([
+        "After: Use Dutch. Sign as Triage.",
+      ]);
+      expect([...page.querySelectorAll("del strong")].map((word) => word.textContent)).toEqual([
+        "English",
+      ]);
+    });
+
     it("tells nothing for a part neither version has a value for", () => {
       expect(partChangeKind({ found: false }, { found: false })).toBeNull();
     });

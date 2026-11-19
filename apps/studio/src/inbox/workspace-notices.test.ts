@@ -68,6 +68,13 @@ function setup(
   return { notices, shared, listeners, runs };
 }
 
+/** The cause of a run the monthly budget stopped (`engine.budget-stops`): it has no row of its own. */
+const monthStop = {
+  kind: "limit_reached",
+  code: "budget.month",
+  detail: { limit: "50", spent: "50.5", currency: "EUR" },
+} as const;
+
 verifies("studio.inbox-notices", () => {
   it("gives the failed routine run as a notice named by its routine", async () => {
     const { notices } = setup();
@@ -77,11 +84,34 @@ verifies("studio.inbox-notices", () => {
   });
 
   it("adds the month's budget notice when the month's runs have used up the monthly budget", async () => {
-    const spent = { ...failedRun(), id: "r2", cost: 50.5, trigger: null, reason: "budget" };
+    const spent = {
+      ...failedRun(),
+      id: "r2",
+      cost: 50.5,
+      trigger: null,
+      reason: "budget",
+      cause: monthStop,
+    };
     const { notices } = setup("/work/acme", storage(), [], 50, [spent as RunSummary]);
     const listed = await notices.list();
     expect(listed.map((one) => one.kind)).toEqual(["budget-month"]);
     expect(listed[0]?.title).toContain("reached its budget of €50.00");
+  });
+
+  it("never hides the month's budget notice for a dismissal kept from before it lost its ×", async () => {
+    const spent = {
+      ...failedRun(),
+      id: "r2",
+      cost: 50.5,
+      trigger: null,
+      reason: "budget",
+      cause: monthStop,
+    };
+    const kept = storage({
+      "halonic.inbox-dismissed-notices:/work/acme": JSON.stringify(["budget-month:2026-11:50"]),
+    });
+    const { notices } = setup("/work/acme", kept, [], 50, [spent as RunSummary]);
+    expect((await notices.list()).map((one) => one.kind)).toEqual(["budget-month"]);
   });
 
   it("names the run by its workflow, not the routine's key, when the routine is gone", async () => {

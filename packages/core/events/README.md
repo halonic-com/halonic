@@ -19,6 +19,10 @@ optional and come with a requirement.
   `llm.response.notes` keeps the provider's plain sentences on how it changed
   the call, such as a setting the model doesn't take; `providerNotes` lists
   a run's notes, each once (requirement `provider-notes`).
+- Harness bridge: `bridge.failed` records a request of the agent's program
+  that failed for a reason the bridge didn't name to the program, with the
+  error `kind` and its `message`, never the run token. It has no cost and
+  never counts towards a budget (requirement `bridge-failed`).
 - `run.failed` and `RunFailureReason`: `reason` says why a run failed
   (requirement `run-failed-reason`), for example `model-missing`,
   `model-no-tools`, `harness-unavailable` or `sandbox-start-failed`.

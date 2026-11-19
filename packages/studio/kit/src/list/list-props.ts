@@ -7,14 +7,20 @@ interface ListRowBase<Id extends string> {
   /** Stable, never the index: focus and selection follow it. */
   readonly id: Id;
   readonly title: string;
-  /** One line under the title, cut with an ellipsis. */
-  readonly meta?: string;
+  /**
+   * One line under the title, cut with an ellipsis. Usually words; a node when part of it needs
+   * other words for a screen reader, as a glyph does.
+   */
+  readonly meta?: ReactNode;
   /**
    * A 20px icon before the text, 16px in a `dense` row as in a Menu item. Hidden from screen
    * readers: the title names the row.
    */
   readonly icon?: ReactNode;
-  /** A 28px avatar before the text, in place of the icon. Hidden from screen readers too. */
+  /**
+   * A 28px avatar before the text, in place of the icon, or a setup step's 24px circle. Hidden
+   * from screen readers too.
+   */
   readonly avatar?: ReactNode;
   /** The "More" icon button. Its label names the row: "More actions for Sorter". */
   readonly more?: {
@@ -44,6 +50,17 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
    * and the trailing part.
    */
   readonly label?: string;
+  /**
+   * The title in `fg-muted`, as a done setup step's (`SetupSteps`): it's finished. Not struck
+   * through, which reads as "cancelled".
+   */
+  readonly muted?: boolean;
+  /**
+   * A click, Enter or Space on the row does nothing, as a done setup step's: no hover or press tint
+   * and the default cursor. It still takes focus with the arrows and is read as usual, but Tab
+   * enters the List at the first row that isn't inert.
+   */
+  readonly inert?: boolean;
   readonly tag?: never;
   readonly cells?: never;
   readonly child?: never;
@@ -57,6 +74,8 @@ interface ListColumnsRowBase<Id extends string> extends ListRowBase<Id> {
   readonly cells?: Readonly<Record<string, ListCell>>;
   /** A chip goes in a `status` column instead. */
   readonly trailing?: never;
+  readonly muted?: never;
+  readonly inert?: never;
 }
 
 /** A row on its own: its `label` is optional. */

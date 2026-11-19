@@ -129,14 +129,14 @@ verifies("cli.commands.plugin.add", () => {
         "Folder",
         `  ${entry?.status === "trusted" ? shownFolder(entry.location) : ""}`,
         "",
-        "Backend files",
+        "Files",
         "  backend/index.js",
         "",
         "Plugin code runs apart from the rest of Halonic. Halonic doesn't check what the plugin does with what it's given.",
         "",
         "Fingerprint",
         `  ${fingerprint}`,
-        "  Covers the manifest and the backend files above.",
+        "  Covers the manifest and the files above.",
         "",
         "Trust Weather and turn it on? [y/N] ",
       ].join("\n"),
@@ -197,7 +197,9 @@ verifies("cli.commands.plugin.add", () => {
     const { code, io } = await add([source, "--yes", "--fingerprint", `hpf1:${"0".repeat(64)}`]);
 
     expect(code).toBe(exitCode.notTrusted);
-    expect(io.stderr.join("\n")).toContain("it changed since that fingerprint was made.");
+    expect(io.stderr.join("\n")).toContain(
+      "✕ That fingerprint doesn't match Weather as it is now.",
+    );
     expect(await plugins()).toEqual(["new"]);
   });
 
@@ -223,7 +225,7 @@ verifies("cli.commands.plugin.add", () => {
     expect(noTerminal.io.stderr.at(-2)).toBe(
       `! ${shown} is added but off, because there's no terminal to ask you to trust it.`,
     );
-    expect(changed.io.stderr.join("\n")).toContain(`trust ${shown}`);
+    expect(changed.io.stderr.join("\n")).toContain(`doesn't match ${shown} as it is now.`);
     expect(yes.io.stdout).toEqual([`✓ Added ${shown} 1.2.0. It's on.`]);
     const everything = [
       asked.written(),
@@ -254,6 +256,22 @@ verifies("cli.commands.plugin.add", () => {
       "To add another version, remove it first: halonic plugin remove weather",
     );
     expect(await readdir(pluginsFolder())).toEqual(["weather"]);
+  });
+
+  it("says why when the plugins folder is a link, and writes nothing through it", async () => {
+    const outside = join(folder, "outside");
+    await mkdir(outside);
+    await mkdir(join(folder, "profile"));
+    await symlink(outside, pluginsFolder(), process.platform === "win32" ? "junction" : "dir");
+
+    const { code, io } = await add([await writeSource("weather")]);
+
+    expect(code).toBe(exitCode.conflict);
+    const stderr = io.stderr.join("\n");
+    expect(stderr).toContain("is a link; plugins are written only into a plain folder.");
+    expect(stderr).toContain("Replace it with a plain folder, then try again.");
+    expect(stderr).not.toContain("can't explain yet");
+    expect(await readdir(outside)).toEqual([]);
   });
 
   it("names the plugin's folder by its id, not by the source folder's name", async () => {
