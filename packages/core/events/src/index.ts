@@ -11,6 +11,7 @@ export type {
   ApprovalResolver,
   CantTryReason,
   CantTryStep,
+  ConnectorNotStartedCause,
   ConnectorStartReason,
   HarnessStartCause,
   InstructionsRefusal,

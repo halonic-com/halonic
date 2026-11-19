@@ -1,11 +1,13 @@
-// A connector that can't start leaves its tools out of the turn. When a
-// person approved a call to one of them, the call isn't made, and the run
-// log says why: which program or secret was missing, never the error's text
-// (HAL-13829).
+// A connector that can't start leaves its tools out of the turn. The run
+// log says so, and when a person approved a call to one of its tools, the
+// call isn't made and its result says why: which program or secret was
+// missing, never the error's text (HAL-13829).
 
-import { maxCauseNameLength, type ToolFailureCause } from "@halonicjs/events";
+import { type ConnectorNotStartedCause, maxCauseNameLength } from "@halonicjs/events";
 import { type ChatMessage, connectorStartFailureOf, type ToolCall } from "@halonicjs/ports";
 import type { ToolCallContext } from "./run-tool-call.ts";
+import type { TurnLog } from "./turn-log.ts";
+import type { TurnTools } from "./turn-tools.ts";
 
 /**
  * The cause for a connector that didn't start because of `error`: the
@@ -13,7 +15,7 @@ import type { ToolCallContext } from "./run-tool-call.ts";
  * reads, cut to `maxCauseNameLength`, else `other` with no name. Never any
  * part of the error's message, which can hold paths or a program's output.
  */
-export function connectorNotStartedCause(error: unknown): ToolFailureCause {
+export function connectorNotStartedCause(error: unknown): ConnectorNotStartedCause {
   const failure = connectorStartFailureOf(error);
   if (failure === undefined) return { code: "connector-not-started", why: "other" };
   const name = failure.reason === "program-missing" ? failure.program : failure.secret;
@@ -47,4 +49,26 @@ export async function answerNotStarted(
     cause: connectorNotStartedCause(error),
   });
   return { role: "tool", toolCallId: call.id, name: call.name, content: result };
+}
+
+/**
+ * Logs a `connector.not-started` for each connector whose listing failed
+ * while the turn's tools were collected, so the run log says which one
+ * didn't start and why even when the model never calls its tools
+ * (requirement `engine.turn-logs-connector-not-started`). A turn without a
+ * log writes nothing.
+ */
+export async function logNotStarted(
+  log: TurnLog | undefined,
+  agent: string,
+  tools: TurnTools,
+): Promise<void> {
+  for (const [connector, error] of tools.listingErrors) {
+    await log?.append({
+      type: "connector.not-started",
+      agent,
+      connector,
+      cause: connectorNotStartedCause(error),
+    });
+  }
 }

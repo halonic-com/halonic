@@ -2,6 +2,7 @@ import type { AgentResume } from "./agent-resume.ts";
 import type {
   ApprovalResolver,
   CantTryStep,
+  ConnectorNotStartedCause,
   HarnessStartCause,
   LoggedInstructionPin,
   ModelSkipReason,
@@ -269,6 +270,21 @@ export type RunEventBody =
       agent: string;
       connector: string;
       timeoutMs: number;
+    }
+  /**
+   * A connector of the agent's file didn't start when a model turn listed
+   * its tools, so the turn offered none of them (requirement
+   * `events.connector-not-started`). `connector`: its id in the workspace.
+   * `cause`: why, in the shape of a `tool.result`'s `connector-not-started`
+   * cause: the program or the secret's name when the engine knows it, never
+   * a secret's value or the error's text. Logged once per turn that listed
+   * it; logs written before this event have none.
+   */
+  | {
+      type: "connector.not-started";
+      agent: string;
+      connector: string;
+      cause: ConnectorNotStartedCause;
     }
   /**
    * A step is about to make a connector call that can change things

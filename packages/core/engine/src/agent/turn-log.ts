@@ -15,7 +15,8 @@ export type TurnEvent = Extract<
       | "tool.called"
       | "tool.result"
       | "tool.refused"
-      | "tool.unasked";
+      | "tool.unasked"
+      | "connector.not-started";
   }
 >;
 

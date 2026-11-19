@@ -22,6 +22,7 @@ import { withKnowledgeFirst } from "../knowledge/knowledge-first.ts";
 import { callCost } from "./call-cost.ts";
 import type { CallChecker } from "./check-call-before-run.ts";
 import { checkChatToolCall } from "./check-chat-tool-call.ts";
+import { logNotStarted } from "./connector-not-started.ts";
 import { withFencedTextsNotice } from "./fenced-texts-notice.ts";
 import type { ListedToolApproval } from "./listed-tool-approval.ts";
 import { ModelChain, type ResolvedModel } from "./model-chain.ts";
@@ -173,6 +174,7 @@ async function turnLoop(
   { resumeFrom, effects }: Pick<AgentTurnInput, "resumeFrom" | "effects"> = {},
 ): Promise<AgentTurnOutcome> {
   const tools = await collectTurnTools(input);
+  await logNotStarted(input.log, input.agent, tools);
   const models = new ModelChain(
     input.model,
     input.secrets,

@@ -171,6 +171,9 @@ export type ToolFailureCause =
       readonly name?: string;
     };
 
+/** The `connector-not-started` cause, which `connector.not-started` carries too (requirement `events.connector-not-started`). */
+export type ConnectorNotStartedCause = Extract<ToolFailureCause, { code: "connector-not-started" }>;
+
 /**
  * Why a model's tool call was refused before it ran (requirement
  * `events.tool-refused`): `not-offered`, the step offered no tool of that name.
