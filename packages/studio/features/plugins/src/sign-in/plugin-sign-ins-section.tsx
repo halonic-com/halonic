@@ -25,7 +25,7 @@ import {
   signedOutNotConfirmed,
   signInNotStarted,
   signInPageNotApproved,
-  signInsNotLoaded,
+  signInsNotLoadedTitle,
   signOutFailed,
   tokenHostWarning,
   trustLine,
@@ -108,7 +108,9 @@ export function PluginSignInsSection({
         {SIGN_INS_HEADING}
       </h2>
       {problem === undefined ? null : (
-        <Callout tone="danger">{signInsNotLoaded(plugin.name, problem)}</Callout>
+        <Callout tone="danger" title={signInsNotLoadedTitle(plugin.name)}>
+          {problem}
+        </Callout>
       )}
       <ul className="flex list-none flex-col gap-4">
         {blocks.map((each) => (
@@ -231,8 +233,7 @@ function SignInBlock({
     }
   }
 
-  const outcome =
-    status?.lastOutcome === undefined ? undefined : outcomeLine(service, status.lastOutcome);
+  const outcome = outcomeShown(service, status);
   const shown = line ?? outcome;
 
   return (
@@ -307,6 +308,18 @@ function StateRow({ state, busy, actions, onSignIn, onSignOut }: StateRowProps) 
         </div>
       ) : null;
   }
+}
+
+/**
+ * How the last sign-in ended, unless the state already says it: a sign-in
+ * that ended because the sign-in changed shows **Sign in again** with that
+ * same reason.
+ */
+function outcomeShown(service: string, status: PluginSignInStatus | undefined): string | undefined {
+  const lastOutcome = status?.lastOutcome;
+  if (lastOutcome === undefined) return undefined;
+  if (status?.state === "approvalChanged" && lastOutcome.kind === "signInChanged") return undefined;
+  return outcomeLine(service, lastOutcome);
 }
 
 /** The line when **Sign in** couldn't start: the host's refusal in words, or the reason. */

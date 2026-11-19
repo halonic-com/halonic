@@ -1,7 +1,7 @@
 // The words of a plugin's sign-ins, as the board approved them on HAL-8619
 // (HAL-984 design section 6). Lines the approval didn't word (a few outcome
 // lines and the settings line) were decided by the team with the designer
-// and are listed on HAL-8613 (HAL-2282 rule). The plugin's own text
+// on HAL-13419 and are listed on HAL-8613 (HAL-2282 rule). The plugin's own text
 // (its name, a purpose, a scope's reason) is only ever a value here.
 
 import { signInTokenHostWarning, signInTrustLine } from "@halonicjs/app";
@@ -39,7 +39,8 @@ export function tokenHostWarning(facts: SignInFacts): string {
 export const SIGN_IN_CHANGED = "This integration's sign-in changed since you approved it.";
 
 /** A setting the sign-in reads is missing or wrong, so it can't start (team wording). */
-export const SETTINGS_NEEDED = "Fill in this sign-in's settings first.";
+export const SETTINGS_NEEDED =
+  "This sign-in needs a setting that's missing or not valid. Check Settings.";
 
 /**
  * After **Sign out**, when the provider didn't confirm the revoke, or there
@@ -51,15 +52,19 @@ export function signedOutNotConfirmed(service: string): string {
   return `You're signed out here. ${service} didn't confirm, so the token may still work there until it expires.`;
 }
 
-/** The client secret a sign-in needs isn't set (team wording). */
-export const CLIENT_SECRET_NOT_SET = "The client secret isn't set. Set it in Settings.";
+/** The client secret a sign-in needs isn't set, in the shape of the approved refused line (team wording). */
+export const CLIENT_SECRET_NOT_SET = "The client secret is missing. Add it in Settings.";
 
 /** The host can't take a sign-in's callback where it runs now, such as inside WSL (team wording). */
-export const SIGN_IN_UNAVAILABLE_HERE = "Signing in doesn't work in this setup yet.";
+export const SIGN_IN_UNAVAILABLE_HERE =
+  "Signing in doesn't work here yet: Halonic can't get the browser's answer where it runs now.";
 
-/** Reading where the sign-ins stand failed, in the shape of `settingsNotLoadedTitle` (team wording). */
-export function signInsNotLoaded(name: string, reason: string): string {
-  return `Couldn't load ${name}'s sign-ins: ${reason}`;
+/**
+ * The title when reading where the sign-ins stand failed, with the reason
+ * under it, as `settingsNotLoadedTitle` (team wording).
+ */
+export function signInsNotLoadedTitle(name: string): string {
+  return `Couldn't load ${name}'s sign-ins`;
 }
 
 /** **Sign in** failed before the browser opened (team wording, microcopy 1.1 "Action failed"). */
@@ -140,7 +145,7 @@ export function outcomeLine(service: string, outcome: SignInOutcome): string | u
     case "tokenAnswerRefused":
     case "unexpectedAnswer":
     case "failed":
-      return `The sign-in didn't finish: ${service}'s answer couldn't be used.`;
+      return `The sign-in didn't finish: Halonic couldn't use ${service}'s answer.`;
   }
 }
 

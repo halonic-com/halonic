@@ -135,7 +135,7 @@ verifies("plugins.plugin-sign-ins", () => {
 
       expect(signIns.opened).toEqual([]);
       expect(view.querySelector('[role="status"]')?.textContent).toBe(
-        "The client secret isn't set. Set it in Settings.",
+        "The client secret is missing. Add it in Settings.",
       );
     });
 
@@ -200,7 +200,9 @@ verifies("plugins.plugin-sign-ins", () => {
     const view = await show(new FakeSignIns(), { values: {} });
 
     expect(view.textContent).toContain("Access to your Acme account.");
-    expect(view.textContent).toContain("Fill in this sign-in's settings first.");
+    expect(view.textContent).toContain(
+      "This sign-in needs a setting that's missing or not valid. Check Settings.",
+    );
     expect(view.textContent).not.toContain("Signs in to your");
     expect(button("Sign in")).toBeUndefined();
   });
@@ -240,7 +242,24 @@ verifies("plugins.plugin-sign-ins", () => {
     };
     const view = await show(signIns);
 
-    expect(view.textContent).toContain("Couldn't load acme's sign-ins:");
+    expect(view.querySelector(".text-body-strong")?.textContent).toBe(
+      "Couldn't load acme's sign-ins",
+    );
+    expect(view.textContent).toContain("Halonic ran into a problem it can't explain yet.");
+  });
+
+  it("says once, not twice, that the sign-in changed", async () => {
+    const signIns = new FakeSignIns();
+    signIns.statuses = [
+      { signIn: "account", state: "approvalChanged", lastOutcome: { kind: "signInChanged" } },
+    ];
+    const view = await show(signIns);
+
+    const said = view.textContent?.split(
+      "This integration's sign-in changed since you approved it.",
+    );
+    expect(said).toHaveLength(2);
+    expect(view.querySelector('[role="status"]')).toBeNull();
   });
 });
 
