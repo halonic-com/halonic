@@ -105,6 +105,11 @@ export {
   signedOutAgents,
 } from "./doctor-sign-ins.ts";
 export {
+  doctorCheckLimitMs,
+  type LimitedCheck,
+  type TimedOutLine,
+} from "./doctor-time-limit.ts";
+export {
   EventBus,
   type EventListener,
   type EventMap,

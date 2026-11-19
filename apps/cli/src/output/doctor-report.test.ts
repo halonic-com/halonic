@@ -268,6 +268,27 @@ verifies("cli.doctor-node", () => {
 });
 
 describe("doctorReportLines", () => {
+  it("words a check that didn't answer in time on its own line, as a warning", () => {
+    const lines = printed(
+      reportOf({
+        workspace: trusted,
+        sandbox: { check: "sandbox", status: "warning", timedOut: true },
+        harnesses: { check: "harnesses", status: "warning", timedOut: true },
+        disk: diskFree,
+      }),
+    );
+    expect(lines).toEqual([
+      "Halonic 0.1.0 · Linux x64",
+      "",
+      "✓ Workspace   acme · trusted on this computer",
+      "! Sandbox     didn't answer in 5 seconds",
+      "! Harnesses   didn't answer in 5 seconds",
+      "✓ Disk        48 GB free · Halonic uses 1.4 GB (run logs 1.1 GB)",
+      "",
+      "No problems. 2 warnings.",
+    ]);
+  });
+
   it("leaves out the lines the report doesn't have, outside a workspace", () => {
     const lines = printed(reportOf({ sandbox: sandboxReady, disk: diskFree }));
     expect(lines).toEqual([
