@@ -35,18 +35,27 @@ function readScript(folder: string): string {
 }
 
 /**
+ * How long the read may run. PowerShell loads .NET before it runs a line, and
+ * a cold start on a busy Windows runner took past 15 s, the limit for other
+ * programs, so the runner's temp folder fell back to the profile folder and
+ * the fence test A17 failed (HAL-13092). The fallback is safe, so a longer
+ * limit only makes a slow machine wait longer before it is taken; a quiet
+ * machine reads the list in about a second.
+ */
+export const readAccessLimitMs = 60_000;
+
+/**
  * Reads who owns a folder and its whole access list, inherited entries
  * included, with the fixed PowerShell of the system folder.
  *
  * @throws Error when the program fails or prints something unexpected
  */
 export async function readFolderAccess(folder: string, start: RunProgram): Promise<FolderAccess> {
-  const { stdout } = await start(powerShell, [
-    "-NoProfile",
-    "-NonInteractive",
-    "-Command",
-    readScript(folder),
-  ]);
+  const { stdout } = await start(
+    powerShell,
+    ["-NoProfile", "-NonInteractive", "-Command", readScript(folder)],
+    readAccessLimitMs,
+  );
   return parseFolderAccess(stdout);
 }
 
