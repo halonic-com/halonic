@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, rename, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SandboxProfile, SandboxSession } from "@halonicjs/ports";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -13,6 +14,11 @@ import { SrtSandbox } from "../src/srt-sandbox.ts";
  * a tool saves a file (write a new one, rename it over the old). Both lie in
  * a folder the session may read, so a refusal comes from the deny alone. Run
  * by the `sandbox-windows` CI job.
+ *
+ * It works outside the user profile (RUNNER_TEMP in CI), like
+ * `srt-fence.windows.test.ts`: a read-only or denied folder inside the
+ * profile makes srt change the access on its parent folders, and the
+ * sandbox account then can't reach the session's folders there (HAL-10705).
  */
 const sandbox = new SrtSandbox();
 
@@ -42,10 +48,7 @@ describe("SrtSandbox on Windows, with denied paths changed after the session ope
   });
 
   beforeAll(async () => {
-    const localAppData = process.env["LOCALAPPDATA"];
-    if (localAppData === undefined) throw new Error("LOCALAPPDATA is not set");
-    await mkdir(join(localAppData, "halonic"), { recursive: true });
-    base = await mkdtemp(join(localAppData, "halonic", "deny-later-"));
+    base = await mkdtemp(join(process.env["RUNNER_TEMP"] ?? tmpdir(), "deny-later-"));
     work = join(base, "work");
     temp = join(base, "tmp");
     shared = join(base, "shared");
