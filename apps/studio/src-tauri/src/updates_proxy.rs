@@ -8,13 +8,15 @@
 //! An unusable setting stops the check and the download before anything is
 //! sent, and nothing goes direct instead. Installing makes no call, so it
 //! keeps the plain builder. When the proxy stopped a call, the status says
-//! so rather than "offline" ([`proxy_fault`]).
+//! so rather than "offline" ([`proxy_fault`]). The bucket check for an
+//! install Scoop updates doesn't go through the updater; it gets a client
+//! on the same rules from [`client_for`].
 
 use std::sync::Arc;
 
-use halonic_http_guard::{ProxyEndpoint, ProxySetting, Route, route_for};
+use halonic_http_guard::{ProxyEndpoint, ProxySetting, Refusal, Route, route_for};
 use reqwest::redirect::Policy;
-use reqwest::{ClientBuilder, Proxy};
+use reqwest::{Client, ClientBuilder, Proxy, Url};
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_updater::{Error as UpdaterError, UpdaterBuilder, UpdaterExt};
 
@@ -72,16 +74,29 @@ pub(super) fn proxy_fault<R: Runtime>(
 /// never by the error's message. A connection error on a request that went
 /// direct (a local host, or one on `NO_PROXY`) isn't the proxy's.
 fn fault_of(setting: &ProxySetting, error: &UpdaterError) -> Option<ProxyFault> {
-    match (setting, error) {
-        (ProxySetting::Refused(_), _) => Some(ProxyFault::Setting),
-        (ProxySetting::Proxy { .. }, UpdaterError::Reqwest(error)) if error.is_connect() => {
+    match error {
+        UpdaterError::Reqwest(error) => request_fault(setting, error),
+        _ => setting_fault(setting),
+    }
+}
+
+/// The same for a call the updater doesn't make, such as the bucket check
+/// for an install Scoop updates.
+pub(super) fn request_fault(setting: &ProxySetting, error: &reqwest::Error) -> Option<ProxyFault> {
+    match setting {
+        ProxySetting::Proxy { .. } if error.is_connect() => {
             let tunnelled = error
                 .url()
                 .is_some_and(|url| matches!(route_for(url, setting), Ok(Route::Tunnel(_))));
             tunnelled.then_some(ProxyFault::Unreachable)
         }
-        _ => None,
+        _ => setting_fault(setting),
     }
+}
+
+/// `Setting` when the setting is set but unusable, whatever the call did.
+pub(super) fn setting_fault(setting: &ProxySetting) -> Option<ProxyFault> {
+    matches!(setting, ProxySetting::Refused(_)).then_some(ProxyFault::Setting)
 }
 
 /// Fails for a setting that is set but unusable, as `route_for` does for
@@ -93,6 +108,20 @@ fn usable(setting: &ProxySetting) -> Result<(), UpdaterError> {
         ))),
         ProxySetting::None | ProxySetting::Proxy { .. } => Ok(()),
     }
+}
+
+/// A client on Halonic's proxy rules for `url`, a call the updater doesn't
+/// make. The updater insists on `https` for its first request; nothing does
+/// here, so `url` is asked of `route_for` before the client is built, and a
+/// URL it refuses is never sent direct instead.
+///
+/// # Errors
+///
+/// The refusal when `route_for` refuses `url`; its message never holds the
+/// proxy's user name or password.
+pub(super) fn client_for(url: &Url, setting: &Arc<ProxySetting>) -> Result<ClientBuilder, Refusal> {
+    route_for(url, setting)?;
+    Ok(on_proxy_rules(Client::builder(), setting))
 }
 
 /// No proxy from the environment; the proxy `route_for` picks for each

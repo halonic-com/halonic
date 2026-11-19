@@ -15,7 +15,7 @@ use tauri::test::{MockRuntime, mock_builder};
 use tauri_plugin_updater::Error as UpdaterError;
 use url::Url;
 
-use super::{ProxyFault, fault_of, on_proxy_rules, updater_on_proxy_rules, usable};
+use super::{ProxyFault, client_for, fault_of, on_proxy_rules, updater_on_proxy_rules, usable};
 use crate::http_fetch::HttpFetchState;
 
 /// A loopback server that answers each connection with the next canned
@@ -310,4 +310,38 @@ fn updates_proxy_test_does_not_blame_the_proxy_for_a_direct_call() {
     assert_eq!(fault_of(&setting, &error), None);
     assert_eq!(fault_of(&ProxySetting::None, &error), None);
     assert!(!proxy.was_asked());
+}
+
+#[test]
+fn updates_proxy_test_bucket_client_refuses_before_it_is_built() {
+    let proxy = Server::serve(vec![no_tunnel()]);
+    let setting = proxy_setting(&proxy.url(""));
+    let plain = "http://bucket.test/halonic.json".parse().expect("a URL");
+    let refusal = client_for(&plain, &setting).expect_err("plain http to a public name");
+    assert_eq!(refusal.code(), "plain_http_proxied");
+    let unusable = proxy_setting(&with_login("socks5://127.0.0.1:1080"));
+    let secure = "https://bucket.test/halonic.json".parse().expect("a URL");
+    let refusal = client_for(&secure, &unusable).expect_err("an unusable setting");
+    assert_eq!(refusal.code(), "proxy_refused");
+    assert!(
+        !refusal.message().contains("made") && !refusal.message().contains(":up"),
+        "{}",
+        refusal.message()
+    );
+    assert!(!proxy.was_asked());
+}
+
+#[test]
+fn updates_proxy_test_bucket_client_tunnels_a_public_name() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    let proxy = Server::serve(vec![no_tunnel()]);
+    let setting = proxy_setting(&proxy.url(""));
+    let url = "https://bucket.test/halonic.json".parse().expect("a URL");
+    let client = client_for(&url, &setting)
+        .expect("a public https name")
+        .build()
+        .expect("a client");
+    tauri::async_runtime::block_on(client.get(url).send()).expect_err("no tunnel");
+    let connect = proxy.request();
+    assert!(connect.starts_with("CONNECT bucket.test:443 "), "{connect}");
 }
