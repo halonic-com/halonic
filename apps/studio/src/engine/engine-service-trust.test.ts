@@ -2,6 +2,7 @@ import type { SetTimer } from "@halonicjs/adapter-scheduler-node";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { acmeFiles, fakeShell, lockCalls, serviceOn } from "./engine-service.testing.ts";
+import type { EngineServiceOptions } from "./engine-service.ts";
 import type { StudioHarnessHost } from "./studio-harness-host.ts";
 
 verifies("studio.untrusted-starts-nothing", () => {
@@ -100,17 +101,21 @@ verifies("studio.untrusted-starts-nothing", () => {
     function removableTrust() {
       const listeners = new Set<() => void>();
       const state = { trusted: true as boolean | "fails" };
+      const isTrusted = async () => {
+        if (state.trusted === "fails") throw new Error("The trust record can't be read.");
+        return state.trusted;
+      };
       return {
-        mayStart: async () => {
-          if (state.trusted === "fails") throw new Error("The trust record can't be read.");
-          return state.trusted;
-        },
+        isTrusted,
+        mayStart: isTrusted,
         onTrustChange: (listener: () => void) => {
           listeners.add(listener);
           return () => listeners.delete(listener);
         },
-        change(to: boolean | "fails") {
+        /** Changes the trust; `quietly`, as a terminal does, without telling the engine. */
+        change(to: boolean | "fails", { quietly = false } = {}) {
           state.trusted = to;
+          if (quietly) return;
           for (const listener of listeners) listener();
         },
         listeners,
@@ -158,16 +163,18 @@ verifies("studio.untrusted-starts-nothing", () => {
     }
 
     /** A run of `reply` whose harness step waits on its timer, on a trusted, open engine. */
-    async function harnessRunWaiting() {
+    async function harnessRunWaiting(options: Partial<EngineServiceOptions> = {}) {
       const shell = fakeShell();
       const trust = removableTrust();
       const timers = handTimers();
       const harness = recordingHarnessHost();
       const service = serviceOn(shell, coder, {
+        isTrusted: trust.isTrusted,
         mayStart: trust.mayStart,
         onTrustChange: trust.onTrustChange,
         setTimer: timers.setTimer,
         openHarnessHost: harness.openHarnessHost,
+        ...options,
       });
       const { id } = await service.startRun(reply, {});
       return { shell, trust, timers, harness, service, id };
@@ -210,6 +217,39 @@ verifies("studio.untrusted-starts-nothing", () => {
       await waitUntil("the engine's lock given back", () => released(shell));
 
       expect(lockCalls(shell)).toEqual(["engine_lock_hold", "engine_lock_release"]);
+    });
+
+    it("refuses the next harness step when the trust goes where the window doesn't hear it (HAL-12811)", async () => {
+      const { trust, timers, harness, service, id } = await harnessRunWaiting();
+
+      // As `halonic trust revoke` in a terminal: the trust is gone, and no listener is told.
+      trust.change(false, { quietly: true });
+      timers.fireAll();
+      const { runs } = await service.open();
+      await waitUntil("the run failed", async () => (await runs.get(id))?.status === "failed");
+
+      expect(harness.steps).toEqual([]);
+      expect(await runs.get(id)).toMatchObject({
+        status: "failed",
+        error: `Agent "writer" runs in claude-code, and this workspace isn't trusted on this computer, so Halonic didn't start it.`,
+      });
+      await service.close();
+    });
+
+    it("asks the trust itself before a harness step, not whether the workspace may start (HAL-12811)", async () => {
+      // A resumed run's step runs from its kept definitions, which can have a harness agent the
+      // loaded workspace no longer has, so `mayStart` can say yes where the trust says no.
+      const { trust, timers, harness, service, id } = await harnessRunWaiting({
+        mayStart: async () => true,
+      });
+
+      trust.change(false, { quietly: true });
+      timers.fireAll();
+      const { runs } = await service.open();
+      await waitUntil("the run failed", async () => (await runs.get(id))?.status === "failed");
+
+      expect(harness.steps).toEqual([]);
+      await service.close();
     });
 
     it("stops hearing the trust once the workspace closes", async () => {
