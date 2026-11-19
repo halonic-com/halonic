@@ -3,6 +3,7 @@
 - Task: HAL-12905
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12905 (Sofia's keyboard and screen-reader check, HAL-12896, row Q4; the names are built from words the row already shows, a team decision under HAL-2282; Liam reviews the pull request on HAL-12905 and signs this note)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/XGbVuhP0FOohLqA9EpO07tNO832QsaZ191lGS0aaS7U3d3MGJGVx+R4B9U81U6wZttkrpv7dVU2HEJaJr8pCw==
 
 ## What changes
 
