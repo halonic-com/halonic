@@ -3,6 +3,7 @@
 - Task: HAL-12215
 - Approval: Liam approves this change on HAL-12215, for HAL-12215. Liam decided to add Open as agent to the tab's ⋮ for 0.1 on HAL-12215; it is flow 4.2 of the approved files flow, so there is no board card.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DqC0qqSRO9RbWktOpqPwLkRhOu7bG5cOGIjzkbSWkH9vIT3LhJX52l7E+KBVVAMkGXVXnQSqy+kHACPemBm6Ag==
 
 ## What changes
 
