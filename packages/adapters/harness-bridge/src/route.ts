@@ -11,6 +11,12 @@ export interface BridgeRequestContext {
   readBody(): Promise<Uint8Array>;
   /** Aborts when the program goes away or the bridge closes; pass it to every call out. */
   signal: AbortSignal;
+  /**
+   * Tells the run about a failure the route answered itself without its
+   * cause, such as an MCP internal error, leaving out the run token. A failure
+   * the route throws needs none: the bridge reports that one. It never throws.
+   */
+  reportError(error: unknown): void;
 }
 
 /**

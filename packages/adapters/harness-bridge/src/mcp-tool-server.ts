@@ -19,9 +19,19 @@ export const supportedMcpVersions = ["2025-11-25", "2025-06-18", "2025-03-26"] a
 
 /**
  * What the program reads when listing or checking the tools failed inside
- * Halonic. The failure's own text isn't the program's to read.
+ * Halonic. The failure's own text isn't the program's to read: it goes to
+ * {@link McpToolServerOptions.reportError} instead.
  */
 const internalMessage = "Something went wrong in Halonic while answering this request.";
+
+/** What an {@link McpToolServer} needs besides its tools. */
+export interface McpToolServerOptions {
+  /**
+   * Hears of a failure the program got only an internal error for, so that
+   * it isn't lost. It must not throw.
+   */
+  reportError(error: unknown): void;
+}
 
 /**
  * A set of tools as an MCP server, without a transport: it answers one
@@ -31,15 +41,18 @@ const internalMessage = "Something went wrong in Halonic while answering this re
  * over stdio can use it as it is.
  *
  * @example
- * const server = new McpToolServer(new HalonicTools({ agent, tools, recorder, approvals }));
+ * const tools = new HalonicTools({ agent, tools, recorder, approvals });
+ * const server = new McpToolServer(tools, { reportError });
  * const reply = await server.answerBytes(body, { signal });
  * if (reply !== null) write(JSON.stringify(reply));
  */
 export class McpToolServer {
   readonly #tools: McpToolSet;
+  readonly #reportError: McpToolServerOptions["reportError"];
 
-  constructor(tools: McpToolSet) {
+  constructor(tools: McpToolSet, options: McpToolServerOptions) {
     this.#tools = tools;
+    this.#reportError = options.reportError;
   }
 
   /**
@@ -70,7 +83,8 @@ export class McpToolServer {
     if (message.kind !== "request") return null;
     try {
       return await this.#answerRequest(message.id, message.method, message.params, options.signal);
-    } catch {
+    } catch (error) {
+      this.#reportError(error);
       return rpcError(message.id, rpcErrorCodes.internalError, internalMessage);
     }
   }

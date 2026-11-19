@@ -36,10 +36,11 @@ interface FakeTools {
   decide?: (request: BridgeApprovalRequest) => Promise<BridgeApprovalDecision>;
 }
 
-/** A server over fake tools, with the events it records and the calls that ran. */
+/** A server over fake tools, with the events it records, the calls that ran and the errors it reported. */
 function serverWith(fake: FakeTools = {}) {
   const recorded: BridgeEvent[] = [];
   const ran: string[] = [];
+  const reported: unknown[] = [];
   const tools: BridgeTools = {
     list: fake.list ?? (async () => [readIssue, postComment]),
     check: async (name) => fake.check?.(name) ?? { kind: "run" },
@@ -58,12 +59,13 @@ function serverWith(fake: FakeTools = {}) {
   };
   const server = new McpToolServer(
     new HalonicTools({ agent: "writer", tools, recorder, approvals }),
+    { reportError: (error) => reported.push(error) },
   );
   const ask = (message: unknown) =>
     server.answerBytes(encodeUtf8(JSON.stringify(message)), {
       signal: new AbortController().signal,
     });
-  return { server, ask, recorded, ran, asked };
+  return { server, ask, recorded, ran, asked, reported };
 }
 
 function request(method: string, params?: Record<string, unknown>) {
@@ -138,6 +140,13 @@ verifies("harness-bridge.mcp", () => {
       const reply = await ask(request("tools/list"));
       expect(reply).toMatchObject({ error: { code: rpcErrorCodes.internalError } });
       expect(JSON.stringify(reply)).not.toContain("/secret");
+    });
+
+    it("reports why listing failed instead of dropping it", async () => {
+      const failure = new Error("store at /secret broke");
+      const { ask, reported } = serverWith({ list: () => Promise.reject(failure) });
+      await ask(request("tools/list"));
+      expect(reported).toEqual([failure]);
     });
   });
 
@@ -276,6 +285,30 @@ verifies("harness-bridge.approvals", () => {
       const refused = serverWith({ check: () => ({ kind: "refused", reason: "off" }) });
       await refused.ask(callTool("read_issue"));
       expect([...allowed.asked, ...refused.asked]).toEqual([]);
+    });
+
+    it("hides why checking a call failed, reports it, and runs nothing", async () => {
+      const failure = new Error("trust store at /secret broke");
+      const { ask, ran, reported } = serverWith({
+        check: () => {
+          throw failure;
+        },
+      });
+      const reply = await ask(callTool("read_issue"));
+      expect(reply).toMatchObject({ error: { code: rpcErrorCodes.internalError } });
+      expect(JSON.stringify(reply)).not.toContain("/secret");
+      expect(reported).toEqual([failure]);
+      expect(ran).toEqual([]);
+    });
+
+    it("reports nothing for a refused call or a tool's own error", async () => {
+      const refused = serverWith({ check: () => ({ kind: "refused", reason: "off" }) });
+      await refused.ask(callTool("read_issue"));
+      const failed = serverWith({
+        call: async () => ({ result: "no such issue", outcome: "error" }),
+      });
+      await failed.ask(callTool("read_issue"));
+      expect([...refused.reported, ...failed.reported]).toEqual([]);
     });
   });
 });
