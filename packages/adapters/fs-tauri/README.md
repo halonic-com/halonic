@@ -17,6 +17,10 @@ The `TrustStore`, `RunStore`, `BlobStore`, `RecordStore`, `DefinitionStore`, `Fo
   out as `FolderRunStore` in `fs-node` lays it out, and holds the run's lock file while it appends,
   so of a CLI and the desktop app appending with the same `expectedSeq`, exactly one wins. `list`
   keeps each run's summary by its log's stamp, so the shell sends only the logs that changed.
+- `TauriEngineLock`: `hold` calls the shell's `engine_lock_hold` with the workspace as opened and a
+  channel, so the shell holds the workspace's `engine.lock`, the file the CLI's engine holds. Another
+  engine is refused as `conflict`. When another process takes the lock over, the shell sends on the
+  channel and `hold`'s `onLost` runs, so the page closes its engine as `openLocalEngine` does.
 - `TauriBlobStore`: every call goes to the shell's `blob_put` or `blob_get` command. The shell
   keeps the blobs in the profile's blob folder for the workspace, laid out as `FolderBlobStore` in
   `fs-node` lays it out, so a blob one of them stored is there for the other.

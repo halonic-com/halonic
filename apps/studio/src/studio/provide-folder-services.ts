@@ -1,6 +1,7 @@
 import { AgentHostChat, AgentHostPlacementStore } from "@halonicjs/adapter-agent-host-client";
 import {
   TauriDefinitionStore,
+  TauriEngineLock,
   type TauriFileShell,
   TauriInstructionTrustStore,
   TauriRecordStore,
@@ -163,6 +164,7 @@ export function provideFolderServices(
     engineServiceKey,
     new EngineService({
       ipc,
+      lock: new TauriEngineLock(files, location),
       location,
       definitions: new TauriDefinitionStore(files, location),
       secrets: shellKeychain(ipc),

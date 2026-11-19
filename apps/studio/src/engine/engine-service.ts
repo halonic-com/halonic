@@ -2,7 +2,9 @@
 // is the CLI's engine with the page's parts: the shell's stores for runs,
 // blobs and records (the same files the CLI reads), the keychain for secrets,
 // and the shell's engine lock, which the page takes on the first start or send
-// and keeps until the workspace changes or the window closes. What doesn't
+// and keeps until the workspace changes or the window closes. When the shell
+// loses the lock to another process (the computer slept and the CLI took
+// over), the engine closes, as the CLI's does, so no run goes on twice. What doesn't
 // depend on the runtime (the executor's options, the collection names, the
 // close order) is shared with the CLI: `workspaceExecutorOptions` and
 // `assembleEngine`.
@@ -21,7 +23,12 @@
 // closes when the trust is removed while it is open (HAL-12799).
 
 import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
-import { TauriBlobStore, TauriRecordStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
+import {
+  TauriBlobStore,
+  type TauriHeldEngineLock,
+  TauriRecordStore,
+  TauriRunStore,
+} from "@halonicjs/adapter-fs-tauri";
 import { nodeSchedulerFactory, type SetTimer } from "@halonicjs/adapter-scheduler-node";
 import {
   routineStateCollection,
@@ -74,10 +81,22 @@ export interface AgentRef {
 export const engineServiceKey: ServiceKey<EngineService> =
   serviceKey<EngineService>("studio.engine");
 
+/** The workspace's engine lock, as the shell holds it for the page (`TauriEngineLock`). */
+export interface PageEngineLock {
+  /**
+   * Holds the lock until it is released; `onLost` hears once if another process takes it over.
+   *
+   * @throws KindedError `conflict` whose `cause` is the shell's refusal, with the other process's `pid`
+   */
+  hold(onLost: (error: Error) => void): Promise<TauriHeldEngineLock>;
+}
+
 /** What an {@link EngineService} is built from. */
 export interface EngineServiceOptions {
-  /** The shell: its run, blob and record commands and the engine lock. */
+  /** The shell: its run, blob and record commands. */
   readonly ipc: TauriIpc;
+  /** The workspace's engine lock, which the shell holds and renews. */
+  readonly lock: PageEngineLock;
   /** The workspace folder, as the person opened it in the shell. */
   readonly location: string;
   /** The workspace's files, read when the engine opens. */
@@ -338,9 +357,27 @@ export class EngineService {
     }
   }
 
+  /**
+   * Takes the shell's engine lock; when the shell later loses it, closes the engine, so the
+   * other process's engine is the only one left on the workspace.
+   *
+   * @throws KindedError `conflict` naming the other process, or the lock's other refusals
+   */
+  async #holdLock(): Promise<TauriHeldEngineLock> {
+    const { lock, reportError } = this.#options;
+    try {
+      return await lock.hold((lost) => {
+        reportError(lost);
+        this.close().catch(reportError);
+      });
+    } catch (refusal) {
+      throw lockRefusal(refusal);
+    }
+  }
+
   async #openOnce(): Promise<OpenEngine> {
     const { ipc, location, clock, reportError } = this.#options;
-    await holdLock(ipc, location);
+    const held = await this.#holdLock();
     try {
       const workspace = await loadWorkspace(this.#options.definitions);
       // Before the scheduler and the harness host start, so an untrusted workspace's
@@ -396,12 +433,12 @@ export class EngineService {
           newToken: this.#options.newToken,
         }),
         // Last, so no other engine starts while this one still delivers a timer.
-        release: () => releaseLock(ipc, location),
+        release: () => held.release(),
       });
       executor = engine.executor;
       return { engine, workspace };
     } catch (error) {
-      await releaseLock(ipc, location);
+      await held.release();
       throw error;
     }
   }
@@ -417,42 +454,21 @@ async function openRunsOf(runs: TauriRunStore): Promise<ReadonlySet<string>> {
   return new Set(open.map((run) => run.id));
 }
 
-/** Takes the shell's engine lock, or refuses with a `conflict` that names the other process. */
-async function holdLock(ipc: TauriIpc, location: string): Promise<void> {
-  try {
-    await ipc.invoke("engine_lock_hold", { workspace: location });
-  } catch (refusal) {
-    throw lockRefusal(refusal);
-  }
-}
-
-async function releaseLock(ipc: TauriIpc, location: string): Promise<void> {
-  await ipc.invoke("engine_lock_release", { workspace: location });
-}
-
-/** The shell's refusal as an error: `conflict` for a lock another engine holds, else `unavailable`. */
-function lockRefusal(refusal: unknown): KindedError {
-  const { kind, message, pid } = refusalOf(refusal);
-  if (kind === "conflict") {
-    const holder = pid === undefined ? "another engine" : `another engine (process ${pid})`;
-    return new KindedError("conflict", `This workspace is open in ${holder}.`, {
-      fix: "Close it, then try again.",
-      cause: refusal,
-    });
-  }
-  return new KindedError("unavailable", message ?? "The workspace's engine can't start here.", {
+/** The lock's refusal as the page says it: a `conflict` names the other process, others stay as they are. */
+function lockRefusal(refusal: unknown): unknown {
+  if (!(refusal instanceof KindedError) || refusal.kind !== "conflict") return refusal;
+  const pid = pidOf(refusal.cause);
+  const holder = pid === undefined ? "another engine" : `another engine (process ${pid})`;
+  return new KindedError("conflict", `This workspace is open in ${holder}.`, {
+    fix: "Close it, then try again.",
     cause: refusal,
   });
 }
 
-function refusalOf(refusal: unknown): { kind?: string; message?: string; pid?: number } {
-  if (typeof refusal !== "object" || refusal === null) return {};
-  const { kind, message, pid } = refusal as Record<string, unknown>;
-  return {
-    ...(typeof kind === "string" ? { kind } : {}),
-    ...(typeof message === "string" ? { message } : {}),
-    ...(typeof pid === "number" ? { pid } : {}),
-  };
+function pidOf(refusal: unknown): number | undefined {
+  if (typeof refusal !== "object" || refusal === null) return undefined;
+  const { pid } = refusal as Record<string, unknown>;
+  return typeof pid === "number" ? pid : undefined;
 }
 
 function unavailable(agentName: string, why: string, fix: string): KindedError {
