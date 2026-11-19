@@ -21,9 +21,9 @@ workspace would need polling on `/mnt/<letter>`. The one changed assertion in
 Nothing in `apps/cli` watches the workspace's files: `run`, `test` and `validate` read them on each
 call, and `routines watch` and `serve` read them again every tick. So the missing file-change events
 for edits made from Windows on `/mnt/c` (microsoft/WSL #4739) don't affect the CLI, and the reason
-was wrong. Since a Studio folder on Windows is meant to be used from WSL 2 as `/mnt/c/…` (D-A), an
-unconditional "move it" would take the folder away from Studio, so the Fix line is narrowed to
-folders used only from the command line.
+was wrong. Since a Studio folder on Windows is meant to be used from WSL 2 as `/mnt/<letter>/…`
+(D-A), an unconditional "move it" would take the folder away from Studio, so the Fix line is
+narrowed to folders used only from the command line.
 
 ## Covers
 
