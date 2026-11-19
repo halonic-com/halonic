@@ -31,8 +31,8 @@ import { useAnnounceFilterChange } from "../list/use-filter-announcement.ts";
 import { FailureReason, RefreshFailedLine } from "../load-failure.tsx";
 import { emptyListWords, pageWords } from "../run-words.ts";
 import { type RunsList, RunsListService, type RunsListState } from "../runs-list.ts";
-import { runCommand } from "../start-words.ts";
-import { NoWorkflowSentence, type PressRun, PressRunSentence } from "./press-run-line.tsx";
+import { NoRuns, type NoRunsWays } from "./no-runs.tsx";
+import type { PressRun } from "./press-run-line.tsx";
 
 /** The Runs place's page: the open workspace's runs, from `RunsListService`. */
 export function RunsPage({ context }: PlaceViewProps) {
@@ -222,54 +222,6 @@ function PageBody({
         openRow={openRow}
         now={now}
       />
-    </>
-  );
-}
-
-/** What decides how "No runs yet" says to start one: the sample's Inbox, **Run**, or the command line. */
-interface NoRunsWays extends PressRun {
-  readonly isSample: boolean;
-  readonly canRun: boolean;
-}
-
-/**
- * No runs at all (R1), with no filters above it: there's nothing to filter. The line names a
- * workflow to run, or says there is none (HAL-10128): open it and press **Run** where its page has
- * Run (HAL-12371), else the command line. In the Acme sample it says to start one from the Inbox,
- * as Home does (HAL-12225).
- */
-function NoRuns(
-  props: NoRunsWays & { readonly workflows: readonly RunnableWorkflow[] | undefined },
-) {
-  return <EmptyState title={emptyListWords.noRunsTitle} description={<NoRunsLine {...props} />} />;
-}
-
-/** The line under "No runs yet": the Inbox in the sample, else where to add a workflow or which one to run. */
-function NoRunsLine({
-  workflows,
-  isSample,
-  canRun,
-  openWorkflow,
-}: NoRunsWays & { readonly workflows: readonly RunnableWorkflow[] | undefined }) {
-  if (isSample) return emptyListWords.noRunsSample;
-  if (canRun) {
-    if (workflows?.length === 0) return <NoWorkflowSentence />;
-    return (
-      <>
-        <PressRunSentence
-          workflows={workflows}
-          {...(openWorkflow === undefined ? {} : { openWorkflow })}
-        />{" "}
-        {emptyListWords.noRunsFromCommandLine}
-      </>
-    );
-  }
-  if (workflows?.length === 0) return emptyListWords.noRunsNoWorkflow;
-  return (
-    <>
-      {emptyListWords.noRunsBody}
-      <code className="font-mono text-code">{runCommand(workflows)}</code>
-      {emptyListWords.noRunsBodyEnd}
     </>
   );
 }
