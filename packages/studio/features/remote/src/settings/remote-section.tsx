@@ -8,7 +8,7 @@ import {
   useOpenExternal,
 } from "@halonicjs/studio-kit";
 import type { SettingsSectionProps } from "@halonicjs/studio-shell";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { RemoteControlService } from "../api.ts";
 import { PairDialog } from "../pairing/pair-dialog.tsx";
 import { useRemoteState } from "../remote-state.ts";
@@ -49,8 +49,16 @@ export function RemoteSettingsView({ remote, state, announce }: RemoteSettingsVi
       announce(failure);
     });
   };
+  // A switch ignores a change while its own host call is out, so a quick second click doesn't
+  // send a second call. A ref, not state: two clicks can land before React renders again.
+  const pending = useRef(new Set<"reach" | "risky">());
+  const change = (key: "reach" | "risky", action: () => Promise<void>, failure: string) => {
+    if (pending.current.has(key)) return;
+    pending.current.add(key);
+    void run(action(), failure).finally(() => pending.current.delete(key));
+  };
   const turn = (on: boolean) =>
-    void run(remote.setRemote(on), on ? text.TURN_ON_FAILED : text.TURN_OFF_FAILED);
+    change("reach", () => remote.setRemote(on), on ? text.TURN_ON_FAILED : text.TURN_OFF_FAILED);
   // Turning remote off and on again makes the tunnel look again: the port has no other way.
   const checkAgain = () =>
     run(
@@ -74,7 +82,9 @@ export function RemoteSettingsView({ remote, state, announce }: RemoteSettingsVi
           <Switch
             label={text.RISKY_TITLE}
             checked={state.allowRiskyRemotely}
-            onChange={(allow) => void run(remote.setAllowRiskyRemotely(allow), text.RISKY_FAILED)}
+            onChange={(allow) =>
+              change("risky", () => remote.setAllowRiskyRemotely(allow), text.RISKY_FAILED)
+            }
           />
         </Row>
       </div>
