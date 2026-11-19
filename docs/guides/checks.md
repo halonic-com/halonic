@@ -73,7 +73,7 @@ queue.
 | `notes-signed` | a decision note under `decisions/` has no signature line, a signature in the wrong form or from a key `tooling/check/approvers.json` doesn't pin, or a header the note format doesn't accept. On a pull request the branch's own note is left to the note check; in the merge queue and on `main` every note counts. The notes merged unsigned before the note check was required are listed in `decisions/liam/HAL-11244-note-record.md` and pass |
 | `native-disabled` | a `.tsx` or `.jsx` file outside `packages/studio/kit` gives a `<button>` a native `disabled` attribute. A disabled button loses focus and hides why it can't be used; use the kit's Button with `unavailable={{ reason }}` (component specs 23, A1). Tests are exempt |
 | `readme-examples` | a package's `examples/` file has no block in its README, or the block (the first `ts` block after the line linking to `examples/<file>`) differs from the file. Only the `../src/index.ts` import may differ: the README names the package. Fix by copying the file into the block |
-| `process-starts` | a product file imports `child_process`, `worker_threads`, `cluster` or `vm` (with or without `node:`), or loads a module the check can't follow, without an entry in `tooling/check/process-starters.json`, or an entry's file no longer starts a process, or an entry has no reason or names no existing test. An entry whose file doesn't exist yet is a warning. See [process-starts](#process-starts) |
+| `process-starts` | a product file imports `child_process`, `worker_threads`, `cluster` or `vm` (with or without `node:`), or loads a module the check can't follow, without an entry in `tooling/check/process-starters.json`, or an entry's file no longer starts a process, or an entry has no reason or names no existing test, or a listed file starts a program without `windowsHide: true`. An entry whose file doesn't exist yet is a warning. See [process-starts](#process-starts) |
 | `webview-apis` | code that Studio's page loads (the Studio app and every workspace package in its `dependencies`, `peerDependencies` or `optionalDependencies`, directly or through others) uses a web API that Studio's oldest webviews lack: `URL.parse`, which came with Safari 18 and Chromium 126, where the oldest are WebKitGTK 2.44 (Safari 17.5) and Chromium 123 (see `packages/studio/kit/README.md`). Write `new URL(…)` in a `try` instead. Tests, their `*.test-helper.ts` helpers and tool config files are exempt. The list is `tooNew` in `tooling/check/src/rules/webview-apis.ts` |
 | `api-specs` | a public API's `spec/<name>.schema.json` breaks its newest copy in `spec/released/` but its `$id` still names the same API version; bump the version or keep the change additive |
 
@@ -157,6 +157,16 @@ an existing test file that shows it refuses to start a file under a
 skill's `scripts/` folder. An entry needs Liam's review. The rule also
 fails when an entry's file no longer imports any of these modules (or
 loads one the check can't follow), so remove the entry with the code.
+
+A listed file also passes `windowsHide: true` in an options object
+literal to every `child_process` function it starts a program with
+(`spawn`, `execFile`, `exec`, `fork` and their `Sync` forms), so the rule
+fails a call with no options, or with options in a variable (HAL-13197).
+On Windows the agent host runs without a console, so a console program it
+starts without the option opens a console window that flashes up and
+closes. Build and CI scripts in a `scripts/` folder are exempt: they run in
+a terminal. The Rust shell has the same guard in clippy: see
+`apps/studio/src-tauri/clippy.toml`.
 
 CI checks a pull request against the base's list (see the policy rules
 below), so a new entry merges first, in a pull request of its own, and its

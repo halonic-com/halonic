@@ -25,6 +25,15 @@ export interface HiddenLoad {
   readonly line: number;
 }
 
+/** A call of a `child_process` function that starts a program, such as `spawn(…)`. */
+export interface ProcessCall {
+  /** The function's name in `child_process`, whatever the file imports it as. */
+  readonly name: string;
+  readonly line: number;
+  /** True when an argument is an object literal with `windowsHide: true`. */
+  readonly hidesWindow: boolean;
+}
+
 /** The facts the rules need from one TypeScript or JavaScript file. */
 export interface SourceFacts {
   readonly imports: readonly ImportReference[];
@@ -37,6 +46,7 @@ export interface SourceFacts {
    * string: the parser accepts any expression there. Comments don't count.
    */
   readonly reExportsOnly: boolean;
+  readonly processCalls: readonly ProcessCall[];
 }
 
 /** True when the file is code, docs or config that people read and review as text. */
@@ -72,6 +82,8 @@ export function readSourceFacts(fileName: string, text: string): SourceFacts {
   const imports: ImportReference[] = [];
   const hiddenLoads: HiddenLoad[] = [];
   const functions: FunctionSpan[] = [];
+  const processCalls: ProcessCall[] = [];
+  const starters = childProcessNames(source);
   const lineOf = (position: number): number =>
     source.getLineAndCharacterOfPosition(position).line + 1;
   for (const directive of source.typeReferenceDirectives) {
@@ -101,6 +113,16 @@ export function readSourceFacts(fileName: string, text: string): SourceFacts {
       const end = lineOf(node.getEnd());
       functions.push({ name: functionName(node), line: start, lineCount: end - start + 1 });
     }
+    if (ts.isCallExpression(node)) {
+      const name = startedBy(node, starters);
+      if (name !== undefined) {
+        processCalls.push({
+          name,
+          line: lineOf(node.getStart(source)),
+          hidesWindow: node.arguments.some(hidesWindow),
+        });
+      }
+    }
     ts.forEachChild(node, visit);
   };
   visit(source);
@@ -113,7 +135,86 @@ export function readSourceFacts(fileName: string, text: string): SourceFacts {
         ts.isStringLiteral(statement.moduleSpecifier) &&
         statement.attributes === undefined,
     );
-  return { imports, hiddenLoads, functions, reExportsOnly };
+  return { imports, hiddenLoads, functions, reExportsOnly, processCalls };
+}
+
+/** The `child_process` functions that start a program. */
+const startingFunctions = new Set([
+  "spawn",
+  "spawnSync",
+  "exec",
+  "execSync",
+  "execFile",
+  "execFileSync",
+  "fork",
+]);
+
+/** What a file imports from `child_process`: its local names for the starting functions, and its namespace names. */
+interface ChildProcessNames {
+  readonly functions: ReadonlyMap<string, string>;
+  readonly namespaces: ReadonlySet<string>;
+}
+
+function childProcessNames(source: ts.SourceFile): ChildProcessNames {
+  const functions = new Map<string, string>();
+  const namespaces = new Set<string>();
+  for (const statement of source.statements) {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteral(statement.moduleSpecifier) ||
+      !["child_process", "node:child_process"].includes(statement.moduleSpecifier.text)
+    ) {
+      continue;
+    }
+    const clause = statement.importClause;
+    if (clause?.name !== undefined) {
+      namespaces.add(clause.name.text);
+    }
+    const bindings = clause?.namedBindings;
+    if (bindings !== undefined && ts.isNamespaceImport(bindings)) {
+      namespaces.add(bindings.name.text);
+    } else if (bindings !== undefined) {
+      for (const element of bindings.elements) {
+        const imported = (element.propertyName ?? element.name).text;
+        if (startingFunctions.has(imported)) {
+          functions.set(element.name.text, imported);
+        }
+      }
+    }
+  }
+  return { functions, namespaces };
+}
+
+/** The `child_process` function a call starts a program with, or `undefined`. */
+function startedBy(call: ts.CallExpression, names: ChildProcessNames): string | undefined {
+  const callee = unwrap(call.expression);
+  if (ts.isIdentifier(callee)) {
+    return names.functions.get(callee.text);
+  }
+  if (
+    ts.isPropertyAccessExpression(callee) &&
+    ts.isIdentifier(callee.expression) &&
+    names.namespaces.has(callee.expression.text) &&
+    startingFunctions.has(callee.name.text)
+  ) {
+    return callee.name.text;
+  }
+  return undefined;
+}
+
+/** True when `argument` is an object literal that sets `windowsHide: true`. */
+function hidesWindow(argument: ts.Expression): boolean {
+  const options = unwrap(argument);
+  return (
+    ts.isObjectLiteralExpression(options) &&
+    options.properties.some(
+      (property) =>
+        ts.isPropertyAssignment(property) &&
+        ts.isIdentifier(property.name) &&
+        property.name.text === "windowsHide" &&
+        property.initializer.kind === ts.SyntaxKind.TrueKeyword,
+    )
+  );
 }
 
 function scriptKind(fileName: string): ts.ScriptKind {
