@@ -103,15 +103,18 @@ interface NavigationPillProps {
 
 /**
  * The 56×28px pill round the icon: the halo tint where you are, `surface-muted` while pressed
- * elsewhere. In forced colours the tint is gone, so every pill gets a 1px edge and where you are a
- * 2px `Highlight` one (VK T2-F14).
+ * elsewhere. It's never wider than its item, so at 195px (400 % zoom of a 780px window) the four
+ * items' 49px still hold it inside the window (HAL-13895). In forced colours the tint is gone, so
+ * every pill gets a 1px edge and where you are a 2px `Highlight` one (VK T2-F14).
  */
 function NavigationPill({ current, signal, children }: NavigationPillProps) {
   const fill = current
     ? "bg-halo-tint text-accent forced-colors:border-2 forced-colors:border-[Highlight] forced-colors:text-[CanvasText]"
     : "text-fg-muted group-active:bg-surface-muted forced-colors:border forced-colors:border-[CanvasText]";
   return (
-    <span className={`flex h-7 w-14 shrink-0 items-center justify-center rounded-full ${fill}`}>
+    <span
+      className={`flex h-7 w-14 max-w-full shrink-0 items-center justify-center rounded-full ${fill}`}
+    >
       <span className="relative size-icon-md *:size-full">
         {children}
         {signal === undefined ? null : <IconSignal signal={signal} />}
