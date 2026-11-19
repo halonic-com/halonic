@@ -1,4 +1,5 @@
 import type { RunEventBody } from "@halonicjs/events";
+import { connectorStartCause } from "./connector-start-cause.ts";
 
 /** The run log events a model turn writes, with the `agent.*` events of the subagents it hands tasks to. */
 export type TurnEvent = Extract<
@@ -15,7 +16,8 @@ export type TurnEvent = Extract<
       | "tool.called"
       | "tool.result"
       | "tool.refused"
-      | "tool.unasked";
+      | "tool.unasked"
+      | "connector.listing-failed";
   }
 >;
 
@@ -30,4 +32,23 @@ export interface TurnLog {
    * @throws when the event can't be stored; the turn stops there
    */
   append(event: TurnEvent): Promise<void>;
+}
+
+/**
+ * Writes a `connector.listing-failed` for each connector whose tools the
+ * turn couldn't list (requirement `engine.connector-listing-failed`), so a run's
+ * log says why its tools were missing. The model hears it from the turn's
+ * refusals; a person reads it here. `listingErrors` is the turn's
+ * (`TurnTools.listingErrors`), by connector id. A turn with no log writes nothing.
+ */
+export async function logListingFailures(
+  log: TurnLog | undefined,
+  agent: string,
+  listingErrors: ReadonlyMap<string, unknown>,
+): Promise<void> {
+  if (log === undefined) return;
+  for (const [connector, error] of listingErrors) {
+    const cause = connectorStartCause(error);
+    await log.append({ type: "connector.listing-failed", agent, connector, cause });
+  }
 }
