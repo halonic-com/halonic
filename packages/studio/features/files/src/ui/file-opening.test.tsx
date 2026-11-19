@@ -66,6 +66,15 @@ verifies("files.ui.file-tab", () => {
 
     const row = page.querySelector<HTMLElement>('[data-path="models.yaml"]');
     expect(row?.getAttribute("aria-selected")).toBe("true");
-    expect(row?.className).toContain("aria-selected:selected-forced");
+    expect(row?.className).toContain("aria-selected:not-focus-visible:selected-forced");
+  });
+
+  it("rings a focused row with an outline that shows in high contrast, over the open file's outline", async () => {
+    const page = await showWithModelsOpen(() => {});
+
+    const row = page.querySelector<HTMLElement>('[data-path="models.yaml"]');
+    expect(row?.className).toContain("focus-ring-inset");
+    expect(row?.className).not.toContain("outline-none");
+    expect(row?.className).not.toMatch(/(^|\s)aria-selected:selected-forced/);
   });
 });
