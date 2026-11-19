@@ -2,6 +2,7 @@
 
 - Approval: HAL-12841 (Liam's review of #3747, which asked for this note)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:noH0vS8eYwz1gWXYeiaTK0B5pUoJYZf8tZedawJZs+hEpU1nxe1amkkwoFWOTSva2YMrJ6/QGNAeOqrH6nNlAw==
 
 ## What changes
 
