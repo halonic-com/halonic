@@ -1631,6 +1631,15 @@ name = "halonic-device-keys"
 version = "0.1.0"
 
 [[package]]
+name = "halonic-e2e-noise-wasm"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "snow",
+]
+
+[[package]]
 name = "halonic-file-identity"
 version = "0.1.0"
 dependencies = [
