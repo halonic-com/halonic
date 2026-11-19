@@ -13,6 +13,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type AgentListing, type AgentRef, type AgentsHost, AgentsHostService } from "../api.ts";
 import { NewAgentDialog } from "../new/new-agent-dialog.tsx";
+import { markFreshAgent } from "../page/fresh-agents.ts";
 import { deleteWords } from "../trash/delete-words.ts";
 import { fileItemOf } from "../trash/file-item.ts";
 import { trashAgent } from "../trash/trash-agent.ts";
@@ -106,6 +107,9 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
   // Each read takes a number; only the newest read's result is shown, so a slow older read never
   // overwrites a newer one, and nothing is set after unmount.
   const newestRead = useRef(0);
+
+  // Kept stable so the New agent dialog doesn't read the default model again on every list refresh.
+  const defaultModelOf = useCallback((hubId: string) => host.defaultModel(hubId), [host]);
 
   const read = useCallback(
     (showProgress = false) => {
@@ -314,8 +318,15 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
           takenIds={(hubId) =>
             listings.filter((listing) => listing.hubId === hubId).map((listing) => listing.id)
           }
-          defaultModelOf={(hubId) => host.defaultModel(hubId)}
-          create={(newAgent) => host.create(newAgent)}
+          defaultModelOf={defaultModelOf}
+          create={async (newAgent) => {
+            const ref = await host.create(newAgent);
+            // With nothing written, the page opens ready for the instructions (`agents.page.new-agent`).
+            if (newAgent.instructions === undefined || newAgent.instructions === "") {
+              markFreshAgent(ref.hubId, ref.id);
+            }
+            return ref;
+          }}
           onCreated={(ref) => {
             setCreating(false);
             read();
