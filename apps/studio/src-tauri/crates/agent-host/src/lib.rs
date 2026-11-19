@@ -10,6 +10,7 @@
 
 mod console_window;
 mod default_distro;
+mod error;
 mod handshake;
 mod relay;
 mod routes;
@@ -25,6 +26,7 @@ use std::time::{Duration, Instant};
 
 use console_window::{new_command, without_console_window};
 pub use default_distro::halonic_is_default;
+pub use error::{AgentHostError, StartCause};
 pub use handshake::{Handshake, read_handshake};
 use relay::Relay;
 pub use routes::{Answer, LineSplitter, LineTooLong, Method, Route, find_route};
@@ -57,78 +59,6 @@ const DROP_GRACE: Duration = Duration::from_secs(5);
 /// How long a host that closed its output before its handshake is given to
 /// exit, so its exit code can be read.
 const EXIT_CODE_WAIT: Duration = Duration::from_secs(2);
-
-/// Windows' `ERROR_VIRUS_INFECTED` and `ERROR_VIRUS_DELETED`: an antivirus
-/// program refused to run the file.
-#[cfg(windows)]
-const VIRUS_ERRORS: [i32; 2] = [225, 226];
-
-/// Why the system wouldn't start the host's program, read from its error so
-/// the shell can tell a broken install from a blocked one.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StartCause {
-    /// The program, or something it needs, isn't there.
-    Missing,
-    /// The system refused to run it: a permission, or an antivirus program.
-    Blocked,
-    /// Any other reason.
-    Other,
-}
-
-impl StartCause {
-    /// The cause of `error`, the system's answer to starting a program.
-    pub fn of(error: &std::io::Error) -> Self {
-        #[cfg(windows)]
-        {
-            if error
-                .raw_os_error()
-                .is_some_and(|code| VIRUS_ERRORS.contains(&code))
-            {
-                return Self::Blocked;
-            }
-        }
-        match error.kind() {
-            std::io::ErrorKind::NotFound => Self::Missing,
-            std::io::ErrorKind::PermissionDenied => Self::Blocked,
-            _ => Self::Other,
-        }
-    }
-}
-
-/// Why the host couldn't be started. No message contains the token.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AgentHostError {
-    /// The program couldn't be started at all, and why the system said no.
-    Start(StartCause, String),
-    /// It ended, or closed its output, before printing a handshake. Holds
-    /// its exit code, or `None` when it was stopped by a signal or didn't
-    /// exit soon after.
-    Exited(Option<i32>),
-    /// It printed nothing within the time allowed.
-    TimedOut(Duration),
-    /// It printed a line that isn't a valid handshake.
-    Handshake(String),
-}
-
-impl std::fmt::Display for AgentHostError {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Start(_, message) | Self::Handshake(message) => formatter.write_str(message),
-            Self::Exited(Some(code)) => write!(
-                formatter,
-                "The agent host stopped before it served, with exit code {code}."
-            ),
-            Self::Exited(None) => formatter.write_str("The agent host stopped before it served."),
-            Self::TimedOut(wait) => write!(
-                formatter,
-                "The agent host didn't serve within {} s.",
-                wait.as_secs_f32()
-            ),
-        }
-    }
-}
-
-impl std::error::Error for AgentHostError {}
 
 /// How [`AgentHost::stop`] ended the host.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -452,108 +382,4 @@ fn kill(child: &mut Child) {
     clippy::disallowed_methods,
     reason = "a test's programs share its console"
 )]
-mod tests {
-    use std::io::Cursor;
-    use std::process::{Command, Stdio};
-    use std::time::Duration;
-
-    use super::handshake::read_relayed_handshake;
-    use super::relay::Relay;
-    use super::{AgentHost, FirstLine, read_first_line};
-
-    const TOKEN: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJ-_01234";
-
-    fn first_line_of(output: &[u8]) -> FirstLine {
-        read_first_line(Cursor::new(output.to_vec()))
-            .recv()
-            .expect("the reader answers")
-    }
-
-    #[test]
-    fn handshake_first_line_is_read_up_to_its_newline() {
-        assert_eq!(
-            first_line_of(b"{}\nmore\n"),
-            FirstLine::Text("{}\n".to_owned())
-        );
-    }
-
-    #[test]
-    fn handshake_first_line_that_isnt_utf8_is_told_apart_from_an_ended_output() {
-        assert_eq!(first_line_of(b"\xff\xfe\n"), FirstLine::NotText);
-        assert_eq!(first_line_of(b""), FirstLine::Ended);
-    }
-
-    #[test]
-    fn relay_handshake_is_the_token_with_the_relays_address() {
-        let line = format!("{{\"token\":\"{TOKEN}\"}}\r\n");
-        let handshake = read_relayed_handshake(line.as_bytes(), 49152)
-            .expect("a handshake")
-            .expect("not skipped");
-        assert_eq!(handshake.url(), "http://127.0.0.1:49152");
-        assert_eq!(handshake.token(), TOKEN);
-    }
-
-    #[test]
-    fn relay_handshake_skips_wsl_messages_but_not_after_a_utf16_newline() {
-        // "Hi" and a newline in UTF-16, as wsl.exe prints them.
-        assert_eq!(read_relayed_handshake(b"H\0i\0\r\0\n", 1), Ok(None));
-        assert_eq!(read_relayed_handshake(b"\xff\xfe\n", 1), Ok(None));
-        assert_eq!(read_relayed_handshake(b"[1,2]\n", 1), Ok(None));
-        // The NUL a UTF-16 newline leaves before the host's own line.
-        let line = format!("\0{{\"token\":\"{TOKEN}\"}}\n");
-        assert!(matches!(
-            read_relayed_handshake(line.as_bytes(), 1),
-            Ok(Some(_))
-        ));
-    }
-
-    #[test]
-    fn relay_handshake_refuses_an_object_that_isnt_a_token_without_repeating_it() {
-        let with_url = format!("{{\"url\":\"http://127.0.0.1:1\",\"token\":\"{TOKEN}\"}}\n");
-        for line in [with_url.as_str(), "{\"token\":\"short\"}\n", "{}\n"] {
-            let error = read_relayed_handshake(line.as_bytes(), 1).expect_err(line);
-            assert!(!error.to_string().contains(TOKEN), "{error}");
-        }
-    }
-
-    #[test]
-    fn relay_stopped_counts_as_an_exited_host() {
-        // Runs until its input closes, so only the relay's state tells.
-        #[cfg(unix)]
-        let mut command = {
-            let mut command = Command::new("/bin/sh");
-            command.args(["-c", "cat > /dev/null"]);
-            command
-        };
-        #[cfg(windows)]
-        let mut command = {
-            let mut command = Command::new("findstr");
-            command.arg("^");
-            command
-        };
-        let child = command
-            .stdin(Stdio::piped())
-            .stdout(Stdio::null())
-            .spawn()
-            .expect("start the stand-in");
-        let mut relay = Relay::bind().expect("bind the relay");
-        let (_input, relay_input) = std::io::pipe().expect("a pipe");
-        let (relay_output, _output) = std::io::pipe().expect("a pipe");
-        relay.serve(relay_input, relay_output, TOKEN);
-        let line = format!("{{\"token\":\"{TOKEN}\"}}\n");
-        let handshake = read_relayed_handshake(line.as_bytes(), relay.port())
-            .expect("a handshake")
-            .expect("not skipped");
-        let mut host = AgentHost {
-            child,
-            stdin: None,
-            relay: Some(relay),
-            handshake,
-        };
-
-        assert!(!host.has_exited(), "the relay serves and the host runs");
-        host.relay.as_ref().expect("the relay").stop();
-        assert!(host.has_exited(), "a stopped relay reaches no host");
-        host.stop(Duration::from_secs(5));
-    }
-}
+mod tests;
