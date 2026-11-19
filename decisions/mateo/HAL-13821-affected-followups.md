@@ -3,6 +3,8 @@
 - Task: HAL-13821
 - Approval: the non-blocking points Liam and Julian raised on #3694 (HAL-12539, step 1b). `tooling/check/src/lib/affected-tests.ts` is a guard trust root, so this note needs both guardians: Liam (CTO) and Julian (security reviewer)
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:iMHLWC8sTsikjB7P7sIivEea/O6/xUPxlp9kMv1G2xXBp9Ov4ZjybFA+sQDzeqHOViJiKGH3BIqmVEEFCrruCQ==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:899daxBhg5k3r8WJSlqbtuwoLsOtLHwkKTL49jkMWgwKh+x1Ca/+X4uqKeUZsonMAuqxVOPEzXsjzre5RrPsDw==
 
 ## What changes
 
