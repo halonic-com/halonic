@@ -7,11 +7,14 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { localToolLaunch, type StdioConfig } from "./local-tool-launch.ts";
 import { type PluginLocalToolSetting, pluginLocalToolPlace } from "./plugin-local-tool-place.ts";
 
+// The place takes only absolute paths, and on Windows those start with a drive.
+const drive = process.platform === "win32" ? "C:" : "";
+
 const setting: PluginLocalToolSetting = {
-  workingFolder: "/halonic/launch-1",
-  tempFolder: "/halonic/launch-2",
-  pluginCopy: "/halonic/launch-3/plugin",
-  deniedPaths: ["/person/.ssh", "/halonic/data", "/person/.ssh"],
+  workingFolder: `${drive}/halonic/launch-1`,
+  tempFolder: `${drive}/halonic/launch-2`,
+  pluginCopy: `${drive}/halonic/launch-3/plugin`,
+  deniedPaths: [`${drive}/person/.ssh`, `${drive}/halonic/data`, `${drive}/person/.ssh`],
   bridge: null,
   timeLimitMs: 60_000,
   path: "/usr/bin",
@@ -20,8 +23,8 @@ const setting: PluginLocalToolSetting = {
 const script: StdioConfig = {
   kind: "stdio",
   command: "node",
-  args: ["/halonic/launch-3/plugin/tools/server.js"],
-  env: { NOTES_ROOT: "/person/notes" },
+  args: [`${drive}/halonic/launch-3/plugin/tools/server.js`],
+  env: { NOTES_ROOT: `${drive}/person/notes` },
   sites: ["api.notes.test"],
 };
 
@@ -38,14 +41,14 @@ verifies("connector-stdio-sandbox.plugin-local-tool-place", () => {
       NOTES_TOKEN: "token-value",
     });
 
-    expect(profile.workingFolder).toBe("/halonic/launch-1");
-    expect(profile.tempFolder).toBe("/halonic/launch-2");
-    expect(profile.readOnlyPaths).toEqual(["/halonic/launch-3/plugin"]);
-    expect(profile.deniedPaths).toEqual(["/person/.ssh", "/halonic/data"]);
+    expect(profile.workingFolder).toBe(`${drive}/halonic/launch-1`);
+    expect(profile.tempFolder).toBe(`${drive}/halonic/launch-2`);
+    expect(profile.readOnlyPaths).toEqual([`${drive}/halonic/launch-3/plugin`]);
+    expect(profile.deniedPaths).toEqual([`${drive}/person/.ssh`, `${drive}/halonic/data`]);
     expect(profile.network).toEqual({ bridge: null, allowedSites: ["api.notes.test"] });
     expect(profile.timeLimitMs).toBe(60_000);
     expect(profile.env).toMatchObject({
-      NOTES_ROOT: "/person/notes",
+      NOTES_ROOT: `${drive}/person/notes`,
       NOTES_TOKEN: "token-value",
       PATH: "/usr/bin",
     });
@@ -68,21 +71,21 @@ verifies("connector-stdio-sandbox.plugin-local-tool-place", () => {
   });
 
   it.each([
-    ["the plugin's own folder in Halonic's data", "/halonic/data/plugins/notes"],
-    ["a folder in the working folder", "/halonic/launch-1/plugin"],
-    ["a denied path itself", "/person/.ssh"],
-    ["the working folder itself", "/halonic/launch-1"],
+    ["the plugin's own folder in Halonic's data", `${drive}/halonic/data/plugins/notes`],
+    ["a folder in the working folder", `${drive}/halonic/launch-1/plugin`],
+    ["a denied path itself", `${drive}/person/.ssh`],
+    ["the working folder itself", `${drive}/halonic/launch-1`],
     // Spellings that lead into a denied path (HAL-13056).
-    ["a way back into Halonic's data", "/halonic/launch-3/../data/plugins/notes"],
-    ["a denied path with a trailing slash", "/person/.ssh/"],
-    ["a denied path with doubled slashes", "//halonic//data//plugins"],
-    ["a way into the working folder through a dot", "/halonic/./launch-1/plugin"],
-    ["a folder holding a denied path", "/person"],
-    ["the root", "/"],
-    ["a folder holding the working folder", "/halonic"],
-    ["the temp folder", "/halonic/launch-2"],
-    ["a folder in the temp folder", "/halonic/launch-2/plugin"],
-    ["a denied path in other letter case", "/Person/.SSH/plugin"],
+    ["a way back into Halonic's data", `${drive}/halonic/launch-3/../data/plugins/notes`],
+    ["a denied path with a trailing slash", `${drive}/person/.ssh/`],
+    ["a denied path with doubled slashes", `${drive}//halonic//data//plugins`],
+    ["a way into the working folder through a dot", `${drive}/halonic/./launch-1/plugin`],
+    ["a folder holding a denied path", `${drive}/person`],
+    ["the root", `${drive}/`],
+    ["a folder holding the working folder", `${drive}/halonic`],
+    ["the temp folder", `${drive}/halonic/launch-2`],
+    ["a folder in the temp folder", `${drive}/halonic/launch-2/plugin`],
+    ["a denied path in other letter case", `${drive}/Person/.SSH/plugin`],
   ])("refuses %s as the plugin's copy", (_, pluginCopy) => {
     expect(() => pluginLocalToolPlace(script, { ...setting, pluginCopy })).toThrow(RangeError);
   });
@@ -91,15 +94,24 @@ verifies("connector-stdio-sandbox.plugin-local-tool-place", () => {
     ["the plugin's copy", { pluginCopy: "launch-3/plugin" }],
     ["the working folder", { workingFolder: "./launch-1" }],
     ["the temp folder", { tempFolder: "launch-2" }],
-    ["a denied path", { deniedPaths: ["/person/.ssh", ".ssh"] }],
+    ["a denied path", { deniedPaths: [`${drive}/person/.ssh`, ".ssh"] }],
   ])("refuses a relative path as %s", (_, change: Partial<PluginLocalToolSetting>) => {
     expect(() => pluginLocalToolPlace(script, { ...setting, ...change })).toThrow(RangeError);
   });
 
-  it("takes a copy next to a denied folder whose name starts the same", () => {
-    const place = pluginLocalToolPlace(script, { ...setting, pluginCopy: "/person/.ssh-notes" });
+  it("refuses a path that Windows reads against the current drive", () => {
+    expect(() =>
+      pluginLocalToolPlace(script, { ...setting, pluginCopy: "\\halonic\\launch-3\\plugin" }),
+    ).toThrow(RangeError);
+  });
 
-    expect(place.readOnlyPaths).toEqual(["/person/.ssh-notes"]);
+  it("takes a copy next to a denied folder whose name starts the same", () => {
+    const place = pluginLocalToolPlace(script, {
+      ...setting,
+      pluginCopy: `${drive}/person/.ssh-notes`,
+    });
+
+    expect(place.readOnlyPaths).toEqual([`${drive}/person/.ssh-notes`]);
   });
 
   describe("with links", () => {

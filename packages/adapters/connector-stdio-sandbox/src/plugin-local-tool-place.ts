@@ -1,5 +1,4 @@
-import { isAbsolute } from "node:path";
-import { bothSpellings, pathsOverlap } from "@halonicjs/adapter-system-node";
+import { bothSpellings, isAbsolutePath, pathsOverlap } from "@halonicjs/adapter-system-node";
 import type { LocalToolPlace, PinnedRunner, StdioConfig } from "./local-tool-launch.ts";
 
 /**
@@ -55,8 +54,8 @@ export interface PluginLocalToolSetting {
  *   Windows, so a copy holding a denied path would reopen it there
  *
  * @example
- * pluginLocalToolPlace(stdio, { pluginCopy: "/halonic/launch-1/plugin", deniedPaths: ["/person/.ssh"], … });
- * // { readOnlyPaths: ["/halonic/launch-1/plugin"], deniedPaths: ["/person/.ssh"], sites: stdio.sites ?? [], … }
+ * pluginLocalToolPlace(stdio, { pluginCopy: "/halonic/launch-3/plugin", deniedPaths: ["/person/.ssh"], … });
+ * // { readOnlyPaths: ["/halonic/launch-3/plugin"], deniedPaths: ["/person/.ssh"], sites: stdio.sites ?? [], … }
  */
 export function pluginLocalToolPlace(
   stdio: StdioConfig,
@@ -64,7 +63,7 @@ export function pluginLocalToolPlace(
 ): LocalToolPlace {
   const { pluginCopy } = setting;
   const folders = [setting.workingFolder, setting.tempFolder, pluginCopy, ...setting.deniedPaths];
-  const relativeFolder = folders.find((folder) => !isAbsolute(folder));
+  const relativeFolder = folders.find((folder) => !isAbsolutePath(folder));
   if (relativeFolder !== undefined) {
     throw new RangeError(
       `The folder ${relativeFolder} isn't an absolute path, so the session's place can't be set up.`,
