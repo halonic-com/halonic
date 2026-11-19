@@ -4,6 +4,7 @@ import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import { PhoneTopBarSlot } from "../phone/phone-top-bar-actions.tsx";
 import { installFakePopover } from "../test-support/fake-popover.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import type { OverviewHub } from "./overview-model.ts";
@@ -390,5 +391,30 @@ verifies("shell.overview.phone-head", () => {
     );
     expect(button?.className).toContain("min-h-touch");
     expect(button?.parentElement?.className).toContain("flex-col");
+  });
+
+  it("puts the create button in the phone top bar as a 48px +, with nothing under the search field", () => {
+    const topBar = document.createElement("div");
+    document.body.append(topBar);
+    const onClick = vi.fn();
+    const page = render(
+      <PresentationProvider presentation="phone">
+        <PhoneTopBarSlot value={topBar}>
+          <OverviewPage
+            hubs={hubs}
+            words={words}
+            onOpen={() => undefined}
+            onOpenInNewTab={() => undefined}
+            newButton={{ label: "New skill", onClick }}
+          />
+        </PhoneTopBarSlot>
+      </PresentationProvider>,
+    );
+    const plus = topBar.querySelector<HTMLButtonElement>('button[aria-label="New skill"]');
+    expect(plus?.className).toContain("phone:size-touch");
+    expect(page.textContent).not.toContain("New skill");
+    act(() => plus?.click());
+    expect(onClick).toHaveBeenCalledOnce();
+    topBar.remove();
   });
 });
