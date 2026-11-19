@@ -2,6 +2,7 @@
 
 - Approval: Liam approved the plan on HAL-12575 (PR 2 of it); he approves this note in his review of this pull request on HAL-12471
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9IZqhl9KszGtUr2csS/sh8ifvP7EC4XouWvoYEySZjgGviSllYU1bZ8d3hgC8hEeaHHgHebxlusoYtj8lp6xBA==
 - Task: HAL-12471
 
 ## What changes
