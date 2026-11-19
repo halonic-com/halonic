@@ -61,6 +61,8 @@ verifies("events.run-log-contract", () => {
       | "sandbox.blocked"
       // Added after the reference by events.connector-started (HAL-1728).
       | "connector.started"
+      // Added after the reference by events.connector-listing-failed (HAL-13670).
+      | "connector.listing-failed"
       // Added after the reference by events.effect-requested (HAL-1532).
       | "effect.requested"
       | "knowledge.searched"
