@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12505 (Liam approved the HAL-12488 plan, with changes 1, 2 and 6); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TgZYSgVBEc0yzcXJcJ1mHt1uGOSrIuQlIAD2pLYltBLSnqMKJvBFiS5q668gqJmqKLKK90FtLg6ohu29aqWhBw==
 
 `harness-bridge.anthropic` and `harness-bridge.openai` sent every call to `https://api.anthropic.com` or `https://api.openai.com` only. Claude Code and Codex may use any provider that speaks the same API (HAL-403), so a keyed access may now name the provider file's `baseUrl`, and that agent's calls and key go to that one origin only (`harness-bridge.provider-base-url`). Both requirements now say so in their first sentence; nothing else in them changes.
 
