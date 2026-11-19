@@ -16,6 +16,7 @@ import { Arrows } from "./arrows.tsx";
 import { pageWords } from "./page-words.ts";
 import { PointOfLight } from "./point-of-light.tsx";
 import { cardExtent, DOT_VAR, dotCentre, StepCard } from "./step-card.tsx";
+import { waysOnFrom } from "./ways-on.ts";
 import { MinusIcon } from "./zoom-icons.tsx";
 
 /**
@@ -114,9 +115,12 @@ export function WorkflowCanvas({
     setView((now) => panToShow(now, card, room));
   };
   return (
+    // A group, not an application: the canvas has no keys of its own, so a screen reader stays in
+    // its reading mode here (a11y check E3).
+    // biome-ignore lint/a11y/useSemanticElements: a canvas holds cards, not form fields, so not a fieldset.
     <div
       ref={viewport}
-      role="application"
+      role="group"
       aria-label={pageWords.canvas}
       // `overflow-clip`, not `overflow-hidden`: a box that hides its overflow still scrolls when
       // focus moves to a card outside it, and that shift is lost to the zoom and pan.
@@ -167,6 +171,7 @@ export function WorkflowCanvas({
               failed={failedStep === step.id}
               mark={marks?.[step.id]}
               focusOnMount={selectedStep === step.id}
+              waysOn={waysOnFrom(step.id, workflow, boxes)}
               onSelect={() => {
                 setSelected(step.id);
                 onSelectStep?.(step.id);

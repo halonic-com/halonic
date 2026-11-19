@@ -1,5 +1,5 @@
 import { StatusChip } from "@halonicjs/studio-kit";
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import type { WorkflowStep } from "../api.ts";
 import type { Box } from "../canvas/geometry.ts";
 import type { StepMark } from "../start/run-strip.ts";
@@ -20,6 +20,8 @@ export interface StepCardProps {
   readonly mark?: StepMark | undefined;
   /** Take focus on mount, for the card a problem's link opened. */
   readonly focusOnMount?: boolean;
+  /** Where the step leads, for a screen reader that can't see the arrows; absent for an end step. */
+  readonly waysOn?: string | undefined;
   readonly onSelect: () => void;
   /** Told when the card takes focus, so the canvas can bring it into view. */
   readonly onFocus?: ((event: React.FocusEvent<HTMLButtonElement>) => void) | undefined;
@@ -29,6 +31,10 @@ export interface StepCardProps {
  * One step on the canvas (`workflows.page.step-cards`): its kind, its title (its id when it has none), and the agent it runs,
  * or "No agent" for a task step that has none (a step without an agent passes the data on). A
  * click selects it; the docked card that edits it lands with Configuration.
+ *
+ * A screen reader hears its title first, then its kind, the Start chip, its agent and how it stood
+ * in the shown run, and then where it leads (`waysOn`). The card looks the same: only the order it
+ * is read in changes (a11y check E1, E3).
  */
 export function StepCard({
   step,
@@ -38,54 +44,98 @@ export function StepCard({
   failed,
   mark,
   focusOnMount,
+  waysOn,
   onSelect,
   onFocus,
 }: StepCardProps) {
   const button = useRef<HTMLButtonElement>(null);
+  // Ids for the parts the card's name is read from, unique to this card on the page.
+  const id = useId();
+  const part = {
+    title: `${id}-title`,
+    kind: `${id}-kind`,
+    start: `${id}-start`,
+    agent: `${id}-agent`,
+    mark: `${id}-mark`,
+    failed: `${id}-failed`,
+    waysOn: `${id}-ways-on`,
+  };
+  const nameParts = [
+    part.title,
+    part.kind,
+    first && part.start,
+    step.type === "task" && part.agent,
+    mark !== undefined && part.mark,
+    failed === true && part.failed,
+  ].filter((partId) => partId !== false);
   useEffect(() => {
     if (focusOnMount) button.current?.focus();
   }, [focusOnMount]);
   const ring = ringOf(failed === true, selected);
   return (
-    <button
-      ref={button}
-      type="button"
-      aria-pressed={selected}
-      onClick={onSelect}
-      onFocus={onFocus}
-      // Dragging the background pans; a press on a card must not start that.
-      onPointerDown={(event) => event.stopPropagation()}
-      style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
-      className={`absolute flex flex-col items-start justify-center gap-0.5 rounded-lg border bg-surface px-3 text-left ${ring}`}
-    >
-      <span className="text-caption text-fg-muted">{pageWords.stepKind[step.type]}</span>
-      {first && (
-        <span className="absolute -top-5 left-3 rounded-full border border-border bg-surface px-2 text-caption text-accent-text">
-          {pageWords.startChip}
+    <>
+      <button
+        ref={button}
+        type="button"
+        aria-pressed={selected}
+        aria-labelledby={nameParts.join(" ")}
+        aria-describedby={waysOn === undefined ? undefined : part.waysOn}
+        onClick={onSelect}
+        onFocus={onFocus}
+        // Dragging the background pans; a press on a card must not start that.
+        onPointerDown={(event) => event.stopPropagation()}
+        style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
+        className={`absolute flex flex-col items-start justify-center gap-0.5 rounded-lg border bg-surface px-3 text-left ${ring}`}
+      >
+        <span id={part.kind} className="text-caption text-fg-muted">
+          {pageWords.stepKind[step.type]}
+        </span>
+        {first && (
+          <span
+            id={part.start}
+            className="absolute -top-5 left-3 rounded-full border border-border bg-surface px-2 text-caption text-accent-text"
+          >
+            {pageWords.startChip}
+          </span>
+        )}
+        <span
+          id={part.title}
+          title={step.title ?? step.id}
+          className={`${step.type === "task" ? "truncate" : "line-clamp-2"} w-full min-w-0 break-words text-small font-medium text-fg`}
+        >
+          {step.title ?? step.id}
+        </span>
+        {mark !== undefined && (
+          <span id={part.mark} className="contents">
+            <StatusDot
+              mark={mark}
+              style={{
+                left: box.width - DOT_INSET - DOT / 2 - CARD_BORDER,
+                top: DOT_INSET - DOT / 2 - CARD_BORDER,
+                width: DOT,
+                height: DOT,
+              }}
+            />
+          </span>
+        )}
+        {failed && (
+          <span id={part.failed} className="contents">
+            <StatusChip tone="danger">{startWords.failedChip}</StatusChip>
+          </span>
+        )}
+        {step.type === "task" && (
+          <span id={part.agent} className="text-small text-fg-muted">
+            {step.agent ?? pageWords.noAgent}
+          </span>
+        )}
+      </button>
+      {/* Hidden, outside the button so it isn't part of the card's text; a description still reads it. */}
+      {waysOn !== undefined && (
+        <span id={part.waysOn} hidden>
+          {waysOn}
         </span>
       )}
-      <span
-        title={step.title ?? step.id}
-        className={`${step.type === "task" ? "truncate" : "line-clamp-2"} w-full min-w-0 break-words text-small font-medium text-fg`}
-      >
-        {step.title ?? step.id}
-      </span>
-      {mark !== undefined && (
-        <StatusDot
-          mark={mark}
-          style={{
-            left: box.width - DOT_INSET - DOT / 2 - CARD_BORDER,
-            top: DOT_INSET - DOT / 2 - CARD_BORDER,
-            width: DOT,
-            height: DOT,
-          }}
-        />
-      )}
-      {failed && <StatusChip tone="danger">{startWords.failedChip}</StatusChip>}
-      {step.type === "task" && (
-        <span className="text-small text-fg-muted">{step.agent ?? pageWords.noAgent}</span>
-      )}
-    </button>
+    </>
   );
 }
 
