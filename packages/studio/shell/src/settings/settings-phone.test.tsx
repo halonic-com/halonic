@@ -155,7 +155,7 @@ async function renderPhone(
         ?.click(),
     );
   const groupHeadings = () =>
-    [...container.querySelectorAll("main h3")].map((heading) => heading.textContent);
+    [...container.querySelectorAll("main h2")].map((heading) => heading.textContent);
   return { container, title, heading, back, rowNames, tapRow, tapMore, groupHeadings };
 }
 
@@ -225,7 +225,7 @@ verifies("shell.settings-list-page", () => {
   });
 
   it("heads the groups by where each section's values are kept, and never lists Developer", async () => {
-    const { tapRow, tapMore, groupHeadings, rowNames } = await renderPhone();
+    const { container, tapRow, tapMore, groupHeadings, rowNames } = await renderPhone();
     tapMore();
     await tapRow("Settings");
 
@@ -234,6 +234,8 @@ verifies("shell.settings-list-page", () => {
       "On this phone",
       "On your computer",
     ]);
+    // `h2`, straight under the page's `h1`: no level is skipped.
+    expect(container.querySelectorAll("main h3")).toHaveLength(0);
     expect(rowNames()).not.toContain("Developer");
   });
 
