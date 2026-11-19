@@ -69,6 +69,11 @@ async function openAnthropic(access: BridgeProviderAccess) {
 
 /** Claude Code's request for `model`. */
 function claudeCodeSends(bridge: { url: string; token: string }, model: string) {
+  return messagesRequest(bridge, JSON.stringify({ model, max_tokens: 64, messages: [] }));
+}
+
+/** A Messages request with `body` as its JSON text. */
+function messagesRequest(bridge: { url: string; token: string }, body: string) {
   return fetch(`${bridge.url}/v1/messages`, {
     method: "POST",
     headers: {
@@ -76,7 +81,7 @@ function claudeCodeSends(bridge: { url: string; token: string }, model: string) 
       "anthropic-version": "2023-06-01",
       "content-type": "application/json",
     },
-    body: JSON.stringify({ model, max_tokens: 64, messages: [] }),
+    body,
   });
 }
 
@@ -176,6 +181,26 @@ verifies("harness-bridge.compatible-request", () => {
       const reply = await codexSends(bridge, { ...codexRequest, model: "gpt-5.5" });
 
       expect(reply.status).toBe(403);
+      expect([...ownHosts.calls, ...compatible.calls]).toEqual([]);
+    });
+
+    // Such a body has no model to check, so it is refused like a model the host didn't resolve.
+    it.each<[string, string]>([
+      ["a list", "[]"],
+      ["a string", '"x"'],
+      ["null", "null"],
+    ])("refuses a body that is %s, on both routes, and calls no provider", async (_case, body) => {
+      const anthropic = await openAnthropic(atCompatible(["glm-5.2"]));
+      const ownHosts = fakeProvider(answered);
+      const compatible = fakeProvider(answered);
+      const openAi = await openOpenAi(ownHosts.fetch, atCompatible(["glm-5.2"]), compatible.fetch);
+
+      const messagesReply = await messagesRequest(anthropic.bridge, body);
+      const responsesReply = await codexSends(openAi.bridge, body);
+
+      expect(messagesReply.status).toBe(403);
+      expect(responsesReply.status).toBe(403);
+      expect(anthropic.calls()).toEqual([]);
       expect([...ownHosts.calls, ...compatible.calls]).toEqual([]);
     });
   });
