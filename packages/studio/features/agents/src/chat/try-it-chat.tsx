@@ -1,4 +1,6 @@
+import type { SandboxStartCheck } from "@halonicjs/app";
 import { findSecretShape } from "@halonicjs/std";
+import { SandboxCantRunCallout, useSandboxStart } from "@halonicjs/studio-feature-runs/api";
 import {
   type ChatAction,
   ChatComposer,
@@ -12,7 +14,7 @@ import {
 import { Fragment, type ReactNode, useId, useRef, useState } from "react";
 import type { AgentHarnessId } from "../api.ts";
 import type { HarnessStrip } from "../configuration/harness-strip.ts";
-import { type BoxLineActions, boxProblem, TryItBoxLine } from "./box-line.tsx";
+import { type BoxLineActions, boxProblem, makesSendWait, TryItBoxLine } from "./box-line.tsx";
 import type { ChatTurn, ReplyEnd, ReplyStep } from "./transcript.ts";
 import { toolInWords, tryItWords } from "./try-it-words.ts";
 import type { TryItChat } from "./use-try-it-chat.ts";
@@ -31,6 +33,13 @@ export interface TryItChatViewProps {
   readonly harnessStrip: HarnessStrip | null;
   /** The ways to the places the line under the box points to. */
   readonly ways: Pick<BoxLineActions, "goToKeyField" | "openHarness">;
+  /**
+   * Checks whether the sandbox can start, for an agent whose harness is a program; where it is
+   * absent, Send never waits for the sandbox (the engine still refuses such a reply).
+   */
+  readonly sandboxStartCheck?: SandboxStartCheck | undefined;
+  /** Reads a sentence out through the shell's announcer, for the sandbox's **Check again**. */
+  readonly announce?: ((text: string) => void) | undefined;
 }
 
 /**
@@ -46,7 +55,14 @@ export function TryItChatView(props: TryItChatViewProps) {
   const box = useRef<HTMLTextAreaElement>(null);
   const lineId = useId();
   const { turns } = chat.transcript;
-  const problem = boxProblem(heldForKey, props.harness, props.harnessStrip);
+  // Halonic's own loop starts no program, so only Claude Code and Codex need the sandbox.
+  const sandbox = useSandboxStart(props.sandboxStartCheck, props.harness !== "halonic");
+  const problem = boxProblem({
+    heldForKey,
+    harness: props.harness,
+    strip: props.harnessStrip,
+    sandboxRefused: sandbox.refused !== undefined,
+  });
 
   const sendNow = () => {
     chat.send(draft);
@@ -69,6 +85,31 @@ export function TryItChatView(props: TryItChatViewProps) {
   const tryAgain = () => {
     chat.tryAgain();
     box.current?.focus();
+  };
+
+  const line = () => {
+    if (problem === undefined) return undefined;
+    // The same Callout as Run, under the box; once the sandbox works, the box takes focus.
+    if (problem.kind === "sandbox") {
+      return (
+        <SandboxCantRunCallout
+          name={name}
+          start={sandbox}
+          firstLineId={lineId}
+          announce={props.announce}
+          onReady={() => box.current?.focus()}
+        />
+      );
+    }
+    return (
+      <div id={lineId}>
+        <TryItBoxLine
+          problem={problem}
+          name={name}
+          actions={{ ...props.ways, sendAnyway: sendNow }}
+        />
+      </div>
+    );
   };
 
   return (
@@ -99,20 +140,11 @@ export function TryItChatView(props: TryItChatViewProps) {
           onSend={() => void send()}
           onStop={chat.stop}
           answering={chat.answering}
-          // A program that isn't ready makes Send wait, with the line as its reason (H27).
-          sendUnavailable={problem?.kind === "harness" ? { reason: lineId } : undefined}
+          // A program or a sandbox that isn't ready makes Send wait, with the line as its reason
+          // (H27, HAL-4291).
+          sendUnavailable={makesSendWait(problem) ? { reason: lineId } : undefined}
           textRef={box}
-          line={
-            problem === undefined ? undefined : (
-              <div id={lineId}>
-                <TryItBoxLine
-                  problem={problem}
-                  name={name}
-                  actions={{ ...props.ways, sendAnyway: sendNow }}
-                />
-              </div>
-            )
-          }
+          line={line()}
         />
       </div>
     </div>

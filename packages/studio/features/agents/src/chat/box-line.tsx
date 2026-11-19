@@ -7,22 +7,37 @@ import { tryItWords } from "./try-it-words.ts";
 
 /**
  * What stops a Try it message now, most urgent first: a message held because it looks like it
- * holds a key (H29), then the harness in harness-states rule 1's order (H27). Signed out, the
- * sandbox, the model's key (H19) and the budget (H21) join this list as their checks land.
+ * holds a key (H29), then the harness and the sandbox in harness-states rule 1's order (H27,
+ * HAL-4291). Signed out, the model's key (H19) and the budget (H21) join this list as their checks
+ * land.
  */
 export type BoxProblem =
   | { readonly kind: "key-in-message" }
-  | { readonly kind: "harness"; readonly strip: HarnessStrip; readonly harness: AgentHarnessId };
+  | { readonly kind: "harness"; readonly strip: HarnessStrip; readonly harness: AgentHarnessId }
+  | { readonly kind: "sandbox" };
+
+/** What {@link boxProblem} weighs. */
+export interface BoxState {
+  /** The message was held because it looks like it holds a key. */
+  readonly heldForKey: boolean;
+  readonly harness: AgentHarnessId;
+  /** The strip the harness check calls for, or `null` when the harness can run. */
+  readonly strip: HarnessStrip | null;
+  /** The sandbox check refused: the agent's program can't start on this computer. */
+  readonly sandboxRefused: boolean;
+}
 
 /** The first problem that applies, or `undefined` when the message can go. */
-export function boxProblem(
-  heldForKey: boolean,
-  harness: AgentHarnessId,
-  strip: HarnessStrip | null,
-): BoxProblem | undefined {
-  if (heldForKey) return { kind: "key-in-message" };
-  if (strip !== null) return { kind: "harness", strip, harness };
+export function boxProblem(state: BoxState): BoxProblem | undefined {
+  if (state.heldForKey) return { kind: "key-in-message" };
+  if (state.strip !== null) return { kind: "harness", strip: state.strip, harness: state.harness };
+  if (state.sandboxRefused) return { kind: "sandbox" };
   return undefined;
+}
+
+/** Whether a problem makes Send wait, with the line under the box as its reason. */
+export function makesSendWait(problem: BoxProblem | undefined): boolean {
+  return problem?.kind === "harness" || problem?.kind === "sandbox";
 }
 
 /** What the line's actions do; the page gives the ways to the other places. */
@@ -45,7 +60,7 @@ export function TryItBoxLine({
   name,
   actions,
 }: {
-  readonly problem: BoxProblem;
+  readonly problem: Exclude<BoxProblem, { readonly kind: "sandbox" }>;
   readonly name: string;
   readonly actions: BoxLineActions;
 }) {
