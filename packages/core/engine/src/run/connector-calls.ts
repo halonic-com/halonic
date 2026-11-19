@@ -20,7 +20,7 @@ import type { ListedToolApproval } from "../agent/listed-tool-approval.ts";
 import { countedRisk, type DeclaredTools } from "../agent/offer-listed-tools.ts";
 import type { EffectBoundary } from "../agent/run-tool-call.ts";
 import { collectTurnTools, errorMessage, toolErrorText } from "../agent/turn-tools.ts";
-import type { CallToolEffect, ToolResult } from "../kernel/decide-types.ts";
+import type { CallToolEffect, RunDefinitions, ToolResult } from "../kernel/decide-types.ts";
 import { brokeOff } from "../kernel/requested-effect.ts";
 
 /**
@@ -88,7 +88,11 @@ export function readToolsOf(
 /**
  * Makes the call a `call-tool` effect asks for, on the connector of that
  * id, under the name its server listed the tool under, with the effect's
- * idempotency key, which is the same on every attempt. A tool labelled
+ * idempotency key, which is the same on every attempt. It looks the tool up
+ * among the tools the connector's `allow` in `lists` keeps
+ * ({@link allowedToolsOf}), as the turn that asked for the call did, so a
+ * tool `allow` leaves out is neither called nor checked for approval, and
+ * no person hears it waits (HAL-13288). A tool labelled
  * `send` passes the "allow sending" check again first, because a person
  * may retry a call after sending was switched off. When the connector or
  * tool can't be found, sending is off or the arguments aren't an object,
@@ -104,12 +108,15 @@ export function readToolsOf(
  */
 export async function makeConnectorCall(
   connectors: readonly ConnectorClient[],
+  lists: Readonly<Record<string, Connector["tools"]>>,
   boundary: EffectBoundary,
   effect: CallToolEffect,
   listedToolApproval: ListedToolApproval,
   declared?: Readonly<Record<string, DeclaredTools>>,
 ): Promise<ToolResult> {
-  const connector = connectors.find((connected) => connected.id === effect.connector);
+  const connector = allowedToolsOf(connectors, lists).find(
+    (connected) => connected.id === effect.connector,
+  );
   if (connector === undefined) {
     return notMade("not-connected", `the connector "${effect.connector}" isn't connected`);
   }
@@ -155,7 +162,8 @@ export async function makeConnectorCall(
 }
 
 /**
- * As {@link makeConnectorCall}, on the run's connectors, which `open` gives.
+ * As {@link makeConnectorCall}, on the run's connectors, which `open` gives,
+ * with the `tools` lists and declared tools of the run's kept definitions.
  * When they can't start, the call isn't made, as for a connector that isn't
  * connected, so its outcome is `error`, and the model hears why. Its cause
  * is `connector-not-started`, not `not-connected`, which keeps meaning that
@@ -163,10 +171,10 @@ export async function makeConnectorCall(
  */
 export async function makeRunConnectorCall(
   open: () => Promise<readonly ConnectorClient[]>,
+  definitions: Pick<RunDefinitions, "connectorTools" | "declaredTools">,
   boundary: EffectBoundary,
   effect: CallToolEffect,
   listedToolApproval: ListedToolApproval,
-  declared?: Readonly<Record<string, DeclaredTools>>,
 ): Promise<ToolResult> {
   let connectors: readonly ConnectorClient[];
   try {
@@ -175,7 +183,14 @@ export async function makeRunConnectorCall(
     const why = `the connector "${effect.connector}" isn't connected: ${errorMessage(error)}`;
     return failed(why, notStarted(error));
   }
-  return makeConnectorCall(connectors, boundary, effect, listedToolApproval, declared);
+  return makeConnectorCall(
+    connectors,
+    definitions.connectorTools ?? {},
+    boundary,
+    effect,
+    listedToolApproval,
+    definitions.declaredTools,
+  );
 }
 
 /** A call the engine didn't make, for `reason`; the model hears `why`. */
