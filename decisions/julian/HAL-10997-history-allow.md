@@ -3,7 +3,6 @@
 - Task: HAL-10997
 - Approval: the board decided on HAL-10997 (https://paperclip.halonic.com/HAL/issues/HAL-10997#comment-87ff1d1b-c3ef-42ba-bd52-4fe928848147) on 19 Nov to keep the flagged old commits in history, and to let the leak guard skip those commits only, so the full scan still catches new hits. Liam reviews it and signs this note as the CTO.
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BNTFu/ABOfT181lAwaANh3UYu0ZEWQT+ju/y+LUkX8ZS1Z6KXLFiE79PjqlZz23UCLcjYPzEeA2BiUS14f3bBQ==
 
 ## What changes
 
