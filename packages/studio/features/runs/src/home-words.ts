@@ -6,6 +6,11 @@ import { moneyAmount } from "@halonicjs/app";
 /** Home's Recent runs card (mc 3.3, 3.4). */
 export const homeWords = {
   label: "Recent runs",
+  /**
+   * A row's title: what ran and which run, "Support reply · run 891b5a", so two runs of one
+   * workflow read apart, on screen and to a screen reader (HAL-12461, a11y check H2).
+   */
+  rowTitle: (workflow: string, shortId: string) => `${workflow} · run ${shortId}`,
   empty: "No runs yet. When an agent or workflow runs, you'll see it here.",
   seeAll: "See all runs",
   /** Under the empty line, so Home never ends on nothing (empty-home-checklist 1, scope b); `halonic run` is shown as code. */
