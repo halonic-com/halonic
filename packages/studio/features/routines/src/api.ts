@@ -48,7 +48,7 @@ export interface RoutineListing extends RoutineRef {
   readonly targetName: string;
   /** ISO time it next starts on its own; absent when it is off or its trigger isn't a clock. */
   readonly nextRun?: string | undefined;
-  /** Held for a Google sign-in, which the row shows as "Needs sign-in". */
+  /** Held for a Google sign-in, which the row shows as "Needs sign-in again". */
   readonly needsSignIn: boolean;
   /** Runs of this routine that wait for a person, which the row shows as "Needs you". */
   readonly needsYou: number;
