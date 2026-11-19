@@ -72,7 +72,8 @@ jobs:
             return 1
           }
 
-          RUNNER_NODE=$(node --version 2>&1); RUNNER_PNPM=$(pnpm --version 2>&1 | head -1)
+          RUNNER_NODE=$(node --version 2>/dev/null || echo 'not installed')
+          RUNNER_PNPM=$(pnpm --version 2>/dev/null || echo 'not installed')
           CLEAN_NODE=$(term 'node --version' | tail -1); CLEAN_PNPM=$(term 'pnpm --version' | tail -1)
           T0=$SECONDS
 
