@@ -9,7 +9,11 @@ const ollama = "id: ollama\ntype: ollama\n";
 const models = (provider: string) =>
   `aliases:\n  default:\n    provider: ${provider}\n    model: llama3\n`;
 
-function setup(extra: Record<string, string> = {}, chatError?: Error) {
+function setup(
+  extra: Record<string, string> = {},
+  chatError?: Error,
+  mayCallModel: () => Promise<boolean> = async () => true,
+) {
   const store: Record<string, string> = {
     "workspace.yaml": "id: acme\nname: Acme\n",
     "models.yaml": models("ollama"),
@@ -51,6 +55,7 @@ function setup(extra: Record<string, string> = {}, chatError?: Error) {
         finishReason: "stop",
       } as never;
     },
+    mayCallModel,
   });
   return { host, changes, listeners, asked };
 }
@@ -111,6 +116,16 @@ verifies("studio.workspace-knowledge", () => {
     });
     expect(await host.summarize(handbook)).toEqual({ kind: "no-local-model" });
     expect(asked).toEqual([]);
+  });
+
+  it.each([
+    ["isn't trusted", async () => false],
+    ["can't be checked", () => Promise.reject(new Error("no folder"))],
+  ])("sends no request when the workspace %s, and says so", async (_case, mayCallModel) => {
+    const { host, asked, changes } = setup({}, undefined, mayCallModel);
+    expect(await host.summarize(handbook)).toEqual({ kind: "untrusted" });
+    expect(asked).toEqual([]);
+    expect(changes).toEqual([]);
   });
 
   it("says there is no local model when the alias is missing", async () => {

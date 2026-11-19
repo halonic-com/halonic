@@ -25,6 +25,12 @@ export interface WorkspaceKnowledgeParts extends WorkspaceSkillsParts {
    * a provider that runs on this machine. Rejects when the call fails.
    */
   readonly chat: (providerId: string, request: ChatRequest) => Promise<ChatResponse>;
+  /**
+   * Whether the workspace may call a model now, asked right before each call: it is trusted on
+   * this computer, or it reaches only the test model (HAL-12409, HAL-13134). A check that rejects
+   * is a no.
+   */
+  readonly mayCallModel: () => Promise<boolean>;
 }
 
 /**
@@ -79,10 +85,14 @@ function folderOf(config: Readonly<Record<string, unknown>>): string | undefined
  * (`studio.workspace-knowledge`): reads and writes `library/knowledge/<id>.yaml` through the
  * workspace's files, so a save is an unsaved change that shows in Changes and can be undone,
  * counts the documents of a `files` source, and drafts a summary of them with the default
- * model alias's model when that runs on this machine. Nothing is saved by Summarize.
+ * model alias's model when that runs on this machine and the workspace may call it. Nothing is
+ * saved by Summarize.
  *
  * @example
- * services.provide(KnowledgeHostService, new WorkspaceKnowledge({ files, onChange, chat }));
+ * services.provide(
+ *   KnowledgeHostService,
+ *   new WorkspaceKnowledge({ files, onChange, chat, mayCallModel }),
+ * );
  */
 export class WorkspaceKnowledge implements KnowledgeHost {
   readonly #parts: WorkspaceKnowledgeParts;
@@ -131,6 +141,8 @@ export class WorkspaceKnowledge implements KnowledgeHost {
       documents.push(`### ${path.slice(folder.length + 1)}\n${part}`);
     });
     if (documents.length === 0) return { kind: "no-documents" };
+    // Settings › Trust promises no real model is called from a workspace that isn't trusted.
+    if (!(await this.#parts.mayCallModel().catch(() => false))) return { kind: "untrusted" };
     let answer: ChatResponse;
     try {
       answer = await this.#parts.chat(target.provider, {

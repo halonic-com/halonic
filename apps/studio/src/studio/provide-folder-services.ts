@@ -57,6 +57,7 @@ import {
   type TauriIpc,
   tauriAgentHostTransport,
 } from "@halonicjs/studio-services";
+import { loadWorkspace } from "@halonicjs/workspace";
 import { agentHostHarnessDetect } from "../agents/agent-host-harness-detect.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
@@ -300,6 +301,9 @@ export function provideFolderServices(
         transport === undefined
           ? () => Promise.reject(new Error("Summarize needs the agent host, which isn't running."))
           : (provider, request) => new AgentHostChat(transport, location).chat(provider, request),
+      // The agent host reads the saved provider files, so their trust is what counts.
+      mayCallModel: async () =>
+        trust.mayStart(await loadWorkspace(new TauriDefinitionStore(files, location))),
     }),
   );
   services.provide(

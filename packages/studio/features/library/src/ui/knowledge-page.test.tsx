@@ -369,6 +369,10 @@ verifies("library.knowledge-summarize", () => {
         "Couldn't summarize Handbook: the engine isn't answering. It may still be starting.",
       ],
       ["too-large", "Couldn't summarize Handbook: it has more text than one summary can take."],
+      [
+        "untrusted",
+        "Couldn't summarize Handbook: this workspace isn't trusted yet, so nothing was sent.",
+      ],
       ["no-local-model", "Summarize uses a local model, and the default model alias has none."],
     ] as const)(
       "gives a reason when Summarize ends with %s, and reads it out",
@@ -385,6 +389,8 @@ verifies("library.knowledge-summarize", () => {
         // Read out where it appears; focus stays on Summarize (HAL-12534).
         expect(announceState).toHaveBeenCalledWith("knowledge-summary", line);
         expect(document.activeElement).toBe(button(root, "Summarize"));
+        // Trying again can't help until the workspace is trusted.
+        if (kind === "untrusted") expect(() => button(root, "Try again")).toThrow();
       },
     );
   });

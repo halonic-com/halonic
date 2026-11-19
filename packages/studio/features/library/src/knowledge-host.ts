@@ -26,7 +26,9 @@ export type SummarizeOutcome =
   /** Halonic's agent host, which makes the model call, didn't answer. */
   | { readonly kind: "host-unreachable" }
   /** The documents are more than one request can take. */
-  | { readonly kind: "too-large" };
+  | { readonly kind: "too-large" }
+  /** The workspace isn't trusted on this computer, so no model was called (HAL-13134). */
+  | { readonly kind: "untrusted" };
 
 /** The knowledge sources of the open workspace, one at a time. The app provides it for each open workspace. */
 export interface KnowledgeHost {
