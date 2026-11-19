@@ -2,6 +2,7 @@
 
 - Approval: decided on HAL-13783 (follow-up to HAL-12469); the CTO (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:rg23dzNqvZ+/qKNzG1lJOztF1JUP9jX2ipEbhTl91G0ShLlmLUzC7LVaDvnm30FYV1TV9Maq1Woj3uF2Mu4PCw==
 - Task: HAL-13784
 
 ## What changes
