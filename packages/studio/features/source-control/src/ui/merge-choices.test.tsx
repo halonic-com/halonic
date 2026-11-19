@@ -85,6 +85,24 @@ verifies("source-control.get-updates-per-item", () => {
       expect(document.body.textContent).toContain("You and the team both changed 1 item.");
     });
 
+    it("says there's nothing to choose when no item changed on both sides", async () => {
+      await openPage({ started: merge([]) });
+      await press("Get updates");
+      expect(document.body.textContent).toContain(
+        "You and Sam changed different items, so there's nothing to choose. Finish getting updates to bring theirs in.",
+      );
+      expect(document.body.textContent).not.toContain("Choose which one to keep");
+      expect(unavailable("Finish getting updates")).toBe(false);
+    });
+
+    it("says the team changed different items when more than one person's versions came", async () => {
+      await openPage({ started: merge([], ["Sam", "Ada"]) });
+      await press("Get updates");
+      expect(document.body.textContent).toContain(
+        "You and the team changed different items, so there's nothing to choose.",
+      );
+    });
+
     it("offers Keep both only where both sides still have the item", async () => {
       await openPage({
         started: merge([item("a.md", "mine\n", "sam\n"), item("b.md", "mine\n", null)]),
