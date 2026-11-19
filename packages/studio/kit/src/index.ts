@@ -29,6 +29,8 @@ export {
   type CalloutTone,
 } from "./callout/callout.tsx";
 export { Card, type CardProps, type CardState } from "./card/card.tsx";
+export { ChatLoading, type ChatLoadingProps } from "./chat/chat-loading.tsx";
+export { ChatStart, type ChatStartProps } from "./chat/chat-start.tsx";
 export {
   Checkbox,
   type CheckboxProps,
