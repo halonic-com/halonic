@@ -33,6 +33,8 @@ export interface HeaderBadgeButton {
    * on a phone, where it opens Settings › Trust, "Not trusted yet. Open trust settings".
    */
   readonly label?: string | undefined;
+  /** The id of what describes it, such as its tooltip's: what trust gates. */
+  readonly "aria-describedby"?: string | undefined;
   readonly onClick: () => void;
 }
 
@@ -136,6 +138,7 @@ function PlainBadge({ props }: { readonly props: HeaderBadgeMenu | HeaderBadgeBu
       type="button"
       className={`${badgeClasses} ${padding.button}`}
       aria-label={props.label ?? `${props.children}. ${props.action}`}
+      aria-describedby={props["aria-describedby"]}
       onClick={props.onClick}
     >
       <Icon>

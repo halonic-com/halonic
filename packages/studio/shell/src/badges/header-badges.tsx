@@ -1,4 +1,4 @@
-import { HeaderBadge, StatusChip, Tooltip } from "@halonicjs/studio-kit";
+import { HeaderBadge, StatusChip, Tooltip, type TooltipTriggerProps } from "@halonicjs/studio-kit";
 import { useRef, useSyncExternalStore } from "react";
 import type { BadgeRegistry, BadgeState } from "./badge-registry.ts";
 
@@ -20,7 +20,8 @@ export function HeaderBadges({ registry }: { readonly registry: BadgeRegistry })
 function RegisteredBadge({ state }: { readonly state: BadgeState }) {
   const opener = useRef<HTMLElement | null>(null);
   const { action, onSelect, tooltip } = state;
-  const badge =
+  // The tooltip's trigger props go on the button, so a screen reader reads what it says too.
+  const badge = (trigger: TooltipTriggerProps = {}) =>
     action === undefined || onSelect === undefined ? (
       <StatusChip tone={state.tone}>{state.label}</StatusChip>
     ) : (
@@ -34,13 +35,14 @@ function RegisteredBadge({ state }: { readonly state: BadgeState }) {
           as="button"
           action={action}
           label={`${asSentence(state.label)} ${action}`}
+          aria-describedby={trigger["aria-describedby"]}
           onClick={() => onSelect(opener.current)}
         >
           {state.label}
         </HeaderBadge>
       </span>
     );
-  return tooltip === undefined ? badge : <Tooltip text={tooltip}>{() => badge}</Tooltip>;
+  return tooltip === undefined ? badge() : <Tooltip text={tooltip}>{badge}</Tooltip>;
 }
 
 /** The label as a sentence before the action: a full stop, unless it already ends a sentence. */

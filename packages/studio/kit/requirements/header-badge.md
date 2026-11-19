@@ -6,7 +6,7 @@
 
 The kit's `HeaderBadge` shall be a real `<button type="button">` drawn as the neutral Status chip: 24px high, radius 4px, a `surface-muted` fill, `text-caption` at weight 500 in `fg-muted`, a 14px leading icon hidden from screen readers and a 6px gap. It shall always be neutral, never `warning`. A hover shall step the fill up to `border` and the text to `fg`, and keyboard focus shall show the standard focus ring. Its edge shall be see-through, so high contrast draws it, and `border-control` when more contrast is asked for.
 
-With `as="menu"` (the sample chip) it shall show the info icon, its words and a trailing 14px chevron, with padding 0 6px 0 8px, and on desktop open a kit Menu with its `description` and `entries`, lined up with its right edge, 4px below; it shall carry `aria-haspopup="menu"` and `aria-expanded`, and while its Menu is open show a 2px `accent` ring that isn't the focus ring. With `as="button"` (the trust badge) it shall show the dashed-ring icon and its words, a middle dot and its `action`, with only the `action` in `accent-text`, padding 0 8px, no chevron and no `aria-haspopup`; a click shall call its `onClick`; its name shall be its words and its action with a full stop between them ("Not trusted yet. Review"), unless the feature gives a `label`.
+With `as="menu"` (the sample chip) it shall show the info icon, its words and a trailing 14px chevron, with padding 0 6px 0 8px, and on desktop open a kit Menu with its `description` and `entries`, lined up with its right edge, 4px below; it shall carry `aria-haspopup="menu"` and `aria-expanded`, and while its Menu is open show a 2px `accent` ring that isn't the focus ring. With `as="button"` (the trust badge) it shall show the dashed-ring icon and its words, a middle dot and its `action`, with only the `action` in `accent-text`, padding 0 8px, no chevron and no `aria-haspopup`; a click shall call its `onClick`; its name shall be its words and its action with a full stop between them ("Not trusted yet. Review"), unless the feature gives a `label`, and it shall carry the `aria-describedby` the feature gives, so a tooltip that says more is read after its name.
 
 On a phone the badge shall sit on its own 48px line with a 1px `border` under it, have a 48px hit area, and wrap at large text instead of being cut. There the sample chip shall call `onOpenSheet` instead of opening a Menu, and shall carry no `aria-haspopup`.
 
@@ -18,6 +18,9 @@ On a phone the badge shall sit on its own 48px line with a 1px `border` under it
 - Given the trust badge "Not trusted yet" with the action "Review",
   when it renders,
   then it reads "Not trusted yet · Review" with only Review in `accent-text`, it's named "Not trusted yet. Review", and it has no `aria-haspopup`.
+- Given the trust badge with `aria-describedby="trust-tip"`,
+  when it renders,
+  then its button has `aria-describedby="trust-tip"`.
 - Given that trust badge,
   when the user clicks it,
   then its `onClick` is called once.
