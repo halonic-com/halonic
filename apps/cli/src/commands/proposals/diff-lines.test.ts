@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { noNewlineMarker, unifiedDiff } from "./diff-lines.ts";
+import { noNewlineMarker } from "../../messages/proposals.ts";
+import { unifiedDiff } from "./diff-lines.ts";
 
 const lines = (count: number, from = 1) =>
   Array.from({ length: count }, (_, index) => `line ${index + from}\n`).join("");

@@ -9,6 +9,13 @@ export type ShownChange = "added" | "modified" | "deleted";
 /** Where a proposed file stands, as `show` heads it. */
 export type ShownDecision = "undecided" | "accepted" | "discarded" | "cantWrite";
 
+/**
+ * What `show` prints after a text's last line when it has no newline, so a
+ * change to only that is seen. Git's own words, kept as git writes them so
+ * the diff reads like `git diff`.
+ */
+export const noNewlineMarker = "\\ No newline at end of file";
+
 const decisionWords: Readonly<Record<ShownDecision, string>> = {
   undecided: "",
   accepted: "accepted",

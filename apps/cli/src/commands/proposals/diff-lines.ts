@@ -4,12 +4,10 @@
 // `@halonicjs/std`, the diff the Studio's Compare uses too.
 
 import { diffLines, type LineChange, splitLines } from "@halonicjs/std";
+import { noNewlineMarker } from "../../messages/proposals.ts";
 
 /** How many unchanged lines are shown around a change, as git does. */
 const contextLines = 3;
-
-/** What git prints after a text's last line when it has no newline, so a change to only that is seen. */
-export const noNewlineMarker = "\\ No newline at end of file";
 
 /**
  * The lines of a unified diff from `before` to `after`: a `@@` heading per
