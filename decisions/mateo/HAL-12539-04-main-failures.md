@@ -3,6 +3,7 @@
 - Task: HAL-12539
 - Approval: the task asks for this change (HAL-12539, step 3, as Liam decided it on 18 Nov); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BCBAMb8pV/6X1THKWDpYuVJ7qBNh+9toMR+FviQhlPVW8MRmr4gSNzxrBBQvqj+W6V5t1ZNAikSBtVwdCtXZBQ==
 
 ## What changes
 
