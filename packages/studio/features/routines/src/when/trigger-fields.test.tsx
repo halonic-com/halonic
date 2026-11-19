@@ -103,6 +103,21 @@ verifies("routines.when.trigger-fields", () => {
     expect(saved[1]?.trigger).toEqual({ ...weekdays, cron: "0 18 * * 1-5" });
   });
 
+  it("names each day chip by the whole day and keeps its two letters", async () => {
+    const { page } = await card(weekdays);
+    const days = [...page.querySelectorAll("fieldset[aria-label='Days'] button")];
+    expect(days.map((day) => day.getAttribute("aria-label"))).toEqual([
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday",
+    ]);
+    expect(days.map((day) => day.textContent)).toEqual(["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]);
+  });
+
   it("keeps the last day on and says so until another day is on", async () => {
     const { page, saved } = await card({ kind: "schedule", cron: "0 8 * * 1" });
     await press(chip(page, "Mo"));
