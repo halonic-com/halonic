@@ -18,7 +18,7 @@
 #
 # PR_CHECKS_RUNNER does the same for the Linux jobs of a pull request (and for
 # the pull request checks in built-on-label.yml, guard-notes.yml,
-# leak-terms.yml and pr-details.yml), but only when the pull request comes
+# leak-terms.yml, live-cloud.yml and pr-details.yml), but only when the pull request comes
 # from a branch of this repo. Pull requests from forks always run on
 # `ubuntu-24.04`: the repo is public, and a fork must never run on a paid
 # runner. It is a separate variable so pull requests can go back to the
