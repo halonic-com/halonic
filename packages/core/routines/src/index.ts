@@ -33,6 +33,13 @@ export {
   type SignalLoop,
   signalLoop,
 } from "./signal-loop.ts";
+export {
+  type RunSignals,
+  SIGNAL_OVERLAP_MS,
+  type SignalRun,
+  type SignalSent,
+  signalsDue,
+} from "./signals-due.ts";
 export { checkTimeZone, type WallTime, wallTime } from "./time-zone.ts";
 export { triggerError } from "./trigger-error.ts";
 export { type TriggerKind, triggerKind } from "./trigger-kind.ts";

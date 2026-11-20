@@ -49,6 +49,17 @@ verifies("routines.routine-start", () => {
     });
   });
 
+  it("fills the prompt of an agent with the signal's data", () => {
+    const routine = placed({
+      agent: "a",
+      prompt: "Tell the team {{trigger.signal.vendor}} was paid.",
+    });
+    const signal = { vendor: "Acme" };
+    expect(routineStart(routine, { at, lastRun: null, signal })).toMatchObject({
+      prompt: "Tell the team Acme was paid.",
+    });
+  });
+
   it("prefers the target's own hub, and falls back to none for a workspace routine", () => {
     const own = placed({ hub: "other", agent: "a", prompt: "p" });
     expect(routineStart(own, { at, lastRun })).toMatchObject({ hub: "other" });
