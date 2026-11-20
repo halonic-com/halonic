@@ -49,9 +49,9 @@ export function ToolsPage({ host, settings, save, openLibrary }: ToolsPageProps)
   );
   const lists = useRef<HTMLDivElement>(null);
   // Try again worked, so its button is gone: the reader goes on at the first list's heading (the
-  // failure's own heading is an h3 too, and goes with it).
+  // failure's own heading is an h2 too, and goes with it).
   const options = useLoad<Options>(source, () =>
-    lists.current?.querySelector<HTMLElement>("section h3")?.focus(),
+    lists.current?.querySelector<HTMLElement>("section h2")?.focus(),
   );
   if (options.load.kind === "loading") {
     return (
@@ -68,7 +68,7 @@ export function ToolsPage({ host, settings, save, openLibrary }: ToolsPageProps)
         <EmptyState
           tone="error"
           align="start"
-          headingLevel={3}
+          headingLevel={2}
           title={words.toolsLoadFailedTitle}
           description={options.load.reason}
           action={{ label: words.tryAgain, onClick: options.retry, busy: options.load.retrying }}
@@ -145,9 +145,10 @@ function ToolList({ list, chosen, options, save, openLibrary }: ToolListProps) {
 
   return (
     <section ref={section} aria-labelledby={headingId} className="flex flex-col gap-2">
-      <h3 id={headingId} tabIndex={-1} className="text-body-strong text-fg">
+      {/* h2 under the page's h1: the tab panels already say which page this is (AG5, HAL-14377). */}
+      <h2 id={headingId} tabIndex={-1} className="text-body-strong text-fg">
         {words.toolLists[list]}
-      </h3>
+      </h2>
       {ids.length > 0 && (
         <ul className="flex flex-wrap gap-2">
           {ids.map((id) => (
@@ -192,7 +193,9 @@ function ToolList({ list, chosen, options, save, openLibrary }: ToolListProps) {
 
 /**
  * Under a list: the Add picker, or, when there is nothing to pick, a quiet line in its place that
- * says why, with **Open Library ›** (N5: Studio knows before the press).
+ * says why, with **Open Library ›** (N5: Studio knows before the press). The button is described by
+ * its line, so the lists' three buttons differ for a screen reader, and the "›" isn't read (AG3,
+ * HAL-14377), as Inbox's **Open run** is described by its row.
  */
 function AddTool({
   list,
@@ -209,20 +212,25 @@ function AddTool({
   readonly openLibrary: (() => void) | undefined;
   readonly openLibraryRef: RefObject<HTMLButtonElement | null>;
 }) {
+  const lineId = useId();
   if (addable.length === 0) {
     return (
       <p className="text-caption text-fg-muted">
-        {options.length === 0 ? words.noneInLibrary[list] : words.allAdded[list]}
+        <span id={lineId}>
+          {options.length === 0 ? words.noneInLibrary[list] : words.allAdded[list]}
+        </span>
         {openLibrary && (
           <>
             {" "}
             <button
               ref={openLibraryRef}
               type="button"
+              aria-describedby={lineId}
               className={inlineLinkClasses}
               onClick={openLibrary}
             >
               {words.openLibrary}
+              <span aria-hidden="true"> ›</span>
             </button>
           </>
         )}

@@ -251,6 +251,7 @@ export function InboxView({
               openRun={openRun}
               openBudget={openBudget}
               onEmptied={() => needsYouHeading.current?.focus()}
+              announce={announce}
               words={words}
             />
           )}

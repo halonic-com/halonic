@@ -239,20 +239,22 @@ export function AgentScreen({
         }
       >
         <div className="flex min-w-0 items-center gap-3">
-          <LetterTile name={name} />
-          <div className="flex flex-col">
-            <p className="text-caption text-fg-muted">{pageWords.kind}</p>
-            {/* On a phone the top bar already names the agent, so the page keeps only its type. */}
-            <h1 ref={titleRef} tabIndex={-1} className="sr-only">
-              {name}
-            </h1>
-            {!phone && load.kind === "ready" && (
-              <RenameField
-                name={name}
-                takenNames={takenNames}
-                onRename={(next) => void save({ name: next })}
-              />
-            )}
+          <div className="relative flex min-w-0 items-center gap-3">
+            <LetterTile name={name} />
+            <div className="flex flex-col">
+              <p className="text-caption text-fg-muted">{pageWords.kind}</p>
+              {/* On a phone the top bar already names the agent, so the page keeps only its type. */}
+              <h1 ref={titleRef} tabIndex={-1} className={phone ? "sr-only" : titleOverlayClasses}>
+                {name}
+              </h1>
+              {!phone && load.kind === "ready" && (
+                <RenameField
+                  name={name}
+                  takenNames={takenNames}
+                  onRename={(next) => void save({ name: next })}
+                />
+              )}
+            </div>
           </div>
           {load.kind === "ready" && trash.menu}
         </div>
@@ -371,6 +373,14 @@ function mapAdds(
 function hubName(host: AgentsHost, hubId: string): string {
   return host.hubs().find((hub) => hub.id === hubId)?.name ?? hubId;
 }
+
+// On the desktop the name field is the title the eye reads, so the h1 that takes focus when the
+// page opens lies over the avatar, "AGENT" and the name, with its text unseen: its ring outlines the
+// title (AG4, HAL-14377). Clicks go through it to the field.
+const titleOverlayClasses = [
+  "pointer-events-none absolute inset-0 select-none overflow-hidden whitespace-nowrap rounded-xs",
+  "text-transparent focus-ring",
+].join(" ");
 
 /**
  * The agent while it is read, whichever view is open: a skeleton after 300 ms, then "Still

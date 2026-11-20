@@ -45,13 +45,20 @@ async function open(
   source: InboxNotices | undefined,
   openRun = vi.fn(),
   openBudget: (() => void) | undefined = undefined,
+  announce: ((line: string) => void) | undefined = undefined,
 ) {
   const waiting = waitingRun("r1", {
     approvals: [pendingApproval("call-1", "notes-mcp__create_note", new Date().toISOString())],
   });
   const inbox = new Inbox(fakeRuns([waiting]).runs);
   const root = render(
-    <InboxView inbox={inbox} notices={source} openRun={openRun} openBudget={openBudget} />,
+    <InboxView
+      inbox={inbox}
+      notices={source}
+      openRun={openRun}
+      openBudget={openBudget}
+      announce={announce}
+    />,
   );
   await settled();
   return { root, openRun };
@@ -129,6 +136,15 @@ verifies("inbox.notices-section", () => {
       h.textContent?.includes("Needs you"),
     );
     expect(document.activeElement).toBe(heading);
+  });
+
+  it("says the notice went, as the heading focus alone doesn't (ND1)", async () => {
+    const { source } = fakeNotices(async () => [a, b]);
+    const announce = vi.fn();
+    const { root } = await open(source, vi.fn(), undefined, announce);
+    await act(async () => button(root, "Dismiss Daily summary failed at 06:00").click());
+    await act(async () => button(root, "Dismiss Weekly report failed at 07:00").click());
+    expect(announce.mock.calls).toEqual([["Notice dismissed."], ["Notice dismissed."]]);
   });
 
   it("describes each Open run by its row's title", async () => {

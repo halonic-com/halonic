@@ -6,6 +6,7 @@ import type { InboxNotice, InboxNotices } from "../notices/inbox-notices.ts";
 import { type NoticesState, useNotices } from "../notices/use-notices.ts";
 
 const loadFailed = "Couldn't load notices";
+const dismissed = "Notice dismissed.";
 
 /**
  * The notices under Needs you (flow-inbox 3.2): flat rows acted on in place, each with its one
@@ -17,18 +18,22 @@ const loadFailed = "Couldn't load notices";
  * @param openBudget Opens the budget in Settings; without it the monthly budget notice has no **Change budget**.
  * @param onEmptied Called as the last notice is dismissed, to move focus somewhere that stays on the
  *   page: the section's heading goes with it.
+ * @param announce Says "Notice dismissed." politely on each dismiss, as other deletes say what
+ *   happened; the last one's focus lands on Needs you, which doesn't (ND1, HAL-14377).
  */
 export function NoticesSection({
   source,
   openRun,
   openBudget,
   onEmptied,
+  announce,
   words,
 }: {
   readonly source: InboxNotices | undefined;
   readonly openRun: ((hubId: string, runId: string) => void) | undefined;
   readonly openBudget?: (() => void) | undefined;
   readonly onEmptied: () => void;
+  readonly announce?: ((line: string) => void) | undefined;
   readonly words: EngineWords;
 }) {
   const { notices, error, retry } = useNotices(source);
@@ -44,6 +49,7 @@ export function NoticesSection({
     if (next === null || next === undefined) onEmptied();
     else next.focus();
     source.dismiss(key);
+    announce?.(dismissed);
   };
   if (source === undefined) return null;
   if (notices.length === 0 && error === undefined) return null;
