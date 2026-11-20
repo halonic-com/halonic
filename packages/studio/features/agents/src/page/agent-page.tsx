@@ -38,6 +38,7 @@ import { useConfigurationLoads } from "../configuration/use-configuration-loads.
 import { fileItemOf } from "../trash/file-item.ts";
 import { useAgentTrash } from "../trash/use-agent-trash.tsx";
 import { forgetFreshAgent, isFreshAgent } from "./fresh-agents.ts";
+import { NotLiveLine } from "./not-live-line.tsx";
 import { pageWords } from "./page-words.ts";
 import { RenameField } from "./rename-field.tsx";
 import { SubagentCard, subagentCardKey, subagentOfCard } from "./subagent-card.tsx";
@@ -239,6 +240,7 @@ export function AgentScreen({
           ids={ids}
         />
       </header>
+      {load.kind === "ready" && <NotLiveLine host={host} agent={{ hubId, id }} />}
       {saveFailed !== undefined && (
         <p role="alert" className="border-b border-border px-6 py-2 text-small text-danger">
           {pageWords.couldntSave(saveFailed)}

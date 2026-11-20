@@ -6,6 +6,7 @@ import type {
   AgentHarnessId,
   AgentHub,
   AgentListing,
+  AgentLiveState,
   AgentRef,
   AgentSettings,
   AgentsHost,
@@ -64,6 +65,11 @@ export interface WorkspaceAgentsParts {
    * folder. Absent where there is no agent host (the browser), which refuses with the reason.
    */
   readonly openSignIn?: (ref: AgentRef, harness: AgentHarnessId) => Promise<HarnessSignIn>;
+  /**
+   * The live state of a workspace file (core's `liveState`), by its path from the workspace
+   * folder. Without it an agent counts as live, as a routine does, so the page shows no line.
+   */
+  readonly liveness?: (path: string) => Promise<AgentLiveState>;
 }
 
 /** What {@link WorkspaceAgents} applies Settings › New agents run (`sandbox.new-agents`) with. */
@@ -335,6 +341,12 @@ export class WorkspaceAgents implements AgentsHost {
         throw new KindedError("conflict", `${alreadyHandsWork(names)}; that would be a loop.`);
       }
     }
+  }
+
+  /** Whether the agent's saved file is live; throws `not_found` when the agent isn't there. */
+  async liveState(ref: AgentRef): Promise<AgentLiveState> {
+    const { path } = await this.#find(ref);
+    return (await this.#parts.liveness?.(path)) ?? "live";
   }
 
   /** The path of the agent's file; throws `not_found` when the agent isn't there. */

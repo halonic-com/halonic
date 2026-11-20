@@ -1,4 +1,4 @@
-import { type NewAgentsParts, WorkspaceAgents } from "./workspace-agents.ts";
+import { WorkspaceAgents, type WorkspaceAgentsParts } from "./workspace-agents.ts";
 
 /** What the WorkspaceAgents tests share: a workspace of a few files, kept in memory. */
 
@@ -6,7 +6,7 @@ export const writerFile = "id: writer\nname: Writer\ndescription: Drafts replies
 const replyFile =
   "id: reply\nname: Reply\ninitial: first\nstates:\n  first:\n    agent: writer\n    on:\n      - to: done\n  done:\n    type: final\n";
 
-export function setup(newAgents?: NewAgentsParts) {
+export function setup(extra: Pick<WorkspaceAgentsParts, "newAgents" | "liveness"> = {}) {
   const store: Record<string, string> = {
     "models.yaml":
       "aliases:\n  fast:\n    provider: anthropic\n    model: claude-haiku\n  smart:\n    provider: anthropic\n    model: claude-sonnet\n",
@@ -21,6 +21,7 @@ export function setup(newAgents?: NewAgentsParts) {
   const undoable: Record<string, string | null>[] = [];
   let step = 0;
   const host = new WorkspaceAgents({
+    ...extra,
     files: {
       read: async (path) => store[path] ?? null,
       list: async (dir) =>
@@ -58,7 +59,6 @@ export function setup(newAgents?: NewAgentsParts) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    ...(newAgents === undefined ? {} : { newAgents }),
   });
   return { host, store, changes };
 }

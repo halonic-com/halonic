@@ -131,7 +131,11 @@ export function MoreSettings({ params, save, reportNotSaved }: MoreSettingsProps
       summary={words.moreSettings}
       {...(set.length === 0 ? {} : { detail: set.join(", ") })}
     >
-      <div className="flex flex-col gap-6 px-4 pt-2 pb-4">
+      {/*
+        The Disclosure's panel is inset and muted for a few lines of help. These are fields, so
+        they cancel both: they line up with Model call limit's, and what's typed is in the text colour.
+      */}
+      <div className="-mx-4 flex flex-col gap-6 pt-2 text-body text-fg">
         <NumberField label={words.temperature} hint={words.temperatureHint} field={temperature} />
         <NumberField label={words.topP} hint={words.topPHint} field={topP} />
         <NumberField label={words.maxTokens} hint={words.maxTokensHint} field={maxTokens} />
@@ -164,7 +168,7 @@ function NumberField({
   readonly field: AutoSaved;
 }) {
   return (
-    <Field label={label} hint={hint} error={field.error}>
+    <Field label={label} hint={hint} error={field.error} announceWhileFocused>
       <Input
         inputMode="decimal"
         value={field.value}
