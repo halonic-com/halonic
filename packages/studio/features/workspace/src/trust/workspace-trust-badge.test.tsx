@@ -23,7 +23,7 @@ import type {
 let element: HTMLElement;
 let mounted: MountedWorkspaceWindow | undefined;
 let restoreMedia: () => void = () => {};
-/** Whether the window is as narrow as a phone, where the status bar and its badge don't show. */
+/** Whether the window is as narrow as a phone, where the status bar doesn't show. */
 let phoneWindow = false;
 
 beforeEach(() => {
@@ -389,11 +389,10 @@ verifies("workspace.trust-asked", () => {
     expect(dialog()).toBeNull();
   });
 
-  it("opens the check in a phone-narrow window, which shows no badge", async () => {
+  it("opens the check in a phone-narrow window", async () => {
     phoneWindow = true;
     const trust = control(review);
     await show(trust.value);
-    expect(badge()).toBeNull();
 
     act(() => void trust.value.asks?.ask());
 

@@ -301,7 +301,7 @@ verifies("workspace.narrow-window-trust", () => {
     );
     await act(async () => (trustButton as HTMLButtonElement | undefined)?.click());
 
-    expect(trustBadge()).toBeNull();
+    expect(trustBadge()).toBeUndefined();
     const heading = element.querySelector("main h1");
     expect(heading?.textContent).toBe("More");
     expect(document.activeElement).toBe(heading);

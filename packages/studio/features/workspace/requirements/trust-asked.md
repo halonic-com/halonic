@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-13135 (Routines › Run now); HAL-13143 (C144 RT1 and TR1, decided by the designer on the task)
 
-When a start is refused because the shown workspace isn't trusted yet and asks for the trust check (Routines' Run now, the Run panel's and the run page's **Review**), the window shall open the same trust check as the header badge's **Review**, with **Not now** focused, also in a window as narrow as a phone, where no badge shows. **Trust** shall answer that the workspace is trusted; **Not now** and Escape shall answer that it isn't and save nothing. With nothing to show (before the first check, or a workspace that needs no trust), the answer shall be that it isn't trusted, at once. When the check closes, focus shall go back to what opened it; when that is gone, as the badge is once the workspace is trusted, focus shall go to the page's `h1`.
+When a start is refused because the shown workspace isn't trusted yet and asks for the trust check (Routines' Run now, the Run panel's and the run page's **Review**), the window shall open the same trust check as the header badge's **Review**, with **Not now** focused, also in a window as narrow as a phone. **Trust** shall answer that the workspace is trusted; **Not now** and Escape shall answer that it isn't and save nothing. With nothing to show (before the first check, or a workspace that needs no trust), the answer shall be that it isn't trusted, at once. When the check closes, focus shall go back to what opened it; when that is gone, as the badge is once the workspace is trusted, focus shall go to the page's `h1`.
 
 ## Examples
 
