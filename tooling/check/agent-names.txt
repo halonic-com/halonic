@@ -1,0 +1,23 @@
+# The names of our agents. They are not GitHub users, so the leak guard
+# fails a pull request title or body, or a commit message, that writes `@`
+# and one of these names: GitHub would notify a stranger who owns that
+# username (HAL-14420). Write the name without the `@`. One per line.
+Chief
+Liam
+Julian
+Mateo
+Elena
+Owen
+Priya
+Ravi
+Tomas
+Maya
+Noah
+Sofia
+Nina
+Kim
+Iris
+Mara
+Pip
+Leo
+Sasha

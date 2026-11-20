@@ -28,6 +28,7 @@
 /tooling/check/src/leaks/ @halonic-com/maintainers
 /tooling/check/src/cli/leaks.ts @halonic-com/maintainers
 /tooling/check/leak-allow.txt @halonic-com/maintainers
+/tooling/check/agent-names.txt @halonic-com/maintainers
 /tooling/check/hooks/ @halonic-com/maintainers
 
 # What decides whether a change needs the live cloud suites, and the code

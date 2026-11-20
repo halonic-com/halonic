@@ -15,6 +15,7 @@ your machine, and CI blocks them again before they can reach `main`.
 | `credential-file` | a file of login details: `.npmrc`, `.netrc`, `.pgpass`, AWS `credentials` |
 | `absolute-path` | a path that only exists on one machine: `/home/…`, `/Users/…`, `C:\…`, `/tmp/…`, `/var/folders/…`, … |
 | `personal-term` | a personal term from the deny-terms list, in any case, also inside a longer word |
+| `agent-mention` | `@` and an agent's name (`@Julian`, any case) in a commit message or a pull request title or body. Our agents aren't GitHub users, so GitHub would notify a stranger who owns that name. Write `Julian` or `` `Julian` `` instead. The names are in `tooling/check/agent-names.txt`. Checked on push and in CI, not by the nightly scan of old commits |
 
 It checks the lines you add (also those a merge commit adds), file names,
 commit messages, and the author and committer of each commit. On push it
