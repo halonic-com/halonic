@@ -3,6 +3,7 @@
 - Task: HAL-13752
 - Approval: Nina's C227 claims check asked for this change on HAL-13752 (https://paperclip.halonic.com/HAL/issues/HAL-13752), following HAL-11580. A team decision with no board card.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QW1SUKWEyiLsSqF5BhRq2CuqlWcshH7tN7el1QKYKEVo7HW4ANtAg2RiW3EjNfNbLnlDIkjSotb3vSLJzH3SCw==
 
 ## What changes
 
