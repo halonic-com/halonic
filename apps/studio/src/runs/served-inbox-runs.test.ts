@@ -168,6 +168,23 @@ verifies("studio.served-inbox-runs", () => {
       expect(JSON.parse(body)).toEqual({ event: "approve" });
     });
 
+    it("names the wait step it answers, so a late answer can't answer the next one", async () => {
+      let body = "";
+      const runs = new ServedInboxRuns({
+        fetch: async (_path, init) => {
+          body = String(init?.body);
+          return Response.json(waitingRun("a"));
+        },
+      });
+      await runs.send("a", "escalate", undefined, {
+        wait: { state: "review", since: "2026-11-20T09:00:00.000Z" },
+      });
+      expect(JSON.parse(body)).toEqual({
+        event: "escalate",
+        wait: { state: "review", since: "2026-11-20T09:00:00.000Z" },
+      });
+    });
+
     it.each([
       [409, "conflict"],
       [404, "not_found"],
