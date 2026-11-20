@@ -75,7 +75,7 @@ export interface HostHarnessProfilesOptions {
  */
 export class HostHarnessProfiles {
   readonly #options: HostHarnessProfilesOptions;
-  readonly #byWorkspace = new Map<string, Promise<HarnessProfiles>>();
+  readonly #byWorkspace = new Map<string, Promise<WorkspaceProfiles>>();
   /** The hosts made so far; a session's temp folder is removed by the one that made it. */
   readonly #hosts: WorkspaceHarnessHost[] = [];
   /** The profiles built whose session hasn't opened yet, by temp folder, with the timer that removes it. */
@@ -97,10 +97,29 @@ export class HostHarnessProfiles {
   ): Promise<HarnessProfile | undefined> {
     const real = await namedWorkspace(this.#options.workspaceRoots, workspace);
     if (real === undefined) return undefined;
-    const profiles = await this.#profilesOf(real);
+    const { profiles } = await this.#profilesOf(real);
     const built = await profiles.profileOf(harnessAgentOf(agent), bridge, instructionsFolder);
     this.#removeIfUnopened(built.profile);
     return built;
+  }
+
+  /**
+   * The agent's own settings folder for its harness in the workspace, made
+   * and private, where Studio checks and opens its sign-in (HAL-6351).
+   *
+   * @returns `undefined` when the folder isn't one the launcher named as a
+   * workspace, and `null` when the harness has no sign-in of its own
+   * @throws RangeError when the agent's id can't name a folder safely
+   */
+  async settingsFolderOf(
+    workspace: string,
+    agentId: string,
+    harness: ProgramHarness,
+  ): Promise<string | null | undefined> {
+    const real = await namedWorkspace(this.#options.workspaceRoots, workspace);
+    if (real === undefined) return undefined;
+    const { host } = await this.#profilesOf(real);
+    return host.agentSettingsFolder(agentId, harness);
   }
 
   /**
@@ -141,8 +160,8 @@ export class HostHarnessProfiles {
     this.#unopened.delete(profile.tempFolder);
   }
 
-  /** The workspace's builder, made on the first ask, however many ask together. */
-  #profilesOf(workspace: string): Promise<HarnessProfiles> {
+  /** The workspace's builder and its host, made on the first ask, however many ask together. */
+  #profilesOf(workspace: string): Promise<WorkspaceProfiles> {
     let made = this.#byWorkspace.get(workspace);
     if (made === undefined) {
       made = this.#make(workspace);
@@ -153,7 +172,7 @@ export class HostHarnessProfiles {
     return made;
   }
 
-  async #make(workspace: string): Promise<HarnessProfiles> {
+  async #make(workspace: string): Promise<WorkspaceProfiles> {
     const { profile, harnesses, home, env, digest, platform } = this.#options;
     const folders = await workspaceFolders(profile, workspace, digest);
     const host = new WorkspaceHarnessHost({
@@ -173,8 +192,14 @@ export class HostHarnessProfiles {
       platform,
     });
     this.#hosts.push(host);
-    return profiles;
+    return { profiles, host };
   }
+}
+
+/** One workspace's profile builder, and the host it builds on. */
+interface WorkspaceProfiles {
+  readonly profiles: HarnessProfiles;
+  readonly host: WorkspaceHarnessHost;
 }
 
 /** The harnesses by id, as the profile host reads their sign-in. */

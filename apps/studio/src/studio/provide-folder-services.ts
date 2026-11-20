@@ -1,6 +1,7 @@
 import { AgentHostChat, AgentHostPlacementStore } from "@halonicjs/adapter-agent-host-client";
 import {
   TauriDefinitionStore,
+  TauriEngineLock,
   type TauriFileShell,
   TauriInstructionTrustStore,
   TauriRecordStore,
@@ -56,6 +57,7 @@ import {
   type TauriIpc,
   tauriAgentHostTransport,
 } from "@halonicjs/studio-services";
+import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import { agentHostHarnessDetect } from "../agents/agent-host-harness-detect.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
@@ -163,6 +165,7 @@ export function provideFolderServices(
     engineServiceKey,
     new EngineService({
       ipc,
+      lock: new TauriEngineLock(files, location),
       location,
       definitions: new TauriDefinitionStore(files, location),
       secrets: shellKeychain(ipc),
@@ -170,6 +173,8 @@ export function provideFolderServices(
       clock: systemClock,
       isTrusted: async (workspace) => (await trust.checkLoaded(workspace)).status === "trusted",
       mayStart: (workspace) => trust.mayStart(workspace),
+      // Removing the trust here or in Settings › Trusted sources checks it again.
+      onTrustChange: (listener) => trust.subscribe(listener),
       ids: randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), systemClock),
       setTimer: (callback, delayMs) => {
         const timer = setTimeout(callback, delayMs);
@@ -294,7 +299,7 @@ export function provideFolderServices(
       // The window can't reach a model: the agent host calls one on this computer for it.
       chat:
         transport === undefined
-          ? () => Promise.reject(new Error("Summarize needs the agent host, which isn't running."))
+          ? () => Promise.reject(new EngineNotAnswering())
           : (provider, request) => new AgentHostChat(transport, location).chat(provider, request),
     }),
   );

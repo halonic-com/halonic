@@ -1,6 +1,7 @@
 import { pluginProgramSecretText } from "@halonicjs/app";
 import { type Plugin, placedSecrets } from "@halonicjs/format";
 import type { PluginToolRisk } from "../page/plugin-pages.ts";
+import { clientSecretHosts, clientSecretNames } from "../sign-in/client-secret-hosts.ts";
 import { hostWords, type SecretKind, secretHow, type TrustCounts } from "./trust-text.ts";
 
 /** A tool for agents, as Tools for agents lists it. */
@@ -85,6 +86,13 @@ export function trustCheckContent(plugin: Plugin): TrustCheckContent {
       name,
       goesTo: unique(secret.hosts.map((host) => hostWords(host, labelOf))),
       how: secretHow(secret),
+      givenTo: undefined,
+      kind: "backend" as const,
+    })),
+    ...clientSecretNames(plugin).map((name) => ({
+      name,
+      goesTo: unique(clientSecretHosts(plugin, name).map((host) => hostWords(host, labelOf))),
+      how: undefined,
       givenTo: undefined,
       kind: "backend" as const,
     })),

@@ -62,8 +62,9 @@ export interface StudioPhonePageProps extends Omit<StudioPageProps, "location"> 
   /** The More page's header badge, on its own line under the switcher row. */
   readonly badge?: ReactNode;
   /**
-   * The desktop's header badges, for More when there is no `badge`: a desktop window as narrow as
-   * a phone has no title bar to show them in (WCAG 1.4.10).
+   * The desktop's header badges, the features' ones such as "Not trusted yet · Review" first, for
+   * More when there is no `badge`: a desktop window as narrow as a phone has no status bar to show
+   * them in (WCAG 1.4.10).
    */
   readonly desktopBadges?: ReactNode;
   /** The window's `openSettings`: with it, More ends with a Settings row. */
@@ -125,6 +126,7 @@ function PhonePageBody({
         places={shown}
         onOpen={(place) => places.openPlace(place)}
         onSettings={onSettings}
+        inDesktopApp={settingsPlace === "app"}
       />
     );
   }

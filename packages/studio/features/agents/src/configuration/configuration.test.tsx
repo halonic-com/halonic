@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -20,8 +21,12 @@ const host = () =>
     agents: [{ hubId: "acme", id: "sorter", name: "Sorter", instructions: "" }],
   });
 
-async function openConfiguration(agents = host()) {
-  const page = await show(<AgentScreen host={agents} hubId="acme" id="sorter" />);
+async function openConfiguration(agents = host(), presentation: "desktop" | "phone" = "desktop") {
+  const page = await show(
+    <PresentationProvider presentation={presentation}>
+      <AgentScreen host={agents} hubId="acme" id="sorter" />
+    </PresentationProvider>,
+  );
   await act(async () => buttonNamed(page, "Configuration")?.click());
   return { page, agents };
 }
@@ -85,5 +90,43 @@ verifies("agents.configuration.behaviour", () => {
 
     expect(page.textContent).toContain("This looks like a key. Keep it as a secret instead?");
     expect((await agents.settings({ hubId: "acme", id: "sorter" })).instructions).toBe("");
+  });
+});
+
+verifies("agents.configuration.pages-phone", () => {
+  it("puts the pages across the top on a phone, moved through with →", async () => {
+    const { page } = await openConfiguration(host(), "phone");
+    const list = page.querySelector(
+      '[role=tablist][aria-label="Configuration pages"]',
+    ) as HTMLElement;
+    expect(list.getAttribute("aria-orientation")).toBe("horizontal");
+    const [behaviour, model] = [...list.querySelectorAll<HTMLElement>("[role=tab]")];
+
+    await act(async () => behaviour?.focus());
+    const right = new KeyboardEvent("keydown", {
+      key: "ArrowRight",
+      bubbles: true,
+      cancelable: true,
+    });
+    await act(async () => behaviour?.dispatchEvent(right));
+
+    expect(model?.getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(model);
+    // The page sits below the list at the full width, not beside a fixed-width column.
+    const configuration = list.parentElement?.parentElement;
+    expect(configuration?.className).toContain("flex-col");
+    expect(list.parentElement?.className).not.toContain("w-52");
+    const panel = page.querySelector(`#${CSS.escape(model?.getAttribute("aria-controls") ?? "")}`);
+    expect(panel?.parentElement).toBe(configuration);
+    expect(panel?.textContent).toContain("Model");
+  });
+
+  it("keeps the column beside the page on the desktop", async () => {
+    const { page } = await openConfiguration();
+    const list = page.querySelector(
+      '[role=tablist][aria-label="Configuration pages"]',
+    ) as HTMLElement;
+    expect(list.getAttribute("aria-orientation")).toBe("vertical");
+    expect(list.parentElement?.parentElement?.className).not.toContain("flex-col");
   });
 });

@@ -1,40 +1,19 @@
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
-import { PluginRefusal, type PluginRefusalCode } from "./plugin-refusal.ts";
+import { PluginRefusal, sendRefusal } from "./plugin-refusal.ts";
 import { callPluginBody } from "./plugin-schemas.ts";
+import { pluginSecretRoutes } from "./plugin-secret-routes.ts";
+import type { PluginSecretValues } from "./plugin-secret-values.ts";
 import type { PluginTable } from "./plugin-table.ts";
 
 /** What the plugin routes reach. */
 export interface PluginRouteDeps {
   plugins: PluginTable;
+  /** The secrets Studio hands over with `POST /v1/plugins/secrets` (`pluginSecretRoutes`). */
+  secretValues: PluginSecretValues;
   /** Where the host writes what it keeps from a failure; the answer never carries it. */
   log?: (text: string) => void;
 }
-
-const refusals: Record<PluginRefusalCode, { status: number; message: string }> = {
-  plugin_not_trusted: {
-    status: 403,
-    message:
-      "This computer's trust record doesn't cover this plugin as it is now. Review it and trust it first.",
-  },
-  not_fenced: {
-    status: 403,
-    message:
-      "Plugin tools can't run on this computer yet: the sandbox that fences a plugin isn't available here.",
-  },
-  not_in_this_build: {
-    status: 403,
-    message: "Plugin tools aren't available in this build of the agent host yet.",
-  },
-  too_many_plugins: {
-    status: 429,
-    message: "The agent host already runs the most plugins it allows. Try again in a moment.",
-  },
-  host_stopping: {
-    status: 503,
-    message: "The agent host is stopping and starts no more plugins.",
-  },
-};
 
 const pluginFailedMessage =
   "The plugin couldn't finish this call. The agent host's log has the detail.";
@@ -52,7 +31,10 @@ const pluginFailedMessage =
  * the runner (nothing starts, with no fallback), 429 `too_many_plugins`
  * and 503 `host_stopping`. Any other failure answers 502 `plugin_failed`
  * with a fixed message: the error's own text can hold paths, so it goes only
- * to the host's log.
+ * to the host's log. A plugin the trust no longer covers also loses the
+ * secrets Studio handed over for it.
+ *
+ * Beside it, `POST /v1/plugins/secrets` takes those secrets ({@link pluginSecretRoutes}).
  */
 export function pluginRoutes(deps: PluginRouteDeps): HostRoute[] {
   return [
@@ -67,8 +49,7 @@ export function pluginRoutes(deps: PluginRouteDeps): HostRoute[] {
           sendJson(response, 200, { text });
         } catch (error) {
           if (error instanceof PluginRefusal) {
-            const { status, message } = refusals[error.code];
-            sendError(response, status, error.code, message);
+            sendRefusal(response, error);
             return;
           }
           const name = error instanceof Error ? error.name : "Error";
@@ -78,5 +59,6 @@ export function pluginRoutes(deps: PluginRouteDeps): HostRoute[] {
         }
       },
     },
+    ...pluginSecretRoutes({ plugins: deps.plugins, values: deps.secretValues, log: deps.log }),
   ];
 }

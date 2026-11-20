@@ -1,8 +1,9 @@
 import { secretVariableName } from "@halonicjs/adapter-env-secrets";
+import { providerTypes } from "@halonicjs/adapter-workspace-models";
 import { type MoneyAmountOptions, moneyAmount } from "@halonicjs/app";
 import type { BusyRetries, RunFailure } from "@halonicjs/app/run-failure";
 import type { ModelSkipReason } from "@halonicjs/events";
-import { counted, timesInWords } from "./counts.ts";
+import { counted, listInWords, timesInWords } from "./counts.ts";
 import { defineMessages, type Message } from "./define.ts";
 import { errorMessages, issuesLink } from "./general.ts";
 import { harnessNames } from "./harness-names.ts";
@@ -114,6 +115,13 @@ const lineOne = {
     ),
   // The same sentence as a run the check refused before it started (HAL-1709).
   "sandbox-not-ready": (run) => failedIn(run, sandboxMessages.cantStart().phrase),
+  "unknown-provider-type": (run, failure) =>
+    failedIn(
+      run,
+      phrase`provider ${failure.provider} has type ${failure.type}, which Halonic can't call.`,
+    ),
+  "unknown-model-alias": (run, failure) =>
+    failedIn(run, phrase`hub ${failure.hub} has no model alias ${failure.alias}.`),
   "model-no-tools": (run, failure) =>
     failedIn(
       run,
@@ -204,6 +212,13 @@ const lineTwo = {
   "site-blocked": (_run, failure) =>
     phrase`Add ${failure.site} to ${failure.agent}'s allowed sites, if ${failure.agent} should reach it.`,
   "sandbox-not-ready": (_run, failure) => sandboxMessages.refusedFix(failure.code).phrase,
+  // The types come from the list the engine builds providers from, so a new adapter is listed by itself.
+  "unknown-provider-type": (_run, failure) =>
+    phrase`Set type in providers/${failure.provider}.yaml to one of ${listInWords(providerTypes, "or")}, then run again.`,
+  // A workspace made with plain `halonic init` has no models.yaml yet, so it also
+  // says where a model that needs no key comes from (HAL-12377).
+  "unknown-model-alias": (_run, failure) =>
+    phrase`Add ${failure.alias} to models.yaml, or set a model on the agent. For a test model with no key, copy models.yaml and providers/mock.yaml from the Acme example.`,
   // "In models.yaml" first, so it can't read as where the tools are.
   "model-no-tools": (_run, failure) =>
     phrase`In models.yaml, point the model alias ${failure.alias} at a model that can use tools.`,

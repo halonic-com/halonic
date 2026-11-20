@@ -1,6 +1,13 @@
 import type { RunRow, RunsSource, SourcedRun } from "@halonicjs/studio-feature-runs/api";
-import { Button, EmptyState, SkeletonBar, StatusChip } from "@halonicjs/studio-kit";
-import { useMemo, useRef, useState } from "react";
+import {
+  Button,
+  EmptyState,
+  SkeletonBar,
+  StatusChip,
+  usePresentation,
+} from "@halonicjs/studio-kit";
+import { type ReactNode, useMemo, useRef } from "react";
+import { flushSync } from "react-dom";
 import type { WorkflowRef } from "../api.ts";
 import { RunCard } from "./run-card.tsx";
 import { realRunsOf, runRowsOf, runSections } from "./runs-model.ts";
@@ -16,10 +23,14 @@ export interface RunsViewProps {
   readonly load: RunsLoad;
   readonly retry: () => void;
   readonly workflow: WorkflowRef;
+  /** The id of the run whose card is docked; the page keeps it, so its own dock can close this card. */
+  readonly picked: string | undefined;
+  /** Opens a row's card, or closes it with `undefined`. */
+  readonly onPick: (runId: string | undefined) => void;
   /** Opens a run's page, where its log is; absent where the app has no run page. */
   readonly openRun?: ((runId: string) => void) | undefined;
-  /** Opens the Inbox, for the card's **Review in Inbox**; absent where it can't be opened. */
-  readonly reviewInInbox?: (() => void) | undefined;
+  /** Opens the Inbox on what the run waits on, for the card's **Review in Inbox**; absent where it can't be opened. */
+  readonly reviewInInbox?: ((runId: string) => void) | undefined;
   /** What a row's card needs for **Save as test**; absent where the host can't write test cases, and for a run still going. */
   readonly saveAsTest?: ((row: RunRow) => SaveAsTestProps | undefined) | undefined;
   /** Opens the Runs list, which starts with Test runs off; absent where it can't be opened. */
@@ -35,12 +46,14 @@ export function RunsView({
   load,
   retry,
   workflow,
+  picked,
+  onPick,
   openRun,
   reviewInInbox,
   seeAll,
   saveAsTest,
 }: RunsViewProps) {
-  const [picked, setPicked] = useState<string | undefined>();
+  const phone = usePresentation() === "phone";
   const rowButtons = useRef(new Map<string, HTMLButtonElement>());
   const { hubId, id } = workflow;
   const ready = load.kind === "ready" ? load.runs : undefined;
@@ -51,38 +64,44 @@ export function RunsView({
 
   if (load.kind === "failed") {
     return (
-      <EmptyState
-        tone="error"
-        title={words.loadFailedTitle}
-        description={load.reason}
-        action={{ label: words.tryAgain, onClick: retry, busy: load.retrying }}
-      />
+      <Inset>
+        <EmptyState
+          tone="error"
+          title={words.loadFailedTitle}
+          description={load.reason}
+          action={{ label: words.tryAgain, onClick: retry, busy: load.retrying }}
+        />
+      </Inset>
     );
   }
   if (load.kind === "loading") {
     return load.skeleton ? (
-      <div role="status" className="flex flex-col gap-3">
-        <span className="sr-only">{words.loading}</span>
-        <SkeletonBar kind="value" />
-        <SkeletonBar kind="value" />
-        {load.slow && (
-          <p className="flex items-center gap-3 text-small text-fg-muted">
-            {words.stillLoading}
-            <Button variant="secondary" size="sm" onClick={retry}>
-              {words.tryAgain}
-            </Button>
-          </p>
-        )}
-      </div>
+      <Inset>
+        <div role="status" className="flex flex-col gap-3">
+          <span className="sr-only">{words.loading}</span>
+          <SkeletonBar kind="value" />
+          <SkeletonBar kind="value" />
+          {load.slow && (
+            <p className="flex items-center gap-3 text-small text-fg-muted">
+              {words.stillLoading}
+              <Button variant="secondary" size="sm" onClick={retry}>
+                {words.tryAgain}
+              </Button>
+            </p>
+          )}
+        </div>
+      </Inset>
     ) : null;
   }
   if (rows.length === 0) {
     return (
-      <p className="text-small text-fg-muted">
-        {words.emptyBefore}
-        <strong>{words.emptyRun}</strong>
-        {words.emptyAfter}
-      </p>
+      <Inset>
+        <p className="text-small text-fg-muted">
+          {words.emptyBefore}
+          <strong>{words.emptyRun}</strong>
+          {words.emptyAfter}
+        </p>
+      </Inset>
     );
   }
 
@@ -92,8 +111,9 @@ export function RunsView({
     realRunsOf(load.runs, workflow).find((run) => run.summary.id === row.id);
   const openedRun = open && openRunOf(open);
   const closeCard = () => {
+    // The list shows again first: on a phone it was hidden behind the card, and a hidden row can't take focus.
+    flushSync(() => onPick(undefined));
     if (picked !== undefined) rowButtons.current.get(picked)?.focus();
-    setPicked(undefined);
   };
   const section = (title: string, list: readonly RunRow[]) =>
     list.length > 0 && (
@@ -111,7 +131,7 @@ export function RunsView({
                 aria-pressed={picked === row.id}
                 aria-label={row.label}
                 className="focus-ring flex w-full items-center gap-3 py-2 text-start"
-                onClick={() => setPicked(picked === row.id ? undefined : row.id)}
+                onClick={() => onPick(picked === row.id ? undefined : row.id)}
               >
                 <StatusChip tone={row.chip.tone} dot={row.chip.dot}>
                   {row.chip.word}
@@ -126,8 +146,9 @@ export function RunsView({
       </section>
     );
   return (
-    <div className="-m-6 flex min-h-0 flex-1">
-      <div className="min-w-0 flex-1 overflow-auto p-6">
+    <>
+      {/* On a phone a run's card takes the tab: beside it, the list would have no room. */}
+      <Inset hidden={phone && open !== undefined && openedRun !== undefined}>
         <div className="flex max-w-186 flex-col gap-6">
           {section(words.now, sections.now)}
           {section(words.earlier, sections.earlier)}
@@ -139,7 +160,7 @@ export function RunsView({
             </div>
           )}
         </div>
-      </div>
+      </Inset>
       {open && openedRun && (
         <RunCard
           key={open.id}
@@ -150,10 +171,31 @@ export function RunsView({
           onClose={closeCard}
           onOpenLog={openRun && (() => openRun(open.id))}
           openRun={openRun}
-          reviewInInbox={reviewInInbox}
+          reviewInInbox={reviewInInbox && (() => reviewInInbox(open.id))}
           saveAsTest={saveAsTest?.(open)}
         />
       )}
+    </>
+  );
+}
+
+/**
+ * The column the view's list or state sits in: it scrolls on its own, next to a run's card, and keeps
+ * the 24 px inset Configuration and Tests have, as the tab panel around it has none.
+ */
+function Inset({
+  children,
+  hidden = false,
+}: {
+  readonly children: ReactNode;
+  readonly hidden?: boolean;
+}) {
+  return (
+    <div
+      data-testid="runs-inset"
+      className={hidden ? "hidden" : "min-w-0 flex-1 overflow-auto p-6"}
+    >
+      {children}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import type { ChangedFile, ChangesList, DiscardOutcome } from "./changes-list.ts
 import { discardWords } from "./changes-words.ts";
 
 /** A file put back, and what puts it as it was. */
-interface Done {
+export interface Done {
   readonly path: string;
   readonly undo: () => Promise<string | undefined>;
 }
@@ -45,7 +45,7 @@ export async function discardItem(
  * Runs the undos, the last discard first; stops at the first one that fails and gives its reason
  * and the files from there on, which are not as they were. Gives `undefined` when all worked.
  */
-async function runUndos(
+export async function runUndos(
   done: readonly Done[],
 ): Promise<{ readonly reason: string; readonly paths: readonly string[] } | undefined> {
   const newestFirst = [...done].reverse();

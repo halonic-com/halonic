@@ -4,6 +4,7 @@ import {
   type Tab,
   TabList,
   TabPanel,
+  usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
 import { useState } from "react";
@@ -31,6 +32,8 @@ export interface ConfigurationProps {
   readonly save: (change: AgentChange) => Promise<boolean>;
   /** Hears how many fields of the open page aren't saved, for the toolbar's "1 field not saved". */
   readonly reportNotSaved?: ((count: number) => void) | undefined;
+  /** Opens Behaviour with Instructions focused, for an agent that was just made. */
+  readonly startOnInstructions?: boolean | undefined;
   /** Opens Library on a Tools list's tab, for **Open Library ›**; absent where the app can't. */
   readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
 }
@@ -44,7 +47,9 @@ const pages: readonly Tab<PageId>[] = (["behaviour", "model", "harness", "tools"
 
 /**
  * The agent's Configuration (`agents.configuration.pages`): a list of pages on the left and the
- * picked page beside it. A page that isn't built is absent, not empty (flow-agents 5.1).
+ * picked page beside it. A page that isn't built is absent, not empty (flow-agents 5.1). On a
+ * phone the list goes across the top instead, so the page keeps the full width
+ * (`agents.configuration.pages-phone`).
  */
 export function Configuration({
   host,
@@ -54,12 +59,16 @@ export function Configuration({
   defaultModel,
   retryAliases,
   retry,
+  startOnInstructions,
   save,
   openLibrary,
   reportNotSaved,
 }: ConfigurationProps) {
   const [page, setPage] = useState<PageId>("behaviour");
   const ids = useTabIds();
+  const phone = usePresentation() === "phone";
+  // Instructions takes the focus once; going to another page and back leaves it alone.
+  const [focusInstructions, setFocusInstructions] = useState(startOnInstructions === true);
   if (load.kind === "failed") {
     return (
       <EmptyState
@@ -71,14 +80,23 @@ export function Configuration({
     );
   }
   return (
-    <div className="flex min-h-0 flex-1">
-      <div className="w-52 shrink-0 border-e border-border px-2 py-4">
+    <div className={phone ? "flex min-h-0 flex-1 flex-col" : "flex min-h-0 flex-1"}>
+      <div
+        className={
+          phone
+            ? "border-b border-border px-4 py-3"
+            : "w-52 shrink-0 border-e border-border px-2 py-4"
+        }
+      >
         <TabList
           label={words.pages}
-          orientation="vertical"
+          orientation={phone ? "horizontal" : "vertical"}
           tabs={pages}
           selected={page}
-          onSelect={setPage}
+          onSelect={(id) => {
+            setPage(id);
+            setFocusInstructions(false);
+          }}
           ids={ids}
         />
       </div>
@@ -86,7 +104,12 @@ export function Configuration({
         {load.kind === "ready" ? (
           <div className="max-w-column">
             {page === "behaviour" && (
-              <BehaviourPage settings={load.value} save={save} reportNotSaved={reportNotSaved} />
+              <BehaviourPage
+                settings={load.value}
+                focusInstructions={focusInstructions}
+                save={save}
+                reportNotSaved={reportNotSaved}
+              />
             )}
             {page === "model" &&
               (aliases.kind === "failed" ? (

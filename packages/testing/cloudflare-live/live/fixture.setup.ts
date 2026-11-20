@@ -1,10 +1,9 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { createCloudflareClient } from "@halonicjs/target-cloudflare-deploy";
 import { buildWorkerBundle } from "@halonicjs/tooling-publish";
 import { createCloudflareRest } from "../src/cloudflare-rest.ts";
 import { deployWebhookFixture } from "../src/fixture.ts";
 import { targetVariables } from "../src/live-target.ts";
+import { workerSource } from "../src/worker-source.ts";
 
 /** Names the missing variables, never a value. */
 function required(name: string): string {
@@ -24,11 +23,7 @@ export default async function setup(): Promise<() => Promise<void>> {
   if (targetVariables.every((name) => (process.env[name] ?? "") !== "")) return async () => {};
 
   const token = required("CLOUDFLARE_LIVE_API_TOKEN");
-  const runtime = import.meta.resolve("@halonicjs/target-cloudflare-runtime");
-  const entry = fileURLToPath(runtime);
-  const wrangler = readFileSync(new URL("../wrangler.toml", runtime), "utf8");
-  const compatibilityDate = /^compatibility_date\s*=\s*"([^"]+)"/m.exec(wrangler)?.[1];
-  if (compatibilityDate === undefined) throw new Error("wrangler.toml has no compatibility_date.");
+  const { entry, compatibilityDate } = workerSource();
 
   const fixture = await deployWebhookFixture({
     api: createCloudflareClient({ token }),

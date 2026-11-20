@@ -34,12 +34,13 @@ import { SetupPane } from "./setup-pane.tsx";
 import { useOpenItem } from "./use-open-item.ts";
 import { useRequestPane } from "./use-request-pane.tsx";
 import { useRunFacts } from "./use-run-facts.ts";
+import { useRunReview } from "./use-run-review.ts";
 import { useSentRequestCard } from "./use-sent-request-card.ts";
 import { WaitCard } from "./wait-card.tsx";
 
 /** The Library's command that opens New connector; the Inbox can't import the Library, so it runs it by id. */
 const newConnectorCommand = "library.new-connector";
-const openModelsCommand = "workspace.open-models";
+const openBudgetCommand = "workspace.open-budget";
 
 const loadFailed = "Couldn't load the Inbox";
 
@@ -63,7 +64,10 @@ export function InboxPage({ context }: PlaceViewProps) {
     () => mergeNotices(appNotices, inbox.extraNotices),
     [appNotices, inbox.extraNotices],
   );
-  const runFacts = useRunFacts(context.services.find(RunsListService));
+  const runs = context.services.find(RunsListService);
+  const runFacts = useRunFacts(runs);
+  // Effects run children first, so the view below already listens for the item this opens.
+  useRunReview(inbox, runs);
   return (
     <InboxView
       inbox={inbox}
@@ -76,7 +80,7 @@ export function InboxPage({ context }: PlaceViewProps) {
         ? {}
         : {
             openNewConnector: () => context.runCommand?.(newConnectorCommand),
-            openBudget: () => context.runCommand?.(openModelsCommand),
+            openBudget: () => context.runCommand?.(openBudgetCommand),
           })}
       {...(openItem && {
         openRun: (hubId: string, runId: string) => openItem({ kind: "run", hub: hubId, id: runId }),
@@ -101,7 +105,7 @@ export interface InboxViewProps {
   readonly notices?: InboxNotices | undefined;
   /** Opens New connector, for a secret pasted when no account is there to take it. */
   readonly openNewConnector?: () => void;
-  /** Opens Settings › Models, for **Change budget** on the monthly budget notice and the refused request. */
+  /** Opens Workspace settings at Budget, for **Change budget** on the monthly budget notice and the refused request. */
   readonly openBudget?: (() => void) | undefined;
   /** Opens a run's page, for **Open run** on the toast that says a request started. */
   readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
@@ -118,7 +122,7 @@ export interface InboxViewProps {
  * The Inbox (flow-inbox 3.1, UX checklist 2.1, 2.3, 2.9 and 2.10): "Inbox", then Needs you, a
  * grid of what waits for you, setup items first, then newest first, with its count in the heading
  * ("Needs you, 2 waiting"), beside the open item's card. Nothing is open at first, unless Home's Needs you asked
- * for an item (`Inbox.requestOpen`). Enter or a click opens a
+ * for an item (`Inbox.requestOpen`) or a run's **Review in Inbox** for what the run waits on. Enter or a click opens a
  * row's card, which takes focus; once decided, the card stays, with **Next** to the next item.
  *
  * A setup item opens its source's view (`SetupPane`); **Not now** and Escape close it and put
@@ -193,7 +197,7 @@ export function InboxView({
       <div data-pane="list" className={listPaneClass(phone, itemPage)}>
         <ListHeader phone={phone} newRequest={request.newRequest} />
         {state.loaded && state.error !== undefined ? (
-          <p className="px-4 pb-2 text-small text-fg-muted">{words.showingLast}</p>
+          <p className="px-4 pb-2 text-small text-fg-muted">{staleReason(state.error, words)}</p>
         ) : null}
         <div ref={list} className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
           {failedFirst ? (
@@ -459,4 +463,15 @@ function failureReason(error: unknown, words: EngineWords): string {
   const message = errorMessageFor(error, { title: loadFailed });
   const reason = message.body.trim();
   return message.kind === "internal" || reason === "" ? words.notAnswering : reason;
+}
+
+/**
+ * The line over a list that failed to load again. Signed out, the engine still answers, so it says
+ * to sign in again, as a first load that fails does (HAL-13371); otherwise it isn't answering and
+ * the list is what it said last.
+ */
+function staleReason(error: unknown, words: EngineWords): string {
+  return errorMessageFor(error, { title: loadFailed }).kind === "unauthenticated"
+    ? failureReason(error, words)
+    : words.showingLast;
 }

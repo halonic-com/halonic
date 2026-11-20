@@ -8,4 +8,9 @@ export {
   type WorkspaceModels,
   workspaceModelsOf,
 } from "./failed-model.ts";
-export { type BusyRetries, type RunFailure, runFailureOf } from "./run-failure-facts.ts";
+export {
+  type BusyRetries,
+  isSetupCause,
+  type RunFailure,
+  runFailureOf,
+} from "./run-failure-facts.ts";

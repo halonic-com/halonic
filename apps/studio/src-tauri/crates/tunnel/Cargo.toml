@@ -44,6 +44,11 @@ snow = { version = "=0.10.0", default-features = false, features = [
   "use-sha2",
   "use-getrandom",
 ] }
+# Wipes the phone's private key, the pairing code and the psk from memory
+# when they're dropped (HAL-12487). Pinned to the version already in
+# Cargo.lock, with the derive macros it already builds with there, so it
+# adds no crate to the app.
+zeroize = { version = "=1.9.1", features = ["derive"] }
 
 [dev-dependencies]
 tokio = { version = "1", default-features = false, features = ["macros", "net", "rt-multi-thread", "time"] }

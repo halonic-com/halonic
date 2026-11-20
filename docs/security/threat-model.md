@@ -214,6 +214,7 @@ Its text is attacker text. The rules are the requirement
 | One integration reads another's tokens | Names are `i<n>_<integration>_<token>`; a policy declares what each may read | **On `main`** (`scoped-tokens`) |
 | A slow or huge response ties up the host | Header, idle and overall timeouts and a size limit on every request | **On `main`** (`request-limits`) |
 | Logs leak secrets | The request log holds method, host, path, status, time and outcome; no query, headers or bodies | **On `main`** (`request-log`) |
+| A plugin's backend in the agent host reads a secret that isn't its own, or the page plants one for another plugin | Studio hands the host one trusted plugin's declared secrets by their short names; the host checks its own trust record, builds `plugin__<id>__<secret>` itself, keeps the values in memory only and answers only `plugin__` names; the kit reads them only through `pluginSecrets(id)` | **Planned** (HAL-13652) |
 | A stored token is read from disk or a copy | AES-256-GCM, a new random nonce per write, bound to the token's name so a value can't be moved to another name; the key is the secret `token-key` (32 bytes) | **On `main`** (`packages/adapters/token-store`) |
 | A wrong key looks like "not signed in" | A value that won't open throws `UnreadableTokenError`, never `null`; the error names the token, not its value | **On `main`** |
 | Token names fold into each other | Case and `-` versus `_` are treated as the same name; bad names are refused before anything is read | **On `main`** |
@@ -326,9 +327,13 @@ it until pairing (phase B) gives the person a switch. It can list the host's run
 send a prompt, and nothing else: no command, file or secret of its own. A
 prompt steers a live agent run, though, so the agent can do whatever its run
 allows without asking for approval. The host, not the
-phone, judges an approval `risky` (every tool, for now), and the host refuses
-every approval a phone answers, until approvals reach the engine in a follow-up
-and the person can allow it on the desktop, which nothing offers yet. Its events are the narrow ones (prompt, answers,
+phone, judges an approval `risky` (every tool, for now), and the gateway
+refuses every risky approval a phone answers until the person allows that on
+the desktop, which nothing offers yet. So for now a phone answers no approval.
+Behind that check, a phone's decision goes to the run's own approvals in
+Studio, the card's path, where the first answer wins: **On `main`**
+(`studio-harness-host.ts`, `agent-host` `src/bridge/studio-services.ts`,
+HAL-10849). Its events are the narrow ones (prompt, answers,
 approvals, result), kept in memory only.
 
 **The phone's pairing scanner** (Android, **Lands with #3585**) reads the pairing
@@ -384,7 +389,14 @@ the address bar and the history (`agent-host.google-callback-over-frames`).
 
 An integration's sign-in (HAL-12191, HAL-8613) has a second token-free route of
 its own: `GET /sign-in/<random>`, a prefix route of `host-server`, whose path is
-new for each start and whose redirect names the host's own port. It has the
+new for each start and whose redirect names the host's own port. The host
+serves these routes only with a profile folder, and Studio starts it with one
+(`--profile-folder`), so they are live on a shipped host. It seals the grants
+with the profile's token key, as it does Google's tokens, in
+`<profile>/integration-sign-ins/tokens`. Its token and revoke requests go only
+to public hosts, follow no redirect and never reach the host's own ports. No
+integration can hold a sign-in yet (`noSignInIntegrations`), so for now every
+route answers `404 unknown_integration`. The callback has the
 same `Host` and `Origin` checks and the same defence, the sign-in's `state`
 (plus PKCE), and a path no sign-in waits on gets a plain 400 page that repeats
 nothing of the request. The relay passes only `/v1/google/callback` without the
@@ -440,7 +452,11 @@ until HAL-3403) answers `403 not_fenced` and starts nothing. The `halonic`
 command holds none either (`noUnfencedRunConsent`, HAL-12639): nothing offers
 that yes yet, so a file placed in the profile's `unfenced-runs` folder by hand
 starts no plugin backend or local integration. A plugin's
-backend gets no secret and no sign-in token through the host yet. The shipped
+backend gets no secret and no sign-in token through the host yet. Its
+secrets are to come from Studio, which hands a trusted plugin's declared
+secrets to the host before each use; the host builds their names itself and
+keeps the values in memory only (**Planned**, HAL-13652; ADR
+[Studio hands a plugin its secrets](../adr/2026-11-19-studio-hands-a-plugin-its-secrets.md)). The shipped
 single executable has no runner mode of its own (its `process.execPath` is the
 host, not Node), so there the route answers `403 not_in_this_build` and starts
 nothing, rather than start a second host without Node's permission layer.
@@ -642,6 +658,7 @@ like Studio.
 | A sandboxed program outlives Studio | The host stops when its standard input closes. It cancels every run and then closes every session before it stops serving | **On `main`** (`apps/agent-host`, `src/host.ts`) |
 | The host's unpacked files are changed | On launch the host checks every unpacked file against the SHA-256 the executable carries, and unpacks again when one differs. It runs a program for sandbox-srt only from this version's folder, and only while that file has its digest | **On `main`** (`apps/agent-host`, `src/main.ts`) |
 | A caller makes the host run a program of its choice | `POST /v1/harnesses/sign-in` runs only a harness's own sign-in (`claude auth login`, `codex login`), found on the `PATH`, with plain-word arguments. The caller chooses only the settings folder, which must be absolute, travels as one variable, in the environment on Windows and Linux and single-quoted for `sh` in the macOS launch file, so no shell expands it; a folder under a skill's `scripts/` is refused | **On `main`** (`apps/agent-host`, `src/harness/sign-in-route.ts`, `src/terminal`) |
+| A caller learns or makes a folder outside an agent's own settings folder | `POST /v1/harnesses/settings-folder` takes only the workspace, the agent's id and the harness. The workspace must be one the launcher named (by real path); the folder is the profile's `harness-settings/<agentId>/<harnessId>`, an id that can't name a folder safely is refused, and the folder is made private. It holds no sign-in until the person signs in there themselves | **On `main`** (`apps/agent-host`, `src/harness/settings-folder-route.ts`) |
 | A sandboxed agent changes the host's unpacked files | The folder is in Halonic's data, so the profiles Studio builds deny it, with the rest of that data (the `halonic-data` group) | Builder **on `main`** (`harness-kit.harness-profile`); Studio using it **On `main`** where the shell starts the host (`apps/studio`, `src-tauri/src/agent_host_start.rs`) |
 
 Studio's side is **On `main`**: the shell starts the host on the first call to
@@ -755,28 +772,30 @@ root. What matters is the distro reaching Windows.
 
 | Threat | Mitigation | Mark |
 | --- | --- | --- |
-| **[gate]** An agent on one project reads another project, a Windows-drive project mount or Halonic's data in the distro. srt on Linux leaves reads open (`/` read-only), so every file the `halonic` user can read is readable unless denied | The profile denies the other projects, the other Windows-drive mounts, `/mnt/wsl`, Halonic's data in the distro, the other harnesses' settings folders and the writable parts of `/opt/halonic`. bubblewrap's deny lasts one session, so nothing stays behind. The home, `/mnt/halonic` and `/mnt/wsl` are each denied as a whole, with only the session's own folders re-allowed inside, so a project or mount made during a session stays hidden from it; a missing one stops the session from opening. Residual (accepted, HAL-6147): mount point names stay visible in `/proc/self/mountinfo`. Attack-suite case: a session on one project reads a canary in another, also one made after it opened | The deny **On `main`** (`sandbox-srt.shared-folders`, fence case for folders made after the session opened); passing `WSL_SHARED_FOLDERS` and creating `/mnt/halonic` when Studio starts the distro **Planned** (HAL-7373) |
+| **[gate]** An agent on one project reads another project, a Windows-drive project mount or Halonic's data in the distro. srt on Linux leaves reads open (`/` read-only), so every file the `halonic` user can read is readable unless denied | The profile denies the other projects, the other Windows-drive mounts, `/mnt/wsl`, Halonic's data in the distro, the other harnesses' settings folders and the writable parts of `/opt/halonic`. bubblewrap's deny lasts one session, so nothing stays behind. The home, `/mnt/halonic` and `/mnt/wsl` are each denied as a whole, with only the session's own folders re-allowed inside, so a project or mount made during a session stays hidden from it; a missing one stops the session from opening. Residual (accepted, HAL-6147): mount point names stay visible in `/proc/self/mountinfo`. Attack-suite case: a session on one project reads a canary in another, also one made after it opened | The deny **On `main`** (`sandbox-srt.shared-folders`, fence case for folders made after the session opened); passing `WSL_SHARED_FOLDERS` and creating `/mnt/halonic` when Studio starts the distro **On `main`** (`studio.src-tauri.crates.agent-host.wsl-launch`, `infra/wsl-image/files/wsl.conf`) |
 | **[gate]** Root in the distro reaches all of Windows: it can mount a Windows drive whatever `wsl.conf` says, and switch interop back on | Agents never run as root: no `sudo`, the root password locked. The updater, which runs as root, never runs or reads a file the `halonic` user can write, and checks a new runtime's SHA-256 on the Windows side before copying it in | No `sudo` and a locked root **On `main`** (`infra/wsl-image`); the updater **On `main`** (`infra/wsl-image/files/halonic-runtime`, `studio.src-tauri.crates.agent-host.runtime-update`) |
 | Programs with the setuid bit give more ways to become root | The image removes it from `su`, `mount`, `umount`, `newgrp`, `chsh`, `chfn` and `gpasswd`, and its check refuses any setuid or setgid file (the allowed list is empty) | **On `main`** (`infra/wsl-image/check.sh`) |
 | An agent starts `cmd.exe` or `powershell.exe` through interop | `[interop] enabled=false`. Inside srt the socket interop needs is refused anyway (seen with interop on) | **On `main`** (`infra/wsl-image/files/wsl.conf`) |
 | The Windows drive is mounted | `[automount] enabled=false` | **On `main`** (`infra/wsl-image/files/wsl.conf`) |
 | A planted `/etc/fstab` mounts a drive at the next start (root-only file) | `mountFsTab=false` | **On `main`** (`infra/wsl-image/check.sh`) |
-| **[gate]** While a folder is imported from Windows, every process in the distro sees it; a drive mount without `metadata` shows every file as writable by everyone | The import mount is read-only, `noexec,nosuid,nodev`, under a new random name, and unmounted when the import ends, or at the next start after a crash. A project mount belongs to `halonic` with `umask=077`, `nosuid,nodev`, and holds the project folder only, never a parent | **On `main`** in the adapter (`sandbox-srt.wsl-mounts`); Studio starting the distro with it **Planned** (HAL-7373) |
-| **[gate]** A junction or link inside a mounted project folder points at your Windows files, such as `.ssh` | Must not be readable through the mount. Real-PC probe | **Planned** (HAL-5402) |
-| **[gate]** Docker Desktop puts its socket into our distro when `halonic` is the default distro. The socket is root on Docker's VM, which mounts the Windows drives | Studio always names the distro (`wsl.exe -d halonic`). When the setup is done, it reports the residual `default-distro` when `halonic` is the default distro, and `docker-desktop-visible` when Docker's socket or its `/mnt/wsl` folder can be seen. srt refuses new Unix sockets, and `/mnt/wsl` is denied. Real-PC probe | The setup's checks **On `main`** in the adapter (`sandbox-srt.wsl-setup`, W6); Studio running the setup **Planned** (HAL-7373) |
-| A planted `wsl.exe` earlier on `PATH`, or your text reaching a shell | Studio starts `wsl.exe` from `System32` by full path, with `-d halonic --exec` and fixed arguments; project names and paths go over standard input, never on the command line | **On `main`** (`studio.src-tauri.crates.agent-host.wsl-launch`); Studio calling it **Planned** (HAL-7373) |
-| Another distro named `halonic` | Distros belong to one Windows user, so only you can register one. The setup refuses to import over a `halonic` it didn't record (`distro-not-ours`) | **On `main`** in the adapter (`sandbox-srt.wsl-setup`, W8); Studio running the setup **Planned** (HAL-7373) |
-| All of your WSL 2 distros share one network. A server in your own Ubuntu on `localhost` is reachable from ours | The sandboxed agent has no network but srt's proxy, which refuses loopback and private addresses. The engine and agent host in the distro listen on no port. With mirrored networking, `localhost` in the distro is Windows' own: the bridge listens on a Unix socket in a private folder rather than a port, and the trust check's canary probes run in both modes. Studio's relay listens on Windows' `127.0.0.1`: under NAT (the default) another distro can't reach it. CI probed this through the distro's own `127.0.0.1` and through its gateway to Windows; a control port on all of Windows' addresses was reached through the gateway, the `127.0.0.1` port wasn't (HAL-7130). Under mirrored networking Microsoft documents that a distro reaches Windows' `127.0.0.1`, so expect another distro to reach the relay there: only the host token and the `Host` check stop it, as for the loopback host elsewhere. CI can't run mirrored networking, so this is a real-PC probe | Proxy rules **On `main`** (`sandbox-srt.profile-to-srt-config`); the agent host's `--stdio` mode **On `main`** (`apps/agent-host`, `src/stdio`); Studio's relay **On `main`** (`studio.src-tauri.crates.agent-host.relay`), Studio calling it **Planned** (HAL-7373); the bridge off its port **Planned** (HAL-6316) |
-| **[gate]** Removing the sandbox setup deletes every project in the distro | An explicit choice that offers an export first, and only a distro Halonic recorded as its own is removed | **On `main`** (`sandbox-srt.wsl-remove`); Studio offers it through the agent host (`apps/studio`, `src/studio/agent-sandbox-host.ts`, HAL-10974) |
-| Debian updates run as root | Signed `apt` from Debian's mirrors, checked with the archive keyring, at most once a day, outside agent sessions | Signed sources **On `main`** (`infra/wsl-image`); when updates run **On `main`** (`halonic-runtime security-update`: at most once a day, never while a sandbox runs) |
+| **[gate]** While a folder is imported from Windows, every process in the distro sees it; a drive mount without `metadata` shows every file as writable by everyone | The import mount is read-only, `noexec,nosuid,nodev`, under a new random name, and unmounted when the import ends, or at the next start after a crash. A project mount belongs to `halonic` with `umask=077`, `nosuid,nodev`, and holds the project folder only, never a parent | Mount options, unmounting and the clean-up at each start **On `main`** (`sandbox-srt.wsl-mounts`, `halonic-runtime cleanup-import-mounts`); Studio using the import and project mounts **Planned** (HAL-12443) |
+| **[gate]** A junction or link inside a mounted project folder points at your Windows files, such as `.ssh` | Must not be readable through the mount. Real-PC probe | **Planned** (HAL-10975) |
+| **[gate]** Docker Desktop puts its socket into our distro when `halonic` is the default distro. The socket is root on Docker's VM, which mounts the Windows drives | Studio always names the distro (`wsl.exe -d halonic`). When the setup is done, it reports the residual `default-distro` when `halonic` is the default distro, and `docker-desktop-visible` when Docker's socket or its `/mnt/wsl` folder can be seen. srt refuses new Unix sockets, and `/mnt/wsl` is denied. Real-PC probe | Naming the distro **On `main`** (`studio.src-tauri.crates.agent-host.wsl-launch`, `sandbox-srt.wsl-setup`); the default and Docker checks once at setup **On `main`** (`sandbox-srt.wsl-setup`); Studio running the setup **Planned** (HAL-5405); both checks at every start, shown as residuals, **Planned** (HAL-12445); the real-PC probe **Planned** (HAL-10975) |
+| A planted `wsl.exe` earlier on `PATH`, or your text reaching a shell | Studio starts `wsl.exe` from `System32` by full path, with `-d halonic --exec` and fixed arguments; project names and paths go over standard input, never on the command line | **On `main`** (`studio.src-tauri.crates.agent-host.wsl-launch`), and Studio calling it |
+| Another distro named `halonic` | Distros belong to one Windows user, so only you can register one. The setup refuses to import over a `halonic` it didn't record (`distro-not-ours`) | **On `main`** (`sandbox-srt.wsl-setup`, `sandbox-srt.wsl-remove`); Studio running the setup **Planned** (HAL-5405) |
+| All of your WSL 2 distros share one network. A server in your own Ubuntu on `localhost` is reachable from ours | The sandboxed agent has no network but srt's proxy, which refuses loopback and private addresses. The engine and agent host in the distro listen on no port. With mirrored networking, `localhost` in the distro is Windows' own: the bridge listens on a Unix socket in a private folder rather than a port, and the trust check's canary probes run in both modes. Studio's relay listens on Windows' `127.0.0.1`: under NAT (the default) another distro can't reach it. CI probed this through the distro's own `127.0.0.1` and through its gateway to Windows; a control port on all of Windows' addresses was reached through the gateway, the `127.0.0.1` port wasn't (HAL-7130). Under mirrored networking Microsoft documents that a distro reaches Windows' `127.0.0.1`, so expect another distro to reach the relay there: only the host token and the `Host` check stop it, as for the loopback host elsewhere. CI can't run mirrored networking, so this is a real-PC probe | Proxy rules **On `main`** (`sandbox-srt.profile-to-srt-config`); the agent host's `--stdio` mode **On `main`** (`apps/agent-host`, `src/stdio`); Studio's relay **On `main`** (`studio.src-tauri.crates.agent-host.relay`), and Studio calling it; the bridge off its port **Planned** (HAL-6316) |
+| **[gate]** Removing the sandbox setup deletes every project in the distro | An explicit choice that offers an export first, and only a distro Halonic recorded as its own is removed | **On `main`** (`sandbox-srt.wsl-remove`); Studio offers it through the agent host (`apps/studio`, `src/studio/agent-sandbox-host.ts`, `settings.wsl-remove-dialog`) |
+| Debian updates run as root | Signed `apt` from Debian's mirrors, checked with the archive keyring, at most once a day, outside agent sessions | Signed sources **On `main`** (`infra/wsl-image`); the updater's step **On `main`** (`halonic-runtime security-update`: at most once a day, never while a sandbox runs); a warning when they haven't run for 7 days **On `main`** (`security-updates-overdue`); Studio running the step **Planned** (HAL-12444) |
 
 **Known limits.**
 
 - **The kernel is shared.** The distro runs Microsoft's WSL kernel, shared by
   all of your distros and updated by WSL, not by Halonic. A kernel bug can
-  break the fence, as on Linux. The setup reads the kernel version and, below
-  a floor, stops with `kernel-too-old` and offers `wsl --update`: **On `main`**
-  in the adapter (`sandbox-srt.wsl-setup`, W11). The trust check doesn't read it.
+  break the fence, as on Linux. The setup reads the kernel version in the
+  distro and, below a floor (5.15.153.1, HAL-10557), stops with
+  `kernel-too-old` and offers `wsl --update`: **On `main`**
+  (`sandbox-srt.wsl-setup`, W11); Studio running the setup **Planned**
+  (HAL-5405). The trust check doesn't read it.
 - **Your Windows tools run what the agent wrote.** Opening a project in the
   distro from a Windows git client, VS Code or Explorer runs
   their settings and hooks with your rights. srt stops the agent writing

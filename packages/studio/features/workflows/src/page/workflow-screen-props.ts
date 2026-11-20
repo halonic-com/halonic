@@ -19,8 +19,8 @@ export interface WorkflowScreenProps {
   readonly seeAllRuns?: () => void;
   /** Opens the Workflows list, for a workflow that isn't there any more; absent where the app can't open it. */
   readonly goToWorkflows?: () => void;
-  /** Opens the Inbox, for a run card's Review in Inbox; absent where the app can't open it. */
-  readonly reviewInInbox?: () => void;
+  /** Opens the Inbox on what the run waits on, for a run card's Review in Inbox; absent where the app can't open it. */
+  readonly reviewInInbox?: (runId: string) => void;
   /** Opens the page on Configuration's Tests, as `openItem`'s `step: "tests"` asks; on Flow when absent. */
   readonly startOnTests?: boolean;
   /**
@@ -30,4 +30,6 @@ export interface WorkflowScreenProps {
   readonly testsAsked?: number;
   /** Reads a state change to screen readers (`announcer.announceState`); without it nothing is read. */
   readonly announceState?: AnnounceState;
+  /** Says a line to a screen reader (`announcer.announce`), for why the run card's Run again didn't start; without it nothing is said. */
+  readonly announce?: (line: string) => void;
 }

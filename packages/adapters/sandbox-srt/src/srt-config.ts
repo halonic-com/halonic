@@ -1,7 +1,8 @@
-import { existsSync, lstatSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync } from "node:fs";
 import { isIP } from "node:net";
-import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
+import { isAbsolute, join, relative, sep } from "node:path";
 import type { NetworkConfig, SandboxRuntimeConfig } from "@anthropic-ai/sandbox-runtime";
+import { realSpelling } from "@halonicjs/adapter-system-node";
 import { writeFencedPaths } from "@halonicjs/app";
 import type { SandboxNetwork, SandboxProfile } from "@halonicjs/ports";
 import { clearOfPaths } from "./tool-folders.ts";
@@ -21,20 +22,7 @@ export function resolveRealPath(path: string): string {
   // Windows paths are compared as given: srt resolves links, junctions and letter case there
   // itself, and a POSIX path (in a test) would gain a drive letter and add a second entry.
   if (process.platform === "win32") return path;
-  const missing: string[] = [];
-  let existing = path;
-  for (;;) {
-    try {
-      return join(realpathSync(existing), ...missing.reverse());
-    } catch {
-      const parent = dirname(existing);
-      if (parent === existing) {
-        return path;
-      }
-      missing.push(basename(existing));
-      existing = parent;
-    }
-  }
+  return realSpelling(path);
 }
 
 /** Whether `path` is `folder` or inside it. */

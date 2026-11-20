@@ -1,6 +1,7 @@
 import { useId } from "react";
 import { ChevronRightIcon } from "../icons/chevron-right-icon.tsx";
 import { TickIcon } from "../icons/tick-icon.tsx";
+import { ListHeading } from "../list-heading/list-heading.tsx";
 import { isMenuItem, type MenuEntry, type MenuItem, taggedItemName } from "../menu/menu.tsx";
 import { SidePanel } from "../side-panel/side-panel.tsx";
 import { StatusChip } from "../status-chip/status-chip.tsx";
@@ -13,10 +14,18 @@ export interface HeaderBadgeSheetProps {
   readonly description?: string | undefined;
   /** One more sentence, in `text-body`, after the description: "To start your own workspace, use Halonic on your computer.". */
   readonly note?: string | undefined;
-  /** The Menu's entries. Dividers fall away: every row has its own line under it. */
+  /**
+   * The Menu's entries. Every row has its own line under it, so a divider becomes an 8px gap
+   * before the next group, and a heading the small section label over its group.
+   */
   readonly entries: readonly MenuEntry[];
   /** Back. */
   readonly onClose: () => void;
+}
+
+/** A `HeaderBadgeSheet` inside a dialog, which its title names (`SidePanel`'s `dialogTitleId`). */
+interface DialogSheetProps extends HeaderBadgeSheetProps {
+  readonly dialogTitleId?: string | undefined;
 }
 
 /**
@@ -42,7 +51,8 @@ const DISABLED_ROW = "text-fg-disabled text-forced-disabled";
  *
  * Any other Menu that has to work on a phone can use it too, such as the workspace menu in a
  * narrow desktop window: an item's detail is its second line, its tag an outline tag, and the
- * checked item has a tick and `aria-current`.
+ * checked item has a tick and `aria-current`. Its groups keep their headings ("RECENT") and stay
+ * apart by a gap where the Menu has a divider.
  *
  * @example
  * <HeaderBadgeSheet title="Sample · test model" description={costLine} entries={sampleEntries} onClose={back} />
@@ -53,28 +63,84 @@ export function HeaderBadgeSheet({
   note,
   entries,
   onClose,
-}: HeaderBadgeSheetProps) {
-  const items = entries.filter(isMenuItem);
-  const ordered = [
-    ...items.filter((item) => item.danger !== true),
-    ...items.filter((item) => item.danger === true),
-  ];
+  dialogTitleId,
+}: DialogSheetProps) {
+  const groups = sheetGroups(entries);
   return (
-    <SidePanel title={title} onClose={onClose}>
+    <SidePanel title={title} onClose={onClose} dialogTitleId={dialogTitleId}>
       {description === undefined ? null : (
         <p className="pb-3 text-small text-fg-muted">{description}</p>
       )}
       {note === undefined ? null : <p className="pb-3 text-body">{note}</p>}
-      {ordered.length === 0 ? null : (
-        <ul className="-mx-4">
-          {ordered.map((item) => (
-            <li key={item.id}>
-              <LinkRow item={item} />
-            </li>
+      {groups.length === 0 ? null : (
+        <div className="-mx-4">
+          {groups.map((group, position) => (
+            <SheetGroupRows key={group.items[0]?.id} group={group} first={position === 0} />
           ))}
-        </ul>
+        </div>
       )}
     </SidePanel>
+  );
+}
+
+/** A run of the Menu's items between two dividers, with the heading over it if it has one. */
+interface SheetGroup {
+  readonly heading?: string | undefined;
+  readonly items: readonly MenuItem[];
+}
+
+/**
+ * The Menu's entries as the sheet's groups: a divider starts a new group and a heading names the
+ * group under it. Danger items move to the end of the last group, with no gap of their own, so a
+ * sheet without dividers stays one list. A heading with no item under it says nothing.
+ */
+function sheetGroups(entries: readonly MenuEntry[]): readonly SheetGroup[] {
+  const groups: { heading?: string; items: MenuItem[] }[] = [];
+  const danger: MenuItem[] = [];
+  let current: { heading?: string; items: MenuItem[] } | undefined;
+  for (const entry of entries) {
+    if (entry === "divider") {
+      current = undefined;
+    } else if (!isMenuItem(entry)) {
+      current = { heading: entry.heading, items: [] };
+      groups.push(current);
+    } else if (entry.danger === true) {
+      danger.push(entry);
+    } else {
+      if (current === undefined) {
+        current = { items: [] };
+        groups.push(current);
+      }
+      current.items.push(entry);
+    }
+  }
+  const filled = groups.filter((group) => group.items.length > 0);
+  const last = filled.at(-1);
+  if (last === undefined) {
+    return danger.length === 0 ? [] : [{ items: danger }];
+  }
+  return [...filled.slice(0, -1), { ...last, items: [...last.items, ...danger] }];
+}
+
+/**
+ * One group: its heading as the kit's small section label (12px capitals, muted), as the Menu
+ * shows "Recent", then its rows. A group after the first starts after an 8px gap, where the Menu
+ * draws a divider.
+ */
+function SheetGroupRows({ group, first }: { readonly group: SheetGroup; readonly first: boolean }) {
+  const headingId = useId();
+  const named = group.heading !== undefined;
+  return (
+    <div className={first ? undefined : "mt-2"}>
+      {named ? <ListHeading name={group.heading} headingLevel={3} id={headingId} /> : null}
+      <ul aria-labelledby={named ? headingId : undefined}>
+        {group.items.map((item) => (
+          <li key={item.id}>
+            <LinkRow item={item} />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

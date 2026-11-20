@@ -148,6 +148,8 @@ verifies("workflows.runs.step-in-run", () => {
 
     expect(stepCard(page)?.textContent).toContain("✕ Failed here in run 01jd8q");
     expect(stepCard(page)?.textContent).toContain("See what went in and out ›");
+    // Never wider than the page area, so a phone-narrow window doesn't scroll sideways (HAL-13162).
+    expect(stepCard(page)?.className.split(" ")).toContain("max-w-full");
   });
 
   it("opens the run's page at the step from See what went in and out", async () => {

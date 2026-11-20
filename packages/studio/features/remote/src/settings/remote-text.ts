@@ -31,3 +31,36 @@ export const CHECKING = "Checking…";
 export const TURN_ON_FAILED = "Couldn't turn remote on. Try again.";
 export const TURN_OFF_FAILED = "Couldn't turn remote off. Try again.";
 export const RISKY_FAILED = "Couldn't save the risky approvals setting. Try again.";
+
+export const PHONES_TITLE = "Paired phones";
+export const CAN = "Can: view agents, approve, send prompts";
+export const CONNECTED_NOW = "Connected now";
+export const REMOTE_IS_OFF = "Remote is off";
+export const NOT_SEEN_YET = "Not connected yet";
+export const REVOKE = "Revoke";
+export const REVOKE_ALL = "Revoke all";
+export const REVOKING = "Revoking…";
+
+/** "Paired phones · 2": the list's heading. */
+export const phonesHeading = (count: number): string => `${PHONES_TITLE} · ${count}`;
+
+/** "Revoke Pixel 8?": the title of the dialog that revokes one phone. */
+export const revokeTitle = (name: string): string => `Revoke ${name}?`;
+export const revokeLine = (name: string): string =>
+  `${name} is cut off now: its open sessions close and it can't reconnect. Your agents keep running on this computer, and anything waiting for an answer waits for you here.`;
+export const REVOKE_AGAIN = "To use it again, pair it again.";
+export const revokeFailed = (name: string): string => `Couldn't revoke ${name}. Try again.`;
+export const revoked = (name: string): string => `${name} revoked.`;
+
+/** "Revoke all 2 phones?": the title of the dialog that revokes every phone. */
+export const revokeAllTitle = (count: number): string => `Revoke all ${count} phones?`;
+export function revokeAllLine(count: number): string {
+  const who =
+    count === 2
+      ? "Both phones are cut off now: open sessions close and neither can reconnect."
+      : `All ${count} phones are cut off now: open sessions close and none can reconnect.`;
+  return `${who} Your agents keep running on this computer, and anything waiting for an answer waits for you here.`;
+}
+export const REVOKE_ALL_AGAIN = "To use a phone again, pair it again.";
+export const REVOKE_ALL_FAILED = "Couldn't revoke the phones. Try again.";
+export const ALL_REVOKED = "All phones revoked.";

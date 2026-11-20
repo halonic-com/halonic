@@ -68,7 +68,10 @@ skeleton (none for Get set up), says "Loading Home" once for the page, and puts 
 says each reason once, each ending in a full stop (one that has none gets one, so two reasons aren't
 read as one sentence), so when the engine isn't answering, screen readers hear it once, not once per
 section, and the reasons take the place of "Loading Home" while other sections still load
-(`shell.home-states`). Get set up's card
+(`shell.home-states`). `HomeCardProps.attempt` counts the section's Try again presses; a card that
+waits for its data's first load passes it to `firstLoad(source, attempt)`, which keeps a failed load
+for that attempt, so React's renders after the failure throw it rather than load again, and only
+Try again loads again. Get set up's card
 throws only once it knows setup isn't finished: if it can't tell, it shows nothing, so a workspace
 that is set up never sees "Couldn't load setup". On a phone, the `h1` is for screen readers only
 (the top bar shows "Home"), the sections run edge to edge 8px apart, and a loading section shows two
@@ -255,7 +258,11 @@ page's `h1`. With nowhere to go, they stay in the Tab order as unavailable, and 
 Assistant (T14) lands; the window-wide Back and Forward keys come in a later pull request.
 
 The status bar starts with the frame's `badges` slot ("Not trusted yet") and ends with its
-`saveNote` slot (see `StatusBarSaveNote`); both take no room when they're empty. The item page's
+`saveNote` slot (see `StatusBarSaveNote`); both take no room when they're empty. On a phone the
+frame's `phoneBadges` slot takes `<HeaderBadges registry={shell.badges} layout="strip" />`: rows
+of the notice strip under the top bar, after a save problem, with the trust badge on its own line
+and the connector states in one row of chips that wraps. In a short window the rows are left out
+(`shell.phone-notice-badges`). The item page's
 name field, cut with "…", shows its full text as a tooltip on hover and keyboard focus, and none
 while it fits (`shell.cut-text-tooltips`). Such a tooltip never names or describes its element,
 whose own text is already the full text.
@@ -785,7 +792,8 @@ workspace switcher row ("Workspace: Acme. Change workspace", which opens T3's pi
 the app passes one, the
 header badge on its own line when there is one, a flush List of the places that live under More,
 in the sidebar's order and only where a feature added them, and the line "Editing workflows is
-easier on a computer.". Changes shows its count in place of the chevron. The top bar says "More",
+easier on a computer." (in the desktop app, where More shows only in a narrow window, "Editing
+workflows is easier in a wider window." with `inDesktopApp`). Changes shows its count in place of the chevron. The top bar says "More",
 so the page's `h1` is for screen readers only.
 
 ```tsx

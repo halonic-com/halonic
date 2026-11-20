@@ -1,3 +1,4 @@
+import { sandboxStartWords } from "@halonicjs/app";
 import * as text from "./sandbox-text.ts";
 
 /** How long a setup may run before Studio says so (SB3). The command isn't stopped. */
@@ -23,8 +24,11 @@ export type SandboxCheckFacts =
   | { readonly state: "ready"; readonly checkedAt: string }
   | { readonly state: "needs-setup" }
   | { readonly state: "needs-repair"; readonly reason: string }
-  /** The check ran and says the sandbox can't run now, for a reason a person or an administrator fixes. */
-  | { readonly state: "unavailable"; readonly reason: string }
+  /**
+   * The check ran and says the sandbox can't run now, for a reason a person or an administrator
+   * fixes: its code, which the section words from the sandbox-start catalogue.
+   */
+  | { readonly state: "unavailable"; readonly code: string }
   /** The setup is done, but Windows must restart before the sandbox can run. */
   | { readonly state: "restart-needed" }
   /** The first check hasn't answered yet: no result to show, and no failure either. */
@@ -79,6 +83,8 @@ export interface SandboxView {
   /** The failure Callout, with **Try again** when the same command can run again. */
   readonly callout: { readonly line: string; readonly action: "try-again" | null } | null;
   readonly steps: readonly SandboxStep[];
+  /** The guide for what the check found, after the buttons. */
+  readonly docs: { readonly name: string; readonly href: string } | null;
   /** Under the buttons. */
   readonly hint: string | null;
   /** The primary button, if one shows, and whether it is busy. */
@@ -96,6 +102,7 @@ const none = {
   chip: null,
   callout: null,
   steps: [],
+  docs: null,
   hint: null,
   primary: null,
   secondary: [],
@@ -156,13 +163,7 @@ function checkedView(
         secondary: viewOnly ? ["check-again"] : ["check-again", "remove"],
       };
     case "unavailable":
-      return {
-        ...none,
-        chip: null,
-        lead: text.notReady(check.reason),
-        callout,
-        secondary: ["check-again"],
-      };
+      return { ...unavailableView(check.code, viewOnly), callout };
     case "restart-needed":
       return {
         ...none,
@@ -192,6 +193,25 @@ function checkedView(
         secondary: ["check-again"],
       };
   }
+}
+
+/**
+ * A reason the person or an administrator fixes (23.3, "Settings › Agent sandbox, not available"):
+ * the chip, the reason and its fix, **Check again**, the guide, then the way round it. Where the
+ * section's own button is the fix, the fix line is left out (23.3a); served Studio is used from
+ * another device, so it gets the fix that says to do it on the computer.
+ */
+function unavailableView(code: string, viewOnly: boolean): SandboxView {
+  const words = sandboxStartWords(code);
+  const fix = viewOnly ? words.phoneFix : words.settingsFix;
+  return {
+    ...none,
+    chip: { label: "Not available", tone: "attention" },
+    lead: fix === null ? words.reason : `${words.reason} ${fix}`,
+    docs: { name: words.docsName, href: `${text.DOCS_ADDRESS}/${words.docsKey}` },
+    hint: text.RUN_HERE_AFTER_WARNING,
+    secondary: ["check-again"],
+  };
 }
 
 function busyView(running: SandboxRunning, check: SandboxCheckFacts): SandboxView {

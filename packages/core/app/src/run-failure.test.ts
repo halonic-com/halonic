@@ -7,6 +7,7 @@ import {
   type FailedModel,
   failedModelOf,
   failedStartOf,
+  isSetupCause,
   type RunFailedEvent,
   runFailureOf,
   type WorkspaceModels,
@@ -246,6 +247,42 @@ verifies("app.run-failure", () => {
         agent: "writer",
         code: "container",
       });
+    });
+
+    it("names the provider and type of a provider file Halonic can't call (HAL-12342)", () => {
+      const cause = {
+        kind: "not_found" as const,
+        code: "models.unknown-provider-type",
+        detail: { provider: "weird", type: "carrier-pigeon" },
+      };
+      expect(runFailureOf(failedWith("error", { cause }), undefined)).toEqual({
+        reason: "unknown-provider-type",
+        provider: "weird",
+        type: "carrier-pigeon",
+      });
+      const { detail: _, ...withoutFacts } = cause;
+      expect(runFailureOf(failedWith("error", { cause: withoutFacts }), undefined)).toEqual(
+        general,
+      );
+    });
+
+    it("names the alias and hub of a model alias the hub doesn't have, as the workspace's setup (HAL-12377)", () => {
+      const cause = {
+        kind: "not_found" as const,
+        code: "models.unknown-model-alias",
+        detail: { alias: "default", hub: "notes" },
+      };
+      expect(runFailureOf(failedWith("error", { cause }), undefined)).toEqual({
+        reason: "unknown-model-alias",
+        alias: "default",
+        hub: "notes",
+      });
+      expect(isSetupCause(cause)).toBe(true);
+      const { detail: _, ...withoutFacts } = cause;
+      expect(runFailureOf(failedWith("error", { cause: withoutFacts }), undefined)).toEqual(
+        general,
+      );
+      expect(isSetupCause(withoutFacts)).toBe(false);
     });
 
     it("gives a cancelled run no facts", () => {

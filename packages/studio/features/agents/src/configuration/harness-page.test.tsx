@@ -64,6 +64,7 @@ function Switchable({ host }: { host: Parameters<typeof HarnessPage>[0]["host"] 
     skills: [],
     knowledge: [],
     connectors: [],
+    subagents: [],
   } as const;
   return (
     <>

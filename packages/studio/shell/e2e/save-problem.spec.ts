@@ -2,8 +2,10 @@ import { expect, type Page, test } from "@playwright/test";
 
 /**
  * A save problem fills the status bar on the desktop, and shows in a strip under the top bar on a
- * phone (`shell.save-note`). The fill and the strip come from CSS `:has()` reading the note's
- * `data-problem`, which jsdom doesn't apply, so they are read in a real Chromium and WebKit.
+ * phone (`shell.save-note`), followed there by the header badges' rows (`shell.phone-notice-badges`).
+ * The fill and the strip come from CSS `:has()` reading the note's `data-problem`, and the short
+ * window from a media query, which jsdom doesn't apply, so they are read in a real Chromium and
+ * WebKit.
  */
 
 const desktop = { width: 1280, height: 720 };
@@ -78,7 +80,7 @@ test("a phone shows a failed save under the top bar, with its fill and Try again
   const strip = page.locator("[data-phone-notices]");
   await expect(strip).toBeVisible();
   await expect
-    .poll(() => background(page, "[data-phone-notices]"))
+    .poll(() => background(page, "[data-notice-save]"))
     .toBe(await tokenColour(page, "bg-danger-soft"));
   const box = await strip.boundingBox();
   expect(box?.height).toBeGreaterThanOrEqual(48);
@@ -87,4 +89,36 @@ test("a phone shows a failed save under the top bar, with its fill and Try again
   const tryAgain = await strip.getByRole("button", { name: "Try again" }).boundingBox();
   expect((tryAgain?.x ?? 0) + (tryAgain?.width ?? 0)).toBeLessThanOrEqual(phone.width);
   await expect(page.locator("main")).toBeInViewport();
+});
+
+test("a phone shows the trust badge's line, then the connector chips, under a failed save", async ({
+  page,
+}) => {
+  await page.setViewportSize(phone);
+  await page.goto("/save-problem.html?state=failed&badges=on");
+  const rows = page.locator("[data-phone-notices] > *");
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(1)).toHaveText("Not trusted yet · Review");
+  await expect(rows.nth(2)).toHaveText("Gmail API offNeeds sign-in again · Fix");
+  const trust = await rows.nth(1).boundingBox();
+  expect(trust?.height).toBeGreaterThanOrEqual(48);
+  // Indented 16px: the chip starts 16px in from the window's edge.
+  const chip = await rows.nth(1).getByRole("button").boundingBox();
+  expect(chip?.x).toBe(16);
+  expect(await background(page, "[data-notice-row]")).toBe(
+    await tokenColour(page, "bg-surface-subtle"),
+  );
+  await expect(page.locator("main")).toBeInViewport();
+});
+
+test("a phone shows the badges' rows with no save problem, and none in a short window", async ({
+  page,
+}) => {
+  await page.setViewportSize(phone);
+  await page.goto("/save-problem.html?badges=on");
+  await expect(page.locator("[data-notice-row]").first()).toBeVisible();
+  // Held sideways, the window is short: the rows go, so the page keeps its room.
+  await page.setViewportSize({ width: 560, height: 390 });
+  await expect(page.locator("[data-notice-row]").first()).toBeHidden();
+  await expect(page.locator("[data-phone-notices]")).toBeHidden();
 });

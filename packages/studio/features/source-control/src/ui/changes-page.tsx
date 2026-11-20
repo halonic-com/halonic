@@ -16,10 +16,8 @@ import { pageWords, phoneWords, stateWords } from "../changes-words.ts";
 import { loadFailureReason } from "../load-failure.ts";
 import { AddShareAddressDialog } from "./add-share-address-dialog.tsx";
 import { ChangeList, orderItems } from "./change-list.tsx";
-import { CreateVersionDialog } from "./create-version-dialog.tsx";
 import { GetUpdates } from "./get-updates.tsx";
 import { History } from "./history.tsx";
-import { IdentityDialog } from "./identity-dialog.tsx";
 import { MergeChoices, MergeStrip } from "./merge-choices.tsx";
 import {
   CouldntCheckStrip,
@@ -29,6 +27,7 @@ import {
 } from "./sharing-strip.tsx";
 import { type OpenItem, useOpenItem } from "./use-open-item.ts";
 import { type OpenVersion, useOpenVersion } from "./use-open-version.ts";
+import { VersionDialogs } from "./version-dialogs.tsx";
 import { VersionPage } from "./version-page.tsx";
 import { WhatChangedPage } from "./whats-changed-page.tsx";
 
@@ -76,7 +75,7 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
   const items = orderItems(state.files);
   const nav = useOpenItem(items, () => heading.current?.focus());
   const versionNav = useOpenVersion(state.history.versions);
-  useFocusAfterChoices(phone && state.choosing, () => heading.current?.focus());
+  useFocusAfterChoices(state.choosing, () => heading.current?.focus());
   const pageClass = `flex w-full flex-col gap-4 ${phone ? "p-4" : "px-6 py-5"}`;
   const pushed = pushedPage({ list, nav, versionNav, developer, openItem, phone, pageClass });
   if (pushed !== undefined) return pushed;
@@ -114,32 +113,35 @@ export function ChangesView({ list, developerView, openItem }: ChangesViewProps)
           returnFocus={() => heading.current}
         />
       ) : null}
-      {list.needsIdentity && state.identity !== undefined ? (
-        <IdentityDialog list={list} initial={state.identity} returnFocus={() => heading.current} />
-      ) : null}
-      {state.version === undefined || list.needsIdentity ? null : (
-        <CreateVersionDialog
-          list={list}
-          files={list.versionFiles}
-          first={hasNoVersions(state.history)}
-          returnFocus={() => heading.current}
-          onCreated={focusNewVersion}
-        />
-      )}
+      <VersionDialogs
+        list={list}
+        state={state}
+        opener="page"
+        returnFocus={() => heading.current}
+        onCreated={focusNewVersion}
+      />
     </div>
   );
 }
 
 /**
- * On a phone, the Get updates choices are a page of their own; when it closes (Back, Finish or
- * Cancel) focus goes to the Changes page's heading rather than being lost with the page.
+ * When the Get updates choices close (Finish or Cancel, or a phone's Back), focus goes to the
+ * Changes page's heading rather than being lost with the button that closed them: on a phone the
+ * choices are a page of their own, on the desktop a section of this page. Focus that is still
+ * somewhere on the page, as when a read finds the merge ended elsewhere, stays where it is.
  */
-function useFocusAfterChoices(pushed: boolean, focus: () => void) {
-  const wasPushed = useRef(pushed);
+function useFocusAfterChoices(open: boolean, focus: () => void) {
+  const wasOpen = useRef(open);
   useEffect(() => {
-    if (wasPushed.current && !pushed) focus();
-    wasPushed.current = pushed;
-  }, [pushed, focus]);
+    if (wasOpen.current && !open && focusIsLost()) focus();
+    wasOpen.current = open;
+  }, [open, focus]);
+}
+
+/** Focus fell back to the page, as it does when the focused element is removed. */
+function focusIsLost(): boolean {
+  const active = document.activeElement;
+  return active === null || active === document.body;
 }
 
 /**
@@ -189,7 +191,7 @@ function pushedPage({
   if (phone && versionNav.open !== undefined) {
     return (
       <div className={pageClass}>
-        <VersionPage version={versionNav.open} onBack={versionNav.back} />
+        <VersionPage version={versionNav.open} list={list} onBack={versionNav.back} />
       </div>
     );
   }
@@ -418,11 +420,6 @@ function Loading({ retry }: { readonly retry: () => void }) {
       onRetry={retry}
     />
   );
-}
-
-/** History has loaded and holds no version yet: the next one is the first. */
-function hasNoVersions(history: { loaded: boolean; versions: readonly unknown[] }): boolean {
-  return history.loaded && history.versions.length === 0;
 }
 
 /** The folder has no git history yet: one button makes it one. */

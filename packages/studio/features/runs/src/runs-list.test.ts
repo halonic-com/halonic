@@ -84,4 +84,14 @@ describe("RunsList", () => {
     await list.refresh();
     expect(list.state.loaded).toBe(false);
   });
+
+  it("keeps a run's Review in Inbox for the Inbox, which takes it once", () => {
+    const list = new RunsList(fakeSource([]).source);
+    const listener = vi.fn();
+    list.subscribe(listener);
+    list.reviewInInbox("run_a_000001");
+    expect(listener).toHaveBeenCalledOnce();
+    expect(list.takeReview()).toBe("run_a_000001");
+    expect(list.takeReview()).toBeUndefined();
+  });
 });

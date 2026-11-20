@@ -99,7 +99,7 @@ export {
   itemGoneWords,
   type RulePlace,
 } from "./errors/error-message.ts";
-export { failureLine } from "./errors/failure-line.ts";
+export { failureLine, reasonAfterColon } from "./errors/failure-line.ts";
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
 export {
   narrowQuery,
@@ -118,6 +118,7 @@ export {
   StatusBarSaveNote,
   type StatusBarSaveNoteProps,
 } from "./frame/status-bar-save-note.tsx";
+export { firstLoad, type HomeCardSource } from "./home/first-load.ts";
 export type { HomeCardProps } from "./home/home-page.tsx";
 export { HomeSectionEmpty } from "./home/home-section.tsx";
 export { ItemHeader, type ItemHeaderProps } from "./item-page/item-header.tsx";
@@ -156,6 +157,7 @@ export {
   type PageErrorBoundaryProps,
   pageStoppedWords,
 } from "./page/page-error-boundary.tsx";
+export { unreachableWords } from "./page/page-unreachable.tsx";
 export { CommandPalette, type CommandPaletteProps } from "./palette/command-palette.tsx";
 export {
   compareNameMatches,

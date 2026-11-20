@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SrtSandbox } from "./srt-sandbox.ts";
 import { command, fakeRunner, fenced, linux, makeProfile } from "./srt-session.test-helper.ts";
 import { launcherEnv, programEnv } from "./srt-session-env.ts";
+import { windowsExtras } from "./windows-program-env.test-helper.ts";
 
 let base: string;
 
@@ -153,7 +154,7 @@ verifies("sandbox-srt.session", () => {
     it("creates the temp folder and leaves nothing of the proof in it", async () => {
       const { runner } = fakeRunner();
       const session = await new SrtSandbox(linux, runner).open(profile());
-      expect(readdirSync(join(base, "temp"))).toEqual([]);
+      expect(readdirSync(join(base, "temp"))).toEqual(windowsExtras(join(base, "temp")).tempFiles);
       await session.close();
     });
   });
@@ -264,6 +265,7 @@ verifies("sandbox-srt.session", () => {
         HOME: "/h",
         PATH: "node_modules/.bin",
         LD_PRELOAD: "/x.so",
+        ...windowsExtras(join(base, "temp")).programEnv,
       });
       await session.close();
     });

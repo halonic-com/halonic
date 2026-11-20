@@ -1,7 +1,12 @@
 import type { Clock, Sandbox, SandboxCheck, SandboxFence } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { type GatedRunner, RunnerStartGate } from "./runner-start-gate.ts";
+import {
+  type GatedRunner,
+  RunnerStartGate,
+  RunnerStartTimeoutError,
+  runnerStartTimeoutMs,
+} from "./runner-start-gate.ts";
 import { HandTimers } from "./testing/hand-timers.ts";
 import { TestUnfencedRunConsentStore } from "./testing/test-unfenced-run-consent-store.ts";
 import { UnfencedRuns } from "./unfenced-runs.ts";
@@ -65,19 +70,30 @@ interface Setup {
   check?: SandboxCheck;
   /** The fence proof a runner reports, by the sandbox it started in. */
   proofs?: { fenced?: SandboxFence; launcher?: SandboxFence };
+  /** The host's own limit on a start. */
+  startTimeoutMs?: number;
 }
 
-function setup({ platform = "linux", check = passes, proofs = {}, mxc }: Setup = {}) {
+function setup({
+  platform = "linux",
+  check = passes,
+  proofs = {},
+  mxc,
+  startTimeoutMs,
+}: Setup = {}) {
   const store = new TestUnfencedRunConsentStore();
   const timers = new HandTimers();
   const runs = new UnfencedRuns({ store, clock, timers });
   const fenced = sandbox("fenced", check);
   const launcher = sandbox("launcher");
+  const startTimers = new HandTimers();
   const gate = new RunnerStartGate({
     platform,
     fenced,
     launcher,
     runs,
+    timers: startTimers,
+    ...(startTimeoutMs === undefined ? {} : { startTimeoutMs }),
     ...(mxc === undefined
       ? {}
       : {
@@ -103,7 +119,34 @@ function setup({ platform = "linux", check = passes, proofs = {}, mxc }: Setup =
     started.push(runner);
     return runner;
   };
-  return { store, timers, runs, gate, started, startIn, backends };
+  return { store, timers, startTimers, runs, gate, started, startIn, backends };
+}
+
+/** A start that settles only when the test says, with a runner from the sandbox it was given. */
+function heldStart() {
+  let reached!: () => void;
+  const startReached = new Promise<void>((resolve) => {
+    reached = resolve;
+  });
+  let arrive!: () => void;
+  const arrives = new Promise<void>((resolve) => {
+    arrive = resolve;
+  });
+  const runners: FakeRunner[] = [];
+  const startIn = async (picked: Sandbox) => {
+    reached();
+    await arrives;
+    const name = (picked as Sandbox & { name: string }).name;
+    const runner = new FakeRunner(name, { state: name === "launcher" ? "off" : "fenced" });
+    runners.push(runner);
+    return runner;
+  };
+  return { startIn, startReached, arrive, runners };
+}
+
+/** Lets every promise that is ready settle. */
+async function settle(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 verifies("app.runner-start-gate", () => {
@@ -242,6 +285,77 @@ verifies("app.runner-start-gate", () => {
       expect(await start).toEqual({ run: "needs-yes", reason: "container" });
       expect(started[0]?.closed).toBe(1);
       expect(timers.delays()).toEqual([]);
+    });
+
+    it("refuses a start that doesn't settle within the limit, and stops its runner when it arrives later", async () => {
+      const { gate, startTimers } = setup();
+      const held = heldStart();
+      const start = gate.start(held.startIn);
+      await held.startReached;
+      expect(startTimers.delays()).toEqual([runnerStartTimeoutMs]);
+
+      startTimers.fire();
+      await expect(start).rejects.toThrow(RunnerStartTimeoutError);
+
+      held.arrive();
+      await settle();
+      expect(held.runners.map((runner) => [runner.startedIn, runner.closed])).toEqual([
+        ["fenced", 1],
+      ]);
+    });
+
+    it("lets Take back return once a start without the sandbox that hangs runs out of time", async () => {
+      const { gate, runs, startTimers } = setup({ check: inContainer });
+      await runs.allow("container");
+      const held = heldStart();
+      const start = gate.start(held.startIn);
+      start.catch(() => undefined);
+      await held.startReached;
+
+      let takenBack = false;
+      const takingBack = runs.takeBack().then(() => {
+        takenBack = true;
+      });
+      await settle();
+      expect(takenBack).toBe(false);
+
+      startTimers.fire();
+      await takingBack;
+      await expect(start).rejects.toThrow(RunnerStartTimeoutError);
+
+      // The runner arrives after Take back returned; it is stopped, and never registered.
+      held.arrive();
+      await settle();
+      expect(held.runners[0]?.closed).toBe(1);
+      expect(await gate.start(held.startIn)).toEqual({ run: "needs-yes", reason: "container" });
+    });
+
+    it("keeps no limit waiting once a start settled, and passes the start's own error on", async () => {
+      const { gate, startTimers, startIn } = setup();
+      await gate.start(startIn);
+      expect(startTimers.delays()).toEqual([]);
+
+      await expect(
+        gate.start(async () => {
+          throw new Error("the sandbox didn't open");
+        }),
+      ).rejects.toThrow("the sandbox didn't open");
+      expect(startTimers.delays()).toEqual([]);
+    });
+
+    it("waits as long as the host's own limit says", async () => {
+      const { gate, startTimers } = setup({ startTimeoutMs: 5000 });
+      const held = heldStart();
+      const start = gate.start(held.startIn);
+      start.catch(() => undefined);
+      await held.startReached;
+      expect(startTimers.delays()).toEqual([5000]);
+      startTimers.fire();
+      await expect(start).rejects.toThrow("didn't start within 5 s");
+    });
+
+    it.each([0, -1, 1.5, Number.NaN])("refuses the limit %s", (startTimeoutMs) => {
+      expect(() => setup({ startTimeoutMs })).toThrow(RangeError);
     });
 
     it("stops a runner here when the yes is taken back in another process", async () => {

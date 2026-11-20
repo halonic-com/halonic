@@ -106,7 +106,7 @@ verifies("plugins.feature", () => {
     const [cards] = shell.contributions.home.cards();
     if (cards === undefined) throw new Error("No Cards section");
     const Cards = await loadView<ComponentType<HomeCardProps>>(cards);
-    const view = render(<Cards context={context} />);
+    const view = render(<Cards context={context} attempt={0} />);
     const review = [...view.querySelectorAll("button")].find(
       (button) => button.textContent?.trim() === "Review",
     );

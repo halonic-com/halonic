@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { chmod, cp, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -153,6 +153,21 @@ verifies("cli.run", () => {
     expect(io.stdout.slice(failed + 1).map((line) => line.startsWith("  "))).toEqual([true, true]);
   });
 
+  it("names a model alias the hub doesn't have as its cause, with no report link, and exits 4 (HAL-12377)", async () => {
+    // As a workspace made with plain `halonic init`, which has no models.yaml yet.
+    await rm(join(acme, "models.yaml"));
+
+    const { code, io } = await run("support-reply", ...samsEmail);
+
+    expect(code).toBe(exitCode.notFound);
+    const failed = io.stdout.findLastIndex((line) => line.startsWith("✕"));
+    expect(io.stdout.slice(failed, failed + 2)).toEqual([
+      "✕ Support reply failed in the step Read the email: hub support has no model alias default.",
+      "  Add default to models.yaml, or set a model on the agent. For a test model with no key, copy models.yaml and providers/mock.yaml from the Acme example.",
+    ]);
+    expect(io.stdout.join("\n")).not.toContain("report it");
+  });
+
   it("names the secret of a model whose key isn't set, and how to set it (HAL-6585)", async () => {
     // Leave local only and connect a provider, steps 1 to 6, in a shell without the key.
     const workspace = join(acme, "workspace.yaml");
@@ -242,6 +257,25 @@ verifies("cli.json-lines", () => {
       outputVersion: 1,
       ok: false,
       run: { status: "failed" },
+    });
+  });
+
+  it("carries a missing model alias's kind in the run's cause, and exits 4 with it (HAL-12377)", async () => {
+    await rm(join(acme, "models.yaml"));
+
+    const { code, io } = await run("support-reply", ...samsEmail, "--json");
+
+    expect(code).toBe(exitCode.notFound);
+    expect(JSON.parse(io.stdout.join("\n"))).toMatchObject({
+      ok: false,
+      run: {
+        status: "failed",
+        cause: {
+          kind: "not_found",
+          code: "models.unknown-model-alias",
+          detail: { alias: "default", hub: "support" },
+        },
+      },
     });
   });
 

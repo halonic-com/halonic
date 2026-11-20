@@ -16,6 +16,8 @@ export interface PhoneViewProps {
   readonly steps: readonly SetupStep[];
   /** Whether the host has `halonic google sign-in`, for step 7's text. */
   readonly signInEntry: SignInEntry;
+  /** A served window in a desktop browser: the read-only layout, in its own words, with **Copy**. */
+  readonly served?: boolean;
 }
 
 function stateOf(step: SetupStep, current: SetupStep | undefined, done: boolean): StepState {
@@ -23,22 +25,36 @@ function stateOf(step: SetupStep, current: SetupStep | undefined, done: boolean)
   return done ? "done" : "todo";
 }
 
+/** The line the layout opens with: where the setup is finished, and the account type if it is still open. */
+function firstLine(served: boolean, askAccountType: boolean): string {
+  const where = served
+    ? "This window only shows the setup. Finish it on the computer running Halonic."
+    : "Set this up on a computer. Google Cloud Console is hard to use on a phone.";
+  if (!askAccountType) return where;
+  return `${where} ${served ? "Choose the account type there first." : "Choose the account type on a computer first."}`;
+}
+
 /** What the current step adds on a phone. A phone is never the computer that runs Halonic. */
 function WhatNext(props: {
   readonly step: SetupStep;
   readonly account: GoogleSetupAccount;
   readonly signInEntry: SignInEntry;
+  readonly served: boolean;
 }) {
-  const { step, account, signInEntry } = props;
+  const { step, account, signInEntry, served } = props;
   if (step.id !== "sign-in") {
-    return <p className="pl-9 pt-1 text-body text-fg-muted">Continue on a computer.</p>;
+    return (
+      <p className="pl-9 pt-1 text-body text-fg-muted">
+        {served ? "Continue on the computer running Halonic." : "Continue on a computer."}
+      </p>
+    );
   }
   return (
     <div className="pl-9 pt-1 text-fg-muted">
       <SignInElsewhere
         accountRef={account.record.accountRef}
         commandExists={signInEntry.kind === "elsewhere" && signInEntry.commandExists}
-        copyable={false}
+        copyable={served}
       />
     </div>
   );
@@ -50,7 +66,7 @@ function WhatNext(props: {
  * state; the current step adds "Continue on a computer." It has no buttons, no fields and no
  * Start over: Google Cloud Console is hard to use on a phone.
  */
-export function PhoneView({ account, steps, signInEntry }: PhoneViewProps) {
+export function PhoneView({ account, steps, signInEntry, served = false }: PhoneViewProps) {
   const current = currentStep(account, steps);
   const problem = connectorProblem(account);
   const doneCount = steps.filter((step) => account.record.stepsDone[step.id] !== undefined).length;
@@ -59,13 +75,15 @@ export function PhoneView({ account, steps, signInEntry }: PhoneViewProps) {
       <h2 id="google-setup-phone-title" className="text-title">
         Google for {account.email}
       </h2>
-      <ViewOnlyLine>
-        {`Set this up on a computer. Google Cloud Console is hard to use on a phone.${account.askAccountType ? " Choose the account type on a computer first." : ""}`}
-      </ViewOnlyLine>
+      <ViewOnlyLine>{firstLine(served, account.askAccountType)}</ViewOnlyLine>
       {problem === undefined ? null : (
         <>
           <ProblemBanner problem={problem} />
-          <ViewOnlyLine>Fix this on your computer: Library › Connectors</ViewOnlyLine>
+          <ViewOnlyLine>
+            {served
+              ? "Fix this on the computer running Halonic: Library › Connectors"
+              : "Fix this on your computer: Library › Connectors"}
+          </ViewOnlyLine>
           {problem.actionStep === "sign-in" && problem.lead === undefined ? (
             <ViewOnlyLine>
               Your client ID and secret are kept. Only the sign-in is needed.
@@ -101,7 +119,7 @@ export function PhoneView({ account, steps, signInEntry }: PhoneViewProps) {
                 </span>
               </div>
               {state === "now" ? (
-                <WhatNext step={step} account={account} signInEntry={signInEntry} />
+                <WhatNext step={step} account={account} signInEntry={signInEntry} served={served} />
               ) : null}
             </li>
           );

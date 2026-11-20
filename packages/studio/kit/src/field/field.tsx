@@ -1,7 +1,8 @@
-import { createContext, type ReactNode, type Ref, useContext, useId, useRef } from "react";
+import { createContext, type ReactNode, useContext, useId, useRef } from "react";
 import { AlertIcon } from "../icons/alert-icon.tsx";
 import { useFieldErrorAnnouncement } from "./field-announce.tsx";
-import { type FormRowsKind, useFormRows } from "./form-rows.tsx";
+import { useFormRows } from "./form-rows.tsx";
+import { labelClass, SIDE, SideRow } from "./side-row.tsx";
 
 /** What a Field tells the control inside it, so screens never wire ids by hand. */
 export interface FieldControl {
@@ -9,7 +10,7 @@ export interface FieldControl {
   readonly id: string;
   /** The label's `id`, for a group that a label can't point at: `aria-labelledby` (RadioGroup). */
   readonly labelId: string;
-  /** The `id` of the hint or the error under the control, for `aria-describedby`. */
+  /** The `id` of the hint or the error line, for `aria-describedby`. */
   readonly describedBy: string | undefined;
   /** True while the Field shows an error: the control sets `aria-invalid`. */
   readonly invalid: boolean;
@@ -47,6 +48,12 @@ export interface FieldProps {
   readonly hideLabel?: boolean;
   /** A short line under the control. An error takes its place. Empty counts as none. */
   readonly hint?: ReactNode;
+  /**
+   * Puts the hint, and an error in its place, between the label and the control. For a group
+   * whose options have notes of their own (a RadioGroup), where a hint under the last option
+   * reads as that option's. It stays the control's description.
+   */
+  readonly hintAbove?: boolean;
   /**
    * A sentence that says what to do: "Give the agent a name." Shown under the control. Empty
    * counts as none, so a screen can start its error state at `""`.
@@ -96,6 +103,7 @@ export function Field({
   label,
   hideLabel = false,
   hint,
+  hintAbove = false,
   error,
   required = false,
   prefix,
@@ -133,30 +141,22 @@ export function Field({
 
   const side = (layout ?? (rows === undefined ? "stack" : "side")) === "side";
   const look = side ? SIDE[rows ?? "sheet"] : undefined;
+  // A side label lines up with the first line of the value column, which is then text.
+  const labelAlign = hintAbove && hasLine ? "text" : align;
   const fieldLabel = (
-    <label id={labelId} htmlFor={controlId} className={labelClass(hideLabel, look, align)}>
-      {label}
-      {prefix === undefined ? null : <span className="sr-only">{`, ${prefix.name}`}</span>}
-      {/* Hidden from screen readers, which already hear "required" from aria-required. */}
-      {required ? (
-        <span className="text-fg-subtle" aria-hidden="true">
-          {" "}
-          Required
-        </span>
-      ) : null}
+    <label id={labelId} htmlFor={controlId} className={labelClass(hideLabel, look, labelAlign)}>
+      <LabelWords label={label} prefix={prefix} required={required} />
     </label>
   );
   const value = (
-    <>
-      {prefix === undefined ? (
-        <FieldControlContext value={control}>{children}</FieldControlContext>
-      ) : (
-        <PrefixRow symbol={prefix.symbol} controlId={controlId}>
-          <FieldControlContext value={control}>{children}</FieldControlContext>
-        </PrefixRow>
-      )}
-      <FieldLine id={lineId} hint={hint} error={error} />
-    </>
+    <FieldValue
+      control={control}
+      prefix={prefix}
+      line={<FieldLine id={lineId} hint={hint} error={error} />}
+      lineAbove={hintAbove}
+    >
+      {children}
+    </FieldValue>
   );
 
   if (look === undefined) {
@@ -170,80 +170,60 @@ export function Field({
   return <SideRow ref={wrapper} look={look} wide={wide} label={fieldLabel} value={value} />;
 }
 
-/**
- * A side-label row. The outer div is the container the row measures, so a Field sizes itself to
- * its own width and nothing reads the window's.
- */
-function SideRow({
-  ref,
-  look,
-  wide,
-  label,
-  value,
+/** The control, after the prefix's symbol when there is one, with the line under it or above. */
+function FieldValue({
+  control,
+  prefix,
+  line,
+  lineAbove,
+  children,
 }: {
-  ref: Ref<HTMLDivElement>;
-  look: SideLook;
-  wide: boolean;
-  label: ReactNode;
-  value: ReactNode;
+  control: FieldControl;
+  prefix: FieldPrefix | undefined;
+  line: ReactNode;
+  lineAbove: boolean;
+  children: ReactNode;
 }) {
   return (
-    <div ref={ref} className="@container">
-      <div className={`flex flex-col gap-1 ${look.row}`}>
-        {label}
-        <div className={wide ? VALUE : `${VALUE} ${look.value}`.trimEnd()}>{value}</div>
-      </div>
-    </div>
+    <>
+      {lineAbove ? line : null}
+      <FieldControlContext value={control}>
+        {prefix === undefined ? (
+          children
+        ) : (
+          <PrefixRow symbol={prefix.symbol} controlId={control.id}>
+            {children}
+          </PrefixRow>
+        )}
+      </FieldControlContext>
+      {lineAbove ? null : line}
+    </>
   );
 }
 
-/** The value column: the control with its hint or error under it, never under the label. */
-const VALUE = "flex min-w-0 flex-1 flex-col gap-1";
-
-/** One side layout's classes: the row, the label column, the label's nudge, the value column. */
-interface SideLook {
-  readonly row: string;
-  readonly label: string;
-  readonly nudge: string;
-  readonly value: string;
-}
-
-/**
- * The side layout's classes, written out in full so Tailwind finds them. A sheet goes side by
- * side from 46.5rem (168 + 16 + 560px at normal text); a Card's rows from 28rem, so a phone's
- * card still stacks. Under the limit the label is the stacked Field's own.
- */
-const SIDE: Record<FormRowsKind, SideLook> = {
-  sheet: {
-    row: "@min-[46.5rem]:flex-row @min-[46.5rem]:gap-4",
-    label:
-      "@min-[46.5rem]:w-42 @min-[46.5rem]:shrink-0 @min-[46.5rem]:text-small @min-[46.5rem]:font-medium",
-    nudge: "@min-[46.5rem]:pt-1.5",
-    value: "@min-[46.5rem]:max-w-140",
-  },
-  card: {
-    row: "@min-[28rem]:flex-row @min-[28rem]:gap-3",
-    label:
-      "@min-[28rem]:w-30 @min-[28rem]:shrink-0 @min-[28rem]:text-small @min-[28rem]:font-medium",
-    nudge: "@min-[28rem]:pt-1.5",
-    value: "",
-  },
-};
-
-/** The label's classes: hidden, the stacked caption, or the side column's from the query up. */
-function labelClass(
-  hideLabel: boolean,
-  look: SideLook | undefined,
-  align: "control" | "text",
-): string {
-  if (hideLabel) {
-    return "sr-only";
-  }
-  if (look === undefined) {
-    return "text-caption text-fg-muted";
-  }
-  const nudge = align === "control" ? ` ${look.nudge}` : "";
-  return `text-caption text-fg-muted ${look.label}${nudge}`;
+/** The label's words, the prefix's name for screen readers, and the visible "Required". */
+function LabelWords({
+  label,
+  prefix,
+  required,
+}: {
+  label: string;
+  prefix: FieldPrefix | undefined;
+  required: boolean;
+}) {
+  return (
+    <>
+      {label}
+      {prefix === undefined ? null : <span className="sr-only">{`, ${prefix.name}`}</span>}
+      {/* Hidden from screen readers, which already hear "required" from aria-required. */}
+      {required ? (
+        <span className="text-fg-subtle" aria-hidden="true">
+          {" "}
+          Required
+        </span>
+      ) : null}
+    </>
+  );
 }
 
 /**

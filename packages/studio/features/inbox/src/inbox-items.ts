@@ -184,6 +184,18 @@ export function setupKey(provider: string, account: string): string {
 }
 
 /**
+ * The item a run has waited on longest, which its **Review in Inbox** opens; `undefined` when
+ * nothing of the run waits in the Inbox, such as once it's answered. `items` is Needs you's order,
+ * so the run's items come newest first.
+ *
+ * @example
+ * oldestOfRun(inbox.state.items, "01JD8Q")?.key; // "01JD8Q:call-1"
+ */
+export function oldestOfRun(items: readonly InboxItem[], runId: string): RunItem | undefined {
+  return items.filter(isRunItem).findLast((item) => item.runId === runId);
+}
+
+/**
  * Needs you's order: setup items first, the most recently changed first, then the run items as
  * they come (setup flow 1, UX checklist section 8 point 1).
  */

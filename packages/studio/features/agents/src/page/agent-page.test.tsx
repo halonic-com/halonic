@@ -17,6 +17,7 @@ import {
   unmount,
 } from "../test-support.tsx";
 import { AgentScreen } from "./agent-page.tsx";
+import { markFreshAgent } from "./fresh-agents.ts";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
 afterEach(() => {
@@ -41,12 +42,23 @@ verifies("agents.page.frame", () => {
     const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
     await act(async () => buttonNamed(page, "Runs")?.click());
 
-    expect(page.textContent).toContain(
-      "Runs aren't listed by agent yet. See them on the Runs page.",
-    );
+    expect(page.textContent).toContain("Runs aren't listed by agent yet.");
+    expect(buttonNamed(page, "Open the Runs page ›")).toBeUndefined();
     expect(page.textContent).toContain(
       "Sorter runs as a step in a workflow. Add it to one in Workflows.",
     );
+  });
+
+  it("ends the Runs line in Open the Runs page ›, which opens the Runs page", async () => {
+    const openRuns = vi.fn();
+    const page = await show(
+      <AgentScreen host={hostWith()} hubId="acme" id="sorter" openRuns={openRuns} />,
+    );
+    await act(async () => buttonNamed(page, "Runs")?.click());
+
+    expect(page.textContent).toContain("Runs aren't listed by agent yet. Open the Runs page ›");
+    await act(async () => buttonNamed(page, "Open the Runs page ›")?.click());
+    expect(openRuns).toHaveBeenCalledOnce();
   });
 
   it("doesn't say an agent a workflow runs has no runs, and points to that workflow's runs", async () => {
@@ -416,5 +428,45 @@ verifies("agents.page.menu", () => {
       action: { label: "Try again" },
     });
     expect(page.textContent).toContain("AGENT");
+  });
+});
+
+verifies("agents.page.new-agent", () => {
+  const instructionsBox = (page: HTMLElement) => page.querySelector("textarea");
+
+  it("focuses Instructions on Behaviour for a just-made agent, and not when it opens later", async () => {
+    markFreshAgent("acme", "sorter");
+    const first = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
+
+    const box = instructionsBox(first);
+    expect(box).not.toBeNull();
+    expect(document.activeElement).toBe(box);
+    unmount();
+
+    const later = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
+    expect(instructionsBox(later)).not.toBeNull();
+    expect(document.activeElement).not.toBe(instructionsBox(later));
+  });
+
+  it("opens other agents on Behaviour without taking the focus", async () => {
+    markFreshAgent("acme", "someone-else");
+    const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
+
+    expect(instructionsBox(page)).not.toBeNull();
+    expect(document.activeElement).not.toBe(instructionsBox(page));
+  });
+
+  it("doesn't take the focus again when the person leaves Behaviour and comes back", async () => {
+    markFreshAgent("acme", "sorter");
+    const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
+    const tab = (name: string) =>
+      [...page.querySelectorAll<HTMLElement>("[role=tab]")].find(
+        (each) => each.textContent === name,
+      );
+    await act(async () => tab("Model")?.click());
+    await act(async () => tab("Behaviour")?.click());
+
+    expect(instructionsBox(page)).not.toBeNull();
+    expect(document.activeElement).not.toBe(instructionsBox(page));
   });
 });

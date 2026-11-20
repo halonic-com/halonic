@@ -375,6 +375,7 @@ describe("theme.css scales", () => {
       "--spacing-phone-bar",
       "--spacing-nav-pill",
       "--spacing-qr-tile",
+      "--spacing-input-short",
     ]);
     expect(themeTokens.get("--spacing")).toBe("4px");
     expect(namesStartingWith(themeTokens, "--breakpoint-")).toEqual(["--breakpoint-wide"]);
@@ -444,6 +445,10 @@ describe("theme.css on a phone", () => {
     expect(themeTokens.get("--text-input-touch")).toBe("16px");
     expect(themeTokens.get("--text-input-touch--line-height")).toBe("24px");
     expect(themeTokens.get("--text-input-touch--font-weight")).toBe("400");
+  });
+
+  it("sizes a short Input's text in characters, so it holds 6 at 14px and at a phone's 16px", () => {
+    expect(themeTokens.get("--spacing-input-short")).toBe("6ch");
   });
 
   it("reads the safe areas once, and pads with the larger of 12px and the home bar", () => {

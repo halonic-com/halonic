@@ -1,8 +1,14 @@
 # Report-only check: follows the docs install steps (checklist steps 1 to 9 on
 # HAL-11100) word for word on a macOS runner and prints how long each step
-# takes. A failing step is recorded and the run goes on, so one run shows every
-# place the docs break. It runs by hand only. The repo is public, so macOS
-# minutes are free.
+# takes. When a check fails, it does what the install page tells a reader to
+# do (install Node.js 26 with nvm, install pnpm with its curl line, open a new
+# terminal) and times that too. A failing step is recorded and the run goes on,
+# so one run shows every place the docs break. It runs by hand only. The repo is
+# public, so macOS minutes are free.
+#
+# To act like a reader on a new Mac, every step runs in a "new terminal": a
+# login zsh (the macOS default shell) with an empty home folder and only the
+# system PATH, so nothing from the runner's own environment leaks in.
 name: Docs install check (macOS)
 
 on:
@@ -14,45 +20,129 @@ jobs:
   docs-install:
     name: Docs install steps (macos-latest)
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - name: Follow the docs steps and time them
         shell: bash
         run: |
-          cd "$HOME"
-          : > "$RUNNER_TEMP/results.tsv"
-          T0=$SECONDS
-          step() { # step <number> <command>
+          set +e +o pipefail
+          R="$RUNNER_TEMP/results.tsv"; : > "$R"
+          N="$RUNNER_TEMP/fixes.md"; : > "$N"
+          READER_HOME="$(dirname "$HOME")/reader"
+          sudo mkdir -p "$READER_HOME" && sudo chown "$(id -un)" "$READER_HOME"
+          # term <commands>: run them in a new terminal window, starting in ~.
+          term() {
+            env -i HOME="$READER_HOME" USER="$(id -un)" LOGNAME="$(id -un)" SHELL=/bin/zsh \
+              TERM=xterm-256color LANG=en_US.UTF-8 zsh -l -i -c "cd ~ && $1" </dev/null 2>&1
+          }
+          record() { # record <step> <result> <seconds> <command>
+            printf '%s\t%s\t%ss\t%s\n' "$1" "$2" "$3" "$4" >> "$R"
+          }
+          OUT=
+          step() { # step <step> <command>: new terminal, timed; output in $OUT
             local n="$1" cmd="$2" s=$SECONDS rc
             echo "::group::Step $n: $cmd"
-            bash -c "$cmd" && rc=0 || rc=$?
+            OUT=$(term "$cmd"); rc=$?
+            echo "$OUT"
             echo "::endgroup::"
-            printf '%s\t%s\t%ss\t%s\n' "$n" "$([ $rc -eq 0 ] && echo ok || echo "FAILED (exit $rc)")" "$((SECONDS - s))" "$cmd" >> "$RUNNER_TEMP/results.tsv"
-            return 0
+            record "$n" "$([ $rc -eq 0 ] && echo ok || echo "FAILED (exit $rc)")" "$((SECONDS - s))" "$cmd"
+            return $rc
           }
-          export PATH="$HOME/Library/pnpm:$PATH"
+          fix() { echo "- $*" >> "$N"; }
+          # at_least <output> <major> <minor>: the last version number in the output is that or higher.
+          at_least() {
+            local v; v=$(printf '%s\n' "$1" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | tail -1)
+            [ -n "$v" ] || return 1
+            local maj=${v%%.*} rest=${v#*.}; local min=${rest%%.*}
+            [ "$maj" -gt "$2" ] || { [ "$maj" -eq "$2" ] && [ "$min" -ge "$3" ]; }
+          }
+          version_step() { # version_step <step> <command> <major> <minor>
+            local n="$1" s=$SECONDS
+            echo "::group::Step $n: $2"
+            OUT=$(term "$2"); local rc=$?
+            echo "$OUT"
+            echo "::endgroup::"
+            if [ $rc -eq 0 ] && at_least "$OUT" "$3" "$4"; then
+              record "$n" "ok ($(echo "$OUT" | tail -1))" "$((SECONDS - s))" "$2"; return 0
+            elif [ $rc -eq 0 ]; then
+              record "$n" "FAILED ($(echo "$OUT" | tail -1), page needs $3.$4 or higher)" "$((SECONDS - s))" "$2"
+            else
+              record "$n" "FAILED ($(echo "$OUT" | tail -1))" "$((SECONDS - s))" "$2"
+            fi
+            return 1
+          }
+
+          RUNNER_NODE=$(node --version 2>/dev/null || echo 'not installed')
+          RUNNER_PNPM=$(pnpm --version 2>/dev/null || echo 'not installed')
+          CLEAN_NODE=$(term 'node --version' | tail -1); CLEAN_PNPM=$(term 'pnpm --version' | tail -1)
+          T0=$SECONDS
+
           step 1 'git --version'
-          step 2 'node --version'
-          step 3 'pnpm --version'
+
+          if ! version_step 2 'node --version' 26 12; then
+            # The page: "install Node.js 26 with nvm or fnm (nvm install 26 ...)".
+            if ! step 2a 'nvm install 26 && nvm alias default 26'; then
+              fix "Step 2: \`nvm install 26\` fails with \`$(echo "$OUT" | tail -1)\`: a Mac has no nvm. The page says \"Install nvm first\" but gives no command; a reader has to find nvm's install line (used here: nvm's README, v0.41.0)."
+              step 2b 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.41.0/install.sh | bash'
+              if echo "$OUT" | grep -q 'Profile not found'; then
+                fix "Step 2: nvm's installer finds no shell profile on a new Mac (no \`~/.zshrc\`), so nvm doesn't load in a new terminal. Needed: \`touch ~/.zshrc\` and run nvm's installer again."
+                step 2b-retry 'touch ~/.zshrc && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.41.0/install.sh | bash'
+              fi
+              # New terminal, as nvm's installer says.
+              step 2c 'nvm install 26 && nvm alias default 26' \
+                || fix "Step 2: \`nvm\` is still missing in a new terminal after nvm's installer: \`$(echo "$OUT" | tail -1)\`."
+            fi
+            version_step 2d 'node --version' 26 12 \
+              || fix "Step 2: after the page's nvm steps, a new terminal still has \`$(echo "$OUT" | tail -1)\`."
+          fi
+
+          if ! version_step 3 'pnpm --version' 12 18; then
+            # The page: run the curl line, then close and reopen the terminal.
+            step 3a 'curl -fsSL https://get.pnpm.io/install.sh | sh -'
+            version_step 3b 'pnpm --version' 12 18 \
+              || fix "Step 3: after the page's curl install and a new terminal, \`pnpm --version\` gives \`$(echo "$OUT" | tail -1)\`."
+          fi
+
           step 4 'git clone https://github.com/halonic-com/halonic.git && cd halonic && pnpm install'
-          step 5 'cd halonic && pnpm add -g ./apps/cli'
+
+          if ! step 5 'cd halonic && pnpm add -g ./apps/cli'; then
+            # The page: pnpm setup, new terminal, cd halonic, run it again.
+            step 5a 'cd halonic && pnpm setup'
+            step 5b 'cd halonic && pnpm add -g ./apps/cli' \
+              || fix "Step 5: \`pnpm add -g ./apps/cli\` still fails after the page's \`pnpm setup\` and a new terminal."
+          fi
+
           step 6 'halonic --version && halonic --help'
+          echo "$OUT" | grep -qx 'Halonic 0.1.0' || fix "Step 6: \`halonic --version\` didn't print \`Halonic 0.1.0\`."
           step 7 'halonic doctor'
           step 8 'mkdir halonic-start && cd halonic-start && halonic init --example acme && cd acme && halonic validate && halonic test && halonic run support-reply --input examples/refund-question.json'
           step 9 'cd halonic-start/acme && halonic routines && halonic trust && halonic run reports/weekly-report && (perl -e "alarm 15; exec @ARGV" halonic routines watch || true)'
+          TOTAL=$((SECONDS - T0))
+
           {
             echo "## Docs install check (macOS)"
             echo
             echo "OS: $(sw_vers -productName) $(sw_vers -productVersion), CPU: $(sysctl -n machdep.cpu.brand_string), $(uname -m)"
             echo "Runner image: ${ImageOS:-unknown} ${ImageVersion:-}"
-            echo "Node before: $(node --version 2>&1), pnpm before: $(pnpm --version 2>&1 | head -1)"
+            echo "Runner's own environment: Node $RUNNER_NODE, pnpm $RUNNER_PNPM"
+            echo "New terminal before the steps: \`node --version\` → $CLEAN_NODE; \`pnpm --version\` → $CLEAN_PNPM"
             echo
             echo "| Step | Result | Time | Command |"
             echo "|---|---|---|---|"
-            awk -F'\t' '{gsub(/\|/, "\\|", $4); printf "| %s | %s | %s | `%s` |\n", $1, $2, $3, $4}' "$RUNNER_TEMP/results.tsv"
+            awk -F'\t' '{gsub(/\|/, "\\|", $2); gsub(/\|/, "\\|", $4); printf "| %s | %s | %s | `%s` |\n", $1, $2, $3, $4}' "$R"
             echo
-            echo "Total, steps 1 to 9: $((SECONDS - T0))s (target: under 600s)"
+            echo "Total, steps 1 to 9 with the fallback installs: ${TOTAL}s (target: under 600s)"
             echo
-            echo "Steps 5 to 9 cd into the folders the steps before them created. Step 5 runs in the clone and step 9 runs in the project from step 8; the docs say to leave them with \`cd ..\`."
+            echo "### Where the page's commands alone weren't enough"
+            echo
+            if [ -s "$N" ]; then cat "$N"; else echo "Nothing found."; fi
+            echo
+            echo "### What the installers wrote to the shell profiles"
+            echo
+            for f in .zshrc .zprofile .zshenv .bashrc .bash_profile .profile; do
+              [ -f "$READER_HOME/$f" ] && { echo "\`~/$f\`:"; echo '```'; cat "$READER_HOME/$f"; echo '```'; }
+            done
+            echo
+            echo "Every step runs in a new terminal (login zsh, empty home folder, system PATH only). Steps with a letter are the page's fallbacks. Steps 5 to 9 \`cd\` into the folders the steps before them created."
           } | tee -a "$GITHUB_STEP_SUMMARY"
-          ! grep -q FAILED "$RUNNER_TEMP/results.tsv" || echo "::warning::At least one docs step failed (step 7 failing is expected on a fresh machine). See the summary."
+          ! grep -q FAILED "$R" || echo "::warning::At least one docs step failed (step 7 failing is expected on a fresh machine). See the summary."

@@ -2,8 +2,9 @@
 
 import { KindedError } from "@halonicjs/std";
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
+import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { buttonNamed, memoryRuns, runSummary, show, unmount } from "../test-support.tsx";
 import { RunsView } from "./runs-view.tsx";
@@ -23,10 +24,20 @@ function Connected(props: {
   source: RunsSource;
   openRun?: (id: string) => void;
   seeAll?: () => void;
-  reviewInInbox?: () => void;
+  reviewInInbox?: (runId: string) => void;
 }) {
   const { load, retry } = useRuns(props.source);
-  return <RunsView {...props} load={load} retry={retry} workflow={reply} />;
+  const [picked, setPicked] = useState<string | undefined>();
+  return (
+    <RunsView
+      {...props}
+      load={load}
+      retry={retry}
+      workflow={reply}
+      picked={picked}
+      onPick={setPicked}
+    />
+  );
 }
 
 const finished = runSummary({
@@ -127,6 +138,39 @@ verifies("workflows.runs.runs-view", () => {
     expect(page.querySelector("aside")).toBeNull();
   });
 
+  it("keeps the 24 px inset itself, empty or with runs, as the tab panel around it has none", async () => {
+    const empty = await show(<Connected source={memoryRuns().source} />);
+    expect(empty.querySelector("p")?.parentElement?.className).toContain("p-6");
+    unmount();
+
+    const page = await show(<Connected source={memoryRuns([finished]).source} />);
+    expect(page.querySelector("section")?.closest(".p-6")).not.toBeNull();
+    // Pulled out by a negative margin, it would sit on the panel's edge and scroll sideways.
+    expect(page.querySelector("[class*='-m-']")).toBeNull();
+  });
+
+  it("gives a run's card the whole tab on a phone, and shows the list again with its row focused on close", async () => {
+    const page = await show(
+      <PresentationProvider presentation="phone">
+        <Connected source={memoryRuns([finished]).source} />
+      </PresentationProvider>,
+    );
+    const list = () => page.querySelector<HTMLElement>("[data-testid=runs-inset]");
+    const row = page.querySelector<HTMLButtonElement>("li button");
+
+    await act(async () => row?.click());
+    expect(page.querySelector("aside")).not.toBeNull();
+    expect(list()?.className).toBe("hidden");
+
+    await act(async () => {
+      page
+        .querySelector("aside")
+        ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(list()?.className).not.toContain("hidden");
+    expect(document.activeElement).toBe(row);
+  });
+
   it("outlines the open run's row in high contrast, where its soft fill doesn't show", async () => {
     const page = await show(<Connected source={memoryRuns([finished]).source} />);
     const row = page.querySelector("li");
@@ -188,7 +232,7 @@ verifies("workflows.runs.card-receipt", () => {
     expect(card.textContent).not.toContain("Done");
   });
 
-  it("shows the banner of a run that waits for you, and Review in Inbox opens the Inbox", async () => {
+  it("shows the banner of a run that waits for you, and Review in Inbox opens the Inbox on that run", async () => {
     const waiting = runSummary({
       id: "run_a_01wait1",
       approvals: [
@@ -214,7 +258,7 @@ verifies("workflows.runs.card-receipt", () => {
     const card = page.querySelector("aside") as HTMLElement;
     expect(card.querySelector('section[aria-label="Waiting for you"]')).not.toBeNull();
     await act(async () => buttonNamed(card, "Review in Inbox")?.click());
-    expect(reviewInInbox).toHaveBeenCalledOnce();
+    expect(reviewInInbox).toHaveBeenCalledExactlyOnceWith("run_a_01wait1");
   });
 
   it("shows Every step under the receipt, with Show the run log in it", async () => {

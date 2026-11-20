@@ -137,6 +137,13 @@ export interface ChangesSource {
    * without history or without a version gives none. Throws when git answers with an error.
    */
   readonly readHistory: (limit: number) => Promise<readonly Version[]>;
+  /** A file of the workspace folder as it is now; `null` where there is none. */
+  readonly readFile: (path: string) => Promise<string | null>;
+  /**
+   * A file as the version `versionId` (a full id from {@link readHistory}) has it; `null` where
+   * that version has no such file. Throws when the version can't be read.
+   */
+  readonly readAtVersion: (versionId: string, path: string) => Promise<string | null>;
   /** Records a version of exactly `paths`; other files stay as changes. Throws when git refuses. */
   readonly createVersion: (input: VersionInput) => Promise<void>;
   /**
@@ -226,6 +233,33 @@ export interface ChangesSource {
 /** The open workspace's history. The app provides it for each open workspace. */
 export const ChangesSourceService: ServiceKey<ChangesSource> =
   serviceKey<ChangesSource>("source-control.source");
+
+/** How a Create version opened through {@link VersionDialog.open} ended. */
+export type VersionDialogOutcome =
+  /** The version was made: the items are live now. */
+  | "made"
+  /** The person closed the dialog, or "Who should versions be from?" before it, without a version. */
+  | "cancelled";
+
+/**
+ * Create version, for other features: the agent page's "Review and make live" and a run dialog's
+ * "Make live first" open it with only their own items in it (requirement
+ * `source-control.create-version-elsewhere`).
+ */
+export interface VersionDialog {
+  /**
+   * Opens Create version with only `paths` in it, over whatever page is open; when the workspace
+   * has no name or email for versions yet, "Who should versions be from?" comes first. The answer
+   * comes once a version is made or the dialog is closed. It is `"cancelled"` at once when the
+   * folder has no history, and when another Create version replaces this one.
+   */
+  readonly open: (paths: readonly string[]) => Promise<VersionDialogOutcome>;
+}
+
+/** Create version for other features. The source control feature provides it for each open workspace. */
+export const VersionDialogService: ServiceKey<VersionDialog> = serviceKey<VersionDialog>(
+  "source-control.version-dialog",
+);
 
 /**
  * Whether the developer view is on (Settings → Developer → Show files and branches). The

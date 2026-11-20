@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
 
+import { PresentationProvider } from "@halonicjs/studio-kit";
+import { limitedLookup } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { RoutineTargetChoice } from "../api.ts";
+import { RoutinesHostService, type RoutineTargetChoice } from "../api.ts";
+import { routinesFeature } from "../feature.ts";
 import {
   buttonNamed,
   listing,
@@ -14,7 +17,7 @@ import {
   unmount,
 } from "../test-support.tsx";
 import { requestNewRoutine } from "./new-request.ts";
-import { RoutinesView } from "./routines-page.tsx";
+import { RoutinesPage, RoutinesView } from "./routines-page.tsx";
 
 beforeEach(openDialogsInJsdom);
 afterEach(unmount);
@@ -80,6 +83,32 @@ verifies("routines.new.create", () => {
 
     expect(newWorkflow).toHaveBeenCalledOnce();
     expect(nameField()).toBeNull();
+  });
+
+  it("asks for New workflow through Ctrl K's command on a desktop, and offers none on a phone", async () => {
+    const { host } = memoryHost([acme], [], () => undefined);
+    const runCommand = vi.fn(() => true);
+    const context = {
+      runCommand,
+      services: limitedLookup(routinesFeature, {
+        get: (key: unknown) => (key === RoutinesHostService ? host : undefined),
+      }),
+    };
+    await show(<RoutinesPage context={context as never} />);
+    await act(async () => buttonNamed(document.body, "New routine")?.click());
+    await act(async () => buttonNamed(document.body, "New workflow")?.click());
+    expect(runCommand).toHaveBeenCalledWith("workflows.new");
+
+    unmount();
+    // A phone doesn't edit workflows (UX 10.15).
+    await show(
+      <PresentationProvider presentation="phone">
+        <RoutinesPage context={context as never} />
+      </PresentationProvider>,
+    );
+    await act(async () => buttonNamed(document.body, "New routine")?.click());
+    expect(body()).toContain("Create a workflow or an agent first");
+    expect(buttonNamed(document.body, "New workflow")).toBeUndefined();
   });
 
   it("offers no New routine and drops Ctrl K's request while the workspace has no hub", async () => {

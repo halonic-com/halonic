@@ -1,6 +1,7 @@
 import {
   Button,
   EmptyState,
+  inlineLinkClasses,
   LetterTile,
   SkeletonBar,
   type Tab,
@@ -25,6 +26,7 @@ import { Configuration } from "../configuration/configuration.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
 import { fileItemOf } from "../trash/file-item.ts";
 import { useAgentTrash } from "../trash/use-agent-trash.tsx";
+import { forgetFreshAgent, isFreshAgent } from "./fresh-agents.ts";
 import { pageWords } from "./page-words.ts";
 import { RenameField } from "./rename-field.tsx";
 import { type Load, useLoad } from "./use-load.ts";
@@ -48,7 +50,10 @@ export function AgentPage({ item, context }: ItemViewProps) {
       saving={context.saving}
       hubId={item.hub}
       id={item.id}
-      {...(openPlace && { goToAgents: () => openPlace("agents") })}
+      {...(openPlace && {
+        goToAgents: () => openPlace("agents"),
+        openRuns: () => openPlace("runs"),
+      })}
       {...(openItem && { openFile: (path: string) => openItem(fileItemOf(path)) })}
       {...(runCommand && {
         openLibrary: (list: AgentToolList) => runCommand(libraryTabCommands[list]),
@@ -67,6 +72,8 @@ export interface AgentScreenProps extends AgentRef {
   readonly openFile?: ((path: string) => void) | undefined;
   /** Opens Library on a Tools list's tab, for **Open Library ›**; absent where the app can't. */
   readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
+  /** Opens the Runs page, for **Open the Runs page ›**; absent where the app can't open a place. */
+  readonly openRuns?: (() => void) | undefined;
 }
 
 /**
@@ -83,6 +90,7 @@ export function AgentScreen({
   goToAgents,
   openFile,
   openLibrary,
+  openRuns,
 }: AgentScreenProps) {
   // After a Try again reads, the agent's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -147,8 +155,7 @@ export function AgentScreen({
     [host, hubId, id],
   );
   const users = useLoad<readonly AgentUser[]>(usersSource);
-  // Runs can't list anything in 0.1 (R9), so the page opens where the agent is finished (HAL-12399).
-  const [view, setView] = useState<AgentView>("configuration");
+  const { view, selectView, fresh } = useAgentView(hubId, id);
   const [saveFailed, setSaveFailed] = useState<string>();
   const ids = useTabIds();
   // Resolves to whether the change was written, so a page can put its control back when it wasn't.
@@ -219,7 +226,7 @@ export function AgentScreen({
           label={pageWords.views}
           tabs={agentTabs}
           selected={view}
-          onSelect={setView}
+          onSelect={selectView}
           ids={ids}
         />
       </header>
@@ -243,6 +250,7 @@ export function AgentScreen({
             defaultModel={defaultModel.load.kind === "ready" ? defaultModel.load.value : undefined}
             retryAliases={aliases.retry}
             retry={settings.retry}
+            startOnInstructions={fresh}
             save={save}
             openLibrary={openLibrary}
             reportNotSaved={reportNotSaved}
@@ -255,6 +263,14 @@ export function AgentScreen({
               {runsLines(name, users.load).map((line) => (
                 <p key={line} className="text-small text-fg-muted">
                   {line}
+                  {line === pageWords.noRuns && openRuns && (
+                    <>
+                      {" "}
+                      <button type="button" className={inlineLinkClasses} onClick={openRuns}>
+                        {pageWords.openRuns}
+                      </button>
+                    </>
+                  )}
                 </p>
               ))}
             </section>
@@ -324,6 +340,23 @@ function runsLines(name: string, users: Load<readonly AgentUser[]>): readonly st
 }
 
 type AgentView = "configuration" | "runs";
+
+/**
+ * The view the page shows. Runs can't list anything in 0.1 (R9), so the page opens where the agent
+ * is finished, on Configuration (HAL-12399). An agent just made with nothing written opens there
+ * on Behaviour with Instructions focused (`agents.page.new-agent`); once the person picks a view,
+ * it is a page like any other, so coming back to Behaviour doesn't take the focus again.
+ */
+function useAgentView(hubId: string, id: string) {
+  const [fresh, setFresh] = useState(() => isFreshAgent(hubId, id));
+  useEffect(() => forgetFreshAgent(hubId, id), [hubId, id]);
+  const [view, setView] = useState<AgentView>("configuration");
+  const selectView = (next: AgentView) => {
+    setView(next);
+    setFresh(false);
+  };
+  return { view, selectView, fresh };
+}
 
 /** The page's views, as far as they are built: Flow and the Try it chat join them later. */
 const agentTabs: readonly Tab<AgentView>[] = [

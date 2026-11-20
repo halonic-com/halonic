@@ -185,16 +185,17 @@ function WorkingStep({ file }: { readonly file: string | null }) {
   );
 }
 
+/** With a backup: **Show in folder** · **Done**. Without one there is nothing to show: **Close** alone. */
 function DoneStep({ host, onClose, file }: StepProps & { file: string | null }) {
   const show = file !== null ? host.showInFolder : undefined;
   return (
     <Dialog
       title={text.WSL_DONE_TITLE}
       confirm={{
-        label: show ? text.WSL_SHOW_IN_FOLDER : text.WSL_DONE,
+        label: show ? text.WSL_SHOW_IN_FOLDER : text.WSL_CLOSE,
         busyLabel: text.WSL_BUSY_CLOSE,
       }}
-      cancelLabel={show ? text.WSL_DONE : text.WSL_CLOSE}
+      {...(show ? { cancelLabel: text.WSL_DONE } : { cancelButton: false })}
       onConfirm={() => {
         if (show && file) void show.call(host, file);
         onClose(true);

@@ -15,6 +15,8 @@ export const openWorkspaceCommand = "workspace.open";
 export const openTrustCommand = "workspace.open-trust";
 /** The command that opens the workspace page at Models; Settings' **Open Models** runs it. */
 export const openModelsCommand = "workspace.open-models";
+/** The command that opens the workspace page at Budget; the Inbox's **Change budget** runs it. */
+export const openBudgetCommand = "workspace.open-budget";
 
 /**
  * The Workspace feature (`workspace.feature`). It adds the `workspace` item kind, the page of the
@@ -60,6 +62,7 @@ export const workspaceFeature = defineFeature({
       [openWorkspaceCommand, WORKSPACE_PAGE_TITLE, undefined],
       [openTrustCommand, "Workspace trust", "trust"],
       [openModelsCommand, "Workspace models", "models"],
+      [openBudgetCommand, "Workspace budget", "budget"],
     ] as const satisfies readonly (readonly [string, string, WorkspacePageTarget | undefined])[]) {
       studio.commands.add({
         id,

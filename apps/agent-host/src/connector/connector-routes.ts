@@ -1,14 +1,15 @@
 import { realpath } from "node:fs/promises";
 import { isAbsolute, join, relative, sep } from "node:path";
 import { defaultWorkingFolder } from "@halonicjs/format";
-import type {
-  ConnectorCallOptions,
-  ConnectorFactory,
-  ConnectorFactoryContext,
-  HttpClient,
-  Secrets,
-  TokenStore,
-  TrustStore,
+import {
+  type ConnectorCallOptions,
+  type ConnectorFactory,
+  type ConnectorFactoryContext,
+  type HttpClient,
+  isConnectorToolError,
+  type Secrets,
+  type TokenStore,
+  type TrustStore,
 } from "@halonicjs/ports";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
@@ -67,11 +68,14 @@ const unknownConnectorMessage = "The agent host has no open connector with this 
  *   workspace isn't one of the launcher's folders, 429 `too_many_connectors`
  *   when the table is full, 503 `host_stopping` once the host stops;
  * - `POST /v1/connectors/tools` with `{ connector }` answers its `ConnectorTool[]`;
- * - `POST /v1/connectors/call` with `{ connector, tool, args, idempotencyKey? }` answers `{ text }`;
+ * - `POST /v1/connectors/call` with `{ connector, tool, args, idempotencyKey? }` answers `{ text }`,
+ *   or `{ toolError }` with the tool's own text when the tool answered with an
+ *   error (`ConnectorToolError`): the call is over and failed, it didn't break off;
  * - `POST /v1/connectors/close` with `{ connector }` stops the program and closes its session.
  *
- * A failed start or call answers 502 `connector_failed` with a fixed message,
- * and a `reason` when the host knows why (`ConnectorFailureReason`): the
+ * A failed start or call (the program died, the connection dropped, it ran
+ * out of time) answers 502 `connector_failed` with a fixed message, and a
+ * `reason` when the host knows why (`ConnectorFailureReason`): the
  * error's own text can hold paths or secret values, so it goes only to the
  * host's own log (`deps.log`), with the connector's secret values left out.
  */
@@ -103,8 +107,10 @@ export function connectorRoutes(deps: ConnectorRouteDeps): HostRoute[] {
         const options: ConnectorCallOptions =
           body.idempotencyKey === undefined ? {} : { idempotencyKey: body.idempotencyKey };
         await answering(deps, body.connector, response, async () => {
-          const text = await client.callTool(body.tool, body.args, options);
-          sendJson(response, 200, { text });
+          const called = await calledOrToolError(() =>
+            client.callTool(body.tool, body.args, options),
+          );
+          sendJson(response, 200, called);
         });
       },
     },
@@ -121,6 +127,23 @@ export function connectorRoutes(deps: ConnectorRouteDeps): HostRoute[] {
       },
     },
   ];
+}
+
+/**
+ * The call's answer: the tool's text, or what the tool said about its own
+ * failure. The tool's text crosses as a normal answer's text does: it is the
+ * server's, and the engine fences it as untrusted. Any other error is thrown,
+ * so it answers 502 and its detail stays in the host's log.
+ */
+async function calledOrToolError(
+  call: () => Promise<string>,
+): Promise<{ text: string } | { toolError: string }> {
+  try {
+    return { text: await call() };
+  } catch (error) {
+    if (isConnectorToolError(error)) return { toolError: error.toolText };
+    throw error;
+  }
 }
 
 function openHandler(deps: ConnectorRouteDeps): HostRoute["handle"] {

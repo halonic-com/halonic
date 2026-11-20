@@ -12,16 +12,17 @@ import { retryAction } from "./retry-action.ts";
  * button full width at the bottom, in its own `primary` or `danger`, in an ActionBar that rides on
  * the keyboard. Still a `<dialog>`
  * with `showModal()`, so focus, inertness and the toast rule don't change. Close cancels and asks
- * nothing; a failed submit's Callout is the last thing in the body, above the bar. A `footnote` is
- * the bar's note, right above the button.
+ * nothing; while busy it waits, unless `closeWhileBusy`. A failed submit's Callout is the last
+ * thing in the body, above the bar. A `footnote` is the bar's note, right above the button.
  */
 export function FormSheet(props: ConfirmingDialogProps) {
   const { busy = false } = props;
   const confirmId = useId();
   const [attempt, setAttempt] = useState(0);
+  const closeHeld = busy && props.closeWhileBusy !== true;
 
   function cancel() {
-    if (!busy) {
+    if (!closeHeld) {
       props.onCancel("dismiss");
     }
   }
@@ -39,7 +40,8 @@ export function FormSheet(props: ConfirmingDialogProps) {
     <SheetFrame
       title={props.title}
       onClose={cancel}
-      closeUnavailable={busy ? { reason: confirmId } : undefined}
+      closeLabel={props.closeLabel}
+      closeUnavailable={closeHeld ? { reason: confirmId } : undefined}
       onCancel={cancel}
       onClosedByBrowser={() => props.onCancel("dismiss")}
       onSubmit={submit}

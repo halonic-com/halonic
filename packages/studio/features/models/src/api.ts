@@ -21,8 +21,6 @@ export interface Models {
   openProviderPage(secretName: string, target?: ProviderPageTarget): void;
   /** Opens the alias tab for the alias, with its price field focused when `focusPrice` is set. */
   openAlias(name: string, options?: { readonly focusPrice?: boolean }): void;
-  /** Scrolls the workspace page to the Budget block and puts focus on its heading. */
-  openBudget(): void;
 }
 
 /** The open workspace's models. The Models feature provides it for each open workspace. */

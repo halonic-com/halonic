@@ -8,8 +8,8 @@ interface ListRowBase<Id extends string> {
   readonly id: Id;
   readonly title: string;
   /**
-   * One line under the title, cut with an ellipsis. Usually words; a node when part of it needs
-   * other words for a screen reader, as a glyph does.
+   * One line under the title, cut with an ellipsis unless the row wraps. Usually words; a node
+   * when part of it needs other words for a screen reader, as a glyph does.
    */
   readonly meta?: ReactNode;
   /**
@@ -61,6 +61,17 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
    * enters the List at the first row that isn't inert.
    */
   readonly inert?: boolean;
+  /**
+   * The title and the meta line wrap at any width instead of being cut, as a setup step's: the row
+   * grows, and its icon or avatar stays at the top, beside the title.
+   */
+  readonly wrap?: boolean;
+  /**
+   * Screen readers hear the meta line as the row's description, after its `label`, as a setup
+   * step's hint: "Step 2 of 3: Approve or reject the reply, not done. The run waits for you
+   * before it finishes."
+   */
+  readonly metaDescribes?: boolean;
   readonly tag?: never;
   readonly cells?: never;
   readonly child?: never;
@@ -76,6 +87,8 @@ interface ListColumnsRowBase<Id extends string> extends ListRowBase<Id> {
   readonly trailing?: never;
   readonly muted?: never;
   readonly inert?: never;
+  readonly wrap?: never;
+  readonly metaDescribes?: never;
 }
 
 /** A row on its own: its `label` is optional. */

@@ -13,6 +13,8 @@ fn main() {
         "secret_has",
         "secret_set",
         "secret_delete",
+        "secret_allowed_origins",
+        "secret_allow_origin",
         "token_get",
         "token_set",
         "token_delete",

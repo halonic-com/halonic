@@ -8,6 +8,7 @@
 //! and output instead (`relay.rs`). Nothing here knows Tauri, so it builds
 //! and tests anywhere.
 
+mod default_distro;
 mod handshake;
 mod relay;
 mod routes;
@@ -21,6 +22,7 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
+pub use default_distro::halonic_is_default;
 pub use handshake::{Handshake, read_handshake};
 use relay::Relay;
 pub use routes::{Answer, LineSplitter, LineTooLong, Method, Route, find_route};
@@ -28,8 +30,9 @@ pub use security_updates::{OVERDUE_AFTER_DAYS, SecurityUpdates, security_updates
 use stderr_log::log_stderr;
 pub use wsl::{
     DISTRO, DISTRO_HOST, DISTRO_PROFILE_FOLDER, DISTRO_USER, RUNTIME_UPDATER, RuntimeStep,
-    WslError, distro_host_command, distro_installed, file_sha256, install_runtime,
-    run_runtime_step, run_runtime_step_within, runtime_command, wsl_exe,
+    SettingCopy, WslError, copy_sandbox_setting, distro_host_command, distro_installed,
+    file_sha256, install_runtime, run_runtime_step, run_runtime_step_within, runtime_command,
+    setting_copy_command, wsl_exe,
 };
 
 /// The host's executable name, without the `.exe` Windows adds.

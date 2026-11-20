@@ -3,6 +3,7 @@ import {
   Button,
   Callout,
   Dialog,
+  ExternalLink,
   RefreshIcon,
   StatusChip,
   type StatusChipTone,
@@ -217,6 +218,11 @@ export function AgentSandboxView({
           </Button>
         ))}
       </div>
+      {view.docs ? (
+        <p className="text-small">
+          <ExternalLink href={view.docs.href}>{view.docs.name}</ExternalLink>
+        </p>
+      ) : null}
       {view.hint ? <p className="text-small text-fg-muted">{view.hint}</p> : null}
       {newAgents}
     </div>

@@ -34,11 +34,26 @@ pub(crate) const NO_ACCESS: SecretError = SecretError::Denied;
 #[cfg(not(target_os = "linux"))]
 pub(crate) const NO_ACCESS: SecretError = SecretError::Unavailable;
 
+/// The service the allowed origins of a key are stored under, with the
+/// key's canonical name as the user: an entry of its own, so a list can never
+/// be read as a key's value or a key as a list.
+pub(crate) const ORIGINS_SERVICE: &str = "halonic-origins";
+
 /// The keychain entry for a name: service `halonic`, user the canonical
 /// name. Making it touches no keychain.
 pub(crate) fn entry(name: &SecretName) -> Result<Entry, SecretError> {
+    entry_in(SERVICE, name)
+}
+
+/// The keychain entry for the allowed origins of the key `name`: service
+/// [`ORIGINS_SERVICE`], user the canonical name.
+pub(crate) fn origins_entry(name: &SecretName) -> Result<Entry, SecretError> {
+    entry_in(ORIGINS_SERVICE, name)
+}
+
+fn entry_in(service: &str, name: &SecretName) -> Result<Entry, SecretError> {
     let credential =
-        PlatformCredential::new_with_target(None, SERVICE, name.as_str()).map_err(secret_error)?;
+        PlatformCredential::new_with_target(None, service, name.as_str()).map_err(secret_error)?;
     Ok(Entry::new_with_credential(Box::new(credential)))
 }
 
@@ -64,6 +79,29 @@ impl SecretBackend for DesktopKeychain {
 
     fn delete(&self, name: &SecretName) -> Result<(), SecretError> {
         delete_entry(&entry(name)?)
+    }
+
+    fn get_origins(&self, name: &SecretName) -> Result<Option<String>, SecretError> {
+        match origins_entry(name)?.get_password() {
+            Ok(origins) => Ok(Some(origins)),
+            Err(Error::NoEntry) => Ok(None),
+            // Unlike a value, a list that isn't text is kept: removing it
+            // would unbind the key. Reading fails until the key is deleted.
+            Err(Error::BadEncoding(_)) => Err(SecretError::Backend {
+                message: "the key's allowed origins are not text".to_owned(),
+            }),
+            Err(error) => Err(secret_error(error)),
+        }
+    }
+
+    fn set_origins(&self, name: &SecretName, origins: &str) -> Result<(), SecretError> {
+        origins_entry(name)?
+            .set_password(origins)
+            .map_err(secret_error)
+    }
+
+    fn delete_origins(&self, name: &SecretName) -> Result<(), SecretError> {
+        delete_entry(&origins_entry(name)?)
     }
 
     fn max_value_bytes(&self) -> usize {

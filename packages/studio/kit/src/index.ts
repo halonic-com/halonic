@@ -29,6 +29,8 @@ export {
   type CalloutTone,
 } from "./callout/callout.tsx";
 export { Card, type CardProps, type CardState } from "./card/card.tsx";
+export { ChatLoading, type ChatLoadingProps } from "./chat/chat-loading.tsx";
+export { ChatStart, type ChatStartProps } from "./chat/chat-start.tsx";
 export {
   Checkbox,
   type CheckboxProps,
@@ -132,6 +134,7 @@ export {
   HeaderBadge,
   type HeaderBadgeButton,
   type HeaderBadgeMenu,
+  type HeaderBadgePhoneLine,
   type HeaderBadgeProps,
   type HeaderBadgeStatus,
   type HeaderBadgeStatusTone,
@@ -174,7 +177,7 @@ export { SettingsIcon } from "./icons/settings-icon.tsx";
 export { TickIcon } from "./icons/tick-icon.tsx";
 export { UpdateReadyIcon } from "./icons/update-ready-icon.tsx";
 export { WarningIcon } from "./icons/warning-icon.tsx";
-export type { FieldSize } from "./input/field-box.ts";
+export type { FieldSize, FieldWidth } from "./input/field-box.ts";
 export { Input, type InputProps } from "./input/input.tsx";
 export type { InputLeadingButton } from "./input/leading-button.tsx";
 export { TextArea, type TextAreaProps } from "./input/text-area.tsx";

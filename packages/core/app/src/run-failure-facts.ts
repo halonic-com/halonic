@@ -4,6 +4,7 @@
 // provider file, name the rest. The facts are data, never words: the CLI
 // and Studio each word them in their own catalogue, from the same facts.
 
+import type { RunFailureCause } from "@halonicjs/events";
 import { assertNever } from "@halonicjs/std";
 import type { FailedModel, FailedStart, RunFailedEvent } from "./failed-model.ts";
 import { budgetStopOf, nextMonthStart } from "./run-failure-budget.ts";
@@ -138,6 +139,20 @@ export type RunFailure =
       readonly withinMs: number;
     }
   | {
+      readonly reason: "unknown-provider-type";
+      /** The provider's id, which is also its file's name, such as "acme". */
+      readonly provider: string;
+      /** The type its file names, which Halonic has no adapter for. */
+      readonly type: string;
+    }
+  | {
+      readonly reason: "unknown-model-alias";
+      /** The alias the step's model call named, such as "default". */
+      readonly alias: string;
+      /** The id of the run's hub, such as "notes". */
+      readonly hub: string;
+    }
+  | {
       readonly reason: "model-no-tools";
       /** The model the alias points at, such as "llama3.2". */
       readonly model: string;
@@ -234,9 +249,10 @@ export function runFailureOf(
       return harnessFailure(failed, started);
     case "budget":
       return budgetFailure(failed);
+    case "error":
+      return setupFailureOf(failed.cause) ?? generalFailure(failed);
     case "harness-unavailable":
     case "instructions-not-trusted":
-    case "error":
       return generalFailure(failed);
     default:
       return assertNever(reason, "run failure reason");
@@ -335,6 +351,44 @@ function timeoutFailure(failed: RunFailedEvent, model: FailedModel | undefined):
     withinMs: modelFirstAnswerMs,
     ...(model.provider?.local === true && address !== undefined ? { localAddress: address } : {}),
   };
+}
+
+/**
+ * The failure an `error` names by its cause's code, when it has facts of
+ * its own. These are the workspace's own setup, not a bug: a provider file
+ * whose type Halonic can't call (HAL-12342), and a model alias the hub
+ * doesn't have, such as `default` in a workspace made with plain
+ * `halonic init` (HAL-12377). A cause without the names its facts need is
+ * `error`.
+ */
+function setupFailureOf(cause: RunFailureCause | undefined): RunFailure | undefined {
+  const { code, detail = {} } = cause ?? {};
+  switch (code) {
+    case "models.unknown-provider-type": {
+      const { provider, type } = detail;
+      return provider === undefined || type === undefined
+        ? undefined
+        : { reason: "unknown-provider-type", provider, type };
+    }
+    case "models.unknown-model-alias": {
+      const { alias, hub } = detail;
+      return alias === undefined || hub === undefined
+        ? undefined
+        : { reason: "unknown-model-alias", alias, hub };
+    }
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Whether a failed run's cause is one of the workspace's setup problems with
+ * facts of its own, so a client can treat the run by the cause's own kind,
+ * the kind `--json` shows in the run's `cause`, rather than as a broken run
+ * (HAL-12377).
+ */
+export function isSetupCause(cause: RunFailureCause | undefined): cause is RunFailureCause {
+  return setupFailureOf(cause) !== undefined;
 }
 
 /** The engine's own message, which is safe to show, for a failure without facts of its own. */

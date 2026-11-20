@@ -1,4 +1,4 @@
-import type { DefinitionStore } from "@halonicjs/ports";
+import type { DefinitionStore, VcsChange } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type {
   ChangesSource,
@@ -141,6 +141,25 @@ export class UpdatesMerge {
   async read(): Promise<UpdateMerge | null> {
     const head = await this.#o.run(["rev-parse", "--verify", "--quiet", "MERGE_HEAD"]);
     return head.code === 0 ? this.#build(head.stdout.trim()) : null;
+  }
+
+  /**
+   * `changes` without the files an open merge brought in because only the shared copy changed
+   * them: they come in with Finish and are the other person's, not changes since the person's
+   * last version. A file edited again since it came in stays. Without an open merge, all stay.
+   */
+  async ownChanges(changes: readonly VcsChange[]): Promise<VcsChange[]> {
+    const head = await this.#o.run(["rev-parse", "--verify", "--quiet", "MERGE_HEAD"]);
+    if (head.code !== 0) return [...changes];
+    const theirs = head.stdout.trim();
+    const base = (await this.#ok(["merge-base", "HEAD", theirs], "get")).trim();
+    const [mine, sams] = [await this.#changed(base, "HEAD"), await this.#changed(base, theirs)];
+    const edited = new Set(changes.filter((change) => !change.staged).map((change) => change.path));
+    const broughtIn = (path: string | undefined) =>
+      path === undefined || (sams.has(path) && !mine.has(path) && !edited.has(path));
+    return changes.filter(
+      (change) => !(change.staged && broughtIn(change.path) && broughtIn(change.from)),
+    );
   }
 
   /** The merge that brings in `theirs`. */

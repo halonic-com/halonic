@@ -3,6 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { TrustedSourcesService, WorkspacePageService } from "./api.ts";
 import {
+  openBudgetCommand,
   openModelsCommand,
   openTrustCommand,
   openWorkspaceCommand,
@@ -28,7 +29,7 @@ verifies("workspace.workspace-page", () => {
     expect(await kind?.open.load()).toHaveProperty(kind?.open.view ?? "");
   });
 
-  it.each([openWorkspaceCommand, openTrustCommand, openModelsCommand])(
+  it.each([openWorkspaceCommand, openTrustCommand, openModelsCommand, openBudgetCommand])(
     "%s opens the page in the active tab",
     async (id) => {
       const opened: unknown[] = [];
@@ -44,6 +45,7 @@ verifies("workspace.workspace-page", () => {
     [openWorkspaceCommand, undefined],
     [openTrustCommand, "trust"],
     [openModelsCommand, "models"],
+    [openBudgetCommand, "budget"],
   ])("%s asks the page to focus %s", async (id, section) => {
     takeWorkspaceTarget();
     const context = { openItem: () => undefined } as unknown as WorkspaceContext;

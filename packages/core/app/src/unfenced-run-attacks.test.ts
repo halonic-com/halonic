@@ -82,6 +82,7 @@ function computer() {
     fenced: sandbox("fenced", () => state.check),
     launcher: sandbox("launcher", () => state.check),
     runs: cliRuns,
+    timers: new HandTimers(),
   });
   const studio = new UnfencedRuns({ store, clock, timers: new HandTimers() });
   const started: Runner[] = [];

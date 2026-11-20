@@ -5,13 +5,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
-import {
-  eventually,
-  readAsNode,
-  roundTrip,
-  type WorkerTarget,
-  workerChecks,
-} from "./transfer-checks.ts";
+import { eventually } from "./eventually.ts";
+import { readAsNode, roundTrip, type WorkerTarget, workerChecks } from "./transfer-checks.ts";
 
 const example = fileURLToPath(
   new URL("../../../core/format/src/runtime-export/fixtures/example", import.meta.url),
@@ -19,6 +14,12 @@ const example = fileURLToPath(
 const key = "Kq3-this-key-was-made-up-for-the-test";
 const base = "https://hlt-1-1.example.workers.dev";
 const neutral = () => Response.json({ code: "not_found" }, { status: 404 });
+/** Cloudflare's own page for a workers.dev address an edge server doesn't route yet. */
+const edgeNotFound = () =>
+  new Response("<html>Page not found</html>", {
+    status: 404,
+    headers: { "content-type": "text/html" },
+  });
 const sha = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 
 interface Behavior {
@@ -126,6 +127,33 @@ verifies("cloudflare-live.transfer", () => {
         workerChecks.adminClosed(fakeWorker({ closed: true }).target, key),
       ).resolves.toBeUndefined();
     });
+    it("asks again while an edge server answers the new address with its HTML not-found page", async () => {
+      const inner = fakeWorker({ closed: true }).target;
+      let calls = 0;
+      const waits: number[] = [];
+      const target: WorkerTarget = {
+        baseUrl: base,
+        // Every third request lands on an edge server that doesn't route the address yet.
+        fetch: async (input, init) =>
+          ++calls % 3 === 0 ? edgeNotFound() : (inner.fetch as typeof fetch)(input, init),
+        sleep: async (ms) => void waits.push(ms),
+      };
+      await expect(workerChecks.adminClosed(target, key)).resolves.toBeUndefined();
+      expect(waits.length).toBeGreaterThan(0);
+    });
+    it("gives up on the edge's not-found page after 8 tries", async () => {
+      let calls = 0;
+      const target: WorkerTarget = {
+        baseUrl: base,
+        fetch: async () => {
+          calls++;
+          return edgeNotFound();
+        },
+        sleep: async () => undefined,
+      };
+      await expect(workerChecks.smoke(target)).rejects.toThrow(/answered 404, expected 200/);
+      expect(calls).toBe(8);
+    });
     it("fails when /admin answers anything else", async () => {
       await expect(workerChecks.adminClosed(fakeWorker().target, key)).rejects.toThrow(/401/);
     });
@@ -143,7 +171,7 @@ verifies("cloudflare-live.transfer", () => {
   });
 
   describe("waiting for the key to take effect", () => {
-    it("retries while /admin is still the closed 404, then passes on the 401", async () => {
+    it("retries while /admin is still the closed 404, then passes on three 401s in a row", async () => {
       const open = fakeWorker().target;
       let calls = 0;
       const slow: WorkerTarget = {
@@ -155,7 +183,7 @@ verifies("cloudflare-live.transfer", () => {
       await eventually(() => workerChecks.adminKeyActive(slow), {
         sleep: async (ms) => void waits.push(ms),
       });
-      expect(waits).toEqual([5_000, 5_000]);
+      expect(waits).toEqual([5_000, 5_000, 5_000, 5_000]);
     });
     it("gives up with the last error after the given tries", async () => {
       let waited = 0;

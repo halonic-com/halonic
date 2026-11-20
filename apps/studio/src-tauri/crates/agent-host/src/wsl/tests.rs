@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 
 #[cfg(unix)]
 use super::run_runtime_step_within;
-use super::{WslError, lists_distro, run_runtime_step, send_archive};
+use super::{SettingCopy, WslError, lists_distro, run_runtime_step, send_archive, send_setting};
 
 const ARCHIVE: &[u8] = b"a runtime archive\n";
 /// The SHA-256 of [`ARCHIVE`].
@@ -118,6 +118,29 @@ fn a_step_with_a_time_limit_answers_what_it_printed_or_is_stopped() {
     let answer = run_runtime_step_within(stuck, Duration::from_millis(200));
     assert_eq!(answer, Err(WslError::TimedOut));
     assert!(started.elapsed() < Duration::from_secs(10));
+}
+
+#[cfg(unix)]
+#[test]
+fn a_setting_copy_sends_the_choice_and_a_removal_sends_nothing() {
+    let choice = "{\n  \"backend\": \"srt-wsl\",\n  \"chosenAt\": \"x\"\n}\n";
+    let received = temp_file("received", b"");
+    let (host, _script) = ending_with(0, &received);
+    send_setting(host, SettingCopy::Save(choice)).expect("copied");
+    assert_eq!(std::fs::read_to_string(&*received).expect("read"), choice);
+    let (host, _script) = ending_with(0, &received);
+    send_setting(host, SettingCopy::Remove).expect("removed");
+    assert_eq!(std::fs::read(&*received).expect("read"), b"");
+}
+
+#[test]
+fn a_refused_setting_copy_is_an_error_never_done() {
+    let received = temp_file("received", b"");
+    let (host, _script) = ending_with(1, &received);
+    assert_eq!(
+        send_setting(host, SettingCopy::Save("{}")),
+        Err(WslError::Failed(Some(1)))
+    );
 }
 
 fn utf16(text: &str) -> Vec<u8> {

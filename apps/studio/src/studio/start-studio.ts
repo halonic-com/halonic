@@ -1,4 +1,4 @@
-import { AgentHostSandbox } from "@halonicjs/adapter-agent-host-client";
+import { AgentHostSandbox, AgentHostSandboxChoice } from "@halonicjs/adapter-agent-host-client";
 import { TauriPickedFolders, TauriTrustStore } from "@halonicjs/adapter-fs-tauri";
 import { ServiceRegistry, sandboxStartCheck, sandboxStartCheckKey } from "@halonicjs/app";
 import {
@@ -22,6 +22,7 @@ import {
   DisplaySettingsService,
   HostSettingsService,
   RestartRunsService,
+  SandboxChoiceHostService,
   UpdaterService,
 } from "@halonicjs/studio-feature-settings/api";
 import {
@@ -122,8 +123,8 @@ export interface StartedStudio {
  * starts it, as AGENTS.md asks of screens.
  *
  * The desktop app registers the Inbox, Google setup, Workflows and Runs, over the runs in each open folder, Settings
- * (`studio.settings`) and the workspace page (`workspace.page`). The served Studio registers no feature yet: nothing serves it runs until
- * `halonic serve` is built, so it shows Home and the Search box.
+ * (`studio.settings`) and the workspace page (`workspace.page`). The served Studio registers the Inbox over the served workspace's
+ * runs, Settings and the Google setup, read-only (`studio.served-google-setup-accounts`).
  *
  * @param desktop the desktop app's features and the services it gives them, `desktopFeatures`
  *
@@ -416,6 +417,9 @@ async function provideAgentSandbox(
   );
   services.provide(sandboxStartCheckKey, check);
   services.provide(SandboxPassesService, passes);
+  // The engine's choice only reads, like the start check. Nothing shows it until the real canary
+  // lands (HAL-10552, UX W3): until then every backend's trust check fails closed.
+  services.provide(SandboxChoiceHostService, new AgentHostSandboxChoice(transport));
   if (agentSandboxOffered)
     services.provide(
       AgentSandboxService,

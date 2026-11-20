@@ -1,5 +1,5 @@
-import { receiptWords } from "../run-words.ts";
 import type { ApprovalLine } from "./receipt-model.ts";
+import { receiptWords } from "./receipt-words.ts";
 
 /** The props of `Receipt`. */
 export interface ReceiptProps {

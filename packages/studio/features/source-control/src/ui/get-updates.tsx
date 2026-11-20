@@ -39,7 +39,7 @@ export function GetUpdates({
     }
   };
   const merging = list.merging;
-  return (
+  const parts = (
     <>
       <Button
         variant="secondary"
@@ -58,4 +58,6 @@ export function GetUpdates({
       ) : null}
     </>
   );
+  // On a phone the reason sits on its own line under the button, lined up with its left edge.
+  return phone ? <span className="flex flex-col items-start gap-1">{parts}</span> : parts;
 }

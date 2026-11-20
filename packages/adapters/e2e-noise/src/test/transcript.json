@@ -1,0 +1,171 @@
+{
+  "//": "Both handshakes with fixed keys, our prologue and the psk of a B0 vector code, written by noise.wasm. src/transcript.test.ts plays each side against it, and the crate's tests/transcript.rs checks that plain snow, built natively as on the phone, writes and reads the same bytes. Keys and ephemeral keys are SHA-256 of fixed labels; they are test values, never used anywhere else.",
+  "sessions": [
+    {
+      "name": "pairing",
+      "protocolName": "Noise_XXpsk3_25519_ChaChaPoly_SHA256",
+      "prologue": "68616c6f6e69632d676174657761792f32",
+      "code": "XX7A9Q36KFB3",
+      "psk": "7f1fba3fa3e8cfc153fc69be7bd0eda74f3de38550f4d0d3acc3bcabfabba714",
+      "initiator": {
+        "private": "75eedb5822690c82197363a558830d7f4d06bfd63d293d00fe76f7c05857f031",
+        "public": "83b1afc3961d6f5f66c1522eec66d999600f005eff15690356176403bc472b28",
+        "ephemeral": "936347e7aabef48278f519e8f9135fe0e57501b5224e59360f04bfd61258ec7b"
+      },
+      "responder": {
+        "private": "a0aa0770c9c4f71398bd6f68039d732e87e2b8b7862fd3db2d9ad065bf6bc1b6",
+        "public": "3f49fba9365ebfad44db80357893b3c3d2b2af36615bf4b85e65a296ac0e7a3b",
+        "ephemeral": "7dabbc26bdc4545f4293c6e38a15ac998b9bdcf9a09e7ace010a430da21a015f"
+      },
+      "handshakeHash": "259d1c5382ba010e4ac25db46d835854c8bc8f52c2f8873b0c7dce0f548bbdc4",
+      "checkCode": "QNTDYT",
+      "steps": [
+        {
+          "from": "initiator",
+          "payload": "7b22636f6d6d6974223a2276326f41536f536f332d2d484667433875317243557a7469624e69634253775079624d4c574c5864316577227d",
+          "message": "0d9e4ac97c1ed2fbb2c2380441bfcba50f909aa5546454d06c4d44a369421a2ebcd0c61a7938ecf037334ee0cabdbade6c7b0947ecd0fd82d4f785f5798b91c5e81ec5970190439fb0f69e79d4068c3f3effafa3c31a48d1f6875ae1847d68366f246de20f601018"
+        },
+        {
+          "from": "responder",
+          "payload": "7b22686f73744e616d65223a225465737420686f7374227d",
+          "message": "19dac4e2ca2d93e6456f01f76a222b8aa4c2c5c937e130a28411604c8da9496158e5c828325277488e24a01ffa0688b11b3e4590131cc64bcbf9725e13931c1fb9f1c7272de59a8de8cab78b069ad8ff90c857cfae6e9618879f35f8489cd3d7477ae948e4ebaf68176aef0b54e8892242f99dba763d72d1"
+        },
+        {
+          "from": "initiator",
+          "payload": "7b226e616d65223a22546573742070686f6e65222c22706c6174666f726d223a22616e64726f6964222c226e6f6e6365223a2241414543417751464267634943516f4c4441304f4477227d",
+          "message": "333dcaeabb2ff3ce0412ff5c2a1a35317146867c54b15c378159af93f6320059625361dea7f1ac217e631fb0d2ab8ba91f1f57a87e17011ee91be8f0ea57563618541ec99b257a7468edaf628f8c37f369cdca0380f353bb12759db7bac5d7f3346a000adbf3474b2cc5248447de553b97ce804450bb496cf0a86f1e0bc7716a1875305a527c668af64eb7"
+        },
+        {
+          "from": "initiator",
+          "payload": "7b2274797065223a2268656c6c6f227d",
+          "message": "8e7df51d3f9978312e8e13f5466c315dec0b6b2243ae5552da4204bc040b105a"
+        },
+        {
+          "from": "responder",
+          "payload": "7b2274797065223a2277656c636f6d65227d",
+          "message": "79a544497aba985e0002eafc90588ef68e11a4d82538e75b3066843fba4e9e7f5cae"
+        },
+        {
+          "from": "initiator",
+          "payload": "",
+          "message": "f8098066b8469037fae41e336e43c378"
+        },
+        {
+          "from": "responder",
+          "payload": "a118bec9c7598de139f3b581671bf4837109583d987c1ff7fd1ab93e6d117430",
+          "message": "73fedfafc8acada6796772583765b9fbf237303daededf72117f36d7f43f3b4e0465d3b12f6da702f161b92b7903d040"
+        },
+        {
+          "from": "initiator",
+          "payload": "",
+          "message": "40053d26303c9023dd4103a32b115420"
+        },
+        {
+          "rekey": "initiator"
+        },
+        {
+          "from": "initiator",
+          "payload": "6166746572207468652070686f6e6527732072656b6579",
+          "message": "15c69ffb74941548bb609e6114d68a3289cd1f724ed56b71374e8a1b66aea79501736bb36abc18"
+        },
+        {
+          "from": "responder",
+          "payload": "",
+          "message": "da7ce3c694c8ca71bfaeb242185e10ca"
+        },
+        {
+          "rekey": "responder"
+        },
+        {
+          "from": "responder",
+          "payload": "61667465722074686520686f737427732072656b6579",
+          "message": "9576375fec9f63d17c90b7f7fb9f011829ad64657fada99f7371ebc5b12fc114b8cd24070eb1"
+        },
+        {
+          "from": "initiator",
+          "payload": "626f74682072656b65796564",
+          "message": "916cce6718c0667b482febdafed2e98f330fed1591aba3d0c1e3ee54"
+        }
+      ]
+    },
+    {
+      "name": "reconnect",
+      "protocolName": "Noise_IK_25519_ChaChaPoly_SHA256",
+      "prologue": "68616c6f6e69632d676174657761792f32",
+      "initiator": {
+        "private": "75eedb5822690c82197363a558830d7f4d06bfd63d293d00fe76f7c05857f031",
+        "public": "83b1afc3961d6f5f66c1522eec66d999600f005eff15690356176403bc472b28",
+        "ephemeral": "32ed0d67bfac61b33e71cfe98caad0e57454c889180554ab55421c6c189c7643"
+      },
+      "responder": {
+        "private": "a0aa0770c9c4f71398bd6f68039d732e87e2b8b7862fd3db2d9ad065bf6bc1b6",
+        "public": "3f49fba9365ebfad44db80357893b3c3d2b2af36615bf4b85e65a296ac0e7a3b",
+        "ephemeral": "c601e7ea4cae35c4a1732b76bb6022afd3fc0f7df7714f4df0cb02ce8babf174"
+      },
+      "handshakeHash": "adf5643345d58da78cedff1f6f438016eae0d216e58ffb193290d2f5c5623d61",
+      "steps": [
+        {
+          "from": "initiator",
+          "payload": "",
+          "message": "1cea8d639211a29c9ec17067ef142a2b15924393d2bdf81873f5bc81d3834e7d57d49f066ada90be15630c70eb542075aa8f587a99e6de646009a002bf4fb3935e39f3b26cd56b81c452a04e2af058e0cef4f0265efba8596136c8082783f75d"
+        },
+        {
+          "from": "responder",
+          "payload": "",
+          "message": "6e893c26f8532ede7b29176c66de32075c5196ab3bdd8fb3b1154082ce501100f1a496973b9377ecea5c6fcad3e15694"
+        },
+        {
+          "from": "initiator",
+          "payload": "7b2274797065223a2268656c6c6f227d",
+          "message": "b7e4a82122ac5587c9884b0a9b82e11149d6a42033e856c549301c970eb931c8"
+        },
+        {
+          "from": "responder",
+          "payload": "7b2274797065223a2277656c636f6d65227d",
+          "message": "98f8e12e91e5a369dec96f158a5b45552db73d3593e2b274510a10347ad79cad2a7e"
+        },
+        {
+          "from": "initiator",
+          "payload": "",
+          "message": "697f66212f790d468ca3f0edea3431d4"
+        },
+        {
+          "from": "responder",
+          "payload": "a118bec9c7598de139f3b581671bf4837109583d987c1ff7fd1ab93e6d117430",
+          "message": "de3f9b42d358de01cf8e13bbca8bcd68e43f64ce2eb2716da3be695df4e9c746949067061d8828f0206c4535f3ac2215"
+        },
+        {
+          "from": "initiator",
+          "payload": "",
+          "message": "3c36ed810e1f4ed63af709fa60f64182"
+        },
+        {
+          "rekey": "initiator"
+        },
+        {
+          "from": "initiator",
+          "payload": "6166746572207468652070686f6e6527732072656b6579",
+          "message": "3e8c7bf12267e785ae5385dc5bf1f0e8934870e0673b38cd6bcd2fb43b363cdfe2108036072dbf"
+        },
+        {
+          "from": "responder",
+          "payload": "",
+          "message": "fc42817f426b02876f6c96cad2d9b65d"
+        },
+        {
+          "rekey": "responder"
+        },
+        {
+          "from": "responder",
+          "payload": "61667465722074686520686f737427732072656b6579",
+          "message": "09ce606774ba60a2256e726e7cc1066166d8758a1897b9d118c454111537a5fb389de987fbea"
+        },
+        {
+          "from": "initiator",
+          "payload": "626f74682072656b65796564",
+          "message": "095799b1f48fc46402f7473d6cca5a604479ce7628a30238d821a642"
+        }
+      ]
+    }
+  ]
+}

@@ -10,8 +10,8 @@ export interface ProviderApi {
   ownOrigin: string;
   /** The call's path at the API's own host, such as `/v1/messages`. */
   ownPath: string;
-  /** The call's path under a `baseUrl`, which already ends without a slash. */
-  pathUnder(baseUrl: string): string;
+  /** The call's path under the path of a `baseUrl`, which already ends without a slash. */
+  pathUnder(basePath: string): string;
 }
 
 /** The two ways the bridge reaches providers. */
@@ -29,6 +29,11 @@ export interface ProviderFetches {
 export interface ProviderTarget {
   url: URL;
   fetch: Fetch;
+  /**
+   * True when the call goes to a compatible provider's `baseUrl`, where the
+   * bridge sends only what it knows (requirement `harness-bridge.compatible-request`).
+   */
+  atCompatibleProvider: boolean;
 }
 
 /**
@@ -56,12 +61,17 @@ export function providerTarget(
 ): ProviderTarget {
   const baseUrl = access.kind === "key" ? access.baseUrl : undefined;
   if (baseUrl === undefined) {
-    return { url: new URL(`${api.ownPath}${search}`, api.ownOrigin), fetch: fetches.fetch };
+    return {
+      url: new URL(`${api.ownPath}${search}`, api.ownOrigin),
+      fetch: fetches.fetch,
+      atCompatibleProvider: false,
+    };
   }
 
   const base = readBaseUrl(baseUrl, api.name);
-  const root = `${base.origin}${base.pathname.replace(/\/+$/, "")}`;
-  const url = new URL(`${api.pathUnder(root)}${search}`);
+  // Only the path changes, so the origin is the base's own whatever its host is called.
+  const path = api.pathUnder(base.pathname.replace(/\/+$/, ""));
+  const url = new URL(`${base.origin}${path}${search}`);
   if (url.origin !== base.origin) {
     // Can't happen for a base that passed the checks above; kept so a later
     // change to the paths can never send the key to another origin.
@@ -73,7 +83,7 @@ export function providerTarget(
       `This bridge doesn't call ${api.name}-compatible providers at their own address.`,
     );
   }
-  return { url, fetch: fetches.compatibleFetch };
+  return { url, fetch: fetches.compatibleFetch, atCompatibleProvider: true };
 }
 
 /**

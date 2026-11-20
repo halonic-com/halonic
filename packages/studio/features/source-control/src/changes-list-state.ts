@@ -87,6 +87,12 @@ export interface ListHost {
   refresh(): Promise<void>;
 }
 
+/**
+ * Who opened Create version: the Changes page, which draws it, or another feature through
+ * `VersionDialogService`, whose dialog the feature's dialog host draws over any page.
+ */
+export type VersionOpener = "page" | "elsewhere";
+
 /** What the Changes list holds now. */
 export interface ChangesListState {
   /** The last read that worked; `undefined` before the first one. */
@@ -127,9 +133,11 @@ export interface ChangesListState {
   readonly identity: Identity | undefined;
   /**
    * Set while Create version is open: the paths it opened with, or `undefined` inside for every
-   * changed file. `undefined` when it is closed.
+   * changed file, and who opened it. `undefined` when it is closed.
    */
-  readonly version: { readonly paths: readonly string[] | undefined } | undefined;
+  readonly version:
+    | { readonly paths: readonly string[] | undefined; readonly opener: VersionOpener }
+    | undefined;
   /** The workspace's versions; only read while the folder is a git repository. */
   readonly history: HistoryState;
 }

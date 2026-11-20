@@ -2,7 +2,6 @@ import type { RemoteControl, RemoteState, TunnelStatus } from "@halonicjs/ports"
 import {
   Callout,
   type CalloutAction,
-  EmptyState,
   StatusChip,
   type StatusChipTone,
   Switch,
@@ -13,6 +12,7 @@ import { type ReactNode, useState } from "react";
 import { RemoteControlService } from "../api.ts";
 import { useRemoteState } from "../remote-state.ts";
 import { providerName, tunnelProblem, tunnelState } from "../tunnel-words.ts";
+import { PhoneList } from "./phone-list.tsx";
 import * as text from "./remote-text.ts";
 
 /** Settings › Remote as the settings container shows it, over the host's {@link RemoteControl}. */
@@ -77,18 +77,7 @@ export function RemoteSettingsView({ remote, state, announce }: RemoteSettingsVi
         </Row>
       </div>
       {failed === undefined ? null : <p className="text-small text-danger">{failed}</p>}
-      {state.phones.length === 0 ? (
-        <EmptyState
-          title={text.EMPTY_TITLE}
-          headingLevel={3}
-          description={
-            <>
-              <p>{state.on ? text.EMPTY_LINE_ON : text.EMPTY_LINE_OFF}</p>
-              <p>{text.EMPTY_STAYS}</p>
-            </>
-          }
-        />
-      ) : null}
+      <PhoneList remote={remote} state={state} announce={announce} />
     </div>
   );
 }

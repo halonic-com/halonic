@@ -47,7 +47,10 @@ export function TrustCheckDialog(props: TrustCheckDialogProps) {
       onCancel={props.onNotNow}
       returnFocus={props.returnFocus}
     >
-      <div className="flex flex-col gap-4">
+      {/* A folder's path, a program's name or a secret's name can be one long run with nowhere to
+          break. It breaks anywhere instead, so a phone-narrow window never scrolls the dialog
+          sideways (WCAG 1.4.10, HAL-13186). Words that fit don't change. */}
+      <div className="flex flex-col gap-4 wrap-anywhere">
         <p className="m-0 text-small text-fg-muted">{review.source}</p>
         {review.fingerprint === props.shown ? null : (
           <Callout tone="info">

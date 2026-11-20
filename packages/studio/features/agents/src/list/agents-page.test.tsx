@@ -8,7 +8,15 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type AgentListing, AgentsHostService } from "../api.ts";
 import { agentsFeature } from "../feature.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
-import { buttonNamed, openDialogsInJsdom, show, typeInto, unmount } from "../test-support.tsx";
+import { isFreshAgent } from "../page/fresh-agents.ts";
+import {
+  buttonNamed,
+  openDialogsInJsdom,
+  show,
+  typeInto,
+  typeIntoArea,
+  unmount,
+} from "../test-support.tsx";
 import { AgentsPage, AgentsView } from "./agents-page.tsx";
 import { requestNewAgent } from "./new-request.ts";
 
@@ -224,6 +232,32 @@ verifies("agents.list.rows-and-states", () => {
 
     expect(open).toHaveBeenCalledWith({ hubId: "acme", id: "fresh-one" });
     expect(document.querySelector("dialog")).toBeNull();
+  });
+
+  it("marks an agent made with nothing written, so its page opens on the instructions", async () => {
+    const page = await show(<AgentsView host={hostWith()} open={vi.fn()} />);
+
+    await act(async () => buttonNamed(page, "New agent")?.click());
+    const input = document.querySelector<HTMLInputElement>("dialog input");
+    if (input === null) throw new Error("no name field");
+    await typeInto(input, "Blank");
+    await act(async () => buttonNamed(document.body, "Create")?.click());
+
+    expect(isFreshAgent("acme", "blank")).toBe(true);
+  });
+
+  it("doesn't mark an agent made with instructions written", async () => {
+    const page = await show(<AgentsView host={hostWith()} open={vi.fn()} />);
+
+    await act(async () => buttonNamed(page, "New agent")?.click());
+    const input = document.querySelector<HTMLInputElement>("dialog input");
+    const area = document.querySelector<HTMLTextAreaElement>("dialog textarea");
+    if (input === null || area === null) throw new Error("no fields");
+    await typeInto(input, "Writer");
+    await typeIntoArea(area, "Check refunds.");
+    await act(async () => buttonNamed(document.body, "Create")?.click());
+
+    expect(isFreshAgent("acme", "writer")).toBe(false);
   });
 
   it("opens New agent when Ctrl K asks for it, even before the page is drawn", async () => {

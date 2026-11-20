@@ -109,6 +109,9 @@ export class FileSystemPluginFolder implements PluginFolderWriter {
 
   async remove(id: string): Promise<void> {
     checkPluginId(id);
+    // Through a plugins folder that is a link, the plugin removed would be
+    // one wherever the link points (fs-node.plugin-folder-remove-plain).
+    if (!(await plainFolderIsThere(this.#root, "removed only from"))) return;
     // On a disk that ignores case, `lstat("weather")` finds `Weather`, so look
     // for the exact name in the listing first.
     const names = await this.#topNames();
@@ -226,18 +229,32 @@ export class FileSystemPluginFolder implements PluginFolderWriter {
  * @throws KindedError (`conflict`) when `folder` is a link or not a folder
  */
 async function makePlainFolder(folder: string): Promise<void> {
+  // Looked at before `mkdir`, which fails on a file with a bare `EEXIST`,
+  // and again after it, in case a link took the folder's place meanwhile.
+  if (await plainFolderIsThere(folder, "written only into")) return;
   await mkdir(folder, { recursive: true });
-  const stats = await lstatOrNull(folder);
-  if (stats?.isSymbolicLink() === true) {
-    throw notPlainFolder(`${folder} is a link; plugins are written only into a plain folder.`);
-  }
-  if (stats?.isDirectory() !== true) {
-    throw notPlainFolder(`${folder} isn't a folder; plugins are written only into a plain folder.`);
-  }
+  await plainFolderIsThere(folder, "written only into");
 }
 
-function notPlainFolder(message: string): KindedError {
-  return new KindedError("conflict", message, {
+/**
+ * Whether `folder` is there as a plain folder; `false` when it isn't there.
+ * `rule` finishes the refusal's sentence "plugins are … a plain folder".
+ *
+ * @throws KindedError (`conflict`) when `folder` is a link or not a folder
+ */
+async function plainFolderIsThere(
+  folder: string,
+  rule: "written only into" | "removed only from",
+): Promise<boolean> {
+  const stats = await lstatOrNull(folder);
+  if (stats === null) return false;
+  if (stats.isSymbolicLink()) throw notPlainFolder(`${folder} is a link`, rule);
+  if (!stats.isDirectory()) throw notPlainFolder(`${folder} isn't a folder`, rule);
+  return true;
+}
+
+function notPlainFolder(what: string, rule: string): KindedError {
+  return new KindedError("conflict", `${what}; plugins are ${rule} a plain folder.`, {
     fix: "Replace it with a plain folder, then try again.",
   });
 }

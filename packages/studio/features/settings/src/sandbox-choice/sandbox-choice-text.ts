@@ -208,3 +208,31 @@ export const NONE_BODY =
   "Agents will ask before running commands or touching files outside your project.";
 export const NONE_FOOTER = "You can set up a sandbox any time in Settings → Sandbox.";
 export const OPEN_HALONIC = "Open Halonic";
+
+/** The header badge and the Settings status row (HAL-3777 plan, ux-checklists section 3). */
+export const BADGE_ON = "Sandbox: on";
+export const BADGE_NONE = "No sandbox";
+export const BADGE_UNFINISHED = "Sandbox: setup unfinished";
+export const BADGE_CHECK_FAILED = "Sandbox: check failed";
+export const BADGE_TOOLTIP = "Open sandbox settings";
+export const badgeName = (state: string) => `Sandbox status: ${state}. Opens sandbox settings.`;
+
+export const ROW_READY = "Ready";
+export const ROW_CHECKING = "Checking";
+export const ROW_NO_SANDBOX = "No sandbox";
+export const ROW_RESTART = "Restart needed";
+export const ROW_NEEDS_SETUP = "Needs setting up";
+export const ROW_NOT_READY = "Needs repair";
+export const ROW_COULDNT_CHECK = "Not checked";
+export const NO_SANDBOX_LINE = "No sandbox.";
+export const NO_SANDBOX_ASKS =
+  "No sandbox. Agents ask before running commands or touching files outside the project.";
+export const RESTART_LINE = "Windows needs to restart to finish setting up the sandbox.";
+export const notReadyLine = (reason: string) =>
+  `The sandbox isn't ready: ${reason.replace(/\.$/, "")}.`;
+export const couldntCheckLine = (reason: string) =>
+  `Couldn't check the sandbox: ${reason.replace(/\.$/, "")}.`;
+export const readyLine = (name: string, checked: string | null) =>
+  checked === null ? name : `${name} · Last check passed ${checked}`;
+export const CHANGE = "Change";
+export const TURN_OFF = "Turn off";

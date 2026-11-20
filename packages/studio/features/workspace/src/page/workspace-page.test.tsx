@@ -5,7 +5,7 @@ import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import type { WorkspacePage as Facts } from "../api.ts";
 import { workspaceFeature } from "../feature.ts";
 import type { WorkspaceTrustControl } from "../trust/workspace-trust-control.ts";
@@ -20,6 +20,7 @@ let element: HTMLElement | undefined;
 afterEach(() => {
   act(() => root?.unmount());
   element?.remove();
+  vi.useRealTimers();
 });
 
 const trust = {
@@ -38,6 +39,18 @@ function ModelsStub() {
   return (
     <section data-workspace-section="models">
       <h2 tabIndex={-1}>Models</h2>
+    </section>
+  );
+}
+
+/** The Models section with its Budget block inside, as the Models feature draws them. */
+function ModelsWithBudget() {
+  return (
+    <section data-workspace-section="models">
+      <h2 tabIndex={-1}>Models</h2>
+      <section data-workspace-section="budget">
+        <h3 tabIndex={-1}>Budget</h3>
+      </section>
     </section>
   );
 }
@@ -210,5 +223,83 @@ verifies("workspace.workspace-page", () => {
     expect(document.activeElement).toBe(
       page.querySelector("section[data-workspace-section=models] h2"),
     );
+  });
+
+  it("focuses the Budget heading and fills the Budget block for a second when asked to open at Budget", () => {
+    vi.useFakeTimers();
+    requestWorkspaceTarget("budget");
+    const page = show({ name: "Acme", trust }, ModelsWithBudget);
+    const budget = page.querySelector("section[data-workspace-section=budget]");
+
+    expect(document.activeElement).toBe(budget?.querySelector("h3"));
+    expect(budget?.classList.contains("bg-accent-soft")).toBe(true);
+
+    act(() => vi.advanceTimersByTime(999));
+    expect(budget?.classList.contains("bg-accent-soft")).toBe(true);
+    act(() => vi.advanceTimersByTime(1));
+    expect(budget?.classList.contains("bg-accent-soft")).toBe(false);
+    expect(document.activeElement).toBe(budget?.querySelector("h3"));
+  });
+
+  it("lands on the Models heading, not the Budget heading inside it, and fills nothing", () => {
+    requestWorkspaceTarget("models");
+    const page = show({ name: "Acme", trust }, ModelsWithBudget);
+
+    expect(document.activeElement).toBe(
+      page.querySelector("section[data-workspace-section=models] h2"),
+    );
+    expect(page.querySelector(".bg-accent-soft")).toBeNull();
+  });
+
+  it("starts the second again when Budget is asked for while it is still filled", () => {
+    vi.useFakeTimers();
+    requestWorkspaceTarget("budget");
+    const page = show({ name: "Acme", trust }, ModelsWithBudget);
+    const budget = page.querySelector("section[data-workspace-section=budget]");
+    act(() => vi.advanceTimersByTime(600));
+
+    act(() => {
+      requestWorkspaceTarget("budget");
+      vi.advanceTimersByTime(0);
+    });
+    act(() => vi.advanceTimersByTime(600));
+    expect(budget?.classList.contains("bg-accent-soft")).toBe(true);
+
+    act(() => vi.advanceTimersByTime(400));
+    expect(budget?.classList.contains("bg-accent-soft")).toBe(false);
+  });
+
+  it("takes the fill off and leaves no timer when the page closes within the second", () => {
+    vi.useFakeTimers();
+    requestWorkspaceTarget("budget");
+    const page = show({ name: "Acme", trust }, ModelsWithBudget);
+    const budget = page.querySelector("section[data-workspace-section=budget]");
+    act(() => vi.advanceTimersByTime(500));
+
+    act(() => root?.unmount());
+    root = undefined;
+
+    expect(budget?.classList.contains("bg-accent-soft")).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("waits for a Budget block that draws after the command ran", async () => {
+    requestWorkspaceTarget("budget");
+    let draw: () => void = () => undefined;
+    function Late() {
+      const [ready, setReady] = useState(false);
+      draw = () => setReady(true);
+      return ready ? <ModelsWithBudget /> : null;
+    }
+    const page = show({ name: "Acme", trust }, Late);
+    expect(page.querySelector("h3")).toBeNull();
+
+    await act(async () => {
+      draw();
+    });
+
+    const budget = page.querySelector("section[data-workspace-section=budget]");
+    expect(document.activeElement).toBe(budget?.querySelector("h3"));
+    expect(budget?.classList.contains("bg-accent-soft")).toBe(true);
   });
 });

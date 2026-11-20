@@ -92,3 +92,18 @@ const git = await findProgram("git", { path: process.env.PATH }); // undefined w
   `C:server`, is never found.
 - `isAbsolutePath(path, platform)` is the strict check it uses: on Windows
   `C:git` and `\git` aren't absolute, though Node's `isAbsolute` takes `\git`.
+
+## Paths near a hidden one
+
+`pathsOverlap(a, b)` tells whether one path is on, above or inside another,
+read as Windows reads paths (letter case and either slash ignored) on every
+system. `bothSpellings(path)` gives a path as written and with its links
+resolved. The srt sandbox and a plugin local tool's place use them to keep a
+readable folder clear of every hidden one.
+
+```ts
+import { bothSpellings, pathsOverlap } from "@halonicjs/adapter-system-node";
+
+pathsOverlap("/person", "/person/.ssh"); // true
+bothSpellings(launchFolder); // [launchFolder, where it really is] when a link is on the way
+```

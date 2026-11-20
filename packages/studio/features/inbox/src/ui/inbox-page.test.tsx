@@ -1,17 +1,19 @@
 // @vitest-environment jsdom
+
+import { KindedError } from "@halonicjs/std";
 import { PresentationProvider } from "@halonicjs/studio-kit";
 import { createShell, engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { InboxRunsService, InboxService } from "../api.ts";
+import { InboxNoticesService, InboxRunsService, InboxService } from "../api.ts";
 import { fakeRuns, WorkspaceServices } from "../fake-runs.test-helper.ts";
 import { inboxFeature } from "../feature.ts";
 import { Inbox, type InboxRuns } from "../inbox.ts";
 import { pendingApproval, waitingRun } from "../test-runs.test-helper.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { InboxView } from "./inbox-page.tsx";
+import { InboxPage, InboxView } from "./inbox-page.tsx";
 
 beforeEach(fakeModal);
 afterEach(() => {
@@ -279,6 +281,16 @@ verifies("inbox.page", () => {
       expect(rows(root)).toHaveLength(1);
       expect(root.textContent).toContain("The engine isn't answering. Showing what it said last.");
     });
+
+    it("keeps the items when a later load is signed out, and says to sign in again", async () => {
+      const fake = fakeRuns([notes]);
+      const { root, inbox } = await openPage(fake.runs);
+      fake.fail(new KindedError("unauthenticated", "Sign in again to list what waits for you."));
+      await act(() => inbox.refresh());
+      expect(rows(root)).toHaveLength(1);
+      expect(root.textContent).toContain("Sign in again to list what waits for you.");
+      expect(root.textContent).not.toContain("isn't answering");
+    });
   });
 
   describe("on a phone", () => {
@@ -356,5 +368,37 @@ verifies("inbox.page", () => {
       await click(rowCell(root, 1));
       expect(root.textContent).not.toContain("Back to Inbox");
     });
+  });
+});
+
+verifies("inbox.budget-notices", () => {
+  it("runs workspace.open-budget for Change budget, so Workspace settings opens at Budget", async () => {
+    const shell = createShell({
+      features: [inboxFeature],
+      hostServices: [InboxRunsService, InboxNoticesService],
+    });
+    const workspace = new WorkspaceServices();
+    workspace.provide(InboxRunsService, fakeRuns([]).runs);
+    workspace.provide(InboxNoticesService, {
+      list: async () => [
+        {
+          kind: "budget-month",
+          key: "budget-month:2026-11:50",
+          at: "2026-11-16T06:00:00.000Z",
+          title: "This month's estimated spend reached its budget of €50.00.",
+        },
+      ],
+      subscribe: () => () => undefined,
+      dismiss: () => undefined,
+    });
+    shell.services.instantiate(workspace);
+    const runCommand = vi.fn();
+    const context = { ...shell.services.contextFor("inbox", workspace), runCommand };
+    const root = render(<InboxPage context={context} />);
+    await settled();
+
+    await click(button(root, "Change budget"));
+
+    expect(runCommand).toHaveBeenCalledExactlyOnceWith("workspace.open-budget");
   });
 });

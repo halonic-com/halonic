@@ -133,6 +133,13 @@ verifies("shell.more-page", () => {
     expect(container.querySelector("h1")?.textContent).toBe("More");
   });
 
+  it("in the desktop app, points at a wider window instead of a computer", () => {
+    const container = render(<MorePage inDesktopApp places={places} onOpen={() => undefined} />);
+
+    expect(container.textContent).toContain("Editing workflows is easier in a wider window.");
+    expect(container.textContent).not.toContain("on a computer");
+  });
+
   it("shows no switcher row until the app has a workspace picker", () => {
     const { container } = renderMore(places, undefined, false);
 

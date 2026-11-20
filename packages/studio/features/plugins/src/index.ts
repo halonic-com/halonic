@@ -37,6 +37,7 @@ export { PluginPage, type PluginPageProps } from "./page/plugin-page.tsx";
 export {
   type InstalledPlugin,
   type InstalledPluginFeed,
+  type InstalledPluginsRead,
   PLUGIN_HUB,
   PLUGIN_KIND,
   type PluginLoadProblem,

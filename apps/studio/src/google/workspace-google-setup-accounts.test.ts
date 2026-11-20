@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from "node:util";
 import { webCryptoDigest } from "@halonicjs/adapter-fs-tauri";
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import type { SetupRecord } from "@halonicjs/google-setup";
+import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -181,10 +182,10 @@ verifies("studio.workspace-google-setup-accounts", () => {
       expect(listener).toHaveBeenCalledTimes(1);
     });
 
-    it("is refused in plain words without an agent host", async () => {
+    it("is refused as the engine not answering without an agent host", async () => {
       const { accounts } = await accountsOf();
 
-      await expect(accounts.disconnect("gaccount_1")).rejects.toThrow("needs its agent host");
+      await expect(accounts.disconnect("gaccount_1")).rejects.toBeInstanceOf(EngineNotAnswering);
     });
   });
 

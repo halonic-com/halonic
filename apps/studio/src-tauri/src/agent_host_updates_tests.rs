@@ -1,8 +1,8 @@
-//! What the page is told about the security updates.
+//! What the page is told about the security updates and the default distro.
 
 use halonic_agent_host::WslError;
 
-use super::{SecurityUpdatesAnswer, answer, cleanup_log};
+use super::{DistroStartChecks, answer, cleanup_log, default_distro};
 
 /// 2026-11-15T12:00:00Z.
 const NOW: i64 = 1_794_744_000;
@@ -13,10 +13,11 @@ fn status(stamp: &str) -> Result<String, WslError> {
     ))
 }
 
-fn overdue(last: Option<&str>) -> SecurityUpdatesAnswer {
-    SecurityUpdatesAnswer {
+fn overdue(last: Option<&str>) -> DistroStartChecks {
+    DistroStartChecks {
         overdue: true,
         last: last.map(str::to_owned),
+        is_default_distro: false,
     }
 }
 
@@ -25,9 +26,10 @@ fn updates_from_the_last_week_are_not_overdue() {
     let current = answer(status("2026-11-14T12:00:00Z"), NOW);
     assert_eq!(
         current,
-        SecurityUpdatesAnswer {
+        DistroStartChecks {
             overdue: false,
-            last: None
+            last: None,
+            is_default_distro: false,
         }
     );
 }
@@ -50,7 +52,20 @@ fn updates_that_never_ran_or_a_status_that_failed_are_overdue_with_no_date() {
 #[test]
 fn the_page_gets_camel_case_fields_and_null_for_no_date() {
     let json = serde_json::to_value(overdue(None)).expect("serializes");
-    assert_eq!(json, serde_json::json!({"overdue": true, "last": null}));
+    assert_eq!(
+        json,
+        serde_json::json!({"overdue": true, "last": null, "isDefaultDistro": false})
+    );
+}
+
+#[test]
+fn the_default_distro_is_told_only_when_wsl_says_so() {
+    assert!(default_distro(Ok(Some(true))));
+    assert!(!default_distro(Ok(Some(false))));
+    // Unknown is not "the default": the warning tells the person to change it.
+    assert!(!default_distro(Ok(None)));
+    assert!(!default_distro(Err(WslError::TimedOut)));
+    assert!(!default_distro(Err(WslError::Failed(Some(1)))));
 }
 
 #[test]
@@ -82,4 +97,46 @@ fn the_cleanup_log_says_what_was_cleaned_and_why_it_didnt_finish() {
             format!("import mounts: the clean-up didn't finish, starting anyway: {reason}")
         );
     }
+}
+
+/// A stand-in for `wsl.exe`: an executable shell script running `body`,
+/// removed when dropped.
+#[cfg(unix)]
+struct StandIn(std::path::PathBuf);
+
+#[cfg(unix)]
+impl StandIn {
+    fn new(body: &str) -> Self {
+        use std::os::unix::fs::PermissionsExt;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static NEXT: AtomicUsize = AtomicUsize::new(0);
+        let number = NEXT.fetch_add(1, Ordering::Relaxed);
+        let name = format!("halonic-updates-status-{}-{number}", std::process::id());
+        let path = std::env::temp_dir().join(name);
+        std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).expect("write the stand-in");
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700))
+            .expect("make it executable");
+        Self(path)
+    }
+}
+
+#[cfg(unix)]
+impl Drop for StandIn {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn a_status_that_hangs_is_stopped_and_counts_as_overdue_with_no_date() {
+    use std::time::{Duration, Instant};
+
+    use super::security_updates_in_distro;
+
+    let stuck = StandIn::new("sleep 30");
+    let started = Instant::now();
+    let checks = security_updates_in_distro(&stuck.0, Duration::from_millis(200));
+    assert_eq!(checks, overdue(None));
+    assert!(started.elapsed() < Duration::from_secs(10));
 }

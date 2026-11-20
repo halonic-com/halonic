@@ -5,10 +5,7 @@
  * the class name (see `durableObjectClassNames` in `adapter-cloudflare-durable`).
  */
 
-export {
-  CoordinationObject,
-  RoutinesObject,
-  RunObject,
-} from "@halonicjs/adapter-cloudflare-durable";
+export { CoordinationObject, RoutinesObject } from "@halonicjs/adapter-cloudflare-durable";
+export { RunObject } from "./run-object.ts";
 // biome-ignore lint/style/noDefaultExport: Cloudflare finds the Worker on the default export.
 export { worker as default } from "./worker.ts";

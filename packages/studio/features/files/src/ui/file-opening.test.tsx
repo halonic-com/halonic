@@ -28,21 +28,27 @@ const host: FilesHost = {
   remove: async () => ({ places: 0, undo: async () => {} }),
 };
 
+/** Shows the Files view with `models.yaml` as the open file. */
+async function showWithModelsOpen(openItem: (item: ItemRef) => void): Promise<HTMLElement> {
+  const context = {
+    services: limitedLookup(filesFeature, { get: () => host }),
+    openItem,
+    activeItem: {
+      get: () => ({ kind: "file", hub: "workspace", id: "models.yaml" }),
+      subscribe: () => () => {},
+    },
+  } as unknown as WorkspaceContext;
+  const page = render(<FilesSidebarView context={context} />);
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  return page;
+}
+
 verifies("files.ui.file-tab", () => {
   it("opens a file in a tab when its row is activated, and marks the open file", async () => {
     const openItem = vi.fn<(item: ItemRef) => void>();
-    const context = {
-      services: limitedLookup(filesFeature, { get: () => host }),
-      openItem,
-      activeItem: {
-        get: () => ({ kind: "file", hub: "workspace", id: "models.yaml" }),
-        subscribe: () => () => {},
-      },
-    } as unknown as WorkspaceContext;
-    const page = render(<FilesSidebarView context={context} />);
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
+    const page = await showWithModelsOpen(openItem);
 
     const row = page.querySelector<HTMLElement>('[data-path="models.yaml"]');
     act(() => row?.click());
@@ -53,5 +59,13 @@ verifies("files.ui.file-tab", () => {
       id: "models.yaml",
     });
     expect(row?.getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("outlines the open file's row in high contrast, where its soft fill doesn't show", async () => {
+    const page = await showWithModelsOpen(() => {});
+
+    const row = page.querySelector<HTMLElement>('[data-path="models.yaml"]');
+    expect(row?.getAttribute("aria-selected")).toBe("true");
+    expect(row?.className).toContain("aria-selected:selected-forced");
   });
 });

@@ -18,11 +18,23 @@ impl SecretBackend for DesktopKeychain {
     fn delete(&self, _name: &SecretName) -> Result<(), SecretError> {
         Err(SecretError::Unavailable)
     }
+
+    fn get_origins(&self, _name: &SecretName) -> Result<Option<String>, SecretError> {
+        Err(SecretError::Unavailable)
+    }
+
+    fn set_origins(&self, _name: &SecretName, _origins: &str) -> Result<(), SecretError> {
+        Err(SecretError::Unavailable)
+    }
+
+    fn delete_origins(&self, _name: &SecretName) -> Result<(), SecretError> {
+        Err(SecretError::Unavailable)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use halonic_secrets::{delete_secret, get_secret, set_secret};
+    use halonic_secrets::{allowed_origins, delete_secret, get_secret, set_secret};
 
     use super::*;
 
@@ -39,6 +51,10 @@ mod tests {
         );
         assert_eq!(
             delete_secret(&keychain, "acme-key"),
+            Err(SecretError::Unavailable)
+        );
+        assert_eq!(
+            allowed_origins(&keychain, "acme-key"),
             Err(SecretError::Unavailable)
         );
     }

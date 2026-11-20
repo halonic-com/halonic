@@ -13,13 +13,21 @@ verifies("app.sandbox-start-words", () => {
     );
     expect(words.phoneFix).toBe(`On the computer Halonic runs on: ${words.fix}`);
     expect(words.docsKey).toBe("security/sandbox/#bubblewrap");
+    expect(words.docsName).toBe("How to install bubblewrap");
+    expect(words.settingsFix).toBe(words.calloutFix);
   });
 
-  it("has all five parts for every reason code, under a key of its own", () => {
+  it("has every part for every reason code, under a key of its own", () => {
     const keys = new Set<string>();
     for (const code of sandboxUnavailableReasons) {
       const words = sandboxStartWords(code);
-      for (const part of [words.reason, words.fix, words.calloutFix, words.phoneFix]) {
+      for (const part of [
+        words.reason,
+        words.fix,
+        words.calloutFix,
+        words.phoneFix,
+        words.docsName,
+      ]) {
         expect(part.length).toBeGreaterThan(0);
       }
       expect(words.docsKey.startsWith("security/sandbox/")).toBe(true);
@@ -42,11 +50,18 @@ verifies("app.sandbox-start-words", () => {
       expect(words.fix).toBe("open Settings and set up the sandbox there.");
       expect(words.calloutFix).toBe("Open Settings and set up the sandbox there.");
       expect(words.fix).not.toContain("WSL 2");
+      expect(words.settingsFix).toBeNull();
     }
   });
 
   it("links the docs page itself for a reason with no section of its own", () => {
     expect(sandboxStartWords("setup-needed").docsKey).toBe("security/sandbox/");
     expect(sandboxStartWords("not-supported").docsKey).toBe("security/sandbox/#wsl1");
+  });
+
+  it("names the docs link after where it goes, and the general page for a reason without a guide", () => {
+    expect(sandboxStartWords("not-supported").docsName).toBe("How to switch to WSL 2");
+    expect(sandboxStartWords("other").docsName).toBe("What the sandbox needs");
+    expect(sandboxStartWords("ripgrep-missing").docsName).toBe("What the sandbox needs");
   });
 });

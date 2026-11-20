@@ -47,6 +47,8 @@ export interface RunCardReceiptProps {
   readonly openStartedRun?: ((runId: string) => void) | undefined;
   /** Opens the workspace page at Models, for **Open Models** on a failed banner; without it the button isn't there. */
   readonly openModels?: (() => void) | undefined;
+  /** Says a line to a screen reader, for why **Run again** didn't start; absent in tests that don't listen. */
+  readonly announce?: ((line: string) => void) | undefined;
 }
 
 /**
@@ -72,9 +74,10 @@ export function RunCardReceipt({
   runStart,
   openStartedRun,
   openModels,
+  announce,
 }: RunCardReceiptProps) {
   const log = read.events;
-  const runAgain = useRunAgain(runStart, run, log, openStartedRun ?? openRun, engine);
+  const runAgain = useRunAgain(runStart, run, log, openStartedRun ?? openRun, engine, announce);
   const { summary } = run;
   if (log === undefined) {
     const shortId = shortRunId(summary.id);

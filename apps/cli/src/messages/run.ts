@@ -69,6 +69,17 @@ export const runMessages = defineMessages("run", {
   /** Its fix. */
   gitWontStartFix: () => phrase`Install git and make sure it's on your PATH, then try again.`,
   /**
+   * The reason after "Couldn't run support-reply:" when the git found is a
+   * wrapper script, a version manager's shim or a git older than 2.31, which
+   * drops Halonic's git settings, so it can't run safely (HAL-12342). Exit 9,
+   * as {@link gitWontStart}, and the same meaning as the Studio's refusal.
+   */
+  gitNotItself: (git: string, nothingDone: Phrase = nothingRan) =>
+    phrase`the git at ${git} doesn't pass Halonic's git settings on to git, so the live version can't be read safely. ${nothingDone}`,
+  /** Its fix: Halonic takes git from the PATH, so git itself goes first on it. */
+  gitNotItselfFix: () =>
+    phrase`It may be a wrapper script, a version manager's shim or git older than 2.31. Put git 2.31 or later itself first on your PATH, then try again.`,
+  /**
    * The reason after "Couldn't run support-reply:" when an agent of the
    * workflow is in a harness (Claude Code or Codex), which this computer's
    * engine has no adapter for yet: `unavailable`, exit 9. `harness` is the
@@ -247,6 +258,15 @@ export const runMessages = defineMessages("run", {
     }
     return phrase`the engine couldn't sweep a leftover program copy: ${reason}`;
   },
+  /**
+   * A `--debug` line when the run log couldn't record a failure of a harness
+   * run's bridge (requirement `harness-host.bridge-failures`): the failure,
+   * then the run log's own error when it named one.
+   */
+  bridgeFailureUnrecorded: (failure: string, cause: string | undefined) =>
+    cause === undefined
+      ? phrase`the engine couldn't write a harness bridge failure to the run log: ${failure}`
+      : phrase`the engine couldn't write a harness bridge failure to the run log: ${failure} (caused by: ${cause})`,
   /**
    * Listed tools a turn left out because nobody approved them, with the
    * command that approves them. Nobody can answer in a run, so this is the

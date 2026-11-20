@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useReducer, useState, useSyncExternalStore } from "react";
+import { useCallback, useId, useState, useSyncExternalStore } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import type { PlaceContribution, SidebarViewContribution } from "../points/frame.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
@@ -11,7 +11,7 @@ import { SIDEBAR_DEFAULT_WIDTH } from "../sidebar/sidebar-width.ts";
 import { WorkspaceSwitcher, type WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
 import type { TabSet } from "../tabs/tab-set.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
-import { shownPlaces } from "./shown-places.ts";
+import { useShownPlaces } from "./shown-places.ts";
 
 const noViews: readonly Registered<SidebarViewContribution>[] = [];
 
@@ -67,8 +67,7 @@ export function StudioSidebar(props: StudioSidebarProps) {
     useCallback((listener) => tabs.subscribe(listener), [tabs]),
     () => tabs.state,
   );
-  useSignalChanges(props.places, contextFor);
-  const places = shownPlaces(props.places, contextFor);
+  const places = useShownPlaces(props.places, contextFor);
 
   return (
     <>
@@ -110,28 +109,4 @@ export function StudioSidebar(props: StudioSidebarProps) {
       />
     </>
   );
-}
-
-/**
- * Draws the sidebar again whenever a place says its signal changed, so a count or the running dot
- * is current without waiting for the tabs to change. Stops listening when the places change or
- * the sidebar goes away.
- */
-function useSignalChanges(
-  places: readonly Registered<PlaceContribution>[],
-  contextFor: (featureId: string) => WorkspaceContext,
-): void {
-  const [, signalChanged] = useReducer((changes: number) => changes + 1, 0);
-  useEffect(() => {
-    const stops = places.flatMap((place) =>
-      place.subscribeSignal === undefined
-        ? []
-        : [place.subscribeSignal(contextFor(place.featureId), signalChanged)],
-    );
-    return () => {
-      for (const stop of stops) {
-        stop();
-      }
-    };
-  }, [places, contextFor]);
 }

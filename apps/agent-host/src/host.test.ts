@@ -161,6 +161,26 @@ describe("run", () => {
     ]);
   });
 
+  it("copies the sandbox choice on its input into the profile with --sandbox-setting-copy, and removes it", async () => {
+    const { io, input, lines } = starter();
+    const profileFolder = await mkdtemp(join(tmpdir(), "halonic-host-copy-"));
+    try {
+      const copy = ["--profile-folder", profileFolder, "--sandbox-setting-copy"];
+      input.end('{"backend":"srt-wsl","chosenAt":"2026-11-19T09:00:00.000Z"}');
+      expect(await run(copy, "1.2.3", io)).toBe(0);
+      const remove = ["--profile-folder", profileFolder, "--sandbox-setting-remove"];
+      expect(await run(remove, "1.2.3", io)).toBe(0);
+      expect(await run(["--sandbox-setting-copy"], "1.2.3", io)).toBe(1);
+      expect(lines).toEqual([
+        '{"ok":true}\n',
+        '{"ok":true}\n',
+        '{"ok":false,"reason":"--sandbox-setting-copy needs --profile-folder."}\n',
+      ]);
+    } finally {
+      await rm(profileFolder, { recursive: true, force: true });
+    }
+  });
+
   it("serves until its input closes, after one handshake line", async () => {
     const { io, input, lines, nextLine } = starter();
     const running = run([], "1.2.3", io);

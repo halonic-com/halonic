@@ -96,9 +96,9 @@ export function unchangedRow(count: number): string {
 export const ARROW = " → ";
 
 /**
- * The trust check's last line, outside the scroll area (T9, CHECK P1). The one place it's
- * written, so HAL-3384 can put the approved "Runs" line (microcopy 24.1) here without touching
- * the dialog.
+ * The trust check's last line where the sandbox status isn't known (T9, CHECK P1): the two
+ * sentences that hold either way. Also R2b's line for a plugin with only programs, not in the
+ * sandbox (microcopy 24.1).
  */
 export const TRUST_CHECK_LAST_LINE =
   "Plugin code runs apart from Studio. Halonic doesn't check what the plugin does with what it's given.";

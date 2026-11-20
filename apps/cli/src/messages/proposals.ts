@@ -38,6 +38,9 @@ export const proposalsMessages = defineMessages("proposals", {
   discardSummary: () => phrase`Drop a run's proposed changes; your files stay as they are`,
   discardAction: (runId: string) => phrase`discard the proposal of run ${runId}`,
 
+  /** After `halonic run`, when the run left a proposal: nothing in the files changed yet. */
+  waiting: (runId: string, files: number, dir?: string) =>
+    phrase`Run ${runId} proposes changes to ${counted(files, "file", "files")}. Nothing in your files changed yet: see them with ${suggestedCommand("proposals show", dir, runId)}.`,
   /** The list is empty. */
   noProposals: (workspace: string) => phrase`No run in ${workspace} has changes waiting for you.`,
   /** One row's file count: "2 files, 1 left". */
