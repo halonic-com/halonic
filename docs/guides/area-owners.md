@@ -38,7 +38,7 @@ Most CI jobs check one area. A failing job goes to its area's owner.
 | Area | Jobs in `ci.yml` | Other workflows |
 | --- | --- | --- |
 | Sandbox | Sandbox fence (bubblewrap), Sandbox fence (Seatbelt), Sandbox fence (MXC on Windows 11), Sandbox packages on macOS, Sandbox packages on Windows, Sandbox fence on Windows (canary probes) |  |
-| Studio | Tauri shell (Rust checks), Tauri shell on Windows, Keychain contract on macOS, Android shell (debug APK), Studio end-to-end (Playwright) | `android-screens.yml` |
+| Studio | Tauri shell (Rust checks), Tauri shell on Windows, Keychain contract on macOS, Android shell (debug APK), Android device keys (emulator), Studio end-to-end (Playwright) | `android-screens.yml` |
 | Engine and CLI | Live cloud suites passed |  |
 | Adapters | Agent host executable |  |
 | Tooling and CI | Changed areas, Fast gates, Leak guard, Coverage floors don't go down, Secret scan (gitleaks), Workflow lint (zizmor), Requirements and the requirement guard, Empty package and feature pass every check, Policy rules, Windows installer, Windows update, ci-ok | the jobs in `scheduled.yml` |
