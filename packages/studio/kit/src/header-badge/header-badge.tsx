@@ -85,6 +85,10 @@ const badgeClasses = [
   "forced-colors:aria-expanded:outline-2 forced-colors:aria-expanded:outline-solid",
   // On a phone it wraps at large text instead of being cut; its 48px line grows with it.
   "phone:h-auto phone:min-h-6 phone:whitespace-normal phone:hit-touch",
+  // It never gets wider than its line (200 % on a phone is 195px): it shrinks, its words wrap
+  // between words, and its icons stay level with the first line. One line stays 24px high:
+  // a 1px edge and 3px padding round a 16px line.
+  "phone:min-w-0 phone:shrink phone:items-start phone:py-0.75 phone:text-start",
 ].join(" ");
 
 const padding = { menu: "pr-1.5 pl-2", button: "px-2" } as const;
@@ -95,7 +99,8 @@ const padding = { menu: "pr-1.5 pl-2", button: "px-2" } as const;
  */
 export const headerBadgeMenuClasses = `${badgeClasses} ${padding.menu}`;
 
-const iconSlot = "inline-grid size-3.5 shrink-0 place-items-center *:size-full";
+/** A 14px icon in a slot one caption line high, so it sits level with the first line of words. */
+const iconSlot = "inline-grid h-4 w-3.5 shrink-0 place-items-center *:size-3.5";
 
 /**
  * On a phone the badge has its own 48px line in More, under the workspace row and level with its

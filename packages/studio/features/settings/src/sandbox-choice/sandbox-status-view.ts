@@ -33,6 +33,8 @@ export interface SandboxBadge {
 export interface SandboxStatusRow {
   /** The chip word, from the built Agent sandbox section. */
   state: string;
+  /** The chip's colour; the word above always says the state too. */
+  tone: StatusChipTone;
   /** The sentence under it, or `null`. */
   line: string | null;
   actions: SandboxStatusAction[];
@@ -62,24 +64,25 @@ const badge = (label: string, tone: StatusChipTone, state: string): SandboxBadge
  * sandboxStatusView({ kind: "checking" }).badge; // null
  */
 export function sandboxStatusView(input: SandboxStatusInput): SandboxStatusView {
-  if (input.kind === "checking") {
-    return { badge: null, row: row(text.ROW_CHECKING, null, [], true) };
-  }
+  if (input.kind === "checking") return { badge: null, row: checkingRow() };
   if (input.kind === "unreachable") {
     return {
       badge: null,
-      row: row(text.ROW_COULDNT_CHECK, text.couldntCheckLine(input.reason), ["check-again"]),
+      row: row(text.ROW_COULDNT_CHECK, "neutral", text.couldntCheckLine(input.reason), [
+        "check-again",
+      ]),
     };
   }
   const { choice, lastCheck, agentsAsk } = input;
   const setting = choice.setting;
-  if (setting === null) return { badge: null, row: row(text.ROW_NEEDS_SETUP, null, ["set-up"]) };
+  if (setting === null) {
+    return { badge: null, row: row(text.ROW_NEEDS_SETUP, "attention", null, ["set-up"]) };
+  }
   if (setting.backend === "none") {
+    const line = agentsAsk ? text.NO_SANDBOX_ASKS : text.NO_SANDBOX_LINE;
     return {
       badge: badge(text.BADGE_NONE, "attention", "no sandbox"),
-      row: row(text.ROW_NO_SANDBOX, agentsAsk ? text.NO_SANDBOX_ASKS : text.NO_SANDBOX_LINE, [
-        "set-up",
-      ]),
+      row: row(text.ROW_NO_SANDBOX, "attention", line, ["set-up"]),
     };
   }
   const id: SandboxBackendId = setting.backend;
@@ -89,47 +92,48 @@ export function sandboxStatusView(input: SandboxStatusInput): SandboxStatusView 
   if (status?.state === "in-use") {
     return {
       badge: badge(text.BADGE_ON, "success", "ready"),
-      row: row(text.ROW_READY, text.readyLine(name, lastCheck), ["change", "turn-off"]),
+      row: row(text.ROW_READY, "success", text.readyLine(name, lastCheck), ["change", "turn-off"]),
     };
   }
   if (status?.state === "setup-needed" && status.reason === "restart-needed") {
     return {
       badge: badge(text.BADGE_UNFINISHED, "attention", "setup unfinished"),
-      row: row(text.ROW_RESTART, text.RESTART_LINE, ["restart", "change"]),
+      row: row(text.ROW_RESTART, "attention", text.RESTART_LINE, ["restart", "change"]),
     };
   }
-  if (status?.state === "check-failed") {
+  if (status?.state === "check-failed" || status?.state === "not-available") {
+    const line = text.notReadyLine(whyOf(choice, id, input.platform));
     return {
-      badge: badge(text.BADGE_CHECK_FAILED, "danger", "check failed"),
-      row: row(text.ROW_NOT_READY, text.notReadyLine(whyOf(choice, id, input.platform)), [
-        "check-again",
-        "change",
-      ]),
-    };
-  }
-  if (status?.state === "not-available") {
-    return {
-      badge: null,
-      row: row(text.ROW_NOT_READY, text.notReadyLine(whyOf(choice, id, input.platform)), [
-        "check-again",
-        "change",
-      ]),
+      badge:
+        status.state === "check-failed"
+          ? badge(text.BADGE_CHECK_FAILED, "danger", "check failed")
+          : null,
+      row: row(text.ROW_NOT_READY, "danger", line, ["check-again", "change"]),
     };
   }
   if (status?.state === "setup-needed") {
-    return { badge: null, row: row(text.ROW_NEEDS_SETUP, null, ["set-up", "change"]) };
+    return {
+      badge: null,
+      row: row(text.ROW_NEEDS_SETUP, "attention", null, ["set-up", "change"]),
+    };
   }
   // Saved, and nothing proven either way yet: never red.
-  return { badge: null, row: row(text.ROW_CHECKING, null, ["check-again"], true) };
+  return { badge: null, row: checkingRow() };
 }
 
 function row(
   state: string,
+  tone: StatusChipTone,
   line: string | null,
   actions: SandboxStatusAction[],
   checkBusy = false,
 ): SandboxStatusRow {
-  return { state, line, actions, checkBusy };
+  return { state, tone, line, actions, checkBusy };
+}
+
+/** While the host asks, or a saved backend has no proof yet: a busy **Check again**, never an error. */
+function checkingRow(): SandboxStatusRow {
+  return row(text.ROW_CHECKING, "neutral", null, ["check-again"], true);
 }
 
 /** The card's own sentence for why a backend can't run, in lower case after a lead. */

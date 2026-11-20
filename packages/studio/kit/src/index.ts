@@ -332,6 +332,16 @@ export {
 } from "./tooltip/tooltip.tsx";
 export { TrashStrip, type TrashStripProps } from "./trash-strip/trash-strip.tsx";
 export { ViewOnlyLine, type ViewOnlyLineProps } from "./view-only-line/view-only-line.tsx";
+export {
+  useWaitedMs,
+  WAITING_LINE_AFTER_MS,
+  WAITING_REASON_AFTER_MS,
+  WaitingLine,
+  type WaitingLineAction,
+  type WaitingLinePlacement,
+  type WaitingLineProps,
+  waitedTime,
+} from "./waiting-line/waiting-line.tsx";
 export { Window, WindowBar, type WindowBarProps, type WindowProps } from "./window/window.tsx";
 
 /** The npm name of this package. */

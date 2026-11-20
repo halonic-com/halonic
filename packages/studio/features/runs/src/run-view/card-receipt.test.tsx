@@ -75,7 +75,7 @@ verifies("runs.run-view.card-run-again", () => {
     const root = show({ runStart: { startRun } });
     await act(async () => button(root, "Run again")?.click());
     expect(root.querySelector('section[aria-label="Run didn\'t start"]')?.textContent).toContain(
-      "The workflow changed.",
+      "Couldn't start the run: the workflow changed.",
     );
   });
 
@@ -87,7 +87,7 @@ verifies("runs.run-view.card-run-again", () => {
     const root = show({ runStart: { startRun }, announce });
     await act(async () => button(root, "Run again")?.click());
     expect(announce).toHaveBeenCalledExactlyOnceWith(
-      "Couldn't start the run: The workflow changed.",
+      "Couldn't start the run: the workflow changed.",
     );
   });
 

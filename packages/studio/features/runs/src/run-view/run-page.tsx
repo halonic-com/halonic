@@ -1,13 +1,7 @@
-import { type SandboxStartCheck, sandboxStartCheckKey, shortRunId } from "@halonicjs/app";
+import { type SandboxStartCheck, sandboxStartCheckKey } from "@halonicjs/app";
 import { type RunEvent, type RunSummary, type RunVersion, summarize } from "@halonicjs/events";
-import { Callout, EmptyState, List, usePresentation } from "@halonicjs/studio-kit";
-import {
-  type EngineWords,
-  engineWordsOf,
-  ItemGone,
-  type ItemViewProps,
-  PageBackLinkSlot,
-} from "@halonicjs/studio-shell";
+import { Callout, usePresentation } from "@halonicjs/studio-kit";
+import { type EngineWords, engineWordsOf, type ItemViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import {
   type InstructionTrustHost,
@@ -16,7 +10,6 @@ import {
   RunStartHostService,
   type SourcedRun,
 } from "../api.ts";
-import { FailureReason } from "../load-failure.tsx";
 import { runPageWords } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
 import { Details, type DetailsProps, DetailsRow } from "./details.tsx";
@@ -36,7 +29,9 @@ import {
 } from "./receipt-model.ts";
 import { useRunAgain } from "./run-again.ts";
 import { LogUnread, RunLayout } from "./run-layout.tsx";
+import { RunNotShown, useRunGone } from "./run-not-shown.tsx";
 import type { RunPageContext } from "./run-page-model.ts";
+import { RunWaitingLine } from "./run-waiting-line.tsx";
 import { slowStepDueAt } from "./slow-step.ts";
 import { StepPanel } from "./step-panel.tsx";
 import { useRunChanges } from "./use-run-changes.ts";
@@ -116,6 +111,11 @@ export interface RunViewProps {
   readonly reviewInInbox?: () => void;
   /** Opens another run's page, for a child run; without it the button isn't there. */
   readonly openRun?: (runId: string) => void;
+  /**
+   * Opens Check this computer, for **Something wrong?** in the waiting line after 10 seconds;
+   * without it the line leaves it out. Nothing passes it until the dialog lands (HAL-13411).
+   */
+  readonly checkThisComputer?: () => void;
   /** The clock for the start time and due times; tests pass a fixed one. */
   readonly now?: () => Date;
   /** What the page calls the engine when it isn't answering, for this window's host; the desktop app's by default. */
@@ -156,6 +156,7 @@ export function RunView({
   goToRuns,
   reviewInInbox,
   openRun,
+  checkThisComputer,
   now = () => new Date(),
   engine = engineWordsOf({}),
 }: RunViewProps) {
@@ -164,11 +165,11 @@ export function RunView({
   const state = useSyncExternalStore(subscribe, () => list.state);
   const run = state.runs.find((candidate) => candidate.summary.id === runId);
   const logRead = useRunLog(list.source, runId, run?.summary.lastSeq ?? 0, state);
+  const gone = useRunGone(list, runId, state.loaded && run === undefined);
   const log = logRead.events;
   const [openEntry, setOpenEntry] = useOpenEntry(runId, step, asked, log, run?.summary);
   useRedrawWhenSlow(log, run?.summary.status === "running", now);
   useEffect(() => list.noteOpened(runId), [list, runId]);
-  const title = runPageWords.title(shortRunId(runId));
   const retry = () => void list.refresh();
   const runAgain = useRunAgain(runStart, run, log, openRun, engine, announce);
   const page = useRunChanges(
@@ -220,6 +221,13 @@ export function RunView({
             }
           >
             <div className="flex min-w-0 flex-col gap-4">
+              <RunWaitingLine
+                log={log}
+                running={run.summary.status === "running"}
+                phone={phone}
+                somethingWrong={checkThisComputer}
+                now={now}
+              />
               <ReceiptAndSteps
                 run={run}
                 context={context}
@@ -257,46 +265,17 @@ export function RunView({
       </div>
     );
   }
-  if (state.loaded) {
-    return <RunNotHere goToRuns={goToRuns} />;
-  }
   return (
-    <div className={`flex w-full flex-col gap-4 ${phone ? "px-4 py-4" : "px-6 py-5"}`}>
-      <PageBackLinkSlot />
-      <h1 className={phone ? "sr-only" : "text-title"}>{title}</h1>
-      {state.error === undefined ? (
-        <List
-          label={title}
-          rows={[]}
-          loading
-          loadingLabel={runPageWords.loading(shortRunId(runId))}
-          onRetry={retry}
-        />
-      ) : (
-        <EmptyState
-          tone="error"
-          align="start"
-          title={runPageWords.loadFailed(shortRunId(runId))}
-          description={
-            <FailureReason
-              what={runPageWords.loadFailed(shortRunId(runId))}
-              error={state.error}
-              engine={engine}
-            />
-          }
-          action={{ label: "Try again", onClick: retry }}
-        />
-      )}
-    </div>
-  );
-}
-
-/** A run that isn't in the workspace (any more): the shell's gone page when it can open the list. */
-function RunNotHere({ goToRuns }: { readonly goToRuns: (() => void) | undefined }) {
-  return goToRuns === undefined ? (
-    <EmptyState title={runPageWords.notHere} />
-  ) : (
-    <ItemGone kindName="run" place="Runs" onGoTo={goToRuns} />
+    <RunNotShown
+      runId={runId}
+      gone={gone}
+      error={state.error}
+      phone={phone}
+      engine={engine}
+      page={page}
+      retry={retry}
+      goToRuns={goToRuns}
+    />
   );
 }
 
@@ -368,7 +347,7 @@ function useOpenEntry(
 }
 
 /**
- * Draws the page again at the moment the log's last event turns 10 seconds old, so a step that
+ * Draws the page again at the moment the log's last event turns 2 seconds old, so a step that
  * waits gets its line (F3) although nothing new was written. A new event moves the moment on.
  */
 function useRedrawWhenSlow(

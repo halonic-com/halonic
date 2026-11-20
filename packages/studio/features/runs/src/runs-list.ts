@@ -35,6 +35,8 @@ export class RunsList {
   readonly #listeners = new Set<() => void>();
   readonly #stopWatching: () => void;
   #loads = 0;
+  /** The last load started, which the earlier ones wait for. */
+  #latest: Promise<void> = Promise.resolve();
   #requested: WorkflowRef | undefined;
   #toReview: string | undefined;
   readonly #opened = new Set<string>();
@@ -120,22 +122,30 @@ export class RunsList {
 
   /**
    * Loads the runs again. When loads overlap, only the last one started
-   * counts, so an older answer never overwrites a newer one. Once the
-   * workspace has closed it does nothing.
+   * counts, so an older answer never overwrites a newer one, and each call
+   * resolves once that last one has: the list is then at least as new as the
+   * call. Once the workspace has closed it does nothing.
    */
-  async refresh(): Promise<void> {
-    if (this.#disposed) return;
-    const load = ++this.#loads;
+  refresh(): Promise<void> {
+    if (this.#disposed) return Promise.resolve();
+    const load = this.#load(++this.#loads);
+    this.#latest = load;
+    return load;
+  }
+
+  async #load(load: number): Promise<void> {
     try {
       const [runs, workflows] = await Promise.all([
         this.source.list(),
         // A failed read only leaves the lines without a name; it isn't the list's error.
         this.source.runnableWorkflows().catch(() => undefined),
       ]);
-      if (load !== this.#loads || this.#disposed) return;
+      if (this.#disposed) return;
+      if (load !== this.#loads) return this.#latest;
       this.#set({ runs, loaded: true, error: undefined, workflows });
     } catch (error) {
-      if (load !== this.#loads || this.#disposed) return;
+      if (this.#disposed) return;
+      if (load !== this.#loads) return this.#latest;
       this.#set({ ...this.#state, error });
     }
   }

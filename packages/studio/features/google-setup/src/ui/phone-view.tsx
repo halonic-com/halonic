@@ -1,5 +1,6 @@
 import type { SetupStep } from "@halonicjs/google-setup";
 import { ViewOnlyLine } from "@halonicjs/studio-kit";
+import { useEffect, useRef } from "react";
 import type { GoogleSetupAccount, SignInEntry } from "../api.ts";
 import { connectorProblem } from "../connector-problem.ts";
 import { stepTitle } from "../step-names.ts";
@@ -64,15 +65,23 @@ function WhatNext(props: {
  * The Google setup item on a phone (UX checklist 2.6): read-only. It says the setup waits for a
  * computer, shows the account, its services and its progress as text, then every step's title and
  * state; the current step adds "Continue on a computer." It has no buttons, no fields and no
- * Start over: Google Cloud Console is hard to use on a phone.
+ * Start over: Google Cloud Console is hard to use on a phone. Its title takes focus as it opens,
+ * as every other Inbox item's does.
  */
 export function PhoneView({ account, steps, signInEntry, served = false }: PhoneViewProps) {
   const current = currentStep(account, steps);
   const problem = connectorProblem(account);
   const doneCount = steps.filter((step) => account.record.stepsDone[step.id] !== undefined).length;
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   return (
     <section aria-labelledby="google-setup-phone-title" className="flex flex-col gap-4 p-4">
-      <h2 id="google-setup-phone-title" className="text-title">
+      <h2
+        ref={heading}
+        id="google-setup-phone-title"
+        tabIndex={-1}
+        className="focus-ring text-title wrap-anywhere"
+      >
         Google for {account.email}
       </h2>
       <ViewOnlyLine>{firstLine(served, account.askAccountType)}</ViewOnlyLine>

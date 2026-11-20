@@ -202,11 +202,11 @@ export const doneBody = (name: string) => `${name} is active. Agents work inside
 export const doneCaveat = (caveat: string) => `Good to know: ${caveat}`;
 /** A caveat on its own line, such as on a card: the stored one starts lower case. */
 export const caveatSentence = (caveat: string) => caveat.charAt(0).toUpperCase() + caveat.slice(1);
-export const DONE_FOOTER = "You can change this any time in Settings → Sandbox.";
+export const DONE_FOOTER = "You can change this any time in Settings › Agent sandbox.";
 export const NONE_TITLE = "You're all set";
 export const NONE_BODY =
   "Agents will ask before running commands or touching files outside your project.";
-export const NONE_FOOTER = "You can set up a sandbox any time in Settings → Sandbox.";
+export const NONE_FOOTER = "You can set up a sandbox any time in Settings › Agent sandbox.";
 export const OPEN_HALONIC = "Open Halonic";
 
 /** The header badge and the Settings status row (HAL-3777 plan, ux-checklists section 3). */
@@ -228,8 +228,11 @@ export const NO_SANDBOX_LINE = "No sandbox.";
 export const NO_SANDBOX_ASKS =
   "No sandbox. Agents ask before running commands or touching files outside the project.";
 export const RESTART_LINE = "Windows needs to restart to finish setting up the sandbox.";
+/** With no reason from the backend, the plain sentence, so the line never ends in ": .". */
 export const notReadyLine = (reason: string) =>
-  `The sandbox isn't ready: ${reason.replace(/\.$/, "")}.`;
+  reason.trim() === ""
+    ? "The sandbox isn't ready."
+    : `The sandbox isn't ready: ${reason.replace(/\.$/, "")}.`;
 export const couldntCheckLine = (reason: string) =>
   `Couldn't check the sandbox: ${reason.replace(/\.$/, "")}.`;
 export const readyLine = (name: string, checked: string | null) =>

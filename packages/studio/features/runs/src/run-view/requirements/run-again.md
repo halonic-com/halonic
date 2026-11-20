@@ -8,7 +8,7 @@ The **Run again** button on the run page shall start a new run of the same workf
 
 It shall be a button in the page's header, and the button of a failed (danger) banner that has no button of its own. It shall be there only for a real run that has ended (completed or failed), whose log is read, and when the app can start runs: a test run, a run of a single agent, a run that is still going or waiting, and a page without an engine (a served page) have none.
 
-When the run doesn't start, the page shall say "Couldn't start the run: *reason*" in a danger banner under the header, announce it, and stay on the run. The reason is the same as for a failed load of a run: a host that says the engine can't be reached gives its "isn't answering" in the words for where Studio runs, and any other failure gives its own reason, or "Halonic ran into a problem it can't explain yet." with **Copy details** (microcopy 22 F13).
+When the run doesn't start, the page shall say "Couldn't start the run: *reason*" in a danger banner under the header, announce it, and stay on the run. The reason is the same as for a failed load of a run: a host that says the engine can't be reached gives its "isn't answering" in the words for where Studio runs, and any other failure gives its own reason, or "Halonic ran into a problem it can't explain yet." with **Copy details** (microcopy 22 F13). Every reason reads on after the colon: one that starts with a common word such as "The" goes on in lower case, and any other first word, which may be a name such as Halonic, Ollama or an agent's, keeps its capital.
 
 Limits, for the docs: the failed banner still has room for one button. **Open Models** and **Copy command** come with the local-model banners. A run that started with an input the workflow no longer accepts fails to start, and the page says why.
 
@@ -19,7 +19,10 @@ Limits, for the docs: the failed banner still has room for one button. **Open Mo
   then the host starts `support-reply` with that input and the page opens the new run.
 - Given a failed real run and a host that rejects with the workflow's reason "The workflow changed.",
   when **Run again** is pressed,
-  then the page shows "Couldn't start the run: The workflow changed.", says it, and stays on the run.
+  then the page shows "Couldn't start the run: the workflow changed.", says it, and stays on the run.
+- Given a failed real run and a desktop shell that gives no answer to the run call,
+  when **Run again** is pressed,
+  then the page shows "Couldn't start the run: the desktop shell gave no answer to the run call."
 - Given a failed real run on a phone and a host that says the engine can't be reached,
   when **Run again** is pressed,
   then the page shows "Couldn't start the run: Halonic on your computer isn't answering."

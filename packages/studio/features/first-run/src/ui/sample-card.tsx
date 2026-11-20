@@ -130,16 +130,19 @@ export function SampleSteps({ progress, openers, openTests, announce }: SampleSt
       <>
         <FinishedLine />
         <Caption done={done.size} />
-        {openTests === undefined || finishedRun === undefined ? null : (
-          <Button variant="secondary" size="sm" onClick={() => openTests(finishedRun.hub)}>
-            {sampleCardWords.seeTests}
-          </Button>
-        )}
-        {startOwnWorkspace === undefined ? null : (
-          <Button variant="secondary" size="sm" onClick={startOwnWorkspace}>
-            {sampleCardWords.startOwnWorkspace}
-          </Button>
-        )}
+        {/* A block around the inline buttons: their outer border starts where the heading does, and they stay side by side as before. */}
+        <div className={inset}>
+          {openTests === undefined || finishedRun === undefined ? null : (
+            <Button variant="secondary" size="sm" onClick={() => openTests(finishedRun.hub)}>
+              {sampleCardWords.seeTests}
+            </Button>
+          )}
+          {startOwnWorkspace === undefined ? null : (
+            <Button variant="secondary" size="sm" onClick={startOwnWorkspace}>
+              {sampleCardWords.startOwnWorkspace}
+            </Button>
+          )}
+        </div>
       </>
     );
   }

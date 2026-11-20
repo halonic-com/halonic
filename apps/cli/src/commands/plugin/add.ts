@@ -15,6 +15,7 @@ import type {
   PluginProblem,
   PluginService,
 } from "@halonicjs/app";
+import { formatPath } from "@halonicjs/schema-kit";
 import { KindedError } from "@halonicjs/std";
 import {
   type CommandContext,
@@ -215,9 +216,18 @@ function refused(error: PluginAddRefusal): KindedError {
   return refusal("invalid_input", firstProblem(error.problems));
 }
 
-/** The first problem's own words, which are the reason; never more detail than that. */
+/**
+ * The first problem's own words, which are the reason, after the field they
+ * are about, such as `ui.settings.units.choices[1]: …`, when they are about
+ * one. A sentence that names its field, such as a typo's, has an empty path.
+ */
 function firstProblem(problems: readonly PluginProblem[]): Phrase {
-  return phrase`${printable(problems[0]?.message ?? "")}`;
+  const problem = problems[0];
+  if (problem === undefined) return phrase``;
+  // A key in the path is the manifest's own text, so it is outside text too.
+  const reason =
+    problem.path.length === 0 ? problem.message : `${formatPath(problem.path)}: ${problem.message}`;
+  return phrase`${printable(reason)}`;
 }
 
 /** "Couldn't add the plugin: <reason> · Check the folder or git address." */

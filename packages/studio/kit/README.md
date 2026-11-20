@@ -227,6 +227,7 @@ The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 | `block` | Full width |
 | `icon` | A 16px icon before the label. With `label` and no children, the button is a square icon button |
 | `label` | An icon button's name, saying what and which: "Close Support reply", never just "Close" |
+| `round` | An icon button only: a circle instead of a square, for the ✕ at the end of a round chip (a Tools chip), so its high-contrast edge and hover fill follow the chip's round end |
 | `busy` | While its request runs: the spinner takes the icon's place, `aria-busy`, clicks ignored |
 | `busyLabel` | The label while busy ("Creating…"). Both labels share one cell, so the width never changes |
 | `unavailable` | `{ reason }`: the `id` of the visible text that says why the button can't be used now |
@@ -907,7 +908,8 @@ A row has a `title`, an optional `meta` line (cut with an ellipsis), a 20px `ico
 32px `dense` row, as in a Menu item) or a 28px `avatar` (both hidden from screen readers), a
 `trailing` chip or value, a `more` button (`{ label, onClick }`, its label naming the row),
 `unavailable` (`{ reason }`), `error` (`{ reason, chip }`), `muted`, a title in `fg-muted`
-for a finished step, and `inert`: a click, Enter or Space does nothing and the row has no hover or
+for a finished step, `wrapTitle`, a title that wraps onto more lines instead of being cut, for
+one whose end tells rows apart, as Home's "Support reply · run 2ff090", and `inert`: a click, Enter or Space does nothing and the row has no hover or
 press tint, but the arrows still reach it, and Tab enters the List at the first row that isn't
 inert. Unlike the Button's, an unavailable row's `reason` is the text itself: the
 List draws it in place of the meta line and points `aria-describedby` at it.
@@ -1402,6 +1404,45 @@ An `action` (`{ label, onClick }`) is a text button at the right of the line: `a
 weight 500, no padding, underlined on hover, with a 48px hit area on touch. The text and the action wrap as
 one group, so at 200% text the action goes under the text, starting where the text starts. The
 line keeps its frame.
+
+## WaitingLine
+
+`WaitingLine` is the one line Studio shows wherever it waits: a still dot in `running`, what it
+waits for, the time waited, the reason when Studio knows it, and its ways out. Mount it when the
+wait starts and keep it until the wait ends; it draws nothing before 2 seconds, so a quick wait
+never flashes, and the reason joins at 10 seconds. The time reads "14 s", and "2:10" from a minute.
+It's never a bar: Studio doesn't know how long the wait will be.
+
+```tsx
+function ModelWait({ since }: { since: Date }) {
+  const waitedMs = useWaitedMs(since); // draws this component again every second
+  return (
+    <WaitingLine
+      placement="banner"
+      waitedMs={waitedMs}
+      what="Waiting for Ollama on this computer"
+      reason="It loads the model first, so the start is slow."
+    />
+  );
+}
+```
+
+- **Say what, not "please wait".** `what` names the thing: the provider for a cloud key ("Waiting
+  for Anthropic"), the model and "on this computer" for a local one, the harness for an agent that
+  runs one. An address only for a server on this computer, as code (`localhost:11434`).
+- **One line per wait.** An escalation (20 s, 60 s) changes `what`, `reason` and `actions` on the
+  same line; it never adds a second notice.
+- **Placement**: `inline` stands on its own in a page's flow (Welcome); `row` sits in a row's text
+  column, 4px under its hint (a setup row); `banner` is a box on `surface-muted` above a page's
+  content (the run page).
+- **Actions** are text buttons under the text, as on the LineFrame: **Something wrong?** after 10
+  seconds, **Pick another model** at the last escalation. Cancel or Stop stays where the user
+  started the wait.
+- **Screen readers** hear what it waits for and the reason when the line appears and when they
+  change, never the counting time: the time sits outside its status region. Call `useWaitedMs` in a
+  small component of its own, as above, so only the line draws again each second.
+- The dot never pulses: nothing in the Studio moves on its own but the busy spinner, so reduced
+  motion has nothing to stop.
 
 ## NoteLines
 

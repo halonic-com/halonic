@@ -63,19 +63,6 @@ export function useUnfencedYes(
   };
 }
 
-/** The checkbox (R5) above the buttons, or the saved yes (R6) in its place. */
-export function UnfencedConsent({ yes }: { readonly yes: UnfencedYesState }) {
-  if (yes.asking !== undefined) {
-    return (
-      <Checkbox checked={yes.ticked} onChange={yes.tick}>
-        <span id={yes.checkboxId}>{UNFENCED_CHECKBOX}</span>
-      </Checkbox>
-    );
-  }
-  if (yes.allowedOn === undefined) return null;
-  return <p className="text-small text-fg-muted">{unfencedAllowedLine(yes.allowedOn)}</p>;
-}
-
 /** Under the summary while the host reads this computer's sandbox status (R4). */
 export function Checking({ id }: { readonly id: string }) {
   return (
@@ -91,9 +78,18 @@ export function Checking({ id }: { readonly id: string }) {
 /**
  * The last line, outside the scroll area. Not in the sandbox, the warning is amber with the
  * triangle, so the words and the mark carry it, never the colour alone; the reason, the fix and
- * the docs link follow in muted text, then the sentence that's always true (design section 3).
+ * the docs link follow in muted text, then the saved yes (R6), the sentence that's always true and
+ * the checkbox (R5) right above the buttons (design section 3, frames rl-plugin-windows and
+ * rl-plugin-windows-allowed). The checkbox comes after the words it confirms, on screen, in the
+ * DOM and for Tab, and scrolls with them on a short window (WCAG 1.3.2).
  */
-export function LastLine({ line }: { readonly line: TrustLastLine }) {
+export function LastLine({
+  line,
+  yes,
+}: {
+  readonly line: TrustLastLine;
+  readonly yes: UnfencedYesState;
+}) {
   if (line.kind === "plain") return line.text;
   return (
     <>
@@ -109,7 +105,17 @@ export function LastLine({ line }: { readonly line: TrustLastLine }) {
           {line.words.docsLabel}
         </ExternalLink>
       </span>
+      {yes.allowedOn === undefined ? null : (
+        <span className="mt-1 block">{unfencedAllowedLine(yes.allowedOn)}</span>
+      )}
       <span className="mt-1 block">{line.end}</span>
+      {yes.asking === undefined ? null : (
+        <span className="mt-3 block">
+          <Checkbox checked={yes.ticked} onChange={yes.tick}>
+            <span id={yes.checkboxId}>{UNFENCED_CHECKBOX}</span>
+          </Checkbox>
+        </span>
+      )}
     </>
   );
 }

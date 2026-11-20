@@ -101,6 +101,8 @@ export interface EngineServiceOptions {
   readonly lock: PageEngineLock;
   /** The workspace folder, as the person opened it in the shell. */
   readonly location: string;
+  /** The workspace's name, as the window shows it, for the refusal when another process holds the lock. */
+  readonly name: string;
   /** The workspace's files, read when the engine opens. */
   readonly definitions: DefinitionStore;
   /** The keychain, as `Secrets`. */
@@ -133,6 +135,8 @@ export interface EngineServiceOptions {
   readonly newToken: () => string;
   /** Hears each error the engine handles itself, such as a timer that will be retried. */
   reportError(error: unknown): void;
+  /** Hears once when another process took the lock over, so the window can say this one stopped. */
+  onLockLost?(): void;
   /**
    * Builds the harness host on the agent host, when one runs (`openStudioHarnessHost`).
    * `decisions` gives one run's bridge approvals and its phone's decisions,
@@ -381,14 +385,15 @@ export class EngineService {
    * @throws KindedError `conflict` naming the other process, or the lock's other refusals
    */
   async #holdLock(): Promise<TauriHeldEngineLock> {
-    const { lock, reportError } = this.#options;
+    const { lock, name, reportError } = this.#options;
     try {
       return await lock.hold((lost) => {
         reportError(lost);
         this.close().catch(reportError);
+        this.#options.onLockLost?.();
       });
     } catch (refusal) {
-      throw lockRefusal(refusal);
+      throw lockRefusal(refusal, name);
     }
   }
 
@@ -476,15 +481,19 @@ async function openRunsOf(runs: TauriRunStore): Promise<ReadonlySet<string>> {
   return new Set(open.map((run) => run.id));
 }
 
-/** The lock's refusal as the page says it: a `conflict` names the other process, others stay as they are. */
-function lockRefusal(refusal: unknown): unknown {
+/**
+ * The lock's refusal as the page says it (HAL-13758): a `conflict` names the workspace and the
+ * other process, which can be a terminal's `halonic serve` or another window; others stay as they are.
+ */
+function lockRefusal(refusal: unknown, name: string): unknown {
   if (!(refusal instanceof KindedError) || refusal.kind !== "conflict") return refusal;
   const pid = pidOf(refusal.cause);
-  const holder = pid === undefined ? "another engine" : `another engine (process ${pid})`;
-  return new KindedError("conflict", `This workspace is open in ${holder}.`, {
-    fix: "Close it, then try again.",
-    cause: refusal,
-  });
+  const holder = pid === undefined ? "" : ` (process ${pid})`;
+  return new KindedError(
+    "conflict",
+    `${name} is already running in another Halonic on this computer${holder}.`,
+    { fix: "Stop that one, then try again.", cause: refusal },
+  );
 }
 
 function pidOf(refusal: unknown): number | undefined {

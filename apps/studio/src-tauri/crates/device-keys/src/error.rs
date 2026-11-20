@@ -9,7 +9,8 @@ pub enum DeviceKeyError {
     Unavailable,
     /// A key is stored for the computer but can't be opened: the file was
     /// changed or moved from another computer's, or the platform key that
-    /// sealed it is gone. The phone has to pair with that computer again.
+    /// sealed it is gone or can't be used. The phone has to pair with that
+    /// computer again.
     Unreadable,
     /// Reading or writing the key's file failed, described without the key.
     Storage { message: String },

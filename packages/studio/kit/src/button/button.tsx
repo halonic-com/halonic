@@ -72,13 +72,19 @@ interface ButtonWithLabel extends ButtonBase {
   /** What screen readers hear while `busy`, when it differs from `busyLabel`: "Checking for updates". */
   readonly busyName?: string | undefined;
   readonly label?: never;
+  readonly round?: never;
 }
 
-/** A square button with only an icon. */
+/** A square button with only an icon, or a round one at the end of a round chip. */
 interface IconButton extends ButtonBase {
   readonly icon: ReactNode;
   /** Its name, saying what and which: "Close Support reply", "More actions for Sorter". */
   readonly label: string;
+  /**
+   * Round instead of square, for the ✕ at the end of a round chip, so its edge in high contrast
+   * and its hover fill follow the chip's round end.
+   */
+  readonly round?: boolean;
   readonly children?: never;
   readonly busyLabel?: never;
   readonly busyName?: never;
@@ -93,7 +99,7 @@ export type ButtonProps = ButtonWithLabel | IconButton;
  * for, and `GrayText` at full strength in high contrast, its edge as well as its text.
  */
 const shared = [
-  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-sm border",
+  "inline-flex shrink-0 items-center justify-center gap-1.5 border",
   "transition-colors focus-ring",
   "aria-disabled:cursor-not-allowed aria-disabled:opacity-45 contrast-more:aria-disabled:opacity-60",
   "aria-disabled:text-forced-disabled aria-disabled:border-forced-disabled",
@@ -149,8 +155,9 @@ const sizeClasses: Record<ButtonSize, string> = {
 };
 
 /**
- * Icon buttons are squares. On a touch screen they're 40px, like the text buttons beside them,
- * with the 48px hit area; on a phone 48px with a 20px icon. phone: wins where both apply.
+ * Icon buttons are squares, or circles when `round`. On a touch screen they're 40px, like the
+ * text buttons beside them, with the 48px hit area; on a phone 48px with a 20px icon. phone: wins
+ * where both apply.
  */
 const iconButtonClasses: Record<ButtonSize, string> = {
   xs: "size-5 touch:size-control-lg touch:hit-touch phone:size-touch",
@@ -217,6 +224,7 @@ export function Button(props: ButtonProps) {
 
   const classes = [
     shared,
+    isIconButton && props.round === true ? "rounded-full" : "rounded-sm",
     onTint ? ghostOnTint : variantClasses[variant],
     buttonSizeClasses(size, isIconButton, inFieldBox),
     block ? "w-full" : "",

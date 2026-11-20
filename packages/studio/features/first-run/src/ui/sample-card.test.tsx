@@ -179,6 +179,28 @@ verifies("first-run.sample-card", () => {
     for (const row of rows) expect(insetOf(row), row.textContent ?? "").toBe(insetOf(heading));
   });
 
+  it("on the desktop insets both buttons like the section heading, side by side, with their own padding", () => {
+    const insetOf = (element: Element | null | undefined) =>
+      element?.className.match(/(?:^|\s)(p[xs]-\S+)/)?.[1];
+    const heading = render(<ListHeading name="Try the sample" />).querySelector("h2");
+    const root = render(
+      <SampleSteps
+        progress={progressWith(["start", "decide", "see"], { hub: "support" } as never, {
+          startOwnWorkspace: () => {},
+        })}
+        openers={noOpeners}
+        openTests={() => {}}
+      />,
+    );
+    const buttons = [...root.querySelectorAll("button")];
+    expect(buttons).toHaveLength(2);
+    const wrapper = buttons[0]?.parentElement;
+    expect(buttons[1]?.parentElement).toBe(wrapper);
+    expect(insetOf(wrapper)).toBe(insetOf(heading));
+    // Only the inset: no flex or gap, so the inline buttons keep the spacing they had.
+    expect(wrapper?.className).toBe(insetOf(heading));
+  });
+
   it("draws the finished card's tick at icon size, on the desktop and on a phone", () => {
     const all = ["start", "decide", "see"] as const;
     for (const presentation of ["desktop", "phone"] as const) {

@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import app.tauri.annotation.Command
@@ -12,8 +11,11 @@ import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
+import java.security.GeneralSecurityException
+import java.security.InvalidKeyException
 import java.security.KeyStore
 import java.security.ProviderException
+import java.security.UnrecoverableKeyException
 import java.util.concurrent.Executors
 import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
@@ -68,7 +70,8 @@ class DeviceKeyPlugin(private val host: Activity) : Plugin(host) {
   /**
    * `{sealed, context}` in base64url, answers `{plain}`, or `{}` when the
    * bytes don't open: changed, sealed for another context, or sealed by a
-   * Keystore key that is gone. Opening never makes a key.
+   * Keystore key that is gone or that the Keystore can't use any more.
+   * Opening never makes or deletes a key.
    */
   @Command
   fun openDeviceKey(invoke: Invoke) {
@@ -83,8 +86,7 @@ class DeviceKeyPlugin(private val host: Activity) : Plugin(host) {
 
   private fun seal(invoke: Invoke, plain: ByteArray, context: ByteArray) {
     try {
-      val cipher = Cipher.getInstance(TRANSFORMATION)
-      cipher.init(Cipher.ENCRYPT_MODE, wrappingKey())
+      val cipher = sealingCipher()
       if (cipher.iv.size != IV_BYTES) {
         invoke.reject("the Android Keystore picked an IV of another length")
         return
@@ -114,8 +116,12 @@ class DeviceKeyPlugin(private val host: Activity) : Plugin(host) {
       plain.fill(0)
     } catch (error: AEADBadTagException) {
       invoke.resolve(JSObject())
-    } catch (error: KeyPermanentlyInvalidatedException) {
-      invoke.resolve(JSObject())
+    } catch (error: GeneralSecurityException) {
+      if (isBrokenKey(error)) {
+        invoke.resolve(JSObject())
+      } else {
+        invoke.reject("the Android Keystore could not open the key")
+      }
     } catch (error: Exception) {
       invoke.reject("the Android Keystore could not open the key")
     }
@@ -129,6 +135,45 @@ class DeviceKeyPlugin(private val host: Activity) : Plugin(host) {
 
   /** The sealing key, made on the first seal. Only the worker calls it. */
   private fun wrappingKey(): SecretKey = existingKey() ?: makeKey()
+
+  /**
+   * A cipher ready to seal. When the key under [ALIAS] is there but the
+   * Keystore can't use it (some phones do this after an OS update or a
+   * lock-screen change), every file it sealed already reads as unreadable,
+   * so it is replaced once and the new pairing can still be saved. Without
+   * this the phone couldn't pair again until its app data was cleared.
+   */
+  private fun sealingCipher(): Cipher {
+    try {
+      return encryptingCipher(wrappingKey())
+    } catch (error: GeneralSecurityException) {
+      if (!isBrokenKey(error)) {
+        throw error
+      }
+    }
+    deleteKey()
+    return encryptingCipher(makeKey())
+  }
+
+  private fun encryptingCipher(key: SecretKey): Cipher {
+    val cipher = Cipher.getInstance(TRANSFORMATION)
+    cipher.init(Cipher.ENCRYPT_MODE, key)
+    return cipher
+  }
+
+  /**
+   * The key is there but the Keystore can't use it: `getKey` can't recover
+   * it, or `cipher.init` refuses it (KeyPermanentlyInvalidatedException is
+   * one kind). A Keystore that can't be reached at all is another error.
+   */
+  private fun isBrokenKey(error: GeneralSecurityException): Boolean =
+    error is InvalidKeyException || error is UnrecoverableKeyException
+
+  private fun deleteKey() {
+    val store = KeyStore.getInstance(KEYSTORE)
+    store.load(null)
+    store.deleteEntry(ALIAS)
+  }
 
   private fun makeKey(): SecretKey {
     val strongBox = Build.VERSION.SDK_INT >= ANDROID_9 &&
