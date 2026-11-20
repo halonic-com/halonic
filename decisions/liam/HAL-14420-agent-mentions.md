@@ -3,6 +3,7 @@
 - Task: HAL-14420
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14420 (board decision, 20 Nov; Julian reviews the guard part)
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:oS0q0hMOO+v11ZBlbDbrblB+fTHf6cm5XCxz1vTtsF8BdM5K6ijccX1bSYFzbf5y8FghkxB67k7cuTrn2c21Ag==
 
 ## What changes
 
