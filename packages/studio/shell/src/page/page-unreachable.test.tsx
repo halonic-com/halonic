@@ -13,7 +13,7 @@ import type { ViewRef } from "../view.ts";
 import { LoadedView } from "../view-loading.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { PageErrorBoundary } from "./page-error-boundary.tsx";
-import { asUnreachable, UnreachableViewBoundary } from "./page-unreachable.tsx";
+import { asUnreachable, PartErrorBoundary } from "./page-unreachable.tsx";
 
 beforeEach(() => {
   // React logs every error a boundary catches; here the failures are the point.
@@ -167,12 +167,12 @@ verifies("shell.page-unreachable", () => {
     await act(async () => {
       container = render(
         <StudioHostContext value="served">
-          <UnreachableViewBoundary name="Appearance settings">
+          <PartErrorBoundary name="Appearance settings">
             <LoadedView view={inboxView().view} props={{}} />
-          </UnreachableViewBoundary>
-          <UnreachableViewBoundary name="Models settings">
+          </PartErrorBoundary>
+          <PartErrorBoundary name="Models settings">
             <LoadedView view={inboxView(() => new Error("broken")).view} props={{}} />
-          </UnreachableViewBoundary>
+          </PartErrorBoundary>
         </StudioHostContext>,
       );
     });

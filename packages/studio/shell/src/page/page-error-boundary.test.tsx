@@ -9,8 +9,10 @@ import {
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { SectionView } from "../settings/settings-dialog.tsx";
 import { focusPageHeading } from "../tabs/history-moves.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
+import type { WorkspaceContext } from "../workspace-context.ts";
 import { PageErrorBoundary } from "./page-error-boundary.tsx";
 
 let toasts: ToastStore;
@@ -204,4 +206,63 @@ verifies("shell.page-stopped", () => {
       expect.objectContaining({ tone: "danger", title: "Couldn't copy." }),
     ]);
   });
+
+  it.each([
+    { page: false, name: "H3", level: "H4" },
+    { page: true, name: "H1", level: "H2" },
+  ])(
+    "says Couldn't load these settings with Reload page in the desktop app, page $page",
+    async ({ page, name, level }) => {
+      let drawable = false;
+      const section = (id: string, title: string, view: () => boolean) => ({
+        id,
+        title,
+        scope: "display" as const,
+        order: 10,
+        featureId: id,
+        view: "Section",
+        load: async () => {
+          if (!view()) throw new TypeError("theme is undefined");
+          return { Section: () => <p>{title} works</p> };
+        },
+      });
+      const sectionView = (registered: ReturnType<typeof section>) => (
+        <SectionView
+          section={registered}
+          context={{} as WorkspaceContext}
+          closeSettings={() => undefined}
+          place="app"
+          surface={page ? "phone" : "window"}
+          page={page}
+        />
+      );
+      let container = document.body;
+      await act(async () => {
+        container = render(
+          <ClipboardProvider writeClipboard={writeClipboard}>
+            <ToastStoreProvider store={toasts}>
+              {sectionView(section("appearance", "Appearance", () => drawable))}
+              {sectionView(section("models", "Models", () => true))}
+            </ToastStoreProvider>
+          </ClipboardProvider>,
+        );
+      });
+      const appearance = container.querySelector("section") as HTMLElement;
+      const headings = [...appearance.querySelectorAll("h1, h2, h3, h4")];
+      expect(headings.map((heading) => [heading.tagName, heading.textContent])).toEqual([
+        [name, "Appearance"],
+        [level, "Couldn't load these settings"],
+      ]);
+      expect(appearance.textContent).toContain(
+        "Halonic ran into a problem showing the Appearance settings. Nothing in your workspace changed.",
+      );
+      expect(appearance.textContent).not.toContain("theme is undefined");
+      expect(button(appearance, "Copy details")).toBeDefined();
+      expect(container.textContent).toContain("Models works");
+
+      drawable = true;
+      await press(button(appearance, "Reload page"));
+      expect(appearance.textContent).toContain("Appearance works");
+    },
+  );
 });

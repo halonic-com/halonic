@@ -6,6 +6,7 @@ import { useStudioHost } from "../engine/studio-host-context.ts";
 import { isCodeLoadFailure } from "../errors/code-load-failure.ts";
 import { pageStandInTitle } from "../tabs/history-moves.ts";
 import { ViewErrorBoundary } from "../view-error-boundary.tsx";
+import { PageStopped } from "./page-stopped.tsx";
 
 /** The words of a view whose code couldn't load because the computer can't be reached. */
 export const unreachableWords = {
@@ -84,9 +85,10 @@ export function PageUnreachable({
 /**
  * A `ViewErrorBoundary` for a part of a page, such as a Settings section: when its code can't load
  * because the computer can't be reached, it shows {@link PageUnreachable} for `name`, whose
- * **Try again** imports it again; any other failure shows nothing, as before.
+ * **Try again** imports it again. In the desktop app any failure shows {@link PageStopped} for
+ * `name`, whose **Reload page** draws it again; elsewhere another failure shows nothing.
  */
-export function UnreachableViewBoundary({
+export function PartErrorBoundary({
   name,
   children,
   ...title
@@ -96,19 +98,19 @@ export function UnreachableViewBoundary({
 }) {
   const host = useStudioHost();
   const [attempt, setAttempt] = useState(0);
+  const retry = () => setAttempt((count) => count + 1);
   return (
     <ViewErrorBoundary
       // A new attempt starts a new boundary, which forgets the error and imports the view again.
       key={attempt}
-      fallback={(error) =>
-        isUnreachable(host, error) ? (
-          <PageUnreachable
-            {...title}
-            pageName={name}
-            onRetry={() => setAttempt((count) => count + 1)}
-          />
-        ) : null
-      }
+      fallback={(error) => {
+        if (isUnreachable(host, error)) {
+          return <PageUnreachable {...title} pageName={name} onRetry={retry} />;
+        }
+        return host === "desktop-app" ? (
+          <PageStopped {...title} pageName={`the ${name}`} error={error} onReload={retry} />
+        ) : null;
+      }}
     >
       {children}
     </ViewErrorBoundary>

@@ -1,7 +1,7 @@
 import { Dialog, isComposing } from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
-import { UnreachableViewBoundary, unreachableWords } from "../page/page-unreachable.tsx";
+import { PartErrorBoundary, unreachableWords } from "../page/page-unreachable.tsx";
 import type { SettingsSectionContribution } from "../points/frame.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { Registered } from "../points/point-store.ts";
@@ -339,11 +339,11 @@ export function SectionView({
       {description === undefined ? null : (
         <p className="mt-2 max-w-120 text-small text-fg-muted">{description}</p>
       )}
-      {/* A view that fails to load or draw shows nothing, or "Couldn't load these settings" when
-          the computer can't be reached, one level under the section's name; the list and the other
-          sections keep working. */}
+      {/* A view that fails to load or draw shows "Couldn't load these settings" one level under the
+          section's name: with Reload page in the desktop app, with Try again when the computer
+          can't be reached, else nothing. The list and the other sections keep working. */}
       <div className="mt-5">
-        <UnreachableViewBoundary
+        <PartErrorBoundary
           name={`${section.title} settings`}
           title={unreachableWords.settingsTitle}
           headingLevel={page === true ? 2 : 4}
@@ -353,7 +353,7 @@ export function SectionView({
             name={section.title}
             props={{ context, closeSettings, place, surface, regionFormat }}
           />
-        </UnreachableViewBoundary>
+        </PartErrorBoundary>
       </div>
     </section>
   );
