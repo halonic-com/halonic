@@ -46,7 +46,6 @@ import {
   type LocalExecutor,
   noListedToolApproval,
 } from "@halonicjs/engine";
-import type { RunSummary } from "@halonicjs/events";
 import type { Agent } from "@halonicjs/format";
 import {
   type Clock,
@@ -57,7 +56,6 @@ import {
   noKeyOrigins,
   type RunExecutor,
   type Secrets,
-  type SendOptions,
 } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { TauriIpc } from "@halonicjs/studio-services";
@@ -300,18 +298,11 @@ export class EngineService {
   }
 
   /**
-   * Sends `event` to a run waiting for a person (an Inbox card's Approve or Reject) as `halonic runs
-   * send` does: opens the engine with a start's checks (KindedError `denied` for a workspace that may
-   * start nothing) and returns the run once the executor records the event, not when the run ends.
+   * Answers a waiting run (an Inbox card's Approve or Reject) as `halonic runs send` does, after a
+   * start's checks (`denied` for a workspace that may start nothing).
    */
-  async send(
-    runId: string,
-    event: string,
-    payload?: unknown,
-    options?: SendOptions,
-  ): Promise<RunSummary> {
-    const engine = await this.#forStart();
-    return engine.executor.send(runId, event, payload, options);
+  async send(...args: Parameters<LocalExecutor["send"]>): ReturnType<LocalExecutor["send"]> {
+    return (await this.#forStart()).executor.send(...args);
   }
 
   /**
