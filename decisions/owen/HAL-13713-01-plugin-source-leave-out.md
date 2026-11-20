@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-13713; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BHANEdzPOo99J6foXr8tHu3gjsdu073mjwLq+Hv3a0GMdBlZs2obnhT1XmSWMZbS/tXiF4uh14/mKiiA748tCA==
 
 Adding a plugin copied every file in its folder except the private workspace names (`.git`, `.studio`, `.env*`). The sandbox keeps a longer list of private paths away from agents and plugins, and a copy should not hand them back.
 
