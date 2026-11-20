@@ -46,3 +46,5 @@ that holds the lock needs the lock file to record it.
 - cli.commands.serve.serve
 - app.routine-list
 - format.routine-file
+- apps/cli/src/commands/routines/golden/acme-routines.txt
+- apps/cli/src/commands/routines/golden/acme-routines-two-hubs.txt
