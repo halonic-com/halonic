@@ -5,6 +5,7 @@
 import type { PluginEntry, PluginInstall, PluginService } from "@halonicjs/app";
 import { type ProfileEnvironment, withHomeAsTilde } from "@halonicjs/profile";
 import type { CommandContext, CommandInput, CommandResult } from "../../command.ts";
+import { pluginStateOf } from "../../connector-plugin.ts";
 import { exitCode } from "../../exit-code.ts";
 import { columns } from "../../messages/columns.ts";
 import { dimmed, markPart, type Phrase, phrase } from "../../messages/phrase.ts";
@@ -63,7 +64,7 @@ async function pluginRow(
       json: { id: entry.folder, status: "broken", source: install?.source ?? null },
     };
   }
-  const state = stateOf(entry);
+  const state = pluginStateOf(entry);
   return {
     cells: [
       phrase`${printable(entry.plugin.name)}`,
@@ -79,11 +80,6 @@ async function pluginRow(
       source: install?.source ?? null,
     },
   };
-}
-
-function stateOf(entry: Exclude<PluginEntry, { status: "broken" }>): PluginState {
-  if (entry.status === "trusted") return "on";
-  return entry.status === "changed" ? "changed" : "notTrusted";
 }
 
 function stateCell(state: PluginState, id: string): Phrase {
