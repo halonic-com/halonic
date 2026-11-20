@@ -1,5 +1,6 @@
 import {
   type HarnessBridge,
+  type HarnessTask,
   harnessBridgeTokenHeader,
   type SandboxProfile,
 } from "@halonicjs/ports";
@@ -10,6 +11,19 @@ import {
  * from its environment, so the token is never written into a file.
  */
 export const claudeCodeRunTokenVariable = "HALONIC_RUN_TOKEN";
+
+/**
+ * The variables that name the models Claude Code picks by itself: the ones
+ * behind its `haiku`, `sonnet` and `opus` names, the small, fast one for
+ * its background calls, and its subagents' one.
+ */
+const claudeCodeModelVariables = [
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+  "ANTHROPIC_DEFAULT_SONNET_MODEL",
+  "ANTHROPIC_DEFAULT_OPUS_MODEL",
+  "ANTHROPIC_SMALL_FAST_MODEL",
+  "CLAUDE_CODE_SUBAGENT_MODEL",
+] as const;
 
 /** The folders of the sandbox profile the environment points Claude Code at. */
 export type ClaudeCodeFolders = Pick<SandboxProfile, "tempFolder" | "settingsFolder">;
@@ -32,6 +46,11 @@ export type ClaudeCodeFolders = Pick<SandboxProfile, "tempFolder" | "settingsFol
  *   `ANTHROPIC_CUSTOM_HEADERS` covers only model requests, so the MCP
  *   settings name this variable in the server's header, and the token is
  *   never written into a file.
+ * - `ANTHROPIC_DEFAULT_HAIKU_MODEL`, `…_SONNET_MODEL`, `…_OPUS_MODEL`,
+ *   `ANTHROPIC_SMALL_FAST_MODEL` and `CLAUDE_CODE_SUBAGENT_MODEL`: the task's model, only when it is marked
+ *   `modelForEveryCall` (requirement `harness-claude-code.model-variables`).
+ *   A compatible provider has none of Claude's models, so Claude Code's
+ *   background and subagent calls ask for the agent's model too.
  *
  * The values hold the run token. The engine passes them only to the sandbox;
  * nothing here writes them anywhere else.
@@ -41,6 +60,7 @@ export type ClaudeCodeFolders = Pick<SandboxProfile, "tempFolder" | "settingsFol
 export function claudeCodeEnvironment(
   bridge: HarnessBridge,
   folders: ClaudeCodeFolders,
+  model?: Pick<HarnessTask, "model" | "modelForEveryCall">,
 ): Record<string, string> {
   if (folders.settingsFolder === null) {
     throw new Error("Claude Code needs a settings folder, and the sandbox profile has none.");
@@ -51,5 +71,15 @@ export function claudeCodeEnvironment(
     CLAUDE_CONFIG_DIR: folders.settingsFolder,
     CLAUDE_CODE_TMPDIR: folders.tempFolder,
     [claudeCodeRunTokenVariable]: bridge.token,
+    ...modelVariables(model),
   };
+}
+
+/** Each of Claude Code's own model variables set to the task's model, or none when it isn't for every call. */
+function modelVariables(
+  model: Pick<HarnessTask, "model" | "modelForEveryCall"> | undefined,
+): Record<string, string> {
+  if (model?.model === undefined || model.modelForEveryCall !== true) return {};
+  const chosen = model.model;
+  return Object.fromEntries(claudeCodeModelVariables.map((name) => [name, chosen]));
 }
