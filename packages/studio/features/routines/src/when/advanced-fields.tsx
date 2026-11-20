@@ -3,7 +3,7 @@ import { Disclosure, Field, Input, Select, TextArea } from "@halonicjs/studio-ki
 import { useEffect, useState } from "react";
 import type { RoutineTrigger } from "../api.ts";
 import { checkCron, timeZoneError, zoneChoices } from "./cron-check.ts";
-import { deviceTimeZone, whenWords as words } from "./when-words.ts";
+import { cronErrorWords, deviceTimeZone, whenWords as words } from "./when-words.ts";
 
 /** How long typing pauses before a mistake is shown. */
 const PAUSE_MS = 600;
@@ -93,7 +93,7 @@ function CronField({
       <Field
         label={words.cron}
         hint={check.valid ? check.words : undefined}
-        error={showError && !check.valid ? check.error : null}
+        error={showError && !check.valid ? cronErrorWords(check.error, enabled) : null}
         announceWhileFocused
       >
         <Input
@@ -104,7 +104,6 @@ function CronField({
         />
       </Field>
       <p className="text-small text-fg-muted">{words.cronHelp}</p>
-      {showError && enabled && <p className="text-small text-fg-muted">{words.stillRunsOnLast}</p>}
     </>
   );
 }

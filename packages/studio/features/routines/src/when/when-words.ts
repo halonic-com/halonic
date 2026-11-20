@@ -85,6 +85,16 @@ const shortMonths = [
   "Dec",
 ] as const;
 
+/**
+ * A refused cron line's error. While the routine is on, "Still runs on the last valid schedule…"
+ * is its second sentence, so a screen reader reads both together, once.
+ */
+export function cronErrorWords(error: string, enabled: boolean): string {
+  if (!enabled) return error;
+  const first = /[.!?]$/.test(error) ? error : `${error}.`;
+  return `${first} ${whenWords.stillRunsOnLast}`;
+}
+
 /** The IANA zone of this device, or `undefined` when it can't be read. */
 export function deviceTimeZone(): string | undefined {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
