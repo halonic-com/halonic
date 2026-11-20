@@ -364,9 +364,13 @@ function timeoutFailure(failed: RunFailedEvent, model: FailedModel | undefined):
  * bug: a provider file whose type Halonic can't call (HAL-12342), a model
  * alias the hub doesn't have, such as `default` in a workspace made with
  * plain `halonic init` (HAL-12377), and a secrets file other users can read
- * (HAL-12569). A cause without the names its facts need is `error`.
+ * (HAL-12569). A cause without the names its facts need is `error`. Studio
+ * reads its run summary's cause with it, so both word the same facts
+ * (HAL-14324).
+ *
+ * @returns `undefined` for a cause that isn't one of these, or misses a name
  */
-function setupFailureOf(cause: RunFailureCause | undefined): RunFailure | undefined {
+export function setupFailureOf(cause: RunFailureCause | undefined): RunFailure | undefined {
   const { code, detail = {} } = cause ?? {};
   switch (code) {
     case "models.unknown-provider-type": {

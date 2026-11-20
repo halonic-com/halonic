@@ -163,6 +163,21 @@ verifies("runs.run-view.failure-banners", () => {
       });
     });
 
+    it("points to the address in Models, with no empty host, when the address has none", () => {
+      const noHost = event({ type: "run.failed", state: "draft", error: "x", host: "" }, 3);
+      const log = [call("ollama", "llama3.2"), noHost];
+      const banner = causeBanner(failed("model-unreachable"), log, context, false);
+      expect(lines(banner)).toEqual([
+        "Halonic couldn't reach Ollama for the model llama3.2: its address has no host. Check Ollama's address in Models. It starts with http:// or https://, such as http://localhost:11434.",
+      ]);
+      expect(banner?.kind === "callout" ? banner.fixes : undefined).toEqual([
+        { kind: "open-models" },
+      ]);
+      expect(lines(causeBanner(failed("model-unreachable"), log, context, true))?.[1]).toBe(
+        "Fix this on your computer: Models",
+      );
+    });
+
     it("waits for the log, and for a model call in it", () => {
       expect(causeBanner(failed("model-unreachable"), undefined, context, false)).toBeUndefined();
       expect(
@@ -406,6 +421,56 @@ verifies("runs.run-view.failure-banners", () => {
     expect(banner?.kind === "callout" && banner.lines[0]).toBe(
       "Support reply stopped in the step Draft.",
     );
+  });
+
+  describe("a setup cause the engine names", () => {
+    const setupFailure = (code: string, detail: Record<string, string>) =>
+      failed("error", { cause: { kind: "not_found", code, detail } });
+    const fixes = (banner: ReturnType<typeof causeBanner>) =>
+      banner?.kind === "callout" ? banner.fixes : undefined;
+
+    it("says a provider type Halonic can't call, as the CLI does, with Open Models", () => {
+      const run = setupFailure("models.unknown-provider-type", {
+        provider: "mock",
+        type: "antropic",
+      });
+      const banner = causeBanner(run, undefined, context, false);
+      expect(lines(banner)).toEqual([
+        "Support reply failed in the step Draft: provider mock has type antropic, which Halonic can't call.",
+        "Pick a type Halonic knows for mock in Models, then run again.",
+      ]);
+      expect(fixes(banner)).toEqual([{ kind: "open-models" }]);
+    });
+
+    it("says a model alias the hub doesn't have, with Open Models", () => {
+      const run = setupFailure("models.unknown-model-alias", { alias: "smart", hub: "support" });
+      const banner = causeBanner(run, undefined, context, false);
+      expect(lines(banner)).toEqual([
+        "Support reply failed in the step Draft: hub support has no model alias smart.",
+        "Add it in Models, or set a model on the agent.",
+      ]);
+      expect(fixes(banner)).toEqual([{ kind: "open-models" }]);
+    });
+
+    it("says where to fix it on a phone, with no button", () => {
+      const run = setupFailure("models.unknown-model-alias", { alias: "smart", hub: "support" });
+      const banner = causeBanner(run, undefined, context, true);
+      expect(lines(banner)?.at(-1)).toBe("Fix this on your computer: Models");
+      expect(fixes(banner)).toBeUndefined();
+    });
+
+    it("keeps the general banner for a cause nobody knows, or one without its names", () => {
+      for (const run of [
+        setupFailure("workflow.something-new", { step: "draft" }),
+        setupFailure("models.unknown-model-alias", { alias: "smart" }),
+      ]) {
+        expect(causeBanner(run, [], context, false)).toBeUndefined();
+        const general = runBanner({ summary: run }, context);
+        expect(general?.kind === "callout" && general.lines).toEqual([
+          "Support reply failed in the step Draft. Halonic can't tell the cause yet.",
+        ]);
+      }
+    });
   });
 
   describe("the provider's name (E6)", () => {

@@ -1,9 +1,12 @@
 // The failed banners by cause (microcopy 22 F6, F7, F8, F10, F15, F20, F21; checklist FX-D2, FX-D3).
 // Each reads the run's reason, and the log for what the summary doesn't hold: the model and its
 // provider from the last model call, the agent from the last agent that started, and the harness
-// program and its limit from the last `harness.started`. Run again is the banner's button
-// (`run-again.ts`); the local-model banners add Copy command and Open Models before it.
+// program and its limit from the last `harness.started`. A setup cause the engine names, such as
+// a provider type Halonic can't call, is read from the summary's cause with the CLI's own facts
+// (`setupFailureOf`). Run again is the banner's button (`run-again.ts`); the local-model and
+// setup banners add Copy command and Open Models before it.
 
+import { setupFailureOf } from "@halonicjs/app/run-failure";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { failureWords } from "../failure-words.ts";
 import { currentStepName } from "../list/run-row.ts";
@@ -18,7 +21,10 @@ interface FailureFacts {
   readonly model: string | undefined;
   /** The model alias the last call went to, when the log names it (older logs don't). */
   readonly alias: string | undefined;
+  /** The host `run.failed` names; `undefined` when it names none, or an empty one. */
   readonly host: string | undefined;
+  /** `run.failed` named an empty host: the provider's address has none, such as `localhost:11434` without `http://`. */
+  readonly noHost: boolean;
   readonly agent: string | undefined;
   /** The harness program the last step tried to start, and how long the engine waits for it. */
   readonly harness:
@@ -48,6 +54,10 @@ export function causeBanner(
   const apiOff = apiOffBanner(summary, phone);
   if (apiOff !== undefined) {
     return apiOff;
+  }
+  const setup = setupBanner(summary, workflow, step, phone);
+  if (setup !== undefined) {
+    return setup;
   }
   const facts = factsFrom(log ?? []);
   switch (summary.reason) {
@@ -144,8 +154,43 @@ function proxyBanner(
 }
 
 /**
+ * A setup cause the engine names (`setupFailureOf`): the CLI's first line, then the fix in Studio,
+ * which is Open Models rather than a file. A phone says to fix it on the computer. Any other cause
+ * keeps the page's other banners.
+ */
+function setupBanner(
+  summary: RunSummary,
+  workflow: string,
+  step: string,
+  phone: boolean,
+): RunBanner | undefined {
+  const failure = setupFailureOf(summary.cause);
+  switch (failure?.reason) {
+    case "unknown-provider-type":
+      return fixInModels(
+        [
+          failureWords.unknownProviderType(workflow, step, failure.provider, failure.type),
+          failureWords.unknownProviderTypeFix(failure.provider),
+        ],
+        phone,
+      );
+    case "unknown-model-alias":
+      return fixInModels(
+        [
+          failureWords.unknownModelAlias(workflow, step, failure.hub, failure.alias),
+          failureWords.unknownModelAliasFix,
+        ],
+        phone,
+      );
+    default:
+      return undefined;
+  }
+}
+
+/**
  * F7: the cloud sentence names the internet, the local one the program that isn't running and
- * offers Open Models. A phone says the program is on the computer and says to fix it there.
+ * offers Open Models. A phone says the program is on the computer and says to fix it there. An
+ * address without a host can't be reached whatever runs, so that sentence points to the address.
  */
 function modelUnreachable(
   facts: FailureFacts,
@@ -157,6 +202,9 @@ function modelUnreachable(
     return undefined;
   }
   const name = providerNameOf(provider, context.providerName);
+  if (facts.noHost) {
+    return fixInModels([failureWords.modelAddressWithoutHost(name, model, alias)], phone);
+  }
   // A provider that is no longer in the workspace gets the cloud sentence: the internet is the
   // likelier cause, and the local one tells a person to start a program that may not exist.
   if (context.providerKind(provider) !== "local") {
@@ -277,6 +325,13 @@ function harnessStartFailed(facts: FailureFacts, step: string): RunBanner | unde
 
 const openModels: BannerFix = { kind: "open-models" };
 
+/** A banner whose fix is in Models: Open Models, or on a phone a line saying to fix it on the computer. */
+function fixInModels(lines: readonly string[], phone: boolean): RunBanner {
+  return phone
+    ? danger([...lines, failureWords.fixOnComputer(failureWords.modelsPlace)])
+    : danger(lines, [openModels]);
+}
+
 function danger(lines: readonly string[], fixes?: readonly BannerFix[]): RunBanner {
   return {
     kind: "callout",
@@ -300,7 +355,8 @@ function factsFrom(log: readonly RunEvent[]): FailureFacts {
     provider: request?.provider,
     model: request?.model,
     alias: request?.alias,
-    host: failed?.host,
+    host: failed?.host === "" ? undefined : failed?.host,
+    noHost: failed?.host === "",
     agent: started?.agent,
     harness:
       harness === undefined

@@ -13,4 +13,5 @@ export {
   isSetupCause,
   type RunFailure,
   runFailureOf,
+  setupFailureOf,
 } from "./run-failure-facts.ts";
