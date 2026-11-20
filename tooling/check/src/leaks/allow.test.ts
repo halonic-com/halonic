@@ -37,6 +37,29 @@ describe("AllowList", () => {
     expect(list.allows("absolute-path", "docs/a.md", undefined, at(undefined))).toBe(false);
   });
 
+  it("allows a personal term only in the named commit and exact file", () => {
+    const list = new AllowList("personal-term docs/a.md commit:abc1234 old text, history kept");
+    expect(list.problems).toEqual([]);
+    const at = (commit: string | undefined) => ({ commit });
+    expect(list.allows("personal-term", "docs/a.md", undefined, at("abc12345f"))).toBe(true);
+    expect(list.allows("personal-term", "docs/a.md", undefined, at("def4567ab"))).toBe(false);
+    expect(list.allows("personal-term", "docs/a.md", undefined, at(undefined))).toBe(false);
+    expect(list.allows("personal-term", "docs/b.md", undefined, at("abc12345f"))).toBe(false);
+    expect(list.allows("personal-term", "docs/a.md")).toBe(false);
+  });
+
+  it("refuses a personal-term entry without a commit, with a root or with a glob", () => {
+    const list = new AllowList(
+      [
+        "personal-term docs/a.md it is fine really",
+        "personal-term docs/a.md root:/tmp/ commit:abc1234 an old commit",
+        "personal-term docs/*.md commit:abc1234 an old commit",
+        `personal-term docs/a.md ${print} commit:abc1234 an old commit`,
+      ].join("\n"),
+    );
+    expect(list.problems.map((problem) => problem.line)).toEqual([1, 2, 3, 4]);
+  });
+
   it("refuses an absolute-path entry that names neither a root nor a commit", () => {
     const list = new AllowList(
       [
@@ -73,7 +96,7 @@ describe("AllowList", () => {
     expect(new AllowList("# a comment\n\n").problems).toEqual([]);
   });
 
-  it("reports each wrong line, and never accepts a personal term", () => {
+  it("reports each wrong line, and never accepts a personal term without a commit", () => {
     const list = new AllowList(
       [
         "personal-term docs/a.md it is fine really",

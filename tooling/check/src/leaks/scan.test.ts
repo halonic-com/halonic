@@ -103,7 +103,19 @@ describe("the allow-list", () => {
     expect(scan([fileChange("docs/a.md", otherToken)], allowFile)).toHaveLength(1);
   });
 
-  it("fails on a bad allow-file entry, and never allows a personal term", () => {
+  it("allows a personal term only in the named old commit and file", () => {
+    const allowFile = "personal-term docs/a.md commit:abc1234 old text, history kept";
+    const inCommit = (commit: string | undefined, path = "docs/a.md"): Change => ({
+      ...fileChange(path, `Written by ${term}.`),
+      commit,
+    });
+    expect(scan([inCommit("abc12345f")], allowFile)).toEqual([]);
+    expect(scan([inCommit("def4567ab")], allowFile)).toHaveLength(1);
+    expect(scan([inCommit(undefined)], allowFile)).toHaveLength(1);
+    expect(scan([inCommit("abc12345f", "docs/b.md")], allowFile)).toHaveLength(1);
+  });
+
+  it("fails on a bad allow-file entry, and never allows a personal term without a commit", () => {
     const allowFile = "personal-term docs/a.md it is fine really";
     const findings = scan([fileChange("docs/a.md", term)], allowFile);
     expect(findings.map(({ rule, line }) => `${rule}:${line ?? ""}`)).toEqual([

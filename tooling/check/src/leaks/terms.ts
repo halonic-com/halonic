@@ -8,7 +8,7 @@ import { join } from "node:path";
  * keeps a local copy outside the repo. Nothing here ever prints a term.
  */
 
-/** The rule name, as used in reports. It can't be allow-listed. */
+/** The rule name, as used in reports. Only an old commit can be allow-listed for it. */
 export const personalTermRule = "personal-term";
 
 /** Set to `true` in CI once the secret must exist: a missing list then fails instead of skipping. */
