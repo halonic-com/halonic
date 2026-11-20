@@ -3,6 +3,7 @@
 - Task: HAL-12585 (option B of the proposal on HAL-12579)
 - Approval: Julian proposed option B on HAL-12579 (its proposal document) and assigned the implementation on HAL-12585. Julian reviews this as a licence and release-gate PR, Liam signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aJGSzQI/Ho4cVowApO9/uJCjIpuLdjWgEZZ83KVnEu8tzuri8l0LAuGM25W1P+TzrtTH/BO/+WJ+3smPqJDKAA==
 
 ## What changes
 
