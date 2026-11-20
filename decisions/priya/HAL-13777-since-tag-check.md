@@ -25,10 +25,33 @@ says `git fetch --tags`.
 
 Nineteen requirements written after v0.1.0 still said `Since: 0.1.0` and now
 say `Since: unreleased`. Two are guard paths (`check.guard-dependency`,
-`spec.verifies-counts-retries-once`), moved here from HAL-13752.
+`spec.verifies-counts-retries-once`), moved here from HAL-13752. One more,
+`integration.sheet-shows-everything`, said a guessed `Since: 0.1.2` and now
+says `Since: unreleased` too. The guard wants every edited active
+requirement named, so Covers lists all twenty by ID.
 
 ## Covers
 
 - .github/
 - packages/testing/spec/
 - tooling/check/
+- app.doctor-time-limit
+- check.guard-dependency
+- engine.final-signal
+- integration.sheet-shows-everything
+- kit.chat-box-line
+- kit.chat-composer
+- kit.chat-end-line
+- kit.chat-message
+- kit.chat-tool-line
+- kit.chat-transcript
+- kit.toast-clear-of-focus
+- recording.svg
+- routines.signal-loop
+- routines.signals-due
+- spec.verifies-counts-retries-once
+- workflow.validate-choice-values
+- workflow.validate-template-names
+- workflow.validate-wait-signal
+- workspace.hub-uses
+- yaml.edit-rename

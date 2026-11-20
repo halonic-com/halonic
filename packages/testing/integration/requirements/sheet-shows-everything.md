@@ -1,7 +1,7 @@
 # integration.sheet-shows-everything
 
 - Status: active
-- Since: 0.1.2
+- Since: unreleased
 - Source: HAL-14087 (Liam's decision on HAL-14082: the integrations' own `sheet.test.ts` moves into the shared suite)
 
 When the declaration is checked, the conformance suite shall fail when the sheet lists the tools in another order than the code offers them, and when any tool takes an argument without a description, naming the tool and the argument, since the sheet can't show such an argument and the user would approve the tool without seeing it.
