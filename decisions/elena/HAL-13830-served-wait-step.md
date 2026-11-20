@@ -8,6 +8,9 @@
 - `studio.served-inbox-runs`: an answer to a wait step also sends `wait`, the step's state and the
   time it started waiting, next to the event, its payload and a tool call's `callId`. The host
   (`server.run-routes`) already checks a `wait` it gets.
+- `cli.commands.serve.agent-names`: only the rationale changes. It said a rename shows "at once";
+  the names come from the live version, so a rename saved in an agent file shows once a new live
+  version holds it (NM1 from the C422 check). The requirement and its examples stay as they are.
 
 ## Why
 
@@ -18,4 +21,5 @@ to the requirement; no example or test was changed or removed.
 
 ## Covers
 
+- cli.commands.serve.agent-names
 - studio.served-inbox-runs

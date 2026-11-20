@@ -5,7 +5,7 @@ import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
  * server's waiting list (requirement `cli.commands.serve.agent-names`). When
  * two files have the same id, the first one wins, as on the desktop.
  *
- * @param workspace the workspace served now, read on each call so a renamed agent shows at once
+ * @param workspace the workspace served now, read on each call, so a rename shows once a new live version holds it
  */
 export function workspaceAgentNames(
   workspace: () => LoadedWorkspace,
