@@ -13,3 +13,8 @@ The new `kit.toast-clear-of-focus` requirement says so. `kit.toast` is unchanged
 ## Why
 
 The UX check C289 (HAL-14012, TO1) found that at 195 × 421 (400 % zoom) a toast made by a button press covers that button for as long as it shows, 10 s with an action (WCAG 2.4.11 Focus Not Obscured). It happened with **Go back to this version** (#4113) and with **Restore just this**, already on `main`, where the menu hands focus back to its ⋮. Fixing it in the kit's region fixes every toast, not one page.
+
+## Covers
+
+- kit.toast-clear-of-focus
+- packages/studio/kit/src/toast/toast-clear-of-focus.test.tsx
