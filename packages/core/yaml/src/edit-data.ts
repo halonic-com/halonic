@@ -10,6 +10,9 @@ import type { YamlPath } from "./read.ts";
  *   nothing is there.
  * - `insert`: adds `value` to a list before the item at the index that ends
  *   `path`; the list's length adds it at the end.
+ * - `rename`: gives the map key that ends `path` the name `to`, in the same
+ *   place in its map and with the same value. The key must be there and `to`
+ *   must not be a key of that map yet; `to` equal to the old key changes nothing.
  *
  * A `set` that adds a new key to a map puts it at the end of that map, or
  * right after the key `after` names; `after: null` puts it first. This is
@@ -26,7 +29,8 @@ export type YamlEdit =
       readonly after?: string | null;
     }
   | { readonly kind: "delete"; readonly path: YamlPath }
-  | { readonly kind: "insert"; readonly path: YamlPath; readonly value: unknown };
+  | { readonly kind: "insert"; readonly path: YamlPath; readonly value: unknown }
+  | { readonly kind: "rename"; readonly path: YamlPath; readonly to: string };
 
 /**
  * Applies an edit to plain data, the way `editYaml` must change what the
@@ -46,6 +50,8 @@ export function applyEditToData(data: unknown, edit: YamlEdit): Result<unknown, 
       return deleteData(data, edit.path);
     case "insert":
       return insertData(data, edit.path, edit.value);
+    case "rename":
+      return renameData(data, edit.path, edit.to);
   }
 }
 
@@ -167,11 +173,16 @@ function addKeyAfter(
   const previous = after === null ? -1 : entries.findIndex(([name]) => name === after);
   const at = after !== null && previous === -1 ? entries.length : previous + 1;
   entries.splice(at, 0, [key, value]);
-  for (const [name] of entries) {
+  replaceEntries(record, entries);
+}
+
+/** Gives `record` exactly `entries`, in their order. */
+function replaceEntries(record: Record<string, unknown>, entries: [string, unknown][]): void {
+  for (const name of Object.keys(record)) {
     delete record[name];
   }
-  for (const [name, entryValue] of entries) {
-    setKey(record, name, entryValue);
+  for (const [name, value] of entries) {
+    setKey(record, name, value);
   }
 }
 
@@ -235,6 +246,61 @@ function insertData(data: unknown, path: YamlPath, value: unknown): Result<unkno
   }
   list.splice(index, 0, deepClone(value));
   return ok(copy);
+}
+
+function renameData(data: unknown, path: YamlPath, to: string): Result<unknown, string> {
+  const key = path[path.length - 1];
+  if (typeof key !== "string") {
+    return err("rename needs a path that ends in a map key.");
+  }
+  if (typeof to !== "string") {
+    return err(`rename needs a text key to rename to, not ${describeKind(to)}.`);
+  }
+  const mapPath = path.slice(0, -1);
+  const copy = deepClone(data);
+  let map: unknown = copy;
+  for (let depth = 0; depth < mapPath.length; depth++) {
+    if (isMissing(map)) {
+      return err(nothingToRename(path));
+    }
+    const container = asContainer(map, path, depth);
+    if (!container.ok) {
+      return container;
+    }
+    const child = readChild(container.value, path, depth);
+    if (!child.ok) {
+      return child;
+    }
+    map = child.value;
+  }
+  if (isMissing(map)) {
+    return err(nothingToRename(path));
+  }
+  if (Array.isArray(map)) {
+    return err(`${describePath(mapPath)} is a list; rename needs a path that ends in a map key.`);
+  }
+  if (!isRecord(map)) {
+    return err(`${describePath(mapPath)} holds ${describeKind(map)}, not a map.`);
+  }
+  if (!Object.hasOwn(map, key)) {
+    return err(nothingToRename(path));
+  }
+  if (to === key) {
+    return ok(copy);
+  }
+  if (Object.hasOwn(map, to)) {
+    return err(`${describePath([...mapPath, to])} is already a key; rename doesn't merge keys.`);
+  }
+  // Every key is added again, so the renamed one keeps its place (see `addKeyAfter`).
+  replaceEntries(
+    map,
+    Object.entries(map).map(([name, value]) => [name === key ? to : name, value]),
+  );
+  return ok(copy);
+}
+
+function nothingToRename(path: YamlPath): string {
+  return `There is no key at ${describePath(path)} to rename.`;
 }
 
 /** The value at `path[depth]` inside a container; an index past the end is a problem. */
@@ -334,6 +400,10 @@ function checkValueAt(
   }
   open.delete(value);
   return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isPlainRecord(value: object): boolean {

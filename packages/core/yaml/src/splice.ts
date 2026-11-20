@@ -12,6 +12,7 @@ import {
   nodeAt,
   type Parsed,
   parse,
+  renameKey,
   replaceFlow,
   replaceScalar,
   replaceValue,
@@ -60,13 +61,15 @@ function spliceLines(text: string, edit: YamlEdit): string | undefined {
         edit.path[edit.path.length - 1] as number,
         edit.value,
       );
+    case "rename":
+      return renameKey(parsed, edit.path, edit.to);
   }
 }
 
 /**
  * An edit inside the flow collection at `edit.path.slice(0, length)`. A set
- * of one scalar changes only its characters, when that reads back right;
- * anything else writes the whole collection again.
+ * of one scalar, or a rename, changes only that scalar's characters when that
+ * reads back right; anything else writes the whole collection again.
  */
 function spliceInFlow(parsed: Parsed, edit: YamlEdit, length: number): string | undefined {
   const flowPath = edit.path.slice(0, length);
@@ -81,16 +84,25 @@ function spliceInFlow(parsed: Parsed, edit: YamlEdit, length: number): string | 
   if (!value.ok) {
     return undefined;
   }
-  const target = nodeAt(parsed, edit.path);
-  if (edit.kind === "set" && isScalar(target) && !isCollectionValue(edit.value)) {
-    // In flow style `,` and brackets end a plain text, so check the result.
-    const spliced = replaceScalar(parsed, target, edit.value);
-    const after = spliced === undefined ? undefined : nodeAt(parse(spliced), flowPath);
-    if (after != null && deepEqual(after.toJS(parsed.document), value.value)) {
-      return spliced;
-    }
+  // In flow style `,` and brackets end a plain text, so check the result.
+  const spliced = spliceOneScalar(parsed, edit);
+  const after = spliced === undefined ? undefined : nodeAt(parse(spliced), flowPath);
+  if (after != null && deepEqual(after.toJS(parsed.document), value.value)) {
+    return spliced;
   }
   return replaceFlow(parsed, flow, value.value);
+}
+
+/** The edit as a change of one scalar's characters: a key's for a rename, a value's for a set. */
+function spliceOneScalar(parsed: Parsed, edit: YamlEdit): string | undefined {
+  if (edit.kind === "rename") {
+    return renameKey(parsed, edit.path, edit.to);
+  }
+  const target = nodeAt(parsed, edit.path);
+  if (edit.kind === "set" && isScalar(target) && !isCollectionValue(edit.value)) {
+    return replaceScalar(parsed, target, edit.value);
+  }
+  return undefined;
 }
 
 /** Sets an existing value, or adds the first missing key with the maps under it. */
