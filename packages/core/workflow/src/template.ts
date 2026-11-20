@@ -36,6 +36,32 @@ const WHOLE_PLACEHOLDER = /^\{\{\s*([\w.-]+)\s*\}\}$/;
 const ANY_PLACEHOLDER = /\{\{\s*([\w.-]+)\s*\}\}/g;
 
 /**
+ * The paths of the `{{path}}` placeholders in a value, in order and each
+ * once: in a text, and in every text inside a list or a map, such as a
+ * condition or a map of templates.
+ *
+ * @example
+ * placeholderPaths("Hi {{input.name}}, {{ context.kind }}"); // ["input.name", "context.kind"]
+ * placeholderPaths({ equals: ["{{context.kind}}", "spam"] }); // ["context.kind"]
+ */
+export function placeholderPaths(value: unknown): string[] {
+  const paths = new Set<string>();
+  const visit = (part: unknown): void => {
+    if (typeof part === "string") {
+      for (const match of part.matchAll(ANY_PLACEHOLDER)) {
+        paths.add(match[1] ?? "");
+      }
+    } else if (Array.isArray(part)) {
+      part.forEach(visit);
+    } else if (typeof part === "object" && part !== null) {
+      Object.values(part).forEach(visit);
+    }
+  };
+  visit(value);
+  return [...paths];
+}
+
+/**
  * Renders the `{{path}}` placeholders in a value against a scope.
  *
  * - A string that is exactly one placeholder gives the raw value at that

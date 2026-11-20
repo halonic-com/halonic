@@ -1,4 +1,4 @@
-import type { Workflow } from "@halonicjs/format";
+import type { Workflow, WorkflowState } from "@halonicjs/format";
 import { getPath, render, renderText } from "./template.ts";
 
 /** A state's `input`: one template, or a map of templates. */
@@ -68,18 +68,35 @@ function renderMap(map: Record<string, unknown>, scope: unknown): Record<string,
 
 /**
  * The context keys a state can read, sorted: the workflow's initial context,
- * and the `output` of every state that can run before it. Those are found by
- * following transitions back from the state.
+ * and the keys every state that can run before it writes (see
+ * {@link contextWrittenBy}). Those are found by following transitions back
+ * from the state.
  */
 export function contextBefore(workflow: Workflow, stateId: string): string[] {
   const keys = new Set(Object.keys(workflow.context));
   for (const earlier of statesBefore(workflow, stateId)) {
-    const output = workflow.states[earlier]?.output;
-    if (output) {
-      keys.add(output);
+    const state = workflow.states[earlier];
+    for (const key of state ? contextWrittenBy(state) : []) {
+      keys.add(key);
     }
   }
   return [...keys].sort();
+}
+
+/** The key a wait state writes the payload of the event it gets to (the engine's `lastEventKey`). */
+const LAST_EVENT_KEY = "lastEvent";
+
+/**
+ * The context keys a state writes when it runs, as the engine does: its
+ * `output`, its `conversation`, the name of each branch of a parallel state,
+ * and `lastEvent` for a wait state.
+ */
+export function contextWrittenBy(state: WorkflowState): string[] {
+  const keys = [state.output, state.conversation, ...Object.keys(state.branches ?? {})];
+  if (state.type === "wait") {
+    keys.push(LAST_EVENT_KEY);
+  }
+  return keys.filter((key): key is string => key !== undefined && key !== "");
 }
 
 /** Every state with a path of transitions to `stateId`. The state itself counts only on a loop. */

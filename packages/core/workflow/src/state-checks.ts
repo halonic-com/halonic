@@ -1,6 +1,7 @@
 import type { Workflow, WorkflowState } from "@halonicjs/format";
 import { contextBefore } from "./inputs.ts";
 import { hasState } from "./machine.ts";
+import { contextKey, notAChoice, unknownTemplateNames } from "./template-checks.ts";
 import { issue, stateKey, type ValidateOptions, type WorkflowIssue } from "./workflow-issue.ts";
 
 // The checks validateWorkflow runs on each state, one function per rule, in
@@ -237,6 +238,7 @@ export const STATE_CHECKS: readonly StateCheck[] = [
   finalWithTransitions,
   deadEnd,
   unknownGets,
+  unknownTemplateNames,
   taskWithoutAgent,
   timersOutsideWait,
   timerWithEvent,
@@ -248,12 +250,5 @@ export const STATE_CHECKS: readonly StateCheck[] = [
   parallelShape,
   unknownAgent,
   unguardedShadow,
+  notAChoice,
 ];
-
-/** `"context.tags.0"` as `"tags"`; `null` for a path outside the context. */
-function contextKey(path: string): string | null {
-  if (!path.startsWith("context.")) {
-    return null;
-  }
-  return path.slice("context.".length).split(".")[0] ?? null;
-}

@@ -24,7 +24,9 @@ export type WorkflowIssueCode =
   | "wait-with-signal"
   | "no-final"
   | "unguarded-shadow"
-  | "unknown-gets";
+  | "unknown-gets"
+  | "unknown-template-name"
+  | "not-a-choice";
 
 /** The keys and list indexes to a value in a workflow file; `[]` for the whole file. */
 export type WorkflowPath = FileProblem["path"];
@@ -48,6 +50,8 @@ export interface ValidateOptions {
   agents?: readonly string[];
   /** The workflow ids of the hub; when given, the workflows states run are checked. */
   workflows?: readonly string[];
+  /** The options of each agent whose reply is a choice, by agent id; when given, `when` values are checked. */
+  choices?: Readonly<Record<string, readonly string[]>>;
 }
 
 /** A {@link WorkflowIssue}, with `state` only when it is in one. */

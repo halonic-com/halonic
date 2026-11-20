@@ -12,6 +12,7 @@ const stepLines: Readonly<Record<string, string>> = {
   "unknown-target": "Goes to a missing step",
   "dead-end": "Has no way out",
   "unknown-gets": "Gets data not written yet",
+  "unknown-template-name": "Uses data not written yet",
   "timer-outside-wait": "Timers only work in Wait",
   "timer-with-event": "Has a timer and an event",
   "foreach-without-items": "Has no list to go over",
@@ -25,6 +26,7 @@ const stepLines: Readonly<Record<string, string>> = {
   "task-without-agent": "No agent, passes through",
   "wait-without-events": "Has no events to wait for",
   "unguarded-shadow": "Never fires",
+  "not-a-choice": "Compares with a non-option",
   unreachable: "Can't be reached",
 };
 

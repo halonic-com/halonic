@@ -34,9 +34,21 @@ function staticIssues(context: CheckContext, workflow: Workflow): WorkspaceIssue
   const options = {
     agents: [...context.idsOf("agent", workflow.hub)],
     workflows: [...context.idsOf("workflow", workflow.hub)],
+    choices: choiceOptions(context, workflow.hub),
   };
   return validateWorkflow(workflow.value, options).map((found) =>
     context.issue(found.severity, workflow.path, found.path, found.code, found.message),
+  );
+}
+
+/** The options of each agent of a hub whose reply is a choice, by agent id. */
+function choiceOptions(context: CheckContext, hub: string | null): Record<string, string[]> {
+  return Object.fromEntries(
+    context
+      .filesOf("agent", hub)
+      .flatMap(({ value }) =>
+        value.output.type === "choice" ? [[value.id, value.output.options]] : [],
+      ),
   );
 }
 
