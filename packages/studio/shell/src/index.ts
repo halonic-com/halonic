@@ -101,7 +101,7 @@ export {
   itemGoneWords,
   type RulePlace,
 } from "./errors/error-message.ts";
-export { failureLine, reasonAfterColon } from "./errors/failure-line.ts";
+export { failureLine, lowerAfterColon, reasonAfterColon } from "./errors/failure-line.ts";
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
 export {
   narrowQuery,

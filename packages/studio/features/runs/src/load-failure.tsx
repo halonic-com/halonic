@@ -5,6 +5,7 @@ import {
   EngineNotAnswering,
   type EngineWords,
   errorReasonFor,
+  lowerAfterColon,
   useCopyDetails,
 } from "@halonicjs/studio-shell";
 
@@ -19,20 +20,6 @@ export function loadFailureReason(error: unknown, engine: EngineWords, afterColo
   const reason = error instanceof EngineNotAnswering ? engine.notAnswering : errorReasonFor(error);
   return afterColon ? lowerAfterColon(reason) : reason;
 }
-
-/**
- * Any reason after the colon, the engine's or the host's own: a sentence that starts
- * with a common word reads on in lower case ("The desktop shell gave no answer …" reads "the
- * desktop shell …"). Any other first word may be a name, such as Halonic or an agent called
- * Writer, and keeps its capital.
- */
-function lowerAfterColon(reason: string): string {
-  return leadingCommonWord.test(reason) ? reason.charAt(0).toLowerCase() + reason.slice(1) : reason;
-}
-
-/** The first words a reason may start with that are never a name. */
-const leadingCommonWord =
-  /^(?:The|A|An|This|That|These|Those|It|Its|There|No|Nothing|Your|You|Some|Something)\b/u;
 
 /** Props for {@link FailureReason}. */
 export interface FailureReasonProps {
