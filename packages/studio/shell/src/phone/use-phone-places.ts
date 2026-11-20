@@ -13,6 +13,7 @@ import {
   type PhonePage,
   type PhonePlace,
   type PlaceStacks,
+  showPhonePage,
   showsBottomNavigation,
   startPlaceStacks,
   switchPhonePlace,
@@ -39,6 +40,8 @@ export interface PhonePlaces {
   readonly openPlace: (place: SidebarPlace) => void;
   /** Follows a link to another place's page, so Back comes back (`openPhonePageIn`). */
   readonly openIn: (place: PhonePlace, location: TabLocation, options?: PhoneOpenOptions) => void;
+  /** Shows the page a desktop tab had open, where it lives on the phone (`showPhonePage`). */
+  readonly show: (location: TabLocation, parent?: SidebarPlace) => void;
   /**
    * Back: one page up, or to Home. Returns `false` at the top of Home, where nothing moved, as
    * `usePhoneBackButton` needs.
@@ -104,6 +107,11 @@ export function usePhonePlaces(): PhonePlaces {
       move(openPhonePageIn(latest.current, place, location, options)),
     [move],
   );
+  const show = useCallback(
+    (location: TabLocation, parent?: SidebarPlace) =>
+      move(showPhonePage(latest.current, location, parent)),
+    [move],
+  );
   const onSelect = useCallback(
     (place: BottomNavigationPlace) => move(switchPhonePlace(latest.current, place)),
     [move],
@@ -121,6 +129,7 @@ export function usePhonePlaces(): PhonePlaces {
     open,
     openPlace,
     openIn,
+    show,
     back,
   };
 }

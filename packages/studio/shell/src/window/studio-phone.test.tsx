@@ -324,19 +324,17 @@ verifies("shell.studio-phone", () => {
     expect(title()).toBe("Home");
   });
 
-  it("comes back to where each layout was when the width crosses the phone's", async () => {
+  it("keeps the desktop's tab when the phone was on More, which the desktop doesn't have", async () => {
     const { container, workspace, heading, tapPlace } = renderPhoneWindow();
     act(() => media.resize(DESKTOP_WIDTH));
     act(() => workspace.tabs.openHere({ key: "inbox", title: "Inbox" }));
     act(() => media.resize(PHONE_WIDTH));
     tapPlace("More");
+    expect(heading()).toBe("More");
 
     act(() => media.resize(DESKTOP_WIDTH));
     expect(currentLocation(workspace.tabs.active).key).toBe("inbox");
     expect(container.querySelector('[role="tablist"]')).not.toBeNull();
-
-    act(() => media.resize(PHONE_WIDTH));
-    expect(heading()).toBe("More");
   });
 
   it("stops only a page that throws, with the bars still working", async () => {

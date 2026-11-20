@@ -844,7 +844,7 @@ The phone's own section pages (HAL-7919) and chips under a summary come later.
 
 `usePhonePlaces()` keeps the place stacks and gives what the bars need (`shell.phone-back`): the
 top bar's title and Back (only under a place's top), the bottom navigation's props (or `undefined`
-on an opened item, where it hides), and `open`, `openPlace`, `openIn` and `back`. Every move that
+on an opened item, where it hides), and `open`, `openPlace`, `openIn`, `show` and `back`. Every move that
 changes the page takes focus to the new page's `h1`, as on the desktop.
 
 `usePhoneBackButton(enabled, closeStack, places)` handles Android's back, and the browser's when
@@ -1042,7 +1042,11 @@ On a phone the same window shows the phone's layout (`shell.studio-phone`): `Stu
 sheet), `StudioPhonePage` (Home or a place's view, as on the desktop, or the `MorePage` at the top
 of More, with its switcher row once the app passes `phoneSwitcher`), and the `BottomNavigation`.
 Android's back goes through `usePhoneBackButton`. The phone keeps its own places next to the
-desktop's tabs, so a window that crosses the phone width comes back to where each layout was. Ctrl
+desktop's tabs, and a window that crosses the phone width keeps the page that's open, with the focus
+on its title (`useOpenPageAcrossLayouts`): narrowed, the phone shows the active tab's page above the
+place that lists it (`showPhonePage`); widened, the active tab shows the phone's page. A list a
+place pushed opens its place, Settings' pages open the Settings dialog, and More, which the desktop
+doesn't have, leaves the desktop's tab as it was (`desktopPageOf`). Ctrl
 K's palette is the desktop's; a phone searches in its Search sheet. `shownPlaces` reads the places
 with their signals for the sidebar, the bottom navigation and the More page alike.
 
