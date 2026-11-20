@@ -144,4 +144,18 @@ describe("pluginPartUnavailableReason", () => {
     ).toEqual({ kind: "not-trusted", reason: "not-trusted" });
     expect(pluginPartUnavailableReason(new Error("anything else"))).toEqual({ kind: "failed" });
   });
+
+  it("finds the code in the cause of an error a connector wrapped", () => {
+    const notTrusted = new PluginBackendNotTrustedError("weather", "changed");
+    const wrapped = new Error(`Connector "weather" didn't start: ${notTrusted.message}`, {
+      cause: notTrusted,
+    });
+    expect(pluginPartUnavailableReason(wrapped)).toEqual({
+      kind: "not-trusted",
+      reason: "changed",
+    });
+    expect(
+      pluginPartUnavailableReason(new Error("didn't start", { cause: new Error("no runner") })),
+    ).toEqual({ kind: "failed" });
+  });
 });

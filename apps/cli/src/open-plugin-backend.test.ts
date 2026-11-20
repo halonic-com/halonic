@@ -9,7 +9,12 @@ import {
   MemoryTrustStore,
   MemoryUnfencedRunConsentStore,
 } from "@halonicjs/adapter-memory";
-import { RunnerStartGate, readPluginFolder, UnfencedRuns } from "@halonicjs/app";
+import {
+  type PluginPartUnavailable,
+  RunnerStartGate,
+  readPluginFolder,
+  UnfencedRuns,
+} from "@halonicjs/app";
 import type {
   ConnectorFactoryContext,
   IntegrationTool,
@@ -19,8 +24,8 @@ import type {
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { openPluginBackend } from "./open-plugin-backend.ts";
-import { PluginConnectorFactory } from "./plugin-connector-factory.ts";
+import type { PluginBackendMachine } from "./open-plugin-backend.ts";
+import { PluginConnectorFactory, pluginConnectorSources } from "./plugin-connector-factory.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
 import { webCryptoDigest } from "./workspace-runs.ts";
 import { cliTrustService } from "./workspace-trust.ts";
@@ -125,7 +130,7 @@ async function setup(
     settings: [] as unknown[],
     secretTexts: [] as (readonly string[])[],
   };
-  const open = openPluginBackend({
+  const machine: PluginBackendMachine = {
     plugins,
     digest: webCryptoDigest,
     trust,
@@ -163,20 +168,35 @@ async function setup(
       };
       return runner;
     },
-  });
+  };
   const context = {
     secrets: new MemorySecrets(secrets),
     tokens: new MemoryTokenStore(),
     workspaceRoot: root,
     trust: null,
   } as unknown as ConnectorFactoryContext;
-  const factory = new PluginConnectorFactory(open);
+  const unavailable: PluginPartUnavailable[] = [];
+  const factory = new PluginConnectorFactory(
+    pluginConnectorSources(
+      machine,
+      {
+        sandbox: sandbox(check),
+        deniedPaths: [],
+        env: {},
+        home: root,
+        timeLimitMs: 1000,
+        onUnavailable: (_connector, part) => unavailable.push(part),
+        onReleaseFailed: () => undefined,
+      },
+      { name: "halonic", version: "0.0.0-test" },
+    ),
+  );
   const client = () =>
     factory.create(
       { id: "weather", transport: { kind: "plugin", id: "weather" }, secretEnv: {} },
       context,
     );
-  return { seen, client, trustNow };
+  return { seen, client, trustNow, unavailable };
 }
 
 verifies("cli.open-plugin-backend", () => {

@@ -9,13 +9,18 @@
 
 import { nodeProgramStarter } from "@halonicjs/adapter-mcp";
 import { SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
+import type { PluginPartUnavailable } from "@halonicjs/app";
 import type { ChatTurnWaiting, HttpClient, TrustGrant } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
 import { closeAfterStop, stoppedCloseLimitMs } from "./close-after-stop.ts";
 import type { CommandContext } from "./command.ts";
-import { cliConnectorFactories, nodeConnectorMachine } from "./connector-machine.ts";
+import {
+  cliConnectorFactories,
+  connectorSessionLimitMs,
+  nodeConnectorMachine,
+} from "./connector-machine.ts";
 import { checkHarnessOverride } from "./harness-override.ts";
 import {
   type EngineErrorSource,
@@ -31,8 +36,8 @@ import type { Message } from "./messages/define.ts";
 import { markPart, type Phrase, phrase } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
 import { openLocalIntegration } from "./open-local-integration.ts";
-import { openPluginBackend } from "./open-plugin-backend.ts";
 import { printable } from "./output/printable.ts";
+import { pluginConnectorSources } from "./plugin-connector-factory.ts";
 import { checkRunSandbox, type SandboxGateRun, type UnsandboxedAgent } from "./sandbox-gate.ts";
 import {
   nodeSandboxGateHost,
@@ -48,6 +53,7 @@ import {
   type StuckTimerWatch,
   stuckTimerWatch,
 } from "./stuck-timers.ts";
+import { halonicVersion } from "./version.ts";
 import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 import type { WorkspaceVersions } from "./workspace-versions.ts";
@@ -193,7 +199,14 @@ export async function openWorkspaceEngine(
     ...(target.versions === undefined ? {} : { versions: target.versions }),
     workspaceRoot: target.dir.root,
     runConnectors: (
-      setup.runConnectors ?? ((trust) => computerRunConnectors(trust, target, setup.profile))
+      setup.runConnectors ??
+      ((trust) =>
+        computerRunConnectors(
+          trust,
+          target,
+          { warn: (line) => context.warn(line), debug: (line) => context.debug(line) },
+          setup.profile,
+        ))
     )(target.trust, target),
     secrets: context.secrets,
     keyOrigins: profileKeyOrigins(() => setup.profile ?? nodeProfileEnvironment()),
@@ -265,32 +278,53 @@ export async function checkEngineRuns(
   return [...unsandboxed.values()];
 }
 
+/** Where the run's connectors tell the person about a plugin part that can't start, and log a failed clean-up. */
+interface RunConnectorLines {
+  warn(line: Phrase): void;
+  debug(line: Phrase): void;
+}
+
 /**
  * This computer's connector programs, `PATH` and network, for
  * {@link WorkspaceEngineSetup.runConnectors}. A local integration starts in
- * the runner, behind the trust check and the start gate.
+ * the runner, behind the trust check and the start gate; so does a plugin's
+ * backend, and each of its local tools starts in a sandbox session of its own.
  */
 function computerRunConnectors(
   trust: TrustGrant | null,
   target: Pick<WorkspaceEngineTarget, "dir" | "workspace">,
+  lines: RunConnectorLines,
   environment: ProfileEnvironment = nodeProfileEnvironment(),
 ): LocalRunConnectorsInput {
   const profile = profileFolder(environment);
   const machine = nodeConnectorMachine(environment);
   const integrations = computerIntegrationMachine({ ...target, trust: machine, environment });
   const plugins = computerPluginMachine(integrations, { trust: machine, environment });
+  const fence = {
+    sandbox: new SrtSandbox(undefined, undefined, privateJournalFolder(profile)),
+    deniedPaths: [profile.root],
+  };
+  const pluginSources = pluginConnectorSources(
+    plugins,
+    {
+      ...fence,
+      env: process.env,
+      timeLimitMs: connectorSessionLimitMs,
+      onUnavailable: pluginPartReporter((line) => lines.warn(line)),
+      onReleaseFailed: (error) =>
+        lines.debug(runMessages.cleanUpFailed("program-folders", reasonOf(error)).phrase),
+    },
+    { name: "halonic", version: halonicVersion },
+  );
   return {
     trust,
     // Workspace programs start in a sandbox session where the sandbox works (D45).
     factories: cliConnectorFactories(
       nodeProgramStarter,
       process.env,
-      {
-        sandbox: new SrtSandbox(undefined, undefined, privateJournalFolder(profile)),
-        deniedPaths: [profile.root],
-      },
+      fence,
       openLocalIntegration(integrations),
-      openPluginBackend(plugins),
+      pluginSources,
     ),
     // The CLI connects no built-in Google connector yet, the only kind that reads sign-ins.
     context: { http: machine.http, tokens: machine.tokens },
@@ -323,6 +357,33 @@ export function waitingReporter(
       names,
       `halonic tools review ${printable(connector)}`,
     );
+    warn(phrase`${markPart("needsYou")} ${line.phrase}`);
+  };
+}
+
+/**
+ * The plugin connectors' `onUnavailable`: a warning naming the part of a
+ * plugin whose tools are off and why, shown with or without `--debug`, so a
+ * run never leaves them out silently. Each is written once for each
+ * connector, part and reason.
+ *
+ * @example
+ * const onUnavailable = pluginPartReporter((line) => context.warn(line));
+ * // ! The tools of the program lister of the plugin files are off for this run: the sandbox can't start on this computer (bubblewrap-missing).
+ */
+export function pluginPartReporter(
+  warn: (line: Phrase) => void,
+): (connector: string, unavailable: PluginPartUnavailable) => void {
+  const told = new Set<string>();
+  return (connector, { plugin, part, reason, error }) => {
+    const key = `${connector}\n${part}\n${reason.kind}`;
+    if (told.has(key)) return;
+    told.add(key);
+    const shown =
+      part === "backend"
+        ? ({ kind: "backend" } as const)
+        : ({ kind: "program", name: printable(part.slice("local:".length)) } as const);
+    const line = runMessages.pluginPartOff(printable(plugin), shown, reason, reasonOf(error));
     warn(phrase`${markPart("needsYou")} ${line.phrase}`);
   };
 }
