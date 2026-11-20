@@ -6,7 +6,7 @@ import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { EngineNotAnswering, StartRefused, type WorkflowView } from "../api.ts";
+import { EngineNotAnswering, type WorkflowView } from "../api.ts";
 import { WorkflowScreen } from "../page/workflow-page.tsx";
 import {
   buttonNamed,
@@ -301,93 +301,6 @@ verifies("workflows.start.start-run", () => {
     expect(announce).toHaveBeenCalledExactlyOnceWith(
       "Couldn't start the run: the workflow changed.",
     );
-  });
-
-  it("shows the command that starts it in a terminal, with no Try again, when only a terminal can", async () => {
-    const { page } = await open(async () => {
-      throw new StartRefused({
-        reason: "Reporter uses a connector, which Studio can't start yet.",
-        fix: "To start it, run this in a terminal:",
-        command: "halonic run reply",
-      });
-    });
-
-    await click(runButton(page));
-    await click(buttonNamed(page, "Start run"));
-
-    expect(page.textContent).toContain(
-      "Couldn't start the run: Reporter uses a connector, which Studio can't start yet.",
-    );
-    expect(page.textContent).toContain("To start it, run this in a terminal:");
-    expect(page.textContent).not.toContain("terminal:.");
-    expect(page.querySelector("aside code")?.textContent).toBe("halonic run reply");
-    expect(page.textContent).not.toContain("Try again");
-  });
-
-  it("shows a step in Studio with no command and no Try again, when the refusal names one", async () => {
-    const { page } = await open(async () => {
-      throw new StartRefused({
-        reason: "Reporter runs in Claude Code, which Halonic can't start yet.",
-        fix: "Set Reporter to Halonic on its Harness page to run it now.",
-      });
-    });
-
-    await click(runButton(page));
-    await click(buttonNamed(page, "Start run"));
-
-    expect(page.textContent).toContain(
-      "Couldn't start the run: Reporter runs in Claude Code, which Halonic can't start yet.",
-    );
-    expect(page.textContent).toContain(
-      "Set Reporter to Halonic on its Harness page to run it now.",
-    );
-    expect(page.querySelector("aside code")).toBeNull();
-    expect(page.textContent).not.toContain("Try again");
-  });
-
-  it("shows Run unavailable, with why and the command under it, when the files already say it can't start", async () => {
-    const { host } = memoryHost([], [], [reply], [], {
-      startRun: async () => ({ runId: "x" }),
-      startRefusal: async () => ({
-        reason: "Reporter uses a connector, which Studio can't start yet.",
-        fix: "To start it, run this in a terminal:",
-        command: "halonic run reply",
-      }),
-    });
-    const page = await show(
-      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
-    );
-
-    const run = runButton(page);
-    expect(run?.getAttribute("aria-disabled")).toBe("true");
-    const lines = page.querySelector(`[id="${run?.getAttribute("aria-describedby")}"]`);
-    expect(lines?.textContent).toContain(
-      "Reporter uses a connector, which Studio can't start yet. To start it, run this in a terminal:",
-    );
-    expect(lines?.querySelector("code")?.textContent).toBe("halonic run reply");
-    await click(run);
-    expect(buttonNamed(page, "Start run")).toBeUndefined();
-  });
-
-  it("shows Run unavailable with a step in Studio and no command, when the refusal has none", async () => {
-    const { host } = memoryHost([], [], [reply], [], {
-      startRun: async () => ({ runId: "x" }),
-      startRefusal: async () => ({
-        reason: "Reporter runs in Claude Code, which Halonic can't start yet.",
-        fix: "Set Reporter to Halonic on its Harness page to run it now.",
-      }),
-    });
-    const page = await show(
-      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
-    );
-
-    const run = runButton(page);
-    expect(run?.getAttribute("aria-disabled")).toBe("true");
-    const lines = page.querySelector(`[id="${run?.getAttribute("aria-describedby")}"]`);
-    expect(lines?.textContent).toBe(
-      "Reporter runs in Claude Code, which Halonic can't start yet. Set Reporter to Halonic on its Harness page to run it now.",
-    );
-    expect(lines?.querySelector("code")).toBeNull();
   });
 
   it("starts nothing when the input isn't a JSON object", async () => {

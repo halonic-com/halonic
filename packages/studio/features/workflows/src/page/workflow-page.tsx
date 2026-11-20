@@ -8,7 +8,6 @@ import {
 } from "@halonicjs/studio-feature-runs/api";
 import {
   Button,
-  CommandBox,
   LetterTile,
   TabList,
   TabPanel,
@@ -16,13 +15,8 @@ import {
   useTabIds,
 } from "@halonicjs/studio-kit";
 import { engineWordsOf, type ItemViewProps } from "@halonicjs/studio-shell";
-import { useCallback, useId, useRef, useState } from "react";
-import {
-  type StartRefusal,
-  type WorkflowRef,
-  type WorkflowsHost,
-  WorkflowsHostService,
-} from "../api.ts";
+import { useCallback, useRef, useState } from "react";
+import { type WorkflowsHost, WorkflowsHostService } from "../api.ts";
 import type { View } from "../canvas/geometry.ts";
 import { Configuration } from "../configuration/configuration-page.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
@@ -40,7 +34,7 @@ import { goneState } from "./gone-state.tsx";
 import { firstTestsPick, firstView, panelClass } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
 import { dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
-import { StartCommand } from "./start-command.tsx";
+import { StartRow, useStartRefusal } from "./start-row.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
 import { useRename } from "./use-rename.ts";
@@ -371,46 +365,4 @@ function hasDockedCard(
   step: Parameters<typeof stepCardDocks>[0],
 ): boolean {
   return dockHasCard(run) || stepCardDocks(step);
-}
-
-/**
- * What the files already say stops a run (rule N5, HAL-12363): **Run** is then unavailable,
- * described by the row that says why. A read that fails leaves **Run** as it is; pressing it says why.
- */
-function useStartRefusal(host: WorkflowsHost, ref: WorkflowRef) {
-  const id = useId();
-  const { load } = useHostRead(host, ref, (one, workflow) =>
-    one.startRefusal === undefined ? Promise.resolve(undefined) : one.startRefusal(workflow),
-  );
-  const refusal = load.kind === "ready" ? load.value : undefined;
-  return {
-    id,
-    refusal,
-    unavailable: refusal === undefined ? undefined : { reason: id },
-  };
-}
-
-/**
- * The row under the header: the command that starts the workflow in a terminal, or, while **Run**
- * is unavailable, why and the next step, with its command when it has one. Nothing while there is
- * neither.
- */
-function StartRow({
-  refusal: { id, refusal },
-  startCommand,
-}: {
-  readonly refusal: { readonly id: string; readonly refusal: StartRefusal | undefined };
-  readonly startCommand: string | undefined;
-}) {
-  const className =
-    "flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-6 py-2 text-small text-fg-muted";
-  if (refusal !== undefined) {
-    return (
-      <div id={id} data-testid="start-refusal" className={className}>
-        <p>{`${refusal.reason} ${refusal.fix}`}</p>
-        {refusal.command === undefined ? null : <CommandBox command={refusal.command} />}
-      </div>
-    );
-  }
-  return <StartCommand command={startCommand} />;
 }
