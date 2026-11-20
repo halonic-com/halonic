@@ -1,3 +1,4 @@
+import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import {
   RunsListService,
   type RunsSource,
@@ -76,6 +77,7 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
         openModels: () => void context.runCommand?.(openModelsCommand),
         openBudget: () => void context.runCommand?.(openBudgetCommand),
       })}
+      shownRuns={context.services.find(InboxService)?.shownRuns}
       {...(openItem && {
         openRun: (runId: string, step?: string) =>
           openItem({ kind: "run", hub: item.hub, id: runId }, step === undefined ? {} : { step }),
@@ -112,6 +114,7 @@ export function WorkflowScreen({
   seeAllRuns,
   goToWorkflows,
   reviewInInbox,
+  shownRuns,
   startOnTests,
   testsAsked = 0,
   announceState,
@@ -328,6 +331,7 @@ export function WorkflowScreen({
           workflowName={name}
           notAnswering={notAnswering}
           shown={shown}
+          shownRuns={shownRuns}
           onDock={setDock}
           onStarted={(runId) => {
             setShownId(runId);

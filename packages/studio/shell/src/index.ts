@@ -339,4 +339,4 @@ export {
   type WindowActions,
 } from "./window/studio-window.tsx";
 export { StudioWorkspace, type StudioWorkspaceOptions } from "./window/studio-workspace.ts";
-export type { SettingsSectionName, WorkspaceContext } from "./workspace-context.ts";
+export type { SettingsSectionName, ShownPage, WorkspaceContext } from "./workspace-context.ts";

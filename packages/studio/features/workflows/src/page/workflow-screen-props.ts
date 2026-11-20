@@ -1,3 +1,4 @@
+import type { ShownRuns } from "@halonicjs/studio-feature-inbox/api";
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
 import type { WorkflowsHost } from "../api.ts";
 import type { AnnounceState } from "../start/run-announcement.ts";
@@ -23,6 +24,11 @@ export interface WorkflowScreenProps {
   readonly goToWorkflows?: () => void;
   /** Opens the Inbox on what the run waits on, for a run card's Review in Inbox; absent where the app can't open it. */
   readonly reviewInInbox?: (runId: string) => void;
+  /**
+   * The Inbox's runs shown elsewhere: the docked run card notes its run there, so the Inbox doesn't
+   * say "Waiting for you" for it while this page shows. Absent where there is no Inbox.
+   */
+  readonly shownRuns?: ShownRuns | undefined;
   /** Opens the page on Configuration's Tests, as `openItem`'s `step: "tests"` asks; on Flow when absent. */
   readonly startOnTests?: boolean;
   /**

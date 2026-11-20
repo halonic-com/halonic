@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
+import { ShownRuns } from "@halonicjs/studio-feature-inbox/api";
 import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -422,5 +423,38 @@ verifies("workflows.start.start-run", () => {
       runs.change([runSummary({ status: "running", state: "draft" })]);
     });
     expect(capped(page, "Run 01jd8q")).toContain("max-w-full");
+  });
+});
+
+verifies("inbox.needs-you-news", () => {
+  it("notes the docked card's run in the Inbox while the card shows", async () => {
+    const shownRuns = new ShownRuns();
+    const runs = memoryRuns();
+    const { host } = memoryHost([], [], [reply], [], {
+      startRun: async () => ({ runId: "run_mfx3k2a1_01jd8q" }),
+    });
+    const page = await show(
+      <WorkflowScreen
+        host={host}
+        runs={runs.source}
+        hubId="acme"
+        id="reply"
+        shownRuns={shownRuns}
+      />,
+    );
+    const workflowPage = { item: { kind: "workflow", hub: "acme", id: "reply" } };
+
+    await click(runButton(page));
+    await click(buttonNamed(page, "Start run"));
+    await act(async () => {
+      runs.change([runSummary({ status: "waiting", state: "draft" })]);
+    });
+    expect(shownRuns.saidOn("run_mfx3k2a1_01jd8q", workflowPage)).toBe(true);
+    await click(
+      page.querySelector<HTMLButtonElement>("button[aria-label='Stop showing this run']") ??
+        undefined,
+    );
+
+    expect(shownRuns.saidOn("run_mfx3k2a1_01jd8q", workflowPage)).toBe(false);
   });
 });
