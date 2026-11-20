@@ -2,6 +2,7 @@
 
 - Approval: the board asked for this queue fix on HAL-14115 (rule 4 of the freeze on HAL-14331), and Liam approved #4221 on HAL-14524
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:veiv3NsktD7mKRHP4T9roXJYVWjF6VTejLmHsg0iFElatgF3EbB1HGgiyZj++hL2UoBpTonc2elWnZHLz5P+CQ==
 
 ## What changes
 
