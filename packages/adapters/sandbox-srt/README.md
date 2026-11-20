@@ -139,7 +139,9 @@ fails, `close()` rejects naming the folder and the reason. Give
 sessions' working and temp folders, and `sweepOnce()` (or else the first `open`) forgets the kept
 grants inside them (sessions that crashed before they closed); a failure of the sweep is logged to
 stderr. The sweep can't see sessions of another host process, so only the host that holds the
-profile's lock gets sweep roots (the agent host's `--sweep-root`, HAL-6256). While two
+profile's lock gets sweep roots (the agent host's `--sweep-root`, HAL-6256, and the CLI's harness
+sandbox, HAL-6780). `takeHostLock(profileFolder, warn)` takes that lock, `<profile>/agent-host/host.lock`,
+or gives `null` and says why when another live process holds it. While two
 sessions are open at once, srt still lets one read the other (known limit, `it.fails` in
 `fence/srt-kept-grants.windows.test.ts`).
 
@@ -151,6 +153,7 @@ sessions are open at once, srt still lets one read the other (known limit, `it.f
 | `SandboxSetup`, `SandboxRemoval` | What `setUp()` and `remove()` give back: `ok`, or an `outcome` and a reason. |
 | `sandboxRuntimeFolder` | The folder of sandbox-runtime itself, which a profile that hides the folders around it must keep readable (its seccomp helper runs inside the fence on Linux). |
 | `buildSrtConfig` | Turns a `SandboxProfile` into sandbox-runtime settings. |
+| `hostLockFile`, `takeHostLock` | The profile's host lock, which decides the one process that sweeps kept grants, and taking it. |
 | `recoverGitFolders` | After a host crash, undoes the `commondir` files of sessions whose host has died. |
 | `Machine`, `systemMachine` | What the sandbox asks of the machine; a test passes a fake `Machine`. |
 | `LinuxHelper` | A helper srt runs next to bubblewrap: `socat` or `ripgrep`. |

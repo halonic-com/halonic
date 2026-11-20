@@ -30,7 +30,6 @@ import {
 } from "@halonicjs/adapter-harness-kit";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { createHostSandbox, createProgramProbe } from "@halonicjs/adapter-sandbox-host";
-import { keptGrantsRecordFolder, SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
 import { InstructionTrustService } from "@halonicjs/app";
 import type { HarnessAgent, HarnessRunsOptions } from "@halonicjs/engine";
 import {
@@ -55,9 +54,9 @@ import {
   type WorkspaceFolders,
 } from "@halonicjs/profile";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
+import { sweepingUnderHostLock, withoutHostLock } from "./fenced-sandbox.ts";
 import { localProposalParts } from "./local-proposals.ts";
 import { proxySetting } from "./proxy-setting.ts";
-import { privateJournalFolder } from "./sandbox-journals.ts";
 import { skillFileOf } from "./skill-file.ts";
 import { halonicVersion } from "./version.ts";
 import type { WorkspaceVersions } from "./workspace-versions.ts";
@@ -140,7 +139,7 @@ export interface LocalHarnessHost extends Omit<HarnessHost, "start"> {
    * It never throws: an error goes to `reportError`, and the next start tries again.
    */
   start(): Promise<void>;
-  /** Stops git, if it started. Close it once the executor and the scheduler have closed. Safe to call twice. */
+  /** Stops git, if it started, and gives the profile's host lock up, if it took it. Close it once the executor and the scheduler have closed. Safe to call twice. */
   close(): Promise<void>;
 }
 
@@ -178,12 +177,16 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
     timeLimitMs: harnessCallLimitMs,
     platform,
   });
+  // Sweeps kept Windows grants only under the profile's host lock (HAL-6780); a test's own sandbox takes no lock.
   const fenced =
-    parts.fenced ??
-    new SrtSandbox(undefined, undefined, privateJournalFolder(profile), {
-      sweepRoots: [tempRoot, folders.proposalWorktreesFolder(), folders.runCopiesFolder()],
-      recordFolder: keptGrantsRecordFolder(profile.root),
-    });
+    parts.fenced === undefined
+      ? sweepingUnderHostLock({
+          platform,
+          profile,
+          sweepRoots: [tempRoot, folders.proposalWorktreesFolder(), folders.runCopiesFolder()],
+          warn: (message) => input.reportError(new Error(message.trim())),
+        })
+      : withoutHostLock(parts.fenced);
   const git = lazyGitVcs({
     location: input.location,
     worktrees: folders.proposalWorktreesFolder(),
@@ -246,7 +249,11 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
         input.reportError(error);
       }
     },
-    close: git.close,
+    close: async () => {
+      await git.close();
+      // After the executor has closed, so no session of this engine is still open.
+      await fenced.release().catch(input.reportError);
+    },
   };
 }
 
