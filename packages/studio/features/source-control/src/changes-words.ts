@@ -328,7 +328,6 @@ export const historyWords = {
   detailsLabel: (name: string) => `Version "${name}"`,
   whatsInIt: "What's in it",
   noFiles: "No workspace files changed.",
-  fileCount: (count: number) => (count === 1 ? "1 file" : `${count} files`),
 };
 
 /** Restore just this, on an item of a version (checklist part 2, 2.9; 552 5.5). */

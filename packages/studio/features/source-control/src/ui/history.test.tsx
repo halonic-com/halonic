@@ -69,17 +69,33 @@ verifies("source-control.history-page", () => {
       expect(root.textContent).not.toContain("Show more");
     });
 
-    it("shows a picked version's author, date, notes and files beside the list, not only on hover", async () => {
+    it("shows a picked version's author, date, notes and items beside the list, not only on hover", async () => {
       const fake = fakeSource({ kind: "ready", changes: [] });
       fake.setHistory(versions(3));
+      fake.setTexts("agents/sorter.agent.yaml", {
+        before: null,
+        after: "id: sorter\nname: Sorter\nmodel: claude\ninstructions: Sort mail.\n",
+      });
       const { root } = await openPage(fake);
       expect(root.querySelector('[aria-label^="Version \\""]')).toBeNull();
-      act(() => rowOf(root, "Version 3").click());
+      await act(async () => {
+        rowOf(root, "Version 3").click();
+        await settle();
+      });
       const details = root.querySelector('section[aria-label="Version \\"Version 3\\""]');
       expect(details?.textContent).toContain("Sam Lee");
       expect(details?.textContent).toContain("Only for tickets in NL.");
-      expect(details?.textContent).toContain("2 files");
-      expect(details?.textContent).toContain("skills/tone/SKILL.md");
+      expect(details?.textContent).toContain("2 items");
+      // Named and kinded as the Changes list names them, by the file as it is now; never a path.
+      const items = [...(details?.querySelectorAll('[role="gridcell"]') ?? [])].map((item) => ({
+        text: item.textContent,
+        icon: item.querySelector("svg")?.getAttribute("data-place-icon") ?? null,
+      }));
+      expect(items).toEqual([
+        { text: "SorterAgent", icon: "agents" },
+        { text: "SKILL.md", icon: null },
+      ]);
+      expect(details?.textContent).not.toContain("agents/sorter.agent.yaml");
       expect(rowOf(root, "Version 3").closest("tr")?.getAttribute("aria-current")).toBe("true");
     });
 
@@ -101,6 +117,31 @@ verifies("source-control.history-page", () => {
         title?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
       });
       expect(document.activeElement).toBe(rowOf(root, "Version 2"));
+    });
+
+    it("names an item deleted since the version by its id as a name, never the bare id", async () => {
+      const fake = fakeSource({ kind: "ready", changes: [] });
+      fake.setHistory([
+        {
+          id: "v1",
+          name: "First version",
+          notes: "",
+          author: "Sam Lee",
+          at: recent,
+          files: ["hubs/reports/workflows/weekly-report.workflow.yaml"],
+        },
+      ]);
+      const { root } = await openPage(fake);
+      await act(async () => {
+        rowOf(root, "First version").click();
+        await settle();
+      });
+      const details = root.querySelector('section[aria-label="Version \\"First version\\""]');
+      const items = [...(details?.querySelectorAll('[role="gridcell"]') ?? [])].map(
+        (item) => item.textContent,
+      );
+      expect(items).toEqual(["Weekly reportWorkflow"]);
+      expect(details?.textContent).not.toContain("weekly-report");
     });
 
     it("puts the details in a column beside the list and Show more, not after them", async () => {

@@ -49,7 +49,11 @@ async function pickVersion(source: ChangesSource) {
   const row = [...root.querySelectorAll<HTMLElement>('[role="gridcell"]')].find((cell) =>
     cell.textContent?.includes(dutch.name),
   );
-  await act(async () => row?.click());
+  // The items' names are read from their files before their rows show.
+  await act(async () => {
+    row?.click();
+    await settle();
+  });
   return { root, toasts };
 }
 
@@ -65,7 +69,7 @@ const restoreEntry = () =>
   );
 
 async function restoreSorter(root: HTMLElement) {
-  await openMenu(root, "sorter");
+  await openMenu(root, "Sorter");
   await act(async () => {
     restoreEntry()?.click();
     await settle();
@@ -74,12 +78,13 @@ async function restoreSorter(root: HTMLElement) {
 
 verifies("source-control.history-restore", () => {
   describe("Restore just this", () => {
-    it("lists the version's items with their files, an item's files on one row", async () => {
+    it("lists the version's items by name, an item's files on one row", async () => {
       const { root } = await pickVersion(changedSorter().source);
       const details = root.querySelector('[aria-label^="Version"]');
-      expect(details?.textContent).toContain("sorter");
-      expect(details?.textContent).toContain(sorter);
+      expect(details?.textContent).toContain("2 items");
+      expect(details?.textContent).toContain("Sorter");
       expect(details?.textContent).toContain("README.md");
+      expect(details?.textContent).not.toContain(sorter);
     });
 
     it("restores the item at once, with a toast whose Undo puts the newer one back", async () => {
@@ -88,7 +93,7 @@ verifies("source-control.history-restore", () => {
       await restoreSorter(root);
       expect(await fake.source.readFile(sorter)).toBe("model: a\n");
       const [toast] = toasts.list();
-      expect(toast?.title).toBe('Restored sorter from "Sorter replies in Dutch".');
+      expect(toast?.title).toBe('Restored Sorter from "Sorter replies in Dutch".');
       expect(toast?.action?.label).toBe("Undo");
       await act(async () => {
         toast?.action?.onClick();
@@ -104,7 +109,7 @@ verifies("source-control.history-restore", () => {
       await restoreSorter(root);
       expect(fake.replaced).toEqual([]);
       expect(toasts.list()[0]?.tone).toBe("danger");
-      expect(toasts.list()[0]?.title).toBe("Couldn't restore sorter");
+      expect(toasts.list()[0]?.title).toBe("Couldn't restore Sorter");
     });
 
     it("shows the warning Callout, with focus, when putting the files back fails too", async () => {
@@ -125,7 +130,7 @@ verifies("source-control.history-restore", () => {
             : fake.source.replaceFile(path, text, expected),
       };
       const { root } = await pickVersion(source);
-      await openMenu(root, "tone");
+      await openMenu(root, "Tone");
       await act(async () => {
         restoreEntry()?.click();
         await settle();
@@ -133,7 +138,7 @@ verifies("source-control.history-restore", () => {
       const callout = root.querySelector<HTMLElement>('[role="group"]');
       expect(document.activeElement).toBe(callout);
       expect(callout?.textContent).toContain(
-        'Restored part of tone from "Sorter replies in Dutch".',
+        'Restored part of Tone from "Sorter replies in Dutch".',
       );
       expect(callout?.textContent).toContain(skill);
       expect(callout?.textContent).not.toContain(example);
@@ -144,7 +149,7 @@ verifies("source-control.history-restore", () => {
       const fake = changedSorter();
       fake.setMerge({ items: [], versions: 1, people: ["Sam"] });
       const { root } = await pickVersion(fake.source);
-      await openMenu(root, "sorter");
+      await openMenu(root, "Sorter");
       const entry = restoreEntry();
       expect(entry?.getAttribute("aria-disabled")).toBe("true");
       expect(entry?.textContent).toContain("Finish getting updates first.");
