@@ -3,6 +3,7 @@
 - Task: HAL-12216
 - Approval: UX checklist 10.2 in T7's approved scope (HAL-1300, HAL-12216); Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3IltogF8P2Oh6pAlV7h7DUSLR7P7ymuDRRzWkL4wUtCNuQTw0fTGv9khamRvsNwOQteWPgvvD5/2qvWf+4VtBQ==
 
 ## What changes
 
