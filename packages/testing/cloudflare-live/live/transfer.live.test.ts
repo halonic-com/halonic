@@ -4,8 +4,9 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createCloudflareClient, withAdminKey } from "@halonicjs/target-cloudflare-deploy";
 import { afterAll, describe, expect, it } from "vitest";
+import { eventually } from "../src/eventually.ts";
 import { fixtureWorkerName } from "../src/fixture.ts";
-import { eventually, roundTrip, workerChecks } from "../src/transfer-checks.ts";
+import { roundTrip, UnexpectedStatus, workerChecks } from "../src/transfer-checks.ts";
 
 // Run by `pnpm test:live`, never by `pnpm test`: it calls a Worker deployed in the CI Cloudflare
 // account and sets a one-job admin key on it (cloudflare-live.transfer). The example export of
@@ -35,8 +36,14 @@ describe("the deployed Worker's admin routes", () => {
     await expect(workerChecks.adminClosed(target, "not-the-key")).resolves.toBeUndefined();
   });
 
-  // Two secret changes at a few seconds each, plus the transfer: more than the config's 60 s.
-  const transferTimeout = 180_000;
+  // While the key rolls out, an older Worker version still gives the closed 404: retry only that,
+  // so any other wrong answer, such as a wrong key taken, fails at once.
+  const olderVersionAnswered = (error: unknown) =>
+    error instanceof UnexpectedStatus && error.status === 404;
+
+  // Two secret changes at a few seconds each, each waited out with several passes in a row, plus
+  // the transfer: more than the config's 60 s.
+  const transferTimeout = 240_000;
   it(
     "refuses bad keys, takes an export in and gives it back, and is closed again afterwards",
     async () => {
@@ -54,16 +61,25 @@ describe("the deployed Worker's admin routes", () => {
         },
         async (key) => {
           used = key;
-          // A new Worker version answers the key a few seconds late; until then the route is still the closed 404.
-          await eventually(() => workerChecks.adminKeyActive(target));
-          await workerChecks.adminRefusesBadKeys(target, key);
+          // A new Worker version answers the key a few seconds late, and until it answers everywhere an
+          // older one still gives the closed 404. The whole sweep must pass several times in a row,
+          // so the last sweep has every answer a 401 from the version with the key.
+          await eventually(
+            async () => {
+              await workerChecks.adminKeyActive(target);
+              await workerChecks.adminRefusesBadKeys(target, key);
+            },
+            { retryIf: olderVersionAnswered },
+          );
           return roundTrip({ baseUrl: target.baseUrl, key, source: exampleExport, work });
         },
       );
       expect(result.files).toBeGreaterThan(0);
 
       // Removing a secret makes a new Worker version, which takes a moment to answer everywhere.
-      await eventually(() => workerChecks.adminClosed(target, used), { attempts: 6 });
+      // Until then an older one still takes the key, and its answer depends on the route, so every
+      // failure is retried, but only a run of passes counts.
+      await eventually(() => workerChecks.adminClosed(target, used), { attempts: 8 });
     },
     transferTimeout,
   );

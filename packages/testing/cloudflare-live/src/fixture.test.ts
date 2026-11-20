@@ -168,6 +168,48 @@ verifies("cloudflare-live.fixture", () => {
     ).rejects.toThrow('start with "hlt-"');
     expect(f.calls).toEqual([]);
   });
+
+  it("reads workers.dev again while Cloudflare still reports it off after the self-test", async () => {
+    const f = fakes();
+    let reads = 0;
+    Object.assign(f.api, {
+      async workersDevUrl(_: string, worker: string) {
+        reads++;
+        return reads < 3 ? undefined : `https://${worker}.acme.workers.dev`;
+      },
+    });
+    const fixture = await deployWebhookFixture(options({ api: f.api, rest: f.rest }));
+    expect(fixture.env.HALONIC_LIVE_WORKER_URL).toBe("https://hlt-7-1-w.acme.workers.dev");
+    expect(reads).toBe(3);
+  });
+
+  it("fails at once, and deletes what it made, when workers.dev answers to another host", async () => {
+    const f = fakes();
+    let reads = 0;
+    Object.assign(f.api, {
+      async workersDevUrl() {
+        reads++;
+        return "https://other.acme.workers.dev";
+      },
+    });
+    await expect(deployWebhookFixture(options({ api: f.api, rest: f.rest }))).rejects.toThrow(
+      "not the host hlt-7-1-w.acme.workers.dev",
+    );
+    expect(reads).toBe(1);
+    expect(f.calls).toContain("delete worker hlt-7-1-w");
+  });
+
+  it("names the setting when workers.dev stays off", async () => {
+    const f = fakes();
+    Object.assign(f.api, {
+      async workersDevUrl() {
+        return undefined;
+      },
+    });
+    await expect(deployWebhookFixture(options({ api: f.api, rest: f.rest }))).rejects.toThrow(
+      "still reports the Worker's workers.dev address as off",
+    );
+  });
 });
 
 describe("the Cloudflare REST calls", () => {

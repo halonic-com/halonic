@@ -5,13 +5,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
-import {
-  eventually,
-  readAsNode,
-  roundTrip,
-  type WorkerTarget,
-  workerChecks,
-} from "./transfer-checks.ts";
+import { eventually } from "./eventually.ts";
+import { readAsNode, roundTrip, type WorkerTarget, workerChecks } from "./transfer-checks.ts";
 
 const example = fileURLToPath(
   new URL("../../../core/format/src/runtime-export/fixtures/example", import.meta.url),
@@ -143,7 +138,7 @@ verifies("cloudflare-live.transfer", () => {
   });
 
   describe("waiting for the key to take effect", () => {
-    it("retries while /admin is still the closed 404, then passes on the 401", async () => {
+    it("retries while /admin is still the closed 404, then passes on three 401s in a row", async () => {
       const open = fakeWorker().target;
       let calls = 0;
       const slow: WorkerTarget = {
@@ -155,7 +150,7 @@ verifies("cloudflare-live.transfer", () => {
       await eventually(() => workerChecks.adminKeyActive(slow), {
         sleep: async (ms) => void waits.push(ms),
       });
-      expect(waits).toEqual([5_000, 5_000]);
+      expect(waits).toEqual([5_000, 5_000, 5_000, 5_000]);
     });
     it("gives up with the last error after the given tries", async () => {
       let waited = 0;

@@ -9,6 +9,7 @@ import {
 import type { CloudflareRest } from "./cloudflare-rest.ts";
 import { fixtureWorkerName } from "./fixture.ts";
 import { teardownFor } from "./teardown.ts";
+import { workersDevUrlFor } from "./workers-dev.ts";
 
 export interface AdapterRunnerOptions {
   readonly api: CloudflareApi;
@@ -106,10 +107,15 @@ export async function deployAdapterRunner(
       ...options.upload,
     });
     const subdomain = await rest.workersSubdomain(accountId);
-    const url = await api.workersDevUrl(accountId, worker);
-    if (url === undefined || new URL(url).host !== `${worker}.${subdomain}.workers.dev`) {
-      throw new Error("The Worker's workers.dev address is not the one expected.");
-    }
+    const url = await workersDevUrlFor(
+      api,
+      accountId,
+      worker,
+      `${worker}.${subdomain}.workers.dev`,
+      {
+        ...(options.upload?.sleep ? { sleep: options.upload.sleep } : {}),
+      },
+    );
     return { url, token, destroy };
   } catch (error) {
     await destroy().catch((cleanup: unknown) => {
