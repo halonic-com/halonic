@@ -1,5 +1,6 @@
 // Minimal Turborepo remote cache: R2 storage, keyed by artifact hash, one team. Reads take a static read token.
 // Writes take a short-lived token that POST /auth/github hands out only to a push to main, against a GitHub OIDC token (see below).
+// The merge queue writes too, but only to its own area (q/<hash>), which main never reads (HAL-14149).
 // Refuses with 503 when the Cloudflare spend switch is off (turbo then builds without the cache).
 import { checkSpend, spendOffResponse } from "../spend-guard/src/check-spend.mjs";
 
@@ -65,11 +66,12 @@ async function verifyGithubToken(jwt) {
 
 // GitHub sets event_name and ref in the token; a workflow file cannot change them. That keeps a workflow on a
 // pushed look-alike branch (gh-readonly-queue/main/x) from getting any token: its event is a plain push on another ref.
-// Only a push to main writes. The merge queue runs the queued change's own code, so it only reads.
+// Only a push to main writes the shared area. The merge queue runs the queued change's own code, so it writes only
+// to its own area (q/<hash>): later queue entries reuse what the ones ahead of them built, and main never trusts it.
 function tokenKind(claims) {
   if (claims.repository !== OIDC_REPOSITORY) return null;
   if (claims.event_name === "merge_group")
-    return claims.ref?.startsWith("refs/heads/gh-readonly-queue/main/") ? "r" : null;
+    return claims.ref?.startsWith("refs/heads/gh-readonly-queue/main/") ? "q" : null;
   return claims.event_name === "push" && claims.ref === "refs/heads/main" ? "w" : null;
 }
 
@@ -85,7 +87,7 @@ async function hmac(secret, text) {
 }
 
 // POST /auth/github with the OIDC token as bearer answers { token }: a 30-minute token, "w." (reads and uploads) for
-// a push to main, "r." (reads only) for the merge queue.
+// a push to main, "q." (reads, uploads only to the queue's area) for the merge queue.
 async function exchange(request, env) {
   const signingKey = await readSecret(env.TURBO_SIGNING_KEY);
   const jwt = (request.headers.get("authorization") || "").replace(/^Bearer /, "");
@@ -97,11 +99,11 @@ async function exchange(request, env) {
   return json({ token: `${kind}.${expires}.${await hmac(signingKey, `${kind}.${expires}`)}` });
 }
 
-// The kind of a live token we signed ("w" or "r"), else null.
+// The kind of a live token we signed ("w", "q" or "r"), else null. "r" is no longer handed out; a live one still reads.
 async function signedTokenKind(given, env) {
   const [kind, expires, mac] = given.split(".");
   const signingKey = await readSecret(env.TURBO_SIGNING_KEY);
-  if ((kind !== "w" && kind !== "r") || !signingKey || !mac) return null;
+  if (!["w", "q", "r"].includes(kind) || !signingKey || !mac) return null;
   if (Number(expires) * 1000 <= Date.now()) return null;
   return (await matches(
     given,
@@ -130,17 +132,30 @@ async function readSecret(binding) {
   }
 }
 
-// "write" (a "w." token from /auth/github: reads and uploads), "read" (an "r." token from /auth/github, or
-// TURBO_TOKEN_READ: reads only) or null.
+// "write" (a "w." token from /auth/github: reads and uploads), "queue" (a "q." token from /auth/github: reads,
+// uploads to q/ only), "read" (an "r." token, or TURBO_TOKEN_READ: reads only) or null.
 async function roleOf(request, env) {
   const given = (request.headers.get("authorization") || "").replace(/^Bearer /, "");
   const kind = await signedTokenKind(given, env);
   if (kind === "w") return "write";
+  if (kind === "q") return "queue";
   if (kind === "r") return "read";
   return (await matches(given, await readSecret(env.TURBO_TOKEN_READ))) ? "read" : null;
 }
 
-async function query(request, env) {
+// The R2 keys a role reads for a hash, in order. Only the queue sees q/: main and the read token never do. A hash
+// can't contain "/", so no request names a q/ key directly.
+const readKeys = (role, hash) => (role === "queue" ? [`q/${hash}`, hash] : [hash]);
+
+async function firstOf(keys, lookup) {
+  for (const key of keys) {
+    const o = await lookup(key);
+    if (o) return o;
+  }
+  return null;
+}
+
+async function query(request, env, role) {
   const { hashes } = await request.json().catch(() => ({}));
   if (!Array.isArray(hashes) || hashes.length > 1000 || !hashes.every((h) => HASH.test(h))) {
     return json({ error: "bad request" }, 400);
@@ -148,7 +163,7 @@ async function query(request, env) {
   const out = {};
   await Promise.all(
     hashes.map(async (h) => {
-      const o = await env.R2_STORE.head(h);
+      const o = await firstOf(readKeys(role, h), (k) => env.R2_STORE.head(k));
       out[h] = o
         ? { size: o.size, taggedAt: o.uploaded.getTime(), tag: o.customMetadata?.tag }
         : null;
@@ -157,18 +172,21 @@ async function query(request, env) {
   return json(out);
 }
 
-async function put(request, env, key) {
+async function put(request, env, hash, role) {
   if (!request.body) return json({ error: "empty body" }, 400);
+  const key = role === "queue" ? `q/${hash}` : hash;
   const tag = request.headers.get("x-artifact-tag") || undefined;
   const length = Number(request.headers.get("content-length"));
   const body = Number.isFinite(length) && length > 0 ? request.body : await request.arrayBuffer();
   await env.R2_STORE.put(key, body, { customMetadata: tag ? { tag } : undefined });
-  return json({ urls: [`${new URL(request.url).origin}/v8/artifacts/${key}`] }, 202);
+  return json({ urls: [`${new URL(request.url).origin}/v8/artifacts/${hash}`] }, 202);
 }
 
-async function read(request, env, key) {
+async function read(request, env, hash, role) {
   const isGet = request.method === "GET";
-  const o = isGet ? await env.R2_STORE.get(key) : await env.R2_STORE.head(key);
+  const o = await firstOf(readKeys(role, hash), (k) =>
+    isGet ? env.R2_STORE.get(k) : env.R2_STORE.head(k),
+  );
   if (!o) return json({ error: "not found" }, 404);
   const headers = {
     "content-type": "application/octet-stream",
@@ -183,14 +201,16 @@ async function route(request, env, role) {
   const { method } = request;
   if (pathname === "/v8/artifacts/status" && method === "GET") return json({ status: "enabled" });
   if (pathname === "/v8/artifacts/events" && method === "POST") return json({});
-  if (pathname === "/v8/artifacts" && method === "POST") return query(request, env);
+  if (pathname === "/v8/artifacts" && method === "POST") return query(request, env, role);
 
-  const key = pathname.match(ARTIFACT_PATH)?.[1];
-  if (!key || !HASH.test(key)) return json({ error: "not found" }, 404);
+  const hash = pathname.match(ARTIFACT_PATH)?.[1];
+  if (!hash || !HASH.test(hash)) return json({ error: "not found" }, 404);
   if (method === "PUT") {
-    return role === "write" ? put(request, env, key) : json({ error: "forbidden" }, 403);
+    return role === "write" || role === "queue"
+      ? put(request, env, hash, role)
+      : json({ error: "forbidden" }, 403);
   }
-  if (method === "GET" || method === "HEAD") return read(request, env, key);
+  if (method === "GET" || method === "HEAD") return read(request, env, hash, role);
   return json({ error: "method not allowed" }, 405);
 }
 

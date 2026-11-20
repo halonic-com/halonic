@@ -7,10 +7,11 @@ const { default: worker } = await import("./worker.mjs");
 
 import { createHmac } from "node:crypto";
 
-const writeToken = (key) => {
-  const head = `w.${Math.floor(Date.now() / 1000) + 600}`;
+const signedToken = (kind, key) => {
+  const head = `${kind}.${Math.floor(Date.now() / 1000) + 600}`;
   return `${head}.${createHmac("sha256", key).update(head).digest("base64url")}`;
 };
+const writeToken = (key) => signedToken("w", key);
 const kv = (m) => ({ get: async (k) => m[k] ?? null });
 const call = (env) =>
   worker.fetch(
@@ -120,7 +121,84 @@ globalThis.fetch = async (url, init) =>
       })
     : realFetch(url, init);
 
-test("turbo-cache: only a main push OIDC token buys a write token; the merge queue gets a read token", async () => {
+test("turbo-cache: the merge queue writes only to q/, reads q/ then main's entry; main never sees q/", async () => {
+  const store = new Map();
+  const env = {
+    SPEND_KV: kv({ spend_ok: "on", "spend_ok:turbo-cache": "on" }),
+    TURBO_SIGNING_KEY: { get: async () => "k" },
+    TURBO_TOKEN_READ: { get: async () => "r" },
+    R2_STORE: {
+      put: async (k, b) => store.set(k, await new Response(b).text()),
+      get: async (k) => (store.has(k) ? { size: 1, body: store.get(k) } : null),
+      head: async (k) => (store.has(k) ? { size: 1, uploaded: new Date() } : null),
+    },
+  };
+  const send = (method, token, hash, body) =>
+    worker.fetch(
+      new Request(`https://x/v8/artifacts/${hash}`, {
+        method,
+        body,
+        headers: { authorization: `Bearer ${token}` },
+      }),
+      env,
+    );
+  const lookup = async (token, hashes) =>
+    (
+      await worker.fetch(
+        new Request("https://x/v8/artifacts", {
+          method: "POST",
+          body: JSON.stringify({ hashes }),
+          headers: { authorization: `Bearer ${token}` },
+        }),
+        env,
+      )
+    ).json();
+  const main = writeToken("k");
+  const queue = signedToken("q", "k");
+
+  // Main's entry; the queue's upload for the same hash lands in q/ and leaves main's entry alone.
+  assert.equal((await send("PUT", main, "hash000001", "main")).status, 202);
+  assert.equal((await send("PUT", queue, "hash000001", "queue")).status, 202);
+  assert.equal(store.get("hash000001"), "main");
+  assert.equal(store.get("q/hash000001"), "queue");
+  // The queue reads its own area first; main and the read token never see it.
+  assert.equal(await (await send("GET", queue, "hash000001")).text(), "queue");
+  assert.equal(await (await send("GET", main, "hash000001")).text(), "main");
+  assert.equal(await (await send("GET", "r", "hash000001")).text(), "main");
+
+  // A queue-only entry: the queue finds it, main and the read token get a miss.
+  assert.equal((await send("PUT", queue, "hash000002", "queue")).status, 202);
+  assert.equal(store.has("hash000002"), false);
+  assert.equal((await send("GET", queue, "hash000002")).status, 200);
+  assert.equal((await send("HEAD", queue, "hash000002")).status, 200);
+  assert.equal((await send("GET", main, "hash000002")).status, 404);
+  assert.equal((await send("HEAD", main, "hash000002")).status, 404);
+  assert.equal((await send("GET", "r", "hash000002")).status, 404);
+
+  // The queue falls back to main's entry when its own area has none.
+  assert.equal((await send("PUT", main, "hash000003", "main")).status, 202);
+  assert.equal(await (await send("GET", queue, "hash000003")).text(), "main");
+
+  // The lookup follows the same rules.
+  const hashes = ["hash000001", "hash000002", "hash000003", "hash000004"];
+  const seen = (out) => hashes.map((h) => out[h] !== null);
+  assert.deepEqual(seen(await lookup(queue, hashes)), [true, true, true, false]);
+  assert.deepEqual(seen(await lookup(main, hashes)), [true, false, true, false]);
+  assert.deepEqual(seen(await lookup("r", hashes)), [true, false, true, false]);
+
+  // No request can name a q/ key: the path is not a hash.
+  for (const token of [main, queue, "r"]) {
+    assert.equal((await send("GET", token, "q%2Fhash000002")).status, 404);
+    assert.equal((await send("PUT", token, "q%2Fhash000001", "x")).status, 404);
+  }
+  assert.equal(store.get("hash000001"), "main");
+  // The read token still can't upload anywhere.
+  assert.equal((await send("PUT", "r", "hash000005", "x")).status, 403);
+  assert.equal((await send("PUT", signedToken("r", "k"), "hash000005", "x")).status, 403);
+  assert.equal(store.has("q/hash000005") || store.has("hash000005"), false);
+});
+
+test("turbo-cache: only a main push OIDC token buys a write token; the merge queue gets a queue token", async () => {
   const store = new Map();
   const env = {
     SPEND_KV: kv({ spend_ok: "on", "spend_ok:turbo-cache": "on" }),
@@ -156,16 +234,21 @@ test("turbo-cache: only a main push OIDC token buys a write token; the merge que
     401,
   );
 
-  // The queue runs the queued change's own code, so its token reads and never uploads.
+  assert.equal(store.has("abcdef123456"), true);
+  store.clear();
+
+  // The queue runs the queued change's own code, so its token uploads only to the queue's area.
   const queue = await exchange(
     await oidc({ event_name: "merge_group", ref: "refs/heads/gh-readonly-queue/main/x" }),
   );
   assert.equal(queue.status, 200);
   const { token: queueToken } = await queue.json();
-  assert.match(queueToken, /^r\./);
-  assert.equal((await put(queueToken)).status, 403);
-  // Relabelling the read token as a write token breaks its signature.
+  assert.match(queueToken, /^q\./);
+  assert.equal((await put(queueToken)).status, 202);
+  assert.deepEqual([...store.keys()], ["q/abcdef123456"]);
+  // Relabelling the queue token as a write token breaks its signature.
   assert.equal((await put(`w.${queueToken.slice(2)}`)).status, 401);
+  assert.deepEqual([...store.keys()], ["q/abcdef123456"]);
   assert.equal(
     (
       await worker.fetch(
@@ -191,6 +274,11 @@ test("turbo-cache: only a main push OIDC token buys a write token; the merge que
   // The attack: a pushed look-alike branch, and every other event, get nothing.
   const fake = { event_name: "push", ref: "refs/heads/gh-readonly-queue/main/x" };
   assert.equal((await exchange(await oidc(fake))).status, 403);
+  // A merge_group claim on main itself is not the queue either.
+  assert.equal(
+    (await exchange(await oidc({ event_name: "merge_group", ref: "refs/heads/main" }))).status,
+    403,
+  );
   assert.equal(
     (await exchange(await oidc({ event_name: "pull_request", ref: "refs/pull/1/merge" }))).status,
     403,

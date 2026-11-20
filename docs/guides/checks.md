@@ -967,8 +967,11 @@ in the merge queue. A pull request uses the local cache, so it can't put
 anything into the cache that other runs trust, and it holds none of the cache's
 secrets. On `main` and in the merge queue, the job gets a 30-minute token from
 the Worker against its GitHub OIDC token. A push to `main` gets a write token.
-The merge queue runs the queued change's own code, so it gets a read token and
-runs with `remote:r`: it uses entries but can't upload any. Entries are signed (`remoteCache.signature` in `turbo.json`) with
+The merge queue runs the queued change's own code, so it gets a queue token: it
+uploads only to the cache's own queue area (`q/`), and reads that area first,
+then `main`'s entries. So each queue entry reuses what the entries ahead of
+it built, but nothing the queue uploads is ever read by `main` (HAL-14149).
+Queue entries expire after 7 days. Entries are signed (`remoteCache.signature` in `turbo.json`) with
 `TURBO_REMOTE_CACHE_SIGNATURE_KEY`, a secret of the GitHub environment
 `turbo-cache-write`, whose deployment branches are `main` and
 `gh-readonly-queue/main/*`, so no pull request can read it. Don't keep that key
