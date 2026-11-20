@@ -68,15 +68,26 @@ struct StandIn(std::path::PathBuf);
 #[cfg(unix)]
 impl StandIn {
     fn new(body: &str) -> Self {
-        use std::os::unix::fs::PermissionsExt;
         use std::sync::atomic::{AtomicUsize, Ordering};
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let number = NEXT.fetch_add(1, Ordering::Relaxed);
         let name = format!("halonic-default-distro-{}-{number}", std::process::id());
         let path = std::env::temp_dir().join(name);
-        std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).expect("write the stand-in");
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700))
-            .expect("make it executable");
+        // Linux refuses to run a file any process holds open for writing
+        // ("Text file busy"), and a process another test thread starts
+        // while this one writes would inherit it open (HAL-14102). A child
+        // shell writes it instead, so this process never opens it.
+        let written = std::process::Command::new("/bin/sh")
+            .args([
+                "-c",
+                "printf '%s\\n' \"$2\" > \"$1\" && chmod 700 \"$1\"",
+                "sh",
+            ])
+            .arg(&path)
+            .arg(format!("#!/bin/sh\n{body}"))
+            .status()
+            .expect("start the shell that writes the stand-in");
+        assert!(written.success(), "write the stand-in: {written}");
         Self(path)
     }
 }
