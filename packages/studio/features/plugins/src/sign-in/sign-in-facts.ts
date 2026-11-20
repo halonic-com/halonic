@@ -72,6 +72,39 @@ export function signInFacts(
 }
 
 /**
+ * The address the host answered for a sign-in, checked before the browser
+ * opens it: it must be an `https:` page on the sign-in's approved host, the
+ * one the trust check line names. A wrong answer would otherwise send the
+ * person to another page to type their password.
+ *
+ * @returns the address, unchanged
+ * @throws {@link NotTheSignInPageError} when the address is anything else
+ *
+ * @example
+ * signInPage("https://auth.example.com/oauth/authorize?client_id=abc", facts); // the same address
+ * signInPage("https://evil.example.net/login", facts); // throws
+ */
+export function signInPage(address: string, facts: SignInFacts): string {
+  const url = URL.parse(address);
+  if (url === null || url.protocol !== "https:" || url.host !== facts.authorizeHost) {
+    throw new NotTheSignInPageError(facts.authorizeHost);
+  }
+  return address;
+}
+
+/** The host answered an address that isn't the approved sign-in page. It doesn't hold the address. */
+export class NotTheSignInPageError extends Error {
+  /** The sign-in's approved host, the one the address should have been on. */
+  readonly approvedHost: string;
+
+  constructor(approvedHost: string) {
+    super(`The sign-in page to open isn't on ${approvedHost}.`);
+    this.name = "NotTheSignInPageError";
+    this.approvedHost = approvedHost;
+  }
+}
+
+/**
  * Whether the sign-in page and the token address are different services
  * the person should know about: different hosts that aren't a known pair
  * (core's `signInTokenHostDiffers`).

@@ -27,6 +27,8 @@ export interface DesktopPluginsParts {
   readonly caller: PluginsHost["caller"];
   /** Hands a plugin's secrets to the agent host before each call: `AgentHostPluginSecrets`. */
   readonly handOver: PluginSecretHandOver;
+  /** The agent host's integration sign-ins, for the Sign-ins section of a plugin's page. */
+  readonly signIns: NonNullable<PluginsHost["signIns"]>;
   /** Told when a change was saved but reading the plugins folder again failed. */
   readonly onReloadFailed: (error: unknown) => void;
 }
@@ -45,10 +47,11 @@ export interface DesktopPluginsHost {
  * records the CLI shares, the keychain for secrets (given in `secrets`), and one feed that every action reads again.
  * Its installer adds a plugin from a folder the person picks or a git repository, not trusted
  * (`desktopPluginInstaller`). It never runs plugin code: tool calls go through `caller`, each
- * after `handOver` gave the agent host the plugin's own secrets (`secretHandingCaller`).
+ * after `handOver` gave the agent host the plugin's own secrets (`secretHandingCaller`), and
+ * sign-ins go through `signIns`, both to the agent host.
  *
  * @example
- * const { host, reload } = desktopPluginsHost({ ipc, secrets, caller, handOver, onReloadFailed });
+ * const { host, reload } = desktopPluginsHost({ ipc, secrets, caller, handOver, signIns, onReloadFailed });
  * await reload();
  */
 export function desktopPluginsHost({
@@ -56,6 +59,7 @@ export function desktopPluginsHost({
   secrets,
   caller,
   handOver,
+  signIns,
   onReloadFailed,
 }: DesktopPluginsParts): DesktopPluginsHost {
   const service = new PluginService({
@@ -94,6 +98,7 @@ export function desktopPluginsHost({
       }),
       settings: service,
       secrets,
+      signIns,
       actions,
       installer: desktopPluginInstaller({ ipc, service, reload: actions.reload, onReloadFailed }),
     },

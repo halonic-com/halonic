@@ -67,6 +67,14 @@ export function signInNotStarted(reason: string): string {
   return `Couldn't start the sign-in: ${reason}`;
 }
 
+/**
+ * **Sign in** didn't open the page the host answered, because it isn't on the
+ * sign-in's approved host (team wording, HAL-8613, after Liam's review).
+ */
+export function signInPageNotApproved(approvedHost: string): string {
+  return signInNotStarted(`the page to open isn't on ${approvedHost}.`);
+}
+
 /** **Sign out** failed; nothing was removed (team wording, microcopy 1.1 "Action failed"). */
 export function signOutFailed(reason: string): string {
   return `Couldn't sign out: ${reason}`;

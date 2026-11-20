@@ -26,6 +26,11 @@ function hostOver(shell: TauriShell) {
     },
     caller: { call: async () => "" },
     handOver: { handOver: async () => 0 },
+    signIns: {
+      status: async () => [],
+      start: async () => "https://auth.example.com/oauth/authorize",
+      signOut: async () => ({ kind: "notSignedIn" }),
+    },
     onReloadFailed: () => {},
   });
 }

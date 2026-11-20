@@ -1,9 +1,15 @@
 import type { Plugin } from "@halonicjs/format";
-import { Button, Callout, StatusChip } from "@halonicjs/studio-kit";
+import { Button, Callout, StatusChip, useOpenExternal } from "@halonicjs/studio-kit";
 import { useCallback, useEffect, useId, useState } from "react";
 import { messageOf } from "../message-of.ts";
 import type { PluginSettingsReader } from "../settings/plugin-settings-section.tsx";
-import { type SignInFacts, signInFacts, tokenHostDiffers } from "./sign-in-facts.ts";
+import {
+  NotTheSignInPageError,
+  type SignInFacts,
+  signInFacts,
+  signInPage,
+  tokenHostDiffers,
+} from "./sign-in-facts.ts";
 import {
   CLIENT_SECRET_NOT_SET,
   outcomeLine,
@@ -18,6 +24,7 @@ import {
   type SignInOutcome,
   signedOutNotConfirmed,
   signInNotStarted,
+  signInPageNotApproved,
   signInsNotLoaded,
   signOutFailed,
   tokenHostWarning,
@@ -43,16 +50,15 @@ export type PluginSignOutResult =
     };
 
 /**
- * The app's way to a plugin's sign-ins: the agent host's sign-in routes and
- * the system browser. The page never holds a code, a token or a client secret.
+ * The app's way to a plugin's sign-ins: the agent host's sign-in routes. The
+ * page never holds a code, a token or a client secret. The browser opens
+ * through the kit's `openExternal`, as every outside page does.
  */
 export interface PluginSignIns {
   status(plugin: string): Promise<readonly PluginSignInStatus[]>;
   /** Starts a sign-in and answers the address to open. Throws with the host's `kind` when it refuses. */
   start(plugin: string, signIn: string): Promise<string>;
   signOut(plugin: string, signIn: string): Promise<PluginSignOutResult>;
-  /** Opens the address in the person's browser. */
-  openInBrowser(url: string): Promise<void>;
 }
 
 /** The props of `PluginSignInsSection`. */
@@ -187,16 +193,21 @@ function SignInBlock({
   actions,
   onChanged,
 }: SignInBlockProps) {
+  const openExternal = useOpenExternal();
   const [busy, setBusy] = useState(false);
   const [line, setLine] = useState<string | undefined>(undefined);
   const state = facts === undefined ? "cannotSignIn" : status?.state;
 
   async function signIn() {
+    // No button offers a sign-in without the facts; the check below needs them.
+    if (facts === undefined) return;
     setBusy(true);
     setLine(undefined);
     try {
-      const address = await signIns.start(plugin, name);
-      await signIns.openInBrowser(address);
+      // The browser has to open its tab inside the click, so the address is handed over as a
+      // promise. It opens only the approved sign-in page (`signInPage`).
+      const address = signIns.start(plugin, name).then((answered) => signInPage(answered, facts));
+      await openExternal(address);
     } catch (error) {
       setLine(startFailedLine(error));
     } finally {
@@ -300,6 +311,7 @@ function StateRow({ state, busy, actions, onSignIn, onSignOut }: StateRowProps) 
 
 /** The line when **Sign in** couldn't start: the host's refusal in words, or the reason. */
 function startFailedLine(error: unknown): string {
+  if (error instanceof NotTheSignInPageError) return signInPageNotApproved(error.approvedHost);
   const kind =
     typeof error === "object" && error !== null && "kind" in error ? error.kind : undefined;
   switch (kind) {

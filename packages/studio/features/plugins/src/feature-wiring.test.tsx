@@ -14,6 +14,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { PluginsHostService, PluginsService } from "./api.ts";
 import { pluginsFeature } from "./feature.ts";
 import type { InstalledPlugin } from "./page/plugin-pages.ts";
+import { pageOptions } from "./plugins-service.ts";
+import type { PluginSignIns } from "./sign-in/plugin-sign-ins-section.tsx";
 import { fakeModal, restoreModal } from "./test-support/modal.ts";
 import {
   feedOf,
@@ -31,7 +33,7 @@ afterEach(() => {
 });
 
 /** A Studio with the plugins feature over `plugins`, and a window's context for it. */
-function studioWith(plugins: readonly InstalledPlugin[]) {
+function studioWith(plugins: readonly InstalledPlugin[], signIns?: PluginSignIns) {
   const { feed, set } = feedOf(plugins);
   const call = vi.fn(async () => "Sunny");
   const shell = createShell({ features: [pluginsFeature], hostServices: [PluginsHostService] });
@@ -41,6 +43,7 @@ function studioWith(plugins: readonly InstalledPlugin[]) {
     caller: { call },
     ...noSettings(),
     ...noActions(),
+    ...(signIns === undefined ? {} : { signIns }),
   });
   shell.services.instantiate(workspace);
   const opened: ItemRef[] = [];
@@ -113,6 +116,22 @@ verifies("plugins.feature", () => {
     act(() => review?.click());
 
     expect(opened).toEqual([{ kind: "plugin", hub: "this-computer", id: "weather" }]);
+  });
+
+  it("gives a plugin's page the app's sign-ins, and none when the app has none", () => {
+    const signIns: PluginSignIns = {
+      status: async () => [],
+      start: async () => "https://auth.example.com/oauth/authorize",
+      signOut: async () => ({ kind: "notSignedIn" }),
+    };
+    const withSignIns = studioWith([weather()], signIns);
+    const without = studioWith([weather()]);
+
+    const page = pageOptions(withSignIns.workspace.get(PluginsService), withSignIns.context);
+    expect(page.signIns).toBe(signIns);
+    expect(pageOptions(without.workspace.get(PluginsService), without.context).signIns).toBe(
+      undefined,
+    );
   });
 
   it("calls a plugin's tools through the app's caller, with the 30-second limit", async () => {
