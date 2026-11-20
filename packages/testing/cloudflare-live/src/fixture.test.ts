@@ -192,23 +192,28 @@ verifies("cloudflare-live.fixture", () => {
         return "https://other.acme.workers.dev";
       },
     });
-    await expect(deployWebhookFixture(options({ api: f.api, rest: f.rest }))).rejects.toThrow(
-      "not the host hlt-7-1-w.acme.workers.dev",
-    );
+    const failure = deployWebhookFixture(options({ api: f.api, rest: f.rest }));
+    await expect(failure).rejects.toThrow("starts with other, not hlt-7-1-w.");
+    // The account's subdomain stays out of the message, which lands in public CI logs.
+    await expect(failure).rejects.not.toThrow("acme");
     expect(reads).toBe(1);
     expect(f.calls).toContain("delete worker hlt-7-1-w");
   });
 
   it("names the setting when workers.dev stays off", async () => {
     const f = fakes();
+    let reads = 0;
     Object.assign(f.api, {
       async workersDevUrl() {
+        reads++;
         return undefined;
       },
     });
     await expect(deployWebhookFixture(options({ api: f.api, rest: f.rest }))).rejects.toThrow(
       "still reports the Worker's workers.dev address as off",
     );
+    expect(reads).toBe(6);
+    expect(f.calls).toContain("delete worker hlt-7-1-w");
   });
 });
 

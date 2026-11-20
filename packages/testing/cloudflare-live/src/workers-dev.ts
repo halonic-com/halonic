@@ -32,8 +32,13 @@ export async function workersDevUrlFor(
       if (url === undefined) {
         throw new StillOff("Cloudflare still reports the Worker's workers.dev address as off.");
       }
-      if (new URL(url).host !== host) {
-        throw new Error(`The Worker's workers.dev address is ${url}, not the host ${host}.`);
+      const actual = new URL(url).host;
+      if (actual !== host) {
+        // Only the first labels (the Worker names): the rest is the account's subdomain, and this
+        // message lands in public CI logs.
+        throw new Error(
+          `The Worker's workers.dev address starts with ${firstLabel(actual)}, not ${firstLabel(host)}.`,
+        );
       }
       found = url;
     },
@@ -45,4 +50,8 @@ export async function workersDevUrlFor(
     },
   );
   return found;
+}
+
+function firstLabel(host: string): string {
+  return host.split(".")[0] ?? "";
 }
