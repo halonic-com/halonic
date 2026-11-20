@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14029 (Liam, CTO; reviewed in the task)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9P6Dm0v5Xw5330qpi/qiMtvmmZsNZHpm8rmFMv6yqfQj4U88ssrzqzDaBYYsnKSrXotrQoIih9jKaEANhLwjDg==
 
 The routines feature adds its **Triggers** section to the agent's and the workflow's page, but no
 page placed `<Sections />`, so **Add trigger** couldn't be reached in Studio. flow-routines 2.3
