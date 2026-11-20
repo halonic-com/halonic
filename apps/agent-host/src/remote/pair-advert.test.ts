@@ -85,13 +85,16 @@ verifies("agent-host.remote-pair-advert", () => {
       expect(records.every((record) => record.ttl === 120)).toBe(true);
     });
 
-    it("answers a phone's query for the service with every record, and ignores other queries", async () => {
+    it("answers a phone's PTR query for the service with every record, and nothing else", async () => {
       const { advert, socket, gapOver } = advertOnFakeSocket();
       const started = advert.start(desk);
       gapOver();
       await started;
       socket.deliver(queryFor("_googlecast._tcp.local", dnsTypes.PTR));
       socket.deliver(queryFor(pairServiceName, dnsTypes.A));
+      socket.deliver(queryFor(pairServiceName, dnsTypes.ANY));
+      socket.deliver(queryFor(instance, dnsTypes.ANY));
+      socket.deliver(queryFor(instance, dnsTypes.SRV));
       expect(socket.sent).toHaveLength(2);
       socket.deliver(queryFor(pairServiceName, dnsTypes.PTR));
       const answer = readResponse(socket.sent[2] ?? new Uint8Array()).records;
@@ -101,11 +104,7 @@ verifies("agent-host.remote-pair-advert", () => {
         "additional 16",
         "additional 1",
       ]);
-      socket.deliver(queryFor(instance, dnsTypes.ANY));
-      const direct = readResponse(socket.sent[3] ?? new Uint8Array()).records;
-      expect(
-        direct.filter((record) => record.section === "answer").map((record) => record.type),
-      ).toEqual([33, 16]);
+      expect(socket.sent).toHaveLength(3);
     });
 
     it("says goodbye and closes the socket when it stops, and announces nothing after", async () => {

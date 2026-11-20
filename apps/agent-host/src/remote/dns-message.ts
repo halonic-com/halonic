@@ -20,6 +20,24 @@ const responseFlags = 0x8400;
 const responseBit = 0x8000;
 const headerBytes = 12;
 
+/*
+ * The limits a query from the network must keep, or the host drops it
+ * whole. The socket reads whatever anyone on the network sends, so the
+ * reader trusts no count or length in it.
+ */
+/** The largest multicast DNS message (RFC 6762 section 17). */
+export const dnsMaxMessageBytes = 9000;
+/** The most questions read from one query; a phone's has one or two. */
+export const dnsMaxQuestions = 16;
+/** The longest name, counted as on the wire (RFC 1035 section 2.3.4). */
+const maxNameBytes = 255;
+/** The most compression pointers one name may follow. */
+const maxPointers = 16;
+/** The flags' opcode bits; a standard query has 0. */
+const opcodeBits = 0x7800;
+/** The bit of a question's class that asks for a unicast answer (RFC 6762 section 5.4). */
+const unicastResponseBit = 0x8000;
+
 /** One question of a query: a name and a type, as a number. */
 export interface DnsQuestion {
   /** The name, lower case, without a trailing dot, such as `_halonic-pair._tcp.local`. */
@@ -42,50 +60,92 @@ export type DnsRecord = {
 );
 
 /**
- * The questions of a multicast DNS query. A response, or a message that
- * doesn't parse, gives none: the network can send anything, and the host
- * answers only what it reads in full.
+ * The questions of a multicast DNS query. Anything else gives none: a
+ * response, another opcode, a message over {@link dnsMaxMessageBytes}, more
+ * than {@link dnsMaxQuestions} questions, a question of another class, or a
+ * name that runs past the end, is too long, or follows a pointer that
+ * doesn't point back. The network can send anything, so the host answers
+ * only what it reads in full, and drops the rest without a word.
  */
 export function readQuestions(message: Uint8Array): DnsQuestion[] {
-  if (message.length < headerBytes) return [];
+  if (message.length < headerBytes || message.length > dnsMaxMessageBytes) return [];
   const view = new DataView(message.buffer, message.byteOffset, message.byteLength);
-  if ((view.getUint16(2) & responseBit) !== 0) return [];
+  const flags = view.getUint16(2);
+  if ((flags & responseBit) !== 0 || (flags & opcodeBits) !== 0) return [];
   const count = view.getUint16(4);
+  if (count > dnsMaxQuestions) return [];
   const questions: DnsQuestion[] = [];
   let offset = headerBytes;
   for (let index = 0; index < count; index += 1) {
     const name = readName(message, offset);
     if (name === undefined || name.end + 4 > message.length) return [];
+    const questionClass = view.getUint16(name.end + 2) & ~unicastResponseBit;
+    if (questionClass !== internetClass) return [];
     questions.push({ name: name.text.toLowerCase(), type: view.getUint16(name.end) });
     offset = name.end + 4;
   }
   return questions;
 }
 
-/** A name at `offset`, following compression pointers, and where the name ends in the message. */
+/**
+ * A name at `offset`, following compression pointers, and where the name
+ * ends in the message; `undefined` for a name that isn't whole. Each
+ * pointer must point further back than the name's start or the pointer
+ * before it, so pointers can't loop, and at most {@link maxPointers} are
+ * followed. A name over
+ * {@link maxNameBytes} or a label that isn't UTF-8 isn't read.
+ */
 function readName(message: Uint8Array, offset: number): { text: string; end: number } | undefined {
   const labels: string[] = [];
   let at = offset;
   let end: number | undefined;
-  // Each pointer must go backwards, so a loop of pointers can't run forever.
   let limit = offset;
+  let pointers = 0;
+  let nameBytes = 1;
   while (at < message.length) {
     const length = message[at] as number;
     if (length === 0) return { text: labels.join("."), end: end ?? at + 1 };
     if ((length & 0xc0) === 0xc0) {
-      if (at + 1 >= message.length) return undefined;
-      const pointer = ((length & 0x3f) << 8) | (message[at + 1] as number);
-      if (pointer >= limit) return undefined;
+      const pointer = readPointer(message, at, limit, pointers);
+      if (pointer === undefined) return undefined;
+      pointers += 1;
       end ??= at + 2;
       limit = pointer;
       at = pointer;
       continue;
     }
-    if (length > 63 || at + 1 + length > message.length) return undefined;
-    labels.push(new TextDecoder().decode(message.subarray(at + 1, at + 1 + length)));
+    nameBytes += 1 + length;
+    const label = nameBytes > maxNameBytes ? undefined : readLabel(message, at);
+    if (label === undefined) return undefined;
+    labels.push(label);
     at += 1 + length;
   }
   return undefined;
+}
+
+/** Where the pointer at `at` points, or `undefined` unless it is whole, before `limit` and within the count. */
+function readPointer(
+  message: Uint8Array,
+  at: number,
+  limit: number,
+  followed: number,
+): number | undefined {
+  if (at + 1 >= message.length || followed === maxPointers) return undefined;
+  const pointer = (((message[at] as number) & 0x3f) << 8) | (message[at + 1] as number);
+  return pointer < limit ? pointer : undefined;
+}
+
+/** The text of the label at `at`, or `undefined` when it is over 63 bytes, runs past the end or isn't UTF-8. */
+function readLabel(message: Uint8Array, at: number): string | undefined {
+  const length = message[at] as number;
+  if (length > 63 || at + 1 + length > message.length) return undefined;
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(
+      message.subarray(at + 1, at + 1 + length),
+    );
+  } catch {
+    return undefined;
+  }
 }
 
 /**

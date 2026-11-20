@@ -153,21 +153,19 @@ export class PairAdvert {
 }
 
 /**
- * The response to a query's questions, or `undefined` when none is about
- * these records. A question for the service gets the PTR record, with the
- * others as additionals, so the phone needs no second query.
+ * The response to a query's questions, or `undefined` unless one is a PTR
+ * question for {@link pairServiceName}: the host answers nothing else, not
+ * even about its own instance. The PTR record is the answer and the others
+ * go with it as additionals, so the phone needs no second query.
  */
 function answerFor(questions: readonly DnsQuestion[], records: readonly DnsRecord[]) {
-  const asked = (record: DnsRecord) =>
-    questions.some(
-      (question) =>
-        question.name === record.name.toLowerCase() &&
-        (question.type === dnsTypes[record.type] || question.type === dnsTypes.ANY),
-    );
-  const answers = records.filter(asked);
-  if (answers.length === 0) return undefined;
+  const browsed = questions.some(
+    (question) => question.name === pairServiceName && question.type === dnsTypes.PTR,
+  );
+  if (!browsed) return undefined;
+  const isPointer = (record: DnsRecord) => record.type === "PTR";
   return writeResponse(
-    answers,
-    records.filter((record) => !answers.includes(record)),
+    records.filter(isPointer),
+    records.filter((record) => !isPointer(record)),
   );
 }
