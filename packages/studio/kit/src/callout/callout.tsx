@@ -111,10 +111,10 @@ const actionRow = "mt-2 -ml-2.5 phone:-ml-4 touch:-ml-4";
 
 /**
  * On a phone an action is never wider than the row, so its label wraps instead of being cut
- * (HAL-13770). A button never shrinks below its label, so the cap goes on the row's child (the
- * button, or the Tooltip's wrapper round it) and on the button itself.
+ * (HAL-13770). A button is never wider than its box already (HAL-14010), but with `opens` that
+ * box is the Tooltip's wrapper, which is as wide as the label, so the cap goes on the row's child.
  */
-const actionRowPhoneWrap = "phone:*:max-w-full phone:[&_button]:max-w-full";
+const actionRowPhoneWrap = "phone:*:max-w-full";
 
 /**
  * A message that belongs to one place on a page and stays there until what it's about is dealt
