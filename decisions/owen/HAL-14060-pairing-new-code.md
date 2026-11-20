@@ -2,6 +2,7 @@
 
 - Approval: HAL-14060 (Liam asked for the change and reviews it there)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ampXseWMzoY4VviJ/SdRMDqu0Cw4VPCS4EHDT9PCoT9R5fTwWDnWNtsbhyJaUr7F4C60U9X7yWj5mhgjdHlCAw==
 
 ## What changes
 
