@@ -2,6 +2,7 @@
 
 - Approval: the board's decision on HAL-14115 (20 Nov, "Ok we do all", step 1); Liam approves this note in review on HAL-14115 and signs it, Julian reviews the guard job's part
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nfvRftVQ0U/V0getMhDPaRAmJISG0DM29Mxt6cbCYP762AK2XNXkE5X2L4YGYX3P7b3GrPfHyanoY5kQSubGAw==
 
 ## What changes
 
