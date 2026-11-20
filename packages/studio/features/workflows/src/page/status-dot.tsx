@@ -30,8 +30,12 @@ const marks: Record<StepMark, ReactNode> = {
   done: <Glyph path="M3 8.5 6.5 12 13 4.5" />,
   failed: <Glyph path="M4.5 4.5l7 7m0-7-7 7" />,
   waiting: <Glyph path="M6 4.5v7m4-7v7" />,
-  running: <span className="size-1 rounded-full bg-current forced-color-adjust-none" />,
-  stopped: <span className="size-1 bg-current forced-color-adjust-none" />,
+  running: (
+    <span className="size-1 rounded-full bg-current forced-color-adjust-none forced-colors:bg-[CanvasText]" />
+  ),
+  stopped: (
+    <span className="size-1 bg-current forced-color-adjust-none forced-colors:bg-[CanvasText]" />
+  ),
 };
 
 /**
