@@ -881,14 +881,17 @@ requirement guard, and the workflow lint unless the group changes
 | Android shell | when the Tauri shell or Studio's connect page changes: builds the debug APK |
 | End-to-end, docs | the Studio's Playwright tests when their area changes; the docs job is a stub until `apps/docs` exists |
 | Live cloud suites passed | pull requests and the queue, when the change touches a cloud path (`cloud-affected.ts`): a pull request gets only a notice; in the merge queue it waits for `live-cloud.yml`'s `live-cloud` job to have passed on the pull request's head. Only a notice while `LIVE_CLOUD_ENABLED` isn't `true` |
-| Cancel the run on the first failure | merge queue only: watches the run's other jobs and cancels the run when one fails |
+| Cancel the run on the first failure | merge queue only: watches the run's other jobs and cancels the run when one fails, or when its group has left the queue |
 
 **The merge queue.** `main` merges through GitHub's merge queue. The queue builds each pull request
 on top of the latest `main` (or the entry ahead of it), runs `ci.yml` on that
 commit and merges it when `ci-ok` passes. A queue entry that has failed would
 keep its place and hold up everyone behind it until its slowest job ended, so
 the `Cancel the run on the first failure` job cancels the run at the first
-failed job and `ci-ok` fails within a minute. Fix the pull request, wait for
+failed job and `ci-ok` fails within a minute. When an entry fails or leaves,
+the queue rebuilds the groups behind it on new refs. The same job cancels the
+old group's run once its ref is gone (checked every 2 minutes), so the rebuilt
+groups get its runners. Fix the pull request, wait for
 green and queue it again. Run `pnpm check:enqueue` first: it checks what the
 queue would break, on top of the latest `main`.
 

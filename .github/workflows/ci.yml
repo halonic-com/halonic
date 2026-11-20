@@ -2583,9 +2583,11 @@ jobs:
   # Merge queue only: a queue entry that has already failed keeps its place,
   # and everything behind it waits, until the slowest job ends (HAL-4253). This
   # job watches the run's other jobs and cancels the run as soon as one fails,
-  # so ci-ok fails within a minute. Pull requests don't use it: the author
-  # should see every failure at once. It runs no repository code (no
-  # checkout), so the write permission below is only used by the `gh` calls here.
+  # so ci-ok fails within a minute. It also cancels the run of a group that has
+  # left the queue, so its runners go to the live groups. Pull requests don't
+  # use it: the author should see every failure at once. It runs no repository
+  # code (no checkout), so the write permission below is only used by the `gh`
+  # calls here.
   fail-fast:
     name: Cancel the run on the first failure
     if: github.event_name == 'merge_group'
@@ -2593,6 +2595,7 @@ jobs:
     timeout-minutes: 90 # costs nothing when the run ends early; ci-ok doesn't wait for it
     permissions:
       actions: write # to list the run's jobs and cancel the run
+      contents: read # to see whether the group's ref still exists
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
@@ -2617,6 +2620,18 @@ jobs:
             fi
             open=$(echo "$jobs" | jq '[.[] | select(.name != "ci-ok" and (.name | startswith("Cancel the run") | not)) | select(.status != "completed")] | length')
             [ "$open" = "0" ] && exit 0
+            # A group that has left the queue (it was rebuilt on a new ref
+            # after an entry ahead of it failed or left) keeps its runners
+            # until its slowest job ends, while the live groups wait for them
+            # (HAL-14308). GitHub deletes the ref of a group that left, so
+            # cancel when the ref is gone: a 404, not any other error. Every
+            # 4th poll (2 min), to spare the hourly limit.
+            polls=$((${polls:-0} + 1))
+            if [ $((polls % 4)) = 0 ] && ! out=$(gh api "repos/$REPO/git/ref/${GITHUB_REF#refs/}" 2>&1) && grep -q 'HTTP 404' <<<"$out"; then
+              echo "::notice::This group has left the merge queue (${GITHUB_REF#refs/heads/} is gone). Cancelling the run so the live groups get its runners."
+              gh run cancel "$RUN_ID" --repo "$REPO"
+              exit 0
+            fi
             sleep 30
           done
 
