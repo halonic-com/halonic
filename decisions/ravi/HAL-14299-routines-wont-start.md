@@ -2,6 +2,7 @@
 
 - Approval: HAL-14299; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:PNpmMToZ2cXYOG8+mm3saKyBBVXhPKZtcPXbxTTm+fN0Yvot+kpVKmlGFZgGCEljVgN2+sW6hYL8PBkpodDICw==
 
 ## What changes
 
