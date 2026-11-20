@@ -1,4 +1,4 @@
-import type { PairedPhone } from "@halonicjs/ports";
+import { gatewayFallbackPhoneName, gatewayReadableName, type PairedPhone } from "@halonicjs/ports";
 import type { PairingPhone } from "./pairing-types.ts";
 import {
   deviceId,
@@ -83,8 +83,8 @@ export class PairedPhones {
   }
 
   /**
-   * Keeps a phone Allow was pressed for, named with " (2)" and so on when
-   * another paired phone has its name. A phone paired again replaces its
+   * Keeps a phone Allow was pressed for, its name cleaned as the dialog
+   * showed it, and with " (2)" and so on when another paired phone has it. A phone paired again replaces its
    * old entry, and keeps its open sessions.
    */
   async add(phone: PairingPhone): Promise<PairedPhone> {
@@ -93,7 +93,7 @@ export class PairedPhones {
     const record: PhoneRecord = {
       id,
       publicKey: Buffer.from(phone.publicKey).toString("base64url"),
-      name: freeName(phone.name, others),
+      name: freeName(gatewayReadableName(phone.name, gatewayFallbackPhoneName), others),
       platform: phone.platform,
       pairedAt: this.#time.now().toISOString(),
     };
@@ -103,21 +103,25 @@ export class PairedPhones {
 
   /**
    * Unpairs a phone and cuts its sessions at once; an id that isn't paired
-   * does nothing. The cut comes before the write, so a write that fails
-   * still leaves the phone out until the host stops, and the next write
-   * removes it from the file.
+   * does nothing. The phone leaves the list in memory first, then its
+   * sessions are cut, then the list is written. So a cut or a write that
+   * fails still leaves the phone out and cut until the host stops, and the
+   * next write removes it from the file.
    */
   async revoke(phoneId: string): Promise<void> {
     if (!this.#records.some((record) => record.id === phoneId)) return;
+    this.#keep(this.#records.filter((record) => record.id !== phoneId));
     this.#cut([phoneId]);
-    await this.#change(this.#records.filter((record) => record.id !== phoneId));
+    await this.#save();
   }
 
   /** Unpairs every phone and cuts every session, as {@link revoke} does. */
   async revokeAll(): Promise<void> {
     if (this.#records.length === 0) return;
-    this.#cut(this.#records.map((record) => record.id));
-    await this.#change([]);
+    const phoneIds = this.#records.map((record) => record.id);
+    this.#keep([]);
+    this.#cut(phoneIds);
+    await this.#save();
   }
 
   /**
@@ -179,26 +183,50 @@ export class PairedPhones {
     );
   }
 
+  /** Cuts every session of these phones, each on its own, so one that fails stops no other. */
   #cut(phoneIds: readonly string[]): void {
     for (const phoneId of phoneIds) {
       const sessions = this.#sessions.get(phoneId);
       this.#sessions.delete(phoneId);
-      for (const session of sessions ?? []) session.cut();
+      for (const session of sessions ?? []) {
+        try {
+          session.cut();
+        } catch (error) {
+          this.#log(`A revoked phone's session couldn't be cut cleanly: ${String(error)}\n`);
+        }
+      }
     }
   }
 
-  /** Changes the list, tells the listeners and saves it; saves run one after another, in order. */
+  /** Changes the list and saves it. */
   #change(records: PhoneRecord[]): Promise<void> {
+    this.#keep(records);
+    return this.#save();
+  }
+
+  /** Changes the list in memory and tells the listeners. */
+  #keep(records: PhoneRecord[]): void {
     this.#records = records;
     this.#tell();
-    const text = writePhoneRecords(records);
+  }
+
+  /** Writes the list as it is now; writes run one after another, in order. */
+  #save(): Promise<void> {
+    const text = writePhoneRecords(this.#records);
     const saved = this.#saving.then(() => this.#file.write(text));
     this.#saving = saved.catch(() => undefined);
     return saved;
   }
 
+  /** Tells each listener on its own, so one that throws stops neither the others nor the save. */
   #tell(): void {
-    for (const listener of this.#listeners) listener();
+    for (const listener of this.#listeners) {
+      try {
+        listener();
+      } catch (error) {
+        this.#log(`A paired phones listener failed: ${String(error)}\n`);
+      }
+    }
   }
 
   #shown(record: PhoneRecord): PairedPhone {

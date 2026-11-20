@@ -1,4 +1,9 @@
-import { newPairingCode, pairingRules } from "@halonicjs/ports";
+import {
+  gatewayFallbackPhoneName,
+  gatewayReadableName,
+  newPairingCode,
+  pairingRules,
+} from "@halonicjs/ports";
 import { FailedTries } from "./failed-tries.ts";
 import type {
   DeskEndReason,
@@ -162,6 +167,9 @@ export class PairingTicket {
   /**
    * Message 3 decrypted and matched, so the phone used the code. The first
    * to do so takes it, whether Allow follows or not; any later one is refused.
+   * The phone chose its name, so it is cleaned before the dialog shows it
+   * next to the check code: a name could otherwise fake the dialog's text or
+   * push the check code out of view.
    */
   useCode(phone: PairingPhone, checkCode: string): CodeUse {
     if (this.#state !== "handshake") throw new Error("this handshake has already ended");
@@ -170,7 +178,8 @@ export class PairingTicket {
       return { used: false, refusal: this.#pairing.closedRefusal };
     }
     this.#state = "checking";
-    return { used: true, verdict: this.#pairing.check(this, phone, checkCode) };
+    const shown = { ...phone, name: gatewayReadableName(phone.name, gatewayFallbackPhoneName) };
+    return { used: true, verdict: this.#pairing.check(this, shown, checkCode) };
   }
 
   /** The handshake's connection ended. Before message 3, a wrong try; while Allow is awaited, the phone left. */

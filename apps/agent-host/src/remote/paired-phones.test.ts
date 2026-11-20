@@ -113,6 +113,24 @@ verifies("agent-host.remote-paired-phones", () => {
       await phones.add(phone("Galaxy S24", 2));
       expect(changes).toBe(1);
     });
+
+    it("keeps a phone's name cleaned of what could fake the dialog, and cut to 64 bytes", async () => {
+      const { phones } = await store();
+      const rightToLeft = String.fromCodePoint(0x202e);
+      expect((await phones.add(phone(`Pixel${rightToLeft} 8\n`, 1))).name).toBe("Pixel 8");
+      expect((await phones.add(phone("p".repeat(100), 2))).name).toBe("p".repeat(64));
+      expect((await phones.add(phone(`${rightToLeft}\t`, 3))).name).toBe("Phone");
+    });
+
+    it("saves a change when a listener throws, and says why", async () => {
+      const { file, logged, phones } = await store();
+      phones.onChange(() => {
+        throw new Error("the window is gone");
+      });
+      await phones.add(phone("Pixel 8", 1));
+      expect(JSON.parse(file.text ?? "").phones).toHaveLength(1);
+      expect(logged).toEqual(["A paired phones listener failed: Error: the window is gone\n"]);
+    });
   });
 
   describe("PairedPhones: sessions and last seen", () => {
@@ -208,6 +226,38 @@ verifies("agent-host.remote-paired-phones", () => {
       const writes = file.writes;
       await phones.revokeAll();
       expect(file.writes).toBe(writes);
+    });
+
+    it("unpairs a phone and cuts its other sessions when one cut throws", async () => {
+      const { file, logged, phones } = await store();
+      const pixel = await phones.add(phone("Pixel 8", 1));
+      const cut: string[] = [];
+      phones.connect(pixel.id, () => {
+        throw new Error("the connection is gone");
+      });
+      phones.connect(pixel.id, () => cut.push("second"));
+      await phones.revoke(pixel.id);
+      expect(cut).toEqual(["second"]);
+      expect(phones.phones).toEqual([]);
+      expect(JSON.parse(file.text ?? "").phones).toEqual([]);
+      expect(logged).toEqual([
+        "A revoked phone's session couldn't be cut cleanly: Error: the connection is gone\n",
+      ]);
+    });
+
+    it("unpairs every phone and cuts every other session with Revoke all when one cut throws", async () => {
+      const { file, phones } = await store();
+      const pixel = await phones.add(phone("Pixel 8", 1));
+      const galaxy = await phones.add(phone("Galaxy S24", 2));
+      const cut: string[] = [];
+      phones.connect(pixel.id, () => {
+        throw new Error("the connection is gone");
+      });
+      phones.connect(galaxy.id, () => cut.push("galaxy"));
+      await phones.revokeAll();
+      expect(cut).toEqual(["galaxy"]);
+      expect(phones.phones).toEqual([]);
+      expect(JSON.parse(file.text ?? "").phones).toEqual([]);
     });
 
     it("cuts and leaves out a revoked phone even when the file can't be written", async () => {
