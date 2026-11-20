@@ -2,6 +2,7 @@
 
 - Approval: Julian's decision on HAL-14149 (20 Nov, option 3, as guard and security owner), step 4 of the board's decision on HAL-14115; Liam approves this note in review and signs it, Julian reviews the pull request on its own review task
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qHHF+rfo1ptWQuIdaWOHsC9oj2Y/FovQxujgQEWiVH1qvMZwJeKfXTACf2SjtWLVQTUchq5rZCrtSAaPNuDaCQ==
 
 ## What changes
 
