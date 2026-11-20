@@ -18,7 +18,8 @@ The CLI's local engine calls it (HAL-7747); the Studio doesn't yet.
 | `FilePlacementPolicy` | the engine's `PlacementPolicy` on `AgentPlacement`: reads the agent's file as it is on disk and answers `sandbox`, or `this-computer` when a person chose that for those bytes | `harness-host.placement` |
 | `AgentFiles` | the port it reads agents' files through, by hub and id, as raw bytes | `harness-host.placement` |
 | `LocalBridgeHost` | the engine's `HarnessBridgeHost` on the `HarnessBridgeServer` port, with what `servicesFor` gives the agent; a failure the bridge doesn't name to the program goes to the run log as `bridge.failed`, or to the host's `reportError` when the log can't take it | `harness-host.bridge`, `harness-host.bridge-failures` |
-| `BridgeServicesSource`, `BridgeServices`, `BridgeAgent` | the `servicesFor(agent)` port: providers, prices, tools and approvals, the same shape as the Studio's `AgentHostBridges` takes, without keys | `harness-host.bridge` |
+| `BridgeServicesSource`, `BridgeServices`, `BridgeAgent` | the `servicesFor(agent)` port: providers, prices, tools and approvals, the same shape as the Studio's `AgentHostBridges` takes, without keys. The agent comes with its harness and where it runs for the call | `harness-host.bridge`, `harness-host.provider-access` |
+| `providerAccessOf` | which access a harness agent's bridge gets: the program's own sign-in on this computer, else the key of the workspace's provider of that type with a `secret`, by the agent's model or the only one; reads no secret | `harness-host.provider-access` |
 | `HistoryProposalFolders`, `ProposalsNeedHistoryError` | refuses a run with no version to start from on a host without run copies, when its folder opens, with an error that says how to turn history on | `harness-host.history-off` |
 | `refusingApprovals`, `HarnessApprovalsNotWiredError` | approvals for a host that can't ask a person yet: each request fails with its own error | `harness-host.not-wired` |
 | `refusingTrash`, `ProposalAcceptNotWiredError` | a trash for a host without Accept: moving or restoring fails with its own error | `harness-host.not-wired` |
@@ -69,6 +70,7 @@ await host.start(openRuns);
 
 - [`harness-host.builder`](requirements/builder.md)
 - [`harness-host.placement`](requirements/placement.md)
+- [`harness-host.provider-access`](requirements/provider-access.md)
 - [`harness-host.bridge`](requirements/bridge.md)
 - [`harness-host.history-off`](requirements/history-off.md)
 - [`harness-host.not-wired`](requirements/not-wired.md)

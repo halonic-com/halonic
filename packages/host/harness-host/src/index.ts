@@ -20,3 +20,9 @@ export {
   refusingTrash,
 } from "./not-wired.ts";
 export { type AgentFiles, FilePlacementPolicy } from "./placement-policy.ts";
+export {
+  type AccessProviderFile,
+  type ProviderAccessChoice,
+  type ProviderAccessInput,
+  providerAccessOf,
+} from "./provider-access.ts";

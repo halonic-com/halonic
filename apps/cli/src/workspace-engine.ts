@@ -203,6 +203,7 @@ export async function openWorkspaceEngine(
     // a `--debug` line (HAL-7171).
     reportError: engineErrorReporter(stuck, (line) => context.debug(line)),
     reportWaiting: waitingReporter((line) => context.warn(line)),
+    reportAccess: accessReporter(context),
     // A timer that worked starts over: only an hour of failures in a row gives up on its run.
     onTimerDone: (timer) => stuck.succeeded(timer),
     holdsTimer: (timer) => stuck.holds(timer),
@@ -324,6 +325,27 @@ export function waitingReporter(
       `halonic tools review ${printable(connector)}`,
     );
     warn(phrase`${markPart("needsYou")} ${line.phrase}`);
+  };
+}
+
+/**
+ * What the CLI says of each harness agent's access to its model (HAL-12784):
+ * the key it spends in a `--debug` line, by provider and secret name, and a
+ * warning when a sandboxed agent has no key and may run signed out. On this
+ * computer the program's own sign-in works, so nothing is said.
+ */
+export function accessReporter(
+  context: Pick<CommandContext, "debug" | "warn">,
+): NonNullable<LocalEngineInput["reportAccess"]> {
+  return (agent, choice) => {
+    const name = printable(agent.agentId);
+    if (choice.kind === "key") {
+      context.debug(
+        runMessages.harnessKey(name, printable(choice.providerId), printable(choice.secret)).phrase,
+      );
+    } else if (choice.reason === "no-keyed-provider") {
+      context.warn(runMessages.harnessSignedOut(name, choice.provider).phrase);
+    }
   };
 }
 

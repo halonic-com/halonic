@@ -34,17 +34,19 @@ import { InstructionTrustService } from "@halonicjs/app";
 import type { HarnessAgent, HarnessRunsOptions } from "@halonicjs/engine";
 import {
   type AgentFiles,
+  type BridgeAgent,
   type BridgeServers,
-  type BridgeServices,
   type HarnessHost,
   harnessHostOf,
-  refusingApprovals,
+  type ProviderAccessChoice,
 } from "@halonicjs/host-harness-host";
 import type {
   Clock,
   DefinitionStore,
   Digest,
   HarnessBridgeServer,
+  HttpClient,
+  KeyOrigins,
   Secrets,
 } from "@halonicjs/ports";
 import {
@@ -55,6 +57,7 @@ import {
 } from "@halonicjs/profile";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import { sweepingUnderHostLock, withoutHostLock } from "./fenced-sandbox.ts";
+import { HarnessProviderKeys } from "./harness-provider-keys.ts";
 import { localProposalParts } from "./local-proposals.ts";
 import { proxySetting } from "./proxy-setting.ts";
 import { skillFileOf } from "./skill-file.ts";
@@ -92,7 +95,7 @@ export interface LocalHarnessParts {
   readonly launcher?: HarnessRunsOptions["sandboxes"]["this-computer"];
   /** The harnesses, by their `id`. */
   readonly harnesses?: HarnessRunsOptions["harnesses"];
-  /** Opens every run's bridge, whatever its placement; Node's, which reads no secret, by default. */
+  /** Opens every run's bridge, whatever its placement; Node's, on the keys of `HarnessProviderKeys`, by default. */
   readonly bridgeServer?: HarnessBridgeServer;
   /** The system the CLI runs on; `process.platform` by default. */
   readonly platform?: NodeJS.Platform;
@@ -128,6 +131,16 @@ export interface LocalHarnessInput {
   reportError(error: unknown): void;
   /** Hears of a harness bridge failure the run log couldn't record (requirement `harness-host.bridge-failures`). */
   reportBridgeError(error: unknown): void;
+  /** The CLI's remembered secrets, which a sandboxed agent's provider key is read from. */
+  readonly secrets: Secrets;
+  /** The addresses each saved key may be sent to. */
+  readonly keyOrigins: KeyOrigins;
+  /** Whether the command's trust check granted trust, so a key may go to a provider's own `baseUrl`. */
+  readonly trusted: boolean;
+  /** What the bridge calls a provider at its own `baseUrl` with, as the engine's model calls do. */
+  readonly http: HttpClient;
+  /** Hears the access each harness agent's bridge got: the provider and the secret's name, never a value. */
+  reportAccess?(agent: BridgeAgent, choice: ProviderAccessChoice): void;
   readonly parts?: LocalHarnessParts;
 }
 
@@ -192,14 +205,22 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
     worktrees: folders.proposalWorktreesFolder(),
     ...(input.git === undefined ? {} : { git: input.git }),
   });
+  const keys = new HarnessProviderKeys({
+    workspace: input.workspace,
+    secrets: input.secrets,
+    keyOrigins: input.keyOrigins,
+    trusted: input.trusted,
+    ...(input.reportAccess === undefined ? {} : { reportAccess: input.reportAccess }),
+  });
   const built = harnessHostOf({
     sandboxes: {
       sandbox: host.removingTempFolders(fenced),
       "this-computer": host.removingTempFolders(parts.launcher ?? createHostSandbox()),
     },
     harnesses,
-    bridgeServers: await bridgeServersOf(input),
-    services: { servicesFor: () => bridgeServices },
+    bridgeServers: await bridgeServersOf(input, keys.bridgeSecrets),
+    services: keys,
+    scrub: keys.scrub,
     reportError: input.reportBridgeError,
     profiles,
     home: input.environment.homeFolder,
@@ -257,33 +278,6 @@ export async function openLocalHarnessHost(input: LocalHarnessInput): Promise<Lo
   };
 }
 
-/**
- * What every agent's bridge serves until the CLI has settings for it
- * (HAL-6477): the program's own sign-in for both providers, which Halonic
- * never reads and spends nothing on; no Halonic tools; and approvals that
- * refuse every request, so a call that needs a person fails with its own
- * error. No key passes through here.
- */
-const bridgeServices: BridgeServices = {
-  providers: { anthropic: { kind: "sign-in" }, openai: { kind: "sign-in" } },
-  prices: {},
-  tools: {
-    list: async () => [],
-    check: async (name) => ({ kind: "refused", reason: `${name} isn't a tool of this agent.` }),
-    call: async (name) => ({ result: `${name} isn't a tool of this agent.`, outcome: "error" }),
-  },
-  approvals: refusingApprovals,
-};
-
-/**
- * What the bridge reads provider keys from: nothing. Every agent signs in
- * with its own program (`bridgeServices`), so no key is needed, and a key
- * the CLI remembers never reaches the bridge. A host that serves a provider
- * key must pass the secrets it reads it from, and the HAL-6477 sign-in
- * decision comes first.
- */
-const noSecrets: Secrets = { get: async () => null };
-
 /** Claude Code and Codex, found where the launcher would start them. */
 function nodeHarnesses(): NonNullable<LocalHarnessParts["harnesses"]> {
   const probe = createProgramProbe();
@@ -309,10 +303,10 @@ async function installOf(harness: string, platform: NodeJS.Platform): Promise<Ha
 }
 
 /** The test's one bridge server for both placements, else {@link nodeBridgeServers}. */
-async function bridgeServersOf(input: LocalHarnessInput): Promise<BridgeServers> {
+async function bridgeServersOf(input: LocalHarnessInput, secrets: Secrets): Promise<BridgeServers> {
   const given = input.parts?.bridgeServer;
   if (given !== undefined) return { sandbox: given, "this-computer": given };
-  return await nodeBridgeServers(input);
+  return await nodeBridgeServers(input, secrets);
 }
 
 /**
@@ -324,8 +318,17 @@ async function bridgeServersOf(input: LocalHarnessInput): Promise<BridgeServers>
  * serves a loopback port, still guarded by the run's own token. That program
  * already runs with the person's full rights, so loopback opens nothing it
  * couldn't reach anyway.
+ *
+ * Both reach Anthropic's and OpenAI's own hosts only, and a provider's own
+ * `baseUrl` through the engine's `http`, whose address checks are a
+ * connector's.
+ *
+ * @param secrets - the only secrets they may read: the keys the provider files name
  */
-async function nodeBridgeServers(input: LocalHarnessInput): Promise<BridgeServers> {
+async function nodeBridgeServers(
+  input: LocalHarnessInput,
+  secrets: Secrets,
+): Promise<BridgeServers> {
   const platform = input.parts?.platform ?? process.platform;
   const sockets = platform === "linux" || platform === "darwin";
   const socketFolder = join(input.profile.root, bridgeSocketsFolder);
@@ -333,8 +336,9 @@ async function nodeBridgeServers(input: LocalHarnessInput): Promise<BridgeServer
   const providers = createNodeHttpClient({ hostClass: providerHostClass, proxy: proxySetting });
   const serverOn = (where: { socketFolder?: string }) =>
     new NodeHarnessBridgeServer({
-      secrets: noSecrets,
+      secrets,
       fetch: (url, init) => providers.fetch(url, init),
+      compatibleFetch: (url, init) => input.http.fetch(url, init),
       ...where,
     });
   return {

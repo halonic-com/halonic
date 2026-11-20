@@ -33,6 +33,12 @@ export interface HarnessHostInput {
   readonly bridgeServers: BridgeServers;
   /** What each agent's bridge serves: its providers, prices, tools and approvals. */
   readonly services: BridgeServicesSource;
+  /**
+   * Removes the values of the secrets the bridge server reads from a text: a
+   * bridge failure goes through it before the run log records it. Required
+   * of a host whose `services` give a key.
+   */
+  readonly scrub?: (text: string) => string;
   /** Hears of a bridge failure the run log couldn't record (requirement `harness-host.bridge-failures`); it must not throw. */
   readonly reportError: (error: unknown) => void;
   readonly profiles: HarnessProfileBuilder;
@@ -132,6 +138,7 @@ export function harnessHostOf(input: HarnessHostInput): HarnessHost {
     bridges: new LocalBridgeHost({
       servers: input.bridgeServers,
       services: input.services,
+      ...(input.scrub === undefined ? {} : { scrub: input.scrub }),
       reportError: input.reportError,
     }),
     profiles: input.profiles,
