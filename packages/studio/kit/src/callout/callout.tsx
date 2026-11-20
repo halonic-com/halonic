@@ -25,8 +25,8 @@ export interface CalloutAction {
    */
   readonly opens?: string;
   /**
-   * Takes focus when the Callout appears, and is described by the Callout's text: for a Callout
-   * that stands where focus was, such as the strip of a page whose item went to the trash.
+   * Takes focus when the Callout appears, and is described by the Callout's title and text: for a
+   * Callout that stands where focus was, such as the strip of a page whose item went to the trash.
    */
   readonly focus?: boolean;
 }
@@ -154,7 +154,12 @@ export function Callout(props: CalloutProps) {
         ) : (
           message
         )}
-        {empty ? null : <CalloutActions action={props.action} textId={ids.text} />}
+        {empty ? null : (
+          <CalloutActions
+            action={props.action}
+            describedBy={actionDescription(ids, title !== undefined, hasText(props.children))}
+          />
+        )}
       </div>
     </div>
   );
@@ -215,10 +220,10 @@ function CalloutMessage({
 /** The action row under the words, or nothing without an action. */
 function CalloutActions({
   action,
-  textId,
+  describedBy,
 }: {
   readonly action: CalloutAction | readonly CalloutAction[] | undefined;
-  readonly textId: string;
+  readonly describedBy: string | undefined;
 }) {
   const actions = action === undefined ? [] : [action].flat();
   if (actions.length === 0) {
@@ -227,10 +232,21 @@ function CalloutActions({
   return (
     <div className={`${actionRow} flex flex-wrap`}>
       {actions.map((one) => (
-        <CalloutButton key={one.label} action={one} textId={textId} />
+        <CalloutButton key={one.label} action={one} describedBy={describedBy} />
       ))}
     </div>
   );
+}
+
+/**
+ * What a focused action is described by: the title, then the text, so focus that lands on "Try
+ * again" also hears what went wrong. `undefined` when the Callout has neither.
+ */
+function actionDescription(ids: CalloutIds, hasTitle: boolean, hasWords: boolean) {
+  const described = [hasTitle ? ids.title : null, hasWords ? ids.text : null].filter(
+    (id) => id !== null,
+  );
+  return described.length > 0 ? described.join(" ") : undefined;
 }
 
 /**
