@@ -1,5 +1,7 @@
 // The public API of @halonicjs/adapter-connector-stdio-sandbox. Internal code imports by relative path.
 
+// The error lives in `core/app`, so `PluginConnector` knows it as `settings-not-set`.
+export { LocalToolSettingsNotSetError } from "@halonicjs/app";
 export type { DeclaredTool } from "./declared-tools.ts";
 export { SandboxNotFencedError, SandboxSessionEndedError } from "./errors.ts";
 export {
@@ -22,7 +24,6 @@ export {
   pluginLocalToolPlace,
 } from "./plugin-local-tool-place.ts";
 export {
-  LocalToolSettingsNotSetError,
   PluginLocalToolSessions,
   type PluginLocalToolSessionsOptions,
 } from "./plugin-local-tool-sessions.ts";

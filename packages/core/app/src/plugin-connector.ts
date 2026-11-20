@@ -147,17 +147,45 @@ export class PluginConnector implements ConnectorClient {
   }
 }
 
-/** The code for why a part failed to start, from the errors Halonic's own parts throw. */
+/**
+ * The code for why a part failed to start, from the errors Halonic's own
+ * parts throw, also when one is the `cause` of the error a connector wrapped
+ * it in.
+ */
 export function pluginPartUnavailableReason(error: unknown): PluginPartUnavailableReason {
+  const known = knownCause(error);
+  return known === undefined ? { kind: "failed" } : reasonOf(known);
+}
+
+type KnownError =
+  | LocalToolUnavailableError
+  | LocalToolSettingsNotSetError
+  | PluginLocalToolNotTrustedError
+  | PluginBackendNotTrustedError;
+
+/** The first error in `error`'s chain of causes that Halonic's own parts throw. */
+function knownCause(error: unknown): KnownError | undefined {
+  const seen = new Set<unknown>();
+  let current = error;
+  while (current instanceof Error && !seen.has(current)) {
+    if (
+      current instanceof LocalToolUnavailableError ||
+      current instanceof LocalToolSettingsNotSetError ||
+      current instanceof PluginLocalToolNotTrustedError ||
+      current instanceof PluginBackendNotTrustedError
+    ) {
+      return current;
+    }
+    seen.add(current);
+    current = current.cause;
+  }
+  return undefined;
+}
+
+function reasonOf(error: KnownError): PluginPartUnavailableReason {
   if (error instanceof LocalToolUnavailableError) return error.state;
   if (error instanceof LocalToolSettingsNotSetError) {
     return { kind: "settings-not-set", settings: error.settings };
   }
-  if (
-    error instanceof PluginLocalToolNotTrustedError ||
-    error instanceof PluginBackendNotTrustedError
-  ) {
-    return { kind: "not-trusted", reason: error.reason };
-  }
-  return { kind: "failed" };
+  return { kind: "not-trusted", reason: error.reason };
 }

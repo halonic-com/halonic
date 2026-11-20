@@ -1,4 +1,4 @@
-import { moneyAmount } from "@halonicjs/app";
+import { moneyAmount, type PluginPartUnavailableReason } from "@halonicjs/app";
 import type { RunSends } from "@halonicjs/events";
 import { printable } from "../output/printable.ts";
 import { counted, listInWords, timesInWords } from "./counts.ts";
@@ -248,9 +248,16 @@ export const runMessages = defineMessages("run", {
     phrase`the scheduler's ${what} failed, try ${failures} of ${most}, retrying: ${reason}`,
   /**
    * A `--debug` line when a run's connectors failed to close after it ended,
-   * a leftover program copy couldn't be swept, or a harness run left something that couldn't be cleaned up. Nothing tries it again.
+   * a leftover program copy couldn't be swept, a harness run left something that couldn't be cleaned up,
+   * or a plugin program's session folders couldn't be removed. Nothing tries it again.
    */
-  cleanUpFailed: (what: "run-connectors" | "program-copies" | "harness-host", reason: string) => {
+  cleanUpFailed: (
+    what: "run-connectors" | "program-copies" | "harness-host" | "program-folders",
+    reason: string,
+  ) => {
+    if (what === "program-folders") {
+      return phrase`the engine couldn't remove the folders of a plugin program's session: ${reason}`;
+    }
     if (what === "run-connectors") {
       return phrase`the engine couldn't close a run's connectors: ${reason}`;
     }
@@ -287,6 +294,25 @@ export const runMessages = defineMessages("run", {
    */
   harnessSignedOut: (agent: string, type: string) =>
     phrase`${agent} runs in the sandbox, where its program can't use your own sign-in. If it fails as signed out, add a provider of type ${type} with a secret, and save the key with halonic secret set.`,
+  /**
+   * The tools of one part of a plugin, its backend or one of its programs,
+   * that are off for this run because the part can't start (HAL-12343). The
+   * plugin's other parts keep working. `reason` is the code the plugin's
+   * connector gives; for `not-trusted` and `failed`, `error` says what to do.
+   * The names and the error arrive escaped.
+   */
+  pluginPartOff: (
+    plugin: string,
+    part: { readonly kind: "backend" } | { readonly kind: "program"; readonly name: string },
+    reason: PluginPartUnavailableReason,
+    error: string,
+  ) => {
+    const whose =
+      part.kind === "backend"
+        ? phrase`The tools of the backend of the plugin ${plugin}`
+        : phrase`The tools of the program ${part.name} of the plugin ${plugin}`;
+    return phrase`${whose} are off for this run: ${pluginPartWhy(reason, error)}`;
+  },
   /** The same when a stopped command gave up waiting for the engine to close (HAL-6677). */
   closeAbandoned: (seconds: number) =>
     phrase`the engine didn't close within ${seconds} s of the stop; released its lock and ending without it`,
@@ -386,4 +412,23 @@ function inputHas(given: readonly string[] | undefined): string {
     return "Your input has no fields.";
   }
   return `Your input has: ${given.map(printable).join(", ")}.`;
+}
+
+/** Why a part of a plugin can't start, after "are off for this run:". */
+function pluginPartWhy(reason: PluginPartUnavailableReason, error: string): Phrase {
+  switch (reason.kind) {
+    case "needs-desktop-app":
+      return phrase`programs run only in the Halonic desktop app, in a sandbox.`;
+    case "sandbox-unavailable":
+      return phrase`the sandbox can't start on this computer (${reason.reason}).`;
+    case "sandbox-not-fenced":
+      return phrase`its sandbox session couldn't show that it is fenced (${reason.fence}), so the program didn't start.`;
+    case "network-needs-srt":
+      return phrase`it reaches the network, and the Windows 11 sandbox can't limit a program to single sites yet.`;
+    case "settings-not-set":
+      return phrase`these settings of the plugin have no value: ${reason.settings.map(printable).join(", ")}.`;
+    case "not-trusted":
+    case "failed":
+      return phrase`${error}`;
+  }
 }

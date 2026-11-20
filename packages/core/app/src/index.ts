@@ -238,6 +238,12 @@ export {
   pluginPartUnavailableReason,
 } from "./plugin-connector.ts";
 export {
+  openPluginConnector,
+  type PluginBackendRequest,
+  PluginConnectorNotTrustedError,
+  type PluginConnectorSources,
+} from "./plugin-connector-opening.ts";
+export {
   type PluginToolSet,
   type PluginUiContribution,
   trustedPluginTools,
