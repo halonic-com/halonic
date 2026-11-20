@@ -1,5 +1,5 @@
 import { KindedError } from "@halonicjs/std";
-import { defaultHubId, defaultHubPath, defaultHubText } from "@halonicjs/workspace";
+import { defaultHub, defaultHubPath, defaultHubText } from "@halonicjs/workspace";
 
 /**
  * The hub files a new agent or workflow in `hubId` writes along with its own file: none when the
@@ -15,7 +15,7 @@ export function hubFilesFor(
   hubId: string,
 ): Record<string, string> {
   if (hubs.some((hub) => hub.id === hubId)) return {};
-  if (hubs.length === 0 && hubId === defaultHubId) {
+  if (hubs.length === 0 && hubId === defaultHub.id) {
     return { [defaultHubPath]: defaultHubText() };
   }
   throw new KindedError("not_found", `The workspace has no hub "${hubId}".`);

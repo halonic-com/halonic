@@ -8,6 +8,6 @@ The workspace package shall give the one hub a workspace gets when it has none: 
 
 ## Examples
 
-- `defaultHubId` is `default`, `defaultHubName` is `Default`, and `defaultHubPath` is `hubs/default/hub.yaml`, which `placeOf` reads as the hub `default`.
+- `defaultHub` is `{ id: "default", name: "Default" }`, and `defaultHubPath` is `hubs/default/hub.yaml`, which `placeOf` reads as the hub `default`.
 - `defaultHubText()` is `id: default` and `name: Default`, one per line.
 - Given a workspace with that file and its `workspace.yaml`, then it loads with no issue and the file is a hub.
