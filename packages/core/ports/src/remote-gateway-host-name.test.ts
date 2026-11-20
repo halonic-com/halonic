@@ -2,8 +2,10 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import {
   gatewayFallbackHostName,
+  gatewayFallbackPhoneName,
   gatewayHostName,
   gatewayMaxNameBytes,
+  gatewayReadableName,
 } from "./remote-gateway-session.ts";
 
 const at = (point: number) => String.fromCodePoint(point);
@@ -68,6 +70,13 @@ verifies("ports.remote-gateway-host-name", () => {
       expect(gatewayHostName(name)).toBe("Computer");
     },
   );
+
+  it("cleans another name by the same rules, with the caller's fallback", () => {
+    expect(gatewayFallbackPhoneName).toBe("Phone");
+    expect(gatewayReadableName(`Pixel${at(0x202e)} 8`, gatewayFallbackPhoneName)).toBe("Pixel 8");
+    expect(gatewayReadableName(`${at(0x2067)}\n`, gatewayFallbackPhoneName)).toBe("Phone");
+    expect(gatewayReadableName("p".repeat(65), gatewayFallbackPhoneName)).toBe("p".repeat(64));
+  });
 
   it("sends a lone surrogate as U+FFFD", () => {
     expect(gatewayHostName("Desk\ud800")).toBe("Desk�");

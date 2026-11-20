@@ -117,6 +117,17 @@ verifies("agent-host.remote-pairing-rules", () => {
       expect(desk.busy).toBe(false);
     });
 
+    it("shows and keeps the phone's name cleaned of what could fake the dialog", async () => {
+      const { heard, paired, open, ticket } = deskOnManualTime();
+      const pairing = open();
+      const rightToLeft = String.fromCodePoint(0x202e);
+      const use = ticket().useCode({ ...pixel, name: `Pixel${rightToLeft} 8\n` }, "4F72KQ");
+      expect(use.used).toBe(true);
+      expect(heard[0]).toMatch(/^check 4F72KQ Pixel 8 /);
+      await pairing.allow();
+      expect(paired).toEqual([pixel]);
+    });
+
     it("ends with allow-timed-out when Allow doesn't come in 2 minutes", async () => {
       const { time, ended, open, ticket } = deskOnManualTime();
       const pairing = open();
