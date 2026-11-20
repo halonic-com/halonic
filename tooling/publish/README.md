@@ -112,6 +112,9 @@ yet, whenever a push to `main` changes a `layers/*/layer.json`. So a pull reques
 the run builds and checks the tarballs and stops short of `npm publish`).
 npm trusts the workflow's own identity, so no token exists, and the run only
 _stages_ the version: it isn't public until a person approves it on npmjs.com.
+The `publish` job runs in the `npm-publish` environment, which allows `main` and `release/*` only.
+A 409 "already staged" for the version being released stops the run: before approving on npmjs.com, check
+that the staged version's provenance names the release's commit and ref.
 Releases need the board's yes: ask through a task for
 Chief, and merge or run only once the user has approved.
 

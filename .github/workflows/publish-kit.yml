@@ -5,7 +5,13 @@
 #
 # KEEP THIS FILE NAME. It is entered in the npm trusted-publisher settings of
 # the packages (repository halonic-com/halonic, workflow publish-kit.yml,
-# no environment). Renaming it stops every publish.
+# environment npm-publish). Renaming it or the environment stops every publish.
+#
+# The `publish` job runs in the `npm-publish` environment, whose deployment
+# branches are `main` and `release/*` only. GitHub enforces that rule, so it
+# holds even for a run by hand from a branch whose copy of this file says
+# otherwise. npm checks the environment name too, so a run outside it gets no
+# identity.
 #
 # No npm token exists anywhere. npm trusts this workflow's identity (OIDC) and
 # records the provenance. Only the `publish` job has `id-token: write`; it
@@ -31,7 +37,9 @@
 # the version in npm's staging area. It is not public until a person approves
 # it on npmjs.com (2FA). A staged version does not show in `npm view`, so npm
 # answers 409 "Cannot stage previously published version" when a version is
-# staged again. The run treats that as a skip, not a failure.
+# staged again. For a version this run built, that is a failure to look at:
+# a person checks on npmjs.com that the staged version's provenance names this
+# run's commit and ref, approves or discards it, and runs again.
 #
 # So merging a pull request that changes a layer package's `version` is
 # a release, and so is a run by hand with `dry_run` off. Releases need the
@@ -176,6 +184,7 @@ jobs:
     if: needs.pack.outputs.changed == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    environment: npm-publish
     permissions:
       contents: read
       id-token: write
@@ -216,12 +225,13 @@ jobs:
               npm stage publish "$tarball" --dry-run --access public --provenance
             else
               # A staged version is not on npm yet, so `npm view` misses it and
-              # npm answers 409. That means it is already staged: skip it.
+              # npm answers 409. The run cannot tell who staged it, so it stops
+              # and a person checks the provenance of the staged version.
               if ! npm stage publish "$tarball" --access public --provenance 2> stage-error.txt; then
                 cat stage-error.txt >&2
                 if grep -qE 'E409|Cannot stage previously published version' stage-error.txt; then
-                  echo "$name@$version is already staged, skipping."
-                  continue
+                  echo "::error::$name@$version is already staged. Check on npmjs.com that its provenance names commit $GITHUB_SHA and ref $GITHUB_REF, then approve or discard it and run again."
+                  exit 1
                 fi
                 exit 1
               fi
