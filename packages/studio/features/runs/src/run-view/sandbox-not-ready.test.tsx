@@ -259,6 +259,26 @@ verifies("runs.run-view.sandbox-not-ready", () => {
     expect(banner(root)?.textContent).toContain("Writer didn't start");
   });
 
+  it("names the agent as its file does, not by the id run.failed records (R10)", async () => {
+    const failed = { ...log("bubblewrap-missing")[0], agent: "rep-1" } as RunEvent;
+    const { source } = fakeSource([failedRun], { [failedRun.id]: [failed] });
+    const list = new RunsList({
+      ...source,
+      agentName: (id) => (id === "rep-1" ? "Reporter" : undefined),
+    });
+    const root = render(
+      <PresentationProvider presentation="desktop">
+        <RunView list={list} runId={failedRun.id} now={() => mondayMorning} />
+      </PresentationProvider>,
+    );
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(banner(root)?.textContent).toContain("Reporter didn't start");
+    expect(banner(root)?.textContent).not.toContain("rep-1");
+  });
+
   it("falls back to the last agent that started for a run logged without the agent", async () => {
     const started = {
       runId: failedRun.id,

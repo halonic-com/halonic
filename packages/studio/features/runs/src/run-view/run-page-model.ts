@@ -41,6 +41,8 @@ export type RunBanner =
       readonly action?: BannerAction;
       /** The buttons that mend the cause, before **Run again**; the page leaves out one it can't do. */
       readonly fixes?: readonly BannerFix[];
+      /** The links after **Run again**, where it is the primary: 15.3's "**Run again** · link Open Models". */
+      readonly links?: readonly BannerFix[];
       /**
        * What **Copy details** puts on the clipboard, after **Run again**: the engine's own message,
        * which never shows on screen (microcopy 22 F13). Absent: no Copy details.
@@ -61,7 +63,8 @@ export type BannerAction =
  */
 export type BannerFix =
   | { readonly kind: "copy-command"; readonly command: string }
-  | { readonly kind: "open-models" }
+  /** **Open Models**, at the alias's tab when `alias` is set, else at Models on the workspace page. */
+  | { readonly kind: "open-models"; readonly alias?: string }
   /** **Change budget**: Workspace settings at its Budget block (`workspace.open-budget`). */
   | { readonly kind: "change-budget" }
   | {

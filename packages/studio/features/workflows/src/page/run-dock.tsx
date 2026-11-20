@@ -84,8 +84,8 @@ interface RunDockProps {
   readonly onClose: () => void;
   readonly onStarted: (runId: string) => void;
   readonly openRun: ((runId: string, step?: string) => void) | undefined;
-  /** Opens the workspace page at Models, for **Open Models** on the run card's banner. */
-  readonly openModels: (() => void) | undefined;
+  /** Opens Models, at an alias's tab when given one, for **Open Models** on the run card's banner. */
+  readonly openModels: ((alias?: string) => void) | undefined;
   /** Opens the workspace page at its Budget block, for **Change budget** on the run card's banner. */
   readonly openBudget: (() => void) | undefined;
   /** Says a line to a screen reader, for why the run card's **Run again** didn't start. */

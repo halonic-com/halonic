@@ -16,7 +16,7 @@ import { failureWords } from "../failure-words.ts";
 import { runPageWords } from "../run-words.ts";
 import { BlockedFailureBanner, blockedFailure } from "./blocked-banner.tsx";
 import type { StepEntry } from "./every-step-model.ts";
-import { causeBanner } from "./failure-banner.ts";
+import { agentNameOf, causeBanner } from "./failure-banner.ts";
 import { refusedInstructions } from "./instructions-refusal.ts";
 import { InstructionsRefusalBanner } from "./instructions-refusal-banner.tsx";
 import type { RunAgain } from "./run-again.ts";
@@ -68,8 +68,11 @@ export function PageBanner({
   readonly announce?: ((line: string) => void) | undefined;
   /** Run again, the last button of a failed banner that has no button of its own; absent when it can't be done. */
   readonly runAgain?: RunAgain | undefined;
-  /** Opens the workspace page at Models, for a failed banner that offers **Open Models**; absent where it can't. */
-  readonly openModels?: (() => void) | undefined;
+  /**
+   * Opens Models, for a failed banner that offers **Open Models**: the alias's tab when one is
+   * given and the page can open it, else Models on the workspace page. Absent where it can't.
+   */
+  readonly openModels?: ((alias?: string) => void) | undefined;
   /** Opens the workspace page at its Budget block, for **Change budget** on a budget banner; absent where it can't. */
   readonly openBudget?: (() => void) | undefined;
   /** Whether the page is a phone's: a fix it can't do is said as a line (microcopy 15.3). */
@@ -92,7 +95,7 @@ export function PageBanner({
     return (
       <SandboxNotReadyBanner
         key={run.summary.id}
-        name={sandboxNotReadyAgent(log) ?? context.workflow?.name ?? run.summary.workflowId}
+        name={sandboxNotReadyName(log, context) ?? context.workflow?.name ?? run.summary.workflowId}
         reason={chosen.reason}
         check={sandboxStartCheck}
         announce={announce}
@@ -192,7 +195,7 @@ function Banner({
   readonly reviewInInbox: (() => void) | undefined;
   readonly openRun: ((runId: string) => void) | undefined;
   readonly runAgain: RunAgain | undefined;
-  readonly openModels?: (() => void) | undefined;
+  readonly openModels?: ((alias?: string) => void) | undefined;
   readonly openBudget?: (() => void) | undefined;
 }) {
   const writeClipboard = useWriteClipboard();
@@ -206,9 +209,12 @@ function Banner({
     return <p className="text-body">{banner.text}</p>;
   }
   const own = bannerAction(banner.action, reviewInInbox, openRun);
-  const fixes = (banner.fixes ?? []).flatMap((fix) =>
-    fixAction(fix, writeClipboard, toasts, { openModels, openBudget }, openExternal),
-  );
+  const buttonsOf = (list: readonly BannerFix[] | undefined) =>
+    (list ?? []).flatMap((fix) =>
+      fixAction(fix, writeClipboard, toasts, { openModels, openBudget }, openExternal),
+    );
+  const fixes = buttonsOf(banner.fixes);
+  const links = buttonsOf(banner.links);
   // The same test as `bannerOffersRunAgain`, which keeps the header's Run again out.
   const again =
     own === undefined && banner.tone === "danger" && runAgain !== undefined
@@ -219,7 +225,7 @@ function Banner({
     details === undefined
       ? []
       : [{ label: copyDetailsWords.label, onClick: () => copyDetails(details) }];
-  const action = [...(own === undefined ? [] : [own]), ...fixes, ...again, ...copy];
+  const action = [...(own === undefined ? [] : [own]), ...fixes, ...again, ...links, ...copy];
   return (
     <section aria-label={banner.name}>
       <Callout
@@ -259,7 +265,7 @@ function fixAction(
   writeClipboard: (text: string) => Promise<boolean>,
   toasts: ToastStore | null,
   open: {
-    readonly openModels: (() => void) | undefined;
+    readonly openModels: ((alias?: string) => void) | undefined;
     readonly openBudget: (() => void) | undefined;
   },
   openExternal: (address: string) => Promise<void>,
@@ -288,15 +294,32 @@ function fixAction(
     };
     return [{ label: failureWords.copyCommand, onClick: copy }];
   }
-  const opens = fix.kind === "change-budget" ? open.openBudget : open.openModels;
-  return opens === undefined
-    ? []
-    : [
-        {
-          label: fix.kind === "change-budget" ? runPageWords.changeBudget : failureWords.openModels,
-          onClick: () => {
-            opens();
-          },
-        },
-      ];
+  if (fix.kind === "change-budget") {
+    const openBudget = open.openBudget;
+    return openBudget === undefined
+      ? []
+      : [{ label: runPageWords.changeBudget, onClick: () => openBudget() }];
+  }
+  const openModels = open.openModels;
+  if (openModels === undefined) {
+    return [];
+  }
+  const alias = fix.alias;
+  return [
+    {
+      label: failureWords.openModels,
+      onClick: () => {
+        openModels(alias);
+      },
+    },
+  ];
+}
+
+/** The agent the sandbox stopped, as its file names it (the log gives its id). */
+function sandboxNotReadyName(
+  log: readonly RunEvent[] | undefined,
+  context: RunPageContext,
+): string | undefined {
+  const agent = sandboxNotReadyAgent(log);
+  return agent === undefined ? undefined : agentNameOf(agent, context);
 }

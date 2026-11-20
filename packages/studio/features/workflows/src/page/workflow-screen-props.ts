@@ -14,8 +14,8 @@ export interface WorkflowScreenProps {
   readonly notAnswering?: string;
   /** Opens a test run's card from the Tests page; absent where there is no run card. */
   readonly openRun?: (runId: string, step?: string) => void;
-  /** Opens the workspace page at Models, for **Open Models** on the Run panel's run card; without it the button isn't there. */
-  readonly openModels?: () => void;
+  /** Opens Models, at an alias's tab when given one, for **Open Models** on the Run panel's run card; without it the button isn't there. */
+  readonly openModels?: (alias?: string) => void;
   /** Opens the workspace page at its Budget block, for **Change budget** on the Run panel's run card; without it the button isn't there. */
   readonly openBudget?: () => void;
   /** Opens the Runs list; absent where the app can't open it. */

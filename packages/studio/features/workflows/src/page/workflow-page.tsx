@@ -1,5 +1,6 @@
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import {
+  openModelsOf,
   RunsListService,
   type RunsSource,
   RunsSourceService,
@@ -43,9 +44,6 @@ import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
 
 type WorkflowView = "flow" | "configuration" | "runs";
 
-/** The command that opens the workspace page at Models (`features/workspace`), as the run page runs it. */
-const openModelsCommand = "workspace.open-models";
-
 /** The command that opens the workspace page at its Budget block (`features/workspace`). */
 const openBudgetCommand = "workspace.open-budget";
 
@@ -63,6 +61,7 @@ function firstTestsPick(startOnTests: boolean | undefined) {
 export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
   const { openItem, openPlace } = context;
   const runsList = context.services.get(RunsListService);
+  const openModels = openModelsOf(context);
   return (
     <WorkflowScreen
       host={context.services.get(WorkflowsHostService)}
@@ -73,8 +72,8 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       notAnswering={engineWordsOf(context).notAnswering}
       announceState={(key, text) => context.announcer.announceState(key, text)}
       announce={(line) => context.announcer.announce(line)}
+      {...(openModels && { openModels })}
       {...(context.runCommand && {
-        openModels: () => void context.runCommand?.(openModelsCommand),
         openBudget: () => void context.runCommand?.(openBudgetCommand),
       })}
       shownRuns={context.services.find(InboxService)?.shownRuns}

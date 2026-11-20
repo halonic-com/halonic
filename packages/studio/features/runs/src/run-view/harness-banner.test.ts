@@ -66,6 +66,24 @@ verifies("runs.run-view.harness-banner", () => {
       );
     });
 
+    it("names the agent as its file does, and puts the program's message in Copy details (F21)", () => {
+      const named = {
+        ...context,
+        agentName: (id: string) => (id === "reporter" ? "Weekly reporter" : undefined),
+      };
+      const banner = causeBanner(
+        failed("harness-start-failed"),
+        [started("claude-code", 60_000)],
+        named,
+        false,
+      );
+      const line =
+        "Weekly reporter didn't start: Claude Code didn't start on this computer, or didn't answer within 60 seconds. Nothing ran in the step Draft.";
+      expect(lines(banner)).toEqual([line]);
+      const details = banner?.kind === "callout" ? banner.details : undefined;
+      expect(details?.split("\n")).toEqual([line, expect.stringMatching(/^Run /), "engine text"]);
+    });
+
     it("waits for the log, and for the program's start in it", () => {
       expect(
         causeBanner(failed("harness-start-failed"), undefined, context, false),
