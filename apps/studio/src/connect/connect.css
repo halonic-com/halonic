@@ -84,11 +84,13 @@ section[data-screen="connect"] {
 /*
  * With the keyboard open the window is short, and an error makes the form
  * taller. Less space above the logo and the heading leaves room for the
- * field, the error and Connect (phone check 19, HAL-14133).
+ * field, the error and Connect (phone check 19, HAL-14133). The padding
+ * below gives the gap under Connect room to scroll into.
  */
 @media (max-height: 32rem) {
   section[data-screen="connect"] {
     padding-top: 1rem;
+    padding-bottom: 1rem;
   }
 
   section[data-screen="connect"] h1 {
@@ -231,6 +233,11 @@ button.primary {
   border: none;
   background: var(--color-primary);
   color: var(--color-on-primary);
+}
+
+/* Scrolling Connect into view leaves this much space between it and the keyboard (HAL-14141). */
+button[data-action="connect"] {
+  scroll-margin-bottom: 1rem;
 }
 
 button[aria-busy="true"] {

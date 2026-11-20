@@ -11,6 +11,9 @@
   needed, so the field and the error stay above it.
 - On windows under 32rem high the connect screen has less space above the logo and the heading.
   Full-height screens don't change.
+- Scrolling leaves a 1rem gap between Connect and the keyboard (`scroll-margin-bottom`, with 1rem
+  of padding under the screen to scroll into), so Connect doesn't touch the keyboard on small
+  phones (Sofia, HAL-14141).
 - The requirement `studio.connect.field-errors` gains that sentence and an example. Nothing in it
   is removed or loosened.
 
