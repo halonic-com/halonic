@@ -3,6 +3,7 @@
 - Task: HAL-3384
 - Approval: Liam approved the plan for part 3a on HAL-12520 (https://paperclip.halonic.com/HAL/issues/HAL-12520), with eight conditions, and chose host routes over a Rust command. It builds the board's approved "Runs" line decisions on HAL-1949 (R-D1 A, R-D3 A) and Julian's build conditions in the design on HAL-1873, section 11.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:E1XA5nhmo0Vp1REBYujq3DyNOQxJS+9EFWlklJOQH8xYIbr4NafSfhPzy1n3j1BNbxhP87XJHf5zhyQhvY7yAA==
 
 ## What changes
 
