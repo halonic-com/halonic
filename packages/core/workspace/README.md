@@ -185,8 +185,9 @@ A `!.env` line already there doesn't count as keeping `.env` out: the lines are 
 
 `gitIgnorePath` and `gitIgnoreLines` are that file's name and its lines, and `settingsPath` is where a
 workspace's own settings live (`workspace.yaml`).
-`defaultHubId` and `defaultHubName` are the hub a new workspace starts with (`default`, `Default`), for a
-caller that writes the same hub in a workspace that has none.
+`defaultHub` is the hub a new workspace starts with (id `default`, name `Default`), and `defaultHubPath`
+and `defaultHubText()` are where its `hub.yaml` goes and what it holds, for a caller that writes the
+same hub in a workspace that has none.
 
 `copyWorkspace(source, target)` lays out a copy of a workspace, such as the Acme example that
 `halonic init --example acme` copies, under the same rules: it writes only into an empty store and
