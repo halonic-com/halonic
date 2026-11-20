@@ -61,7 +61,20 @@ export const examplesReaders: readonly string[] = [
   "halonic",
   "@halonicjs/workspace",
   "@halonicjs/test-runner",
+  "@halonicjs/tooling-publish",
 ];
+
+/**
+ * The packages whose tests bundle the published code without depending on
+ * it: tooling/publish stages the published layers with every workspace
+ * package they reach, and the CLI (which ships `examples/`, so
+ * `examplesReaders` names it too), and fails on an import a layer doesn't
+ * declare (HAL-14115).
+ */
+export const publishedCodeReaders: readonly string[] = ["@halonicjs/tooling-publish"];
+
+/** The package paths `publishedCodeReaders` bundle. A test file is never bundled. */
+export const publishedCodePaths: readonly string[] = ["packages/", "apps/cli/"];
 
 /** The packages whose tests read a file outside every package, if any do. */
 function readersOf(file: string): readonly string[] | undefined {
@@ -69,6 +82,23 @@ function readersOf(file: string): readonly string[] | undefined {
     return examplesReaders;
   }
   return Object.hasOwn(docsReaders, file) ? docsReaders[file] : undefined;
+}
+
+/**
+ * The packages whose tests read a changed file that isn't in
+ * `fullSuitePaths`, without their dependents, or `undefined` when any test
+ * may read it.
+ */
+function packagesReading(
+  file: string,
+  packages: readonly WorkspacePackage[],
+): readonly string[] | undefined {
+  const owner = owningPackage(file, packages);
+  if (isNamedPackage(owner)) {
+    const bundled = publishedCodePaths.some((path) => file.startsWith(path)) && !isTestFile(file);
+    return bundled ? [owner.manifest.name, ...publishedCodeReaders] : [owner.manifest.name];
+  }
+  return readersOf(file) ?? (noTestPattern.test(file) ? [] : undefined);
 }
 
 function matchesPath(file: string, path: string): boolean {
@@ -181,9 +211,10 @@ function requirementOwners(
  * The packages whose tests a change needs: every package with a changed file
  * and every package that depends on one or verifies one's requirements
  * (`verifiers`), the readers of a changed file in `examples/` or
- * `docsReaders`, or "all" when a changed file is one of `fullSuitePaths`,
- * lies outside every package and isn't docs, or when the list of changed
- * files is empty (it couldn't be read).
+ * `docsReaders`, `publishedCodeReaders` for a changed non-test file under
+ * `publishedCodePaths`, or "all" when a changed file is one of
+ * `fullSuitePaths`, lies outside every package and isn't docs, or when the
+ * list of changed files is empty (it couldn't be read).
  */
 export function testSelection(
   changed: readonly string[],
@@ -198,15 +229,12 @@ export function testSelection(
     if (fullSuitePaths.some((path) => matchesPath(file, path))) {
       return { kind: "all", reason: `${file} changed, and every package's tests depend on it` };
     }
-    const owner = owningPackage(file, packages);
-    if (owner !== undefined && owner.directory !== "." && owner.manifest.name !== undefined) {
-      touched.add(owner.manifest.name);
-    } else if (readersOf(file) !== undefined) {
-      for (const reader of readersOf(file) ?? []) {
-        touched.add(reader);
-      }
-    } else if (!noTestPattern.test(file)) {
+    const readers = packagesReading(file, packages);
+    if (readers === undefined) {
       return { kind: "all", reason: `${file} is outside every package, so any test may read it` };
+    }
+    for (const reader of readers) {
+      touched.add(reader);
     }
   }
   const known = new Set(packages.map((entry) => entry.manifest.name));
