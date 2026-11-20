@@ -167,6 +167,19 @@ export const runMessages = defineMessages("run", {
   inputIsFolder: (path: string) => phrase`${path} is a folder, not a file.`,
   /** The same, when the file is there but can't be read, such as for its permissions. */
   inputUnreadable: (path: string) => phrase`${path} can't be read.`,
+  /**
+   * The same, when the input lacks a field the first step reads (C337 C9):
+   * "the input has no field mail, which the step Read the email reads. Your
+   * input has: email." `given` is the input's fields, or `undefined` without
+   * `--input`.
+   */
+  inputLacksFields: (missing: readonly string[], step: string, given?: readonly string[]) => {
+    const fields = `${missing.length === 1 ? "field" : "fields"} ${listInWords(missing.map(printable), "or")}`;
+    return phrase`the input has no ${fields}, which the step ${printable(step)} reads. ${inputHas(given)}`;
+  },
+  /** Its fix. */
+  inputLacksFieldsFix: (missing: readonly string[]) =>
+    phrase`Pass a JSON object with ${listInWords(missing.map(printable))}, in a file or as text, such as --input input.json.`,
   /** The fix under an `--input` file that can't be read. */
   inputUnreadableFix: () => phrase`Check the file's permissions, or pass the JSON as text.`,
   /**
@@ -362,4 +375,15 @@ function receiptLine(receipt: RunReceipt): Phrase {
     parts.push(`estimated cost ${moneyAmount(receipt.estimatedCost)}`);
   }
   return lineOfFacts(parts);
+}
+
+/** What the input has, after "the input has no field mail, …": its fields, none, or no `--input`. */
+function inputHas(given: readonly string[] | undefined): string {
+  if (given === undefined) {
+    return "You gave no --input.";
+  }
+  if (given.length === 0) {
+    return "Your input has no fields.";
+  }
+  return `Your input has: ${given.map(printable).join(", ")}.`;
 }

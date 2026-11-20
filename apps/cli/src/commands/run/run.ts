@@ -14,6 +14,7 @@ import {
   type RunProposal,
   shortRunId,
   WorkflowRuns,
+  workflowIn,
 } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
@@ -57,7 +58,7 @@ import { workspaceNameOf } from "../../workspace-trust.ts";
 import { connectorWarnings } from "./connector-warnings.ts";
 import { eventLines } from "./event-lines.ts";
 import { runHarnessOf } from "./harness.ts";
-import { runInputOf } from "./input.ts";
+import { checkFirstStepInput, runInputOf } from "./input.ts";
 import { liveLines } from "./live-lines.ts";
 import { runResult } from "./result.ts";
 import { type RunPlace, sendEvent } from "./send-event.ts";
@@ -93,7 +94,8 @@ export interface RunSetup extends WorkspaceEngineSetup {
  *   can't start; nothing ran
  * @throws NotTrustedError when the run could reach more than the test model
  *   and the workspace isn't trusted here; nothing ran
- * @throws RunInputError when `--input` isn't a JSON object
+ * @throws RunInputError when `--input` isn't a JSON object, or lacks a
+ *   field the first step reads
  * @throws RunHarnessError when `--harness` names no harness, or one whose
  *   program can't start here; nothing ran
  * @throws OwnLineError when no hub, or more than one, has the workflow
@@ -131,7 +133,12 @@ export async function runWorkflow(
     runMessages.nothingRan(),
     harness,
   );
-  const runInput = await runInputOf(optionText(input, "input"), context.cwd);
+  const givenInput = optionText(input, "input");
+  const runInput = await runInputOf(givenInput, context.cwd);
+  const definition = workflowIn(hubWorkflows(workspace), workflow.hubId, workflow.workflowId);
+  if (definition !== undefined) {
+    checkFirstStepInput(definition, runInput, givenInput !== undefined);
+  }
   const engine = await openWorkspaceEngine(context, setup, {
     ...target,
     trust,

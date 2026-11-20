@@ -4,7 +4,9 @@
 
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import type { Workflow } from "@halonicjs/format";
 import { KindedError } from "@halonicjs/std";
+import { inputReads, readsWholeInput } from "@halonicjs/workflow";
 import type { Message } from "../../messages/define.ts";
 import { plainText } from "../../messages/phrase.ts";
 import { runMessages } from "../../messages/run.ts";
@@ -59,6 +61,35 @@ export async function runInputOf(
     throw new RunInputError(runMessages.inputNotAnObject(), runMessages.inputFix());
   }
   return value as Record<string, unknown>;
+}
+
+/**
+ * Refuses an input without a field the workflow's first step reads by name
+ * (`gets: [input.mail]` or `{{input.mail}}`), so the agent doesn't get
+ * `(not set)` while every step shows ✓ (C337 C9).
+ *
+ * @param given - whether `--input` was given at all
+ * @throws RunInputError naming the missing fields and the ones the input has
+ */
+export function checkFirstStepInput(
+  workflow: Workflow,
+  input: Record<string, unknown>,
+  given: boolean,
+): void {
+  const first = workflow.states[workflow.initial];
+  if (first === undefined || readsWholeInput(first)) {
+    return;
+  }
+  const read = new Set(inputReads(workflow.initial, first).map((each) => each.field));
+  const missing = [...read].filter((field) => !Object.hasOwn(input, field));
+  if (missing.length === 0) {
+    return;
+  }
+  const step = first.description?.split("\n")[0]?.trim() || workflow.initial;
+  throw new RunInputError(
+    runMessages.inputLacksFields(missing, step, given ? Object.keys(input) : undefined),
+    runMessages.inputLacksFieldsFix(missing),
+  );
 }
 
 /**
