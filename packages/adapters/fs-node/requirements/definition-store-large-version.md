@@ -1,7 +1,7 @@
 # fs-node.definition-store-large-version
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-13291
 
 When the files the folder definition store serves hold more text together than one string can, such as an agent's working folder with its installed packages, the store shall still give their version, the same one the memory store would give for the same files, reading one file and one piece of it at a time rather than all of them at once.
