@@ -16,6 +16,7 @@ import {
   type LoadedModelSource,
   type NodeProblem,
   ResourceReport,
+  type SaveTimers,
   type TrustService,
 } from "@halonicjs/app";
 import type { Provider } from "@halonicjs/format";
@@ -95,6 +96,15 @@ const sandboxKinds: Readonly<Record<string, string>> = {
   darwin: "Seatbelt",
 };
 
+/**
+ * Node's timers for each check's limit. Not `unref`'d: a check that hangs on
+ * nothing Node waits for must still end as a line, not end the process.
+ */
+const checkTimers: SaveTimers = {
+  set: (callback, delayMs) => setTimeout(callback, delayMs),
+  clear: (handle) => clearTimeout(handle as NodeJS.Timeout),
+};
+
 /** The folders in a workspace's profile folder that hold what its runs left. */
 const runFolderNames = ["runs", "deployments", "blobs"];
 
@@ -162,6 +172,7 @@ export async function doctorService(
     harnesses: machine.harnesses,
     secrets,
     ...(machine.node === undefined ? {} : { node: machine.node }),
+    timers: checkTimers,
   });
 }
 

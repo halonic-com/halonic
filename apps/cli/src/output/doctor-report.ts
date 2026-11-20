@@ -3,18 +3,21 @@
 // the reasons and fixes under it, then the summary. Every word comes from the
 // catalogue; this file only decides which sentence goes where.
 
-import type {
-  DiskLine,
-  DoctorReport,
-  DoctorStatus,
-  HarnessesLine,
-  HarnessProblem,
-  ModelProblem,
-  ModelsLine,
-  NodeLine,
-  ProviderReport,
-  SandboxLine,
-  WorkspaceLine,
+import {
+  type DiskLine,
+  type DoctorReport,
+  type DoctorStatus,
+  doctorCheckLimitMs,
+  type HarnessesLine,
+  type HarnessProblem,
+  type LimitedCheck,
+  type ModelProblem,
+  type ModelsLine,
+  type NodeLine,
+  type ProviderReport,
+  type SandboxLine,
+  type TimedOutLine,
+  type WorkspaceLine,
 } from "@halonicjs/app";
 import { type SignInShell, signInCommandText } from "@halonicjs/ports";
 import type { Message } from "../messages/define.ts";
@@ -84,13 +87,15 @@ interface CheckLines {
  * //  "", "No problems."] (as phrases)
  */
 export function doctorReportLines(report: DoctorReport, facts: DoctorFacts): Phrase[] {
+  const node = report.node === undefined || isTimedOut(report.node) ? undefined : report.node;
   const checks = [
-    report.workspace && workspaceCheck(report.workspace, facts.dir),
-    report.models && modelsCheck(report.models),
-    sandboxCheck(report.sandbox, facts, report.node),
-    report.harnesses && harnessesCheck(report.harnesses, facts.signInShell),
-    report.node && nodeCheck(report.node),
-    diskCheck(report.disk),
+    report.workspace && orTimedOut(report.workspace, (line) => workspaceCheck(line, facts.dir)),
+    report.models && orTimedOut(report.models, modelsCheck),
+    orTimedOut(report.sandbox, (line) => sandboxCheck(line, facts, node)),
+    report.harnesses &&
+      orTimedOut(report.harnesses, (line) => harnessesCheck(line, facts.signInShell)),
+    report.node && orTimedOut(report.node, nodeCheck),
+    orTimedOut(report.disk, diskCheck),
   ].filter((check) => check !== undefined);
   return [
     doctorMessages.heading(facts.version, facts.system).phrase,
@@ -99,6 +104,35 @@ export function doctorReportLines(report: DoctorReport, facts: DoctorFacts): Phr
     [],
     summaryLine(report),
   ];
+}
+
+/** Each check's label, for its line when it ran over the limit. */
+const labels: Readonly<Record<LimitedCheck, () => Message>> = {
+  workspace: doctorMessages.workspaceLabel,
+  models: doctorMessages.modelsLabel,
+  sandbox: doctorMessages.sandboxLabel,
+  harnesses: doctorMessages.harnessesLabel,
+  node: doctorMessages.nodeLabel,
+  disk: doctorMessages.diskLabel,
+};
+
+function isTimedOut<Line extends { check: LimitedCheck }>(
+  line: Line | TimedOutLine,
+): line is TimedOutLine {
+  return "timedOut" in line;
+}
+
+/** The check's own lines, or "! Sandbox     didn't answer in 5 seconds" when it ran over. */
+function orTimedOut<Line extends { check: LimitedCheck }>(
+  line: Line | TimedOutLine,
+  check: (line: Line) => CheckLines,
+): CheckLines {
+  if (!isTimedOut(line)) return check(line);
+  return {
+    status: line.status,
+    label: labels[line.check](),
+    lines: [doctorMessages.didntAnswer(doctorCheckLimitMs / 1000).phrase],
+  };
 }
 
 /** The mark and the label in their column, then the first line; the rest indented under it. */
