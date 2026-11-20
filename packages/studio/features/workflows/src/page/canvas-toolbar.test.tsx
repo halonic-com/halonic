@@ -37,17 +37,28 @@ async function showPage(edits: Partial<Edits>, view: WorkflowView = reply, phone
 
 const toolbar = (page: HTMLElement) => page.querySelector("[role=group][aria-label='Flow tools']");
 
+/** A button's text without the parts that match `leaveOut`: what shows, or what a screen reader hears. */
+function textOf(button: HTMLElement, leaveOut: string): string {
+  const copy = button.cloneNode(true) as HTMLElement;
+  for (const part of copy.querySelectorAll(leaveOut)) part.remove();
+  return copy.textContent ?? "";
+}
+
 const editsThatWork = (): Required<Edits> => ({
   addStep: vi.fn(async () => "step"),
   resetLayout: vi.fn(async () => {}),
 });
 
 verifies("workflows.canvas.toolbar", () => {
-  it("has Step, Wait and Auto layout at the canvas's top left", async () => {
+  it("has Step, Wait and Auto layout at the canvas's top left, heard as what they do", async () => {
     const { page } = await showPage(editsThatWork());
-    expect(
-      [...(toolbar(page)?.querySelectorAll("button") ?? [])].map((one) => one.textContent),
-    ).toEqual(["Step", "Wait", "Auto layout"]);
+    const buttons = [...(toolbar(page)?.querySelectorAll("button") ?? [])];
+    expect(buttons.map((one) => textOf(one, ".sr-only"))).toEqual(["Step", "Wait", "Auto layout"]);
+    expect(buttons.map((one) => textOf(one, "[aria-hidden=true]"))).toEqual([
+      "Add step",
+      "Add wait",
+      "Auto layout",
+    ]);
   });
 
   it("adds a step right of the right-most card and selects it once it shows", async () => {

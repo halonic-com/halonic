@@ -23,6 +23,9 @@ export const pageWords = {
     label: "Flow tools",
     step: "Step",
     wait: "Wait",
+    /** What a screen reader hears for **Step** and **Wait**, which say what they do (C285 TB1). */
+    addStep: "Add step",
+    addWait: "Add wait",
     autoLayout: "Auto layout",
     couldntChange: (name: string) => `Couldn't change ${name}`,
   },

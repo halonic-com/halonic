@@ -21,7 +21,8 @@ export interface CanvasToolbarProps {
 
 /**
  * The canvas's toolbar at its top left (`workflows.canvas.toolbar`, flow-workflows 3.2): **Step**
- * and **Wait** add a step, a divider, then **Auto layout**. Each keeps its text in a narrow panel.
+ * and **Wait** add a step (heard as "Add step" and "Add wait"), a divider, then **Auto layout**.
+ * Each keeps its text in a narrow panel.
  */
 export function CanvasToolbar({ onAddStep, onAutoLayout }: CanvasToolbarProps) {
   return (
@@ -34,16 +35,30 @@ export function CanvasToolbar({ onAddStep, onAutoLayout }: CanvasToolbarProps) {
       className="absolute top-3 left-3 z-10 flex items-center gap-1 rounded-md border border-border bg-surface p-1 shadow-1"
     >
       <Button variant="ghost" size="sm" icon={<PlusIcon />} onClick={() => onAddStep("task")}>
-        {words.step}
+        <Spoken shown={words.step} name={words.addStep} />
       </Button>
       <Button variant="ghost" size="sm" icon={<PlusIcon />} onClick={() => onAddStep("wait")}>
-        {words.wait}
+        <Spoken shown={words.wait} name={words.addWait} />
       </Button>
       <span aria-hidden="true" className="mx-1 h-5 w-px bg-border" />
       <Button variant="ghost" size="sm" onClick={onAutoLayout}>
         <span className="whitespace-nowrap">{words.autoLayout}</span>
       </Button>
     </div>
+  );
+}
+
+/**
+ * A button's text that shows one thing and is heard as another: "+ Step" reads as an add next to
+ * its plus, but a screen reader hears no plus, so it says "Add step". The name holds the shown
+ * word, so voice control still finds the button by it (WCAG 2.5.3).
+ */
+function Spoken({ shown, name }: { readonly shown: string; readonly name: string }) {
+  return (
+    <>
+      <span aria-hidden="true">{shown}</span>
+      <span className="sr-only">{name}</span>
+    </>
   );
 }
 

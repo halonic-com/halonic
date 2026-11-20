@@ -245,7 +245,7 @@ verifies("workflows.page.step-card", () => {
     await pick(page, "write");
     const toolbar = page.querySelector("[role=group][aria-label='Flow tools']") as HTMLElement;
     const zoomColumn = page.querySelector("button[aria-label='Zoom in']")?.parentElement;
-    const divider = toolbar.querySelector("[aria-hidden=true]");
+    const divider = toolbar.querySelector(":scope > [aria-hidden=true]");
     const pointer = (type: string) =>
       new MouseEvent(type, { bubbles: true, clientX: 10, clientY: 10 });
 
