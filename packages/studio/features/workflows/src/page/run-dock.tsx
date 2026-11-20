@@ -135,6 +135,11 @@ export function dockHasCard({
   return typeof dock === "object" || (shown !== undefined && pickedStep !== undefined);
 }
 
+/** The host's trust review as an `askTrust` prop, for a start refused as untrusted; empty when the host can't ask. */
+function trustAsker(host: WorkflowsHost) {
+  return host.askTrust === undefined ? {} : { askTrust: host.askTrust.bind(host) };
+}
+
 /** The card docked at the right: the start form, then the simple card of the run it started. */
 export function RunDock({
   dock,
@@ -184,7 +189,7 @@ export function RunDock({
         workflowName={workflowName}
         firstTestInput={() => firstTestInput(host, workflow)}
         start={(input) => startRun.call(host, workflow, input)}
-        {...(host.askTrust === undefined ? {} : { askTrust: host.askTrust.bind(host) })}
+        {...trustAsker(host)}
         notAnswering={notAnswering}
         onStarted={started}
         onClose={onClose}
@@ -211,7 +216,7 @@ export function RunDock({
             runStart: {
               startRun: ({ hubId, workflowId }, input) =>
                 startRun.call(host, { hubId, id: workflowId }, input),
-              ...(host.askTrust === undefined ? {} : { askTrust: host.askTrust.bind(host) }),
+              ...trustAsker(host),
             },
             onStarted: started,
             announce,

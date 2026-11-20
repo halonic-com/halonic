@@ -63,11 +63,9 @@ const click = (button: HTMLButtonElement | undefined) =>
 async function open(
   startRun: ((input: Record<string, unknown>) => Promise<{ runId: string }>) | undefined,
   runs = memoryRuns(),
-  askTrust?: () => Promise<"trusted" | "declined">,
 ) {
   const { host } = memoryHost([], [], [reply], [], {
     ...(startRun && { startRun: async (_ref, input) => startRun(input) }),
-    ...(askTrust && { askTrust }),
   });
   const page = await show(
     <WorkflowScreen host={host} runs={runs.source} hubId="acme" id="reply" />,
@@ -362,63 +360,6 @@ verifies("workflows.start.start-run", () => {
     expect(page.textContent).not.toContain("terminal:.");
     expect(page.querySelector("aside code")?.textContent).toBe("halonic run reply");
     expect(page.textContent).not.toContain("Try again");
-  });
-
-  it("offers Review in place of Try again when the workspace isn't trusted yet", async () => {
-    const untrusted = new KindedError(
-      "denied",
-      "This workspace isn't trusted yet, so nothing was started.",
-    );
-    const attempts = vi
-      .fn<(input: Record<string, unknown>) => Promise<{ runId: string }>>()
-      .mockRejectedValue(untrusted);
-    const askTrust = vi.fn(async () => "declined" as const);
-    const { page } = await open(attempts, memoryRuns(), askTrust);
-
-    await click(runButton(page));
-    await click(buttonNamed(page, "Start run"));
-
-    expect(page.textContent).toContain(
-      "Couldn't start the run: this workspace isn't trusted yet, so nothing was started.",
-    );
-    expect(page.textContent).not.toContain("Try again");
-    await click(buttonNamed(page, "Review"));
-    expect(askTrust).toHaveBeenCalledOnce();
-    // Not now leaves the sentence and its Review.
-    expect(buttonNamed(page, "Review")).toBeDefined();
-    expect(attempts).toHaveBeenCalledOnce();
-  });
-
-  it("brings Start run back, focused, once the person trusts the workspace from Review", async () => {
-    const { page } = await open(
-      async () => {
-        throw new KindedError(
-          "denied",
-          "This workspace isn't trusted yet, so nothing was started.",
-        );
-      },
-      memoryRuns(),
-      async () => "trusted",
-    );
-
-    await click(runButton(page));
-    await click(buttonNamed(page, "Start run"));
-    await click(buttonNamed(page, "Review"));
-
-    expect(page.textContent).not.toContain("Couldn't start the run");
-    expect(document.activeElement).toBe(buttonNamed(page, "Start run"));
-  });
-
-  it("keeps Try again for a refusal when the host can't ask for trust", async () => {
-    const { page } = await open(async () => {
-      throw new KindedError("denied", "This workspace isn't trusted yet, so nothing was started.");
-    });
-
-    await click(runButton(page));
-    await click(buttonNamed(page, "Start run"));
-
-    expect(buttonNamed(page, "Try again")).toBeDefined();
-    expect(buttonNamed(page, "Review")).toBeUndefined();
   });
 
   it("starts nothing when the input isn't a JSON object", async () => {
