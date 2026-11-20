@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for this follow-up in his review of HAL-12494 (halonic#3630) and assigned HAL-14110; Liam signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9NHH8pwU6lG8rrzI6mk63N4peXPKlEkuR5kxVPZEWDM2phniKmKeNxVSi6D9dJe9U0u32+qFdA8ig/tfqytBBQ==
 
 ## What changes
 
