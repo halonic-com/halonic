@@ -124,15 +124,6 @@ export const costWords = {
 /** What joins the parts of a line: "Estimated cost €0.004". */
 export const lineSeparator = " · ";
 
-/**
- * The command the empty lines show: `halonic run support-reply` with the first workflow's name,
- * and `halonic run` while the names aren't known (HAL-10128).
- */
-export function runCommand(workflows: readonly string[] | undefined): string {
-  const [first] = workflows ?? [];
-  return first === undefined ? "halonic run" : `halonic run ${first}`;
-}
-
 /** What the Runs list says in place of rows (mc 15.1; states R1 to R6, R10 and R17). */
 export const emptyListWords = {
   noRunsTitle: "No runs yet",
@@ -145,6 +136,11 @@ export const emptyListWords = {
   noRunsBodyEnd: " in a terminal.",
   noRunsNoWorkflow:
     "Runs started from the command line show up here. This workspace has no workflow yet: add one in Workflows.",
+  /**
+   * After the sentence in `pressRunWords` where a workflow's page has **Run** (HAL-12371). The
+   * page's own sentence is right above, so the body doesn't say what a run is again.
+   */
+  noRunsFromCommandLine: "Runs started from the command line show up here too.",
   /** The body in the Acme sample, where a run starts from the Inbox, as Home's Recent runs says (HAL-12225). */
   noRunsSample: "Start one from the Inbox, and it shows up here.",
   onlyTestRuns: "Only test runs so far.",

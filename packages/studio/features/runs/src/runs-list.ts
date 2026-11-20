@@ -1,6 +1,6 @@
 import { runStanding } from "@halonicjs/app";
 import { type PlaceSignal, type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
-import type { RunsSource, SourcedRun } from "./api.ts";
+import type { RunnableWorkflow, RunsSource, SourcedRun } from "./api.ts";
 import type { WorkflowRef } from "./list/runs-filter.ts";
 import { pageWords } from "./run-words.ts";
 
@@ -13,10 +13,10 @@ export interface RunsListState {
   /** Why the last load failed, until one succeeds; the runs stay as they were. */
   readonly error: unknown;
   /**
-   * The names `halonic run` takes for the workspace's workflows, in the Workflows list's order;
-   * `undefined` until they are read and when reading them failed, so the empty lines then name none.
+   * The workspace's workflows, in the Workflows list's order; `undefined` until they are read and
+   * when reading them failed, so the empty lines then name none.
    */
-  readonly workflows: readonly string[] | undefined;
+  readonly workflows: readonly RunnableWorkflow[] | undefined;
 }
 
 /**

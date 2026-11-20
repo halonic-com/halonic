@@ -1,7 +1,12 @@
 import type { RunEvent, RunSummary } from "@halonicjs/events";
-import type { ProviderKind, RunRoutine, RunsSource, RunWorkflow } from "./api.ts";
+import type { ProviderKind, RunnableWorkflow, RunRoutine, RunsSource, RunWorkflow } from "./api.ts";
 
 const supportReply: RunWorkflow = { name: "Support reply", stepDescription: () => undefined };
+
+/** A workflow in the `acme` hub as the empty lines name it: `halonic run` takes its id. */
+export function runnable(id: string, name: string): RunnableWorkflow {
+  return { hubId: "acme", id, name, command: id };
+}
 const providerKinds: Readonly<Record<string, ProviderKind>> = {
   mock: "local",
   ollama: "local",
@@ -24,7 +29,7 @@ export function fakeSource(
   let failure: unknown;
   let monthly: number | undefined;
   let logFailure: unknown;
-  let workflowNames: readonly string[] | Error = ["support-reply"];
+  let workflows: readonly RunnableWorkflow[] | Error = [runnable("support-reply", "Support reply")];
   const listeners = new Set<() => void>();
   const source: RunsSource = {
     list: async () => {
@@ -40,8 +45,8 @@ export function fakeSource(
     hubName: (hubId) => (hubId === "acme" ? "Acme" : undefined),
     routine: (key) => (key === "acme/morning-brief" ? morningBrief : undefined),
     runnableWorkflows: async () => {
-      if (workflowNames instanceof Error) throw workflowNames;
-      return workflowNames;
+      if (workflows instanceof Error) throw workflows;
+      return workflows;
     },
     providerKind: (id) => providerKinds[id],
     currency: () => "EUR",
@@ -53,9 +58,9 @@ export function fakeSource(
   };
   return {
     source,
-    /** Sets the names `halonic run` takes for the workspace's workflows, or makes reading them fail. */
-    workflows: (names: readonly string[] | Error) => {
-      workflowNames = names;
+    /** Sets the workspace's workflows, or makes reading them fail. */
+    workflows: (next: readonly RunnableWorkflow[] | Error) => {
+      workflows = next;
     },
     /** Sets the workspace's monthly budget, or clears it. */
     budget: (limit: number | undefined) => {
