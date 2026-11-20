@@ -309,7 +309,7 @@ verifies("agents.configuration.harness", () => {
     expect(
       harnessStrip("codex", { status: "unsupported", version: "0.1.0", supported: ">=1.0.0" }),
     ).toBe("too-old");
-    expect(harnessStrip("codex", { status: "signed-out", version: "1.2.0" })).toBeNull();
+    expect(harnessStrip("codex", { status: "signed-out", version: "1.2.0" })).toBe("signed-out");
     expect(harnessStrip("codex", { status: "failed", error: "x" })).toBeNull();
     expect(harnessStrip("codex", undefined)).toBeNull();
   });

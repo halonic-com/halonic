@@ -66,7 +66,7 @@ import {
   tauriAgentHostTransport,
 } from "@halonicjs/studio-services";
 import { EngineNotAnswering } from "@halonicjs/studio-shell";
-import { agentHostHarnessDetect } from "../agents/agent-host-harness-detect.ts";
+import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
 import { versionHistoryOf } from "../changes/version-history.ts";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
@@ -234,7 +234,7 @@ export function provideFolderServices(
       ...(transport === undefined
         ? {}
         : {
-            detectHarness: (_ref, harness) => agentHostHarnessDetect(transport)(harness),
+            ...agentHostHarnessParts(transport, location),
             newAgents: {
               settings: services.get(HostSettingsService),
               placement: new AgentPlacement({

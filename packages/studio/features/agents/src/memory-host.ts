@@ -15,6 +15,7 @@ import type {
   AgentToolOption,
   AgentUser,
   HarnessReadiness,
+  HarnessSignIn,
 } from "./api.ts";
 import { alreadyHandsWork, handOffPath } from "./api.ts";
 
@@ -37,6 +38,8 @@ export interface MemoryAgentsHostOptions {
     | undefined;
   /** What `harnessReadiness` answers for Claude Code and Codex; ready when left out. */
   readonly readiness?: Readonly<Partial<Record<AgentHarnessId, HarnessReadiness>>> | undefined;
+  /** What `openHarnessSignIn` answers; a terminal opened when left out. */
+  readonly signIn?: HarnessSignIn | undefined;
   /** The model aliases every hub can use. */
   readonly modelAliases?: readonly string[] | undefined;
   /** The model an agent without one uses; none when left out. */
@@ -183,6 +186,10 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       return harness === "halonic"
         ? { status: "ready", version: "" }
         : (options.readiness?.[harness] ?? { status: "ready", version: "1.0.0" });
+    },
+    openHarnessSignIn: async (ref) => {
+      found(ref);
+      return options.signIn ?? { opened: true };
     },
     filePath: async (ref) => {
       found(ref);

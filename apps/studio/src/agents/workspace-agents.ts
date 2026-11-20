@@ -6,7 +6,6 @@ import type {
   AgentHarnessId,
   AgentHub,
   AgentListing,
-  AgentOutput,
   AgentRef,
   AgentSettings,
   AgentsHost,
@@ -15,6 +14,7 @@ import type {
   AgentToolOption,
   AgentUser,
   HarnessReadiness,
+  HarnessSignIn,
   NewAgent,
   NewAgentStep,
   TrashedAgent,
@@ -28,7 +28,8 @@ import {
   settingsPath,
 } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
-import { paramsEdits, paramsOf, paramsProblem } from "./agent-params.ts";
+import { agentGone, changeProblem, listingOf, outputValue } from "./agent-file.ts";
+import { paramsEdits, paramsOf } from "./agent-params.ts";
 
 /** What {@link WorkspaceAgents} needs of the workspace's files. */
 export interface WorkspaceAgentsParts {
@@ -58,6 +59,11 @@ export interface WorkspaceAgentsParts {
    * host (the browser), so a new agent stays in its sandbox.
    */
   readonly newAgents?: NewAgentsParts;
+  /**
+   * Asks the agent host to open a harness's own sign-in for this agent, in its own settings
+   * folder. Absent where there is no agent host (the browser), which refuses with the reason.
+   */
+  readonly openSignIn?: (ref: AgentRef, harness: AgentHarnessId) => Promise<HarnessSignIn>;
 }
 
 /** What {@link WorkspaceAgents} applies Settings › New agents run (`sandbox.new-agents`) with. */
@@ -251,6 +257,22 @@ export class WorkspaceAgents implements AgentsHost {
     } catch (error) {
       return { status: "failed", error: error instanceof Error ? error.message : String(error) };
     }
+  }
+
+  /**
+   * Opens the harness's own sign-in for this agent in a terminal the person can see; rejects with
+   * the reason where there is no agent host, and with `not_found` when the agent isn't there.
+   */
+  async openHarnessSignIn(
+    ref: AgentRef,
+    harness: Exclude<AgentHarnessId, "halonic">,
+  ): Promise<HarnessSignIn> {
+    await this.#find(ref);
+    const openSignIn = this.#parts.openSignIn;
+    if (openSignIn === undefined) {
+      throw new Error("Halonic can't open a terminal on this computer from here.");
+    }
+    return openSignIn(ref, harness);
   }
 
   /**
@@ -459,41 +481,4 @@ export class WorkspaceAgents implements AgentsHost {
       version: async () => "unsaved",
     };
   }
-}
-
-/** The `output` as the file writes it: a JSON reply without a schema has no `schema` key. */
-function outputValue(output: AgentOutput): AgentOutput {
-  return output.type === "json" && output.schema === undefined ? { type: "json" } : output;
-}
-
-/** Why a change can't be written, as the agent file's schema would refuse it; `undefined` when it can. */
-function changeProblem(change: AgentChange): string | undefined {
-  if (change.name !== undefined && change.name.trim() === "") return "An agent needs a name.";
-  const { maxSteps } = change;
-  if (maxSteps !== undefined && !(Number.isInteger(maxSteps) && maxSteps >= 1 && maxSteps <= 200)) {
-    return "The turn limit is a whole number from 1 to 200.";
-  }
-  if (change.output?.type === "choice" && change.output.options.length === 0) {
-    return "A list of options needs at least one.";
-  }
-  return change.params === undefined ? undefined : paramsProblem(change.params);
-}
-
-/** What a row of the list shows of an agent's file. */
-function listingOf(
-  hubId: string,
-  agent: { id: string; name: string; description?: string | undefined; model?: string | undefined },
-): AgentListing {
-  return {
-    hubId,
-    id: agent.id,
-    name: agent.name,
-    description: agent.description,
-    model: agent.model,
-  };
-}
-
-/** What a read of an agent the workspace doesn't have rejects with: Studio shows the item-gone state for it. */
-function agentGone(): KindedError {
-  return new KindedError("not_found", "This agent isn't in this workspace any more.");
 }
