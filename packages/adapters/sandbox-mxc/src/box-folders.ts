@@ -1,17 +1,20 @@
-// A fresh folder for every box (grant rule 6, HAL-3503). On the real PC, the
-// only folder that failed was one the boxes had reused since 10 Nov; fresh
-// folders in the same places worked. So every session gets a new folder,
-// it is removed when the session closes, and folders a crash left behind are
-// removed the next time Halonic starts one.
+// A fresh folder for every box, under a base folder with its own access list
+// (grant rule 6, HAL-3503, revised in HAL-13373). On the real PC, MXC failed in
+// every folder that inherited its access list from the user's AppData, even a
+// brand-new one, and passed in %LOCALAPPDATA%\Temp, which has its own. So the
+// base gets Temp's entries with inheritance off, each time a process makes its
+// first box, which also fixes a base an older Halonic made. Every session still
+// gets a new folder, it is removed when the session closes, and folders a crash
+// left behind are removed the next time Halonic starts one.
 
 import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { giveOwnAccessList } from "./own-access-list.ts";
 
 /**
  * Where box folders live, inside Halonic's data folder
- * (`%LOCALAPPDATA%\halonic`). Kept in this one constant: if the deciding run
- * on the PC (HAL-7514) shows that AppData\Local itself is the problem, only
- * this moves.
+ * (`%LOCALAPPDATA%\halonic`). It gets its own access list, so where it sits
+ * doesn't decide what the boxes inherit.
  */
 export const boxFoldersBase = "mxc-boxes";
 
@@ -19,6 +22,12 @@ export const boxFoldersBase = "mxc-boxes";
 export interface BoxDisk {
   /** Creates `path` and its parents; nothing happens when it is there. */
   makeFolder(path: string): Promise<void>;
+  /**
+   * Gives a folder its own access list, as Windows sets up Temp: inheritance
+   * off, Full Control for only the current user, SYSTEM and Administrators.
+   * Nothing happens on a system without access lists.
+   */
+  giveOwnAccessList(path: string): Promise<void>;
   /** Creates a new, empty folder whose name starts with `prefix`, and returns its path. */
   makeFreshFolder(prefix: string): Promise<string>;
   /** The names in a folder; none when it isn't there. */
@@ -67,10 +76,11 @@ export class BoxFolders {
   }
 
   /**
-   * A new, empty box folder, never one used before. The first call also
-   * removes the folders of processes that no longer run, such as after a crash.
+   * A new, empty box folder, never one used before. The first call also gives
+   * the base folder its own access list and removes the folders of processes
+   * that no longer run, such as after a crash.
    *
-   * @throws when the folder can't be created, or removing a leftover fails for a reason other than a program holding it
+   * @throws when the folder can't be created or given its access list, or removing a leftover fails for a reason other than a program holding it
    */
   async create(): Promise<BoxFolder> {
     // A failed clean-up is tried again by the next call, not remembered.
@@ -92,6 +102,8 @@ export class BoxFolders {
 
   async #clearLeftovers(): Promise<void> {
     await this.#disk.makeFolder(this.#base);
+    // Also when the base was already there, so installs that made it before get the fix.
+    await this.#disk.giveOwnAccessList(this.#base);
     for (const name of await this.#disk.names(this.#base)) {
       const owner = boxFolderName.exec(name)?.[1];
       if (owner === undefined) continue;
@@ -125,6 +137,9 @@ const heldOpenCodes = new Set(["EBUSY", "EPERM", "EACCES", "ENOTEMPTY"]);
 export const diskOnThisMachine: BoxDisk = {
   makeFolder: async (path) => {
     await mkdir(path, { recursive: true });
+  },
+  giveOwnAccessList: async (path) => {
+    if (process.platform === "win32") await giveOwnAccessList(path);
   },
   makeFreshFolder: (prefix) => mkdtemp(prefix),
   names: async (folder) => {
