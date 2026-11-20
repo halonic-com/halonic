@@ -3,6 +3,7 @@
 - Task: HAL-12445 (finding F3 of the srt-wsl security review, HAL-12434)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12512 (Liam approved the plan, PR 4: the Studio words for the two residuals); the words are a team wording decision recorded on HAL-12445, from Noah's lines on HAL-12513; Liam signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5GOIxCYwzZWZiTgnBKVfd9t/zkYPa1u/vxbhiJ7kMYvESf9uToIVi/iM5RbV7qEH5aki9GgEViQktjKKbACTAQ==
 
 ## What changes
 
