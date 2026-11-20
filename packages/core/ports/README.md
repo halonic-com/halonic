@@ -135,7 +135,7 @@ next to the ports:
 | `sandboxPackageManagers` | the package managers a `SandboxFix` can name, behind `SandboxPackageManager` | `sandbox-check-fix` |
 | `sandboxUnavailableReasons`, `adapterFailures`, `modelCallErrorReasons` | the lists behind `SandboxUnavailableReason`, `AdapterFailure` and `ModelCallErrorReason` | `sandbox-check-reason`, `run-failure-error`, `model-call-error` |
 | `tunnelStates`, `tunnelReasons` | the lists behind `TunnelState` and `TunnelReason` | `tunnel-provider` |
-| `pairingEndReasons`, `phonePlatforms` | the lists behind `PairingEndReason` and `PhonePlatform` | `remote-control` |
+| `codeEndReasons`, `pairingEndReasons`, `phonePlatforms` | the lists behind `CodeEndReason`, `PairingEndReason` and `PhonePlatform` | `remote-control` |
 | `assertTunnelConfig`, `assertGatewayTunnelConfig` | the runtime check of a `TunnelConfig`, and the host's check that it points at its own gateway port | `tunnel-provider` |
 | `tunnelReconnectDelayMs`, `tunnelBackoff` | how long a `TunnelTransport` waits before each reconnect: 0.5 s, doubling to a base of at most 30 s, ±20 % jitter | `tunnel-resolver` |
 | `newPairingCode`, `readPairingCode`, `formatPairingCode`, `pairingPskInput`, `checkCodeFromBytes`, `readCheckCode`, `formatCheckCode`, `encodePairingQr`, `decodePairingQr` | phone pairing's codes: the 12-symbol pairing code and its psk input, the 6-symbol check code from the handshake hash's HKDF bytes, and the QR payload of at most 150 bytes; the cases in `src/golden/pairing-vectors.json` are shared with the phone | `pairing-codes` |

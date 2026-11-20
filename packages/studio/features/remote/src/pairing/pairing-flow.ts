@@ -25,6 +25,8 @@ export function viewOf(event: PairingEvent): PairingView {
       return { stage: "check", check: event };
     case "paired":
       return { stage: "paired", phone: event.phone };
+    // Until the dialog offers New code here (HAL-14189), a code that stopped working closes it.
+    case "code-ended":
     case "ended":
       return { stage: "ended" };
   }

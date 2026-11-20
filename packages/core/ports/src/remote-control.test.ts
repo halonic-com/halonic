@@ -1,6 +1,7 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
 import {
+  codeEndReasons,
   type PairedPhone,
   type PairingEvent,
   type PairingSession,
@@ -19,10 +20,15 @@ verifies("ports.remote-control", () => {
     expectTypeOf<RemoteControl["startPairing"]>().toEqualTypeOf<() => Promise<PairingSession>>();
   });
 
-  typeTest("drives a pairing with events, allow, deny and close", () => {
-    expectTypeOf<keyof PairingSession>().toEqualTypeOf<"events" | "allow" | "deny" | "close">();
+  typeTest("drives a pairing with events, allow, deny, newCode and close", () => {
+    expectTypeOf<keyof PairingSession>().toEqualTypeOf<
+      "events" | "allow" | "deny" | "newCode" | "close"
+    >();
     expectTypeOf<PairingSession["events"]>().toEqualTypeOf<() => AsyncIterable<PairingEvent>>();
-    expectTypeOf<PairingEvent["type"]>().toEqualTypeOf<"code" | "check" | "paired" | "ended">();
+    expectTypeOf<PairingSession["newCode"]>().toEqualTypeOf<() => Promise<void>>();
+    expectTypeOf<PairingEvent["type"]>().toEqualTypeOf<
+      "code" | "check" | "code-ended" | "paired" | "ended"
+    >();
   });
 
   typeTest("keeps only a phone's public data", () => {
@@ -31,17 +37,9 @@ verifies("ports.remote-control", () => {
     >();
   });
 
-  it("lists the reasons a pairing ends and the platforms", () => {
-    expect(pairingEndReasons).toEqual([
-      "denied",
-      "allow-timed-out",
-      "code-expired",
-      "too-many-tries",
-      "closed",
-      "remote-off",
-      "tunnel-down",
-      "busy",
-    ]);
+  it("lists the reasons a code ends, the reasons a pairing ends and the platforms", () => {
+    expect(codeEndReasons).toEqual(["denied", "allow-timed-out", "code-expired", "too-many-tries"]);
+    expect(pairingEndReasons).toEqual(["closed", "remote-off", "tunnel-down", "busy"]);
     expect(phonePlatforms).toEqual(["android", "ios"]);
   });
 });
