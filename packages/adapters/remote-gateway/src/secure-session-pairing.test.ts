@@ -1,6 +1,6 @@
-import { gatewayMaxMessageBytes } from "@halonicjs/ports";
+import { gatewayMaxMessageBytes, gatewaySessionLimits } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { encodeE2eFrame } from "./e2e-frames.ts";
 import { cleartext, TestPhone } from "./e2e-phone.test-helper.ts";
 import { openSecureSession, settle, testCode } from "./e2e-session.test-helper.ts";
@@ -94,6 +94,19 @@ verifies("remote-gateway.e2e-session", () => {
       t.pairing.failsToCount = true;
       expect(() => t.session.close()).toThrow("the pairing service failed");
       expect(t.wire.closed).toBe(true);
+    });
+
+    it("reports, and doesn't throw out of its timer, when the pairing service fails to count a timed-out try", () => {
+      vi.useFakeTimers();
+      try {
+        const t = pairedUpToMessage2();
+        t.pairing.failsToCount = true;
+        expect(() => vi.advanceTimersByTime(gatewaySessionLimits.handshakeTimeoutMs)).not.toThrow();
+        expect(t.errors).toEqual([new Error("the pairing service failed")]);
+        expect(t.wire.closed).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("sends not-paired to a phone revoked between paired and its hello", async () => {

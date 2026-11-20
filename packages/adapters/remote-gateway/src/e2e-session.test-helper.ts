@@ -122,10 +122,14 @@ export function openSecureSession(options: { helloTimeoutMs?: number; phones?: F
   source.addSession("s1");
   const sent: Uint8Array[] = [];
   const wire = { closed: false, buffered: 0 };
+  const errors: unknown[] = [];
   const session = new SecureSession({
     phones,
     pairing,
     helloTimeoutMs: options.helloTimeoutMs ?? 10_000,
+    onError: (error) => {
+      errors.push(error);
+    },
     wire: {
       send: (frame) => {
         sent.push(frame);
@@ -138,7 +142,7 @@ export function openSecureSession(options: { helloTimeoutMs?: number; phones?: F
     openConnection: (transport) =>
       new GatewayConnection({ source, policy: { allowRiskyRemotely: () => false }, transport }),
   });
-  return { session, pairing, phones, source, sent, wire };
+  return { session, pairing, phones, source, sent, wire, errors };
 }
 
 /** Lets queued promises, and the connection's chain, run. */

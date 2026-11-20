@@ -23,6 +23,11 @@ export interface SecureSessionDeps extends HandshakeDeps {
   openConnection(transport: GatewayTransport): GatewayConnection;
   /** How long an open session may go without the phone's `hello`. */
   readonly helloTimeoutMs: number;
+  /**
+   * Gets an error the session met outside any caller's stack: in its own
+   * timers or while the person decided. The session has closed by then.
+   */
+  onError(error: unknown): void;
 }
 
 /** Where the session is. Each state takes only the frames listed for it. */
@@ -82,7 +87,7 @@ export class SecureSession {
     } else if (state.name === "handshake" && frame.kind === "resume1") {
       this.#resume1(frame.body);
     } else if (state.name === "pairing" && frame.kind === "pair3") {
-      this.#pair3(frame.body, state.pairing).catch(() => this.close());
+      this.#pair3(frame.body, state.pairing).catch((error: unknown) => this.#fail(error));
     } else if (state.name === "open") {
       this.#transport(frame, state);
     } else {
@@ -264,14 +269,38 @@ export class SecureSession {
     return this.#state.name === "closed";
   }
 
+  /**
+   * Reports an error nobody above could catch, and closes the session. A
+   * throw out of a timer would be an uncaught exception that stops the host.
+   */
+  #fail(error: unknown): void {
+    this.#deps.onError(error);
+    try {
+      this.close();
+    } catch (closeError) {
+      this.#deps.onError(closeError);
+    }
+  }
+
+  /** Runs `run` from a timer; an error goes to {@link SecureSessionDeps.onError}, never out of the timer. */
+  #guarded(run: () => void): () => void {
+    return () => {
+      try {
+        run();
+      } catch (error) {
+        this.#fail(error);
+      }
+    };
+  }
+
   #after(ms: number, run: () => void): void {
-    const timer = setTimeout(run, ms);
+    const timer = setTimeout(this.#guarded(run), ms);
     timer.unref?.();
     this.#timers.push(timer);
   }
 
   #every(ms: number, run: () => void): void {
-    const timer = setInterval(run, ms);
+    const timer = setInterval(this.#guarded(run), ms);
     timer.unref?.();
     this.#timers.push(timer);
   }

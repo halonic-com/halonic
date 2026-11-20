@@ -163,6 +163,20 @@ verifies("remote-gateway.e2e-session", () => {
       expect(t.wire.closed).toBe(true);
     });
 
+    it("reports, and doesn't throw out of its timer, when the store fails to end a timed-out session", async () => {
+      const t = reconnected();
+      t.phones.connected = () => ({
+        end: () => {
+          throw new Error("store failed");
+        },
+      });
+      t.session.receive(t.phone.say(hello));
+      await settle();
+      expect(() => vi.advanceTimersByTime(gatewaySessionLimits.sessionMaxMs)).not.toThrow();
+      expect(t.errors).toEqual([new Error("store failed")]);
+      expect(t.wire.closed).toBe(true);
+    });
+
     it("rekeys a quiet session's sending key every 30 minutes, when it has used it", async () => {
       const t = reconnected();
       t.session.receive(t.phone.say(hello));
