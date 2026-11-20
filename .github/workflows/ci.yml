@@ -134,7 +134,7 @@ jobs:
           changed=""
           by_area=false
           if [ "$EVENT" = "pull_request" ]; then
-            changed=$(git diff --name-only "$BASE...HEAD")
+            changed=$(git diff --name-only --no-renames "$BASE...HEAD")
             by_area=true
           elif [ "$EVENT" = "merge_group" ]; then
             # The group against the commit it is built on: main, or the head
@@ -145,7 +145,7 @@ jobs:
             # in the area rules still shows on main. An empty diff or a diff
             # that can't be read runs every job. macOS and Windows jobs skip
             # in merge groups whatever the areas say (see the top of this file).
-            if changed=$(git diff --name-only "$BASE...HEAD") && [ -n "$changed" ]; then
+            if changed=$(git diff --name-only --no-renames "$BASE...HEAD") && [ -n "$changed" ]; then
               by_area=true
             fi
             echo "::notice title=Changed areas::Filtered by area: $by_area ($(grep -c . <<< "$changed") files)"
@@ -1975,7 +1975,7 @@ jobs:
             echo "Push to main: the whole list and the integration and parity test kits."
           else
             picked="$list"
-            if [ -n "$BASE" ] && ! git diff --name-only "$BASE...HEAD" | grep -qE '^(\.github/workflows/ci\.yml$|\.github/actions/)'; then
+            if [ -n "$BASE" ] && ! git diff --name-only --no-renames "$BASE...HEAD" | grep -qE '^(\.github/workflows/ci\.yml$|\.github/actions/)'; then
               if changed=$(pnpm exec turbo ls --filter="...[$BASE]" --output=json | node -e '
                 const out = JSON.parse(require("fs").readFileSync(0, "utf8"));
                 console.log(out.packages.items.map((p) => p.name).join(" "));

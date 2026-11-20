@@ -21,6 +21,16 @@ function git(root: string, args: readonly string[]): string {
   return execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 }
 
+/**
+ * The cloud paths that `HEAD` changes since its merge base with `base`. A
+ * moved file counts by both its old and its new path, so moving a file out
+ * of a cloud path still counts as a cloud change.
+ */
+export function cloudPathsChangedSince(root: string, base: string): string[] {
+  const changed = git(root, ["diff", "--name-only", "--no-renames", `${base}...HEAD`]).split("\n");
+  return cloudAffectedFiles(changed.filter((file) => file !== ""));
+}
+
 function output(line: string): void {
   console.log(line);
   const file = process.env["GITHUB_OUTPUT"];
@@ -42,8 +52,7 @@ if (import.meta.main) {
     console.error("cloud-affected: pass --base <commit> or --inputs-hash.");
     process.exitCode = 2;
   } else {
-    const changed = git(root, ["diff", "--name-only", `${values.base}...HEAD`]).split("\n");
-    const affected = cloudAffectedFiles(changed.filter((file) => file !== ""));
+    const affected = cloudPathsChangedSince(root, values.base);
     for (const file of affected) {
       console.log(`  cloud path: ${file}`);
     }
