@@ -8,7 +8,13 @@ import {
 } from "@halonicjs/app";
 import { type RoutineClock, routineClocks } from "@halonicjs/app/routines";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
-import type { DefinitionStore, DefinitionWatch, RunStore } from "@halonicjs/ports";
+import type {
+  DefinitionStore,
+  DefinitionWatch,
+  RunExecutor,
+  RunStore,
+  SendOptions,
+} from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { InboxRuns } from "@halonicjs/studio-feature-inbox/api";
 import type {
@@ -36,6 +42,11 @@ export interface WorkspaceRunsOptions {
   readonly runs: Pick<RunStore, "list" | "events">;
   /** The workspace's files, for the workflows', routines' and hubs' names and the currency. */
   readonly definitions: DefinitionStore;
+  /**
+   * Sends an event to a waiting run through the window's engine (`EngineService.send`). Left out,
+   * {@link WorkspaceRuns.send} fails as `unavailable` with the CLI line to copy.
+   */
+  readonly send?: RunExecutor["send"];
   /** Defaults to `setInterval`. */
   readonly timer?: PollTimer;
   /**
@@ -74,11 +85,11 @@ export const systemTimer: PollTimer = {
  * The runs of one open workspace as the Runs feature and the Inbox read them,
  * from its run logs (requirement `studio.workspace-runs`).
  *
- * Nothing in the window runs a workflow yet, so a run changes only when
- * something else writes its log, such as `halonic run`. While anyone listens,
- * the runs are read again every 10 s and when the window comes to the front,
- * and listeners hear only when a run started, moved on or ended. Answering a
- * run needs the engine, which the window doesn't have yet (HAL-6602), so
+ * A run changes when the window's engine or something else, such as
+ * `halonic run`, writes its log. While anyone listens, the runs are read
+ * again every 10 s, when the window comes to the front and after an answer
+ * the window sent, and listeners hear only when a run started, moved on or
+ * ended. An answer goes through the window's engine (`send`); without one,
  * {@link WorkspaceRuns.send} fails as `unavailable`.
  *
  * @example
@@ -183,14 +194,29 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     };
   }
 
-  // No engine in the window yet (HAL-6602), so the error gives the CLI line to copy as its `fix`.
-  // The CLI takes the short id, as Studio shows it.
-  async send(runId: string, event: string): Promise<RunSummary> {
-    throw new KindedError(
-      "unavailable",
-      "Studio can't answer runs yet. To answer this one, run this in a terminal:",
-      { fix: `halonic runs send ${shortRunId(runId)} ${event}` },
-    );
+  /**
+   * Sends the answer through the window's engine, then reads the runs again so the Inbox and the
+   * Runs list show the run moved on. Without an engine, the error gives the CLI line to copy as its
+   * `fix`; the CLI takes the short id, as Studio shows it.
+   */
+  async send(
+    runId: string,
+    event: string,
+    payload?: unknown,
+    options?: SendOptions,
+  ): Promise<RunSummary> {
+    const { send } = this.#options;
+    if (send === undefined) {
+      throw new KindedError(
+        "unavailable",
+        "Studio can't answer runs yet. To answer this one, run this in a terminal:",
+        { fix: `halonic runs send ${shortRunId(runId)} ${event}` },
+      );
+    }
+    const run = await send(runId, event, payload, options);
+    // Only while someone listens: the first poll of a watch reads what the runs are then.
+    if (this.#stopPolling !== undefined) void this.#poll();
+    return run;
   }
 
   /** Stops reading the runs and closes the watch on the files. Disposing twice is fine. */

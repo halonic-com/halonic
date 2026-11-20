@@ -196,7 +196,33 @@ verifies("studio.workspace-runs", () => {
     expect(runs.routine("acme/gone")).toBeUndefined();
   });
 
-  it("gives the Inbox the runs that wait, and can't answer one yet", async () => {
+  it("answers a run through the window's engine, and tells its listeners it moved on", async () => {
+    const { engine, runId } = await waitingRun();
+    const runs = new WorkspaceRuns({
+      runs: engine.stores.store,
+      definitions: acmeFiles(),
+      timer: manualTimer().timer,
+      send: (...answer) => engine.executor.send(...answer),
+    });
+    const heard = vi.fn();
+    const stop = runs.subscribe(heard);
+    await settled();
+    const [call] = (await runs.waiting())[0]?.approvals ?? [];
+
+    await expect(runs.send(runId, "approve", undefined, { callId: "late" })).rejects.toThrow();
+    await runs.send(runId, "approve", undefined, { callId: call?.callId ?? "" });
+    await engine.settle(runId);
+    await settled();
+
+    // The call is answered; the run goes on to the review step, where a person reads the reply.
+    expect(await runs.waiting()).toMatchObject([
+      { id: runId, approvals: [], waitingFor: { title: "Approve this reply?" } },
+    ]);
+    expect(heard).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
+  it("without an engine, gives the Inbox the runs that wait and the CLI line to answer one", async () => {
     const { engine, runId } = await waitingRun();
     const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions: acmeFiles() });
 

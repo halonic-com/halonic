@@ -436,6 +436,8 @@ function provideWorkspaceRuns(
     runs: new TauriRunStore(ipc, location),
     definitions: new TauriDefinitionStore(files, location),
     onFocus: (listener) => focusOf(window, listener),
+    // Looked up on the first answer: the engine is provided after the runs.
+    send: (...answer) => services.get(engineServiceKey).send(...answer),
   });
   services.provide(RunsSourceService, runs);
   services.provide(InboxRunsService, runs);

@@ -313,6 +313,11 @@ export class EngineService {
     }
   }
 
+  /** Answers a waiting run (an Inbox Approve or Reject) as `halonic runs send` does, with a start's checks. */
+  async send(...args: Parameters<LocalExecutor["send"]>): ReturnType<LocalExecutor["send"]> {
+    return (await this.#forStart()).executor.send(...args);
+  }
+
   /**
    * Closes the engine, if open, and gives the workspace's lock back, as when
    * the workspace changes. Safe to call twice; a later {@link open} starts afresh.
