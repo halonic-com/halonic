@@ -138,7 +138,14 @@ export function RunCardReceipt({
     currency: source.currency(),
     now: now ?? new Date(),
   };
-  const entries = everyStep(log, summarize(log) ?? summary, context.workflow, context.now);
+  const entries = everyStep(
+    log,
+    summarize(log) ?? summary,
+    context.workflow,
+    context.now,
+    false,
+    context.providerName,
+  );
   return (
     <>
       <div ref={banners} className="contents">

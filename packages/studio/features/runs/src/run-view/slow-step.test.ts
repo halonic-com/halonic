@@ -16,7 +16,7 @@ function event(rest: Record<string, unknown>, seq = 1): RunEvent {
 const call = event({
   type: "llm.request",
   agent: "reporter",
-  provider: "claude",
+  provider: "anthropic",
   model: "m",
   messages: 1,
 });
@@ -24,7 +24,7 @@ const call = event({
 verifies("runs.run-view.slow-step-line", () => {
   describe("what the step waits for", () => {
     const waits: [string, RunEvent][] = [
-      ["Waiting for Claude", call],
+      ["Waiting for Anthropic", call],
       [
         "Waiting for Ollama on this computer",
         { ...call, provider: "ollama", model: "llama3.2" } as RunEvent,
@@ -70,6 +70,15 @@ verifies("runs.run-view.slow-step-line", () => {
     expect(slowStepLine([lmStudio], later(2))).toBe("Waiting for LM Studio");
   });
 
+  it("names a model provider as the banners do: its file's name, else its known name, else its id", () => {
+    const work = { ...call, provider: "work" } as RunEvent;
+    const named = (id: string) => (id === "work" ? "Work GPT" : undefined);
+    expect(slowStepLine([work], later(2), false, named)).toBe("Waiting for Work GPT");
+    expect(slowStepLine([call], later(2), false, named)).toBe("Waiting for Anthropic");
+    const server = { ...call, provider: "my-server" } as RunEvent;
+    expect(slowStepLine([server], later(2))).toBe("Waiting for my-server");
+  });
+
   it("gives a reason only for a model on this computer", () => {
     const local = { ...call, provider: "ollama", model: "llama3.2" } as RunEvent;
     expect(stepWait([local])).toEqual({
@@ -77,7 +86,7 @@ verifies("runs.run-view.slow-step-line", () => {
       reason: "It loads the model first, so the start is slow.",
       since: at,
     });
-    expect(stepWait([call])).toEqual({ what: "Waiting for Claude", since: at });
+    expect(stepWait([call])).toEqual({ what: "Waiting for Anthropic", since: at });
   });
 
   it("stays quiet before 2 seconds, and when the last event names no wait", () => {
@@ -98,7 +107,13 @@ verifies("runs.run-view.slow-step-line", () => {
         [0, entered("draft")],
         [
           1,
-          { type: "llm.request", agent: "reporter", provider: "claude", model: "m", messages: 1 },
+          {
+            type: "llm.request",
+            agent: "reporter",
+            provider: "anthropic",
+            model: "m",
+            messages: 1,
+          },
         ],
         ...ending.map((body) => [1, body] as const),
       ]);
@@ -115,8 +130,8 @@ verifies("runs.run-view.slow-step-line", () => {
     it("replaces Running once the step has been quiet for 2 seconds", () => {
       expect(stepsAt(1).map((entry) => entry.line)).toEqual(["Running"]);
       const [slow] = stepsAt(3);
-      expect(slow?.line).toBe("Waiting for Claude");
-      expect(slow?.label).toBe("Draft, running, 10:40, Waiting for Claude");
+      expect(slow?.line).toBe("Waiting for Anthropic");
+      expect(slow?.label).toBe("Draft, running, 10:40, Waiting for Anthropic");
     });
 
     it("never shows on a run that has ended", () => {

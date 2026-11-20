@@ -1,16 +1,5 @@
 import { capitalised } from "./run-words.ts";
 
-/** The model programs by the name a person knows (microcopy 5): "LM Studio", not "Lmstudio". */
-const providerNames: Readonly<Record<string, string>> = { lmstudio: "LM Studio", openai: "OpenAI" };
-
-/**
- * A provider as the slow-step line names it: its known name, or its own name with a capital.
- * The banners get the name from the provider's file instead (`providerNameOf`).
- */
-export function providerName(provider: string): string {
-  return providerNames[provider] ?? capitalised(provider);
-}
-
 /** F7's "the model alias `smart`", or "the model gpt-4o" when the log doesn't give the alias. */
 function modelOrAlias(model: string, alias: string | undefined): string {
   return alias === undefined ? `the model ${model}` : `the model alias ${alias}`;
