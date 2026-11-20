@@ -122,7 +122,7 @@ verifies("workspace.new-workspace-dialog", () => {
     await show();
     await type("Acme Support");
     expect(document.body.textContent).toContain(
-      "Starts local only, with a Default hub and the built-in test model, which needs no key and sends nothing.",
+      "Starts local only, with a Default hub and the built-in test model, which repeats your message back. No key, no cost. Connect your own model in Models.",
     );
     expect(document.body.textContent).not.toContain("Ollama");
   });

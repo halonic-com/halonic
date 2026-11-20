@@ -26,8 +26,10 @@ in the style of `--example acme`. Its `--json` `created` list names the new file
 `counts.hubs` is 1.
 
 Studio's New workspace dialog no longer promises "a model on this computer (Ollama)" for a new
-folder. It says "Starts local only, with a Default hub and the built-in test model, which needs no
-key and sends nothing. You can add your own models later." (the team's wording, HAL-14152).
+folder. It says "Starts local only, with a Default hub and the built-in test model, which repeats
+your message back. No key, no cost. Connect your own model in Models." (the team's wording from
+HAL-12723, section 1 of new-workspace-wording; HAL-14152). A new workspace has no scripted
+replies, so the first agent's reply is an echo, and the dialog says so up front.
 
 ## Why
 
