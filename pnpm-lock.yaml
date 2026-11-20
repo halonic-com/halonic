@@ -1651,6 +1651,9 @@ importers:
 
   packages/adapters/remote-gateway:
     dependencies:
+      '@halonicjs/adapter-e2e-noise':
+        specifier: workspace:*
+        version: link:../e2e-noise
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports

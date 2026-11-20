@@ -1,3 +1,5 @@
+// Consumers compile this file too, so they need its WebAssembly declarations.
+/// <reference path="./webassembly.d.ts" />
 import { readFileSync } from "node:fs";
 
 /**
