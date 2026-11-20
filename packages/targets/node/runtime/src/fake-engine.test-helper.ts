@@ -102,6 +102,11 @@ export class FakeEngine implements RunExecutor {
     this.#listeners.delete(runId);
   }
 
+  /** How many listeners follow a run live, so a test can wait for the host's stream to reach the engine. */
+  followers(runId: string): number {
+    return this.#listeners.get(runId)?.size ?? 0;
+  }
+
   subscribe(runId: string, afterSeq: number, listener: RunEventListener): RunSubscription {
     const log = this.#events.get(runId) ?? [];
     const set = this.#listeners.get(runId) ?? new Set();
