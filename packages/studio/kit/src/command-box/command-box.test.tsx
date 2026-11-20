@@ -59,7 +59,7 @@ function politeText(container: HTMLElement): string {
 }
 
 verifies("kit.command-box", () => {
-  it("shows the command in mono on the muted fill, wrapping anywhere and selectable at once", () => {
+  it("shows the command in mono on the muted fill, wrapping and selectable at once", () => {
     const { container } = render(<CommandBox command={command} />);
     const { text } = parts(container);
     expect(text.textContent).toBe(command);
@@ -70,12 +70,53 @@ verifies("kit.command-box", () => {
       "rounded-xs",
       "px-2",
       "py-1.5",
-      "wrap-anywhere",
       "select-all",
     ]) {
       expect(text.className.split(" ")).toContain(name);
     }
     expect(text.className).not.toContain("overflow-x");
+  });
+
+  it("breaks the command only between shell words, so a flag like --filter stays whole", () => {
+    const filtered = "pnpm --filter @halonicjs/studio-kit  test";
+    const { container } = render(<CommandBox command={filtered} />);
+    const { text } = parts(container);
+    // Each word is an inline block, so a line can break only at the spaces between them, never
+    // after the hyphens of "--filter"; the spaces stay as they are, so the text is the command.
+    const words = [...text.querySelectorAll("span")];
+    expect(words.map((word) => word.textContent)).toEqual([
+      "pnpm",
+      "--filter",
+      "@halonicjs/studio-kit",
+      "test",
+    ]);
+    for (const word of words) {
+      expect(word.className.split(" ")).toEqual(
+        expect.arrayContaining(["inline-block", "max-w-full"]),
+      );
+    }
+    expect(text.textContent).toBe(filtered);
+    expect(text.className.split(" ")).not.toContain("wrap-anywhere");
+    expect(text.className.split(" ")).not.toContain("break-all");
+  });
+
+  it("breaks inside a word only when that word is wider than the whole box", () => {
+    const { container } = render(<CommandBox command={command} />);
+    const words = [...parts(container).text.querySelectorAll("span")];
+    // Held to the box's width, a word too long for it wraps anywhere instead of scrolling.
+    for (const word of words) {
+      expect(word.className.split(" ")).toContain("wrap-anywhere");
+    }
+  });
+
+  it("keeps 192px for the command beside Copy, so a narrow box puts Copy under it", () => {
+    const { container } = render(<CommandBox command={command} />);
+    const row = container.firstElementChild as HTMLElement;
+    const classes = parts(container).text.className.split(" ");
+    // The row wraps, and the command's 192px basis (not flex-1's 0) is what makes it wrap.
+    expect(row.className.split(" ")).toContain("flex-wrap");
+    expect(classes).toEqual(expect.arrayContaining(["grow", "basis-48", "min-w-0"]));
+    expect(classes).not.toContain("flex-1");
   });
 
   it("names its icon button 'Copy command' and keeps the name after copying", async () => {
