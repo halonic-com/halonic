@@ -30,8 +30,28 @@ verifies("workflow.context-before", () => {
         end: { type: "final" },
       },
     });
-    expect(contextBefore(loop, "draft")).toEqual(["draft"]);
-    expect(contextBefore(loop, "end")).toEqual(["draft"]);
+    expect(contextBefore(loop, "draft")).toEqual(["draft", "lastEvent"]);
+    expect(contextBefore(loop, "end")).toEqual(["draft", "lastEvent"]);
+  });
+
+  // New (HAL-14268).
+  it("counts every key the engine writes: conversations, branches and a wait's last event", () => {
+    const writes = workflowOf({
+      id: "writes",
+      name: "Writes",
+      initial: "chat",
+      states: {
+        chat: { agent: "a", conversation: "turns", on: [{ to: "both" }] },
+        both: {
+          type: "parallel",
+          branches: { left: { agent: "a" }, right: { agent: "b" } },
+          output: "results",
+          on: [{ to: "end" }],
+        },
+        end: { type: "final" },
+      },
+    });
+    expect(contextBefore(writes, "end")).toEqual(["left", "results", "right", "turns"]);
   });
 });
 

@@ -85,4 +85,24 @@ verifies("cli.workspace-file-problems", () => {
       "  See them with: halonic validate",
     ]);
   });
+
+  // C337 row 4 (HAL-14268): a misspelled name in a condition used to run, and send spam to a draft.
+  it("stops before a run whose condition reads a context name no step writes", async () => {
+    const file = join(acme, "hubs/support/workflows/support-reply.workflow.yaml");
+    await writeFile(
+      file,
+      (await readFile(file, "utf8")).replace("{{context.kind}}", "{{context.knd}}"),
+    );
+    const profile = freshProfile();
+    const io = captureIo(acme);
+
+    const code = await runCli(["run", "support-reply", ...samsEmail], io, [runCommand(profile)]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr[0]).toBe(
+      "✕ Couldn't run support-reply: Acme has 1 problem in its files. Nothing ran.",
+    );
+    const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
+    expect(listed.total).toBe(0);
+  });
 });

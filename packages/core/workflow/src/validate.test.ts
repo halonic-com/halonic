@@ -123,12 +123,15 @@ verifies("workflow.validate", () => {
       "foreach-without-items",
       "foreach-without-work",
     ]);
-    const both = oneState({
-      type: "foreach",
-      items: "{{context.list}}",
-      agent: "a",
-      workflow: "x",
-      on: [{ to: "end" }],
+    const both = workflowOf({
+      ...oneState({
+        type: "foreach",
+        items: "{{context.list}}",
+        agent: "a",
+        workflow: "x",
+        on: [{ to: "end" }],
+      }),
+      context: { list: [] },
     });
     expect(codes(validateWorkflow(both))).toEqual(["foreach-without-work"]);
   });
