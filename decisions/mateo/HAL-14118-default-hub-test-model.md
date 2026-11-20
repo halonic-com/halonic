@@ -2,7 +2,6 @@
 
 - Approval: the board's answer on HAL-12723, 20 Nov: "Can we not make a \"Default\" hub? And use test model indeed"; the work is on HAL-14118, following Liam's fit check on HAL-12380
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:z/V6r+iHCF6dSnwbCsA+7wdmocZ4nDQrGInTzEg39jOaEciQFp2Gj3MfUW+tEbIk7a8AeDjPBttvNQH7U2GnDA==
 - Task: HAL-14118
 
 ## What changes
@@ -26,6 +25,10 @@ They are listed as skipped, so a person's own setup is never pointed at the test
 in the style of `--example acme`. Its `--json` `created` list names the new files, and
 `counts.hubs` is 1.
 
+Studio's New workspace dialog no longer promises "a model on this computer (Ollama)" for a new
+folder. It says "Starts local only, with a Default hub and the built-in test model, which needs no
+key and sends nothing. You can add your own models later." (the team's wording, HAL-14152).
+
 ## Why
 
 The board's answer on HAL-12723. Before this change, a workspace made in Studio couldn't get a
@@ -39,6 +42,7 @@ The requirements that said what a new workspace holds are edited to say what it 
 `workspace.init`, `workspace.create`, `cli.commands.init.create-workspace` and
 `studio.new-workspace`. Each gains examples for the new files. No example is removed. The one
 for "both template files beside a `notes.txt`" now says "every template file".
+`workspace.new-workspace-dialog` gains the new folder's line and an example for it.
 
 The tests' expected file lists gain the new files. The init golden gains the dimmed line, the
 new `created` entries and `hubs: 1`. No test is removed and no expectation is loosened. New tests
@@ -52,4 +56,5 @@ with its own providers.
 - workspace.create
 - cli.commands.init.create-workspace
 - studio.new-workspace
+- workspace.new-workspace-dialog
 - apps/cli/src/commands/init/golden/created.txt
