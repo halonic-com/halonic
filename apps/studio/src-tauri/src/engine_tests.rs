@@ -418,11 +418,14 @@ fn engine_commands_cap_the_streams_a_page_has_open() {
     );
 }
 
+/// One way a stream ends: by the page, by a reload, or by the engine going.
+type EndStream = dyn Fn(&App<MockRuntime>, u64);
+
 #[test]
 fn engine_commands_hang_up_when_the_page_ends_reloads_or_the_engine_goes() {
     let fake = FakeEngine::serve(0);
     let app = shell(&fake);
-    let ends: [&dyn Fn(&App<MockRuntime>, u64); 3] = [
+    let ends: [&EndStream; 3] = [
         &|app, stream| engine_stream_end(page(app), stream),
         &|app, _| end_page_streams(app, "main"),
         &|app, _| app.state::<EngineState>().disconnect("main"),

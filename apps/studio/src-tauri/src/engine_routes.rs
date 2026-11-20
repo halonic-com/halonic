@@ -10,7 +10,9 @@ use halonic_agent_host::{Answer, Method};
 
 /// The rule a routine's and a hub's id follow, as the workspace format says
 /// (`id` in `packages/core/format/spec/routine.schema.json` and
-/// `hub.schema.json`). A test holds the two together.
+/// `hub.schema.json`). A test holds it to the schemas and to [`is_item_id`],
+/// which checks the same rule by hand; only the tests read the pattern itself.
+#[cfg(test)]
 pub const ITEM_ID_PATTERN: &str = "^[a-z0-9][a-z0-9-_]*$";
 
 /// The hub a routine at the workspace root runs in, as Run now names it
@@ -281,7 +283,7 @@ fn whole_number(param: Param, value: Option<&Value>) -> Result<u64, BadParam> {
         .ok_or_else(|| BadParam::of(param, "isn't a whole number from 0 up"))
 }
 
-/// Whether `text` follows [`ITEM_ID_PATTERN`].
+/// Whether `text` follows `ITEM_ID_PATTERN`, the workspace format's id rule.
 pub fn is_item_id(text: &str) -> bool {
     let mut bytes = text.bytes();
     let Some(first) = bytes.next() else {
