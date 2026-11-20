@@ -58,7 +58,8 @@ export interface DefinitionSource {
   read(path: string): Promise<string | null>;
   /**
    * Identifier of the current version of the definitions (git commit, content
-   * hash). Runs record it so they can be explained and replayed later.
+   * hash). The loaded workspace carries it; a run records its own
+   * definitions hash and commit instead (see the port's version 3 ADR).
    *
    * With `options.leaveOut`, it covers only what `list()` gives with the
    * same options, so a change to a left-out file alone doesn't change it. A

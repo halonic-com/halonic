@@ -40,12 +40,24 @@ export interface VersionOptions {
 export function checkLeaveOut(leaveOut: LeaveOut | undefined): void {
   for (const folder of leaveOut?.folders ?? []) {
     checkWorkspacePath(folder);
+    checkSegmentsNotEmpty(folder);
   }
   for (const name of leaveOut?.names ?? []) {
     checkWorkspacePath(name);
     if (name.includes("/")) {
       throw new RangeError(`Unsafe folder name ${JSON.stringify(name)}: no "/".`);
     }
+    checkSegmentsNotEmpty(name);
+  }
+}
+
+// A segment such as `...` or ` ` is safe as a path but compares as empty, so
+// it would match whatever else compares as empty rather than one real folder.
+function checkSegmentsNotEmpty(path: string): void {
+  if (path.split("/").some((segment) => segmentAsOpened(segment) === "")) {
+    throw new RangeError(
+      `Unsafe folder ${JSON.stringify(path)}: a segment is empty once its case and trailing dots are folded.`,
+    );
   }
 }
 

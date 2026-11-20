@@ -46,6 +46,8 @@ verifies("app.stores-pass-left-out", () => {
     expect(version).toHaveBeenCalledExactlyOnceWith({ leaveOut });
   });
 
+  // Listing with leaveOut first, then without, checks that Try it's cache keys a
+  // listing by its leaveOut as well as its folder.
   it("leaves the same files out of Try it's source as the store does", async () => {
     const { store, review } = workspace();
     const version = vi.spyOn(store, "version");

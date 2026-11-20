@@ -40,6 +40,9 @@ verifies("ports.definition-store-left-out", () => {
       { folders: [""] },
       { names: ["a/b"] },
       { names: [".."] },
+      { names: ["..."] },
+      { names: [" "] },
+      { folders: ["repo/..."] },
     ]) {
       expect(() => checkLeaveOut(leaveOut), JSON.stringify(leaveOut)).toThrow(RangeError);
     }
