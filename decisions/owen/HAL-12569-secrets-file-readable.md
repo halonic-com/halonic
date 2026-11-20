@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12569 (Liam, CTO; decided in the task)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3s8mERe2rvT/+NUzFvUeaIibPoZ5tHaxX6GG130Wx+P/63rbTWHCjjXdaqU6lgCv/RTfAfhPsmsel58gAMO3Cg==
 - Task: HAL-12569
 
 With a secrets file that other users can read, `halonic secret list` said the cause and the fix
