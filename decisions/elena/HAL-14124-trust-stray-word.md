@@ -3,6 +3,7 @@
 - Task: HAL-14124
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14124 (found in Nina's docs check C314, HAL-14111; a CLI usage error and small wording of an approved screen, team decision under the HAL-2282 rule; Liam's code review signs this note with the pull request)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4ZjFH8cSztWCsXR1zp+3xb9qqXv3/hFbmo6sRq7k/rWhO5BlhzLgnK6o/4gPpA6oytmvN32gVDPOTkk4bRr+CA==
 
 ## What changes
 
