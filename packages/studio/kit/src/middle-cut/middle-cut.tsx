@@ -1,10 +1,10 @@
 import { Fragment, type ReactNode } from "react";
 
-/** How much of a folder's end shows at most when its line is cut in the middle. */
+/** How much of a path or folder's end shows at most when its line is cut in the middle. */
 const TAIL_LENGTH = 24;
 
 /**
- * Where a folder's line is cut so at most its last {@link TAIL_LENGTH} characters stay: at the
+ * Where a path or folder's line is cut so at most its last {@link TAIL_LENGTH} characters stay: at the
  * first "/" or "\" at or after that point, so the end starts on a whole folder name. When the last
  * name alone is longer, the end starts at the separator before it, and without any separator the
  * line is cut at that point, mid-name.
@@ -38,11 +38,11 @@ function breakableAtSeparators(end: string): ReactNode {
 }
 
 /**
- * A folder on one caption line that, when too long, is cut in the middle so its end, which tells
- * folders apart, stays, such as `…\Documents\Acme sample`. The cut lands on a "/" or "\" when it
- * can. When the end alone is wider than its row, as at 400% zoom, it wraps onto more lines,
- * between folder names first, and never draws past the row (WCAG 1.4.10 Reflow). Its text is the
- * whole folder, so a row can name it as its description with `aria-describedby` on its `id`.
+ * A path or folder on one caption line that, when too long, is cut in the middle so its end,
+ * which tells folders apart, stays, such as `…\Documents\Acme sample`. The cut lands on a "/" or
+ * "\" when it can. When the end alone is wider than its row, as at 400% zoom, it wraps onto more
+ * lines, between folder names first, and never draws past the row (WCAG 1.4.10 Reflow). Its text
+ * is the whole path, so a row can name it as its description with `aria-describedby` on its `id`.
  *
  * @example
  * <MiddleCut text="~/Documents/Acme Support" />
@@ -55,7 +55,7 @@ export function MiddleCut({
   readonly text: string;
   /** The line's type and colour, for a row whose folder line is set differently, such as More's. */
   readonly textClassName?: string;
-  /** For the row the folder describes. */
+  /** For the row the path or folder describes. */
   readonly id?: string | undefined;
 }) {
   const at = middleCutAt(text);
