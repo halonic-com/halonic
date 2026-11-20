@@ -130,6 +130,7 @@ export {
   readSavedHostSettings,
   type SavedHostSettingsChange,
 } from "./host-settings-store.ts";
+export { HostTooOld, isHostTooOld } from "./host-too-old.ts";
 export { type HttpClient, httpClientVersion } from "./http-client.ts";
 export { type IdGenerator, idGeneratorVersion } from "./id-generator.ts";
 export {

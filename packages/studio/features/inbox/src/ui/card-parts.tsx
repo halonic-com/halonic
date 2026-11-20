@@ -215,10 +215,17 @@ interface FailedLineProps {
   readonly manual?: ManualAnswer | null;
   /** Shows "This is no longer waiting for you." with **Open run**, in place of **Try again**, when set. */
   readonly elsewhere?: DecidedElsewhere | null;
+  /** Shows this sentence, the host's {@link EngineWords.tooOldToAnswer}, with no **Try again**, when set. */
+  readonly tooOld?: string | null;
 }
 
 /** The bar's always-mounted alert slot, above its buttons (a11y 8.3). */
-export function FailedLine({ onRetry, manual = null, elsewhere = null }: FailedLineProps) {
+export function FailedLine({
+  onRetry,
+  manual = null,
+  elsewhere = null,
+  tooOld = null,
+}: FailedLineProps) {
   return (
     <div role="alert" className="text-small text-fg">
       {manual === null ? null : (
@@ -237,7 +244,8 @@ export function FailedLine({ onRetry, manual = null, elsewhere = null }: FailedL
           {decidedElsewhereText}
         </Callout>
       )}
-      {manual !== null || elsewhere !== null || onRetry === null ? null : (
+      {tooOld}
+      {manual !== null || elsewhere !== null || tooOld !== null || onRetry === null ? null : (
         <span className="flex flex-wrap items-center gap-2">
           {failedText}
           <Button variant="ghost" size="sm" onClick={onRetry}>

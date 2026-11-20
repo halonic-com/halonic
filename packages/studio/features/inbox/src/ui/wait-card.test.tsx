@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { HostTooOld } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
@@ -286,6 +287,22 @@ verifies("inbox.wait-card", () => {
       expect(slot.textContent).not.toContain("Couldn't record your decision.");
       await act(async () => button(slot, "Open run").click());
       expect(onOpenRun).toHaveBeenCalledWith("r43");
+    });
+
+    it("asks to update the host, with no Try again, when the host is too old for the answer", async () => {
+      const { root, later } = openCard({
+        words: engineWords.served,
+        decisions: {
+          answer: async () => {
+            throw new HostTooOld("This host is too old to check which wait step an answer is for.");
+          },
+        },
+      });
+      later(2);
+      await press(button(root, "Reject"));
+      expect(root.querySelector("[role='alert']")?.textContent).toBe(
+        "Halonic on the server is too old for this answer. Update Halonic on the server, then answer again.",
+      );
     });
 
     it("shows the command to copy, with no Try again, when only the command line can answer", async () => {
