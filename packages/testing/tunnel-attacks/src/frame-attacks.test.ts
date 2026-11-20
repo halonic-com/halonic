@@ -1,4 +1,4 @@
-import { gatewayMaxMessageBytes } from "@halonicjs/ports";
+import { gatewayMaxFrameBytes, gatewayMaxMessageBytes } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { openTunnelRig, type TunnelRig } from "./tunnel-rig.ts";
@@ -6,10 +6,15 @@ import { op, type WireClient, wireFrame } from "./wire-client.ts";
 
 const hello = { type: "hello", id: "h1", version: 2 };
 
-/** A phone that has done the handshake through the tunnel but not said hello. */
+/**
+ * A paired phone that has opened the WebSocket through the tunnel and its
+ * end-to-end session, but not said hello: an attacker in the strongest place
+ * there is, past every check but the protocol's.
+ */
 async function opened(rig: TunnelRig): Promise<WireClient> {
   const client = rig.client();
   await client.open(rig.forwarderPort, { host: rig.tunnelName });
+  await client.reconnect(rig.phones.pairPhone());
   return client;
 }
 
@@ -34,19 +39,19 @@ async function answerTo(rig: TunnelRig, bytes: Buffer | Buffer[]): Promise<unkno
 
 verifies("tunnel-attacks.frame-attacks", () => {
   describe("oversize", () => {
-    it("refuses a frame that declares more than 64 KiB without waiting for its bytes", async () => {
+    it("closes, saying nothing, on a frame that declares more than one Noise message without waiting for its bytes", async () => {
       const rig = await openTunnelRig();
       try {
         const headerOnly = (declared: bigint): Buffer => {
           const header = Buffer.alloc(14);
-          header[0] = 0x81;
+          header[0] = 0x82;
           header[1] = 0x80 | 127;
           header.writeBigUInt64BE(declared, 2);
           return header;
         };
-        for (const declared of [BigInt(gatewayMaxMessageBytes) + 1n, 2n ** 32n, 2n ** 53n]) {
+        for (const declared of [BigInt(gatewayMaxFrameBytes) + 1n, 2n ** 32n, 2n ** 53n]) {
           const frames = await answerTo(rig, headerOnly(declared));
-          expect(frames).toEqual([{ type: "error", code: "too-large" }]);
+          expect(frames).toEqual([]);
         }
         // A length with the top bit set is not a length: the frame format forbids it.
         const frames = await answerTo(rig, headerOnly(2n ** 63n));
@@ -57,14 +62,14 @@ verifies("tunnel-attacks.frame-attacks", () => {
       }
     });
 
-    it("refuses a real message over 64 KiB sent in full, also in the short and the long length form", async () => {
+    it("closes, saying nothing, on a real frame over one Noise message sent in full", async () => {
       const rig = await openTunnelRig();
       try {
-        const big = Buffer.from(
-          JSON.stringify({ type: "prompt", id: "p1", sessionId: "s1", text: "x".repeat(70_000) }),
+        const frames = await answerTo(
+          rig,
+          wireFrame(op.binary, Buffer.alloc(gatewayMaxFrameBytes + 1)),
         );
-        const frames = await answerTo(rig, wireFrame(op.text, big));
-        expect(frames).toEqual([{ type: "error", code: "too-large" }]);
+        expect(frames).toEqual([]);
         await expectUntouched(rig);
       } finally {
         await rig.stop();
@@ -76,7 +81,7 @@ verifies("tunnel-attacks.frame-attacks", () => {
       try {
         const piece = Buffer.alloc(40_000, 0x20);
         const frames = await answerTo(rig, [
-          wireFrame(op.text, piece, { fin: false }),
+          wireFrame(op.binary, piece, { fin: false }),
           wireFrame(op.continuation, piece, { fin: false }),
           wireFrame(op.continuation, piece),
         ]);
@@ -92,7 +97,7 @@ verifies("tunnel-attacks.frame-attacks", () => {
       try {
         const client = await opened(rig);
         const piece = wireFrame(op.continuation, Buffer.alloc(1_024, 0x20), { fin: false });
-        client.write(wireFrame(op.text, Buffer.alloc(1_024, 0x20), { fin: false }));
+        client.write(wireFrame(op.binary, Buffer.alloc(1_024, 0x20), { fin: false }));
         for (let sent = 0; sent < 100; sent++) client.write(piece);
         expect(await client.isClosed()).toBe(true);
         await expectUntouched(rig);
@@ -183,14 +188,18 @@ verifies("tunnel-attacks.frame-attacks", () => {
         ];
         for (const [name, bytes] of texts) {
           const client = await opened(rig);
-          client.write(wireFrame(op.text, bytes));
+          client.sendText(bytes);
           const frames = await client.frames(1);
           expect(frames, name).toEqual([{ type: "error", code: "malformed" }]);
           expect(await client.isClosed(), name).toBe(true);
         }
-        const binary = await opened(rig);
-        binary.write(wireFrame(op.binary, Buffer.from(JSON.stringify(hello))));
-        expect(await binary.frames(1)).toEqual([{ type: "error", code: "malformed" }]);
+        // Outside the session there is nothing to answer: a message in the clear just closes.
+        for (const opcode of [op.binary, op.text]) {
+          const clear = await opened(rig);
+          clear.write(wireFrame(opcode, Buffer.from(JSON.stringify(hello))));
+          expect(await clear.isClosed()).toBe(true);
+          expect(await clear.frames(1)).toEqual([]);
+        }
         await expectUntouched(rig);
       } finally {
         await rig.stop();
@@ -224,11 +233,11 @@ verifies("tunnel-attacks.frame-attacks", () => {
       const rig = await openTunnelRig();
       try {
         const phone = await rig.greeted();
-        const one = wireFrame(
-          op.text,
-          Buffer.from(JSON.stringify({ type: "list-sessions", id: "l1" })),
+        const one = Buffer.from(JSON.stringify({ type: "list-sessions", id: "l1" }));
+        const sealed = Array.from({ length: 2_000 }, () =>
+          wireFrame(op.binary, phone.phone?.seal(one) ?? Buffer.alloc(0)),
         );
-        phone.write(Buffer.concat(Array.from({ length: 2_000 }, () => one)));
+        phone.write(Buffer.concat(sealed));
         expect(await phone.isClosed()).toBe(true);
         await expectUntouched(rig);
       } finally {
@@ -256,6 +265,19 @@ verifies("tunnel-attacks.frame-attacks", () => {
           await new Promise((resolve) => setTimeout(resolve, 20));
         }
         throw new Error("A slot never came free.");
+      } finally {
+        await rig.stop();
+      }
+    });
+
+    it("drops a client that never finishes the end-to-end handshake, though it answers pings", async () => {
+      const rig = await openTunnelRig({ handshakeTimeoutMs: 200, heartbeatMs: 50 });
+      try {
+        const idle = rig.client();
+        await idle.open(rig.forwarderPort, { host: rig.tunnelName });
+        idle.socket.on("data", () => idle.write(wireFrame(op.pong, Buffer.alloc(0))));
+        expect(await idle.isClosed()).toBe(true);
+        expect(rig.source.calls).toEqual([]);
       } finally {
         await rig.stop();
       }

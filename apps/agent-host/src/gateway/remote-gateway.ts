@@ -6,6 +6,7 @@ import {
 import type { RunTable } from "../harness/run-table.ts";
 import type { GatewaySettings } from "./gateway-settings.ts";
 import { hostGatewaySource } from "./host-gateway-source.ts";
+import { NobodyPaired } from "./nobody-paired.ts";
 import type { RunLedger } from "./run-ledger.ts";
 
 /**
@@ -58,8 +59,11 @@ export class RemoteGateway {
   async start(log: (text: string) => void): Promise<number | undefined> {
     if (!this.#settings.enabled || this.#ledger === undefined) return undefined;
     try {
+      const nobodyPaired = new NobodyPaired();
       this.#listener = await startGatewayListener({
         source: hostGatewaySource(this.#ledger, this.#runs),
+        phones: nobodyPaired,
+        pairing: nobodyPaired,
         policy: gatewayPolicy(this.#risky),
         ...(this.#settings.port === undefined ? {} : { port: this.#settings.port }),
       });

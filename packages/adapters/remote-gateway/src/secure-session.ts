@@ -23,6 +23,8 @@ export interface SecureSessionDeps extends HandshakeDeps {
   openConnection(transport: GatewayTransport): GatewayConnection;
   /** How long an open session may go without the phone's `hello`. */
   readonly helloTimeoutMs: number;
+  /** How long the handshake may take; the ADR's 10 seconds unless a test shortens it. */
+  readonly handshakeTimeoutMs?: number;
   /**
    * Gets an error the session met outside any caller's stack: in its own
    * timers or while the person decided. The session has closed by then.
@@ -71,7 +73,7 @@ export class SecureSession {
 
   constructor(deps: SecureSessionDeps) {
     this.#deps = deps;
-    this.#after(handshakeTimeoutMs, () => {
+    this.#after(deps.handshakeTimeoutMs ?? handshakeTimeoutMs, () => {
       if (this.#state.name === "handshake" || this.#state.name === "pairing") this.close();
     });
   }

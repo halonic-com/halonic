@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { connect, type Socket } from "node:net";
+import type { RigPhone } from "./rig-phone.ts";
 
 /** The frame types a client sends. */
 export const op = { continuation: 0, text: 1, binary: 2, close: 8, ping: 9, pong: 10 } as const;
@@ -73,10 +74,19 @@ export function handshakeText(
   return `${lines.join("\r\n")}\r\n\r\n`;
 }
 
-/** A raw client: it sends any bytes and keeps what comes back. */
+/**
+ * A raw client: it sends any bytes and keeps what comes back. Once it has
+ * reconnected as a paired phone, its messages travel inside the end-to-end
+ * session, as a phone's do; until then, what it sends is cleartext.
+ */
 export class WireClient {
   readonly socket: Socket;
   received = Buffer.alloc(0);
+  /** The paired phone it speaks as, after {@link WireClient.reconnect}. */
+  phone: RigPhone | undefined;
+  /** The gateway messages read so far: each frame is decrypted once, in order. */
+  readonly #messages: unknown[] = [];
+  #binaryRead = 0;
   /** Resolves when the connection has closed, from either side. */
   readonly closed: Promise<void>;
 
@@ -122,23 +132,63 @@ export class WireClient {
     }
   }
 
-  /** Sends one text frame holding `json` as it is, or the JSON of a value. */
+  /** Reconnects as `phone` to the host key it pinned, and waits for the host's message 2. */
+  async reconnect(phone: RigPhone): Promise<void> {
+    this.write(wireFrame(op.binary, phone.resume1()));
+    const answered = () => this.hostFrames(op.binary).length > 0;
+    for (let turn = 0; turn < 300 && !answered() && !this.socket.destroyed; turn++) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    if (phone.read(this.hostFrames(op.binary)[0] ?? Buffer.alloc(0)) !== "resume2") {
+      throw new Error("The host didn't answer the reconnect.");
+    }
+    this.phone = phone;
+    this.#binaryRead = 1;
+  }
+
+  /**
+   * Sends `json` as it is, or the JSON of a value: inside the session once the
+   * client has reconnected, else as a cleartext text frame.
+   */
   sendText(json: string | Uint8Array): void {
-    this.write(wireFrame(op.text, typeof json === "string" ? Buffer.from(json) : json));
+    const bytes = typeof json === "string" ? Buffer.from(json) : json;
+    this.write(
+      this.phone === undefined
+        ? wireFrame(op.text, bytes)
+        : wireFrame(op.binary, this.phone.seal(bytes)),
+    );
   }
 
   sendJson(message: unknown): void {
     this.sendText(JSON.stringify(message));
   }
 
-  /** The text frames the host sent after the handshake, parsed. */
+  /**
+   * The gateway messages the host sent, parsed: inside the session once the
+   * client has reconnected. A cleartext text frame is listed too, as the
+   * string `cleartext:` and its text, so a test that expects none sees one.
+   */
   textFrames(): unknown[] {
+    const leaked = this.hostFrames(op.text).map(
+      (payload) => `cleartext:${payload.toString("utf8")}`,
+    );
+    const sealed = this.hostFrames(op.binary);
+    for (; this.phone !== undefined && this.#binaryRead < sealed.length; this.#binaryRead++) {
+      const read = this.phone.read(sealed[this.#binaryRead] ?? Buffer.alloc(0));
+      if (read instanceof Uint8Array)
+        this.#messages.push(JSON.parse(Buffer.from(read).toString("utf8")));
+    }
+    return [...leaked, ...this.#messages];
+  }
+
+  /** The payloads of the host's frames of one type, after the HTTP handshake. */
+  hostFrames(opcode: number): Buffer[] {
     const start = this.received.indexOf("\r\n\r\n");
     if (start === -1) return [];
-    const frames: unknown[] = [];
+    const frames: Buffer[] = [];
     let at = start + 4;
     for (let frame = readFrame(this.received, at); frame !== undefined; ) {
-      if (frame.opcode === op.text) frames.push(JSON.parse(frame.payload.toString("utf8")));
+      if (frame.opcode === opcode) frames.push(frame.payload);
       at += frame.size;
       frame = readFrame(this.received, at);
     }

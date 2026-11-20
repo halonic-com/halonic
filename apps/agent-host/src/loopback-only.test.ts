@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { startGatewayListener } from "@halonicjs/adapter-remote-gateway";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { NobodyPaired } from "./gateway/nobody-paired.ts";
 import { startHostServer } from "./server/host-server.ts";
 
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
@@ -176,6 +177,8 @@ verifies("agent-host.loopback-only", () => {
       const gateway = await startGatewayListener({
         source: { list: () => [] } as never,
         policy: { allowRiskyRemotely: () => false },
+        phones: new NobodyPaired(),
+        pairing: new NobodyPaired(),
       });
       try {
         const hostPort = Number(new URL(host.url).port);
