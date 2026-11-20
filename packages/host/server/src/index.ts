@@ -34,10 +34,13 @@ export type {
 } from "./api.ts";
 export { createServer } from "./create-server.ts";
 export type {
+  EngineHelloBody,
   EngineRoutines,
   RoutineListBody,
   RoutineListEntry,
   RoutineRunBody,
+  RoutineRunRefusal,
+  RunUpdateFrame,
 } from "./engine-api.ts";
 export { createGoogleRoutes, type GoogleRoutes } from "./google-routes.ts";
 export { MemoryRequestCountStore } from "./memory-request-count-store.ts";
