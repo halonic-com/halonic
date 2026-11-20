@@ -14,9 +14,9 @@ The Runs list shall lay its rows out in columns, in `halonic runs`' order: the s
 - Given a finished test run that started at 10:40 and took 2 minutes,
   when its row is shown,
   then it reads Done, its short id, Support reply with the Test tag over "Finished", and "10:40" over "took 2 min".
-- Given a run that waited for a person and was answered 36 hours, 2 minutes and 32 seconds after it started,
+- Given a run that waited for a person and was answered 2158 minutes and 32 seconds after it started,
   when its row is shown,
-  then its time reads "took 36 h 2 min", the same as `halonic runs`.
+  then its time reads "took 1 day 11 h", the same as `halonic runs` and the Inbox's "1 day".
 - Given a run that failed in the step Draft,
   when its row is shown,
   then its line "Support reply failed in the step Draft." is in the danger colour, with the Failed chip.

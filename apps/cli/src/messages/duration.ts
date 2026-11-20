@@ -2,8 +2,6 @@ const secondInMs = 1000;
 const minuteInSeconds = 60;
 const hourInMinutes = 60;
 const dayInHours = 24;
-/** From 48 hours on, a time reads in days and hours. */
-const daysFromHours = 48;
 
 /**
  * How long something took, as the output writes it (cli-output 1.5): whole
@@ -13,16 +11,17 @@ const daysFromHours = 48;
  * Two details 1.5 leaves open, decided on HAL-2816: the time is rounded down
  * to whole seconds, as the progress line does, and anything under a second
  * reads "1 s", so nothing ever "took 0 s". From an hour on, it is hours and
- * minutes, and from 48 hours days and hours, each rounded down, so a run that
- * waited a day and a half for a person doesn't read "2158 min 32 s"
- * (HAL-13919).
+ * minutes, and from 24 hours days and hours, as the Inbox counts days, each
+ * rounded down, so a run that waited a day and a half for a person reads
+ * "1 day 11 h", not "2158 min 32 s" (HAL-13919).
  *
  * @example
  * duration(18_900); // "18 s"
  * duration(347_000); // "5 min 47 s"
  * duration(360_000); // "6 min"
  * duration(400); // "1 s"
- * duration(129_752_000); // "36 h 2 min"
+ * duration(8_100_000); // "2 h 15 min"
+ * duration(129_512_000); // "1 day 11 h"
  * duration(187_200_000); // "2 days 4 h"
  */
 export function duration(ms: number): string {
@@ -35,10 +34,11 @@ export function duration(ms: number): string {
     return withRest(`${minutes} min`, seconds % minuteInSeconds, "s");
   }
   const hours = Math.floor(minutes / hourInMinutes);
-  if (hours < daysFromHours) {
+  if (hours < dayInHours) {
     return withRest(`${hours} h`, minutes % hourInMinutes, "min");
   }
-  return withRest(`${Math.floor(hours / dayInHours)} days`, hours % dayInHours, "h");
+  const days = Math.floor(hours / dayInHours);
+  return withRest(days === 1 ? "1 day" : `${days} days`, hours % dayInHours, "h");
 }
 
 /** The larger unit, then the rest in the smaller one unless it is 0. */
