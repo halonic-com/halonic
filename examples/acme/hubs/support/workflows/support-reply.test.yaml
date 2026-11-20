@@ -6,7 +6,7 @@ cases:
     mocks:
       writer:
         - Sam wants a refund for order 1042, which arrived damaged.
-        - Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.
+        - "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.\n\nAcme support"
       sorter: [refund]
     events: [approve]
     expect:
@@ -21,7 +21,7 @@ cases:
     mocks:
       writer:
         - Alex wants the subscription cancelled and two years refunded.
-        - We have cancelled your subscription and will refund the last two years.
+        - "We have cancelled your subscription and will refund the last two years.\n\nAcme support"
       sorter: [refund]
     events: [reject]
     expect:
@@ -35,7 +35,7 @@ cases:
     mocks:
       writer:
         - Sam wants a refund for order 1042, which arrived damaged.
-        - Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.
+        - "Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.\n\nAcme support"
       sorter: [refund]
     expect:
       status: waiting
@@ -47,7 +47,7 @@ cases:
     mocks:
       writer:
         - Robin asks whether we ship to Belgium.
-        - Yes, Robin, we ship to Belgium. Delivery takes three to five days.
+        - "Yes, Robin, we ship to Belgium. Delivery takes three to five days.\n\nAcme support"
       sorter: [question]
     events: [approve]
     expect:

@@ -1,5 +1,5 @@
 import { sandboxStartWords } from "@halonicjs/app";
-import { engineWordsOf, errorReasonFor } from "@halonicjs/studio-shell";
+import { engineReasonFor, engineWordsOf } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentSandboxHost } from "../api.ts";
 import {
@@ -173,7 +173,7 @@ function checkedLine(facts: SandboxCheckFacts): string {
 
 /** Why a host command failed, without its closing full stop; the raw error never shows. */
 function reasonOf(error: unknown): string {
-  return errorReasonFor(error, engineWordsOf({}).notAnswering).replace(/\.+$/, "");
+  return engineReasonFor(error, engineWordsOf({}).notAnswering).replace(/\.+$/, "");
 }
 
 /** What a setup, repair or removal left: the failure if there was one, else the check that followed. */

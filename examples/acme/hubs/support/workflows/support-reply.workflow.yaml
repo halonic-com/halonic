@@ -24,7 +24,10 @@ states:
   draft:
     description: Draft a reply
     agent: writer
-    input: Draft a reply to the customer's email.
+    input: |-
+      Draft a reply to the customer's email, ready to send as it is.
+      Write plain text: no subject line and no Markdown.
+      End with "Acme support" on its own line, never a placeholder like [Your Name].
     gets: [input.mail, context.request]
     output: reply
     on:

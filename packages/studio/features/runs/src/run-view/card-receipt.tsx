@@ -22,7 +22,10 @@ import { DamagedLogBanner } from "./run-page.tsx";
 
 /** The props of `RunCardReceipt`. */
 export interface RunCardReceiptProps {
-  readonly source: Pick<RunsSource, "workflow" | "currency" | "providerKind" | "agentName">;
+  readonly source: Pick<
+    RunsSource,
+    "workflow" | "currency" | "providerKind" | "providerName" | "agentName"
+  >;
   readonly run: SourcedRun;
   /** What `useRunLog` read of the run's log; the card reads it too, to know when to show its chip. */
   readonly read: RunLogRead;
@@ -114,6 +117,9 @@ export function RunCardReceipt({
       return source.workflow(other.hubId, other.workflowId)?.name ?? other.workflowId;
     },
     providerKind: (id: string) => source.providerKind(id),
+    ...(source.providerName === undefined
+      ? {}
+      : { providerName: (id: string) => source.providerName?.(id) }),
     ...(source.agentName === undefined
       ? {}
       : { agentName: (id: string) => source.agentName?.(id) }),

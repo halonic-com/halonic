@@ -1,5 +1,6 @@
 import type { Announcer } from "./announcer/announcer.ts";
 import type { BadgeRegistry } from "./badges/badge-registry.ts";
+import type { CloseStack } from "./close-stack/close-stack.ts";
 import type { EngineWords, StudioHost } from "./engine/engine-words.ts";
 import type { SidebarPlace } from "./points/frame.ts";
 import type { ItemRef, OpenItemOptions } from "./points/item-kinds.ts";
@@ -101,6 +102,13 @@ export interface WorkspaceContext {
    * window gives it to the views it draws; a context built without a window has none.
    */
   readonly saving?: Pick<SaveState, "save" | "setFieldsNotSaved">;
+  /**
+   * The window's close stack, so a page that draws its own layer, such as an item page's
+   * `StackedCards`, closes it with Esc and the phone's Back in rank order with the shell's own
+   * layers (`shell.close-stack`). The window gives it to the views it draws; a context built
+   * without a window has none.
+   */
+  readonly closeStack?: CloseStack;
 }
 
 /** The item the active window tab shows, and a way to hear it change. */

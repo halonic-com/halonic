@@ -86,6 +86,7 @@ function setup({ proof = { state: "fenced" }, holdClose = false }: Setup = {}) {
     fenced: sandbox("fenced"),
     launcher: sandbox("launcher"),
     runs,
+    timers: new HandTimers(),
   });
   const started: Runner[] = [];
   const startIn = async (picked: Sandbox) => {

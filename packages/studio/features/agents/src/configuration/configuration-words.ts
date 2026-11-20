@@ -2,7 +2,13 @@
 export const configurationWords = {
   tab: "Configuration",
   pages: "Configuration pages",
-  pageNames: { behaviour: "Behaviour", model: "Model", harness: "Harness", tools: "Tools" },
+  pageNames: {
+    behaviour: "Behaviour",
+    model: "Model",
+    harness: "Harness",
+    tools: "Tools",
+    subagents: "Subagents",
+  },
   description: "Description",
   instructions: "Instructions",
   /** Shown only while Instructions is empty (microcopy 8.5). */
@@ -81,6 +87,19 @@ export const configurationWords = {
   },
   removeTool: (name: string) => `Remove ${name}`,
   toolsLoadFailedTitle: "Couldn't load the Library",
+  /** The Subagents page (flow-agents 5.4, microcopy 8.5). */
+  subagentsIntro: (agent: string) => `The agents ${agent} hands work to.`,
+  addSubagent: "Add subagent",
+  addSubagentTitle: (agent: string) => `Add a subagent to ${agent}`,
+  pickAnAgent: "Pick an agent",
+  orCreate: "Or create a new agent",
+  /** The create box's heading when there is no agent to pick (parity). */
+  newAgent: "New agent",
+  newAgentName: "New agent's name",
+  newAgentPlaceholder: "Name",
+  teamLoadFailedTitle: "Couldn't load the hub's agents",
+  /** The toast when a change of the subagents wasn't saved for another reason than a loop. */
+  subagentsNotSaved: (agent: string) => `Couldn't save ${agent}'s subagents`,
   loading: (name: string) => `Loading ${name}'s settings`,
   loadFailedTitle: (name: string) => `Couldn't load ${name}'s settings`,
   modelsLoadFailedTitle: "Couldn't load the models",

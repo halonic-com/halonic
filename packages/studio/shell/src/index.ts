@@ -94,8 +94,10 @@ export {
   type ErrorAction,
   type ErrorContext,
   type ErrorMessage,
+  engineReasonFor,
   errorMessageFor,
   errorReasonFor,
+  isUnexplained,
   itemGoneWords,
   type RulePlace,
 } from "./errors/error-message.ts";

@@ -4,12 +4,13 @@
 
 import type { RunEvent } from "@halonicjs/events";
 import type { BlobStore, BridgeApprovals, Clock, RunStore, SendOptions } from "@halonicjs/ports";
-import type { StopSignal } from "@halonicjs/std";
+import { KindedError, type StopSignal } from "@halonicjs/std";
 import { RunCallBudget } from "../budget/call-budget.ts";
 import type { BudgetCheck } from "../budget/keep-to-budget.ts";
 import type { HarnessRunsOptions } from "../harness/harness-host.ts";
 import { type HarnessApprovals, runHarnessCall } from "../harness/run-harness-call.ts";
 import { SerialRunLog, type WaitedOnCall } from "../harness/serial-run-log.ts";
+import { unlessStopped } from "../harness/unless-stopped.ts";
 import { programHarnessOf } from "../kernel/agent-call.ts";
 import type { AnswerHarnessEffect, DecideInput } from "../kernel/decide-types.ts";
 import { definitionsOf } from "../kernel/kept-definitions.ts";
@@ -33,6 +34,11 @@ export interface HarnessCallsOptions {
   readonly clock: Clock;
   /** The budget each call's model calls keep to, one by one; none when left out. */
   readonly budget?: BudgetCheck;
+  /**
+   * Whether a harness call may start now, asked right before each one starts
+   * (`LocalRunsOptions.mayStartHarness`). Without it, every call may start.
+   */
+  readonly mayStart?: () => Promise<boolean>;
   /**
    * Steps the run with an input, as the executor records any other.
    *
@@ -64,15 +70,19 @@ export class LocalHarnessCalls {
    * The agent writes workspace files in the proposal folder of the run's
    * top-level run, which the run's child runs share. With a `budget`, each
    * model call the harness makes keeps to it, and the call stops once it is
-   * reached.
+   * reached. With `mayStart`, it asks right before the call starts, and on a
+   * no, or a check that rejects, starts nothing; an engine stop doesn't wait
+   * for the check.
    *
    * @throws when there are no `harnesses`, the definitions are gone, the
    *   agent names no harness, the top-level run has no proposal folder where
    *   the host has them, the harness run fails, or the engine stops it
    * @throws BudgetReachedError when the run's budget refused one of its model calls
+   * @throws KindedError `denied` when `mayStart` said no or rejected, before anything starts
    */
   async run(run: RunState, call: PendingCall, waitedOn: WaitedOnCall): Promise<unknown> {
-    const { store, blobs, harnesses, folders, startDeadlines, clock, budget } = this.#options;
+    const { store, blobs, harnesses, folders, startDeadlines, clock, budget, mayStart } =
+      this.#options;
     if (harnesses === undefined) {
       throw new Error(
         "The local executor can't carry out a run-harness effect: it has no harnesses.",
@@ -107,6 +117,11 @@ export class LocalHarnessCalls {
         filesFolder,
         ...(budget === undefined ? {} : { budget: new RunCallBudget(budget, run, clock) }),
       };
+      // Last before the harness starts, so a trust removed meanwhile still stops it (HAL-12811).
+      // Raced against `stop`, so a check that hangs doesn't hold the engine's close either.
+      if (mayStart !== undefined) {
+        await unlessStopped(stop, refuseUnlessMayStart(mayStart, call.agent, harness));
+      }
       const unlist = this.#bridgeApprovals.add(runId, { approvals, log, stop });
       try {
         return await runHarnessCall(harnesses, harnessCall, log, approvals, limits, stop);
@@ -204,4 +219,32 @@ export class LocalHarnessCalls {
       },
     };
   }
+}
+
+/**
+ * Refuses, failing closed, a harness call the host's check doesn't let start. The refusal has the
+ * shape of the model resolver's in a workspace that isn't trusted: a `denied` error whose
+ * `failureCause` the run records on `run.failed`.
+ *
+ * @throws KindedError `denied` on a no, or when the check rejects
+ */
+async function refuseUnlessMayStart(
+  mayStart: () => Promise<boolean>,
+  agent: string,
+  harness: string,
+): Promise<void> {
+  let cause: unknown;
+  const may = await mayStart().catch((error: unknown) => {
+    cause = error;
+    return false;
+  });
+  if (may) return;
+  throw Object.assign(
+    new KindedError(
+      "denied",
+      `Agent "${agent}" runs in ${harness}, and this workspace isn't trusted on this computer, so Halonic didn't start it.`,
+      { fix: "Check the workspace, then trust it.", ...(cause === undefined ? {} : { cause }) },
+    ),
+    { failureCause: { code: "engine.untrusted-workspace", detail: { agent, harness } } },
+  );
 }

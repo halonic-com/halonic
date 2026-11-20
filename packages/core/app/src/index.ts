@@ -254,6 +254,7 @@ export {
   PluginLocalTools,
   type PluginLocalToolsOptions,
 } from "./plugin-local-tools.ts";
+export { pluginSecretNames } from "./plugin-secret-names.ts";
 export {
   type AddPluginOptions,
   type BrokenPlugin,

@@ -411,3 +411,25 @@ verifies("studio.workspace-routines", () => {
     expect(fileListeners.size + runListeners.size).toBe(0);
   });
 });
+
+verifies("studio.workspace-routines-make-live", () => {
+  it("opens Create version with only the routine's own file, and answers what it answered", async () => {
+    const opened: (readonly string[])[] = [];
+    const { host } = setup({
+      versionDialog: async (paths) => {
+        opened.push(paths);
+        return opened.length === 1 ? "made" : "cancelled";
+      },
+    });
+    expect(await host.makeLive?.(weekly)).toBe("made");
+    expect(await host.makeLive?.({ hubId: null, id: "daily" })).toBe("cancelled");
+    expect(opened).toEqual([
+      ["hubs/acme/workflows/routines/weekly-report.routine.yaml"],
+      ["workflows/routines/daily.routine.yaml"],
+    ]);
+  });
+
+  it("has no Make live where the app can't open Create version", () => {
+    expect(setup().host.makeLive).toBeUndefined();
+  });
+});

@@ -1,4 +1,8 @@
-import type { ConnectorConfig, ConnectorFactoryContext } from "@halonicjs/ports";
+import {
+  type ConnectorConfig,
+  type ConnectorFactoryContext,
+  isConnectorToolError,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { AgentHostConnectorFactory } from "./connector.ts";
@@ -131,6 +135,33 @@ verifies("agent-host-client.connector", () => {
       host.answer("POST /v1/connectors/open", ok({ connector: "c2" }));
       await client.listTools();
       expect(host.calls.at(-1)?.body).toEqual({ connector: "c2" });
+    });
+
+    it("throws a ConnectorToolError with the tool's text when the tool answered with an error", async () => {
+      const host = hostWithConnector().answer(
+        "POST /v1/connectors/call",
+        ok({ toolError: "ENOENT: no such file" }),
+      );
+      const error = await connector(host)
+        .callTool("echo", {})
+        .catch((caught: unknown) => caught);
+      expect(isConnectorToolError(error)).toBe(true);
+      expect(error).toMatchObject({
+        toolText: "ENOENT: no such file",
+        message: 'Connector "notes" says its tool "echo" failed.',
+      });
+    });
+
+    it("throws the host's refusal, not a tool error, when the call broke off", async () => {
+      const host = hostWithConnector().answer(
+        "POST /v1/connectors/call",
+        refused(502, "connector_failed", "The connector couldn't finish this request."),
+      );
+      const error = await connector(host)
+        .callTool("echo", {})
+        .catch((caught: unknown) => caught);
+      expect(isConnectorToolError(error)).toBe(false);
+      expect(error).toMatchObject({ status: 502, kind: "connector_failed" });
     });
 
     it("closes once in the host, and does nothing when it never opened", async () => {

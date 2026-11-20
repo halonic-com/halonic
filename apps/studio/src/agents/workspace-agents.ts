@@ -15,6 +15,7 @@ import type {
   AgentUser,
   HarnessReadiness,
   NewAgent,
+  NewAgentStep,
   TrashedAgent,
 } from "@halonicjs/studio-feature-agents/api";
 import { alreadyHandsWork, handOffPath } from "@halonicjs/studio-feature-agents/api";
@@ -151,7 +152,42 @@ export class WorkspaceAgents implements AgentsHost {
       knowledge: agent.knowledge,
       connectors: agent.connectors,
       subagents: agent.subagents,
+      agentSteps: Object.entries(agent.methods).map(([stepId, method]) => ({
+        id: stepId,
+        description: method.description,
+        instructions: method.instructions,
+        model: method.model,
+        maxSteps: method.maxSteps,
+      })),
     };
+  }
+
+  /**
+   * Adds an agent step to the agent's file in place, as one undoable change, with the id taken from
+   * its name; throws `invalid_input` for an empty name or instructions and `not_found` when the
+   * agent isn't there.
+   */
+  async addAgentStep(ref: AgentRef, { name, instructions }: NewAgentStep): Promise<string> {
+    if (name.trim() === "" || instructions.trim() === "") {
+      throw new KindedError("invalid_input", "An agent step needs a name and instructions.");
+    }
+    const { agent, path } = await this.#find(ref);
+    const text = await this.#parts.files.read(path);
+    if (text === null) throw agentGone();
+    const id = uniqueName(slugify(name), Object.keys(agent.methods));
+    const edited = editYaml(text, [
+      { kind: "set", path: ["methods", id], value: { instructions: instructions.trim() } },
+    ]);
+    if (!edited.ok) {
+      throw new KindedError(
+        "invalid_input",
+        "This agent's file couldn't be changed as it is written.",
+      );
+    }
+    this.#parts.files.change(`Added agent step ${id} to ${agent.name}`, {
+      [path]: edited.value.text,
+    });
+    return id;
   }
 
   /** The agents of the agent's hub with their subagents, sorted by name; throws `not_found` when the agent isn't there. */

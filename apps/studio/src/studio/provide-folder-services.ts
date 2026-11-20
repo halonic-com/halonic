@@ -49,7 +49,10 @@ import {
   RunsSourceService,
 } from "@halonicjs/studio-feature-runs/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
-import { ChangesSourceService } from "@halonicjs/studio-feature-source-control/api";
+import {
+  ChangesSourceService,
+  VersionDialogService,
+} from "@halonicjs/studio-feature-source-control/api";
 import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
 import {
   ShellHttpClient,
@@ -242,6 +245,9 @@ export function provideFolderServices(
       // Run now refuses with the routine's own words; the engine checks again before it starts.
       trusted: async () => trust.mayStartNow(),
       engine: { start: (start, trigger) => engine.startRoutine(start, trigger) },
+      // The source control feature gives the dialog once the shell instantiates its services,
+      // which is after this, so it is looked up when Make live is pressed.
+      versionDialog: (paths) => services.get(VersionDialogService).open(paths),
     }),
   );
   // Run again on the run page starts a run the way the workflow page's Run does.

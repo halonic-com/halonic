@@ -154,6 +154,23 @@ verifies("routines.when.trigger-fields", () => {
     expect((page.querySelector("input[type=number]") as HTMLInputElement).value).toBe("");
   });
 
+  it("lets the count and the unit shrink on a phone, for Every … and New mail", async () => {
+    const triggers: readonly RoutineTrigger[] = [
+      { kind: "every", interval: "1h" },
+      { kind: "mail", connector: "acme-gmail", query: "in:inbox", every: "2m" },
+    ];
+    for (const trigger of triggers) {
+      const { page } = await card(trigger);
+      const count = page.querySelector("input[type=number]") as HTMLInputElement;
+      const row = count.closest(".flex.gap-3") as HTMLElement;
+      // jsdom draws nothing, so the classes stand in for the 320px check in a browser.
+      const [countSide, unitSide] = row.children;
+      expect(countSide?.className).toBe("phone:min-w-0 phone:flex-1");
+      expect(unitSide?.className).toBe("phone:min-w-0");
+      unmount();
+    }
+  });
+
   it("shows why a change couldn't be saved", async () => {
     const host = {
       mailboxes: async () => [],

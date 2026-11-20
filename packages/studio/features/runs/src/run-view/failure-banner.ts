@@ -7,6 +7,7 @@
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { failureWords } from "../failure-words.ts";
 import { currentStepName } from "../list/run-row.ts";
+import { providerNameOf } from "../provider-name.ts";
 import { capitalised, runPageWords } from "../run-words.ts";
 import { apiOffOf } from "./api-off.ts";
 import type { BannerFix, RunBanner, RunPageContext } from "./run-page-model.ts";
@@ -122,18 +123,19 @@ function modelUnreachable(
   if (provider === undefined || model === undefined) {
     return undefined;
   }
+  const name = providerNameOf(provider, context.providerName);
   // A provider that is no longer in the workspace gets the cloud sentence: the internet is the
   // likelier cause, and the local one tells a person to start a program that may not exist.
   if (context.providerKind(provider) !== "local") {
-    return danger([failureWords.cloudModelUnreachable(provider, host, model, alias)]);
+    return danger([failureWords.cloudModelUnreachable(name, host, model, alias)]);
   }
   if (phone) {
     return danger([
-      failureWords.localModelUnreachableOnPhone(provider, host, model, alias),
+      failureWords.localModelUnreachableOnPhone(name, host, model, alias),
       failureWords.fixOnComputer(failureWords.modelsPlace),
     ]);
   }
-  return danger([failureWords.localModelUnreachable(provider, host, model, alias)], [openModels]);
+  return danger([failureWords.localModelUnreachable(name, host, model, alias)], [openModels]);
 }
 
 /**
@@ -151,7 +153,7 @@ function modelOutOfMemory(
   }
   return danger(
     [
-      failureWords.modelOutOfMemory(provider, model),
+      failureWords.modelOutOfMemory(providerNameOf(provider, context.providerName), model),
       ...(phone
         ? [
             failureWords.modelOutOfMemoryFixOnPhone,
@@ -178,15 +180,16 @@ function modelMissing(
     return undefined;
   }
   const ollama = provider === "ollama";
+  const name = providerNameOf(provider, context.providerName);
   if (phone) {
     const line = ollama
       ? failureWords.modelMissingOllamaOnPhone(model)
-      : failureWords.modelMissingOtherOnPhone(provider, model);
+      : failureWords.modelMissingOtherOnPhone(name, model);
     return danger([line, failureWords.fixOnComputer(failureWords.modelsPlace)]);
   }
   const line = ollama
     ? failureWords.modelMissingOllama(model)
-    : failureWords.modelMissingOther(provider, model);
+    : failureWords.modelMissingOther(name, model);
   const copy: BannerFix = { kind: "copy-command", command: failureWords.ollamaPullCommand(model) };
   return danger([line], ollama ? [copy, openModels] : [openModels]);
 }
@@ -202,13 +205,14 @@ function modelTimeout(
   if (provider === undefined) {
     return undefined;
   }
+  const name = providerNameOf(provider, context.providerName);
   if (context.providerKind(provider) !== "local") {
-    return danger([failureWords.cloudModelTimeout(provider, step)]);
+    return danger([failureWords.cloudModelTimeout(name, step)]);
   }
   return danger([
     phone
-      ? failureWords.localModelTimeoutOnPhone(provider)
-      : failureWords.localModelTimeout(provider, host),
+      ? failureWords.localModelTimeoutOnPhone(name)
+      : failureWords.localModelTimeout(name, host),
   ]);
 }
 

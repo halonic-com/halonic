@@ -4,6 +4,7 @@ import {
   type Tab,
   TabList,
   TabPanel,
+  usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useState } from "react";
@@ -30,7 +31,8 @@ export interface ConfigurationProps {
 /**
  * The workflow's Configuration (`workflows.configuration`): a list of pages on the left (General,
  * Request form, Tests, Problems) and the picked page beside it, in side-label rows. It is read-only until
- * the save model's fields land.
+ * the save model's fields land. On a phone the list goes across the top instead and the rows put the
+ * label above the value, so the page keeps the full width (`workflows.configuration.pages-phone`).
  */
 export function Configuration({
   name,
@@ -42,6 +44,7 @@ export function Configuration({
 }: ConfigurationProps) {
   const [page, setPage] = useState<ConfigurationPage>(startOn);
   const ids = useTabIds();
+  const phone = usePresentation() === "phone";
   if (load.kind === "failed") {
     return (
       <EmptyState
@@ -56,12 +59,25 @@ export function Configuration({
   const pages = configuration === undefined ? [] : pageTabs(configuration);
 
   return (
-    <div className="flex min-h-0 flex-1">
-      <div className="w-52 shrink-0 border-e border-border px-2 py-4">
+    <div className={phone ? "flex min-h-0 flex-1 flex-col" : "flex min-h-0 flex-1"}>
+      <div
+        className={
+          phone
+            ? "border-b border-border px-4 py-3"
+            : "w-52 shrink-0 border-e border-border px-2 py-4"
+        }
+      >
         {configuration === undefined ? (
-          <div aria-hidden="true" className="flex flex-col gap-1">
+          <div aria-hidden="true" className={phone ? "flex gap-1" : "flex flex-col gap-1"}>
             {configurationPages.map((one) => (
-              <div key={one} className="flex h-control-md items-center px-3">
+              <div
+                key={one}
+                className={
+                  phone
+                    ? "flex h-control-md flex-1 items-center px-3"
+                    : "flex h-control-md items-center px-3"
+                }
+              >
                 <SkeletonBar kind="meta" width="1/2" />
               </div>
             ))}
@@ -69,7 +85,7 @@ export function Configuration({
         ) : (
           <TabList
             label={words.pages}
-            orientation="vertical"
+            orientation={phone ? "horizontal" : "vertical"}
             tabs={pages}
             selected={page}
             onSelect={setPage}
@@ -111,12 +127,21 @@ function pageTabs(configuration: WorkflowConfiguration): readonly Tab<Configurat
   }));
 }
 
-/** A side-label row: the label in a column on the left, the value beside it. */
+/** A side-label row: the label in a column on the left, the value beside it; on a phone the label is above it. */
 function Row({ label, children }: { readonly label: string; readonly children: React.ReactNode }) {
+  const phone = usePresentation() === "phone";
   return (
-    <div className="flex gap-6 border-b border-border py-4">
-      <dt className="w-40 shrink-0 text-small text-fg-muted">{label}</dt>
-      <dd className="min-w-0 flex-1 text-body">{children}</dd>
+    <div
+      className={
+        phone
+          ? "flex flex-col gap-1 border-b border-border py-4"
+          : "flex gap-6 border-b border-border py-4"
+      }
+    >
+      <dt className={phone ? "text-small text-fg-muted" : "w-40 shrink-0 text-small text-fg-muted"}>
+        {label}
+      </dt>
+      <dd className="min-w-0 flex-1 text-body wrap-anywhere">{children}</dd>
     </div>
   );
 }

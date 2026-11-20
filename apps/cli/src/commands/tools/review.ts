@@ -1,7 +1,8 @@
 // `halonic tools review <source>` (cli-output 3.10): shows each waiting
 // tool and asks about it, approving exactly the fingerprint shown above the
 // question (HAL-2579 F9). Without a terminal it shows the same blocks, asks
-// nothing and says how to approve from a script.
+// nothing and says how to approve from a script. Only the tools the
+// connector's `tools.allow` offers to agents are shown (HAL-13288).
 
 import {
   approveWaitingTool,
@@ -27,6 +28,7 @@ import { toolBlock } from "./blocks.ts";
 import { reviewDocument } from "./json.ts";
 import {
   checkToolSource,
+  isOffered,
   noToolsToApprove,
   openToolSource,
   type ToolSource,
@@ -54,7 +56,7 @@ export async function reviewTools(
     const { line, json } = noToolsToApprove(check, source);
     return done([line], { source: source.connector.id, ...json });
   }
-  const review = reviewListedTools(check);
+  const review = offeredOnly(reviewListedTools(check), source);
   const json = reviewDocument(review);
   const shownTools = review.toReview.length + review.refused.length + review.keepsChanging.length;
   if (shownTools === 0) {
@@ -85,6 +87,22 @@ export async function reviewTools(
     };
   }
   return done([...shown.lines, [], lastLine(review, source, asked.approved)], json);
+}
+
+/**
+ * The review without the tools `tools.allow` leaves out: they are never
+ * offered to agents, so they aren't asked about or shown as refused, and an
+ * approval of one doesn't count as on.
+ */
+function offeredOnly(review: ListedToolReview, source: ToolSource): ListedToolReview {
+  const offered = (reviewed: ReviewedTool) => isOffered(source, reviewed.waiting.listedName);
+  return {
+    ...review,
+    on: review.on.filter((name) => isOffered(source, name)),
+    toReview: review.toReview.filter(offered),
+    keepsChanging: review.keepsChanging.filter(offered),
+    refused: review.refused.filter((refused) => isOffered(source, refused.name)),
+  };
 }
 
 /** The result lines printed so far, each printed as it is added. */

@@ -58,12 +58,16 @@ verifies("kit.header-badge-sheet-dialog", () => {
     expect(document.activeElement?.tagName).toBe("H2");
   });
 
-  it("names the dialog once: by its title, with no region inside it", () => {
+  it("names the dialog once: by its title, with no landmark inside it", () => {
     const { dialog } = openSheet();
 
     expect(dialog.hasAttribute("aria-label")).toBe(false);
     expect(dialog.getAttribute("aria-labelledby")).toBe(dialog.querySelector("h2")?.id);
-    expect(dialog.querySelector("aside, [role='complementary'], [role='region']")).toBeNull();
+    expect(
+      dialog.querySelector(
+        "aside, header, footer, section, nav, [role='complementary'], [role='region'], [role='banner'], [role='contentinfo']",
+      ),
+    ).toBeNull();
   });
 
   it("calls onClose on Escape", () => {
