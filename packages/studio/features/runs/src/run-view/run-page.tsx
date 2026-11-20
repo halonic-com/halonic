@@ -19,7 +19,7 @@ import { detailRows } from "./details-model.ts";
 import { EveryStep, useRunLog } from "./every-step.tsx";
 import { entryIdOfStep, everyStep, type StepEntry } from "./every-step-model.ts";
 import { useHasVersions } from "./has-versions.ts";
-import { PageBanner } from "./page-banner.tsx";
+import { bannerOffersRunAgain, PageBanner } from "./page-banner.tsx";
 import { AgentSays, Receipt } from "./receipt.tsx";
 import {
   agentSays,
@@ -147,8 +147,9 @@ export interface RunViewProps {
  *
  * Above them, the receipt, then what the agent says it did in its dashed frame.
  *
- * **Run again** starts a new run of the same workflow with the same input and opens it. It is in
- * the header of an ended real run, and on the failed banner that has no button of its own.
+ * **Run again** starts a new run of the same workflow with the same input and opens it. It is the
+ * last button of a failed banner that has no button of its own, and otherwise in the header of an
+ * ended real run; never both.
  *
  * Not here yet: the header's ⋮.
  *
@@ -214,6 +215,12 @@ export function RunView({
           engine={engine}
           phone={phone}
           runAgain={runAgain}
+          runAgainInBanner={bannerOffersRunAgain(run, context, log, entries, {
+            asksTrust: true,
+            phone,
+            reviewInInbox,
+            openRun,
+          })}
         >
           <PageBanner
             run={run}

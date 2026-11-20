@@ -48,6 +48,7 @@ export function RunLayout({
   engine,
   phone,
   runAgain,
+  runAgainInBanner,
   children,
 }: {
   readonly run: SourcedRun;
@@ -57,6 +58,8 @@ export function RunLayout({
   readonly engine: EngineWords;
   readonly phone: boolean;
   readonly runAgain: RunAgain | undefined;
+  /** Whether the failed banner offers Run again; the header doesn't then, so the page has one. */
+  readonly runAgainInBanner: boolean;
   readonly children: ReactNode;
 }) {
   const header = runHeader(run, context);
@@ -70,7 +73,7 @@ export function RunLayout({
           <StatusChip tone={header.chip.tone} dot={header.chip.dot}>
             {header.chip.word}
           </StatusChip>
-          {runAgain === undefined ? null : (
+          {runAgain === undefined || runAgainInBanner ? null : (
             <Button variant="secondary" size="sm" busy={runAgain.busy} onClick={runAgain.start}>
               {runPageWords.runAgain}
             </Button>

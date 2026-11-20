@@ -51,8 +51,12 @@ export const whenWords = {
  * follow "You, with Run" and the Run column (HAL-7094).
  */
 export const startedByWords = {
-  /** `halonic run`, or Run now on a routine. */
+  /** `halonic run`, or Run on a workflow's page. */
   run: "You, with Run",
+  /** Run now on a routine, by the routine's name (HAL-12406). */
+  runNow: (routine: string) => `${routine} routine, with Run now`,
+  /** Run now on a routine the workspace no longer has; its key is in the tooltip. */
+  runNowGone: "A routine, with Run now",
   /** No trigger: `halonic run` in a terminal, the only way a run starts without one in v0.1. */
   terminal: "You, in the terminal",
   /** A request from the Inbox's form. */
@@ -81,6 +85,8 @@ export const rowLabelWords = {
    */
   startedBy: {
     run: "you, with Run",
+    runNow: (routine: string) => `the ${routine} routine, with Run now`,
+    runNowGone: "a routine, with Run now",
     terminal: "you, in the terminal",
     inbox: "you, in the Inbox",
     mail: "a message",

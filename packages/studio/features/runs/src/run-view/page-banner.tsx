@@ -66,7 +66,7 @@ export function PageBanner({
   readonly sandboxStartCheck?: SandboxStartCheck | undefined;
   /** Says a line to a screen reader, for the answer to a press in a banner. */
   readonly announce?: ((line: string) => void) | undefined;
-  /** Run again, offered on a failed banner that has no button of its own; absent when it can't be done. */
+  /** Run again, the last button of a failed banner that has no button of its own; absent when it can't be done. */
   readonly runAgain?: RunAgain | undefined;
   /** Opens the workspace page at Models, for a failed banner that offers **Open Models**; absent where it can't. */
   readonly openModels?: (() => void) | undefined;
@@ -76,28 +76,24 @@ export function PageBanner({
   readonly phone?: boolean;
   readonly onSeeStep: (entryId: string) => void;
 }) {
-  const refused =
-    log === undefined || instructionTrust === undefined
-      ? undefined
-      : refusedInstructions(run.summary, log);
-  if (refused !== undefined) {
+  const chosen = chooseBanner(run, context, log, entries, instructionTrust !== undefined, phone);
+  if (chosen.kind === "refused") {
     // A new key for each refusal, so an answer to an earlier one isn't shown for a later run.
     return (
       <InstructionsRefusalBanner
         key={run.summary.id}
-        refusal={refused}
+        refusal={chosen.refused}
         host={instructionTrust?.host}
         announce={announce}
       />
     );
   }
-  const sandboxReason = sandboxNotReadyReason(run.summary, log);
-  if (sandboxReason !== undefined) {
+  if (chosen.kind === "sandbox") {
     return (
       <SandboxNotReadyBanner
         key={run.summary.id}
         name={sandboxNotReadyAgent(log) ?? context.workflow?.name ?? run.summary.workflowId}
-        reason={sandboxReason}
+        reason={chosen.reason}
         check={sandboxStartCheck}
         announce={announce}
         phone={phone}
@@ -105,32 +101,78 @@ export function PageBanner({
       />
     );
   }
-  const cause = causeBanner(run.summary, log, context, phone);
-  if (cause !== undefined) {
-    return (
-      <Banner
-        banner={cause}
-        reviewInInbox={reviewInInbox}
-        openRun={openRun}
-        runAgain={runAgain}
-        openModels={openModels}
-        openBudget={openBudget}
-      />
-    );
-  }
-  const blocked = log === undefined ? undefined : blockedFailure(run.summary, log, entries);
-  if (blocked !== undefined) {
-    return <BlockedFailureBanner failure={blocked} onSeeStep={onSeeStep} />;
+  if (chosen.kind === "blocked") {
+    return <BlockedFailureBanner failure={chosen.failure} onSeeStep={onSeeStep} />;
   }
   return (
     <Banner
-      banner={runBanner(run, context)}
+      banner={chosen.banner}
       reviewInInbox={reviewInInbox}
       openRun={openRun}
       runAgain={runAgain}
       openModels={openModels}
       openBudget={openBudget}
     />
+  );
+}
+
+/** Which of the page's banners a run gets, in the order `PageBanner` tries them. */
+type ChosenBanner =
+  | {
+      readonly kind: "refused";
+      readonly refused: NonNullable<ReturnType<typeof refusedInstructions>>;
+    }
+  | { readonly kind: "sandbox"; readonly reason: string }
+  | { readonly kind: "blocked"; readonly failure: NonNullable<ReturnType<typeof blockedFailure>> }
+  | { readonly kind: "banner"; readonly banner: RunBanner | undefined; readonly cause: boolean };
+
+function chooseBanner(
+  run: SourcedRun,
+  context: RunPageContext,
+  log: readonly RunEvent[] | undefined,
+  entries: readonly StepEntry[],
+  asksTrust: boolean,
+  phone: boolean,
+): ChosenBanner {
+  const refused =
+    log === undefined || !asksTrust ? undefined : refusedInstructions(run.summary, log);
+  if (refused !== undefined) return { kind: "refused", refused };
+  const reason = sandboxNotReadyReason(run.summary, log);
+  if (reason !== undefined) return { kind: "sandbox", reason };
+  const cause = causeBanner(run.summary, log, context, phone);
+  if (cause !== undefined) return { kind: "banner", banner: cause, cause: true };
+  const failure = log === undefined ? undefined : blockedFailure(run.summary, log, entries);
+  if (failure !== undefined) return { kind: "blocked", failure };
+  return { kind: "banner", banner: runBanner(run, context), cause: false };
+}
+
+/**
+ * Whether the page's banner offers **Run again**: a failed (danger) banner with no button of its
+ * own. The header leaves its Run again out then, so the page has one (HAL-12406, Sofia on HAL-12440).
+ */
+export function bannerOffersRunAgain(
+  run: SourcedRun,
+  context: RunPageContext,
+  log: readonly RunEvent[] | undefined,
+  entries: readonly StepEntry[],
+  {
+    asksTrust,
+    phone,
+    reviewInInbox,
+    openRun,
+  }: {
+    readonly asksTrust: boolean;
+    readonly phone: boolean;
+    readonly reviewInInbox: (() => void) | undefined;
+    readonly openRun: ((runId: string) => void) | undefined;
+  },
+): boolean {
+  const chosen = chooseBanner(run, context, log, entries, asksTrust, phone);
+  return (
+    chosen.kind === "banner" &&
+    chosen.banner?.kind === "callout" &&
+    chosen.banner.tone === "danger" &&
+    bannerAction(chosen.banner.action, reviewInInbox, openRun) === undefined
   );
 }
 
@@ -167,6 +209,7 @@ function Banner({
   const fixes = (banner.fixes ?? []).flatMap((fix) =>
     fixAction(fix, writeClipboard, toasts, { openModels, openBudget }, openExternal),
   );
+  // The same test as `bannerOffersRunAgain`, which keeps the header's Run again out.
   const again =
     own === undefined && banner.tone === "danger" && runAgain !== undefined
       ? [{ label: runPageWords.runAgain, onClick: runAgain.start }]

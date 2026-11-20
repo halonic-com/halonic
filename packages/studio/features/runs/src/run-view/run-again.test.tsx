@@ -72,10 +72,40 @@ verifies("runs.run-view.run-again", () => {
     expect(openRun).toHaveBeenCalledWith("run_b_new");
   });
 
-  it("is also the button of a failed banner", async () => {
-    const root = await open(failed, { startRun: vi.fn() });
-    const names = [...root.querySelectorAll("button")].map((one) => one.textContent);
-    expect(names.filter((name) => name === "Run again")).toHaveLength(2);
+  const runAgainButtons = (root: HTMLElement) =>
+    [...root.querySelectorAll("button")].filter((one) => one.textContent === "Run again");
+
+  it("is the failed banner's last button, and then not in the header", async () => {
+    const busy = summaryWith({
+      id: "run_e_busy",
+      status: "failed",
+      reason: "provider-busy",
+      endedAt: mondayMorning.toISOString(),
+    });
+    for (const summary of [failed, busy]) {
+      const root = await open(summary, { startRun: vi.fn() });
+      expect(runAgainButtons(root)).toHaveLength(1);
+      expect(root.querySelector("header")?.textContent).not.toContain("Run again");
+    }
+  });
+
+  it("is in the header when the banner has no Run again of its own", async () => {
+    const done = summaryWith({
+      id: "run_f",
+      status: "completed",
+      endedAt: mondayMorning.toISOString(),
+    });
+    const budget = summaryWith({
+      id: "run_g",
+      status: "failed",
+      reason: "budget",
+      endedAt: mondayMorning.toISOString(),
+    });
+    for (const summary of [done, budget]) {
+      const root = await open(summary, { startRun: vi.fn() });
+      expect(runAgainButtons(root)).toHaveLength(1);
+      expect(root.querySelector("header")?.textContent).toContain("Run again");
+    }
   });
 
   it("says why the run didn't start, and stays on the run", async () => {
@@ -177,18 +207,15 @@ verifies("runs.run-view.run-again", () => {
     expect(announce).toHaveBeenCalledTimes(2);
   });
 
-  it("starts one run however often the buttons are clicked while it starts", async () => {
+  it("starts one run however often the button is clicked while it starts", async () => {
     let started: (value: { runId: string }) => void = () => {};
     const startRun = vi.fn(() => new Promise<{ runId: string }>((resolve) => (started = resolve)));
     const root = await open(failed, { startRun });
-    const header = button(root, "Run again");
-    const banner = [...root.querySelectorAll("button")].filter(
-      (one) => one.textContent === "Run again",
-    )[1];
+    const again = button(root, "Run again");
     await act(async () => {
-      header?.click();
-      header?.click();
-      banner?.click();
+      again?.click();
+      again?.click();
+      again?.click();
     });
     expect(startRun).toHaveBeenCalledTimes(1);
     await act(async () => started({ runId: "run_b_new" }));

@@ -36,6 +36,19 @@ verifies("runs.run-view.details", () => {
     ]);
   });
 
+  it("names the routine whose Run now started the run", () => {
+    const run: SourcedRun = {
+      summary: summaryWith({
+        trigger: { type: "manual", at: minutesLater(0), routineId: "reports/weekly-report" },
+      }),
+    };
+    const weekly = { name: "Weekly report", schedule: undefined };
+    expect(detailRows(run, context, weekly)[0]).toEqual({
+      label: "Started by",
+      value: "Weekly report routine, with Run now",
+    });
+  });
+
   it("leaves out Took and the cost for a live run with no model call, and says None", () => {
     expect(rowsOf({})).toEqual([
       ["Started by", "You, in the terminal"],

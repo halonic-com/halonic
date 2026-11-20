@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-7084 and HAL-7094 (T8); hours and days in how long a run took, HAL-13919 (as cli-output 1.5); ux-checklists-t8-t9 (HAL-1360) revision 10, 1.2; microcopy revision 94, 15.1 and 19.3 Run row (HAL-751); kit List columns (HAL-6764)
+- Source: HAL-7084 and HAL-7094 (T8); hours and days in how long a run took, HAL-13919 (as cli-output 1.5); ux-checklists-t8-t9 (HAL-1360) revision 10, 1.2; microcopy revision 94, 15.1 and 19.3 Run row (HAL-751); kit List columns (HAL-6764); the words for a routine's Run now are the team's call on HAL-12406
 
 The Runs list shall lay its rows out in columns, in `halonic runs`' order: the status chip, the short id, what ran with its line and Test tag, what started the run, and the time the run started, with how long it took under it once it has ended. It shall be one list with an `h3` for each day the runs started. A failed row shall show its line as the error reason with the Failed chip. Screen readers shall hear one sentence for each row: its short id, what ran, its status and line, what started it and the time it started, with ", test run" for a test run.
 
@@ -24,6 +24,13 @@ The Runs list shall lay its rows out in columns, in `halonic runs`' order: the s
   when its row is shown,
   then its Started by column reads "Schedule · weekdays at 08:00", with "Morning brief" in its tooltip,
   and a screen reader hears "Started by the schedule for weekdays at 08:00, 10:40." at the end of its sentence.
+- Given a run started with Run now on the routine Weekly report,
+  when its row is shown,
+  then its Started by column reads "Weekly report routine, with Run now",
+  and a screen reader hears "Started by the Weekly report routine, with Run now, 10:40." at the end of its sentence (HAL-12406).
+- Given a run started with Run now on a routine the workspace no longer has,
+  when its row is shown,
+  then its Started by column reads "A routine, with Run now", with the routine's key in its tooltip.
 - Given a run of that routine that caught up after the computer slept,
   when its row is shown,
   then its Started by column reads "Caught up after sleep".
