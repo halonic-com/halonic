@@ -1,5 +1,9 @@
 import { connect, createServer, type Socket } from "node:net";
-import { type GatewayListener, startGatewayListener } from "@halonicjs/adapter-remote-gateway";
+import {
+  type GatewayListener,
+  type GatewayListenerOptions,
+  startGatewayListener,
+} from "@halonicjs/adapter-remote-gateway";
 import type { TunnelEndpoint } from "@halonicjs/ports";
 import { FakeTunnelProvider } from "@halonicjs/testing-contracts";
 import { RecordingSource } from "./recording-source.ts";
@@ -66,12 +70,7 @@ async function startGatewayAndTunnel(
         ...(options.listTunnelName === false
           ? {}
           : { extraHosts: [`gateway-${port}.fake-tunnel.invalid`] }),
-        ...(options.maxConnections === undefined ? {} : { maxConnections: options.maxConnections }),
-        ...(options.heartbeatMs === undefined ? {} : { heartbeatMs: options.heartbeatMs }),
-        ...(options.helloTimeoutMs === undefined ? {} : { helloTimeoutMs: options.helloTimeoutMs }),
-        ...(options.handshakeTimeoutMs === undefined
-          ? {}
-          : { handshakeTimeoutMs: options.handshakeTimeoutMs }),
+        ...listenerLimits(options),
       });
       const endpoint = await tunnel.start({ gateway: { host: "127.0.0.1", port: gateway.port } });
       return { gateway, endpoint };
@@ -80,6 +79,26 @@ async function startGatewayAndTunnel(
       if (attempt >= 4) throw error;
     }
   }
+}
+
+/** The limits a test set, passed on to the listener; the ones left out keep its defaults. */
+function listenerLimits(
+  options: TunnelRigOptions,
+): Pick<
+  GatewayListenerOptions,
+  "maxConnections" | "heartbeatMs" | "helloTimeoutMs" | "handshakeTimeoutMs"
+> {
+  const limits: Record<string, number> = {};
+  for (const name of [
+    "maxConnections",
+    "heartbeatMs",
+    "helloTimeoutMs",
+    "handshakeTimeoutMs",
+  ] as const) {
+    const value = options[name];
+    if (value !== undefined) limits[name] = value;
+  }
+  return limits;
 }
 
 export async function openTunnelRig(options: TunnelRigOptions = {}): Promise<TunnelRig> {
