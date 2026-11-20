@@ -52,6 +52,12 @@ async function openSubagents(agents: AgentsHost = host()) {
 
 const dialog = () => document.querySelector("dialog") as HTMLDialogElement;
 
+/** The row of the agent named `name` in the dialog's Pick an agent list. */
+const pickNamed = (name: string) =>
+  [...dialog().querySelectorAll<HTMLElement>("[role=gridcell]")].find((cell) =>
+    cell.textContent?.startsWith(name),
+  );
+
 verifies("agents.configuration.subagents", () => {
   it("shows the subagents as chips with ✕, and a loop as a disabled chip with its reason", async () => {
     const { page } = await openSubagents();
@@ -78,10 +84,16 @@ verifies("agents.configuration.subagents", () => {
     const { page } = await openSubagents(agents);
     await act(async () => buttonNamed(page, "Add subagent")?.click());
     expect(dialog().textContent).toContain("Add a subagent to Mail triage");
-    const picks = [...dialog().querySelectorAll("li button")].map((button) => button.textContent);
-    expect(picks).toEqual(["Archive", "Refund checkerChecks refunds."]);
+    // The agents are the kit List's rows, so they look pressable (HAL-14105).
+    const grid = dialog().querySelector("[role=grid]");
+    expect(grid?.getAttribute("aria-label")).toBe("Pick an agent");
+    const picks = [...dialog().querySelectorAll<HTMLElement>("[role=gridcell]")];
+    expect(picks.map((cell) => cell.textContent)).toEqual([
+      "Archive",
+      "Refund checkerChecks refunds.",
+    ]);
     expect(dialog().textContent).toContain("Or create a new agent");
-    await act(async () => buttonNamed(dialog(), "Archive")?.click());
+    await act(async () => pickNamed("Archive")?.click());
     expect((await agents.settings(triage)).subagents).toEqual(["writer", "archive"]);
     expect(document.querySelector("dialog")).toBeNull();
   });
@@ -126,7 +138,7 @@ verifies("agents.configuration.subagents", () => {
     };
     const { page, toasts } = await openSubagents(refusing);
     await act(async () => buttonNamed(page, "Add subagent")?.click());
-    await act(async () => buttonNamed(dialog(), "Archive")?.click());
+    await act(async () => pickNamed("Archive")?.click());
     expect(toasts.list().map((toast) => toast.title)).toEqual([
       "Archive already hands work to Mail triage; that would be a loop.",
     ]);

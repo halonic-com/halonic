@@ -36,8 +36,10 @@ export const sizeClasses = {
   // equal parts, but a tab is never narrower than its longest word (a flex item's own minimum
   // width), so "Behaviour" stays whole at 320px and the others share what's left (HAL-13044). No
   // hyphens: a hyphenation point would shrink that minimum to the word's longest piece. Only a
-  // word wider than the whole track, where max-w-full caps the minimum, breaks.
-  fill: "min-h-touch max-w-full flex-1 basis-0 px-2 py-1 text-center wrap-break-word",
+  // word wider than the whole track, where max-w-full caps the minimum, breaks. When the tabs take
+  // more than one row, `useBalancedRows` sets --tab-basis so each row holds as many tabs as the
+  // others: three and two, not four and one (HAL-14105).
+  fill: "min-h-touch max-w-full flex-1 basis-[var(--tab-basis,0)] px-2 py-1 text-center wrap-break-word",
   // A nav row: 32px, 48px on a touch screen. A long label wraps and the row grows with it.
   vertical: [
     "flex min-h-control-md w-full items-center gap-2 px-3 py-1",

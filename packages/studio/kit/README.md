@@ -734,9 +734,11 @@ tabs share it equally, each at least 48px high with 4px 8px padding. A label wra
 and the counter follows it like one more word. A tab is never narrower than its longest word, in
 the selected weight, so switching doesn't move the tabs: at 320px "Behaviour" keeps its word and
 Model, Harness and Tools share the rest. When the words don't fit side by side, as at 200% text,
-the tabs go on to another row. Only a word wider than the whole track breaks, without a hyphen.
-Labels are never shortened and the tabs never scroll sideways. **On a touch screen** at desktop
-width a tab renders at 40px with a 48px hit area.
+the tabs go on to another row, and every row then holds as many tabs as the others, as near as it
+can without one more row: at 320px Behaviour · Model · Harness · Tools · Subagents is three and
+two, not four and one, so no tab stretches alone across a row. Only a word wider than the whole
+track breaks, without a hyphen. Labels are never shortened and the tabs never scroll sideways.
+**On a touch screen** at desktop width a tab renders at 40px with a 48px hit area.
 
 **In high contrast** the selected tab keeps an outline: forced colours drops its fill and shadow and
 keeps a 1px `CanvasText` outline instead (with more contrast, a 1px `border-control` one). A

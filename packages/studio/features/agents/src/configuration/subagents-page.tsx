@@ -7,6 +7,8 @@ import {
   Field,
   Input,
   inlineLinkClasses,
+  List,
+  type ListRow,
   PlusIcon,
   SkeletonBar,
   useToastStore,
@@ -284,26 +286,18 @@ function AddSubagentDialog({
             <h3 id={pickId} className="text-body-strong text-fg">
               {words.pickAnAgent}
             </h3>
-            <ul className="flex flex-col">
-              {pickable.map((member) => (
-                <li key={member.id}>
-                  <button
-                    type="button"
-                    aria-disabled={busy}
-                    onClick={() => {
-                      // While a new agent is being made the rows stay focusable; a click waits.
-                      if (!busy) add(member.id);
-                    }}
-                    className="flex w-full flex-col items-start rounded-md px-2 py-1.5 text-start hover:bg-surface-subtle"
-                  >
-                    <span className="text-body text-fg">{member.name}</span>
-                    {member.description !== undefined && member.description !== "" && (
-                      <span className="text-small text-fg-muted">{member.description}</span>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            {/* The List's rows, in a box with a fill on hover and focus, so each agent reads as
+                something to press next to the bordered name box (HAL-14105). The box stays on a
+                phone too, where a List is flush: in the dialog there's no page edge to run to. */}
+            <List
+              label={words.pickAnAgent}
+              flush={false}
+              rows={pickable.map(pickRow)}
+              onOpen={(id) => {
+                // While a new agent is being made the rows stay focusable; a click waits.
+                if (!busy) add(id);
+              }}
+            />
           </section>
         )}
         <section aria-labelledby={createId} className="flex flex-col gap-1">
@@ -326,4 +320,15 @@ function AddSubagentDialog({
       </div>
     </Dialog>
   );
+}
+
+/** An agent to pick: its name, over its whole description when it has one. */
+function pickRow(member: AgentTeamMember): ListRow {
+  const hasDescription = member.description !== undefined && member.description !== "";
+  return {
+    id: member.id,
+    title: member.name,
+    wrap: true,
+    ...(hasDescription ? { meta: member.description } : {}),
+  };
 }

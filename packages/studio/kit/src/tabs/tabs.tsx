@@ -1,5 +1,6 @@
 import { type KeyboardEvent, type ReactNode, useId, useRef } from "react";
 import { usePresentation } from "../presentation/presentation.tsx";
+import { useBalancedRows } from "./balanced-rows.ts";
 import { FillWidthCopy, TabLabel, TabSignal } from "./tab-extras.tsx";
 import { keyTarget, type TabOrientation } from "./tab-keys.ts";
 import {
@@ -164,6 +165,8 @@ export function TabList<Id extends string>({
 }: TabListProps<Id>) {
   const layout = useLayout(orientation, fillProp);
   const tabElements = useRef(new Map<Id, HTMLButtonElement>());
+  const track = useRef<HTMLDivElement>(null);
+  useBalancedRows(track, layout === "fill");
 
   const enabled = tabs.filter((tab) => tab.disabled !== true);
   // The tab list stays reachable by Tab even when the selected id isn't one of the tabs.
@@ -187,6 +190,7 @@ export function TabList<Id extends string>({
 
   return (
     <div
+      ref={track}
       role="tablist"
       aria-label={label}
       aria-orientation={orientation}
