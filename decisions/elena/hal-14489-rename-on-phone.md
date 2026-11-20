@@ -1,7 +1,7 @@
-# Decision: renaming on a phone, and a collection's chips, from C403
+# Decision: renaming on a phone, a collection's chips, and the Inbox's Next, from C403 and C410
 
 - Task: HAL-14489
-- Approval: team decision under the HAL-2282 rule for a detail of approved screens, no new words (Sofia as designer, rows NS1, PT1, PT2, NS2 and CP1 of her C403 check on HAL-14497); Liam reviews the pull request on HAL-14489 and signs this note
+- Approval: team decision under the HAL-2282 rule for a detail of approved screens, no new words (Sofia as designer, rows NS1, PT1, PT2, NS2 and CP1 of her C403 check on HAL-14497, and IX1 of her C410 check on HAL-14518); Liam reviews the pull request on HAL-14489 and signs this note
 - Kind: user-visible
 
 ## What changes
@@ -21,20 +21,24 @@
   Dialog still focuses Name, its first field.
 - **CP1:** `FilterChips` takes `flush`, which drops its 16px sides; the collection page sets it, so
   its chips line up with the title and the grid.
+- **IX1:** the Inbox's **Next** label is one inline span, not three flex items of the Button, so at
+  195px "· 1 left" wraps with the title instead of standing as a column of its own, and the name
+  reads "Next: _title_, 1 left" with no stray space before the comma.
 
-`shell.rename-sheet`, `shell.item-tab-names`, `shell.phone-bars`, `kit.filter-chips` and
-`library.collection-page` say so and gain examples. One phone-bars test expected `truncate` on the
-title and now expects `line-clamp-2`; no test was weakened or skipped. New tests cover the announced
+`shell.rename-sheet`, `shell.item-tab-names`, `shell.phone-bars`, `kit.filter-chips`,
+`library.collection-page` and `inbox.approval-card` say so; all but the last gain examples. One
+phone-bars test expected `truncate` on the title and now expects `line-clamp-2`; no test was weakened or skipped. New tests cover the announced
 error with focus in Name, the sheet on a phone, a renamed item's phone pages (unit, and in the
 window at 400px, where the top bar and `document.title` follow), the routine and Library kinds'
-`subscribe`, and the flush chips row.
+`subscribe`, the flush chips row, and Next's single label.
 
 ## Why
 
 Sofia's C403 check of #4000 found the rename sheet's error unread with focus in Name, a phone's top
 bar and window title still showing the old name after a rename, a long phone title cut to "Openst…"
 at 195px, a requirement that described a desktop dialog for a phone sheet, and a collection's chips
-16px further in than its title and grid.
+16px further in than its title and grid. Her C410 check found the Inbox's Next count wrapping as its
+own column at 195px, with a stray space in the name.
 
 ## Covers
 
@@ -43,3 +47,4 @@ at 195px, a requirement that described a desktop dialog for a phone sheet, and a
 - shell.phone-bars
 - kit.filter-chips
 - library.collection-page
+- inbox.approval-card

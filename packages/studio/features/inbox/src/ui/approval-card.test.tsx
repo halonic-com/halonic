@@ -283,6 +283,9 @@ verifies("inbox.approval-card", () => {
       );
       const next = button(root, "Next");
       expect(next.textContent).toBe("Next: Approve this reply? ·\u00a02\u00a0left, 2 left");
+      // One inline label, so the count wraps with the title (HAL-14489 IX1).
+      expect(next.children).toHaveLength(1);
+      expect(next.children[0]?.textContent).toBe(next.textContent);
       await press(next);
       expect(open).toHaveBeenCalledOnce();
     });

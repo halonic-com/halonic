@@ -189,12 +189,13 @@ export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps)
             onClick={() => openAtTop(bar.current, next.open)}
           >
             {/* One run of text, so a phone wraps it between words as a sentence (HAL-13830 IN2);
-                no-break spaces keep "· 3 left" together. */}
+                no-break spaces keep "· 3 left" together. The spoken count is inside it too, so the
+                name has no stray space before its comma (HAL-14489 IX1). */}
             <span>
               {`Next: ${next.title}`}
               <span aria-hidden="true">{` ·\u00a0${next.left}\u00a0left`}</span>
+              <span className="sr-only">{`, ${next.left} left`}</span>
             </span>
-            <span className="sr-only">{`, ${next.left} left`}</span>
           </Button>
         )}
       </div>
