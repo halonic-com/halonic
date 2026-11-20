@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { connectorIsLocal } from "../../index.ts";
+import { connectorIsLocal, parseFile } from "../../index.ts";
 import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.spec.ts";
 
 verifies("format.connector-runner-transports", () => {
@@ -29,6 +29,44 @@ verifies("format.connector-runner-transports", () => {
         secrets: { "paperclip-key": "paperclip-agent-key" },
       },
     });
+  });
+
+  // Built while the test runs, so this file holds no secret-shaped text.
+  const randomPart = "Q7x2Lm9Kp4Rt8Vw3Zc6Nb5Hj1Fd0GsYa".slice(0, 32);
+
+  /** An integration connector with one more setting next to its `url`, on line 5. */
+  function withSetting(name: string, value: string): string {
+    return yaml(
+      "id: issues",
+      "transport:",
+      "  integration:",
+      "    folder: notes",
+      `    settings: { url: 'http://localhost:3100', ${name}: '${value}' }`,
+    );
+  }
+
+  it("refuses a setting that holds a known key format, without repeating it", () => {
+    const pasted = `ghp_${randomPart}AbCd`;
+    const text = withSetting("endpoint", pasted);
+    expect(summary(problemsOf("connector", text))).toEqual([
+      "transport.integration.settings.endpoint value-looks-like-key 5",
+    ]);
+    const parsed = parseFile("connector", text);
+    const messages = parsed.ok ? [] : parsed.error.map(({ message }) => message);
+    expect(messages.join(" ")).not.toContain(randomPart.slice(0, 16));
+  });
+
+  it("refuses a random value under a credential's name, and only there", () => {
+    expect(summary(problemsOf("connector", withSetting("apiKey", randomPart)))).toEqual([
+      "transport.integration.settings.apiKey value-looks-like-key 5",
+    ]);
+    const parsed = parseFile("connector", withSetting("label", randomPart));
+    expect(parsed.ok && parsed.value.warnings).toEqual([]);
+  });
+
+  it("holds an address and a label to no secret-name rule", () => {
+    const parsed = parseFile("connector", withSetting("label", "work notes"));
+    expect(parsed.ok && parsed.value.warnings).toEqual([]);
   });
 
   it("refuses a setting that isn't a plain value, and an unknown key", () => {
