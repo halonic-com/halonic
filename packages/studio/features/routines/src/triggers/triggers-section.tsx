@@ -64,10 +64,10 @@ export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
     }
   };
 
-  // No heading of its own: the section is a Configuration page, and the page's tab already says
-  // "Triggers", like the built pages.
+  // A plain wrapper with no heading or name of its own: the section is a Configuration page, and
+  // the page's tab panel already names it "Triggers", like the built pages.
   return (
-    <section aria-label={triggersWords.heading} className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <Rows load={load} owner={owner} retry={retry} openRoutine={openRoutine} />
       {addError !== undefined && (
         <p role="alert" className="text-small text-danger">
@@ -79,7 +79,7 @@ export function TriggersView({ host, owner, openRoutine }: TriggersViewProps) {
           {triggersWords.addTrigger}
         </Button>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -100,7 +100,6 @@ function Rows({
       <EmptyState
         tone="error"
         align="start"
-        headingLevel={3}
         title={triggersWords.loadFailedTitle}
         description={load.reason}
         action={{ label: triggersWords.tryAgain, onClick: retry, busy: load.retrying }}

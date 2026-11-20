@@ -68,10 +68,23 @@ verifies("routines.triggers.lists-routines-that-start-it", () => {
     expect(page.querySelector("li button")?.className).toContain("min-h-control-md");
   });
 
-  it("is named Triggers without a heading of its own, since its page's tab says so", async () => {
+  it("has no heading or region of its own, since its page's tab panel names it", async () => {
     const page = await show(<TriggersView host={hostWith([])} owner={agent} />);
-    expect(page.querySelector("section")?.getAttribute("aria-label")).toBe("Triggers");
+    expect(
+      page.querySelector("section, [role='region'], [aria-label], [aria-labelledby]"),
+    ).toBeNull();
     expect(page.querySelector("h1, h2, h3")).toBeNull();
+  });
+
+  it("heads a failed read at the level under the page's title", async () => {
+    const host = {
+      ...hostWith([]),
+      startingRoutines: async () => {
+        throw new Error("The hub is offline.");
+      },
+    } as unknown as RoutinesHost;
+    const page = await show(<TriggersView host={host} owner={agent} />);
+    expect(page.querySelector("h2")?.textContent).toBe("Couldn't load triggers");
   });
 });
 

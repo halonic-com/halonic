@@ -2,7 +2,6 @@ import type { TriggerOwner } from "../api.ts";
 
 /** The Triggers section's words (flow-routines 2.3). */
 export const triggersWords = {
-  heading: "Triggers",
   loading: "Loading triggers",
   loadFailedTitle: "Couldn't load triggers",
   tryAgain: "Try again",
