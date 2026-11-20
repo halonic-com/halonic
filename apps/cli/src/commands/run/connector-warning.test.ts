@@ -140,4 +140,27 @@ verifies("cli.run-connector-warning", () => {
       "  To see why, run halonic tools review --dir acme handbook",
     ]);
   });
+
+  it("doesn't warn about the listing of a connector whose parts already said why", () => {
+    const lines: string[] = [];
+    const warn = connectorWarnings(
+      { warn: (line) => lines.push(plainText(line)) },
+      undefined,
+      () => undefined,
+    );
+
+    warn({
+      seq: 3,
+      at: "2026-11-10T14:01:00.000Z",
+      runId: "run_1",
+      type: "connector.part-off",
+      agent: "writer",
+      connector: "handbook",
+      part: "local:lister",
+      reason: "sandbox-unavailable",
+    });
+    warn(listingFailed(4, { why: "other" }));
+
+    expect(lines).toEqual([]);
+  });
 });

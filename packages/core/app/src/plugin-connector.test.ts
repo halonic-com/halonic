@@ -133,6 +133,38 @@ verifies("app.plugin-connector", () => {
   });
 });
 
+verifies("app.plugin-connector-parts-off", () => {
+  it("gives each part that can't start once, with its code, for the run's log", async () => {
+    const { backend, files, connector } = setUp();
+    files.fails = noSandbox;
+    await connector.listTools();
+    expect(connector.newPartsOff()).toEqual([{ part: "local:files", reason: "needs-desktop-app" }]);
+    await connector.listTools();
+    expect(connector.newPartsOff()).toEqual([]);
+
+    backend.fails = new PluginBackendNotTrustedError("weather", "changed");
+    await expect(connector.listTools()).rejects.toBe(backend.fails);
+    expect(connector.newPartsOff()).toEqual([{ part: "backend", reason: "not-trusted" }]);
+  });
+
+  it("gives a part a call finds can't start, and never an error's text", async () => {
+    const { files, connector } = setUp();
+    files.fails = new Error("exited: invented-token-0000");
+    await expect(connector.callTool("read-note", {})).rejects.toBe(files.fails);
+    expect(connector.newPartsOff()).toEqual([]);
+
+    files.fails = noSandbox;
+    await expect(connector.callTool("read-note", {})).rejects.toBe(noSandbox);
+    expect(connector.newPartsOff()).toEqual([{ part: "local:files", reason: "needs-desktop-app" }]);
+  });
+
+  it("has nothing to give while every part starts", async () => {
+    const { connector } = setUp();
+    await connector.listTools();
+    expect(connector.newPartsOff()).toEqual([]);
+  });
+});
+
 describe("pluginPartUnavailableReason", () => {
   it("gives each part's own code", () => {
     expect(pluginPartUnavailableReason(noSandbox)).toEqual({ kind: "needs-desktop-app" });

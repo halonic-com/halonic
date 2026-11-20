@@ -7,7 +7,12 @@
 // reported once, with a code Studio and the CLI word; the other parts keep
 // working.
 
-import type { ConnectorCallOptions, ConnectorClient, ConnectorTool } from "@halonicjs/ports";
+import type {
+  ConnectorCallOptions,
+  ConnectorClient,
+  ConnectorPartOff,
+  ConnectorTool,
+} from "@halonicjs/ports";
 import { PluginBackendNotTrustedError, type PluginBackendTrustReason } from "./plugin-backend.ts";
 import { LocalToolSettingsNotSetError } from "./plugin-local-tool-config.ts";
 import {
@@ -78,6 +83,8 @@ export class PluginConnector implements ConnectorClient {
   readonly #options: PluginConnectorOptions;
   /** The parts already reported, so each is told only once. */
   readonly #reported = new Set<PluginPart>();
+  /** The parts reported since the last {@link newPartsOff}, for the run's log. */
+  #partsOff: ConnectorPartOff[] = [];
 
   constructor(options: PluginConnectorOptions) {
     this.id = options.id;
@@ -132,6 +139,17 @@ export class PluginConnector implements ConnectorClient {
     }
   }
 
+  /**
+   * The parts reported since the last call, each once, with the code of why
+   * (requirement `app.plugin-connector-parts-off`), so the run's log can say
+   * which of the plugin's tools are off.
+   */
+  newPartsOff(): readonly ConnectorPartOff[] {
+    const partsOff = this.#partsOff;
+    this.#partsOff = [];
+    return partsOff;
+  }
+
   /** Closes every part, even when one of them fails to close. */
   async close(): Promise<void> {
     const closed = await Promise.allSettled(this.#options.parts.map((part) => part.client.close()));
@@ -143,7 +161,9 @@ export class PluginConnector implements ConnectorClient {
     if (this.#reported.has(part.part)) return;
     this.#reported.add(part.part);
     const { plugin, onUnavailable } = this.#options;
-    onUnavailable?.({ plugin, part: part.part, reason: pluginPartUnavailableReason(error), error });
+    const reason = pluginPartUnavailableReason(error);
+    this.#partsOff.push({ part: part.part, reason: reason.kind });
+    onUnavailable?.({ plugin, part: part.part, reason, error });
   }
 }
 

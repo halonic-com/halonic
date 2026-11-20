@@ -11,7 +11,12 @@
 import { type ConnectorFactories, connectorConfigOf, type ProgramCopyLease } from "@halonicjs/app";
 import type { RunVersion } from "@halonicjs/events";
 import { type Connector, connectorIsLocalWith, type SheetHosts } from "@halonicjs/format";
-import type { ConnectorClient, ConnectorFactoryContext, TrustGrant } from "@halonicjs/ports";
+import {
+  type ConnectorClient,
+  type ConnectorFactoryContext,
+  forwardedPartsOff,
+  type TrustGrant,
+} from "@halonicjs/ports";
 import type { ConnectorsRun, RunConnectors } from "./run-connectors.ts";
 
 /** Where a run's programs start, as the host makes it: a copy at its commit, or the folder itself. */
@@ -199,6 +204,7 @@ function markedLocal(client: ConnectorClient, local: boolean): ConnectorClient {
     local,
     listTools: () => client.listTools(),
     callTool: (name, args, options) => client.callTool(name, args, options),
+    ...forwardedPartsOff(client),
     close: () => client.close(),
   };
 }
