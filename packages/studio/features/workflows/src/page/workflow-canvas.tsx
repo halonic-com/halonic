@@ -49,6 +49,7 @@ export function WorkflowCanvas({
   onSelectStep,
   edit,
   picked,
+  docked = false,
   onBackgroundClick,
 }: {
   readonly workflow: WorkflowView;
@@ -75,6 +76,8 @@ export function WorkflowCanvas({
    * absent, the canvas keeps its own.
    */
   readonly picked?: string | undefined;
+  /** A card is docked at the right: a step picked while it is pans clear of it. */
+  readonly docked?: boolean | undefined;
   /** A click on the background, not a drag: the page closes the picked step's card. */
   readonly onBackgroundClick?: (() => void) | undefined;
 }) {
@@ -151,15 +154,27 @@ export function WorkflowCanvas({
   }, []);
 
   const centre = () => ({ x: size().width / 2, y: size().height / 2 });
-  // A card reached with the keyboard pans into view, clear of the zoom buttons like a fit, so
-  // focus never lands out of sight (`workflows.canvas.focus-in-view`). A click doesn't pan: the
-  // card would move from under the pointer before the click lands.
+  // Where a card is shown when it's brought into view: clear of the zoom buttons, like a fit.
+  const room = () => {
+    const { width, height } = size();
+    return { x: ZOOM_GUTTER, y: 0, width: width - ZOOM_GUTTER, height };
+  };
+  // A card reached with the keyboard pans into view, so focus never lands out of sight
+  // (`workflows.canvas.focus-in-view`). A click doesn't pan: the card would move from under the
+  // pointer before the click lands.
   const showFocused = (event: React.FocusEvent<HTMLButtonElement>, card: Box) => {
     if (!event.currentTarget.matches(":focus-visible")) return;
-    const { width, height } = size();
-    const room = { x: ZOOM_GUTTER, y: 0, width: width - ZOOM_GUTTER, height };
-    setView((now) => panToShow(now, card, room));
+    setView((now) => panToShow(now, card, room()));
   };
+  // The page docks a picked step's card at the right, which narrows the canvas. Once the card has
+  // opened or been replaced, the click has landed, so the step pans just clear of it, at the same
+  // zoom (`workflows.page.step-card`).
+  useLayoutEffect(() => {
+    if (picked === undefined || !docked) return;
+    const box = boxes.get(picked);
+    if (box === undefined) return;
+    setView((now) => panToShow(now, cardExtent(box, picked === workflow.initial), room()));
+  }, [picked, docked]);
   return (
     // A group, not an application: the canvas has no keys of its own, so a screen reader stays in
     // its reading mode here (a11y check E3).

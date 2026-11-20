@@ -28,7 +28,7 @@ import { useSaveAsTest } from "../runs/use-save-as-test.ts";
 import { useAnnounceDockedRun } from "../start/run-announcement.ts";
 import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
-import { StepEditDock } from "./docked-step-card.tsx";
+import { StepEditDock, stepCardDocks } from "./docked-step-card.tsx";
 import { FlowView } from "./flow-view.tsx";
 import { goneState } from "./gone-state.tsx";
 import { firstTestsPick, firstView, panelClass } from "./page-view.ts";
@@ -168,6 +168,11 @@ export function WorkflowScreen({
   const needYou = runCount(runsRead.load, { hubId, id }, runs);
   const views = workflowTabs(errors, needYou);
   const shown = useShownRun(runsRead.load, { hubId, id }, runs, shownId);
+  // A card at the right narrows the canvas, which then keeps a picked step clear of it.
+  const docked = hasDockedCard(
+    { dock, host, shown, pickedStep: dockStep },
+    { host, workflow: load, pickedStep: dockStep, dock, runShown: shown !== undefined, phone },
+  );
   const strip = shown?.line;
   useAnnounceDockedRun(strip, typeof dock === "object", announceState);
   const { startRun } = host;
@@ -243,10 +248,7 @@ export function WorkflowScreen({
           ids={ids}
           tabs={views}
           selected={view}
-          className={panelClass(view, {
-            phone,
-            docked: dockHasCard({ dock, host, shown, pickedStep: dockStep }),
-          })}
+          className={panelClass(view, { phone, docked })}
         >
           {view === "configuration" && (
             <Configuration
@@ -307,6 +309,7 @@ export function WorkflowScreen({
               onSelectStep={setPickedStep}
               edit={canvasEdit}
               pickedStep={pickedStep}
+              docked={docked}
               onClearStep={() => setPickedStep(undefined)}
               kept={kept}
               onView={keep}
@@ -349,4 +352,12 @@ export function WorkflowScreen({
       </div>
     </div>
   );
+}
+
+/** Whether a card is docked at the right: the start form or a run's, or a picked step's own. */
+function hasDockedCard(
+  run: Parameters<typeof dockHasCard>[0],
+  step: Parameters<typeof stepCardDocks>[0],
+): boolean {
+  return dockHasCard(run) || stepCardDocks(step);
 }

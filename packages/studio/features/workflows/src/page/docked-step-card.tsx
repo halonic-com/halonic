@@ -185,6 +185,28 @@ export interface StepEditDockProps {
   readonly onClose: () => void;
 }
 
+/** Whether {@link StepEditDock} shows a card, so the page knows the canvas is narrowed by it. */
+export function stepCardDocks({
+  host,
+  workflow,
+  pickedStep,
+  dock,
+  runShown,
+  phone,
+}: Pick<
+  StepEditDockProps,
+  "host" | "workflow" | "pickedStep" | "dock" | "runShown" | "phone"
+>): boolean {
+  return (
+    dock === undefined &&
+    !runShown &&
+    !phone &&
+    host.changeStep !== undefined &&
+    workflow.kind === "ready" &&
+    workflow.value.steps.some((one) => one.id === pickedStep)
+  );
+}
+
 /**
  * The docked step card for the step picked on the canvas, where the host can change steps. Not on
  * a phone, whose Flow is view-only, and not while another card is docked.
@@ -212,9 +234,7 @@ export function StepEditDock({
   );
   const step = view?.steps.find((one) => one.id === pickedStep);
   if (
-    dock !== undefined ||
-    runShown ||
-    phone ||
+    !stepCardDocks({ host, workflow, pickedStep, dock, runShown, phone }) ||
     save === undefined ||
     view === undefined ||
     step === undefined

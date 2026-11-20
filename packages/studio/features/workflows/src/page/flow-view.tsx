@@ -22,6 +22,8 @@ export interface FlowViewProps {
   readonly edit: CanvasEdit | undefined;
   /** The step picked on the page; the canvas's selection follows it when a card closes. */
   readonly pickedStep: string | undefined;
+  /** A card is docked at the right, over the canvas's old right edge. */
+  readonly docked: boolean;
   /** A click on the canvas's background: the picked step's card closes. */
   readonly onClearStep: () => void;
   readonly kept: { readonly of: string; readonly view: View } | undefined;
@@ -41,6 +43,7 @@ export function FlowView({
   onSelectStep,
   edit,
   pickedStep,
+  docked,
   onClearStep,
   kept,
   onView,
@@ -74,6 +77,7 @@ export function FlowView({
           onSelectStep={onSelectStep}
           edit={edit}
           picked={pickedStep}
+          docked={docked}
           onBackgroundClick={onClearStep}
         />
       )}
