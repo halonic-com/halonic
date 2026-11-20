@@ -897,7 +897,7 @@ checklist 1.10). The feature owns the item; the shell draws the header and keeps
   goes on to the close stack.
 - **One view at a time,** remembered for the window tab and the item, even when the tab's page was
   unmounted (`TabPages` keeps it). A tab that shows the item for the first time starts on the first
-  view. A page that draws its own header can use `ItemHeader` and `useRememberedView` itself.
+  view. A page that draws its own header can use `ItemHeader` itself.
 - **Badges** are the kit tabs' `count` (`danger` errors, `warning` waiting for a person) and
   `running` dot.
 - **The chat** (`shell.item-page-chat`): when a feature provides a `chat` for the kind, the chat
