@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-12488 (Liam's review of #3975); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:L0aJMx2Yi4SmRXe0BBiQmZNj2JiOAQlogAnp7tb0stGnF+RFgztBXIHh9F+ojGTgmQFwzxzPV1RLji0MG5bqBA==
 
 `harness-bridge.compatible-request` (new in #3957, not yet released) said that at the API's own host the access's `models` are ignored ("whatever its `models` say"). Its last sentence now points to the new `harness-bridge.keyed-model` instead: when a keyed access names `models`, the bridge refuses, before it reads the key, a request whose `model` isn't exactly one of them, that has Messages' `fallbacks`, or that has a tool calling a model of its own (one that names a `model`, or Responses' `image_generation`). This holds at Anthropic's and OpenAI's own hosts as well as at a compatible provider.
 
