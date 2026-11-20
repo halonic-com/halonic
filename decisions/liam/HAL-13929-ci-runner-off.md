@@ -3,6 +3,7 @@
 - Task: HAL-13929 (trial: HAL-13578, stop asked in HAL-13867 and HAL-13893)
 - Approval: the stop rule of the trial (HAL-13578) and the board's ask to turn it off (HAL-13867); the security reviewer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:6loVPD1xjsuhdVicvBoh1cc9RSaxFR8FGFzd2gnJ0KZAt0CVkM1VE+3+OR8gy5mVf0Hvyn/6qzrDdaM4TeFQCQ==
 
 ## What changes
 
