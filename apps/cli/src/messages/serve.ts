@@ -35,6 +35,14 @@ export const serveMessages = defineMessages("serve", {
   /** The line under {@link webhookRoutine} when its secret isn't set, so every request is refused. */
   webhookSecretNotSet: (name: string, secret: string) =>
     phrase`${markPart("failed")} ${name} won't start: its secret ${secret} isn't set. Set it with: halonic secret set ${secret}`,
+  /**
+   * The line under {@link webhookRoutine} when its secret's name belongs to
+   * Halonic or a plugin, such as `serve-password`, which the server never
+   * accepts for a webhook. It doesn't say to set it: that would overwrite
+   * Halonic's own secret and still not help.
+   */
+  webhookSecretNotOwn: (name: string, secret: string) =>
+    phrase`${markPart("failed")} ${name} won't start: its secret name ${secret} belongs to Halonic or a plugin. Use a name of your own in its routine file.`,
   /** The runtime's own line with the address for the phone, as it words it. */
   address: (line: string) => phrase`${line}`,
   /** The line under {@link serving} when the sign-in password is not set, so only this computer can open it. */
