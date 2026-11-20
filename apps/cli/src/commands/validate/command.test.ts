@@ -328,3 +328,35 @@ verifies("workspace.unreadable-folder", () => {
     },
   );
 });
+
+verifies("workflow.validate-wait-signal", () => {
+  // HAL-14310: the engine sends no signal from a wait step, so a routine on it would never start.
+  it("stops a signal on a wait step at its line, with exit 1", async () => {
+    writeFiles(acme, {
+      ...agent("writer", "fast"),
+      "hubs/support/workflows/review.workflow.yaml": [
+        "id: review",
+        "name: Review",
+        "initial: draft",
+        "states:",
+        "  draft:",
+        "    agent: writer",
+        "    on: [{ to: check }]",
+        "  check:",
+        "    type: wait",
+        "    signal: { name: review.done }",
+        "    on: [{ to: sent, event: approve }]",
+        "  sent:",
+        "    type: final",
+        "",
+      ].join("\n"),
+    });
+
+    const { code, io } = await validateIn(acme);
+
+    expect(code).toBe(exitCode.failed);
+    expect(io.stdout.slice(1, 2)).toEqual([
+      `  10:13  ✕ Wait step "check" can't send a signal. Put signal: on the step after it.  (wait-with-signal)`,
+    ]);
+  });
+});
