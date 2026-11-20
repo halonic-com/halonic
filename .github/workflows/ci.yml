@@ -14,8 +14,16 @@
 # With the repo variable MERGE_QUEUE_RUNNER set (for example `large-runner`,
 # the org's 8-core runner in group merge-queue-large), every Linux job of a
 # merge group runs on that runner instead of `ubuntu-24.04` (board decision on
-# HAL-14115, 20 Nov). Pull requests and pushes keep the standard runners.
-# Unset, everything runs on `ubuntu-24.04` as before.
+# HAL-14115, 20 Nov). Pushes keep the standard runners.
+#
+# PR_CHECKS_RUNNER does the same for the Linux jobs of a pull request (and for
+# the pull request checks in built-on-label.yml, guard-notes.yml,
+# leak-terms.yml and pr-details.yml), but only when the pull request comes
+# from a branch of this repo. Pull requests from forks always run on
+# `ubuntu-24.04`: the repo is public, and a fork must never run on a paid
+# runner. It is a separate variable so pull requests can go back to the
+# standard runners on their own. Unset, everything runs on `ubuntu-24.04` as
+# before.
 
 name: CI
 
@@ -52,7 +60,7 @@ env:
 jobs:
   changes:
     name: Changed areas
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 5
     permissions:
       contents: read
@@ -161,7 +169,7 @@ jobs:
     # Trial (HAL-13578): with the repo variable CF_RUNNER_TRIAL set to `merge-queue`, the merge
     # queue and pushes to main run this job on a one-job Cloudflare container
     # (infra/cf-runner). Unset, everything runs on GitHub's runners as before.
-    runs-on: ${{ vars.CF_RUNNER_TRIAL == 'merge-queue' && (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'cf-linux' || github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ vars.CF_RUNNER_TRIAL == 'merge-queue' && (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'cf-linux' || github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
     permissions:
@@ -258,7 +266,7 @@ jobs:
     # third-party code: only the repo's own script on Node, so the secret is
     # never near a dependency. Prints locations, never a term or a secret.
     name: Leak guard
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
     # The personal terms live in the environment `leak-terms`, which only
@@ -336,7 +344,7 @@ jobs:
     # `coverage-floor-lowered` label (read from the event file) allows it.
     name: Coverage floors don't go down
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     # pr.read can wait about 10 min in total under a GitHub rate limit.
     timeout-minutes: 15
     permissions:
@@ -371,7 +379,7 @@ jobs:
 
   gitleaks:
     name: Secret scan (gitleaks)
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 5
     permissions:
       contents: read
@@ -397,7 +405,7 @@ jobs:
     name: Workflow lint (zizmor)
     needs: changes
     if: github.event_name != 'merge_group' || needs.changes.outputs.workflows == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 5
     permissions:
       contents: read
@@ -418,7 +426,7 @@ jobs:
     # Trial (HAL-13578): with the repo variable CF_RUNNER_TRIAL set to `merge-queue`, the merge
     # queue and pushes to main run this job on a one-job Cloudflare container
     # (infra/cf-runner). Unset, everything runs on GitHub's runners as before.
-    runs-on: ${{ vars.CF_RUNNER_TRIAL == 'merge-queue' && (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'cf-linux' || github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ vars.CF_RUNNER_TRIAL == 'merge-queue' && (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'cf-linux' || github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 25
     # The key that signs the remote cache's entries lives in the environment
     # `turbo-cache-write`, which only `main` and the merge queue may use
@@ -632,7 +640,7 @@ jobs:
     name: Merge base's tests (no cache)
     needs: changes
     if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && needs.changes.outputs.full == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ${{ startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 20
     # The walk-back runs older commits whose tests were not written for a
     # loaded runner, and a git-heavy contract test passed the default 5 s
@@ -828,7 +836,7 @@ jobs:
     name: Requirements and the requirement guard (merge base's copy)
     needs: [changes, build, base-tests]
     if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && needs.changes.outputs.full == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -1012,7 +1020,7 @@ jobs:
     name: Empty package and feature pass every check
     needs: changes
     if: needs.changes.outputs.scaffold == 'true' && needs.changes.outputs.full == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 35
     permissions:
       contents: read
@@ -1061,7 +1069,7 @@ jobs:
     name: Tauri shell (Rust checks)
     needs: changes
     if: needs.changes.outputs.tauri == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 20
     permissions:
       contents: read
@@ -1610,7 +1618,7 @@ jobs:
     name: Sandbox fence (bubblewrap)
     needs: changes
     if: needs.changes.outputs.sandbox-fence == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -1997,7 +2005,7 @@ jobs:
     name: Agent host executable (${{ matrix.name }})
     needs: changes
     if: needs.changes.outputs.agent_host == 'true' && needs.changes.outputs.full == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || matrix.os }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || matrix.os == 'ubuntu-24.04' && startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || matrix.os }}
     timeout-minutes: 20
     permissions:
       contents: read
@@ -2301,7 +2309,7 @@ jobs:
     name: Android shell (debug APK)
     needs: changes
     if: needs.changes.outputs.android == 'true' && needs.changes.outputs.full == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 40
     permissions:
       contents: read
@@ -2417,7 +2425,7 @@ jobs:
     name: Studio end-to-end (Playwright)
     needs: changes
     if: needs.changes.outputs.studio == 'true' && needs.changes.outputs.full == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -2491,7 +2499,7 @@ jobs:
     name: Docs build and link check
     needs: changes
     if: needs.changes.outputs.docs == 'true'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 2
     permissions: {}
     steps:
@@ -2506,7 +2514,7 @@ jobs:
     # fork's. Off, with a notice, until LIVE_CLOUD_ENABLED is "true".
     name: Live cloud suites passed
     if: github.event_name != 'push'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 50
     permissions:
       contents: read
@@ -2589,7 +2597,7 @@ jobs:
   fail-fast:
     name: Cancel the run on the first failure
     if: github.event_name == 'merge_group'
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 90 # costs nothing when the run ends early; ci-ok doesn't wait for it
     permissions:
       actions: write # to list the run's jobs and cancel the run
@@ -2633,7 +2641,7 @@ jobs:
     # the pull request's lists.
     name: Policy rules (base commit's copy)
     if: ${{ github.event_name != 'push' }}
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -2731,7 +2739,7 @@ jobs:
         docs,
         live-cloud,
       ]
-    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
+    runs-on: ${{ github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || startsWith(github.event_name, 'pull_request') && github.event.pull_request.head.repo.full_name == github.repository && vars.PR_CHECKS_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 2
     permissions: {}
     steps:
