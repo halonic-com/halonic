@@ -87,7 +87,7 @@ verifies("source-control.history-page", () => {
       expect(details?.textContent).toContain("Only for tickets in NL.");
       expect(details?.textContent).toContain("2 items");
       // Named and kinded as the Changes list names them, by the file as it is now; never a path.
-      const items = [...(details?.querySelectorAll("li") ?? [])].map((item) => ({
+      const items = [...(details?.querySelectorAll('[role="gridcell"]') ?? [])].map((item) => ({
         text: item.textContent,
         icon: item.querySelector("svg")?.getAttribute("data-place-icon") ?? null,
       }));
@@ -137,7 +137,9 @@ verifies("source-control.history-page", () => {
         await settle();
       });
       const details = root.querySelector('section[aria-label="Version \\"First version\\""]');
-      const items = [...(details?.querySelectorAll("li") ?? [])].map((item) => item.textContent);
+      const items = [...(details?.querySelectorAll('[role="gridcell"]') ?? [])].map(
+        (item) => item.textContent,
+      );
       expect(items).toEqual(["Weekly reportWorkflow"]);
       expect(details?.textContent).not.toContain("weekly-report");
     });
