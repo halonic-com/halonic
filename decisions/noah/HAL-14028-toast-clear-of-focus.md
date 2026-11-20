@@ -3,6 +3,7 @@
 - Task: HAL-14028
 - Approval: team decision under the HAL-2282 rule for a detail of the approved toast (Noah owns the kit's look); Liam reviews the pull request on HAL-14028 and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WQThNMX8aBB4pt4nzufgtI6wGLY68z45uy8kFD+LLdd046eMsKK0M09Fds8TtrfquLepvjdVHuv1zTZXoDtPAQ==
 
 ## What changes
 
