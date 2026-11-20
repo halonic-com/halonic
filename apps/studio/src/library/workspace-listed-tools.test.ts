@@ -109,6 +109,19 @@ verifies("studio.workspace-listed-tools", () => {
       ]);
     });
 
+    it("shows only the tools the connector's allow offers to agents", async () => {
+      const { host } = hostOf({
+        files: acmeFiles({
+          "library/connectors/notes.connector.yaml": `${notesFile}tools:\n  allow: [read_note]\n`,
+        }),
+        tools: [readNote, { ...readNote, name: "delete_note", description: "Deletes a note." }],
+      });
+
+      const snapshot = await host.review("notes");
+
+      expect(snapshot.toReview.map((row) => row.name)).toEqual(["read_note"]);
+    });
+
     it("names an unnamed workspace by its folder, as the CLI does", async () => {
       const { host } = hostOf({
         files: new MemoryDefinitionStore({

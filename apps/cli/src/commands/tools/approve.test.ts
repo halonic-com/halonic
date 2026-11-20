@@ -32,6 +32,20 @@ verifies("cli.commands.tools.approve", () => {
     expect((await kit.listedNow()).waiting.map((tool) => tool.name)).toContain("archive");
   });
 
+  it("approves a tool the connector's allow leaves out when named, and says agents never see it", async () => {
+    await kit.notes().rewriteConnector(`${notesConnector().trimEnd()}\n  allow: [lookup]\n`);
+
+    const { code, stdout } = await kit.tools(["approve", "notes-mcp", "archive"]);
+
+    expect(code).toBe(exitCode.ok);
+    expect(stdout).toEqual([
+      "✓ Approved archive from notes-mcp, as it is now.",
+      expect.stringMatching(/^ {2}htl1:/u),
+      "! Agents never see archive: the tools.allow of notes-mcp leaves it out. To offer it, add it there.",
+    ]);
+    expect((await kit.listedNow()).on).toContain("archive");
+  });
+
   it("approves with --all only the version it printed, so a later change asks again", async () => {
     await kit.tools(["approve", "notes-mcp", "--all"]);
     kit.notes().servers.tools = [

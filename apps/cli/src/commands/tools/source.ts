@@ -4,7 +4,11 @@
 
 import { realpath } from "node:fs/promises";
 import { FileToolApprovalStore } from "@halonicjs/adapter-fs-node";
-import { checkConnectorTools, type ListedToolApprovalCheck } from "@halonicjs/app/listed-tools";
+import {
+  allowsTool,
+  checkConnectorTools,
+  type ListedToolApprovalCheck,
+} from "@halonicjs/app/listed-tools";
 import type { Connector } from "@halonicjs/format";
 import type { Digest, ToolApprovalStore } from "@halonicjs/ports";
 import { profileFolder, toolApprovalFolder } from "@halonicjs/profile";
@@ -170,8 +174,7 @@ export async function checkToolSource(
  * ask about it and `approve --all` doesn't approve it.
  */
 export function isOffered(source: ToolSource, listedName: string): boolean {
-  const { allow } = source.connector.tools;
-  return allow === undefined || allow.includes(listedName);
+  return allowsTool(source.connector, listedName);
 }
 
 /**
