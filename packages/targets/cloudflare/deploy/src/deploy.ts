@@ -13,6 +13,9 @@ import { type UploadProgress, uploadAndSwitch } from "./upload.ts";
 import { versionNote } from "./version-note.ts";
 import { writeWorkspaceSnapshot } from "./write-workspace-snapshot.ts";
 
+/** The variable that pins a Worker version to its snapshot; the same name the runtime reads. */
+const definitionsVersionVariable = "HALONIC_DEFINITIONS_VERSION";
+
 const LOST_AFTER_SWITCH =
   "The deploy is live, but its lock was lost after traffic switched (another deploy may have taken it over). Check the Worker before deploying again.";
 
@@ -22,7 +25,10 @@ export interface DeploySource {
   commit(): Promise<string>;
   /** Changed tracked files plus untracked files that aren't ignored. */
   changedFileCount(): Promise<number>;
-  /** The workspace's files at `commit`, read from git objects, by path relative to the workspace root. */
+  /**
+   * The workspace's text files at `commit`, read from git objects, by path relative to the
+   * workspace root. Text files only: skip or refuse a binary file rather than decode it lossily.
+   */
   files(commit: string): Promise<Readonly<Record<string, string>>>;
 }
 
@@ -30,7 +36,10 @@ export interface DeploySource {
 export interface DeployPayload {
   /** The Worker script built from the snapshot at `commit`, so what is uploaded is what the result names. */
   readonly bundle: { readonly script: string; readonly hash: string };
-  /** The Worker's bindings. The deploy adds `DEFINITIONS` itself, in place of any given here. */
+  /**
+   * The Worker's bindings. The deploy adds `DEFINITIONS` and `HALONIC_DEFINITIONS_VERSION` itself,
+   * in place of any given here.
+   */
   readonly bindings: WorkerUpload["bindings"];
   /** The Worker's own secrets. Sent in the upload; never logged. */
   readonly secrets: WorkerUpload["secrets"];
@@ -105,7 +114,8 @@ export interface DeployDone {
 /**
  * Runs ADR 5.6 steps 1–9 in order: validate, test (not for `plan`), snapshot from git, secrets, provision, migrate,
  * upload, smoke test, switch. Before the upload it writes the snapshot's files into the definitions
- * bucket and binds that bucket as `DEFINITIONS`. The lock is taken before anything changes and freed at the end.
+ * bucket, binds that bucket as `DEFINITIONS` and pins the new version to the snapshot with
+ * `HALONIC_DEFINITIONS_VERSION`, so a failed self-test leaves the live version on its own. The lock is taken before anything changes and freed at the end.
  *
  * @throws DeployError `uncommitted-changes` for a production deploy with uncommitted files
  * @throws DeployError `deploy-aborted` when the signal aborts between steps
@@ -200,7 +210,7 @@ export async function deploy(
         worker,
         bundle: payload.bundle,
         compatibilityDate: options.compatibilityDate,
-        bindings: withDefinitions(payload.bindings, definitions),
+        bindings: withDefinitions(payload.bindings, definitions, version),
         secrets: payload.secrets,
         durableObjectMigrations: doMigrations,
         message: versionNote({
@@ -224,13 +234,20 @@ export async function deploy(
   );
 }
 
-/** The payload's bindings with `DEFINITIONS` bound to the bucket the snapshot went into. */
+/**
+ * The payload's bindings with `DEFINITIONS` bound to the bucket the snapshot went into, and the
+ * snapshot's version as a plain variable, so the version reads that snapshot and not `current`.
+ */
 function withDefinitions(
   bindings: readonly WorkerBinding[],
   bucket: string,
+  version: string,
 ): readonly WorkerBinding[] {
   return [
-    ...bindings.filter((binding) => binding.name !== "DEFINITIONS"),
+    ...bindings.filter(
+      (binding) => binding.name !== "DEFINITIONS" && binding.name !== definitionsVersionVariable,
+    ),
     { type: "r2_bucket", name: "DEFINITIONS", bucket_name: bucket },
+    { type: "plain_text", name: definitionsVersionVariable, text: version },
   ];
 }
