@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14072 (Liam, CTO; the B2 plan for HAL-12237, with the conditions for PR 6)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:T1hRHBxbuquVCDzKzJqtpLV4Shkt3/vt3jFIIZEOO3g7StpX43F+XfPJqQUCSpoIxjkxoGXbw8f4wZ8uWW9iDg==
 
 Tunnel phase B, build plan decision 17 (HAL-12232): while Pair a phone is open, the agent host advertises `_halonic-pair._tcp` over multicast DNS, so a phone on the same Wi-Fi can list the computer. A multicast DNS socket receives from the LAN by its nature, and the active requirement `agent-host.loopback-only` says nothing of the host listens beyond this computer. Its guard test matched only `.listen(` calls, so it wouldn't have caught a datagram socket.
 
