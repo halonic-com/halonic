@@ -3,6 +3,7 @@
 - Task: HAL-13594
 - Approval: the task asks for this change (HAL-13594); Liam approves and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8EWBZW6VhLkx+oWZsiZobjMMxKVqyTNefNrDielRq+4NVzeiIDHcGpCZ+PfSGZLRRfg4a2RCEDuYJkXyDf6DCQ==
 
 ## What changes
 
