@@ -314,7 +314,7 @@ verifies("cli.commands.plugin.add", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr[0]).toBe(
-      "✕ Couldn't add the plugin: this folder is, holds or is inside Halonic's own data.",
+      "✕ Couldn't add the plugin: a plugin can't be added from Halonic's own data, or from a folder that holds it.",
     );
     await expect(readdir(pluginsFolder())).rejects.toThrow();
   });

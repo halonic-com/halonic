@@ -146,7 +146,7 @@ function refusedOutcome(refusal: PluginAddRefusal): PluginAddOutcome {
   if (refusal.kind === "halonic-data") {
     throw new KindedError(
       "invalid_input",
-      "This folder is, holds or is inside Halonic's own data, so a plugin can't be added from it.",
+      "A plugin can't be added from Halonic's own data, or from a folder that holds it.",
     );
   }
   if (refusal.kind === "taken") return { kind: "taken", plugin: refusal.id, name: refusal.name };

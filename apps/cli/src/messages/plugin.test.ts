@@ -57,7 +57,7 @@ describe("plugin's sentences", () => {
       "Weather is added but off. Nothing from it runs until you trust it: halonic trust --plugin weather",
       "add the plugin",
       "Check the folder or git address.",
-      "this folder is, holds or is inside Halonic's own data.",
+      "a plugin can't be added from Halonic's own data, or from a folder that holds it.",
     ]);
   });
 
