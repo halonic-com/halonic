@@ -81,9 +81,20 @@ function sandbox(check: SandboxCheck): Sandbox {
 
 /** The host's machine over a folder in the temp folder, with a runner that answers, and the folders read. */
 async function setup(
-  options: { check?: SandboxCheck; trusted?: boolean; platform?: NodeJS.Platform } = {},
+  options: {
+    check?: SandboxCheck;
+    trusted?: boolean;
+    platform?: NodeJS.Platform;
+    /** The user's saved yes for running without the sandbox, for this reason. */
+    allowed?: "windows";
+  } = {},
 ) {
   const { check = passes, trusted = true, platform = "linux" } = options;
+  const consent = new MemoryUnfencedRunConsentStore();
+  if (options.allowed !== undefined) {
+    await consent.save({ reason: options.allowed, allowedAt: clock.now().toISOString() });
+  }
+  const launcher = sandbox(passes);
   const folders = new FileSystemFolderReader(root, root);
   const readNames: string[] = [];
   const plugins: FolderReader = {
@@ -111,6 +122,7 @@ async function setup(
     await trust.grantPlugin(read.value, shown.fingerprint, "cli");
   }
   const seen = { starts: 0, stops: 0 };
+  const launched = { inLauncher: 0 };
   const machine: PluginBackendMachine = {
     plugins,
     digest,
@@ -118,13 +130,9 @@ async function setup(
     gate: new RunnerStartGate({
       platform,
       fenced: sandbox(check),
-      // Never reached: the host's gate has no saved yes, so it never takes the launcher's path.
-      launcher: sandbox(passes),
-      runs: new UnfencedRuns({
-        store: new MemoryUnfencedRunConsentStore(),
-        clock,
-        timers: idleTimers,
-      }),
+      // Reached only with the user's saved yes for the reason at the start.
+      launcher,
+      runs: new UnfencedRuns({ store: consent, clock, timers: idleTimers }),
       timers: idleTimers,
     }),
     runtime: { node: "/host/halonic-agent-host", nodeFolder: "/host", runnerFile: "/r/runner.mjs" },
@@ -139,10 +147,12 @@ async function setup(
       timeLimitMs: 1000,
     }),
     runnerExists: () => true,
-    startRunner: async () => {
+    startRunner: async (startOptions) => {
       seen.starts += 1;
+      const inLauncher = startOptions.sandbox === launcher;
+      if (inLauncher) launched.inLauncher += 1;
       const runner: StartedRunner = {
-        fence: { state: "fenced" },
+        fence: inLauncher ? { state: "off" } : { state: "fenced" },
         declaration: {
           name: "acme",
           version: "1.0.0",
@@ -172,7 +182,7 @@ async function setup(
   } as unknown as ConnectorFactoryContext;
   const logged: string[] = [];
   const backends = hostPluginBackends(machine, context, (text) => logged.push(text));
-  return { backends, seen, readNames, logged };
+  return { backends, seen, launched, readNames, logged };
 }
 
 async function refusedWith(promise: Promise<unknown>): Promise<string | undefined> {
@@ -249,6 +259,25 @@ verifies("agent-host.plugin-routes", () => {
 
     it("answers not_fenced on Windows even when the sandbox passes its check, as the host wires no MXC", async () => {
       const { backends, seen } = await setup({ platform: "win32" });
+      const fingerprint = await backends.trustedFingerprint("acme");
+      expect(await refusedWith(backends.open("acme", fingerprint))).toBe("not_fenced");
+      expect(seen.starts).toBe(0);
+    });
+
+    it("starts without the sandbox only with the user's saved yes for the reason at this start", async () => {
+      const { backends, seen, launched } = await setup({ platform: "win32", allowed: "windows" });
+      const fingerprint = await backends.trustedFingerprint("acme");
+      const client = await backends.open("acme", fingerprint);
+      expect(seen.starts).toBe(1);
+      expect(launched.inLauncher).toBe(1);
+      await client.close();
+    });
+
+    it("starts nothing with a saved yes for another reason", async () => {
+      const { backends, seen } = await setup({
+        check: { ...onWindows, reason: "container" },
+        allowed: "windows",
+      });
       const fingerprint = await backends.trustedFingerprint("acme");
       expect(await refusedWith(backends.open("acme", fingerprint))).toBe("not_fenced");
       expect(seen.starts).toBe(0);

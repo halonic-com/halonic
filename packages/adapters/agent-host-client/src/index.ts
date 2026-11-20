@@ -76,3 +76,4 @@ export {
   agentHostRequestRoutes,
   agentHostStreamRoutes,
 } from "./transport.ts";
+export { AgentHostUnfencedRuns, type UnfencedRunStatus } from "./unfenced-runs.ts";

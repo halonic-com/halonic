@@ -277,6 +277,20 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/plugins/secrets",
         route(Method::Post, "/v1/plugins/secrets", Answer::Json),
     ),
+    // The yes to run plugins without the sandbox (HAL-3384): the host saves it
+    // only for the reason that holds now; the page sends only that reason.
+    (
+        "GET /v1/unfenced-runs",
+        route(Method::Get, "/v1/unfenced-runs", Answer::Json),
+    ),
+    (
+        "POST /v1/unfenced-runs/allow",
+        route(Method::Post, "/v1/unfenced-runs/allow", Answer::Json),
+    ),
+    (
+        "POST /v1/unfenced-runs/take-back",
+        route(Method::Post, "/v1/unfenced-runs/take-back", Answer::Json),
+    ),
 ];
 
 /// The route a page names, when it is one of the table's and answers as
