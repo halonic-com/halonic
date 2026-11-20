@@ -101,9 +101,9 @@ export function StatusChip(props: StatusChipProps) {
   return (
     <span className={classes}>
       {dot ? (
-        // High contrast drops fills; the dot keeps its fill in the chip's text colour.
+        // High contrast drops fills; the dot keeps a fill, in CanvasText as the chip's text.
         <span
-          className="size-1.5 shrink-0 rounded-full bg-current forced-color-adjust-none"
+          className="size-1.5 shrink-0 rounded-full bg-current forced-color-adjust-none forced-colors:bg-[CanvasText]"
           aria-hidden="true"
         />
       ) : null}
