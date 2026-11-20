@@ -6,6 +6,7 @@ import type {
   AgentHarnessId,
   AgentHub,
   AgentListing,
+  AgentOutput,
   AgentRef,
   AgentSettings,
   AgentsHost,
@@ -146,6 +147,7 @@ export class WorkspaceAgents implements AgentsHost {
     return {
       ...listingOf(ref.hubId, agent),
       instructions: agent.instructions,
+      output: agent.output,
       maxSteps: agent.maxSteps,
       harness: agent.harness ?? "halonic",
       skills: agent.skills,
@@ -254,25 +256,20 @@ export class WorkspaceAgents implements AgentsHost {
    * change. Typing in one field coalesces into one step.
    */
   async update(ref: AgentRef, change: AgentChange): Promise<void> {
-    if (change.name !== undefined && change.name.trim() === "") {
-      throw new KindedError("invalid_input", "An agent needs a name.");
-    }
-    if (
-      change.maxSteps !== undefined &&
-      !(Number.isInteger(change.maxSteps) && change.maxSteps >= 1 && change.maxSteps <= 200)
-    ) {
-      throw new KindedError("invalid_input", "The turn limit is a whole number from 1 to 200.");
-    }
+    const problem = changeProblem(change);
+    if (problem !== undefined) throw new KindedError("invalid_input", problem);
     const { agent, path } = await this.#find(ref);
     if (change.subagents !== undefined)
       await this.#refuseLoops(ref, agent.subagents, change.subagents);
     const text = await this.#parts.files.read(path);
     if (text === null) throw agentGone();
+    const values = { ...change, output: change.output && outputValue(change.output) };
     const edits: YamlEdit[] = [];
     for (const field of [
       "name",
       "description",
       "instructions",
+      "output",
       "model",
       "maxSteps",
       "harness",
@@ -281,7 +278,7 @@ export class WorkspaceAgents implements AgentsHost {
       "connectors",
       "subagents",
     ] as const) {
-      const value = change[field];
+      const value = values[field];
       if (value !== undefined) edits.push({ kind: "set", path: [field], value });
     }
     const edited = editYaml(text, edits);
@@ -456,6 +453,24 @@ export class WorkspaceAgents implements AgentsHost {
       version: async () => "unsaved",
     };
   }
+}
+
+/** The `output` as the file writes it: a JSON reply without a schema has no `schema` key. */
+function outputValue(output: AgentOutput): AgentOutput {
+  return output.type === "json" && output.schema === undefined ? { type: "json" } : output;
+}
+
+/** Why a change can't be written, as the agent file's schema would refuse it; `undefined` when it can. */
+function changeProblem(change: AgentChange): string | undefined {
+  if (change.name !== undefined && change.name.trim() === "") return "An agent needs a name.";
+  const { maxSteps } = change;
+  if (maxSteps !== undefined && !(Number.isInteger(maxSteps) && maxSteps >= 1 && maxSteps <= 200)) {
+    return "The turn limit is a whole number from 1 to 200.";
+  }
+  if (change.output?.type === "choice" && change.output.options.length === 0) {
+    return "A list of options needs at least one.";
+  }
+  return undefined;
 }
 
 /** What a row of the list shows of an agent's file. */

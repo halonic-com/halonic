@@ -16,6 +16,23 @@ export const configurationWords = {
     "What it should do and how, in plain words. It follows this every time it runs.",
   /** Save model 8.4: a key pasted into Description or Instructions is not saved. */
   looksLikeKey: "This looks like a key. Keep it as a secret instead?",
+  /** Flow-agents 5.2: the shape of the replies, as Tabs. */
+  output: "Output",
+  outputKinds: { text: "Text", choice: "One of a list", json: "JSON" },
+  /** The chip list's Add chip and its box (checklist 2.4 and 2.9). */
+  addOption: "Add",
+  /** The Add chip's name for screen readers, which starts with what it shows. */
+  addOptionName: "Add option",
+  newOption: "New option",
+  removeOption: (option: string) => `Remove ${option}`,
+  /** A list of options needs one: the file can't hold an empty one (save model 1.2). */
+  noOptions: "Add at least one option.",
+  /** Microcopy 8.5. */
+  schema: "Schema (JSON)",
+  schemaHint: "Each reply is checked against this schema.",
+  schemaInvalid: "This isn't valid JSON.",
+  /** Valid JSON that a schema can't be, such as a list or a number. */
+  schemaNotObject: "A schema is a JSON object, between { and }.",
   model: "Model",
   /** Shown in the picker while the file names no model, or one that no longer exists. */
   chooseModel: "Choose a model",

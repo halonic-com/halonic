@@ -60,6 +60,7 @@ function Switchable({ host }: { host: Parameters<typeof HarnessPage>[0]["host"] 
     name: id,
     harness: "codex",
     instructions: "",
+    output: { type: "text" },
     maxSteps: 6,
     skills: [],
     knowledge: [],
