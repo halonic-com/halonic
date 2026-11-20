@@ -65,7 +65,7 @@ async function acmeEngineLock(): Promise<string> {
 
 verifies("cli.local-engine-lock", () => {
   it("names the command that holds the engine, and says how to stop one that runs until stopped", async () => {
-    await openEngine("routines watch");
+    await openEngine("routinesWatch");
 
     await expect(openEngine("run")).rejects.toMatchObject({
       kind: "conflict",

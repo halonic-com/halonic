@@ -155,7 +155,7 @@ async function openWithTicks(
       },
     },
     {
-      holder: "routines watch",
+      holder: "routinesWatch",
       dir,
       workspace,
       trust: null,

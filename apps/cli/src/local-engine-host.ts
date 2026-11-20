@@ -113,18 +113,22 @@ export type EngineErrorSource =
 export type { RoutineEngine, RoutineTicks };
 
 /**
- * Each CLI command that opens an engine, and whether it ends by itself, as
- * a run does, or runs until someone stops it with Ctrl C, as a watch does.
+ * Each CLI command that opens an engine: the words its lock names it by,
+ * and whether it runs until someone stops it with Ctrl C, as a watch does,
+ * or ends by itself, as a run does.
  */
 const engineHolders = {
-  run: "ends",
-  "runs send": "ends",
-  "routines watch": "until-stopped",
-  serve: "until-stopped",
+  run: { command: "run", runsUntilStopped: false },
+  runsSend: { command: "runs send", runsUntilStopped: false },
+  routinesWatch: { command: "routines watch", runsUntilStopped: true },
+  serve: { command: "serve", runsUntilStopped: true },
 } as const;
 
-/** A CLI command that opens an engine, as its lock names it: "routines watch". */
+/** A CLI command that opens an engine, such as `routinesWatch` for `halonic routines watch`. */
 export type EngineHolder = keyof typeof engineHolders;
+
+/** One entry of {@link engineHolders}. */
+type EngineHolderEntry = (typeof engineHolders)[EngineHolder];
 
 /** What {@link openLocalEngine} builds the engine from. */
 export interface LocalEngineInput {
@@ -273,7 +277,7 @@ export async function openLocalEngine(input: LocalEngineInput): Promise<LocalEng
   await makePrivateFolder(folders.folder);
   let engine: LocalEngine | undefined;
   const lock = await holdEngineLock(join(folders.folder, engineLockFile), {
-    ...(input.holder === undefined ? {} : { holder: input.holder }),
+    ...(input.holder === undefined ? {} : { holder: engineHolders[input.holder].command }),
     onLost: (error) => {
       input.reportError(error, "engine-lock");
       void engine?.close().catch((closeError) => input.reportError(closeError, "engine-lock"));
@@ -469,9 +473,9 @@ async function holdEngineLock(
     const message =
       record === null || holder === undefined
         ? workspaceMessages.engineOpen(record?.pid)
-        : workspaceMessages.engineOpenBy(holder, record.pid);
+        : workspaceMessages.engineOpenBy(holder.command, record.pid);
     const fix =
-      holder !== undefined && engineHolders[holder] === "until-stopped"
+      holder?.runsUntilStopped === true
         ? workspaceMessages.engineOpenStopFix()
         : workspaceMessages.engineOpenFix();
     throw new KindedError("conflict", plainText(message.phrase), {
@@ -482,8 +486,6 @@ async function holdEngineLock(
 }
 
 /** The command a lock names, when it is one of the CLI's; any other text names none. */
-function engineHolderOf(text: string | undefined): EngineHolder | undefined {
-  return text !== undefined && Object.hasOwn(engineHolders, text)
-    ? (text as EngineHolder)
-    : undefined;
+function engineHolderOf(text: string | undefined): EngineHolderEntry | undefined {
+  return Object.values(engineHolders).find((each) => each.command === text);
 }

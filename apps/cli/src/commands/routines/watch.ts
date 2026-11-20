@@ -100,7 +100,7 @@ async function watchVersions(
   let scheduler: RoutineScheduler | undefined;
   let runStore: RunStore | undefined;
   const engine = await openWorkspaceEngine(context, setup, {
-    holder: "routines watch",
+    holder: "routinesWatch",
     dir,
     workspace,
     versions,
