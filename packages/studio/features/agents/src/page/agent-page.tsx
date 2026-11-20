@@ -344,8 +344,9 @@ interface AgentCards {
 
 /**
  * The cards stacked on the agent page's panel (flow-agents 7): a subagent and an agent step open
- * as cards, and a card whose agent or agent step is gone drops with every card above it, saying so to screen readers. The stack
- * is the page's state, so it stays across tab switches while the page stays mounted.
+ * as cards, and a card whose agent or agent step is gone drops with every card above it, saying
+ * so to screen readers. The stack is the page's state, so it stays across tab switches while the
+ * page stays mounted.
  */
 function useAgentCards(
   host: AgentsHost,
