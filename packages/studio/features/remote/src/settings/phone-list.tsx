@@ -1,6 +1,6 @@
 import type { PairedPhone, RemoteControl, RemoteState } from "@halonicjs/ports";
 import { Button, Dialog, EmptyState } from "@halonicjs/studio-kit";
-import { sectionHeading } from "@halonicjs/studio-shell";
+import { type SettingsSurface, sectionHeading, sectionHeadingLevel } from "@halonicjs/studio-shell";
 import { useId, useRef, useState } from "react";
 import { pairedLine, seenLine } from "./phone-words.ts";
 import * as text from "./remote-text.ts";
@@ -15,6 +15,8 @@ export interface PhoneListProps {
   readonly onPair: () => void;
   /** Where "Last seen" counts from. Default the clock. */
   readonly now?: () => Date;
+  /** Where the section shows, for the list heading's level. Default the dialog. */
+  readonly surface?: SettingsSurface | undefined;
 }
 
 /** What the open Revoke dialog cuts off: one phone, or every one. */
@@ -32,7 +34,9 @@ export function PhoneList({
   announce,
   onPair,
   now = () => new Date(),
+  surface,
 }: PhoneListProps) {
+  const level = sectionHeadingLevel(surface);
   const [revoking, setRevoking] = useState<Revoking>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -71,7 +75,7 @@ export function PhoneList({
       {state.phones.length === 0 ? (
         <EmptyState
           title={text.EMPTY_TITLE}
-          headingLevel={3}
+          headingLevel={level}
           action={{ label: text.PAIR, onClick: onPair }}
           description={
             // The kit wraps the description in a paragraph, so its two lines are blocks, not paragraphs.
@@ -85,6 +89,7 @@ export function PhoneList({
         <Phones
           state={state}
           now={now()}
+          level={level}
           buttons={revokeButtons.current}
           onPair={onPair}
           onRevoke={(phone) => open({ phone })}
@@ -135,6 +140,7 @@ export function PhoneList({
 function Phones({
   state,
   now,
+  level,
   buttons,
   onPair,
   onRevoke,
@@ -142,6 +148,8 @@ function Phones({
 }: {
   readonly state: RemoteState;
   readonly now: Date;
+  /** The list heading's level, one under the section's name. */
+  readonly level: 2 | 4;
   /** Each row's Revoke button by phone id, for where focus goes after one. */
   readonly buttons: Map<string, HTMLButtonElement>;
   readonly onPair: () => void;
@@ -149,12 +157,13 @@ function Phones({
   readonly onRevokeAll: () => void;
 }) {
   const headingId = useId();
+  const Heading = `h${level}` as const;
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-4">
-        <h3 id={headingId} className="text-body-strong">
+        <Heading id={headingId} className="text-body-strong">
           {text.phonesHeading(state.phones.length)}
-        </h3>
+        </Heading>
         <Button variant="secondary" size="sm" onClick={onPair}>
           {text.PAIR}
         </Button>

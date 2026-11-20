@@ -7,7 +7,7 @@ import {
   Switch,
   useOpenExternal,
 } from "@halonicjs/studio-kit";
-import type { SettingsSectionProps } from "@halonicjs/studio-shell";
+import type { SettingsSectionProps, SettingsSurface } from "@halonicjs/studio-shell";
 import { type ReactNode, useRef, useState } from "react";
 import { RemoteControlService } from "../api.ts";
 import { PairDialog } from "../pairing/pair-dialog.tsx";
@@ -17,7 +17,7 @@ import { PhoneList } from "./phone-list.tsx";
 import * as text from "./remote-text.ts";
 
 /** Settings › Remote as the settings container shows it, over the host's {@link RemoteControl}. */
-export function RemoteSection({ context }: SettingsSectionProps) {
+export function RemoteSection({ context, surface }: SettingsSectionProps) {
   const remote = context.services.find(RemoteControlService);
   const state = useRemoteState(remote);
   if (remote === undefined || state === undefined) return null;
@@ -26,6 +26,7 @@ export function RemoteSection({ context }: SettingsSectionProps) {
       remote={remote}
       state={state}
       announce={(line) => context.announcer.announce(line)}
+      surface={surface}
     />
   );
 }
@@ -36,10 +37,12 @@ export interface RemoteSettingsViewProps {
   readonly state: RemoteState;
   /** Says a result in the dialog: the settings container's live region. */
   readonly announce: (line: string) => void;
+  /** Where the section shows, for its headings' level. Default the dialog. */
+  readonly surface?: SettingsSurface | undefined;
 }
 
 /** The section over one snapshot: the tunnel's problem, the switches, and the phones. */
-export function RemoteSettingsView({ remote, state, announce }: RemoteSettingsViewProps) {
+export function RemoteSettingsView({ remote, state, announce, surface }: RemoteSettingsViewProps) {
   const [failed, setFailed] = useState<string>();
   const [pairing, setPairing] = useState(false);
   const run = (action: Promise<void>, failure: string): Promise<void> => {
@@ -94,6 +97,7 @@ export function RemoteSettingsView({ remote, state, announce }: RemoteSettingsVi
         state={state}
         announce={announce}
         onPair={() => setPairing(true)}
+        surface={surface}
       />
       {pairing ? (
         <PairDialog

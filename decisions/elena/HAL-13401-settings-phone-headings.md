@@ -1,9 +1,8 @@
 # Decision: on a phone, a Settings page's own headings sit one level under its h1
 
 - Task: HAL-13401
-- Approval: https://paperclip.halonic.com/HAL/issues/HAL-13401 (finding SH1 of the C180 check HAL-13384; same rule as S3 in HAL-13041, no new words; team decision under the HAL-2282 rule, Sofia as designer; Liam's code review)
+- Approval: https://paperclip.halonic.com/HAL/issues/HAL-13401 (finding SH1 of the C180 check HAL-13384, and row RE3 of Sofia's C375 check HAL-14418 for Remote; same rule as S3 in HAL-13041, no new words; team decision under the HAL-2282 rule, Sofia as designer; Liam's code review)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:eT2MU0pbb9/A2gf40D4or9eZXjQcm9GHnJQvP6bM7ZUawDsJxMUCaBjEHjf2AifFZ/n7dFaApvjPoysGwkO+CQ==
 
 ## What changes
 
@@ -19,6 +18,7 @@ section's own headings now sit one level under it:
   Scoop is `h3` (was `h4`).
 
 The Settings dialog on the desktop keeps its levels (`h3` section › `h4`, About's version `h3`).
+Remote's list heading there moves from `h3`, the same level as the section's name, to `h4`.
 The headings look the same as before on both. The shell gives sections `sectionHeadingLevel(surface)`
 for the level.
 
@@ -35,3 +35,6 @@ level 2" found nothing (WCAG 1.3.1, a11y checklist, headings).
 - packages/studio/features/settings/src/updater/about-section.test.tsx
 - packages/studio/features/plugins/src/list/plugins-settings-section.test.tsx
 - packages/studio/features/workspace/src/trusted-sources/trusted-sources-section.test.tsx
+- packages/studio/features/remote/src/settings/phone-list.tsx
+- packages/studio/features/remote/src/settings/phone-list.test.tsx
+- packages/studio/features/remote/src/settings/remote-section.test.tsx
