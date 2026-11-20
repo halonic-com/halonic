@@ -197,7 +197,7 @@ export function WorkflowScreen({
     setDock(undefined);
     showView("configuration");
   });
-  const canvasEdit = useCanvasEdit(host, { hubId, id }, name, phone);
+  const canvasEdit = useCanvasEdit(host, { hubId, id }, name, phone, announce);
   const rename = useRename(host, { hubId, id }, name, everyWorkflow.load, announce);
   // Run and a guide's button open the start form the same way, and neither while Run can't start.
   const openStart = () => {

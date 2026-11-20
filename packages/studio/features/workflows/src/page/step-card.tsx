@@ -4,6 +4,7 @@ import type { WorkflowStep } from "../api.ts";
 import type { Box } from "../canvas/geometry.ts";
 import type { StepMark } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
+import type { ConnectTarget } from "./connect-port.tsx";
 import { pageWords } from "./page-words.ts";
 import { StatusDot } from "./status-dot.tsx";
 
@@ -25,6 +26,8 @@ export interface StepCardProps {
   readonly onSelect: () => void;
   /** Told when the card takes focus, so the canvas can bring it into view. */
   readonly onFocus?: ((event: React.FocusEvent<HTMLButtonElement>) => void) | undefined;
+  /** During a drag from another step's port: a drop can land here, or will. */
+  readonly connectTarget?: ConnectTarget | undefined;
 }
 
 /**
@@ -47,6 +50,7 @@ export function StepCard({
   waysOn,
   onSelect,
   onFocus,
+  connectTarget,
 }: StepCardProps) {
   const button = useRef<HTMLButtonElement>(null);
   // Ids for the parts the card's name is read from, unique to this card on the page.
@@ -70,12 +74,14 @@ export function StepCard({
     if (focusOnMount) button.current?.focus();
   }, [focusOnMount]);
   const ring = ringOf(failed === true, selected);
+  const outline = connectTarget === undefined ? "" : CONNECT_OUTLINE[connectTarget];
   return (
     <>
       <button
         ref={button}
         type="button"
         aria-pressed={selected}
+        data-connect-target={connectTarget}
         aria-labelledby={nameParts.join(" ")}
         aria-describedby={waysOn === undefined ? undefined : part.waysOn}
         onClick={onSelect}
@@ -84,7 +90,7 @@ export function StepCard({
         onPointerDown={(event) => event.stopPropagation()}
         style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
         // Keyboard focus wears Studio's ring with its gap, outside the selection's border (C332 SC1).
-        className={`focus-ring absolute flex flex-col items-start justify-center gap-0.5 rounded-lg border bg-surface px-3 text-left ${ring}`}
+        className={`focus-ring absolute flex flex-col items-start justify-center gap-0.5 rounded-lg border bg-surface px-3 text-left ${ring} ${outline}`}
       >
         <span id={part.kind} className="text-caption text-fg-muted">
           {pageWords.stepKind[step.type]}
@@ -170,6 +176,12 @@ export const DOT_VAR: Record<StepMark, string> = {
 export function dotCentre(box: Box) {
   return { x: box.x + box.width - DOT_INSET, y: box.y + DOT_INSET };
 }
+
+/** A step a drop can land on has a light outline; the one under the pointer a stronger one. */
+const CONNECT_OUTLINE: Record<ConnectTarget, string> = {
+  can: "outline-1 outline-offset-4 outline-accent outline-dashed",
+  over: "outline-2 outline-offset-4 outline-accent",
+};
 
 /** A failed step shows the danger ring over the selection's: the run's outcome is the news (D8). */
 function ringOf(failed: boolean, selected: boolean): string {

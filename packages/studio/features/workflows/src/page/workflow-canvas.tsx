@@ -1,5 +1,5 @@
 import { Button, MaximiseIcon, PlusIcon } from "@halonicjs/studio-kit";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowView } from "../api.ts";
 import { boxesFor } from "../canvas/auto-layout.ts";
 import {
@@ -8,12 +8,14 @@ import {
   fitView,
   panBy,
   panToShow,
+  toCanvas,
   type View,
   zoomAround,
 } from "../canvas/geometry.ts";
 import type { StepMark } from "../start/run-strip.ts";
 import { Arrows } from "./arrows.tsx";
 import { CanvasToolbar, newStepPlace, TOOLBAR_GUTTER } from "./canvas-toolbar.tsx";
+import { ConnectLine, ConnectPort, useConnectDrag } from "./connect-port.tsx";
 import { pageWords } from "./page-words.ts";
 import { PointOfLight } from "./point-of-light.tsx";
 import { cardExtent, DOT_VAR, dotCentre, StepCard } from "./step-card.tsx";
@@ -147,6 +149,21 @@ export function WorkflowCanvas({
       if (!moved) fitOnMove.current = false;
     });
   };
+  // A drag from a step's port onto another adds an arrow (flow-workflows 4.3). The canvas point
+  // under the pointer undoes the zoom and pan from the viewport's top left.
+  const pointAt = (event: { readonly clientX: number; readonly clientY: number }) => {
+    const rect = viewport.current?.getBoundingClientRect();
+    return toCanvas(view, {
+      x: event.clientX - (rect?.left ?? 0),
+      y: event.clientY - (rect?.top ?? 0),
+    });
+  };
+  const connect = edit?.connect;
+  const connecting = useConnectDrag(
+    boxes,
+    pointAt,
+    connect && ((from, to) => void connect(from, to)),
+  );
   // Fit once, before the first paint, so the canvas never shows its steps in the wrong place. A
   // view the page kept stays as it was.
   useLayoutEffect(() => {
@@ -234,25 +251,33 @@ export function WorkflowCanvas({
         {workflow.steps.map((step) => {
           const box = boxes.get(step.id);
           const first = step.id === workflow.initial;
+          // An end step has no way on, so no port to drag one from.
+          const port = step.type === "final" ? undefined : connecting.portOf?.(step.id);
           return box === undefined ? null : (
-            <StepCard
-              key={step.id}
-              step={step}
-              box={box}
-              first={first}
-              selected={selected === step.id}
-              failed={failedStep === step.id}
-              mark={marks?.[step.id]}
-              focusOnMount={selectedStep === step.id}
-              waysOn={waysOnFrom(step.id, workflow, boxes)}
-              onSelect={() => {
-                setSelected(step.id);
-                onSelectStep?.(step.id);
-              }}
-              onFocus={(event) => showFocused(event, cardExtent(box, first))}
-            />
+            <Fragment key={step.id}>
+              <StepCard
+                step={step}
+                box={box}
+                first={first}
+                selected={selected === step.id}
+                failed={failedStep === step.id}
+                mark={marks?.[step.id]}
+                focusOnMount={selectedStep === step.id}
+                waysOn={waysOnFrom(step.id, workflow, boxes)}
+                onSelect={() => {
+                  setSelected(step.id);
+                  onSelectStep?.(step.id);
+                }}
+                onFocus={(event) => showFocused(event, cardExtent(box, first))}
+                connectTarget={connecting.targetOf(step.id)}
+              />
+              {port !== undefined && <ConnectPort stepId={step.id} box={box} handlers={port} />}
+            </Fragment>
           );
         })}
+        {connecting.connecting !== undefined && (
+          <ConnectLine connecting={connecting.connecting} boxes={boxes} />
+        )}
         <PointOfLight
           target={activeDot === undefined ? undefined : dotCentre(activeDot.box)}
           color={activeDot === undefined ? "" : DOT_VAR[activeDot.mark]}
@@ -294,6 +319,11 @@ export interface CanvasEdit {
   ) => Promise<string | undefined>;
   /** Forgets the steps' places, so each takes the automatic one; resolves to whether it did. */
   readonly autoLayout: () => Promise<boolean>;
+  /**
+   * Adds an arrow on done from one step to another, after its other arrows; resolves to whether it
+   * did. Absent where the host can't change arrows, so the cards have no ports.
+   */
+  readonly connect?: ((from: string, to: string) => Promise<boolean>) | undefined;
 }
 
 /** How far the pointer may move between press and release for a click, in px; further is a pan. */

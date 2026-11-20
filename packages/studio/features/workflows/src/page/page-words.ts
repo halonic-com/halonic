@@ -21,6 +21,8 @@ export const pageWords = {
   zoomOut: "Zoom out",
   fit: "Fit to screen",
   startChip: "Start",
+  /** The tooltip on a step's output port (flow-workflows 4.3). */
+  connectHint: "Drag to another step to connect",
   /** The canvas's toolbar (flow-workflows 3.2, UX checklist 10.4). */
   toolbar: {
     label: "Flow tools",
