@@ -120,7 +120,7 @@ verifies("inbox.page", () => {
       );
       await settled();
       expect(rowCell(root, 0).textContent).toBe(
-        "Approve this reply?Support reply · a person step · Waiting 1 h · moves on Sun 14:00",
+        "Approve this reply?Support reply · run r2 · a person step · Waiting 1 h · moves on Sun 14:00",
       );
       await click(rowCell(root, 0));
       expect(root.querySelector("section header")?.textContent).toContain("Started by a message");
