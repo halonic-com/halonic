@@ -14,6 +14,8 @@ export interface TriggerFacts {
   body?: unknown;
   /** The request headers the routine asked for, by lowercase name, for a webhook trigger. */
   headers?: Readonly<Record<string, string>>;
+  /** The signal's data, for a signal trigger. */
+  signal?: Readonly<Record<string, unknown>>;
 }
 
 /** What a routine runs once its placeholders are filled in. */
@@ -40,6 +42,7 @@ export function routineStart(placed: PlacedRoutine, trigger: TriggerFacts): Rout
       message: trigger.message,
       body: trigger.body,
       headers: trigger.headers ?? {},
+      signal: trigger.signal,
     },
   };
   if ("workflow" in run) {

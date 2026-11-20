@@ -61,8 +61,14 @@ tick drops, as ranges with a reason: `missed` (catch-up is off), `latest`
 `catchUp`, with the number of dropped times on the routine's oldest late run.
 Counting a cron's times stops at 10,000 and is then marked as a minimum.
 
-`routineStart` fills in `{{trigger.at}}`, `{{trigger.lastRun}}` and
-`{{trigger.message}}` and returns what to run: a workflow with its hub, id and
+`signalsDue` gives the starts a tick's signals are due: for each enabled
+routine on a signal, every signal of its name that a run sent (a child run
+included) since the last tick, going back `SIGNAL_OVERLAP_MS` (two minutes)
+further, and that passes the trigger's `when`. Signals older than the catch-up
+window are dropped. Each start names the signal and the run that sent it.
+
+`routineStart` fills in `{{trigger.at}}`, `{{trigger.lastRun}}`,
+`{{trigger.message}}` and `{{trigger.signal}}` and returns what to run: a workflow with its hub, id and
 input, or an agent with its hub, id and prompt. `mailCheckDue` says whether a
 mail trigger is due for a check, and `mailQuery` builds the query for it, going
 back `MAIL_OVERLAP_MS` (ten minutes) before the last check so a message that
