@@ -101,9 +101,11 @@ export function CardHeader({
   startedBy,
   onOpenRun,
 }: CardHeaderProps) {
+  // The title asks for 10rem next to **Open run**. In a narrower card (a phone, or 400 % zoom)
+  // the button goes on a line under it, on the right, so the title keeps the whole width.
   return (
-    <header className="flex items-start gap-3">
-      <div className="min-w-0 flex-1">
+    <header className="flex flex-wrap items-start gap-x-3 gap-y-2">
+      <div className="min-w-0 flex-1 basis-40">
         <h2
           id={titleId}
           ref={heading}
@@ -118,9 +120,11 @@ export function CardHeader({
         )}
       </div>
       {onOpenRun === undefined ? null : (
-        <Button size="sm" onClick={onOpenRun}>
-          Open run
-        </Button>
+        <div className="ml-auto">
+          <Button size="sm" onClick={onOpenRun}>
+            Open run
+          </Button>
+        </div>
       )}
     </header>
   );

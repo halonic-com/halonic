@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1218; ux-checklists (HAL-1069) 2.5 to 2.8; microcopy (HAL-751) 5 and 10.2; Liam's decision on the wait step's description (HAL-2560); the way back on the decided card and answer labels (HAL-4008); the outcome after a labelled answer and long labels (team decision, HAL-4050); the stale card and the tooltip only for a cut-off label (HAL-12721 L2 and L15, flow-inbox 5.4, INBOX-CARD-31); "The run finished." when the answer ended the run (team decision, HAL-13919)
 
-The card for a run waiting at a `wait` step shall be a region named by its title, the step's first line as core filled it in, and opening it shall focus the title. The header says since when it waits, "Started by" what started the run (as the Runs list says it, "Started by a message") and has **Open run**, which opens the run's page and leaves the Inbox as it is. Lines 2 onward show as plain text, never as Markdown or HTML, folded behind "Show 38 more lines" (or "Show 1,200 more characters") when long, as `inbox.plain-values` says. A step with a timer says "Moves on by itself on Mon 9 Nov, 14:00."; one without says nothing about time.
+The card for a run waiting at a `wait` step shall be a region named by its title, the step's first line as core filled it in, and opening it shall focus the title. The header says since when it waits, "Started by" what started the run (as the Runs list says it, "Started by a message") and has **Open run**, which opens the run's page and leaves the Inbox as it is. When the card is too narrow for the title next to **Open run** (a phone, or 400 % zoom), **Open run** shall go on a line under the header's text, so the title keeps the whole width (HAL-14006). Lines 2 onward show as plain text, never as Markdown or HTML, folded behind "Show 38 more lines" (or "Show 1,200 more characters") when long, as `inbox.plain-values` says. A step with a timer says "Moves on by itself on Mon 9 Nov, 14:00."; one without says nothing about time.
 
 The bar holds one button per answer the step takes, in its order: the first primary and full width, the rest secondary, none red. A button reads the step's own label for its answer when core supplies one (team wording decision, HAL-4008); otherwise "approve" reads **Approve**, "reject" **Reject**, any other the event in words with a capital first letter. A label has no length limit: a button keeps it on one line and ends it with an ellipsis at its edge, and its name is the whole label. Only a button that cuts its label off has a tooltip, the whole label; one that shows it in full has none. The card has the approval card's 1 s guard and its "Couldn't record your decision." with **Try again**; an answer only the command line can send shows the executor's sentence and the command to copy instead, with no **Try again**.
 
@@ -20,6 +20,8 @@ When the run stops waiting at the step while its card is open and not answered t
 - Given the card has been open for 1 s,
   when you press Reject at 10:46,
   then `reject` is sent and "Rejected by you at 10:46." has focus.
+- Given the card for Acme's `review` step in a 195 px wide window,
+  then "Approve this reply?" is the header's full width and **Open run** is on the line under "Waiting since …".
 - Given a step that takes `approve` and `escalate`,
   when you press Escalate at 10:44,
   then `escalate` is sent and the card reads "You chose Escalate at 10:44."

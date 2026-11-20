@@ -162,6 +162,21 @@ verifies("plugins.plugin-page", () => {
     expect(button(view, "Open panel")).toBeUndefined();
   });
 
+  // jsdom lays nothing out, so this holds the classes that do it: the header wraps, the heading
+  // asks for 9rem, and Open panel and ⋮ wrap as one group after it (HAL-14006).
+  it("puts Open panel and ⋮ on a line under the name when the header is too narrow", async () => {
+    const view = await showPage(weather());
+    const header = view.querySelector("header");
+    const heading = view.querySelector("h1");
+    expect(header?.className).toContain("flex-wrap");
+    expect(heading?.parentElement).toBe(header);
+    expect(heading?.className).toContain("basis-36");
+    const actions = button(view, "Open panel")?.parentElement;
+    expect(actions?.parentElement).toBe(header);
+    expect(actions?.className).toContain("ml-auto");
+    expect(actions?.querySelector('[aria-label="More actions for Weather"]')).not.toBeNull();
+  });
+
   it("lists what the plugin adds, with the tool's risk and description", async () => {
     const view = await showPage(weather());
     const adds = [...view.querySelectorAll("section")].find(

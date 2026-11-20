@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1218; card requirements (HAL-64) INBOX-CARD-01, 05, 13, 15 to 18, 31; flow-inbox (HAL-877) 5.3; ux-checklists-approvals (HAL-1250) 2.1 to 2.4 and 2.6; ux-checklists (HAL-1069) 2.5 to 2.7; microcopy (HAL-751) 10.2 and 19; the way back on the decided card (HAL-4008); "The run finished." when the answer ended the run (team decision, HAL-13919)
 
-The approval card shall be a region named by its title, "_Agent_ wants to use _tool_ (_connector_)", and opening it shall focus the title, never Approve. The header says since when it waits, counting on every minute while the card is open, "Started by" what started the run, and has **Open run**, which opens the run's page and leaves the Inbox as it is. The action shows the summary as its heading, the neutral tag "External connector (MCP)" for a tool from a connector, the raw name, and every argument with **Show raw JSON**. A tool approval shows no timer.
+The approval card shall be a region named by its title, "_Agent_ wants to use _tool_ (_connector_)", and opening it shall focus the title, never Approve. The header says since when it waits, counting on every minute while the card is open, "Started by" what started the run, and has **Open run**, which opens the run's page and leaves the Inbox as it is. When the card is too narrow for the title next to **Open run** (a phone, or 400 % zoom), **Open run** shall go on a line under the header's text, so the title keeps the whole width (HAL-14006). The action shows the summary as its heading, the neutral tag "External connector (MCP)" for a tool from a connector, the raw name, and every argument with **Show raw JSON**. A tool approval shows no timer.
 
 The bar under the card holds **Reject**, **Ask for changes** and **Approve**. For 1 s after the card opens, a press that started in that second, or a key that is held or repeats, does nothing; a screen reader's click, with no press before it, goes through. No key decides. While a decision is sent its button reads "Approving…" or "Rejecting…" and is busy, and the others ignore presses. If it fails, "Couldn't record your decision." shows with **Try again** in the bar's alert slot and the card stays as it was. When Studio can't send the answer itself, the alert slot shows the executor's sentence and the command line that sends it in code style, with **Copy command**, and no **Try again**: a retry can't work. The card stays waiting.
 
@@ -20,6 +20,8 @@ After a decision the card shall be replaced in place: the header keeps **Open ru
 - Given the card has been open for 1 s,
   when you press Approve at 10:44,
   then it reads "Approving…" until the answer is recorded, then "Approved by you at 10:44. The run continues." has focus.
+- Given the card for Sorter's call to `create_note` in a 195 px wide window,
+  then its title is the header's full width and **Open run** is on the line under "Waiting since …".
 - Given the card opened less than 1 s ago,
   when you click Approve,
   then nothing is sent; a screen reader's click at the same moment is sent.
