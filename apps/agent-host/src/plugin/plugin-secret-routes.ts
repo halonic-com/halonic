@@ -71,7 +71,7 @@ type HandOver = { kept: number } | "not_declared";
  * Checks the trust now and keeps the secrets under the plugin's own names,
  * replacing what was held for it; keeps none when one isn't declared.
  *
- * @throws PluginRefusal when the plugin may not have them
+ * @throws PluginRefusal when the plugin may not have them, or `host_stopping` once the host began stopping
  */
 async function handOver(
   deps: PluginSecretRouteDeps,
@@ -85,6 +85,8 @@ async function handOver(
     if (name === undefined) return "not_declared";
     kept.set(name, value);
   }
+  // The trust check waited on the disk: a host that began stopping meanwhile has dropped every value, and keeps no new one.
+  if (deps.plugins.isStopping) throw new PluginRefusal("host_stopping");
   deps.values.replace(plugin, kept);
   return { kept: kept.size };
 }

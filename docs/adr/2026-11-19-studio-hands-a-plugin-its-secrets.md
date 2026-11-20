@@ -1,6 +1,6 @@
 # Studio hands a trusted plugin its own secrets; the agent host keeps them in memory only
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-19
 
 ## Context

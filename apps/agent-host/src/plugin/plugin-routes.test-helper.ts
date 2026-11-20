@@ -47,7 +47,11 @@ export class FakeBackends implements PluginBackends {
   /** The secrets each plugin declares; `acme` declares `acme-key`. */
   readonly declared = new Map<string, readonly string[]>([["acme", ["acme-key"]]]);
 
+  /** Set to hold the trust check of a hand-over, as a slow disk does, until what it gives settles. */
+  holdSecretNames: (() => Promise<void>) | undefined;
+
   async trustedSecretNames(plugin: string): Promise<Readonly<Record<string, string>>> {
+    await this.holdSecretNames?.();
     await this.trustedFingerprint(plugin);
     const declared = this.declared.get(plugin) ?? [];
     return Object.fromEntries(declared.map((secret) => [secret, `plugin__${plugin}__${secret}`]));
