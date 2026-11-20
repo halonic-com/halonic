@@ -18,7 +18,7 @@ import {
   ResourceReport,
   type TrustService,
 } from "@halonicjs/app";
-import type { Provider } from "@halonicjs/format";
+import type { Connector, Provider } from "@halonicjs/format";
 import type {
   HttpClient,
   ResourceProbe,
@@ -36,6 +36,7 @@ import {
 } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { findCommand, nodeCommandSearch } from "./command-paths.ts";
+import { type AddedPlugins, addedPluginsOf } from "./connector-plugin.ts";
 import { engineHttp } from "./engine-http.ts";
 import { nodeHarnessPrograms } from "./harness-programs.ts";
 import {
@@ -43,6 +44,7 @@ import {
   type LocalModelServer,
   localLoadedModels,
 } from "./local-model-servers.ts";
+import { openPluginService } from "./plugin-host.ts";
 import { privateJournalFolder } from "./sandbox-journals.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "./workspace-runs.ts";
 import { cliTrustService } from "./workspace-trust.ts";
@@ -73,6 +75,8 @@ export interface DoctorMachine {
   readonly wslDistro?: string | undefined;
   /** The terminal a person types a harness's sign-in into: PowerShell on Windows, `sh` elsewhere. */
   readonly signInShell: SignInShell;
+  /** The plugins added in the profile, for the Plugins line; left out, no line. */
+  readonly plugins?: AddedPlugins;
 }
 
 /** The workspace for {@link doctorService}, with the provider files its servers are read from. */
@@ -80,6 +84,8 @@ export interface MachineWorkspace {
   readonly workspace: DoctorWorkspace;
   /** The workspace's provider files, by id. */
   readonly providerFiles: ReadonlyMap<string, Provider>;
+  /** The workspace's connector files, for the plugins they use. */
+  readonly connectors: readonly Connector[];
 }
 
 /** The names Node gives the systems, as a person reads them. */
@@ -102,12 +108,13 @@ const runFolderNames = ["runs", "deployments", "blobs"];
  * This computer: the profile from `HALONIC_HOME` or the system's data
  * folder, the srt sandbox, Node's resource probe, Claude Code and Codex as
  * `PATH` finds them, `fetch`, under WSL the Windows drives, and what is
- * wrong with the Node.js that runs it.
+ * wrong with the Node.js that runs it, and the plugins in the profile.
  *
  * @throws RangeError when `HALONIC_HOME` or the home folder isn't absolute
  */
 export function nodeDoctorMachine(): DoctorMachine {
-  const profile = profileFolder(nodeProfileEnvironment());
+  const environment = nodeProfileEnvironment();
+  const profile = profileFolder(environment);
   const system = platform();
   return {
     profile,
@@ -128,6 +135,7 @@ export function nodeDoctorMachine(): DoctorMachine {
       }),
     wslDistro: process.env["WSL_DISTRO_NAME"],
     signInShell: system === "win32" ? "powershell" : "sh",
+    plugins: addedPluginsOf(openPluginService({ profile: environment })),
   };
 }
 

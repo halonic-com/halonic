@@ -33,6 +33,7 @@ import {
 } from "./doctor-models-line.ts";
 import { type MxcLine, mxcLine } from "./doctor-mxc-line.ts";
 import { type NoSandboxLine, noSandboxLine } from "./doctor-no-sandbox-line.ts";
+import { type DoctorPluginProblem, type PluginsLine, pluginsLine } from "./doctor-plugins-line.ts";
 import {
   type AgentSettingsFolder,
   type DoctorHarness,
@@ -104,6 +105,12 @@ export interface DoctorWorkspace {
    * agents' own sign-ins.
    */
   harnessSettingsFolder?: (agentId: string, harnessId: string) => string | undefined;
+  /**
+   * What is wrong with the plugins the workspace's connectors use, as the
+   * host found them in the profile. Left out, or empty, there is no
+   * Plugins line (HAL-14296).
+   */
+  pluginProblems?: readonly DoctorPluginProblem[];
 }
 
 /** What {@link DoctorService} needs from the host. */
@@ -138,6 +145,8 @@ export interface DoctorReport {
   workspace?: WorkspaceLine;
   /** Only inside a workspace with model aliases. */
   models?: ModelsLine;
+  /** Only inside a workspace whose connectors use a plugin that isn't added or is off. */
+  plugins?: PluginsLine;
   sandbox: SandboxLine;
   /** Only where MXC is offered and the sandbox choice has started. */
   mxc?: MxcLine;
@@ -193,21 +202,12 @@ export class DoctorService {
     ]);
 
     const report: Omit<DoctorReport, "summary"> = {
+      ...(workspace === null
+        ? {}
+        : workspaceLines(workspace, trust?.status ?? "not-needed", resources.models, keys)),
       sandbox: sandboxLine(sandboxCheck, sandbox.capabilities()),
       disk: diskLine(resources),
     };
-    if (workspace !== null) {
-      report.workspace = workspaceLine(workspace.name, trust?.status ?? "not-needed", {
-        windowsDrive: workspace.windowsDrive,
-        fileProblems: workspace.fileProblems,
-        tooManyFilesToWatch: workspace.tooManyFilesToWatch,
-      });
-      const providers = workspace.providers.map((provider) =>
-        providerState(provider, resources.models, keys),
-      );
-      const models = modelsLine(providers, workspace.aliases);
-      if (models !== undefined) report.models = models;
-    }
     const choice = this.options.sandboxChoice?.current() ?? null;
     const mxc = choice === null ? undefined : mxcLine(choice);
     if (mxc !== undefined) report.mxc = mxc;
@@ -263,6 +263,27 @@ export class DoctorService {
   }
 }
 
+/** The lines only a workspace has: Workspace, then Models and Plugins when they apply. */
+function workspaceLines(
+  workspace: DoctorWorkspace,
+  trust: Parameters<typeof workspaceLine>[1],
+  loaded: readonly ProviderModels[],
+  keys: ReadonlySet<string>,
+): Pick<DoctorReport, "workspace" | "models" | "plugins"> {
+  const providers = workspace.providers.map((provider) => providerState(provider, loaded, keys));
+  const models = modelsLine(providers, workspace.aliases);
+  const plugins = pluginsLine(workspace.pluginProblems ?? []);
+  return {
+    workspace: workspaceLine(workspace.name, trust, {
+      windowsDrive: workspace.windowsDrive,
+      fileProblems: workspace.fileProblems,
+      tooManyFilesToWatch: workspace.tooManyFilesToWatch,
+    }),
+    ...(models === undefined ? {} : { models }),
+    ...(plugins === undefined ? {} : { plugins }),
+  };
+}
+
 /** A provider as the Models line takes it, with what the report and the secrets found. */
 function providerState(
   provider: DoctorProvider,
@@ -316,8 +337,8 @@ function agentSettingsFolders(workspace: DoctorWorkspace | null): AgentSettingsF
 }
 
 function linesOf(report: Omit<DoctorReport, "summary">): DoctorLine[] {
-  const { workspace, models, sandbox, mxc, noSandbox, harnesses, node, disk } = report;
-  return [workspace, models, sandbox, mxc, noSandbox, harnesses, node, disk].filter(
+  const { workspace, models, plugins, sandbox, mxc, noSandbox, harnesses, node, disk } = report;
+  return [workspace, models, plugins, sandbox, mxc, noSandbox, harnesses, node, disk].filter(
     (line) => line !== undefined,
   );
 }

@@ -65,6 +65,7 @@ function workspace(parts: Partial<DoctorWorkspace> & { agents?: Agent[] } = {}):
     ...(parts.tooManyFilesToWatch === undefined
       ? {}
       : { tooManyFilesToWatch: parts.tooManyFilesToWatch }),
+    ...(parts.pluginProblems === undefined ? {} : { pluginProblems: parts.pluginProblems }),
   };
 }
 
@@ -380,6 +381,24 @@ verifies("app.doctor-workspace-watch", () => {
       tooManyFilesToWatch: 50_000,
     });
     expect(report.summary).toEqual({ problems: 0, warnings: 1, needsFixing: false });
+  });
+});
+
+verifies("app.doctor-plugins", () => {
+  it("fails a Plugins line while a connector's plugin isn't added, and has none while all are on", async () => {
+    const service = doctor({ trust: "trusted" }).service;
+    const pluginProblems = [
+      { problem: "not-added", connector: "orders", plugin: "acme-order", near: "acme-orders" },
+    ] as const;
+
+    const report = await service.check(workspace({ pluginProblems }));
+    expect(report.plugins).toEqual({
+      check: "plugins",
+      status: "failed",
+      problems: [...pluginProblems],
+    });
+    expect(report.summary).toEqual({ problems: 1, warnings: 0, needsFixing: true });
+    expect((await service.check(workspace({ pluginProblems: [] }))).plugins).toBeUndefined();
   });
 });
 

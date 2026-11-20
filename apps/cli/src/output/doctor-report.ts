@@ -5,6 +5,7 @@
 
 import type {
   DiskLine,
+  DoctorPluginProblem,
   DoctorReport,
   DoctorStatus,
   HarnessesLine,
@@ -12,6 +13,7 @@ import type {
   ModelProblem,
   ModelsLine,
   NodeLine,
+  PluginsLine,
   ProviderReport,
   SandboxLine,
   WorkspaceLine,
@@ -21,6 +23,7 @@ import type { Message } from "../messages/define.ts";
 import { type DataUse, doctorMessages } from "../messages/doctor.ts";
 import { errorMessages } from "../messages/general.ts";
 import { markPart, type Phrase, phrase, plainText } from "../messages/phrase.ts";
+import { pluginMessages } from "../messages/plugin.ts";
 import {
   readsAsOther,
   sandboxDocsLink,
@@ -74,7 +77,7 @@ interface CheckLines {
 
 /**
  * The lines of `halonic doctor`, in the order of cli-output 3.7: Workspace,
- * Models, Sandbox, Harnesses, Node.js (HAL-6517) and Disk, each only when
+ * Models, Plugins (HAL-14296), Sandbox, Harnesses, Node.js (HAL-6517) and Disk, each only when
  * the report has it, with an empty line after the heading and before the
  * summary.
  *
@@ -87,6 +90,7 @@ export function doctorReportLines(report: DoctorReport, facts: DoctorFacts): Phr
   const checks = [
     report.workspace && workspaceCheck(report.workspace, facts.dir),
     report.models && modelsCheck(report.models),
+    report.plugins && pluginsCheck(report.plugins),
     sandboxCheck(report.sandbox, facts, report.node),
     report.harnesses && harnessesCheck(report.harnesses, facts.signInShell),
     report.node && nodeCheck(report.node),
@@ -199,6 +203,36 @@ function modelProblems(problems: readonly ModelProblem[]): Phrase[] {
     lines.push(doctorMessages.needKey(aliases.map(printable), printable(name)).phrase);
   }
   return lines;
+}
+
+/** One line per plugin problem, each with its fix, in the plugin catalogue's words. */
+function pluginsCheck(line: PluginsLine): CheckLines {
+  return {
+    status: line.status,
+    label: doctorMessages.pluginsLabel(),
+    lines: line.problems.map(pluginProblem),
+  };
+}
+
+/** A plugin that isn't added gets its fix on the same line, as one sentence after the other. */
+function pluginProblem(problem: DoctorPluginProblem): Phrase {
+  // Connector and plugin ids come from the workspace's files.
+  const plugin = printable(problem.plugin);
+  switch (problem.problem) {
+    case "not-added": {
+      const notAdded = pluginMessages.connectorPluginNotAdded(printable(problem.connector), plugin);
+      const fix =
+        problem.near === undefined
+          ? pluginMessages.addThePlugin()
+          : pluginMessages.didYouMean(printable(problem.near));
+      return phrase`${notAdded.phrase} ${fix.phrase}`;
+    }
+    case "off":
+      return pluginMessages.pluginOff(problem.why === "changed" ? "changed" : "notTrusted", plugin)
+        .phrase;
+    case "broken":
+      return pluginMessages.pluginBroken(plugin).phrase;
+  }
 }
 
 /**

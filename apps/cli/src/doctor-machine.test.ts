@@ -162,7 +162,7 @@ function studioWorkspace(baseUrl?: string): MachineWorkspace {
     aliases: [{ alias: "fast", provider: "studio" }],
     providers: [{ provider: "studio", name: "LM Studio", runs: "on-this-computer", address }],
   };
-  return { workspace, providerFiles: new Map([["studio", lmStudio]]) };
+  return { workspace, providerFiles: new Map([["studio", lmStudio]]), connectors: [] };
 }
 
 describe("withHarnessSettingsFolders", () => {

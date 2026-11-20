@@ -11,6 +11,7 @@ import {
   nodeDoctorMachine,
   withHarnessSettingsFolders,
 } from "../../doctor-machine.ts";
+import { doctorPluginProblems } from "../../doctor-plugins.ts";
 import { doctorWorkspace } from "../../doctor-workspace.ts";
 import { exitCode } from "../../exit-code.ts";
 import { doctorMessages } from "../../messages/doctor.ts";
@@ -56,7 +57,10 @@ export function createDoctorCommand(
       const workspace =
         read === null
           ? null
-          : await withHarnessSettingsFolders(withWindowsDrive(read, computer), computer.profile);
+          : await withPluginProblems(
+              await withHarnessSettingsFolders(withWindowsDrive(read, computer), computer.profile),
+              computer,
+            );
       const doctor = await doctorService(computer, context.secrets, workspace);
       const report = await doctor.check(workspace?.workspace ?? null);
       const lines = doctorReportLines(report, {
@@ -123,6 +127,7 @@ async function readWorkspace(
   return {
     workspace: tooManyToWatch ? { ...workspace, tooManyFilesToWatch: watchedFileLimit } : workspace,
     providerFiles,
+    connectors,
   };
 }
 
@@ -140,13 +145,27 @@ function withWindowsDrive(
 }
 
 /**
+ * `workspace`, with what is wrong with the plugins its connectors use, for
+ * the Plugins line (HAL-14296). A computer that can't list its plugins
+ * leaves the line out.
+ */
+async function withPluginProblems(
+  workspace: MachineWorkspace,
+  computer: Pick<DoctorMachine, "plugins">,
+): Promise<MachineWorkspace> {
+  if (computer.plugins === undefined) return workspace;
+  const pluginProblems = doctorPluginProblems(workspace.connectors, await computer.plugins());
+  return { ...workspace, workspace: { ...workspace.workspace, pluginProblems } };
+}
+
+/**
  * `--json`: every check as the doctor service found it, in the lines' order,
  * with its `check` and `status` (`ok`, `warning` or `failed`), and the counts.
  */
 function doctorJson(report: DoctorReport) {
-  const { workspace, models, sandbox, harnesses, node, disk, summary } = report;
+  const { workspace, models, plugins, sandbox, harnesses, node, disk, summary } = report;
   return {
-    checks: [workspace, models, sandbox, harnesses, node, disk].filter(
+    checks: [workspace, models, plugins, sandbox, harnesses, node, disk].filter(
       (line) => line !== undefined,
     ),
     problems: summary.problems,

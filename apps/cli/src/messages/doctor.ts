@@ -33,6 +33,7 @@ export const doctorMessages = defineMessages("doctor", {
     phrase`Halonic ${version} ${markPart("separator")} ${system}`,
   workspaceLabel: () => phrase`Workspace`,
   modelsLabel: () => phrase`Models`,
+  pluginsLabel: () => phrase`Plugins`,
   sandboxLabel: () => phrase`Sandbox`,
   harnessesLabel: () => phrase`Harnesses`,
   nodeLabel: () => phrase`Node.js`,

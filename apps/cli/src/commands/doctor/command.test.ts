@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import type { SandboxCheck, TrustStore } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
+import type { AddedPlugin } from "../../connector-plugin.ts";
 import type { DoctorMachine } from "../../doctor-machine.ts";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
@@ -235,6 +236,79 @@ verifies("cli.doctor-node", () => {
       problem: "windows-node-in-wsl",
     });
     expect(document.warnings).toBe(1);
+  });
+});
+
+verifies("cli.doctor-plugins", () => {
+  /** Acme with the connectors `orders` and `returns`, both using the plugin `plugin`. */
+  function writeAcmeUsing(plugin: string): void {
+    writeAcme();
+    for (const id of ["orders", "returns"]) {
+      const file = join(folder, "acme", "library", "connectors", `${id}.connector.yaml`);
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, `name: ${id}\ntransport:\n  plugin:\n    id: ${plugin}\n`);
+    }
+  }
+
+  async function doctorWith(plugins: AddedPlugin[], args: string[] = []) {
+    const io = captureIo(folder);
+    const computer: DoctorMachine = { ...machine(), plugins: async () => plugins };
+    const code = await runCli(["doctor", "--dir", "acme", ...args], io, [
+      createDoctorCommand(() => computer),
+    ]);
+    return { code, stdout: io.stdout };
+  }
+
+  it("fails a Plugins line for each connector whose plugin isn't added, and exits with 1", async () => {
+    writeAcmeUsing("acme-order");
+
+    const { code, stdout } = await doctorWith([{ id: "acme-orders", state: "on" }]);
+
+    expect(code).toBe(exitCode.failed);
+    expect(stdout.slice(4, 6)).toEqual([
+      "✕ Plugins     orders uses the plugin acme-order, which isn't added. Did you mean acme-orders?",
+      "              returns uses the plugin acme-order, which isn't added. Did you mean acme-orders?",
+    ]);
+  });
+
+  it("says how to add a plugin when no added one is close", async () => {
+    writeAcmeUsing("acme-orders");
+
+    const { stdout } = await doctorWith([], ["--json"]);
+
+    expect(JSON.parse(stdout.join("\n")).checks).toContainEqual({
+      check: "plugins",
+      status: "failed",
+      problems: ["orders", "returns"].map((connector) => ({
+        problem: "not-added",
+        connector,
+        plugin: "acme-orders",
+      })),
+    });
+    const lines = await doctorWith([]);
+    expect(lines.stdout[4]).toBe(
+      "✕ Plugins     orders uses the plugin acme-orders, which isn't added. Add it with halonic plugin add <folder>.",
+    );
+  });
+
+  it("warns once about a plugin that is off, however many connectors use it, and exits 0", async () => {
+    writeAcmeUsing("acme-orders");
+
+    const { code, stdout } = await doctorWith([{ id: "acme-orders", state: "changed" }]);
+
+    expect(code).toBe(exitCode.ok);
+    expect(stdout.slice(4, 6)).toEqual([
+      "! Plugins     acme-orders is off: changed since you trusted it · halonic trust --plugin acme-orders",
+      "✓ Sandbox     ready · bubblewrap",
+    ]);
+  });
+
+  it("has no Plugins line while every plugin the connectors use is on", async () => {
+    writeAcmeUsing("acme-orders");
+
+    const { stdout } = await doctorWith([{ id: "acme-orders", state: "on" }]);
+
+    expect(stdout.some((line) => line.includes("Plugins"))).toBe(false);
   });
 });
 

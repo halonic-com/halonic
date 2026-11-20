@@ -93,6 +93,11 @@ export {
 } from "./doctor-models-line.ts";
 export { type MxcLine, mxcLine } from "./doctor-mxc-line.ts";
 export {
+  type DoctorPluginProblem,
+  type PluginsLine,
+  pluginsLine,
+} from "./doctor-plugins-line.ts";
+export {
   type DoctorProvider,
   type DoctorReport,
   DoctorService,
