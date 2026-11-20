@@ -123,7 +123,6 @@ verifies("cli.workspace-provider-key-trust", () => {
       ["another port", "https://llm.example.com:8443/v1"],
       ["a look-alike host", "https://llm.example.com.example.org/v1"],
       ["user info that hides the host", "https://llm.example.com@example.org/v1"],
-      ["an address that isn't http or https", "ftp://llm.example.com/v1"],
     ])("is refused at %s in a trusted workspace", async (_label, baseUrl) => {
       const workspace = await workspaceOf({ type: "openai-compatible", baseUrl, secret: keyName });
       const resolve = workspaceModelResolver({
@@ -138,6 +137,26 @@ verifies("cli.workspace-provider-key-trust", () => {
         code: "key-origin-not-allowed",
         kind: "denied",
       });
+    });
+
+    it("is refused at an address that isn't http or https before its list is asked, as the file fails its own check (HAL-14260)", async () => {
+      const workspace = await workspaceOf({
+        type: "openai-compatible",
+        baseUrl: "ftp://llm.example.com/v1",
+        secret: keyName,
+      });
+      const origins = originsOf({ [keyName]: [gateway] });
+      const resolve = workspaceModelResolver({
+        workspace,
+        secrets,
+        http,
+        isTrusted: () => true,
+        keyOrigins: origins,
+      });
+
+      expect(workspace.issues.map((issue) => issue.code)).toContain("provider-base-url");
+      await expect(resolve(call)).rejects.toBeInstanceOf(KindedError);
+      expect(origins.asked).toEqual([]);
     });
 
     it("is refused at its type's own address when the list doesn't hold it", async () => {

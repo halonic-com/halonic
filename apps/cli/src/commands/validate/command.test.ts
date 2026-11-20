@@ -144,6 +144,32 @@ verifies("cli.commands.validate.check-workspace", () => {
       expect(io.stdout[1]).toMatch(/ {2}\(unknown-default-model\)$/);
     });
 
+    it("leaves out an agent whose harness starts a program, which asks it for no model", async () => {
+      writeFiles(acme, {
+        "hubs/lab/hub.yaml": "id: lab\nname: Lab\n",
+        "hubs/lab/agents/coder.agent.yaml":
+          "id: coder\nname: Coder\nharness: claude-code\ninstructions: Write the change.\n",
+        "hubs/lab/workflows/change.workflow.yaml": [
+          "id: change",
+          "name: Change",
+          "initial: code",
+          "states:",
+          "  code:",
+          "    agent: coder",
+          "    on:",
+          "      - to: done",
+          "  done:",
+          "    type: final",
+          "",
+        ].join("\n"),
+      });
+
+      const { code, io } = await validateIn(acme);
+
+      expect(code).toBe(exitCode.ok);
+      expect(io.stdout).toEqual(["✓ Checked 6 files in acme. No problems."]);
+    });
+
     it("fails on a provider type Halonic can't call, on its type line, listing the types", async () => {
       writeFiles(acme, { "providers/mock.yaml": "id: mock\ntype: antropic\n" });
 

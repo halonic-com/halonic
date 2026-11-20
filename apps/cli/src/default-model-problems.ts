@@ -4,8 +4,10 @@
 // workspace without `models.yaml` passed and then failed on its first run.
 // When a workflow runs such an agent, the run fails on it, so it is an error
 // (HAL-14260); when none does, nothing fails yet, and it stays a warning.
+// An agent whose harness starts a program, such as Claude Code, asks that
+// program for no model when it names none, so it never uses the default.
 
-import { workflowAgentsOf } from "@halonicjs/adapter-workspace-models";
+import { startsAProgram, workflowAgentsOf } from "@halonicjs/adapter-workspace-models";
 import {
   callModelName,
   definitionsOf,
@@ -32,7 +34,7 @@ import {
  */
 export function defaultModelProblems(workspace: LoadedWorkspace): WorkspaceIssue[] {
   const problems: WorkspaceIssue[] = [];
-  for (const [hub, agents] of agentsWithoutModel(workspace)) {
+  for (const [hub, agents] of agentsOnDefaultModel(workspace)) {
     const name = callModelName(definitionsOf(workspace, hub), {});
     if (name.includes("/") || resolveModel(workspace, hub, name) !== undefined) {
       continue;
@@ -54,11 +56,15 @@ export function defaultModelProblems(workspace: LoadedWorkspace): WorkspaceIssue
   return problems;
 }
 
-/** Each hub's agents that name no model, in path order, for hubs that have any. */
-function agentsWithoutModel(workspace: LoadedWorkspace): Map<string, LoadedFileOf<"agent">[]> {
+/**
+ * Each hub's agents that would call the default model, in path order, for
+ * hubs that have any: those that name no model and run in Halonic itself.
+ */
+function agentsOnDefaultModel(workspace: LoadedWorkspace): Map<string, LoadedFileOf<"agent">[]> {
   const byHub = new Map<string, LoadedFileOf<"agent">[]>();
   for (const agent of filesOf(workspace, "agent")) {
     if (agent.hub === null || agent.value.model !== undefined) continue;
+    if (startsAProgram(agent.value.harness)) continue;
     byHub.set(agent.hub, [...(byHub.get(agent.hub) ?? []), agent]);
   }
   return byHub;

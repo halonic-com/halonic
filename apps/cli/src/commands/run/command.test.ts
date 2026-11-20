@@ -153,19 +153,21 @@ verifies("cli.run", () => {
     expect(io.stdout.slice(failed + 1).map((line) => line.startsWith("  "))).toEqual([true, true]);
   });
 
-  it("names a model alias the hub doesn't have as its cause, with no report link, and exits 4 (HAL-12377)", async () => {
+  it("refuses a workspace whose agents use a model alias no file has before it starts, with no report link (HAL-12377, HAL-14260)", async () => {
     // As a workspace made with plain `halonic init`, which has no models.yaml yet.
+    // `validate` names the missing default alias in each hub that uses it, so
+    // the run stops before its first step instead of failing there with exit 4.
     await rm(join(acme, "models.yaml"));
 
     const { code, io } = await run("support-reply", ...samsEmail);
 
-    expect(code).toBe(exitCode.notFound);
-    const failed = io.stdout.findLastIndex((line) => line.startsWith("✕"));
-    expect(io.stdout.slice(failed, failed + 2)).toEqual([
-      "✕ Support reply failed in the step Read the email: hub support has no model alias default.",
-      "  Add default to models.yaml, or set a model on the agent. For a test model with no key, copy models.yaml and providers/mock.yaml from the Acme example.",
+    expect(code).toBe(exitCode.usage);
+    expect(io.stdout).toEqual([]);
+    expect(io.stderr).toEqual([
+      "✕ Couldn't run support-reply: Acme has 2 problems in its files. Nothing ran.",
+      "  See them with: halonic validate",
     ]);
-    expect(io.stdout.join("\n")).not.toContain("report it");
+    expect(io.stderr.join("\n")).not.toContain("report it");
   });
 
   it("names the secret of a model whose key isn't set, and how to set it (HAL-6585)", async () => {
@@ -260,21 +262,20 @@ verifies("cli.json-lines", () => {
     });
   });
 
-  it("carries a missing model alias's kind in the run's cause, and exits 4 with it (HAL-12377)", async () => {
+  it("gives a missing model alias as the workspace's file problems, with no run, in --json (HAL-12377, HAL-14260)", async () => {
     await rm(join(acme, "models.yaml"));
 
     const { code, io } = await run("support-reply", ...samsEmail, "--json");
 
-    expect(code).toBe(exitCode.notFound);
-    expect(JSON.parse(io.stdout.join("\n"))).toMatchObject({
+    expect(code).toBe(exitCode.usage);
+    expect(JSON.parse(io.stdout.join("\n"))).toEqual({
+      outputVersion: 1,
       ok: false,
-      run: {
-        status: "failed",
-        cause: {
-          kind: "not_found",
-          code: "models.unknown-model-alias",
-          detail: { alias: "default", hub: "support" },
-        },
+      error: {
+        kind: "invalid_input",
+        code: "workspace-file-problems",
+        message: "Acme has 2 problems in its files. Nothing ran.",
+        fix: "See them with: halonic validate",
       },
     });
   });
