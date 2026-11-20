@@ -1,13 +1,6 @@
-import {
-  type AgentPlacement,
-  type ChatAnswer,
-  type ChatAnswerRequest,
-  type HostSettings,
-  maxTurnLimit,
-  newAgentPlacement,
-} from "@halonicjs/app";
+import { type ChatAnswer, type ChatAnswerRequest, maxTurnLimit } from "@halonicjs/app";
 import type { DefinitionSource } from "@halonicjs/ports";
-import { encodeUtf8, KindedError, slugify, uniqueName } from "@halonicjs/std";
+import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import type {
   AgentChange,
   AgentChatRequest,
@@ -43,6 +36,7 @@ import {
 } from "./agent-file.ts";
 import { paramsEdits, paramsOf } from "./agent-params.ts";
 import { agentUsersOf, defaultModelOf } from "./agent-reads.ts";
+import { type NewAgentsParts, placeNewAgent } from "./new-agent-placing.ts";
 
 /** What {@link WorkspaceAgents} needs of the workspace's files. */
 export interface WorkspaceAgentsParts {
@@ -88,18 +82,12 @@ export interface WorkspaceAgentsParts {
    * "The engine isn't answering."
    */
   readonly answerChat?: (request: ChatAnswerRequest) => Promise<ChatAnswer>;
-}
-
-/** What {@link WorkspaceAgents} applies Settings › New agents run (`sandbox.new-agents`) with. */
-export interface NewAgentsParts {
-  /** The host settings, where Settings saves the choice. */
-  readonly settings: HostSettings;
-  /** The "On this computer" choices, kept by the agent host in the person's profile. */
-  readonly placement: AgentPlacement;
-  /** The workspace's real path, which the choices are kept for. */
-  readonly location: string;
-  /** Gets a choice that couldn't be saved; the agent is made all the same, in its sandbox. */
-  readonly reportError: (error: unknown) => void;
+  /**
+   * Opens Create version with only `paths` in it (source control's `VersionDialogService`), and
+   * answers once a version is made or the dialog is closed. Absent where the app can't offer that,
+   * so there is no `makeLive`.
+   */
+  readonly versionDialog?: (paths: readonly string[]) => Promise<"made" | "cancelled">;
 }
 
 /** Where the agent files of a hub are kept. */
@@ -125,8 +113,16 @@ export class WorkspaceAgents implements AgentsHost {
   /** The names of the agents read or made so far, by hub and id, for {@link WorkspaceAgents.nameOf}. */
   readonly #names = new Map<string, string>();
 
+  /** Present only when the app can open Create version; see {@link AgentsHost.makeLive}. */
+  makeLive?: NonNullable<AgentsHost["makeLive"]>;
+
   constructor(parts: WorkspaceAgentsParts) {
     this.#parts = parts;
+    const { versionDialog } = parts;
+    if (versionDialog !== undefined) {
+      // Only the agent's own file, so the version holds nothing else the person changed.
+      this.makeLive = async (ref) => versionDialog([(await this.#find(ref)).path]);
+    }
   }
 
   /** The hubs the last load found; none before the first one. */
@@ -428,27 +424,8 @@ export class WorkspaceAgents implements AgentsHost {
       [`${folder}/${id}${agentSuffix}`]: text,
     });
     this.#names.set(`${hubId}/${id}`, name);
-    await this.#placeNew(hubId, id, text);
+    await placeNewAgent(this.#parts.newAgents, hubId, id, text);
     return { hubId, id };
-  }
-
-  /**
-   * Applies Settings › New agents run to the agent just made, for its file as written: "On this
-   * computer" records that choice for it, anything else leaves it in its sandbox. A choice that
-   * can't be saved goes to `reportError` and leaves it in its sandbox too.
-   */
-  async #placeNew(hub: string, agent: string, text: string): Promise<void> {
-    const parts = this.#parts.newAgents;
-    if (parts === undefined) return;
-    const subject = { location: parts.location, hub, agent, file: encodeUtf8(text) };
-    try {
-      const placed = await newAgentPlacement(parts.settings, parts.placement, subject);
-      if (!placed.ok) {
-        parts.reportError(new Error(`The new agent's file changed while it was placed: ${agent}.`));
-      }
-    } catch (error) {
-      parts.reportError(error);
-    }
   }
 
   /** Loads the workspace from its files as they are now, and keeps its hubs for {@link WorkspaceAgents.hubs}. */

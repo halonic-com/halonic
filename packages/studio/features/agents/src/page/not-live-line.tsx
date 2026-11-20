@@ -1,4 +1,5 @@
-import { usePresentation } from "@halonicjs/studio-kit";
+import { inlineLinkClasses, usePresentation, useToastStore } from "@halonicjs/studio-kit";
+import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useMemo } from "react";
 import type { AgentLiveState, AgentRef, AgentsHost } from "../api.ts";
 import { pageWords } from "./page-words.ts";
@@ -8,6 +9,8 @@ import { useLoad } from "./use-load.ts";
 export interface NotLiveLineProps {
   readonly host: AgentsHost;
   readonly agent: AgentRef;
+  /** The agent's name, for the toast when it can't be made live. */
+  readonly name: string;
 }
 
 /**
@@ -15,10 +18,13 @@ export interface NotLiveLineProps {
  * "Changes not live yet", only while the agent has saved changes that aren't in a version, which
  * is also the case for an agent no version has yet. It is read again when a file changes. Where
  * the host can't tell, or the read fails, there is no line: the page doesn't guess.
- * **Review and make live** joins it once another feature can open Create version for one item.
+ * Where the host can make the agent live, the line ends in **Review and make live**
+ * (`agents.page.review-and-make-live`, flow-agents 3.3), which opens Create version with only this
+ * agent and reads the line again once a version is made, since a version changes no file.
  */
-export function NotLiveLine({ host, agent }: NotLiveLineProps) {
+export function NotLiveLine({ host, agent, name }: NotLiveLineProps) {
   const phone = usePresentation() === "phone";
+  const toasts = useToastStore();
   const { hubId, id } = agent;
   const source = useMemo(
     () => ({
@@ -28,13 +34,39 @@ export function NotLiveLine({ host, agent }: NotLiveLineProps) {
     }),
     [host, hubId, id],
   );
-  const { load } = useLoad<AgentLiveState>(source);
+  // A version changes no file, so nothing tells the line to read again: it does once one is made.
+  const { load, retry: readAgain } = useLoad<AgentLiveState>(source);
   if (load.kind !== "ready" || load.value === "live") return null;
+
+  async function reviewAndMakeLive() {
+    try {
+      if ((await host.makeLive?.({ hubId, id })) === "made") readAgain();
+    } catch (error) {
+      toasts?.show({
+        tone: "danger",
+        title: pageWords.couldntMakeLive(name),
+        text: errorReasonFor(error),
+      });
+    }
+  }
+
   return (
     <p
       className={`border-b border-border py-2 text-small text-fg-muted ${phone ? "px-4" : "px-6"}`}
     >
       {pageWords.changesNotLive}
+      {host.makeLive !== undefined && (
+        <>
+          {" "}
+          <button
+            type="button"
+            className={inlineLinkClasses}
+            onClick={() => void reviewAndMakeLive()}
+          >
+            {pageWords.reviewAndMakeLive}
+          </button>
+        </>
+      )}
     </p>
   );
 }

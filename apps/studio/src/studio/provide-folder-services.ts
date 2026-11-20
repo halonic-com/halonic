@@ -266,6 +266,8 @@ export function provideFolderServices(
               reportError: (error) => console.error("Placing a new agent", error),
             },
           }),
+      // Looked up when Review and make live is pressed, as for the routines below.
+      versionDialog: (paths) => services.get(VersionDialogService).open(paths),
     }),
   );
   const workflows = services.provide(

@@ -11,6 +11,10 @@ export const pageWords = {
   views: "Agent views",
   /** Microcopy 2 and flow-agents 3.1: under the header while saved changes aren't in a version. */
   changesNotLive: "Changes not live yet",
+  /** Flow-agents 3.3: opens Create version with only this agent. */
+  reviewAndMakeLive: "Review and make live",
+  /** The same words as a routine's Make live (flow-routines 3.8). */
+  couldntMakeLive: (name: string) => `Couldn't make ${name} live.`,
   saveFailed: "The file couldn't be written.",
   couldntSave: (reason: string) => `Couldn't save: ${reason}`,
   /** Read when a card drops because its part is gone (a11y 6.5, checklist 1.10). */

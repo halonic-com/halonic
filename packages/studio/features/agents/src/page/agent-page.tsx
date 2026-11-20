@@ -254,7 +254,7 @@ export function AgentScreen({
           ids={ids}
         />
       </header>
-      {load.kind === "ready" && <NotLiveLine host={host} agent={{ hubId, id }} />}
+      {load.kind === "ready" && <NotLiveLine host={host} agent={{ hubId, id }} name={name} />}
       {saveFailed !== undefined && (
         <p role="alert" className="border-b border-border px-6 py-2 text-small text-danger">
           {pageWords.couldntSave(saveFailed)}
