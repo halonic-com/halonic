@@ -2,6 +2,7 @@
 
 - Approval: HAL-14267; Liam asked for this change on the task (C337 C9, from Nina's check on HAL-14257) and approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Q/ZZsk7yHYS6vzzGMe/vrC8BoYzKQ9gPGXmY2ImT/EXU4Z2s0v6+/Oez68/E+m/nivZm0jQKwlOYF96Bhig0AA==
 
 ## What changes
 
