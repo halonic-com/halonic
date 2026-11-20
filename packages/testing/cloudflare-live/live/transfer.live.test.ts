@@ -37,10 +37,11 @@ describe("the deployed Worker's admin routes", () => {
     await expect(workerChecks.adminClosed(target, "not-the-key")).resolves.toBeUndefined();
   });
 
-  // While the key rolls out, an older Worker version still gives the closed 404: retry only that,
-  // so any other wrong answer, such as a wrong key taken, fails at once.
+  // While the key rolls out, an older Worker version still gives the closed 404, and on CI a try a
+  // few seconds after the key was set has met a 500 (HAL-14453): retry only those, so any other
+  // wrong answer, such as a wrong key taken, fails at once. A 500 that lasts still fails at the end.
   const olderVersionAnswered = (error: unknown) =>
-    error instanceof UnexpectedStatus && error.status === 404;
+    error instanceof UnexpectedStatus && (error.status === 404 || error.status >= 500);
 
   // Each retried failure is printed with its try and time, so a run that runs out of tries shows
   // how long the older version kept answering. The checks' messages never hold a key.
