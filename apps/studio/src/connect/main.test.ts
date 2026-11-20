@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
-import { settled } from "./test/connect-page-harness.ts";
+import { recordScrolls, settled } from "./test/connect-page-harness.ts";
 
 const pageFile = join(process.cwd(), "connect.html");
 const addressKey = "halonic.connect.address";
@@ -57,11 +57,16 @@ beforeAll(async () => {
   ]);
 }, 60_000);
 
+let restoreScrolling = (): void => undefined;
+
 beforeEach(() => {
   location.hash = "";
+  // A field error scrolls Connect into view, which jsdom can't do.
+  restoreScrolling = recordScrolls().restore;
 });
 
 afterEach(() => {
+  restoreScrolling();
   Reflect.deleteProperty(window, "__TAURI_INTERNALS__");
   document.body.replaceChildren();
   localStorage.clear();
