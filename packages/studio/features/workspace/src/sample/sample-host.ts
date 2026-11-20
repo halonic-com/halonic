@@ -20,7 +20,7 @@ export type CreatedSample =
       readonly unavailable?: true;
     };
 
-/** What the app does for **Try the Acme sample** on Welcome. */
+/** What the app does for **Open demo** on Welcome. */
 export interface SampleHost {
   /**
    * Copies the Acme sample into a new folder in Documents and saves its trust record. It never

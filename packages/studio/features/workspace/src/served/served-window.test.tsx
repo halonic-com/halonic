@@ -149,9 +149,7 @@ verifies("workspace.served-picker", () => {
 });
 
 const chip = () =>
-  [...element.querySelectorAll("button")].find(
-    (item) => item.textContent === "Sample · test model",
-  );
+  [...element.querySelectorAll("button")].find((item) => item.textContent === "Sample answers");
 
 verifies("workspace.try-sample", () => {
   describe("on a phone", () => {
@@ -163,7 +161,7 @@ verifies("workspace.try-sample", () => {
       expect(row()?.contains(chip() ?? null)).toBe(false);
       await act(async () => chip()?.click());
       const panel = element.querySelector("aside");
-      expect(panel?.querySelector("h2")?.textContent).toBe("Sample · test model");
+      expect(panel?.querySelector("h2")?.textContent).toBe("Sample answers");
       expect(panel?.textContent).toContain("Runs on the built-in test model");
       expect(panel?.textContent).toContain(
         "To start your own workspace, use Halonic on your computer.",

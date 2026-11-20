@@ -52,7 +52,7 @@ export interface WorkspaceWindowProps {
   readonly newWorkspace?: NewWorkspaceHost;
   /** Lets the rest of the app open the New workspace dialog, such as the finished sample card. */
   readonly newWorkspaceAsks?: NewWorkspaceAsks;
-  /** What **Try the Acme sample** needs from the app. Without it Welcome has no such button. */
+  /** What **Open demo** needs from the app. Without it Welcome has no such button. */
   readonly sample?: SampleHost;
   /**
    * The memory and free-disk watch the status bar's resources item shows. Without it the
@@ -91,7 +91,7 @@ export function WorkspaceWindow({
     // The dialog opens through `setCreating`, which never changes; the ask is rebuilt each render.
     [newWorkspace, newWorkspaceAsks],
   );
-  // What Try the Acme sample and Fresh copy do with the host's answer: a copy or a known sample opens.
+  // What Open demo and Fresh copy do with the host's answer: a copy or a known sample opens.
   const openSample = async (
     made: Exclude<CreatedSample, { kind: "cant" }>,
     toastOf: (name: string, trustFailure?: string) => string,
@@ -268,6 +268,7 @@ export function WorkspaceWindow({
             {freshCopy === undefined || !switcher.recent.isSample(shown.location) ? null : (
               <SampleChip
                 trust={shown.value.trust}
+                testModel={shown.value.testModel}
                 onNewWorkspace={askNewWorkspace}
                 onFreshCopy={() => void freshCopy()}
               />

@@ -3,14 +3,17 @@ import { useState, useSyncExternalStore } from "react";
 import { NEW_WORKSPACE_MENU_ROW } from "../new-workspace/new-workspace-text.ts";
 import type { WorkspaceTrustControl } from "../trust/workspace-trust-control.ts";
 import { sampleChipWords } from "./sample-text.ts";
+import type { TestModelWatch } from "./test-model-watch.ts";
 
 /** Props for {@link SampleChip}. */
 export interface SampleChipProps {
   /** The workspace's trust; the chip gives its place to the trust badge until it is trusted. */
   readonly trust: WorkspaceTrustControl | undefined;
+  /** Whether the `default` model is still the test model; without it the chip stays away. */
+  readonly testModel: TestModelWatch | undefined;
   /** Asks for the New workspace dialog; without it the menu has no such row. */
   readonly onNewWorkspace?: (() => void) | undefined;
-  /** Writes a new copy of the sample beside this one and opens it. */
+  /** Writes a new copy of the demo beside this one and opens it. */
   readonly onFreshCopy: () => void;
 }
 
@@ -38,22 +41,27 @@ export function PhoneSampleChip({ onOpenSheet }: PhoneSampleChipProps) {
 }
 
 /**
- * The header chip "Sample · test model" of a workspace created as the Acme sample
- * (`workspace.try-sample`). It is a menu button with the cost line, **New workspace…** and
- * **Fresh copy of the sample**. While the workspace isn't trusted yet the trust badge has the
- * slot and the chip stays away. In a desktop window as narrow as a phone the chip sits on More and
- * opens the same rows as a modal sheet, since the computer can write folders there.
+ * The header chip "Sample answers" of a workspace created as the demo (`workspace.try-sample`),
+ * shown while its `default` model is the test model. It is a menu button with the cost line,
+ * **New workspace…** and **Fresh copy of the demo**. While the workspace isn't trusted yet the
+ * trust badge has the slot and the chip stays away. In a desktop window as narrow as a phone the
+ * chip sits on More and opens the same rows as a modal sheet, since the computer can write folders
+ * there.
  *
  * @example
- * <SampleChip trust={opened.trust} onNewWorkspace={askNewWorkspace} onFreshCopy={freshCopy} />
+ * <SampleChip trust={opened.trust} testModel={opened.testModel} onFreshCopy={freshCopy} />
  */
-export function SampleChip({ trust, onNewWorkspace, onFreshCopy }: SampleChipProps) {
+export function SampleChip({ trust, testModel, onNewWorkspace, onFreshCopy }: SampleChipProps) {
   const status = useSyncExternalStore(
     (onChange) => trust?.subscribe(onChange) ?? (() => {}),
     () => trust?.status,
   );
+  const onTestModel = useSyncExternalStore(
+    (onChange) => testModel?.subscribe(onChange) ?? (() => {}),
+    () => testModel?.onTestModel === true,
+  );
   const [sheetOpen, setSheetOpen] = useState(false);
-  if (trust !== undefined && status !== "trusted") {
+  if ((trust !== undefined && status !== "trusted") || !onTestModel) {
     return null;
   }
   const entries: readonly MenuItem[] = [

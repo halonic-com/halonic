@@ -1,8 +1,8 @@
-/** The words of the sample's header chip and its menu (flow-first-run 3.1, microcopy 5). */
+/** The words of the demo's header chip and its menu (first-run-flow 8a, microcopy 5). */
 export const sampleChipWords = {
-  chip: "Sample · test model",
+  chip: "Sample answers",
   cost: "Runs on the built-in test model, with scripted replies. No key, no cost.",
-  freshCopy: "Fresh copy of the sample",
+  freshCopy: "Fresh copy of the demo",
 } as const;
 
 /** The sheet the chip opens on a phone, which starts no workspace (flow-first-run 7.2, microcopy 5). */
@@ -20,7 +20,7 @@ export function freshCopyLine(name: string, trustFailure?: string): string {
 
 /** The toast when a fresh copy couldn't be written; the reason ends the line, with a full stop (microcopy 5). */
 export function freshCopyFailedLine(reason: string): string {
-  return `Couldn't create a fresh copy of the sample: ${reason.replace(/\.$/, "")}.`;
+  return `Couldn't create a fresh copy of the demo: ${reason.replace(/\.$/, "")}.`;
 }
 
 /** The toast's button: the same **Try again** every failed action has. */

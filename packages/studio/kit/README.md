@@ -1644,7 +1644,7 @@ it reads as a state but can be clicked. The slot holds one at a time; the trust 
   ]}
   onOpenSheet={openSampleSheet}
 >
-  Sample · test model
+  Sample answers
 </HeaderBadge>;
 
 <HeaderBadge as="button" action="Review" onClick={openTrustCheck}>
@@ -1655,7 +1655,7 @@ it reads as a state but can be clicked. The slot holds one at a time; the trust 
 | Prop | What it is |
 | --- | --- |
 | `as` | `menu`: opens a Menu. `button`: does one thing, such as opening the trust check |
-| `children` | The words: "Sample · test model", "Not trusted yet" |
+| `children` | The words: "Sample answers", "Not trusted yet" |
 | `description` | `menu` only: the Menu's description line |
 | `entries` | `menu` only: the Menu's items |
 | `onOpenSheet` | `menu` only: on a phone, opens the panel sheet with the same line and items |
@@ -1691,7 +1691,7 @@ same `description` and `entries`, and `onClose` for Back:
 
 ```tsx
 <HeaderBadgeSheet
-  title="Sample · test model"
+  title="Sample answers"
   description="Runs on the built-in test model, with scripted replies. No key, no cost."
   entries={sampleEntries}
   onClose={back}
