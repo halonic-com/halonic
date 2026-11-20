@@ -1,10 +1,14 @@
 import type { RunnerUnfencedReason } from "@halonicjs/app";
 import { useState } from "react";
-import { messageOf } from "../message-of.ts";
 import { changeSummary } from "../trust/change-rows.ts";
 import { PluginTrustDialog } from "../trust/plugin-trust-dialog.tsx";
 import type { ProgramsRun } from "../trust/trust-text.ts";
-import { type PluginUnfencedRuns, trustWithYes, useTrustStatus } from "../trust/unfenced-status.ts";
+import {
+  type PluginUnfencedRuns,
+  trustFailureOf,
+  trustWithYes,
+  useTrustStatus,
+} from "../trust/unfenced-status.ts";
 import type { PluginActions, PluginUpdateCheck } from "./plugin-actions.ts";
 import type { InstalledPlugin } from "./plugin-pages.ts";
 
@@ -58,7 +62,7 @@ export function UpdatePluginDialog({
         return;
       }
     } catch (error) {
-      setFailure(messageOf(error));
+      setFailure(trustFailureOf(error));
     }
     setBusy(false);
   }
