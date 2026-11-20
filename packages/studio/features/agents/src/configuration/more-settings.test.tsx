@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { FieldAnnounceProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -27,13 +28,18 @@ const sorter = { hubId: "acme", id: "sorter" };
 async function openMoreSettings(
   params: AgentModelParams = {},
   saving?: ReturnType<typeof notSavedCounts>["saving"],
+  announced?: string[],
 ) {
   const agents = memoryAgentsHost({
     hubs: [{ id: "acme", name: "acme" }],
     agents: [{ ...sorter, name: "Sorter", model: "fast", params }],
     modelAliases: ["fast"],
   });
-  const page = await show(<AgentScreen host={agents} saving={saving} hubId="acme" id="sorter" />);
+  const page = await show(
+    <FieldAnnounceProvider announce={(text) => announced?.push(text)}>
+      <AgentScreen host={agents} saving={saving} hubId="acme" id="sorter" />
+    </FieldAnnounceProvider>,
+  );
   await act(async () => buttonNamed(page, "Configuration")?.click());
   await act(async () =>
     [...page.querySelectorAll<HTMLElement>("[role=tab]")]
@@ -86,6 +92,32 @@ verifies("agents.configuration.more-settings", () => {
     expect(page.textContent).toContain("Enter a number from 0 to 2.");
     expect(page.textContent).toContain("Enter a number from 0 to 1.");
     expect(page.textContent).toContain("Enter a whole number above 0.");
+  });
+
+  it("reads a number's mistake once when it shows after the pause, and not again on leaving", async () => {
+    const announced: string[] = [];
+    const { page } = await openMoreSettings({}, undefined, announced);
+    const temperature = control<HTMLInputElement>(page, "Temperature");
+    temperature.focus();
+    await typeInto(temperature, "3");
+    await pause();
+    await act(async () => vi.advanceTimersToNextFrame());
+    expect(announced).toEqual(["Temperature: Enter a number from 0 to 2."]);
+
+    await act(async () => temperature.dispatchEvent(new FocusEvent("focusout", { bubbles: true })));
+    temperature.blur();
+    await act(async () => vi.advanceTimersToNextFrame());
+    expect(announced).toHaveLength(1);
+  });
+
+  it("lines its fields up with Model call limit's, in the text colour", async () => {
+    const { page } = await openMoreSettings();
+    const fields = (page.querySelector("details") as HTMLElement).querySelector(
+      "summary + div > div",
+    ) as HTMLElement;
+    expect(fields.className).toContain("-mx-4");
+    expect(fields.className).toContain("text-fg");
+    expect(fields.className).not.toContain("px-4");
   });
 
   it("counts each number with a mistake as a field not saved, until it is fixed", async () => {
