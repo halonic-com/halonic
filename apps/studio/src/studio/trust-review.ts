@@ -14,6 +14,7 @@ import type {
   ProviderTrustContent,
   TrustChanges,
 } from "@halonicjs/workspace";
+import { harnessName } from "./harness-name.ts";
 
 /** What the check doesn't hold, because only the host knows it. */
 export interface TrustReviewFacts {
@@ -276,15 +277,6 @@ function settingAddress(address: string | null): string {
   if (address === null) return "not set";
   const refused = /^‹refused: (.+)›$/u.exec(address)?.[1];
   return refused === undefined ? address : `can't be used: ${refused}`;
-}
-
-const harnessNames = new Map([
-  ["claude-code", "Claude Code"],
-  ["codex", "Codex"],
-]);
-
-function harnessName(harness: string): string {
-  return harnessNames.get(harness) ?? harness;
 }
 
 function agentRow(agent: AgentTrustContent): TrustRowView {

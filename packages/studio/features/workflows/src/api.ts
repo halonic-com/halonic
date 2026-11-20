@@ -3,6 +3,7 @@
  * file. The app provides `WorkflowsHostService` for each open workspace; the Workflows feature's
  * list, dialogs and page read it.
  */
+import { errorKindOf, KindedError } from "@halonicjs/std";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
 /**
@@ -10,6 +11,39 @@ import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
  * error, which every page words for where Studio runs.
  */
 export { EngineNotAnswering } from "@halonicjs/studio-shell";
+
+/**
+ * A run Studio can't start but a terminal can (rules N1 and N2 of the UX check, HAL-12363): why,
+ * the sentence that leads to the command, and the whole command, filled in, to copy.
+ */
+export interface TerminalStart {
+  /** Why Studio doesn't start it, such as "Reporter uses a connector, which Studio can't start yet." */
+  readonly reason: string;
+  /** The sentence before the command, such as "To start it, run this in a terminal:". */
+  readonly lead: string;
+  readonly command: string;
+}
+
+/**
+ * What {@link WorkflowsHost.startRun} rejects with when only a terminal can start the run: an
+ * `unavailable` error whose `fix` is the lead sentence and whose `command` is the command to copy,
+ * so the page can put the command in a CommandBox. Starting again can't help.
+ */
+export class StartInTerminal extends KindedError {
+  readonly command: string;
+  constructor({ reason, lead, command }: TerminalStart) {
+    super("unavailable", reason, { fix: lead });
+    this.command = command;
+  }
+}
+
+/** The terminal start a refusal holds: an `unavailable` error with a `fix` and a `command`. */
+export function terminalStartOf(error: unknown): TerminalStart | undefined {
+  if (errorKindOf(error) !== "unavailable") return undefined;
+  const { message, fix, command } = error as { message: string; fix?: unknown; command?: unknown };
+  if (typeof fix !== "string" || typeof command !== "string" || command === "") return undefined;
+  return { reason: message, lead: fix, command };
+}
 
 /** Names one workflow the way a deep link does: its hub and its id. */
 export interface WorkflowRef {
@@ -192,7 +226,8 @@ export interface WorkflowsHost {
    * pending or a field has a mistake; the host saves what is waiting at once and then starts the run,
    * and never saves a field that has a mistake (HAL-10348). Absent while the app has no engine
    * to start it, so the page shows no **Run**. Rejects with {@link EngineNotAnswering} when the
-   * engine can't be reached, or with the reason it didn't start, which includes a save that failed.
+   * engine can't be reached, with {@link StartInTerminal} when only a terminal can start it, or
+   * with the reason it didn't start, which includes a save that failed.
    */
   startRun?(ref: WorkflowRef, input: Record<string, unknown>): Promise<{ readonly runId: string }>;
   /**
