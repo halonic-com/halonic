@@ -215,7 +215,7 @@ verifies("plugins.plugin-trust-check", () => {
     const text = dialog().textContent ?? "";
 
     expect(text).toContain(
-      "You enter its value in Acme's settings. Halonic gives it to the program when it starts.",
+      "You enter its value in this plugin's settings. Halonic gives it to the program when it starts.",
     );
     expect(text).not.toContain("never sees it");
   });
@@ -244,7 +244,7 @@ verifies("plugins.plugin-trust-check", () => {
     expect(text).toContain("Goes only to api.example.com");
     expect(text).toContain("How Authorization header");
     expect(text).toContain(
-      "You enter its value in Weather's settings. The plugin's code never sees it.",
+      "You enter its value in this plugin's settings. The plugin's code never sees it.",
     );
     expect(text).toContain("radar.example.com (the program)");
     expect(text).toContain(

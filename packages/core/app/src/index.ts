@@ -278,6 +278,7 @@ export {
   pluginClientSecretHosts,
   pluginClientSecretNames,
   type SignInTrustFacts,
+  signInScopesLine,
   signInTokenHostDiffers,
   signInTokenHostWarning,
   signInTrustLine,

@@ -7,7 +7,7 @@ import type {
   PluginToolContent,
   PluginTrustChanges,
 } from "@halonicjs/app";
-import { pluginTrustContent } from "@halonicjs/app";
+import { pluginTrustContent, signInScopesLine } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
 import { RISK_WORDS } from "../page/page-text.ts";
 import type { PluginToolRisk } from "../page/plugin-pages.ts";
@@ -129,17 +129,26 @@ function secretRows(changes: PluginItemChanges<PluginSecretContent>): ChangeRow[
 
 /**
  * A new sign-in says what it is for; a changed one names what changed, since
- * a whole trust line before and after would be hard to compare.
+ * a whole trust line before and after would be hard to compare. When its
+ * scopes changed, the row adds what it can do now, so the person sees what
+ * they agree to before trusting again (HAL-14004).
  */
 function signInRows(changes: PluginItemChanges<PluginSignInContent>): ChangeRow[] {
   const name = (signIn: PluginSignInContent) => `Sign-in ${signIn.name}`;
+  const changedSignInRow = (change: (typeof changes.changed)[number]): ChangeRow => {
+    const row = changedRow(name(change.after), change, () => "");
+    const can = change.fields.includes("scopes")
+      ? signInScopesLine(change.after.scopes.map((scope) => scope.reason))
+      : "";
+    return can === "" ? row : { ...row, to: `${row.to}. ${can}` };
+  };
   return [
     ...changes.added.map((signIn) => ({
       tag: "New" as const,
       what: name(signIn),
       to: signIn.purpose,
     })),
-    ...changes.changed.map((change) => changedRow(name(change.after), change, () => "")),
+    ...changes.changed.map(changedSignInRow),
     ...changes.removed.map((signIn) => ({
       tag: "Removed" as const,
       what: name(signIn),

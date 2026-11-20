@@ -336,15 +336,19 @@ function Section({
           </Items>
           {secretKinds(secrets).map((kind) => (
             <p key={kind} className="text-small text-fg-muted">
-              {secretValueLine(name, kind)}
+              {secretValueLine(kind)}
             </p>
           ))}
         </Disclosure>
       );
     case "sign-ins":
       // The words the plugin page shows before **Sign in**, without its buttons (HAL-13419).
+      // Opens by itself when a sign-in has the token host warning, so it can't be missed (HAL-14004).
       return (
-        <Disclosure summary={sectionRow(SIGN_INS_SECTION, signIns.length)}>
+        <Disclosure
+          summary={sectionRow(SIGN_INS_SECTION, signIns.length)}
+          defaultOpen={signIns.some((signIn) => signIn.warning !== undefined)}
+        >
           <Items>
             {signIns.map((signIn) => (
               <li key={signIn.name} className="flex flex-col gap-1">

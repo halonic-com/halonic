@@ -109,6 +109,7 @@ verifies("plugins.plugin-trust-sign-ins", () => {
     );
     expect(text).not.toContain("different services");
     expect(signInsSection().querySelector("button")).toBeNull();
+    expect(signInsSection().open).toBe(false);
   });
 
   it("shows the token host warning when the tokens come from another service", () => {
@@ -116,6 +117,8 @@ verifies("plugins.plugin-trust-sign-ins", () => {
     expect(signInsSection().textContent).toContain(
       "The sign-in page and the token address are different services: the address you enter under Server address and tokens.example.net. Only continue if you expect that.",
     );
+    // Open by itself, so the warning can't be missed before Trust (HAL-14004).
+    expect(signInsSection().open).toBe(true);
   });
 
   it("shows no Sign-ins section for a plugin without sign-ins", () => {
@@ -134,11 +137,22 @@ verifies("plugins.plugin-trust-sign-ins", () => {
     expect(summary.rows).toEqual(
       expect.arrayContaining([
         { tag: "New", what: "Sign-in reports", to: "Your Acme reports" },
-        { tag: "Changed", what: "Sign-in account", to: "what it can do changed" },
+        {
+          tag: "Changed",
+          what: "Sign-in account",
+          to: "what it can do changed. It can: change your projects.",
+        },
         { tag: "Removed", what: "Sign-in admin", from: "Your Acme admin" },
       ]),
     );
     expect(summary.rows.some((row) => row.what === "Manifest backend")).toBe(false);
+
+    const moved = acme({ account: { ...account, clientId: "other-client" } });
+    expect(changeSummary(moved, pluginTrustChanges(content(before), content(moved))).rows).toEqual(
+      expect.arrayContaining([
+        { tag: "Changed", what: "Sign-in account", to: "its client ID changed" },
+      ]),
+    );
 
     const same = changeSummary(before, pluginTrustChanges(content(before), content(before)));
     expect(same.unchanged).toEqual(expect.arrayContaining(["Sign-in account", "Sign-in admin"]));

@@ -164,10 +164,11 @@ export type SecretKind = "backend" | "program";
 
 /**
  * Under a secret (T8, words check M2). A backend's value is placed by Halonic's kit and never
- * reaches the plugin's code; a program is plugin code and gets it from its environment.
+ * reaches the plugin's code; a program is plugin code and gets it from its environment. It says
+ * "this plugin's" rather than the name, which reads wrong as "Acme Projects's" (HAL-14004).
  */
-export function secretValueLine(name: string, kind: SecretKind): string {
-  const entered = `You enter its value in ${name}'s settings.`;
+export function secretValueLine(kind: SecretKind): string {
+  const entered = "You enter its value in this plugin's settings.";
   return kind === "backend"
     ? `${entered} The plugin's code never sees it.`
     : `${entered} Halonic gives it to the program when it starts.`;

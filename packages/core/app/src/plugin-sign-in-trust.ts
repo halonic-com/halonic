@@ -74,12 +74,20 @@ const list = new Intl.ListFormat("en-GB", { type: "conjunction" });
  * @param service - the plugin's name
  */
 export function signInTrustLine(service: string, facts: SignInTrustFacts): string {
-  const can = facts.scopeReasons.length === 0 ? "" : ` It can: ${facts.scopeReasons.join("; ")}.`;
+  const can = signInScopesLine(facts.scopeReasons);
   return (
     `Signs in to your ${service} account at ${facts.authorizeHost}. ` +
-    `Halonic gets the tokens from ${facts.tokenHost}.${can} ` +
+    `Halonic gets the tokens from ${facts.tokenHost}.${can === "" ? "" : ` ${can}`} ` +
     `The sign-in is used only with ${list.format(facts.accessHosts)}.`
   );
+}
+
+/**
+ * The trust line's "It can: read your projects; change your projects.", on
+ * its own for a changed sign-in's row (HAL-14004); empty for no scopes.
+ */
+export function signInScopesLine(scopeReasons: readonly string[]): string {
+  return scopeReasons.length === 0 ? "" : `It can: ${scopeReasons.join("; ")}.`;
 }
 
 /** The token host warning, when the sign-in page and the token address are different services. */
