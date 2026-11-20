@@ -385,6 +385,7 @@ export {
   checkSecretValue,
   describeSecretName,
   halonicSecretNames,
+  hostSecretNames,
   isHalonicSecretName,
   isPluginSecretName,
   isQuotableSecretName,
