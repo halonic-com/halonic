@@ -17,10 +17,14 @@ backend:
   tools:
     - name: forecast
       description: Today's forecast for a city.
+      arguments:
+        city: The city's name.
       risk: read
       untrusted: true
     - name: save-favourite
       description: Saves a city as a favourite.
+      arguments:
+        city: The city's name.
       risk: write
       untrusted: false
 ui:

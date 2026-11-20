@@ -18,7 +18,7 @@ host, reads a file or leaks a key fails. Published as
 
 | Check | Fails when |
 | --- | --- |
-| `checkDeclaration` | the sheet fails its schema; the code differs from the sheet in kit version, name, version, or a tool's text, arguments, `risk` or `untrusted` (the loader's own check); a case calls an undeclared tool; or a recording isn't a valid `halonic.recording/1` file |
+| `checkDeclaration` | the sheet fails its schema; the code differs from the sheet in kit version, name, version, or a tool's text, arguments, `risk` or `untrusted` (the loader's own check); the sheet lists the tools in another order than the code; a tool takes an argument without a description; a case calls an undeclared tool; or a recording isn't a valid `halonic.recording/1` file |
 | `checkPolicy` | a `{ fromSetting }` host has no usable URL in `settings` or one outside its class, plain `http` goes to a non-local address, or a secret goes over it to another machine |
 | `checkConnectIsQuiet` | connecting sends a request, or closing twice throws |
 | `checkSources` | the source uses global `fetch`, `globalThis`, `window` or `self`, `process`, `Deno` or `Bun`, `node:` modules, `require`, `import()`, `eval` or `Function`, timers or other network APIs |

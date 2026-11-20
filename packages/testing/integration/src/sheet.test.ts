@@ -78,3 +78,30 @@ verifies("integration.reads-the-sheet", () => {
     await expect(checkCase(small, forecastCase)).rejects.toThrow(/is larger than 1 bytes/);
   });
 });
+
+verifies("integration.sheet-shows-everything", () => {
+  it("fails a sheet that lists the tools in another order than the code", () => {
+    const [forecast, saveFavourite] = (sheet["tools"] ?? []) as unknown[];
+    expect(() => checkDeclaration(withSheet({ tools: [saveFavourite, forecast] }))).toThrow(
+      /the sheet lists the tools as save-favourite, forecast; the code offers them as forecast, save-favourite/,
+    );
+  });
+
+  it("fails a tool that takes an argument without a description", () => {
+    const undescribed = { type: "object", properties: { city: { type: "string" } } };
+    const integration = {
+      ...weatherSubject.integration,
+      tools: weatherSubject.integration.tools.map((tool) => ({ ...tool, parameters: undescribed })),
+    };
+    const tools = ((sheet["tools"] ?? []) as Record<string, unknown>[]).map(
+      ({ arguments: _listed, ...tool }) => tool,
+    );
+    expect(() =>
+      checkDeclaration({ ...weatherSubject, integration, sheet: { ...sheet, tools } }),
+    ).toThrow(/"forecast" takes "city" without a description, so the sheet can't show it/);
+  });
+
+  it("passes the weather example, whose sheet shows every tool and argument", () => {
+    expect(() => checkDeclaration(weatherSubject)).not.toThrow();
+  });
+});

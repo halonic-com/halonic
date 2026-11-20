@@ -37,14 +37,22 @@ export const weather: Integration = {
     {
       name: "forecast",
       description: "Today's forecast for a city.",
-      parameters: { type: "object", properties: { city: { type: "string" } }, required: ["city"] },
+      parameters: {
+        type: "object",
+        properties: { city: { type: "string", description: "The city's name." } },
+        required: ["city"],
+      },
       risk: "read",
       untrusted: true,
     },
     {
       name: "save-favourite",
       description: "Saves a city as a favourite.",
-      parameters: { type: "object", properties: { city: { type: "string" } }, required: ["city"] },
+      parameters: {
+        type: "object",
+        properties: { city: { type: "string", description: "The city's name." } },
+        required: ["city"],
+      },
       risk: "write",
     },
   ],
@@ -75,8 +83,20 @@ export const weatherSubject: ConformanceSubject = {
       },
     },
     tools: [
-      { name: "forecast", description: "Today's forecast for a city.", risk: "read", untrusted: true },
-      { name: "save-favourite", description: "Saves a city as a favourite.", risk: "write", untrusted: false },
+      {
+        name: "forecast",
+        description: "Today's forecast for a city.",
+        arguments: { city: "The city's name." },
+        risk: "read",
+        untrusted: true,
+      },
+      {
+        name: "save-favourite",
+        description: "Saves a city as a favourite.",
+        arguments: { city: "The city's name." },
+        risk: "write",
+        untrusted: false,
+      },
     ],
   },
   recordings: [

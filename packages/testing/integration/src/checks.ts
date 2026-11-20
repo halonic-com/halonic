@@ -1,6 +1,7 @@
 import { clampWaitMs, declarationProblems } from "@halonicjs/adapter-integration-kit";
+import type { IntegrationSheet } from "@halonicjs/format/integration";
 import { recordingFileSchema } from "@halonicjs/format/recording";
-import { type IntegrationHost, maxIntegrationWaitMs } from "@halonicjs/ports";
+import { type Integration, type IntegrationHost, maxIntegrationWaitMs } from "@halonicjs/ports";
 import { parse } from "@halonicjs/schema-kit";
 import { canaryFor, canaryMark } from "./canaries.ts";
 import { fail } from "./failure.ts";
@@ -19,20 +20,52 @@ import { scanIntegrationSource } from "./source-scan.ts";
 /**
  * The sheet passes its schema, and the integration is exactly what it says:
  * kit version, name, version, and each tool's text, arguments, `risk` and
- * `untrusted`, as the kit's loader checks them. Every case calls a declared
- * tool, and every recording is a valid `halonic.recording/1` file of this
- * integration.
+ * `untrusted`, as the kit's loader checks them. On top of the loader, the
+ * sheet lists the tools in the code's order and every argument has a
+ * description (see {@link checkSheetShowsEverything}). Every case calls a
+ * declared tool, and every recording is a valid `halonic.recording/1` file
+ * of this integration.
  */
 export function checkDeclaration(subject: ConformanceSubject): void {
   const sheet = sheetOf(subject);
   const problems = declarationProblems(sheet, subject.integration);
   if (problems.length > 0) fail(problems.map((problem) => problem.message).join("\n"));
+  checkSheetShowsEverything(sheet, subject.integration);
   checkRecordings(subject);
   const tools = new Set(sheet.tools.map((tool) => tool.name));
   for (const toolCase of subject.cases) {
     if (!tools.has(toolCase.tool)) fail(`a case calls "${toolCase.tool}", which isn't declared`);
     if (scenarioOf(subject, toolCase) === undefined)
       fail(`a case replays the scenario "${toolCase.scenario}", which has no recording`);
+  }
+}
+
+/**
+ * What the loader leaves out and a reviewer used to compare by hand
+ * (HAL-14082): the sheet lists the tools in the order the code offers them,
+ * and every argument the code takes has a description. An argument without
+ * one can't be on the sheet, so the user would approve a tool without seeing
+ * it. Runs after `declarationProblems`, so both sides name the same tools.
+ */
+function checkSheetShowsEverything(sheet: IntegrationSheet, integration: Integration): void {
+  const sheetOrder = sheet.tools.map((tool) => tool.name);
+  const codeOrder = integration.tools.map((tool) => tool.name);
+  if (sheetOrder.join("\n") !== codeOrder.join("\n")) {
+    fail(
+      `the sheet lists the tools as ${sheetOrder.join(", ")}; the code offers them as ${codeOrder.join(", ")}`,
+    );
+  }
+  for (const tool of integration.tools) {
+    const properties = tool.parameters["properties"];
+    if (typeof properties !== "object" || properties === null) continue;
+    for (const [argument, schema] of Object.entries(properties)) {
+      const description = (schema as { description?: unknown } | null)?.description;
+      if (typeof description !== "string" || description.trim() === "") {
+        fail(
+          `"${tool.name}" takes "${argument}" without a description, so the sheet can't show it`,
+        );
+      }
+    }
   }
 }
 
