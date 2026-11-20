@@ -683,7 +683,13 @@ The states every page shares, so no feature words them on its own:
   page** and the link **Copy details** (microcopy 22 F14); the sidebar and the other tabs keep
   working. Focus goes to the title only if it was lost, and to this page's own `h1` after a Reload
   page that works. The error's message goes only into Copy details. When `pageKey` changes, such as
-  when the tab opens another item, the boundary starts fresh.
+  when the tab opens another item, the boundary starts fresh. In the served Studio and on the
+  phone, a page whose code can't load because the computer can't be reached shows "Couldn't load
+  this page" instead, with the reason "Halonic couldn't reach the computer to show the _page_." and
+  only **Try again**, which imports the code again in place, without Copy details or Reload page
+  (`shell.page-unreachable`). A Settings section shows it too, and a Home card says the same reason
+  under its own title, with Try again. The desktop app, whose code is on the computer itself, still
+  shows "This page stopped working" there.
 - **Copy details.** `useCopyDetails()` copies `detailsOf(what, error)` through the frame's
   clipboard and says "Copied. Paste it into a bug report." or "Couldn't copy." in a toast (22 F13b).
   Outside React, such as in a toast's action, `copyDetails(details, toasts)` does the same.
@@ -1000,10 +1006,11 @@ feature added, which gets `ItemViewProps`: the item and the context of that feat
 only once, however often it's mounted again. While a page's, a sidebar view's or a Settings
 section's view loads, `LoadedView` shows nothing for 300 ms, then skeleton rows read as "Loading
 _page_", and after 10 s "Still loading" with **Try again**. A view whose import failed is imported
-again on the next mount, so **Reload page** can fix a page that couldn't load
-(`shell.view-loading-state`). The window also draws the features' dialog hosts
-(`FeatureDialogs`), and the context it gives views and commands has `openItem(item)`, which opens
-an item as Ctrl K opens a found one, its tab named by the kind's `tab.describe`, else the item's id
+again on the next mount, so in the desktop app **Reload page** can fix a page that couldn't load
+(`shell.view-loading-state`); in the served Studio and on the phone, **Try again** on "Couldn't load
+this page" imports it again in place (`shell.page-unreachable`). The window also draws the
+features' dialog hosts (`FeatureDialogs`), and the context it gives views and commands has
+`openItem(item)`, which opens an item as Ctrl K opens a found one, its tab named by the kind's `tab.describe`, else the item's id
 (`shell.open-item`). On the desktop it also has `showSidebarView(viewId)`, which shows a sidebar view
 as picking its tab does (`studio` shows the places again; an id no feature added changes nothing).
 The window keeps the picked tab in memory only. A phone's context has none
