@@ -63,6 +63,7 @@ async function setup(options: { check?: SandboxCheck; platform?: string } = {}) 
     fenced: sandbox(options.check ?? inContainer),
     launcher: sandbox(passes),
     runs,
+    timers: noSavedYesChecks,
   });
   const logged: string[] = [];
   server = await startHostServer(

@@ -42,6 +42,7 @@ function machineOf(extra: Partial<HostPluginMachineOptions> = {}) {
         clock: { now: () => new Date(0) },
         timers: { set: () => undefined, clear: () => undefined },
       }),
+      timers: { set: () => undefined, clear: () => undefined },
     }),
     // On Windows the runner's temp folder goes in the profile's shared data folder: a folder of this test's own, not the machine's %ProgramData%.
     profile: {
