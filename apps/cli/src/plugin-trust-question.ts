@@ -6,6 +6,7 @@
 // Only the lines around the question differ, so each command passes its own.
 
 import type { PluginEntry, PluginProblem, PluginService } from "@halonicjs/app";
+import { formatPath } from "@halonicjs/schema-kit";
 import { KindedError } from "@halonicjs/std";
 import type { CommandContext, CommandResult } from "./command.ts";
 import { exitCode } from "./exit-code.ts";
@@ -137,11 +138,18 @@ export function fingerprintNotCurrent(
 
 /**
  * The refusal to trust a plugin that can't be read or checked: its first
- * problem's own words, and how to replace it with a version that works
- * (exit 2). Listing the plugins would only show it again as broken.
+ * problem's own words, after the field they are about when they are about
+ * one, as `plugin add` says them, and how to replace it with a version that
+ * works (exit 2). Listing the plugins would only show it again as broken.
  */
 export function brokenPluginError(id: string, problems: readonly PluginProblem[]): KindedError {
-  return new KindedError("invalid_input", printable(problems[0]?.message ?? ""), {
+  const problem = problems[0];
+  // A key in the path is the manifest's own text, so it is outside text too.
+  const reason =
+    problem === undefined || problem.path.length === 0
+      ? (problem?.message ?? "")
+      : `${formatPath(problem.path)}: ${problem.message}`;
+  return new KindedError("invalid_input", printable(reason), {
     fix: plainText(pluginMessages.brokenPluginFix(printable(id)).phrase),
   });
 }

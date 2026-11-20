@@ -313,6 +313,25 @@ verifies("cli.commands.trust.plugin", () => {
     expect(await plugins()).toEqual(["broken"]);
   });
 
+  it("names the field of a refused value when it refuses a broken plugin", async () => {
+    await addWeatherOff();
+    // YAML's "\u202E" turns the text after it around; one choice of many holds it.
+    const settings = String.raw`ui:
+  settings:
+    units: { label: Units, type: choice, choices: [metric, "imp\u202Eerial"] }
+`;
+    await writeFile(join(weatherFolder(), "plugin.yaml"), manifest + settings);
+
+    const { code, io } = await trust(["--plugin", "weather"]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr[0]).toBe(
+      "✕ Couldn't trust weather: ui.settings.units.choices[1]: don't use control characters or text-direction marks",
+    );
+    expect([...io.stdout, ...io.stderr].join("\n")).not.toContain("\u202E");
+    expect(await plugins()).toEqual(["broken"]);
+  });
+
   it("refuses --plugin with --list as wrong usage", async () => {
     await addWeatherOff();
 
