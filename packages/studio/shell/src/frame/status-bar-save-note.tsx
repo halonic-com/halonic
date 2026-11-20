@@ -1,4 +1,4 @@
-import { AlertIcon, Button, WarningIcon } from "@halonicjs/studio-kit";
+import { AlertIcon, Button, OnTintContext, WarningIcon } from "@halonicjs/studio-kit";
 import {
   type ReactNode,
   useCallback,
@@ -62,14 +62,20 @@ export function StatusBarSaveNote({ saving, timers = systemTimers }: StatusBarSa
       {action === undefined ? null : (
         <>
           <span aria-hidden="true">·</span>
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={() => (action === "try-again" ? saving.tryAgain() : saving.compare())}
-          >
-            {saveNoteActionLabels[action]}
-            {heldName === undefined ? null : <span className="sr-only"> {heldName}</span>}
-          </Button>
+          {/* An action shows only on a problem, so the bar round it has a soft fill: the action
+              reads in `accent-text` there, like the badges' "Review" and the toast's Try again. */}
+          <OnTintContext value={true}>
+            <span className="flex shrink-0 phone:ms-auto">
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={() => (action === "try-again" ? saving.tryAgain() : saving.compare())}
+              >
+                {saveNoteActionLabels[action]}
+                {heldName === undefined ? null : <span className="sr-only"> {heldName}</span>}
+              </Button>
+            </span>
+          </OnTintContext>
         </>
       )}
     </div>
@@ -91,9 +97,10 @@ const marks: Readonly<Record<SaveNoteMark, ReactNode>> = {
  * A problem's words stop at 240px (on a phone, at the width the action leaves) and end in "…", so
  * a long item title can't push the other status items away or hide the button, which keeps its
  * width. The whole title stays in the text, so a screen reader reads all of it, and the
- * failed-save toast shows it in full.
+ * failed-save toast shows it in full. On a phone the words don't grow: the "·" stays right after
+ * them, and the room left over falls before the action, at the strip's right end.
  */
-const longWords = "min-w-0 max-w-60 truncate phone:max-w-none phone:flex-1";
+const longWords = "min-w-0 max-w-60 truncate phone:max-w-none";
 
 /** A problem's words read in the text colour; "Saving…" and "Saved" stay quiet in `fg-muted`. */
 function isProblem(mark: SaveNoteMark): boolean {

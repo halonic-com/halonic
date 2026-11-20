@@ -18,6 +18,7 @@ export {
   type ButtonSize,
   type ButtonUnavailable,
   type ButtonVariant,
+  OnTintContext,
 } from "./button/button.tsx";
 export { Spinner } from "./button/spinner.tsx";
 export {

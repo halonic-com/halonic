@@ -661,9 +661,11 @@ politely, once, when it becomes items not saved, and never for Saving… or Save
 for a failure too, since the danger toast is an alert that already reads it, with its reason.
 `saveNoteWords` holds the words. While the note is a problem it carries `data-problem="warning"` or
 `"danger"`, and the status bar takes that tone's soft fill from it, so the frame doesn't need the
-save state. Its buttons are the kit's 20px `xs` size, which fits the bar. On a phone, which has no
-status bar, the frame shows the note in a strip under the top bar, only while it's a problem, with
-the same fill.
+save state. Its buttons are the kit's 20px `xs` size, which fits the bar, in `accent-text` like the
+badges' "Review" (the note sets the kit's `OnTintContext`, since an action only shows on a fill). On
+a phone, which has no status bar, the frame shows the note in a strip under the top bar, only while
+it's a problem, with the same fill; the "·" stays after the words and the action sits at the right
+end.
 
 ```tsx
 announceSaveNotes(workspace.saving, shell.announcer);

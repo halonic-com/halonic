@@ -144,6 +144,20 @@ verifies("shell.save-note", () => {
     expect(note.querySelector("button")?.className).toContain("min-h-5");
   });
 
+  it("writes its action in accent-text, like the badges' Review", async () => {
+    await failSave(supportReply);
+    const action = note.querySelector("button")?.className;
+    expect(action).toContain("text-accent-text");
+    expect(action).not.toContain("text-fg-muted");
+  });
+
+  it("keeps the · after the words on a phone, with the room left over before the action", async () => {
+    await failSave(supportReply);
+    const dot = [...note.querySelectorAll("span")].find((span) => span.textContent === "·");
+    expect(dot?.previousElementSibling?.className).not.toContain("flex-1");
+    expect(note.querySelector("button")?.parentElement?.className).toContain("phone:ms-auto");
+  });
+
   it("shows fields not saved with a warning mark and no button", () => {
     act(() => saving.setFieldsNotSaved(supportReply, 2));
     expect(spoken()).toBe("Warning 2 fields not saved");
