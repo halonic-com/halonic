@@ -1,6 +1,11 @@
 //! Requirement `start-status`: the timer, the phases and one cause per way
 //! a start fails, then the commands against stand-in hosts.
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::{AtomicU32, Ordering};
