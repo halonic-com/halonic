@@ -2,7 +2,7 @@
 
 - Approval: the task HAL-14260 asks for this change, from the first-run error check on HAL-14245 (c336) and the validate-vs-run gaps on HAL-14257 (c337, row 9); Liam decided it as maintainer, wording under the HAL-2282 rule, and signs this note in review.
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:PYG/Tj54yRsQuzdEpU8XNauV1u1z5txYynzwmK5ml2v60Zk7vxgynMwK2tHqPtbnmdS7rOYGlzaAINO64MfhBw==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:92/dQYq97yDtBCcykN8Rxnoy8GvTdGglgXyWM1Xj8VQ9FnvusjZDPjrf82Aj+SQ1DPhaEHQ5b4jDKsog4ndEAw==
 
 ## What changes
 
