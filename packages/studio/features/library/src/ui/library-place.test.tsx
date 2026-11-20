@@ -381,6 +381,10 @@ verifies("library.library-phone-kinds", () => {
     const page = await show(context, "phone");
     const rows = [...page.querySelectorAll("li button")].map((each) => each.textContent);
     expect(rows).toHaveLength(4);
+    // Studio's own ring, drawn inside the flush row, not the browser's outline (a11y check L8).
+    for (const row of page.querySelectorAll("li button")) {
+      expect(row.className).toContain("focus-ring-inset");
+    }
     expect(page.querySelector('[role="tab"]')).toBeNull();
     act(() => (page.querySelectorAll("li button")[1] as HTMLElement).click());
     expect(openPlaceList).toHaveBeenCalledWith("library", "knowledge", "Knowledge");

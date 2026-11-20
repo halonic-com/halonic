@@ -25,6 +25,11 @@ type Drafts = Partial<Record<Edited, string>>;
 /** Instructions are saved this long after the last key, so a pause saves without waiting for Tab. */
 const INSTRUCTIONS_SAVE_AFTER_MS = 800;
 const editedFields: readonly Edited[] = ["name", "description", "instructions"];
+/** The hint under a field whose emptied value was put back. */
+const keptWords: Readonly<Record<SkillField, string>> = {
+  name: skillWords.nameKept,
+  description: skillWords.descriptionKept,
+};
 
 function refOf(hub: string, id: string): SkillRef {
   return { hub: hub === sharedHubKey ? null : hub, id };
@@ -112,6 +117,15 @@ function LoadedSkillPage({
     }
   }, [ready, item.hub, item.id]);
 
+  // The old value comes back as focus leaves the field, so the hint under it is read out once
+  // where focus is now (WCAG 4.1.3, a11y check L4).
+  const keptBefore = useRef(kept);
+  useEffect(() => {
+    const appeared = kept.filter((field) => !keptBefore.current.includes(field));
+    keptBefore.current = kept;
+    for (const field of appeared) context.announcer.announce(keptWords[field]);
+  }, [kept, context.announcer]);
+
   // A write that the window's Try again runs later never reaches `leave`, so a draft that now equals
   // the saved text is dropped here, and the field follows the file again (a change from outside shows).
   useEffect(() => {
@@ -175,7 +189,7 @@ function LoadedSkillPage({
   };
   const leave = (field: Edited) => settleOnClose(leaveField(field));
   saveInstructions.current = () => void leave("instructions");
-  const keptHint = (field: SkillField, text: string) => (kept.includes(field) ? text : undefined);
+  const keptHint = (field: SkillField) => (kept.includes(field) ? keptWords[field] : undefined);
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 wide:px-6">
@@ -187,7 +201,7 @@ function LoadedSkillPage({
         {trash.menu}
       </div>
       <FormRows>
-        <Field label={skillWords.name} hint={keptHint("name", skillWords.nameKept)}>
+        <Field label={skillWords.name} hint={keptHint("name")}>
           <Input
             value={shown("name")}
             onChange={(event) => change("name", event.target.value)}
@@ -202,7 +216,7 @@ function LoadedSkillPage({
               {kept.includes("description") ? (
                 <>
                   <br />
-                  {skillWords.descriptionKept}
+                  {keptHint("description")}
                 </>
               ) : null}
             </>

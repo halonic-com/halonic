@@ -12,15 +12,16 @@ function joinRefs<T>(...refs: readonly (Ref<T> | undefined)[]): (element: T | nu
   };
 }
 
-/** What a row's menu needs: the row, its place in the grid's arrow keys and what Remove does. */
+/** What a row's menu needs: the record's name, its place in the grid's arrow keys and what Remove does. */
 interface RowMenuProps {
-  readonly row: string;
+  /** The record's first field's text; `undefined` when that is empty. */
+  readonly name: string | undefined;
   readonly cell: GridCellProps;
   readonly onRemove: () => void;
 }
 
 /** A row's ⋮ menu: Remove. Its button is one more cell of the grid's arrow keys. */
-export function RowMenu({ row, cell, onRemove }: RowMenuProps) {
+export function RowMenu({ name, cell, onRemove }: RowMenuProps) {
   return (
     <Menu
       align="end"
@@ -33,7 +34,7 @@ export function RowMenu({ row, cell, onRemove }: RowMenuProps) {
           variant="ghost"
           size="sm"
           icon={<MoreIcon />}
-          label={collectionWords.rowMenuLabel(row)}
+          label={collectionWords.rowMenuLabel(name)}
         />
       )}
       entries={[{ id: "remove", label: collectionWords.remove, danger: true, onSelect: onRemove }]}

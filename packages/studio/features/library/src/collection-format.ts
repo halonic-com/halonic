@@ -1,4 +1,4 @@
-import type { CollectionChip, CollectionColumn } from "./collection-host.ts";
+import type { CollectionChip, CollectionColumn, CollectionRow } from "./collection-host.ts";
 import { collectionWords } from "./collection-words.ts";
 
 /** Money and totals use today's `nl-NL` format until the format setting (U74) comes. */
@@ -17,6 +17,20 @@ export function cellText(column: CollectionColumn, value: unknown): string {
   if (typeof value === "number") return number.format(value);
   if (typeof value === "boolean") return value ? collectionWords.yes : collectionWords.no;
   return String(value);
+}
+
+/**
+ * What a record is called in its menu, the Remove dialog and what a screen reader hears: its first
+ * field's text, as the grid shows it. `undefined` when that is empty; never the generated id.
+ */
+export function recordName(
+  fields: readonly CollectionColumn[],
+  row: CollectionRow | undefined,
+): string | undefined {
+  const first = fields[0];
+  if (first === undefined || row === undefined) return undefined;
+  const text = cellText(first, row.values[first.name]).trim();
+  return text === "" ? undefined : text;
 }
 
 /** A chip's words: "All (1)" or "open (1) · 45,00". */

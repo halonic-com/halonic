@@ -174,7 +174,7 @@ verifies("library.collection-grid", () => {
       act(() => menu.focus());
       await pressButton(root, "Remove");
       await pressConfirm(root);
-      expect(status()).toBe("Removed swim-oct.");
+      expect(status()).toBe("Removed Swim lesson.");
       // The ⋮ column of the row that moved up.
       expect(document.activeElement).toBe(cell(root, 0, 3).querySelector("button"));
       expect(cell(root, 0, 0).textContent).toBe("Trip");
@@ -200,7 +200,7 @@ verifies("library.collection-grid", () => {
       );
       await key(focusCell(root, 1, 1), "5");
       await key(cell(root, 1, 1).querySelector("input") as Element, "Enter");
-      expect(root.querySelector('[role="status"].sr-only')?.textContent).toBe("Added trip.");
+      expect(root.querySelector('[role="status"].sr-only')?.textContent).toBe("Added Trip.");
       expect(document.activeElement).toBe(cell(root, 2, 0));
     });
 

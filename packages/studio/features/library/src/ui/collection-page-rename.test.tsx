@@ -8,7 +8,7 @@ import { cleanUp, opened, sourceOf, swim } from "../test-support/collection-page
 afterEach(cleanUp);
 
 async function keepName(root: HTMLElement, text: string) {
-  const input = root.querySelector<HTMLInputElement>('input[aria-label="collection name"]');
+  const input = root.querySelector<HTMLInputElement>('input[aria-label="Name"]');
   const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
   await act(async () => {
     set?.call(input, text);

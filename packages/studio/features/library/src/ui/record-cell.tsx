@@ -55,6 +55,8 @@ function cellKeyAction(
 /** What one cell of the grid needs. */
 interface RecordCellProps {
   readonly row: string;
+  /** What the record is called: its first field's text, "New record" in the new row, or nothing. */
+  readonly recordName: string | undefined;
   readonly field: CollectionColumn;
   readonly value: unknown;
   readonly typedText: string;
@@ -70,6 +72,7 @@ interface RecordCellProps {
 /** One cell of the grid: its text, or its editor, with the message under it. */
 export function RecordCell({
   row,
+  recordName,
   field,
   value,
   typedText,
@@ -82,6 +85,9 @@ export function RecordCell({
 }: RecordCellProps) {
   const isNew = row === newRowId;
   const { shown, preview } = cellView(isNew, field, value, typedText, newRow);
+  const editing = edits.editing?.row === row && edits.editing.field === field.name;
+  // The new row's empty cell still says what it is, and has a normal row's height (a11y check L7).
+  const blankNew = isNew && !editing && shown === "" && preview === "";
 
   function keys(event: KeyboardEvent): void {
     if (event.target !== event.currentTarget || field.computed) return;
@@ -100,15 +106,16 @@ export function RecordCell({
       role="gridcell"
       aria-describedby={message === undefined ? undefined : messageId}
       aria-readonly={field.computed || undefined}
-      className={`min-w-32 px-3 py-2 align-top focus-ring [overflow-wrap:anywhere] ${field.computed ? "bg-surface-subtle" : ""} ${message === undefined ? "" : "ring-2 ring-inset ring-danger"}`}
+      // The ring is drawn inside: an outer one is covered by the next cells and clipped at the grid's edge.
+      className={`h-9 min-w-32 px-3 py-2 align-top focus-ring-inset [overflow-wrap:anywhere] ${field.computed ? "bg-surface-subtle" : ""} ${message === undefined ? "" : "ring-2 ring-inset ring-danger"}`}
       onKeyDown={keys}
       onDoubleClick={() => edits.start(row, field, value)}
       {...navigation}
     >
       <CellBody
-        editing={edits.editing?.row === row && edits.editing.field === field.name}
+        editing={editing}
         field={field}
-        label={`${field.name}, ${isNew ? collectionWords.newRowLabel : row}`}
+        label={collectionWords.cellLabel(field.name, recordName)}
         initial={edits.editing?.seed ?? (isNew ? typedText : editText(value))}
         shown={shown}
         preview={preview}
@@ -116,6 +123,7 @@ export function RecordCell({
         onCancel={edits.stopEditing}
         focusTarget={focusTarget}
       />
+      {blankNew ? <span className="sr-only">{collectionWords.newRowLabel}</span> : null}
       {message === undefined ? null : (
         <p id={messageId} role="alert" className="text-small text-danger">
           {message}

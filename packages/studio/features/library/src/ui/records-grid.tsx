@@ -1,6 +1,6 @@
 import { Dialog, EmptyState, useGridNavigation } from "@halonicjs/studio-kit";
 import { Fragment, type KeyboardEvent, useId, useRef } from "react";
-import { headerMarks } from "../collection-format.ts";
+import { headerMarks, recordName } from "../collection-format.ts";
 import type { CollectionColumn, CollectionGridData, CollectionNewRow } from "../collection-host.ts";
 import type { CollectionModel, CollectionState } from "../collection-model.ts";
 import { collectionWords } from "../collection-words.ts";
@@ -115,12 +115,19 @@ export function RecordsGrid({ label, model, state, grid }: RecordsGridProps) {
     return undefined;
   }
 
-  function renderCell(row: string, rowIndex: number, column: number, value: unknown) {
+  function renderCell(
+    row: string,
+    name: string | undefined,
+    rowIndex: number,
+    column: number,
+    value: unknown,
+  ) {
     const field = fields[column] as CollectionColumn;
     return (
       <RecordCell
         key={field.name}
         row={row}
+        recordName={name}
         field={field}
         value={value}
         typedText={typed[field.name] ?? ""}
@@ -135,6 +142,7 @@ export function RecordsGrid({ label, model, state, grid }: RecordsGridProps) {
   }
 
   const hint = newRowHint(newRow);
+  const { removing } = edits;
 
   return (
     <div ref={wrapper} className="flex min-w-0 flex-col gap-2">
@@ -180,11 +188,17 @@ export function RecordsGrid({ label, model, state, grid }: RecordsGridProps) {
             {rows.map((row, rowIndex) => (
               <tr key={row.id} className="border-b border-border">
                 {fields.map((field, column) =>
-                  renderCell(row.id, rowIndex, column, row.values[field.name]),
+                  renderCell(
+                    row.id,
+                    recordName(fields, row),
+                    rowIndex,
+                    column,
+                    row.values[field.name],
+                  ),
                 )}
                 <td className="px-1 py-1 align-top">
                   <RowMenu
-                    row={row.id}
+                    name={recordName(fields, row)}
                     cell={navigation.cell(row.id, fields.length)}
                     onRemove={() => {
                       removedAt.current = {
@@ -199,7 +213,9 @@ export function RecordsGrid({ label, model, state, grid }: RecordsGridProps) {
               </tr>
             ))}
             <tr className="bg-surface-subtle/50">
-              {fields.map((_, column) => renderCell(newRowId, rows.length, column, undefined))}
+              {fields.map((_, column) =>
+                renderCell(newRowId, collectionWords.newRowLabel, rows.length, column, undefined),
+              )}
               <td />
             </tr>
           </tbody>
@@ -219,9 +235,9 @@ export function RecordsGrid({ label, model, state, grid }: RecordsGridProps) {
       <p role="status" className="sr-only">
         {edits.announcement}
       </p>
-      {edits.removing === undefined ? null : (
+      {removing === undefined ? null : (
         <Dialog
-          title={collectionWords.removeTitle(edits.removing)}
+          title={collectionWords.removeTitle(removing.name)}
           size="sm"
           confirm={{
             label: collectionWords.remove,
@@ -229,7 +245,7 @@ export function RecordsGrid({ label, model, state, grid }: RecordsGridProps) {
             busyLabel: collectionWords.removing,
           }}
           busy={edits.removeBusy}
-          onConfirm={() => void edits.confirmRemove(edits.removing as string)}
+          onConfirm={() => void edits.confirmRemove(removing)}
           onCancel={edits.cancelRemove}
           returnFocus={afterRemove}
           {...(edits.removeFailed ? { error: collectionWords.removeFailed } : {})}

@@ -161,7 +161,7 @@ function CollectionTitle({
   return (
     <div className="flex items-start justify-between gap-2">
       <h1 ref={trash.titleRef} tabIndex={-1} className="flex min-w-0 text-title">
-        <NameField name={name} label={`${collectionWords.kindName} name`} onRename={onRename} />
+        <NameField name={name} label={collectionWords.nameLabel} onRename={onRename} />
       </h1>
       {trash.menu}
     </div>

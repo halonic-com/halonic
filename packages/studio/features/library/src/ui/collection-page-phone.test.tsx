@@ -100,7 +100,7 @@ verifies("library.collection-page", () => {
       expect(title?.textContent).toBe("Claims");
       expect(title?.className).toBe("sr-only");
       expect(title?.tabIndex).toBe(-1);
-      expect(root.querySelector('input[aria-label="collection name"]')).toBeNull();
+      expect(root.querySelector('input[aria-label="Name"]')).toBeNull();
       // No title row is drawn around the hidden title, so no empty row takes room.
       expect(title?.parentElement?.querySelector(":scope > .justify-between")).toBeNull();
     });
@@ -148,7 +148,7 @@ verifies("library.collection-page", () => {
       </ToastStoreProvider>,
     );
     await settled();
-    expect(root.querySelector('h1 input[aria-label="collection name"]')).not.toBeNull();
+    expect(root.querySelector('h1 input[aria-label="Name"]')).not.toBeNull();
     expect(labels(openPageMenu(root))).toEqual(["Open as file", "Delete"]);
   });
 });

@@ -42,6 +42,7 @@ function setup(
   const openItem = vi.fn();
   const openPlace = vi.fn();
   const saving = savingStub();
+  const announce = vi.fn();
   let current = source;
   const listeners = new Set<() => void>();
   /** The file changes from outside the page, as an edit in Changes or the code editor does. */
@@ -65,14 +66,14 @@ function setup(
         get: (key: unknown) => (key === SkillHostService ? host : undefined),
         find: (key: unknown) => (key === SkillHostService ? host : undefined),
       }),
-      announcer: { announceState: vi.fn() },
+      announcer: { announce, announceState: vi.fn() },
       openItem,
       openPlace,
       saving,
     },
     Sections: () => null,
   } as unknown as ItemViewProps;
-  return { props, write, openItem, openPlace, saving, external };
+  return { props, write, openItem, openPlace, saving, external, announce };
 }
 
 async function settled(): Promise<void> {
@@ -267,6 +268,21 @@ verifies("library.skill-page", () => {
       expect(root.textContent).toContain("A skill needs a name, so the old one is kept.");
       type(field(root, "Name"), "R");
       expect(root.textContent).not.toContain("A skill needs a name");
+    });
+
+    it("reads the kept hint out once, as focus has already moved on", async () => {
+      const { props, announce } = setup();
+      const root = render(<SkillPage {...props} />);
+      await settled();
+      type(field(root, "When to use it"), "");
+      await leave(field(root, "When to use it"));
+      expect(announce).toHaveBeenCalledExactlyOnceWith(
+        "A skill needs “When to use it”, so the old text is kept.",
+      );
+      type(field(root, "Name"), "");
+      await leave(field(root, "Name"));
+      expect(announce).toHaveBeenLastCalledWith("A skill needs a name, so the old one is kept.");
+      expect(announce).toHaveBeenCalledTimes(2);
     });
 
     it("says the skill isn't in the workspace when the host has none", async () => {

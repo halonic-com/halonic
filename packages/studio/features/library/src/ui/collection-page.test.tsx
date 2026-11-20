@@ -92,12 +92,16 @@ verifies("library.collection-page", () => {
       const rows = [...root.querySelectorAll("tbody tr")].map((row) =>
         [...row.querySelectorAll("td")].slice(0, 3).map((cell) => cell.textContent),
       );
-      // The last row is the new one, empty.
+      // The last row is the new one: empty, but each cell says so to a screen reader.
       expect(rows).toEqual([
         ["Swim lesson", "60,00", "45,00"],
         ["Trip", "20,00", ""],
-        ["", "", ""],
+        ["New record", "New record", "New record"],
       ]);
+      expect(cell(root, 2, 0).querySelector(".sr-only")?.textContent).toBe("New record");
+      // As high as a row with text, with the ring drawn inside so no side of it is covered.
+      expect(cell(root, 2, 0).className).toContain("h-9");
+      expect(cell(root, 2, 0).className).toContain("focus-ring-inset");
     });
 
     it("shows plain numbers in nl-NL like money, and booleans as words", () => {
@@ -190,7 +194,7 @@ verifies("library.collection-page", () => {
       const { root } = await opened(source, undefined, { add });
       await typeInto(root, 1, 0, "Taxi");
       expect(add).toHaveBeenCalledWith({ hub: null, id: "claims" }, { what: "Taxi" });
-      expect(cell(root, 1, 0).textContent).toBe("");
+      expect(cell(root, 1, 0).textContent).toBe("New record");
     });
     it("says the record couldn't be added when the write fails", async () => {
       const source = rich({
