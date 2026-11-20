@@ -25,7 +25,9 @@ For plain data there are `deepEqual` (key order doesn't matter),
 value, for hashing) and `isPlainObject`, which
 tells a plain record apart from a `Date`, a `Map` or a class instance. `describeObject` and `keyPath` word the errors
 about data that isn't plain, so they say what and where. `slugify` and `uniqueName`
-turn display names into file-safe ids, as the old Studio did. `posixPath`
+turn display names into file-safe ids, as the old Studio did. `nearMatch`
+picks the one name within two edits of a typo for "Did you mean", or none on a
+tie, and `editDistance` counts those edits. `posixPath`
 joins and cleans forward-slash paths like `node:path.posix`, `Emitter` is a
 small typed event emitter, and `KeyedQueue` runs async work one at a time
 per key, such as the appends to one run's log.

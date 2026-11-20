@@ -1,11 +1,6 @@
 import { formatPath, type Issue, type Path } from "@halonicjs/schema-kit";
+import { nearMatch } from "@halonicjs/std";
 import { isMap } from "./legacy-keys.ts";
-
-/**
- * How far a misspelled key may be from a missing one for "did you mean": the
- * CLI's limit for a typed command (cli-output 1.3), so "nmae" finds "name".
- */
-const nearDistance = 2;
 
 /**
  * Words the schema's issues the way a person fixes them (HAL-12126). A
@@ -72,12 +67,12 @@ function missingKeysIn(missing: readonly Issue[], path: Path): string[] {
 /**
  * "Did you mean "name"?" for one unrecognized key, or with the key named for
  * several: 'Did you mean "name" for "nmae"?'. A key with no missing key
- * near it, or with two equally likely, gets no guess.
+ * within two edits of it, or with two equally likely, gets no guess.
  */
 function nearMissingKeys(unrecognized: readonly string[], missing: readonly string[]): string {
   const pairs = unrecognized.flatMap((key) => {
-    const near = missing.filter((candidate) => editDistance(key, candidate) <= nearDistance);
-    return near.length === 1 ? [{ key, near: near[0] }] : [];
+    const near = nearMatch(key, missing);
+    return near === undefined ? [] : [{ key, near }];
   });
   if (pairs.length === 0) {
     return "";
@@ -86,30 +81,4 @@ function nearMissingKeys(unrecognized: readonly string[], missing: readonly stri
     return `Did you mean "${pairs[0]?.near}"?`;
   }
   return `Did you mean ${pairs.map(({ key, near }) => `"${near}" for "${key}"`).join(", ")}?`;
-}
-
-/**
- * The fewest single-character insertions, deletions, substitutions and swaps
- * of two neighbours that turn `from` into `to`, so "nmae" and "name" are one apart.
- * The CLI has its own copy for commands; core can't use the CLI's.
- */
-function editDistance(from: string, to: string): number {
-  const width = to.length + 1;
-  const cells = new Array<number>((from.length + 1) * width).fill(0);
-  const at = (i: number, j: number) => cells[i * width + j] ?? 0;
-  for (let i = 0; i <= from.length; i += 1) {
-    for (let j = 0; j <= to.length; j += 1) {
-      if (i === 0 || j === 0) {
-        cells[i * width + j] = i + j;
-        continue;
-      }
-      const cost = from[i - 1] === to[j - 1] ? 0 : 1;
-      let best = Math.min(at(i - 1, j) + 1, at(i, j - 1) + 1, at(i - 1, j - 1) + cost);
-      if (i > 1 && j > 1 && from[i - 1] === to[j - 2] && from[i - 2] === to[j - 1]) {
-        best = Math.min(best, at(i - 2, j - 2) + 1);
-      }
-      cells[i * width + j] = best;
-    }
-  }
-  return at(from.length, to.length);
 }
