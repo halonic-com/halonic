@@ -10,13 +10,23 @@ import {
   usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
-import { ItemGone, type ItemViewProps, type SaveState } from "@halonicjs/studio-shell";
+import {
+  type CardStack,
+  type CloseStack,
+  createCloseStack,
+  dropGoneCards,
+  ItemGone,
+  type ItemViewProps,
+  noCards,
+  openCard,
+  type SaveState,
+  StackedCards,
+} from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type AgentChange,
   type AgentListing,
   type AgentRef,
-  type AgentSettings,
   type AgentsHost,
   AgentsHostService,
   type AgentToolList,
@@ -24,11 +34,13 @@ import {
 } from "../api.ts";
 import { Configuration } from "../configuration/configuration.tsx";
 import { configurationWords } from "../configuration/configuration-words.ts";
+import { useConfigurationLoads } from "../configuration/use-configuration-loads.ts";
 import { fileItemOf } from "../trash/file-item.ts";
 import { useAgentTrash } from "../trash/use-agent-trash.tsx";
 import { forgetFreshAgent, isFreshAgent } from "./fresh-agents.ts";
 import { pageWords } from "./page-words.ts";
 import { RenameField } from "./rename-field.tsx";
+import { SubagentCard, subagentCardKey, subagentOfCard } from "./subagent-card.tsx";
 import { type Load, useLoad } from "./use-load.ts";
 
 /**
@@ -43,7 +55,8 @@ const libraryTabCommands: Readonly<Record<AgentToolList, string>> = {
 
 /** The agent's page in its tab: `item` names the agent, the host reads its row. */
 export function AgentPage({ item, context }: ItemViewProps) {
-  const { openPlace, openItem, runCommand } = context;
+  const { openPlace, openItem, runCommand, closeStack, announcer } = context;
+  const announce = useCallback((text: string) => announcer.announce(text), [announcer]);
   return (
     <AgentScreen
       host={context.services.get(AgentsHostService)}
@@ -57,6 +70,11 @@ export function AgentPage({ item, context }: ItemViewProps) {
       {...(openItem && { openFile: (path: string) => openItem(fileItemOf(path)) })}
       {...(runCommand && {
         openLibrary: (list: AgentToolList) => runCommand(libraryTabCommands[list]),
+      })}
+      closeStack={closeStack}
+      announce={announce}
+      {...(openItem && {
+        openAgent: (agent: AgentRef) => openItem({ kind: "agent", hub: agent.hubId, id: agent.id }),
       })}
     />
   );
@@ -74,6 +92,12 @@ export interface AgentScreenProps extends AgentRef {
   readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
   /** Opens the Runs page, for **Open the Runs page ›**; absent where the app can't open a place. */
   readonly openRuns?: (() => void) | undefined;
+  /** The window's close stack, so Esc closes the top card; a page of its own without one. */
+  readonly closeStack?: CloseStack | undefined;
+  /** Reads a sentence to screen readers, such as "*Writer* was removed." when its card drops. */
+  readonly announce?: ((text: string) => void) | undefined;
+  /** Opens another agent's page, from a card's team chart; absent where the app can't. */
+  readonly openAgent?: ((agent: AgentRef) => void) | undefined;
 }
 
 /**
@@ -91,6 +115,9 @@ export function AgentScreen({
   openFile,
   openLibrary,
   openRuns,
+  closeStack,
+  announce,
+  openAgent,
 }: AgentScreenProps) {
   // After a Try again reads, the agent's name takes the focus the button had.
   const title = useRef<HTMLHeadingElement>(null);
@@ -103,14 +130,7 @@ export function AgentScreen({
   );
   const phone = usePresentation() === "phone";
   const { load, retry } = useLoad(source, () => title.current?.focus());
-  const settingsSource = useMemo(
-    () => ({
-      fetch: () => host.settings({ hubId, id }),
-      subscribe: (onChange: () => void) => host.subscribe(onChange),
-    }),
-    [host, hubId, id],
-  );
-  const settings = useLoad<AgentSettings>(settingsSource);
+  const { settings, aliases, defaultModel } = useConfigurationLoads(host, { hubId, id });
   const [takenNames, setTakenNames] = useState<readonly string[]>([]);
   // The other agents' names, for the rename check; read again when a file changes.
   useEffect(() => {
@@ -128,24 +148,6 @@ export function AgentScreen({
     void read();
     return host.subscribe(() => void read());
   }, [host, hubId, id]);
-  // The hub's model aliases for the Model page; read again when a file changes.
-  const aliasesSource = useMemo(
-    () => ({
-      fetch: () => host.modelAliases({ hubId, id }),
-      subscribe: (onChange: () => void) => host.subscribe(onChange),
-    }),
-    [host, hubId, id],
-  );
-  const aliases = useLoad<readonly string[]>(aliasesSource);
-  // The model an agent without one runs on, for the Model page; read again when a file changes.
-  const defaultModelSource = useMemo(
-    () => ({
-      fetch: () => host.defaultModel(hubId),
-      subscribe: (onChange: () => void) => host.subscribe(onChange),
-    }),
-    [host, hubId],
-  );
-  const defaultModel = useLoad<string | undefined>(defaultModelSource);
   // The workflows that run the agent, for what the Runs tab says; read again when a file changes.
   const usersSource = useMemo(
     () => ({
@@ -156,6 +158,13 @@ export function AgentScreen({
   );
   const users = useLoad<readonly AgentUser[]>(usersSource);
   const { view, selectView, fresh } = useAgentView(hubId, id);
+  const cards = useAgentCards(host, { hubId, id }, announce);
+  // Picking another view closes the stack: cards belong to the view they opened over (flow-agents 7).
+  const showView = (next: AgentView) => {
+    if (next !== view) cards.close();
+    selectView(next);
+  };
+  const ownCloseStack = useMemo(() => createCloseStack(), []);
   const [saveFailed, setSaveFailed] = useState<string>();
   const ids = useTabIds();
   // Resolves to whether the change was written, so a page can put its control back when it wasn't.
@@ -226,7 +235,7 @@ export function AgentScreen({
           label={pageWords.views}
           tabs={agentTabs}
           selected={view}
-          onSelect={selectView}
+          onSelect={showView}
           ids={ids}
         />
       </header>
@@ -242,19 +251,41 @@ export function AgentScreen({
           </div>
         )}
         {panel === "configuration" && (
-          <Configuration
-            host={host}
-            name={name}
-            load={settings.load}
-            aliases={aliases.load}
-            defaultModel={defaultModel.load.kind === "ready" ? defaultModel.load.value : undefined}
-            retryAliases={aliases.retry}
-            retry={settings.retry}
-            startOnInstructions={fresh}
-            save={save}
-            openLibrary={openLibrary}
-            reportNotSaved={reportNotSaved}
-          />
+          <StackedCards
+            itemPath={[hubName(host, hubId), name]}
+            stack={cards.stack}
+            onChange={cards.set}
+            closeStack={closeStack ?? ownCloseStack}
+            // No card on this page docks, so the panel's width doesn't change how they look.
+            panelWidth={Number.POSITIVE_INFINITY}
+            renderCard={(card) => {
+              const subagent = subagentOfCard(card.key);
+              return subagent === undefined ? null : (
+                <SubagentCard
+                  host={host}
+                  agent={{ hubId, id: subagent }}
+                  name={card.title}
+                  openSubagent={cards.openSubagent}
+                  openAgent={openAgent}
+                />
+              );
+            }}
+          >
+            <Configuration
+              host={host}
+              name={name}
+              load={settings.load}
+              aliases={aliases.load}
+              defaultModel={defaultModel}
+              retryAliases={aliases.retry}
+              retry={settings.retry}
+              startOnInstructions={fresh}
+              save={save}
+              openLibrary={openLibrary}
+              openSubagent={cards.openSubagent}
+              reportNotSaved={reportNotSaved}
+            />
+          </StackedCards>
         )}
         {panel === "runs" && (
           <div className="min-w-0 flex-1 overflow-auto p-6">
@@ -279,6 +310,64 @@ export function AgentScreen({
       </TabPanel>
     </div>
   );
+}
+
+/** The hub's name for the breadcrumb, else its id while the hubs aren't read. */
+function hubName(host: AgentsHost, hubId: string): string {
+  return host.hubs().find((hub) => hub.id === hubId)?.name ?? hubId;
+}
+
+/** The agent page's stack of cards, and the ways to change it. */
+interface AgentCards {
+  readonly stack: CardStack;
+  readonly set: (stack: CardStack) => void;
+  readonly openSubagent: (agent: AgentListing) => void;
+  readonly close: () => void;
+}
+
+/**
+ * The cards stacked on the agent page's panel (flow-agents 7): a subagent opens as a card, and a
+ * card whose agent is gone drops with every card above it, saying so to screen readers. The stack
+ * is the page's state, so it stays across tab switches while the page stays mounted.
+ */
+function useAgentCards(
+  host: AgentsHost,
+  agent: AgentRef,
+  announce: ((text: string) => void) | undefined,
+): AgentCards {
+  const [stack, setStack] = useState<CardStack>(noCards);
+  const latest = useRef(stack);
+  latest.current = stack;
+  const set = useCallback((next: CardStack) => setStack(next), []);
+  const openSubagent = useCallback(
+    (sub: AgentListing) =>
+      setStack((now) => openCard(now, { key: subagentCardKey(sub), title: sub.name })),
+    [],
+  );
+  const close = useCallback(() => setStack(noCards), []);
+  const { hubId, id } = agent;
+  useEffect(() => {
+    let live = true;
+    const check = async () => {
+      if (latest.current.length === 0) return;
+      const team = await host.team({ hubId, id }).catch(() => undefined);
+      if (!live || team === undefined) return;
+      const ids = new Set(team.map((member) => member.id));
+      const { stack: kept, removed } = dropGoneCards(latest.current, (card) => {
+        const sub = subagentOfCard(card.key);
+        return sub === undefined || ids.has(sub);
+      });
+      if (removed === undefined) return;
+      setStack(kept);
+      announce?.(pageWords.cardRemoved(removed.title));
+    };
+    const stop = host.subscribe(() => void check());
+    return () => {
+      live = false;
+      stop();
+    };
+  }, [host, hubId, id, announce]);
+  return { stack, set, openSubagent, close };
 }
 
 /**
