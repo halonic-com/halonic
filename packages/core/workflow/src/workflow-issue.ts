@@ -55,7 +55,7 @@ export interface ValidateOptions {
   choices?: Readonly<Record<string, readonly string[]>>;
   /**
    * The input fields the workflow is started with besides `start.field`, such
-   * as its tests' and routines' input; the `input.<name>` steps read are
+   * as its tests' input; the `input.<name>` steps read are
    * checked against them.
    */
   inputFields?: readonly string[];

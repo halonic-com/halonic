@@ -115,3 +115,63 @@ verifies("workspace.routines", () => {
     expect(workspace.issues).toEqual([]);
   });
 });
+
+verifies("workspace.routine-input", () => {
+  const workflow = (reads: string) =>
+    [
+      "name: Report",
+      "initial: write",
+      "states:",
+      "  write:",
+      "    agent: writer",
+      `    ${reads}`,
+      "    on: [{ to: done }]",
+      "  done: { type: final }",
+      "",
+    ].join("\n");
+  const load = (reads: string, input: string) =>
+    loadWorkspace(
+      new MemorySource({
+        "workspace.yaml": "id: acme\nname: Acme\n",
+        "agents/writer.agent.yaml": "name: Writer\n",
+        "workflows/report.workflow.yaml": workflow(reads),
+        "workflows/routines/nightly.routine.yaml": [
+          "name: Nightly",
+          "trigger: { schedule: '0 6 * * *' }",
+          "run:",
+          "  workflow: report",
+          "  input:",
+          `    ${input}`,
+          "",
+        ].join("\n"),
+      }),
+    );
+  const routineIssues = async (reads: string, input: string) =>
+    (await load(reads, input)).issues.filter((issue) => issue.file.includes("/routines/"));
+
+  it("warns at a key no step reads, with the field it is close to", async () => {
+    const issues = await routineIssues("gets: [input.day]", "dya: monday");
+    expect(
+      issues.map((issue) => [issue.severity, issue.code, issue.path.join("."), issue.line]),
+    ).toEqual([["warning", "unread-routine-input", "run.input.dya", 6]]);
+    expect(issues[0]?.message).toBe(
+      'Routine "nightly": workflow "report" doesn\'t read input.dya. Did you mean input.day?',
+    );
+  });
+
+  it("names the fields the steps read when no key is close", async () => {
+    const issues = await routineIssues("gets: [input.day, input.team]", "region: north");
+    expect(issues.map((issue) => issue.message)).toEqual([
+      'Routine "nightly": workflow "report" doesn\'t read input.region. Its steps read input.day and input.team: rename the key to one of those, or remove it.',
+    ]);
+  });
+
+  it("counts a field read in a prompt as read", async () => {
+    const reads = "input: 'Report for {{input.day}}.'";
+    expect(await routineIssues(reads, "day: monday")).toEqual([]);
+  });
+
+  it("leaves a workflow alone that sends its agent the whole input", async () => {
+    expect(await routineIssues("gets: []", "dya: monday")).toEqual([]);
+  });
+});

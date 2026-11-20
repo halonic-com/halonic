@@ -1,5 +1,6 @@
 import type { FileProblem } from "@halonicjs/format";
 import { CronError, checkTimeZone, parseCron, parseEvery } from "@halonicjs/routines";
+import { inputReads, nearName, readsWholeInput } from "@halonicjs/workflow";
 import type { LoadedFileOf, WorkspaceIssue } from "../load-workspace.ts";
 import type { CheckContext } from "./check-context.ts";
 
@@ -24,6 +25,9 @@ interface RoutineProblem {
  * own, except a webhook routine, which always needs a hub: its request
  * starts a run in one. A routine in a hub whose `hub.yaml` failed isn't checked: the old
  * loader left that hub out.
+ *
+ * A key of a workflow routine's input that no step of the workflow reads as
+ * `input.<key>` is a warning, with "Did you mean" for a close one (HAL-14316).
  */
 export function checkRoutines(context: CheckContext): WorkspaceIssue[] {
   const issues: WorkspaceIssue[] = [];
@@ -42,8 +46,54 @@ export function checkRoutines(context: CheckContext): WorkspaceIssue[] {
         issues.push(context.error(routine.path, problem.path, problem.code, message));
       }
     }
+    issues.push(...unreadInputIssues(context, routine));
   }
   return issues;
+}
+
+/**
+ * A warning for each key of a routine's workflow input that no step reads,
+ * such as `dya` when the steps read `input.day`: the run would start with
+ * the field the steps need missing. A workflow with a step that sends its
+ * agent the whole input reads every key, so it isn't checked.
+ */
+function unreadInputIssues(context: CheckContext, routine: Routine): WorkspaceIssue[] {
+  const run = routine.value.run;
+  if (!("workflow" in run)) {
+    return [];
+  }
+  const workflow = context
+    .filesOf("workflow", hubOf(routine) ?? null)
+    .find((file) => file.value.id === run.workflow)?.value;
+  const states = Object.entries(workflow?.states ?? {});
+  if (workflow === undefined || states.some(([, state]) => readsWholeInput(state))) {
+    return [];
+  }
+  const read = [
+    ...new Set(states.flatMap(([id, state]) => inputReads(id, state).map(({ field }) => field))),
+  ];
+  return Object.keys(run.input)
+    .filter((key) => !read.includes(key))
+    .map((key) => {
+      const message = `Routine "${routine.value.id}": workflow "${run.workflow}" doesn't read input.${key}. ${unreadHint(key, read)}`;
+      const path = ["run", "input", key];
+      return context.issue("warning", routine.path, path, "unread-routine-input", message);
+    });
+}
+
+/** "Did you mean input.day?" for a close field, or else the fields the steps read. */
+function unreadHint(key: string, read: readonly string[]): string {
+  const near = nearName(key, read);
+  if (near !== undefined) {
+    return `Did you mean input.${near}?`;
+  }
+  if (read.length === 0) {
+    return `No step reads an input field: remove the key, or add input.${key} to the gets of the step that needs it.`;
+  }
+  const fields = read.map((field) => `input.${field}`);
+  const listed =
+    fields.length === 1 ? fields[0] : `${fields.slice(0, -1).join(", ")} and ${fields.at(-1)}`;
+  return `Its steps read ${listed}: rename the key to one of those, or remove it.`;
 }
 
 /**

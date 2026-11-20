@@ -27,6 +27,7 @@ export {
   type TimerTransition,
 } from "./machine.ts";
 export { methodPrompt } from "./method-prompt.ts";
+export { nearName } from "./near-name.ts";
 export { parseDuration } from "./parse-duration.ts";
 export {
   getPath,
