@@ -26,7 +26,9 @@ export interface StartRunCardProps {
 }
 
 function reasonOf(error: unknown, notAnswering: string): string {
-  return lowerAfterColon(error instanceof EngineNotAnswering ? notAnswering : errorReasonFor(error));
+  return lowerAfterColon(
+    error instanceof EngineNotAnswering ? notAnswering : errorReasonFor(error),
+  );
 }
 
 /**
