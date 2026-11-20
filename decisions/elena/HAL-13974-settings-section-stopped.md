@@ -2,6 +2,7 @@
 
 - Approval: the a11y checks C275 on HAL-13936 (SE1) and C289 on HAL-14027 (SE2, SE3), C296 on HAL-14044 (SE4, SE5), and the team's decisions on HAL-14027 and HAL-14044; the team's wording decision on HAL-13974 (a detail of the approved Settings states, under HAL-2282); Liam approves this note in review on HAL-13974
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BEhiuf6/Otd/4aGaBrTIOgy3TAYAsRWGG7mlqUSlT3qZqW2hu3rbGmUuvzGAN3MnxuwCqUmJEJQ2KwofaFbJDQ==
 - Task: HAL-13974
 
 ## What changes
