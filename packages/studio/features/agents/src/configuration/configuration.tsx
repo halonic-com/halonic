@@ -16,6 +16,7 @@ import { HarnessPage } from "./harness-page.tsx";
 import { ModelPage } from "./model-page.tsx";
 import { SubagentsPage } from "./subagents-page.tsx";
 import { ToolsPage } from "./tools-page.tsx";
+import { useNarrowPanel } from "./use-narrow-panel.ts";
 
 /** Props for {@link Configuration}. */
 export interface ConfigurationProps {
@@ -49,8 +50,8 @@ const pages: readonly Tab<PageId>[] = (
 /**
  * The agent's Configuration (`agents.configuration.pages`): a list of pages on the left and the
  * picked page beside it. A page that isn't built is absent, not empty (flow-agents 5.1). On a
- * phone the list goes across the top instead, so the page keeps the full width
- * (`agents.configuration.pages-phone`).
+ * phone, and in a panel too narrow for the column, the list goes across the top instead, so the
+ * page keeps the full width (`agents.configuration.pages-phone`, `agents.configuration.pages-narrow`).
  */
 export function Configuration({
   host,
@@ -67,7 +68,8 @@ export function Configuration({
 }: ConfigurationProps) {
   const [page, setPage] = useState<PageId>("behaviour");
   const ids = useTabIds();
-  const phone = usePresentation() === "phone";
+  const panel = useNarrowPanel();
+  const across = usePresentation() === "phone" || panel.narrow;
   // Instructions takes the focus once; going to another page and back leaves it alone.
   const [focusInstructions, setFocusInstructions] = useState(startOnInstructions === true);
   if (load.kind === "failed") {
@@ -81,17 +83,20 @@ export function Configuration({
     );
   }
   return (
-    <div className={phone ? "flex min-h-0 flex-1 flex-col" : "flex min-h-0 flex-1"}>
+    <div
+      ref={panel.ref}
+      className={across ? "flex min-h-0 flex-1 flex-col" : "flex min-h-0 flex-1"}
+    >
       <div
         className={
-          phone
+          across
             ? "border-b border-border px-4 py-3"
             : "w-52 shrink-0 border-e border-border px-2 py-4"
         }
       >
         <TabList
           label={words.pages}
-          orientation={phone ? "horizontal" : "vertical"}
+          orientation={across ? "horizontal" : "vertical"}
           tabs={pages}
           selected={page}
           onSelect={(id) => {
