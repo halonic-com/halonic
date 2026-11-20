@@ -1,8 +1,9 @@
 // The lines `halonic serve` prints for the routines a web request starts
 // (HAL-14299): one per webhook routine that is on, with the address it
-// listens at, and a ✕ line when its secret isn't set, since the server then
-// refuses every request for it. Without them, nothing said why a webhook
-// routine never started.
+// listens at, and a ✕ line when its secret isn't set or names a secret that
+// belongs to Halonic or a plugin, since the server then refuses every
+// request for it. Without them, nothing said why a webhook routine never
+// started.
 
 import { webhookPathPrefix } from "@halonicjs/host-server";
 import { type Secrets, workspaceSecrets } from "@halonicjs/ports";
@@ -34,24 +35,29 @@ export async function webhookRoutineLines(
     const url = `${address}${webhookPathPrefix}${routineKey(placed)}`;
     lines.push(serveMessages.webhookRoutine(name, printable(url)).phrase);
     const secret = routine.trigger.webhook.secret;
-    if (!(await secretIsSet(secrets, secret))) {
+    const state = await secretState(secrets, secret);
+    if (state === "unset") {
       lines.push(serveMessages.webhookSecretNotSet(name, printable(secret)).phrase);
+    } else if (state === "reserved") {
+      lines.push(serveMessages.webhookSecretNotOwn(name, printable(secret)).phrase);
     }
   }
   return lines;
 }
 
 /**
- * Whether the routine's secret has a value the server can sign with: as
- * the server reads it, an empty value or a name a workspace may not pick is
- * no secret.
+ * How the server sees the routine's secret: set when it has a value to
+ * check requests with, unset when it has none or an empty one, and
+ * reserved when the name belongs to Halonic or a plugin, such as
+ * `serve-password`. The server never accepts such a name for a webhook, so
+ * setting it wouldn't help, and would overwrite Halonic's own secret.
  */
-async function secretIsSet(secrets: Secrets, name: string): Promise<boolean> {
+async function secretState(secrets: Secrets, name: string): Promise<"set" | "unset" | "reserved"> {
   try {
     const value = await workspaceSecrets(secrets).get(name);
-    return value !== null && value !== "";
+    return value !== null && value !== "" ? "set" : "unset";
   } catch (error) {
-    if (error instanceof RangeError) return false;
+    if (error instanceof RangeError) return "reserved";
     throw error;
   }
 }

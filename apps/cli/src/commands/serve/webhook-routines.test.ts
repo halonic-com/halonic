@@ -53,6 +53,17 @@ verifies("cli.commands.serve.serve", () => {
       }
     });
 
+    it("adds a ✕ line without a set command when the secret's name belongs to Halonic", async () => {
+      const ownName = { webhook: { secret: "serve-password", headers: [] } };
+
+      expect(
+        await lines([placed("friday-digest", ownName)], secretsOf({ "serve-password": "s" })),
+      ).toEqual([
+        "Friday digest starts on a web request at http://localhost:4747/api/webhooks/notes/friday-digest",
+        "✕ Friday digest won't start: its secret name serve-password belongs to Halonic or a plugin. Use a name of your own in its routine file.",
+      ]);
+    });
+
     it("leaves out a webhook routine that is off, and routines no web request starts", async () => {
       const routines = [
         placed("friday-digest", webhook, false),
