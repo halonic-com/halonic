@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13743 (decided by the team on an approved component, HAL-2282: Sofia's C226 check of #3423; the badge itself is HAL-3777's)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:uuXEuUiwru4qqA2xYYBKs1SmwU/hZY7ZO2BYXF9b3j8KjY2c4i78JeOaStwKPWZLN7DHW4ZHfqQgVphadmrNAA==
 
 The view was not mounted when the check ran. #3911 (HAL-13321) has since drawn the badge and the row on
 `main`, so this also updates `settings.sandbox-status-ui`, its test and its doc comment, which quoted the
