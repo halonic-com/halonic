@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13678 (decided by the team with Sofia as designer, HAL-2282, from Kim's C210 check HAL-13658 of HAL-12799)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ODFHLI1QONteVQPwv7QfO88JumS0x8jkGowtP5hwx+v5EwdpS5bs+g5DScO+iPtfzaJd/dzKy8EpdkXAuBBVCA==
 
 ## What changes
 
