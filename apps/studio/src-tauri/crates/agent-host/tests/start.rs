@@ -1,6 +1,11 @@
 //! Starts stand-in hosts: small scripts that print a line and then wait for
 //! their input to close, or ignore it, as the real host would or wouldn't.
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::{AtomicU32, Ordering};

@@ -22,4 +22,4 @@ Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
 
 ## Local rules
 
-- (none yet; the owner adds rules here when a mistake repeats)
+- In the Rust shell, make a process with the crate's `new_command`, never `Command::new`: on Windows only `new_command` keeps a console window from flashing open (HAL-13197). `src-tauri/clippy.toml` fails the lint on any other `Command::new`.

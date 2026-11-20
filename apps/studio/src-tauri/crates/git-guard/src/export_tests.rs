@@ -4,6 +4,11 @@
 //! reached through a stand-in `ssh` (a shell script on Unix, a `.cmd` that
 //! runs the same script on Windows), since no test can reach a real server.
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
