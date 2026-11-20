@@ -3,6 +3,7 @@
 - Task: HAL-14103
 - Approval: a kit detail of the approved chat parts (HAL-13177), decided by the team on HAL-14103 (HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gOiF1t56j2nEhNVx3ZWzKNZJVcP/IxAMfX51NPD2a3aMQKbvn/fpdSrOq8WDaWvslQ03yMnwNBksNDx1BHIsCA==
 
 The requirement widens two promises and narrows none. A transcript whose messages held no button
 couldn't be reached with the keyboard in WebKit (the desktop app on macOS and Linux), because
