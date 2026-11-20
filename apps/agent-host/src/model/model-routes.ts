@@ -5,6 +5,7 @@ import {
   isModelCallError,
   type LlmProviderFactory,
   type Secrets,
+  type TrustStore,
 } from "@halonicjs/ports";
 import { filesOf, isOnThisMachine, loadWorkspace } from "@halonicjs/workspace";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
@@ -18,6 +19,7 @@ import {
   messageChars,
   modelChatBody,
 } from "./model-schemas.ts";
+import { isProviderTrusted } from "./provider-trust.ts";
 
 /** What the model route reaches. */
 export interface ModelRouteDeps {
@@ -27,6 +29,12 @@ export interface ModelRouteDeps {
   factories: readonly LlmProviderFactory[];
   /** Where a provider's key is read from, by the secret name its file gives. The page never sends one. */
   secrets: Secrets;
+  /**
+   * The trust records of the user's profile, which the host reads itself
+   * before it calls a provider; `undefined` without a profile folder, so
+   * only the test model is called.
+   */
+  trustStore: TrustStore | undefined;
   /**
    * The client the providers call through. It must reach this machine only:
    * {@link isOnThisMachine} reads the address in the file, and this is the
@@ -60,7 +68,10 @@ const modelFailedMessage =
  * workspace from the folder itself and takes the provider's address and key
  * from that, then refuses a provider that doesn't pass {@link isOnThisMachine}
  * (403 `provider_not_on_this_machine`), so the route can't send workspace text
- * to a remote service. The request is capped (see `model-schemas.ts`). Other
+ * to a remote service. Studio checks the workspace's trust before it asks;
+ * the host checks it again on the provider it loaded (403
+ * `workspace_not_trusted`, see {@link isProviderTrusted}), so a provider file
+ * saved in between isn't called. The request is capped (see `model-schemas.ts`). Other
  * answers: 403 `workspace_not_named` for a folder the launcher didn't name,
  * 404 `unknown_provider`, 400 `provider_type_unsupported`, 413 `request_too_large`,
  * 429 `too_many_chats` while `maxChats` chats are already running.
@@ -155,6 +166,15 @@ async function chat(
       400,
       "provider_type_unsupported",
       `The agent host has no model adapter for providers of type ${provider.type}.`,
+    );
+    return undefined;
+  }
+  if (!(await isProviderTrusted(deps.trustStore, root, provider))) {
+    sendError(
+      response,
+      403,
+      "workspace_not_trusted",
+      "This computer's trust record doesn't cover this provider in this workspace. Trust the workspace first.",
     );
     return undefined;
   }

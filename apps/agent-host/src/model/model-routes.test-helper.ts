@@ -3,6 +3,9 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import { MemoryTrustStore } from "@halonicjs/adapter-memory";
+import { filesOf, loadWorkspace, providersTrustContent } from "@halonicjs/workspace";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { hostModelRoutes } from "./host-model-routes.ts";
@@ -82,8 +85,18 @@ export interface Setup {
   folders: { base: string; workspace: string; other: string };
   /** What the host wrote to its own log. */
   logged: string[];
-  /** Writes a provider file into the named workspace. */
-  provider(id: string, fields: Record<string, string>, folder?: string): Promise<void>;
+  /** The trust records the host reads; the workspace's record lists every provider written as trusted. */
+  trust: MemoryTrustStore;
+  /**
+   * Writes a provider file into the named workspace and, unless `trusted` is
+   * false, saves it in the workspace's trust record, as a person trusting it would.
+   */
+  provider(
+    id: string,
+    fields: Record<string, string>,
+    folder?: string,
+    trusted?: boolean,
+  ): Promise<void>;
   link(target: string): Promise<string>;
   close(): Promise<void>;
 }
@@ -100,10 +113,13 @@ export async function startRoutes(
   const model = await fakeModelServer();
   const logged: string[] = [];
   const ownPorts = new Set<number>();
+  const trust = new MemoryTrustStore();
+  const trusted = new Map<string, unknown>();
   const routes = modelRoutes({
     ...hostModelRoutes({
       workspaceRoots: [folders.workspace],
       profile: undefined,
+      trustStore: trust,
       env,
       ownPorts: () => ownPorts,
       log: (text) => logged.push(text),
@@ -117,11 +133,26 @@ export async function startRoutes(
     model,
     folders,
     logged,
-    provider: async (id, fields, folder = folders.workspace) => {
+    trust,
+    provider: async (id, fields, folder = folders.workspace, trustIt = true) => {
       const file = join(folder, "providers", `${id}.yaml`);
       await mkdir(dirname(file), { recursive: true });
       const lines = Object.entries({ id, ...fields }).map(([key, value]) => `${key}: ${value}`);
       await writeFile(file, `${lines.join("\n")}\n`);
+      if (folder !== folders.workspace || !trustIt) return;
+      const workspace = await loadWorkspace(new FolderDefinitionStore(folder, folder));
+      const written = filesOf(workspace, "provider").filter((each) => each.value.id === id);
+      const [content] = providersTrustContent(written.map((each) => each.value)).providers;
+      if (content !== undefined) trusted.set(id, content);
+      await trust.grant({
+        location: folder,
+        fingerprint: "hfp1:test",
+        content: { providers: [...trusted.values()] },
+        grantedAt: "2026-11-20T00:00:00.000Z",
+        appVersion: "0.1.0",
+        pins: {},
+        origin: "prompt",
+      });
     },
     link: async (target) => {
       const link = join(base, "link-to-workspace");
