@@ -112,3 +112,21 @@ function shiftToShow(start: number, size: number, roomStart: number, room: numbe
   const overshoot = start + size - (roomStart + room);
   return overshoot > 0 ? -overshoot : 0;
 }
+
+/** The canvas point under `screen`, a point in the viewport's pixels: the inverse of zoom and pan. */
+export function toCanvas(view: View, screen: Point): Point {
+  return { x: (screen.x - view.pan.x) / view.zoom, y: (screen.y - view.pan.y) / view.zoom };
+}
+
+/** The id of the box `point` lies in, edges included; `undefined` when it is on none. */
+export function boxAt(boxes: ReadonlyMap<string, Box>, point: Point): string | undefined {
+  for (const [id, box] of boxes) {
+    const inside =
+      point.x >= box.x &&
+      point.x <= box.x + box.width &&
+      point.y >= box.y &&
+      point.y <= box.y + box.height;
+    if (inside) return id;
+  }
+  return undefined;
+}
