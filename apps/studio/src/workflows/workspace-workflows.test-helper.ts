@@ -21,8 +21,18 @@ export function setup(
     "hubs/acme/workflows/reply.workflow.yaml": replyFile,
   };
   const changes: { label: string; changes: Record<string, string | null> }[] = [];
+  // What each change replaced, newest last, for the workspace's undo.
+  const undoable: Record<string, string | undefined>[] = [];
+  // The workspace's step, which every change and undo moves on.
+  let step = 0;
   const fileListeners = new Set<() => void>();
   const runListeners = new Set<() => void>();
+  const put = (made: Record<string, string | null>) => {
+    for (const [path, text] of Object.entries(made)) {
+      if (text === null) delete store[path];
+      else store[path] = text;
+    }
+  };
   const host = new WorkspaceWorkflows({
     files: {
       read: async (path) => store[path] ?? null,
@@ -32,10 +42,19 @@ export function setup(
           .sort(),
       change: (label, made) => {
         changes.push({ label, changes: made });
-        for (const [path, text] of Object.entries(made)) {
-          if (text === null) delete store[path];
-          else store[path] = text;
-        }
+        step += 1;
+        undoable.push(Object.fromEntries(Object.keys(made).map((path) => [path, store[path]])));
+        put(made);
+      },
+      undo: () => {
+        const before = undoable.pop();
+        if (before === undefined) return false;
+        step += 1;
+        put(Object.fromEntries(Object.entries(before).map(([path, text]) => [path, text ?? null])));
+        return true;
+      },
+      get step() {
+        return step;
       },
     },
     onChange: (listener) => {

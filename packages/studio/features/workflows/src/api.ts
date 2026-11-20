@@ -173,6 +173,21 @@ export type WorkflowArrowFieldChange =
   /** The condition as data (the file's `when`), parsed from the row's JSON. */
   | { readonly field: "condition"; readonly value: unknown };
 
+/** A step or an arrow taken out of a workflow, and the way to put it back (the toast's **Undo**). */
+export interface WorkflowRemoval {
+  /**
+   * Puts it back, while its removal is still the workspace's newest change. After any other change
+   * it rejects with `conflict`, saying why, and puts nothing back.
+   */
+  undo(): Promise<void>;
+}
+
+/** A step taken out of a workflow, with the arrows that went with it. */
+export interface RemovedStep extends WorkflowRemoval {
+  /** How many arrows went: the step's own and those into it from other steps. */
+  readonly arrows: number;
+}
+
 /** One workflow as its page draws it. */
 export interface WorkflowView extends WorkflowRef {
   readonly name: string;
@@ -394,6 +409,20 @@ export interface WorkflowsHost {
    * changed.
    */
   changeArrows?(ref: WorkflowRef, stepId: string, change: WorkflowArrowChange): Promise<void>;
+  /**
+   * Takes the step `stepId` out of the workflow, with its place on the canvas, its own arrows and
+   * every arrow into it, as one undoable change that saves itself; the file keeps its comments.
+   * Present whenever {@link WorkflowsHost.changeStep} is. Rejects the first step (`conflict`, until
+   * another is picked), a step that isn't there, or with the reason the file couldn't be changed.
+   */
+  removeStep?(ref: WorkflowRef, stepId: string): Promise<RemovedStep>;
+  /**
+   * Takes the arrow at `index` (in file order, from 0) out of the step `stepId`, as one undoable
+   * change that saves itself; the file keeps its comments. Present whenever
+   * {@link WorkflowsHost.changeStep} is. Rejects a step or an arrow that isn't there, or with the
+   * reason the file couldn't be changed.
+   */
+  removeArrow?(ref: WorkflowRef, stepId: string, index: number): Promise<WorkflowRemoval>;
   /**
    * Makes the workflow `start → done` in the hub, with the id taken from its name (`-2` when the
    * id is taken), and returns where it is. Rejects with the reason it couldn't be written.

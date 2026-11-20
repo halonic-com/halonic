@@ -3,6 +3,7 @@ import type { RunEvent, RunSummary } from "@halonicjs/events";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import {
   type NewWorkflow,
+  type RemovedStep,
   type StartRefusal,
   startRefusalOf,
   type WorkflowArrowChange,
@@ -10,6 +11,7 @@ import {
   type WorkflowHub,
   type WorkflowListing,
   type WorkflowRef,
+  type WorkflowRemoval,
   type WorkflowStepChange,
   type WorkflowsHost,
   type WorkflowTests,
@@ -27,7 +29,7 @@ import {
   checkArrowChange,
   writtenArrows,
 } from "./workflow-arrow-edits.ts";
-import { cantChange, stepGone, workflowGone } from "./workflow-errors.ts";
+import { cantChange, firstStep, stepGone, workflowGone } from "./workflow-errors.ts";
 import {
   endedIn,
   newWorkflowText,
@@ -37,6 +39,7 @@ import {
   workflowFolder,
   workflowSuffix,
 } from "./workflow-files.ts";
+import { arrowRemovalEdits, stepRemovalEdits } from "./workflow-removal-edits.ts";
 import { stepEdits } from "./workflow-step-edits.ts";
 import { arrowsOf, stepsOf } from "./workflow-view.ts";
 
@@ -47,6 +50,10 @@ export interface WorkspaceWorkflowsParts {
     read(path: string): Promise<string | null>;
     list(dir: string): Promise<string[]>;
     change(label: string, changes: Record<string, string | null>): void;
+    /** The kernel's `WorkspaceFiles.undo`: `false` when there was nothing to undo. */
+    undo(): boolean;
+    /** The kernel's `WorkspaceFiles.step`: moves on every change, so it tells a step is still the newest. */
+    readonly step: number;
   };
   /**
    * Resolves once nothing is unsaved, ending a pending save at once instead of waiting out its
@@ -390,6 +397,51 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     const edits = arrowEdits(stepId, Object.keys(file.value.states), written, change);
     const label = arrowChangeLabel(stepId, file.value.name, change);
     this.#edit(file.path, text, label, edits, (edited) => checkArrowChange(edited, file.value.id));
+  }
+
+  /**
+   * Takes the step out of the workflow's file, with its place and every arrow into it, as one
+   * undoable change (see {@link stepRemovalEdits}). The first step stays until another is picked.
+   */
+  async removeStep(ref: WorkflowRef, stepId: string): Promise<RemovedStep> {
+    const { file, text } = await this.#fileOf(ref);
+    if (!Object.hasOwn(file.value.states, stepId)) throw stepGone(stepId);
+    if (file.value.initial === stepId) throw firstStep();
+    const read = readYaml(text);
+    if (!read.ok) throw cantChange();
+    const stepIds = Object.keys(file.value.states);
+    const { edits, arrows } = stepRemovalEdits(read.value.data, stepId, stepIds);
+    this.#edit(file.path, text, `Removed step ${stepId} from workflow ${file.value.name}`, edits);
+    return { arrows, undo: this.#undoNewest(`Step ${stepId}`) };
+  }
+
+  /** Takes one arrow out of the step's `on` list in place, as one undoable change. */
+  async removeArrow(ref: WorkflowRef, stepId: string, index: number): Promise<WorkflowRemoval> {
+    const { file, text } = await this.#fileOf(ref);
+    if (!Object.hasOwn(file.value.states, stepId)) throw stepGone(stepId);
+    const read = readYaml(text);
+    if (!read.ok) throw cantChange();
+    const edits = arrowRemovalEdits(stepId, writtenArrows(read.value.data, stepId), index);
+    const label = `Removed an arrow of step ${stepId} in workflow ${file.value.name}`;
+    this.#edit(file.path, text, label, edits);
+    return { undo: this.#undoNewest("The arrow") };
+  }
+
+  /**
+   * The undo of the change just made: the workspace's undo, so it puts `what` back only while the
+   * change is still the newest step; after any other change it rejects and undoes nothing.
+   */
+  #undoNewest(what: string): () => Promise<void> {
+    const { files } = this.#parts;
+    const afterRemoval = files.step;
+    return async () => {
+      if (files.step !== afterRemoval || !files.undo()) {
+        throw new KindedError(
+          "conflict",
+          `${what} can't be put back, because the workspace changed after it was removed.`,
+        );
+      }
+    };
   }
 
   subscribe(listener: () => void): () => void {
