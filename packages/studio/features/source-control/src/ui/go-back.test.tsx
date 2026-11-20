@@ -7,6 +7,7 @@ import type { ChangesSource, Version } from "../api.ts";
 import { ChangesList } from "../changes-list.ts";
 import { fakeSource, settle } from "../source.test-helper.ts";
 import { buttonsNamed } from "../test-support/buttons.ts";
+import { PhoneStack, topBarTitle } from "../test-support/phone-stack.tsx";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ChangesView } from "./changes-page.tsx";
 
@@ -33,16 +34,18 @@ function changedSorter() {
   return fake;
 }
 
+/** The Changes page with a version's row clicked: on a phone, its page pushed on the stack. */
 async function show(source: ChangesSource, phone = false) {
   const toasts = createToastStore();
-  const view: ReactNode = (
-    <ToastStoreProvider store={toasts}>
-      <ChangesView list={new ChangesList(source)} />
-    </ToastStoreProvider>
+  const list = new ChangesList(source);
+  const view: ReactNode = phone ? (
+    <PresentationProvider presentation="phone">
+      <PhoneStack>{(pages) => <ChangesView list={list} phonePages={pages} />}</PhoneStack>
+    </PresentationProvider>
+  ) : (
+    <ChangesView list={list} />
   );
-  const root = render(
-    phone ? <PresentationProvider presentation="phone">{view}</PresentationProvider> : view,
-  );
+  const root = render(<ToastStoreProvider store={toasts}>{view}</ToastStoreProvider>);
   await act(settle);
   const row = [...root.querySelectorAll<HTMLElement>('[role="gridcell"]')].find((cell) =>
     cell.textContent?.includes(dutch.name),
@@ -151,6 +154,7 @@ verifies("source-control.history-go-back", () => {
       const { root } = await show(fake.source, true);
       const button = goBackButton(root);
       expect(button).toBeDefined();
+      expect(topBarTitle(root)).toBe(dutch.name);
       expect(root.querySelector("h1")?.textContent).toBe(dutch.name);
       expect(described(root)).toBe(sharedLine);
       await goBack(root);

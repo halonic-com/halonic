@@ -22,11 +22,11 @@ The scroll is kept for every page the phone draws again after Back, so a place's
 
 The requirements change:
 
-- `shell.studio-phone` gains the three behaviours above, a page shown for the first time starting at its top, and four examples.
+- `shell.studio-phone` gains the three behaviours above, a page shown for the first time starting at its top, and four examples. Its fallback when the window widens (from HAL-13726) now names a page a place pushed next to a list: the desktop has neither, so the place opens, as the code already did for any `place/sub` key.
 - `source-control.whats-changed-phone` gains the page on the stack, the top bar's name and Back, the heading for screen readers and one example; the roll-back warning is now "the first thing on the page" instead of "the first thing under Back to Changes".
 - `source-control.changes-phone` (2.14) replaces "with Back to History" by the top bar's name and Back, and its example presses the top bar's Back. Its sentence for a version a later read no longer has (from HAL-1302) now says the version's page leaves the stack, so the Changes page shows again and stays when the version comes back; its example is unchanged.
 
-Tests changed with them: the shell's test for a page's kept scroll now runs both on a phone and in a short window, and checks that the pushed page starts at its top instead of putting it there itself; a Chromium and WebKit test (`kept-scroll.spec.ts`) checks the same at 360 × 640, 320 × 568 and 195 × 421; the phone's version tests press the top bar's Back instead of Back to History and check the top bar's name, and the test for a version a later read no longer has also checks the top bar's name; the rest of What changed's phone tests run on a test stack with a top bar. Each still checks what it checked before. No test was skipped or removed.
+Tests changed with them: the shell's test for a page's kept scroll now runs both on a phone and in a short window, and checks that the pushed page starts at its top instead of putting it there itself; a Chromium and WebKit test (`kept-scroll.spec.ts`) checks the same at 360 × 640, 320 × 568 and 195 × 421; the phone's version tests press the top bar's Back instead of Back to History and check the top bar's name, and the test for a version a later read no longer has also checks the top bar's name; the rest of What changed's phone tests, and the phone test for Go back to this version (from HAL-1302), run on a test stack with a top bar, and the latter also checks the top bar's name. Each still checks what it checked before. No test was skipped or removed.
 
 ## Why
 
