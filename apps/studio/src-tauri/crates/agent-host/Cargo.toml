@@ -18,3 +18,7 @@ sha2 = { version = "=0.10.9", default-features = false }
 
 [lints]
 workspace = true
+
+# Writes the stand-in programs the tests start (HAL-14265).
+[dev-dependencies]
+halonic-stand-in = { path = "../stand-in" }

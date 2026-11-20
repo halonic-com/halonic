@@ -10,5 +10,9 @@ publish.workspace = true
 [lints]
 workspace = true
 
-# No dependencies: everything here is the standard library and the git
+# No runtime dependencies: everything here is the standard library and the git
 # program itself.
+
+# Writes the stand-in programs the tests start (HAL-14265).
+[dev-dependencies]
+halonic-stand-in = { path = "../stand-in" }

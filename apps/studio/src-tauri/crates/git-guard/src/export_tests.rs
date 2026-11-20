@@ -105,16 +105,15 @@ fn server(root: &Path) -> PathBuf {
 /// arguments. On Windows git starts a `.cmd`, which hands them to sh.
 fn local_ssh(root: &Path, script_body: &str) -> PathBuf {
     let script = root.join("local-ssh.sh");
-    std::fs::write(&script, format!("#!/bin/sh\n{script_body}\n")).expect("the ssh writes");
+    let text = format!("#!/bin/sh\n{script_body}\n");
     #[cfg(unix)]
     {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
-            .expect("the ssh is executable");
+        halonic_stand_in::write_executable(&script, &text);
         script
     }
     #[cfg(windows)]
     {
+        std::fs::write(&script, text).expect("the ssh writes");
         let ssh = root.join("local-ssh.cmd");
         let line = format!("@sh \"{}\" %*\r\n", posix(&script));
         std::fs::write(&ssh, line).expect("the ssh writes");

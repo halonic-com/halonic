@@ -150,12 +150,9 @@ impl Sandbox {
     /// input through, for keys that take a program's path.
     #[cfg(unix)]
     pub fn planted_script(&self, name: &str) -> PathBuf {
-        use std::os::unix::fs::PermissionsExt;
         let script = self.temporary.path().join(format!("{name}.sh"));
         let text = format!("#!/bin/sh\n{}\ncat\n", self.planted(name));
-        std::fs::write(&script, text).expect("the script writes");
-        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
-            .expect("the script is executable");
+        halonic_stand_in::write_executable(&script, &text);
         script
     }
 

@@ -23,15 +23,10 @@ fn git_hardening_commits_in_an_opened_folder() {
 #[cfg(unix)]
 #[test]
 fn git_hardening_never_runs_a_planted_hook() {
-    use std::os::unix::fs::PermissionsExt;
-
     let sandbox = Sandbox::new();
     sandbox.init_repository();
     let hook = sandbox.acme.join(".git").join("hooks").join("pre-commit");
-    std::fs::write(&hook, format!("#!/bin/sh\n{}\n", sandbox.planted("hook")))
-        .expect("the hook writes");
-    std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755))
-        .expect("the hook is executable");
+    halonic_stand_in::write_executable(&hook, &format!("#!/bin/sh\n{}\n", sandbox.planted("hook")));
     sandbox.write("notes.md", "acme notes\n");
     sandbox.git_ok("add -A");
     sandbox.git_ok("commit -m first-note");
@@ -237,8 +232,6 @@ fn git_hardening_refuses_an_ext_remote_already_in_the_config() {
 #[cfg(unix)]
 #[test]
 fn git_hardening_refuses_a_local_remote_whose_own_hooks_would_run() {
-    use std::os::unix::fs::PermissionsExt;
-
     let sandbox = Sandbox::new();
     sandbox.init_repository();
     sandbox.write("notes.md", "acme notes\n");
@@ -248,13 +241,10 @@ fn git_hardening_refuses_a_local_remote_whose_own_hooks_would_run() {
     let remote = sandbox.acme.join("remote.git");
     plain_git_ok(&sandbox.acme, &["init", "-q", "--bare", "remote.git"]);
     let hook = remote.join("hooks").join("post-receive");
-    std::fs::write(
+    halonic_stand_in::write_executable(
         &hook,
-        format!("#!/bin/sh\n{}\n", sandbox.planted("remote-hook")),
-    )
-    .expect("the hook writes");
-    std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755))
-        .expect("the hook is executable");
+        &format!("#!/bin/sh\n{}\n", sandbox.planted("remote-hook")),
+    );
     sandbox.append_config("[remote \"origin\"]\n\turl = ./remote.git\n");
     let push = sandbox
         .git("push origin main")
@@ -289,15 +279,11 @@ fn git_hardening_refuses_a_hooks_folder_that_is_gone() {
 /// run first, the way a launcher found as `git` on the PATH would.
 #[cfg(unix)]
 fn git_wrapper(folder: &std::path::Path, before: &str) -> std::path::PathBuf {
-    use std::os::unix::fs::PermissionsExt;
-
     let path = std::env::var_os("PATH").unwrap_or_default();
     let git = halonic_git_guard::find_git(&path).expect("the tests need git on the PATH");
     let wrapper = folder.join("git");
     let text = format!("#!/bin/sh\n{before}\nexec '{}' \"$@\"\n", git.display());
-    std::fs::write(&wrapper, text).expect("the wrapper writes");
-    std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755))
-        .expect("the wrapper is executable");
+    halonic_stand_in::write_executable(&wrapper, &text);
     wrapper
 }
 

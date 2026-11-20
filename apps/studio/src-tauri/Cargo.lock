@@ -1602,6 +1602,7 @@ name = "halonic-agent-host"
 version = "0.1.0"
 dependencies = [
  "halonic-shell-log",
+ "halonic-stand-in",
  "serde",
  "serde_json",
  "sha2",
@@ -1649,6 +1650,9 @@ dependencies = [
 [[package]]
 name = "halonic-git-guard"
 version = "0.1.0"
+dependencies = [
+ "halonic-stand-in",
+]
 
 [[package]]
 name = "halonic-host-settings"
@@ -1679,6 +1683,7 @@ dependencies = [
 name = "halonic-login-shell"
 version = "0.1.0"
 dependencies = [
+ "halonic-stand-in",
  "libc",
 ]
 
@@ -1747,6 +1752,10 @@ version = "0.1.0"
 
 [[package]]
 name = "halonic-shell-log"
+version = "0.1.0"
+
+[[package]]
+name = "halonic-stand-in"
 version = "0.1.0"
 
 [[package]]

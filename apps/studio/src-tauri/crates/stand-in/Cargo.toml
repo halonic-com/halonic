@@ -1,0 +1,13 @@
+[package]
+name = "halonic-stand-in"
+description = "For tests only: writes executable stand-ins (shell scripts that play wsl.exe, ssh, git or a hook) so that running them never fails with \"Text file busy\"."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# No dependencies: the standard library and /bin/sh.

@@ -75,15 +75,11 @@ fn plain_git_ok(folder: &Path, args: &[&str]) {
 
 /// An ssh that runs the command it is given (its last argument) here.
 fn local_ssh(scratch: &Path) -> PathBuf {
-    use std::os::unix::fs::PermissionsExt;
     let ssh = scratch.join("local-ssh");
-    std::fs::write(
+    halonic_stand_in::write_executable(
         &ssh,
         "#!/bin/sh\nfor last; do :; done\nexec sh -c \"$last\"\n",
-    )
-    .expect("the ssh writes");
-    std::fs::set_permissions(&ssh, std::fs::Permissions::from_mode(0o755))
-        .expect("the ssh is executable");
+    );
     ssh
 }
 

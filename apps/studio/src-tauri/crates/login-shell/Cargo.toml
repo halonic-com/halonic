@@ -22,3 +22,7 @@ undocumented_unsafe_blocks = "deny"
 # to the build.
 [target.'cfg(unix)'.dependencies]
 libc = { version = "=0.2.191", default-features = false }
+
+# Writes the stand-in programs the tests start (HAL-14265).
+[dev-dependencies]
+halonic-stand-in = { path = "../stand-in" }

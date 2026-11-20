@@ -68,15 +68,12 @@ struct StandIn(std::path::PathBuf);
 #[cfg(unix)]
 impl StandIn {
     fn new(body: &str) -> Self {
-        use std::os::unix::fs::PermissionsExt;
         use std::sync::atomic::{AtomicUsize, Ordering};
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let number = NEXT.fetch_add(1, Ordering::Relaxed);
         let name = format!("halonic-default-distro-{}-{number}", std::process::id());
         let path = std::env::temp_dir().join(name);
-        std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).expect("write the stand-in");
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700))
-            .expect("make it executable");
+        halonic_stand_in::write_executable(&path, &format!("#!/bin/sh\n{body}\n"));
         Self(path)
     }
 }

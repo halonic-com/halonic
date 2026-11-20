@@ -3,34 +3,13 @@
 #![cfg(unix)]
 
 use halonic_login_shell::{LoginShellError, RESOLVING_VARIABLE, login_variables};
-use std::collections::BTreeMap;
 use std::ffi::OsString;
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 const NAMES: &[&str] = &["HALONIC_HOME", "XDG_DATA_HOME", "SEEN_RESOLVING"];
 const ENOUGH: Duration = Duration::from_secs(10);
 const SHORT: Duration = Duration::from_millis(300);
-
-/// Held while a test writes a stand-in shell or starts any process. Linux
-/// refuses to run a script while another thread's newly started process
-/// still holds it open for writing ("Text file busy"), which tests running
-/// side by side would otherwise hit now and then.
-static STARTING: Mutex<()> = Mutex::new(());
-
-/// [`login_variables`], started while no other test writes a shell.
-fn ask(
-    shell: &Path,
-    names: &[&str],
-    timeout: Duration,
-) -> Result<BTreeMap<String, OsString>, LoginShellError> {
-    let _starting = STARTING
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    login_variables(shell, names, timeout)
-}
 
 /// A test's own folder in the temp directory, removed when the test ends.
 struct Folder(PathBuf);
@@ -55,11 +34,9 @@ impl Folder {
             "#!/bin/sh\n{rc}\nexport SEEN_RESOLVING=\"${RESOLVING_VARIABLE}\"\n\
              for last; do :; done\nexec /bin/sh -c \"$last\"\n"
         );
-        let _starting = STARTING
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        std::fs::write(&path, script).expect("write the shell");
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).expect("chmod");
+        // Written so that it never fails to start with "Text file busy"
+        // while other tests start processes (HAL-14265).
+        halonic_stand_in::write_executable(&path, &script);
         path
     }
 }
@@ -81,7 +58,7 @@ fn leaves_a_file_later(folder: &Folder) -> (String, PathBuf) {
 fn login_shell_reads_a_variable_the_rc_file_sets() {
     let folder = Folder::new("sets");
     let shell = folder.shell("echo 'Welcome back'\nexport HALONIC_HOME=/srv/from-rc");
-    let found = ask(&shell, NAMES, ENOUGH).expect("variables");
+    let found = login_variables(&shell, NAMES, ENOUGH).expect("variables");
     assert_eq!(found["HALONIC_HOME"], OsString::from("/srv/from-rc"));
     assert_eq!(found["SEEN_RESOLVING"], OsString::from("1"));
 }
@@ -90,7 +67,7 @@ fn login_shell_reads_a_variable_the_rc_file_sets() {
 fn login_shell_leaves_out_a_variable_nobody_sets() {
     let folder = Folder::new("unset");
     let shell = folder.shell("unset XDG_DATA_HOME HALONIC_HOME");
-    let found = ask(&shell, NAMES, ENOUGH).expect("variables");
+    let found = login_variables(&shell, NAMES, ENOUGH).expect("variables");
     assert!(!found.contains_key("HALONIC_HOME"));
     assert!(!found.contains_key("XDG_DATA_HOME"));
 }
@@ -100,7 +77,7 @@ fn login_shell_stops_a_shell_that_hangs() {
     let folder = Folder::new("hangs");
     let shell = folder.shell("sleep 30");
     let started = Instant::now();
-    let error = ask(&shell, NAMES, SHORT).expect_err("timed out");
+    let error = login_variables(&shell, NAMES, SHORT).expect_err("timed out");
     assert!(matches!(error, LoginShellError::TimedOut), "{error}");
     assert!(started.elapsed() < Duration::from_secs(5));
 }
@@ -110,7 +87,7 @@ fn login_shell_doesnt_wait_for_a_program_the_rc_file_leaves_running() {
     let folder = Folder::new("background");
     let shell = folder.shell("export HALONIC_HOME=/srv/bg\nsleep 30 &");
     let started = Instant::now();
-    let found = ask(&shell, NAMES, ENOUGH).expect("variables");
+    let found = login_variables(&shell, NAMES, ENOUGH).expect("variables");
     assert_eq!(found["HALONIC_HOME"], OsString::from("/srv/bg"));
     assert!(started.elapsed() < Duration::from_secs(5));
 }
@@ -120,7 +97,7 @@ fn login_shell_that_hangs_is_stopped_with_what_its_rc_file_started() {
     let folder = Folder::new("hangs-group");
     let (rc, left) = leaves_a_file_later(&folder);
     let shell = folder.shell(&format!("{rc}\nsleep 30"));
-    let error = ask(&shell, NAMES, SHORT).expect_err("timed out");
+    let error = login_variables(&shell, NAMES, SHORT).expect_err("timed out");
     assert!(matches!(error, LoginShellError::TimedOut), "{error}");
     std::thread::sleep(Duration::from_secs(2));
     assert!(!left.exists(), "the rc file's background program still ran");
@@ -132,7 +109,7 @@ fn login_shell_that_answers_leaves_what_its_rc_file_started_running() {
     let folder = Folder::new("answers-group");
     let (rc, left) = leaves_a_file_later(&folder);
     let shell = folder.shell(&format!("{rc}\nexport HALONIC_HOME=/srv/agent"));
-    let found = ask(&shell, NAMES, ENOUGH).expect("variables");
+    let found = login_variables(&shell, NAMES, ENOUGH).expect("variables");
     assert_eq!(found["HALONIC_HOME"], OsString::from("/srv/agent"));
     std::thread::sleep(Duration::from_secs(2));
     assert!(
@@ -145,13 +122,14 @@ fn login_shell_that_answers_leaves_what_its_rc_file_started_running() {
 fn login_shell_that_exits_early_has_no_environment() {
     let folder = Folder::new("exits");
     let shell = folder.shell("echo 'no environment today'\nexit 1");
-    let error = ask(&shell, NAMES, ENOUGH).expect_err("no environment");
+    let error = login_variables(&shell, NAMES, ENOUGH).expect_err("no environment");
     assert!(matches!(error, LoginShellError::NoEnvironment), "{error}");
 }
 
 #[test]
 fn login_shell_that_doesnt_exist_doesnt_start() {
-    let error = ask(&PathBuf::from("/no/such/shell"), NAMES, ENOUGH).expect_err("no shell");
+    let error =
+        login_variables(&PathBuf::from("/no/such/shell"), NAMES, ENOUGH).expect_err("no shell");
     assert!(matches!(error, LoginShellError::Start(_)), "{error}");
 }
 
@@ -169,11 +147,6 @@ fn login_shell_answers_when_studio_has_a_terminal() {
     // terminal's foreground (HAL-6597).
     let folder = Folder::new("terminal");
     let test = std::env::current_exe().expect("this test binary");
-    // Started under the lock too: until `script` runs, its process holds
-    // whatever shell another test is writing at that moment.
-    let starting = STARTING
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let mut script = std::process::Command::new("script")
         .args(["-q", "-e", "-c"])
         .arg(format!(
@@ -187,7 +160,6 @@ fn login_shell_answers_when_studio_has_a_terminal() {
         .stdout(std::process::Stdio::null())
         .spawn()
         .expect("start `script`");
-    drop(starting);
     let status = script.wait().expect("wait for `script`");
     assert!(status.success(), "bash didn't answer in a terminal");
 }
@@ -210,7 +182,7 @@ fn login_shell_from_a_terminal_probe() {
 fn login_shell_reads_the_real_sh() {
     // `/bin/sh` itself, with the flags a login shell gets; the variable
     // comes from this test's own environment, which the shell inherits.
-    let found = ask(&PathBuf::from("/bin/sh"), &["HOME"], ENOUGH).expect("variables");
+    let found = login_variables(&PathBuf::from("/bin/sh"), &["HOME"], ENOUGH).expect("variables");
     assert_eq!(
         found.get("HOME"),
         std::env::var_os("HOME").as_ref(),
