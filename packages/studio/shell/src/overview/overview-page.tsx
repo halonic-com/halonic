@@ -105,17 +105,20 @@ export interface OverviewPageProps {
 /** Opens an item's ⋮ menu below the button that was pressed. */
 type OpenMenu = (item: OverviewItem, element: HTMLElement) => void;
 
-/** Where a row's used-by text goes: on its right, or at the end of the line under its name. */
-type UsedByPlace = "right" | "line";
+/**
+ * Where a row's chips and used-by text go: on its right, or under its name, as on a phone, so the
+ * name and the detail keep the row's width.
+ */
+type PartsPlace = "right" | "under";
 
 /**
- * The line under an item's name: its detail, and on a phone its used-by text after a " · ", so the
+ * The text under an item's name: its detail, and on a phone its used-by text after a " · ", so the
  * kit doesn't move that text to the line's start as it does a chip. When the line is too long, the
  * detail is cut and the used-by text stays whole, as the kit's stacked rows keep their time
  * (HAL-13066). An item that asks for it gets its used-by text on a line of its own (HAL-13100).
  */
-function metaOf(item: OverviewItem, usedByPlace: UsedByPlace): ReactNode {
-  if (usedByPlace === "right" || item.usedBy === undefined) {
+function textUnderOf(item: OverviewItem, partsPlace: PartsPlace): ReactNode {
+  if (partsPlace === "right" || item.usedBy === undefined) {
     return item.detail;
   }
   if (item.detail === undefined) {
@@ -139,16 +142,35 @@ function metaOf(item: OverviewItem, usedByPlace: UsedByPlace): ReactNode {
   );
 }
 
-/** The row's right side: its chips, then its used-by text when that goes there. */
-function trailingOf(item: OverviewItem, usedByPlace: UsedByPlace): ReactNode {
-  const usedBy = usedByPlace === "right" ? item.usedBy : undefined;
-  if (item.chips === undefined && usedBy === undefined) {
+/**
+ * Everything under an item's name. On a phone its chips get the last line, under the text, rather
+ * than a column on the row's right that would take the text's width: at 195px a Workflows row's
+ * "2 needs you" left its name 0px (HAL-13976). The chips wrap when they don't fit on one line.
+ */
+function metaOf(item: OverviewItem, partsPlace: PartsPlace): ReactNode {
+  const text = textUnderOf(item, partsPlace);
+  if (partsPlace === "right" || item.chips === undefined) {
+    return text;
+  }
+  return (
+    <>
+      {text === undefined ? null : <span className="block truncate">{text}</span>}
+      <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">{item.chips}</span>
+    </>
+  );
+}
+
+/** The row's right side on a desktop: its chips, then its used-by text. */
+function trailingOf(item: OverviewItem, partsPlace: PartsPlace): ReactNode {
+  if (partsPlace === "under" || (item.chips === undefined && item.usedBy === undefined)) {
     return undefined;
   }
   return (
     <span className="flex items-center gap-2">
       {item.chips}
-      {usedBy === undefined ? null : <span className="text-small text-fg-muted">{usedBy}</span>}
+      {item.usedBy === undefined ? null : (
+        <span className="text-small text-fg-muted">{item.usedBy}</span>
+      )}
     </span>
   );
 }
@@ -158,11 +180,11 @@ function rowsOf(
   words: OverviewWords,
   menuOf: ((item: OverviewItem) => readonly MenuEntry[]) | undefined,
   openMenu: OpenMenu,
-  usedByPlace: UsedByPlace,
+  partsPlace: PartsPlace,
 ): readonly ListRow[] {
   return section.items.map((item) => {
-    const meta = metaOf(item, usedByPlace);
-    const trailing = trailingOf(item, usedByPlace);
+    const meta = metaOf(item, partsPlace);
+    const trailing = trailingOf(item, partsPlace);
     return {
       id: item.id,
       title: item.name,
@@ -344,7 +366,7 @@ function OverviewBody({
   itemMenu,
   openMenu,
 }: OverviewBodyProps) {
-  const usedByPlace: UsedByPlace = usePresentation() === "phone" ? "line" : "right";
+  const partsPlace: PartsPlace = usePresentation() === "phone" ? "under" : "right";
   if (failure !== undefined) {
     return (
       <EmptyState
@@ -381,7 +403,7 @@ function OverviewBody({
   return (
     <div className="flex flex-col gap-2">
       {sections.map((section) => {
-        const rows = rowsOf(section, words, itemMenu, openMenu, usedByPlace);
+        const rows = rowsOf(section, words, itemMenu, openMenu, partsPlace);
         const name = headingOf(section);
         return rows.length === 0 ? (
           <List

@@ -256,6 +256,50 @@ verifies("shell.overview.row-parts-and-quiet-head", () => {
     expect(page.textContent).toContain("1 running");
   });
 
+  it("puts the chips on a line of their own under the text on a phone, and nothing on the right", () => {
+    const page = render(
+      <PresentationProvider presentation="phone">
+        <OverviewPage
+          hubs={[
+            {
+              id: "acme",
+              name: "acme",
+              items: [
+                {
+                  id: "reply",
+                  name: "Support reply",
+                  detail: "A customer writes in and gets a drafted reply",
+                  usedBy: "Last run ✓ Yesterday 16:02",
+                  usedByOwnLine: true,
+                  chips: <span>2 needs you</span>,
+                },
+              ],
+            },
+          ]}
+          words={words}
+          onOpen={() => undefined}
+          onOpenInNewTab={() => undefined}
+        />
+      </PresentationProvider>,
+    );
+    const row = [...page.querySelectorAll("tr")].find((each) =>
+      each.textContent?.includes("Support reply"),
+    );
+    const under = row?.querySelector(".text-small");
+    expect(under?.textContent).toBe(
+      "A customer writes in and gets a drafted reply" +
+        "Last run ✓ Yesterday 16:02" +
+        "2 needs you",
+    );
+    const chipLine = under?.lastElementChild;
+    expect(chipLine?.textContent).toBe("2 needs you");
+    expect(chipLine?.className).toContain("flex-wrap");
+    // The text above the chips is cut by its own length, so the chip line takes nothing from it.
+    expect(under?.firstElementChild?.className).toContain("truncate");
+    // The column of name and text is the last part of the row: nothing sits on its right.
+    expect(under?.parentElement?.nextElementSibling).toBeNull();
+  });
+
   it("hides the head while nothing is listed, when the feature asks for a quiet head", () => {
     const page = show({
       hubs: [{ id: "acme", name: "acme", items: [] }],

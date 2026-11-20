@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1303 (T10, P4a); flow-library 3.1; HAL-12858; HAL-13066; HAL-13100
+- Source: HAL-1303 (T10, P4a); flow-library 3.1; HAL-12858; HAL-13066; HAL-13100; HAL-13976
 
-The overview page shall show an item's `usedBy` text on the right of its row, after the item's chips when it has both, in the feature's words, and shall show nothing there for an item without one. When the presentation is `phone`, the page shall instead end the line under the name with the `usedBy` text, after the item's `detail` and " · ", or give it that line alone when the item has no `detail`, while the chips stay on the right. When that line is too long for the row, the page shall cut the `detail` with an ellipsis and keep the `usedBy` text and its " · " whole. For an item that asks for its own line, the page shall instead give the `usedBy` text a line of its own under the `detail`, each cut with an ellipsis only by its own length. The search shall not read it.
+The overview page shall show an item's `usedBy` text on the right of its row, after the item's chips when it has both, in the feature's words, and shall show nothing there for an item without one. When the presentation is `phone`, the page shall instead end the line under the name with the `usedBy` text, after the item's `detail` and " · ", or give it that line alone when the item has no `detail`, while the chips go on a line of their own under it (`shell.overview.row-parts-and-quiet-head`). When that line is too long for the row, the page shall cut the `detail` with an ellipsis and keep the `usedBy` text and its " · " whole. For an item that asks for its own line, the page shall instead give the `usedBy` text a line of its own under the `detail`, each cut with an ellipsis only by its own length. The search shall not read it.
 
 ## Examples
 
