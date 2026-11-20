@@ -1,6 +1,6 @@
 {
   "identifier": "desktop-agent-host",
-  "description": "On desktop, the app's own page may call the agent host through the agent_host_* commands: the shell starts the host for the profile and makes each call, so the launch token stays in the shell (crates/agent-host). The page names a route of the host's table, never a URL. It is local only, so the Studio the computer serves gets no agent host.",
+  "description": "On desktop, the app's own page may call the agent host through the agent_host_* commands: the shell starts the host for the profile and makes each call, so the launch token stays in the shell (crates/agent-host). The page names a route of the host's table, never a URL, and saves the sandbox choice only by naming a backend (agent_host_sandbox_choice_save), never a file. It is local only, so the Studio the computer serves gets no agent host.",
   "local": true,
   "windows": [
     "main"
@@ -14,6 +14,7 @@
     "allow-agent-host-request",
     "allow-agent-host-stream",
     "allow-agent-host-stream-end",
-    "allow-agent-host-security-updates"
+    "allow-agent-host-security-updates",
+    "allow-agent-host-sandbox-choice-save"
   ]
 }

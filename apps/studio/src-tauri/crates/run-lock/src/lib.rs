@@ -262,6 +262,12 @@ fn remove_if_there(file: &Path) -> io::Result<()> {
     }
 }
 
+/// The time now as JavaScript's `toISOString` writes it, for example
+/// `2026-11-19T09:00:00.000Z`.
+pub fn now_iso() -> String {
+    iso_time::format_iso(now_ms())
+}
+
 fn now_ms() -> i64 {
     ms_since_1970(SystemTime::now())
 }
