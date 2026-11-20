@@ -26,6 +26,7 @@ export default defineConfig({
         "welcome-recent": `${import.meta.dirname}/e2e/pages/welcome-recent.html`,
         "overview-phone-row": `${import.meta.dirname}/e2e/pages/overview-phone-row.html`,
         "workspace-switcher": `${import.meta.dirname}/e2e/pages/workspace-switcher.html`,
+        "toast-placement": `${import.meta.dirname}/e2e/pages/toast-placement.html`,
       },
     },
   },
