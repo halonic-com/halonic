@@ -4,11 +4,11 @@
 - Since: unreleased
 - Source: tunnel phase A4 of the plan "phone reaches a runtime host through pluggable tunnels", approved by the board on 11 Nov; task HAL-5687; the end-to-end session from task HAL-12238 (tunnel phase B, B3)
 
-The remote gateway shall answer a hostile stream of frames, sent through a tunnel, by closing that connection and nothing else: it shall refuse a frame over one Noise message (65,536 bytes) before reading it, a frame that breaks the WebSocket format, a message in the clear, a message inside the session that is not one JSON object of the protocol, and a client that floods it, holds slots, never finishes the end-to-end handshake or never says hello after it. It shall pass nothing of such a stream on to the host, and it shall go on serving the next phone.
+The remote gateway shall answer a hostile stream of frames, sent through a tunnel, by closing that connection and nothing else: it shall refuse a frame over one Noise message (65,536 bytes) before reading it, a frame that breaks the WebSocket format, a message in the clear, a message inside the session that is not one JSON object of the protocol, and a client that floods it, holds slots, never finishes the end-to-end handshake or never says hello after it. It shall do so whether the stream comes right after the WebSocket upgrade, before any end-to-end handshake, or from a paired phone inside its session. It shall pass nothing of such a stream on to the host, and it shall go on serving the next phone.
 
 ## Examples
 
-- Given an open connection,
+- Given an open connection, before the end-to-end handshake or inside the session,
   when a frame declares 65,536 bytes plus one, 2^32 bytes or a length with the top bit set, whether or not the bytes follow,
   then the host closes, sends nothing, and holds no more than a frame's header.
 - Given a message sent in fragments whose sum is over 65,536 bytes, or a stream of small fragments that never ends,

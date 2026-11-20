@@ -52,7 +52,8 @@ export class RemoteGateway {
 
   /**
    * Starts the listener, or does nothing when the setting is off. A listener
-   * that can't start is told to `log` and the host serves without it.
+   * that can't start, and a connection that fails, is told to `log`; the host
+   * serves on.
    *
    * @returns the port it listens on, `undefined` when it isn't listening
    */
@@ -65,6 +66,7 @@ export class RemoteGateway {
         phones: nobodyPaired,
         pairing: nobodyPaired,
         policy: gatewayPolicy(this.#risky),
+        onError: (error) => log(`A remote gateway connection failed: ${String(error)}\n`),
         ...(this.#settings.port === undefined ? {} : { port: this.#settings.port }),
       });
       return this.#listener.port;

@@ -253,6 +253,26 @@ verifies("remote-gateway.listener", () => {
       }
     });
 
+    it("ends only that connection, and reports it, when the phone store throws", async () => {
+      const t = await openListener();
+      try {
+        const connect = t.phones.connected.bind(t.phones);
+        t.phones.connected = () => {
+          throw new Error("the phone store failed");
+        };
+        const failing = await t.pairedClient();
+        await failing.sendJson({ type: "hello", id: "h1", version: 2 });
+        await failing.ended;
+        expect(t.errors).toEqual([new Error("the phone store failed")]);
+        t.phones.connected = connect;
+        const next = await t.pairedClient();
+        await next.sendJson({ type: "hello", id: "h1", version: 2 });
+        expect(await next.frames(1)).toMatchObject([{ type: "welcome" }]);
+      } finally {
+        await t.stop();
+      }
+    });
+
     it("stops the session watches when the client goes away", async () => {
       const t = await openListener();
       try {

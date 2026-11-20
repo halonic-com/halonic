@@ -179,6 +179,9 @@ verifies("agent-host.loopback-only", () => {
         policy: { allowRiskyRemotely: () => false },
         phones: new NobodyPaired(),
         pairing: new NobodyPaired(),
+        onError: (error) => {
+          throw error;
+        },
       });
       try {
         const hostPort = Number(new URL(host.url).port);

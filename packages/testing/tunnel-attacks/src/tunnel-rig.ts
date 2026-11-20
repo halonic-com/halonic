@@ -67,6 +67,8 @@ async function startGatewayAndTunnel(
         pairing: phones,
         policy: { allowRiskyRemotely: () => options.allowRisky === true },
         port,
+        // The rig's fakes never fail, so a failure is a bug: let it fail the run.
+        onError: rethrow,
         ...(options.listTunnelName === false
           ? {}
           : { extraHosts: [`gateway-${port}.fake-tunnel.invalid`] }),
@@ -79,6 +81,10 @@ async function startGatewayAndTunnel(
       if (attempt >= 4) throw error;
     }
   }
+}
+
+function rethrow(error: unknown): never {
+  throw error;
 }
 
 /** The limits a test set, passed on to the listener; the ones left out keep its defaults. */

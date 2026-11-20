@@ -185,11 +185,14 @@ export async function openListener(
 ) {
   const source = new FakeSource();
   const phones = new FakePhones();
+  const pairing = new FakePairing(phones);
   const clients: RawClient[] = [];
+  const errors: unknown[] = [];
   const listener: GatewayListener = await startGatewayListener({
     source,
     phones,
-    pairing: new FakePairing(),
+    pairing,
+    onError: (error) => errors.push(error),
     policy: { allowRiskyRemotely: () => options.allowRisky === true },
     ...(options.extraHosts === undefined ? {} : { extraHosts: options.extraHosts }),
     ...(options.maxConnections === undefined ? {} : { maxConnections: options.maxConnections }),
@@ -202,6 +205,9 @@ export async function openListener(
   return {
     source,
     phones,
+    pairing,
+    /** What the listener reported through `onError`. */
+    errors,
     listener,
     client(): RawClient {
       const client = new RawClient(listener.port);

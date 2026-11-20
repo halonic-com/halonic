@@ -83,29 +83,51 @@ verifies("tunnel-attacks.session-attacks", () => {
         await rig.stop();
       }
     });
+
+    it("closes on one sealed message sent twice in the same session, and answers it once", async () => {
+      const rig = await openTunnelRig();
+      try {
+        const client = await rig.greeted();
+        const list = wireFrame(
+          op.binary,
+          client.phone?.seal(Buffer.from('{"type":"list-sessions","id":"l1"}')) ?? Buffer.alloc(0),
+        );
+        client.write(list);
+        client.write(list);
+        expect(await client.isClosed()).toBe(true);
+        const answers = client
+          .textFrames()
+          .filter((frame) => (frame as { replyTo?: string }).replyTo === "l1");
+        expect(answers.length).toBeLessThanOrEqual(1);
+      } finally {
+        await rig.stop();
+      }
+    });
   });
 
   describe("a downgrade to no end-to-end encryption (B11)", () => {
     it("answers no protocol message sent in the clear, before or after the handshake", async () => {
       const rig = await openTunnelRig();
       try {
-        const attempts: ((client: WireClient) => Promise<void>)[] = [
-          async (client) => client.write(wireFrame(op.text, hello)),
-          async (client) => client.write(wireFrame(op.binary, hello)),
-          async (client) =>
-            client.write(wireFrame(op.binary, Buffer.concat([Buffer.of(0x20), hello]))),
-          async (client) => {
-            await client.reconnect(rig.phones.pairPhone());
-            client.write(wireFrame(op.text, hello));
-          },
+        const beforeHandshake: ((client: WireClient) => void)[] = [
+          (client) => client.write(wireFrame(op.text, hello)),
+          (client) => client.write(wireFrame(op.binary, hello)),
+          (client) => client.write(wireFrame(op.binary, Buffer.concat([Buffer.of(0x20), hello]))),
         ];
-        for (const attempt of attempts) {
+        for (const attempt of beforeHandshake) {
           const client = await opened(rig);
-          await attempt(client);
+          attempt(client);
           expect(await client.isClosed()).toBe(true);
+          // Without a handshake the host has nothing to send: not even a binary frame.
           expect(client.hostFrames(op.text)).toEqual([]);
-          expect(client.textFrames()).toEqual([]);
+          expect(client.hostFrames(op.binary)).toEqual([]);
         }
+        const afterHandshake = await opened(rig);
+        await afterHandshake.reconnect(rig.phones.pairPhone());
+        afterHandshake.write(wireFrame(op.text, hello));
+        expect(await afterHandshake.isClosed()).toBe(true);
+        expect(afterHandshake.hostFrames(op.text)).toEqual([]);
+        expect(afterHandshake.textFrames()).toEqual([]);
         expect(rig.source.calls).toEqual([]);
       } finally {
         await rig.stop();
