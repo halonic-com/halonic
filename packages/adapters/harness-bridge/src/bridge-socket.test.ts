@@ -266,9 +266,17 @@ verifies("harness-bridge.socket-path-limit", () => {
     const runAndSocket = Buffer.byteLength("/run/bridge.sock");
     const folder = join(parent, "f".repeat(105 - runAndSocket - Buffer.byteLength(parent) - 1));
 
-    await expect(makeRunSocketFolder(folder, { name: "run", platform: "darwin" })).rejects.toThrow(
+    const tooLong = makeRunSocketFolder(folder, { name: "run", platform: "darwin" });
+    await expect(tooLong).rejects.toThrow(
       "socket path would be 105 bytes, and macOS takes at most 103.",
     );
+    await expect(tooLong).rejects.toMatchObject({
+      kind: "invalid_input",
+      failureCause: {
+        code: "harness-bridge.socket-path-too-long",
+        detail: { bytes: "105", limit: "103", system: "macOS" },
+      },
+    });
     await expect(readdir(parent)).resolves.toEqual([]);
     const made = await makeRunSocketFolder(folder, { name: "run", platform: "linux" });
     expect(Buffer.byteLength(made.socketPath)).toBe(105);

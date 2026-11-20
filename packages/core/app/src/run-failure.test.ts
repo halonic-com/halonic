@@ -303,6 +303,20 @@ verifies("app.run-failure", () => {
       expect(isSetupCause(withoutFacts)).toBe(false);
     });
 
+    it("says the cause of a bridge socket path that is too long is known (HAL-13862)", () => {
+      const cause = {
+        kind: "invalid_input" as const,
+        code: "harness-bridge.socket-path-too-long",
+        detail: { bytes: "161", limit: "107", system: "Linux" },
+      };
+      expect(runFailureOf(failedWith("error", { cause }), undefined)).toEqual({
+        ...general,
+        causeKnown: true,
+      });
+      const other = { ...cause, code: "harness-bridge.something-else" };
+      expect(runFailureOf(failedWith("error", { cause: other }), undefined)).toEqual(general);
+    });
+
     it("gives a cancelled run no facts", () => {
       expect(runFailureOf(failedWith("cancelled"), calledModel())).toBeUndefined();
     });

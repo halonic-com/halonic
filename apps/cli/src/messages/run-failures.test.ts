@@ -283,13 +283,20 @@ describe("a failed run's lines, from cli-output 3.4 revision 23", () => {
     ]);
   });
 
-  it("leaves out the report line for a cause the engine knows (HAL-6451)", () => {
+  it("says a cause the engine knows as the reason, without the report line (HAL-6451, HAL-13862)", () => {
     const failure: RunFailure = { reason: "error", message: "The disk is full.", causeKnown: true };
     const { message, fix } = runFailedLines(draftReply, failure);
     expect(plainText(message.phrase)).toBe(
-      "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet: The disk is full.",
+      "Support reply failed in the step Draft a reply. The disk is full.",
     );
     expect(fix).toBeUndefined();
+  });
+
+  it("says Halonic can't tell the cause of a known cause without a message", () => {
+    const failure: RunFailure = { reason: "error", message: " ", causeKnown: true };
+    expect(plainText(runFailedLines(draftReply, failure).message.phrase)).toBe(
+      "Support reply failed in the step Draft a reply. Halonic can't tell the cause yet.",
+    );
   });
 
   it("sends no one to Studio, which 0.1 doesn't have (HAL-6183)", () => {
