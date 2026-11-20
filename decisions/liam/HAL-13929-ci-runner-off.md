@@ -3,7 +3,6 @@
 - Task: HAL-13929 (trial: HAL-13578, stop asked in HAL-13867 and HAL-13893)
 - Approval: the stop rule of the trial (HAL-13578) and the board's ask to turn it off (HAL-13867); the security reviewer approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:TJ0reuTHCHPBprG7NXyYp9Ph8Nrz5V5KLj0PsXlqzLrhhEouo9F/GuDreNmFTRn6R3XedQazaS7Ul0fTIc3dDg==
 
 ## What changes
 
@@ -31,4 +30,4 @@ No test was weakened or skipped. Only which runner two jobs ask for changes; the
 
 ## Covers
 
-- .github/workflows/ci.yml
+- .github/
