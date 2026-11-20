@@ -24,6 +24,7 @@ import {
   overviewChips,
   overviewSections,
 } from "./overview-model.ts";
+import { useAnnounceListChange } from "./use-list-announcement.ts";
 
 /**
  * The words the page can't know: each feature passes its own, in the product's voice. The shell
@@ -49,6 +50,8 @@ export interface OverviewWords {
   readonly emptySection: (sectionName: string) => string;
   /** Nothing matches the search: `No skills match "sorter".` The shell adds **Clear search**. */
   readonly noMatch: (query: string) => string;
+  /** What a screen reader hears after a search or a hub change: "1 workflow.", "2 routines.". */
+  readonly shownCount: (count: number) => string;
   /** No hub and nothing shared: "No skills yet", with the create button when the head is quiet. */
   readonly nothingYet: {
     readonly title: string;
@@ -100,6 +103,11 @@ export interface OverviewPageProps {
   readonly quietWhenEmpty?: boolean;
   /** The "nothing yet" or "no match" state's title, so the feature can move focus there when the last item goes. */
   readonly emptyTitleRef?: Ref<HTMLHeadingElement>;
+  /**
+   * Reads how many items a search or hub change left, or the no-match line
+   * (`announcer.announceState`); absent in tests that don't listen.
+   */
+  readonly announceState?: ((key: string, text: string) => void) | undefined;
 }
 
 /** Opens an item's ⋮ menu below the button that was pressed. */
@@ -226,6 +234,7 @@ export function OverviewPage({
   tabs,
   quietWhenEmpty = false,
   emptyTitleRef,
+  announceState,
 }: OverviewPageProps) {
   const phone = usePresentation() === "phone";
   const inTopBar = useInPhoneTopBar();
@@ -241,6 +250,13 @@ export function OverviewPage({
   const showHead = failure === undefined && !(quietWhenEmpty && !loading && nothingListed);
   const headingOf = (section: OverviewSection) =>
     section.shared ? words.sharedSection(section.name) : section.name;
+  const hasAnySection = quietWhenEmpty ? !nothingListed : hasSection(hubs, shared);
+  // Only a list the search field is over is read: not the loading rows, a failure or "nothing yet".
+  useAnnounceListChange(
+    JSON.stringify([query.trim(), filter]),
+    showHead && !loading && hasAnySection ? shownText(sections, query, words) : undefined,
+    announceState,
+  );
 
   function clearOnEscape(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Escape" && query !== "") {
@@ -310,9 +326,7 @@ export function OverviewPage({
       <OverviewBody
         sections={sections}
         headingOf={headingOf}
-        hasAnySection={
-          quietWhenEmpty ? !nothingListed : hubs.length > 0 || (shared?.items.length ?? 0) > 0
-        }
+        hasAnySection={hasAnySection}
         query={query}
         onClearSearch={clearSearch}
         words={words}
@@ -334,6 +348,24 @@ export function OverviewPage({
       )}
     </div>
   );
+}
+
+/** Whether there is a section to draw, even an empty one: a hub, or something shared. */
+function hasSection(hubs: readonly OverviewHub[], shared: OverviewShared | undefined): boolean {
+  return hubs.length > 0 || (shared?.items.length ?? 0) > 0;
+}
+
+/** What the list shows, in words: how many items, or the no-match line when none. */
+function shownText(
+  sections: readonly OverviewSection[],
+  query: string,
+  words: OverviewWords,
+): string {
+  if (sections.length === 0) {
+    return words.noMatch(query.trim());
+  }
+  const count = sections.reduce((total, section) => total + section.items.length, 0);
+  return words.shownCount(count);
 }
 
 interface OverviewBodyProps {

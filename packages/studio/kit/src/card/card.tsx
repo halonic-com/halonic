@@ -23,8 +23,12 @@ interface TitleHeader {
 interface LabelHeader {
   /** Written in sentence case ("When"); CSS draws it in capitals, so it's read as a word. */
   readonly label: string;
+  /**
+   * Draws the label as a heading of this level, so heading navigation finds the card. Without it
+   * the label is a plain caption. The routine page's When and Starts are `h2`s next to its Rules.
+   */
+  readonly headingLevel?: 2 | 3 | 4;
   readonly title?: never;
-  readonly headingLevel?: never;
 }
 
 /** A card with no header: it has nowhere to put actions. */
@@ -145,7 +149,7 @@ export function Card(props: CardProps) {
   );
 }
 
-/** The header's name: a title heading, a caption label, or nothing. */
+/** The header's name: a title heading, a caption label (a heading when it has a level), or nothing. */
 function cardHeader(props: StaticCard, id: string, faded: boolean): ReactNode {
   if (isShown(props.title)) {
     const Heading = `h${props.headingLevel ?? 3}` as const;
@@ -159,13 +163,14 @@ function cardHeader(props: StaticCard, id: string, faded: boolean): ReactNode {
     );
   }
   if (isShown(props.label)) {
+    const Label = props.headingLevel === undefined ? "p" : (`h${props.headingLevel}` as const);
     return (
-      <p
+      <Label
         id={id}
         className={`min-w-0 text-label uppercase ${faded ? fadedClasses : "text-fg-muted"}`}
       >
         {props.label}
-      </p>
+      </Label>
     );
   }
   return null;

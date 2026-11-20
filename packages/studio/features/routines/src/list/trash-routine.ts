@@ -15,16 +15,19 @@ function reasonOf(error: unknown, title: string): string | undefined {
 
 /** What {@link trashRoutine} can tell its caller. */
 export interface TrashOptions {
-  /** Called once the routine is in the trash, also after a Try again. */
-  readonly onTrashed?: () => void;
+  /** A page that is open says the move itself, with its own Undo, so no toast says it. */
+  readonly quiet?: boolean;
+  /** Called with the way back once the routine is in the trash, also after a Try again. */
+  readonly onTrashed?: (trashed: TrashedRoutine) => void;
   /** Called once the toast's Undo has put the routine back. */
   readonly onRestored?: () => void;
 }
 
 /**
  * Moves a routine to the trash with no dialog and says so with a toast that has Undo and a second
- * line about what it stops (flow-routines 2.4). When it can't be moved, a toast that stays says why
- * and offers Try again. Undo that can't put it back says why, too.
+ * line about what it stops (flow-routines 2.4); a page that is open says it itself and passes
+ * `quiet`. When it can't be moved, a toast that stays says why and offers Try again. Undo that
+ * can't put it back says why, too.
  */
 export async function trashRoutine(
   host: RoutinesHost,
@@ -48,31 +51,39 @@ export async function trashRoutine(
     });
     return;
   }
-  options.onTrashed?.();
+  options.onTrashed?.(trashed);
+  if (options.quiet === true) return;
   toasts?.show({
     tone: "success",
     title: rowMenuWords.moved(name),
     text: rowMenuWords.movedLine(listing.targetName),
     action: {
       label: rowMenuWords.undo,
-      onClick: () => void putBack(trashed, name, toasts, options),
+      onClick: () =>
+        void putBackRoutine(trashed, name, toasts).then((restored) => {
+          if (restored) options.onRestored?.();
+        }),
     },
   });
 }
 
-async function putBack(
+/**
+ * Puts a deleted routine back. When it can't, a toast says why.
+ *
+ * @returns whether the routine is back
+ */
+export async function putBackRoutine(
   trashed: TrashedRoutine,
   name: string,
   toasts: ToastStore | null,
-  options: TrashOptions,
-): Promise<void> {
+): Promise<boolean> {
   try {
     await trashed.undo();
+    return true;
   } catch (error) {
     const title = rowMenuWords.couldntUndo(name);
     const reason = reasonOf(error, title);
     toasts?.show({ tone: "danger", title, ...(reason === undefined ? {} : { text: reason }) });
-    return;
+    return false;
   }
-  options.onRestored?.();
 }

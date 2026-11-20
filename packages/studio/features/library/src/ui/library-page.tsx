@@ -46,6 +46,8 @@ export interface LibraryPageProps {
   readonly onNew?: (kind: LibraryItemKind) => void;
   /** The Knowledge empty state's button. Without it, the empty state has no button. */
   readonly onOpenDocsFolder?: () => void;
+  /** Reads how many items a search or hub change left (`announcer.announceState`); absent in tests that don't listen. */
+  readonly announceState?: ((key: string, text: string) => void) | undefined;
 }
 
 type Load =
@@ -148,6 +150,7 @@ export function LibraryPage({
   onOpenAsFile,
   onNew,
   onOpenDocsFolder,
+  announceState,
 }: LibraryPageProps) {
   const phone = usePresentation() === "phone";
   const ids = useTabIds();
@@ -216,6 +219,7 @@ export function LibraryPage({
       <OverviewPage
         key={kind}
         {...overview}
+        announceState={announceState}
         words={overviewWords(kind, {
           phone,
           ...(onOpenDocsFolder === undefined ? {} : { onOpenDocsFolder }),

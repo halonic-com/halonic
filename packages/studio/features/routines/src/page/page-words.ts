@@ -13,6 +13,8 @@ export const pageWords = {
   more: (name: string) => `More actions for ${name}`,
   openAsFile: "Open as file",
   delete: "Delete",
+  /** The strip that stands in for a routine deleted from its page; a sentence, as a second line follows. */
+  deleted: "This routine was deleted.",
   rename: "Rename",
   couldntRename: (name: string, reason: string | undefined) =>
     reason === undefined

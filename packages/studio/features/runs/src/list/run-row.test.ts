@@ -55,6 +55,8 @@ verifies("runs.row", () => {
 
       expect(described.line).toBe("Waiting for you: Approve this reply?");
       expect(plain.line).toBe("Waiting for you in the step Check");
+      // The question ends the sentence: no "?." (HAL-14241).
+      expect(described.label).toContain("waiting for you: Approve this reply? Started by");
     });
 
     it("writes a hidden character in a wait title or step description as an escape", () => {

@@ -17,6 +17,12 @@ export const runsWords = {
   queuedPrefix: "Queued, ",
   tabNeedsYou: (count: number) => `${count} needs you`,
   tabRunning: "A run is going",
+  /**
+   * A run row's name, so it isn't read as its loose words ("Done 81d0ae Run now 08:39"), the way
+   * the Runs list names its rows: "Run 81d0ae, done. Started: Run now, 08:39." (HAL-14241).
+   */
+  rowName: (shortId: string, outcome: string, startedBy: string, time: string) =>
+    `Run ${shortId}, ${outcome.toLowerCase()}. Started: ${startedBy}, ${time}.`,
 } as const;
 
 /** The chip word for each outcome of a run (the Runs list's words). */

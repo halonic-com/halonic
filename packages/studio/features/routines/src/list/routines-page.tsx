@@ -62,6 +62,7 @@ export function RoutinesPage({ context }: PlaceViewProps) {
         };
   return (
     <RoutinesView
+      announceState={(key, text) => context.announcer.announceState(key, text)}
       host={context.services.get(RoutinesHostService)}
       engine={engineWordsOf(context)}
       {...(runCommand ? { newWorkflow: () => void runCommand("workflows.new") } : {})}
@@ -80,6 +81,8 @@ export interface RoutinesViewProps {
   readonly openInNewTab?: (ref: RoutineRef) => void;
   /** What the page calls the engine when it can't read, for this window's host; the desktop app's by default. */
   readonly engine?: EngineWords;
+  /** Reads how many items a search or hub change left (`announcer.announceState`); absent in tests that don't listen. */
+  readonly announceState?: ((key: string, text: string) => void) | undefined;
   /** Opens the New workflow dialog, for a hub with nothing to run; absent where the app can't, so the dialog has no such link. */
   readonly newWorkflow?: () => void;
 }
@@ -93,7 +96,14 @@ export interface RoutinesViewProps {
  * @example
  * <RoutinesView host={host} open={openRoutineTab} />
  */
-export function RoutinesView({ host, open, openInNewTab, engine, newWorkflow }: RoutinesViewProps) {
+export function RoutinesView({
+  host,
+  open,
+  openInNewTab,
+  engine,
+  newWorkflow,
+  announceState,
+}: RoutinesViewProps) {
   const words = engine ?? engineWordsOf({});
   const phone = usePresentation() === "phone";
   const [load, setLoad] = useState<Load>({ kind: "loading" });
@@ -230,6 +240,7 @@ export function RoutinesView({ host, open, openInNewTab, engine, newWorkflow }: 
         />
       ) : (
         <OverviewPage
+          announceState={announceState}
           hubs={routineHubs(host.hubs(), listings)}
           words={{
             searchLabel: listWords.searchLabel,
@@ -241,6 +252,7 @@ export function RoutinesView({ host, open, openInNewTab, engine, newWorkflow }: 
             sharedSection: (workspace) => workspace,
             emptySection: (hubName) => listWords.emptyHub(hubName),
             noMatch: listWords.noMatch,
+            shownCount: listWords.shownCount,
             nothingYet: {
               title: listWords.nothingYetTitle,
               description: listWords.emptySentence,

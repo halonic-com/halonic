@@ -162,7 +162,8 @@ function RunRow({
       {startedByWords[run.startedBy]}
     </span>
   );
-  const when = <span className="text-small text-fg-muted">{runTime(run.startedAt, now)}</span>;
+  const time = runTime(run.startedAt, now);
+  const when = <span className="text-small text-fg-muted">{time}</span>;
   // On a phone the row has two lines: chip, id and time, then what started it.
   const content = phone ? (
     <span className="flex min-w-0 flex-1 flex-col gap-1">
@@ -192,6 +193,12 @@ function RunRow({
         <button
           type="button"
           className={`${classes} rounded-sm hover:bg-surface-muted focus-ring`}
+          aria-label={runsWords.rowName(
+            run.shortId,
+            outcomeWords[run.outcome],
+            startedByWords[run.startedBy],
+            time,
+          )}
           onClick={() => openRun(run.runId)}
         >
           {content}

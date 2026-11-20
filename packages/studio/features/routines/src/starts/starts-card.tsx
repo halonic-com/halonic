@@ -72,7 +72,7 @@ export function StartsCard({ host, routine }: StartsCardProps) {
     })),
   ];
   return (
-    <Card label={words.label}>
+    <Card label={words.label} headingLevel={2}>
       <div className="flex flex-col gap-3">
         <Field label={words.pick}>
           <Select

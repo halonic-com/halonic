@@ -229,15 +229,15 @@ function hostWithTrash() {
     trash: async () => {
       trashed = true;
       change();
-      return {
-        undo: async () => {
-          trashed = false;
-          change();
-        },
-      };
+      return { undo: async () => restore() };
     },
   } as RoutinesHost;
-  return { host: withTrash, save };
+  // The workspace's own undo (Ctrl Z) puts the file back without the page's Undo.
+  const restore = () => {
+    trashed = false;
+    change();
+  };
+  return { host: withTrash, save, restore };
 }
 
 verifies("routines.page.rename-and-delete", () => {
@@ -328,7 +328,7 @@ verifies("routines.page.rename-and-delete", () => {
     expect(document.querySelector("dialog[open]")).toBeNull();
   });
 
-  it("deletes from ⋮ with no dialog, then shows the routine gone, and Undo brings it back", async () => {
+  it("deletes from ⋮ with no dialog, then shows the strip with Undo, which brings it back", async () => {
     const { host } = hostWithTrash();
     const { page, toasts } = await showWithToasts(host);
 
@@ -342,19 +342,40 @@ verifies("routines.page.rename-and-delete", () => {
     await settle();
 
     expect(document.querySelector("dialog[open]")).toBeNull();
-    expect(toasts.list()[0]).toMatchObject({
-      title: "Deleted Daily.",
-      text: "It won't start Briefing any more. Runs it already started keep going.",
-      action: { label: "Undo" },
-    });
-    expect(page.textContent).toContain("This routine isn't in this workspace any more.");
-    expect(document.activeElement?.textContent).toContain("isn't in this workspace any more");
+    expect(toasts.list()).toEqual([]);
+    expect(page.textContent).toContain("This routine was deleted.");
+    expect(page.textContent).toContain(
+      "It won't start Briefing any more. Runs it already started keep going.",
+    );
+    expect(page.textContent).not.toContain("isn't in this workspace any more");
+    expect(document.activeElement?.textContent).toBe("Undo");
 
-    await act(async () => toasts.list()[0]?.action?.onClick());
+    await act(async () => (document.activeElement as HTMLElement).click());
     await settle();
 
     expect(nameField(page).value).toBe("Daily");
     expect(document.activeElement?.tagName).toBe("H1");
+  });
+
+  it("shows the page again when the workspace's own undo brings the routine back", async () => {
+    const { host, restore } = hostWithTrash();
+    const { page } = await showWithToasts(host);
+
+    act(() =>
+      page.querySelector<HTMLElement>('button[aria-label="More actions for Daily"]')?.click(),
+    );
+    const item = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+      (each) => each.textContent === "Delete",
+    );
+    await act(async () => item?.click());
+    await settle();
+    expect(page.textContent).toContain("This routine was deleted.");
+
+    await act(async () => restore());
+    await settle();
+
+    expect(page.textContent).not.toContain("This routine was deleted.");
+    expect(nameField(page).value).toBe("Daily");
   });
 });
 

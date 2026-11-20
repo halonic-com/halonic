@@ -63,6 +63,7 @@ export function AgentsPage({ context }: PlaceViewProps) {
     openItem === undefined ? undefined : (path: string) => openItem(fileItemOf(path));
   return (
     <AgentsView
+      announceState={(key, text) => context.announcer.announceState(key, text)}
       host={context.services.get(AgentsHostService)}
       engine={engineWordsOf(context)}
       {...(open ? { open } : {})}
@@ -83,6 +84,8 @@ export interface AgentsViewProps {
   readonly openFile?: (path: string) => void;
   /** What the page calls the engine when it can't read, for this window's host; the desktop app's by default. */
   readonly engine?: EngineWords;
+  /** Reads how many items a search or hub change left (`announcer.announceState`); absent in tests that don't listen. */
+  readonly announceState?: ((key: string, text: string) => void) | undefined;
 }
 
 /**
@@ -94,7 +97,14 @@ export interface AgentsViewProps {
  * @example
  * <AgentsView host={host} open={openAgentTab} />
  */
-export function AgentsView({ host, open, openInNewTab, openFile, engine }: AgentsViewProps) {
+export function AgentsView({
+  host,
+  open,
+  openInNewTab,
+  openFile,
+  engine,
+  announceState,
+}: AgentsViewProps) {
   const words = engine ?? engineWordsOf({});
   const phone = usePresentation() === "phone";
   const [load, setLoad] = useState<Load>({ kind: "loading" });
@@ -255,6 +265,7 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
         />
       ) : (
         <OverviewPage
+          announceState={announceState}
           hubs={agentHubs(host.hubs(), listings)}
           words={{
             searchLabel: listWords.searchLabel,
@@ -266,6 +277,7 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
             sharedSection: (workspace) => workspace,
             emptySection: (hubName) => listWords.emptyHub(hubName),
             noMatch: listWords.noMatch,
+            shownCount: listWords.shownCount,
             nothingYet: {
               title: listWords.nothingYetTitle,
               description: listWords.sentence,

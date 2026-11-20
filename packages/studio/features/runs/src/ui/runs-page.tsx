@@ -11,7 +11,7 @@ import {
   useTooltip,
 } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWordsOf, type PlaceViewProps } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { type RunnableWorkflow, RunStartHostService, SampleHintService } from "../api.ts";
 import { listRows } from "../list/list-rows.ts";
 import type { RunRow } from "../list/run-row.ts";
@@ -283,8 +283,8 @@ function Runs({
 
 /**
  * The status chips, one choice, with counts on Live and Needs you; then the Test runs chip, and
- * the Workflow chip while the list is of one workflow, which clears it. On a phone the two groups
- * are two rows.
+ * the Workflow chip while the list is of one workflow, which clears it and hands the focus to Test
+ * runs, the chip before it (HAL-14241). On a phone the two groups are two rows.
  */
 function Filters({
   rows,
@@ -298,6 +298,12 @@ function Filters({
   readonly phone: boolean;
 }) {
   const counts = statusCounts(rows, filters);
+  const toggleRow = useRef<HTMLDivElement>(null);
+  const showEveryWorkflow = () => {
+    // The Workflow chip goes away with the focus on it; Test runs, the row's first chip, stays.
+    toggleRow.current?.querySelector("button")?.focus();
+    onChange({ ...filters, workflow: undefined });
+  };
   const chip = (value: StatusFilter, count?: number) => ({
     value,
     label:
@@ -321,25 +327,28 @@ function Filters({
         value={filters.status}
         onChange={(status) => onChange({ ...filters, status })}
       />
-      <FilterChips
-        label={pageWords.filters}
-        toggles={[
-          {
-            label: pageWords.testRuns,
-            pressed: filters.testRuns,
-            onChange: (testRuns) => onChange({ ...filters, testRuns }),
-          },
-          ...(filters.workflow === undefined
-            ? []
-            : [
-                {
-                  label: pageWords.workflow(workflowName(rows, filters.workflow)),
-                  pressed: true,
-                  onChange: () => onChange({ ...filters, workflow: undefined }),
-                },
-              ]),
-        ]}
-      />
+      {/* `contents`: the wrapper holds the ref and leaves the row's layout to the chips. */}
+      <div ref={toggleRow} className="contents">
+        <FilterChips
+          label={pageWords.filters}
+          toggles={[
+            {
+              label: pageWords.testRuns,
+              pressed: filters.testRuns,
+              onChange: (testRuns) => onChange({ ...filters, testRuns }),
+            },
+            ...(filters.workflow === undefined
+              ? []
+              : [
+                  {
+                    label: pageWords.workflow(workflowName(rows, filters.workflow)),
+                    pressed: true,
+                    onChange: showEveryWorkflow,
+                  },
+                ]),
+          ]}
+        />
+      </div>
     </div>
   );
 }
@@ -360,8 +369,9 @@ const runColumns: readonly ListColumn[] = [
 ];
 
 /**
- * The runs in one list, under an `h3` for each day they started, which ↑ ↓
- * pass over; a click or Enter on a row opens its run.
+ * The runs in one list, under an `h2` for each day they started, right under the page's `h1` as
+ * Workflows and Routines head their groups; ↑ ↓ pass over them. A click or Enter on a row opens
+ * its run.
  */
 function DayList({
   rows,
@@ -380,6 +390,7 @@ function DayList({
         heading: { name: group.day },
         rows: group.rows.map(listRow),
       }))}
+      groupHeadingLevel={2}
       columns={runColumns}
       {...(openRow === undefined ? {} : { onOpen: openRow })}
     />
