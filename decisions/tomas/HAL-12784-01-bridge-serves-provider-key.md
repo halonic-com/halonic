@@ -2,6 +2,7 @@
 
 - Approval: the plan and three additions approved by Liam on HAL-12784; the package owner (Liam) approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fiQYVXPvxbzckV3HzZQ7jsg2ysVwnGfE0HYWvan27nIQMZ4lcTOFGbBWiEIhZNvkzVrErsYovtxAsIhoNXTTCA==
 
 ## What changes
 
