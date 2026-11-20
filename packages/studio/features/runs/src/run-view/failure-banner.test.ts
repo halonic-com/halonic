@@ -264,6 +264,26 @@ verifies("runs.run-view.failure-banners", () => {
     expect(details?.split("\n")).toEqual([line, expect.stringMatching(/^Run /), "engine text"]);
   });
 
+  describe("a secrets file other users can read", () => {
+    // The same cause and fix as the CLI's `run-failures.ts` (HAL-12569).
+    const file = "/profile/secrets/secrets.json";
+    const readable = (detail: Record<string, string>) =>
+      failed("error", { cause: { kind: "denied", code: "secrets.file-readable", detail } });
+
+    it("names the file and says to chmod 600 it, with no button", () => {
+      const banner = causeBanner(readable({ file }), undefined, context, false);
+      expect(lines(banner)).toEqual([
+        "Support reply stopped in the step Draft: the secrets file /profile/secrets/secrets.json can be read by other users. Run chmod 600 /profile/secrets/secrets.json, then run again.",
+      ]);
+      expect(banner).toMatchObject({ tone: "danger" });
+      expect(banner?.kind === "callout" ? banner.fixes : undefined).toBeUndefined();
+    });
+
+    it("keeps the general banner for a cause that doesn't name the file", () => {
+      expect(causeBanner(readable({}), undefined, context, false)).toBeUndefined();
+    });
+  });
+
   it("leaves every other run to the page's other banners", () => {
     expect(causeBanner(failed("error"), [], context, false)).toBeUndefined();
     expect(causeBanner(failed(null), [], context, false)).toBeUndefined();
