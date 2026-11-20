@@ -42,8 +42,9 @@ export const frameLengthBytes = 4;
 
 /**
  * The most broker requests (`secret_get`, `token_get`, `origins_get`) the
- * engine may have unanswered at once. The shell refuses any above it with
- * `too_many_requests`.
+ * engine may have unanswered at once, counting keychain calls that are still
+ * stuck after their answer timed out (the broker's `MAX_OUTSTANDING`). The
+ * shell refuses any above it with `busy`.
  */
 export const maxOpenBrokerRequests = 16;
 
@@ -73,8 +74,8 @@ export interface HandshakeMessage {
 /**
  * Asks for a workspace secret by name. The shell refuses Halonic's own names
  * by rule (`token_key`, `serve_password`, everything `SecretName::is_halonic`
- * covers, `plugin__*`), and answers only while the engine's workspace is
- * trusted on this computer.
+ * covers, `plugin__*`) with `reserved_name`, and answers only while the
+ * engine's workspace is trusted on this computer.
  */
 export interface SecretGetMessage {
   readonly kind: "secret_get";
@@ -82,7 +83,7 @@ export interface SecretGetMessage {
   readonly name: string;
 }
 
-/** Asks for a connector's OAuth token, through the shell's token store (names under `halonic_token_` only). */
+/** Asks for a connector's OAuth token, through the shell's token store: `name` without the `halonic_token_` prefix. */
 export interface TokenGetMessage {
   readonly kind: "token_get";
   readonly id: RequestId;
@@ -156,58 +157,69 @@ export interface StopMessage {
 /** How long the engine lets running steps end after `stop`. */
 export const stopGraceMs = 10_000;
 
-/** The answer to `secret_get` or `token_get` that found a value. */
+/**
+ * The broker's answer to `secret_get` or `token_get`: the value, or `null`
+ * when nothing is stored under the name.
+ */
 export interface ValueAnswer {
-  readonly kind: "value";
-  readonly id: RequestId;
-  readonly value: string;
+  readonly result: "value";
+  readonly value: string | null;
 }
 
-/** The answer to `origins_get`: the key's allowed origins, or `null` when it has no list (any origin). */
+/** The broker's answer to `origins_get`: the key's allowed origins, or `null` when none are recorded. */
 export interface OriginsAnswer {
-  readonly kind: "origins";
-  readonly id: RequestId;
+  readonly result: "origins";
   readonly origins: readonly string[] | null;
 }
 
-/** The answer to a broker request whose name has nothing stored. */
-export interface MissingAnswer {
-  readonly kind: "missing";
-  readonly id: RequestId;
-}
-
-/** Why the shell refused a broker request. */
+/**
+ * Why the broker gave no answer. The engine's `Secrets` adapter acts on each:
+ * `invalid_name` and `reserved_name` count as "not found" for that name;
+ * `untrusted` refuses the run as an untrusted workspace does; `busy`,
+ * `unavailable` and `denied` fail the step with "secrets unavailable";
+ * `unreadable` and `failed` fail the step.
+ */
 export type RefusalReason =
-  /** A name the engine may never read, such as the token store's key. */
-  | "halonic_name"
+  /** The name breaks the secret name rule. */
+  | "invalid_name"
+  /** Halonic's own name or a plugin's, such as the token store's key: the engine never gets it. */
+  | "reserved_name"
   /** The engine's workspace has no trust record on this computer now. */
-  | "workspace_not_trusted"
-  /** More than {@link maxOpenBrokerRequests} requests were unanswered. */
-  | "too_many_requests";
+  | "untrusted"
+  /** The engine has {@link maxOpenBrokerRequests} requests open already. */
+  | "busy"
+  /** No keychain, or it didn't answer in about 30 seconds (it may be locked). */
+  | "unavailable"
+  /** The user or the system refused access to the keychain. */
+  | "denied"
+  /** The stored value can no longer be read. */
+  | "unreadable"
+  /** Any other keychain failure. */
+  | "failed";
 
-/** The answer to a broker request the shell refused. */
+/** The broker's refusal of a request. */
 export interface RefusedAnswer {
-  readonly kind: "refused";
-  readonly id: RequestId;
+  readonly result: "refused";
   readonly reason: RefusalReason;
 }
 
 /**
- * The answer when the keychain didn't answer in about 30 seconds, or is
- * locked. The step that asked fails with "secrets unavailable".
+ * The secret broker's answer, as the shell's `halonic-secret-broker` crate
+ * serializes its `BrokerAnswer`: the body of a {@link SecretAnswerMessage}.
  */
-export interface UnavailableAnswer {
-  readonly kind: "unavailable";
-  readonly id: RequestId;
-}
+export type BrokerAnswer = ValueAnswer | OriginsAnswer | RefusedAnswer;
 
-/** Every answer to a broker request. */
-export type BrokerAnswer =
-  | ValueAnswer
-  | OriginsAnswer
-  | MissingAnswer
-  | RefusedAnswer
-  | UnavailableAnswer;
+/**
+ * The shell's one answer to a broker request: the request's id with the
+ * broker's answer beside it, e.g.
+ * `{ "kind": "secret_answer", "id": 3, "result": "value", "value": null }`.
+ * A `value` answer to `origins_get`, or an `origins` answer to the others, is
+ * a fault.
+ */
+export type SecretAnswerMessage = {
+  readonly kind: "secret_answer";
+  readonly id: RequestId;
+} & BrokerAnswer;
 
 /** Every frame the shell may send. The engine stops on any other. */
-export type ShellMessage = SandboxHostMessage | StopMessage | BrokerAnswer;
+export type ShellMessage = SandboxHostMessage | StopMessage | SecretAnswerMessage;
