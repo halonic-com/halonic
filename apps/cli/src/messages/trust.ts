@@ -193,6 +193,8 @@ export const trustMessages = defineMessages("trust", {
     phrase`--yes needs --fingerprint, so you trust exactly what you reviewed.`,
   yesNeedsFingerprintFix: (dir?: string) =>
     phrase`Run ${suggestedCommand("trust", dir)} to see it; the fingerprint is in the check, above the question.`,
+  /** The option the word means, as the fix: "Did you mean --remove?". */
+  optionNear: (option: string) => phrase`Did you mean ${option}?`,
   /**
    * `--fingerprint` doesn't match: exit 3, and never a question, also in a
    * terminal (F5). Line 1 on its own: an old fingerprint and a made-up one

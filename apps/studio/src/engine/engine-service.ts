@@ -431,7 +431,7 @@ export class EngineService {
               runDefinitionsOf(workspace, hubId, workflowId),
             budget: workspaceBudget(() => workspace),
             // Each harness step asks again, so trust removed where this window doesn't hear it
-            // (`halonic trust revoke`) still starts no harness program (HAL-12811). The trust
+            // (`halonic trust --remove`) still starts no harness program (HAL-12811). The trust
             // itself, not `mayStart`: a resumed run's step runs from its kept definitions, which
             // can have a harness agent the loaded workspace no longer has.
             mayStartHarness: () => this.#options.isTrusted(workspace).catch(() => false),

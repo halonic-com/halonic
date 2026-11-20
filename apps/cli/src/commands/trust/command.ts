@@ -17,9 +17,11 @@ import { type CommandSearch, nodeCommandSearch } from "../../command-paths.ts";
 import { exitCode } from "../../exit-code.ts";
 import { columns } from "../../messages/columns.ts";
 import type { Message } from "../../messages/define.ts";
+import { usageMessages } from "../../messages/general.ts";
 import { markPart, type Phrase, phrase } from "../../messages/phrase.ts";
 import { pluginMessages } from "../../messages/plugin.ts";
 import { trustMessages } from "../../messages/trust.ts";
+import { nearMatch } from "../../near-match.ts";
 import { NotTrustedError } from "../../not-trusted.ts";
 import { printable } from "../../output/printable.ts";
 import {
@@ -75,6 +77,7 @@ export function createTrustCommand(
     name: "trust",
     usage:
       "[--dir <folder> | --plugin <id>] [--yes --fingerprint <fingerprint>] [--list] [--remove]",
+    strayArgumentFix: optionForWord,
     summary: trustMessages.summary(),
     action: (input) => trustMessages.action(givenPlugin(input) ?? givenDir(input)),
     options: {
@@ -341,6 +344,32 @@ async function nameAt(location: string, fallback: string): Promise<string> {
   }
   const parsed = parseFile("workspace", text);
   return parsed.ok ? parsed.value.value.name : fallback;
+}
+
+/** Words people type for an option of `trust`, for "Did you mean" (HAL-14124). */
+const optionWords: Readonly<Record<string, string>> = {
+  revoke: "--remove",
+  remove: "--remove",
+  delete: "--remove",
+  forget: "--remove",
+  untrust: "--remove",
+  list: "--list",
+  ls: "--list",
+};
+
+/**
+ * The fix line when `trust`, which takes only options, gets a word: `revoke`
+ * gets the option it likely means, "Did you mean --remove?" (HAL-14124), and
+ * any other word `--dir` with it, as for other commands (HAL-12639).
+ */
+function optionForWord(word: string): Message {
+  const typed = word.toLowerCase();
+  const near = Object.hasOwn(optionWords, typed)
+    ? optionWords[typed]
+    : nearMatch(`--${typed}`, ["--list", "--remove"]);
+  return near === undefined
+    ? usageMessages.useDirOption("trust", word)
+    : trustMessages.optionNear(near);
 }
 
 /** The `--plugin` id, made safe to print, for "✕ Couldn't trust weather: …". */

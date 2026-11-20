@@ -222,7 +222,7 @@ verifies("studio.untrusted-starts-nothing", () => {
     it("refuses the next harness step when the trust goes where the window doesn't hear it (HAL-12811)", async () => {
       const { trust, timers, harness, service, id } = await harnessRunWaiting();
 
-      // As `halonic trust revoke` in a terminal: the trust is gone, and no listener is told.
+      // As `halonic trust --remove` in a terminal: the trust is gone, and no listener is told.
       trust.change(false, { quietly: true });
       timers.fireAll();
       const { runs } = await service.open();
