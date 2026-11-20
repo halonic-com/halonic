@@ -2,7 +2,6 @@
 
 - Approval: the plan and three additions approved by Liam on HAL-12784; the package owner (Liam) approves this note in review
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fiQYVXPvxbzckV3HzZQ7jsg2ysVwnGfE0HYWvan27nIQMZ4lcTOFGbBWiEIhZNvkzVrErsYovtxAsIhoNXTTCA==
 
 ## What changes
 
@@ -17,6 +16,11 @@ decides. Nothing else in that requirement changes.
 - Tests: in `bridge-host.test.ts`, the two tests that check what `servicesFor` is told now also
   expect where the agent runs (`runsOn: "sandbox"`), which the bridge host takes from the
   placement the engine opens the bridge with. No assertion is removed or weakened.
+- From Liam's security review: `providerAccessOf` refuses, rather than spend another provider's
+  key, when the agent's model points to a provider of that type with no `secret`
+  (`harness-host.provider-access` rule 4, with a test). `cli.harness-provider-key` now says the
+  trust and allowed-address checks run when the bridge opens, not on every call, and its test also
+  checks that no file the program may read holds the key.
 - In the new `harness-provider-key.test.ts`, the three tests that call the CLI's bridge on its Unix
   socket skip on Windows (`it.skipIf(noUnixSockets)`, named `[platform:win32] …` as the skip
   reporter asks). Windows has no Unix socket, and the CLI stops before the bridge there anyway;

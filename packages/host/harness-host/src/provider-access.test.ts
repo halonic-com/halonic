@@ -80,6 +80,24 @@ verifies("harness-host.provider-access", () => {
       }
     });
 
+    it("stops, rather than spend another provider's key, when its model points to one with no secret", () => {
+      const choose = () =>
+        providerAccessOf({
+          harness: "claude-code",
+          runsOn: "sandbox",
+          providers: [keyless, claude],
+          modelProvider: "keyless",
+        });
+
+      expect(choose).toThrow(KindedError);
+      expect(choose).toThrow(/provider "keyless", which names no secret/u);
+      try {
+        choose();
+      } catch (error) {
+        expect(errorKindOf(error)).toBe("invalid_input");
+      }
+    });
+
     it("keeps the program's own sign-in when no provider of its type has a secret", () => {
       expect(
         providerAccessOf({ harness: "claude-code", runsOn: "sandbox", providers: [keyless, gpt] }),

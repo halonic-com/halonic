@@ -9,7 +9,8 @@ The bridge host shall tell the host's `servicesFor` the harness the call runs in
 1. An agent on this computer keeps the program's own sign-in.
 2. An agent in the sandbox gets the key of the provider of that type with a `secret` that its model points to, else of the only one, with the file's `baseUrl` when it has one, so the key goes only to that address.
 3. When several such providers could pay and the model points to none, it shall stop with an `invalid_input` error that names them.
-4. When the workspace has none, the agent keeps the program's own sign-in, and the choice says why, so the host can say how to add one.
+4. When the model points to a provider of that type with no `secret` while another one has one, it shall stop with an `invalid_input` error that names it, and never fall back to the other provider's key.
+5. When the workspace has none, the agent keeps the program's own sign-in, and the choice says why, so the host can say how to add one.
 
 The bridge host shall pass each failure the bridge reports through the host's `scrub` before the run log records it as `bridge.failed`, so the value of a key the bridge read never reaches the run log or the host's `reportError`, even when a provider's error quotes it.
 
@@ -27,6 +28,9 @@ The bridge host shall pass each failure the bridge reports through the host's `s
 - Given two Anthropic providers with a secret and an agent whose model points to neither,
   when its access is decided,
   then it stops with an error naming both.
+- Given an Anthropic provider `keyless` with no secret, an Anthropic provider `claude` with one, and an agent whose model points to `keyless`,
+  when its access is decided,
+  then it stops with an error naming `keyless`, and `claude`'s key is not spent.
 - Given a sandboxed Claude Code agent and no Anthropic provider with a secret,
   when its access is decided,
   then it keeps Claude Code's own sign-in, because no keyed provider exists.

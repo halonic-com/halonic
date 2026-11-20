@@ -71,12 +71,17 @@ export type ProviderAccessChoice =
  * 1. On this computer, the program's own sign-in, which works there and
  *    spends nothing.
  * 2. In the sandbox, the key of a provider of the harness's type that has a
- *    `secret`: the one the agent's `model` points to, else the only one.
+ *    `secret`: the one the agent's `model` points to, else the only one. A
+ *    model pointing to such a provider with no `secret` never falls back to
+ *    another one's key.
  * 3. In the sandbox with no such provider, the program's own sign-in, as
  *    before: the host says how to add one.
  *
  * @throws KindedError `invalid_input` when the workspace has several such
  *   providers and the agent's model points to none of them; the message names them
+ * @throws KindedError `invalid_input` when the agent's model points to a
+ *   provider of that type with no `secret` while another one has one: the
+ *   key of a provider the agent isn't tied to is never spent
  *
  * @example
  * providerAccessOf({ harness: "claude-code", runsOn: "sandbox", providers: [{ id: "claude", type: "anthropic", secret: "anthropic-key" }] });
@@ -91,6 +96,17 @@ export function providerAccessOf(input: ProviderAccessInput): ProviderAccessChoi
     (file): file is AccessProviderFile & { secret: string } =>
       file.type === provider && file.secret !== undefined,
   );
+  const pointedTo = input.providers.find(
+    (file) => file.type === provider && file.id === input.modelProvider,
+  );
+  if (pointedTo !== undefined && pointedTo.secret === undefined && keyed.length > 0) {
+    // Another provider's key would go to an address and allow-list the
+    // workspace never tied to this agent, so the run stops instead.
+    throw new KindedError(
+      "invalid_input",
+      `The agent's model points to the ${providerNames[provider]} provider "${pointedTo.id}", which names no secret, so the sandboxed agent has no key to call it with. Add a secret to providers/${pointedTo.id}.yaml and save it with halonic secret set, or point the model to a provider that has one.`,
+    );
+  }
   const chosen =
     keyed.find((file) => file.id === input.modelProvider) ??
     (keyed.length === 1 ? keyed[0] : undefined);

@@ -1,4 +1,4 @@
-import { readFile, realpath, writeFile } from "node:fs/promises";
+import { readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import { request } from "node:http";
 import { join } from "node:path";
 import { FileAgentPlacementStore, FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
@@ -123,15 +123,46 @@ function callModel(bridge: HarnessBridge): Promise<Reply> {
   });
 }
 
+/** Every file under `path` (itself, when it is a file); nothing when it doesn't exist. */
+async function filesUnder(path: string): Promise<string[]> {
+  const found = await stat(path).catch(() => undefined);
+  if (found === undefined) return [];
+  if (!found.isDirectory()) return [path];
+  const entries = await readdir(path, { recursive: true, withFileTypes: true });
+  return entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => join(entry.parentPath, entry.name));
+}
+
+/** The files the program may read, per its sandbox profile, whose text holds `value`. */
+async function readableFilesHolding(given: SandboxProfile, value: string): Promise<string[]> {
+  const folders = [
+    given.workingFolder,
+    given.tempFolder,
+    given.settingsFolder,
+    ...given.readOnlyPaths,
+  ];
+  const holding: string[] = [];
+  for (const folder of folders) {
+    if (folder === null) continue;
+    for (const file of await filesUnder(folder)) {
+      if ((await readFile(file, "utf8")).includes(value)) holding.push(file);
+    }
+  }
+  return holding;
+}
+
 /** Runs Change with the coder calling its model once, and gives what each side saw. */
 async function runWithModelCall(version: RunVersion, keys: EngineKeys) {
   const replies: Reply[] = [];
-  const seen: { profile?: SandboxProfile } = {};
+  const seen: { profile?: SandboxProfile; filesWithKey?: string[] } = {};
   const fakes = fakesFor(
     {
       onStart: async (given, bridge) => {
         seen.profile = given;
         if (bridge !== undefined) replies.push(await callModel(bridge));
+        // Looked at while the program runs, when its folders are as it sees them.
+        seen.filesWithKey = await readableFilesHolding(given, key);
       },
     },
     { bridge: "node" },
@@ -139,7 +170,7 @@ async function runWithModelCall(version: RunVersion, keys: EngineKeys) {
   const engine = await openEngine(fakes, contractGrant, true, keys);
   const { runId, summary } = await runChange(engine, version);
   const log = JSON.stringify(await engine.runs.events(runId));
-  return { fakes, replies, profile: seen.profile, summary, log };
+  return { fakes, replies, profile: seen.profile, filesWithKey: seen.filesWithKey, summary, log };
 }
 
 /**
@@ -162,6 +193,7 @@ verifies("cli.harness-provider-key", () => {
       const {
         replies,
         profile: given,
+        filesWithKey,
         log,
       } = await runWithModelCall(version, {
         secrets: savedKey,
@@ -177,6 +209,8 @@ verifies("cli.harness-provider-key", () => {
       // The program's environment and arguments hold the bridge's stand-in, never the key.
       expect(JSON.stringify(given)).not.toContain(key);
       expect(JSON.stringify(given?.env)).toContain("ANTHROPIC_BASE_URL");
+      // No file the program may read holds the key either.
+      expect(filesWithKey).toEqual([]);
       // The run log names the provider the key came from, never the key.
       expect(log).toContain('"provider":"claude"');
       expect(log).not.toContain(key);
