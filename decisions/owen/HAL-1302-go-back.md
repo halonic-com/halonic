@@ -3,6 +3,7 @@
 - Task: HAL-1302
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14026 (GB2 from the C289 check of #4113: the shared-versions line becomes Go back's `aria-describedby`; a team decision with no board card, HAL-2282 rule, because it is a detail of the approved Go back screen and adds no words)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Xqe/WjK+qgOTW8L6hZwjueTMpzTYAWuA/BJeQn91Z1XujYUX1YBzX8vOHgV0ir9aH05xVUKQVEaU085x3e7JAw==
 
 ## What changes
 
