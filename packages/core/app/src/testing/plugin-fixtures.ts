@@ -59,3 +59,48 @@ export const weatherFiles: readonly PluginFileHash[] = [
   { path: "plugin.yaml", sha256: "a".repeat(64) },
   { path: "backend/index.js", sha256: "b".repeat(64) },
 ];
+
+/**
+ * A plugin whose backend signs in to a self-hosted Acme server, at the
+ * address in the setting `server`, with a client secret. The `plugin` kind
+ * still refuses a backend with sign-ins until the host runs them (HAL-8613),
+ * so it is built as the kind would fill it in. Example data only.
+ */
+export function signInPlugin(): Plugin {
+  const plugin = pluginFrom(`id: acme
+version: 1.0.0
+sdk: 2
+name: Acme
+description: Your Acme projects.
+backend:
+  hosts: [{ fromSetting: server, class: public }]
+  tools:
+    - { name: list-projects, description: Lists your projects., risk: read, untrusted: true }
+ui:
+  settings:
+    server: { label: Server address, type: text, required: true }
+`);
+  const backend = plugin.backend;
+  if (backend === undefined) throw new Error("the fixture has a backend");
+  return {
+    ...plugin,
+    backend: {
+      ...backend,
+      secrets: { "acme-client": { purpose: "The Acme app's client secret" } },
+      signIns: {
+        account: {
+          purpose: "Your Acme projects",
+          flow: "oauth-code",
+          authorizeUrl: { fromSetting: "server", path: "/oauth/authorize" },
+          tokenUrl: { fromSetting: "server", path: "/oauth/token" },
+          revokeUrl: "https://revoke.example.com/oauth/revoke",
+          clientId: "example-client",
+          clientSecret: "acme-client",
+          clientAuth: "post",
+          scopes: [{ scope: "read_api", reason: "read your projects" }],
+          access: { hosts: [{ fromSetting: "server" }], as: "bearer" },
+        },
+      },
+    },
+  };
+}

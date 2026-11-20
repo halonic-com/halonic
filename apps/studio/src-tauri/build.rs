@@ -49,6 +49,7 @@ fn main() {
         "agent_host_stream",
         "agent_host_stream_end",
         "agent_host_security_updates",
+        "agent_host_sandbox_choice_save",
         "http_fetch",
         "http_fetch_abort",
         "fs_list",

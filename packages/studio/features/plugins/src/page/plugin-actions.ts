@@ -5,6 +5,7 @@
 
 import type { PluginTrustChanges } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
+import { lowerAfterColon } from "@halonicjs/studio-shell";
 import type { ProgramsRun } from "../trust/trust-text.ts";
 
 /** How removing a plugin ended: core's `PluginService.remove`. */
@@ -231,18 +232,9 @@ export function actionFailedLine(action: string, reason: string): string {
   return `Couldn't ${action}: ${afterColon(reason)}.`;
 }
 
-/**
- * A host's message after a colon: no closing full stop, and a capital that only starts the
- * sentence lower-cased ("The disk is full." is "the disk is full"), so a name keeps its capital:
- * "Halonic" and "Studio" too.
- */
+/** A host's message after a colon ({@link lowerAfterColon}), with no closing full stop. */
 function afterColon(reason: string): string {
-  const trimmed = reason.trim().replace(/\.$/, "");
-  return /^\p{Lu}\p{Ll}/u.test(trimmed) &&
-    !/^\S+\p{Lu}/u.test(trimmed) &&
-    !/^(?:Halonic|Studio)\b/u.test(trimmed)
-    ? trimmed.charAt(0).toLowerCase() + trimmed.slice(1)
-    : trimmed;
+  return lowerAfterColon(reason.trim().replace(/\.$/, ""));
 }
 
 /** What each action is called in `actionFailedLine`. */

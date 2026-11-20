@@ -3,10 +3,11 @@ import type {
   PluginItemChanges,
   PluginLocalToolContent,
   PluginSecretContent,
+  PluginSignInContent,
   PluginToolContent,
   PluginTrustChanges,
 } from "@halonicjs/app";
-import { pluginTrustContent } from "@halonicjs/app";
+import { pluginTrustContent, signInScopesLine } from "@halonicjs/app";
 import type { Plugin } from "@halonicjs/format";
 import { RISK_WORDS } from "../page/page-text.ts";
 import type { PluginToolRisk } from "../page/plugin-pages.ts";
@@ -54,6 +55,17 @@ const FIELD_NOUNS: Readonly<Record<string, string>> = {
   network: "where it may reach",
   callTimeoutMs: "its time limit",
   hosts: "where it may reach",
+  authorizeUrl: "where you sign in",
+  tokenUrl: "where Halonic gets the tokens",
+  revokeUrl: "where signing out is sent",
+  revokeEndsClientGrants: "what signing out ends",
+  issuer: "who issues the sign-in",
+  clientId: "its client ID",
+  clientSecret: "its client secret",
+  clientAuth: "how Halonic identifies itself",
+  scopes: "what it can do",
+  access: "where the sign-in is used",
+  flow: "how it signs in",
 };
 
 /**
@@ -115,6 +127,36 @@ function secretRows(changes: PluginItemChanges<PluginSecretContent>): ChangeRow[
   ];
 }
 
+/**
+ * A new sign-in says what it is for; a changed one names what changed, since
+ * a whole trust line before and after would be hard to compare. When its
+ * scopes changed, the row adds what it can do now, so the person sees what
+ * they agree to before trusting again (HAL-14004).
+ */
+function signInRows(changes: PluginItemChanges<PluginSignInContent>): ChangeRow[] {
+  const name = (signIn: PluginSignInContent) => `Sign-in ${signIn.name}`;
+  const changedSignInRow = (change: (typeof changes.changed)[number]): ChangeRow => {
+    const row = changedRow(name(change.after), change, () => "");
+    const can = change.fields.includes("scopes")
+      ? signInScopesLine(change.after.scopes.map((scope) => scope.reason))
+      : "";
+    return can === "" ? row : { ...row, to: `${row.to}. ${can}` };
+  };
+  return [
+    ...changes.added.map((signIn) => ({
+      tag: "New" as const,
+      what: name(signIn),
+      to: signIn.purpose,
+    })),
+    ...changes.changed.map(changedSignInRow),
+    ...changes.removed.map((signIn) => ({
+      tag: "Removed" as const,
+      what: name(signIn),
+      from: signIn.purpose,
+    })),
+  ];
+}
+
 function hostRows(changes: PluginItemChanges<PluginHostContent>): ChangeRow[] {
   const name = (host: PluginHostContent) =>
     `Address ${hostWords(host.host)}${partWords(host.part)}`;
@@ -154,7 +196,7 @@ function programRows(changes: PluginItemChanges<PluginLocalToolContent>): Change
   ];
 }
 
-/** What stayed the same: the plugin's tools, programs, secrets and addresses no row mentions. */
+/** What stayed the same: the plugin's tools, programs, secrets, sign-ins and addresses no row mentions. */
 function unchangedOf(manifest: Plugin, changes: Extract<PluginTrustChanges, { readable: true }>) {
   const content = pluginTrustContent({ plugin: manifest, files: [] });
   const touched = (list: PluginItemChanges<object>, key: (item: never) => string) =>
@@ -167,6 +209,7 @@ function unchangedOf(manifest: Plugin, changes: Extract<PluginTrustChanges, { re
     (secret: PluginSecretContent) => `${secret.part}\n${secret.name}`,
   );
   const programs = touched(changes.localTools, (program: PluginLocalToolContent) => program.id);
+  const signIns = touched(changes.signIns, (signIn: PluginSignInContent) => signIn.name);
   const hosts = touched(
     changes.hosts,
     (host: PluginHostContent) => `${host.part}\n${hostWords(host.host)}`,
@@ -181,6 +224,9 @@ function unchangedOf(manifest: Plugin, changes: Extract<PluginTrustChanges, { re
     ...content.secrets
       .filter((secret) => !secrets.has(`${secret.part}\n${secret.name}`))
       .map((secret) => `Secret ${secret.name}${partWords(secret.part)}`),
+    ...(content.signIns ?? [])
+      .filter((signIn) => !signIns.has(signIn.name))
+      .map((signIn) => `Sign-in ${signIn.name}`),
     ...content.hosts
       .filter((host) => !hosts.has(`${host.part}\n${hostWords(host.host)}`))
       .map((host) => `Address ${hostWords(host.host)}${partWords(host.part)}`),
@@ -190,6 +236,10 @@ function unchangedOf(manifest: Plugin, changes: Extract<PluginTrustChanges, { re
 /** Whether a section row already says the change in a manifest's `backend` or `localTools` part. */
 function partHasRow(field: string, changes: Extract<PluginTrustChanges, { readable: true }>) {
   if (field !== "backend" && field !== "localTools") return false;
+  // A sign-in is always the backend's.
+  const signIns = changes.signIns;
+  if (field === "backend" && [...signIns.added, ...signIns.removed, ...signIns.changed].length > 0)
+    return true;
   const lists = [changes.tools, changes.secrets, changes.hosts, changes.localTools];
   return lists.some((list) =>
     [...list.added, ...list.removed, ...list.changed.map(({ after }) => after)].some((item) => {
@@ -212,7 +262,7 @@ const FIELD_WORDS: Readonly<Record<string, string>> = {
 /**
  * What changed in a plugin since the person trusted it, as the trust check lists it (design
  * section 6): the changes core found, in the order the trust check shows its sections (tools,
- * programs, secrets, addresses), then the plugin's own fields, its files and any other part of the
+ * programs, secrets, sign-ins, addresses), then the plugin's own fields, its files and any other part of the
  * manifest, and what stayed as it was. Core keeps no old value for a field or a file, so those
  * rows only say that it changed.
  *
@@ -226,6 +276,7 @@ export function changeSummary(manifest: Plugin, changes: PluginTrustChanges): Pl
     ...toolRows(changes.tools),
     ...programRows(changes.localTools),
     ...secretRows(changes.secrets),
+    ...signInRows(changes.signIns),
     ...hostRows(changes.hosts),
     ...changes.plugin.map((field) => ({
       tag: "Changed" as const,

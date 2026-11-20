@@ -1,10 +1,7 @@
 import {
   Button,
   Callout,
-  Dialog,
   EmptyState,
-  Field,
-  Input,
   LetterTile,
   Menu,
   MoreIcon,
@@ -17,7 +14,7 @@ import {
   useTabIds,
   useToastStore,
 } from "@halonicjs/studio-kit";
-import { ItemGone, type ItemViewProps, NameField } from "@halonicjs/studio-shell";
+import { ItemGone, type ItemViewProps, NameField, RenameSheet } from "@halonicjs/studio-shell";
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { type RoutinesHost, RoutinesHostService, type RoutineView } from "../api.ts";
 import { trashRoutine } from "../list/trash-routine.ts";
@@ -409,7 +406,8 @@ function RoutineHeader({
         </div>
       )}
       {routine !== undefined && renaming && (
-        <RenameDialog
+        <RenameSheet
+          kindName="routine"
           name={name}
           onRename={(next) => rename(routine, next)}
           onClose={() => setRenaming(false)}
@@ -419,52 +417,5 @@ function RoutineHeader({
         <RunDialog host={host} routine={routine} onRun={start} onCancel={() => setAsking(false)} />
       )}
     </header>
-  );
-}
-
-/**
- * The phone's rename sheet (`routines.page.rename-and-delete`): the name in one field and
- * **Rename**. An empty name or the same name saves nothing; the first says what is wrong.
- */
-function RenameDialog({
-  name,
-  onRename,
-  onClose,
-}: {
-  readonly name: string;
-  readonly onRename: (name: string) => void;
-  readonly onClose: () => void;
-}) {
-  const [draft, setDraft] = useState(name);
-  const [problem, setProblem] = useState<string>();
-  const confirm = () => {
-    const trimmed = draft.trim();
-    if (trimmed === "") {
-      setProblem(pageWords.renameNameMissing);
-      return;
-    }
-    if (trimmed !== name) onRename(trimmed);
-    onClose();
-  };
-  return (
-    <Dialog
-      title={pageWords.renameTitle}
-      size="md"
-      form
-      confirm={{ label: pageWords.rename, busyLabel: pageWords.rename }}
-      onConfirm={confirm}
-      onCancel={onClose}
-    >
-      <Field label={pageWords.renameNameField} error={problem ?? null}>
-        <Input
-          autoFocus
-          value={draft}
-          onChange={(event) => {
-            setProblem(undefined);
-            setDraft(event.target.value);
-          }}
-        />
-      </Field>
-    </Dialog>
   );
 }

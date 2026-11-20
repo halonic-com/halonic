@@ -7,7 +7,13 @@ import {
   usePresentation,
   useToastStore,
 } from "@halonicjs/studio-kit";
-import { type ItemViewProps, PhoneTopBarActions, useInPhoneTopBar } from "@halonicjs/studio-shell";
+import {
+  type ItemViewProps,
+  PhoneTopBarActions,
+  RenameSheet,
+  renameSheetWords,
+  useInPhoneTopBar,
+} from "@halonicjs/studio-shell";
 import { useCallback, useRef, useState } from "react";
 import { deleteWords, phoneCanDelete } from "../delete-words.ts";
 import { itemFileRef } from "../item-file.ts";
@@ -25,13 +31,19 @@ export interface TrashableItem {
   readonly name: string;
   /** Who uses it, once the page has read it. */
   readonly usage?: ItemUsage;
+  /**
+   * Renames it, for a page whose title is its name field. Under a phone top bar, where that title
+   * is for screen readers only, ⋮ then starts with **Rename**, which opens the rename sheet.
+   */
+  readonly rename?: { readonly kindName: string; readonly onRename: (name: string) => void };
 }
 
 /** What {@link useItemTrash} gives a page. */
 export interface ItemTrash {
   /**
-   * The page's ⋮ button with Delete, or `null` when the app gives no Library items. Under a phone
-   * top bar it goes there, after the item's name, wherever the page puts it.
+   * The page's ⋮ button with Delete (and Rename, see {@link TrashableItem.rename}), or `null` when
+   * the app gives no Library items. Under a phone top bar it goes there, after the item's name,
+   * wherever the page puts it.
    */
   readonly menu: React.ReactNode;
   /** Goes on the page's title (`<h1 tabIndex={-1}>`): after Undo the page comes back with focus on it. */
@@ -59,7 +71,8 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
   const inTopBar = useInPhoneTopBar();
   const [removed, setRemoved] = useState<RemovedLibraryItem>();
   const [showingFile, setShowingFile] = useState(false);
-  const { kind, hub, id, name, usage } = item;
+  const { kind, hub, id, name, usage, rename } = item;
+  const renaming = useRenameFromMenu(inTopBar ? rename : undefined, name);
   const movedLine = usedByLine(usage ?? noUsage);
   // Set by Undo; the page's title takes focus when it is drawn again.
   const focusTitle = useRef(false);
@@ -95,6 +108,7 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
   }, [removed, name, toasts]);
 
   const entries = [
+    ...renaming.entries,
     // The desktop opens the file in a tab; a phone has no tabs, so it shows the text in a sheet.
     ...(host === undefined || (desktop && context.openItem === undefined)
       ? []
@@ -138,6 +152,7 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
             onClose={() => setShowingFile(false)}
           />
         )}
+        {renaming.sheet}
       </>
     );
   // Undo takes focus: the page and its ⋮ button, where focus was, are gone. The strip is the
@@ -156,4 +171,24 @@ export function useItemTrash(context: ItemViewProps["context"], item: TrashableI
     );
   const titleClassName = inTopBar ? "sr-only" : "text-title [overflow-wrap:anywhere]";
   return { menu, titleRef, titleClassName, strip };
+}
+
+/**
+ * ⋮'s **Rename** and the rename sheet it opens, for a page under a phone's top bar whose title has
+ * no name field; nothing when `rename` is absent.
+ */
+function useRenameFromMenu(rename: TrashableItem["rename"], name: string) {
+  const [open, setOpen] = useState(false);
+  if (rename === undefined) return { entries: [], sheet: null };
+  return {
+    entries: [{ id: "rename", label: renameSheetWords.rename, onSelect: () => setOpen(true) }],
+    sheet: open && (
+      <RenameSheet
+        kindName={rename.kindName}
+        name={name}
+        onRename={rename.onRename}
+        onClose={() => setOpen(false)}
+      />
+    ),
+  };
 }

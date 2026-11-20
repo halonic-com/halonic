@@ -111,7 +111,10 @@ function scanLine(
   termsOnly: boolean,
 ): Finding[] {
   const findings: Finding[] = [];
-  if (settings.terms.matches(text)) {
+  if (
+    settings.terms.matches(text) &&
+    !settings.allowList.allows(personalTermRule, at.file, undefined, { commit: at.commit })
+  ) {
     findings.push({ ...at, rule: personalTermRule, message: termMessage });
   }
   if (!termsOnly) {

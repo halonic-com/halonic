@@ -3,9 +3,15 @@
 // is what the prompt shows, plus the whole manifest and the hash of every
 // file, so any change to the plugin changes its fingerprint.
 
-import { type Plugin, type PluginLocalTool, placedSecrets } from "@halonicjs/format";
+import {
+  type IntegrationSignIn,
+  type Plugin,
+  type PluginLocalTool,
+  placedSecrets,
+} from "@halonicjs/format";
 import type { Digest } from "@halonicjs/ports";
 import { bytesToHex, canonicalJson, encodeUtf8 } from "@halonicjs/std";
+import { pluginClientSecretHosts, pluginClientSecretNames } from "./plugin-sign-in-trust.ts";
 
 /**
  * The prefix of a plugin fingerprint. It differs from a workspace's
@@ -33,6 +39,15 @@ export interface PluginSecretContent {
   optional: boolean;
   /** For a backend secret, how the kit puts it in: `bearer`, `header` or `form`, with its field. */
   placement?: Record<string, unknown>;
+}
+
+/**
+ * A sign-in the backend declares, as the sheet writes it: where the person
+ * signs in, where Halonic gets the tokens, the scopes and where the access
+ * token may go. A host that comes from a setting stays `{ fromSetting }`.
+ */
+export interface PluginSignInContent extends IntegrationSignIn {
+  name: string;
 }
 
 /** A tool the plugin declares, with what it may do. */
@@ -71,6 +86,12 @@ export interface PluginTrustContent {
   plugin: { id: string; version: string; sdk: number; name: string };
   hosts: PluginHostContent[];
   secrets: PluginSecretContent[];
+  /**
+   * The backend's sign-ins, sorted by name; left out when it has none, so
+   * the content, and the fingerprint, of a plugin without sign-ins is what
+   * it was before sign-ins were shown (HAL-8613).
+   */
+  signIns?: PluginSignInContent[];
   tools: PluginToolContent[];
   localTools: PluginLocalToolContent[];
   /**
@@ -100,6 +121,7 @@ export interface PluginTrustInput {
 export function pluginTrustContent(input: PluginTrustInput): PluginTrustContent {
   const { plugin } = input;
   const localTools = plugin.localTools ?? [];
+  const signIns = backendSignIns(plugin);
   return {
     plugin: { id: plugin.id, version: plugin.version, sdk: plugin.sdk, name: plugin.name },
     hosts: sortByKey([...backendHosts(plugin), ...localTools.flatMap(localToolHosts)], hostKey),
@@ -107,6 +129,7 @@ export function pluginTrustContent(input: PluginTrustInput): PluginTrustContent 
       [...backendSecrets(plugin), ...localTools.flatMap(localToolSecrets)],
       partKey,
     ),
+    ...(signIns.length === 0 ? {} : { signIns: sortByKey(signIns, (signIn) => signIn.name) }),
     tools: sortByKey([...backendTools(plugin), ...localTools.flatMap(localToolTools)], partKey),
     localTools: sortByKey(localTools.map(localToolContent), (tool) => tool.id),
     manifest: plugin,
@@ -144,10 +167,28 @@ function localToolHosts(tool: PluginLocalTool): PluginHostContent[] {
 }
 
 function backendSecrets(plugin: Plugin): PluginSecretContent[] {
-  return placedSecrets(plugin.backend?.secrets ?? {}).map(([name, secret]) => {
-    const { purpose, hosts, optional, ...placement } = secret;
-    return { part: "backend", name, purpose, hosts, optional, placement };
-  });
+  const placed = placedSecrets(plugin.backend?.secrets ?? {}).map(
+    ([name, secret]): PluginSecretContent => {
+      const { purpose, hosts, optional, ...placement } = secret;
+      return { part: "backend", name, purpose, hosts, optional, placement };
+    },
+  );
+  return [...placed, ...clientSecrets(plugin)];
+}
+
+/**
+ * A sign-in's client secret, with the token and revoke hosts it may go to as
+ * its hosts. It has no placement: Halonic's sign-in code sends it, never the
+ * plugin's. Only a plugin with sign-ins has one, so no other content changes.
+ */
+function clientSecrets(plugin: Plugin): PluginSecretContent[] {
+  return pluginClientSecretNames(plugin).map((name) => ({
+    part: "backend",
+    name,
+    purpose: plugin.backend?.secrets[name]?.purpose ?? "",
+    hosts: pluginClientSecretHosts(plugin, name),
+    optional: false,
+  }));
 }
 
 function localToolSecrets(tool: PluginLocalTool): PluginSecretContent[] {
@@ -157,6 +198,13 @@ function localToolSecrets(tool: PluginLocalTool): PluginSecretContent[] {
     purpose: secret.purpose,
     hosts: secret.hosts,
     optional: secret.optional,
+  }));
+}
+
+function backendSignIns(plugin: Plugin): PluginSignInContent[] {
+  return Object.entries(plugin.backend?.signIns ?? {}).map(([name, signIn]) => ({
+    name,
+    ...signIn,
   }));
 }
 

@@ -39,7 +39,7 @@ describe("WorkspaceSwitcher", () => {
     const switcher = container.querySelector('button[aria-haspopup="menu"]') as HTMLButtonElement;
     expect(switcher.textContent).toBe(`AAcme${folder}`);
     const kept = switcher.querySelector(".whitespace-pre-wrap");
-    expect(kept?.textContent).toBe("\\OneDrive - Acme BV\\Documents\\Acme sample");
+    expect(kept?.textContent).toBe("\\Documents\\Acme sample");
   });
 
   it("while busy, shows a spinner for the chevron, says aria-busy and ignores presses", () => {

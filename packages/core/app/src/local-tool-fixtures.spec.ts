@@ -124,6 +124,8 @@ export class TestFactory implements ConnectorFactory {
   readonly transport = "stdio";
   readonly contexts: ConnectorFactoryContext[] = [];
   closed = 0;
+  /** When set, each connector's close throws after counting itself. */
+  closeFails = false;
 
   create(created: ConnectorConfig, context: ConnectorFactoryContext): ConnectorClient {
     this.contexts.push(context);
@@ -139,6 +141,7 @@ export class TestFactory implements ConnectorFactory {
       },
       close: async () => {
         this.closed += 1;
+        if (this.closeFails) throw new Error("the connector didn't close");
       },
     };
   }

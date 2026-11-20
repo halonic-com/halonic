@@ -118,10 +118,10 @@ export class LocalExecutor implements RunExecutor {
               : async (effect, run) =>
                   makeRunConnectorCall(
                     () => this.connectorsOfRun(run),
+                    await this.keptDefinitions(run),
                     effectBoundary(connectorCalls),
                     effect,
                     options.listedToolApproval,
-                    (await this.keptDefinitions(run)).declaredTools,
                   ),
             this.runConnectors,
           );

@@ -15,13 +15,13 @@ async function openWith(recorder: BridgeRecorder) {
   const server = new RecordingBridgeServer();
   const reported = Promise.withResolvers<unknown>();
   const host = new LocalBridgeHost({
-    server,
+    servers: { sandbox: server, "this-computer": server },
     services: {
       servicesFor: () => ({ providers: {}, prices: {}, tools: noTools, approvals: approveAll }),
     },
     reportError: reported.resolve,
   });
-  await host.open(writer, recorder);
+  await host.open(writer, recorder, "sandbox");
   const reportError = server.opened[0]?.reportError;
   if (reportError === undefined) throw new Error("expected the host to pass reportError");
   return { reportError, reported: reported.promise };

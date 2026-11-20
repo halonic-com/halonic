@@ -40,6 +40,24 @@ export interface LocalToolSettingsNotSet {
 }
 
 /**
+ * A local tool didn't start because a required setting it takes has no
+ * value: what the host throws for {@link LocalToolSettingsNotSet}. The person
+ * fills it in under the plugin's settings.
+ */
+export class LocalToolSettingsNotSetError extends Error {
+  override readonly name = "LocalToolSettingsNotSetError";
+  /** The settings' names, as the plugin's `ui.settings` declares them. */
+  readonly settings: readonly string[];
+
+  constructor(connectorId: string, settings: readonly string[]) {
+    super(
+      `Local tool "${connectorId}" doesn't start until these settings of its plugin are filled in: ${settings.join(", ")}.`,
+    );
+    this.settings = settings;
+  }
+}
+
+/**
  * The connector config to start one local tool with.
  *
  * - A script starts with its program (`node` or `python`) and the script's

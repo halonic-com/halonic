@@ -128,7 +128,8 @@ A run's model call is offered a connector's tools only as its kept file allows (
 `engine.run-connector-allow`): the tools its `allow` list names, under the name its server lists
 them under, or every tool the server lists when the file has no `allow`. A connector whose file
 isn't in the kept definitions offers none, and a call to a tool that wasn't offered reaches no
-connector.
+connector. The call itself (`makeConnectorCall`) looks its tool up among the same allowed tools, so
+the approval check never sees, or reports as waiting, a tool `allow` leaves out.
 
 A step that picks data (`gets`) and has no `input` sends only the `## Data` section, not the run's
 input before it. `task` states and `parallel` branches both build their prompt through

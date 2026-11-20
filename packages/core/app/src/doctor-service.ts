@@ -38,8 +38,16 @@ import {
   type DoctorHarness,
   signedOutAgents,
 } from "./doctor-sign-ins.ts";
-import type { ProviderModels, ResourceReport } from "./resource-report.ts";
+import {
+  lineOf,
+  type TimedOutLine,
+  timedOut,
+  timedOutLine,
+  withinLimit,
+} from "./doctor-time-limit.ts";
+import type { ProviderModels, ResourceReport, Resources } from "./resource-report.ts";
 import type { SandboxChoiceService } from "./sandbox-choice.ts";
+import type { SaveTimers } from "./save-scheduler.ts";
 import type { TrustCheck, TrustSubject } from "./trust-service.ts";
 
 /**
@@ -130,24 +138,32 @@ export interface DoctorServiceOptions {
    * Left out where the host checks nothing: then there is no such line.
    */
   node?: () => Promise<NodeProblem | null>;
+  /**
+   * The clock each check's 5-second limit runs on: `setTimeout` and
+   * `clearTimeout`, or a test's own.
+   */
+  timers: SaveTimers;
 }
 
-/** Everything `halonic doctor` shows. A line that doesn't apply is left out. */
+/**
+ * Everything `halonic doctor` shows. A line that doesn't apply is left out.
+ * A check that didn't answer in 5 seconds has a {@link TimedOutLine} instead.
+ */
 export interface DoctorReport {
   /** Only inside a workspace. */
-  workspace?: WorkspaceLine;
+  workspace?: WorkspaceLine | TimedOutLine<"workspace">;
   /** Only inside a workspace with model aliases. */
-  models?: ModelsLine;
-  sandbox: SandboxLine;
+  models?: ModelsLine | TimedOutLine<"models">;
+  sandbox: SandboxLine | TimedOutLine<"sandbox">;
   /** Only where MXC is offered and the sandbox choice has started. */
   mxc?: MxcLine;
   /** Only while the person's choice is no sandbox. */
   noSandbox?: NoSandboxLine;
-  /** Only when a harness is ready or an agent uses one. */
-  harnesses?: HarnessesLine;
-  /** Only when the host found a problem with the Node.js that runs Halonic. */
-  node?: NodeLine;
-  disk: DiskLine;
+  /** Only when a harness is ready or an agent uses one, or when finding them ran over. */
+  harnesses?: HarnessesLine | TimedOutLine<"harnesses">;
+  /** Only when the host found a problem with the Node.js that runs Halonic, or its check ran over. */
+  node?: NodeLine | TimedOutLine<"node">;
+  disk: DiskLine | TimedOutLine<"disk">;
   /** The counts under the lines, and whether `doctor` exits 1. */
   summary: DoctorSummary;
 }
@@ -157,10 +173,11 @@ export interface DoctorReport {
  * (requirement `app.doctor-service`). It reads the workspace's trust, its
  * models, the sandbox, the harnesses and the disk at the same time, so one
  * slow check doesn't wait for another, and it never calls a provider over
- * the internet.
+ * the internet. A check that hasn't answered after 5 seconds ends as a
+ * warning, so one that hangs doesn't hold up the report.
  *
  * @example
- * const doctor = new DoctorService({ trust, sandbox, resources, harnesses, secrets });
+ * const doctor = new DoctorService({ trust, sandbox, resources, harnesses, secrets, timers });
  * const report = await doctor.check(workspace);
  * return report.summary.needsFixing ? exitCode.failed : exitCode.ok;
  */
@@ -180,32 +197,26 @@ export class DoctorService {
    *   provider on this computer has no `LoadedModelSource` in the resource report
    */
   async check(workspace: DoctorWorkspace | null): Promise<DoctorReport> {
-    const { sandbox } = this.options;
+    const { sandbox, timers } = this.options;
+    const limited = <T>(check: Promise<T>) => withinLimit(timers, check);
     const [trust, sandboxCheck, resources, harnesses, keys, node] = await Promise.all([
-      workspace === null || workspace.testModelOnly === true
-        ? null
-        : this.options.trust.check(workspace.trust),
-      sandbox.check(),
-      this.options.resources.read(),
-      this.checkHarnesses(workspace),
-      this.storedKeys(workspace?.providers ?? []),
-      this.options.node?.() ?? null,
+      limited(this.trustStatus(workspace)),
+      limited(sandbox.check()),
+      limited(this.options.resources.read()),
+      limited(this.checkHarnesses(workspace)),
+      limited(this.storedKeys(workspace?.providers ?? [])),
+      limited(this.options.node?.() ?? Promise.resolve(null)),
     ]);
 
     const report: Omit<DoctorReport, "summary"> = {
-      sandbox: sandboxLine(sandboxCheck, sandbox.capabilities()),
-      disk: diskLine(resources),
+      sandbox: lineOf(sandboxCheck, "sandbox", (found) =>
+        sandboxLine(found, sandbox.capabilities()),
+      ),
+      disk: lineOf(resources, "disk", diskLine),
     };
     if (workspace !== null) {
-      report.workspace = workspaceLine(workspace.name, trust?.status ?? "not-needed", {
-        windowsDrive: workspace.windowsDrive,
-        fileProblems: workspace.fileProblems,
-        tooManyFilesToWatch: workspace.tooManyFilesToWatch,
-      });
-      const providers = workspace.providers.map((provider) =>
-        providerState(provider, resources.models, keys),
-      );
-      const models = modelsLine(providers, workspace.aliases);
+      report.workspace = lineOf(trust, "workspace", (found) => trustLine(workspace, found));
+      const models = workspaceModels(workspace, resources, keys);
       if (models !== undefined) report.models = models;
     }
     const choice = this.options.sandboxChoice?.current() ?? null;
@@ -213,16 +224,22 @@ export class DoctorService {
     if (mxc !== undefined) report.mxc = mxc;
     const noSandbox = choice === null ? undefined : noSandboxLine(choice);
     if (noSandbox !== undefined) report.noSandbox = noSandbox;
-    const harnessLine = harnessesLine(
-      harnesses.detected,
-      harnessAgents(workspace),
-      harnesses.signedOut,
+    const harnessLine = lineOf(harnesses, "harnesses", (found) =>
+      harnessesLine(found.detected, harnessAgents(workspace), found.signedOut),
     );
     if (harnessLine !== undefined) report.harnesses = harnessLine;
-    const runtime = nodeLine(node);
+    const runtime = lineOf(node, "node", nodeLine);
     if (runtime !== undefined) report.node = runtime;
 
     return { ...report, summary: doctorSummary(linesOf(report)) };
+  }
+
+  /** The trust check's status, or `null` when it isn't read: outside a workspace, or on the test model only. */
+  private async trustStatus(
+    workspace: DoctorWorkspace | null,
+  ): Promise<TrustCheck["status"] | null> {
+    if (workspace === null || workspace.testModelOnly === true) return null;
+    return (await this.options.trust.check(workspace.trust)).status;
   }
 
   /** What each harness's `detect()` finds, then which agents aren't signed in in their own folder. */
@@ -261,6 +278,33 @@ export class DoctorService {
     );
     return stored;
   }
+}
+
+/** The Workspace line by the trust check's status, or ✓ when it wasn't read. */
+function trustLine(workspace: DoctorWorkspace, trust: TrustCheck["status"] | null): WorkspaceLine {
+  return workspaceLine(workspace.name, trust ?? "not-needed", {
+    windowsDrive: workspace.windowsDrive,
+    fileProblems: workspace.fileProblems,
+    tooManyFilesToWatch: workspace.tooManyFilesToWatch,
+  });
+}
+
+/**
+ * The Models line, or none without model aliases. It needs the stored keys,
+ * and the resource report's loaded models when a provider runs on this
+ * computer, so it ran over when one of those did.
+ */
+function workspaceModels(
+  workspace: DoctorWorkspace,
+  resources: Resources | typeof timedOut,
+  keys: ReadonlySet<string> | typeof timedOut,
+): ModelsLine | TimedOutLine<"models"> | undefined {
+  if (workspace.aliases.length === 0) return undefined;
+  const local = workspace.providers.some((provider) => provider.runs === "on-this-computer");
+  if (keys === timedOut || (local && resources === timedOut)) return timedOutLine("models");
+  const loaded = resources === timedOut ? [] : resources.models;
+  const providers = workspace.providers.map((provider) => providerState(provider, loaded, keys));
+  return modelsLine(providers, workspace.aliases);
 }
 
 /** A provider as the Models line takes it, with what the report and the secrets found. */

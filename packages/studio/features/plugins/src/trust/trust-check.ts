@@ -1,4 +1,10 @@
-import { pluginProgramSecretText } from "@halonicjs/app";
+import {
+  declaredSignInTrustFacts,
+  pluginProgramSecretText,
+  signInTokenHostDiffers,
+  signInTokenHostWarning,
+  signInTrustLine,
+} from "@halonicjs/app";
 import { type Plugin, placedSecrets } from "@halonicjs/format";
 import type { PluginToolRisk } from "../page/plugin-pages.ts";
 import { clientSecretHosts, clientSecretNames } from "../sign-in/client-secret-hosts.ts";
@@ -39,6 +45,21 @@ export interface TrustSecret {
   readonly kind: SecretKind;
 }
 
+/**
+ * A sign-in the backend declares, as Sign-ins lists it: the words the plugin
+ * page shows before **Sign in** (HAL-8619), with a host a setting holds named
+ * by that setting, since a plugin is trusted before its settings are set.
+ */
+export interface TrustSignIn {
+  readonly name: string;
+  /** What it is for, in the plugin's words. Plain text. */
+  readonly purpose: string;
+  /** The trust check line. */
+  readonly line: string;
+  /** The token host warning, when the sign-in page and the token address are different services. */
+  readonly warning: string | undefined;
+}
+
 /** One address the plugin may reach. */
 export interface TrustAddress {
   readonly address: string;
@@ -59,6 +80,7 @@ export interface TrustCheckContent {
   readonly tools: readonly TrustTool[];
   readonly programs: readonly TrustProgram[];
   readonly secrets: readonly TrustSecret[];
+  readonly signIns: readonly TrustSignIn[];
   readonly addresses: readonly TrustAddress[];
   readonly inStudio: TrustInStudio;
   readonly counts: TrustCounts;
@@ -106,6 +128,15 @@ export function trustCheckContent(plugin: Plugin): TrustCheckContent {
       })),
     ),
   ];
+  const signIns = Object.entries(plugin.backend?.signIns ?? {}).map(([name, signIn]) => {
+    const facts = declaredSignInTrustFacts(signIn, (host) => hostWords(host, labelOf));
+    return {
+      name,
+      purpose: signIn.purpose,
+      line: signInTrustLine(plugin.name, facts),
+      warning: signInTokenHostDiffers(facts) ? signInTokenHostWarning(facts) : undefined,
+    };
+  });
   const addresses = addressesOf(plugin, labelOf);
   const ui = plugin.ui;
   const inStudio: TrustInStudio = {
@@ -119,6 +150,7 @@ export function trustCheckContent(plugin: Plugin): TrustCheckContent {
     tools,
     programs,
     secrets,
+    signIns,
     addresses,
     inStudio,
     counts: {

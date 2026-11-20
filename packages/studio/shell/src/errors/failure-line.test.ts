@@ -2,7 +2,7 @@ import { KindedError } from "@halonicjs/std";
 import { describe, expect, it } from "vitest";
 import { EngineNotAnswering } from "../engine/engine-not-answering.ts";
 import { engineWords } from "../engine/engine-words.ts";
-import { failureLine, reasonAfterColon } from "./failure-line.ts";
+import { failureLine, lowerAfterColon, reasonAfterColon } from "./failure-line.ts";
 
 describe("failureLine", () => {
   it("puts the host's reason after a colon, with one full stop", () => {
@@ -51,5 +51,21 @@ describe("reasonAfterColon", () => {
     expect(reasonAfterColon("Halonic on the server isn't answering.")).toBe(
       "Halonic on the server isn't answering",
     );
+  });
+});
+
+describe("lowerAfterColon", () => {
+  it("lower-cases a common first word and keeps the full stop", () => {
+    expect(lowerAfterColon("The engine isn't answering.")).toBe("the engine isn't answering.");
+    expect(lowerAfterColon("You're offline")).toBe("you're offline");
+    expect(lowerAfterColon("Something went wrong")).toBe("something went wrong");
+    expect(lowerAfterColon("It's locked")).toBe("it's locked");
+  });
+
+  it("keeps a name's capital", () => {
+    expect(lowerAfterColon("Halonic on your computer isn't answering.")).toBe(
+      "Halonic on your computer isn't answering.",
+    );
+    expect(lowerAfterColon("GitHub is down")).toBe("GitHub is down");
   });
 });

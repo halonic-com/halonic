@@ -3,12 +3,15 @@
 // shares with workspaces, and the CLI's digest, so every `halonic plugin`
 // command and `halonic trust --plugin` read one plugin the same way.
 
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import {
   FileRecordStore,
   FileSystemFolderReader,
   FileSystemPluginFolder,
   FileTrustStore,
 } from "@halonicjs/adapter-fs-node";
+import { bothSpellings } from "@halonicjs/adapter-system-node";
 import { type DeletePluginSecret, PluginService } from "@halonicjs/app";
 import type { Clock } from "@halonicjs/ports";
 import {
@@ -35,14 +38,17 @@ export interface PluginSetup {
 
 /**
  * The plugin service over the profile's plugins folder. Nothing is created
- * until a plugin is added.
+ * until a plugin is added. It refuses to add a plugin from Halonic's own
+ * data: the profile folder and, when `cwd` is given and holds one, its
+ * workspace's `.studio` data, each as written and with links resolved.
  *
+ * @param cwd - the folder the command runs in, for `plugin add`
  * @throws when `HALONIC_HOME` or the home folder isn't an absolute folder
  *
  * @example
  * const entries = await openPluginService({}).load();
  */
-export function openPluginService(setup: PluginSetup): PluginService {
+export function openPluginService(setup: PluginSetup, cwd?: string): PluginService {
   const profile = profileFolder(setup.profile ?? nodeProfileEnvironment());
   const clock = setup.clock ?? systemClock;
   const folder = pluginsFolder(profile);
@@ -53,7 +59,16 @@ export function openPluginService(setup: PluginSetup): PluginService {
     trust: cliTrustService(new FileTrustStore(trustFolder(profile)), clock),
     records: new FileRecordStore(pluginRecordsFolder(profile)),
     clock,
+    halonicData: halonicDataFolders(profile.root, cwd),
   });
+}
+
+/** The profile folder and the workspace data in `cwd`, when there is one, in both spellings each. */
+function halonicDataFolders(profile: string, cwd: string | undefined): string[] {
+  const workspaceData = cwd === undefined ? undefined : join(cwd, ".studio");
+  const folders = [profile];
+  if (workspaceData !== undefined && existsSync(workspaceData)) folders.push(workspaceData);
+  return folders.flatMap(bothSpellings);
 }
 
 /**

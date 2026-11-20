@@ -5,13 +5,14 @@ import {
   type ItemViewProps,
   NameField,
   PageBackLinkSlot,
+  useInPhoneTopBar,
 } from "@halonicjs/studio-shell";
 import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { chipText } from "../collection-format.ts";
 import { CollectionHostService, type CollectionRef } from "../collection-host.ts";
 import { CollectionModel } from "../collection-model.ts";
 import { collectionWords } from "../collection-words.ts";
-import { useItemTrash } from "./item-trash.tsx";
+import { type ItemTrash, useItemTrash } from "./item-trash.tsx";
 import { sharedHubKey } from "./library-place.tsx";
 import { RecordsGrid } from "./records-grid.tsx";
 import { UsedByField } from "./used-by-field.tsx";
@@ -65,12 +66,17 @@ function LoadedCollectionPage({
   const state = useSyncExternalStore(subscribe, () => model.state);
   const { loaded, failed, failureReason, gone, name, volatile, view, grid, usage } = state;
   const [renameFailed, setRenameFailed] = useState(false);
+  const rename = (next: string) => {
+    setRenameFailed(false);
+    void settleOnClose(model.rename(next).then((written) => setRenameFailed(!written)));
+  };
   const trash = useItemTrash(context, {
     kind: "collection",
     hub: item.hub === sharedHubKey ? null : item.hub,
     id: item.id,
     name: name || item.id,
     ...(usage === undefined ? {} : { usage }),
+    rename: { kindName: collectionWords.kindName, onRename: rename },
   });
 
   if (gone) {
@@ -97,19 +103,7 @@ function LoadedCollectionPage({
   return (
     <div className="flex w-full min-w-0 flex-col gap-4 px-4 py-5 wide:px-6">
       <PageBackLinkSlot />
-      <div className="flex items-start justify-between gap-2">
-        <h1 ref={trash.titleRef} tabIndex={-1} className="flex min-w-0 text-title">
-          <NameField
-            name={name || item.id}
-            label={`${collectionWords.kindName} name`}
-            onRename={(next) => {
-              setRenameFailed(false);
-              void settleOnClose(model.rename(next).then((written) => setRenameFailed(!written)));
-            }}
-          />
-        </h1>
-        {trash.menu}
-      </div>
+      <CollectionTitle name={name || item.id} trash={trash} onRename={rename} />
       {renameFailed ? (
         <p role="alert" className="text-small text-danger">
           {collectionWords.renameFailed}
@@ -136,6 +130,40 @@ function LoadedCollectionPage({
       <FormRows>
         <UsedByField usage={usage} notUsed={collectionWords.notUsed} context={context} />
       </FormRows>
+    </div>
+  );
+}
+
+/**
+ * The page's title and ⋮. On the desktop the title is the rename field. Under a phone's top bar,
+ * which names the collection and holds ⋮ with Rename, the title is for screen readers only and no
+ * row is drawn for it, so the page starts with what is under it.
+ */
+function CollectionTitle({
+  name,
+  trash,
+  onRename,
+}: {
+  readonly name: string;
+  readonly trash: ItemTrash;
+  readonly onRename: (name: string) => void;
+}) {
+  if (useInPhoneTopBar()) {
+    return (
+      <>
+        <h1 ref={trash.titleRef} tabIndex={-1} className={trash.titleClassName}>
+          {name}
+        </h1>
+        {trash.menu}
+      </>
+    );
+  }
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <h1 ref={trash.titleRef} tabIndex={-1} className="flex min-w-0 text-title">
+        <NameField name={name} label={`${collectionWords.kindName} name`} onRename={onRename} />
+      </h1>
+      {trash.menu}
     </div>
   );
 }

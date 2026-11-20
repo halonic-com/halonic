@@ -136,8 +136,19 @@ function watchedReader(
   };
 }
 
-/** What core refused, as the dialog words it. */
+/**
+ * What core refused, as the dialog words it.
+ *
+ * @throws a `KindedError` for a source that overlaps Halonic's own data
+ */
 function refusedOutcome(refusal: PluginAddRefusal): PluginAddOutcome {
+  // The dialog says why and that nothing was installed, as for any refusal it can't name.
+  if (refusal.kind === "halonic-data") {
+    throw new KindedError(
+      "invalid_input",
+      "A plugin can't be added from Halonic's own data, or from a folder that holds it.",
+    );
+  }
   if (refusal.kind === "taken") return { kind: "taken", plugin: refusal.id, name: refusal.name };
   const missing = refusal.problems.some((problem) => problem.code === "manifest-missing");
   if (missing) return { kind: "no-manifest" };

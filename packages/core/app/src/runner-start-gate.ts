@@ -277,7 +277,10 @@ export class RunnerStartGate {
         timedOut = true;
         reject(new RunnerStartTimeoutError(this.#startTimeoutMs));
       }, this.#startTimeoutMs);
-      startIn(sandbox, backend).then(
+      // A start that throws straight away, without a promise, fails like
+      // one that rejects, so its time limit is cleared too.
+      const starting = new Promise<Runner>((started) => started(startIn(sandbox, backend)));
+      starting.then(
         (runner) => {
           if (!timedOut) {
             this.#timers.clear(timer);

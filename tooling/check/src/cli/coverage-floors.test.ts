@@ -153,4 +153,40 @@ describe("loweredSinceBranchPoint", () => {
       process.chdir(previous);
     }
   });
+
+  it("reports a floor lowered in the same change that moves the package", () => {
+    const git = repo();
+    // Git tells a move from a delete and an add by content, so the manifest
+    // needs more than the one line `setFloor` writes.
+    const manifest = (lines: number): string =>
+      JSON.stringify(
+        {
+          name: "@halonicjs/a",
+          version: "1.0.0",
+          type: "module",
+          scripts: { build: "tsc", test: "vitest run" },
+          halonic: { coverage: { lines } },
+        },
+        null,
+        2,
+      );
+    mkdirSync(join(directory ?? "", "a"));
+    writeFileSync(join(directory ?? "", "a/package.json"), manifest(90));
+    git("add", "-A");
+    git("commit", "-q", "-m", "base");
+    git("switch", "-q", "-c", "pr");
+    mkdirSync(join(directory ?? "", "b"));
+    git("mv", "a/package.json", "b/package.json");
+    writeFileSync(join(directory ?? "", "b/package.json"), manifest(80));
+    git("commit", "-q", "-am", "move and lower");
+    const previous = process.cwd();
+    process.chdir(directory ?? "");
+    try {
+      expect(loweredSinceBranchPoint("main", "pr")).toEqual([
+        { manifest: "b/package.json", key: "lines", before: 90, after: 80 },
+      ]);
+    } finally {
+      process.chdir(previous);
+    }
+  });
 });

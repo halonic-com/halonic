@@ -1,4 +1,5 @@
 import { maxCauseNameLength } from "@halonicjs/events";
+import type { Connector } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { reviewedTools } from "../agent/listed-tool-approval.test-helper.ts";
@@ -38,6 +39,9 @@ function mailConnector() {
   ]);
 }
 
+/** `mail`'s file, with no `allow`: every tool its server lists is offered. */
+const allMail: Readonly<Record<string, Connector["tools"]>> = { mail: { approve: [] } };
+
 const sendMail = callOf("send_mail", { to: "support" });
 
 /** A start error as a connector adapter throws it (`ports.connector-start-failure`). */
@@ -48,14 +52,20 @@ function startError(name: string, fields: Record<string, unknown>, message = "di
 verifies("engine.tool-result-cause", () => {
   describe("a call the engine doesn't make", () => {
     it("says the connector isn't connected", async () => {
-      const result = await makeConnectorCall([], sendingOn, sendMail, reviewedTools);
+      const result = await makeConnectorCall([], allMail, sendingOn, sendMail, reviewedTools);
 
       expect(result.cause).toEqual({ code: "not-made", why: "not-connected" });
     });
 
     it("says the tool is gone", async () => {
       const call = callOf("archive_mail", {});
-      const result = await makeConnectorCall([mailConnector()], sendingOn, call, reviewedTools);
+      const result = await makeConnectorCall(
+        [mailConnector()],
+        allMail,
+        sendingOn,
+        call,
+        reviewedTools,
+      );
 
       expect(result.cause).toEqual({ code: "not-made", why: "tool-gone" });
     });
@@ -63,6 +73,7 @@ verifies("engine.tool-result-cause", () => {
     it("says sending is off, and the model still hears the check's reason", async () => {
       const result = await makeConnectorCall(
         [mailConnector()],
+        allMail,
         sendingOff,
         sendMail,
         reviewedTools,
@@ -77,7 +88,13 @@ verifies("engine.tool-result-cause", () => {
 
     it("says the arguments aren't an object", async () => {
       const call = callOf("send_mail", ["support"]);
-      const result = await makeConnectorCall([mailConnector()], sendingOn, call, reviewedTools);
+      const result = await makeConnectorCall(
+        [mailConnector()],
+        allMail,
+        sendingOn,
+        call,
+        reviewedTools,
+      );
 
       expect(result.cause).toEqual({ code: "not-made", why: "bad-arguments" });
     });
@@ -96,7 +113,7 @@ verifies("engine.tool-result-cause", () => {
       throw new Error(`mail exited: bad key ${secretValue}`);
     };
 
-    const result = await makeRunConnectorCall(open, sendingOn, sendMail, reviewedTools);
+    const result = await makeRunConnectorCall(open, {}, sendingOn, sendMail, reviewedTools);
 
     expect(result.outcome).toBe("error");
     expect(result.cause).toStrictEqual({ code: "connector-not-started", why: "other" });
@@ -109,7 +126,7 @@ verifies("engine.tool-result-cause", () => {
         throw startError("ProgramNotFoundError", { program: "npx" });
       };
 
-      const result = await makeRunConnectorCall(open, sendingOn, sendMail, reviewedTools);
+      const result = await makeRunConnectorCall(open, {}, sendingOn, sendMail, reviewedTools);
 
       expect(result.outcome).toBe("error");
       expect(result.cause).toStrictEqual({
@@ -129,7 +146,7 @@ verifies("engine.tool-result-cause", () => {
         );
       };
 
-      const result = await makeConnectorCall([mail], sendingOn, sendMail, reviewedTools);
+      const result = await makeConnectorCall([mail], allMail, sendingOn, sendMail, reviewedTools);
 
       expect(result.outcome).toBe("error");
       expect(result.cause).toStrictEqual({
@@ -147,7 +164,7 @@ verifies("engine.tool-result-cause", () => {
         throw new Error("mail exited");
       };
 
-      const result = await makeConnectorCall([mail], sendingOn, sendMail, reviewedTools);
+      const result = await makeConnectorCall([mail], allMail, sendingOn, sendMail, reviewedTools);
 
       expect(result.cause).toStrictEqual({ code: "connector-not-started", why: "other" });
     });
@@ -157,14 +174,20 @@ verifies("engine.tool-result-cause", () => {
         throw startError("ProgramNotFoundError", { program: "p".repeat(maxCauseNameLength + 5) });
       };
 
-      const result = await makeRunConnectorCall(open, sendingOn, sendMail, reviewedTools);
+      const result = await makeRunConnectorCall(open, {}, sendingOn, sendMail, reviewedTools);
 
       expect(result.cause).toMatchObject({ name: "p".repeat(maxCauseNameLength) });
     });
   });
 
   it("gives no cause to a call that was made", async () => {
-    const result = await makeConnectorCall([mailConnector()], sendingOn, sendMail, reviewedTools);
+    const result = await makeConnectorCall(
+      [mailConnector()],
+      allMail,
+      sendingOn,
+      sendMail,
+      reviewedTools,
+    );
 
     expect(result.outcome).toBe("ok");
     expect(result).not.toHaveProperty("cause");
@@ -176,7 +199,7 @@ verifies("engine.tool-result-cause", () => {
       throw new Error("the mail server hung up");
     };
 
-    const result = await makeConnectorCall([mail], sendingOn, sendMail, reviewedTools);
+    const result = await makeConnectorCall([mail], allMail, sendingOn, sendMail, reviewedTools);
 
     expect(result.outcome).toBe("unknown");
     expect(result).not.toHaveProperty("cause");

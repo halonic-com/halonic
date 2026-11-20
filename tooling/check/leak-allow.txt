@@ -7,8 +7,9 @@
 # A secret rule needs the fingerprint the leak guard printed, so an entry
 # allows that one value only. An absolute-path entry needs root:<root> (the
 # root the leak guard printed) or commit:<hash> (the commit that added it), so
-# it allows that one kind of path or that one commit only. Personal terms can
-# never be allowed here.
+# it allows that one kind of path or that one commit only. A personal term
+# can only be allowed in an old commit, with commit:<hash> and the exact
+# file; anything new must be reworded instead.
 
 # Old commits that hold made-up paths (drive letters, /tmp, /home) as test
 # data or examples. The nightly --all scan reads every commit, and history
@@ -23,8 +24,35 @@ absolute-path packages/core/schema-kit/src/url.test.ts root:/tmp/ test data: a f
 absolute-path packages/testing/contracts/src/definition-store.ts root:C:\\ old fixture: a fake Windows path
 absolute-path packages/testing/parity/README.md commit:d5efbdb47 old example: a /tmp path
 absolute-path packages/testing/parity/README.md commit:6cb629818 old example: a /tmp path
+absolute-path packages/testing/parity/README.md commit:366a6d545 old example: a /tmp path
 url-password packages/core/format/src/kinds/connector/is-local.test.ts fp:2bb80d537b1da3e3 test data: a fake password in a URL
 absolute-path infra/cf-runner/bootstrap.sh root:/tmp/ paths inside the throwaway runner container
 absolute-path infra/cf-runner/bootstrap.sh root:/home/ paths inside the throwaway runner container
 absolute-path infra/cf-runner/worker.mjs root:/tmp/ paths inside the throwaway runner container
 absolute-path infra/cf-runner/worker.mjs root:/home/ paths inside the throwaway runner container
+
+# Old commits from before 15 Nov whose text held a personal term. Each
+# file's current version is reworded; the repo owners accepted these
+# commits in history (HAL-10997). Each entry excuses that one commit in
+# that one file, so the same term added anywhere later is still refused.
+personal-term .github/CODEOWNERS commit:0643e0bd4 old text, kept in history
+personal-term NOTICE commit:b195d39bf old text, kept in history
+personal-term TRADEMARKS.md commit:b195d39bf old text, kept in history
+personal-term packages/core/events/requirements/blocked-sites.md commit:20b54567e old text, kept in history
+personal-term packages/core/events/src/blocked-sites.test.ts commit:20b54567e old text, kept in history
+personal-term packages/core/std/src/public-suffixes.generated.ts commit:995c2f97c old text, kept in history
+personal-term README.md commit:60af6a5f2 old text, kept in history
+personal-term .github/CODEOWNERS commit:da784364c old text, kept in history
+personal-term .github/CODEOWNERS commit:1723ee4f0 old text, kept in history
+personal-term NOTICE commit:3cc655472 old text, kept in history
+personal-term TRADEMARKS.md commit:3cc655472 old text, kept in history
+personal-term packages/core/events/requirements/blocked-sites.md commit:d2ee8f9ed old text, kept in history
+personal-term packages/core/events/src/blocked-sites.test.ts commit:d2ee8f9ed old text, kept in history
+personal-term packages/core/std/src/public-suffixes.generated.ts commit:318f8f119 old text, kept in history
+personal-term README.md commit:7ea529efc old text, kept in history
+personal-term decisions/julian/HAL-1337-06-user-review.md commit:45b4e15cf old text, kept in history
+personal-term tooling/check/src/guard/reviews.test.ts commit:45b4e15cf old text, kept in history
+personal-term tooling/check/src/guard/reviews.ts commit:45b4e15cf old text, kept in history
+personal-term decisions/julian/HAL-1337-06-user-review.md commit:80cda4fab old text, kept in history
+personal-term tooling/check/approvers.json commit:80cda4fab old text, kept in history
+personal-term CONTRIBUTING.md commit:ec5795b10 old text, kept in history

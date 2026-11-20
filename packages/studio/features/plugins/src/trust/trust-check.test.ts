@@ -140,11 +140,11 @@ verifies("plugins.plugin-trust-check", () => {
 
   describe("secrets", () => {
     it("says who sees a secret's value, by kind", () => {
-      expect(secretValueLine("Weather", "backend")).toBe(
-        "You enter its value in Weather's settings. The plugin's code never sees it.",
+      expect(secretValueLine("backend")).toBe(
+        "You enter its value in this plugin's settings. The plugin's code never sees it.",
       );
-      expect(secretValueLine("Weather", "program")).toBe(
-        "You enter its value in Weather's settings. Halonic gives it to the program when it starts.",
+      expect(secretValueLine("program")).toBe(
+        "You enter its value in this plugin's settings. Halonic gives it to the program when it starts.",
       );
     });
 

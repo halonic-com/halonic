@@ -47,6 +47,7 @@ describe("plugin's sentences", () => {
       words(pluginMessages.addedButOff("Weather", "weather")),
       words(pluginMessages.addAction()),
       words(pluginMessages.refusedSourceFix()),
+      words(pluginMessages.halonicData()),
     ]).toEqual([
       "Copying weather at 3f2c1ab into your plugins folder…",
       "Copying weather into your plugins folder…",
@@ -56,6 +57,7 @@ describe("plugin's sentences", () => {
       "Weather is added but off. Nothing from it runs until you trust it: halonic trust --plugin weather",
       "add the plugin",
       "Check the folder or git address.",
+      "a plugin can't be added from Halonic's own data, or from a folder that holds it.",
     ]);
   });
 

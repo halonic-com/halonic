@@ -14,9 +14,6 @@ export const pageWords = {
   openAsFile: "Open as file",
   delete: "Delete",
   rename: "Rename",
-  renameTitle: "Rename routine",
-  renameNameField: "Name",
-  renameNameMissing: "Give it a name.",
   couldntRename: (name: string, reason: string | undefined) =>
     reason === undefined
       ? `Couldn't rename ${name}.`

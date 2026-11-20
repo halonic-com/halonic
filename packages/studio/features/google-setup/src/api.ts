@@ -73,6 +73,20 @@ export type SignInEntry =
   | { readonly kind: "elsewhere"; readonly commandExists: boolean };
 
 /**
+ * Whether **Check again** can run in this window. Where the host can't check yet, the button is
+ * unavailable and `halonic google sign-in` is shown under it, since a new sign-in checks every
+ * service again (rule N5, HAL-12363).
+ */
+export type CheckAgainEntry =
+  /** The host checks again itself: **Check again** works. */
+  | { readonly kind: "here" }
+  /**
+   * The host can't check yet: the command is run in a terminal, or from a phone or a browser on
+   * another computer, on the computer that runs Halonic.
+   */
+  | { readonly kind: "sign-in-again"; readonly where: "terminal" | "computer" };
+
+/**
  * What the host says after a new client secret was sent (design 4.3). Before the first sign-in the
  * new secret replaces the old one at once (`replaced`). After it, the host checks the new secret
  * with Google first, and swaps it in only when Google accepts it (`accepted`).
@@ -119,6 +133,8 @@ export interface GoogleSetupAccounts {
   readonly secretEntry: SecretEntry;
   /** Whether **Sign in with Google** can run in this window. It doesn't change while the workspace is open. */
   readonly signInEntry: SignInEntry;
+  /** Whether **Check again** can run in this window. It doesn't change while the workspace is open. */
+  readonly checkAgainEntry: CheckAgainEntry;
   /**
    * Set when this window only reads the setup, as a served window does: it then shows the read-only
    * layout the phone has, with the words for a desktop browser and a **Copy** button for step 7.

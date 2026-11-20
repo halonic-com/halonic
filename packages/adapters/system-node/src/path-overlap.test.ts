@@ -54,4 +54,12 @@ verifies("system-node.path-overlap", () => {
 
     expect(realSpelling(join(link, "new", "plugin"))).toBe(join(root, "new", "plugin"));
   });
+
+  it("spells a folder the way the file system reports where it really is", async () => {
+    // On a Windows runner the temporary folder has a short name such as `RUNNER~1` in it.
+    const folder = await tempFolder();
+
+    expect(realSpelling(folder)).toBe(await realpath(folder));
+    expect(realSpelling(join(folder, "new"))).toBe(join(await realpath(folder), "new"));
+  });
 });

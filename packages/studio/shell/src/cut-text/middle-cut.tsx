@@ -1,17 +1,25 @@
 import { Fragment, type ReactNode } from "react";
 
-/** How much of a folder's end always shows when its line is cut in the middle. */
+/** How much of a folder's end shows at most when its line is cut in the middle. */
 const TAIL_LENGTH = 24;
 
 /**
- * Where a folder's line is cut so its last {@link TAIL_LENGTH} characters stay: after the last
- * "/" or "\" at or before that point, so the end starts on a whole folder name, when there is one
- * to cut at.
+ * Where a folder's line is cut so at most its last {@link TAIL_LENGTH} characters stay: at the
+ * first "/" or "\" at or after that point, so the end starts on a whole folder name. When the last
+ * name alone is longer, the end starts at the separator before it, and without any separator the
+ * line is cut at that point, mid-name.
  */
 export function middleCutAt(text: string): number {
   const cut = Math.max(0, text.length - TAIL_LENGTH);
-  const separator = Math.max(text.lastIndexOf("/", cut), text.lastIndexOf("\\", cut));
-  return separator > 0 ? separator : cut;
+  if (cut === 0) {
+    return 0;
+  }
+  const after = text.slice(cut).search(/[/\\]/);
+  if (after >= 0) {
+    return cut + after;
+  }
+  const before = Math.max(text.lastIndexOf("/"), text.lastIndexOf("\\"));
+  return before > 0 ? before : cut;
 }
 
 /**
@@ -38,10 +46,17 @@ function breakableAtSeparators(end: string): ReactNode {
  * @example
  * <MiddleCut text="~/Documents/Acme Support" />
  */
-export function MiddleCut({ text }: { readonly text: string }) {
+export function MiddleCut({
+  text,
+  textClassName = "text-caption text-fg-subtle",
+}: {
+  readonly text: string;
+  /** The line's type and colour, for a row whose folder line is set differently, such as More's. */
+  readonly textClassName?: string;
+}) {
   const at = middleCutAt(text);
   return (
-    <span className="flex min-w-0 text-caption text-fg-subtle">
+    <span className={`flex min-w-0 ${textClassName}`}>
       <span className="truncate">{text.slice(0, at)}</span>
       <span className={endClasses}>{breakableAtSeparators(text.slice(at))}</span>
     </span>

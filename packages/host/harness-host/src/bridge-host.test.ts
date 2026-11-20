@@ -1,4 +1,4 @@
-import type { BridgeRecorder, ModelPrice } from "@halonicjs/ports";
+import type { BridgeRecorder, HarnessBridgeServer, ModelPrice } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { type BridgeAgent, type BridgeServices, LocalBridgeHost } from "./bridge-host.ts";
@@ -19,7 +19,7 @@ function setup() {
   const server = new RecordingBridgeServer();
   const asked: BridgeAgent[] = [];
   const host = new LocalBridgeHost({
-    server,
+    servers: { sandbox: server, "this-computer": server },
     services: {
       servicesFor: async (agent) => {
         asked.push(agent);
@@ -35,7 +35,7 @@ verifies("harness-host.bridge", () => {
   it("opens the bridge for the agent's run with the services the host gives it", async () => {
     const { server, asked, host } = setup();
 
-    const bridge = await host.open(writer, recorder);
+    const bridge = await host.open(writer, recorder, "sandbox");
 
     expect(bridge.url).toBe("http://127.0.0.1:4100");
     expect(asked).toEqual([
@@ -55,7 +55,7 @@ verifies("harness-host.bridge", () => {
   it("tells the engine how the bridge reaches each provider, and closes the server's bridge", async () => {
     const { server, host } = setup();
 
-    const bridge = await host.open(writer, recorder);
+    const bridge = await host.open(writer, recorder, "sandbox");
     await bridge.close();
 
     expect(bridge.providers).toBe(services.providers);
@@ -66,7 +66,7 @@ verifies("harness-host.bridge", () => {
   it("prices a model from the host's prices, and gives no price for one they don't name", async () => {
     const { server, host } = setup();
 
-    await host.open(writer, recorder);
+    await host.open(writer, recorder, "sandbox");
 
     const price = server.opened[0]?.price;
     expect(price?.("anthropic", "claude-sonnet-5-5")).toBe(sonnetPrice);
@@ -76,17 +76,20 @@ verifies("harness-host.bridge", () => {
   });
 
   it("fails as the server fails when it can't listen", async () => {
-    const host = new LocalBridgeHost({
-      server: {
-        open: async () => {
-          throw new Error("Can't listen on loopback.");
-        },
+    const deaf: HarnessBridgeServer = {
+      open: async () => {
+        throw new Error("Can't listen on loopback.");
       },
+    };
+    const host = new LocalBridgeHost({
+      servers: { sandbox: deaf, "this-computer": deaf },
       services: { servicesFor: () => services },
       reportError: () => {},
     });
 
-    await expect(host.open(writer, recorder)).rejects.toThrow("Can't listen on loopback.");
+    await expect(host.open(writer, recorder, "sandbox")).rejects.toThrow(
+      "Can't listen on loopback.",
+    );
   });
 });
 
@@ -94,7 +97,7 @@ verifies("harness-host.bridge-agent-model", () => {
   it("tells the host the agent's hub and no model when the agent's file names none", async () => {
     const { asked, host } = setup();
 
-    await host.open(writer, recorder);
+    await host.open(writer, recorder, "sandbox");
 
     expect(asked).toEqual([
       { runId: "01JD8Q", agentId: "writer", harness: "claude-code", hubId: "support" },
@@ -105,7 +108,7 @@ verifies("harness-host.bridge-agent-model", () => {
     const { asked, host } = setup();
     const openCoder = { ...writer, file: { ...writer.file, model: "open-coder-agent" } };
 
-    await host.open(openCoder, recorder);
+    await host.open(openCoder, recorder, "sandbox");
 
     expect(asked).toEqual([
       {
@@ -124,8 +127,26 @@ verifies("harness-host.bridge-agent-harness", () => {
     const { asked, host } = setup();
     const codexWriter = { ...writer, harness: "codex" as const };
 
-    await host.open(codexWriter, recorder);
+    await host.open(codexWriter, recorder, "sandbox");
 
     expect(asked.map((agent) => agent.harness)).toEqual(["codex"]);
+  });
+});
+
+verifies("harness-host.bridge-placement", () => {
+  it("opens a run's bridge on the server for the placement the engine names", async () => {
+    const fenced = new RecordingBridgeServer();
+    const unfenced = new RecordingBridgeServer();
+    const host = new LocalBridgeHost({
+      servers: { sandbox: fenced, "this-computer": unfenced },
+      services: { servicesFor: () => services },
+      reportError: () => {},
+    });
+
+    await host.open(writer, recorder, "this-computer");
+    await host.open(writer, recorder, "sandbox");
+
+    expect(unfenced.opened).toHaveLength(1);
+    expect(fenced.opened).toHaveLength(1);
   });
 });

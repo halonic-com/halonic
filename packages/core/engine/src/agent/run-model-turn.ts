@@ -34,7 +34,7 @@ import {
   type TurnStart,
   type TurnStopped,
 } from "./turn-approval.ts";
-import type { TurnLog } from "./turn-log.ts";
+import { logListingFailures, type TurnLog } from "./turn-log.ts";
 import {
   collectTurnTools,
   type HalonicTool,
@@ -173,6 +173,7 @@ async function turnLoop(
   { resumeFrom, effects }: Pick<AgentTurnInput, "resumeFrom" | "effects"> = {},
 ): Promise<AgentTurnOutcome> {
   const tools = await collectTurnTools(input);
+  await logListingFailures(input.log, input.agent, tools.listingErrors);
   const models = new ModelChain(
     input.model,
     input.secrets,

@@ -6,6 +6,7 @@ import {
   type LocalToolState,
   pluginTrustLocationHeadings,
   pluginTrustMoreFilesText,
+  pluginTrustSectionHeadings,
   pluginTrustToolsIntro,
 } from "@halonicjs/app";
 import { hostFromSetting } from "../settings/settings-text.ts";
@@ -107,6 +108,7 @@ export const TRUST_CHECK_LAST_LINE =
 export const TOOLS_SECTION = "Tools for agents";
 export const PROGRAMS_SECTION = "Programs";
 export const SECRETS_SECTION = "Secrets";
+export const SIGN_INS_SECTION = pluginTrustSectionHeadings["sign-ins"];
 export const ADDRESSES_SECTION = "Addresses";
 export const IN_STUDIO_SECTION = "In Studio";
 /** The headings of the folder and its files, from core, which the CLI reads too. */
@@ -162,10 +164,11 @@ export type SecretKind = "backend" | "program";
 
 /**
  * Under a secret (T8, words check M2). A backend's value is placed by Halonic's kit and never
- * reaches the plugin's code; a program is plugin code and gets it from its environment.
+ * reaches the plugin's code; a program is plugin code and gets it from its environment. It says
+ * "this plugin's" rather than the name, which reads wrong as "Acme Projects's" (HAL-14004).
  */
-export function secretValueLine(name: string, kind: SecretKind): string {
-  const entered = `You enter its value in ${name}'s settings.`;
+export function secretValueLine(kind: SecretKind): string {
+  const entered = "You enter its value in this plugin's settings.";
   return kind === "backend"
     ? `${entered} The plugin's code never sees it.`
     : `${entered} Halonic gives it to the program when it starts.`;

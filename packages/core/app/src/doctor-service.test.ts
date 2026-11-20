@@ -1,130 +1,17 @@
-import type { Agent } from "@halonicjs/format";
-import type { HarnessDetection, SandboxCheck, Secrets } from "@halonicjs/ports";
 import { err, ok } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import type { NodeProblem } from "./doctor-lines.ts";
-import { type DoctorProvider, DoctorService, type DoctorWorkspace } from "./doctor-service.ts";
-import type { DoctorHarness } from "./doctor-sign-ins.ts";
-import type { ProviderModels, Resources } from "./resource-report.ts";
+import type { DoctorProvider } from "./doctor-service.ts";
 import type { SandboxBackendStatus, SandboxChoice } from "./sandbox-choice.ts";
-import type { TrustCheck } from "./trust-service.ts";
-
-const ready: SandboxCheck = { ok: true, reason: null, missing: [] };
-const llama = { name: "llama3.2", memoryBytes: 2_000_000_000 };
-
-const ollama: DoctorProvider = {
-  provider: "ollama",
-  name: "Ollama",
-  runs: "on-this-computer",
-  address: "localhost:11434",
-};
-const anthropic: DoctorProvider = {
-  provider: "anthropic",
-  name: "Anthropic",
-  runs: "with-a-key",
-  secret: "ANTHROPIC_API_KEY",
-};
-
-/** An agent of the workspace, in Halonic's own loop unless a harness is given. */
-function agent(name: string, harness?: Agent["harness"]): Agent {
-  return {
-    version: 1,
-    id: name.toLowerCase(),
-    name,
-    params: {},
-    instructions: "",
-    skills: [],
-    knowledge: [],
-    connectors: [],
-    runLogs: false,
-    collections: [],
-    subagents: [],
-    methods: {},
-    output: { type: "text" },
-    maxSteps: 6,
-    ...(harness === undefined ? {} : { harness, allowedSites: [] }),
-  };
-}
-
-function workspace(parts: Partial<DoctorWorkspace> & { agents?: Agent[] } = {}): DoctorWorkspace {
-  return {
-    name: "acme",
-    trust: {
-      location: "/work/acme",
-      connectors: [],
-      commandPaths: new Map(),
-      agents: parts.agents ?? [],
-      integrations: [],
-      providers: [],
-    },
-    aliases: parts.aliases ?? [],
-    providers: parts.providers ?? [],
-    ...(parts.testModelOnly === undefined ? {} : { testModelOnly: parts.testModelOnly }),
-    ...(parts.windowsDrive === undefined ? {} : { windowsDrive: parts.windowsDrive }),
-    ...(parts.tooManyFilesToWatch === undefined
-      ? {}
-      : { tooManyFilesToWatch: parts.tooManyFilesToWatch }),
-  };
-}
-
-interface Machine {
-  trust?: TrustCheck["status"];
-  sandbox?: SandboxCheck;
-  freeBytes?: number;
-  models?: ProviderModels[];
-  codex?: HarnessDetection;
-  /** Codex as a whole, in place of one that only answers `codex`. */
-  codexHarness?: DoctorHarness;
-  /** The sandbox choice; the host has none when left out. */
-  choice?: SandboxChoice | null;
-  secrets?: Record<string, string>;
-  /** What the host found wrong with Node.js; the host checks nothing when left out. */
-  node?: NodeProblem | null;
-}
-
-/** A doctor on a machine with plenty of disk and a working sandbox, unless told otherwise. */
-function doctor(machine: Machine = {}) {
-  const asked: string[] = [];
-  const resources: Resources = {
-    at: "2026-11-10T09:00:00.000Z",
-    memory: ok({ engineBytes: 0, processes: [], totalBytes: 0 }),
-    data: [],
-    disk: ok({
-      freeBytes: machine.freeBytes ?? 50e9,
-      low: (machine.freeBytes ?? 50e9) < 1024 ** 3,
-    }),
-    models: machine.models ?? [],
-    waits: ok([]),
-  };
-  const secrets: Secrets = {
-    get: async (name) => {
-      asked.push(name);
-      return machine.secrets?.[name] ?? null;
-    },
-  };
-  const service = new DoctorService({
-    trust: { check: async () => ({ status: machine.trust ?? "trusted" }) },
-    sandbox: {
-      check: async () => machine.sandbox ?? ready,
-      capabilities: () => ({ files: "shared", strength: "os" }),
-    },
-    resources: { read: async () => resources },
-    harnesses: [
-      machine.codexHarness ?? {
-        id: "codex",
-        name: "Codex",
-        detect: async () => machine.codex ?? { status: "missing" },
-      },
-    ],
-    secrets,
-    ...(machine.choice === undefined
-      ? {}
-      : { sandboxChoice: { current: () => machine.choice ?? null } }),
-    ...(machine.node === undefined ? {} : { node: async () => machine.node ?? null }),
-  });
-  return { service, asked };
-}
+import {
+  agent,
+  answered,
+  anthropic,
+  doctor,
+  llama,
+  ollama,
+  workspace,
+} from "./testing/doctor-fixtures.ts";
 
 verifies("app.doctor-service", () => {
   it("shows only the Sandbox and Disk lines outside a workspace, and exits 0 when they're fine", async () => {
@@ -230,8 +117,8 @@ verifies("app.doctor-service", () => {
       }),
     );
 
-    expect(report.models?.ready).toEqual([]);
-    expect(report.models?.problems).toEqual([
+    expect(answered(report.models).ready).toEqual([]);
+    expect(answered(report.models).problems).toEqual([
       { problem: "no-key", alias: "smart", provider: "anthropic", name: "Anthropic" },
     ]);
   });
@@ -276,14 +163,14 @@ verifies("app.doctor-service", () => {
     const without = await service.check(workspace({ agents }));
 
     expect(report.harnesses?.status).toBe("warning");
-    expect(report.harnesses?.problems).toEqual([
+    expect(answered(report.harnesses).problems).toEqual([
       expect.objectContaining({
         problem: "signed-out",
         agent: "Writer",
         settingsFolder: "/data/writer/codex",
       }),
     ]);
-    expect(without.harnesses?.problems).toEqual([]);
+    expect(answered(without.harnesses).problems).toEqual([]);
   });
 
   it("lists a ready harness outside a workspace, and has no Harnesses line when none is ready or used", async () => {
@@ -292,7 +179,7 @@ verifies("app.doctor-service", () => {
     );
     const none = await doctor().service.check(null);
 
-    expect(installed.harnesses?.installed).toEqual([
+    expect(answered(installed.harnesses).installed).toEqual([
       { harness: "codex", name: "Codex", version: "0.9.2" },
     ]);
     expect(none.harnesses).toBeUndefined();
@@ -305,7 +192,7 @@ verifies("app.doctor-service", () => {
     }).service.check(null);
 
     expect(report.sandbox.status).toBe("failed");
-    expect(report.disk.problem).toBe("low");
+    expect(answered(report.disk).problem).toBe("low");
     expect(report.summary).toEqual({ problems: 1, warnings: 1, needsFixing: true });
   });
 

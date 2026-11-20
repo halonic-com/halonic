@@ -78,13 +78,13 @@ describe("doctorService", () => {
         ["blobs", "deployments", "runs"].map((name) => join(profile, "workspaces", key, name)),
       ),
     );
-    expect(report.disk.data).toEqual({ bytes: 600, runLogBytes: 600, complete: true });
+    expect(report.disk).toMatchObject({ data: { bytes: 600, runLogBytes: 600, complete: true } });
   });
 
   it("counts nothing before the profile has any workspace", async () => {
     const report = await (await doctorService(machine(), noSecrets, null)).check(null);
 
-    expect(report.disk.data).toEqual({ bytes: 0, runLogBytes: 0, complete: true });
+    expect(report.disk).toMatchObject({ data: { bytes: 0, runLogBytes: 0, complete: true } });
   });
 
   it("asks each model server on this computer the workspace uses, at its default address", async () => {
@@ -95,15 +95,17 @@ describe("doctorService", () => {
     const report = await doctor.check(studio.workspace);
 
     expect(asked).toContain("http://localhost:1234/api/v0/models");
-    expect(report.models?.ready).toEqual([
-      {
-        provider: "studio",
-        name: "LM Studio",
-        answering: true,
-        address: "localhost:1234",
-        models: [{ name: "qwen3" }],
-      },
-    ]);
+    expect(report.models).toMatchObject({
+      ready: [
+        {
+          provider: "studio",
+          name: "LM Studio",
+          answering: true,
+          address: "localhost:1234",
+          models: [{ name: "qwen3" }],
+        },
+      ],
+    });
   });
 
   it("sends nothing to a server at another address until the workspace is trusted here", async () => {
@@ -114,9 +116,11 @@ describe("doctorService", () => {
     const report = await doctor.check(studio.workspace);
 
     expect(asked.filter((url) => url.includes("10.0.0.5"))).toEqual([]);
-    expect(report.models?.problems).toEqual([
-      { problem: "unreachable", provider: "studio", name: "LM Studio", address: "10.0.0.5:1234" },
-    ]);
+    expect(report.models).toMatchObject({
+      problems: [
+        { problem: "unreachable", provider: "studio", name: "LM Studio", address: "10.0.0.5:1234" },
+      ],
+    });
   });
 
   it("asks a server at another address once the workspace is trusted here", async () => {

@@ -1,4 +1,4 @@
-import type { Clock, Digest } from "@halonicjs/ports";
+import type { Clock, Digest, FolderReader } from "@halonicjs/ports";
 import { encodeUtf8 } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -32,7 +32,17 @@ function weatherSource(extra: Record<string, string> = {}): TestFolderReader {
   });
 }
 
-function setup() {
+/** `reader` with its real location at `location`, as a reader on a disk gives it. */
+function locatedAt(reader: TestFolderReader, location: string): FolderReader {
+  return {
+    location,
+    entries: (dir, options) => reader.entries(dir, options),
+    read: (path) => reader.read(path),
+    locationOf: async (path) => (path === undefined ? location : await reader.locationOf(path)),
+  };
+}
+
+function setup(halonicData?: readonly string[]) {
   const clock: Clock = { now: () => new Date("2026-11-11T09:00:00.000Z") };
   const trust = new TrustService({
     store: new TestTrustStore(),
@@ -48,6 +58,7 @@ function setup() {
     trust,
     records: new TestRecordStore(),
     clock,
+    ...(halonicData === undefined ? {} : { halonicData }),
   });
   return { folder, service };
 }
@@ -324,5 +335,37 @@ verifies("app.plugin-add", () => {
     });
     expect(brokenCodes(result)).toEqual(["too-many-files"]);
     expect(await pathsIn(folder)).toEqual([]);
+  });
+
+  it.each([
+    ["is the profile", "/person/.halonic"],
+    ["holds the profile", "/person"],
+    ["is inside the profile", "/person/.halonic/plugins/other"],
+    ["is the profile in another case and slash", "\\PERSON\\.Halonic"],
+    ["is a workspace's data", "/person/work/.studio"],
+    ["is inside a workspace's data", "/person/work/.STUDIO/x"],
+    ["holds the open workspace's data", "/person/open"],
+    ["is everything", "/"],
+  ])(
+    "refuses a source that %s before reading anything, and writes nothing",
+    async (_, location) => {
+      const { folder, service } = setup(["/person/.halonic", "/person/open/.studio"]);
+      const source = weatherSource();
+      const read: string[] = [];
+      source.beforeRead = (path) => {
+        read.push(path);
+      };
+      const result = await service.add(locatedAt(source, location), { from, replace: false });
+      expect(result).toEqual({ ok: false, error: { kind: "halonic-data" } });
+      expect(read).toEqual([]);
+      expect(await pathsIn(folder)).toEqual([]);
+      expect(await service.install("weather")).toBeNull();
+    },
+  );
+
+  it("adds a source next to Halonic's data, which neither holds nor is inside it", async () => {
+    const { service } = setup(["/person/.halonic"]);
+    const source = locatedAt(weatherSource(), "/person/.halonic-plugins/weather");
+    expect((await service.add(source, { from, replace: false })).ok).toBe(true);
   });
 });
