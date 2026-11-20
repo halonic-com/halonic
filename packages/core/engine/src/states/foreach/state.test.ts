@@ -264,8 +264,8 @@ verifies("engine.task-choice-answer", () => {
         type: "run.failed",
         state: "triage",
         error:
-          'Item 1 of for-each state "triage" failed: Agent "labeler" answered "Refunds", ' +
-          'which isn\'t one of its options: "refunds", "billing". ' +
+          'Item 1 of for-each state "triage" failed: The agent labeler answered "Refunds", ' +
+          "which isn't one of its options (refunds, billing). " +
           "Tighten the agent's instructions or use a larger model.",
         reason: "answer-not-an-option",
       },

@@ -36,8 +36,8 @@ const answer = (output: unknown, type: "model" | "harness" = "model"): DecideInp
 });
 
 const notAnOption =
-  'Agent "triage" answered "This is a refund.", which isn\'t one of its options: ' +
-  '"refund", "complaint", "question". ' +
+  'The agent triage answered "This is a refund.", which isn\'t one of its options ' +
+  "(refund, complaint, question). " +
   "Tighten the agent's instructions or use a larger model.";
 
 verifies("engine.task-choice-answer", () => {

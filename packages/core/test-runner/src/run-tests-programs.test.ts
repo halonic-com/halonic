@@ -91,7 +91,13 @@ verifies("test-runner.scripted-programs", () => {
       expect(expected.failures).toEqual([]);
       expect(expected.error).toBe("codex exited with code 1");
       expect(unexpected.failures).toEqual([
-        { kind: "status", expected: "completed", actual: "failed", step: "code" },
+        {
+          kind: "status",
+          expected: "completed",
+          actual: "failed",
+          step: "code",
+          error: "codex exited with code 1",
+        },
       ]);
     });
 

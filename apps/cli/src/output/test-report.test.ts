@@ -95,6 +95,20 @@ verifies("cli.commands.test.run-tests", () => {
       ]);
     });
 
+    it("says why a failed run failed, as the run's own line does (C337 C17)", () => {
+      const error =
+        "The agent sorter answered \"questions\", which isn't one of its options (refund, question, spam). Tighten the agent's instructions or use a larger model.";
+      expect(
+        sentences(
+          { kind: "status", expected: "completed", actual: "failed", step: "decide", error },
+          { kind: "status", expected: "waiting", actual: "failed", error: "The disk is full" },
+        ),
+      ).toEqual([
+        `Expected the run to finish, but it failed in the step Decide on the invoice. ${error}`,
+        "Expected the run to wait for an answer, but it failed. The disk is full.",
+      ]);
+    });
+
     it("words the runner's other failures", () => {
       expect(
         sentences(

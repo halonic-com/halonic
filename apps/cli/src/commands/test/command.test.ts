@@ -125,6 +125,20 @@ verifies("cli.commands.test.run-tests", () => {
       ]);
     });
 
+    it("says why the run failed under the failed test (C337 row 13)", async () => {
+      const file = join(acme, testFile);
+      const text = await readFile(file, "utf8");
+      await writeFile(file, text.replace("      sorter: [question]", "      sorter: [questions]"));
+
+      const { code, io } = await testIn(acme, "--filter", "A question gets an approved reply");
+
+      expect(code).toBe(exitCode.failed);
+      const failed = io.stdout.findIndex((line) => line.startsWith("✕ support-reply › "));
+      expect(io.stdout[failed + 1]).toBe(
+        "    Expected the run to finish, but it failed in the step Classify it. The agent sorter answered \"questions\", which isn't one of its options (refund, question, spam). Tighten the agent's instructions or use a larger model.",
+      );
+    });
+
     it("runs only the tests whose hub/workflow/name contains --filter", async () => {
       const { code, io } = await testIn(acme, "--filter", "support/support-reply/Alex");
 

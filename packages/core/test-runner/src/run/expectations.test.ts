@@ -106,7 +106,13 @@ verifies("test-runner.expectations", () => {
 
     it("gives the step a run failed in, and none for a run that finished", () => {
       expect(check({ status: "waiting" }, failed)).toEqual([
-        { kind: "status", expected: "waiting", actual: "failed", step: "extract" },
+        {
+          kind: "status",
+          expected: "waiting",
+          actual: "failed",
+          step: "extract",
+          error: "The model refused.",
+        },
       ]);
       expect(check({ status: "failed" }, completed(["done"]))).toEqual([
         { kind: "status", expected: "failed", actual: "completed" },

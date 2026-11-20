@@ -26,13 +26,15 @@ export type TestFailure =
   /**
    * `expect.status`, or `completed` implied by `final`. `step` is where the
    * run waits, failed or couldn't try, absent when it finished or when the
-   * whole item couldn't be tried.
+   * whole item couldn't be tried. `error` is why a failed run failed, as
+   * its log has it, so the test says the same reason as the run (C337 C17).
    */
   | {
       readonly kind: "status";
       readonly expected: ExpectedStatus;
       readonly actual: RunStatus;
       readonly step?: string;
+      readonly error?: string;
     }
   /**
    * `expect.context`: one per field that doesn't match, by its path as the

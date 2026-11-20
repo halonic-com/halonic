@@ -107,6 +107,7 @@ verifies("test-runner.old-suites", () => {
         expected: "completed",
         actual: "failed",
         step: "gather",
+        error: 'Branch "risks" of parallel state "gather" failed: The critic\'s model is offline.',
       });
       expect(failed?.runs[0]?.summary.error).toContain("offline");
       expect(tolerant?.failures).toEqual([
@@ -145,6 +146,9 @@ verifies("test-runner.old-suites", () => {
         expected: "completed",
         actual: "failed",
         step: "gather",
+        error: expect.stringContaining(
+          `The agent critic answered "floods", which isn't one of its options (low, high).`,
+        ),
       });
       expect(test?.runs[0]?.summary.error).toContain(
         `answered "floods", which isn't one of its options`,

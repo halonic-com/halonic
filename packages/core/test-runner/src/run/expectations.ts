@@ -61,6 +61,7 @@ function outcomeFailures(expect: Expect, run: RunSummary): TestFailure[] {
       expected: expectedStatus,
       actual: run.status,
       ...(run.status === "completed" || run.state === null ? {} : { step: run.state }),
+      ...(run.status === "failed" && run.error ? { error: run.error } : {}),
     });
   }
   return failures;

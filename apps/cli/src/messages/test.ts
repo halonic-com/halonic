@@ -2,6 +2,7 @@ import type { RunStatus } from "@halonicjs/events";
 import { counted, listInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { bold, dim, markPart, type Phrase, phrase } from "./phrase.ts";
+import { asSentence } from "./sentence.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
 /**
@@ -51,9 +52,15 @@ export const testMessages = defineMessages("test", {
   /** `states` failed: the steps the test expected, then the ones the run went through, in order. */
   wentElsewhere: (expected: readonly string[], actual: readonly string[]) =>
     phrase`Expected the run to go through ${listInWords(expected)}, but it went through ${listInWords(actual)}.`,
-  /** `status` failed: "Expected the run to finish, but it failed in the step Draft a reply.", the step in bold. */
+  /**
+   * `status` failed: "Expected the run to finish, but it failed in the step
+   * Draft a reply.", the step in bold, then why it failed when the run says,
+   * as the run's own line does (C337 C17).
+   */
   endedOtherwise: (expected: TestStatus, actual: RunOutcome) =>
-    phrase`Expected the run ${expectedStatusWords[expected]}, but ${outcomeInWords(actual)}.`,
+    actual.status === "failed" && actual.error !== undefined
+      ? phrase`Expected the run ${expectedStatusWords[expected]}, but ${outcomeInWords(actual)}. ${asSentence(actual.error)}`
+      : phrase`Expected the run ${expectedStatusWords[expected]}, but ${outcomeInWords(actual)}.`,
   /** `context` failed for one field, named by its path as the test file writes it. Values as compact JSON. */
   otherValue: (path: string, expected: unknown, actual: unknown) =>
     phrase`Expected ${bold(path)} to be ${compactJson(expected)} when the run ended, but it was ${compactJson(actual)}.`,
@@ -127,7 +134,8 @@ export type TestStatus = "completed" | "waiting" | "failed";
  */
 export type RunOutcome =
   | { readonly status: "completed" | "running" }
-  | { readonly status: "waiting" | "failed" | "cant-try"; readonly step?: string };
+  | { readonly status: "waiting" | "cant-try"; readonly step?: string }
+  | { readonly status: "failed"; readonly step?: string; readonly error?: string };
 
 const expectedStatusWords: Record<TestStatus, string> = {
   completed: "to finish",
@@ -135,10 +143,7 @@ const expectedStatusWords: Record<TestStatus, string> = {
   failed: "to fail",
 };
 
-/**
- * The step, in bold as in {@link testMessages.endedElsewhere}, tells the user
- * where to look; why it failed stays in --verbose and --json.
- */
+/** The step, in bold as in {@link testMessages.endedElsewhere}, tells the user where to look. */
 function outcomeInWords(outcome: RunOutcome): Phrase {
   switch (outcome.status) {
     case "completed":
