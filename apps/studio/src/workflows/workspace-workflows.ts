@@ -3,6 +3,7 @@ import type { RunSummary } from "@halonicjs/events";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import {
   type NewWorkflow,
+  type RemovedStep,
   type StartRefusal,
   startRefusalOf,
   type TrashedWorkflow,
@@ -11,6 +12,7 @@ import {
   type WorkflowHub,
   type WorkflowListing,
   type WorkflowRef,
+  type WorkflowRemoval,
   type WorkflowStepChange,
   type WorkflowsHost,
   type WorkflowTests,
@@ -23,6 +25,7 @@ import { workflowRefusalOf } from "../engine/page-refusal.ts";
 import { checkedSource } from "../library/workspace-library-items.ts";
 import { hubFilesFor } from "../studio/first-hub.ts";
 import { programOf } from "./step-program.ts";
+import { undoWhileNewest } from "./undo-while-newest.ts";
 import {
   arrowChangeLabel,
   arrowEdits,
@@ -30,7 +33,7 @@ import {
   checkArrowChange,
   writtenArrows,
 } from "./workflow-arrow-edits.ts";
-import { cantChange, stepGone, workflowGone } from "./workflow-errors.ts";
+import { cantChange, firstStep, stepGone, workflowGone } from "./workflow-errors.ts";
 import {
   endedIn,
   newWorkflowText,
@@ -41,6 +44,7 @@ import {
   workflowSuffix,
 } from "./workflow-files.ts";
 import { workflowProblemsOf } from "./workflow-problems.ts";
+import { arrowRemovalEdits, stepRemovalEdits } from "./workflow-removal-edits.ts";
 import { stepEdits } from "./workflow-step-edits.ts";
 import { trashWorkflowFiles, workflowFilesOf, workflowUsersOf } from "./workflow-trash.ts";
 import { arrowsOf, stepsOf } from "./workflow-view.ts";
@@ -373,6 +377,34 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     return workflowUsersOf(await this.#load(), ref);
   }
 
+  /**
+   * Takes the step out of the workflow's file, with its place and every arrow into it, as one
+   * undoable change (see {@link stepRemovalEdits}). The first step stays until another is picked.
+   */
+  async removeStep(ref: WorkflowRef, stepId: string): Promise<RemovedStep> {
+    const { file, text } = await this.#fileOf(ref);
+    if (!Object.hasOwn(file.value.states, stepId)) throw stepGone(stepId);
+    if (file.value.initial === stepId) throw firstStep();
+    const read = readYaml(text);
+    if (!read.ok) throw cantChange();
+    const stepIds = Object.keys(file.value.states);
+    const { edits, arrows } = stepRemovalEdits(read.value.data, stepId, stepIds);
+    this.#edit(file.path, text, `Removed step ${stepId} from workflow ${file.value.name}`, edits);
+    return { arrows, undo: undoWhileNewest(this.#parts.files, cantPutBack(`Step ${stepId}`)) };
+  }
+
+  /** Takes one arrow out of the step's `on` list in place, as one undoable change. */
+  async removeArrow(ref: WorkflowRef, stepId: string, index: number): Promise<WorkflowRemoval> {
+    const { file, text } = await this.#fileOf(ref);
+    if (!Object.hasOwn(file.value.states, stepId)) throw stepGone(stepId);
+    const read = readYaml(text);
+    if (!read.ok) throw cantChange();
+    const edits = arrowRemovalEdits(stepId, writtenArrows(read.value.data, stepId), index);
+    const label = `Removed an arrow of step ${stepId} in workflow ${file.value.name}`;
+    this.#edit(file.path, text, label, edits);
+    return { undo: undoWhileNewest(this.#parts.files, cantPutBack("The arrow")) };
+  }
+
   subscribe(listener: () => void): () => void {
     this.#nameListeners.add(listener);
     const stops = [this.#parts.onChange(listener), this.#parts.runs.subscribe(listener)];
@@ -457,4 +489,9 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     }));
     return workspace;
   }
+}
+
+/** Why a removal's undo puts nothing back: the workspace changed after it. */
+function cantPutBack(what: string): string {
+  return `${what} can't be put back, because the workspace changed after it was removed.`;
 }
