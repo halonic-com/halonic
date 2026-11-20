@@ -308,13 +308,13 @@ folder adapter that throws can't keep a waiting parent from hearing that its chi
 ## Where the engine runs, and when timers fire
 
 `assembleEngine` builds the engine inside the process that opens it: the CLI's `halonic run`,
-`halonic routines watch` and `halonic serve` on Node, and the desktop Studio in its page, with the
-shell's Tauri stores (HAL-6602). Each holds the workspace's `engine.lock`, so one engine at a time
+`halonic runs send`, `halonic routines watch` and `halonic serve` on Node, and the desktop Studio in
+its page, with the shell's Tauri stores (HAL-6602). Each holds the workspace's `engine.lock`, so one engine at a time
 writes the runs. There is no engine in the background: the scheduler's timers live in that process,
 so a routine's schedule, a `wait` state's `after` timer and the next step of a run only fire while
 the Studio window or one of those commands is open. A run that is due while nothing is open goes on
 when an engine opens again; a run that was `running` when its engine stopped (the window closed or
-the page reloaded) ends as `interrupted` then, and never runs twice
+the page reloaded) ends as failed (`interrupted`) then, and never runs twice
 (`engine.end-interrupted-runs`).
 
 ## Harness runs
