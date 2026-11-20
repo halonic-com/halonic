@@ -258,7 +258,7 @@ verifies("cli.workspace-file-problems", () => {
 
     expect(code).toBe(exitCode.failed);
     expect(io.stdout[2]).toBe(
-      "✕ Workspace   Acme · 2 problems in its files · halonic validate --dir acme",
+      "✕ Workspace   Acme · 1 problem in its files · halonic validate --dir acme",
     );
     expect(io.stdout.at(-1)).toBe("1 problem.");
     expect([...io.stdout, ...io.stderr].join("\n")).not.toContain(pastedKey);

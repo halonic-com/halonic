@@ -5,7 +5,8 @@
 // shows it as a problem, until `halonic validate` finds no error.
 
 import { KindedError } from "@halonicjs/std";
-import type { LoadedWorkspace } from "@halonicjs/workspace";
+import type { LoadedWorkspace, WorkspaceIssue } from "@halonicjs/workspace";
+import { defaultModelProblems } from "./default-model-problems.ts";
 import type { Message } from "./messages/define.ts";
 import { plainText } from "./messages/phrase.ts";
 import { workspaceMessages } from "./messages/workspace.ts";
@@ -14,11 +15,21 @@ import type { OpenWorkspaceDir } from "./workspace-dir.ts";
 import { workspaceNameOf } from "./workspace-trust.ts";
 
 /**
+ * Every problem `halonic validate` lists: the loader's, then a default model
+ * alias the hub doesn't have. `doctor` and the run count the same ones, so
+ * validate never says "No problems" for a workspace they refuse (HAL-14260).
+ */
+export function workspaceProblemsOf(workspace: LoadedWorkspace): WorkspaceIssue[] {
+  return [...workspace.issues, ...defaultModelProblems(workspace)];
+}
+
+/**
  * How many errors `halonic validate` finds in the workspace's files: the
- * problems that leave a file out. Warnings leave nothing out, so they don't count.
+ * problems that leave a file out or stop a run. Warnings do neither, so they
+ * don't count.
  */
 export function fileProblemsOf(workspace: LoadedWorkspace): number {
-  return workspace.issues.filter((issue) => issue.severity === "error").length;
+  return workspaceProblemsOf(workspace).filter((issue) => issue.severity === "error").length;
 }
 
 /**

@@ -2,43 +2,47 @@
 // would call a model alias no file has (HAL-7938). `loadWorkspace` checks the
 // model an agent names, but not the one it gets when it names none, so a new
 // workspace without `models.yaml` passed and then failed on its first run.
+// When a workflow runs such an agent, the run fails on it, so it is an error
+// (HAL-14260); when none does, nothing fails yet, and it stays a warning.
 
+import { workflowAgentsOf } from "@halonicjs/adapter-workspace-models";
 import {
   callModelName,
   definitionsOf,
   filesOf,
+  type LoadedFileOf,
   type LoadedWorkspace,
   resolveModel,
   type WorkspaceIssue,
 } from "@halonicjs/workspace";
 
 /**
- * One warning per hub with an agent that names no model, when the model such
+ * One problem per hub with an agent that names no model, when the model such
  * an agent gets (the hub's default, else the workspace's, else `default`) is
- * an alias the hub doesn't have. It sits on the first such agent's file.
- * A default with a `/` names a provider and a model directly, and a provider
- * no file has is `loadWorkspace`'s to report.
+ * an alias the hub doesn't have. A default with a `/` names a provider and a
+ * model directly, and a provider no file has is `loadWorkspace`'s to report.
+ *
+ * - **Error**, on the first such agent a workflow of the hub runs: a run of
+ *   that workflow would stop when the agent calls the model.
+ * - **Warning**, on the first such agent's file, when no workflow runs one.
  *
  * @example
  * defaultModelProblems(await loadWorkspace(store));
- * // [{ file: "hubs/notes/agents/clerk.agent.yaml", severity: "warning", code: "unknown-default-model", … }]
+ * // [{ file: "hubs/notes/agents/clerk.agent.yaml", severity: "error", code: "unknown-default-model", … }]
  */
 export function defaultModelProblems(workspace: LoadedWorkspace): WorkspaceIssue[] {
   const problems: WorkspaceIssue[] = [];
-  const seen = new Set<string>();
-  for (const agent of filesOf(workspace, "agent")) {
-    const hub = agent.hub;
-    if (hub === null || agent.value.model !== undefined || seen.has(hub)) {
-      continue;
-    }
-    seen.add(hub);
+  for (const [hub, agents] of agentsWithoutModel(workspace)) {
     const name = callModelName(definitionsOf(workspace, hub), {});
     if (name.includes("/") || resolveModel(workspace, hub, name) !== undefined) {
       continue;
     }
+    const runIds = new Set(agentsRunByWorkflows(workspace, hub).map((agent) => agent.value.id));
+    const agent = agents.find((each) => runIds.has(each.value.id)) ?? agents[0];
+    if (agent === undefined) continue;
     problems.push({
       file: agent.path,
-      severity: "warning",
+      severity: runIds.has(agent.value.id) ? "error" : "warning",
       source: "check",
       code: "unknown-default-model",
       path: [],
@@ -48,4 +52,23 @@ export function defaultModelProblems(workspace: LoadedWorkspace): WorkspaceIssue
     });
   }
   return problems;
+}
+
+/** Each hub's agents that name no model, in path order, for hubs that have any. */
+function agentsWithoutModel(workspace: LoadedWorkspace): Map<string, LoadedFileOf<"agent">[]> {
+  const byHub = new Map<string, LoadedFileOf<"agent">[]>();
+  for (const agent of filesOf(workspace, "agent")) {
+    if (agent.hub === null || agent.value.model !== undefined) continue;
+    byHub.set(agent.hub, [...(byHub.get(agent.hub) ?? []), agent]);
+  }
+  return byHub;
+}
+
+/** Every agent a workflow of the hub runs, as `halonic run` finds them. */
+function agentsRunByWorkflows(workspace: LoadedWorkspace, hub: string): LoadedFileOf<"agent">[] {
+  return filesOf(workspace, "workflow")
+    .filter((workflow) => workflow.hub === hub)
+    .flatMap((workflow) =>
+      workflowAgentsOf(workspace, { hubId: hub, workflowId: workflow.value.id }),
+    );
 }

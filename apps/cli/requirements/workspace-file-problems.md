@@ -10,7 +10,7 @@ When the workspace's files have errors, as `halonic validate` finds them, `halon
 
 - Given the Acme example with `providers/anthropic.yaml` holding a key pasted as its `secret`, the alias smart on it and `model: smart` on Writer,
   when `halonic run support-reply` runs,
-  then it prints, counting the pasted key and the alias whose provider is left out, "✕ Couldn't run support-reply: Acme has 2 problems in its files. Nothing ran." and "  See them with: halonic validate", exits with 2, stores no run and never prints the key.
+  then it prints, counting the pasted key but not the alias whose provider is left out (that file's own error says what to fix), "✕ Couldn't run support-reply: Acme has 1 problem in its files. Nothing ran." and "  See them with: halonic validate", exits with 2, stores no run and never prints the key.
 - Given the Acme example with `version: 2` added to `hubs/support/workflows/support-reply.workflow.yaml`,
   when `halonic run support-reply` runs,
   then it prints "✕ Couldn't run support-reply: Acme has 1 problem in its files. Nothing ran." and "  See them with: halonic validate", not that there's no workflow called "support-reply", and exits with 2;
@@ -18,6 +18,9 @@ When the workspace's files have errors, as `halonic validate` finds them, `halon
 - Given the same workspace with a run of Support reply waiting,
   when `halonic runs send 01jd8q approve` runs,
   then it ends "Nothing was sent.", exits with 2 and adds nothing to the run.
+- Given the Acme example with `type: antropic` in `providers/mock.yaml`, or with `defaults.model: smart` in `workspace.yaml` and no alias smart,
+  when `halonic run support-reply` runs,
+  then it prints "Acme has 1 problem in its files." (or "2 problems", one per hub whose workflow runs an agent without a model) and exits with 2, where it used to start and fail with exit 4 (HAL-14260).
 - Given a workspace whose provider file has a key pasted as its `secret` and on an `apiKey:` line,
   when `halonic doctor --dir acme` runs,
-  then the Workspace line is "✕ Workspace   Acme · 2 problems in its files · halonic validate --dir acme", it exits with 1 and never prints the key.
+  then the Workspace line is "✕ Workspace   Acme · 1 problem in its files · halonic validate --dir acme", it exits with 1 and never prints the key.

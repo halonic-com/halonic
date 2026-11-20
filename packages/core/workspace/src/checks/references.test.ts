@@ -99,6 +99,19 @@ verifies("workspace.references", () => {
     parityLoadLimitMs,
   );
 
+  it("doesn't call the provider of an alias unknown when its file failed (HAL-14260)", async () => {
+    const workspace = await loadWorkspace(
+      new MemorySource({
+        "workspace.yaml": "id: acme\nname: Acme\n",
+        "models.yaml": "aliases:\n  default:\n    provider: mock\n    model: echo\n",
+        "providers/mock.yaml": "id: mock\ntype: antropic\n",
+      }),
+    );
+    expect(workspace.issues.map((issue) => [issue.file, issue.code])).toEqual([
+      ["providers/mock.yaml", "provider-type"],
+    ]);
+  });
+
   describe("in small workspaces", () => {
     const settings = { "workspace.yaml": "id: acme\nname: Acme\n" };
     const errorsIn = async (files: Record<string, string>): Promise<string[]> => {

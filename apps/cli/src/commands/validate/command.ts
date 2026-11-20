@@ -1,6 +1,5 @@
 import { loadWorkspace, type WorkspaceIssue } from "@halonicjs/workspace";
 import type { CliCommand, CommandInput } from "../../command.ts";
-import { defaultModelProblems } from "../../default-model-problems.ts";
 import { exitCode } from "../../exit-code.ts";
 import { validateMessages } from "../../messages/validate.ts";
 import {
@@ -10,6 +9,7 @@ import {
   validateReport,
 } from "../../output/validate-report.ts";
 import { dirOption, givenDir, openWorkspaceDir, workspaceDir } from "../../workspace-dir.ts";
+import { workspaceProblemsOf } from "../../workspace-problems.ts";
 
 /**
  * `halonic validate [--dir <folder>] [--all] [--strict]`: checks every file of
@@ -32,7 +32,7 @@ export const validateCommand: CliCommand = {
     const loaded = await loadWorkspace(workspace.store);
     const report = validateReport({
       ...loaded,
-      issues: [...loaded.issues, ...defaultModelProblems(loaded)],
+      issues: workspaceProblemsOf(loaded),
     });
     const dir = givenDir(input, workspace);
     return {

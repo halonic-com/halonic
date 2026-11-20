@@ -55,7 +55,7 @@ verifies("cli.workspace-file-problems", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr.slice(0, 2)).toEqual([
-      "✕ Couldn't run support-reply: Acme has 2 problems in its files. Nothing ran.",
+      "✕ Couldn't run support-reply: Acme has 1 problem in its files. Nothing ran.",
       "  See them with: halonic validate",
     ]);
     expect([...io.stdout, ...io.stderr].join("\n")).not.toContain(pastedKey);
@@ -70,6 +70,42 @@ verifies("cli.workspace-file-problems", () => {
     await runCli(["run", "support-reply", "--dir", "acme"], io, [runCommand()]);
 
     expect(io.stderr[1]).toBe(`  See them with: halonic validate --dir .${sep}acme`);
+  });
+
+  // HAL-14260: `validate` said "No problems" for these, and the run then
+  // failed with exit 4 at its first model call.
+  it.each([
+    // One problem: the provider file's own; `models.yaml` doesn't repeat it.
+    [
+      "a provider type Halonic can't call",
+      "providers/mock.yaml",
+      "type: mock",
+      "type: antropic",
+      "1 problem",
+    ],
+    // One problem per hub whose workflow runs an agent without a model.
+    [
+      "a default alias no file has",
+      "workspace.yaml",
+      "model: default",
+      "model: smart",
+      "2 problems",
+    ],
+  ])("refuses %s before anything starts, as validate does", async (_, path, from, to, count) => {
+    const file = join(acme, path);
+    await writeFile(file, (await readFile(file, "utf8")).replace(from, to));
+    const profile = freshProfile();
+    const io = captureIo(acme);
+
+    const code = await runCli(["run", "support-reply", ...samsEmail], io, [runCommand(profile)]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr.slice(0, 2)).toEqual([
+      `✕ Couldn't run support-reply: Acme has ${count} in its files. Nothing ran.`,
+      "  See them with: halonic validate",
+    ]);
+    const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
+    expect(listed.total).toBe(0);
   });
 
   it("points at validate, not at a missing workflow, when the workflow's own file has an error", async () => {

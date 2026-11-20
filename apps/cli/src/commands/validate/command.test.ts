@@ -115,6 +115,49 @@ verifies("cli.commands.validate.check-workspace", () => {
       ]);
     });
 
+    it("fails when a workflow runs an agent that would call a default alias no file has", async () => {
+      writeFiles(acme, {
+        "hubs/notes/hub.yaml": "id: notes\nname: Notes\n",
+        "hubs/notes/agents/archivist.agent.yaml":
+          "id: archivist\nname: Archivist\ninstructions: File notes.\n",
+        "hubs/notes/agents/clerk.agent.yaml": "id: clerk\nname: Clerk\ninstructions: Take notes.\n",
+        "hubs/notes/workflows/take-notes.workflow.yaml": [
+          "id: take-notes",
+          "name: Take notes",
+          "initial: write",
+          "states:",
+          "  write:",
+          "    agent: clerk",
+          "    on:",
+          "      - to: done",
+          "  done:",
+          "    type: final",
+          "",
+        ].join("\n"),
+      });
+
+      const { code, io } = await validateIn(acme);
+
+      expect(code).toBe(exitCode.failed);
+      expect(io.stdout[0]).toBe(`hubs${sep}notes${sep}agents${sep}clerk.agent.yaml`);
+      expect(io.stdout[1]).toMatch(/^ {2}1:1 +✕ Hub "notes" has no model alias "default", /);
+      expect(io.stdout[1]).toMatch(/ {2}\(unknown-default-model\)$/);
+    });
+
+    it("fails on a provider type Halonic can't call, on its type line, listing the types", async () => {
+      writeFiles(acme, { "providers/mock.yaml": "id: mock\ntype: antropic\n" });
+
+      const { code, io } = await validateIn(acme);
+
+      expect(code).toBe(exitCode.failed);
+      expect(io.stdout).toEqual([
+        `providers${sep}mock.yaml`,
+        "  2:7  ✕ Halonic can't call provider type antropic: set type in providers/mock.yaml to one of anthropic, openai, openai-compatible, ollama, lmstudio or mock  (provider-type)",
+        "",
+        "✕ 1 error in 1 file. Checked 3 files.",
+      ]);
+    });
+
     it("shows at most 20 problems, errors first, and says how to see them all", async () => {
       for (let index = 1; index <= 25; index += 1) {
         writeFiles(acme, agent(`agent-${String(index).padStart(2, "0")}`, "missing"));

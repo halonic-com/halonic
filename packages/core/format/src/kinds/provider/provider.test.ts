@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.spec.ts";
+import { providerTypes } from "./types.ts";
 
 verifies("format.provider-file", () => {
   it("fills in local and options", () => {
@@ -20,6 +21,21 @@ verifies("format.provider-file", () => {
 
   it("refuses a provider without a type", () => {
     expect(summary(problemsOf("provider", yaml("id: mock")))).toEqual(["type invalid_type 1"]);
+  });
+
+  it("refuses a type Halonic can't call, on its line, listing the types it can", () => {
+    const [problem, ...others] = problemsOf("provider", yaml("id: mock", "type: antropic"));
+    expect(others).toEqual([]);
+    expect(problem).toMatchObject({ code: "provider-type", path: ["type"], line: 2 });
+    expect(problem?.message).toBe(
+      "Halonic can't call provider type antropic: set type in providers/mock.yaml to one of anthropic, openai, openai-compatible, ollama, lmstudio or mock",
+    );
+  });
+
+  it("accepts every type Halonic can call", () => {
+    for (const type of providerTypes) {
+      expect(parsedValue("provider", yaml("id: p", `type: ${type}`)).type).toBe(type);
+    }
   });
 
   it("refuses an API key written into the file instead of a secret name", () => {
