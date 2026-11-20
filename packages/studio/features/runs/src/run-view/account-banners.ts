@@ -46,7 +46,11 @@ export function accountBanner(
   const provider = providerNameOf(model.providerId, context.providerName);
   switch (failure.reason) {
     case "no-key":
-      return withModelsFix(failureWords.noKey(provider, failure.alias), { label: failureWords.addKey }, phone);
+      return withModelsFix(
+        failureWords.noKey(provider, failure.alias),
+        { label: failureWords.addKey },
+        phone,
+      );
     case "key-refused":
       return withModelsFix(
         failureWords.keyRefused(provider, failure.secret, failure.alias),

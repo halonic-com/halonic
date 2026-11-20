@@ -76,6 +76,8 @@ const linesOf = (banner: ReturnType<typeof causeBanner>) =>
   banner?.kind === "callout" ? banner.lines : undefined;
 const fixesOf = (banner: ReturnType<typeof causeBanner>) =>
   banner?.kind === "callout" ? banner.fixes : undefined;
+const linksOf = (banner: ReturnType<typeof causeBanner>) =>
+  banner?.kind === "callout" ? banner.links : undefined;
 
 verifies("runs.run-view.account-banners", () => {
   describe("a key", () => {
@@ -128,12 +130,13 @@ verifies("runs.run-view.account-banners", () => {
   });
 
   describe("no credit", () => {
-    it("says it isn't the Halonic budget, with the provider's billing page", () => {
+    it("says it isn't the Halonic budget, with the provider's billing page after Run again", () => {
       const banner = bannerOf("out-of-credit", [call("openai", "gpt-4o")]);
       expect(linesOf(banner)).toEqual([
         "OpenAI refused the call because the account has no credit left or reached its limit at OpenAI. This isn't your Halonic budget.",
       ]);
-      expect(fixesOf(banner)).toEqual([
+      expect(fixesOf(banner)).toBeUndefined();
+      expect(linksOf(banner)).toEqual([
         {
           kind: "open-external",
           label: "Open OpenAI billing",
@@ -159,15 +162,17 @@ verifies("runs.run-view.account-banners", () => {
     });
   });
 
-  it("names the model a cloud provider doesn't have and its alias, with Open Models", () => {
+  it("names the model a cloud provider doesn't have and its alias, with Open Models at its tab", () => {
     const banner = bannerOf("model-missing", [call("openai", "gpt-9")]);
     expect(linesOf(banner)).toEqual([
       "OpenAI doesn't have the model gpt-9, used by the model alias next. Pick another model for next in Models.",
     ]);
-    expect(fixesOf(banner)).toEqual([{ kind: "open-models" }]);
-    expect(linesOf(bannerOf("model-missing", [call("openai", "o5")]))).toEqual([
+    expect(fixesOf(banner)).toEqual([{ kind: "open-models", alias: "next" }]);
+    const noAlias = bannerOf("model-missing", [call("openai", "o5")]);
+    expect(linesOf(noAlias)).toEqual([
       "OpenAI doesn't have the model o5. Pick another model in Models.",
     ]);
+    expect(fixesOf(noAlias)).toEqual([{ kind: "open-models" }]);
   });
 
   describe("local only", () => {

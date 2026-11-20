@@ -19,6 +19,9 @@ CLI's failure lines (`@halonicjs/app/run-failure`). Two active requirements chan
   `providerName()` leaves `failure-words.ts`. The slow-step tests now call the provider
   `anthropic`, a known id, so their line still has a capital.
 
+The new banners follow 15.3's order as HAL-11626 set it for the others: **Open *OpenAI* billing**
+is a link after **Run again**, and a cloud provider's **Open Models** opens the alias's tab.
+
 No test is removed or weakened. The test "keeps the general banner for a cloud provider's
 missing model" still passes unchanged: its page has no workspace models, so it keeps the general
 banner, as the new requirement says.
