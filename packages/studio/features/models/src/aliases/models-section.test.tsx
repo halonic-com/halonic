@@ -95,6 +95,22 @@ verifies("models.aliases.list", () => {
     ]);
   });
 
+  it("draws the rows and Add a price as links with the focus ring, above the Budget (HAL-14204)", async () => {
+    const files = filesWith(twoAliases, {
+      workspace: "version: 1\nid: acme\nname: Acme\nbudget: { currency: EUR, monthly: 50 }\n",
+    });
+    const section = await showSection(files);
+    const row = buttonNamed(section, "default · ollama / llama3.2");
+    const addPrice = section.querySelector("[aria-label='Add a price for default']");
+    const budget = [...section.querySelectorAll("h3")].find((h) => h.textContent === "Budget");
+
+    expect(row?.className).toContain("focus-ring");
+    expect(row?.className).toContain("forced-colors:text-[LinkText]");
+    expect(addPrice?.className).toContain("focus-ring");
+    expect(budget).toBeDefined();
+    expect(row?.compareDocumentPosition(budget as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it("says a local model with no price runs on this machine, with nothing to add", async () => {
     const files = filesWith(twoAliases, {
       providers: { ollama: "version: 1\nid: ollama\ntype: ollama\nlocal: true\n" },

@@ -115,6 +115,7 @@ verifies("models.aliases.list", () => {
       await act(async () => vi.advanceTimersByTime(10_000));
 
       expect(tab.textContent).toContain("Still loading · Try again");
+      expect(tab.querySelector("[role='status'] button")?.className).toContain("focus-ring");
     } finally {
       vi.useRealTimers();
     }
