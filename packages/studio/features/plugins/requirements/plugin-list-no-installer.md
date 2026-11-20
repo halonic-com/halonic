@@ -1,6 +1,6 @@
 # plugins.plugin-list-no-installer
 
-- Status: active
+- Status: retired
 - Since: unreleased
 - Source: HAL-1740; flow check HAL-11490; design check HAL-11503; UX check L12 (HAL-12363)
 

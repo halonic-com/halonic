@@ -39,7 +39,6 @@ import {
   LOADING_LABEL,
   moreFor,
   NOT_TRUSTED_CHIP,
-  noInstallerLine,
   OPEN,
   OPEN_IN_NEW_TAB,
   PLUGINS,
@@ -148,10 +147,9 @@ function builtInRowsOf(
   });
 }
 
-/** The line above the command a list ends with, when this list can't add a plugin itself. */
-function commandLine(viewOnly: boolean, phone: boolean, canAdd: boolean): string | undefined {
-  if (viewOnly) return viewOnlyLine(phone);
-  return canAdd ? undefined : noInstallerLine();
+/** The line above the command a view-only list ends with; the app always has an installer (HAL-12642). */
+function commandLine(viewOnly: boolean, phone: boolean): string | undefined {
+  return viewOnly ? viewOnlyLine(phone) : undefined;
 }
 
 function AddOnCommandLine({ line }: { readonly line: string | undefined }) {
@@ -261,7 +259,7 @@ export function PluginsList({
           />
         )}
       </div>
-      <AddOnCommandLine line={commandLine(viewOnly, phone, add !== undefined)} />
+      <AddOnCommandLine line={commandLine(viewOnly, phone)} />
       <ContextMenu
         label={installed?.name ?? builtInMenu?.name ?? PLUGINS}
         entries={entries}

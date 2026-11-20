@@ -32,7 +32,7 @@ export const workspaceFeature = defineFeature({
     studio.settings.add({
       id: "trusted-sources",
       icon: "trusted-sources",
-      title: "Trusted sources",
+      title: trustedSourcesText.SECTION_TITLE,
       scope: "host",
       order: 40,
       description: (_context, place) =>

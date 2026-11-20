@@ -64,7 +64,7 @@ const refusedFixes: Readonly<Record<WordedReason, string>> = {
   "ripgrep-missing":
     "ripgrep isn't installed. Install it, for example on macOS with brew install ripgrep, then run it again.",
   "sign-in-needed":
-    "The sandbox needs you to sign in to its service first. Sign in, for example with docker login for Docker Sandboxes, then run it again.",
+    "The sandbox needs you to sign in to its service first. Sign in, then run it again.",
   other:
     "Halonic can't tell what the sandbox is missing. See what the sandbox needs on this computer, then run it again.",
 };
@@ -117,7 +117,7 @@ const fixes: Readonly<Record<WordedReason, string>> = {
   "linux-tools-missing":
     "install them, for example on Ubuntu or Debian with sudo apt install socat ripgrep.",
   "ripgrep-missing": "install it, for example on macOS with brew install ripgrep.",
-  "sign-in-needed": "sign in, for example with docker login for Docker Sandboxes.",
+  "sign-in-needed": "sign in to the sandbox's service.",
   other: "see what the sandbox needs on this computer.",
 };
 

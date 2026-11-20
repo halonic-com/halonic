@@ -46,8 +46,9 @@ const inSettings = "open Settings and set up the sandbox there.";
 
 const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   windows: {
-    reason: "The sandbox doesn't work on Windows in this version of Halonic.",
-    fix: inSettings,
+    // Only MXC gives this code, on a machine that isn't Windows 11 or lacks its container tier.
+    reason: "The sandbox can't start on this version of Windows.",
+    fix: "pick another sandbox in Settings.",
     docsSection: "windows-preview",
   },
   container: {
@@ -114,7 +115,7 @@ const words: Readonly<Record<SandboxUnavailableReason, Words>> = {
   },
   "sign-in-needed": {
     reason: "The sandbox needs you to sign in to its service first.",
-    fix: "sign in, for example with docker login for Docker Sandboxes.",
+    fix: "sign in to the sandbox's service.",
   },
   other: {
     reason: "Halonic can't tell what the sandbox is missing.",

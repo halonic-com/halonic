@@ -67,7 +67,7 @@ verifies("runs.run-view.sandbox-panel", () => {
     );
     const line = rowStarting(root, "In a sandbox");
     expect(line?.textContent).toContain(
-      "In a sandbox · writes only in its working folder · reaches Halonic and 1 site · What it can do",
+      "In a sandbox · writes only in its working folder and its own temp and settings folders · reaches Halonic and 1 site · What it can do",
     );
     // A screen reader hears the link named by its step.
     expect(line?.textContent).toContain("What Draft can do");

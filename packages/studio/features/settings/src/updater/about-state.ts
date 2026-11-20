@@ -94,9 +94,12 @@ export function aboutView(status: UpdateStatus, now: Date): AboutView {
         actions: buttons("cancel"),
       });
     case "download-failed":
-      return view(text.downloadFailed(state.version, text.downloadReasons[state.reason]), {
-        actions: buttons("try-again"),
-      });
+      return view(
+        text.downloadFailed(state.version, text.downloadReasons[state.reason], status.automatic),
+        {
+          actions: buttons("try-again"),
+        },
+      );
     case "signature-mismatch":
       return view(text.signatureMismatch(state.version, status.current), { callout: true });
     case "ready":

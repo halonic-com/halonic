@@ -36,7 +36,7 @@ verifies("settings.new-agents-run", () => {
   it("shows the first line and reads In a sandbox when nothing is saved", async () => {
     const { view, select } = await show();
     // The first line is the section's registered description, which the container draws.
-    expect(view.textContent).not.toContain("Agents run in a sandbox unless you choose otherwise.");
+    expect(view.textContent).not.toContain("Claude Code and Codex agents run in a sandbox.");
     expect(view.textContent).toContain("New agents run");
     expect(view.textContent).toContain(
       "Each agent can be changed on its Harness page. This applies on this computer only.",

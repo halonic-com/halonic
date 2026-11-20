@@ -5,8 +5,9 @@ import { mergeWords, updatesWords } from "../changes-words.ts";
 
 /**
  * Get updates (checklist part 2, 2.8): brings in the shared copy's newer versions when this
- * workspace has none the shared copy lacks. The result is a toast; a failure's has Try again,
- * except when both sides have new versions, which trying again can't change.
+ * workspace has none the shared copy lacks. The result is a toast; a failure's has Try again.
+ * When both sides have new versions the choices open instead, so "both-moved" only comes back
+ * when one side moved during the get, and trying again can help (HAL-12642).
  */
 export function GetUpdates({
   list,
@@ -27,14 +28,12 @@ export function GetUpdates({
     } else if (outcome.kind === "up-to-date") {
       toasts?.show({ tone: "success", title: updatesWords.upToDate });
     } else {
-      const bothMoved = outcome.kind === "both-moved";
+      const reason = outcome.kind === "both-moved" ? updatesWords.bothMoved : outcome.reason;
       toasts?.show({
         tone: "danger",
         title: updatesWords.failed,
-        text: `${bothMoved ? updatesWords.bothMoved : outcome.reason} ${updatesWords.nothingChanged}`,
-        ...(bothMoved
-          ? {}
-          : { action: { label: updatesWords.tryAgain, onClick: () => void getUpdates() } }),
+        text: `${reason} ${updatesWords.nothingChanged}`,
+        action: { label: updatesWords.tryAgain, onClick: () => void getUpdates() },
       });
     }
   };

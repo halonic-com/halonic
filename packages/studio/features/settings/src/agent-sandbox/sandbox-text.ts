@@ -19,7 +19,7 @@ export const REPAIR_HINT =
 export const VIEW_ONLY = "View only here. Set up the sandbox on the computer running Halonic.";
 
 export const NOT_AVAILABLE =
-  "The sandbox isn't available on this computer, so agents can't run in it. You can run an agent on this computer after a warning.";
+  "The sandbox isn't available on this computer, so Claude Code and Codex agents can't run here yet. Agents set to Halonic on their Harness page still run.";
 export const NEEDS_SETUP =
   "The sandbox needs a one-time setup with administrator rights. Until then, agents set to run in a sandbox don't start.";
 export const needsRepair = (reason: string) =>
@@ -86,7 +86,7 @@ export const STILL_NEEDS_SETUP = "the check still says the sandbox needs setting
 
 /** The first line, and **New agents run** under the status (microcopy ST 9.1). */
 export const FIRST_LINE =
-  "Agents run in a sandbox unless you choose otherwise. There they can only write to their working folder, and the network is off.";
+  "Claude Code and Codex agents run in a sandbox. There they write only to their working folder and their own temp and settings folders, and reach only Halonic and the sites you allow.";
 export const NEW_AGENTS_RUN = "New agents run";
 export const RUN_IN_SANDBOX = "In a sandbox (recommended)";
 export const RUN_ON_THIS_COMPUTER = "On this computer";

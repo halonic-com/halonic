@@ -6,8 +6,9 @@ export const FOLDER_FIELD = "Folder";
 export const CHANGE_FOLDER = "Change…";
 export const GIVE_IT_A_NAME = "Give it a name.";
 export const CHOOSE_A_FOLDER = "Choose a folder.";
+/** It writes `localOnly: true` and sets up no provider (HAL-12642). */
 export const LOCAL_ONLY_NOTE =
-  "Starts local only, with a model on this computer (Ollama). You can add cloud models later.";
+  "Starts local only: it uses only models on this computer or your own network. To use cloud models, turn off localOnly in workspace.yaml.";
 export const NOT_EMPTY_NOTE =
   "This folder isn't empty. Halonic adds only missing files, and adds .env lines to a .gitignore that lacks them. Nothing else changes.";
 export const ALREADY_WORKSPACE_NOTE = "This folder is already a workspace.";

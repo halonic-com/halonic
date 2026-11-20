@@ -51,11 +51,6 @@ export function viewOnlyLine(phone: boolean): string {
     : "View only here. Add, trust and remove plugins on the computer that runs Halonic:";
 }
 
-/** The line above the command when Studio can't add a plugin itself: the command line can (N1, N2). */
-export function noInstallerLine(): string {
-  return "Studio can't add a plugin yet. To add one, run this in a terminal:";
-}
-
 /** The ⋮ menu's items. */
 export const OPEN = "Open";
 export const OPEN_IN_NEW_TAB = "Open in new tab";
