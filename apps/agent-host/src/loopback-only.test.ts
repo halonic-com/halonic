@@ -57,14 +57,14 @@ const datagramExceptions = ["apps/agent-host/src/remote/mdns-socket.ts"];
 
 /** Whether source text uses Node's datagram sockets, in any form of import. */
 export function usesDatagrams(text: string): boolean {
-  return /["'](?:node:)?dgram["']/.test(text);
+  return /["'`](?:node:)?dgram["'`]/.test(text);
 }
 
 function sourceFiles(folder: string): string[] {
   return readdirSync(join(repoRoot, folder), { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile() && /\.tsx?$/.test(entry.name))
+    .filter((entry) => entry.isFile() && /\.[cm]?[jt]sx?$/.test(entry.name))
     .map((entry) => join(entry.parentPath, entry.name))
-    .filter((file) => !/\.test(-helper)?\.tsx?$/.test(file));
+    .filter((file) => !/\.test(-helper)?\.[cm]?[jt]sx?$/.test(file));
 }
 
 function listenCalls(file: string): string[] {
@@ -135,6 +135,8 @@ verifies("agent-host.loopback-only", () => {
         "import dgram from 'dgram';",
         'const { createSocket } = require("dgram");',
         'const dgram = await import("node:dgram");',
+        "const dgram = await import(`node:dgram`);",
+        "const { createSocket } = require(`dgram`);",
       ];
       expect(imports.filter((text) => !usesDatagrams(text))).toEqual([]);
       expect(usesDatagrams('import { createServer } from "node:net";')).toBe(false);

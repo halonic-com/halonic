@@ -135,17 +135,23 @@ function readPointer(
   return pointer < limit ? pointer : undefined;
 }
 
-/** The text of the label at `at`, or `undefined` when it is over 63 bytes, runs past the end or isn't UTF-8. */
+/**
+ * The text of the label at `at`, or `undefined` when it is over 63 bytes,
+ * runs past the end, isn't UTF-8 or holds a `.`: names are compared as
+ * joined text, so a label `a.b` must not pass for the two labels `a` and `b`.
+ */
 function readLabel(message: Uint8Array, at: number): string | undefined {
   const length = message[at] as number;
   if (length > 63 || at + 1 + length > message.length) return undefined;
+  let text: string;
   try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(
+    text = new TextDecoder("utf-8", { fatal: true }).decode(
       message.subarray(at + 1, at + 1 + length),
     );
   } catch {
     return undefined;
   }
+  return text.includes(".") ? undefined : text;
 }
 
 /**

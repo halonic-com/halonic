@@ -32,17 +32,26 @@ class FakeSocket implements MulticastSocket {
 
 const desk = { hostName: "Tim's laptop", port: 4100, addresses: ["192.168.1.20"] };
 
-/** An advert on a fake socket, with the wait between announcements held until `gapOver`. */
+/**
+ * An advert on a fake socket and a fake clock, with the wait between
+ * announcements held until `gapOver`, which also moves the clock on a second.
+ */
 function advertOnFakeSocket(open?: () => Promise<MulticastSocket>) {
   const socket = new FakeSocket();
   const logged: string[] = [];
+  let time = 0;
   // The gap may end before the advert starts waiting for it, so the wait checks first.
   let gapEnded = false;
   let endGap: () => void = () => {
     gapEnded = true;
   };
+  const gapOver = () => {
+    time += 1_000;
+    endGap();
+  };
   const advert = new PairAdvert({
     open: open ?? (async () => socket),
+    now: () => time,
     wait: () => {
       if (gapEnded) return Promise.resolve();
       return new Promise((resolve) => {
@@ -55,7 +64,10 @@ function advertOnFakeSocket(open?: () => Promise<MulticastSocket>) {
     randomBytes: (length) => new Uint8Array(length).fill(0xab),
     log: (text) => logged.push(text),
   });
-  return { advert, socket, logged, gapOver: () => endGap() };
+  const later = (ms: number) => {
+    time += ms;
+  };
+  return { advert, socket, logged, gapOver, later };
 }
 
 const instance = `halonic-abababababababab.${pairServiceName}`;
@@ -86,10 +98,11 @@ verifies("agent-host.remote-pair-advert", () => {
     });
 
     it("answers a phone's PTR query for the service with every record, and nothing else", async () => {
-      const { advert, socket, gapOver } = advertOnFakeSocket();
+      const { advert, socket, gapOver, later } = advertOnFakeSocket();
       const started = advert.start(desk);
       gapOver();
       await started;
+      later(1_000);
       socket.deliver(queryFor("_googlecast._tcp.local", dnsTypes.PTR));
       socket.deliver(queryFor(pairServiceName, dnsTypes.A));
       socket.deliver(queryFor(pairServiceName, dnsTypes.ANY));
@@ -105,6 +118,51 @@ verifies("agent-host.remote-pair-advert", () => {
         "additional 1",
       ]);
       expect(socket.sent).toHaveLength(3);
+    });
+
+    it("answers at most once a second, counting the announcements, however many ask", async () => {
+      const { advert, socket, gapOver, later } = advertOnFakeSocket();
+      const started = advert.start(desk);
+      gapOver();
+      await started;
+      socket.deliver(queryFor(pairServiceName, dnsTypes.PTR));
+      expect(socket.sent).toHaveLength(2);
+      later(1_000);
+      for (let query = 0; query < 1000; query += 1) {
+        socket.deliver(queryFor(pairServiceName, dnsTypes.PTR));
+      }
+      expect(socket.sent).toHaveLength(3);
+      later(999);
+      socket.deliver(queryFor(pairServiceName, dnsTypes.PTR));
+      expect(socket.sent).toHaveLength(3);
+      later(1);
+      socket.deliver(queryFor(pairServiceName, dnsTypes.PTR));
+      expect(socket.sent).toHaveLength(4);
+    });
+
+    it("sends the same bytes for every answer, whatever the query held", async () => {
+      const { advert, socket, gapOver, later } = advertOnFakeSocket();
+      const started = advert.start(desk);
+      gapOver();
+      await started;
+      later(1_000);
+      socket.deliver(queryFor(pairServiceName, dnsTypes.PTR));
+      later(1_000);
+      socket.deliver(queryFor("_HALONIC-PAIR._tcp.local", dnsTypes.PTR, true));
+      expect(socket.sent[3]).toEqual(socket.sent[2]);
+    });
+
+    it("opens no socket when its records can't be written, and says why", async () => {
+      let opened = 0;
+      const { advert, logged } = advertOnFakeSocket(async () => {
+        opened += 1;
+        return new FakeSocket();
+      });
+      await advert.start({ ...desk, addresses: ["fe80::1"] });
+      expect(opened).toBe(0);
+      expect(logged).toHaveLength(1);
+      expect(logged[0]).toMatch(/^Phones on this Wi-Fi won't list this computer: RangeError/);
+      await advert.stop();
     });
 
     it("says goodbye and closes the socket when it stops, and announces nothing after", async () => {

@@ -127,6 +127,11 @@ verifies("agent-host.remote-pair-advert", () => {
       expect(readQuestions(query(1, notUtf8))).toEqual([]);
     });
 
+    it("reads nothing from a label that holds a dot, so it can't pass for the service's name", () => {
+      expect(readQuestions(query(1, question(["_halonic-pair._tcp", "local"])))).toEqual([]);
+      expect(readQuestions(query(1, question(["_halonic-pair", "_tcp.local"])))).toEqual([]);
+    });
+
     it("follows at most 16 pointers, each further back, and reads nothing from a loop", () => {
       expect(readQuestions(pointerChain("name"))).toHaveLength(10);
       expect(readQuestions(pointerChain("type"))).toEqual([]);

@@ -14,6 +14,8 @@ export const pairServiceName = "_halonic-pair._tcp.local";
 const recordTtl = 120;
 /** How long after the first announcement the second goes, as RFC 6762 section 8.3 asks. */
 const announceGapMs = 1_000;
+/** The least time between two multicasts of the answer, announcements included (RFC 6762 section 6). */
+const answerGapMs = 1_000;
 
 /** The datagram socket on the multicast DNS group, port 5353. */
 export interface MulticastSocket {
@@ -38,6 +40,8 @@ export interface PairAdvertisement {
 export interface PairAdvertOptions {
   /** Opens the multicast socket; rejects when port 5353 can't be had. */
   readonly open: () => Promise<MulticastSocket>;
+  /** The time in milliseconds, for the limit of one answer a second. */
+  readonly now: () => number;
   /** Resolves `ms` milliseconds from now. */
   readonly wait: (ms: number) => Promise<void>;
   /** Random bytes, for a name no other computer on the LAN has. */
@@ -46,9 +50,25 @@ export interface PairAdvertOptions {
   readonly log: (text: string) => void;
 }
 
+/**
+ * Every datagram an advertisement sends, written before its socket opens,
+ * so nothing a query holds reaches what goes out, and a record that can't be
+ * written stops the advertisement before it listens.
+ */
+interface AdvertMessages {
+  /** Every record as an answer, sent when the advertising starts. */
+  readonly announcement: Uint8Array;
+  /** The PTR record as the answer, the others as additionals, for a phone's query. */
+  readonly answer: Uint8Array;
+  /** Every record with no time to live, sent when the advertising stops. */
+  readonly goodbye: Uint8Array;
+}
+
 interface Running {
   readonly socket: MulticastSocket;
-  readonly records: readonly DnsRecord[];
+  readonly messages: AdvertMessages;
+  /** When the answer or an announcement last went out. */
+  lastSentAt: number;
 }
 
 /**
@@ -78,6 +98,13 @@ export class PairAdvert {
   /** Starts advertising, announcing twice a second apart; does nothing while it runs. */
   async start(advertisement: PairAdvertisement): Promise<void> {
     if (this.#running !== undefined) return;
+    let messages: AdvertMessages;
+    try {
+      messages = writeMessages(this.#records(advertisement));
+    } catch (error) {
+      this.#options.log(`Phones on this Wi-Fi won't list this computer: ${String(error)}\n`);
+      return;
+    }
     let socket: MulticastSocket;
     try {
       socket = await this.#options.open();
@@ -85,15 +112,19 @@ export class PairAdvert {
       this.#options.log(`Phones on this Wi-Fi won't list this computer: ${String(error)}\n`);
       return;
     }
-    const running: Running = { socket, records: this.#records(advertisement) };
+    const running: Running = { socket, messages, lastSentAt: Number.NEGATIVE_INFINITY };
     this.#running = running;
     socket.onMessage((message) => {
-      const answer = answerFor(readQuestions(message), running.records);
-      if (answer !== undefined) this.#send(running, answer);
+      // A second guard: the handler runs in the socket's event, where a throw would stop the host.
+      try {
+        this.#answer(running, message);
+      } catch (error) {
+        this.#options.log(`A query from a phone on this Wi-Fi wasn't answered: ${String(error)}\n`);
+      }
     });
-    this.#send(running, writeResponse(running.records));
+    this.#send(running, messages.announcement);
     await this.#options.wait(announceGapMs);
-    if (this.#running === running) this.#send(running, writeResponse(running.records));
+    if (this.#running === running) this.#send(running, messages.announcement);
   }
 
   /** Says goodbye (the records with no time to live) and closes the socket. */
@@ -102,15 +133,25 @@ export class PairAdvert {
     if (running === undefined) return;
     this.#running = undefined;
     try {
-      await running.socket.send(
-        writeResponse(running.records.map((record) => ({ ...record, ttl: 0 }))),
-      );
+      await running.socket.send(running.messages.goodbye);
     } finally {
       await running.socket.close();
     }
   }
 
+  /**
+   * Sends the answer when `message` asks for the pairing service, at most
+   * once a second however many ask, so a flood of queries on the Wi-Fi
+   * can't make the host flood the group.
+   */
+  #answer(running: Running, message: Uint8Array): void {
+    if (!asksForPairService(readQuestions(message))) return;
+    if (this.#options.now() - running.lastSentAt < answerGapMs) return;
+    this.#send(running, running.messages.answer);
+  }
+
   #send(running: Running, message: Uint8Array): void {
+    running.lastSentAt = this.#options.now();
     running.socket.send(message).catch((error: unknown) => {
       this.#options.log(
         `An advertisement for phones on this Wi-Fi wasn't sent: ${String(error)}\n`,
@@ -153,19 +194,29 @@ export class PairAdvert {
 }
 
 /**
- * The response to a query's questions, or `undefined` unless one is a PTR
- * question for {@link pairServiceName}: the host answers nothing else, not
- * even about its own instance. The PTR record is the answer and the others
- * go with it as additionals, so the phone needs no second query.
+ * Writes every datagram of an advertisement of `records`.
+ *
+ * @throws RangeError when a record can't be written, such as an address that isn't IPv4
  */
-function answerFor(questions: readonly DnsQuestion[], records: readonly DnsRecord[]) {
-  const browsed = questions.some(
-    (question) => question.name === pairServiceName && question.type === dnsTypes.PTR,
-  );
-  if (!browsed) return undefined;
+function writeMessages(records: readonly DnsRecord[]): AdvertMessages {
   const isPointer = (record: DnsRecord) => record.type === "PTR";
-  return writeResponse(
-    records.filter(isPointer),
-    records.filter((record) => !isPointer(record)),
+  return {
+    announcement: writeResponse(records),
+    answer: writeResponse(
+      records.filter(isPointer),
+      records.filter((record) => !isPointer(record)),
+    ),
+    goodbye: writeResponse(records.map((record) => ({ ...record, ttl: 0 }))),
+  };
+}
+
+/**
+ * Whether one of a query's questions is a PTR question for
+ * {@link pairServiceName}: the host answers nothing else, not even about its
+ * own instance.
+ */
+function asksForPairService(questions: readonly DnsQuestion[]): boolean {
+  return questions.some(
+    (question) => question.name === pairServiceName && question.type === dnsTypes.PTR,
   );
 }
