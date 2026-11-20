@@ -150,6 +150,8 @@ export const emptyListWords = {
    * page's own sentence is right above, so the body doesn't say what a run is again.
    */
   noRunsFromCommandLine: "Runs started from the command line show up here too.",
+  /** The same where there is no command to start a run, on a Windows folder (D-A2, HAL-12847). */
+  noRunsNoWorkflowNoCommand: "This workspace has no workflow yet: add one in Workflows.",
   /** The body in the Acme sample, where a run starts from the Inbox, as Home's Recent runs says (HAL-12225). */
   noRunsSample: "Start one from the Inbox, and it shows up here.",
   onlyTestRuns: "Only test runs so far.",

@@ -25,6 +25,8 @@ export const homeWords = {
   /** The note without **Run** when the workspace has no workflow yet (HAL-10128). */
   noWorkflowNote:
     "This workspace has no workflows yet. Add one in Workflows, then start it from the command line.",
+  /** The same on a Windows folder, where there is no command to start it (D-A2, HAL-12847). */
+  noWorkflowNoCommandNote: "This workspace has no workflows yet. Add one in Workflows.",
 };
 
 /** Home's Spend tile (HAL-8553): the tile's title, the line under the number, and its empty text. */

@@ -9,6 +9,7 @@ import {
 } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
 import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { AnswerElsewhere } from "../answer-elsewhere.ts";
 import { wasDecidedElsewhere } from "../decide.ts";
 import { PlainValue } from "./plain-value.tsx";
 
@@ -189,15 +190,19 @@ export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps)
 
 /**
  * An answer Studio can't send itself: the executor's sentence and the command line that sends it,
- * which no retry can replace.
+ * which no retry can replace. No command where no terminal can send it (D-A, HAL-12822).
  */
 export interface ManualAnswer {
   readonly message: string;
-  readonly command: string;
+  readonly command: string | undefined;
 }
 
-/** The manual answer a failure holds: an `unavailable` error whose `fix` is the command to run. */
+/**
+ * The manual answer a failure holds: an {@link AnswerElsewhere}, or an `unavailable` error whose
+ * `fix` is the command to run.
+ */
 export function manualAnswerOf(error: unknown): ManualAnswer | null {
+  if (error instanceof AnswerElsewhere) return { message: error.message, command: error.fix };
   if (errorKindOf(error) !== "unavailable") return null;
   const { message, fix } = error as { message: string; fix?: unknown };
   return typeof fix === "string" && fix !== "" ? { message, command: fix } : null;
@@ -231,7 +236,7 @@ export function FailedLine({
       {manual === null ? null : (
         <span className="flex flex-col gap-2">
           {manual.message}
-          <CommandBox command={manual.command} />
+          {manual.command === undefined ? null : <CommandBox command={manual.command} />}
         </span>
       )}
       {elsewhere === null ? null : (

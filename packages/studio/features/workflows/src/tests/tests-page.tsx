@@ -1,4 +1,5 @@
-import { Button, EmptyState, SkeletonBar, useToastStore } from "@halonicjs/studio-kit";
+import { halonicCommand } from "@halonicjs/app";
+import { Button, CommandBox, EmptyState, SkeletonBar, useToastStore } from "@halonicjs/studio-kit";
 import {
   copyDetails,
   copyDetailsWords,
@@ -144,11 +145,18 @@ export function TestsPage({
   return (
     <div className="-m-6 flex min-h-0 flex-1">
       <div className="min-w-0 flex-1 overflow-auto p-6">
-        <div className="mb-4 flex items-center justify-between gap-4">
+        {/* Without Run tests the command goes under the count, so the count never wraps beside it. */}
+        <div
+          className={
+            runTests
+              ? "mb-4 flex items-center justify-between gap-4"
+              : "mb-4 flex flex-col items-start gap-2"
+          }
+        >
           <p className="text-small text-fg-muted">
             {testSummary(tests, running ? { done: done.size } : undefined)}
           </p>
-          {runTests && (
+          {runTests ? (
             <Button
               variant="secondary"
               size="sm"
@@ -158,6 +166,8 @@ export function TestsPage({
             >
               {words.run}
             </Button>
+          ) : (
+            <RunInTerminal command={testCommand(host.folder, workflow)} />
           )}
         </div>
         <ul aria-label={words.list} className="flex flex-col divide-y divide-border">
@@ -231,4 +241,32 @@ const stateWords = {
 
 function endWithStop(sentence: string): string {
   return sentence.endsWith(".") ? sentence : `${sentence}.`;
+}
+
+/**
+ * `halonic test` for this workflow's tests alone. `--filter` keeps every test whose
+ * `hub/workflow/name` contains the text, so the closing `/` stops `reply` from also picking
+ * `support-reply` (C88, HAL-12844).
+ */
+function testCommand(folder: string | undefined, workflow: WorkflowRef): string | undefined {
+  return halonicCommand(folder, "test", ["--filter", `${workflow.hubId}/${workflow.id}/`]);
+}
+
+/**
+ * In place of **Run tests** while the app can't run them (D2, HAL-12725): the command that does,
+ * or only that Studio can't, where no terminal can reach the folder (D-A, HAL-12822).
+ */
+function RunInTerminal({ command }: { readonly command: string | undefined }) {
+  if (command === undefined) {
+    return <p className="text-small text-fg-muted">{words.cantRunYet}</p>;
+  }
+  return (
+    <div
+      data-testid="run-tests-command"
+      className="flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-fg-muted"
+    >
+      <p>{words.runInTerminal}</p>
+      <CommandBox command={command} />
+    </div>
+  );
 }

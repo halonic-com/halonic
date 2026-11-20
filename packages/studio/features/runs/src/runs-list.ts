@@ -17,6 +17,8 @@ export interface RunsListState {
    * when reading them failed, so the empty lines then name none.
    */
   readonly workflows: readonly RunnableWorkflow[] | undefined;
+  /** The workspace folder the commands to copy name, as the source gives it. */
+  readonly folder?: string | undefined;
 }
 
 /**
@@ -31,7 +33,7 @@ export interface RunsListState {
  */
 export class RunsList {
   readonly source: RunsSource;
-  #state: RunsListState = { runs: [], loaded: false, error: undefined, workflows: undefined };
+  #state: RunsListState;
   readonly #listeners = new Set<() => void>();
   readonly #stopWatching: () => void;
   #loads = 0;
@@ -44,6 +46,13 @@ export class RunsList {
 
   constructor(source: RunsSource) {
     this.source = source;
+    this.#state = {
+      runs: [],
+      loaded: false,
+      error: undefined,
+      workflows: undefined,
+      folder: source.folder,
+    };
     this.#stopWatching = source.subscribe(() => void this.refresh());
     void this.refresh();
   }
@@ -142,7 +151,7 @@ export class RunsList {
       ]);
       if (this.#disposed) return;
       if (load !== this.#loads) return this.#latest;
-      this.#set({ runs, loaded: true, error: undefined, workflows });
+      this.#set({ ...this.#state, runs, loaded: true, error: undefined, workflows });
     } catch (error) {
       if (this.#disposed) return;
       if (load !== this.#loads) return this.#latest;

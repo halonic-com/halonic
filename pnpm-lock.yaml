@@ -3369,6 +3369,9 @@ importers:
 
   packages/studio/features/workflows:
     dependencies:
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../../core/app
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
