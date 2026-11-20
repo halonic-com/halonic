@@ -221,7 +221,7 @@ Its text is attacker text. The rules are the requirement
 | A workspace's secret pick reads a token or the token key | The names a workspace picks for providers and models go through `workspaceSecrets`, which refuses `token-key`, `serve-password`, the token prefix `halonic_token_` and the plugin prefix `plugin__` by their `secretKey` form; its error never repeats the name. A store that holds secrets and tokens together keeps tokens under that prefix | **On `main`** (`ports.workspace-secrets`); tokens under the prefix in the keychain: the bridge **On `main`** (`services.shell-secrets`), and the desktop app using it **On `main`** (`apps/studio`, `start-studio.ts`; HAL-2952) |
 | A program a workspace starts reads the keys in your environment | A `stdio` connector's program gets only a base of the app's environment, plus its connector's `env` and `secretEnv` and the variables it names in `inheritEnv`. The base holds variables such as the program lookup (`PATH`), home, user, shell, terminal, temp, time zone and locale, `XDG_*_HOME`, your proxy, certificate and library folders, and on Windows the system folders a program needs. A model key or token in your shell, the `HALONIC_SECRET_…` variables included, stays out unless the connector names it in `secretEnv`, which the trust check lists. `inheritEnv` refuses a name that looks like it holds a secret, such as `ANTHROPIC_API_KEY`, and the trust check lists the names it takes. `NODE_TLS_REJECT_UNAUTHORIZED`, `LD_PRELOAD` and `DYLD_INSERT_LIBRARIES` stay out of the base | **On `main`** (`app.connector-base-env`, `app.connector-inherited-env`, `format.connector-inherit-env`, `mcp.stdio-connector`, `mcp.pinned-launcher`) |
 | A copied data folder gives away tokens (desktop) | In the desktop shell, Studio's services keep secrets and tokens in the OS keychain; the data folder holds no token and no key (`packages/studio/services`) | **On `main`**: the bridge (`services.shell-secrets`) and the desktop app using it (`apps/studio`, `start-studio.ts`; HAL-2952) |
-| A locked keychain asks for a password while no window is open, and a background run hangs on it (desktop) | The shell's secret broker times out every keychain call and answers `unavailable`; the step fails with "secrets unavailable" instead of waiting | **Planned** (background engine, B1 step 2) |
+| A locked keychain asks for a password while no window is open, and a background run hangs on it (desktop) | The shell's secret broker times out every keychain call and answers `unavailable`; the step fails with "secrets unavailable" instead of waiting | **Planned** (background engine, B1 step 2; [ADR](../adr/2026-11-20-desktop-engine-runs-in-its-own-process.md)) |
 
 **Known limits.**
 
@@ -693,8 +693,9 @@ Studio run starts a connector.
 
 The background engine (B1, HAL-14206) is planned: the desktop engine moves out
 of the page into its own program, which the shell starts and which keeps
-routines and timers running while the window is closed. These rows say what it
-must hold to; each names the B1 step that brings it.
+routines and timers running while the window is closed
+([ADR](../adr/2026-11-20-desktop-engine-runs-in-its-own-process.md)). These rows
+say what it must hold to; each names the B1 step that brings it.
 
 | Threat | Mitigation | Mark |
 | --- | --- | --- |
