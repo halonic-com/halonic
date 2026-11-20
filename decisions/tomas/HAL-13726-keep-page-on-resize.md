@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13726, decided by the team (Sofia) as a fallback of approved screens, with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jwrxJQb/tYBYuN9D+hZj7n4Oyn5OIRoUgbYX9lEESIlHq7Q0+vNb2wt34r7TqDu+C13MhklAJud5cGPRyHfcBw==
 
 ## What changes
 
