@@ -104,25 +104,29 @@ function NoticeRow({
         Change budget
       </Button>
     );
+  // The title asks for 10rem next to its buttons. In a narrower row (a phone, or 400 % zoom) the
+  // buttons go on a line under it, together and on the right, so the title keeps the whole width.
   return (
-    <li className="flex items-center gap-2 border-b border-border px-4 py-2">
-      <p id={titleId} className="min-w-0 flex-1 text-body">
+    <li className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-4 py-2">
+      <p id={titleId} className="min-w-0 flex-1 basis-40 text-body">
         {title}
       </p>
-      {notice.kind === "sandbox-fixed" || failed?.fixed ? (
-        <span className="text-small text-success">Fixed</span>
-      ) : (
-        (link ?? changeBudget)
-      )}
-      {notice.kind === "budget-month" ? null : (
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={<CloseIcon />}
-          label={`Dismiss ${title}`}
-          onClick={dismiss}
-        />
-      )}
+      <div className="ml-auto flex items-center gap-2">
+        {notice.kind === "sandbox-fixed" || failed?.fixed ? (
+          <span className="text-small text-success">Fixed</span>
+        ) : (
+          (link ?? changeBudget)
+        )}
+        {notice.kind === "budget-month" ? null : (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<CloseIcon />}
+            label={`Dismiss ${title}`}
+            onClick={dismiss}
+          />
+        )}
+      </div>
     </li>
   );
 }
