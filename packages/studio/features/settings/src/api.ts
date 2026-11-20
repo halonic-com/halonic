@@ -31,10 +31,15 @@ export const DisplaySettingsService: ServiceKey<DisplaySettings> =
 
 export type { SandboxCheckFacts, SandboxOutcome } from "./agent-sandbox/sandbox-state.ts";
 
-/** Whether the sandbox's own security updates are late (W2 of HAL-5407); `last` is an ISO time or null. */
+/**
+ * What the shell read when it started the sandbox: whether its own security updates are late (W2
+ * of HAL-5407; `last` is an ISO time or null), and whether its WSL distro is the person's default
+ * (W6, HAL-12445). Absent `isDefaultDistro` is false.
+ */
 export interface SecurityUpdatesFacts {
   readonly overdue: boolean;
   readonly last: string | null;
+  readonly isDefaultDistro?: boolean;
 }
 
 /** What the person chose for the sandbox's files before it is removed (HAL-10974). There is no default. */

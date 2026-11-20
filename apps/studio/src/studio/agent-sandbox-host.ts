@@ -76,7 +76,13 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
 
   async check(): Promise<SandboxCheckFacts> {
     const check = await (await AgentHostSandbox.connect(this.#transport)).check();
-    if (check.ok) return { state: "ready", checkedAt: this.#now().toISOString() };
+    if (check.ok) {
+      const checkedAt = this.#now().toISOString();
+      // W6 (HAL-12445): a warning next to Ready, never a failure.
+      return check.residuals?.includes("docker-desktop-visible")
+        ? { state: "ready", checkedAt, dockerDesktopVisible: true }
+        : { state: "ready", checkedAt };
+    }
     if (check.reason === "setup-needed") return { state: "needs-setup" };
     if (check.reason === "restart-needed") return { state: "restart-needed" };
     if (needsRepair.includes(check.reason)) {
