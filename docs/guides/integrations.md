@@ -131,6 +131,8 @@ sign in again. A local integration or a plugin backend can't
 declare `signIns` until the trust content shows them. A
 client secret is a `secrets` entry with only a `purpose`, named in the
 sign-in's `clientSecret`; it goes only to the sign-in's token and revoke hosts.
+A `revokeUrl` is on the host of the `tokenUrl` or the `authorizeUrl`
+(`sign-in-revoke-host` otherwise), because sign-out sends it the refresh token.
 
 ## The code
 

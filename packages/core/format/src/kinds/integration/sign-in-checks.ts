@@ -1,7 +1,12 @@
 import type { Path } from "@halonicjs/schema-kit";
 import type { KindCheckProblem } from "../../kind.ts";
 import { hostKey } from "./host-key.ts";
-import { type IntegrationSheet, type IntegrationSignIn, isPlacedSecret } from "./schema.ts";
+import {
+  type IntegrationSheet,
+  type IntegrationSignIn,
+  type IntegrationSignInUrl,
+  isPlacedSecret,
+} from "./schema.ts";
 import {
   fixedSignInUrl,
   queryParameterNames,
@@ -23,7 +28,8 @@ const URL_FIELDS = [
  * The rules over a sheet's `signIns` and their client secrets: the sheet
  * says `kit: 2`; the access token goes only to hosts the sheet declares; a
  * `{ fromSetting }` URL reads a public host the sheet declares; Halonic's own
- * authorize parameters stay Halonic's; and a client secret has no hosts of
+ * authorize parameters stay Halonic's; a `revokeUrl` is on the host of the
+ * sign-in's `tokenUrl` or `authorizeUrl`; and a client secret has no hosts of
  * its own and belongs to exactly one sign-in.
  *
  * @example
@@ -33,7 +39,11 @@ export function checkSignIns(sheet: IntegrationSheet): KindCheckProblem[] {
   const entries = Object.entries(sheet.signIns);
   const problems = [...kitProblems(sheet, entries.length)];
   for (const [name, signIn] of entries) {
-    problems.push(...accessHostProblems(sheet, name, signIn), ...urlProblems(sheet, name, signIn));
+    problems.push(
+      ...accessHostProblems(sheet, name, signIn),
+      ...urlProblems(sheet, name, signIn),
+      ...revokeHostProblems(sheet, name, signIn),
+    );
   }
   problems.push(...clientSecretProblems(sheet));
   return problems;
@@ -130,6 +140,46 @@ function urlProblems(
     }
   }
   return problems;
+}
+
+/**
+ * A `revokeUrl` is on the host of the sign-in's `tokenUrl` or `authorizeUrl`.
+ * Sign-out sends it the refresh token, and the client secret too, so a third
+ * host would get them without the person having seen it in the trust check.
+ */
+function revokeHostProblems(
+  sheet: IntegrationSheet,
+  name: string,
+  signIn: IntegrationSignIn,
+): KindCheckProblem[] {
+  if (signIn.revokeUrl === undefined) {
+    return [];
+  }
+  const revokeHost = endpointHost(signIn.revokeUrl);
+  if ([signIn.tokenUrl, signIn.authorizeUrl].some((url) => endpointHost(url) === revokeHost)) {
+    return [];
+  }
+  return [
+    problemAt(
+      sheet,
+      "sign-in-revoke-host",
+      ["signIns", name, "revokeUrl"],
+      `the revokeUrl of "${name}" must be on the host of its tokenUrl or authorizeUrl`,
+    ),
+  ];
+}
+
+/**
+ * Where a sign-in URL goes, as one text to compare: its host in lower case
+ * and without the default port, or the setting it reads.
+ */
+function endpointHost(url: IntegrationSignInUrl): string {
+  const fixed = fixedSignInUrl(url);
+  if (fixed === undefined) {
+    return typeof url === "string" ? url : `fromSetting ${url.fromSetting}`;
+  }
+  const host = fixed.host.toLowerCase();
+  return host.endsWith(":443") ? host.slice(0, -4) : host;
 }
 
 /**
