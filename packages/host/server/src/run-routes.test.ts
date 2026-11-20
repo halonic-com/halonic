@@ -24,7 +24,8 @@ function setup(
     sendFails?: Error;
     cancel?: boolean;
     passwordHash?: string | null;
-    stored?: { id: string; status: string }[];
+    stored?: { id: string; status: string; approvals?: unknown[] }[];
+    agentNames?: () => Promise<ReadonlyMap<string, string>>;
   } = {},
 ) {
   const stored = options.stored ?? [];
@@ -63,6 +64,14 @@ function setup(
     runStore,
     trust,
     errorLog: { record: (error) => calls.logged.push(error) },
+    ...(options.agentNames === undefined
+      ? {}
+      : {
+          workspace: {
+            describe: async () => ({ name: "Acme", sample: false, folder: "acme", home: null }),
+            agentNames: options.agentNames,
+          },
+        }),
     passwordHasher: new FakePasswordHasher(),
     coordination: new FakeCoordination(clock) as unknown as Coordination,
     config: { allowedHosts: [host], maxBodyBytes: 4096 },
@@ -332,13 +341,14 @@ describe("run routes", () => {
       const cookie = await signIn(server);
       const response = await call(server, "GET", "/api/waiting-runs", { cookie });
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ runs: [stored[0], stored[2]] });
+      expect(await response.json()).toEqual({ runs: [stored[0], stored[2]], agents: {} });
       expect(calls.lists).toEqual([{ status: "waiting" }]);
     });
 
     it("answers an empty list with no waiting run, and at most 100 runs", async () => {
       expect(await (await call(setup().server, "GET", "/api/waiting-runs")).json()).toEqual({
         runs: [],
+        agents: {},
       });
       const stored = Array.from({ length: 150 }, (_, i) => ({ id: `r${i}`, status: "waiting" }));
       const { server } = setup({ stored });
@@ -360,6 +370,68 @@ describe("run routes", () => {
       );
       expect(foreignHost.status).toBe(421);
       expect(calls.lists).toEqual([]);
+    });
+
+    it("names the agents and subagents the listed approvals name, and only those", async () => {
+      const stored = [
+        { id: "a", status: "waiting", approvals: [{ agent: "writer" }] },
+        { id: "b", status: "waiting", approvals: [{ agent: "lead", subagent: "researcher" }] },
+      ];
+      const names = new Map([
+        ["writer", "Writer"],
+        ["lead", "Lead"],
+        ["researcher", "Researcher"],
+        ["editor", "Editor"],
+      ]);
+      const { server } = setup({ stored, agentNames: async () => names });
+      const body = await (await call(server, "GET", "/api/waiting-runs")).json();
+      expect(body).toEqual({
+        runs: stored,
+        agents: { writer: "Writer", lead: "Lead", researcher: "Researcher" },
+      });
+    });
+
+    it("leaves out an id without a name, also one an object has, such as `constructor`", async () => {
+      const stored = [
+        { id: "a", status: "waiting", approvals: [{ agent: "constructor" }, { agent: "gone" }] },
+        { id: "b", status: "waiting", approvals: [{ agent: "__proto__" }] },
+      ];
+      const names = new Map([["__proto__", "Proto"]]);
+      const { server } = setup({ stored, agentNames: async () => names });
+      const response = await call(server, "GET", "/api/waiting-runs");
+      const agents = JSON.parse(await response.text()).agents as Record<string, unknown>;
+      expect(Object.entries(agents)).toEqual([["__proto__", "Proto"]]);
+    });
+
+    it("still lists the runs when the names can't be read, and logs why", async () => {
+      const stored = [{ id: "a", status: "waiting", approvals: [{ agent: "writer" }] }];
+      const broken = new Error("agents/writer.yaml is not valid YAML");
+      const { server, calls } = setup({
+        stored,
+        agentNames: async () => {
+          throw broken;
+        },
+      });
+      const response = await call(server, "GET", "/api/waiting-runs");
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ runs: stored, agents: {} });
+      expect(calls.logged).toEqual([broken]);
+    });
+
+    it("doesn't read the names when no listed run asks about an agent", async () => {
+      let reads = 0;
+      const agentNames = async () => {
+        reads += 1;
+        return new Map([["writer", "Writer"]]);
+      };
+      for (const stored of [[], [{ id: "a", status: "waiting", approvals: [] }]]) {
+        const { server } = setup({ stored, agentNames });
+        expect(await (await call(server, "GET", "/api/waiting-runs")).json()).toEqual({
+          runs: stored,
+          agents: {},
+        });
+      }
+      expect(reads).toBe(0);
     });
   });
 });

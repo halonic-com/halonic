@@ -74,6 +74,19 @@ function isWaitingSummary(value: unknown): value is RunSummary {
   );
 }
 
+/**
+ * By id, the agents' names from the list's `agents`, or `undefined` when it
+ * isn't an object of names. A Map, so an id such as `constructor` is only a key.
+ */
+function agentNamesOf(value: unknown): ReadonlyMap<string, string> | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+  return new Map(
+    Object.entries(value).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string",
+    ),
+  );
+}
+
 async function ask(
   options: ServedInboxRunsOptions,
   path: string,
@@ -110,6 +123,7 @@ async function ask(
  * (requirement `studio.served-inbox-runs`): it lists what waits with
  * `GET /api/waiting-runs` and sends approve, reject and wait answers with
  * `POST /api/runs/<id>/events`, both on the page's own address and session.
+ * It names each agent as the list last named it, and by its id when it didn't.
  *
  * While anyone listens, the list is read again every 10 s and when the window
  * comes to the front, and listeners hear only when the waiting runs changed, or
@@ -124,6 +138,8 @@ export class ServedInboxRuns implements InboxRuns {
   #stopPolling: (() => void) | undefined;
   /** The waiting runs' ids and last events as the last poll saw them; `undefined` before the first. */
   #seen: string | undefined;
+  /** By id, the agents' names the last readable list gave. */
+  #agentNames: ReadonlyMap<string, string> = new Map();
   /** Whether the last poll failed, so the next good one must tell the listeners. */
   #missed = false;
   #polling = false;
@@ -135,7 +151,7 @@ export class ServedInboxRuns implements InboxRuns {
 
   async waiting(): Promise<RunSummary[]> {
     const answer = await ask(this.#options, "/api/waiting-runs", "list what waits for you", true);
-    const runs = (answer as { runs?: unknown } | null)?.runs;
+    const { runs, agents } = (answer ?? {}) as { runs?: unknown; agents?: unknown };
     // One unreadable run rejects the whole list: the Inbox then shows "unavailable"
     // rather than a list with an item missing that someone is waiting on.
     if (!Array.isArray(runs) || !runs.every(isWaitingSummary)) {
@@ -144,7 +160,13 @@ export class ServedInboxRuns implements InboxRuns {
         "The computer's list of waiting runs wasn't one Halonic could read.",
       );
     }
+    // Names that can't be read never fail the list: the last good ones stay, and an agent without one shows by its id.
+    this.#agentNames = agentNamesOf(agents) ?? this.#agentNames;
     return runs;
+  }
+
+  agentName(agentId: string): string | undefined {
+    return this.#agentNames.get(agentId);
   }
 
   async send(

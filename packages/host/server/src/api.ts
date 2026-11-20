@@ -376,6 +376,12 @@ export interface WorkspaceFacts {
 /** Which workspace the server shows. Read-only. */
 export interface WorkspaceInfo {
   describe(): Promise<WorkspaceFacts>;
+  /**
+   * By id, each agent's name as its file says, for `GET /api/waiting-runs`.
+   * Read at every request that lists a waiting run. Without it, or when it
+   * fails, the list names no agent and a caller shows the ids.
+   */
+  agentNames?(): Promise<ReadonlyMap<string, string>>;
 }
 
 /**

@@ -1,4 +1,5 @@
-import type { ServerPorts } from "./api.ts";
+import type { RunStore } from "@halonicjs/ports";
+import type { ErrorLog, ServerPorts, WorkspaceInfo } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { refuseUnlessTrusted } from "./trust-routes.ts";
 
@@ -7,7 +8,7 @@ export const runPathPrefix = "/api/runs/";
 
 /** What the routes answer for a run: its summary, read from the run store. */
 export interface RunRoutes {
-  /** `GET /api/waiting-runs`: the summaries of the runs that wait for an answer. */
+  /** `GET /api/waiting-runs`: the summaries of the runs that wait for an answer, and their agents' names. */
   waiting(): Promise<Response>;
   /** `GET /api/runs/<runId>`: the run's summary. */
   summary(runId: string): Promise<Response>;
@@ -17,7 +18,7 @@ export interface RunRoutes {
   cancel(request: Request, runId: string): Promise<Response>;
 }
 
-type RunRoutePorts = Pick<ServerPorts, "runs" | "runStore" | "trust" | "errorLog">;
+type RunRoutePorts = Pick<ServerPorts, "runs" | "runStore" | "trust" | "errorLog" | "workspace">;
 
 /** The path of the list of runs that wait for an answer. */
 export const waitingRunsPath = "/api/waiting-runs";
@@ -91,12 +92,58 @@ function parseSendOptions(message: Record<string, unknown>): SendNames | null | 
 
 type SendNames = { callId?: string; wait?: { state: string; since: string } };
 
-export function createRunRoutes({ runs, runStore, trust, errorLog }: RunRoutePorts): RunRoutes {
+type RunSummary = Awaited<ReturnType<RunStore["list"]>>[number];
+
+/**
+ * By id, the names of the agents and subagents the runs' approvals name, as
+ * the workspace's files say. An id without a name is left out, and so is
+ * every id when the names can't be read: the list itself never fails for them.
+ */
+async function agentNamesOf(
+  runs: readonly RunSummary[],
+  workspace: WorkspaceInfo | undefined,
+  errorLog: ErrorLog,
+): Promise<Record<string, string>> {
+  if (workspace?.agentNames === undefined) return {};
+  const ids = new Set(
+    runs.flatMap((run) =>
+      run.approvals.flatMap((approval) =>
+        approval.subagent === undefined ? [approval.agent] : [approval.agent, approval.subagent],
+      ),
+    ),
+  );
+  if (ids.size === 0) return {};
+  let names: ReadonlyMap<string, string>;
+  try {
+    names = await workspace.agentNames();
+  } catch (error) {
+    errorLog.record(error);
+    return {};
+  }
+  // A Map and `fromEntries`, so an id such as `constructor` or `__proto__` is only ever a key.
+  return Object.fromEntries(
+    [...ids].flatMap((id) => {
+      const name = names.get(id);
+      return name === undefined ? [] : [[id, name]];
+    }),
+  );
+}
+
+export function createRunRoutes({
+  runs,
+  runStore,
+  trust,
+  errorLog,
+  workspace,
+}: RunRoutePorts): RunRoutes {
   return {
     async waiting() {
       // The run store belongs to the workspace the server runs, so no other workspace's run can be in the list.
-      const waiting = await runStore.list({ status: "waiting" });
-      return Response.json({ runs: waiting.slice(0, maxWaitingRuns) });
+      const waiting = (await runStore.list({ status: "waiting" })).slice(0, maxWaitingRuns);
+      return Response.json({
+        runs: waiting,
+        agents: await agentNamesOf(waiting, workspace, errorLog),
+      });
     },
 
     async summary(runId) {

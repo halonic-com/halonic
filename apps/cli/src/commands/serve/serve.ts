@@ -49,6 +49,7 @@ import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts
 import { needsNoTrust, trustedGrant, workspaceNameOf } from "../../workspace-trust.ts";
 import { type VersionChecks, WatchedVersions } from "../routines/watch-versions.ts";
 import type { RunSetup } from "../run/run.ts";
+import { workspaceAgentNames } from "./agent-names.ts";
 import { workspaceGoogleRead } from "./google-read.ts";
 import { startsOnLiveVersion } from "./live-version-runs.ts";
 import { workspaceModelSettings } from "./model-settings-gate.ts";
@@ -273,6 +274,8 @@ async function listenOnComputer(
         folder: root,
         home,
       }),
+      // Read at every request too, so the waiting list names a renamed agent at once.
+      agentNames: workspaceAgentNames(() => versions.latest()),
     },
     studioPage: openStudioPageFolder(studioFolderOf(setup)),
     requestCounts: openDiskRequestCountStore(countFolder, parts.clock),
