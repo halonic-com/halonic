@@ -14,6 +14,8 @@ export interface PairDialogProps {
   readonly allowRisky: boolean;
   /** Runs once the dialog has closed its pairing; the opener unmounts it. */
   readonly onClose: () => void;
+  /** Runs after `onClose` when the host failed to end the pairing, so the opener can say so. */
+  readonly onCloseFailed: () => void;
   /** Opens a provider's web page, such as "Open Tailscale setup". */
   readonly openExternal: (url: string) => void;
   /** Where the timer counts from. Default the clock. */
@@ -32,8 +34,12 @@ export function PairDialog(props: PairDialogProps) {
   const [error, setError] = useState<string>();
   const view = pairing.view;
 
+  // The dialog goes either way; a failed end is said by the opener, which stays on screen.
   const close = () => {
-    void pairing.close().finally(props.onClose);
+    pairing.close().then(props.onClose, () => {
+      props.onClose();
+      props.onCloseFailed();
+    });
   };
 
   const answer = (allow: boolean, phoneName: string) => {
