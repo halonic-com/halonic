@@ -118,10 +118,10 @@ export function focusPageHeading(root: ParentNode = document): void {
 }
 
 /**
- * The shown page's `h1`, ready to take focus from code (`tabindex="-1"`), or `null` while the page
- * has none: for a dialog to give focus back to when what opened it is gone.
+ * The shown page's `h1` (or its can't-load title), ready to take focus from code (`tabindex="-1"`),
+ * or `null` while the page has none: for a dialog to give focus back to when what opened it is gone.
  */
-export function pageHeading(root: ParentNode = document): HTMLHeadingElement | null {
+export function pageHeading(root: ParentNode = document): HTMLElement | null {
   const heading = shownPageHeading(root);
   if (heading === undefined) return null;
   if (!heading.hasAttribute("tabindex")) {
