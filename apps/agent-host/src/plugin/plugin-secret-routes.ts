@@ -85,6 +85,8 @@ async function handOver(
     if (name === undefined) return "not_declared";
     kept.set(name, value);
   }
+  // The trust check waits, and the host may have stopped and cleared the values meanwhile.
+  if (deps.plugins.isStopping) throw new PluginRefusal("host_stopping");
   deps.values.replace(plugin, kept);
   return { kept: kept.size };
 }

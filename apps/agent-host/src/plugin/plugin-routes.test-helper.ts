@@ -47,8 +47,12 @@ export class FakeBackends implements PluginBackends {
   /** The secrets each plugin declares; `acme` declares `acme-key`. */
   readonly declared = new Map<string, readonly string[]>([["acme", ["acme-key"]]]);
 
+  /** Set to do something while the trust check of a hand-over is still running, such as stop the host. */
+  whileCheckingSecrets: (() => Promise<void>) | undefined;
+
   async trustedSecretNames(plugin: string): Promise<Readonly<Record<string, string>>> {
     await this.trustedFingerprint(plugin);
+    await this.whileCheckingSecrets?.();
     const declared = this.declared.get(plugin) ?? [];
     return Object.fromEntries(declared.map((secret) => [secret, `plugin__${plugin}__${secret}`]));
   }
