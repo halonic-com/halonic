@@ -6,10 +6,10 @@ import type {
   WorkerUpload,
 } from "./api.ts";
 import { DeployError, type LiveReason, redact, SmokeTestFailedError } from "./errors.ts";
+import { selfTest } from "./self-test.ts";
 
 /** The variable that opens the Worker's `/self-test` route; the same name the runtime reads. */
 const selfTestTokenVariable = "HALONIC_SELFTEST_TOKEN";
-const overrideHeader = "Cloudflare-Workers-Version-Overrides";
 /** Self-test tries on an address that was already on: about 20 s. */
 const attemptsWhenOpen = 5;
 /**
@@ -31,6 +31,8 @@ export type UploadProgress =
   | { readonly step: "bundle-checked"; readonly hash: string }
   /** A live upload has no id yet: it is read back after the self-test, and `switched` never comes. */
   | { readonly step: "uploaded"; readonly versionId?: string; readonly live: boolean }
+  /** The address didn't answer yet, so the self-test tries again: try `attempt` of `attempts` at most. */
+  | { readonly step: "self-test-retry"; readonly attempt: number; readonly attempts: number }
   | { readonly step: "smoke-test"; readonly passed: boolean }
   | { readonly step: "switched"; readonly versionId: string }
   | { readonly step: "kept-previous"; readonly versionId: string }
@@ -62,7 +64,8 @@ export interface UploadAndSwitchOptions {
   readonly randomToken?: () => string;
   /**
    * How often the self-test is tried while the address starts answering. Defaults to 5 (about
-   * 20 s), or 16 (about two minutes) when the deploy turned workers.dev on.
+   * 20 s), or 16 (about two minutes) when the deploy turned workers.dev on. Either way the
+   * self-test stops after two and a half minutes.
    */
   readonly attempts?: number;
 }
@@ -318,44 +321,4 @@ async function restore(
 ) {
   await api.deployVersions(accountId, worker, previous);
   report({ step: "kept-previous", versionId: previous[0]?.id ?? "" });
-}
-
-/** Calls `POST /self-test` until it answers or the attempts run out. */
-async function selfTest(
-  baseUrl: string,
-  worker: string,
-  versionId: string | undefined,
-  token: string,
-  options: UploadAndSwitchOptions,
-): Promise<{ ok: boolean; failed: string[] }> {
-  const doFetch = options.fetch ?? fetch;
-  const sleep = options.sleep ?? realSleep;
-  const attempts = options.attempts ?? attemptsWhenOpen;
-  let failed: string[] = [];
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    try {
-      const response = await doFetch(`${baseUrl}/self-test`, {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${token}`,
-          ...(versionId ? { [overrideHeader]: `${worker}="${versionId}"` } : {}),
-        },
-        signal: AbortSignal.timeout(30_000),
-      });
-      if (response.ok) {
-        const report = (await response.json()) as {
-          ok?: boolean;
-          checks?: { name?: string; ok?: boolean }[];
-        };
-        failed = (report.checks ?? []).filter((c) => !c.ok).map((c) => String(c.name));
-        // A report that says "not ok" is an answer, not a Worker still starting: don't retry it.
-        return { ok: report.ok === true, failed };
-      }
-      failed = [`HTTP ${response.status}`];
-    } catch {
-      failed = ["no answer"];
-    }
-    if (attempt < attempts) await sleep(Math.min(2000 * attempt, longestWaitMs));
-  }
-  return { ok: false, failed };
 }
