@@ -4,68 +4,8 @@ import type { AgentPlacementStore, Digest } from "@halonicjs/ports";
 import { encodeUtf8 } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { type NewAgentsParts, WorkspaceAgents } from "./workspace-agents.ts";
-
-const writerFile = "id: writer\nname: Writer\ndescription: Drafts replies.\nmodel: fast\n";
-const replyFile =
-  "id: reply\nname: Reply\ninitial: first\nstates:\n  first:\n    agent: writer\n    on:\n      - to: done\n  done:\n    type: final\n";
-
-function setup(newAgents?: NewAgentsParts) {
-  const store: Record<string, string> = {
-    "models.yaml":
-      "aliases:\n  fast:\n    provider: anthropic\n    model: claude-haiku\n  smart:\n    provider: anthropic\n    model: claude-sonnet\n",
-    "hubs/acme/hub.yaml": "id: acme\nname: Acme\n",
-    "hubs/beta/hub.yaml": "id: beta\nname: Beta\n",
-    "hubs/acme/agents/writer.agent.yaml": writerFile,
-    "hubs/acme/workflows/reply.workflow.yaml": replyFile,
-  };
-  const changes: { label: string; changes: Record<string, string | null> }[] = [];
-  const listeners = new Set<() => void>();
-  // What each step replaced, so `undo` can put it back, as the kernel's files do.
-  const undoable: Record<string, string | null>[] = [];
-  let step = 0;
-  const host = new WorkspaceAgents({
-    files: {
-      read: async (path) => store[path] ?? null,
-      list: async (dir) =>
-        Object.keys(store)
-          .filter((path) => path.startsWith(`${dir}/`))
-          .sort(),
-      change: (label, made) => {
-        changes.push({ label, changes: made });
-        undoable.push(
-          Object.fromEntries(Object.keys(made).map((path) => [path, store[path] ?? null])),
-        );
-        step += 1;
-        for (const [path, text] of Object.entries(made)) {
-          if (text === null) delete store[path];
-          else store[path] = text;
-        }
-        for (const listener of listeners) listener();
-      },
-      undo: () => {
-        const before = undoable.pop();
-        if (before === undefined) return false;
-        for (const [path, text] of Object.entries(before)) {
-          if (text === null) delete store[path];
-          else store[path] = text;
-        }
-        step += 1;
-        for (const listener of listeners) listener();
-        return true;
-      },
-      get step() {
-        return step;
-      },
-    },
-    onChange: (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-    ...(newAgents === undefined ? {} : { newAgents }),
-  });
-  return { host, store, changes };
-}
+import { setup, writerFile } from "./workspace-agents.test-helper.ts";
+import type { NewAgentsParts } from "./workspace-agents.ts";
 
 const digest: Digest = {
   async sha256(data) {
@@ -381,39 +321,6 @@ verifies("studio.workspace-agents", () => {
       ).rejects.toMatchObject({
         kind: "not_found",
       });
-    });
-  });
-});
-
-verifies("studio.workspace-agents-output", () => {
-  describe("WorkspaceAgents output", () => {
-    it("reads and saves the output in place, and refuses a list of options with none", async () => {
-      const { host, store, changes } = setup();
-      const ref = { hubId: "acme", id: "writer" };
-      const path = "hubs/acme/agents/writer.agent.yaml";
-      expect((await host.settings(ref)).output).toEqual({ type: "text" });
-
-      await host.update(ref, { output: { type: "choice", options: ["reply", "archive"] } });
-      expect(store[path]).toContain("description: Drafts replies.");
-      expect((await host.settings(ref)).output).toEqual({
-        type: "choice",
-        options: ["reply", "archive"],
-      });
-
-      const schema = { type: "object", properties: { label: { type: "string" } } };
-      await host.update(ref, { output: { type: "json", schema } });
-      expect((await host.settings(ref)).output).toEqual({ type: "json", schema });
-      await host.update(ref, { output: { type: "json", schema: undefined } });
-      expect((await host.settings(ref)).output).toEqual({ type: "json" });
-      expect(store[path]).not.toContain("schema:");
-      await host.update(ref, { output: { type: "text" } });
-      expect((await host.settings(ref)).output).toEqual({ type: "text" });
-
-      const written = changes.length;
-      await expect(
-        host.update(ref, { output: { type: "choice", options: [] } }),
-      ).rejects.toMatchObject({ kind: "invalid_input" });
-      expect(changes).toHaveLength(written);
     });
   });
 });
