@@ -127,3 +127,24 @@ verifies("format.workflow-file", () => {
     expect(summary(problemsOf("workflow", text))).toEqual(["initial invalid_type 1"]);
   });
 });
+
+verifies("format.workflow-artifact-name", () => {
+  it("refuses an artifact name that isn't one file name, at the name (HAL-14301)", () => {
+    const named = (name: string) =>
+      problemsOf("workflow", workflow("  start:", `    artifact: { name: '${name}' }`));
+    expect(summary(named("../../announcement.md"))).toEqual([
+      "states.start.artifact.name custom 6",
+    ]);
+    expect(named("../../announcement.md")[0]?.message).toBe(
+      "artifact name isn't a file name. Use one without folders, such as announcement.md",
+    );
+    expect(named("..")[0]?.message).toBe(
+      "artifact name isn't a file name. Use one without folders, such as announcement.md",
+    );
+    expect(named("notes.")[0]?.message).toBe(
+      "artifact name isn't a file name. Don't end a file name with '.' or a space",
+    );
+    const fine = workflow("  start:", "    artifact: { name: announcement.md }");
+    expect(parsedValue("workflow", fine).states["start"]?.artifact?.name).toBe("announcement.md");
+  });
+});
