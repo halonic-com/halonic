@@ -192,12 +192,20 @@ function StudioWindowBody(props: StudioWindowProps) {
     [showSettingsDialog, openPhone, sections, workspace.name, host],
   );
   const focusNewPage = usePageHeadingFocus();
+  // A page opened from a dialog that closes as it opens it, such as Ctrl K's palette or a Settings
+  // section: the dialog's focus return mustn't win over the `h1`.
+  const focusPageOpenedFromDialog = usePageHeadingFocusAfterDialog();
+  // Settings closes as one of its sections opens a page. In a narrow window its opener, the closed
+  // drawer's Settings row, is hidden, so Settings gives the focus to Places, and that must come
+  // before the page's `h1` takes it, at every width (C383 SP1).
+  const focusOpenedPage = () =>
+    settings.opening === undefined ? focusNewPage() : focusPageOpenedFromDialog();
   // Read when a view opens a place, so the context stays the same as the window narrows or widens.
   const openPlaceHere = useRef<(place: SidebarPlace) => void>(phone.openPlace);
   openPlaceHere.current = desktop
     ? (place) => {
         tabs.openHere({ key: place, title: placeNames[place].label });
-        focusNewPage();
+        focusOpenedPage();
       }
     : phone.openPlace;
   // Read when a view opens an item, for the same reason.
@@ -205,7 +213,7 @@ function StudioWindowBody(props: StudioWindowProps) {
   openHere.current = desktop
     ? (location) => {
         tabs.openHere(location);
-        focusNewPage();
+        focusOpenedPage();
       }
     : (location) => phone.open(location);
   const openItemInNewTab = useRef<(location: TabLocation) => void>(phone.open);
@@ -305,8 +313,6 @@ function StudioWindowBody(props: StudioWindowProps) {
   // navigation's counts follow, such as the Inbox's right after an answer (HAL-13371).
   const shown = useShownPlaces(places, contextFor);
   useWindowKeys({ host, platform, tabs, toasts: shell.toasts, onNewTab: palette.show });
-  // Ctrl K's palette closes as it opens a page, and its focus return mustn't win over the `h1`.
-  const focusPageOpenedFromPalette = usePageHeadingFocusAfterDialog();
   // The palette is the desktop's: one opened on a phone (Mod K on a keyboard) or left open when the
   // window narrows is closed, so it doesn't pop up when the window widens again.
   const { open: paletteOpen, close: closePalette } = palette;
@@ -450,7 +456,7 @@ function StudioWindowBody(props: StudioWindowProps) {
           notAnswering={shell.engine.words.notAnswering}
           platform={platform}
           onClose={palette.close}
-          onOpenedHere={focusPageOpenedFromPalette}
+          onOpenedHere={focusPageOpenedFromDialog}
         />
       ) : null}
       {settings.opening === undefined ? null : (
