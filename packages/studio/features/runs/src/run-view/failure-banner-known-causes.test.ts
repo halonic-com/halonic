@@ -109,13 +109,13 @@ verifies("runs.run-view.failure-banners", () => {
 
     it("says the cause and the fix from the typed cause, before the log is read", () => {
       expect(lines(causeBanner(tooLong(linux), undefined, context, false))).toEqual([
-        "Support reply stopped in the step Draft: the path to Halonic's data is too long for the bridge's socket (161 bytes, and Linux takes at most 107). Move Halonic's data to a shorter path, then run again.",
+        "Support reply stopped in the step Draft: the path to Halonic's data is too long for the bridge's socket (161 bytes, and Linux takes at most 107). Move Halonic's data folder to a shorter path, such as ~/.halonic, set HALONIC_HOME to that path and reopen Halonic, then run again.",
       ]);
     });
 
     it("says to fix it on the computer on a phone", () => {
       expect(lines(causeBanner(tooLong(linux), undefined, context, true))?.[0]).toContain(
-        "Move Halonic's data to a shorter path on your computer, then run again.",
+        "On your computer, move Halonic's data folder to a shorter path, such as ~/.halonic,",
       );
     });
 
@@ -123,7 +123,7 @@ verifies("runs.run-view.failure-banners", () => {
       expect(
         lines(causeBanner(tooLong({ bytes: "161", system: "Linux" }), [], context, false)),
       ).toEqual([
-        "Support reply stopped in the step Draft: the path to Halonic's data is too long for the bridge's socket. Move Halonic's data to a shorter path, then run again.",
+        "Support reply stopped in the step Draft: the path to Halonic's data is too long for the bridge's socket. Move Halonic's data folder to a shorter path, such as ~/.halonic, set HALONIC_HOME to that path and reopen Halonic, then run again.",
       ]);
     });
   });
