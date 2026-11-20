@@ -25,6 +25,14 @@ const claudeCodeModelVariables = [
   "CLAUDE_CODE_SUBAGENT_MODEL",
 ] as const;
 
+/**
+ * What Claude Code gets as its own key when its bridge serves a key Halonic
+ * keeps (requirement `harness-claude-code.stand-in-key`). Without a key or a
+ * sign-in, Claude Code says "Not logged in" and never calls its model. This
+ * holds no secret: the bridge puts the real key in its place on each call.
+ */
+export const claudeCodeStandInKey = "halonic-bridge-stand-in";
+
 /** The folders of the sandbox profile the environment points Claude Code at. */
 export type ClaudeCodeFolders = Pick<SandboxProfile, "tempFolder" | "settingsFolder">;
 
@@ -51,6 +59,10 @@ export type ClaudeCodeFolders = Pick<SandboxProfile, "tempFolder" | "settingsFol
  *   `modelForEveryCall` (requirement `harness-claude-code.model-variables`).
  *   A compatible provider has none of Claude's models, so Claude Code's
  *   background and subagent calls ask for the agent's model too.
+ * - `ANTHROPIC_API_KEY`, only when the bridge serves Anthropic with a key
+ *   Halonic keeps: {@link claudeCodeStandInKey}, so Claude Code calls its
+ *   model. With the person's own sign-in it stays unset, or Claude Code would
+ *   send the stand-in instead of the sign-in.
  *
  * The values hold the run token. The engine passes them only to the sandbox;
  * nothing here writes them anywhere else.
@@ -72,6 +84,9 @@ export function claudeCodeEnvironment(
     CLAUDE_CODE_TMPDIR: folders.tempFolder,
     [claudeCodeRunTokenVariable]: bridge.token,
     ...modelVariables(model),
+    ...(bridge.keyProviders?.includes("anthropic") === true
+      ? { ANTHROPIC_API_KEY: claudeCodeStandInKey }
+      : {}),
   };
 }
 

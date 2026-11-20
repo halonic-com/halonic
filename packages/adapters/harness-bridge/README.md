@@ -101,6 +101,10 @@ Its key should be short-lived and for that task alone, and is read from `Secrets
   path.
 - **Token.** Any request without the run's exact token gets a 401, whatever its
   path. A path the bridge doesn't serve gets a 404.
+- **Key providers.** An open bridge names in `keyProviders` the providers it
+  reaches with a key Halonic keeps, so a harness can give a program that
+  needs a key of its own to start a stand-in that holds no secret
+  (`harness-bridge.key-providers`). It names none for the program's own sign-in.
 - **One refusal ends the connection.** Once a request is refused or fails,
   nothing else on its connection is served, not even a request the program
   had already sent behind it.

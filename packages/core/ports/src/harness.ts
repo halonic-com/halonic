@@ -1,4 +1,5 @@
 import type { AgentResume, RunEventBody, RunEventType } from "@halonicjs/events";
+import type { BridgeProvider } from "./harness-bridge-server.ts";
 import type { SandboxProfile, SandboxSession } from "./sandbox.ts";
 
 /** Version of the {@link Harness} port. A breaking change bumps it and comes with an ADR. */
@@ -120,6 +121,14 @@ export interface HarnessBridge {
    * one instead of a loopback port. Absent for a loopback bridge.
    */
   socketPath?: string;
+  /**
+   * The providers this bridge calls with a key Halonic keeps, which it puts
+   * in place of the program's own (requirement `harness-bridge.key-providers`).
+   * A program that won't call its model without a key of its own, such as
+   * Claude Code, then gets a stand-in that holds no secret. Absent when every
+   * provider is reached with the program's own sign-in.
+   */
+  keyProviders?: readonly BridgeProvider[];
 }
 
 /** The body of the run log event with this `type`. */

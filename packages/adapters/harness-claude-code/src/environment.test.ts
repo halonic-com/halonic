@@ -3,7 +3,7 @@ import { addHarnessEnvironment, type HarnessBridge, type SandboxProfile } from "
 import { FakeSandboxSession, readText } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { claudeCodeEnvironment } from "./environment.ts";
+import { claudeCodeEnvironment, claudeCodeStandInKey } from "./environment.ts";
 
 const bridge: HarnessBridge = {
   url: "http://127.0.0.1:4100",
@@ -117,5 +117,24 @@ verifies("harness-claude-code.model-variables", () => {
         for (const name of modelVariables) expect(added).not.toHaveProperty(name);
       }
     });
+  });
+});
+
+verifies("harness-claude-code.stand-in-key", () => {
+  it("gives Claude Code a stand-in key when its bridge serves Anthropic with a key", () => {
+    const keyed = { ...bridge, keyProviders: ["anthropic"] as const };
+
+    expect(claudeCodeEnvironment(keyed, engineProfile)["ANTHROPIC_API_KEY"]).toBe(
+      claudeCodeStandInKey,
+    );
+  });
+
+  it("leaves the key unset when its bridge uses the person's own sign-in for Anthropic", () => {
+    const openAiOnly = { ...bridge, keyProviders: ["openai"] as const };
+
+    expect(claudeCodeEnvironment(bridge, engineProfile)).not.toHaveProperty("ANTHROPIC_API_KEY");
+    expect(claudeCodeEnvironment(openAiOnly, engineProfile)).not.toHaveProperty(
+      "ANTHROPIC_API_KEY",
+    );
   });
 });
