@@ -14,6 +14,7 @@ import type {
 } from "@halonicjs/studio-feature-workflows/api";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { editYaml, readYaml, writeYamlFile, type YamlEdit } from "@halonicjs/yaml";
+import { newWorkflowText, testFile, workflowFolder, workflowSuffix } from "./workflow-files.ts";
 
 /** What {@link WorkspaceWorkflows} needs of the workspace's files, events and runs. */
 export interface WorkspaceWorkflowsParts {
@@ -55,31 +56,6 @@ export interface WorkspaceWorkflowsParts {
       input: Record<string, unknown>,
     ): Promise<{ readonly id: string }>;
   };
-}
-
-/** Where the workflow files of a hub are kept. */
-const workflowFolder = (hubId: string): string => `hubs/${hubId}/workflows`;
-
-const workflowSuffix = ".workflow.yaml";
-
-/** Where the test cases of a workflow are kept: next to it, in the hub's `workflows` folder. */
-const testFile = ({ hubId, id }: WorkflowRef): string => `${workflowFolder(hubId)}/${id}.test.yaml`;
-
-/** The text of a new workflow: a step `start` that leads to the final step `done`. */
-function newWorkflowText(id: string, name: string): string {
-  return [
-    `id: ${id}`,
-    // A JSON string is a YAML double-quoted one, so any name a person types is safe.
-    `name: ${JSON.stringify(name)}`,
-    "initial: start",
-    "states:",
-    "  start:",
-    "    on:",
-    "      - to: done",
-    "  done:",
-    "    type: final",
-    "",
-  ].join("\n");
 }
 
 /**
