@@ -3,6 +3,7 @@
 - Task: HAL-14261
 - Approval: Liam approves this change on HAL-14261 (https://paperclip.halonic.com/HAL/issues/HAL-14261), from Kim's first-run error check C336 (HAL-14245, rows 9–12, C2–C4). A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qlX1fJ6FSl/65CRkLt3/6cMbylUzjgXg9IYKxak/2BEtZru66OYxlUWPSf2eVvmLgQ+oz42JB2bjd/pj7GYEAw==
 
 ## What changes
 
