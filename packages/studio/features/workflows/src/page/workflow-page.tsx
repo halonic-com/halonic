@@ -11,13 +11,12 @@ import {
   EmptyState,
   LetterTile,
   SkeletonBar,
-  type Tab,
   TabList,
   TabPanel,
   usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
-import { engineWordsOf, ItemGone, type ItemViewProps, NameField } from "@halonicjs/studio-shell";
+import { engineWordsOf, ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useRef, useState } from "react";
 import { type WorkflowsHost, WorkflowsHostService } from "../api.ts";
 import type { View } from "../canvas/geometry.ts";
@@ -26,7 +25,6 @@ import { configurationWords } from "../configuration/configuration-words.ts";
 import { countProblems } from "../configuration/problem-lines.ts";
 import { runCount } from "../runs/runs-model.ts";
 import { RunsView } from "../runs/runs-view.tsx";
-import { runsWords } from "../runs/runs-words.ts";
 import { useRuns } from "../runs/use-runs.ts";
 import { useSaveAsTest } from "../runs/use-save-as-test.ts";
 import { useAnnounceDockedRun } from "../start/run-announcement.ts";
@@ -37,12 +35,12 @@ import { pageWords } from "./page-words.ts";
 import { dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
-import { type Rename, useRename } from "./use-rename.ts";
+import { useRename } from "./use-rename.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
 import { type CanvasEdit, WorkflowCanvas } from "./workflow-canvas.tsx";
+import { WorkflowName } from "./workflow-name.tsx";
 import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
-
-type WorkflowView = "flow" | "configuration" | "runs";
+import { type WorkflowView, workflowTabs } from "./workflow-tabs.ts";
 
 /** The command that opens the workspace page at Models (`features/workspace`), as the run page runs it. */
 const openModelsCommand = "workspace.open-models";
@@ -357,32 +355,6 @@ export function WorkflowScreen({
 }
 
 /**
- * The workflow's name in the header: a rename field once the workflow is read, where it can be
- * renamed; else the name. A phone's top bar names the workflow, so its title stays text.
- */
-function WorkflowName({
-  name,
-  rename,
-  ready,
-  phone,
-}: {
-  readonly name: string;
-  readonly rename: Rename | undefined;
-  readonly ready: boolean;
-  readonly phone: boolean;
-}) {
-  if (rename === undefined || !ready || phone) return name;
-  return (
-    <NameField
-      name={name}
-      label={pageWords.nameField}
-      onRename={rename.apply}
-      check={rename.check}
-    />
-  );
-}
-
-/**
  * The tab panel's layout: Flow fills it with the canvas, Runs with its list and a run's card side by
  * side (each scrolls and keeps its own inset), and Configuration scrolls. On a phone a docked card
  * takes the page's body, so the panel hides behind it: beside the card it would have no room.
@@ -503,29 +475,4 @@ function FlowView({
       )}
     </>
   );
-}
-
-/** The page's tabs: Flow, Configuration with its error count, and Runs with the count of runs that need you. */
-function workflowTabs(errors: number, needYou: number): readonly Tab<WorkflowView>[] {
-  return [
-    { id: "flow", label: configurationWords.flowTab },
-    {
-      id: "configuration",
-      label: configurationWords.tab,
-      ...(errors > 0 && {
-        count: {
-          value: errors,
-          tone: "danger" as const,
-          name: configurationWords.errors(errors),
-        },
-      }),
-    },
-    {
-      id: "runs",
-      label: runsWords.tab,
-      ...(needYou > 0 && {
-        count: { value: needYou, tone: "warning" as const, name: runsWords.needYou(needYou) },
-      }),
-    },
-  ];
 }
