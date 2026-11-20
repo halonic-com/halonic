@@ -266,6 +266,7 @@ export {
 } from "./plugin-local-tools.ts";
 export { pluginSecretNames } from "./plugin-secret-names.ts";
 export {
+  type AddedPluginEntry,
   type AddPluginOptions,
   type BrokenPlugin,
   type DeletePluginSecret,

@@ -90,8 +90,21 @@ export async function addPlugin(
   if (entry.status === "broken") {
     throw refusal("invalid_input", firstProblem(entry.problems));
   }
+  const leftOut = leftOutLine(entry.leftOut, context);
   const result = await trustAdded(service, entry, { context, yes, fingerprint });
-  return { ...result, lines: [...opened.printedAhead, ...result.lines] };
+  return { ...result, lines: [...opened.printedAhead, ...leftOut, ...result.lines] };
+}
+
+/**
+ * "! Not copied, because they're private: .aws, .ssh", printed ahead of the
+ * check, when the copy left out paths the sandbox denies; nothing otherwise.
+ */
+function leftOutLine(paths: readonly string[], context: CommandContext): Phrase[] {
+  if (paths.length === 0) return [];
+  const listed = paths.map((path) => printable(path)).join(", ");
+  const line = phrase`${markPart("needsYou")} ${pluginMessages.leftOut(listed).phrase}`;
+  context.printAhead(line);
+  return [line];
 }
 
 /** A source's files in a folder on this computer, and where they came from. */

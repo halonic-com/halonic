@@ -45,6 +45,11 @@ export const pluginMessages = defineMessages("plugin", {
    */
   latestCommit: (commit: string, branch: string, pin: string) =>
     phrase`Using commit ${commit}, the latest on ${branch}. Add @${pin} to pin it.`,
+  /**
+   * After the copy, before the check: the private paths the sandbox denies
+   * that the folder held and the copy left out (HAL-13713), with a !.
+   */
+  leftOut: (paths: string) => phrase`Not copied, because they're private: ${paths}`,
   /** The check's first line, and the question at its end, framed with [y/N] by the question line. */
   trustQuestion: (name: string) => phrase`Trust ${name} and turn it on?`,
   toolsHeading: () => phrase`Tools for agents`,

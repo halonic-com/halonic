@@ -7,6 +7,7 @@ import {
   type FolderEntriesOptions,
   type FolderEntry,
   type FolderReader,
+  isDeniedHomePath,
   isPrivateWorkspacePath,
   segmentAsOpened,
 } from "@halonicjs/ports";
@@ -22,13 +23,19 @@ export const sourceFolder = "source";
  *
  * A private name at any depth (`.git`, `.studio`, `.env*`, see
  * `isPrivateWorkspacePath`) isn't there: it isn't listed, and reads as no
- * file, so a plugin author's secrets never reach the plugins folder. The CLI
- * and the Studio both add through this, so they leave out the same names.
+ * file, so a plugin author's secrets never reach the plugins folder. Nor is
+ * a path the sandbox denies in a home folder, at any depth and for every
+ * system (`.ssh`, `.aws`, `.npmrc`, see `isDeniedHomePath`), so a copy
+ * never hands a plugin what the sandbox keeps from it; those are noted, for
+ * {@link PluginSourceSnapshot.deniedLeftOut}. The CLI and the Studio both
+ * add through this, so they leave out the same names.
  */
 export class PluginSourceSnapshot implements FolderReader {
   readonly #source: FolderReader;
   /** Every file's bytes as first read, by path from the source folder. */
   readonly #read = new Map<string, Uint8Array>();
+  /** The denied home paths found and left out, by path from the source folder. */
+  readonly #deniedLeftOut = new Set<string>();
 
   constructor(source: FolderReader) {
     this.#source = source;
@@ -43,7 +50,7 @@ export class PluginSourceSnapshot implements FolderReader {
       return [{ path: sourceFolder, kind: "folder" }];
     }
     const inSource = fromSource(dir);
-    if (inSource !== undefined && isPrivateWorkspacePath(inSource)) return [];
+    if (inSource !== undefined && isLeftOut(inSource)) return [];
     // Folder by folder, leaving private entries out before going into them,
     // so a `.git` is never walked and only kept entries count against
     // `limit`: `limit + 1` entries still means the source went past it.
@@ -79,7 +86,7 @@ export class PluginSourceSnapshot implements FolderReader {
         recursive: false,
         ...(asked === undefined ? {} : { limit: asked }),
       });
-      const kept = listed.filter((entry) => !isPrivateWorkspacePath(entry.path));
+      const kept = listed.filter((entry) => !this.#leaveOut(entry.path));
       if (asked === undefined || room === undefined) return kept;
       if (listed.length <= asked || kept.length >= room) return kept;
       asked += listed.length - kept.length;
@@ -88,7 +95,7 @@ export class PluginSourceSnapshot implements FolderReader {
 
   async read(path: string): Promise<Uint8Array | null> {
     const inSource = fromSource(path);
-    if (inSource === undefined || isPrivateWorkspacePath(inSource)) return null;
+    if (inSource === undefined || isLeftOut(inSource)) return null;
     const kept = this.#read.get(inSource);
     if (kept !== undefined) return kept.slice();
     const bytes = await this.#source.read(inSource);
@@ -101,10 +108,34 @@ export class PluginSourceSnapshot implements FolderReader {
     return await this.#source.locationOf(fromSource(path));
   }
 
+  /**
+   * Whether the entry at `path` is left out, noting it when it is a denied
+   * home path. A private name is left out without a note, as it always was.
+   */
+  #leaveOut(path: string): boolean {
+    if (isPrivateWorkspacePath(path)) return true;
+    if (!isDeniedHomePath(path)) return false;
+    this.#deniedLeftOut.add(path);
+    return true;
+  }
+
+  /**
+   * The denied home paths listed so far and left out, by path from the
+   * source folder and sorted: `.ssh` for a whole folder, never what is in it.
+   */
+  deniedLeftOut(): string[] {
+    return [...this.#deniedLeftOut].sort();
+  }
+
   /** The bytes of every file read so far, by path from the source folder: what is placed. */
   files(): ReadonlyMap<string, Uint8Array> {
     return new Map(this.#read);
   }
+}
+
+/** Whether a path from the source folder is one a plugin's copy never has. */
+function isLeftOut(path: string): boolean {
+  return isPrivateWorkspacePath(path) || isDeniedHomePath(path);
 }
 
 /**

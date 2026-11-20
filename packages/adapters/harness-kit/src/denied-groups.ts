@@ -1,114 +1,19 @@
 // What a harness run's sandbox denies, by group (threat model 4.6): the
-// person's SSH keys, cloud sign-ins, browser data, password stores, package
-// registry tokens, shell histories and their own Claude Code and Codex
-// settings, all in the home folder, and Halonic's own data folder. The groups are the `sandbox.opened` event's
-// `deniedPathGroupCodes`, so the run log and the screens name what the
-// profile denies.
+// paths in the person's home folder that the ports' `deniedHomePaths`
+// lists, and Halonic's own data folder. The groups are the `sandbox.opened`
+// event's `deniedPathGroupCodes`, so the run log and the screens name what
+// the profile denies.
 
 import { join } from "node:path";
-import type { DeniedPathGroup, DeniedPathGroupCode } from "@halonicjs/events";
+import type { DeniedPathGroup } from "@halonicjs/events";
+import {
+  deniedHomePaths,
+  type HomeDeniedGroupCode,
+  type HomePlatform,
+  homePathsOf,
+} from "@halonicjs/ports";
 import type { ProfileDisk } from "./working-folder.ts";
 import { isInsideOrSame } from "./working-folder.ts";
-
-/** The systems a harness runs on, as Node names them. */
-type HarnessPlatform = "linux" | "darwin" | "win32";
-
-/** Paths in the home folder, with `/` between their names: on every system, and on one only. */
-interface HomePaths {
-  readonly everywhere: readonly string[];
-  readonly only?: Readonly<Partial<Record<HarnessPlatform, readonly string[]>>>;
-}
-
-/** The groups found in the home folder; `halonic-data` is the data folder's own. */
-const homeGroups: Readonly<Record<Exclude<DeniedPathGroupCode, "halonic-data">, HomePaths>> = {
-  "ssh-keys": { everywhere: [".ssh"] },
-  "cloud-sign-ins": {
-    everywhere: [
-      ".aws",
-      ".azure",
-      ".config/gcloud",
-      ".kube",
-      ".docker",
-      ".config/gh",
-      ".netrc",
-      ".git-credentials",
-    ],
-    only: { win32: ["AppData/Roaming/gcloud", "AppData/Roaming/GitHub CLI"] },
-  },
-  "browser-data": {
-    everywhere: [],
-    only: {
-      linux: [".config/google-chrome", ".config/chromium", ".config/BraveSoftware", ".mozilla"],
-      darwin: [
-        "Library/Application Support/Google/Chrome",
-        "Library/Application Support/Chromium",
-        "Library/Application Support/BraveSoftware",
-        "Library/Application Support/Microsoft Edge",
-        "Library/Application Support/Firefox",
-        "Library/Safari",
-        "Library/Cookies",
-      ],
-      win32: [
-        "AppData/Local/Google/Chrome/User Data",
-        "AppData/Local/Chromium/User Data",
-        "AppData/Local/BraveSoftware",
-        "AppData/Local/Microsoft/Edge/User Data",
-        "AppData/Roaming/Mozilla",
-      ],
-    },
-  },
-  "password-stores": {
-    everywhere: [".gnupg", ".password-store"],
-    only: {
-      linux: [".local/share/keyrings"],
-      darwin: ["Library/Keychains"],
-      win32: [
-        "AppData/Roaming/Microsoft/Credentials",
-        "AppData/Local/Microsoft/Credentials",
-        "AppData/Roaming/Microsoft/Protect",
-      ],
-    },
-  },
-  "registry-tokens": {
-    everywhere: [
-      ".npmrc",
-      ".yarnrc",
-      ".yarnrc.yml",
-      ".config/pnpm/rc",
-      ".pypirc",
-      ".cargo/credentials",
-      ".cargo/credentials.toml",
-      ".gem/credentials",
-      ".composer/auth.json",
-      ".m2/settings.xml",
-      ".gradle/gradle.properties",
-      ".terraform.d/credentials.tfrc.json",
-      ".vault-token",
-      ".config/op",
-      ".config/doctl",
-    ],
-    only: {
-      win32: [
-        "AppData/Roaming/pnpm/config/rc",
-        "AppData/Roaming/terraform.d/credentials.tfrc.json",
-      ],
-    },
-  },
-  "shell-history": {
-    everywhere: [
-      ".bash_history",
-      ".zsh_history",
-      ".zsh_sessions",
-      ".local/share/fish/fish_history",
-      ".python_history",
-      ".node_repl_history",
-      ".psql_history",
-      ".mysql_history",
-    ],
-    only: { win32: ["AppData/Roaming/Microsoft/Windows/PowerShell/PSReadLine"] },
-  },
-  "agent-settings": { everywhere: [".claude", ".claude.json", ".codex"] },
-};
 
 /**
  * The denied groups in the person's home folder, each path at its real
@@ -124,14 +29,14 @@ export async function homeDeniedGroups(
   disk: Pick<ProfileDisk, "realPath">,
 ): Promise<DeniedPathGroup[]> {
   const groups: DeniedPathGroup[] = [];
-  for (const [code, paths] of Object.entries(homeGroups)) {
-    const named = [...paths.everywhere, ...(paths.only?.[platform as HarnessPlatform] ?? [])];
+  for (const [code, paths] of Object.entries(deniedHomePaths)) {
+    const named = homePathsOf(paths, platform as HomePlatform);
     const found: string[] = [];
     for (const path of named) {
       const real = await realOrNothing(join(home, ...path.split("/")), disk);
       if (real !== null && !found.includes(real)) found.push(real);
     }
-    if (found.length > 0) groups.push({ code: code as DeniedPathGroupCode, paths: found });
+    if (found.length > 0) groups.push({ code: code as HomeDeniedGroupCode, paths: found });
   }
   return groups;
 }
