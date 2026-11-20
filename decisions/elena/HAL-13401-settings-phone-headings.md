@@ -3,6 +3,7 @@
 - Task: HAL-13401
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13401 (finding SH1 of the C180 check HAL-13384, and row RE3 of Sofia's C375 check HAL-14418 for Remote; same rule as S3 in HAL-13041, no new words; team decision under the HAL-2282 rule, Sofia as designer; Liam's code review)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0O8hmElCzDyarrpk17HgJyQ1+9PDQ5WennpL5fcSRJfD3E0sEl3WTFY+SsVgYPGLoMFS2mY1YnapECQb2qDHCA==
 
 ## What changes
 
