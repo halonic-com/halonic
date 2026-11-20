@@ -2,6 +2,7 @@
 
 - Approval: Liam decided this on HAL-14304: it builds on the approved C336/C337 wording, so it is a team decision with no board card; the package owner (Liam) signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:1KB4ixFzwj3qKQ8GBlRnUpxNbMttah5t/VE7KIrztTPoj6rDsnmqTtlcbdx2zi97mEXhcYx1v4s7sqGzfLL7Bw==
 - Task: HAL-14304
 
 ## What changes
