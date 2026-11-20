@@ -3,6 +3,7 @@
 - Task: HAL-14046
 - Approval: a small detail of the approved Settings › Remote section (HAL-12206), decided by the team on HAL-14046 (HAL-2282)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xysu3Zvu9ZZSehVNyQxjpqsc6R4zTJ+H/miUCAS61MnQzuCnE3G72h6XHMfqe4uFfAC7KzDSMRfL0DpJcZPeDA==
 
 The requirement widens one promise and narrows none: `SectionIcon` draws one more icon, for the
 Remote section, so its row in the Settings dialog's list lines up with the others instead of
