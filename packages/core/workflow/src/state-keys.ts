@@ -27,7 +27,7 @@ export const STATE_KEYS = {
     "signal",
   ],
   wait: [],
-  final: [],
+  final: ["signal"],
   workflow: ["workflow", "input", "output", "signal"],
   parallel: ["branches", "join", "continueOnError", "gets", "output", "signal"],
   foreach: [

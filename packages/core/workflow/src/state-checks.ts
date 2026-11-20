@@ -251,10 +251,19 @@ const typeNames: { readonly [Type in StateType]: string } = {
 const ignoredKeys: StateCheck = ({ id, state }) =>
   (Object.keys(state) as StateKey[])
     .filter((key) => state[key] !== undefined && !usesKey(state.type, key))
+    .filter((key) => !refusedKeys[state.type]?.includes(key))
     .map((key) => {
       const message = `"${id}" is a ${typeNames[state.type]} step: ${key} is ignored. ${whereKeyBelongs(state.type, key)}`;
       return issue("warning", "ignored-key", message, stateKey(id, key), id);
     });
+
+/**
+ * Keys a type doesn't use that another check refuses with an error, so the
+ * user gets that error alone and not an `ignored-key` warning as well.
+ */
+const refusedKeys: Partial<Record<StateType, readonly StateKey[]>> = {
+  wait: ["signal"], // wait-with-signal
+};
 
 /** What to do with a key a state of `type` ignores. */
 function whereKeyBelongs(type: StateType, key: StateKey): string {

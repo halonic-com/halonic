@@ -48,6 +48,19 @@ verifies("workflow.validate-ignored-keys", () => {
     ]);
   });
 
+  it("lets a final step send a signal, and leaves a signal on a wait step to its own error", () => {
+    const states = {
+      s: {
+        type: "wait",
+        signal: { name: "review.waiting", data: {} },
+        on: [{ to: "done", event: "ok" }],
+      },
+      done: { type: "final", signal: { name: "review.done", data: {} } },
+    };
+    // A signal on a wait step is the wait-with-signal error, not a warning as well.
+    expect(ignored(states)).toEqual([]);
+  });
+
   it("warns about items and concurrency on a task step", () => {
     const states = {
       s: { agent: "a", items: "{{context.list}}", concurrency: 2, on: [{ to: "end" }] },
