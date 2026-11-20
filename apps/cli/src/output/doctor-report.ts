@@ -1,29 +1,28 @@
 // Turns the `DoctorService`'s report into the lines `halonic doctor` prints
 // (cli-output 3.7): the heading, one line per check with its mark and label,
-// the reasons and fixes under it, then the summary. Every word comes from the
-// catalogue; this file only decides which sentence goes where.
+// the reasons and fixes under it, then the summary. Which sentences a line
+// says comes from `doctorLineWords` in `@halonicjs/words`, the same as
+// Studio's; this file lays them out, and words the Sandbox line, whose
+// reason and fix are the CLI's own.
 
-import {
-  type DiskLine,
-  type DoctorReport,
-  type DoctorStatus,
-  doctorCheckLimitMs,
-  type HarnessesLine,
-  type HarnessProblem,
-  type LimitedCheck,
-  type ModelProblem,
-  type ModelsLine,
-  type NetworkLine,
-  type NodeLine,
-  type ProviderReport,
-  type SandboxLine,
-  type SecretsLine,
-  type TimedOutLine,
-  type WorkspaceLine,
+import type {
+  DoctorReport,
+  DoctorStatus,
+  NodeLine,
+  SandboxLine,
+  TimedOutLine,
 } from "@halonicjs/app";
-import { type SignInShell, signInCommandText } from "@halonicjs/ports";
+import type { SignInShell } from "@halonicjs/ports";
+import {
+  type DoctorFace,
+  type DoctorLineItem,
+  type DoctorLineWords,
+  doctorLineWords,
+  timedOutWords,
+  type WordedLine,
+} from "@halonicjs/words";
 import type { Message } from "../messages/define.ts";
-import { type DataUse, doctorMessages } from "../messages/doctor.ts";
+import { doctorMessages } from "../messages/doctor.ts";
 import { errorMessages } from "../messages/general.ts";
 import { markPart, type Phrase, phrase, plainText } from "../messages/phrase.ts";
 import {
@@ -31,12 +30,10 @@ import {
   sandboxDocsLink,
   sandboxMessages,
   windowsNodeInWsl,
-  wsl2FolderDocs,
 } from "../messages/sandbox.ts";
-import { shownSize } from "../messages/size.ts";
 import { suggestedCommand } from "../messages/suggested-command.ts";
 import type { Mark } from "./paint.ts";
-import { printable, withoutUnsafe } from "./printable.ts";
+import { withoutUnsafe } from "./printable.ts";
 import { shellWord } from "./shell-word.ts";
 
 /** What the report doesn't hold, because only the host knows it. */
@@ -92,16 +89,26 @@ interface CheckLines {
  */
 export function doctorReportLines(report: DoctorReport, facts: DoctorFacts): Phrase[] {
   const node = report.node === undefined || isTimedOut(report.node) ? undefined : report.node;
+  const face: DoctorFace = {
+    trustCommand: suggestedCommand("trust", facts.dir),
+    validateCommand: suggestedCommand("validate", facts.dir),
+    signInShell: facts.signInShell,
+    shellWord: (text) => shellWord(text),
+  };
+  const worded = (line: WordedLine | undefined) =>
+    line && checkOf(line.status, doctorLineWords(line, face));
+  const sandbox = isTimedOut(report.sandbox)
+    ? checkOf(report.sandbox.status, timedOutWords("sandbox"))
+    : sandboxCheck(report.sandbox, facts, node);
   const checks = [
-    report.workspace && orTimedOut(report.workspace, (line) => workspaceCheck(line, facts.dir)),
-    report.models && orTimedOut(report.models, modelsCheck),
-    report.secrets && orTimedOut(report.secrets, secretsCheck),
-    orTimedOut(report.sandbox, (line) => sandboxCheck(line, facts, node)),
-    report.harnesses &&
-      orTimedOut(report.harnesses, (line) => harnessesCheck(line, facts.signInShell)),
-    report.node && orTimedOut(report.node, nodeCheck),
-    report.network && networkCheck(report.network),
-    orTimedOut(report.disk, diskCheck),
+    worded(report.workspace),
+    worded(report.models),
+    worded(report.secrets),
+    sandbox,
+    worded(report.harnesses),
+    worded(report.node),
+    worded(report.network),
+    worded(report.disk),
   ].filter((check) => check !== undefined);
   return [
     doctorMessages.heading(facts.version, facts.system).phrase,
@@ -112,34 +119,18 @@ export function doctorReportLines(report: DoctorReport, facts: DoctorFacts): Phr
   ];
 }
 
-/** Each check's label, for its line when it ran over the limit. */
-const labels: Readonly<Record<LimitedCheck, () => Message>> = {
-  workspace: doctorMessages.workspaceLabel,
-  models: doctorMessages.modelsLabel,
-  secrets: doctorMessages.secretsLabel,
-  sandbox: doctorMessages.sandboxLabel,
-  harnesses: doctorMessages.harnessesLabel,
-  node: doctorMessages.nodeLabel,
-  disk: doctorMessages.diskLabel,
-};
-
-function isTimedOut<Line extends { check: LimitedCheck }>(
-  line: Line | TimedOutLine,
-): line is TimedOutLine {
+function isTimedOut<Line extends object>(line: Line | TimedOutLine): line is TimedOutLine {
   return "timedOut" in line;
 }
 
-/** The check's own lines, or "! Sandbox     didn't answer in 5 seconds" when it ran over. */
-function orTimedOut<Line extends { check: LimitedCheck }>(
-  line: Line | TimedOutLine,
-  check: (line: Line) => CheckLines,
-): CheckLines {
-  if (!isTimedOut(line)) return check(line);
-  return {
-    status: line.status,
-    label: labels[line.check](),
-    lines: [doctorMessages.didntAnswer(doctorCheckLimitMs / 1000).phrase],
-  };
+/** A line's words as the CLI prints them: a docs link as `More:`. */
+function checkOf(status: DoctorStatus, { label, items }: DoctorLineWords): CheckLines {
+  return { status, label, lines: items.map(itemPhrase) };
+}
+
+function itemPhrase(item: DoctorLineItem): Phrase {
+  if ("docs" in item) return errorMessages.more(item.docs).phrase;
+  return "fix" in item ? item.fix : item.sentence;
 }
 
 /** The mark and the label in their column, then the first line; the rest indented under it. */
@@ -150,138 +141,6 @@ function checkLines({ status, label, lines }: CheckLines): Phrase[] {
     phrase`${markPart(marks[status])} ${labelText}${first}`,
     ...under.map((line) => phrase`${indent}${line}`),
   ];
-}
-
-function workspaceCheck(line: WorkspaceLine, dir: string | undefined): CheckLines {
-  return {
-    status: line.status,
-    label: doctorMessages.workspaceLabel(),
-    lines: [
-      workspaceTrust(line, dir).phrase,
-      ...(line.windowsDrive === undefined
-        ? []
-        : [
-            doctorMessages.onWindowsDrive(line.windowsDrive).phrase,
-            doctorMessages.moveToLinuxHome().phrase,
-            errorMessages.more(wsl2FolderDocs).phrase,
-          ]),
-      ...(line.tooManyFilesToWatch === undefined
-        ? []
-        : [
-            doctorMessages.tooManyFilesToWatch(line.tooManyFilesToWatch).phrase,
-            doctorMessages.openSmallerFolder().phrase,
-          ]),
-    ],
-  };
-}
-
-function workspaceTrust(line: WorkspaceLine, dir: string | undefined): Message {
-  const trust = suggestedCommand("trust", dir);
-  if (line.fileProblems !== undefined) {
-    return doctorMessages.fileProblems(
-      line.name,
-      line.fileProblems,
-      suggestedCommand("validate", dir),
-    );
-  }
-  switch (line.trust) {
-    case "trusted":
-      return doctorMessages.trusted(line.name);
-    case "not-needed":
-      return doctorMessages.testModelOnly(line.name);
-    case "changed":
-      return doctorMessages.changedSinceTrusted(trust);
-    case "refused":
-      return doctorMessages.refused(trust);
-    case "new":
-    case "unreadable":
-      // A record that can't be read reads as not trusted, because `halonic trust` writes it again.
-      return doctorMessages.notTrusted(trust);
-  }
-}
-
-/** The providers that are ready, one per line, then the problems, the unreachable ones first. */
-function modelsCheck(line: ModelsLine): CheckLines {
-  return {
-    status: line.status,
-    label: doctorMessages.modelsLabel(),
-    lines: [...line.ready.map(readyProvider), ...modelProblems(line.problems)],
-  };
-}
-
-function readyProvider(provider: ProviderReport): Phrase {
-  // Provider names and addresses come from workspace files, model names from the server's reply.
-  if ("keyStored" in provider) return doctorMessages.keyStored(printable(provider.name)).phrase;
-  const loaded =
-    provider.models.length === 0
-      ? undefined
-      : doctorMessages.loaded(
-          provider.models.map(({ name, memoryBytes }) =>
-            memoryBytes === undefined
-              ? { name: printable(name) }
-              : { name: printable(name), size: shownSize(memoryBytes) },
-          ),
-        ).phrase;
-  return doctorMessages.answering(printable(provider.name), printable(provider.address), loaded)
-    .phrase;
-}
-
-/**
- * One line per unreachable server, then one line per provider naming its
- * aliases without a key, then one per provider whose key couldn't be read.
- */
-function modelProblems(problems: readonly ModelProblem[]): Phrase[] {
-  const lines: Phrase[] = [];
-  const unreadable: Phrase[] = [];
-  const aliasesByProvider = new Map<string, { name: string; aliases: string[] }>();
-  for (const problem of problems) {
-    if (problem.problem === "unreachable") {
-      lines.push(
-        doctorMessages.notAnswering(printable(problem.name), printable(problem.address)).phrase,
-      );
-      continue;
-    }
-    if (problem.problem === "key-unreadable") {
-      unreadable.push(
-        // The Secrets line's words, with no command that sets the key: it may be there (HAL-14629).
-        doctorMessages.secretUnreadable(printable(problem.secret), [
-          { kind: "provider", id: printable(problem.provider) },
-        ]).phrase,
-      );
-      continue;
-    }
-    const entry = aliasesByProvider.get(problem.provider) ?? { name: problem.name, aliases: [] };
-    entry.aliases.push(problem.alias);
-    aliasesByProvider.set(problem.provider, entry);
-  }
-  for (const { name, aliases } of aliasesByProvider.values()) {
-    lines.push(doctorMessages.needKey(aliases.map(printable), printable(name)).phrase);
-  }
-  return [...lines, ...unreadable];
-}
-
-/**
- * One line per secret that isn't set, with what uses it and the command that
- * sets it, then one per secret the store couldn't be asked about.
- */
-function secretsCheck(line: SecretsLine): CheckLines {
-  // Secret names and ids come from workspace files.
-  const users = (usedBy: SecretsLine["missing"][number]["usedBy"]) =>
-    usedBy.map(({ kind, id }) => ({ kind, id: printable(id) }));
-  return {
-    status: line.status,
-    label: doctorMessages.secretsLabel(),
-    lines: [
-      ...line.missing.map(
-        ({ secret, usedBy }) =>
-          doctorMessages.secretNotSet(printable(secret), users(usedBy), shellWord(secret)).phrase,
-      ),
-      ...line.unreadable.map(
-        ({ secret, usedBy }) =>
-          doctorMessages.secretUnreadable(printable(secret), users(usedBy)).phrase,
-      ),
-    ],
-  };
 }
 
 /**
@@ -359,98 +218,6 @@ function toolSentence(missing: readonly string[]): string | undefined {
   return undefined;
 }
 
-/** The harnesses that are ready on one line, then each problem with its fix under it. */
-function harnessesCheck(line: HarnessesLine, shell: SignInShell): CheckLines {
-  const ready = line.installed.map(
-    ({ name, version }) => doctorMessages.harnessReady(name, printable(version)).phrase,
-  );
-  const readyLine = ready.length === 0 ? [] : [joined(ready)];
-  return {
-    status: line.status,
-    label: doctorMessages.harnessesLabel(),
-    lines: [...readyLine, ...line.problems.flatMap((problem) => harnessProblem(problem, shell))],
-  };
-}
-
-function harnessProblem(problem: HarnessProblem, shell: SignInShell): Phrase[] {
-  switch (problem.problem) {
-    case "missing":
-      return [
-        doctorMessages.harnessMissing(problem.agent, problem.name).phrase,
-        doctorMessages.installHarness(problem.name).phrase,
-      ];
-    case "signed-out": {
-      const command = signInCommandText(problem.signIn, problem.settingsFolder, shell);
-      return [
-        doctorMessages.agentSignedOut(problem.name, problem.agent).phrase,
-        doctorMessages.signInForAgent(problem.agent, printable(command)).phrase,
-      ];
-    }
-    case "unsupported":
-      return [
-        doctorMessages.harnessUnsupported(
-          problem.name,
-          printable(problem.version),
-          problem.supported,
-        ).phrase,
-        doctorMessages.updateHarness(problem.name).phrase,
-      ];
-    case "failed":
-      return [doctorMessages.harnessVersionFailed(problem.name, printable(problem.error)).phrase];
-  }
-}
-
-/** What is wrong with the Node.js that runs Halonic, and the fix under it. */
-function nodeCheck(line: NodeLine): CheckLines {
-  const lines =
-    line.problem === "windows-node-in-wsl"
-      ? [doctorMessages.windowsNodeInWsl().phrase, doctorMessages.installNodeInWsl().phrase]
-      : [
-          doctorMessages.windowsPnpm(printable(line.pnpm)).phrase,
-          doctorMessages.installPnpmInWsl().phrase,
-        ];
-  return { status: line.status, label: doctorMessages.nodeLabel(), lines };
-}
-
-/** What is wrong with the proxy setting; the setting's own reason under it when it isn't the scheme. */
-function networkCheck(line: NetworkLine): CheckLines {
-  // The variable's name comes from the environment, but only as one of the names Halonic reads.
-  const lines =
-    line.problem === "proxy-not-http"
-      ? [doctorMessages.proxyNotHttp(line.variable, printable(line.scheme)).phrase]
-      : [
-          doctorMessages.proxyUnusable(line.variable).phrase,
-          doctorMessages.proxyReason(printable(line.reason)).phrase,
-        ];
-  return { status: line.status, label: doctorMessages.networkLabel(), lines };
-}
-
-function diskCheck(line: DiskLine): CheckLines {
-  const label = doctorMessages.diskLabel();
-  const use = dataUse(line);
-  if (line.freeBytes === null) {
-    return {
-      status: line.status,
-      label,
-      lines: [doctorMessages.freeUnknown(use).phrase, doctorMessages.freeUnknownReason().phrase],
-    };
-  }
-  const free = shownSize(line.freeBytes);
-  const words =
-    line.problem === "low" ? doctorMessages.lowOnDisk(free) : doctorMessages.diskFree(free, use);
-  return { status: line.status, label, lines: [words.phrase] };
-}
-
-/** What Halonic's data takes, or nothing when a folder couldn't be read. */
-function dataUse(line: DiskLine): DataUse | undefined {
-  if (line.data === null) return undefined;
-  return {
-    total: shownSize(line.data.bytes),
-    runLogs: shownSize(line.data.runLogBytes),
-    ...(line.data.complete ? {} : { atLeast: true }),
-  };
-}
-
 /**
  * "No problems." or the count of ✕ lines, then what each ✕ line stops in the
  * lines' order (Models before Sandbox), then the count of ! lines.
@@ -468,16 +235,5 @@ function summaryLine(report: DoctorReport): Phrase {
   }
   if (report.sandbox.status === "failed") parts.push(doctorMessages.sandboxStops());
   if (warnings > 0) parts.push(doctorMessages.warnings(warnings));
-  return joined(
-    parts.map((part) => part.phrase),
-    [" "],
-  );
-}
-
-/** Phrases on one line, with " · " between them unless another separator is given. */
-function joined(
-  phrases: readonly Phrase[],
-  separator: Phrase = phrase` ${markPart("separator")} `,
-): Phrase {
-  return phrases.flatMap((part, index) => (index === 0 ? part : [...separator, ...part]));
+  return parts.flatMap((part, index) => (index === 0 ? part.phrase : [" ", ...part.phrase]));
 }

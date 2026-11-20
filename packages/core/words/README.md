@@ -20,6 +20,14 @@ of its area and its name, such as `doctor.diskFree`.
   the CLI says (first-run-progress 4.2, HAL-13406). A sentence that names a command takes the
   finished command, such as `halonic trust --dir ./acme`, because quoting a folder depends on the
   person's shell, which only the face knows.
+- **The doctor's lines:** `doctorLineWords(line, face)` gives a line's label and its items in the
+  order `halonic doctor` prints them: sentences, fixes (`Fix: …`) and docs links, which the CLI
+  prints as `More:` and Studio shows as a link. The face passes what only it knows: the trust and
+  validate commands and the shell a harness's sign-in is typed into. The Sandbox line isn't here,
+  because its reason and fix differ between the CLI and Studio on purpose; `timedOutWords` words
+  any check that ran over its limit, the Sandbox's included.
+- **Outside text:** `printable` shows control and bidi characters as their codes, and
+  `withoutUnsafe` takes them out, for text Halonic didn't write.
 
 The package names no facts of its own and runs nothing: it has no Node or browser APIs, so the CLI,
 Studio and the agent host can all use it. The facts it words come from `@halonicjs/app`.

@@ -1,8 +1,10 @@
 import type { SandboxUnavailableReason } from "@halonicjs/ports";
 import { withoutUnsafe } from "../output/printable.ts";
 import { defineMessages } from "./define.ts";
-import { docsBase } from "./docs.ts";
+import { sandboxDocs } from "./docs.ts";
 import { type Phrase, phrase } from "./phrase.ts";
+
+export { wsl2FolderDocs } from "./docs.ts";
 
 /**
  * The reason codes the CLI has words for: every code of the `Sandbox` port,
@@ -286,9 +288,6 @@ function doctorFix(fix: string, note?: string): Phrase {
     : phrase`Fix: ${fix} Then run halonic doctor again. ${note}`;
 }
 
-/** The sandbox page of the docs, which `More:` links under a sandbox that can't start. */
-const sandboxDocs = `${docsBase}/security/sandbox/`;
-
 /**
  * The section of {@link sandboxDocs} for each reason that has one, as agreed
  * on HAL-6524: `not-supported` takes WSL 1's, since the CLI's sandbox gives
@@ -318,6 +317,3 @@ export function sandboxDocsLink(code: string): string {
   const section = docsSections[known(code)];
   return section === undefined ? sandboxDocs : `${sandboxDocs}#${section}`;
 }
-
-/** The section of {@link sandboxDocs} on a workspace on a Windows drive under WSL, for `More:` under doctor's Workspace line (HAL-6552). */
-export const wsl2FolderDocs = `${sandboxDocs}#wsl2-folder`;
