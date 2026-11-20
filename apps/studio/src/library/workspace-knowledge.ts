@@ -48,6 +48,9 @@ function refusalOf(error: unknown): SummarizeOutcome | undefined {
       return { kind: "no-local-model" };
     case "request_too_large":
       return { kind: "too-large" };
+    // The host's own trust check, which also sees a provider file saved after the app's check.
+    case "workspace_not_trusted":
+      return { kind: "untrusted" };
     case "model_failed":
     case "too_many_chats":
       return { kind: "model-failed" };

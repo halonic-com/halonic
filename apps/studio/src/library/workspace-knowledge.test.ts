@@ -154,6 +154,7 @@ verifies("studio.workspace-knowledge", () => {
     ],
     [new AgentHostError(404, "unknown_provider", "x"), "no-local-model"],
     [new AgentHostError(413, "request_too_large", "x"), "too-large"],
+    [new AgentHostError(403, "workspace_not_trusted", "x"), "untrusted"],
     [new AgentHostError(502, "model_failed", "http://localhost:11434 refused"), "model-failed"],
     [new AgentHostError(0, "unreachable", "x"), "host-unreachable"],
     [new EngineNotAnswering(), "host-unreachable"],
