@@ -2401,8 +2401,10 @@ never in a toast.
 before F6 while that place is still in the page, else (focus came by Tab or a click, or that place
 is gone) to the shown page's `h1`, never the body.
 
-**On a phone** the region spans the width less 16px each side, 8px above the bar at the bottom,
-with nothing measured. One toast shows at a time and the rest wait in order. The close button is
+**On a phone** the region spans the width less 16px each side, 8px above the bar at the bottom.
+One toast shows at a time and the rest wait in order. If that toast would cover the element
+that has focus (at 400 % zoom, often the button that made it), it sits at the top instead, 8px
+under the top bar, until it closes; if it would cover it there too, it stays at the bottom. The close button is
 48px, set into the padding so the toast isn't taller. The text and the action are one wrapping
 group, so a long action ("Sign in with Google") goes under the text and lines up with it, while
 "Undo" stays beside it.

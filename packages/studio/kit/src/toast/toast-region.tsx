@@ -2,6 +2,7 @@ import { type FocusEvent, useCallback, useEffect, useRef, useSyncExternalStore }
 import { useModalOpen } from "../dialog/open-modals.ts";
 import { usePresentation } from "../presentation/presentation.tsx";
 import { ToastCard } from "./toast-card.tsx";
+import { useToastClearOfFocus } from "./toast-clear-of-focus.ts";
 import type { Toast, ToastStore } from "./toast-store.ts";
 
 /** At most three toasts at once on desktop; a fourth closes the oldest. */
@@ -11,7 +12,8 @@ export const TOASTS_SHOWN = 3;
  * Bottom right of the shell's content area, 16px in, 360px wide. On a phone, the width less 16px
  * each side and 8px above whatever bar sits under the scroll area's wrapper. On a short phone
  * window the bars scroll with the page, so the toast sits 8px above the window's bottom instead.
- * Pointer events pass through the gaps to the page below.
+ * On a phone, a toast that would cover the focused element sits at the top instead
+ * (`useToastClearOfFocus`). Pointer events pass through the gaps to the page below.
  */
 const region = [
   "pointer-events-none absolute right-4 bottom-4 z-(--layer-toast) flex w-toast flex-col gap-2",
@@ -90,9 +92,16 @@ export function ToastRegion({ store }: ToastRegionProps) {
   );
 
   const shown = shownToasts(toasts, phone, dialogOpen);
+  const top = useToastClearOfFocus(box, phone ? [...shown].at(-1) : undefined);
   // Always mounted and named, so the live cards inside it are known before they arrive.
   return (
-    <section ref={box} aria-label="Notifications" className={region} onFocus={entered}>
+    <section
+      ref={box}
+      aria-label="Notifications"
+      className={region}
+      style={top === null ? undefined : { top, bottom: "auto" }}
+      onFocus={entered}
+    >
       {toasts.map((toast) => (
         <ToastCard key={toast.id} toast={toast} waiting={!shown.has(toast.id)} onClosed={closed} />
       ))}
