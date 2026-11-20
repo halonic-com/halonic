@@ -1,7 +1,7 @@
 import { markHiddenName } from "@halonicjs/std";
 import { Button, type CalloutHandle, StatusChip } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
-import type { InboxDecisions } from "../decide.ts";
+import { type AfterAnswer, afterAnswer, type InboxDecisions } from "../decide.ts";
 import type { ApprovalItem } from "../inbox-items.ts";
 import { actionSummary, approvalTitle } from "../plain/approval-text.ts";
 import { decidedAt, waitingSince } from "../plain/waiting-time.ts";
@@ -68,7 +68,12 @@ type CardState =
       readonly manual: ManualAnswer | null;
     }
   | { readonly kind: "deciding"; readonly decision: Decision }
-  | { readonly kind: "decided"; readonly decided: Decided; readonly at: Date };
+  | {
+      readonly kind: "decided";
+      readonly decided: Decided;
+      readonly at: Date;
+      readonly after: AfterAnswer;
+    };
 
 /** The note form while it's open: the card keeps the note until the item is decided. */
 interface NoteForm {
@@ -94,15 +99,21 @@ const busyLabels: Record<Decision, string> = { approve: "Approving…", reject: 
  * The decided Callout's text (mc 10.2, ux-checklists-approvals D3); a note follows it as plain
  * text, folded when long, so a pasted page can't fill the bar. `at` is
  * Studio's clock when the answer was recorded: the summary `send` returns
- * has no time for a decision, and the local engine records with the same clock.
+ * has no time for a decision, and the local engine records with the same clock. `after` is what
+ * that run did with the answer: it only says the run continues while it does (HAL-13919).
  */
-export function decidedText(decided: Decided, at: Date): string {
+export function decidedText(decided: Decided, at: Date, after: AfterAnswer): string {
   const time = decidedAt(at);
+  const finished = after === "finished" ? " The run finished." : "";
   switch (decided.kind) {
     case "approve":
-      return `Approved by you at ${time}. The run continues.`;
+      return after === "continues"
+        ? `Approved by you at ${time}. The run continues.`
+        : `Approved by you at ${time}.${finished}`;
     case "reject":
-      return `Rejected by you at ${time}. This tool call didn't run. The agent is told, and the run continues.`;
+      return after === "continues"
+        ? `Rejected by you at ${time}. This tool call didn't run. The agent is told, and the run continues.`
+        : `Rejected by you at ${time}. This tool call didn't run.${finished}`;
     case "note":
       return `Note sent to the agent at ${time}:`;
   }
@@ -147,8 +158,13 @@ export function ApprovalCard(props: ApprovalCardProps) {
     if (!guard.allows() || state.kind !== "open") return;
     setState({ kind: "deciding", decision });
     try {
-      await (decision === "approve" ? decisions.approve(item) : decisions.reject(item));
-      setState({ kind: "decided", decided: { kind: decision }, at: now() });
+      const run = await (decision === "approve" ? decisions.approve(item) : decisions.reject(item));
+      setState({
+        kind: "decided",
+        decided: { kind: decision },
+        at: now(),
+        after: afterAnswer(run),
+      });
     } catch (error) {
       setState({
         kind: "open",
@@ -163,9 +179,14 @@ export function ApprovalCard(props: ApprovalCardProps) {
     if (form.busy || state.kind !== "open") return;
     setForm({ open: true, busy: true, failed: false, manual: null });
     try {
-      await decisions.askForChanges(item, text);
+      const run = await decisions.askForChanges(item, text);
       setForm({ open: false, busy: false, failed: false, manual: null });
-      setState({ kind: "decided", decided: { kind: "note", note: text }, at: now() });
+      setState({
+        kind: "decided",
+        decided: { kind: "note", note: text },
+        at: now(),
+        after: afterAnswer(run),
+      });
     } catch (error) {
       // The dialog stays open with the note, and says so in its alert slot (flow-inbox 5.4).
       setForm({ open: true, busy: false, failed: true, manual: manualAnswerOf(error) });
@@ -189,7 +210,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
       </div>
       {state.kind === "decided" ? (
         <DecidedBar
-          text={decidedText(state.decided, state.at)}
+          text={decidedText(state.decided, state.at, state.after)}
           {...(state.decided.kind === "note" ? { note: state.decided.note } : {})}
           next={next}
           back={back}
