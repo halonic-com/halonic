@@ -1,6 +1,7 @@
 import { access, mkdir, mkdtemp, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { GitHardeningIgnoredError } from "@halonicjs/adapter-git";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
@@ -103,6 +104,11 @@ verifies("cli.commands.plugin.add-git", () => {
       expect(gitSourceOf(source)).toEqual({ address, commit: at });
     });
 
+    it("keeps a password with no path after it in the address, not in the commit", () => {
+      const source = withPassword("hunter2", "");
+      expect(gitSourceOf(source)).toEqual({ address: source, commit: undefined });
+    });
+
     it.each(["./weather", "weather", "/srv/plugins/weather", "plugins\\weather"])(
       "reads %s as a folder",
       (source) => {
@@ -203,7 +209,32 @@ verifies("cli.commands.plugin.add-git", () => {
       }
       expect(code).toBe(exitCode.usage);
       expect(exports).toEqual([]);
-      expect(io.stderr.join("\n")).toContain("Can't use that git address");
+      expect(io.stderr.join("\n")).toContain("Can't use that git address: it has a password in it");
     },
   );
+
+  it("says how to write git's short ssh form as an ssh:// address", async () => {
+    const { code, io } = await plugin(["add", "git@github.com:acme/weather@v1"], setupWith());
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr[0]).toBe(
+      "✕ Couldn't add the plugin: Can't use that git address: write it as ssh://git@github.com/acme/weather.",
+    );
+  });
+
+  it("names a git that drops Halonic's git settings, and says to put git itself first on the PATH", async () => {
+    const wrapper: GitExporter = () =>
+      Promise.reject(new GitHardeningIgnoredError("/opt/shims/git"));
+
+    const { code, io } = await plugin(
+      ["add", "https://github.com/acme/weather"],
+      setupWith(wrapper),
+    );
+
+    expect(code).toBe(exitCode.unavailable);
+    expect(io.stderr).toEqual([
+      "✕ Couldn't add the plugin: the git at /opt/shims/git doesn't pass Halonic's git settings on to git, so the plugin can't be fetched safely.",
+      "  It may be a wrapper script, a version manager's shim or git older than 2.31. Put git 2.31 or later itself first on your PATH, then try again.",
+    ]);
+  });
 });

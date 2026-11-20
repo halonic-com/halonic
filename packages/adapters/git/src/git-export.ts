@@ -28,6 +28,9 @@ export function isPlainRef(ref: string): boolean {
 /** A full commit id: 40 hex digits, or 64 with SHA-256. */
 export const fullCommitId = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 
+/** What may be a commit id cut short, such as `ec4e2ae`: 4 to 39 hex digits. */
+const shortCommitId = /^[0-9a-f]{4,39}$/;
+
 /**
  * Refuses a git address that is not an `https://` or `ssh://` one, that
  * starts with `-` (git would read it as an option), that names a
@@ -42,6 +45,8 @@ export function checkGitAddress(address: string): void {
   }
   const url = parseAddress(address);
   if (url === null || (url.protocol !== "https:" && url.protocol !== "ssh:")) {
+    const ssh = sshFormOf(address);
+    if (ssh !== null) throw refused(`write it as ${ssh}`);
     throw refused("only https:// and ssh:// addresses are allowed");
   }
   if (url.password !== "") throw refused("it has a password in it; use a key or a token instead");
@@ -61,6 +66,22 @@ export function checkGitExport(address: string, ref = "HEAD"): void {
   if (ref !== "HEAD" && !isPlainRef(ref)) {
     throw new Error(`Can't use "${ref}" as a commit: use a branch, a tag or a full commit id.`);
   }
+}
+
+/** git's short ssh form `user@host:path`, with no password and a path that isn't a port. */
+const shortSshForm = /^([^/\\@:]+)@([^/\\@:]+):([^/\\].*)$/u;
+
+/**
+ * git's short ssh form, such as `git@github.com:acme/weather`, as the
+ * `ssh://` address that names the same repository on a forge, or `null`
+ * when `address` isn't in that form. The short form is refused all the
+ * same, since its path is from the user's home folder on other hosts.
+ */
+function sshFormOf(address: string): string | null {
+  const parts = shortSshForm.exec(address);
+  if (parts === null) return null;
+  const [, user, host, path] = parts;
+  return `ssh://${user}@${host}/${path}`;
 }
 
 function hasSpaceOrControl(text: string): boolean {
@@ -118,23 +139,32 @@ export async function exportCommit(
       "set up",
     );
     const branch = ref === "HEAD" ? await remoteHeadBranch(git, address) : undefined;
-    await mustSucceed(
-      await git(
-        [
-          "fetch",
-          "--quiet",
-          "--depth=1",
-          "--no-tags",
-          "--no-recurse-submodules",
-          "--upload-pack=git-upload-pack",
-          "--",
-          address,
-          branch ?? ref,
-        ],
-        true,
-      ),
-      "fetch the commit",
+    const fetched = await git(
+      [
+        "fetch",
+        "--quiet",
+        "--depth=1",
+        "--no-tags",
+        "--no-recurse-submodules",
+        "--upload-pack=git-upload-pack",
+        "--",
+        address,
+        branch ?? ref,
+      ],
+      true,
     );
+    // A remote serves a commit only by its full id, so a short one, as git
+    // shows them, reads as a branch or tag that isn't there.
+    if (
+      fetched.code !== 0 &&
+      shortCommitId.test(ref) &&
+      /couldn't find remote ref/u.test(fetched.stderr)
+    ) {
+      throw new Error(
+        `Couldn't fetch ${ref}: no branch or tag has that name. Use the full commit id (40 characters), a branch or a tag.`,
+      );
+    }
+    await mustSucceed(fetched, "fetch the commit");
     const resolved = await git(["rev-parse", "--verify", "--quiet", "FETCH_HEAD^{commit}"]);
     await mustSucceed(resolved, "find the commit");
     const commit = resolved.stdout.toString("utf8").trim();

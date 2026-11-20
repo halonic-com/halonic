@@ -301,12 +301,35 @@ verifies("cli.commands.plugin.add", () => {
     expect(await readdir(pluginsFolder())).toEqual(["weather"]);
   });
 
-  it("refuses a path that isn't a folder", async () => {
-    const { code, io } = await add([join(folder, "nowhere")]);
+  it("refuses a path that isn't there", async () => {
+    const { code, io } = await add(["./nowhere"]);
 
     expect(code).toBe(exitCode.usage);
-    expect(io.stderr.join("\n")).toContain("isn't a folder");
-    expect(io.stderr.join("\n")).toContain("Check the folder or git address.");
+    expect(io.stderr).toEqual([
+      "✕ Couldn't add the plugin: there's no folder ./nowhere.",
+      "  Check the folder or git address.",
+    ]);
+  });
+
+  it("refuses a path that is a file", async () => {
+    await writeFile(join(folder, "plugin.yaml"), "id: weather\n");
+
+    const { code, io } = await add([join(folder, "plugin.yaml")]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr.join("\n")).toContain("plugin.yaml isn't a folder.");
+  });
+
+  it("names the field of a manifest problem", async () => {
+    const source = await writeSource("weather");
+    const text = manifest("weather", "Weather").replace("risk: read", "risk: reed");
+    await writeFile(join(source, "plugin.yaml"), text);
+
+    const { code, io } = await add([source]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr[0]).toMatch(/^✕ Couldn't add the plugin: backend\.tools\[0\]\.risk: /u);
+    await expect(readdir(pluginsFolder())).rejects.toThrow();
   });
 
   it("refuses a link inside the folder that points outside it, and writes nothing", async () => {

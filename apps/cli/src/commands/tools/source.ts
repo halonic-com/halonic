@@ -27,6 +27,7 @@ import { toolsMessages } from "../../messages/tools.ts";
 import { nearMatch } from "../../near-match.ts";
 import { printable } from "../../output/printable.ts";
 import { shellWord } from "../../output/shell-word.ts";
+import { openPluginService } from "../../plugin-host.ts";
 import { readSourceListing } from "../../source-listing.ts";
 import { givenDir, type OpenWorkspaceDir, openWorkspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts";
@@ -37,6 +38,8 @@ export interface ToolsMachine extends ConnectorMachine {
   /** Where the approvals of listed tools are kept. */
   readonly approvals: ToolApprovalStore;
   readonly digest: Digest;
+  /** Whether a plugin with this id is added to the profile, for a plugin's connector. */
+  pluginAdded(id: string): Promise<boolean>;
 }
 
 /**
@@ -53,6 +56,8 @@ export function nodeToolsMachine(): ToolsMachine {
       toolApprovalFolder(profileFolder(nodeProfileEnvironment())),
     ),
     digest: webCryptoDigest,
+    pluginAdded: async (id) =>
+      (await openPluginService({}).load()).some((entry) => entry.folder === id),
   };
 }
 
@@ -180,16 +185,24 @@ export function isOffered(source: ToolSource, listedName: string): boolean {
 /**
  * What `review` and `approve` say, and exit 0 on, for a connector with no
  * listed tools to approve. `--json` gets the reason as `needsNoApproval`.
+ * A plugin's connector whose plugin isn't added gets a second line saying so.
  */
-export function noToolsToApprove(
+export async function noToolsToApprove(
   why: NoToolsToApprove,
   source: ToolSource,
-): { readonly line: Phrase; readonly json: JsonFields } {
-  const said =
-    why === "plugin"
-      ? toolsMessages.pluginTools(source.shown)
-      : toolsMessages.onlyBuiltIn(source.shown);
-  return { line: said.phrase, json: { needsNoApproval: why } };
+  machine: Pick<ToolsMachine, "pluginAdded">,
+): Promise<{ readonly lines: readonly Phrase[]; readonly json: JsonFields }> {
+  const json = { needsNoApproval: why };
+  const { transport } = source.connector;
+  if (!("plugin" in transport)) {
+    return { lines: [toolsMessages.onlyBuiltIn(source.shown).phrase], json };
+  }
+  const lines = [toolsMessages.pluginTools(source.shown).phrase];
+  const { id } = transport.plugin;
+  if (!(await machine.pluginAdded(id))) {
+    lines.push(toolsMessages.pluginNotAdded(printable(id)).phrase);
+  }
+  return { lines, json };
 }
 
 /** The check, unless none of its listed tools can be on: then why, as the error. */

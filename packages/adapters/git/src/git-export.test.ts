@@ -37,6 +37,18 @@ verifies("git.export", () => {
       expect(() => checkGitAddress(withPassword("hunter2"))).not.toThrow(/hunter2/);
     });
 
+    it("says how to write git's short ssh form as an ssh:// address", () => {
+      expect(() => checkGitAddress("git@github.com:acme/weather")).toThrow(
+        "Can't use that git address: write it as ssh://git@github.com/acme/weather.",
+      );
+    });
+
+    it("never echoes a password in the short ssh form", () => {
+      const address = ["me:", "hunter2", "@example.com:a.git"].join("");
+      expect(() => checkGitAddress(address)).toThrow("only https:// and ssh://");
+      expect(() => checkGitAddress(address)).not.toThrow(/hunter2/);
+    });
+
     it.each(["https://example.com/a.git", "ssh://git@example.com/a.git"])("accepts %s", (a) => {
       expect(() => checkGitAddress(a)).not.toThrow();
     });
@@ -86,6 +98,17 @@ verifies("git.export", () => {
       );
       expect(commit).toBe(first);
       expect(branch).toBeUndefined();
+    });
+
+    it("says to use the full id when a short commit id isn't found", async () => {
+      const remote = await repositoryWith(scratch, { "a.txt": "one\n" });
+      const short = (await plainGit(remote, ["rev-parse", "--short", "HEAD"])).trim();
+      const destination = join(await scratch.folder(), "out");
+      await expect(
+        exportCommit(await remoteRunner(scratch), sshRemote(remote), destination, short),
+      ).rejects.toThrow(
+        `Couldn't fetch ${short}: no branch or tag has that name. Use the full commit id (40 characters), a branch or a tag.`,
+      );
     });
 
     it.each(["--upload-pack=x", "-x", "main..other", "a b", "HEAD~1", ":/x"])(

@@ -11,7 +11,10 @@ export const INTEGRATION_NAME_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 const name = s
   .string()
-  .regex(INTEGRATION_NAME_PATTERN, "use lower-case words joined by '-', such as 'weather-key'");
+  .regex(
+    INTEGRATION_NAME_PATTERN,
+    "use lower-case words joined by '-', such as 'weather' or 'weather-key'",
+  );
 
 /**
  * A host name in lower case, with at least one dot and a top-level name of
