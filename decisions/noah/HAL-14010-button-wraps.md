@@ -3,6 +3,7 @@
 - Task: HAL-14010
 - Approval: team decision under the HAL-2282 rule for a detail of the approved Button (Noah owns the kit's look); Liam reviews the pull request on HAL-14010 and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bbwYjwWq1aN8Q+SqAV4SbLBnpmOU6zvO6/bd/GMnA3lu1kPotXWy3d20/utMGZM5EKO+EzBf4a3znl3pzZ+9DQ==
 
 ## What changes
 
