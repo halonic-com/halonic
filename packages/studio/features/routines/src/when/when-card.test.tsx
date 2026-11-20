@@ -71,14 +71,12 @@ verifies("routines.when.when-card", () => {
     expect(toggle(page).checked).toBe(true);
   });
 
-  it("says the times are kept only while routines watch is running", async () => {
+  it("says the times are kept while Halonic is open", async () => {
     const { host } = hostWith(times("2026-11-06T06:30:00Z"));
     const page = await show(<WhenCard host={host} routine={daily} announce={() => {}} />);
 
-    expect(page.textContent).toContain(
-      "Starts on time only while halonic routines watch is running in a terminal.",
-    );
-    expect(page.querySelector("code")?.textContent).toBe("halonic routines watch");
+    expect(page.textContent).toContain("Starts on time while Halonic is open.");
+    expect(page.textContent).not.toContain("routines watch");
   });
 
   it("says mail doesn't start a mail routine yet, and promises no time", async () => {
