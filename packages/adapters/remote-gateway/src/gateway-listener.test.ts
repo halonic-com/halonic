@@ -318,6 +318,23 @@ verifies("remote-gateway.listener", () => {
       }
     });
 
+    it("reports, and carries on, when the pairing service fails as a pairing times out", async () => {
+      const t = await openListener({ handshakeTimeoutMs: 100 });
+      try {
+        t.pairing.failsToCount = true;
+        const client = t.client();
+        await client.open(t.listener.port);
+        client.write(clientFrame(op.binary, new TestPhone().pair1(t.pairing.code ?? "")));
+        await client.ended;
+        expect(t.errors).toEqual([new Error("the pairing service failed")]);
+        const next = await t.pairedClient();
+        await next.sendJson({ type: "hello", id: "h1", version: 2 });
+        expect(await next.frames(1)).toMatchObject([{ type: "welcome" }]);
+      } finally {
+        await t.stop();
+      }
+    });
+
     it("drops an open session that never says hello", async () => {
       const t = await openListener({ heartbeatMs: 20, helloTimeoutMs: 100 });
       try {
