@@ -3,7 +3,6 @@
 - Task: HAL-13716
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13716 (small wording on approved CLI flows, team decision under the HAL-2282 rule, reviewed by Liam on the task)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:1Xheb8U942EXrDEZgrMb2qP22U8Lj2ItpGucu3FUfAfDQqBvduZizePy3Z3cUQ0YQ3Pe1fEFPcQEg3j9vXa8BQ==
 
 ## What changes
 
