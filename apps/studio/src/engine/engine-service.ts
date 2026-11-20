@@ -27,6 +27,8 @@
 // on the workspace it loaded, when it opens and before each start, and it
 // closes when the trust is removed while it is open (HAL-12799), ending the runs it stopped
 // right then, so no page keeps saying they're going (HAL-13678).
+// While it is open, it starts the workspace's routines on time, as
+// `halonic routines watch` does (`pageRoutines`, HAL-14205).
 
 import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
 import { TauriBlobStore, TauriRecordStore, TauriRunStore } from "@halonicjs/adapter-fs-tauri";
@@ -65,6 +67,7 @@ import { studioConnectorCalls } from "../connect/studio-run-connectors.ts";
 import { openEngineHarnessHost } from "./engine-harness-host.ts";
 import { type EngineLockHold, holdEngineLock } from "./engine-lock.ts";
 import { answerRefusalOf, refuseConnectorApprove } from "./engine-refusals.ts";
+import { pageRoutines } from "./engine-routines.ts";
 import type { EngineServiceOptions } from "./engine-service-options.ts";
 import {
   agentRefusalOf,
@@ -395,6 +398,10 @@ export class EngineService {
         remoteDecisionsOf: (runId) => executor?.bridgeRemoteDecisions(runId),
       });
       await harnessHost?.start(await openRunsOf(runStore));
+      const routines = pageRoutines(workspace, this.#options, async ({ hubId, workflowId }) => {
+        await this.check({ hubId, workflowId });
+        await this.#refuseUntrusted(workspace);
+      });
       const engine = assembleEngine({
         createScheduler: nodeSchedulerFactory({
           store: new TauriRecordStore(ipc, location),
@@ -449,12 +456,15 @@ export class EngineService {
         }),
         // After the executor and the scheduler, so no step calls a connector that has closed.
         closers: connectors === undefined ? [] : [() => connectors.closeAll()],
+        routines: routines.ticks,
         // Last, so no other engine starts while this one still delivers a timer.
         release: async () => {
           if (!lock.kept) await lock.held.release();
         },
       });
       executor = engine.executor;
+      // Straight away, as `routines watch` does, so the times missed while no engine ran start now.
+      routines.catchUp().catch(reportError);
       return { engine, workspace, lock, runs: runStore };
     } catch (error) {
       await lock.held.release();

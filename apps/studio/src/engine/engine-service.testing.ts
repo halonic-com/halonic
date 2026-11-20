@@ -146,6 +146,7 @@ export function serviceOn(
     keyOrigins: noKeyOrigins,
     http: { fetch },
     clock,
+    timeZone: "UTC",
     isTrusted: async () => true,
     mayStart: async () => true,
     ids,
