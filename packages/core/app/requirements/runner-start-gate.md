@@ -33,6 +33,8 @@ On Windows 11, when the sandbox choice has MXC in use and `mxcFencesRunner` is o
   then the start fails with `RunnerStartTimeoutError`, and its runner, when it arrives later, is stopped.
 - Given Take back while a start without the sandbox hangs,
   then Take back returns once the start's time limit runs out, and the runner that arrives later is stopped.
+- Given a start that fails, by rejecting or by throwing straight away,
+  then the start fails with that error, and no time limit is left waiting.
 - Given a host limit that isn't a whole number of milliseconds of 1 or more,
   then the gate refuses it with a `RangeError`.
 - Given a run without the sandbox,

@@ -343,6 +343,16 @@ verifies("app.runner-start-gate", () => {
       expect(startTimers.delays()).toEqual([]);
     });
 
+    it("keeps no limit waiting when the start throws straight away", async () => {
+      const { gate, startTimers } = setup();
+      await expect(
+        gate.start(() => {
+          throw new Error("the sandbox didn't open");
+        }),
+      ).rejects.toThrow("the sandbox didn't open");
+      expect(startTimers.delays()).toEqual([]);
+    });
+
     it("waits as long as the host's own limit says", async () => {
       const { gate, startTimers } = setup({ startTimeoutMs: 5000 });
       const held = heldStart();
