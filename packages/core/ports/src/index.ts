@@ -232,6 +232,8 @@ export {
   recordStoreVersion,
 } from "./record-store.ts";
 export {
+  type CodeEndReason,
+  codeEndReasons,
   type PairedPhone,
   type PairingEndReason,
   type PairingEvent,

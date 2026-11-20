@@ -42,17 +42,42 @@ function watchState(control: FakeRemoteControl): RemoteState[] {
 
 verifies("contracts.fake-remote-control", () => {
   describe("FakeRemoteControl", () => {
-    it("ends a code after 5 minutes and turns remote off again", async () => {
+    it("ends a code after 5 minutes, and keeps the pairing open and remote on for a new code", async () => {
       const time = new FakeTunnelTime();
       const control = new FakeRemoteControl({ time });
-      const seen = watch(await control.startPairing());
+      const session = await control.startPairing();
+      const seen = watch(session);
       time.advance(5 * 60_000 - 1);
       await settle();
       expect(seen.at(-1)?.type).toBe("code");
       time.advance(1);
       await settle();
-      expect(seen.at(-1)).toEqual({ type: "ended", reason: "code-expired" });
-      expect(control.snapshot).toMatchObject({ on: false, pairing: false });
+      expect(seen.at(-1)).toEqual({ type: "code-ended", reason: "code-expired" });
+      expect(control.snapshot).toMatchObject({ on: true, pairing: true });
+      expect(() => control.phoneUsesCode({ name: "Pixel 8" })).toThrow();
+      await session.newCode();
+      await settle();
+      expect(seen.at(-1)).toMatchObject({ type: "code", qr: "halonic-pair:fake-2" });
+    });
+
+    it("gives a new code a life of its own, so the old code's time runs out on nothing", async () => {
+      const time = new FakeTunnelTime();
+      const control = new FakeRemoteControl({ time });
+      const session = await control.startPairing();
+      const seen = watch(session);
+      time.advance(4 * 60_000);
+      await session.newCode();
+      time.advance(60_000);
+      await settle();
+      expect(seen.map((event) => event.type)).toEqual(["code", "code"]);
+      control.phoneUsesCode({ name: "Pixel 8" });
+      await session.newCode();
+      time.advance(2 * 60_000);
+      await settle();
+      expect(seen.at(-1)).toMatchObject({ type: "code", qr: "halonic-pair:fake-3" });
+      time.advance(3 * 60_000);
+      await settle();
+      expect(seen.at(-1)).toEqual({ type: "code-ended", reason: "code-expired" });
     });
 
     it("waits 2 minutes for Allow, and a used code no longer runs out", async () => {
@@ -66,7 +91,7 @@ verifies("contracts.fake-remote-control", () => {
       expect(seen.at(-1)?.type).toBe("check");
       time.advance(60_000);
       await settle();
-      expect(seen.at(-1)).toEqual({ type: "ended", reason: "allow-timed-out" });
+      expect(seen.at(-1)).toEqual({ type: "code-ended", reason: "allow-timed-out" });
     });
 
     it("counts wrong tries down and ends the code at the fifth", async () => {
@@ -75,7 +100,7 @@ verifies("contracts.fake-remote-control", () => {
       const left = [1, 2, 3, 4, 5].map(() => control.wrongTry());
       await settle();
       expect(left).toEqual([4, 3, 2, 1, 0]);
-      expect(seen.at(-1)).toEqual({ type: "ended", reason: "too-many-tries" });
+      expect(seen.at(-1)).toEqual({ type: "code-ended", reason: "too-many-tries" });
       expect(() => control.wrongTry()).toThrow();
       expect(() => control.phoneUsesCode({ name: "Pixel 8" })).toThrow();
     });

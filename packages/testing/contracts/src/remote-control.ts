@@ -40,6 +40,23 @@ function eventsOf(session: PairingSession): () => Promise<PairingEvent> {
   };
 }
 
+/**
+ * Changes the risky switch as a marker, and reads `state` until the marker
+ * shows: every state the host gave from `stream`'s start up to then.
+ */
+async function statesUntilMarker(
+  control: RemoteControl,
+  stream: AsyncIterator<RemoteState>,
+): Promise<RemoteState[]> {
+  await control.setAllowRiskyRemotely(true);
+  const seen: RemoteState[] = [];
+  for (let next = await stream.next(); next.done !== true; next = await stream.next()) {
+    seen.push(next.value);
+    if (next.value.allowRiskyRemotely) return seen;
+  }
+  throw new Error("the state stream ended");
+}
+
 /** Opens a pairing and reads its code. */
 async function openPairing(control: RemoteControl) {
   const session = await control.startPairing();
@@ -70,6 +87,7 @@ export function remoteControlContract(name: string, make: MakeRemoteControl): vo
     describe(`RemoteControl contract: ${name}`, () => {
       stateCases(make);
       pairingCases(make);
+      newCodeCases(make);
       phoneCases(make);
     });
   });
@@ -152,13 +170,17 @@ function pairingCases(make: MakeRemoteControl): void {
     expect(state.phones.map((phone) => phone.name)).toEqual(["Pixel 8"]);
   });
 
-  it("pairs nothing on Don't allow, and turns remote off again", async () => {
+  it("ends the code on Don't allow, pairs nothing, and keeps remote on until closed", async () => {
     const harness = await make();
     const { session, next, code } = await openPairing(harness.control);
     await harness.phoneUsesCode(code.code, { name: "Pixel 8", platform: "android" });
     await next();
     await session.deny();
-    expect(await next()).toEqual({ type: "ended", reason: "denied" });
+    expect(await next()).toEqual({ type: "code-ended", reason: "denied" });
+    expect(await stateOf(harness.control)).toMatchObject({ on: true, pairing: true, phones: [] });
+    await expect(session.allow()).rejects.toThrow();
+    await session.close();
+    expect(await next()).toEqual({ type: "ended", reason: "closed" });
     expect(await stateOf(harness.control)).toMatchObject({ on: false, phones: [] });
   });
 
@@ -167,6 +189,61 @@ function pairingCases(make: MakeRemoteControl): void {
     const { next } = await openPairing(control);
     await control.setRemote(false);
     expect(await next()).toEqual({ type: "ended", reason: "remote-off" });
+    expect(await stateOf(control)).toMatchObject({ on: false, pairing: false });
+  });
+}
+
+function newCodeCases(make: MakeRemoteControl): void {
+  it("gives a new code on the same pairing, and remote stays on in between", async () => {
+    const { control } = await make();
+    const { session, next, code } = await openPairing(control);
+    const states = control.state()[Symbol.asyncIterator]();
+    await session.newCode();
+    const fresh = await next();
+    expect(fresh).toMatchObject({ type: "code" });
+    expect(fresh.type === "code" && fresh.code).not.toBe(code.code);
+    const between = await statesUntilMarker(control, states);
+    await states.return?.();
+    expect(between.every((state) => state.on && state.pairing)).toBe(true);
+    await session.close();
+    expect(await next()).toEqual({ type: "ended", reason: "closed" });
+    expect(await stateOf(control)).toMatchObject({ on: false, pairing: false });
+  });
+
+  it("gives a new code after Don't allow, and the new code pairs a phone", async () => {
+    const harness = await make();
+    const { session, next, code } = await openPairing(harness.control);
+    await harness.phoneUsesCode(code.code, { name: "Pixel 7", platform: "android" });
+    await next();
+    await session.deny();
+    await next();
+    await session.newCode();
+    const fresh = await next();
+    if (fresh.type !== "code") throw new Error(`newCode gave ${fresh.type}`);
+    await harness.phoneUsesCode(fresh.code, { name: "iPhone", platform: "ios" });
+    expect(await next()).toMatchObject({ type: "check", phoneName: "iPhone" });
+    await session.allow();
+    expect(await next()).toMatchObject({ type: "paired", phone: { name: "iPhone" } });
+  });
+
+  it("refuses a phone waiting at check when a new code is asked for", async () => {
+    const harness = await make();
+    const { session, next, code } = await openPairing(harness.control);
+    await harness.phoneUsesCode(code.code, { name: "Pixel 8", platform: "android" });
+    await next();
+    await session.newCode();
+    expect(await next()).toMatchObject({ type: "code" });
+    await expect(session.allow()).rejects.toThrow();
+    expect((await stateOf(harness.control)).phones).toEqual([]);
+    await session.close();
+  });
+
+  it("refuses a new code once the pairing has ended", async () => {
+    const { control } = await make();
+    const { session, next } = await openPairing(control);
+    await session.close();
+    await next();
+    await expect(session.newCode()).rejects.toThrow();
     expect(await stateOf(control)).toMatchObject({ on: false, pairing: false });
   });
 }

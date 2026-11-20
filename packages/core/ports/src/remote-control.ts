@@ -45,8 +45,8 @@ export interface RemoteState {
   readonly pairing: boolean;
 }
 
-/** Why a pairing ended without a phone. */
-export const pairingEndReasons = [
+/** Why a code stopped working while its pairing stays open, waiting for `newCode` or `close`. */
+export const codeEndReasons = [
   /** Pressed Don't allow. */
   "denied",
   /** Allow wasn't pressed within the wait. */
@@ -55,6 +55,13 @@ export const pairingEndReasons = [
   "code-expired",
   /** The code took its last wrong try. */
   "too-many-tries",
+] as const;
+
+/** One of {@link codeEndReasons}. */
+export type CodeEndReason = (typeof codeEndReasons)[number];
+
+/** Why a pairing ended without a phone. */
+export const pairingEndReasons = [
   /** The dialog was closed, or `close` was called. */
   "closed",
   /** Remote was turned off. */
@@ -70,8 +77,9 @@ export type PairingEndReason = (typeof pairingEndReasons)[number];
 
 /**
  * One step of a pairing. It starts with `code` (unless it ends at once),
- * then `check` once a phone has used the code, and ends with exactly one of
- * `paired` or `ended`.
+ * then `check` once a phone has used the code. A code that stops working
+ * gives `code-ended`, and the pairing stays open: `newCode` gives a new
+ * `code`. The pairing ends with exactly one of `paired` or `ended`.
  */
 export type PairingEvent =
   | {
@@ -96,6 +104,11 @@ export type PairingEvent =
       /** When the wait for Allow ends, as an ISO 8601 time. */
       readonly allowBy: string;
     }
+  | {
+      /** The code stopped working; the pairing waits for `newCode` or `close`. */
+      readonly type: "code-ended";
+      readonly reason: CodeEndReason;
+    }
   | { readonly type: "paired"; readonly phone: PairedPhone }
   | { readonly type: "ended"; readonly reason: Exclude<PairingEndReason, "tunnel-down"> }
   | {
@@ -105,7 +118,10 @@ export type PairingEvent =
       readonly tunnelReason: TunnelReason;
     };
 
-/** One open pairing, as the Pair a phone dialog drives it. */
+/**
+ * One open pairing, as the Pair a phone dialog drives it: one session for as
+ * long as the dialog is open, however many codes it shows (design decision 10).
+ */
 export interface PairingSession {
   /**
    * Every event so far, then each new one; the stream ends after `paired`
@@ -114,8 +130,14 @@ export interface PairingSession {
   events(): AsyncIterable<PairingEvent>;
   /** Pairs the phone. Rejects unless the last event is `check`. */
   allow(): Promise<void>;
-  /** Ends the pairing with `denied`. Rejects unless the last event is `check`. */
+  /** Refuses the phone: the code ends with `denied`. Rejects unless the last event is `check`. */
   deny(): Promise<void>;
+  /**
+   * Ends the current code, if it still works, without a `code-ended`, and
+   * gives a new `code` on this session. A phone waiting at `check` is
+   * refused. Remote stays on. Rejects once the pairing has ended.
+   */
+  newCode(): Promise<void>;
   /** Ends the pairing with `closed`. Does nothing once it has ended. */
   close(): Promise<void>;
 }
@@ -128,6 +150,8 @@ export interface PairingSession {
  *
  * `startPairing` turns remote on when it was off, and a pairing that ends
  * without a phone turns it off again if it did so and no phone is paired.
+ * A code that stops working doesn't end its pairing, so a new code never
+ * restarts the tunnel.
  * Revoking a phone closes its session at once; its agents keep running.
  *
  * @example

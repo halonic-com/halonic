@@ -1,4 +1,5 @@
 import type {
+  CodeEndReason,
   PairedPhone,
   PairingEndReason,
   PairingEvent,
@@ -46,6 +47,10 @@ const sampleCheckCodes = ["4F72KQ", "9MX3TA", "H7C2RW"];
 interface Pairing {
   readonly session: FakePairingSession;
   readonly turnedOn: boolean;
+  /** Which code the pairing shows, counted across the fake, so a timer of an older code does nothing. */
+  code: number;
+  /** Whether the code still works; `false` after `code-ended`, until `newCode`. */
+  codeWorks: boolean;
   wrongTries: number;
   phone?: { name: string; platform: PhonePlatform };
 }
@@ -53,6 +58,7 @@ interface Pairing {
 /** What a pairing session asks of the fake that opened it. */
 interface PairingOwner {
   decide(session: FakePairingSession, allow: boolean): void;
+  newCode(session: FakePairingSession): void;
   close(session: FakePairingSession): void;
 }
 
@@ -87,6 +93,12 @@ class FakePairingSession implements PairingSession {
 
   deny(): Promise<void> {
     return this.answer(false);
+  }
+
+  newCode(): Promise<void> {
+    if (this.over) return Promise.reject(new Error("an ended pairing gives no new code"));
+    this.control.newCode(this);
+    return Promise.resolve();
   }
 
   close(): Promise<void> {
@@ -126,6 +138,9 @@ class FakePairingSession implements PairingSession {
  * screens can be built and tested before the host's pairing service exists.
  * It follows the port to the letter, and `remoteControlContract` proves it.
  *
+ * A code that stops working leaves its pairing open and remote on, so
+ * `newCode` never restarts the tunnel.
+ *
  * A test plays the phone and the tunnel from outside: `phoneUsesCode`,
  * `wrongTry`, `phoneConnects` and `phoneDisconnects`, `setTunnel`, and
  * `addPhone` for a list without pairing. Codes run out and Allow times out
@@ -146,7 +161,7 @@ export class FakeRemoteControl implements RemoteControl {
   private current: RemoteState;
   private pairingNow: Pairing | undefined;
   private readonly readers = new Set<Feed<RemoteState>>();
-  private pairings = 0;
+  private codes = 0;
   private phonesAdded = 0;
   private failure: TunnelReason | undefined;
 
@@ -206,6 +221,9 @@ export class FakeRemoteControl implements RemoteControl {
     if (!this.current.available) throw new Error("this host doesn't offer remote");
     const session = new FakePairingSession({
       decide: (decided, allow) => this.decide(decided, allow),
+      newCode: (asking) => {
+        if (this.pairingNow?.session === asking) this.showCode(this.pairingNow);
+      },
       close: (closed) => {
         if (this.pairingNow?.session === closed) this.endPairing("closed");
         else closed.end("closed");
@@ -217,27 +235,14 @@ export class FakeRemoteControl implements RemoteControl {
     }
     const turnedOn = !this.current.on;
     await this.setRemote(true);
-    const pairing: Pairing = { session, turnedOn, wrongTries: 0 };
+    const pairing: Pairing = { session, turnedOn, code: 0, codeWorks: false, wrongTries: 0 };
     this.pairingNow = pairing;
     this.change({ pairing: true });
     if (this.current.tunnel.state === "down") {
       this.endPairing("tunnel-down");
       return session;
     }
-    const index = this.pairings % sampleCodes.length;
-    this.pairings += 1;
-    session.push({
-      type: "code",
-      code: sampleCodes[index] as string,
-      qr: `halonic-pair:fake-${this.pairings}`,
-      hostName: this.hostName,
-      expiresAt: this.stamp(this.codeLifeMs),
-    });
-    void this.time.wait(this.codeLifeMs).then(() => {
-      if (this.pairingNow === pairing && pairing.phone === undefined) {
-        this.endPairing("code-expired");
-      }
-    });
+    this.showCode(pairing);
     return session;
   }
 
@@ -265,7 +270,7 @@ export class FakeRemoteControl implements RemoteControl {
     const pairing = this.waitingPairing("use a code");
     const platform = phone.platform ?? "android";
     pairing.phone = { name: phone.name, platform };
-    const checkCode = sampleCheckCodes[(this.pairings - 1) % sampleCheckCodes.length] as string;
+    const checkCode = sampleCheckCodes[(pairing.code - 1) % sampleCheckCodes.length] as string;
     pairing.session.push({
       type: "check",
       checkCode,
@@ -273,18 +278,21 @@ export class FakeRemoteControl implements RemoteControl {
       platform,
       allowBy: this.stamp(this.allowWaitMs),
     });
+    const code = pairing.code;
     void this.time.wait(this.allowWaitMs).then(() => {
-      if (this.pairingNow === pairing) this.endPairing("allow-timed-out");
+      if (this.isShowing(pairing, code) && pairing.phone !== undefined) {
+        this.endCode(pairing, "allow-timed-out");
+      }
     });
     return checkCode;
   }
 
-  /** A phone tried a wrong code; the last allowed try ends the pairing. Gives the tries left. */
+  /** A phone tried a wrong code; the last allowed try ends the code. Gives the tries left. */
   wrongTry(): number {
     const pairing = this.waitingPairing("try a code");
     pairing.wrongTries += 1;
     const left = this.triesPerCode - pairing.wrongTries;
-    if (left === 0) this.endPairing("too-many-tries");
+    if (left === 0) this.endCode(pairing, "too-many-tries");
     return left;
   }
 
@@ -334,7 +342,7 @@ export class FakeRemoteControl implements RemoteControl {
     const pairing = this.pairingNow;
     if (pairing?.session !== session || pairing.phone === undefined) return;
     if (!allow) {
-      this.endPairing("denied");
+      this.endCode(pairing, "denied");
       return;
     }
     const phone = this.newPhone(pairing.phone.name, pairing.phone.platform, { connected: true });
@@ -354,9 +362,43 @@ export class FakeRemoteControl implements RemoteControl {
     }
   }
 
+  /** Gives the pairing a new code that works, dropping a phone that waited at `check`. */
+  private showCode(pairing: Pairing): void {
+    this.codes += 1;
+    const code = this.codes;
+    pairing.code = code;
+    pairing.codeWorks = true;
+    pairing.wrongTries = 0;
+    delete pairing.phone;
+    pairing.session.push({
+      type: "code",
+      code: sampleCodes[(code - 1) % sampleCodes.length] as string,
+      qr: `halonic-pair:fake-${code}`,
+      hostName: this.hostName,
+      expiresAt: this.stamp(this.codeLifeMs),
+    });
+    void this.time.wait(this.codeLifeMs).then(() => {
+      if (this.isShowing(pairing, code) && pairing.phone === undefined) {
+        this.endCode(pairing, "code-expired");
+      }
+    });
+  }
+
+  /** The code stops working; the pairing stays open, and remote stays on. */
+  private endCode(pairing: Pairing, reason: CodeEndReason): void {
+    pairing.codeWorks = false;
+    delete pairing.phone;
+    pairing.session.push({ type: "code-ended", reason });
+  }
+
+  /** Whether the pairing is still open and still shows that code, working. */
+  private isShowing(pairing: Pairing, code: number): boolean {
+    return this.pairingNow === pairing && pairing.code === code && pairing.codeWorks;
+  }
+
   private waitingPairing(action: string): Pairing {
     const pairing = this.pairingNow;
-    if (pairing === undefined || pairing.phone !== undefined) {
+    if (pairing === undefined || !pairing.codeWorks || pairing.phone !== undefined) {
       throw new Error(`no pairing is waiting for a phone to ${action}`);
     }
     return pairing;
