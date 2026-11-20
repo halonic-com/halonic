@@ -2,7 +2,7 @@
 
 - Approval: asked for by Liam in the review of HAL-12401 (#3757); wording is the HAL-12401 team decision (Sofia's N1 to N7 on HAL-12363) under the HAL-2282 rule; the reviewer (Liam) approves this note in review
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:C+HN93bzkl5KQfgQFWzbqdyZF4O8S1MB9tPxF0HMh3HiwygaTGT4owe0v7xYFafClGrN0ZDzrtYdhacE2DgfBg==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vT0LJhMXc/8x5wEvwLGtkWL8dE+Cw/Zlh6xZn7M0zzWO2PuJrUY1JHrMEVTBKT3jPqaIcdaN5bLBQUxM6KslBQ==
 - Task: HAL-13498
 
 ## What changes
