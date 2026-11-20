@@ -21,10 +21,17 @@ export const testCode = "4F72KQ9XHMRT";
  */
 export class FakePairing implements GatewayPairing {
   code: string | undefined = testCode;
+  readonly #phones: FakePhones;
   wrongTries = 0;
   drops = 0;
+  /** Makes counting a wrong try throw, as a failing service would. */
+  failsToCount = false;
   decrypted: { phone: PairingPhone; signal: AbortSignal }[] = [];
   #resolve: ((answer: PairingAnswer) => void) | undefined;
+
+  constructor(phones: FakePhones) {
+    this.#phones = phones;
+  }
 
   begin(): PairingStart {
     if (this.code === undefined) {
@@ -38,6 +45,7 @@ export class FakePairing implements GatewayPairing {
           this.drops++;
         },
         wrongTry: (): PairingRefusal => {
+          if (this.failsToCount) throw new Error("the pairing service failed");
           this.wrongTries++;
           return { reason: "wrong-code", triesLeft: 5 - this.wrongTries };
         },
@@ -51,8 +59,10 @@ export class FakePairing implements GatewayPairing {
     };
   }
 
-  /** The person's answer, or a refusal, for the pairing waiting for one. */
+  /** The person's answer, or a refusal, for the pairing waiting for one. Allow pairs the phone. */
   answer(answer: PairingAnswer): void {
+    const waiting = this.decrypted.at(-1);
+    if (answer.kind === "allowed" && waiting) this.#phones.pair(waiting.phone.publicKey);
     this.#resolve?.(answer);
   }
 }
@@ -93,12 +103,21 @@ export class FakePhones implements GatewayPhones {
   pair(publicKey: Uint8Array): void {
     this.paired.add(Buffer.from(publicKey).toString("hex"));
   }
+
+  /** Revokes the phone with this public key, and tells its live sessions. */
+  revoke(publicKey: Uint8Array): void {
+    const key = Buffer.from(publicKey).toString("hex");
+    this.paired.delete(key);
+    for (const connection of this.connections) {
+      if (connection.key === key && !connection.ended) connection.revoke();
+    }
+  }
 }
 
 /** A session on fakes, with the frames it sent and whether it closed. */
 export function openSecureSession(options: { helloTimeoutMs?: number; phones?: FakePhones } = {}) {
-  const pairing = new FakePairing();
   const phones = options.phones ?? new FakePhones();
+  const pairing = new FakePairing(phones);
   const source = new FakeSource();
   source.addSession("s1");
   const sent: Uint8Array[] = [];

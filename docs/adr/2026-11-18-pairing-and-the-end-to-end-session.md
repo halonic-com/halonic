@@ -130,7 +130,8 @@ proved the host, means Removed. Anyone on the path can fake
 it sends a `rekey` frame (an empty transport message) as the last one under
 the old key and then calls Noise `rekey`; the other side calls `rekey` on its
 receiving key when it reads that frame. A sender rekeys at least every 10,000
-messages or 30 minutes, whichever comes first, and a receiver closes the
+messages or 30 minutes, whichever comes first, the `rekey` frame taking the
+last place of the 10,000 (HAL-14100), and a receiver closes the
 connection when a 10,001st message arrives since the last `rekey`. The host
 ends a session after 24 hours; the phone then reconnects with IK.
 
@@ -177,6 +178,13 @@ the phone the attacker took message 3 from sees its pairing fail. With the
 commitment, a guessed code also can't beat the check code, and Allow is still
 required. A PAKE (CPace) would close even the guessing; it is a later option,
 not phase B.
+
+**An accepted timing signal.** Someone who recorded a phone's old reconnect
+message 1, such as a tunnel operator, can replay it and tell from the timing
+whether that phone is still paired: a revoked phone's session gets message 2
+and one encrypted frame and closes at once, a paired one stays open until the
+hello time runs out. It reveals nothing else and lets nobody in, so we accept
+it (Julian and Liam, HAL-14100).
 
 **No crypto of our own.** We write no primitives. The phone uses `snow`; the
 host's Noise library is chosen in B1 against the published Noise test vectors

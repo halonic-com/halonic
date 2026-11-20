@@ -52,13 +52,16 @@ verifies("remote-gateway.e2e-session", () => {
       vi.useRealTimers();
     });
 
-    it("sends a rekey frame before the 10,001st message under one key, and the phone reads on", () => {
+    it("sends the rekey frame as the 10,000th message under one key, and the phone reads on", () => {
       const t = channelPair();
-      for (let count = 0; count <= rekeyAfterMessages; count++) t.channel.send(word);
+      for (let count = 1; count < rekeyAfterMessages; count++) t.channel.send(word);
+      expect(t.sent).toHaveLength(9_999);
+      t.channel.send(word);
       const kinds = phoneReads(t.phone, t.sent);
       expect(kinds.filter((kind) => kind === "rekey")).toHaveLength(1);
-      expect(kinds.indexOf("rekey")).toBe(rekeyAfterMessages);
-      expect(kinds).toHaveLength(rekeyAfterMessages + 2);
+      expect(kinds.indexOf("rekey")).toBe(9_999);
+      expect(kinds.at(-1)).toBe("message");
+      expect(kinds).toHaveLength(10_001);
     });
 
     it("rekeys before sending once 30 minutes have passed", () => {

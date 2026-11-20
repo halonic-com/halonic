@@ -51,7 +51,8 @@ const encoder = new TextEncoder();
  * - A reconnect (`resume1`, `resume2`) sends an encrypted `not-paired` and
  *   closes when the phone isn't paired, after message 2 has proved the host.
  * - The phone counts as connected only once its first transport message
- *   decrypts, and gets `not-paired` at once if it is revoked meanwhile.
+ *   decrypts and it is still paired then, and gets `not-paired` at once if it
+ *   is revoked before or after.
  * - The handshake must end within 10 seconds of the connection's start, and
  *   the session ends 24 hours after it opened.
  */
@@ -89,19 +90,26 @@ export class SecureSession {
     }
   }
 
-  /** Ends the session: wipes its keys, stops its timers and the connection inside it. */
+  /**
+   * Ends the session: wipes its keys, stops its timers and the connection
+   * inside it. Every step runs even when the pairing service or the phone
+   * store throws, so the keys are always wiped and the wire closed; the first
+   * error is thrown afterwards.
+   */
   close(): void {
     const state = this.#state;
     if (state.name === "closed") return;
     this.#state = { name: "closed" };
     for (const timer of this.#timers) clearTimeout(timer);
-    // A pairing the host answered that ends here, before message 3 decrypted, is a wrong try.
-    if (state.name === "pairing") state.pairing.attempt.wrongTry();
-    if (state.name === "waiting-for-allow") state.abort.abort();
-    if (state.name === "open") state.connection.close();
-    this.#phone?.end();
-    this.#noise?.end();
-    this.#deps.wire.close();
+    runAll([
+      // A pairing the host answered that ends here, before message 3 decrypted, is a wrong try.
+      () => state.name === "pairing" && state.pairing.attempt.wrongTry(),
+      () => state.name === "waiting-for-allow" && state.abort.abort(),
+      () => state.name === "open" && state.connection.close(),
+      () => this.#phone?.end(),
+      () => this.#noise?.end(),
+      () => this.#deps.wire.close(),
+    ]);
   }
 
   #pair1(body: Uint8Array): void {
@@ -191,12 +199,30 @@ export class SecureSession {
       return;
     }
     if (input.kind === "rekeyed") return;
-    // The first message that decrypts, not handshake message 1, makes the phone connected.
-    this.#phone ??= this.#deps.phones.connected(state.phoneKey, () => {
+    if (this.#phone === undefined && !this.#connect(state.phoneKey)) return;
+    state.connection.receive({ binary: false, bytes: input.bytes });
+  }
+
+  /**
+   * The first message that decrypts, not handshake message 1, makes the phone
+   * connected. Gives whether the session is still open afterwards.
+   */
+  #connect(phoneKey: Uint8Array): boolean {
+    // The phone may have been revoked since message 2, before the store could reach this session.
+    if (!this.#deps.phones.isPaired(phoneKey)) {
+      this.#endWith({ type: "not-paired" });
+      return false;
+    }
+    const phone = this.#deps.phones.connected(phoneKey, () => {
       this.#endWith({ type: "not-paired" });
     });
-    if (this.#isClosed()) return;
-    state.connection.receive({ binary: false, bytes: input.bytes });
+    this.#phone = phone;
+    // A store that called onRevoked straight away closed the session before it had the handle.
+    if (this.#isClosed()) {
+      phone.end();
+      return false;
+    }
+    return true;
   }
 
   /** Rekeys the sending key if it was used; a failure closes the session. */
@@ -253,4 +279,17 @@ export class SecureSession {
 
 function pairRefused(reason: GatewayPairDeniedReason): GatewayHostMessage {
   return { type: "pair-refused", reason };
+}
+
+/** Runs every step, also those after one that throws, then throws the first error. */
+function runAll(steps: readonly (() => unknown)[]): void {
+  const errors: unknown[] = [];
+  for (const step of steps) {
+    try {
+      step();
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  if (errors.length > 0) throw errors[0];
 }

@@ -89,6 +89,26 @@ verifies("remote-gateway.e2e-session", () => {
       expect(t.pairing.wrongTries).toBe(1);
     });
 
+    it("still closes the wire, then throws, when the pairing service fails to count the try", () => {
+      const t = pairedUpToMessage2();
+      t.pairing.failsToCount = true;
+      expect(() => t.session.close()).toThrow("the pairing service failed");
+      expect(t.wire.closed).toBe(true);
+    });
+
+    it("sends not-paired to a phone revoked between paired and its hello", async () => {
+      const t = pairedUpToMessage2();
+      t.session.receive(t.phone.pair3());
+      t.pairing.answer({ kind: "allowed" });
+      await settle();
+      expect(t.phone.read(t.sent[1] ?? new Uint8Array(0))).toEqual({ type: "paired" });
+      t.phones.revoke(t.phone.keys.publicKey);
+      t.session.receive(t.phone.say({ type: "hello", id: "h1", version: 2 }));
+      expect(t.phone.read(t.sent[2] ?? new Uint8Array(0))).toEqual({ type: "not-paired" });
+      expect(t.phones.connections).toEqual([]);
+      expect(t.wire.closed).toBe(true);
+    });
+
     it("refuses before message 2 when no code is open", () => {
       const t = openSecureSession();
       t.pairing.code = undefined;

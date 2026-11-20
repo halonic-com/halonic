@@ -30,9 +30,12 @@ const nothing = new Uint8Array(0);
  * the end-to-end session").
  *
  * The sending side sends a `rekey` frame, its last message under the old
- * key, before its 10,001st message since the last one or once 30 minutes
- * have passed, and then rekeys. The receiving side rekeys when it reads one,
- * and breaks the session when a 10,001st message comes without one.
+ * key, and then rekeys: once 30 minutes have passed, and when it would
+ * otherwise send more than 10,000 transport messages under one key. The
+ * `rekey` frame takes the last place of that count, so a key carries at most
+ * 9,999 gateway messages and the rekey, as the phone's side counts too. The
+ * receiving side rekeys when it reads one, and breaks the session when a
+ * 10,001st message comes without one.
  */
 export class SecureChannel {
   readonly #noise: NoiseSession;
@@ -56,7 +59,9 @@ export class SecureChannel {
       throw new RangeError("A gateway message is at most 65,519 bytes.");
     }
     const keyIsOld = Date.now() - this.#sendKeySince >= rekeyAfterMs;
-    if (this.#sentSinceRekey >= rekeyAfterMessages || keyIsOld) this.#rekey();
+    // The rekey frame needs the last place: after 9,999 messages, it comes next.
+    const keyIsFull = this.#sentSinceRekey + 1 >= rekeyAfterMessages;
+    if (keyIsFull || keyIsOld) this.#rekey();
     this.#wire.send(encodeE2eFrame("message", this.#noise.writeMessage(message)));
     this.#sentSinceRekey++;
   }

@@ -74,7 +74,10 @@ export interface GatewayPairing {
 
 /** A paired phone's live session, as the store tracks it. */
 export interface ConnectedPhone {
-  /** The session ended, for any reason. */
+  /**
+   * The session ended, for any reason. It shouldn't throw: the session still
+   * wipes its keys and closes, then passes the error on to its caller.
+   */
   end(): void;
 }
 
@@ -90,6 +93,12 @@ export interface GatewayPhones {
    * A paired phone's first transport message decrypted, so it is connected;
    * never on handshake message 1 alone, which anyone could replay. The store
    * calls `onRevoked` once if the phone is revoked while connected.
+   *
+   * The gateway asks {@link isPaired} just before, but a revoke can land in
+   * between. For a key that isn't paired (any more), `connected` must either
+   * throw or call `onRevoked` before it returns; it must never count the
+   * phone as connected. The gateway then ends the session, and calls `end()`
+   * on the handle it was given.
    */
   connected(publicKey: Uint8Array, onRevoked: () => void): ConnectedPhone;
 }

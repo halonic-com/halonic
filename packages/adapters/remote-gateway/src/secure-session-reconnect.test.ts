@@ -68,6 +68,46 @@ verifies("remote-gateway.e2e-session", () => {
       expect(t.wire.closed).toBe(true);
       expect(t.phones.connections[0]?.ended).toBe(true);
     });
+
+    it("sends not-paired to a phone revoked after message 2 and before its hello", () => {
+      const t = reconnected();
+      t.phones.revoke(t.phone.keys.publicKey);
+      t.session.receive(t.phone.say(hello));
+      expect(t.sent).toHaveLength(2);
+      expect(t.phone.read(t.sent[1] ?? new Uint8Array(0))).toEqual({ type: "not-paired" });
+      expect(t.phones.connections).toEqual([]);
+      expect(t.wire.closed).toBe(true);
+    });
+
+    it("ends the store's handle when the store says revoked as the phone connects", () => {
+      const t = reconnected();
+      const connect = t.phones.connected.bind(t.phones);
+      // The revoke lands between the session's isPaired and connected.
+      t.phones.connected = (publicKey, onRevoked) => {
+        const phone = connect(publicKey, onRevoked);
+        onRevoked();
+        return phone;
+      };
+      t.session.receive(t.phone.say(hello));
+      expect(t.phone.read(t.sent[1] ?? new Uint8Array(0))).toEqual({ type: "not-paired" });
+      expect(t.wire.closed).toBe(true);
+      expect(t.phones.connections[0]?.ended).toBe(true);
+    });
+  });
+
+  describe("closing when the store fails", () => {
+    it("still closes the wire, then throws, when ending the store's handle fails", async () => {
+      const t = reconnected();
+      t.phones.connected = () => ({
+        end: () => {
+          throw new Error("store failed");
+        },
+      });
+      t.session.receive(t.phone.say(hello));
+      await settle();
+      expect(() => t.session.close()).toThrow("store failed");
+      expect(t.wire.closed).toBe(true);
+    });
   });
 
   describe("no cleartext path", () => {

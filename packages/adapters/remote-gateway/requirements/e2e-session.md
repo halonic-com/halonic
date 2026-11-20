@@ -8,9 +8,9 @@ The remote gateway shall run each phone's connection inside the end-to-end sessi
 
 **Pairing.** On pairing message 1 it shall ask the host's pairing service for the open code and, when there is none, send `pair-refused` with the service's reason before any message 2. It shall answer message 1 with message 2 carrying the host's name, and send nothing and count no try when message 1 can't be read. It shall decrypt message 3 with the code, recompute the phone's commitment from message 1 and compare it in constant time, and check the payload; when any of these fails, or the connection ends after message 2 and before message 3 decrypts, it shall report one wrong try and send the service's `pair-refused`. Once message 3 decrypts and matches, it shall give the pairing service the phone's key, name, platform and check code, and send `paired` when the person allows it, an encrypted `pair-refused` with `denied` or `timed-out` otherwise, and close on any frame from the phone before then. When the phone leaves while the person decides, it shall tell the service.
 
-**Reconnecting.** On reconnect message 1 it shall send `handshake-failed` and close when the message doesn't decrypt to the host's key, and answer message 2 when it does. Only after message 2 shall it send an encrypted `not-paired` and close, when the phone's key isn't paired. It shall count a phone as connected only once its first transport message decrypts, never on message 1, and send an encrypted `not-paired` and close when the phone is revoked while connected.
+**Reconnecting.** On reconnect message 1 it shall send `handshake-failed` and close when the message doesn't decrypt to the host's key, and answer message 2 when it does. Only after message 2 shall it send an encrypted `not-paired` and close, when the phone's key isn't paired. It shall count a phone as connected only once its first transport message decrypts and the phone is still paired then, never on message 1, and send an encrypted `not-paired` and close when the phone was revoked after message 2 or is revoked while connected.
 
-**Limits.** It shall close a connection whose handshake hasn't ended 10 seconds after it started, an open session without `hello` after the hello time, and every session 24 hours after it opened. It shall close on a frame of an unknown kind, of a kind the state doesn't take, or a handshake message over 1,024 bytes. It shall send a `rekey` frame and rekey its sending direction before its 10,001st message under one key and once 30 minutes have passed, rekey its receiving direction on each `rekey` frame, and close when a 10,001st message arrives without one. Closing shall wipe the session's keys.
+**Limits.** It shall close a connection whose handshake hasn't ended 10 seconds after the connection opened (never later than the ADR's 10 seconds from the first frame), an open session without `hello` after the hello time, and every session 24 hours after it opened. It shall close on a frame of an unknown kind, of a kind the state doesn't take, or a handshake message over 1,024 bytes. It shall send a `rekey` frame and rekey its sending direction once 30 minutes have passed and before it would send more than 10,000 transport messages under one key, the `rekey` frame taking the last place of that count (9,999 messages, then `rekey`), rekey its receiving direction on each `rekey` frame, and close when a 10,001st message arrives without one. Closing shall wipe the session's keys.
 
 ## Examples
 
@@ -47,6 +47,9 @@ The remote gateway shall run each phone's connection inside the end-to-end sessi
 - Given a paired phone that is connected,
   when it is revoked,
   then it reads an encrypted `not-paired` and the host closes.
-- Given a session that sent 10,000 messages under one key,
+- Given a session that sent 9,999 messages under one key,
   when it sends one more,
-  then a `rekey` frame goes first and the phone reads both.
+  then a `rekey` frame goes first, as the 10,000th under that key, and the phone reads both.
+- Given a paired phone that reconnected and read message 2,
+  when it is revoked before its `hello`,
+  then its `hello` gets an encrypted `not-paired`, it never counts as connected, and the host closes.
