@@ -219,3 +219,31 @@ verifies("workspace.routine-start-input", () => {
     expect(await missing("gets: []", "")).toEqual([]);
   });
 });
+
+verifies("workspace.routine-start-checks", () => {
+  const files = (routine: string) =>
+    new MemorySource({
+      "workspace.yaml": "id: acme\nname: Acme\n",
+      "hubs/news/hub.yaml": "name: News\n",
+      "hubs/news/workflows/digest.workflow.yaml":
+        "name: Digest\ninitial: done\nstates:\n  done: { type: final }\n",
+      "hubs/news/workflows/routines/friday.routine.yaml": routine,
+    });
+
+  it("reports each placeholder that isn't a value of the trigger, at its input key and line", async () => {
+    const workspace = await loadWorkspace(
+      files(
+        'name: Friday\ntrigger: { every: 1h }\nrun:\n  workflow: digest\n  input: { day: "{{trigger.date}}", body: "{{trigger.body}}", at: "{{trigger.at}}" }\n',
+      ),
+    );
+    // The digest reads no input, so the unread-input warnings (HAL-14316) are left out here.
+    const errors = workspace.issues.filter((issue) => issue.severity === "error");
+    expect(errors.map((issue) => [issue.severity, issue.code, issue.path, issue.line])).toEqual([
+      ["error", "unknown-trigger-value", ["run", "input", "day"], 5],
+      ["error", "unknown-trigger-value", ["run", "input", "body"], 5],
+    ]);
+    expect(errors[1]?.message).toBe(
+      'Routine "friday": {{trigger.body}} is only set for a routine on a webhook. Use {{trigger.at}} or {{trigger.lastRun}}.',
+    );
+  });
+});

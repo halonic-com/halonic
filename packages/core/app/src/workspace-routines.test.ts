@@ -198,6 +198,26 @@ verifies("app.workspace-routines", () => {
   });
 });
 
+verifies("routines.trigger-values", () => {
+  it("starts no run for a routine whose input names no trigger value, and says why", async () => {
+    const friday =
+      'id: friday\nname: Friday digest\ntrigger: { every: 1h }\nrun: { workflow: digest, input: { day: "{{trigger.date}}" } }';
+    const { executor, tickAt } = setUp(
+      { "hubs/news/workflows/routines/friday.routine.yaml": friday },
+      "2026-11-03T07:30:00Z",
+    );
+    await tickAt("2026-11-03T07:30:00Z");
+    const { started, failed } = await tickAt("2026-11-03T08:00:20Z");
+    expect([started, executor.requests]).toEqual([[], []]);
+    expect(failed.map((failure) => [failure.key, failure.error.message])).toEqual([
+      [
+        "news/friday",
+        "{{trigger.date}} isn't a trigger value. Use {{trigger.at}} or {{trigger.lastRun}}.",
+      ],
+    ]);
+  });
+});
+
 /** An hourly routine with the given overlap rule. */
 const hourlyWith = (overlap: "skip" | "queue" | "allow") =>
   [
