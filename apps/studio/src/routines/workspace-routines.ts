@@ -89,6 +89,11 @@ export interface WorkspaceRoutinesParts {
   readonly now: () => Date;
   /** Whether the workspace is trusted; routines wait until it is. Trusted when absent. */
   readonly trusted?: () => Promise<boolean>;
+  /**
+   * Opens the window's trust check, for a Run now refused as not trusted. Absent: the refusal only
+   * says so.
+   */
+  readonly askTrust?: () => Promise<"trusted" | "declined">;
   /** The times the scheduler dropped for a routine, by its key; none when absent. */
   readonly skips?: (key: string) => Promise<readonly StoredSkip[]>;
   /**
@@ -142,16 +147,21 @@ export class WorkspaceRoutines implements RoutinesHost {
   runNow?: NonNullable<RoutinesHost["runNow"]>;
   /** Present only when the app can open Create version; see {@link RoutinesHost.makeLive}. */
   makeLive?: NonNullable<RoutinesHost["makeLive"]>;
+  /** Present only when the app can show the trust check; see {@link RoutinesHost.askTrust}. */
+  askTrust?: NonNullable<RoutinesHost["askTrust"]>;
 
   constructor(parts: WorkspaceRoutinesParts) {
     this.#parts = parts;
-    const { engine, versionDialog } = parts;
+    const { engine, versionDialog, askTrust } = parts;
     if (engine !== undefined) {
       this.runNow = (ref) => this.#runNow(ref, engine);
     }
     if (versionDialog !== undefined) {
       // Only the routine's own file, so the version holds nothing else the person changed.
       this.makeLive = (ref) => versionDialog([routinePath(ref)]);
+    }
+    if (askTrust !== undefined) {
+      this.askTrust = askTrust;
     }
   }
 

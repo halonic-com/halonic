@@ -1,5 +1,6 @@
 import type { ToastStore } from "@halonicjs/studio-kit";
-import { type ReactNode, useState, useSyncExternalStore } from "react";
+import { type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import type { TrustAnswer } from "./trust-asks.ts";
 import { TrustCheckDialog } from "./trust-check-dialog.tsx";
 import type { WorkspaceTrustControl } from "./workspace-trust-control.ts";
 
@@ -7,6 +8,11 @@ import type { WorkspaceTrustControl } from "./workspace-trust-control.ts";
 export interface TrustCheckFlow {
   /** Opens the check for what the workspace holds now; does nothing before the first answer. */
   readonly open: () => void;
+  /**
+   * Opens the check for a start that asked for it, and answers `"trusted"` once the person
+   * trusted the workspace, `"declined"` on Not now; at once `"declined"` when there's nothing to show.
+   */
+  readonly ask: () => Promise<TrustAnswer>;
   /** The open check, or nothing: render it once, anywhere in the control's tree. */
   readonly dialog: ReactNode;
 }
@@ -35,26 +41,41 @@ export function useTrustCheck(
   const [opened, setOpened] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
+  // Whoever asked for the open check, answered once when it closes.
+  const answer = useRef<((answer: TrustAnswer) => void) | undefined>(undefined);
+  useEffect(() => () => answer.current?.("declined"), []);
 
-  const close = () => {
+  const close = (said: TrustAnswer) => {
     setOpened(undefined);
     setBusy(false);
     setError(undefined);
+    const asked = answer.current;
+    answer.current = undefined;
+    asked?.(said);
   };
   const trustIt = async (fingerprint: string) => {
     setBusy(true);
     setError(undefined);
     const result = await trust.grant(fingerprint);
     if (result.ok) {
-      close();
+      close("trusted");
       toasts.show({ tone: "success", title: `${name} can run now` });
       return;
     }
     setBusy(false);
     setError(`Couldn't save trust: ${result.reason}. Nothing was started.`);
   };
+  const open = () => review !== undefined && setOpened(review.fingerprint);
   return {
-    open: () => review !== undefined && setOpened(review.fingerprint),
+    open,
+    ask: () => {
+      if (review === undefined) return Promise.resolve("declined");
+      answer.current?.("declined");
+      open();
+      return new Promise((resolve) => {
+        answer.current = resolve;
+      });
+    },
     dialog:
       opened === undefined || review === undefined ? null : (
         <TrustCheckDialog
@@ -62,7 +83,7 @@ export function useTrustCheck(
           shown={opened}
           busy={busy}
           error={error}
-          onNotNow={close}
+          onNotNow={() => close("declined")}
           onTrust={() => void trustIt(review.fingerprint)}
           returnFocus={returnFocus}
         />

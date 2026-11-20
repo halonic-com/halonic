@@ -268,7 +268,11 @@ The status bar starts with the frame's `badges` slot ("Not trusted yet") and end
 frame's `phoneBadges` slot takes `<HeaderBadges registry={shell.badges} layout="strip" />`: rows
 of the notice strip under the top bar, after a save problem, with the trust badge on its own line
 and the connector states in one row of chips that wraps. In a short window the rows are left out
-(`shell.phone-notice-badges`). The item page's
+(`shell.phone-notice-badges`). A header badge that goes while it has focus gives focus to the
+page's `h1` (`shell.badge-gone-focus`). What opens over the window on the desktop and on a phone
+alike, such as the trust check, goes in the `dialogs` slot, which sits inside the frame's
+providers on both; `pageHeading()` gives such a dialog the shown page's `h1` to return focus to
+when what opened it is gone. The item page's
 name field, cut with "…", shows its full text as a tooltip on hover and keyboard focus, and none
 while it fits (`shell.cut-text-tooltips`). Such a tooltip never names or describes its element,
 whose own text is already the full text.

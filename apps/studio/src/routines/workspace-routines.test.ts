@@ -449,3 +449,11 @@ verifies("studio.workspace-routines-make-live", () => {
     expect(setup().host.makeLive).toBeUndefined();
   });
 });
+
+verifies("studio.start-asks-trust", () => {
+  it("passes the window's trust check on to Run now, and has none without it", async () => {
+    const askTrust = async () => "trusted" as const;
+    expect(await setup({ askTrust }).host.askTrust?.()).toBe("trusted");
+    expect(setup().host.askTrust).toBeUndefined();
+  });
+});

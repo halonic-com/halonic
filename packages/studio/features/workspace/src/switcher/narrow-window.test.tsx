@@ -267,4 +267,44 @@ verifies("workspace.narrow-window-trust", () => {
       "Trust Acme sample?",
     );
   });
+
+  it("gives focus to More's h1 after Trust from More's badge, which then goes", async () => {
+    // The badge's tooltip opens on focus; jsdom has no popovers.
+    HTMLElement.prototype.showPopover = () => {};
+    const listeners = new Set<() => void>();
+    let trusted = false;
+    const trust: WorkspaceTrustControl = {
+      ...notTrusted,
+      get badge() {
+        return trusted ? "none" : "not-trusted";
+      },
+      get status() {
+        return trusted ? "trusted" : "not-trusted";
+      },
+      review: () => (trusted ? undefined : review),
+      grant: async () => {
+        trusted = true;
+        for (const listener of listeners) listener();
+        return { ok: true };
+      },
+      subscribe: (listener) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    await start(trust);
+    act(() => trustBadge()?.focus());
+    await act(async () => trustBadge()?.click());
+
+    const trustButton = [...element.ownerDocument.querySelectorAll("dialog[open] button")].find(
+      (each) => each.textContent?.trim().startsWith("Trust") === true,
+    );
+    await act(async () => (trustButton as HTMLButtonElement | undefined)?.click());
+
+    expect(trustBadge()).toBeUndefined();
+    const heading = element.querySelector("main h1");
+    expect(heading?.textContent).toBe("More");
+    expect(document.activeElement).toBe(heading);
+    Reflect.deleteProperty(HTMLElement.prototype, "showPopover");
+  });
 });

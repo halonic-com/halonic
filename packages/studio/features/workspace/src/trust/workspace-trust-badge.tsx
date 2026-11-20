@@ -1,5 +1,5 @@
 import type { ToastStore } from "@halonicjs/studio-kit";
-import { type BadgeRegistry, trustBadgePriority } from "@halonicjs/studio-shell";
+import { type BadgeRegistry, pageHeading, trustBadgePriority } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { CHANGED_BADGE, loadFailed, TRY_AGAIN } from "./trust-section-text.ts";
 import { useTrustCheck } from "./use-trust-check.tsx";
@@ -30,6 +30,9 @@ export interface WorkspaceTrustBadgeProps {
  * first answer. The whole badge is one button; pressing it opens the check, which is the
  * first-time check or "What changed". **Not now** is focused and closes it with nothing saved.
  * **Trust** saves the person's trust in exactly the fingerprint shown and says "Acme can run now".
+ * The badge also shows the check for a start that asks for it (`workspace.trust-asked`). When the
+ * check closes, focus goes back to what opened it, or to the page's `h1` once that is gone, as the
+ * badge is after **Trust** (C144 TR1).
  *
  * @example
  * <WorkspaceTrustBadge trust={opened.trust} name="Acme" toasts={shell.toasts} badges={shell.badges} />
@@ -40,10 +43,24 @@ export function WorkspaceTrustBadge({ trust, name, toasts, badges }: WorkspaceTr
     () => trust.badge,
   );
   const opener = useRef<HTMLElement | null>(null);
-  const check = useTrustCheck(trust, name, toasts, () => opener.current);
+  const check = useTrustCheck(trust, name, toasts, () =>
+    opener.current?.isConnected === true ? opener.current : pageHeading(),
+  );
   // The badge is added once per state, not once per render, so it reads the latest `open` here.
   const open = useRef(check.open);
   open.current = check.open;
+  const ask = useRef(check.ask);
+  ask.current = check.ask;
+
+  useEffect(
+    () =>
+      trust.asks?.showWith(() => {
+        // What asked keeps focus when it is still there; the badge's button didn't open this one.
+        opener.current = null;
+        return ask.current();
+      }),
+    [trust],
+  );
 
   useEffect(() => {
     if (badge === "none") {

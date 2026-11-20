@@ -1,3 +1,5 @@
+import type { TrustAsks } from "./trust-asks.ts";
+
 /** One row of the trust check: a program, an agent, an address, or a change to one. */
 export interface TrustRowView {
   /** The item's id, such as `mail-mcp`. */
@@ -93,4 +95,9 @@ export interface WorkspaceTrustControl {
   remove(): Promise<TrustGrantResult>;
   /** Calls `listener` after every change of the badge or the check; returns the way to stop. */
   subscribe(listener: () => void): () => void;
+  /**
+   * The starts that ask for the trust check after a refusal; the window's badge shows it for them.
+   * Absent where nothing asks.
+   */
+  readonly asks?: TrustAsks | undefined;
 }

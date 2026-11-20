@@ -38,6 +38,11 @@ export interface WorkspaceWorkflowsParts {
     log(runId: string): Promise<readonly RunEvent[]>;
   };
   /**
+   * Opens the window's trust check, for a start refused because the workspace isn't trusted yet.
+   * Absent: the Run panel offers only **Try again**.
+   */
+  readonly askTrust?: () => Promise<"trusted" | "declined">;
+  /**
    * The page's engine, which starts a run. Absent where the page has no engine, so the host has no
    * `startRun` and the page shows no **Run**.
    */
@@ -93,10 +98,15 @@ export class WorkspaceWorkflows implements WorkflowsHost {
 
   /** Present only when the page has an engine; see {@link WorkflowsHost.startRun}. */
   startRun?: NonNullable<WorkflowsHost["startRun"]>;
+  /** Present only when the app can show the trust check; see {@link WorkflowsHost.askTrust}. */
+  askTrust?: NonNullable<WorkflowsHost["askTrust"]>;
 
   constructor(parts: WorkspaceWorkflowsParts) {
     this.#parts = parts;
-    const { engine } = parts;
+    const { engine, askTrust } = parts;
+    if (askTrust !== undefined) {
+      this.askTrust = askTrust;
+    }
     if (engine !== undefined) {
       this.startRun = async ({ hubId, id }, input) => {
         // The engine reads the files on disk: wait for a pending save, so a new workflow has its file.

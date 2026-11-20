@@ -278,7 +278,7 @@ export {
   type WorkspaceSwitcherProps,
 } from "./sidebar/workspace-switcher.tsx";
 export type { Studio } from "./studio.ts";
-export { focusPageHeading } from "./tabs/history-moves.ts";
+export { focusPageHeading, pageHeading } from "./tabs/history-moves.ts";
 export { mountedTabIds, mountedTabLimit } from "./tabs/mounted-tabs.ts";
 export { type GoneItem, TabPages, type TabPagesProps } from "./tabs/tab-pages.tsx";
 export {

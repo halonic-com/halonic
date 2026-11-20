@@ -11,6 +11,7 @@ import {
 } from "../switcher/mount-workspace-window.tsx";
 import { RecentWorkspaces } from "../switcher/recent-workspaces.ts";
 import { WorkspaceSwitcher } from "../switcher/workspace-switcher.ts";
+import { TrustAsks } from "./trust-asks.ts";
 import type {
   TrustGrantResult,
   TrustReview,
@@ -22,13 +23,15 @@ import type {
 let element: HTMLElement;
 let mounted: MountedWorkspaceWindow | undefined;
 let restoreMedia: () => void = () => {};
+/** Whether the window is as narrow as a phone, where the status bar doesn't show. */
+let phoneWindow = false;
 
 beforeEach(() => {
   const original = window.matchMedia;
   window.matchMedia = (query) =>
     ({
       media: query,
-      matches: false,
+      matches: phoneWindow,
       addEventListener: () => {},
       removeEventListener: () => {},
     }) as unknown as MediaQueryList;
@@ -52,6 +55,7 @@ afterEach(() => {
   mounted = undefined;
   element.remove();
   restoreMedia();
+  phoneWindow = false;
 });
 
 const review: TrustReview = {
@@ -77,6 +81,7 @@ function control(initial: TrustReview | undefined, grant?: () => Promise<TrustGr
   const listeners = new Set<() => void>();
   const granted: string[] = [];
   const value: WorkspaceTrustControl = {
+    asks: new TrustAsks(),
     get badge() {
       return current === undefined ? "none" : "not-trusted";
     },
@@ -341,5 +346,76 @@ verifies("workspace.trust-badge", () => {
     expect(dialog()?.textContent).toContain("Acme changed since you trusted it on 3 Nov");
     expect(dialog()?.textContent).toContain("New");
     expect(dialog()?.textContent).toContain("Unchanged (9 items)");
+  });
+});
+
+verifies("workspace.trust-asked", () => {
+  it("opens the badge's check when a start asks, and answers trusted after Trust", async () => {
+    const trust = control(review);
+    await show(trust.value);
+
+    let answer: Promise<string> | undefined;
+    act(() => {
+      answer = trust.value.asks?.ask();
+    });
+
+    expect(dialog()?.textContent).toContain("Trust Acme?");
+    expect(document.activeElement).toBe(button("Not now"));
+    await act(async () => button("Trust")?.click());
+    expect(trust.granted).toEqual(["hfp1:abc"]);
+    await expect(answer).resolves.toBe("trusted");
+  });
+
+  it("answers declined on Not now and saves nothing", async () => {
+    const trust = control(review);
+    await show(trust.value);
+
+    let answer: Promise<string> | undefined;
+    act(() => {
+      answer = trust.value.asks?.ask();
+    });
+    act(() => button("Not now")?.click());
+
+    expect(dialog()).toBeNull();
+    expect(trust.granted).toEqual([]);
+    await expect(answer).resolves.toBe("declined");
+  });
+
+  it("answers declined at once when there is nothing to show", async () => {
+    const trust = control(undefined);
+    await show(trust.value);
+
+    await expect(trust.value.asks?.ask()).resolves.toBe("declined");
+    expect(dialog()).toBeNull();
+  });
+
+  it("opens the check in a phone-narrow window", async () => {
+    phoneWindow = true;
+    const trust = control(review);
+    await show(trust.value);
+
+    act(() => void trust.value.asks?.ask());
+
+    expect(dialog()?.textContent).toContain("Trust Acme?");
+  });
+
+  it("gives focus to the page's h1 after Trust from the badge, which then goes", async () => {
+    // The badge's tooltip opens on focus; jsdom has no popovers.
+    HTMLElement.prototype.showPopover = () => {};
+    HTMLElement.prototype.hidePopover = () => {};
+    const trust = control(review);
+    await show(trust.value);
+    act(() => badge()?.focus());
+    act(() => badge()?.click());
+
+    await act(async () => {
+      await button("Trust")?.click();
+      trust.set(undefined);
+    });
+
+    expect(badge()).toBeNull();
+    expect(document.activeElement).toBe(element.querySelector("main h1"));
+    Reflect.deleteProperty(HTMLElement.prototype, "showPopover");
+    Reflect.deleteProperty(HTMLElement.prototype, "hidePopover");
   });
 });

@@ -98,3 +98,22 @@ verifies("runs.run-view.card-run-again", () => {
     expect(button(root, "Open Models")).toBeUndefined();
   });
 });
+
+verifies("runs.run-view.run-again-review", () => {
+  it("offers Review on the run card too, and gives the banner's Run again focus once trusted", async () => {
+    const askTrust = vi.fn(async () => "trusted" as const);
+    const startRun = vi.fn(async () => {
+      throw Object.assign(new Error("This workspace isn't trusted yet, so nothing was started."), {
+        kind: "denied",
+      });
+    });
+    const root = show({ runStart: { startRun, askTrust } });
+    await act(async () => button(root, "Run again")?.click());
+
+    await act(async () => button(root, "Review")?.click());
+
+    expect(askTrust).toHaveBeenCalledOnce();
+    expect(root.querySelector('section[aria-label="Run didn\'t start"]')).toBeNull();
+    expect(document.activeElement).toBe(button(root, "Run again"));
+  });
+});

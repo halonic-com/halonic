@@ -1,7 +1,7 @@
 import { shortRunId } from "@halonicjs/app";
 import { Button, EmptyState, List, StatusChip } from "@halonicjs/studio-kit";
 import { type EngineWords, PageBackLinkSlot } from "@halonicjs/studio-shell";
-import type { ReactNode } from "react";
+import { type ReactNode, useRef } from "react";
 import type { SourcedRun } from "../api.ts";
 import { FailureReason, RefreshFailedLine } from "../load-failure.tsx";
 import { runPageWords } from "../run-words.ts";
@@ -63,8 +63,17 @@ export function RunLayout({
   readonly children: ReactNode;
 }) {
   const header = runHeader(run, context);
+  // Run again, in the header or in the failed banner, takes focus once Review has trusted the workspace.
+  const page = useRef<HTMLDivElement>(null);
+  const focusRunAgain = () =>
+    [...(page.current?.querySelectorAll("button") ?? [])]
+      .find((button) => button.textContent === runPageWords.runAgain)
+      ?.focus();
   return (
-    <div className={`flex w-full min-w-0 flex-col gap-4 ${phone ? "px-4 py-4" : "px-6 py-5"}`}>
+    <div
+      ref={page}
+      className={`flex w-full min-w-0 flex-col gap-4 ${phone ? "px-4 py-4" : "px-6 py-5"}`}
+    >
       <PageBackLinkSlot />
       <header className="flex flex-col gap-1">
         <p className="text-small text-fg-muted">{header.kindLabel}</p>
@@ -84,7 +93,7 @@ export function RunLayout({
           <p className="text-small text-fg-muted">{header.catchUpLine}</p>
         )}
       </header>
-      <RunAgainFailed runAgain={runAgain} engine={engine} />
+      <RunAgainFailed runAgain={runAgain} engine={engine} onTrusted={focusRunAgain} />
       {refreshError === undefined ? null : (
         <RefreshFailedLine
           what={runPageWords.refreshFailed(shortRunId(run.summary.id))}

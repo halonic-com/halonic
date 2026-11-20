@@ -186,9 +186,8 @@ export const pageWords = {
 };
 
 /**
- * The run page's header, banners and states (mc 15.2 revision 94, 9.7 and
- * 19.3; states R13, R18, R21, R22 and R24). A banner's `name` is its hidden
- * title, which makes it a named region (a11y 13.2).
+ * The run page's header, banners and states (mc 15.2 revision 94, 9.7 and 19.3; states R13, R18,
+ * R21, R22 and R24). A banner's `name` is its hidden title, which makes it a named region (a11y 13.2).
  */
 export const runPageWords = {
   title: (shortId: string) => `Run ${shortId}`,
@@ -232,6 +231,7 @@ export const runPageWords = {
   runAgainFailedTitle: "Couldn't start the run",
   runAgainFailed: (reason: string) => `Couldn't start the run: ${reason}`,
   tryAgain: "Try again",
+  review: "Review",
   openRun: (shortId: string) => `Open run ${shortId}`,
   waitingForYouName: "Waiting for you",
   waitingName: "Waiting",

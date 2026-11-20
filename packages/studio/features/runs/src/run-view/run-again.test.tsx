@@ -231,3 +231,71 @@ verifies("runs.run-view.run-again", () => {
     expect(button(await open(failed, undefined), "Run again")).toBeUndefined();
   });
 });
+
+verifies("runs.run-view.run-again-review", () => {
+  const untrusted = () => {
+    throw Object.assign(new Error("This workspace isn't trusted yet, so nothing was started."), {
+      kind: "denied",
+    });
+  };
+
+  it("offers Review under a refusal for an untrusted workspace, which opens the trust check", async () => {
+    const askTrust = vi.fn(async () => "declined" as const);
+    const root = await open(failed, { startRun: vi.fn(async () => untrusted()), askTrust });
+    await act(async () => button(root, "Run again")?.click());
+
+    expect(root.textContent).toContain(
+      "Couldn't start the run: this workspace isn't trusted yet, so nothing was started.",
+    );
+    expect(button(root, "Try again")).toBeUndefined();
+    await act(async () => button(root, "Review")?.click());
+    expect(askTrust).toHaveBeenCalledOnce();
+    // Not now leaves the sentence and its Review.
+    expect(button(root, "Review")).toBeDefined();
+  });
+
+  it("takes the sentence away and gives Run again focus once the person trusts it", async () => {
+    const budget = summaryWith({
+      id: "run_g",
+      status: "failed",
+      reason: "budget",
+      endedAt: mondayMorning.toISOString(),
+    });
+    // The failed banner's Run again, or the header's when the banner has none.
+    for (const [summary, inHeader] of [
+      [failed, false],
+      [budget, true],
+    ] as const) {
+      const root = await open(summary, {
+        startRun: vi.fn(async () => untrusted()),
+        askTrust: async () => "trusted",
+      });
+      await act(async () => button(root, "Run again")?.click());
+      await act(async () => button(root, "Review")?.click());
+
+      expect(root.textContent).not.toContain("Couldn't start the run");
+      expect(document.activeElement?.textContent).toBe("Run again");
+      expect(root.querySelector("header")?.contains(document.activeElement)).toBe(inHeader);
+      unmountAll();
+    }
+  });
+
+  it("keeps Try again, not Review, for another refusal, or where the host can't ask", async () => {
+    const other = await open(failed, {
+      startRun: vi.fn(async () => {
+        throw Object.assign(new Error("The workflow changed."), { kind: "invalid_input" });
+      }),
+      askTrust: vi.fn(),
+    });
+    await act(async () => button(other, "Run again")?.click());
+    expect(button(other, "Review")).toBeUndefined();
+    expect(button(other, "Try again")).toBeDefined();
+
+    unmountAll();
+    const cantAsk = await open(failed, { startRun: vi.fn(async () => untrusted()) });
+    await act(async () => button(cantAsk, "Run again")?.click());
+    expect(cantAsk.textContent).toContain("isn't trusted yet");
+    expect(button(cantAsk, "Review")).toBeUndefined();
+    expect(button(cantAsk, "Try again")).toBeDefined();
+  });
+});

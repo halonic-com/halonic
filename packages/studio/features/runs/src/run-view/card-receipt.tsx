@@ -2,6 +2,7 @@ import { shortRunId } from "@halonicjs/app";
 import { summarize } from "@halonicjs/events";
 import { EmptyState, SkeletonBar } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWordsOf } from "@halonicjs/studio-shell";
+import { useRef } from "react";
 import type { RunStartHost, RunsSource, SourcedRun } from "../api.ts";
 import { FailureReason } from "../load-failure.tsx";
 import { runPageWords } from "../run-words.ts";
@@ -84,6 +85,12 @@ export function RunCardReceipt({
 }: RunCardReceiptProps) {
   const log = read.events;
   const runAgain = useRunAgain(runStart, run, log, openStartedRun ?? openRun, engine, announce);
+  // The banner's Run again, the card's only one, takes focus once Review has trusted the workspace.
+  const banners = useRef<HTMLDivElement>(null);
+  const focusRunAgain = () =>
+    [...(banners.current?.querySelectorAll("button") ?? [])]
+      .find((button) => button.textContent === runPageWords.runAgain)
+      ?.focus();
   const { summary } = run;
   if (log === undefined) {
     const shortId = shortRunId(summary.id);
@@ -132,19 +139,21 @@ export function RunCardReceipt({
   const entries = everyStep(log, summarize(log) ?? summary, context.workflow, context.now);
   return (
     <>
-      <RunAgainFailed runAgain={runAgain} engine={engine} />
-      <PageBanner
-        run={run}
-        context={context}
-        log={log}
-        entries={entries}
-        reviewInInbox={reviewInInbox}
-        openRun={openRun}
-        runAgain={runAgain}
-        openModels={openModels}
-        openBudget={openBudget}
-        onSeeStep={() => onOpenStep?.()}
-      />
+      <div ref={banners} className="contents">
+        <RunAgainFailed runAgain={runAgain} engine={engine} onTrusted={focusRunAgain} />
+        <PageBanner
+          run={run}
+          context={context}
+          log={log}
+          entries={entries}
+          reviewInInbox={reviewInInbox}
+          openRun={openRun}
+          runAgain={runAgain}
+          openModels={openModels}
+          openBudget={openBudget}
+          onSeeStep={() => onOpenStep?.()}
+        />
+      </div>
       <DamagedLogBanner line={read.damagedLine} />
       <Receipt
         summary={summaryLine(run, log, context)}
