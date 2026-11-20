@@ -3,7 +3,7 @@
 - Task: HAL-13840
 - Approval: the task asks for this change (HAL-13840, split from HAL-13834); `.github/` is the guard's own path, so Liam approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Lu88C2MPad6jmHPTyPZoBbeYAdAMbmKwCAvw3ZTXxXgGKashsLTJh+HecihiZxDFQQ+5CaAnfRu2CBo5eDg+CA==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xI4hQs8XNkc0xe9CMGMnFNc9yuaTn2Ix/QcqHM3SSDYdD/rQbuK1WKWsMHpiTuK7J5VqZylSWTKVXFZ8IqiBDg==
 
 ## What changes
 
