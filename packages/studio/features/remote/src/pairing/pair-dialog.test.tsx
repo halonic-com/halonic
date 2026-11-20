@@ -58,6 +58,7 @@ async function openDialog(prepare?: (remote: FakeRemoteControl) => unknown) {
       allowRisky={false}
       openExternal={() => undefined}
       onClose={closed}
+      onCloseFailed={() => undefined}
       now={() => Date.parse("2026-11-16T08:00:00.000Z")}
     />,
   );
@@ -110,6 +111,7 @@ verifies("remote.pair-a-phone", () => {
         allowRisky={false}
         openExternal={() => undefined}
         onClose={() => undefined}
+        onCloseFailed={() => undefined}
         now={() => now}
       />,
     );
@@ -267,5 +269,32 @@ verifies("remote.pair-a-phone-problems", () => {
 
     expect(dialog()?.textContent).toContain("Couldn't pair Pixel 8. Try again.");
     expect(dialog()?.textContent).toContain("Check the code");
+  });
+
+  it("closes even when the host fails to end the pairing, and Settings › Remote says so", async () => {
+    const remote = new FakeRemoteControl();
+    const start = remote.startPairing.bind(remote);
+    vi.spyOn(remote, "startPairing").mockImplementation(async () => {
+      const session = await start();
+      vi.spyOn(session, "close").mockRejectedValue(new Error("the host didn't answer"));
+      return session;
+    });
+    const announced: string[] = [];
+    const view = render(
+      <RemoteSection
+        context={remoteContext(remote, announced)}
+        closeSettings={() => undefined}
+        place="app"
+        surface="window"
+      />,
+    );
+    await settle();
+    await press(buttonIn(view, "Pair a phone"));
+
+    await press(buttonIn(dialog(), "Close Pair a phone"));
+
+    expect(dialog()).toBeNull();
+    expect(view.textContent).toContain("Couldn't turn remote off. Try again.");
+    expect(announced).toEqual(["Couldn't turn remote off. Try again."]);
   });
 });

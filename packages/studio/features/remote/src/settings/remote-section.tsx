@@ -46,12 +46,13 @@ export function RemoteSettingsView({ remote, state, announce, surface }: RemoteS
   const [failed, setFailed] = useState<string>();
   const [pairing, setPairing] = useState(false);
   const openExternal = useOpenExternal();
+  const fail = (failure: string) => {
+    setFailed(failure);
+    announce(failure);
+  };
   const run = (action: Promise<void>, failure: string): Promise<void> => {
     setFailed(undefined);
-    return action.catch(() => {
-      setFailed(failure);
-      announce(failure);
-    });
+    return action.catch(() => fail(failure));
   };
   // A switch ignores a change while its own host call is out, so a quick second click doesn't
   // send a second call. A ref, not state: two clicks can land before React renders again.
@@ -107,6 +108,8 @@ export function RemoteSettingsView({ remote, state, announce, surface }: RemoteS
           allowRisky={state.allowRiskyRemotely}
           openExternal={openExternal}
           onClose={() => setPairing(false)}
+          // Ending the pairing is what turns remote off again, so its failure reads as that.
+          onCloseFailed={() => fail(text.TURN_OFF_FAILED)}
         />
       ) : null}
     </div>
