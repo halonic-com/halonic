@@ -3,8 +3,9 @@
 // provider from the last model call, the agent from the last agent that started, and the harness
 // program and its limit from the last `harness.started`. A setup cause the engine names, such as
 // a provider type Halonic can't call, is read from the summary's cause with the CLI's own facts
-// (`setupFailureOf`). Run again is the banner's button (`run-again.ts`); the local-model and
-// setup banners add Copy command and Open Models before it.
+// (`setupFailureOf`). Run again is the banner's button (`run-again.ts`); a banner adds the fixes
+// that come before it (Copy command, or Open Models where the cause is fixed in Models) and the
+// links after it (Open Models, Copy details).
 
 import { setupFailureOf } from "@halonicjs/app/run-failure";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
@@ -62,10 +63,13 @@ export function causeBanner(
   if (setup !== undefined) {
     return setup;
   }
-  const facts = factsFrom(log ?? []);
+  const facts = factsFrom(log ?? [], context);
   switch (summary.reason) {
     case "sandbox-start-failed":
-      return danger([failureWords.sandboxStartFailed(facts.agent ?? failureWords.theAgent)]);
+      return withDetails(
+        failureWords.sandboxStartFailed(facts.agent ?? failureWords.theAgent),
+        summary,
+      );
     case "disk-full":
       return danger([failureWords.diskFull(workflow, step)]);
     case "interrupted":
@@ -81,7 +85,7 @@ export function causeBanner(
     case "model-no-tools":
       return modelNoTools(facts, step, phone);
     case "harness-start-failed":
-      return harnessStartFailed(facts, step);
+      return harnessStartFailed(facts, step, summary);
     default:
       return undefined;
   }
@@ -126,9 +130,8 @@ function apiOffBanner(summary: RunSummary, phone: boolean): RunBanner | undefine
   if (off.enableUrl === undefined) {
     return danger([sentence]);
   }
-  return danger(
-    [sentence],
-    [
+  return danger([sentence], {
+    fixes: [
       {
         kind: "open-external",
         label: failureWords.switchItOn,
@@ -136,7 +139,7 @@ function apiOffBanner(summary: RunSummary, phone: boolean): RunBanner | undefine
         opens: failureWords.opensGoogleCloud,
       },
     ],
-  );
+  });
 }
 
 /**
@@ -161,14 +164,16 @@ function proxyBanner(
         cause.detail?.["message"],
       ),
     ],
-    [
-      {
-        kind: "open-external",
-        label: failureWords.proxyHowTo,
-        address: failureWords.proxyHowToAddress,
-        opens: failureWords.opensGitHub,
-      },
-    ],
+    {
+      fixes: [
+        {
+          kind: "open-external",
+          label: failureWords.proxyHowTo,
+          address: failureWords.proxyHowToAddress,
+          opens: failureWords.opensGitHub,
+        },
+      ],
+    },
   );
 }
 
@@ -235,7 +240,9 @@ function modelUnreachable(
       failureWords.fixOnComputer(failureWords.modelsPlace),
     ]);
   }
-  return danger([failureWords.localModelUnreachable(name, host, model, alias)], [openModels]);
+  return danger([failureWords.localModelUnreachable(name, host, model, alias)], {
+    links: [openModels],
+  });
 }
 
 /**
@@ -261,7 +268,7 @@ function modelOutOfMemory(
           ]
         : [failureWords.modelOutOfMemoryFix]),
     ],
-    phone ? undefined : [openModels],
+    phone ? {} : { fixes: [openModels] },
   );
 }
 
@@ -291,7 +298,7 @@ function modelMissing(
     ? failureWords.modelMissingOllama(model)
     : failureWords.modelMissingOther(name, model);
   const copy: BannerFix = { kind: "copy-command", command: failureWords.ollamaPullCommand(model) };
-  return danger([line], ollama ? [copy, openModels] : [openModels]);
+  return danger([line], { ...(ollama ? { fixes: [copy] } : {}), links: [openModels] });
 }
 
 /** `model-timeout`: Run again is the button; nothing the person set caused it. */
@@ -318,7 +325,8 @@ function modelTimeout(
 
 /**
  * `model-no-tools`: Run again fails the same way until the alias changes, so Open Models comes
- * first. A phone can't open Models, so it says to do it on the computer.
+ * first, at the alias's tab when the log names it. A phone can't open Models, so it says to do it
+ * on the computer.
  */
 function modelNoTools(facts: FailureFacts, step: string, phone: boolean): RunBanner | undefined {
   const { model, alias } = facts;
@@ -326,20 +334,28 @@ function modelNoTools(facts: FailureFacts, step: string, phone: boolean): RunBan
     return undefined;
   }
   const line = failureWords.modelNoTools(model, alias, step);
+  const open: BannerFix = alias === undefined ? openModels : { kind: "open-models", alias };
   return phone
     ? danger([line, failureWords.fixOnComputer(failureWords.modelsPlace)])
-    : danger([line], [openModels]);
+    : danger([line], { fixes: [open] });
 }
 
 /** F21: needs the log, for the program and the limit it was given. */
-function harnessStartFailed(facts: FailureFacts, step: string): RunBanner | undefined {
+function harnessStartFailed(
+  facts: FailureFacts,
+  step: string,
+  summary: RunSummary,
+): RunBanner | undefined {
   const { harness } = facts;
   if (harness === undefined) {
     return undefined;
   }
   const program = failureWords.harnessNames[harness.id] ?? capitalised(harness.id);
   const seconds = Math.round(harness.timeoutMs / 1000);
-  return danger([failureWords.harnessStartFailed(harness.agent, program, seconds, step)]);
+  return withDetails(
+    failureWords.harnessStartFailed(harness.agent, program, seconds, step),
+    summary,
+  );
 }
 
 const openModels: BannerFix = { kind: "open-models" };
@@ -348,21 +364,32 @@ const openModels: BannerFix = { kind: "open-models" };
 function fixInModels(lines: readonly string[], phone: boolean): RunBanner {
   return phone
     ? danger([...lines, failureWords.fixOnComputer(failureWords.modelsPlace)])
-    : danger(lines, [openModels]);
+    : danger(lines, { fixes: [openModels] });
 }
 
-function danger(lines: readonly string[], fixes?: readonly BannerFix[]): RunBanner {
-  return {
-    kind: "callout",
-    tone: "danger",
-    name: runPageWords.failedName,
-    lines,
-    ...(fixes === undefined ? {} : { fixes }),
-  };
+function danger(
+  lines: readonly string[],
+  buttons: Pick<Extract<RunBanner, { kind: "callout" }>, "fixes" | "links" | "details"> = {},
+): RunBanner {
+  return { kind: "callout", tone: "danger", name: runPageWords.failedName, lines, ...buttons };
 }
 
-/** The last model call's provider and model, `run.failed`'s host, and the agent that started last. */
-function factsFrom(log: readonly RunEvent[]): FailureFacts {
+/**
+ * F6 and F21: **Run again** · link **Copy details**. Nothing in Studio fixes the cause, and Copy
+ * details carries the engine's or the program's own message, which never shows on screen.
+ */
+function withDetails(line: string, summary: RunSummary): RunBanner {
+  const message = summary.error?.trim() ?? "";
+  return danger([line], {
+    details: [line, `Run ${summary.id}`, message].filter((part) => part !== "").join("\n"),
+  });
+}
+
+/**
+ * The last model call's provider and model, `run.failed`'s host, and the agent that started last.
+ * An agent is named as its file names it; an agent the workspace no longer has keeps its id.
+ */
+function factsFrom(log: readonly RunEvent[], context: RunPageContext): FailureFacts {
   const request = log.findLast((event) => event.type === "llm.request");
   const started = log.findLast(
     (event): event is Extract<RunEvent, { type: "agent.started" }> =>
@@ -376,10 +403,19 @@ function factsFrom(log: readonly RunEvent[]): FailureFacts {
     alias: request?.alias,
     host: failed?.host === "" ? undefined : failed?.host,
     noHost: failed?.host === "",
-    agent: started?.agent,
+    agent: started === undefined ? undefined : agentNameOf(started.agent, context),
     harness:
       harness === undefined
         ? undefined
-        : { id: harness.harness, agent: harness.agent, timeoutMs: harness.timeoutMs },
+        : {
+            id: harness.harness,
+            agent: agentNameOf(harness.agent, context),
+            timeoutMs: harness.timeoutMs,
+          },
   };
+}
+
+/** An agent's name as its file says, or its id when the workspace has no such agent. */
+export function agentNameOf(agentId: string, context: Pick<RunPageContext, "agentName">): string {
+  return context.agentName?.(agentId) ?? agentId;
 }

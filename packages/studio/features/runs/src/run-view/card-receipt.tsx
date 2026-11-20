@@ -49,8 +49,8 @@ export interface RunCardReceiptProps {
   readonly runStart?: RunStartHost | undefined;
   /** Opens the run **Run again** started; `openRun` when absent. */
   readonly openStartedRun?: ((runId: string) => void) | undefined;
-  /** Opens the workspace page at Models, for **Open Models** on a failed banner; without it the button isn't there. */
-  readonly openModels?: (() => void) | undefined;
+  /** Opens Models, at an alias's tab when given one, for **Open Models** on a failed banner; without it the button isn't there. */
+  readonly openModels?: ((alias?: string) => void) | undefined;
   /** Opens the workspace page at its Budget block, for **Change budget** on a budget banner; without it the button isn't there. */
   readonly openBudget?: (() => void) | undefined;
   /** Says a line to a screen reader, for why **Run again** didn't start; absent in tests that don't listen. */

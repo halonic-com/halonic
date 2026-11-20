@@ -70,7 +70,7 @@ verifies("runs.run-view.failure-banners", () => {
       ]);
     });
 
-    it("names the model alias when the log gives it, and offers Open Models for a local model", () => {
+    it("names the model alias when the log gives it, and offers Open Models after Run again for a local model", () => {
       const log = [
         event(
           {
@@ -89,7 +89,8 @@ verifies("runs.run-view.failure-banners", () => {
       expect(lines(banner)).toEqual([
         "Halonic couldn't reach Ollama at localhost:11434 for the model alias fast. Ollama may not be running on this computer. Start Ollama, then run again.",
       ]);
-      expect(banner?.kind === "callout" ? banner.fixes : undefined).toEqual([
+      expect(banner?.kind === "callout" ? banner.fixes : undefined).toBeUndefined();
+      expect(banner?.kind === "callout" ? banner.links : undefined).toEqual([
         { kind: "open-models" },
       ]);
     });
@@ -189,13 +190,15 @@ verifies("runs.run-view.failure-banners", () => {
   describe("a local model that is missing, slow or can't use tools", () => {
     const fixes = (banner: ReturnType<typeof causeBanner>) =>
       banner?.kind === "callout" ? banner.fixes : undefined;
+    const links = (banner: ReturnType<typeof causeBanner>) =>
+      banner?.kind === "callout" ? banner.links : undefined;
     const alias = (provider: string, model: string, name: string) =>
       event(
         { type: "llm.request", agent: "reporter", provider, model, alias: name, messages: 1 },
         2,
       );
 
-    it("tells Ollama's missing model, with the pull command to copy and Open Models", () => {
+    it("tells Ollama's missing model, with the pull command to copy before Run again and Open Models after it", () => {
       const banner = causeBanner(
         failed("model-missing"),
         [call("ollama", "llama3.2"), failedEvent()],
@@ -205,10 +208,8 @@ verifies("runs.run-view.failure-banners", () => {
       expect(lines(banner)).toEqual([
         "Ollama is answering, but it doesn't have llama3.2 yet. Run ollama pull llama3.2 in a terminal, or pick another model in Models.",
       ]);
-      expect(fixes(banner)).toEqual([
-        { kind: "copy-command", command: "ollama pull llama3.2" },
-        { kind: "open-models" },
-      ]);
+      expect(fixes(banner)).toEqual([{ kind: "copy-command", command: "ollama pull llama3.2" }]);
+      expect(links(banner)).toEqual([{ kind: "open-models" }]);
     });
 
     it("sends another local provider to download the model there, with no command", () => {
@@ -222,7 +223,8 @@ verifies("runs.run-view.failure-banners", () => {
       expect(lines(banner)).toEqual([
         "LM Studio is answering, but it doesn't have qwen yet. Download it in LM Studio, or pick another model in Models.",
       ]);
-      expect(fixes(banner)).toEqual([{ kind: "open-models" }]);
+      expect(fixes(banner)).toBeUndefined();
+      expect(links(banner)).toEqual([{ kind: "open-models" }]);
     });
 
     it("keeps the general banner for a cloud provider's missing model, and waits for the log", () => {
@@ -248,6 +250,7 @@ verifies("runs.run-view.failure-banners", () => {
         "Fix this on your computer: Models",
       ]);
       expect(fixes(banner)).toBeUndefined();
+      expect(links(banner)).toBeUndefined();
     });
 
     it("tells a local timeout by its address and a cloud one by the step", () => {
@@ -269,7 +272,7 @@ verifies("runs.run-view.failure-banners", () => {
       ]);
     });
 
-    it("names the alias for a model that can't use tools, and offers Open Models", () => {
+    it("names the alias for a model that can't use tools, and offers Open Models at its tab before Run again", () => {
       const banner = causeBanner(
         failed("model-no-tools"),
         [alias("ollama", "llama3.2", "fast"), failedEvent()],
@@ -279,14 +282,16 @@ verifies("runs.run-view.failure-banners", () => {
       expect(lines(banner)).toEqual([
         "llama3.2, used by the model alias fast, can't use tools, and the step Draft offers tools. Point the model alias fast at a model that can use tools.",
       ]);
-      expect(fixes(banner)).toEqual([{ kind: "open-models" }]);
+      expect(fixes(banner)).toEqual([{ kind: "open-models", alias: "fast" }]);
     });
 
     it("reads a log without the alias, and points a phone to the computer", () => {
       const log = [call("ollama", "llama3.2"), failedEvent()];
-      expect(lines(causeBanner(failed("model-no-tools"), log, context, false))).toEqual([
+      const banner = causeBanner(failed("model-no-tools"), log, context, false);
+      expect(lines(banner)).toEqual([
         "llama3.2 can't use tools, and the step Draft offers tools. Pick a model that can in Models, then run again.",
       ]);
+      expect(fixes(banner)).toEqual([{ kind: "open-models" }]);
       const phone = causeBanner(failed("model-no-tools"), log, context, true);
       expect(lines(phone)?.at(-1)).toBe("Fix this on your computer: Models");
       expect(fixes(phone)).toBeUndefined();
@@ -331,6 +336,19 @@ verifies("runs.run-view.failure-banners", () => {
     expect(lines(causeBanner(failed("sandbox-start-failed"), undefined, context, false))).toEqual([
       "The agent didn't start: the sandbox on this computer didn't start. Nothing ran.",
     ]);
+  });
+
+  it("names the agent as its file does, and puts the engine's text in Copy details (F6)", () => {
+    const log = [event({ type: "agent.started", state: "draft", agent: "rep-1", prompt: "" }, 1)];
+    const named = {
+      ...context,
+      agentName: (id: string) => (id === "rep-1" ? "Reporter" : undefined),
+    };
+    const banner = causeBanner(failed("sandbox-start-failed"), log, named, false);
+    const line = "Reporter didn't start: the sandbox on this computer didn't start. Nothing ran.";
+    expect(lines(banner)).toEqual([line]);
+    const details = banner?.kind === "callout" ? banner.details : undefined;
+    expect(details?.split("\n")).toEqual([line, expect.stringMatching(/^Run /), "engine text"]);
   });
 
   it("says the disk is full, in the step it stopped in", () => {

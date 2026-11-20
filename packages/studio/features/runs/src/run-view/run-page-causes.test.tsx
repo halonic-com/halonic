@@ -44,13 +44,15 @@ async function openOn(
     copied?: string[];
     refuseCopy?: boolean;
     toasts?: ToastStore;
-    openModels?: () => void;
+    openModels?: (alias?: string) => void;
+    alias?: string;
+    runAgain?: boolean;
     openBudget?: () => void;
   } = {},
 ) {
   const log = logOf(run.id, [
     [0, entered("draft")],
-    [0, modelCall],
+    [0, hooks.alias === undefined ? modelCall : { ...modelCall, alias: hooks.alias }],
   ]);
   const list = new RunsList(fakeSource([run], { [run.id]: log }).source);
   const root = render(
@@ -68,6 +70,10 @@ async function openOn(
             now={() => mondayMorning}
             {...(hooks.openModels === undefined ? {} : { openModels: hooks.openModels })}
             {...(hooks.openBudget === undefined ? {} : { openBudget: hooks.openBudget })}
+            {...(hooks.runAgain === true && {
+              runStart: { startRun: async () => ({ runId: "run_new" }) },
+              openRun: () => {},
+            })}
           />
         </PresentationProvider>
       </ToastStoreProvider>
@@ -132,6 +138,14 @@ verifies("runs.run-view.failure-banners", () => {
     const root = await openOn("desktop", missing, { toasts, refuseCopy: true });
     await act(async () => button(root, "Copy command")?.click());
     expect(toasts.list()).toMatchObject([{ tone: "warning", title: COMMAND_NOT_COPIED }]);
+  });
+
+  it("puts Run again first and Open Models after it, as 15.3 says (R3)", async () => {
+    const root = await openOn("desktop", missing, { openModels: () => {}, runAgain: true });
+    const names = [...root.querySelectorAll('section[aria-label="Run failed"] button')].map(
+      (candidate) => candidate.textContent,
+    );
+    expect(names).toEqual(["Copy command", "Run again", "Open Models"]);
   });
 
   it("leaves out Open Models where the page can't open it", async () => {
@@ -234,5 +248,35 @@ verifies("runs.run-view.slow-step-line", () => {
     const withCheck = await openWaiting(12_000, () => opened++);
     await act(async () => button(withCheck.root, "Something wrong?")?.click());
     expect(opened).toBe(1);
+  });
+});
+
+verifies("runs.run-view.failure-banners", () => {
+  const noTools = summaryWith({
+    id: "run_e_2k7w4r",
+    status: "failed",
+    reason: "model-no-tools",
+    state: "draft",
+    endedAt: mondayMorning.toISOString(),
+  });
+  const names = (root: HTMLElement) =>
+    [...root.querySelectorAll('section[aria-label="Run failed"] button')].map(
+      (candidate) => candidate.textContent,
+    );
+
+  it("opens the alias's tab, before Run again, for a model that can't use tools (R4)", async () => {
+    const opened: (string | undefined)[] = [];
+    const root = await openOn("desktop", noTools, {
+      alias: "fast",
+      openModels: (alias) => opened.push(alias),
+      runAgain: true,
+    });
+    expect(names(root)).toEqual(["Open Models", "Run again"]);
+    await act(async () =>
+      [...root.querySelectorAll("button")]
+        .find((candidate) => candidate.textContent === "Open Models")
+        ?.click(),
+    );
+    expect(opened).toEqual(["fast"]);
   });
 });

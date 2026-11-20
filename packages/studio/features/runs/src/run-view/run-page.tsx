@@ -19,6 +19,7 @@ import { detailRows } from "./details-model.ts";
 import { EveryStep, useRunLog } from "./every-step.tsx";
 import { entryIdOfStep, everyStep, type StepEntry } from "./every-step-model.ts";
 import { useHasVersions } from "./has-versions.ts";
+import { openModelsOf } from "./open-models.ts";
 import { bannerOffersRunAgain, PageBanner } from "./page-banner.tsx";
 import { AgentSays, Receipt } from "./receipt.tsx";
 import {
@@ -39,9 +40,6 @@ import { slowStepDueAt } from "./slow-step.ts";
 import { StepPanel } from "./step-panel.tsx";
 import { useRunChanges } from "./use-run-changes.ts";
 
-/** The command that opens the workspace page at Models (`features/workspace`). */
-const openModelsCommand = "workspace.open-models";
-
 /** The command that opens the workspace page at its Budget block (`features/workspace`). */
 const openBudgetCommand = "workspace.open-budget";
 
@@ -53,6 +51,7 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
   const runStart = context.services.find(RunStartHostService);
   const list = context.services.get(RunsListService);
   const versionHistory = context.services.find(VersionHistoryHostService);
+  const openModels = openModelsOf(context);
   return (
     <RunView
       list={list}
@@ -64,12 +63,10 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
       {...(sandboxStartCheck === undefined ? {} : { sandboxStartCheck })}
       announce={(line) => context.announcer.announce(line)}
       announceState={(key, text) => context.announcer.announceState(key, text)}
+      {...(openModels === undefined ? {} : { openModels })}
       {...(context.runCommand === undefined
         ? {}
-        : {
-            openModels: () => void context.runCommand?.(openModelsCommand),
-            openBudget: () => void context.runCommand?.(openBudgetCommand),
-          })}
+        : { openBudget: () => void context.runCommand?.(openBudgetCommand) })}
       {...(runStart === undefined ? {} : { runStart })}
       {...(versionHistory === undefined ? {} : { versionHistory })}
       {...(openPlace === undefined
@@ -116,8 +113,8 @@ export interface RunViewProps {
   readonly runStart?: RunStartHost;
   /** Whether the workspace keeps versions; without it, the Details' Ran on shows as before. */
   readonly versionHistory?: VersionHistoryHost;
-  /** Opens the workspace page at Models, for **Open Models** on a failed banner; without it the button isn't there. */
-  readonly openModels?: () => void;
+  /** Opens Models, at an alias's tab when given one, for **Open Models** on a failed banner; without it the button isn't there. */
+  readonly openModels?: (alias?: string) => void;
   /** Opens the workspace page at its Budget block, for **Change budget** on a budget banner; without it the button isn't there. */
   readonly openBudget?: () => void;
   /** Opens the Runs list, for a run that isn't there any more. */

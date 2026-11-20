@@ -43,8 +43,8 @@ export interface RunCardProps {
         readonly announce?: ((line: string) => void) | undefined;
       }
     | undefined;
-  /** Opens the workspace page at Models, for the banner's **Open Models**; absent where it can't. */
-  readonly openModels?: (() => void) | undefined;
+  /** Opens Models, at an alias's tab when given one, for the banner's **Open Models**; absent where it can't. */
+  readonly openModels?: ((alias?: string) => void) | undefined;
   /** Opens the workspace page at its Budget block, for the banner's **Change budget**; absent where it can't. */
   readonly openBudget?: (() => void) | undefined;
 }
