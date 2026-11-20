@@ -17,6 +17,18 @@ function modelOrAlias(model: string, alias: string | undefined): string {
 }
 
 /**
+ * A sentence as it reads after a colon: a lower-case first letter, unless it starts with the name
+ * Halonic, and a full stop at the end.
+ */
+function afterColon(sentence: string): string {
+  const trimmed = sentence.trim();
+  const opened = trimmed.startsWith("Halonic")
+    ? trimmed
+    : `${trimmed.charAt(0).toLowerCase()}${trimmed.slice(1)}`;
+  return /[.!?]$/.test(opened) ? opened : `${opened}.`;
+}
+
+/**
  * The failed banners by cause (microcopy 22 F6, F7, F8, F10, F15, F20, F21). The reason the engine
  * gives never shows: it goes into Copy details, which the banner doesn't have yet.
  */
@@ -33,6 +45,21 @@ export const failureWords = {
     alias: string | undefined,
   ) =>
     `Halonic couldn't reach ${provider}${host === undefined ? "" : ` at ${host}`} for ${modelOrAlias(model, alias)}. This computer may be offline. Check your internet connection, then run again.`,
+  /**
+   * F7 when the call failed at the proxy (`proxy.*`, HAL-13725): the shell's own sentence says
+   * what to change, after a colon; without one the sentence ends at the proxy.
+   */
+  modelUnreachableThroughProxy: (
+    provider: string,
+    host: string | undefined,
+    reason: string | undefined,
+  ) =>
+    `Halonic couldn't reach ${provider}${host === undefined ? "" : ` at ${host}`} through your proxy${reason === undefined ? "." : `: ${afterColon(reason)}`}`,
+  proxyHowTo: "Model calls through a proxy",
+  /** The how-to #3799 updated, until docs.halonic.dev has it. */
+  proxyHowToAddress:
+    "https://github.com/halonic-com/halonic/blob/main/docs/how-to/model-calls-through-a-proxy.md",
+  opensGitHub: "Opens GitHub",
   localModelUnreachable: (
     provider: string,
     host: string | undefined,

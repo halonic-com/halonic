@@ -62,7 +62,7 @@ export function causeBanner(
           : failureWords.engineStopped(workflow, step),
       ]);
     case "model-unreachable":
-      return modelUnreachable(facts, context, phone);
+      return proxyBanner(summary, facts, context) ?? modelUnreachable(facts, context, phone);
     case "model-out-of-memory":
       return modelOutOfMemory(facts, context, phone);
     case "model-missing":
@@ -105,6 +105,39 @@ function apiOffBanner(summary: RunSummary, phone: boolean): RunBanner | undefine
         label: failureWords.switchItOn,
         address: off.enableUrl,
         opens: failureWords.opensGoogleCloud,
+      },
+    ],
+  );
+}
+
+/**
+ * F7 for a call that failed at the proxy (a `proxy.*` cause, from the CLI's HTTP client or the
+ * desktop shell's): the proxy, not the internet, with the shell's sentence when the cause gives
+ * one, and **Model calls through a proxy ↗**. It reads the typed cause only, never the error.
+ */
+function proxyBanner(
+  summary: RunSummary,
+  facts: FailureFacts,
+  context: RunPageContext,
+): RunBanner | undefined {
+  const { cause } = summary;
+  if (facts.provider === undefined || cause?.code?.startsWith("proxy.") !== true) {
+    return undefined;
+  }
+  return danger(
+    [
+      failureWords.modelUnreachableThroughProxy(
+        providerNameOf(facts.provider, context.providerName),
+        facts.host,
+        cause.detail?.["message"],
+      ),
+    ],
+    [
+      {
+        kind: "open-external",
+        label: failureWords.proxyHowTo,
+        address: failureWords.proxyHowToAddress,
+        opens: failureWords.opensGitHub,
       },
     ],
   );
