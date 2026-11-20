@@ -21,17 +21,18 @@ const proxyCallout = (
 // jsdom lays nothing out, so these check the classes that let the label fit a 195px line; the
 // PR for HAL-13770 has the real browser at 195px and 1280px.
 verifies("kit.callout-phone-wrap", () => {
-  it("wraps the action's label between words, centred, with ↗ after its last word", () => {
+  it("wraps the action's label between words from the left, with ↗ after its last word", () => {
     const { container } = render(proxyCallout);
     const button = container.querySelector("button") as HTMLButtonElement;
     const label = button.firstElementChild as HTMLElement;
-    // With the button's own 2px, 8px above and below, so a wrapped first line doesn't sit on the border.
-    expect(label.className.split(" ")).toEqual(["phone:py-1.5"]);
+    expect(label.className.split(" ")).toEqual([
+      "phone:text-start",
+      // With the button's own 2px, 8px above and below, so a wrapped first line doesn't sit on the border.
+      "phone:py-1.5",
+    ]);
     expect(label.textContent).toBe("Model calls through a proxy ↗. Opens GitHub");
-    // The kit's button wraps its label, centred, and is never wider than its box (kit.button).
-    expect(button.className.split(" ")).toEqual(
-      expect.arrayContaining(["max-w-full", "text-center"]),
-    );
+    // The kit's button wraps its label and is never wider than its box (kit.button).
+    expect(button.className.split(" ")).toContain("max-w-full");
     expect(button.className).not.toContain("whitespace-nowrap");
     // The button's height is a minimum, so a second line makes it taller.
     expect(button.className).toContain("min-h-control-sm");
@@ -59,8 +60,8 @@ verifies("kit.callout-phone-wrap", () => {
     const row = action?.parentElement?.parentElement as HTMLElement;
     const label = action?.firstElementChild as HTMLElement;
     // Every class the Callout adds is for the phone only.
-    expect(label.className).toMatch(/^phone:\S+$/);
-    expect(row.className).not.toMatch(/(^| )max-w-full/);
+    expect(label.className.split(" ").every((name) => name.startsWith("phone:"))).toBe(true);
+    expect(row.className.split(" ")).not.toContain("max-w-full");
     expect(other?.innerHTML).not.toContain("phone:py-1.5");
   });
 });

@@ -117,6 +117,12 @@ const actionRow = "mt-2 -ml-2.5 phone:-ml-4 touch:-ml-4";
 const actionRowPhoneWrap = "phone:*:max-w-full";
 
 /**
+ * Side by side, two ghost buttons touch. That's fine while only their fills show, but in high
+ * contrast each has an outline, and the two would merge into one box (C399 CA1).
+ */
+const actionRowForcedColours = "forced-colors:gap-1";
+
+/**
  * A message that belongs to one place on a page and stays there until what it's about is dealt
  * with. It has no close button and never cuts its text. As wide as its column.
  *
@@ -237,7 +243,7 @@ function CalloutActions({
     return null;
   }
   return (
-    <div className={`${actionRow} ${actionRowPhoneWrap} flex flex-wrap`}>
+    <div className={`${actionRow} ${actionRowPhoneWrap} ${actionRowForcedColours} flex flex-wrap`}>
       {actions.map((one) => (
         <CalloutButton key={one.label} action={one} describedBy={describedBy} />
       ))}
