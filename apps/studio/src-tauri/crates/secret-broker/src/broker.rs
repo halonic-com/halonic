@@ -1,13 +1,14 @@
 use std::fmt;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
 use halonic_secrets::{SecretBackend, SecretError, SecretName, allowed_origins, get_token};
 use serde::Serialize;
 
+use crate::call::{KeychainCall, check_trust};
 use crate::rule::engine_secret_name;
 use crate::trust::WorkspaceTrust;
 
@@ -55,7 +56,7 @@ impl BrokerRequest {
     }
 
     /// The keychain call, after the name passed [`Self::check_name`].
-    fn read(&self, backend: &dyn SecretBackend) -> Result<BrokerAnswer, SecretError> {
+    pub(crate) fn read(&self, backend: &dyn SecretBackend) -> Result<BrokerAnswer, SecretError> {
         match self {
             BrokerRequest::Secret { name } => {
                 let value = backend.get(&engine_secret_name(name)?)?;
@@ -198,45 +199,41 @@ impl SecretBroker {
     fn try_answer(&self, request: &BrokerRequest) -> Result<BrokerAnswer, BrokerRefusal> {
         let slot = Slot::take(&self.outstanding)?;
         request.check_name()?;
-        self.check_trust()?;
+        check_trust(self.trust.as_ref())?;
         let (sender, receiver) = mpsc::sync_channel(1);
-        let backend = Arc::clone(&self.backend);
-        let keychain = Arc::clone(&self.keychain);
-        let request = request.clone();
+        let given_up = Arc::new(AtomicBool::new(false));
+        let call = KeychainCall {
+            backend: Arc::clone(&self.backend),
+            trust: Arc::clone(&self.trust),
+            keychain: Arc::clone(&self.keychain),
+            given_up: Arc::clone(&given_up),
+            request: request.clone(),
+        };
         thread::Builder::new()
             .name("secret-broker".to_owned())
             .spawn(move || {
                 // The slot stays taken until the keychain call returns, even
                 // after the wait below has given up.
                 let _slot = slot;
-                let _alone = keychain.lock().unwrap_or_else(PoisonError::into_inner);
-                let answer = request.read(backend.as_ref());
-                // A closed channel means the wait timed out and the engine
-                // was already answered `unavailable`; the value is dropped.
+                let Some(answer) = call.run() else {
+                    return;
+                };
+                // A closed channel means the wait timed out during the call
+                // and the engine was already answered `unavailable`; the
+                // value is dropped.
                 if sender.send(answer).is_err() {
                     halonic_shell_log::record(
                         "secret-broker",
-                        format_args!("{} answered after the time limit", request.kind()),
+                        format_args!("{} answered after the time limit", call.request.kind()),
                     );
                 }
             })
             .map_err(|_| BrokerRefusal::Unavailable)?;
         match receiver.recv_timeout(self.timeout) {
-            Ok(answer) => answer.map_err(BrokerRefusal::from),
-            Err(_) => Err(BrokerRefusal::Unavailable),
-        }
-    }
-
-    fn check_trust(&self) -> Result<(), BrokerRefusal> {
-        match self.trust.is_trusted() {
-            Ok(true) => Ok(()),
-            Ok(false) => Err(BrokerRefusal::Untrusted),
-            Err(error) => {
-                halonic_shell_log::record(
-                    "secret-broker",
-                    format_args!("couldn't read the workspace's trust record: {error}"),
-                );
-                Err(BrokerRefusal::Untrusted)
+            Ok(answer) => answer,
+            Err(_) => {
+                given_up.store(true, Ordering::SeqCst);
+                Err(BrokerRefusal::Unavailable)
             }
         }
     }

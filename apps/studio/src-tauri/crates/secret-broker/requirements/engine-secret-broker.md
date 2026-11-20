@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-14218; decision D4 of the B1 design note (HAL-14206) with the security review's changes (HAL-14212)
 
-When the background engine asks the shell for a workspace secret, a token or a key's allowed origins, the shell shall check the name before any keychain call, refuse with `reserved_name` a workspace secret or origins name that belongs to Halonic (`token_key`, `serve_password`, any name under `halonic_token_`, by the same rule as `secret-commands`) or to a plugin (any name under `plugin__`, in canonical form), read a token only under `halonic_token_` as `token-commands` does, and answer only reads. While the engine's workspace has no trust record on this computer, or the record can't be read, the shell shall refuse every request with `untrusted`. The shell shall make one keychain call at a time, and if a call doesn't return within 30 seconds, then it shall answer `unavailable`; while 16 requests of the engine are open, counting calls still in the keychain, it shall refuse the next with `busy`. The shell shall record a refusal in its log by the request's kind and the reason, never with the name or a value, and its answer's debug form shall never hold a value.
+When the background engine asks the shell for a workspace secret, a token or a key's allowed origins, the shell shall check the name before any keychain call, refuse with `reserved_name` a workspace secret or origins name that belongs to Halonic (`token_key`, `serve_password`, any name under `halonic_token_`, by the same rule as `secret-commands`) or to a plugin (any name under `plugin__`, in canonical form), read a token only under `halonic_token_` as `token-commands` does, and answer only reads. While the engine's workspace has no trust record on this computer, or the record can't be read, the shell shall refuse every request with `untrusted`, checking again right before each keychain call. The shell shall make one keychain call at a time, and if a call doesn't return within 30 seconds, then it shall answer `unavailable`, and a request answered `unavailable` while it waited behind another call shall not reach the keychain; while 16 requests of the engine are open, counting calls still in the keychain, it shall refuse the next with `busy`. The shell shall record a refusal in its log by the request's kind and the reason, never with the name or a value, and its answer's debug form shall never hold a value.
 
 ## Examples
 
@@ -23,3 +23,9 @@ When the background engine asks the shell for a workspace secret, a token or a k
 - Given a keychain that waits on an unlock prompt,
   when the engine asks for a secret,
   then the shell answers `unavailable` after the time limit, and a second request doesn't reach the keychain until the first call returns.
+- Given a keychain that waits on an unlock prompt and a second request that timed out behind it,
+  when the prompt closes,
+  then the second request doesn't reach the keychain.
+- Given a request waiting behind a slow keychain call,
+  when the workspace's trust is revoked before its turn,
+  then the shell refuses it with `untrusted` and the keychain isn't read for it.

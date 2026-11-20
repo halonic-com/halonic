@@ -56,6 +56,38 @@ impl WorkspaceTrust for SwitchedTrust {
     }
 }
 
+/// A trust answer the test switches, which reports each check on a channel
+/// so the test knows a request is past the broker's first check.
+pub struct WatchedTrust {
+    trusted: AtomicBool,
+    checked: Mutex<Sender<()>>,
+}
+
+impl WatchedTrust {
+    pub fn trusted() -> (Arc<Self>, Receiver<()>) {
+        let (checked, checks) = channel();
+        let trust = Self {
+            trusted: AtomicBool::new(true),
+            checked: Mutex::new(checked),
+        };
+        (Arc::new(trust), checks)
+    }
+
+    pub fn revoke(&self) {
+        self.trusted.store(false, Ordering::SeqCst);
+    }
+}
+
+impl WorkspaceTrust for WatchedTrust {
+    fn is_trusted(&self) -> Result<bool, String> {
+        let trusted = self.trusted.load(Ordering::SeqCst);
+        let checked = self.checked.lock().unwrap_or_else(PoisonError::into_inner);
+        // Checks after the test ended find nobody listening.
+        let _test_may_have_ended = checked.send(());
+        Ok(trusted)
+    }
+}
+
 /// A memory backend that counts its reads.
 #[derive(Default)]
 pub struct CountingBackend {

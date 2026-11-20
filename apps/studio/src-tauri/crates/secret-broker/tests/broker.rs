@@ -4,7 +4,8 @@
 mod support;
 
 use std::sync::Arc;
-use std::sync::mpsc::RecvTimeoutError;
+use std::sync::mpsc::{RecvTimeoutError, TryRecvError};
+use std::thread;
 use std::time::Duration;
 
 use halonic_secret_broker::{
@@ -13,7 +14,7 @@ use halonic_secret_broker::{
 use halonic_secrets::{MemoryBackend, allow_origin, set_secret, set_token};
 use halonic_trust_store::FileTrustStore;
 use serde_json::json;
-use support::{CountingBackend, GatedBackend, Scratch, SwitchedTrust};
+use support::{CountingBackend, GatedBackend, Scratch, SwitchedTrust, WatchedTrust};
 
 const CANARY: &str = "acme-canary-7f3a";
 const SHORT: Duration = Duration::from_millis(50);
@@ -181,6 +182,66 @@ fn engine_secret_broker_answers_unavailable_when_the_keychain_waits_too_long() {
     );
 
     drop(gate);
+}
+
+#[test]
+fn engine_secret_broker_drops_a_request_that_timed_out_before_its_keychain_turn() {
+    let (backend, entered, gate) = GatedBackend::closed();
+    let broker = SecretBroker::with_timeout(backend, SwitchedTrust::trusted(), SHORT);
+    for _ in 0..2 {
+        assert_eq!(
+            broker.answer(&secret("acme_key")),
+            refused(BrokerRefusal::Unavailable)
+        );
+    }
+    entered
+        .recv_timeout(LONG)
+        .expect("one call reached the keychain");
+
+    // The prompt closes; the other request, already answered, gets its turn.
+    gate.send(()).expect("the read is waiting");
+    assert_eq!(
+        entered.recv_timeout(SHORT),
+        Err(RecvTimeoutError::Timeout),
+        "the request that queued behind it didn't read the keychain"
+    );
+    drop(gate);
+}
+
+#[test]
+fn engine_secret_broker_checks_trust_again_when_its_keychain_turn_comes() {
+    let (backend, entered, gate) = GatedBackend::closed();
+    let (trust, checks) = WatchedTrust::trusted();
+    let broker = Arc::new(SecretBroker::with_timeout(backend, trust.clone(), LONG));
+
+    // The first call holds the keychain, like an unlock prompt.
+    let first = spawn_answer(&broker);
+    entered
+        .recv_timeout(LONG)
+        .expect("the first call reached the keychain");
+    let second = spawn_answer(&broker);
+    // Three checks so far: the first request's two and the second's first.
+    for _ in 0..3 {
+        checks.recv_timeout(LONG).expect("a trust check");
+    }
+
+    trust.revoke();
+    gate.send(()).expect("the first read is waiting");
+    assert_eq!(first.join().expect("answers"), value("gated-value"));
+    assert_eq!(
+        second.join().expect("answers"),
+        refused(BrokerRefusal::Untrusted)
+    );
+    assert_eq!(
+        entered.try_recv(),
+        Err(TryRecvError::Empty),
+        "only the first call read the keychain"
+    );
+}
+
+fn spawn_answer(broker: &Arc<SecretBroker>) -> thread::JoinHandle<BrokerAnswer> {
+    let broker = Arc::clone(broker);
+    thread::spawn(move || broker.answer(&secret("acme_key")))
 }
 
 #[test]
