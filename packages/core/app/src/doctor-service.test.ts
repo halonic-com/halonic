@@ -1,163 +1,17 @@
-import type { Agent } from "@halonicjs/format";
-import type { HarnessDetection, SandboxCheck, Secrets } from "@halonicjs/ports";
 import { err, ok } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import type { NodeProblem } from "./doctor-lines.ts";
-import { type DoctorProvider, DoctorService, type DoctorWorkspace } from "./doctor-service.ts";
-import type { DoctorHarness } from "./doctor-sign-ins.ts";
-import { doctorCheckLimitMs, type TimedOutLine } from "./doctor-time-limit.ts";
-import type { ProviderModels, Resources } from "./resource-report.ts";
+import type { DoctorProvider } from "./doctor-service.ts";
 import type { SandboxBackendStatus, SandboxChoice } from "./sandbox-choice.ts";
-import { HandTimers } from "./testing/hand-timers.ts";
-import type { TrustCheck } from "./trust-service.ts";
-
-const ready: SandboxCheck = { ok: true, reason: null, missing: [] };
-const llama = { name: "llama3.2", memoryBytes: 2_000_000_000 };
-
-const ollama: DoctorProvider = {
-  provider: "ollama",
-  name: "Ollama",
-  runs: "on-this-computer",
-  address: "localhost:11434",
-};
-const anthropic: DoctorProvider = {
-  provider: "anthropic",
-  name: "Anthropic",
-  runs: "with-a-key",
-  secret: "ANTHROPIC_API_KEY",
-};
-
-/** An agent of the workspace, in Halonic's own loop unless a harness is given. */
-function agent(name: string, harness?: Agent["harness"]): Agent {
-  return {
-    version: 1,
-    id: name.toLowerCase(),
-    name,
-    params: {},
-    instructions: "",
-    skills: [],
-    knowledge: [],
-    connectors: [],
-    runLogs: false,
-    collections: [],
-    subagents: [],
-    methods: {},
-    output: { type: "text" },
-    maxSteps: 6,
-    ...(harness === undefined ? {} : { harness, allowedSites: [] }),
-  };
-}
-
-function workspace(parts: Partial<DoctorWorkspace> & { agents?: Agent[] } = {}): DoctorWorkspace {
-  return {
-    name: "acme",
-    trust: {
-      location: "/work/acme",
-      connectors: [],
-      commandPaths: new Map(),
-      agents: parts.agents ?? [],
-      integrations: [],
-      providers: [],
-    },
-    aliases: parts.aliases ?? [],
-    providers: parts.providers ?? [],
-    ...(parts.testModelOnly === undefined ? {} : { testModelOnly: parts.testModelOnly }),
-    ...(parts.windowsDrive === undefined ? {} : { windowsDrive: parts.windowsDrive }),
-    ...(parts.tooManyFilesToWatch === undefined
-      ? {}
-      : { tooManyFilesToWatch: parts.tooManyFilesToWatch }),
-  };
-}
-
-interface Machine {
-  trust?: TrustCheck["status"];
-  sandbox?: SandboxCheck;
-  freeBytes?: number;
-  models?: ProviderModels[];
-  codex?: HarnessDetection;
-  /** Codex as a whole, in place of one that only answers `codex`. */
-  codexHarness?: DoctorHarness;
-  /** The sandbox choice; the host has none when left out. */
-  choice?: SandboxChoice | null;
-  secrets?: Record<string, string>;
-  /** What the host found wrong with Node.js; the host checks nothing when left out. */
-  node?: NodeProblem | null;
-  /** The sandbox check as a whole, in place of one that answers `sandbox`. */
-  sandboxCheck?: () => Promise<SandboxCheck>;
-  /** The resource report's read, in place of one that answers at once. */
-  read?: () => Promise<Resources>;
-}
-
-/** A check that never answers. */
-const never = <T>(): Promise<T> => new Promise<T>(() => undefined);
-
-/** A doctor on a machine with plenty of disk and a working sandbox, unless told otherwise. */
-function doctor(machine: Machine = {}) {
-  const asked: string[] = [];
-  const resources: Resources = {
-    at: "2026-11-10T09:00:00.000Z",
-    memory: ok({ engineBytes: 0, processes: [], totalBytes: 0 }),
-    data: [],
-    disk: ok({
-      freeBytes: machine.freeBytes ?? 50e9,
-      low: (machine.freeBytes ?? 50e9) < 1024 ** 3,
-    }),
-    models: machine.models ?? [],
-    waits: ok([]),
-  };
-  const secrets: Secrets = {
-    get: async (name) => {
-      asked.push(name);
-      return machine.secrets?.[name] ?? null;
-    },
-  };
-  const timers = new HandTimers();
-  const service = new DoctorService({
-    trust: { check: async () => ({ status: machine.trust ?? "trusted" }) },
-    sandbox: {
-      check: machine.sandboxCheck ?? (async () => machine.sandbox ?? ready),
-      capabilities: () => ({ files: "shared", strength: "os" }),
-    },
-    resources: { read: machine.read ?? (async () => resources) },
-    harnesses: [
-      machine.codexHarness ?? {
-        id: "codex",
-        name: "Codex",
-        detect: async () => machine.codex ?? { status: "missing" },
-      },
-    ],
-    secrets,
-    ...(machine.choice === undefined
-      ? {}
-      : { sandboxChoice: { current: () => machine.choice ?? null } }),
-    ...(machine.node === undefined ? {} : { node: async () => machine.node ?? null }),
-    timers,
-  });
-  return { service, asked, timers };
-}
-
-/**
- * The report of `doctor`, with the time limit reached once the checks that
- * answer have: the timers still set then are those of the checks that hang.
- */
-async function afterLimit(
-  { service, timers }: ReturnType<typeof doctor>,
-  workspace: DoctorWorkspace | null,
-) {
-  const checking = service.check(workspace);
-  await new Promise((resolve) => setImmediate(resolve));
-  timers.fire();
-  return checking;
-}
-
-/** A line that answered in time, so its own fields can be checked; a timed-out one fails the test. */
-function answered<Line extends object>(line: Line | undefined): Exclude<Line, TimedOutLine> {
-  if (line === undefined || "timedOut" in line) {
-    throw new Error(`expected a line that answered, got ${JSON.stringify(line)}`);
-  }
-  return line as Exclude<Line, TimedOutLine>;
-}
+import {
+  agent,
+  answered,
+  anthropic,
+  doctor,
+  llama,
+  ollama,
+  workspace,
+} from "./testing/doctor-fixtures.ts";
 
 verifies("app.doctor-service", () => {
   it("shows only the Sandbox and Disk lines outside a workspace, and exits 0 when they're fine", async () => {
@@ -443,65 +297,5 @@ verifies("app.doctor-node", () => {
   it("has no Node.js line when the host found nothing, or checks nothing", async () => {
     expect((await doctor({ node: null }).service.check(null)).node).toBeUndefined();
     expect((await doctor().service.check(null)).node).toBeUndefined();
-  });
-});
-
-verifies("app.doctor-time-limit", () => {
-  it("warns on a harness whose detect() never answers, and still gives the other lines", async () => {
-    const report = await afterLimit(
-      doctor({ codexHarness: { id: "codex", name: "Codex", detect: never } }),
-      null,
-    );
-
-    expect(report.harnesses).toEqual({ check: "harnesses", status: "warning", timedOut: true });
-    expect(report.sandbox.status).toBe("ok");
-    expect(report.disk.status).toBe("ok");
-    expect(report.summary).toEqual({ problems: 0, warnings: 1, needsFixing: false });
-  });
-
-  it("gives each check 5 seconds, and clears every timer of a check that answers", async () => {
-    const machine = doctor({ sandboxCheck: never });
-    const checking = machine.service.check(null);
-
-    expect(machine.timers.delays()).toEqual(Array(6).fill(doctorCheckLimitMs));
-    expect(doctorCheckLimitMs).toBe(5_000);
-    await new Promise((resolve) => setImmediate(resolve));
-    expect(machine.timers.delays()).toEqual([doctorCheckLimitMs]);
-    machine.timers.fire();
-    const report = await checking;
-
-    expect(report.sandbox).toEqual({ check: "sandbox", status: "warning", timedOut: true });
-    expect(report.summary).toEqual({ problems: 0, warnings: 1, needsFixing: false });
-  });
-
-  it("times out the Disk line, but not the Models line of providers off this computer, when the resource report hangs", async () => {
-    const report = await afterLimit(
-      doctor({ read: never, secrets: { ANTHROPIC_API_KEY: "sk-test" } }),
-      workspace({
-        providers: [anthropic],
-        aliases: [{ alias: "smart", provider: "anthropic" }],
-      }),
-    );
-
-    expect(report.disk).toEqual({ check: "disk", status: "warning", timedOut: true });
-    expect(report.models?.status).toBe("ok");
-  });
-
-  it("times out the Models line too when a provider runs on this computer", async () => {
-    const report = await afterLimit(
-      doctor({ read: never }),
-      workspace({ providers: [ollama], aliases: [{ alias: "fast", provider: "ollama" }] }),
-    );
-
-    expect(report.models).toEqual({ check: "models", status: "warning", timedOut: true });
-    expect(report.workspace?.status).toBe("ok");
-  });
-
-  it("still throws what a check throws in time", async () => {
-    const report = doctor({
-      sandboxCheck: () => Promise.reject(new Error("broken")),
-    }).service.check(null);
-
-    await expect(report).rejects.toThrow("broken");
   });
 });
