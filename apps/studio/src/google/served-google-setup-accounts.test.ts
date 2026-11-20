@@ -39,6 +39,7 @@ verifies("studio.served-google-setup-accounts", () => {
     ]);
     expect(listed[0]?.record.stepsDone).toEqual(setup.stepsDone);
     expect(accounts.signInEntry).toEqual({ kind: "elsewhere", commandExists: true });
+    expect(accounts.checkAgainEntry).toEqual({ kind: "sign-in-again", where: "computer" });
   });
 
   it("takes `here` from the computer's answer", async () => {

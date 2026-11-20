@@ -4,6 +4,7 @@ import type { AccountType, SetupEdit, SetupRecord, SetupRecords } from "@halonic
 import type { DefinitionStore, DefinitionWatch, Digest, FolderReader } from "@halonicjs/ports";
 import { type ErrorKind, KindedError } from "@halonicjs/std";
 import type {
+  CheckAgainEntry,
   DisconnectAnswer,
   GoogleSetupAccount,
   GoogleSetupAccounts,
@@ -66,11 +67,10 @@ export interface WorkspaceGoogleSetupAccountsOptions {
 }
 
 /**
- * Said when a change is tried that the desktop app can't make yet. It is kinded, so the page shows
- * it after "Couldn't check again:" rather than the sentence for a problem Halonic can't explain.
+ * Said when a change is tried that Studio can't make yet. It is kinded, so the page shows it after
+ * "Couldn't check again:" rather than the sentence for a problem Halonic can't explain.
  */
-const notYet =
-  "This can't be saved in the Halonic app yet. Use the halonic google commands in a terminal for now.";
+const notYet = "Studio can't save this change yet.";
 
 /**
  * Said when the agent host couldn't disconnect. It doesn't say nothing was removed: the answer
@@ -89,6 +89,9 @@ const desktopEntry: SecretEntry = { kind: "field", keptOn: "this-computer", plai
 /** The app runs on the computer that runs Halonic, so Google's answer comes back to it. */
 const desktopSignIn: SignInEntry = { kind: "here" };
 
+/** The app can't check the services again yet; signing in again in a terminal does (HAL-12363, L8). */
+const desktopCheckAgain: CheckAgainEntry = { kind: "sign-in-again", where: "terminal" };
+
 /**
  * The Google accounts of one open workspace as the Google setup feature reads them (requirement
  * `studio.workspace-google-setup-accounts`).
@@ -106,6 +109,7 @@ const desktopSignIn: SignInEntry = { kind: "here" };
 export class WorkspaceGoogleSetupAccounts implements GoogleSetupAccounts {
   readonly secretEntry = desktopEntry;
   readonly signInEntry = desktopSignIn;
+  readonly checkAgainEntry = desktopCheckAgain;
   readonly #options: WorkspaceGoogleSetupAccountsOptions;
   readonly #listeners = new Set<() => void>();
   #stopWatching: (() => void) | undefined;

@@ -2,6 +2,7 @@ import type { SetupRecord, SetupService } from "@halonicjs/google-setup";
 import { parse, s } from "@halonicjs/schema-kit";
 import type {
   CheckAgainAnswer,
+  CheckAgainEntry,
   DisconnectAnswer,
   GoogleSetupAccount,
   GoogleSetupAccounts,
@@ -75,6 +76,8 @@ export class ServedGoogleSetupAccounts implements GoogleSetupAccounts {
   readonly secretEntry = noSecretField;
   readonly readOnly = true as const;
   signInEntry: SignInEntry = { kind: "elsewhere", commandExists: true };
+  /** The served routes can't check again; signing in again on the computer does. */
+  readonly checkAgainEntry: CheckAgainEntry = { kind: "sign-in-again", where: "computer" };
   readonly #fetch: (path: string) => Promise<Response>;
   readonly #onFocus: (listener: () => void) => () => void;
 

@@ -138,6 +138,14 @@ export const listedToolsWords = {
     stopped: (source: string) => `Couldn't list the tools: ${source} stopped before it answered.`,
   },
   setSecret: (secret: string) => `halonic secret set ${secret}`,
+  /**
+   * The line on the page of an MCP server over HTTP, which Studio can't list yet (microcopy 11.4).
+   * The command follows it in a box; a phone says "on your computer" (rule N4, HAL-12363).
+   */
+  cantList: (where: "terminal" | "computer") =>
+    `Studio can't list this server's tools yet. To review them, run this ${where === "terminal" ? "in a terminal" : "on your computer"}:`,
+  /** The command under {@link listedToolsWords.cantList}. */
+  reviewCommand: (connectorId: string) => `halonic tools review ${connectorId}`,
   tryAgain: "Try again",
   /** Opens the workspace's trust check, when the tools couldn't be listed because it isn't trusted. */
   reviewTrust: "Review",
