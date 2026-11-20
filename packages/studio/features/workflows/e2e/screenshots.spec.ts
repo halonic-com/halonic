@@ -340,6 +340,15 @@ for (const shown of canvasRuns) {
       const chip = await page.getByText("Start", { exact: true }).boundingBox();
       const kind = await page.getByText("AGENT STEP").first().boundingBox();
       expect((chip?.y ?? Infinity) + (chip?.height ?? 0)).toBeLessThanOrEqual(kind?.y ?? -Infinity);
+      if (shown === "failed") {
+        // The failed card's Failed chip sits on its top edge, clear of its kind and its name (HAL-13100).
+        const failed = page.locator("button.ring-danger");
+        const mark = await failed.locator(":scope > [aria-hidden='true']").boundingBox();
+        const label = await failed.locator(":scope > span").first().boundingBox();
+        expect((mark?.y ?? Infinity) + (mark?.height ?? 0)).toBeLessThanOrEqual(
+          label?.y ?? -Infinity,
+        );
+      }
       const spilled = await page
         .locator("button[aria-pressed]")
         .evaluateAll((cards) =>

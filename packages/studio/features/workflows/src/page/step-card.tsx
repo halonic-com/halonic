@@ -57,7 +57,6 @@ export function StepCard({
     start: `${id}-start`,
     agent: `${id}-agent`,
     mark: `${id}-mark`,
-    failed: `${id}-failed`,
     waysOn: `${id}-ways-on`,
   };
   const nameParts = [
@@ -66,7 +65,6 @@ export function StepCard({
     first && part.start,
     step.type === "task" && part.agent,
     mark !== undefined && part.mark,
-    failed === true && part.failed,
   ].filter((partId) => partId !== false);
   useEffect(() => {
     if (focusOnMount) button.current?.focus();
@@ -119,7 +117,11 @@ export function StepCard({
           </span>
         )}
         {failed && (
-          <span id={part.failed} className="contents">
+          // On the top edge at the right, as Start sits at the left, so the name keeps its line. The
+          // dot's word already says "Failed" to a screen reader, so the chip is left out of the
+          // card's name and said once (HAL-13100). Its fill is see-through, so it sits on the
+          // card's surface over the canvas.
+          <span aria-hidden="true" className="absolute -top-5 right-3 rounded-xs bg-surface">
             <StatusChip tone="danger">{startWords.failedChip}</StatusChip>
           </span>
         )}

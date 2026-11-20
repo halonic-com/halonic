@@ -55,6 +55,13 @@ const typeInput = (page: HTMLElement, value: string) =>
 const runButton = (page: HTMLElement) =>
   [...page.querySelectorAll("button")].find((button) => button.textContent?.trim() === "Run");
 
+/** The card's accessible name, as its `aria-labelledby` parts read it. */
+function nameOf(card: Element | null | undefined): string[] {
+  return (card?.getAttribute("aria-labelledby") ?? "")
+    .split(" ")
+    .map((id) => document.getElementById(id)?.textContent ?? "");
+}
+
 const click = (button: HTMLButtonElement | undefined) =>
   act(async () => {
     button?.click();
@@ -159,8 +166,14 @@ verifies("workflows.start.start-run", () => {
     await click(buttonNamed(page, "Start run"));
 
     expect(page.textContent).toContain("Showing run 01jd8q · failed in Draft");
-    expect(page.textContent).toContain("Failed");
-    expect(page.querySelector(".ring-danger")?.textContent).toContain("draft");
+    const card = page.querySelector<HTMLElement>(".ring-danger");
+    expect(card?.textContent).toContain("draft");
+    // The chip sits on the card's top edge, out of the name's way, and is said once: by the dot.
+    const chip = card?.querySelector<HTMLElement>(":scope > [aria-hidden='true']");
+    expect(chip?.textContent).toBe("Failed");
+    expect(chip?.className).toContain("-top-5");
+    expect(chip?.className).toContain("right-3");
+    expect(nameOf(card)).toEqual(["draft", "AGENT STEP", "writer", "Failed"]);
     await click(
       page.querySelector<HTMLButtonElement>("button[aria-label='Stop showing this run']") ??
         undefined,

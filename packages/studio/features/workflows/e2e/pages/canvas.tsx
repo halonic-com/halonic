@@ -67,6 +67,7 @@ if (root !== null) {
             : undefined
         }
         active={run === "mid" || run === "branch" ? routes[run]?.at(-1) : undefined}
+        failedStep={run === "failed" ? "publish" : undefined}
       />
     </StrictMode>,
   );
