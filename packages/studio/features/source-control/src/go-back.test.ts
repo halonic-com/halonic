@@ -63,6 +63,33 @@ verifies("source-control.history-go-back", () => {
       expect(await fake.source.readFile(sorter)).toBe("model: a\n");
     });
 
+    it('keeps a new file in "Before going back", then deletes it', async () => {
+      const fake = changedSince();
+      const writer = "agents/writer.agent.yaml";
+      fake.setTexts(writer, { before: null, after: "model: w\n" });
+      fake.answer({
+        kind: "ready",
+        changes: [{ path: writer, status: "untracked", staged: false }],
+      });
+      expect(await fake.source.listChangedSince(version)).not.toContain(writer);
+      const outcome = await goBack(fake.source, version);
+      expect(outcome.kind).toBe("restored");
+      expect(fake.versions).toEqual([{ message: "Before going back", paths: [writer] }]);
+      expect(await fake.source.readFile(writer)).toBeNull();
+    });
+
+    it("counts a new file as a difference, even when every versioned file is the version's", async () => {
+      const fake = fakeSource({
+        kind: "ready",
+        changes: [{ path: "notes.md", status: "untracked", staged: false }],
+      });
+      fake.setTexts("notes.md", { before: null, after: "hi\n" });
+      const outcome = await goBack(fake.source, version);
+      expect(outcome.kind).toBe("restored");
+      expect(fake.versions).toHaveLength(1);
+      expect(await fake.source.readFile("notes.md")).toBeNull();
+    });
+
     it('keeps no "Before going back" when every file already is as the version has it', async () => {
       const fake = changedSince();
       const sorterChanged = () =>

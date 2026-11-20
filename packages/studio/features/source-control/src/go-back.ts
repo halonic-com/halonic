@@ -1,3 +1,4 @@
+import type { VcsChange } from "@halonicjs/ports";
 import type { ChangesSource } from "./api.ts";
 import type { ChangesListState } from "./changes-list-state.ts";
 import { goBackWords } from "./changes-words.ts";
@@ -16,19 +17,24 @@ import { versionMessage, versionPaths } from "./version-name.ts";
  * kept first, a file that fails puts the others back, and Undo puts every file back as it was
  * after "Before going back". Undo leaves that version in History.
  *
- * When every file already is as the version has it, nothing is kept and nothing is written: a
- * second press records no second "Before going back" (C289 GB1).
+ * When every file already is as the version has it and no file is new to git, nothing is kept
+ * and nothing is written: a second press records no second "Before going back" (C289 GB1).
+ *
+ * The files to write are listed after "Before going back" is kept: a file git didn't know yet is
+ * only in that list once that version holds it, and it has to be deleted too.
  */
 export async function goBack(source: ChangesSource, versionId: string): Promise<RestoreOutcome> {
   let paths: readonly string[];
   try {
+    const changes = await readChanges(source);
+    const differing = await source.listChangedSince(versionId);
+    const hasNewFiles = changes.some((change) => change.status === "untracked");
+    if (differing.length === 0 && !hasNewFiles) return { kind: "unchanged" };
+    await keepBeforeGoingBack(source, changes);
     paths = await source.listChangedSince(versionId);
-    if (paths.length === 0) return { kind: "unchanged" };
-    await keepBeforeGoingBack(source);
   } catch (error) {
     return { kind: "failed", reason: loadFailureReason(error) };
   }
-  // Keeping a version writes no file, so the files that differ are still these.
   return restoreItem(source, versionId, paths);
 }
 
@@ -49,12 +55,20 @@ export async function putAsVersion(
   return restoreItem(source, versionId, paths);
 }
 
-/** Records the changes that aren't in a version yet as "Before going back"; none, nothing. */
-async function keepBeforeGoingBack(source: ChangesSource): Promise<void> {
+/** The changes that aren't in a version yet; none when there is no history to read. */
+async function readChanges(source: ChangesSource): Promise<readonly VcsChange[]> {
   const read = await source.read();
-  if (read.kind !== "ready" || read.changes.length === 0) return;
+  return read.kind === "ready" ? read.changes : [];
+}
+
+/** Records `changes`, the ones that aren't in a version yet, as "Before going back"; none, nothing. */
+async function keepBeforeGoingBack(
+  source: ChangesSource,
+  changes: readonly VcsChange[],
+): Promise<void> {
+  if (changes.length === 0) return;
   const message = versionMessage(goBackWords.beforeGoingBack, "");
-  await source.createVersion({ message, paths: versionPaths(read.changes) });
+  await source.createVersion({ message, paths: versionPaths(changes) });
 }
 
 /**

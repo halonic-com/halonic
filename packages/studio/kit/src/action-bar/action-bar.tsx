@@ -27,8 +27,8 @@ export interface ActionBarButton {
    */
   readonly unavailable?: ButtonUnavailable | undefined;
   /**
-   * The `id` of the visible text that describes it, read after its label: the line shown before
-   * Go back to this version.
+   * The `id` of the visible text that describes it, read after its label: a line shown before
+   * the button.
    */
   readonly "aria-describedby"?: string | undefined;
   /** Its `id`, for a control elsewhere that points at it: a form sheet's Close while it's busy. */

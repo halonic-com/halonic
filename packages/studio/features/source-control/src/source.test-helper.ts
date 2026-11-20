@@ -99,9 +99,16 @@ export function fakeSource(initial: ChangesRead) {
       const inVersion = [...atVersion.keys()]
         .filter((key) => key.startsWith(`${versionId}:`))
         .map((key) => key.slice(versionId.length + 1));
+      // As `git diff <id>`: a file git doesn't know yet isn't in it until a version holds it.
+      const untracked = new Set(
+        answer.kind === "ready"
+          ? answer.changes.filter((c) => c.status === "untracked").map((c) => c.path)
+          : [],
+      );
       const paths = [...new Set([...texts.keys(), ...inVersion])];
       return paths.filter(
         (path) =>
+          !untracked.has(path) &&
           (texts.get(path)?.after ?? null) !== (atVersion.get(`${versionId}:${path}`) ?? null),
       );
     },

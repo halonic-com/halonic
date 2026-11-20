@@ -105,6 +105,19 @@ verifies("source-control.history-go-back", () => {
     );
 
     it(
+      "leaves out a file git doesn't know yet, and lists it once a version holds it",
+      withVersions(async (dir, [, , third]) => {
+        writeFileSync(join(dir, "new.txt"), "new\n");
+        expect(await filesChangedSince(realGit(dir), reason, third ?? "", keepAll)).toEqual([]);
+        spawnSync("git", ["add", "new.txt"], { cwd: dir });
+        spawnSync("git", [...identity, "commit", "--quiet", "-m", "keep"], { cwd: dir });
+        expect(await filesChangedSince(realGit(dir), reason, third ?? "", keepAll)).toEqual([
+          "new.txt",
+        ]);
+      }),
+    );
+
+    it(
       "gives none when the folder is as the version has it",
       withVersions(async (dir, [, , third]) => {
         expect(await filesChangedSince(realGit(dir), reason, third ?? "", keepAll)).toEqual([]);
