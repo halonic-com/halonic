@@ -63,6 +63,9 @@ runs:
       # and line of each scanned line, so a finding still points at its source.
       # A +++ line is a file header only between diff --git and the first hunk.
       # In a hunk it is an added line that starts with ++.
+      # lockfile-skip.txt names commits whose lockfile lines are not scanned,
+      # by full hash only, so an entry excuses that one commit and nothing
+      # added later. It is for test commits that were never merged.
       run: |
         set -o pipefail
         image=$(sed -n 's/^FROM //p' "$GITHUB_ACTION_PATH/Dockerfile")
@@ -70,13 +73,20 @@ runs:
         lockfiles=(':(glob)**/pnpm-lock.yaml' ':(glob)**/package-lock.json' ':(glob)**/npm-shrinkwrap.json' ':(glob)**/yarn.lock' ':(glob)**/deno.lock')
         added="$RUNNER_TEMP/lockfiles.txt"
         where="$RUNNER_TEMP/where.txt"
-        git log -p --text -U0 --full-history --no-color --format='commit %h' "${range[@]}" -- "${lockfiles[@]}" |
-          awk -v where="$where" '
-            /^commit [0-9a-f]+$/ { commit = $2; next }
+        git log -p --text -U0 --full-history --no-color --format='commit %H' "${range[@]}" -- "${lockfiles[@]}" |
+          awk -v where="$where" -v skipfile="$GITHUB_ACTION_PATH/lockfile-skip.txt" '
+            BEGIN {
+              while ((getline entry < skipfile) > 0) {
+                split(entry, field, " ")
+                if (length(field[1]) == 40 && field[1] ~ /^[0-9a-f]+$/) skip[field[1]] = 1
+              }
+            }
+            /^commit [0-9a-f]+$/ { commit = $2; skipped = (commit in skip); next }
+            skipped { next }
             /^diff --git / { header = 1; next }
             header && /^\+\+\+ / { file = substr($0, 7); next }
             /^@@ / { header = 0; split($3, start, ","); line = substr(start[1], 2) + 0; next }
-            /^\+/ { print substr($0, 2); print commit ", " file ":" line > where; line++ }
+            /^\+/ { print substr($0, 2); print substr(commit, 1, 9) ", " file ":" line > where; line++ }
           ' > "$added"
         if ! [ -s "$added" ]; then
           echo "No lines added to a lockfile, nothing to scan."

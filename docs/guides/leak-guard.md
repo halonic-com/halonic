@@ -111,6 +111,12 @@ First, check that it really is one. If it is:
   an entry must start with a named folder or file, never a glob. File
   rules (`env-file`, `key-file`, `credential-file`) need the exact path.
 
+The gitleaks lockfile scan in CI has its own short list,
+`.github/actions/gitleaks/lockfile-skip.txt`, for test commits that were
+never merged but that the weekly full scan still fetches. An entry is a full
+40-character commit hash and a reason, and skips only the lockfile lines that
+one commit adds.
+
 A personal term in new text can't be allowed. Reword the text instead.
 Only an old commit that can't be reworded any more, and that the repo
 owners accept in history, gets a `personal-term` entry: it names the exact
