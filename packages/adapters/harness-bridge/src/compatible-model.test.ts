@@ -150,8 +150,12 @@ verifies("harness-bridge.compatible-request", () => {
       expect(recorded.map((event) => event.type)).not.toContain("llm.request");
     });
 
-    it("ignores the models for a call to Anthropic's own host", async () => {
-      const keyed: BridgeProviderAccess = { kind: "key", secret: "anthropic-key", models: [] };
+    it("keeps only the keyed-model check for a call to Anthropic's own host", async () => {
+      const keyed: BridgeProviderAccess = {
+        kind: "key",
+        secret: "anthropic-key",
+        models: ["claude-sonnet-5-5"],
+      };
       const { bridge, calls } = await openAnthropic(keyed);
 
       expect((await claudeCodeSends(bridge, "claude-sonnet-5-5")).status).toBe(200);

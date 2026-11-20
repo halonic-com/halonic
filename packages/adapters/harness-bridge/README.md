@@ -67,6 +67,16 @@ date (such as `bash_20250124`), and for Responses `function`, `custom` and
 `local_shell`. The provider gets the request written out again from what
 the bridge read, so JSON that repeats a key can't mean something else to it.
 
+A keyed access's `models`, the models the host resolved for the agent,
+also hold at Anthropic's and OpenAI's own hosts. The program writes each
+request, so the bridge refuses (`denied`, a 403), before it reads the key,
+a request for any other model, one with Messages' `fallbacks`,
+and one with a tool that calls a model of its own (a tool with a `model`,
+or Responses' `image_generation`): the key is spent only on models the host
+priced, and every call counts towards the run's cost limit and budget. A
+keyed access to an own host without `models` still lets any model through
+until every host sends the list.
+
 ## GitHub read tools
 
 `GitHubReadTools` is a `BridgeTools` with four read-only tools on one repository fixed when it is made
@@ -173,7 +183,7 @@ Its key should be short-lived and for that task alone, and is read from `Secrets
   twice is safe.
 
 The rules are in `requirements/`: `server.md`, `socket.md`, `pass-through.md`,
-`anthropic.md`, `openai.md`, `provider-base-url.md`, `compatible-request.md`, `sign-in.md`, `spend.md`, `mcp.md` and `approvals.md`.
+`anthropic.md`, `openai.md`, `provider-base-url.md`, `compatible-request.md`, `keyed-model.md`, `sign-in.md`, `spend.md`, `mcp.md` and `approvals.md`.
 
 ## Options
 
