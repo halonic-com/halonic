@@ -29,7 +29,7 @@ const stepLines: Readonly<Record<string, string>> = {
   "not-a-choice": "Compares with a non-option",
   "ignored-key": "Has a key it ignores",
   "unknown-item-name": "Uses a name its items lack",
-  "items-not-a-list": "Its list isn't a list",
+  "items-not-a-list": "Its items aren't a list",
   "no-done-transition": "Never moves on when done",
   unreachable: "Can't be reached",
 };
