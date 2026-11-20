@@ -6,7 +6,7 @@
 
 ## What changes
 
-`studio.workspace-knowledge`: right before Summarize sends the documents to the local model through the agent host, the desktop app checks the saved workspace by the rule the engine starts by (`studio.untrusted-starts-nothing`): trusted on this computer, or reaching only the test model. Otherwise, or when the check fails, it sends no request and answers `untrusted`. It checks the saved files because the agent host reads the saved provider files; it gets only the folder and the provider's id.
+`studio.workspace-knowledge`: right before Summarize sends the documents to the local model through the agent host, the desktop app checks the saved workspace by the rule the engine starts by (`studio.untrusted-starts-nothing`): trusted on this computer, or reaching only the test model. Otherwise, or when the check fails, it sends no request and answers `untrusted`. It checks the saved files because the agent host reads the saved provider files; it gets only the folder and the provider's id. When the agent host itself refuses the chat as `workspace_not_trusted` (its own check, HAL-13943, which also sees a provider file saved after the app's check), Summarize answers `untrusted` too (HAL-13950).
 
 `library.knowledge-summarize`: the page shows that answer under the Summary row as "Couldn't summarize Handbook: this workspace isn't trusted yet, so nothing was sent.", with no **Try again**, since trying again can't help until the workspace is trusted.
 
