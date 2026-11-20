@@ -44,6 +44,7 @@ function showCommandWith(setup: RunSetup): CliCommand {
   return {
     name: "show",
     usage: "<run-id> [--output] [--dir <folder>]",
+    takesArguments: true,
     summary: runsMessages.showSummary(),
     action: (input) => runsMessages.showAction(printable(input.positionals[0] ?? "")),
     options: {
@@ -62,6 +63,7 @@ function sendCommandWith(setup: RunSetup): CliCommand {
   return {
     name: "send",
     usage: "<run-id> <event> [--dir <folder>]",
+    takesArguments: true,
     summary: runsMessages.sendSummary(),
     action: (input) =>
       runsMessages.sendAction(input.positionals[1] ?? "", input.positionals[0] ?? ""),

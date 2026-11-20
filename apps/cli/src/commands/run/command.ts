@@ -36,6 +36,7 @@ export function runCommandWith(setup: RunSetup): CliCommand {
   return {
     name: "run",
     usage: `<workflow> [--dir <folder>] [--input <${inputValueName}>] [--event <event>]... [--harness <harness>] [--follow]`,
+    takesArguments: true,
     summary: runMessages.summary(),
     action: (input) => runMessages.action(input.positionals[0] ?? ""),
     options: {

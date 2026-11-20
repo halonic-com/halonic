@@ -32,6 +32,7 @@ import { type ExtractFolder, extractedLines, type FileOfPart, partsOf } from "./
 export const extractCommand: CliCommand = {
   name: "extract",
   usage: "<hub> <new-folder> [--dir <folder>] [--dry-run]",
+  takesArguments: true,
   summary: extractMessages.summary(),
   action: (input, context) => {
     const [hub = "", folder = ""] = input.positionals;

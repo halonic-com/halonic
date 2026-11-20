@@ -19,6 +19,7 @@ import { dirOption, givenDir, openWorkspaceDir, workspaceDir } from "../../works
 export const validateCommand: CliCommand = {
   name: "validate",
   usage: "[--dir <folder>] [--all] [--strict]",
+  strayArgumentFix: (folder) => validateMessages.folderWithoutDir(folder),
   summary: validateMessages.summary(),
   action: (input, context) => validateMessages.action(actionFolder(input, context.cwd)),
   options: {
