@@ -12,66 +12,7 @@ import {
   importToWorker,
   type WorkerTransferOptions,
 } from "@halonicjs/target-cloudflare-deploy";
-
-/** A deployed Worker the smoke and admin checks call. */
-export interface WorkerTarget {
-  /** The Worker's address, such as `https://hlt-1-1.example.workers.dev`. */
-  readonly baseUrl: string;
-  /** Tests inject this; defaults to `fetch`. */
-  readonly fetch?: typeof fetch;
-  /** Tests inject this; defaults to a timer. */
-  readonly sleep?: (ms: number) => Promise<void>;
-}
-
-/** Tries while Cloudflare's edge answers not found: waits of 1, 2, 4 and then 8 s, about 40 s. */
-const edgeAttempts = 8;
-const longestWaitMs = 8_000;
-
-/**
- * Whether the answer is Cloudflare's own HTML "Page not found" rather than the Worker's: an edge
- * server that doesn't route the new workers.dev address yet. The Worker's own 404 is JSON.
- */
-function isEdgeNotFound(response: Response): boolean {
-  return (
-    response.status === 404 && (response.headers.get("content-type") ?? "").includes("text/html")
-  );
-}
-
-/**
- * Right after a deploy, Cloudflare's edge servers learn a new workers.dev address one by one, so
- * for a while some requests get the edge's not-found page while others reach the Worker
- * (HAL-14022). Such a request never reached the Worker, so asking again changes nothing there.
- */
-async function fetchPastEdge(target: WorkerTarget, url: URL, init: RequestInit): Promise<Response> {
-  const sleep = target.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
-  for (let attempt = 1; ; attempt += 1) {
-    const response = await (target.fetch ?? fetch)(url, init);
-    if (!isEdgeNotFound(response) || attempt >= edgeAttempts) return response;
-    await response.body?.cancel();
-    await sleep(Math.min(1000 * 2 ** (attempt - 1), longestWaitMs));
-  }
-}
-
-async function call(
-  target: WorkerTarget,
-  path: string,
-  headers: Record<string, string> = {},
-  method = "GET",
-): Promise<{ status: number; code: string | undefined; text: string }> {
-  const url = new URL(path, target.baseUrl);
-  // A key must not travel in the clear, and a redirect must not carry it somewhere else.
-  if (url.protocol !== "https:") throw new Error(`The Worker address ${url.origin} is not HTTPS.`);
-  const response = await fetchPastEdge(target, url, { method, headers, redirect: "error" });
-  const text = await response.text();
-  let code: string | undefined;
-  try {
-    const parsed = (JSON.parse(text) as { code?: unknown } | null)?.code;
-    code = typeof parsed === "string" ? parsed : undefined;
-  } catch {
-    code = undefined;
-  }
-  return { status: response.status, code, text };
-}
+import { caller, type WorkerTarget } from "./worker-call.ts";
 
 /** The four admin routes, with a path that no import or export would find anything at. */
 const adminRoutes = [
@@ -105,7 +46,7 @@ function expectStatus(
 export const workerChecks = {
   /** The Worker answers its health route. */
   async smoke(target: WorkerTarget): Promise<void> {
-    expectStatus("/health", await call(target, "/health"), 200);
+    expectStatus("/health", await caller(target)("/health"), 200);
   },
 
   /**
@@ -113,13 +54,14 @@ export const workerChecks = {
    * 404 as an unknown path with that method, even for a caller that sends a key.
    */
   async adminClosed(target: WorkerTarget, someKey: string): Promise<void> {
+    const call = caller(target);
     for (const [method, route] of adminRoutes) {
-      const unknown = await call(target, "/no-such-path", {}, method);
+      const unknown = await call("/no-such-path", {}, method);
       for (const [what, headers] of [
         ["without a key", {}],
         ["with a key", { authorization: `Bearer ${someKey}` }],
       ] as const) {
-        const answer = await call(target, route, headers, method);
+        const answer = await call(route, headers, method);
         expectStatus(`${method} ${route} ${what}`, answer, unknown.status);
         if (answer.text !== unknown.text) {
           throw new Error(`${method} ${route} ${what} answered differently from an unknown path.`);
@@ -130,7 +72,7 @@ export const workerChecks = {
 
   /** The admin key has taken effect: a call without a key is refused as a 401, not the closed 404. */
   async adminKeyActive(target: WorkerTarget): Promise<void> {
-    expectStatus("/admin/export without a key", await call(target, "/admin/export"), 401);
+    expectStatus("/admin/export without a key", await caller(target)("/admin/export"), 401);
   },
 
   /**
@@ -144,6 +86,7 @@ export const workerChecks = {
   async adminRefusesBadKeys(target: WorkerTarget, key: string): Promise<void> {
     const wrong = `${key.startsWith("A") ? "B" : "A"}${key.slice(1)}`;
     const hash = createHash("sha256").update(key).digest("hex");
+    const call = caller(target);
     const refused: readonly (readonly [string, Record<string, string>, string])[] = [
       ["without a key", {}, ""],
       ["with a wrong key", { authorization: `Bearer ${wrong}` }, ""],
@@ -155,10 +98,9 @@ export const workerChecks = {
     for (const [method, route] of adminRoutes) {
       for (const [what, headers, query] of refused) {
         const path = query === "" ? route : `${route}?${query}`;
-        expectStatus(`${method} ${route} ${what}`, await call(target, path, headers, method), 401);
+        expectStatus(`${method} ${route} ${what}`, await call(path, headers, method), 401);
       }
       const withOrigin = await call(
-        target,
         route,
         { authorization: `Bearer ${key}`, origin: "https://attacker.example" },
         method,

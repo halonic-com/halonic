@@ -7,6 +7,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { eventually } from "../src/eventually.ts";
 import { fixtureWorkerName } from "../src/fixture.ts";
 import { roundTrip, UnexpectedStatus, workerChecks } from "../src/transfer-checks.ts";
+import { EdgeNotRouted } from "../src/worker-call.ts";
 
 // Run by `pnpm test:live`, never by `pnpm test`: it calls a Worker deployed in the CI Cloudflare
 // account and sets a one-job admin key on it (cloudflare-live.transfer). The example export of
@@ -78,8 +79,12 @@ describe("the deployed Worker's admin routes", () => {
 
       // Removing a secret makes a new Worker version, which takes a moment to answer everywhere.
       // Until then an older one still takes the key, and its answer depends on the route, so every
-      // failure is retried, but only a run of passes counts.
-      await eventually(() => workerChecks.adminClosed(target, used), { attempts: 8 });
+      // failure is retried, but only a run of passes counts. An edge that doesn't route the address
+      // has had its whole wait already, so trying it again would only multiply that (HAL-14054).
+      await eventually(() => workerChecks.adminClosed(target, used), {
+        attempts: 8,
+        retryIf: (error) => !(error instanceof EdgeNotRouted),
+      });
     },
     transferTimeout,
   );
