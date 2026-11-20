@@ -25,7 +25,7 @@ export type SandboxStatusAction = "set-up" | "restart" | "check-again" | "change
 export interface SandboxBadge {
   label: string;
   tone: StatusChipTone;
-  /** The screen-reader name: "Sandbox status: ready. Opens sandbox settings." */
+  /** The screen-reader name, its visible words first: "Sandbox: on. Opens sandbox settings." */
   name: string;
 }
 
@@ -44,21 +44,22 @@ export interface SandboxStatusRow {
 
 /** What the badge and the Settings row show. */
 export interface SandboxStatusView {
-  /** `null` when no badge shows: no choice yet, still checking, or the host can't answer. */
+  /** `null` when no badge shows: no choice yet, nothing proven yet, still checking, or the host can't answer. */
   badge: SandboxBadge | null;
   row: SandboxStatusRow;
 }
 
-const badge = (label: string, tone: StatusChipTone, state: string): SandboxBadge => ({
+const badge = (label: string, tone: StatusChipTone): SandboxBadge => ({
   label,
   tone,
-  name: text.badgeName(state),
+  name: text.badgeName(label),
 });
 
 /**
  * The header badge and the Settings row from the engine's choice (`settings.sandbox-status-view`).
  * It reads the person's saved setting and the state of that backend and decides nothing: a backend
- * that only has no proof yet (`active: null`, no failure) is Checking and never red.
+ * that only has no proof yet (`active: null`, no failure) is Checking and never red. A saved backend
+ * that is broken or not set up always keeps a badge, so the choice stays visible.
  *
  * @example
  * sandboxStatusView({ kind: "checking" }).badge; // null
@@ -79,10 +80,12 @@ export function sandboxStatusView(input: SandboxStatusInput): SandboxStatusView 
     return { badge: null, row: row(text.ROW_NEEDS_SETUP, "attention", null, ["set-up"]) };
   }
   if (setting.backend === "none") {
-    const line = agentsAsk ? text.NO_SANDBOX_ASKS : text.NO_SANDBOX_LINE;
     return {
-      badge: badge(text.BADGE_NONE, "attention", "no sandbox"),
-      row: row(text.ROW_NO_SANDBOX, "attention", line, ["set-up"]),
+      badge: badge(text.BADGE_NONE, "attention"),
+      // The line only carries the asking promise; without it the chip already says No sandbox.
+      row: row(text.ROW_NO_SANDBOX, "attention", agentsAsk ? text.NO_SANDBOX_ASKS : null, [
+        "set-up",
+      ]),
     };
   }
   const id: SandboxBackendId = setting.backend;
@@ -91,29 +94,26 @@ export function sandboxStatusView(input: SandboxStatusInput): SandboxStatusView 
     sandboxChoiceView(choice, input.platform).options.find((card) => card.id === id)?.name ?? id;
   if (status?.state === "in-use") {
     return {
-      badge: badge(text.BADGE_ON, "success", "ready"),
+      badge: badge(text.BADGE_ON, "success"),
       row: row(text.ROW_READY, "success", text.readyLine(name, lastCheck), ["change", "turn-off"]),
     };
   }
   if (status?.state === "setup-needed" && status.reason === "restart-needed") {
     return {
-      badge: badge(text.BADGE_UNFINISHED, "attention", "setup unfinished"),
+      badge: badge(text.BADGE_UNFINISHED, "attention"),
       row: row(text.ROW_RESTART, "attention", text.RESTART_LINE, ["restart", "change"]),
     };
   }
   if (status?.state === "check-failed" || status?.state === "not-available") {
     const line = text.notReadyLine(whyOf(choice, id, input.platform));
     return {
-      badge:
-        status.state === "check-failed"
-          ? badge(text.BADGE_CHECK_FAILED, "danger", "check failed")
-          : null,
+      badge: badge(text.BADGE_CHECK_FAILED, "danger"),
       row: row(text.ROW_NOT_READY, "danger", line, ["check-again", "change"]),
     };
   }
   if (status?.state === "setup-needed") {
     return {
-      badge: null,
+      badge: badge(text.BADGE_UNFINISHED, "attention"),
       row: row(text.ROW_NEEDS_SETUP, "attention", null, ["set-up", "change"]),
     };
   }
@@ -136,10 +136,9 @@ function checkingRow(): SandboxStatusRow {
   return row(text.ROW_CHECKING, "neutral", null, ["check-again"], true);
 }
 
-/** The card's own sentence for why a backend can't run, in lower case after a lead. */
+/** The card's own sentence for why a backend can't run; the row's line words it after its colon. */
 function whyOf(choice: SandboxChoice, id: SandboxBackendId, platform: string): string {
-  const reason =
-    sandboxChoiceView(choice, platform).options.find((card) => card.id === id)?.disabledReason ??
-    "";
-  return reason.charAt(0).toLowerCase() + reason.slice(1);
+  return (
+    sandboxChoiceView(choice, platform).options.find((card) => card.id === id)?.disabledReason ?? ""
+  );
 }
