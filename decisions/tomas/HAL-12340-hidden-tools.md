@@ -3,6 +3,7 @@
 - Task: HAL-12340
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12340 (found in Kim's docs check on HAL-12334, P2; fixes the commands to match what the connector file already says, team decision, HAL-2282 rule; the warning's words follow the validator's `approved-tool-not-allowed` warning; Liam's code review)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:69wqsh+SzJ5FzS4tb1APLRF9vY9BX526dAelviups/AiZ9V/LNHUzAP0Lhdml7O1+kPLhOelufcCjqSKq6ycDw==
 
 ## What changes
 
