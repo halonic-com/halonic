@@ -83,8 +83,6 @@ export {
   type ListOptions,
   type VersionOptions,
 } from "./definition-store-left-out.ts";
-// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
-export * from "./deploy-target.ts";
 export {
   deniedHomePaths,
   type HomeDeniedGroupCode,
@@ -93,6 +91,8 @@ export {
   homePathsOf,
   isDeniedHomePath,
 } from "./denied-home-paths.ts";
+// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
+export * from "./deploy-target.ts";
 export { type Digest, digestVersion } from "./digest.ts";
 export {
   type FolderEntriesOptions,
