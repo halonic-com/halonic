@@ -113,6 +113,7 @@ export function PluginsSettingsSection({
         {...(plugins.installer === undefined ? {} : { onAdd: () => setAdding(true) })}
         onRetry={tryAgain}
         place={place === "served" || plugins.place === "served" ? "served" : "app"}
+        host={context.host}
         headingLevel={sectionHeadingLevel(surface)}
       />
       {adding && plugins.installer !== undefined ? (

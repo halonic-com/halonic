@@ -25,6 +25,11 @@ export interface GoogleConnectorBlockProps {
   readonly onOpenSetup: (accountRef: string) => void;
   /** Disconnects the account and reads it again. It rejects when that can't be done. */
   readonly onDisconnect: () => Promise<DisconnectAnswer>;
+  /**
+   * Text only, with no Set up, Sign in again, Replace secret or Disconnect: the Studio runs on a
+   * phone (`context.host`). A narrow desktop window keeps them and only gets the phone's layout.
+   */
+  readonly viewOnly?: boolean;
 }
 
 function Row({ label, children }: { readonly label: string; readonly children: ReactNode }) {
@@ -39,14 +44,18 @@ function Row({ label, children }: { readonly label: string; readonly children: R
 interface BlockRowsProps {
   readonly account: GoogleSetupAccount;
   readonly keptOn: KeptOn;
+  /** The rows stack their label over the value, as on a phone's width. */
   readonly phone: boolean;
+  /** No Sign in again or Replace secret (see `GoogleConnectorBlockProps.viewOnly`). */
+  readonly viewOnly: boolean;
   /** The client's page in Google Cloud, when the project is known. */
   readonly clientsUrl: string | undefined;
   readonly onOpenSetup: (accountRef: string) => void;
 }
 
 /** The block's rows (design 4.4). A row whose value isn't in the record is left out. */
-function BlockRows({ account, keptOn, phone, clientsUrl, onOpenSetup }: BlockRowsProps) {
+function BlockRows(props: BlockRowsProps) {
+  const { account, keptOn, phone, viewOnly, clientsUrl, onOpenSetup } = props;
   const { record } = account;
   const ref = record.accountRef;
   const shared = account.clientSharedWith;
@@ -57,7 +66,7 @@ function BlockRows({ account, keptOn, phone, clientsUrl, onOpenSetup }: BlockRow
           {account.email}
           {record.lastSignInAt === null ? "" : ` · ${savedOn(record.lastSignInAt)}`}
         </span>
-        {phone ? null : (
+        {viewOnly ? null : (
           <Button variant="ghost" size="sm" onClick={() => onOpenSetup(ref)}>
             Sign in again
           </Button>
@@ -80,7 +89,7 @@ function BlockRows({ account, keptOn, phone, clientsUrl, onOpenSetup }: BlockRow
       {record.clientSecret === null ? null : (
         <Row label="Client secret">
           <span>{`Saved · ${savedOn(record.clientSecret.savedAt)}`}</span>
-          {phone ? null : (
+          {viewOnly ? null : (
             <Button variant="ghost" size="sm" onClick={() => onOpenSetup(ref)}>
               Replace secret
             </Button>
@@ -106,11 +115,12 @@ function BlockRows({ account, keptOn, phone, clientsUrl, onOpenSetup }: BlockRow
  * The Google block of the connector page (UX checklist 3.4): before setup, **Set up**; after it,
  * the account's rows, a state chip that reads the same facts as the connector's status view, and
  * **Disconnect Google…**. **Sign in again** and **Replace secret** open the setup item, which owns
- * those steps. On a phone it is text only. The client secret is never shown: the row says only
+ * those steps. On a phone it is text only (`viewOnly`); a narrow desktop window keeps its buttons.
+ * The client secret is never shown: the row says only
  * that it is saved and when.
  */
 export function GoogleConnectorBlock(props: GoogleConnectorBlockProps) {
-  const { account, secretEntry, answering, onOpenSetup, onDisconnect } = props;
+  const { account, secretEntry, answering, onOpenSetup, onDisconnect, viewOnly = false } = props;
   const phone = usePresentation() === "phone";
   const titleId = useId();
   const { record } = account;
@@ -140,7 +150,7 @@ export function GoogleConnectorBlock(props: GoogleConnectorBlockProps) {
           Google account
         </h2>
         <p className="text-body text-fg-muted">{account.email} isn't signed in to Google yet.</p>
-        {phone ? (
+        {viewOnly ? (
           <ViewOnlyLine>Set this up on a computer.</ViewOnlyLine>
         ) : (
           <div>
@@ -167,10 +177,11 @@ export function GoogleConnectorBlock(props: GoogleConnectorBlockProps) {
         account={account}
         keptOn={keptOn}
         phone={phone}
+        viewOnly={viewOnly}
         clientsUrl={clientsLink?.url}
         onOpenSetup={onOpenSetup}
       />
-      {phone ? (
+      {viewOnly ? (
         <ViewOnlyLine>
           View only on a phone. Change connectors and sending on your computer.
         </ViewOnlyLine>

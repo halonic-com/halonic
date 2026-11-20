@@ -74,16 +74,19 @@ async function showPage(
   plugin: InstalledPlugin,
   onOpenPanel = () => {},
   usedBy: PluginActions["usedBy"] = async () => [],
-  where: { phone?: boolean; place?: "app" | "served" } = {},
+  where: { phone?: boolean; narrow?: boolean; place?: "app" | "served" } = {},
 ) {
+  // A phone has the phone's layout too; a narrow desktop window has only the layout.
+  const phoneLayout = where.phone === true || where.narrow === true;
   const view = render(
-    <PresentationProvider presentation={where.phone === true ? "phone" : "desktop"}>
+    <PresentationProvider presentation={phoneLayout ? "phone" : "desktop"}>
       <PluginPage
         plugin={plugin}
         {...noSettings()}
         actions={{ ...noActions().actions, usedBy }}
         onOpenPanel={onOpenPanel}
         {...(where.place === undefined ? {} : { place: where.place })}
+        host={where.phone === true ? "phone" : "desktop-app"}
         now={now}
       />
     </PresentationProvider>,
@@ -93,7 +96,7 @@ async function showPage(
 }
 
 /** Draws the page of `plugin/this-computer/weather` the way the shell draws an item's tab. */
-async function showItem(feed: InstalledPluginFeed) {
+async function showItem(feed: InstalledPluginFeed, host?: WorkspaceContext["host"]) {
   const opened: string[] = [];
   const options = {
     feed,
@@ -113,7 +116,7 @@ async function showItem(feed: InstalledPluginFeed) {
   const kind = shell.contributions.itemKinds.get("plugin");
   if (kind === undefined) throw new Error("No plugin kind");
   const View = await loadView<ComponentType<ItemViewProps>>(kind.open);
-  const context = {} as WorkspaceContext;
+  const context = (host === undefined ? {} : { host }) as WorkspaceContext;
   const view = render(
     <View item={pluginPageItem("weather")} context={context} Sections={() => null} />,
   );
@@ -324,6 +327,35 @@ verifies("plugins.plugin-page", () => {
       "View only on a phone. Add, trust and remove plugins on your computer:",
     );
     expect(view.textContent).toContain("halonic plugin add <folder or git address>");
+  });
+
+  it("keeps every action in a desktop window narrower than a phone, or at 400 % zoom", async () => {
+    const view = await showPage(
+      withCity("not-trusted"),
+      () => {},
+      async () => [],
+      { narrow: true },
+    );
+
+    expect(button(view, "Review")).toBeDefined();
+    expect(view.querySelector('button[aria-label^="More actions for"]')).not.toBeNull();
+    expect(view.textContent).not.toContain("View only");
+  });
+
+  it("takes where it runs from the window, view only when the window is a phone's", async () => {
+    const { feed } = feedOf<InstalledPlugin>([withCity("not-trusted")]);
+    const { view } = await showItem(feed, "phone");
+
+    expect(button(view, "Review")).toBeUndefined();
+    expect(view.textContent).toContain("View only on a phone.");
+  });
+
+  it("is view only when the window is served, saying the computer that runs Halonic", async () => {
+    const { feed } = feedOf<InstalledPlugin>([withCity("not-trusted")]);
+    const { view } = await showItem(feed, "served");
+
+    expect(button(view, "Review")).toBeUndefined();
+    expect(view.textContent).toContain("View only here.");
   });
 
   it("is view only in a served browser, still opening the panel from its ⋮", async () => {

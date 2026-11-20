@@ -25,6 +25,7 @@ export function pageView(
         announceState={(key, text) => context.announcer.announceState(key, text)}
         actions={options.actions}
         {...(options.place === undefined ? {} : { place: options.place })}
+        host={context.host}
         onOpenPanel={() => options.openPanel(plugin.plugin)}
       />
     );

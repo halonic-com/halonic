@@ -10,9 +10,9 @@ import {
   type ListRow,
   type MenuEntry,
   StatusChip,
-  usePresentation,
   ViewOnlyLine,
 } from "@halonicjs/studio-kit";
+import type { StudioHost } from "@halonicjs/studio-shell";
 import { type ReactNode, useState } from "react";
 import { trustedDay } from "../page/page-text.ts";
 import {
@@ -24,6 +24,7 @@ import {
 import type { InstalledPlugin } from "../page/plugin-pages.ts";
 import { RemovePluginDialog } from "../page/remove-plugin-dialog.tsx";
 import { usePageActions } from "../page/use-page-actions.ts";
+import { pluginsViewOnly } from "../page/view-only.ts";
 import {
   ADD_COMMAND,
   ADD_PLUGIN,
@@ -90,6 +91,8 @@ export interface PluginsListProps {
    * Plugins are view only on a phone and when served (design section 10).
    */
   readonly place?: "app" | "served";
+  /** Where the window runs (`context.host`): the desktop app (the default), served, or a phone. */
+  readonly host?: StudioHost | undefined;
   /**
    * The level of the two lists' headings: 2 (the default) where the list is the page, 4 inside
    * Settings, under the section's h3. An empty list's title goes one below (HAL-12536).
@@ -186,11 +189,11 @@ export function PluginsList({
   onAdd,
   onRetry,
   place = "app",
+  host,
   headingLevel = 2,
   now = () => new Date(),
 }: PluginsListProps) {
-  const phone = usePresentation() === "phone";
-  const viewOnly = phone || place === "served";
+  const { phone, viewOnly } = pluginsViewOnly(place, host);
   const [menu, setMenu] = useState<
     { readonly id: string; readonly target: ContextMenuTarget } | undefined
   >(undefined);

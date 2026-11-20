@@ -34,6 +34,12 @@ interface ButtonBase {
   /** While its request runs: a spinner, `aria-busy`, and clicks ignored. Never `disabled`. */
   readonly busy?: boolean;
   /**
+   * Where the focus ring goes: `outside` (the default), or `inset`, drawn inside the button, for
+   * one in the last column of a scrolling grid, where an outer ring would be clipped at the edge
+   * (a collection's ⋮, HAL-14579).
+   */
+  readonly ring?: "outside" | "inset";
+  /**
    * The button can't be used now. It stays focusable, ignores clicks and points screen readers
    * at the reason. There's no `disabled` prop on purpose (component specs 23, A1).
    */
@@ -100,7 +106,7 @@ export type ButtonProps = ButtonWithLabel | IconButton;
  */
 const shared = [
   "inline-flex shrink-0 items-center justify-center gap-1.5 border",
-  "transition-colors focus-ring",
+  "transition-colors",
   "aria-disabled:cursor-not-allowed aria-disabled:opacity-45 contrast-more:aria-disabled:opacity-60",
   "aria-disabled:text-forced-disabled aria-disabled:border-forced-disabled",
   "forced-colors:aria-disabled:opacity-100",
@@ -219,6 +225,7 @@ const busyCopy = "col-start-1 row-start-1 inline-flex items-center justify-cente
  */
 export function Button(props: ButtonProps) {
   const { variant = "secondary", size = "md", block = false, busy = false, unavailable } = props;
+  const ring = props.ring === "inset" ? "focus-ring-inset" : "focus-ring";
   const isIconButton = props.label !== undefined;
   const inFieldBox = useContext(InFieldBoxContext) && isIconButton;
   const onTint = useContext(OnTintContext) && variant === "ghost";
@@ -234,6 +241,7 @@ export function Button(props: ButtonProps) {
 
   const classes = [
     shared,
+    ring,
     isIconButton && props.round === true ? "rounded-full" : "rounded-sm",
     onTint ? ghostOnTint : variantClasses[variant],
     buttonSizeClasses(size, isIconButton, inFieldBox),

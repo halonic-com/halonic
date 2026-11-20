@@ -30,7 +30,7 @@ const signedIn = account(
 );
 const disconnected = account(record([]));
 
-function setup(connectorId: string, initial = [signedIn]) {
+function setup(connectorId: string, initial = [signedIn], host?: "desktop-app" | "phone") {
   const accounts = fakeAccounts(initial);
   const openSetup = vi.fn();
   const openPlace = vi.fn();
@@ -43,6 +43,7 @@ function setup(connectorId: string, initial = [signedIn]) {
     context: {
       services: limitedLookup(googleSetupFeature, { get: (key) => services.get(key) }),
       openPlace,
+      ...(host === undefined ? {} : { host }),
     },
   } as unknown as ItemPageSectionViewProps;
   return { accounts, openSetup, openPlace, props };
@@ -95,6 +96,14 @@ verifies("google-setup.connector-section", () => {
     await press(button(root, "Sign in again"));
     expect(openSetup).toHaveBeenCalledWith("google", "gaccount_1");
     expect(openPlace).toHaveBeenCalledWith("inbox");
+  });
+
+  it("is text only when the window runs on a phone", async () => {
+    const { props } = setup("gmail", [signedIn], "phone");
+    const root = render(<ConnectorSection {...props} />);
+    await settle();
+    expect(root.textContent).toContain("View only on a phone.");
+    expect(root.textContent).not.toContain("Sign in again");
   });
 
   it("disconnects through the app, then reads the account again", async () => {
