@@ -254,16 +254,19 @@ cases:
     });
 
     it("reports scripted replies the runs never asked for", async () => {
+      // The writer is asked once; `validate` reports a mock for an agent the workflow doesn't use.
       const input = await testInput(
+        agent("writer"),
         workflow("approval", approvalWorkflow),
+        workflow("draft", draftWorkflow),
         testFile(
-          "approval",
-          `workflow: approval
+          "draft",
+          `workflow: draft
 cases:
-  - name: approve
-    mocks: { writer: [unused, also unused] }
-    events: [approve]
-    expect: { final: approved }
+  - name: drafts
+    input: { topic: ink }
+    mocks: { writer: [Ink., unused, also unused] }
+    expect: { status: waiting }
 `,
         ),
       );

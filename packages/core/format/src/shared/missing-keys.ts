@@ -1,4 +1,5 @@
 import { formatPath, type Issue, type Path } from "@halonicjs/schema-kit";
+import { editDistance } from "@halonicjs/std";
 import { isMap } from "./legacy-keys.ts";
 
 /**
@@ -103,30 +104,4 @@ function nearestKey(key: string, candidates: readonly string[]): string | undefi
     .sort((a, b) => a.distance - b.distance);
   const [first, second] = near;
   return first !== undefined && first.distance !== second?.distance ? first.candidate : undefined;
-}
-
-/**
- * The fewest single-character insertions, deletions, substitutions and swaps
- * of two neighbours that turn `from` into `to`, so "nmae" and "name" are one apart.
- * The CLI has its own copy for commands; core can't use the CLI's.
- */
-function editDistance(from: string, to: string): number {
-  const width = to.length + 1;
-  const cells = new Array<number>((from.length + 1) * width).fill(0);
-  const at = (i: number, j: number) => cells[i * width + j] ?? 0;
-  for (let i = 0; i <= from.length; i += 1) {
-    for (let j = 0; j <= to.length; j += 1) {
-      if (i === 0 || j === 0) {
-        cells[i * width + j] = i + j;
-        continue;
-      }
-      const cost = from[i - 1] === to[j - 1] ? 0 : 1;
-      let best = Math.min(at(i - 1, j) + 1, at(i, j - 1) + 1, at(i - 1, j - 1) + cost);
-      if (i > 1 && j > 1 && from[i - 1] === to[j - 2] && from[i - 2] === to[j - 1]) {
-        best = Math.min(best, at(i - 2, j - 2) + 1);
-      }
-      cells[i * width + j] = best;
-    }
-  }
-  return at(from.length, to.length);
 }
