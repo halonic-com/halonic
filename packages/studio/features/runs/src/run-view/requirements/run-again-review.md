@@ -10,7 +10,7 @@ When **Run again** is refused because the workspace isn't trusted yet (a `denied
 
 - Given a failed real run and a host that refuses with "This workspace isn't trusted yet, so nothing was started." (`denied`),
   when **Run again** is pressed,
-  then the page says "Couldn't start the run: This workspace isn't trusted yet, so nothing was started." with **Review** under it.
+  then the page says "Couldn't start the run: this workspace isn't trusted yet, so nothing was started." with **Review** under it.
 - Given the person presses **Review** and then **Trust**,
   then the sentence goes and **Run again** has focus.
 - Given a host that rejects with "The workflow changed.",

@@ -379,7 +379,7 @@ verifies("workflows.start.start-run", () => {
     await click(buttonNamed(page, "Start run"));
 
     expect(page.textContent).toContain(
-      "Couldn't start the run: This workspace isn't trusted yet, so nothing was started.",
+      "Couldn't start the run: this workspace isn't trusted yet, so nothing was started.",
     );
     expect(page.textContent).not.toContain("Try again");
     await click(buttonNamed(page, "Review"));

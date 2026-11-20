@@ -20,6 +20,6 @@ When the host can start runs, the workflows feature shall show **Run** at the ri
 - Given the agent Reporter uses a connector, then the card says "Couldn't start the run: Reporter uses a connector, which Studio can't start yet." and "To start it, run this in a terminal:" with `halonic run reply`, or `halonic run acme/reply` when another hub has a `reply`, and **Copy command**, and no **Try again**.
 - Given the started run failed in `draft`, then the strip says "Showing run 01jd8q · failed in Draft" and the step `draft` is ringed with **Failed**.
 - Given the host started the run but the runs don't list it yet, then the dock says "Run started. Waiting for it to appear…", and the run's card replaces it once they do.
-- Given the host refuses with "This workspace isn't trusted yet, so nothing was started." (`denied`) and can open the trust check, then the card says "Couldn't start the run: This workspace isn't trusted yet, so nothing was started." with **Review** and no **Try again**; **Review** opens the trust check.
+- Given the host refuses with "This workspace isn't trusted yet, so nothing was started." (`denied`) and can open the trust check, then the card says "Couldn't start the run: this workspace isn't trusted yet, so nothing was started." with **Review** and no **Try again**; **Review** opens the trust check.
 - Given the person trusts the workspace from **Review**, then the Callout goes and **Start run** has focus.
 - Given the input `[1]`, then the card says "The input has to be a JSON object, such as {}." and nothing starts.

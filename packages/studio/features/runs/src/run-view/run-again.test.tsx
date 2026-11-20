@@ -245,7 +245,7 @@ verifies("runs.run-view.run-again-review", () => {
     await act(async () => button(root, "Run again")?.click());
 
     expect(root.textContent).toContain(
-      "Couldn't start the run: This workspace isn't trusted yet, so nothing was started.",
+      "Couldn't start the run: this workspace isn't trusted yet, so nothing was started.",
     );
     expect(button(root, "Try again")).toBeUndefined();
     await act(async () => button(root, "Review")?.click());
