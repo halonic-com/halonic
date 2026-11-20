@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-9385 (B16); design check B16 (HAL-9316); UX checklist 3.1 and 3.23; HAL-11495 (Plugins)
+- Source: HAL-9385 (B16); design check B16 (HAL-9316); UX checklist 3.1 and 3.23; HAL-11495 (Plugins); HAL-14046 (Remote)
 
-The kit's `SectionIcon` shall draw one icon for each Settings section that has one: Models, Trust, Appearance, Formats, Assistant, Agent sandbox, Trusted sources, Plugins and About, named by the section's id. It shall draw an outline on the same 24 grid and 1.8 line as the place icons, in the text colour, except that Appearance shall also fill one half solid in the text colour, so it reads as light and dark. Each icon shall be hidden from screen readers, because the row names the section.
+The kit's `SectionIcon` shall draw one icon for each Settings section that has one: Models, Trust, Appearance, Formats, Assistant, Agent sandbox, Trusted sources, Plugins, Remote and About, named by the section's id. It shall draw an outline on the same 24 grid and 1.8 line as the place icons, in the text colour, except that Appearance shall also fill one half solid in the text colour, so it reads as light and dark. Each icon shall be hidden from screen readers, because the row names the section.
 
 ## Examples
 

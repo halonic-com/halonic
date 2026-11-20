@@ -18,6 +18,7 @@ export const remoteFeature = defineFeature({
       title: "Remote",
       scope: "host",
       order: 35,
+      icon: "remote",
       description: DESCRIPTION,
       summary: remoteSummary,
       available: remoteAvailable,
