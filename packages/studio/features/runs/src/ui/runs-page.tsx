@@ -1,22 +1,11 @@
 import type { RunSummary } from "@halonicjs/events";
-import {
-  Button,
-  EmptyState,
-  FilterChips,
-  List,
-  type ListColumn,
-  type ListColumnsRow,
-  StatusChip,
-  usePresentation,
-  useTooltip,
-} from "@halonicjs/studio-kit";
+import { Button, EmptyState, FilterChips, List, usePresentation } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWordsOf, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { type RunnableWorkflow, RunStartHostService, SampleHintService } from "../api.ts";
 import { listRows } from "../list/list-rows.ts";
 import type { RunRow } from "../list/run-row.ts";
 import {
-  dayGroups,
   type EmptyList,
   emptyList,
   filterChangeText,
@@ -31,6 +20,7 @@ import { useAnnounceFilterChange } from "../list/use-filter-announcement.ts";
 import { FailureReason, RefreshFailedLine } from "../load-failure.tsx";
 import { emptyListWords, pageWords } from "../run-words.ts";
 import { type RunsList, RunsListService, type RunsListState } from "../runs-list.ts";
+import { DayList, runColumns } from "./day-list.tsx";
 import { NoRuns, type NoRunsWays } from "./no-runs.tsx";
 import type { PressRun } from "./press-run-line.tsx";
 
@@ -357,103 +347,6 @@ function Filters({
 function workflowName(rows: readonly RunRow[], workflow: WorkflowRef): string {
   const run = rows.find((row) => row.hubId === workflow.hubId && row.workflowId === workflow.id);
   return run?.workflow ?? workflow.id;
-}
-
-/** A row's columns, in `halonic runs`' order (checklist 1.2; T8-F1). */
-const runColumns: readonly ListColumn[] = [
-  { kind: "status", key: "status" },
-  { kind: "code", key: "run" },
-  { kind: "main" },
-  { kind: "text", key: "startedBy" },
-  { kind: "time", key: "when" },
-];
-
-/**
- * The runs in one list, under an `h2` for each day they started, right under the page's `h1` as
- * Workflows and Routines head their groups; ↑ ↓ pass over them. A click or Enter on a row opens
- * its run.
- */
-function DayList({
-  rows,
-  openRow,
-  now,
-}: {
-  readonly rows: readonly RunRow[];
-  readonly openRow: ((id: string) => void) | undefined;
-  readonly now: Date;
-}) {
-  return (
-    <List
-      label={pageWords.title}
-      groups={dayGroups(rows, now).map((group) => ({
-        id: group.day,
-        heading: { name: group.day },
-        rows: group.rows.map(listRow),
-      }))}
-      groupHeadingLevel={2}
-      columns={runColumns}
-      {...(openRow === undefined ? {} : { onOpen: openRow })}
-    />
-  );
-}
-
-/**
- * A run as a List row: its chip, short id, what ran over its line with its
- * Test tag, what started it, with the routine's name in a tooltip, and when
- * it started. A failed row's line is the kit's error reason, in `danger`,
- * with the Failed chip.
- */
-function listRow(row: RunRow): ListColumnsRow {
-  return {
-    id: row.id,
-    title: row.workflow,
-    meta: row.line,
-    ...(row.test ? { tag: <StatusChip tone="outline">{pageWords.testTag}</StatusChip> } : {}),
-    cells: {
-      status: {
-        value: (
-          <StatusChip tone={row.chip.tone} dot={row.chip.dot}>
-            {row.chip.word}
-          </StatusChip>
-        ),
-      },
-      run: { value: row.shortId },
-      startedBy: {
-        value:
-          row.startedByTooltip === undefined ? (
-            row.startedBy
-          ) : (
-            <StartedByWithTooltip words={row.startedBy} tooltip={row.startedByTooltip} />
-          ),
-      },
-      when: { value: row.time, ...(row.took === undefined ? {} : { detail: row.took }) },
-    },
-    label: row.label,
-    ...(row.standing === "failed" ? { error: { reason: row.line, chip: row.chip.word } } : {}),
-  };
-}
-
-/**
- * A schedule's Started by, with the routine's name in a tooltip. `useTooltip`, not `Tooltip`: its
- * `inline-flex` wrapper can't be cut, so a long schedule on a phone's row would show as "…" alone.
- * As plain inline text it's cut like any other (HAL-12829).
- */
-function StartedByWithTooltip({
-  words,
-  tooltip,
-}: {
-  readonly words: string;
-  readonly tooltip: string;
-}) {
-  const { anchor, trigger, popover } = useTooltip({ text: tooltip });
-  return (
-    <>
-      <span {...anchor} {...trigger}>
-        {words}
-      </span>
-      {popover}
-    </>
-  );
 }
 
 /** One quiet line where the rows would be, with its one button if it has one (R2, R4 to R6). */
