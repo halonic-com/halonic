@@ -1,6 +1,7 @@
-import { type Plugin, parseFile, pluginFromIntegrationSheet } from "@halonicjs/format";
+import type { Plugin } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { acmeWithSignIn as acme } from "../test-support/plugins.ts";
 import { type SignInFacts, signInFacts, tokenHostDiffers } from "./sign-in-facts.ts";
 import {
   outcomeLine,
@@ -9,34 +10,6 @@ import {
   tokenHostWarning,
   trustLine,
 } from "./sign-in-text.ts";
-
-/** An integration with one sign-in, read as a plugin with only a backend. */
-function acme(tokenUrl = "https://auth.example.com/oauth/token"): Plugin {
-  const parsed = parseFile(
-    "integration",
-    `id: acme
-version: 1.0.0
-kit: 2
-provides: [connector]
-hosts: [api.example.com, files.example.com]
-secrets:
-  acme-client: { purpose: The client secret of your Acme app. }
-signIns:
-  account:
-    purpose: Access to your Acme account.
-    flow: oauth-code
-    authorizeUrl: "https://auth.example.com/oauth/authorize"
-    tokenUrl: "${tokenUrl}"
-    clientId: { fromSetting: clientId }
-    clientSecret: acme-client
-    scopes:
-      - { scope: projects.read, reason: read your projects }
-      - { scope: files.write, reason: change your files }
-    access: { hosts: [api.example.com, files.example.com], as: bearer }`,
-  );
-  if (!parsed.ok) throw new Error(parsed.error.map((problem) => problem.message).join("; "));
-  return pluginFromIntegrationSheet(parsed.value.value);
-}
 
 function factsOf(plugin: Plugin): SignInFacts {
   const facts = signInFacts(plugin, { clientId: "abc123" });

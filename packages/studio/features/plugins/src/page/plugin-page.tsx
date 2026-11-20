@@ -1,3 +1,4 @@
+import type { Plugin } from "@halonicjs/format";
 import {
   Button,
   CommandBox,
@@ -16,6 +17,7 @@ import {
   PluginSettingsSection,
   type SettingsSaveState,
 } from "../settings/plugin-settings-section.tsx";
+import { type PluginSignIns, PluginSignInsSection } from "../sign-in/plugin-sign-ins-section.tsx";
 import { Quoted } from "../ui/quoted.tsx";
 import { OPEN_PANEL, PLUGIN } from "./page-text.ts";
 import {
@@ -42,6 +44,11 @@ export interface PluginPageProps {
   readonly plugin: InstalledPlugin;
   readonly settings: PluginSettingsReader;
   readonly secrets: PluginSecretStore;
+  /**
+   * The agent host's sign-ins and the browser, for a plugin whose backend
+   * signs in (HAL-8613). Without it, the page shows no sign-ins.
+   */
+  readonly signIns?: PluginSignIns | undefined;
   /** **Open panel**: opens the plugin's panel in its tab. */
   readonly onOpenPanel: () => void;
   /** Remove trust, Remove plugin…, Check again and Open folder, through the app. */
@@ -82,6 +89,7 @@ export function PluginPage({
   plugin,
   settings,
   secrets,
+  signIns,
   onOpenPanel,
   actions,
   place = "app",
@@ -203,21 +211,64 @@ export function PluginPage({
           }
         />
         {manifest === undefined ? null : (
-          <>
-            <PluginSettingsSection
-              plugin={manifest}
-              host={settings}
-              secrets={secrets}
-              off={off}
-              onSaveState={setSaveState}
-            />
-            <WhatItAdds manifest={manifest} />
-          </>
+          <PluginSections
+            manifest={manifest}
+            settings={settings}
+            secrets={secrets}
+            signIns={signIns}
+            off={off}
+            viewOnly={viewOnly}
+            onSaveState={setSaveState}
+          />
         )}
         <UsedBy plugin={plugin.plugin} usedBy={actions.usedBy} />
         {viewOnly ? <ViewOnlyFooter phone={phone} /> : null}
       </div>
     </div>
+  );
+}
+
+/** What `PluginSections` needs: the manifest and the page's parts for its sections. */
+interface PluginSectionsProps {
+  readonly manifest: Plugin;
+  readonly settings: PluginSettingsReader;
+  readonly secrets: PluginSecretStore;
+  readonly signIns: PluginSignIns | undefined;
+  readonly off: { readonly reason: string } | undefined;
+  readonly viewOnly: boolean;
+  readonly onSaveState: (state: SettingsSaveState | undefined) => void;
+}
+
+/** Settings, then the sign-ins when the app gives them, then What it adds. */
+function PluginSections({
+  manifest,
+  settings,
+  secrets,
+  signIns,
+  off,
+  viewOnly,
+  onSaveState,
+}: PluginSectionsProps) {
+  return (
+    <>
+      <PluginSettingsSection
+        plugin={manifest}
+        host={settings}
+        secrets={secrets}
+        off={off}
+        onSaveState={onSaveState}
+      />
+      {signIns === undefined ? null : (
+        <PluginSignInsSection
+          plugin={manifest}
+          settings={settings}
+          signIns={signIns}
+          off={off}
+          viewOnly={viewOnly}
+        />
+      )}
+      <WhatItAdds manifest={manifest} />
+    </>
   );
 }
 

@@ -6,6 +6,7 @@ import type {
   PluginSecretStore,
   PluginSettingsReader,
 } from "../settings/plugin-settings-section.tsx";
+import type { PluginSignIns } from "../sign-in/plugin-sign-ins-section.tsx";
 import { PLUGIN, type PluginOrigin } from "./page-text.ts";
 import type { PluginActions } from "./plugin-actions.ts";
 
@@ -80,6 +81,8 @@ export interface PluginPageOptions {
   readonly settings: PluginSettingsReader;
   /** The keychain, for a plugin's secret settings. */
   readonly secrets: PluginSecretStore;
+  /** The agent host's sign-ins and the browser; without it the page shows no sign-ins. */
+  readonly signIns?: PluginSignIns | undefined;
   /** Opens the plugin's panel in its tab, the same as "Open *name* panel" in Ctrl K. */
   readonly openPanel: (plugin: string) => void;
   /** Remove trust, Remove plugin…, Check again and Open folder. */

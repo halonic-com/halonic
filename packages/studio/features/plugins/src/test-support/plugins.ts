@@ -1,4 +1,4 @@
-import { parseFile } from "@halonicjs/format";
+import { type Plugin, parseFile, pluginFromIntegrationSheet } from "@halonicjs/format";
 import type { ServiceKey, ServiceTarget } from "@halonicjs/studio-shell";
 import { act } from "react";
 import type { PluginCardStatus } from "../cards/plugin-card.tsx";
@@ -49,6 +49,34 @@ ui:
     },
     problems: [],
   };
+}
+
+/** An integration with one sign-in, read as a plugin with only a backend. */
+export function acmeWithSignIn(tokenUrl = "https://auth.example.com/oauth/token"): Plugin {
+  const parsed = parseFile(
+    "integration",
+    `id: acme
+version: 1.0.0
+kit: 2
+provides: [connector]
+hosts: [api.example.com, files.example.com]
+secrets:
+  acme-client: { purpose: The client secret of your Acme app. }
+signIns:
+  account:
+    purpose: Access to your Acme account.
+    flow: oauth-code
+    authorizeUrl: "https://auth.example.com/oauth/authorize"
+    tokenUrl: "${tokenUrl}"
+    clientId: { fromSetting: clientId }
+    clientSecret: acme-client
+    scopes:
+      - { scope: projects.read, reason: read your projects }
+      - { scope: files.write, reason: change your files }
+    access: { hosts: [api.example.com, files.example.com], as: bearer }`,
+  );
+  if (!parsed.ok) throw new Error(parsed.error.map((problem) => problem.message).join("; "));
+  return pluginFromIntegrationSheet(parsed.value.value);
 }
 
 /** A feed the test changes while the panel or the page shows. */
