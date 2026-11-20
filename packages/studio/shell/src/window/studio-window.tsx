@@ -43,6 +43,7 @@ import { activeItemOf, shownPageOf } from "./active-item.ts";
 import { DesktopResourceItem } from "./desktop-resource-item.tsx";
 import { useClosingGoneItemTabs } from "./gone-item-tabs.ts";
 import { useOpenPageAcrossLayouts } from "./layout-crossing.ts";
+import { placeStackMoves } from "./place-stack-moves.ts";
 import { useShownPlaces } from "./shown-places.ts";
 import { StudioPage } from "./studio-page.tsx";
 import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
@@ -240,16 +241,7 @@ function StudioWindowBody(props: StudioWindowProps) {
       host,
       shown: shownPage,
       openPlace: (place) => openPlaceHere.current(place),
-      openPlaceList: (place, sub, title) => {
-        if (!onDesktop.current)
-          openPhone({ key: `${place}/${sub}`, title }, { list: true, replaceSibling: true });
-      },
-      openPlacePage: (place, sub, title) => {
-        if (!onDesktop.current) openPhone({ key: `${place}/${sub}`, title });
-      },
-      closePlacePage: (place, sub) => {
-        if (!onDesktop.current) backFromPhone(`${place}/${sub}`);
-      },
+      ...placeStackMoves(onDesktop, openPhone, backFromPhone),
       badges: shell.badges,
       saving: workspace.saving,
       closeStack: shell.closeStack,
