@@ -5,6 +5,7 @@ import { connectionSettingsStoreVersion } from "./connection-settings-store.ts";
 import { connectorClientVersion } from "./connector-client.ts";
 import { coordinationVersion } from "./coordination.ts";
 import { definitionStoreVersion } from "./definition-store.ts";
+import { deployTargetVersion } from "./deploy-target.ts";
 import { digestVersion } from "./digest.ts";
 import { folderReaderVersion } from "./folder-reader.ts";
 import { harnessVersion } from "./harness.ts";
@@ -53,6 +54,7 @@ export const portVersions = {
   ConnectorClient: connectorClientVersion,
   Coordination: coordinationVersion,
   DefinitionStore: definitionStoreVersion,
+  DeployTarget: deployTargetVersion,
   Digest: digestVersion,
   FolderReader: folderReaderVersion,
   Harness: harnessVersion,
