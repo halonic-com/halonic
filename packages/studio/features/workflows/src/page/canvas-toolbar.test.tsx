@@ -13,7 +13,7 @@ import { WorkflowScreen } from "./workflow-page.tsx";
 
 afterEach(unmount);
 
-type Edits = Pick<WorkflowsHost, "addStep" | "resetLayout">;
+type Edits = Pick<WorkflowsHost, "addStep" | "resetLayout" | "changeStep">;
 
 /** The page of `view` on a host with `edits`; `views[0]` can be swapped and `change` tells the page. */
 async function showPage(edits: Partial<Edits>, view: WorkflowView = reply, phone = false) {
@@ -44,13 +44,21 @@ function textOf(button: HTMLElement, leaveOut: string): string {
   return copy.textContent ?? "";
 }
 
-const editsThatWork = (): Required<Edits> => ({
+const editsThatWork = (): Required<Omit<Edits, "changeStep">> => ({
   addStep: vi.fn(async () => "step"),
   resetLayout: vi.fn(async () => {}),
 });
 
+/** Where a card's right edge shows on screen, read back from the canvas's transform. */
+function shownRight(page: HTMLElement, card: HTMLElement): number {
+  const transform =
+    page.querySelector<HTMLElement>("[data-testid=canvas-surface]")?.style.transform ?? "";
+  const [x = 0, , zoom = 1] = (transform.match(/-?[\d.]+/g) ?? []).map(Number);
+  return (Number.parseFloat(card.style.left) + Number.parseFloat(card.style.width)) * zoom + x;
+}
+
 verifies("workflows.canvas.toolbar", () => {
-  it("has Step, Wait and Auto layout at the canvas's top left, heard as what they do", async () => {
+  it("has Step, Wait and Auto layout at the canvas's top left, heard as what they do, and a divider high contrast keeps", async () => {
     const { page } = await showPage(editsThatWork());
     const buttons = [...(toolbar(page)?.querySelectorAll("button") ?? [])];
     expect(buttons.map((one) => textOf(one, ".sr-only"))).toEqual(["Step", "Wait", "Auto layout"]);
@@ -59,6 +67,9 @@ verifies("workflows.canvas.toolbar", () => {
       "Add wait",
       "Auto layout",
     ]);
+    // Forced colours drop backgrounds, so the divider takes the text's colour there.
+    const divider = toolbar(page)?.querySelector(":scope > [aria-hidden=true]");
+    expect(divider?.className).toContain("forced-colors:bg-[CanvasText]");
   });
 
   it("adds a step right of the right-most card and selects it once it shows", async () => {
@@ -84,6 +95,35 @@ verifies("workflows.canvas.toolbar", () => {
     const { page } = await showPage(edits);
     await act(async () => buttonNamed(toolbar(page) as HTMLElement, "Wait")?.click());
     expect(edits.addStep).toHaveBeenCalledWith(expect.anything(), "wait", expect.anything());
+  });
+
+  it("opens the new step's card with focus, and at 200 % pans the step clear of it", async () => {
+    const edits = {
+      ...editsThatWork(),
+      addStep: vi.fn<NonNullable<Edits["addStep"]>>(async () => "wait-2"),
+    };
+    const { page, replace } = await showPage({ ...edits, changeStep: async () => {} });
+    const zoomIn = page.querySelector<HTMLButtonElement>("button[aria-label='Zoom in']");
+    for (let press = 0; press < 4; press++) await act(async () => zoomIn?.click());
+
+    await act(async () => buttonNamed(toolbar(page) as HTMLElement, "Wait")?.click());
+    const place = edits.addStep.mock.calls[0]?.[2];
+    if (place === undefined) throw new Error("no step added");
+    await replace({
+      ...reply,
+      steps: [...reply.steps, { id: "wait-2", type: "wait" }],
+      layout: { "wait-2": place },
+    });
+
+    const title = page.querySelector("aside h2");
+    expect(title?.textContent).toBe("Step wait-2");
+    expect(document.activeElement).toBe(title);
+    const added = [...page.querySelectorAll<HTMLElement>("button[aria-pressed]")].find(
+      (card) => card.querySelector("[title]")?.textContent === "wait-2",
+    );
+    if (added === undefined) throw new Error("no card for wait-2");
+    // jsdom measures the canvas as the 800 pixels it falls back to.
+    expect(shownRight(page, added)).toBeLessThanOrEqual(800 - 16);
   });
 
   it("forgets the saved places with Auto layout, and asks nothing when there are none", async () => {

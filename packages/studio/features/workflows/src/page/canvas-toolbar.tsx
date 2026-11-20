@@ -40,7 +40,11 @@ export function CanvasToolbar({ onAddStep, onAutoLayout }: CanvasToolbarProps) {
       <Button variant="ghost" size="sm" icon={<PlusIcon />} onClick={() => onAddStep("wait")}>
         <Spoken shown={words.wait} name={words.addWait} />
       </Button>
-      <span aria-hidden="true" className="mx-1 h-5 w-px bg-border" />
+      {/* Forced colours drop backgrounds, so there the divider takes the text's colour. */}
+      <span
+        aria-hidden="true"
+        className="mx-1 h-5 w-px bg-border forced-color-adjust-none forced-colors:bg-[CanvasText]"
+      />
       <Button variant="ghost" size="sm" onClick={onAutoLayout}>
         <span className="whitespace-nowrap">{words.autoLayout}</span>
       </Button>
