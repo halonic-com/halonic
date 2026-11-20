@@ -3,6 +3,7 @@
 - Task: HAL-13714 (found in the real-run QA pass on HAL-13712)
 - Approval: the task asks for this change; Liam split it from HAL-13670 on the task, reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Qv+MxdDXXJafaUeYLWlbUk7CcHbyRbaMwK3pt1NCuON9KWjKGwJWUXwJi4d8Ynz7WNf18KiXU7+nTb0TTiFDAQ==
 
 ## What changes
 
