@@ -2,6 +2,7 @@
 
 - Approval: the board approved the change on HAL-14368 as the queue fix allowed under the PR freeze (HAL-14331, rule 4); Julian reviewed it on HAL-14372, Mateo checks it there because Liam wrote it, and Liam and Julian sign as the two guardians, because `lib/context.ts` and `lib/source-files.ts` are trust roots
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:j/+RYpMtpt1FHKO4ee/xmltoGvU2Ic1b+mfQlaHtCSyEu16DWqj7zXRQEII1sSLDl9gDFNCWDFMQSRTfQOUPDQ==
 - Task: HAL-14368
 
 ## What changes
