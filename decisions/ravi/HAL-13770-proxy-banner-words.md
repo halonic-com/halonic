@@ -3,7 +3,6 @@
 - Task: HAL-13770
 - Approval: decided by the team on HAL-13770 (Sofia, a wording detail of the banner approved on HAL-13725, HAL-2282 rule; from her check HAL-13765 of #4020). Liam signs on review.
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hucLt12B1McROkNe+YVHrVH/uj1qBLM/ZXxYZE1bjVcL9lq1FF9+OazKtHkRaPSbD/7txdKg2Yy12bLXtjeYCA==
 
 For the shell's `proxy` refusal (`proxy.unreachable`), the run page's `model-unreachable`
 banner said the same fact twice, with two colons: "Halonic couldn't reach *Claude* at
@@ -21,6 +20,11 @@ the colon form. Nothing else is removed or loosened: the other refusals, "…thr
 without a sentence, and every other `model-unreachable` run read as before. The shell's sentence
 itself doesn't change, since other callers of `http_fetch` show it on its own.
 
+The proxy cases of `failure-banner.test.ts` move, unchanged, into `proxy-banner.test.ts`, which
+keeps the first file under the 500-line limit. That file runs fewer tests than on `main`, so it
+is listed below.
+
 ## Covers
 
 - runs.run-view.failure-banners
+- packages/studio/features/runs/src/run-view/failure-banner.test.ts
