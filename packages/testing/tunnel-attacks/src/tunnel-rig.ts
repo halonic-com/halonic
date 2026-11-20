@@ -3,6 +3,7 @@ import { type GatewayListener, startGatewayListener } from "@halonicjs/adapter-r
 import type { TunnelEndpoint } from "@halonicjs/ports";
 import { FakeTunnelProvider } from "@halonicjs/testing-contracts";
 import { RecordingSource } from "./recording-source.ts";
+import { RigPhones } from "./rig-phone.ts";
 import { WireClient } from "./wire-client.ts";
 
 export interface TunnelRigOptions {
@@ -14,6 +15,7 @@ export interface TunnelRigOptions {
   maxConnections?: number;
   heartbeatMs?: number;
   helloTimeoutMs?: number;
+  handshakeTimeoutMs?: number;
 }
 
 /**
@@ -26,6 +28,8 @@ export interface TunnelRigOptions {
  */
 export interface TunnelRig {
   readonly source: RecordingSource;
+  /** The host's key, its paired phones and its pairing service (never open). */
+  readonly phones: RigPhones;
   readonly gateway: GatewayListener;
   readonly tunnel: FakeTunnelProvider;
   readonly endpoint: TunnelEndpoint;
@@ -35,7 +39,7 @@ export interface TunnelRig {
   readonly forwarderPort: number;
   /** A client that reaches the gateway through the forwarder. */
   client(): WireClient;
-  /** A client that sends a handshake as a phone does, and hello. */
+  /** A client that opens the WebSocket, reconnects as a newly paired phone, and says hello inside the session. */
   greeted(): Promise<WireClient>;
   stop(): Promise<void>;
 }
@@ -46,6 +50,7 @@ export interface TunnelRig {
  */
 async function startGatewayAndTunnel(
   source: RecordingSource,
+  phones: RigPhones,
   tunnel: FakeTunnelProvider,
   options: TunnelRigOptions,
 ): Promise<{ gateway: GatewayListener; endpoint: TunnelEndpoint }> {
@@ -54,6 +59,8 @@ async function startGatewayAndTunnel(
     try {
       const gateway = await startGatewayListener({
         source,
+        phones,
+        pairing: phones,
         policy: { allowRiskyRemotely: () => options.allowRisky === true },
         port,
         ...(options.listTunnelName === false
@@ -62,6 +69,9 @@ async function startGatewayAndTunnel(
         ...(options.maxConnections === undefined ? {} : { maxConnections: options.maxConnections }),
         ...(options.heartbeatMs === undefined ? {} : { heartbeatMs: options.heartbeatMs }),
         ...(options.helloTimeoutMs === undefined ? {} : { helloTimeoutMs: options.helloTimeoutMs }),
+        ...(options.handshakeTimeoutMs === undefined
+          ? {}
+          : { handshakeTimeoutMs: options.handshakeTimeoutMs }),
       });
       const endpoint = await tunnel.start({ gateway: { host: "127.0.0.1", port: gateway.port } });
       return { gateway, endpoint };
@@ -78,7 +88,8 @@ export async function openTunnelRig(options: TunnelRigOptions = {}): Promise<Tun
   source.addApproval("s1", "normal1", "normal");
   source.addApproval("s1", "risky1", "risky");
   const tunnel = new FakeTunnelProvider();
-  const { gateway, endpoint } = await startGatewayAndTunnel(source, tunnel, options);
+  const phones = new RigPhones();
+  const { gateway, endpoint } = await startGatewayAndTunnel(source, phones, tunnel, options);
   const tunnelName = new URL(endpoint.url).host;
   const forwarder = await openForwarder(gateway.port);
   const clients: WireClient[] = [];
@@ -89,6 +100,7 @@ export async function openTunnelRig(options: TunnelRigOptions = {}): Promise<Tun
   };
   return {
     source,
+    phones,
     gateway,
     tunnel,
     endpoint,
@@ -98,6 +110,7 @@ export async function openTunnelRig(options: TunnelRigOptions = {}): Promise<Tun
     async greeted() {
       const phone = client();
       await phone.open(forwarder.port, { host: tunnelName });
+      await phone.reconnect(phones.pairPhone());
       phone.sendJson({ type: "hello", id: "h1", version: 2 });
       await phone.frames(1);
       return phone;

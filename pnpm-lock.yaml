@@ -4028,6 +4028,9 @@ importers:
 
   packages/testing/tunnel-attacks:
     dependencies:
+      '@halonicjs/adapter-e2e-noise':
+        specifier: workspace:*
+        version: link:../../adapters/e2e-noise
       '@halonicjs/adapter-harness-bridge':
         specifier: workspace:*
         version: link:../../adapters/harness-bridge

@@ -26,6 +26,7 @@
     }
   },
   "dependencies": {
+    "@halonicjs/adapter-e2e-noise": "workspace:*",
     "@halonicjs/adapter-harness-bridge": "workspace:*",
     "@halonicjs/adapter-remote-gateway": "workspace:*",
     "@halonicjs/ports": "workspace:*",
