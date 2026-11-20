@@ -64,7 +64,7 @@ export function EveryStep({
   const [showLog, setShowLog] = useState(false);
   const lines = useMemo(() => (showLog ? runLogLines(log) : []), [showLog, log]);
   const notes = useMemo(() => providerNotes(log).map(escapeHidden), [log]);
-  const toggle = useRef<HTMLButtonElement>(null);
+  const toggle = useRef<HTMLDivElement>(null);
   const swapped = useRef(false);
   useEffect(() => {
     if (!swapped.current) return;
@@ -90,17 +90,19 @@ export function EveryStep({
         )}
       </div>
       <NoteLines label={everyStepWords.notes} notes={notes} />
-      <Button
-        ref={toggle}
-        variant="ghost"
-        size="sm"
-        onClick={() => {
-          swapped.current = true;
-          setShowLog(!showLog);
-        }}
-      >
-        {showLog ? runLogWords.hide : runLogWords.show}
-      </Button>
+      {/* "nearest" stops at the box's edge, so its margin leaves room for the button's ring. */}
+      <div ref={toggle} className="scroll-my-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            swapped.current = true;
+            setShowLog(!showLog);
+          }}
+        >
+          {showLog ? runLogWords.hide : runLogWords.show}
+        </Button>
+      </div>
     </section>
   );
 }

@@ -83,6 +83,8 @@ verifies("runs.run-view.run-log", () => {
       expect(scrolled).toEqual([]);
 
       const toggle = button(root, "Show the run log");
+      // The scroll leaves room for the focus ring below the button (C367 RV1b).
+      expect(toggle.parentElement?.className).toContain("scroll-my-2");
       toggle.focus();
       await act(async () => toggle.click());
       expect(document.activeElement?.textContent).toBe("Show every step");
