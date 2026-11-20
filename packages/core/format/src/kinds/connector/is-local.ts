@@ -41,18 +41,19 @@ export function connectorIsLocal(
 
 /**
  * The hosts of a sheet's `hosts` that are outside this computer and its
- * network: a fixed host that isn't a `*.localhost` name, and a host from a
- * setting whose class is `public`. A `loopback` or `private` setting stays
- * on this computer or the home network, as `local: true` means.
+ * network: every fixed host, and a host from a setting whose class is
+ * `public`. A fixed host is a name, and the runner sends a name only to a
+ * public address, whatever the name looks like (`*.localhost` or `127.*`
+ * included). Only a `loopback` or `private` setting, whose address the
+ * runner checks on every request, stays on this computer or the home
+ * network, as `local: true` means.
  *
  * @example
  * outsideHosts(["api.acme.example", { fromSetting: "station", class: "private" }]);
  * // ["api.acme.example"]
  */
 export function outsideHosts(hosts: readonly IntegrationHost[]): IntegrationHost[] {
-  return hosts.filter((host) =>
-    typeof host === "string" ? !isLoopbackHost(withoutPort(host)) : host.class === "public",
-  );
+  return hosts.filter((host) => typeof host === "string" || host.class === "public");
 }
 
 /** Whether a lowercased host without port or brackets is this computer. */
@@ -60,12 +61,6 @@ function isLoopbackHost(host: string): boolean {
   return (
     host === "localhost" || host.endsWith(".localhost") || host === "::1" || /^127\./.test(host)
   );
-}
-
-/** A sheet's host without its `:port`; a sheet's host is never an IPv6 address. */
-function withoutPort(host: string): string {
-  const colon = host.indexOf(":");
-  return colon === -1 ? host : host.slice(0, colon);
 }
 
 /**

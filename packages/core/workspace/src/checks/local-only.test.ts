@@ -111,7 +111,7 @@ verifies("workspace.local-only-sheet-hosts", () => {
     integrations: new Map([["notes", [{ fromSetting: "server", class: "public" }]]]),
   };
   const inside: SheetHosts = {
-    plugins: new Map([["acme-orders", ["orders.localhost"]]]),
+    plugins: new Map([["acme-orders", [{ fromSetting: "shop", class: "loopback" }]]]),
     integrations: new Map([["notes", [{ fromSetting: "server", class: "private" }]]]),
   };
   const fix = "so it isn't local: set privacy.localOnly: false in workspace.yaml to use it";

@@ -134,9 +134,9 @@ verifies("engine.run-connectors", () => {
   it("doesn't count local: true for a plugin whose backend reaches an outside host in a local-only run", async () => {
     const plugin = (id: string, plugin: string) =>
       ({ id, local: true, transport: { plugin: { id: plugin } } }) as Connector;
-    const plugins = new Map([
+    const plugins = new Map<string, readonly IntegrationHost[]>([
       ["acme-orders", ["api.acme.example"]],
-      ["acme-ledger", ["ledger.localhost"]],
+      ["acme-ledger", [{ fromSetting: "ledger", class: "private" }]],
     ]);
     const files = [notes, plugin("orders", "acme-orders"), plugin("ledger", "acme-ledger")];
     const { connectors, log } = fixture({ files, plugins });

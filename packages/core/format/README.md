@@ -79,9 +79,10 @@ not here.
 - `RESERVED_FOLDER` (`.halonic`) and `isReservedPath(path)`: Halonic's own data folder at the
   workspace root and in each hub, which the loader skips (requirement `reserved-folder`).
 - `connectorIsLocal(connector, hosts?)` says whether a connector counts as local for `privacy.localOnly`,
-  counting the `outsideHosts` of a plugin's or local integration's sheet when given.
-  `connectorIsLocalWith(connector, sheets?)` does the same with `SheetHosts`, the sheets' hosts a
-  host read, so `validate` and the engine's run connectors decide alike;
+  counting the `outsideHosts` of a plugin's or local integration's sheet when given (every fixed
+  host, and a `public` setting host). `connectorIsLocalWith(connector, sheets?)` does the same with
+  `SheetHosts`, the sheets' hosts a host read, so `validate` and the engine's run connectors decide
+  alike;
   `needsApproval(tools, name)` and `approveAll` (`"all"`) read a connector's `tools.approve` setting.
   `marksRead(tools, name)` says whether its `tools.read` list marks a tool as only reading; `approve`
   wins when both name a tool.

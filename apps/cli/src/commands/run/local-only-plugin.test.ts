@@ -43,8 +43,8 @@ afterEach(async () => {
   await removeTestFolder(folder);
 });
 
-/** Installs the plugin acme-orders, whose backend may reach `host`. */
-async function installOrders(host: string): Promise<void> {
+/** Installs the plugin acme-orders, whose backend may reach `hosts`. */
+async function installOrders(hosts: readonly string[]): Promise<void> {
   const plugin = join(pluginsFolder(profileFolder(profile)), "acme-orders");
   await mkdir(join(plugin, "backend"), { recursive: true });
   const manifest = [
@@ -53,7 +53,7 @@ async function installOrders(host: string): Promise<void> {
     "sdk: 1",
     "name: Acme orders",
     "backend:",
-    `  hosts: [${host}]`,
+    `  hosts: [${hosts.join(", ")}]`,
     "  tools:",
     "    - { name: find-order, description: Finds an order., risk: read, untrusted: true }",
     "",
@@ -64,7 +64,7 @@ async function installOrders(host: string): Promise<void> {
 
 verifies("workspace.local-only-sheet-hosts", () => {
   it("fails validate and refuses the run when the plugin reaches an outside host", async () => {
-    await installOrders("api.acme.example");
+    await installOrders(["api.acme.example"]);
 
     const validating = captureIo(acme);
     const validated = await runCli(["validate"], validating, [validateCommand]);
@@ -83,8 +83,17 @@ verifies("workspace.local-only-sheet-hosts", () => {
     );
   });
 
-  it("passes validate when the plugin reaches only this computer", async () => {
-    await installOrders("orders.localhost");
+  it("fails validate when the plugin names a host that looks like this computer", async () => {
+    // A fixed host is a name, and the runner sends a name only to a public address.
+    await installOrders(["orders.localhost"]);
+    const io = captureIo(acme);
+
+    expect(await runCli(["validate"], io, [validateCommand])).toBe(exitCode.failed);
+    expect(io.stdout.join("\n")).toContain("The plugin acme-orders reaches orders.localhost");
+  });
+
+  it("passes validate when the plugin reaches no outside host", async () => {
+    await installOrders([]);
     const io = captureIo(acme);
 
     expect(await runCli(["validate"], io, [validateCommand])).toBe(exitCode.ok);

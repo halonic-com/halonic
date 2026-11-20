@@ -7,9 +7,11 @@
 
 A `plugin` or `integration` connector counts as local only when its `local` key says `true` and the
 sheet of its code (the plugin's `backend.hosts`, or the integration's `hosts`) lists no host outside
-this computer and its network. An outside host is a fixed host that isn't a `*.localhost` name, or a
-`{ fromSetting }` host of class `public`; `loopback` and `private` stay local, as `local: true` means
-"this computer or your own network".
+this computer and its network. Every fixed host is outside, whatever its name looks like: the
+runner sends a name only to a public address, so `*.localhost` and `127.*` names never reach this
+computer. A `{ fromSetting }` host of class `public` is outside too. Only `loopback` and `private`
+setting hosts, whose addresses the runner checks on every request, stay local, as `local: true`
+means "this computer or your own network"; so does a sheet with no hosts.
 
 - `halonic validate` and `halonic run` read the installed plugins and the local integrations and
   report `The plugin acme-orders reaches api.acme.example, so it isn't local: set
