@@ -3,6 +3,7 @@
 - Task: HAL-14092
 - Approval: Liam approves this change on HAL-14099, his security review of halonic#4144 (option 1 of HAL-14092). A team decision with no board card (HAL-2282 rule): it adds two optional keys to a file format, no screen or flow.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vIZUqR0uP0Jo3WNa63mxmlkkR4/GSRk6q4PZTQingeARtxCFuR/asy5Fba8DKYky3ees5UtgZVAQVkbmnwzSAw==
 
 ## What changes
 
