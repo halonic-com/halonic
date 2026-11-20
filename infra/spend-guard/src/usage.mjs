@@ -10,11 +10,39 @@ import { price } from "./pricing.mjs";
 
 const ENDPOINT = "https://api.cloudflare.com/client/v4/graphql";
 
-/** Which scripts and buckets belong to which sub-budgeted service. */
+/**
+ * Which scripts and buckets belong to which sub-budgeted service. A service with `containers`
+ * also pays for the Durable Object namespaces of its scripts and for the container applications
+ * listed in `containers.apps` (see `splitByService`).
+ */
 export const SERVICES = {
   "turbo-cache": { scripts: ["halonic-turbo-cache"], buckets: ["halonic-turbo-cache"] },
-  render: { scripts: ["halonic-render"], buckets: [], containers: true },
+  render: {
+    scripts: ["halonic-render"],
+    buckets: [],
+    containers: { apps: ["a030d9d6-1e18-466f-a60c-37eb567297a2"] }, // halonic-render-renderslot
+  },
 };
+
+/**
+ * Splits per-application Containers usage and per-namespace Durable Objects usage between the
+ * services. Analytics name a Durable Object namespace's script, but not a container
+ * application's, so a service claims the namespaces of its scripts and the applications listed
+ * by ID. Usage no service claims is in no sub-budget; the account-wide total still counts it.
+ */
+export function splitByService(services, { apps, namespaces }) {
+  const out = Object.fromEntries(Object.keys(services).map((s) => [s, []]));
+  for (const [name, cfg] of Object.entries(services)) {
+    if (!cfg.containers) continue;
+    for (const { script, usage } of Object.values(namespaces)) {
+      if (cfg.scripts.includes(script)) out[name].push(usage);
+    }
+    for (const [id, usage] of Object.entries(apps)) {
+      if (cfg.containers.apps.includes(id)) out[name].push(usage);
+    }
+  }
+  return out;
+}
 
 export function monthWindow(now) {
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
@@ -176,6 +204,47 @@ export const READERS = {
     };
   },
 
+  // The two readers above, per container application and per Durable Object namespace (with its
+  // script), for splitByService. Same units.
+  async containerParts(env, w) {
+    const a = await gql(
+      env,
+      `query($tag:String!,$since:Time!,$until:Time!){viewer{accounts(filter:{accountTag:$tag}){
+        c:containersUsageAdaptiveGroups(limit:10000, filter:{datetime_geq:$since, datetime_leq:$until}){sum{cpuTimeSec allocatedMemory allocatedDisk} dimensions{applicationId}}
+        inv:durableObjectsInvocationsAdaptiveGroups(limit:10000, filter:{datetime_geq:$since, datetime_leq:$until}){sum{requests} dimensions{namespaceId scriptName}}
+        dur:durableObjectsPeriodicGroups(limit:10000, filter:{datetime_geq:$since, datetime_leq:$until}){sum{activeTime} dimensions{namespaceId}}}}}`,
+      { tag: env.ACCOUNT_ID, since: w.since, until: w.until },
+    );
+    const apps = {};
+    for (const r of a.c ?? []) {
+      const id = r.dimensions.applicationId;
+      apps[id] ??= {
+        containerVcpuSeconds: 0,
+        containerMemGibSeconds: 0,
+        containerDiskGbSeconds: 0,
+      };
+      const u = apps[id];
+      u.containerVcpuSeconds += Number(r.sum.cpuTimeSec) || 0;
+      u.containerMemGibSeconds += (Number(r.sum.allocatedMemory) || 0) / 2 ** 30;
+      u.containerDiskGbSeconds += (Number(r.sum.allocatedDisk) || 0) / GB;
+    }
+    const namespaces = {};
+    const ns = (id) => {
+      namespaces[id] ??= { script: null, usage: { doRequests: 0, doGbSeconds: 0 } };
+      return namespaces[id];
+    };
+    for (const r of a.inv ?? []) {
+      const n = ns(r.dimensions.namespaceId);
+      n.script ??= r.dimensions.scriptName;
+      n.usage.doRequests += Number(r.sum.requests) || 0;
+    }
+    for (const r of a.dur ?? []) {
+      ns(r.dimensions.namespaceId).usage.doGbSeconds +=
+        ((Number(r.sum.activeTime) || 0) / 1e6) * 0.125;
+    }
+    return { apps, namespaces };
+  },
+
   async workersAi(env, w) {
     const a = await gql(
       env,
@@ -219,14 +288,11 @@ export async function readUsage(env, now) {
 
   // Per-service estimate, without free allowances (so it errs high).
   const services = {};
+  const containerShares = splitByService(SERVICES, await READERS.containerParts(env, w));
   for (const [name, cfg] of Object.entries(SERVICES)) {
-    const parts = [];
+    const parts = [...containerShares[name]];
     if (cfg.scripts.length) parts.push(await READERS.workers(env, w, { scripts: cfg.scripts }));
     if (cfg.buckets.length) parts.push(await READERS.r2(env, w, { buckets: cfg.buckets }));
-    // Containers and Durable Objects are only used by render, so the account-wide reads are its own.
-    if (cfg.containers) {
-      parts.push(await READERS.containers(env, w), await READERS.durableObjects(env, w));
-    }
     services[name] = price(merge(parts), { allowances: false, daysElapsed: w.daysElapsed }).total;
   }
   return { totalUsd: account.total, services, breakdown: account.lines };
