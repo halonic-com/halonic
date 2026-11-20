@@ -57,6 +57,7 @@ export {
   loadWorkspace,
   type WorkspaceIssue,
 } from "./load-workspace.ts";
+export { misplacedFileCode } from "./misplaced-files.ts";
 export { type PlaceMatch, placeOf, settingsPath } from "./places.ts";
 export {
   isNoCostOnThisMachine,

@@ -1,7 +1,8 @@
 import { printable } from "../output/printable.ts";
-import { listInWords } from "./counts.ts";
+import { counted, listInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { phrase } from "./phrase.ts";
+import { suggestedCommand } from "./suggested-command.ts";
 import { countInWords } from "./words.ts";
 
 /**
@@ -29,6 +30,14 @@ export const workflowMessages = defineMessages("workflow", {
       ? phrase`${workspace} has no workflows yet.`
       : phrase`Workflows in ${workspace}: ${shown.join(", ")}.`;
   },
+  /**
+   * Line 2 under {@link noWorkflow}, when none is close and the loader
+   * skipped files for their folder or name (HAL-14297): the workflow may be
+   * among them. `dir` is the user's own `--dir`.
+   * "Halonic skipped 7 files in base for their folder or name. See them with: halonic validate"
+   */
+  skippedFiles: (workspace: string, count: number, dir?: string) =>
+    phrase`Halonic skipped ${counted(count, "file", "files")} in ${workspace} for ${count === 1 ? "its" : "their"} folder or name. See them with: ${suggestedCommand("validate", dir)}`,
   /** Line 1 when several hubs have a workflow with that id (`invalid_input`, C174). */
   inSeveralHubs: (typed: string, hubs: number) =>
     phrase`There's a workflow called "${typed}" in ${countInWords(hubs)} hubs.`,

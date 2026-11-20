@@ -31,6 +31,7 @@ import { followUntilStopped } from "../../follow-run.ts";
 import { type HarnessProgram, nodeHarnessPrograms } from "../../harness-programs.ts";
 import type { LocalEngine } from "../../local-engine-host.ts";
 import { openLocalProposals } from "../../local-proposals.ts";
+import type { Message } from "../../messages/define.ts";
 import type { Phrase } from "../../messages/phrase.ts";
 import { proposalsMessages } from "../../messages/proposals.ts";
 import { runMessages } from "../../messages/run.ts";
@@ -53,7 +54,7 @@ import {
   openWorkspaceEngine,
   type WorkspaceEngineSetup,
 } from "../../workspace-engine.ts";
-import { refuseFileProblems } from "../../workspace-problems.ts";
+import { misplacedFilesOf, refuseFileProblems } from "../../workspace-problems.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
 import { connectorWarnings } from "./connector-warnings.ts";
 import { eventLines } from "./event-lines.ts";
@@ -121,7 +122,7 @@ export async function runWorkflow(
     optionText(input, "harness"),
     (setup.harnesses ?? nodeHarnessPrograms)(),
   );
-  const workflow = workflowToRun(workspace, typed, workspaceName, harness);
+  const workflow = workflowToRun(workspace, typed, { name: workspaceName, dir: typedDir }, harness);
   const target = { dir, workspace, runs: [workflow], ending: runMessages.nothingRan() };
   // Before trust: a run the sandbox can't start has nothing to trust (HAL-6580).
   const sandboxChecked = await checkHarnessAgents(setup, target, workflow);
@@ -242,7 +243,7 @@ async function followWithEvents(
     ...(workflow.harness === undefined ? {} : { harness: workflow.harness }),
   });
   if (started.found !== "one") {
-    throw noWorkflow(workspace, typed, place.name);
+    throw noWorkflow(workspace, typed, place);
   }
   const runEvents = new RunEvents(engine.executor, engine.runs);
   let run = started.run;
@@ -270,7 +271,7 @@ async function followWithEvents(
 function workflowToRun(
   workspace: LoadedWorkspace,
   typed: string,
-  name: string,
+  shown: ShownWorkspace,
   harness: string | undefined,
 ): SandboxGateRun {
   const lookup = lookUpWorkflow(hubWorkflows(workspace), typed);
@@ -282,7 +283,7 @@ function workflowToRun(
     );
   }
   if (lookup.found === "none") {
-    throw noWorkflow(workspace, typed, name);
+    throw noWorkflow(workspace, typed, shown);
   }
   const run = { hubId: lookup.hubId, workflowId: lookup.workflow.id };
   return harness === undefined ? run : { ...run, harness };
@@ -347,17 +348,39 @@ async function waitingProposal(
   }
 }
 
-/** "✕ There's no workflow called "suport-reply" in Acme." with the near one when there is one. */
-function noWorkflow(workspace: LoadedWorkspace, typed: string, name: string): OwnLineError {
-  const ids = hubWorkflows(workspace).map((each) => each.workflow.id);
-  const near = nearMatch(typed, ids);
+/** The workspace as the messages name it, and the user's own `--dir` for a suggested command. */
+type ShownWorkspace = Pick<RunPlace, "name" | "dir">;
+
+/**
+ * "✕ There's no workflow called "suport-reply" in Acme." with the near one
+ * when there is one. Else, when the loader skipped files for their folder
+ * or name, it points at `halonic validate`, since the workflow may be among
+ * them (HAL-14297); else it lists the workflows there are.
+ */
+function noWorkflow(
+  workspace: LoadedWorkspace,
+  typed: string,
+  shown: ShownWorkspace,
+): OwnLineError {
   return new OwnLineError(
     "not_found",
-    workflowMessages.noWorkflow(typed, name),
-    near === undefined
-      ? workflowMessages.seeWorkflows(name, ids)
-      : workflowMessages.workflowNear(near),
+    workflowMessages.noWorkflow(typed, shown.name),
+    noWorkflowFix(workspace, typed, shown),
   );
+}
+
+/** Line 2 under {@link noWorkflow}. */
+function noWorkflowFix(workspace: LoadedWorkspace, typed: string, shown: ShownWorkspace): Message {
+  const ids = hubWorkflows(workspace).map((each) => each.workflow.id);
+  const near = nearMatch(typed, ids);
+  if (near !== undefined) {
+    return workflowMessages.workflowNear(near);
+  }
+  const skipped = misplacedFilesOf(workspace);
+  if (skipped > 0) {
+    return workflowMessages.skippedFiles(shown.name, skipped, shown.dir);
+  }
+  return workflowMessages.seeWorkflows(shown.name, ids);
 }
 
 /**

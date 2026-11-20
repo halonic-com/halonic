@@ -352,6 +352,33 @@ verifies("workspace.misplaced-files", () => {
       "✓ Checked 4 files in acme. 1 warning.",
     ]);
   });
+
+  // HAL-14297 (C340 rows 2–5): each file was skipped without a word, or with a wrong name to rename it to.
+  it.each([
+    ["models.yml", "Halonic reads models.yaml, not models.yml: rename it"],
+    [
+      "hubs/support/agents/clerk.agent.yml",
+      "Halonic reads clerk.agent.yaml, not clerk.agent.yml: rename it",
+    ],
+    [
+      "support/hub.yaml",
+      "Halonic reads hub.yaml only in hubs/<id>/: move support/ to hubs/support/",
+    ],
+    [
+      "hubs/support/routines/digest.routine.yaml",
+      "Halonic reads <id>.routine.yaml files only in workflows/routines/: move it to hubs/support/workflows/routines/digest.routine.yaml",
+    ],
+  ])("warns about %s, and passes", async (path, message) => {
+    writeFiles(acme, { [path]: "id: clerk\n" });
+
+    const { code, io } = await validateIn(acme);
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout.slice(0, 2)).toEqual([
+      path.split("/").join(sep),
+      `  1:1  ! ${message}  (misplaced-file)`,
+    ]);
+  });
 });
 
 verifies("cli.workspace-dir", () => {
