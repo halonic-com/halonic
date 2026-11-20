@@ -55,6 +55,7 @@ import { useOutline } from "./use-outline.ts";
 import { useRename } from "./use-rename.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
 import { useWorkflowTrash } from "./use-workflow-trash.tsx";
+import type { CanvasFocus } from "./workflow-canvas.tsx";
 import { WorkflowName } from "./workflow-name.tsx";
 import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
 import { type WorkflowView, workflowTabs } from "./workflow-tabs.ts";
@@ -178,6 +179,8 @@ export function WorkflowScreen({
     flushSync(() => setPickedStep(undefined));
     if (closed !== undefined) stepCardIn(body.current, closed)?.focus();
   };
+  // Where focus goes on the canvas once the picked step is removed; a new object asks again.
+  const [canvasFocus, setCanvasFocus] = useState<CanvasFocus>();
   // The test just made from a run: Configuration opens on Tests with it picked. A page opened on
   // its Tests (`startOnTests`) starts the same way, with no test picked.
   // `n` counts the tests made, so each one remounts Configuration and the Tests page reads again.
@@ -421,6 +424,7 @@ export function WorkflowScreen({
                 clearOutline();
                 setPickedStep(undefined);
               }}
+              focus={canvasFocus}
               kept={kept}
               onView={keep}
             />
@@ -462,6 +466,10 @@ export function WorkflowScreen({
           problems={fileProblems}
           stepName={stepName}
           onOpenStep={setPickedStep}
+          onRemoved={(next) => {
+            setPickedStep(undefined);
+            setCanvasFocus({ step: next });
+          }}
           announce={announce}
           onClose={closeStepCard}
         />

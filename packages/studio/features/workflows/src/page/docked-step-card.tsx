@@ -34,10 +34,12 @@ import {
 import { AgentField } from "./agent-field.tsx";
 import { keyCheck, noCheck, pickNow } from "./field-saving.ts";
 import { pageWords } from "./page-words.ts";
+import { RemoveStepButton } from "./remove-step-button.tsx";
 import type { Dock } from "./run-dock.tsx";
 import { ArrowsIn, StepArrows } from "./step-arrows.tsx";
 import type { NamedStep } from "./step-names.ts";
 import { missingAgentSentence, StepProblemsCallout } from "./step-problems-callout.tsx";
+import { useRemoving } from "./use-removing.ts";
 import type { WorkflowLoad } from "./use-workflow.ts";
 
 const words = pageWords.stepCard;
@@ -61,6 +63,12 @@ export interface DockedStepCardProps {
   readonly changeArrows?: ((change: WorkflowArrowChange) => Promise<boolean>) | undefined;
   /** Opens another step's card, from **Arrows in**. */
   readonly onOpenStep: (stepId: string) => void;
+  /** The workflow's first step, which **Remove step** refuses. */
+  readonly first: boolean;
+  /** **Remove step**: removes it at once. Absent: no such button. */
+  readonly onRemove?: (() => void) | undefined;
+  /** Removes the step's arrow at `index`, which is `arrow`; resolves to whether it went. Absent: no trash buttons. */
+  readonly removeArrow?: ((index: number, arrow: WorkflowArrow) => Promise<boolean>) | undefined;
   readonly announce?: ((line: string) => void) | undefined;
   /** Hears how many of its fields aren't saved, for the toolbar's "1 field not saved". */
   readonly reportNotSaved?: ((count: number) => void) | undefined;
@@ -107,6 +115,9 @@ export function DockedStepCard({
   arrows,
   changeArrows,
   onOpenStep,
+  first,
+  onRemove,
+  removeArrow,
   announce,
   reportNotSaved,
   onClose,
@@ -227,11 +238,13 @@ export function DockedStepCard({
               steps={steps}
               isWait={kind === "wait"}
               change={changeArrows}
+              remove={removeArrow}
               announce={announce}
               reportNotSaved={setArrowFieldsNotSaved}
             />
           )}
           <ArrowsIn from={stepsInto(step.id, arrows)} steps={steps} onOpen={onOpenStep} />
+          <RemoveStepButton first={first} onRemove={onRemove} announce={announce} />
         </div>
       </SidePanel>
     </div>
@@ -285,6 +298,11 @@ export interface StepEditDockProps {
   readonly stepName: StepNames;
   /** Opens another step's card, from **Arrows in**. */
   readonly onOpenStep: (stepId: string) => void;
+  /**
+   * The picked step was removed. Its card closes, and focus goes to `next`, the step after it in
+   * the file, or to the canvas when it was the last (flow-workflows 4.6).
+   */
+  readonly onRemoved: (next: string | undefined) => void;
   readonly announce?: ((line: string) => void) | undefined;
   readonly onClose: () => void;
 }
@@ -326,6 +344,7 @@ export function StepEditDock({
   problems,
   stepName,
   onOpenStep,
+  onRemoved,
   announce,
   onClose,
 }: StepEditDockProps) {
@@ -339,6 +358,7 @@ export function StepEditDock({
     changeArrows && view && ((stepId, change) => changeArrows.call(host, view, stepId, change)),
     pickedStep,
   );
+  const removing = useRemoving(host, view);
   const key = view === undefined ? "" : `workflow/${view.hubId}/${view.id}/step`;
   const reportNotSaved = useCallback(
     (count: number) => saving?.setFieldsNotSaved({ key, title: view?.name ?? "" }, count),
@@ -352,6 +372,8 @@ export function StepEditDock({
     step === undefined
   )
     return null;
+  const stepIds = view.steps.map((one) => one.id);
+  const next = stepIds[stepIds.indexOf(step.id) + 1];
   return (
     <DockedStepCard
       key={step.id}
@@ -364,6 +386,11 @@ export function StepEditDock({
       arrows={view.arrows}
       changeArrows={saveArrows}
       onOpenStep={onOpenStep}
+      first={step.id === view.initial}
+      onRemove={
+        removing && (() => void removing.step(step.id).then((went) => went && onRemoved(next)))
+      }
+      removeArrow={removing && ((index, arrow) => removing.arrow(step.id, index, arrow))}
       announce={announce}
       reportNotSaved={reportNotSaved}
       onClose={onClose}
