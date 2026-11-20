@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-12486 (Liam, CTO; asked for in his review on HAL-12342)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4Iun91df5xy5CNcfFrwUTi/x9hpRV8N5FgWcCeDzT+cSA+Vc/p3H4mwUlGnSNV6hzPc1ob5w7bE54Vis9SqCAQ==
 - Task: HAL-12486
 
 Since HAL-12342, a run whose provider file names a type Halonic has no adapter for ends with the
