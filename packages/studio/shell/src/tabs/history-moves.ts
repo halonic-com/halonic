@@ -63,9 +63,18 @@ export function usePageHeadingFocusAfterDialog(): () => void {
 }
 
 /**
+ * The attribute that marks the title of a state shown in place of a page, such as "Couldn't load
+ * this page": a page that has no `h1` because its code couldn't load or it stopped working takes
+ * focus on that title instead (a11y 1.4).
+ */
+export const pageStandInTitle = "data-page-stand-in-title";
+
+/**
  * Moves focus to the page's `h1`, the first one in `main` that is shown: the pages of other tabs
  * stay mounted but hidden (`TabPages`), and their headings don't count. A heading isn't focusable
  * by itself, so it gets `tabindex="-1"` when it has none: focusable from code, never a Tab stop.
+ * A page that shows a state in its place, with no `h1`, takes focus on the state's title
+ * ({@link pageStandInTitle}), so a screen reader reads that the page couldn't open.
  *
  * A page whose view is still loading has no `h1` yet (a place's view is imported when a tab first
  * shows it), so the focus waits for it and moves when the view draws its `h1`. It stops waiting
@@ -111,12 +120,16 @@ export function focusPageHeading(root: ParentNode = document): void {
 /** Stops the focus that waits for a page's `h1` still loading; one page waits at a time. */
 let stopWaiting: (() => void) | undefined;
 
-function shownPageHeading(root: ParentNode): HTMLHeadingElement | undefined {
-  const headings = root.querySelectorAll<HTMLHeadingElement>("main h1");
-  return [...headings].find((candidate) => candidate.closest("[hidden]") === null);
+function shownPageHeading(root: ParentNode): HTMLElement | undefined {
+  return shown(root, "main h1") ?? shown(root, `main [${pageStandInTitle}]`);
 }
 
-function focusHeading(heading: HTMLHeadingElement): void {
+function shown(root: ParentNode, selector: string): HTMLElement | undefined {
+  const candidates = root.querySelectorAll<HTMLElement>(selector);
+  return [...candidates].find((candidate) => candidate.closest("[hidden]") === null);
+}
+
+function focusHeading(heading: HTMLElement): void {
   if (!heading.hasAttribute("tabindex")) {
     heading.tabIndex = -1;
   }
