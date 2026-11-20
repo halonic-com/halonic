@@ -14,7 +14,6 @@ const workflowCases = [
   "workflow/no-final",
   "workflow/final-has-transitions",
   "workflow/unknown-gets",
-  "workflow/task-without-agent",
   "workflow/timer-outside-wait",
   "workflow/wait-without-events",
   "workflow/unguarded-shadow",
@@ -66,6 +65,26 @@ verifies("workspace.workflows", () => {
       expect(found.map((issue) => [issue.severity, issue.message])).toEqual(
         recording.diagnostics.map((diagnostic) => [diagnostic.severity, diagnostic.message]),
       );
+      const first = found[0];
+      expect(first && { file: first.file, path: first.path.join("."), line: first.line }).toEqual(
+        expectedPlace(caseId, parityCase.expect),
+      );
+    },
+    parityLoadLimitMs,
+  );
+
+  // The old loader warned; the engine fails the step, so it is an error now (HAL-14303, allowed
+  // difference task-without-agent-is-an-error).
+  it(
+    "gives workflow/task-without-agent an error, at the place its case file says",
+    async () => {
+      const caseId = "workflow/task-without-agent";
+      const { parityCase, source } = readParityCase(caseId);
+      const workspace = await loadWorkspace(source);
+      const found = workspace.issues.filter((issue) => issue.source === "check");
+      expect(found.map((issue) => [issue.severity, issue.code])).toEqual([
+        ["error", "task-without-agent"],
+      ]);
       const first = found[0];
       expect(first && { file: first.file, path: first.path.join("."), line: first.line }).toEqual(
         expectedPlace(caseId, parityCase.expect),

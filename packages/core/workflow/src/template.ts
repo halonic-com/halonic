@@ -36,6 +36,18 @@ const WHOLE_PLACEHOLDER = /^\{\{\s*([\w.-]+)\s*\}\}$/;
 const ANY_PLACEHOLDER = /\{\{\s*([\w.-]+)\s*\}\}/g;
 
 /**
+ * The path of a text that is one placeholder and nothing else, the one kind
+ * of template that keeps its value's type; `undefined` for any other text.
+ *
+ * @example
+ * wholePlaceholderPath("{{ context.topics }}"); // "context.topics"
+ * wholePlaceholderPath("Topics: {{context.topics}}"); // undefined
+ */
+export function wholePlaceholderPath(text: string): string | undefined {
+  return WHOLE_PLACEHOLDER.exec(text)?.[1];
+}
+
+/**
  * The paths of the `{{path}}` placeholders in a value, in order and each
  * once: in a text, and in every text inside a list or a map, such as a
  * condition or a map of templates.
@@ -81,7 +93,7 @@ export function render(value: unknown, scope: unknown): unknown {
   if (typeof value !== "string") {
     return value;
   }
-  const wholePath = WHOLE_PLACEHOLDER.exec(value)?.[1];
+  const wholePath = wholePlaceholderPath(value);
   if (wholePath) {
     return getPath(scope, wholePath);
   }

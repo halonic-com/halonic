@@ -216,6 +216,7 @@ workflows, for example) belong to the workspace loader.
 | `unknown-target` | error | a transition goes to a state that does not exist |
 | `dead-end` | error | a state that isn't final has no transitions |
 | `unknown-gets` | error | a step picks a `context.<key>` that no earlier step writes |
+| `unknown-template-name` | error | a template, a condition or a signal's `data` reads a `context.<key>` that no earlier step writes |
 | `timer-outside-wait` | error | a state that isn't a wait state has a timer |
 | `timer-with-event` | error | a transition has both an `event` and a timer (`after`) |
 | `foreach-without-items` | error | a for-each step has no `items` |
@@ -225,9 +226,13 @@ workflows, for example) belong to the workspace loader.
 | `unknown-workflow` | error | a step runs a workflow the hub doesn't have |
 | `parallel-without-branches` | error | a parallel step has no branches |
 | `unknown-agent` | error | a step or a branch uses an agent that doesn't exist |
+| `task-without-agent` | error | a task has no agent, so every run fails there |
+| `unknown-item-name` | error | a for-each step's `input` or `with` reads a name that isn't its item, `index`, `input` or `context` |
+| `items-not-a-list` | error | a for-each step's `items` is a text, or a name that gives nothing |
+| `no-done-transition` | error | a step that ends with `done` only has transitions on other events |
 | `final-has-transitions` | warning | a final state has transitions, which never fire |
-| `task-without-agent` | warning | a task has no agent, so it passes straight through |
 | `wait-without-events` | warning | a wait state only listens to `done` |
+| `not-a-choice` | warning | a condition compares a choice agent's answer with a text that isn't one of its options |
 | `unguarded-shadow` | warning | a transition comes after an unguarded one on the same event, so never fires |
 | `unreachable` | warning | no path leads from the initial state to a state |
 | `no-final` | warning | the workflow has no final state |

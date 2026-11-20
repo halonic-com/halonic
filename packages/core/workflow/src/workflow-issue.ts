@@ -25,7 +25,10 @@ export type WorkflowIssueCode =
   | "unguarded-shadow"
   | "unknown-gets"
   | "unknown-template-name"
-  | "not-a-choice";
+  | "not-a-choice"
+  | "unknown-item-name"
+  | "items-not-a-list"
+  | "no-done-transition";
 
 /** The keys and list indexes to a value in a workflow file; `[]` for the whole file. */
 export type WorkflowPath = FileProblem["path"];

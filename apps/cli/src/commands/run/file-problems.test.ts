@@ -10,6 +10,7 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import type { CliCommand } from "../../command.ts";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
+import { announceFile, announceWorkflow } from "../../test/announce-workflow.ts";
 import { captureIo } from "../../test/capture-io.ts";
 import { pastedKey, pasteKeyIntoProvider } from "../../test/pasted-key.ts";
 import { removeTestFolder } from "../../test/remove-folder.ts";
@@ -101,6 +102,25 @@ verifies("cli.workspace-file-problems", () => {
     expect(code).toBe(exitCode.usage);
     expect(io.stderr[0]).toBe(
       "✕ Couldn't run support-reply: Acme has 1 problem in its files. Nothing ran.",
+    );
+    const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
+    expect(listed.total).toBe(0);
+  });
+
+  // C340 row 15 (HAL-14303): with as: topic, {{item}} used to run and send each item's agent "Announce ".
+  it("stops before a for-each run whose prompt reads an item name it doesn't have", async () => {
+    await writeFile(
+      join(acme, announceFile),
+      announceWorkflow.replace("Announce {{topic}}", "Announce {{item}}"),
+    );
+    const profile = freshProfile();
+    const io = captureIo(acme);
+
+    const code = await runCli(["run", "announce"], io, [runCommand(profile)]);
+
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr[0]).toBe(
+      "✕ Couldn't run announce: Acme has 1 problem in its files. Nothing ran.",
     );
     const listed = await new RunHistory(await openWorkspaceRuns(acme, profile)).listRuns();
     expect(listed.total).toBe(0);
