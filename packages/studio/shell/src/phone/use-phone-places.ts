@@ -14,6 +14,7 @@ import {
   type PhonePage,
   type PhonePlace,
   type PlaceStacks,
+  retitlePhonePages,
   showPhonePage,
   showsBottomNavigation,
   startPlaceStacks,
@@ -55,6 +56,10 @@ export interface PhonePlaces {
    * taken the user off it already. For a page that closes itself.
    */
   readonly backFrom: (key: string) => void;
+   * Names the pages again as `titleOf` names their places now (`retitlePhonePages`), after an
+   * item is renamed. Focus stays where it is, since nothing moved.
+   */
+  readonly retitle: (titleOf: (location: TabLocation) => string | undefined) => void;
 }
 
 /**
@@ -139,6 +144,24 @@ export function usePhonePlaces(): PhonePlaces {
     [move],
   );
 
+  const retitle = useCallback((titleOf: (location: TabLocation) => string | undefined) => {
+    const next = retitlePhonePages(latest.current, titleOf);
+    if (next !== latest.current) {
+      // A retitled page is a new object in the same place: it keeps the memory of the page it was.
+      for (const place of Object.keys(next.stacks) as PhonePlace[]) {
+        next.stacks[place].forEach((page, index) => {
+          const was = latest.current.stacks[place][index];
+          const memory = was === undefined ? undefined : memories.current.get(was);
+          if (was !== page && memory !== undefined) {
+            memories.current.set(page, memory);
+          }
+        });
+      }
+      latest.current = next;
+      setStacks(next);
+    }
+  }, []);
+
   const page = currentPhonePage(stacks);
   let memory = memories.current.get(page);
   if (memory === undefined) {
@@ -160,5 +183,6 @@ export function usePhonePlaces(): PhonePlaces {
     show,
     back,
     backFrom,
+    retitle,
   };
 }

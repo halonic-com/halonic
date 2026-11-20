@@ -35,6 +35,9 @@ export const routinesFeature = defineFeature({
             item.id,
         }),
         exists: () => true,
+        // A rename names the routine's tabs, and the phone's pages, again (C403 PT1, HAL-14489).
+        subscribe: (listener, context) =>
+          context.services.find(RoutinesHostService)?.subscribe(listener) ?? (() => undefined),
       },
     });
     for (const on of ["agent", "workflow"]) {

@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import type { ItemKindContribution } from "../points/item-kinds.ts";
 import type { Registered } from "../points/point-store.ts";
-import { currentLocation, type TabSet } from "../tabs/tab-set.ts";
+import { currentLocation, type TabLocation, type TabSet } from "../tabs/tab-set.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
-import { renameItemTabs } from "./item-tab-names.ts";
+import { itemTitle, renameItemTabs } from "./item-tab-names.ts";
 import { itemOfLocationKey } from "./item-view.tsx";
 
 /**
@@ -32,12 +32,14 @@ export function closeGoneItemTabs(
 /**
  * Listens to every item kind whose tabs have a `subscribe`, and each time it says they changed
  * closes the tabs of its items that are gone (`shell.gone-item-tabs`) and names the others again
- * (`shell.item-tab-names`). Each kind gets the context of the feature that added it.
+ * (`shell.item-tab-names`), and the phone's pages of its items with them through `retitlePhone`.
+ * Each kind gets the context of the feature that added it.
  */
 export function useClosingGoneItemTabs(
   tabs: TabSet,
   kinds: readonly Registered<ItemKindContribution>[],
   contextFor: (featureId: string) => WorkspaceContext,
+  retitlePhone?: (titleOf: (location: TabLocation) => string | undefined) => void,
 ): void {
   useEffect(() => {
     const stops = kinds.flatMap((kind) => {
@@ -48,6 +50,7 @@ export function useClosingGoneItemTabs(
       const follow = () => {
         closeGoneItemTabs(tabs, kind, context);
         renameItemTabs(tabs, kind, context);
+        retitlePhone?.((location) => itemTitle(kind, context, location));
       };
       return [kind.tab.subscribe(follow, context)];
     });
@@ -56,5 +59,5 @@ export function useClosingGoneItemTabs(
         stop();
       }
     };
-  }, [tabs, kinds, contextFor]);
+  }, [tabs, kinds, contextFor, retitlePhone]);
 }

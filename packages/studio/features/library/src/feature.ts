@@ -22,6 +22,14 @@ function nameOfItem(context: WorkspaceContext, kind: LibraryItemKind, item: Item
   return context.services.find(LibraryItemsHostService)?.nameOf?.(kind, place) ?? item.id;
 }
 
+/**
+ * Tells the window each time a Library item may have changed, so a renamed item's tabs and phone
+ * pages take the new name (C403 PT1, HAL-14489).
+ */
+function subscribeToItems(listener: () => void, context: WorkspaceContext): () => void {
+  return context.services.find(LibraryItemsHostService)?.subscribe(listener) ?? (() => undefined);
+}
+
 /** Alt+4 to Alt+7 open the tabs, in the tabs' order. */
 const firstTabKey = 4;
 
@@ -92,6 +100,7 @@ export const libraryFeature = defineFeature({
       tab: {
         describe: (item, context) => ({ label: nameOfItem(context, "skill", item) }),
         exists: () => true,
+        subscribe: subscribeToItems,
       },
     });
     studio.itemKinds.add({
@@ -103,6 +112,7 @@ export const libraryFeature = defineFeature({
       tab: {
         describe: (item, context) => ({ label: nameOfItem(context, "knowledge", item) }),
         exists: () => true,
+        subscribe: subscribeToItems,
       },
     });
     studio.itemKinds.add({
@@ -114,6 +124,7 @@ export const libraryFeature = defineFeature({
       tab: {
         describe: (item, context) => ({ label: nameOfItem(context, "collection", item) }),
         exists: () => true,
+        subscribe: subscribeToItems,
       },
     });
     studio.itemKinds.add({
@@ -125,6 +136,7 @@ export const libraryFeature = defineFeature({
       tab: {
         describe: (item, context) => ({ label: nameOfItem(context, "connector", item) }),
         exists: () => true,
+        subscribe: subscribeToItems,
       },
     });
   },

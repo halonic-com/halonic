@@ -110,8 +110,10 @@ function LoadedCollectionPage({
         </p>
       ) : null}
       {volatile ? <p className="text-small text-fg-muted">{collectionWords.volatileLine}</p> : null}
+      {/* Flush, so the chips line up with the title and the grid (C403 CP1, HAL-14489). */}
       <FilterChips
         label={collectionWords.chipsLabel}
+        flush
         options={grid.views.map((chip) => ({
           value: chip.view === null ? allValue : `view:${chip.view}`,
           label: chipText(chip),

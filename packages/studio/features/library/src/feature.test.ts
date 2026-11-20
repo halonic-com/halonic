@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { libraryFeature } from "./feature.ts";
 import { type LibraryItemsHost, LibraryItemsHostService } from "./library-items-host.ts";
 import { libraryKinds } from "./library-words.ts";
@@ -46,6 +46,23 @@ function tabLabel(kind: string, hub: string, id: string, host?: Partial<LibraryI
   return described?.({ kind, hub, id }, context).label;
 }
 
+/** The `subscribe` of the tab of `kind`, as the feature registers it. */
+function tabSubscribe(kind: string) {
+  let subscribe: ((listener: () => void, context: unknown) => () => void) | undefined;
+  const studio = new Proxy(
+    {},
+    {
+      get: () => ({
+        add: (added: { kind?: string; tab?: { subscribe?: typeof subscribe } }) => {
+          if (added.kind === kind) subscribe = added.tab?.subscribe;
+        },
+      }),
+    },
+  );
+  libraryFeature.register(studio as never);
+  return subscribe;
+}
+
 describe("libraryFeature", () => {
   // Each Library page loads lazily. On a busy CI machine the first import (transforming the page and
   // everything behind it) took longer than the test's 30 s (HAL-14641), so load them all up front under
@@ -80,6 +97,31 @@ describe("libraryFeature", () => {
     expect(tabLabel(kind, "support", "refund-handling", host)).toBe("Refund handling");
     expect(asked).toEqual([[kind, { hub: "support", id: "refund-handling" }]]);
   });
+
+  it.each(libraryKinds)(
+    "tells the window when the Library's items change, so a renamed %s's tabs follow (PT1, HAL-14489)",
+    (kind) => {
+      const listeners = new Set<() => void>();
+      const host = {
+        subscribe: (listener: () => void) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+      };
+      const context = {
+        services: { find: (key: unknown) => (key === LibraryItemsHostService ? host : undefined) },
+      };
+      const listener = vi.fn();
+      const stop = tabSubscribe(kind)?.(listener, context);
+      for (const told of listeners) told();
+      stop?.();
+      expect(listener).toHaveBeenCalledOnce();
+      expect(listeners.size).toBe(0);
+      // Without a Library host there is nothing to follow, and nothing breaks.
+      const none = { services: { find: () => undefined } };
+      expect(() => tabSubscribe(kind)?.(listener, none)()).not.toThrow();
+    },
+  );
 
   it("asks for a shared item with no hub, and falls back to the id until it has a name", () => {
     const asked: unknown[] = [];
