@@ -3,6 +3,7 @@
 - Task: HAL-13100
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13100 (Sofia's team decision on the approved Workflows list, HAL-2282 rule, no new words; Liam approves this note in review on the task)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WPwYuHY55TuGcZDrPVXOowfmQcVvn/jG7cAuAWCjRFBV4UT3I1F1FLHq0qBN2T1g8hNlz0dnOyqJZ5zj5wQuBg==
 
 ## What changes
 
