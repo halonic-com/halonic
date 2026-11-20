@@ -104,6 +104,9 @@ export function mirrorCases(nodes: readonly CaseTree[], runner: CaseRunner): voi
       }
       expect(result.status).toBe("passed");
       // The requirement guard reads how many checks the case made; those ran inside workerd.
+      // They go into this test's own count too, because `verifies()` writes the tag from that
+      // count after the test and would otherwise replace them with the one check above.
+      expect.setState({ assertionCalls: expect.getState().assertionCalls + result.assertions });
       context.task.meta.assertions = result.assertions;
     });
   }
