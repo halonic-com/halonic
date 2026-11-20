@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-14305, on the plan Liam approved there (20 Nov) and his re-plan on HAL-14309; he approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8GYoYHdbZ5iRA00Vl6mciS9F0/BmzgbL+ISc6iLsWR7PsAXuTrndXqN6IXHBqMQxp5o3k2fqgLAAkY0O6tCgBQ==
 
 ## What changes
 
