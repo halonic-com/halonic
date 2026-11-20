@@ -79,39 +79,47 @@ async function run(...args: string[]): Promise<{ code: number; io: CapturedIo }>
 }
 
 // Windows has no permission check on the file; the profile folder protects it there.
-describe.skipIf(process.platform === "win32")("a secrets file other users can read", () => {
+const onWindows = process.platform === "win32";
+
+describe("a secrets file other users can read", () => {
   verifies("cli.run", () => {
-    it("says the cause and chmod 600, with no report link, and exits 7 (HAL-12569)", async () => {
-      await useAnthropicForWriter();
-      await saveKeyInReadableFile();
+    it.skipIf(onWindows)(
+      "[platform:win32] needs POSIX modes: says the cause and chmod 600, with no report link, and exits 7 (HAL-12569)",
+      async () => {
+        await useAnthropicForWriter();
+        await saveKeyInReadableFile();
 
-      const { code, io } = await run("support-reply", ...samsEmail);
+        const { code, io } = await run("support-reply", ...samsEmail);
 
-      expect(code).toBe(exitCode.denied);
-      const failed = io.stdout.findLastIndex((line) => line.startsWith("✕"));
-      expect(io.stdout.slice(failed, failed + 2)).toEqual([
-        `✕ Support reply failed in the step Read the email: the secrets file ${secrets} can be read by other users.`,
-        `  Run chmod 600 ${secrets}, then run again.`,
-      ]);
-      expect(io.stdout.join("\n")).not.toContain("report it");
-    });
+        expect(code).toBe(exitCode.denied);
+        const failed = io.stdout.findLastIndex((line) => line.startsWith("✕"));
+        expect(io.stdout.slice(failed, failed + 2)).toEqual([
+          `✕ Support reply failed in the step Read the email: the secrets file ${secrets} can be read by other users.`,
+          `  Run chmod 600 ${secrets}, then run again.`,
+        ]);
+        expect(io.stdout.join("\n")).not.toContain("report it");
+      },
+    );
   });
 
   verifies("cli.json-lines", () => {
-    it("carries the cause and the file in the run's cause, and exits 7 with it", async () => {
-      await useAnthropicForWriter();
-      await saveKeyInReadableFile();
+    it.skipIf(onWindows)(
+      "[platform:win32] needs POSIX modes: carries the cause and the file in the run's cause, and exits 7 with it",
+      async () => {
+        await useAnthropicForWriter();
+        await saveKeyInReadableFile();
 
-      const { code, io } = await run("support-reply", ...samsEmail, "--json");
+        const { code, io } = await run("support-reply", ...samsEmail, "--json");
 
-      expect(code).toBe(exitCode.denied);
-      expect(JSON.parse(io.stdout.join("\n"))).toMatchObject({
-        ok: false,
-        run: {
-          status: "failed",
-          cause: { kind: "denied", code: "secrets.file-readable", detail: { file: secrets } },
-        },
-      });
-    });
+        expect(code).toBe(exitCode.denied);
+        expect(JSON.parse(io.stdout.join("\n"))).toMatchObject({
+          ok: false,
+          run: {
+            status: "failed",
+            cause: { kind: "denied", code: "secrets.file-readable", detail: { file: secrets } },
+          },
+        });
+      },
+    );
   });
 });
