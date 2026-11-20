@@ -219,6 +219,7 @@ verifies("parity.allowed-differences-checked", () => {
       "yaml.read-syntax-error",
       "workspace.references",
       "workspace.misplaced-files",
+      "workflow.validate",
     ]);
   });
 

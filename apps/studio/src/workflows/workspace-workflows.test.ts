@@ -63,7 +63,7 @@ verifies("studio.workspace-workflows", () => {
     expect(listing?.problems.errors).toBeGreaterThan(0);
   });
 
-  it("creates start → done as one unsaved change, listed at once, with only the pass-through warning", async () => {
+  it("creates start → done as one unsaved change, listed at once, with only the error that start has no agent", async () => {
     const { host, changes } = setup();
 
     const ref = await host.create({ name: "Invoice intake", hubId: "acme" });
@@ -73,7 +73,7 @@ verifies("studio.workspace-workflows", () => {
       ["hubs/acme/workflows/invoice-intake.workflow.yaml"],
     ]);
     const created = (await host.list()).find((each) => each.id === "invoice-intake");
-    expect(created).toMatchObject({ name: "Invoice intake", problems: { errors: 0, warnings: 1 } });
+    expect(created).toMatchObject({ name: "Invoice intake", problems: { errors: 1, warnings: 0 } });
   });
 
   it("knows a workflow's name once it has read or made it, for the tab and the page title", async () => {

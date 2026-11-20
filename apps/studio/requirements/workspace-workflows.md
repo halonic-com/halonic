@@ -10,7 +10,7 @@ When the desktop app opens a folder, it shall give the Workflows feature the fol
 
 - Given Acme's hub with a workflow `reply` that has a warning and one waiting run, then the list holds `reply` with 1 warning, 0 errors and 1 waiting run.
 - Given a test run of `reply`, then it isn't counted.
-- Given the name "Invoice intake", then the new file is `hubs/acme/workflows/invoice-intake.workflow.yaml`, it is unsaved, listed at once and has no errors (one warning: the step `start` has no agent and passes straight through).
+- Given the name "Invoice intake", then the new file is `hubs/acme/workflows/invoice-intake.workflow.yaml`, it is unsaved, listed at once and has one error and no warning: the step `start` names no agent yet (`task-without-agent`, an error since HAL-14303 because a run fails there).
 - Given acme already has `invoice-intake`, then the id is `invoice-intake-2`.
 - Given a name with a quote or a colon, then the file's name is the name as typed.
 - Given a hub the workspace doesn't have (or an empty one), then creating a workflow fails and writes nothing.

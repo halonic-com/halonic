@@ -2427,5 +2427,32 @@
         ]
       }
     ]
+  },
+  {
+    "id": "task-without-agent-is-an-error",
+    "requirement": "workflow.validate",
+    "area": "workflow checks: a task step without an agent",
+    "old": "A task step without an agent was a warning, Task \"start\" has no agent; it passes straight through, and validate passed.",
+    "new": "It is an error worded like the run's cause, Task \"start\" names no agent, so every run fails there. Give it an agent (agent: <id>), or make it a wait step., and validate fails.",
+    "why": "The engine fails such a step as soon as it is entered (Task state \"start\" names no agent.), so the warning promised something the run never does. Found in Nina's C340 check (HAL-14271, C37); changed in HAL-14303.",
+    "status": "proposed",
+    "checks": [
+      {
+        "case": "workflow/task-without-agent",
+        "file": "hubs/billing/workflows/extra.workflow.yaml",
+        "old": [
+          {
+            "severity": "warning",
+            "message": "Task \"start\" has no agent; it passes straight through"
+          }
+        ],
+        "new": [
+          {
+            "severity": "error",
+            "message": "Task \"start\" names no agent, so every run fails there. Give it an agent (agent: <id>), or make it a wait step."
+          }
+        ]
+      }
+    ]
   }
 ]
