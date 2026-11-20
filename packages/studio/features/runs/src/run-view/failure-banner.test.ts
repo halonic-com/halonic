@@ -163,6 +163,21 @@ verifies("runs.run-view.failure-banners", () => {
       });
     });
 
+    it("points to the address in Models, with no empty host, when the address has none", () => {
+      const noHost = event({ type: "run.failed", state: "draft", error: "x", host: "" }, 3);
+      const log = [call("ollama", "llama3.2"), noHost];
+      const banner = causeBanner(failed("model-unreachable"), log, context, false);
+      expect(lines(banner)).toEqual([
+        "Halonic couldn't reach Ollama for the model llama3.2: its address has no host. Check Ollama's address in Models. It starts with http:// or https://, such as http://localhost:11434.",
+      ]);
+      expect(banner?.kind === "callout" ? banner.fixes : undefined).toEqual([
+        { kind: "open-models" },
+      ]);
+      expect(lines(causeBanner(failed("model-unreachable"), log, context, true))?.[1]).toBe(
+        "Fix this on your computer: Models",
+      );
+    });
+
     it("waits for the log, and for a model call in it", () => {
       expect(causeBanner(failed("model-unreachable"), undefined, context, false)).toBeUndefined();
       expect(

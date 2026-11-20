@@ -67,6 +67,9 @@ export const failureWords = {
     alias: string | undefined,
   ) =>
     `Halonic couldn't reach ${provider}${host === undefined ? "" : ` at ${host}`} for ${modelOrAlias(model, alias)}. ${provider} may not be running on this computer. Start ${provider}, then run again.`,
+  /** `run.failed` named an empty host: the address in the provider's file has none, such as one without `http://`. */
+  modelAddressWithoutHost: (provider: string, model: string, alias: string | undefined) =>
+    `Halonic couldn't reach ${provider} for ${modelOrAlias(model, alias)}: its address has no host. Check ${provider}'s address in Models. It starts with http:// or https://, such as http://localhost:11434.`,
   /** On a phone, "localhost" is the computer: the sentence says so (microcopy 15.3, revision 96). */
   localModelUnreachableOnPhone: (
     provider: string,
@@ -97,6 +100,15 @@ export const failureWords = {
     alias === undefined
       ? `${model} can't use tools, and the step ${step} offers tools. Pick a model that can in Models, then run again.`
       : `${model}, used by the model alias ${alias}, can't use tools, and the step ${step} offers tools. Point the model alias ${alias} at a model that can use tools.`,
+  /** `models.unknown-provider-type`: the CLI's first line (cli-output 3.4); the fix is in Models, not the file. */
+  unknownProviderType: (workflow: string, step: string, provider: string, type: string) =>
+    `${workflow} failed in the step ${step}: provider ${provider} has type ${type}, which Halonic can't call.`,
+  unknownProviderTypeFix: (provider: string) =>
+    `Pick a type Halonic knows for ${provider} in Models, then run again.`,
+  /** `models.unknown-model-alias`: the CLI's first line, and Studio's fix (C343 S5). */
+  unknownModelAlias: (workflow: string, step: string, hub: string, alias: string) =>
+    `${workflow} failed in the step ${step}: hub ${hub} has no model alias ${alias}.`,
+  unknownModelAliasFix: "Add it in Models, or set a model on the agent.",
   copyCommand: "Copy command",
   openModels: "Open Models",
   modelOutOfMemory: (provider: string, model: string) =>

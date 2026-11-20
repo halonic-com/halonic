@@ -13,5 +13,6 @@ export {
   isSetupCause,
   type RunFailure,
   runFailureOf,
+  setupFailureOf,
 } from "./run-failure-facts.ts";
 export type { ProxyFailure, ProxyProblem } from "./run-failure-proxy.ts";
