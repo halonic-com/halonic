@@ -281,3 +281,99 @@ verifies("cli.workspace-file-problems", () => {
     expect([...io.stdout, ...io.stderr].join("\n")).not.toContain(pastedKey);
   });
 });
+
+verifies("cli.doctor-secrets", () => {
+  /** Writes `files` to `acme` in the test's folder. */
+  function writeWorkspace(files: Record<string, string>): void {
+    for (const [path, text] of Object.entries(files)) {
+      const file = join(folder, "acme", path);
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, text);
+    }
+  }
+
+  /** C337 row 8: the agent Helper uses the connector files, whose program needs the secret files-token. */
+  const filesConnector = {
+    "workspace.yaml": "id: acme\nname: Acme\n",
+    "models.yaml": "aliases:\n  default:\n    provider: mock\n    model: echo\n",
+    "providers/mock.yaml": "id: mock\nname: Test model\ntype: mock\nlocal: true\n",
+    "library/connectors/files.connector.yaml":
+      "name: Files\ntransport:\n  stdio:\n    command: acme-files\n    secretEnv:\n      FILES_TOKEN: files-token\n",
+    "hubs/support/hub.yaml": "id: support\nname: Support\n",
+    "hubs/support/agents/helper.agent.yaml":
+      "id: helper\nname: Helper\ninstructions: Help.\nconnectors: [files]\n",
+  };
+
+  it("fails a Secrets line with the secret a used connector needs, and exits with 1", async () => {
+    writeWorkspace(filesConnector);
+    const io = captureIo(folder);
+
+    const code = await runCli(["doctor", "--dir", "acme"], io, [
+      createDoctorCommand(() => machine()),
+    ]);
+
+    expect(code).toBe(exitCode.failed);
+    expect(io.stdout).toContain(
+      "✕ Secrets     files-token isn't set (connector files) · halonic secret set files-token",
+    );
+    // The connector's program makes the workspace need trust, which is the warning.
+    expect(io.stdout.at(-1)).toBe("1 problem. 1 warning.");
+  });
+
+  it("fails a Secrets line with the key of a test-model provider, which the Models line doesn't check", async () => {
+    writeWorkspace({
+      "workspace.yaml": "id: acme\nname: Acme\n",
+      "models.yaml": "aliases:\n  default:\n    provider: mock\n    model: echo\n",
+      "providers/mock.yaml":
+        "id: mock\nname: Test model\ntype: mock\nlocal: true\nsecret: mock-key\n",
+    });
+    const io = captureIo(folder);
+
+    const code = await runCli(["doctor", "--dir", "acme", "--json"], io, [
+      createDoctorCommand(() => machine()),
+    ]);
+
+    expect(code).toBe(exitCode.failed);
+    expect(JSON.parse(io.stdout.join("\n")).checks).toContainEqual({
+      check: "secrets",
+      status: "failed",
+      missing: [{ secret: "mock-key", usedBy: [{ kind: "provider", id: "mock" }] }],
+      unreadable: [],
+    });
+  });
+
+  it("has no Secrets line once the secret is set, and never shows its value", async () => {
+    writeWorkspace(filesConnector);
+    const io = captureIo(folder);
+    const value = "files-token-value";
+
+    const code = await runCli(
+      ["doctor", "--dir", "acme"],
+      io,
+      [createDoctorCommand(() => machine())],
+      { secrets: { get: async (name) => (name === "files-token" ? value : null) } },
+    );
+
+    expect(code).toBe(exitCode.ok);
+    expect(io.stdout.join("\n")).not.toContain("Secrets");
+    expect(io.stdout.join("\n")).not.toContain(value);
+  });
+
+  it("warns about a secret the store couldn't read, and still prints every line", async () => {
+    writeWorkspace(filesConnector);
+    const io = captureIo(folder);
+
+    await runCli(["doctor", "--dir", "acme"], io, [createDoctorCommand(() => machine())], {
+      secrets: {
+        get: async () => {
+          throw new Error("The keychain is locked.");
+        },
+      },
+    });
+
+    expect(io.stdout).toContain(
+      "! Secrets     couldn't read files-token from the secret store (connector files)",
+    );
+    expect(io.stdout.join("\n")).toContain("Sandbox");
+  });
+});

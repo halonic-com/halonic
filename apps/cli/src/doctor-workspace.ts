@@ -9,9 +9,12 @@ import {
   type DoctorWorkspace,
   trustContentInputOf,
   trustSubjectOf,
+  type UsedSecret,
 } from "@halonicjs/app";
-import type { Provider } from "@halonicjs/format";
+import type { Connector, Provider } from "@halonicjs/format";
+import { isSecretName, secretKey } from "@halonicjs/ports";
 import {
+  definitionsOf,
   filesOf,
   type LoadedWorkspace,
   type LocalIntegrationInput,
@@ -45,6 +48,8 @@ export interface DoctorWorkspaceInput {
  * - **Providers:** each one an alias uses, once, with how it runs (see
  *   {@link doctorProvider}). One that has no file is left out, with its
  *   aliases: `halonic validate` reports it.
+ * - **Secrets:** each one a run needs that the Models line doesn't check,
+ *   with what uses it (see {@link usedSecrets}).
  * - **File problems:** the errors `halonic validate` finds. Each leaves a
  *   file out, so a workspace with any is never on the test model only:
  *   the file left out may be a provider's (HAL-6613).
@@ -57,7 +62,8 @@ export function doctorWorkspace(input: DoctorWorkspaceInput): DoctorWorkspace {
   const { workspace } = input;
   const settings = filesOf(workspace, "workspace")[0]?.value;
   const allAliases = workspaceAliases(workspace);
-  const providers = usedProviders(workspace, allAliases);
+  const providerFiles = usedProviderFiles(workspace, allAliases);
+  const providers = providerFiles.flatMap((file) => doctorProvider(file) ?? []);
   // The Models line takes only aliases whose provider it was given.
   const listed = new Set(providers.map((provider) => provider.provider));
   const fileProblems = fileProblemsOf(workspace);
@@ -66,6 +72,7 @@ export function doctorWorkspace(input: DoctorWorkspaceInput): DoctorWorkspace {
     trust: trustSubjectOf(input),
     aliases: allAliases.filter((alias) => listed.has(alias.provider)),
     providers,
+    secrets: usedSecrets(workspace, providerFiles),
     // The rule `run` skips trust by, so doctor doesn't ask for a trust `run` wouldn't.
     testModelOnly:
       fileProblems === 0 &&
@@ -137,16 +144,105 @@ function workspaceAliases(workspace: LoadedWorkspace): AliasProvider[] {
   return aliases;
 }
 
-/** Every provider the aliases use, in the order they're first used, that has a file. */
-function usedProviders(
+/** The file of every provider the aliases use, in the order they're first used, that has one. */
+function usedProviderFiles(
   workspace: LoadedWorkspace,
   aliases: readonly AliasProvider[],
-): DoctorProvider[] {
+): Provider[] {
   const files = new Map(filesOf(workspace, "provider").map((file) => [file.value.id, file.value]));
   const used = [...new Set(aliases.map((alias) => alias.provider))];
-  return used.flatMap((id) => {
-    const file = files.get(id);
-    const provider = file === undefined ? undefined : doctorProvider(file);
-    return provider === undefined ? [] : [provider];
-  });
+  return used.flatMap((id) => files.get(id) ?? []);
+}
+
+/**
+ * The secrets a run here needs that the Models line doesn't check, each
+ * once, with what uses it (HAL-14269):
+ *
+ * - **Connectors** an agent can use (see {@link usedConnectors}): an HTTP
+ *   connector's `secret` and a program's `secretEnv`. One no agent uses
+ *   never needs its secret, so it isn't checked.
+ * - **Providers** the aliases use whose `secret` the Models line doesn't ask
+ *   about, such as the test model or a server on this computer.
+ * - **Routines** with a webhook trigger that are enabled: the `secret` that
+ *   signs each request. Without it, the host refuses every request (C340).
+ *
+ * Names are compared as the `Secrets` port compares them ({@link secretKey}),
+ * so `files-token` and `FILES_TOKEN` are one secret, shown as first written.
+ * A secret the Models line checks as a cloud provider's key is left out,
+ * whatever else uses it, so no secret is named twice.
+ */
+function usedSecrets(workspace: LoadedWorkspace, providerFiles: readonly Provider[]): UsedSecret[] {
+  const checkedByModels = new Set(
+    providerFiles.flatMap((provider) => {
+      const shown = doctorProvider(provider);
+      return shown?.runs === "with-a-key" ? [comparedName(shown.secret)] : [];
+    }),
+  );
+  const byKey = new Map<string, UsedSecret>();
+  const add = (secret: string, user: UsedSecret["usedBy"][number]) => {
+    const key = comparedName(secret);
+    if (checkedByModels.has(key)) return;
+    const entry = byKey.get(key) ?? { secret, usedBy: [] };
+    if (!entry.usedBy.some((known) => known.kind === user.kind && known.id === user.id)) {
+      entry.usedBy.push(user);
+    }
+    byKey.set(key, entry);
+  };
+  for (const connector of usedConnectors(workspace)) {
+    for (const secret of connectorSecrets(connector)) {
+      add(secret, { kind: "connector", id: connector.id });
+    }
+  }
+  for (const provider of providerFiles) {
+    if (provider.secret !== undefined) add(provider.secret, { kind: "provider", id: provider.id });
+  }
+  for (const { value: routine } of filesOf(workspace, "routine")) {
+    if (routine.enabled && "webhook" in routine.trigger) {
+      add(routine.trigger.webhook.secret, { kind: "routine", id: routine.id });
+    }
+  }
+  return [...byKey.values()];
+}
+
+/**
+ * A secret's name as the `Secrets` port compares it. A name the port refuses
+ * is kept as written: the store refuses it too, and `doctor` says so.
+ */
+function comparedName(secret: string): string {
+  return isSecretName(secret) ? secretKey(secret) : secret;
+}
+
+/**
+ * The connectors an agent of the workspace can use, each once: those it
+ * names in `connectors` that its hub sees, the hub's own or a shared one
+ * its `uses.connectors` allows, as a run loads them. An agent at the
+ * workspace's root sees the shared ones.
+ */
+function usedConnectors(workspace: LoadedWorkspace): Connector[] {
+  const shared = Object.fromEntries(
+    filesOf(workspace, "connector")
+      .filter((file) => file.hub === null)
+      .map((file) => [file.value.id, file.value]),
+  );
+  const used = new Set<Connector>();
+  for (const agent of filesOf(workspace, "agent")) {
+    const seen = agent.hub === null ? shared : definitionsOf(workspace, agent.hub).connectors;
+    for (const id of agent.value.connectors) {
+      const connector = seen[id];
+      if (connector !== undefined) used.add(connector);
+    }
+  }
+  return [...used];
+}
+
+/**
+ * The secrets a connector reads when it starts, each once. A Google
+ * connector's `secret` names none, and a local integration or a plugin gets
+ * its secrets from its permission sheet, so they have none here.
+ */
+function connectorSecrets(connector: Connector): string[] {
+  const { transport } = connector;
+  if ("http" in transport) return connector.secret === undefined ? [] : [connector.secret];
+  if ("stdio" in transport) return [...new Set(Object.values(transport.stdio.secretEnv ?? {}))];
+  return [];
 }

@@ -37,6 +37,12 @@ import {
 import { type MxcLine, mxcLine } from "./doctor-mxc-line.ts";
 import { type NoSandboxLine, noSandboxLine } from "./doctor-no-sandbox-line.ts";
 import {
+  type SecretsFound,
+  type SecretsLine,
+  secretsLine,
+  type UsedSecret,
+} from "./doctor-secrets-line.ts";
+import {
   type AgentSettingsFolder,
   type DoctorHarness,
   signedOutAgents,
@@ -86,6 +92,13 @@ export interface DoctorWorkspace {
   /** Every provider the aliases use. */
   providers: readonly DoctorProvider[];
   /**
+   * The secrets a run here needs that the Models line doesn't check: those
+   * of the connectors an agent uses, and those of a provider the aliases use
+   * that isn't checked for a key there, such as the test model or a server
+   * on this computer (HAL-14269). Left out, there's nothing to check.
+   */
+  secrets?: readonly UsedSecret[];
+  /**
    * Whether a run here can only reach the test model, as
    * `reachesOnlyTheTestModel` finds: then it needs no trust, the trust check
    * isn't read, and the Workspace line is ✓ (HAL-6007).
@@ -134,7 +147,11 @@ export interface DoctorServiceOptions {
   resources: Pick<ResourceReport, "read">;
   /** Every harness Halonic can start other than its own loop, with its sign-in where it has one. */
   harnesses: readonly DoctorHarness[];
-  /** The store the providers' keys are in, as `runCli` wrapped it. */
+  /**
+   * The store the providers' keys and the connectors' secrets are in, as a
+   * run reads it: through `workspaceSecrets`, so a name a run refuses isn't
+   * reported as set.
+   */
   secrets: Secrets;
   /**
    * What is wrong with the Node.js that runs Halonic, for the Node.js line.
@@ -163,6 +180,8 @@ export interface DoctorReport {
   workspace?: WorkspaceLine | TimedOutLine<"workspace">;
   /** Only inside a workspace with model aliases. */
   models?: ModelsLine | TimedOutLine<"models">;
+  /** Only inside a workspace, while a secret it uses isn't set or couldn't be read. */
+  secrets?: SecretsLine | TimedOutLine<"secrets">;
   sandbox: SandboxLine | TimedOutLine<"sandbox">;
   /** Only where MXC is offered and the sandbox choice has started. */
   mxc?: MxcLine;
@@ -182,9 +201,9 @@ export interface DoctorReport {
 /**
  * Checks that this computer can run Halonic, for `halonic doctor`
  * (requirement `app.doctor-service`). It reads the workspace's trust, its
- * models, the sandbox, the harnesses and the disk at the same time, so one
- * slow check doesn't wait for another, and it never calls a provider over
- * the internet. A check that hasn't answered after 5 seconds ends as a
+ * models, its secrets (`app.doctor-secrets`), the sandbox, the harnesses and
+ * the disk at the same time, so one slow check doesn't wait for another,
+ * and it never calls a provider over the internet. A check that hasn't answered after 5 seconds ends as a
  * warning, so one that hangs doesn't hold up the report.
  *
  * @example
@@ -210,12 +229,13 @@ export class DoctorService {
   async check(workspace: DoctorWorkspace | null): Promise<DoctorReport> {
     const { sandbox, timers } = this.options;
     const limited = <T>(check: Promise<T>) => withinLimit(timers, check);
-    const [trust, sandboxCheck, resources, harnesses, keys, node] = await Promise.all([
+    const [trust, sandboxCheck, resources, harnesses, keys, secrets, node] = await Promise.all([
       limited(this.trustStatus(workspace)),
       limited(sandbox.check()),
       limited(this.options.resources.read()),
       limited(this.checkHarnesses(workspace)),
       limited(this.storedKeys(workspace?.providers ?? [])),
+      limited(this.findSecrets(workspace?.secrets ?? [])),
       limited(this.options.node?.() ?? Promise.resolve(null)),
     ]);
 
@@ -229,6 +249,8 @@ export class DoctorService {
       report.workspace = lineOf(trust, "workspace", (found) => trustLine(workspace, found));
       const models = workspaceModels(workspace, resources, keys);
       if (models !== undefined) report.models = models;
+      const secretsFound = lineOf(secrets, "secrets", secretsLine);
+      if (secretsFound !== undefined) report.secrets = secretsFound;
     }
     const choice = this.options.sandboxChoice?.current() ?? null;
     const mxc = choice === null ? undefined : mxcLine(choice);
@@ -275,18 +297,44 @@ export class DoctorService {
     );
   }
 
-  /** The providers whose key is stored, by id. Each key is read and dropped at once. */
+  /**
+   * The providers whose key is stored, by id. Each key is read and dropped
+   * at once. A key the store couldn't be asked about counts as not stored,
+   * so the Models line warns about it instead of `doctor` failing.
+   */
   private async storedKeys(providers: readonly DoctorProvider[]): Promise<Set<string>> {
     const stored = new Set<string>();
     await Promise.all(
       providers.map(async (provider) => {
         if (provider.runs !== "with-a-key") return;
-        if ((await this.options.secrets.get(provider.secret)) !== null) {
+        if ((await this.isSet(provider.secret)) === true) {
           stored.add(provider.provider);
         }
       }),
     );
     return stored;
+  }
+
+  /** Which secrets aren't set, and which the store couldn't be asked about, in the order given. */
+  private async findSecrets(secrets: readonly UsedSecret[]): Promise<SecretsFound> {
+    const set = await Promise.all(secrets.map((used) => this.isSet(used.secret)));
+    return {
+      missing: secrets.filter((_, index) => set[index] === false),
+      unreadable: secrets.filter((_, index) => set[index] === "unreadable"),
+    };
+  }
+
+  /**
+   * Whether the store holds a secret. Its value is read and dropped at once.
+   * A store that throws, such as a locked keychain, or one that refuses the
+   * name, gives "unreadable", so one secret never takes `doctor` down.
+   */
+  private async isSet(secret: string): Promise<boolean | "unreadable"> {
+    try {
+      return (await this.options.secrets.get(secret)) !== null;
+    } catch {
+      return "unreadable";
+    }
   }
 }
 
@@ -383,8 +431,18 @@ function hostFoundLines(
 }
 
 function linesOf(report: Omit<DoctorReport, "summary">): DoctorLine[] {
-  const { workspace, models, sandbox, mxc, noSandbox, harnesses, node, network, disk } = report;
-  return [workspace, models, sandbox, mxc, noSandbox, harnesses, node, network, disk].filter(
-    (line) => line !== undefined,
-  );
+  const { workspace, models, secrets, sandbox, mxc, noSandbox, harnesses, node, network, disk } =
+    report;
+  return [
+    workspace,
+    models,
+    secrets,
+    sandbox,
+    mxc,
+    noSandbox,
+    harnesses,
+    node,
+    network,
+    disk,
+  ].filter((line) => line !== undefined);
 }

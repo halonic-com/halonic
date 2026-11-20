@@ -318,3 +318,57 @@ verifies("app.doctor-network", () => {
     expect((await doctor().service.check(null)).network).toBeUndefined();
   });
 });
+
+verifies("app.doctor-secrets", () => {
+  const filesToken = {
+    secret: "files-token",
+    usedBy: [{ kind: "connector" as const, id: "files" }],
+  };
+  const mockKey = { secret: "mock-key", usedBy: [{ kind: "provider" as const, id: "mock" }] };
+
+  it("fails a Secrets line with each secret that isn't set, so doctor exits 1", async () => {
+    const { service, asked } = doctor({ secrets: { "mock-key": "stored" } });
+
+    const report = await service.check(workspace({ secrets: [filesToken, mockKey] }));
+
+    expect(report.secrets).toEqual({
+      check: "secrets",
+      status: "failed",
+      missing: [filesToken],
+      unreadable: [],
+    });
+    expect(report.summary).toEqual({ problems: 1, warnings: 0, needsFixing: true });
+    expect(asked.sort()).toEqual(["files-token", "mock-key"]);
+  });
+
+  it("has no Secrets line when every secret is set, or outside a workspace", async () => {
+    const set = doctor({ secrets: { "files-token": "stored" } });
+    expect((await set.service.check(workspace({ secrets: [filesToken] }))).secrets).toBeUndefined();
+    expect((await doctor().service.check(null)).secrets).toBeUndefined();
+  });
+
+  it("warns about a secret the store throws for, and still finishes", async () => {
+    const { service } = doctor({
+      unreadable: ["files-token", "ANTHROPIC_API_KEY"],
+      secrets: { "mock-key": "stored" },
+    });
+
+    const report = await service.check(
+      workspace({
+        providers: [anthropic],
+        aliases: [{ alias: "smart", provider: "anthropic" }],
+        secrets: [filesToken, mockKey],
+      }),
+    );
+
+    expect(report.secrets).toEqual({
+      check: "secrets",
+      status: "warning",
+      missing: [],
+      unreadable: [filesToken],
+    });
+    // A provider key the store throws for counts as not stored.
+    expect(report.models?.status).toBe("warning");
+    expect(report.summary.needsFixing).toBe(false);
+  });
+});

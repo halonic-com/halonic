@@ -38,7 +38,7 @@ verifies("app.doctor-time-limit", () => {
     const machine = doctor({ sandboxCheck: never });
     const checking = machine.service.check(null);
 
-    expect(machine.timers.delays()).toEqual(Array(6).fill(doctorCheckLimitMs));
+    expect(machine.timers.delays()).toEqual(Array(7).fill(doctorCheckLimitMs));
     expect(doctorCheckLimitMs).toBe(5_000);
     await new Promise((resolve) => setImmediate(resolve));
     expect(machine.timers.delays()).toEqual([doctorCheckLimitMs]);
@@ -70,6 +70,19 @@ verifies("app.doctor-time-limit", () => {
 
     expect(report.models).toEqual({ check: "models", status: "warning", timedOut: true });
     expect(report.workspace?.status).toBe("ok");
+  });
+
+  it("times out the Secrets line when the secret store never answers for a connector's secret", async () => {
+    const report = await afterLimit(
+      doctor({ hanging: ["files-token"] }),
+      workspace({
+        secrets: [{ secret: "files-token", usedBy: [{ kind: "connector", id: "files" }] }],
+      }),
+    );
+
+    expect(report.secrets).toEqual({ check: "secrets", status: "warning", timedOut: true });
+    expect(report.workspace?.status).toBe("ok");
+    expect(report.summary.needsFixing).toBe(false);
   });
 
   it("still throws what a check throws in time", async () => {

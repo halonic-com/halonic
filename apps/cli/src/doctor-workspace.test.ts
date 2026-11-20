@@ -230,6 +230,11 @@ verifies("cli.doctor-workspace", () => {
     });
   });
 
+  it("shows a baseUrl without a host as written, never an empty address (C15)", () => {
+    const provider = { ...base, type: "ollama", local: true, baseUrl: "localhost:11434" };
+    expect(doctorProvider(provider)).toMatchObject({ address: "localhost:11434" });
+  });
+
   it("leaves out a server on this computer whose address it doesn't know", () => {
     expect(doctorProvider({ ...base, type: "llamafile", local: true })).toBeUndefined();
   });
@@ -240,5 +245,128 @@ verifies("cli.doctor-workspace", () => {
       secret: "openai-key",
     });
     expect(doctorProvider(base)).toMatchObject({ runs: "without-a-key" });
+  });
+});
+
+verifies("cli.doctor-secrets", () => {
+  it("reads the secrets of used connectors and of providers the Models line doesn't check, each once", async () => {
+    const workspace = await workspaceOf({
+      "workspace.yaml": acmeSettings,
+      "models.yaml":
+        "aliases:\n  smart:\n    provider: anthropic\n    model: claude-sonnet-5-5\n  local:\n    provider: studio\n    model: qwen\n",
+      "providers/anthropic.yaml": providerFiles["providers/anthropic.yaml"],
+      "providers/studio.yaml":
+        "id: studio\nname: LM Studio\ntype: lmstudio\nbaseUrl: http://localhost:1234/v1\nlocal: true\nsecret: notes-token\n",
+      "library/connectors/files.connector.yaml":
+        "transport:\n  stdio:\n    command: acme-files\n    secretEnv:\n      FILES_TOKEN: files-token\n      FILES_TOKEN_AGAIN: files-token\n",
+      "library/connectors/notes.connector.yaml":
+        "transport:\n  http:\n    url: https://notes.acme.test/mcp\nsecret: notes-token\n",
+      "library/connectors/unused.connector.yaml":
+        "transport:\n  http:\n    url: https://unused.acme.test/mcp\nsecret: unused-token\n",
+      "hubs/support/hub.yaml": "id: support\nname: Support\n",
+      "hubs/support/agents/writer.agent.yaml":
+        "id: writer\nname: Writer\ninstructions: Write.\nconnectors: [files, notes]\n",
+    });
+
+    const doctor = doctorWorkspace({
+      workspace,
+      integrations: [],
+      location: "/work/acme",
+      fallbackName: "acme",
+      commandPaths: new Map(),
+    });
+
+    // Anthropic's key stays on the Models line, and no agent uses `unused`.
+    expect(doctor.secrets).toEqual([
+      { secret: "files-token", usedBy: [{ kind: "connector", id: "files" }] },
+      {
+        secret: "notes-token",
+        usedBy: [
+          { kind: "connector", id: "notes" },
+          { kind: "provider", id: "studio" },
+        ],
+      },
+    ]);
+  });
+
+  /** Reads the secrets of a workspace with the agent Writer in the hub support. */
+  async function secretsOf(files: Record<string, string>) {
+    const workspace = await workspaceOf({
+      "workspace.yaml": acmeSettings,
+      "hubs/support/agents/writer.agent.yaml":
+        "id: writer\nname: Writer\ninstructions: Write.\nconnectors: [files, notes]\n",
+      ...files,
+    });
+    return doctorWorkspace({
+      workspace,
+      integrations: [],
+      location: "/work/acme",
+      fallbackName: "acme",
+      commandPaths: new Map(),
+    }).secrets;
+  }
+
+  it("counts names that differ only in case or in - and _ as one secret, as first written", async () => {
+    const secrets = await secretsOf({
+      "hubs/support/hub.yaml": "id: support\nname: Support\n",
+      "library/connectors/files.connector.yaml":
+        "transport:\n  http:\n    url: https://files.acme.test/mcp\nsecret: files-token\n",
+      "library/connectors/notes.connector.yaml":
+        "transport:\n  http:\n    url: https://notes.acme.test/mcp\nsecret: FILES_TOKEN\n",
+    });
+
+    expect(secrets).toEqual([
+      {
+        secret: "files-token",
+        usedBy: [
+          { kind: "connector", id: "files" },
+          { kind: "connector", id: "notes" },
+        ],
+      },
+    ]);
+  });
+
+  it("leaves out a secret the Models line checks as a cloud provider's key, whatever else uses it", async () => {
+    const secrets = await secretsOf({
+      "hubs/support/hub.yaml": "id: support\nname: Support\n",
+      "models.yaml": "aliases:\n  smart:\n    provider: anthropic\n    model: claude-sonnet-5-5\n",
+      "providers/anthropic.yaml": providerFiles["providers/anthropic.yaml"],
+      "library/connectors/files.connector.yaml":
+        "transport:\n  http:\n    url: https://files.acme.test/mcp\nsecret: Anthropic\n",
+    });
+
+    expect(secrets).toEqual([]);
+  });
+
+  it("reads the webhook secret of each enabled routine, and not of one switched off (C340)", async () => {
+    const routine = (id: string, enabled: boolean, secret: string) =>
+      `id: ${id}\nname: ${id}\nenabled: ${enabled}\ntrigger:\n  webhook:\n    secret: ${secret}\n` +
+      "run:\n  hub: support\n  agent: writer\n  prompt: Sum up the week.\n";
+    const secrets = await secretsOf({
+      "workflows/routines/friday-digest.routine.yaml": routine(
+        "friday-digest",
+        true,
+        "friday-hook",
+      ),
+      "workflows/routines/old-digest.routine.yaml": routine("old-digest", false, "old-hook"),
+    });
+
+    expect(secrets).toEqual([
+      { secret: "friday-hook", usedBy: [{ kind: "routine", id: "friday-digest" }] },
+    ]);
+  });
+
+  it("leaves out a shared connector the agent's hub doesn't allow, as a run does", async () => {
+    const secrets = await secretsOf({
+      "hubs/support/hub.yaml": "id: support\nname: Support\nuses:\n  connectors: [notes]\n",
+      "library/connectors/files.connector.yaml":
+        "transport:\n  http:\n    url: https://files.acme.test/mcp\nsecret: files-token\n",
+      "library/connectors/notes.connector.yaml":
+        "transport:\n  http:\n    url: https://notes.acme.test/mcp\nsecret: notes-token\n",
+    });
+
+    expect(secrets).toEqual([
+      { secret: "notes-token", usedBy: [{ kind: "connector", id: "notes" }] },
+    ]);
   });
 });

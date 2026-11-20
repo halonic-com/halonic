@@ -13,7 +13,14 @@ import type { SaveTimers } from "./save-scheduler.ts";
 export const doctorCheckLimitMs = 5_000;
 
 /** The checks a time limit can end, by the `check` of their line. */
-export type LimitedCheck = "workspace" | "models" | "sandbox" | "harnesses" | "node" | "disk";
+export type LimitedCheck =
+  | "workspace"
+  | "models"
+  | "secrets"
+  | "sandbox"
+  | "harnesses"
+  | "node"
+  | "disk";
 
 /** The line of a check that didn't answer within {@link doctorCheckLimitMs}: "didn't answer in 5 seconds". */
 export interface TimedOutLine<Check extends LimitedCheck = LimitedCheck> extends DoctorLine {

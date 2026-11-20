@@ -17,6 +17,7 @@ import {
   type NodeLine,
   type ProviderReport,
   type SandboxLine,
+  type SecretsLine,
   type TimedOutLine,
   type WorkspaceLine,
 } from "@halonicjs/app";
@@ -35,6 +36,7 @@ import {
 import { shownSize } from "../messages/size.ts";
 import type { Mark } from "./paint.ts";
 import { printable, withoutUnsafe } from "./printable.ts";
+import { shellWord } from "./shell-word.ts";
 
 /** What the report doesn't hold, because only the host knows it. */
 export interface DoctorFacts {
@@ -78,9 +80,9 @@ interface CheckLines {
 
 /**
  * The lines of `halonic doctor`, in the order of cli-output 3.7: Workspace,
- * Models, Sandbox, Harnesses, Node.js (HAL-6517), Network (HAL-14262) and Disk, each only when
- * the report has it, with an empty line after the heading and before the
- * summary.
+ * Models, Secrets (HAL-14269), Sandbox, Harnesses, Node.js (HAL-6517), Network (HAL-14262)
+ * and Disk, each only when the report has it, with an empty line after the heading and before
+ * the summary.
  *
  * @example
  * doctorReportLines(report, { version: "0.1.0", system: "Linux x64", sandboxKind: "bubblewrap" });
@@ -92,6 +94,7 @@ export function doctorReportLines(report: DoctorReport, facts: DoctorFacts): Phr
   const checks = [
     report.workspace && orTimedOut(report.workspace, (line) => workspaceCheck(line, facts.dir)),
     report.models && orTimedOut(report.models, modelsCheck),
+    report.secrets && orTimedOut(report.secrets, secretsCheck),
     orTimedOut(report.sandbox, (line) => sandboxCheck(line, facts, node)),
     report.harnesses &&
       orTimedOut(report.harnesses, (line) => harnessesCheck(line, facts.signInShell)),
@@ -112,6 +115,7 @@ export function doctorReportLines(report: DoctorReport, facts: DoctorFacts): Phr
 const labels: Readonly<Record<LimitedCheck, () => Message>> = {
   workspace: doctorMessages.workspaceLabel,
   models: doctorMessages.modelsLabel,
+  secrets: doctorMessages.secretsLabel,
   sandbox: doctorMessages.sandboxLabel,
   harnesses: doctorMessages.harnessesLabel,
   node: doctorMessages.nodeLabel,
@@ -235,6 +239,30 @@ function modelProblems(problems: readonly ModelProblem[]): Phrase[] {
     lines.push(doctorMessages.needKey(aliases.map(printable), printable(name)).phrase);
   }
   return lines;
+}
+
+/**
+ * One line per secret that isn't set, with what uses it and the command that
+ * sets it, then one per secret the store couldn't be asked about.
+ */
+function secretsCheck(line: SecretsLine): CheckLines {
+  // Secret names and ids come from workspace files.
+  const users = (usedBy: SecretsLine["missing"][number]["usedBy"]) =>
+    usedBy.map(({ kind, id }) => ({ kind, id: printable(id) }));
+  return {
+    status: line.status,
+    label: doctorMessages.secretsLabel(),
+    lines: [
+      ...line.missing.map(
+        ({ secret, usedBy }) =>
+          doctorMessages.secretNotSet(printable(secret), users(usedBy), shellWord(secret)).phrase,
+      ),
+      ...line.unreadable.map(
+        ({ secret, usedBy }) =>
+          doctorMessages.secretUnreadable(printable(secret), users(usedBy)).phrase,
+      ),
+    ],
+  };
 }
 
 /**
