@@ -25,6 +25,7 @@ export default defineConfig({
         "agents-list": `${import.meta.dirname}/e2e/pages/agents-list.html`,
         welcome: `${import.meta.dirname}/e2e/pages/welcome.html`,
         canvas: `${import.meta.dirname}/e2e/pages/canvas.html`,
+        configuration: `${import.meta.dirname}/e2e/pages/configuration.html`,
       },
     },
   },

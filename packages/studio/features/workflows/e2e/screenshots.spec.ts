@@ -353,3 +353,86 @@ for (const shown of canvasRuns) {
     });
   }
 }
+
+/**
+ * A workflow's Configuration in a narrow window (HAL-12800): the page list sits above the page at
+ * full width (N1), and the Tests page's command breaks only between its words (N2). 320 px is a
+ * 1280 px window at 400 % zoom. In a wide window the list stays beside the page.
+ */
+const configurationSizes = [
+  { width: 390, height: 844 },
+  { width: 320, height: 640 },
+] as const;
+
+for (const size of configurationSizes) {
+  for (const scheme of schemes) {
+    test(`N1, N2: configuration, tests, ${size.width}x${size.height}, ${scheme}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(size);
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto("/configuration.html?page=tests");
+      const list = page.getByRole("tablist", { name: "Configuration pages" });
+      await expect(list.getByRole("tab", { name: "Tests" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      // The kit's TabList sits in a padded column; the column is what spans the window.
+      const listBox = await list.locator("..").boundingBox();
+      const panelBox = await page.getByRole("tabpanel").boundingBox();
+      expect(listBox !== null && panelBox !== null, "the list and the page are shown").toBe(true);
+      if (listBox === null || panelBox === null) return;
+      expect(listBox.y + listBox.height, "the list is above the page").toBeLessThanOrEqual(
+        panelBox.y,
+      );
+      expect(listBox.width, "the list is as wide as the window").toBeCloseTo(size.width, 0);
+      expect(panelBox.width, "the page is as wide as the window").toBeCloseTo(size.width, 0);
+      const sideways = await page.evaluate(
+        () =>
+          [document.documentElement, ...document.querySelectorAll("[role=tabpanel]")].filter(
+            (element) => element.scrollWidth > element.clientWidth,
+          ).length,
+      );
+      expect(sideways, "nothing scrolls sideways").toBe(0);
+      // No line break falls inside a word: between two letters or digits, as in "Docum · ents".
+      // The browser may still break after a hyphen ("-" · "-filter"), as it does in any text.
+      const splitWords = await page.locator("code").evaluate((code) => {
+        const text = code.firstChild;
+        if (text === null) return ["no text"];
+        const command = text.textContent ?? "";
+        const lineOf = (index: number) => {
+          const range = document.createRange();
+          range.setStart(text, index);
+          range.setEnd(text, index + 1);
+          return Math.round(range.getBoundingClientRect().top);
+        };
+        const letterOrDigit = /[\p{L}\p{N}]/u;
+        const split: string[] = [];
+        for (let at = 1; at < command.length; at++) {
+          const inside =
+            letterOrDigit.test(command[at - 1] ?? "") && letterOrDigit.test(command[at] ?? "");
+          if (inside && lineOf(at - 1) !== lineOf(at)) split.push(command.slice(at - 1, at + 1));
+        }
+        return split;
+      });
+      expect(splitWords, "no word of the command is broken between these letters").toEqual([]);
+      await page.screenshot({
+        path: `test-results/screenshots/configuration-tests-${size.width}-${scheme}.png`,
+        fullPage: true,
+      });
+    });
+  }
+}
+
+test("configuration keeps its page list beside the page in a wide window", async ({ page }) => {
+  await page.goto("/configuration.html?page=general");
+  const listBox = await page
+    .getByRole("tablist", { name: "Configuration pages" })
+    .locator("..")
+    .boundingBox();
+  const panelBox = await page.getByRole("tabpanel").boundingBox();
+  expect(listBox !== null && panelBox !== null, "the list and the page are shown").toBe(true);
+  if (listBox === null || panelBox === null) return;
+  expect(listBox.x + listBox.width, "the list is left of the page").toBeLessThanOrEqual(panelBox.x);
+  expect(listBox.y, "the list starts level with the page").toBe(panelBox.y);
+});
