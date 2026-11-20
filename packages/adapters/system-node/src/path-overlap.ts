@@ -26,13 +26,18 @@ export function pathsOverlap(a: string, b: string): boolean {
  * resolved, also when it doesn't exist yet: the nearest existing parent is
  * resolved and the rest is added back. A path none of whose parents can be
  * read comes back as given.
+ *
+ * It uses the system's own path resolution (`realpathSync.native`), as
+ * `fs.promises.realpath` does, so on Windows 8.3 short names such as
+ * `RUNNER~1` are expanded too and a path compares equal to a folder's real
+ * location from the file system.
  */
 export function realSpelling(path: string): string {
   const missing: string[] = [];
   let existing = path;
   for (;;) {
     try {
-      return join(realpathSync(existing), ...missing.reverse());
+      return join(realpathSync.native(existing), ...missing.reverse());
     } catch {
       const parent = dirname(existing);
       if (parent === existing) return path;
