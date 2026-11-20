@@ -3,6 +3,7 @@
 - Task: HAL-1302 (T9, History actions, audit item 7, follow-up to #3780)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-1302 (Liam's review of #3780)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:dmLlQhR7Sq/enK/Bh1+0WzeDTXfcqCfHp88kLJA1TTt4u/0kv9LUasOZu/zW+Stant+lcvxN8YYW4qcD+6grBw==
 
 ## What changes
 
