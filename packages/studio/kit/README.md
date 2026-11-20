@@ -265,6 +265,10 @@ change. Icon buttons become 40px squares on a touch screen, beside the 40px text
 48px squares with a 20px icon on a phone. A `touch` button's label wraps between
 words, so at large text it grows taller, never wider than its column.
 
+**In a narrow box** (a status box at 400 % zoom), a `sm`, `md` or `lg` button is never wider than
+the box: its label wraps between words, centred, and the button grows taller. On one line nothing
+changes. An `xs` button stays on one line, so the status bar keeps its height.
+
 ## Card
 
 A self-contained summary on a page: a routine, a model provider, a stat. Never a card inside a
