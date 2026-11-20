@@ -8,8 +8,9 @@ import {
   useOpenExternal,
 } from "@halonicjs/studio-kit";
 import type { SettingsSectionProps } from "@halonicjs/studio-shell";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { RemoteControlService } from "../api.ts";
+import { PairDialog } from "../pairing/pair-dialog.tsx";
 import { useRemoteState } from "../remote-state.ts";
 import { providerName, tunnelProblem, tunnelState } from "../tunnel-words.ts";
 import { PhoneList } from "./phone-list.tsx";
@@ -40,6 +41,7 @@ export interface RemoteSettingsViewProps {
 /** The section over one snapshot: the tunnel's problem, the switches, and the phones. */
 export function RemoteSettingsView({ remote, state, announce }: RemoteSettingsViewProps) {
   const [failed, setFailed] = useState<string>();
+  const [pairing, setPairing] = useState(false);
   const run = (action: Promise<void>, failure: string): Promise<void> => {
     setFailed(undefined);
     return action.catch(() => {
@@ -47,8 +49,16 @@ export function RemoteSettingsView({ remote, state, announce }: RemoteSettingsVi
       announce(failure);
     });
   };
+  // A switch ignores a change while its own host call is out, so a quick second click doesn't
+  // send a second call. A ref, not state: two clicks can land before React renders again.
+  const pending = useRef(new Set<"reach" | "risky">());
+  const change = (key: "reach" | "risky", action: () => Promise<void>, failure: string) => {
+    if (pending.current.has(key)) return;
+    pending.current.add(key);
+    void run(action(), failure).finally(() => pending.current.delete(key));
+  };
   const turn = (on: boolean) =>
-    void run(remote.setRemote(on), on ? text.TURN_ON_FAILED : text.TURN_OFF_FAILED);
+    change("reach", () => remote.setRemote(on), on ? text.TURN_ON_FAILED : text.TURN_OFF_FAILED);
   // Turning remote off and on again makes the tunnel look again: the port has no other way.
   const checkAgain = () =>
     run(
@@ -72,12 +82,27 @@ export function RemoteSettingsView({ remote, state, announce }: RemoteSettingsVi
           <Switch
             label={text.RISKY_TITLE}
             checked={state.allowRiskyRemotely}
-            onChange={(allow) => void run(remote.setAllowRiskyRemotely(allow), text.RISKY_FAILED)}
+            onChange={(allow) =>
+              change("risky", () => remote.setAllowRiskyRemotely(allow), text.RISKY_FAILED)
+            }
           />
         </Row>
       </div>
       {failed === undefined ? null : <p className="text-small text-danger">{failed}</p>}
-      <PhoneList remote={remote} state={state} announce={announce} />
+      <PhoneList
+        remote={remote}
+        state={state}
+        announce={announce}
+        onPair={() => setPairing(true)}
+      />
+      {pairing ? (
+        <PairDialog
+          remote={remote}
+          provider={state.tunnelProviderId}
+          allowRisky={state.allowRiskyRemotely}
+          onClose={() => setPairing(false)}
+        />
+      ) : null}
     </div>
   );
 }

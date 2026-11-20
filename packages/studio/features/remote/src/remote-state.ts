@@ -10,7 +10,19 @@ export function followRemote(
   onState: (state: RemoteState) => void,
   onEnd: (error?: unknown) => void = () => undefined,
 ): () => void {
-  const iterator = remote.state()[Symbol.asyncIterator]();
+  return followStream(remote.state(), onState, onEnd);
+}
+
+/**
+ * Follows `stream` until the function it gives back is called, calling `onItem` with each item.
+ * A stream that fails or ends calls `onEnd` with the error, if any; after the stop, neither runs.
+ */
+export function followStream<Item>(
+  stream: AsyncIterable<Item>,
+  onItem: (item: Item) => void,
+  onEnd: (error?: unknown) => void = () => undefined,
+): () => void {
+  const iterator = stream[Symbol.asyncIterator]();
   let live = true;
   const next = (): void => {
     iterator.next().then(
@@ -20,7 +32,7 @@ export function followRemote(
           onEnd();
           return;
         }
-        onState(step.value);
+        onItem(step.value);
         next();
       },
       (error: unknown) => {
