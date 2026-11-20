@@ -127,6 +127,18 @@ const waitWithoutEvents: StateCheck = ({ id, state }) => {
   return [issue("warning", "wait-without-events", message, stateKey(id), id)];
 };
 
+/**
+ * A wait step has no moment to send a signal at (on entry? on each event?),
+ * so `signal` there would be silently dropped (HAL-14305).
+ */
+const waitWithSignal: StateCheck = ({ id, state }) => {
+  if (state.type !== "wait" || state.signal === undefined) {
+    return [];
+  }
+  const message = `Wait step "${id}" can't send a signal. Put signal: on the step after it.`;
+  return [issue("error", "wait-with-signal", message, stateKey(id, "signal"), id)];
+};
+
 const foreachShape: StateCheck = ({ id, state }) => {
   if (state.type !== "foreach") {
     return [];
@@ -229,6 +241,7 @@ export const STATE_CHECKS: readonly StateCheck[] = [
   timersOutsideWait,
   timerWithEvent,
   waitWithoutEvents,
+  waitWithSignal,
   foreachShape,
   subflowTarget,
   workflowWithoutTarget,

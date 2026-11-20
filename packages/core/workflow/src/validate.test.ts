@@ -208,3 +208,33 @@ verifies("workflow.validate-gets", () => {
     ]);
   });
 });
+
+verifies("workflow.validate-wait-signal", () => {
+  it("refuses a signal on a wait step, at its signal key, and says where to put it", () => {
+    const waiting = oneState({
+      type: "wait",
+      on: [{ to: "end", event: "approve" }],
+      signal: { name: "review.done", data: {} },
+    });
+    expect(validateWorkflow(waiting).filter((found) => found.code === "wait-with-signal")).toEqual([
+      {
+        severity: "error",
+        code: "wait-with-signal",
+        message: `Wait step "s" can't send a signal. Put signal: on the step after it.`,
+        path: ["states", "s", "signal"],
+        state: "s",
+      },
+    ]);
+  });
+
+  it("accepts a signal on the step after the wait, and on a final step", () => {
+    const after = oneState(
+      { type: "wait", on: [{ to: "notify", event: "approve" }] },
+      {
+        notify: { agent: "a", on: [{ to: "end" }], signal: { name: "review.done", data: {} } },
+        end: { type: "final", signal: { name: "reply.sent", data: {} } },
+      },
+    );
+    expect(codes(validateWorkflow(after))).not.toContain("wait-with-signal");
+  });
+});

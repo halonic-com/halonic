@@ -218,6 +218,7 @@ workflows, for example) belong to the workspace loader.
 | `unknown-gets` | error | a step picks a `context.<key>` that no earlier step writes |
 | `timer-outside-wait` | error | a state that isn't a wait state has a timer |
 | `timer-with-event` | error | a transition has both an `event` and a timer (`after`) |
+| `wait-with-signal` | error | a wait step has a `signal`, which it can't send; it belongs on the step after it |
 | `foreach-without-items` | error | a for-each step has no `items` |
 | `foreach-without-work` | error | a for-each step has both or neither of an agent and a workflow |
 | `workflow-without-target` | error | a workflow step names no workflow |

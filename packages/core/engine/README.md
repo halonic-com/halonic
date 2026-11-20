@@ -32,7 +32,7 @@ loop of one model turn, which the local chat turn runs.
 | `decide` | what a run does next for one input: pure, no clock and no new ids; refuses what the run can't take | `engine.decide-refusals` |
 | `DecideInput` | the inputs that move a run on (`start`, `send`, `timer`, `effect-done`, `effect-failed`, `child`), each with its time | (types only) |
 | `Effect` | what `decide` asks `step` to do after appending: call a model or a tool, run or answer a harness, start or cancel a child run, tell the parent, set a timer | (types only) |
-| `final` state | completes the run with its context | `engine.final-state` |
+| `final` state | completes the run with its context; with `signal`, logs `signal.sent` first, so `run.completed` stays last | `engine.final-state`, `engine.final-signal` |
 | `halonicSource` | the source id `"halonic"` that refusals name for Halonic's tools; `callerSource` (`"caller"`) is the same for the caller's | `engine.turn-refusals-as-data` |
 | `HalonicTool` | one of Halonic's own tools: its definition and how to run it | `engine.turn-runs-tool-calls` |
 | `InputRefused` | what `decide` throws for an input the run can't take, with a `RefusalCode` that says why; nothing is recorded; a `send` for a call the run doesn't wait on is refused | `engine.decide-refusals`, `engine.decision-callid-must-match` |
