@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-1305; flow-inbox 3.2; microcopy 10.1
 
-When the workspace provides notices, the Inbox shall show a **Notices** section under Needs you, one flat row per notice: its title, **Open run** (where the window can open a run) and a **×** named "Dismiss *title*". **Open run** opens the newest run the notice names, in its hub. A fixed notice shall say "Fixed" in place of **Open run** and keep the ×. Each **Open run** shall be described by its row's title, so the buttons differ for a screen reader. The × shall hide the notice and move focus to the next notice's ×, else the previous one's; when it was the last notice, focus shall move to the Needs you heading. With no notices, or no source, the heading shall be hidden. While Needs you itself failed to load, the Notices shall be hidden too. When the notices can't be read, the section shall say "Couldn't load notices", the reason and **Try again**, and Needs you shall stay as it is; when notices were already showing, they stay under the line "Showing the last…" the engine words give. Notices read from another source shall never show, not even under that line.
+When the workspace provides notices, the Inbox shall show a **Notices** section under Needs you, one flat row per notice: its title, **Open run** (where the window can open a run) and a **×** named "Dismiss *title*". **Open run** opens the newest run the notice names, in its hub. A fixed notice shall say "Fixed" in place of **Open run** and keep the ×. When the row is too narrow for the title next to its buttons (a phone, or 400 % zoom), **Open run** and the × shall go on a line under the title, together and with the × last, so the title keeps the whole width (HAL-13930). Each **Open run** shall be described by its row's title, so the buttons differ for a screen reader. The × shall hide the notice and move focus to the next notice's ×, else the previous one's; when it was the last notice, focus shall move to the Needs you heading. With no notices, or no source, the heading shall be hidden. While Needs you itself failed to load, the Notices shall be hidden too. When the notices can't be read, the section shall say "Couldn't load notices", the reason and **Try again**, and Needs you shall stay as it is; when notices were already showing, they stay under the line "Showing the last…" the engine words give. Notices read from another source shall never show, not even under that line.
 
 ## Examples
 
@@ -25,6 +25,8 @@ When the workspace provides notices, the Inbox shall show a **Notices** section 
   then none of the first source's notices show.
 - Given a fixed notice,
   then its row says "Fixed", has no **Open run** and still has the ×.
+- Given a run budget notice in a 195 px wide window,
+  then its title is the row's full width and **Open run** and the × are on the line under it.
 - Given no notices,
   then there is no Notices heading.
 - Given notices that fail to load,
