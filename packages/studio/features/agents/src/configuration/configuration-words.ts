@@ -16,6 +16,23 @@ export const configurationWords = {
     "What it should do and how, in plain words. It follows this every time it runs.",
   /** Save model 8.4: a key pasted into Description or Instructions is not saved. */
   looksLikeKey: "This looks like a key. Keep it as a secret instead?",
+  /** Flow-agents 5.2: the shape of the replies, as Tabs. */
+  output: "Output",
+  outputKinds: { text: "Text", choice: "One of a list", json: "JSON" },
+  /** The chip list's Add chip and its box (checklist 2.4 and 2.9). */
+  addOption: "Add",
+  /** The Add chip's name for screen readers, which starts with what it shows. */
+  addOptionName: "Add option",
+  newOption: "New option",
+  removeOption: (option: string) => `Remove ${option}`,
+  /** A list of options needs one: the file can't hold an empty one (save model 1.2). */
+  noOptions: "Add at least one option.",
+  /** Microcopy 8.5. */
+  schema: "Schema (JSON)",
+  schemaHint: "Each reply is checked against this schema.",
+  schemaInvalid: "This isn't valid JSON.",
+  /** Valid JSON that a schema can't be, such as a list or a number. */
+  schemaNotObject: "A schema is a JSON object, between { and }.",
   model: "Model",
   /** Shown in the picker while the file names no model, or one that no longer exists. */
   chooseModel: "Choose a model",
@@ -32,6 +49,22 @@ export const configurationWords = {
     "The most model calls in one step. Empty means 6. Claude Code and Codex agents don't use it.",
   /** Microcopy 8.5. */
   turnLimitInvalid: "Enter a whole number from 1 to 200.",
+  /** Flow-agents 5.2: the model settings, folded under More settings. */
+  moreSettings: "More settings",
+  temperature: "Temperature",
+  temperatureHint: "From 0 to 2. Higher gives more varied replies. Empty uses the model's default.",
+  temperatureInvalid: "Enter a number from 0 to 2.",
+  topP: "Top-p",
+  topPHint: "From 0 to 1. Empty uses the model's default.",
+  topPInvalid: "Enter a number from 0 to 1.",
+  maxTokens: "Max tokens",
+  maxTokensHint: "The longest reply, in tokens. Empty uses the model's default.",
+  maxTokensInvalid: "Enter a whole number above 0.",
+  stop: "Stop",
+  stopHint: "One per line. A reply ends before any of these.",
+  reasoningEffort: "Reasoning effort",
+  reasoningEffortHint: "For models that think before they reply.",
+  reasoningEfforts: { default: "Model's default", low: "Low", medium: "Medium", high: "High" },
   /** Microcopy 1.6: the field error for a model the file names that is no alias (HAL-12390 S8). */
   unknownAlias: (name: string) =>
     `${name} isn't a model alias in this workspace. Choose one, or add it in Models.`,

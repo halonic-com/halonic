@@ -3,11 +3,19 @@
 // design, section 5). `halonic plugin add` and Studio's trust check both
 // read them from here, so a person sees the same check in either place
 // (P8 parity check). Each host draws a section's rows in its own way.
+// Sign-ins come after Secrets, so every address the plugin sends something
+// to is listed before the person trusts it (the designer, HAL-13419).
 
 import type { PluginTrustContent } from "./plugin-trust-content.ts";
 
 /** One section of a plugin's trust check. */
-export type PluginTrustSection = "tools" | "programs" | "secrets" | "addresses" | "in-studio";
+export type PluginTrustSection =
+  | "tools"
+  | "programs"
+  | "secrets"
+  | "sign-ins"
+  | "addresses"
+  | "in-studio";
 
 /**
  * Every section in the order the check shows them: risk order, as the
@@ -17,6 +25,7 @@ export const pluginTrustSectionOrder: readonly PluginTrustSection[] = [
   "tools",
   "programs",
   "secrets",
+  "sign-ins",
   "addresses",
   "in-studio",
 ];
@@ -26,6 +35,7 @@ export const pluginTrustSectionHeadings: Readonly<Record<PluginTrustSection, str
   tools: "Tools for agents",
   programs: "Programs",
   secrets: "Secrets",
+  "sign-ins": "Sign-ins",
   addresses: "Addresses",
   "in-studio": "In Studio",
 };
@@ -35,7 +45,7 @@ export const pluginTrustSectionHeadings: Readonly<Record<PluginTrustSection, str
  * something in them.
  *
  * @example
- * pluginTrustSections(weather); // ["tools", "programs", "secrets", "addresses", "in-studio"]
+ * pluginTrustSections(weather); // ["tools", "programs", "secrets", "sign-ins", "addresses", "in-studio"]
  */
 export function pluginTrustSections(content: PluginTrustContent): PluginTrustSection[] {
   return pluginTrustSectionOrder.filter((section) => hasSomething(content, section));
@@ -49,6 +59,8 @@ function hasSomething(content: PluginTrustContent, section: PluginTrustSection):
       return content.localTools.length > 0;
     case "secrets":
       return content.secrets.length > 0;
+    case "sign-ins":
+      return (content.signIns ?? []).length > 0;
     case "addresses":
       return content.hosts.length > 0;
     case "in-studio":

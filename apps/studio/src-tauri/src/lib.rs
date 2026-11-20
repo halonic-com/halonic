@@ -208,6 +208,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             agent_host::agent_host_request,
             agent_host::agent_host_stream,
             agent_host::agent_host_stream_end,
+            agent_host::choice_save::agent_host_sandbox_choice_save,
             agent_host::updates::agent_host_security_updates,
             http_fetch::http_fetch,
             http_fetch::http_fetch_abort,

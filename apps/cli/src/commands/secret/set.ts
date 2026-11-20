@@ -62,9 +62,11 @@ export async function setSecret(
   if (!change.changed) {
     throw refused(change.reason);
   }
+  const saved = secretMessages.saved(shown).phrase;
   return {
     exitCode: exitCode.ok,
-    lines: [secretMessages.saved(shown).phrase],
+    // A new sign-in password ends every open sign-in, so say so.
+    lines: plan.typedTwice ? [saved, secretMessages.signedOut().phrase] : [saved],
     json: { name, saved: true },
   };
 }

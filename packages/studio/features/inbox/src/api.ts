@@ -30,6 +30,7 @@ export {
   setupKey,
   type WaitItem,
 } from "./inbox-items.ts";
+export { ShownRuns } from "./needs-you-news.ts";
 export {
   type BudgetNoticeFacts,
   budgetNotices,

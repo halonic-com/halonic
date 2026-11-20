@@ -75,6 +75,12 @@ node -e "console.log(crypto.getRandomValues(Buffer.alloc(32)).toString('base64ur
 The key is read the first time a token has to be sealed or opened, so a server that never stores a
 token needs none. A missing or wrong key is not remembered: set the secret and the next call uses it.
 
+On a person's own computer nobody makes the key by hand: the CLI and the Studio's host read it
+through `madeTokenKey`, which uses a key from the environment or the profile's secrets file as it
+is, and otherwise makes one and stores it in the secrets file with `setIfMissing`, so two programs
+that make one at once share the first. It makes no key while a token is sealed in the profile, and
+throws `TokenKeyMissingError` instead, because a new key couldn't open those tokens.
+
 ## Stored format
 
 Each token is one record in the collection `_tokens`, under its canonical name (lower case, `-`

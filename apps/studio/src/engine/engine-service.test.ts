@@ -1,6 +1,6 @@
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import type { SetTimer } from "@halonicjs/adapter-scheduler-node";
-import type { Secrets } from "@halonicjs/ports";
+import type { KeyOrigins, Secrets } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
@@ -122,18 +122,37 @@ verifies("studio.engine-service", () => {
       // The command line refuses Claude Code and Codex agents too, so the fix is the Harness page.
       expect(refusal).toMatchObject({
         kind: "unavailable",
+        message: "writer runs in Claude Code, which Halonic can't start yet.",
         fix: "Set writer to Halonic on its Harness page to run it now.",
       });
-      expect((refusal as Error).message).toContain("writer");
+      expect(refusal).not.toHaveProperty("command");
       expect(shell.calls).toEqual([]);
     });
 
-    it("refuses an agent that lists a connector as `unavailable`", async () => {
+    it("refuses an agent that lists a connector as `unavailable`, with the command that starts it", async () => {
       const service = serviceOn(fakeShell(), acmeFiles({ writer: "connectors: [mail]\n" }));
 
       await expect(service.check(reply)).rejects.toMatchObject({
         kind: "unavailable",
-        fix: "Run this workflow from the command line.",
+        message: "writer uses a connector, which Studio can't start yet.",
+        fix: "To start it, run this in a terminal:",
+        command: "halonic run reply",
+      });
+    });
+
+    it("names the hub in the command when another hub has a workflow of the same id", async () => {
+      const billing = {
+        "hubs/billing/hub.yaml": "id: billing\nname: Billing\n",
+        "hubs/billing/workflows/reply.workflow.yaml":
+          "id: reply\nname: Reply\ninitial: done\nstates:\n  done:\n    type: final\n",
+      };
+      const service = serviceOn(
+        fakeShell(),
+        acmeFiles({ writer: "connectors: [mail]\n" }, billing),
+      );
+
+      await expect(service.check(reply)).rejects.toMatchObject({
+        command: "halonic run support/reply",
       });
     });
 
@@ -181,7 +200,7 @@ verifies("studio.engine-service", () => {
       expect(shell.calls).toEqual([]);
     });
 
-    it("sends an agent's model call through the given `http`, with the key from `secrets`", async () => {
+    it("sends an agent's model call through the given `http`, with the key from `secrets` and its origins from `keyOrigins`", async () => {
       const requests: { url: string; authorization: string | null }[] = [];
       const http = {
         fetch: async (url: string, init?: RequestInit) => {
@@ -207,7 +226,14 @@ verifies("studio.engine-service", () => {
         const timer = setTimeout(callback, delayMs);
         return () => clearTimeout(timer);
       };
-      const service = serviceOn(fakeShell(), files, { http, secrets, setTimer });
+      const asked: string[] = [];
+      const keyOrigins: KeyOrigins = {
+        allowedOrigins: async (name) => {
+          asked.push(name);
+          return ["https://models.example.com"];
+        },
+      };
+      const service = serviceOn(fakeShell(), files, { http, secrets, keyOrigins, setTimer });
 
       try {
         await service.startRun(reply, {});
@@ -215,6 +241,7 @@ verifies("studio.engine-service", () => {
 
         expect(requests[0]?.url).toMatch(/^https:\/\/models\.example\.com\/v1\//);
         expect(requests[0]?.authorization).toBe("Bearer fake-key");
+        expect(asked).toContain("acme-key");
         expect(globalFetch).not.toHaveBeenCalled();
       } finally {
         globalFetch.mockRestore();
@@ -300,6 +327,7 @@ verifies("studio.engine-service", () => {
 
       expect(refusal).toMatchObject({ kind: "unavailable" });
       expect((refusal as Error).message).toContain("writer");
+      expect(refusal).not.toHaveProperty("command");
       expect(lockCalls(shell)).toEqual([]);
     });
 

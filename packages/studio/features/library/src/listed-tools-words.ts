@@ -90,13 +90,6 @@ export const listedToolsWords = {
   leftOut: (reason: string) => `Halonic left out part of its arguments: ${reason}.`,
   serverChangedOnly: (source: string) =>
     `Its text hasn't changed, but ${source} connects differently than when you approved it: another address, version or settings.`,
-  whatChanged: (source: string, changed: number, unapproved: number) => {
-    const parts = [
-      ...(changed > 0 ? [`changed ${toolCount(changed)}`] : []),
-      ...(unapproved > 0 ? [`listed ${unapproved} you haven't approved`] : []),
-    ];
-    return parts.length === 0 ? "" : `Since you last approved, ${source} ${parts.join(" and ")}.`;
-  },
   hidden: {
     lookalike: "Looks the same, but a letter was swapped for one from another alphabet.",
     normalization: "Looks the same, but its characters are written another way.",
@@ -145,6 +138,14 @@ export const listedToolsWords = {
     stopped: (source: string) => `Couldn't list the tools: ${source} stopped before it answered.`,
   },
   setSecret: (secret: string) => `halonic secret set ${secret}`,
+  /**
+   * The line on the page of an MCP server over HTTP, which Studio can't list yet (microcopy 11.4).
+   * The command follows it in a box; a phone says "on your computer" (rule N4, HAL-12363).
+   */
+  cantList: (where: "terminal" | "computer") =>
+    `Studio can't list this server's tools yet. To review them, run this ${where === "terminal" ? "in a terminal" : "on your computer"}:`,
+  /** The command under {@link listedToolsWords.cantList}. */
+  reviewCommand: (connectorId: string) => `halonic tools review ${connectorId}`,
   tryAgain: "Try again",
   /** Opens the workspace's trust check, when the tools couldn't be listed because it isn't trusted. */
   reviewTrust: "Review",

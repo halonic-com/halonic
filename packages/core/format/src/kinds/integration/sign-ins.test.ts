@@ -30,7 +30,7 @@ function signIn(changes: Record<string, string> = {}): string[] {
     flow: "oauth-code",
     authorizeUrl: "https://auth.example.com/oauth/authorize",
     tokenUrl: "https://auth.example.com/oauth/token",
-    revokeUrl: "https://revoke.example.com/oauth/revoke",
+    revokeUrl: "https://auth.example.com/oauth/revoke",
     clientId: "{ fromSetting: clientId }",
     clientSecret: "example-client",
     scopes: "[{ scope: projects.read, reason: Reads your projects. }]",
@@ -100,6 +100,36 @@ verifies("format.integration-sign-ins", () => {
       expect(codes(tokenUrl("https://auth.example.com/token?x=1"))).toEqual(["sign-in-url-query"]);
     });
 
+    it("takes a revokeUrl only on the host of the tokenUrl or the authorizeUrl", () => {
+      const revoke = (changes: Record<string, string>) =>
+        sheet({
+          hosts: "[{ fromSetting: gitlab, class: public }, api.example.com]",
+          signIn: signIn(changes),
+        });
+      parsedValue("integration", revoke({ revokeUrl: "https://auth.example.com:443/revoke" }));
+      parsedValue(
+        "integration",
+        revoke({
+          authorizeUrl: "https://login.example.com/oauth/authorize",
+          revokeUrl: "https://login.example.com/oauth/revoke",
+        }),
+      );
+      parsedValue(
+        "integration",
+        revoke({
+          tokenUrl: "{ fromSetting: gitlab, path: /oauth/token }",
+          revokeUrl: "{ fromSetting: gitlab, path: /oauth/revoke }",
+        }),
+      );
+      for (const revokeUrl of [
+        "https://revoke.example.com/oauth/revoke",
+        "https://api.example.com/oauth/revoke",
+        "{ fromSetting: gitlab, path: /oauth/revoke }",
+      ]) {
+        expect(codes(revoke({ revokeUrl })), revokeUrl).toEqual(["sign-in-revoke-host"]);
+      }
+    });
+
     it("reads a self-hosted host from a public setting only", () => {
       const gitlab = (addressClass: string) =>
         sheet({
@@ -142,13 +172,23 @@ verifies("format.integration-sign-ins", () => {
         "example-account": {
           hosts: ["api.example.com"],
           as: "bearer",
-          clientSecret: {
-            name: "example-client",
-            hosts: ["auth.example.com", "revoke.example.com"],
-          },
+          clientSecret: { name: "example-client", hosts: ["auth.example.com"] },
         },
       });
       expect(resolved.ok && resolved.value.policy.secrets).toEqual({});
+    });
+
+    it("gives the client secret the revoke host when it is the sign-in host", () => {
+      const text = sheet({
+        signIn: signIn({
+          authorizeUrl: "https://login.example.com/oauth/authorize",
+          revokeUrl: "https://login.example.com/oauth/revoke",
+        }),
+      });
+      const resolved = integrationPolicy(parsedValue("integration", text), {});
+      expect(
+        resolved.ok && resolved.value.policy.signIns["example-account"]?.clientSecret?.hosts,
+      ).toEqual(["auth.example.com", "login.example.com"]);
     });
 
     it("resolves a { fromSetting } token host from its setting", () => {

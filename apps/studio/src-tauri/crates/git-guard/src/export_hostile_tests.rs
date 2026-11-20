@@ -1,6 +1,11 @@
 //! Export tests that need a hostile tree or a stalled fetch, kept apart from
 //! `export_tests.rs` to stay under the file-size limit. They share its helpers.
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::AtomicBool;

@@ -144,6 +144,22 @@ const notPlainRanges: readonly (readonly [number, number])[] = [
  * gatewayHostName("\n"); // "Computer"
  */
 export function gatewayHostName(name: string): string {
+  return gatewayReadableName(name, gatewayFallbackHostName);
+}
+
+/** The name a host shows and keeps for a phone when nothing of the phone's own name is left. */
+export const gatewayFallbackPhoneName = "Phone";
+
+/**
+ * A name one side sent, as the other may show it: cleaned by the rules of
+ * {@link gatewayHostName}, or `fallback` when nothing is left. The host
+ * cleans a phone's name from pairing message 3 this way, with
+ * {@link gatewayFallbackPhoneName}, before it shows it next to the check code.
+ *
+ * @example
+ * gatewayReadableName(`Pixel${String.fromCodePoint(0x202e)} 8`, gatewayFallbackPhoneName); // "Pixel 8"
+ */
+export function gatewayReadableName(name: string, fallback: string): string {
   let plain = "";
   for (const character of name.toWellFormed()) {
     const point = character.codePointAt(0) ?? 0;
@@ -158,7 +174,7 @@ export function gatewayHostName(name: string): string {
     if (bytes > gatewayMaxNameBytes) break;
     kept += character;
   }
-  return kept.trimEnd() || gatewayFallbackHostName;
+  return kept.trimEnd() || fallback;
 }
 
 /** How many bytes of UTF-8 a code point takes. */

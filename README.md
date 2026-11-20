@@ -30,9 +30,10 @@ when something fails.
 Studio is the desktop app, for Windows. Its installer comes with the 0.1.0
 release. To build it yourself, see [apps/studio](apps/studio/README.md).
 
-Studio's Welcome screen has **Open folder**, **New workspace** and **Try the
-Acme sample**. The sample opens a copy of Acme, an invented company's support
-workspace. You can also make the same copy in a terminal with
+Studio's Welcome screen has **Open demo**, **Open folder** and **New
+workspace**. The demo opens a copy of Acme, an invented company's support
+workspace, on **Sample answers**: the built-in test model, with no key and no
+cost. You can also make the same copy in a terminal with
 `halonic init --example acme` (see [Try it in 5 minutes](#try-it-in-5-minutes)),
 then **Open folder** and pick the `acme` folder.
 
@@ -120,6 +121,14 @@ follows the folder, so there is nothing to add again:
 ```sh
 git pull
 pnpm install
+```
+
+If you built the Studio page for `halonic serve`, build it again after an
+update, or the address shows the older page. `halonic serve` tells you when
+the page is older than the code:
+
+```sh
+pnpm --filter @halonicjs/app-studio build
 ```
 
 To remove the command, run `pnpm remove -g halonic`. Then you can delete the

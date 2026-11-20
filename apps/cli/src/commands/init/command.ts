@@ -44,6 +44,7 @@ interface InitFolder {
 export const initCommand: CliCommand = {
   name: "init",
   usage: `[folder] [--example ${Object.keys(initExamples).join("|")}]`,
+  takesArguments: true,
   summary: initMessages.summary(),
   action: (input, context) => {
     const folder = initFolder(input, context.cwd, defaultFolder(input));

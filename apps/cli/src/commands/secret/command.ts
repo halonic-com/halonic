@@ -20,6 +20,7 @@ export function secretCommandWith(setup: SecretSetup): CliCommand {
       {
         name: "set",
         usage: "<name>",
+        takesArguments: true,
         summary: secretMessages.setSummary(),
         action: () => secretMessages.setAction(),
         options: {},
@@ -28,6 +29,7 @@ export function secretCommandWith(setup: SecretSetup): CliCommand {
       {
         name: "remove",
         usage: "<name>",
+        takesArguments: true,
         summary: secretMessages.removeSummary(),
         action: () => secretMessages.removeAction(),
         options: {},

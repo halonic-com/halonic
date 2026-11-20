@@ -51,5 +51,5 @@ export function agentHostToolLister(transport: AgentHostTransport): ToolLister {
  * this refuses every request; the library says so before it asks for a listing.
  */
 export const noHttpInStudio: HttpClient = {
-  fetch: () => Promise.reject(new Error("Studio doesn't connect to http servers yet.")),
+  fetch: () => Promise.reject(new Error("Studio can't connect to http servers yet.")),
 };

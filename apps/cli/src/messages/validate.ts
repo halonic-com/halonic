@@ -27,6 +27,12 @@ export const validateMessages = defineMessages("validate", {
   allOption: () => phrase`Show every problem, not only the first 20.`,
   /** The help line of `--strict`. */
   strictOption: () => phrase`Fail on warnings too, not only on errors.`,
+  /**
+   * The fix for a folder given without `--dir` (HAL-12639): `validate`
+   * checks only workspaces, and `plugin add` reports a plugin's manifest errors.
+   */
+  folderWithoutDir: (folder: string) =>
+    phrase`To check the workspace in ${folder}, run ${suggestedCommand("validate", folder)}. For a plugin folder, run halonic plugin add ${folder}.`,
 
   noProblems: (checked: number, workspace: string) =>
     phrase`Checked ${counted(checked, "file", "files")} in ${workspace}. No problems.`,

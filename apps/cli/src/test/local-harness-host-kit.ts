@@ -38,10 +38,11 @@ const opened: LocalEngine[] = [];
 
 /** Makes a fresh workspace and profile with the coder's instructions trusted; the test calls it before each test. */
 export async function setUpRig(): Promise<void> {
-  folder = await mkdtemp(join(tmpdir(), "halonic-cli-harness-host-"));
+  // Short names, so a run's bridge socket in the profile fits macOS's 103 bytes even under its long temp folder.
+  folder = await mkdtemp(join(tmpdir(), "hh-"));
   acme = join(folder, "acme");
   await cp(acmeExample, acme, { recursive: true });
-  profile = { ...nodeProfileEnvironment(), variables: { HALONIC_HOME: join(folder, "profile") } };
+  profile = { ...nodeProfileEnvironment(), variables: { HALONIC_HOME: join(folder, "p") } };
   reported = [];
   await addLab();
   // A person trusted the coder's instructions as the lab has them.

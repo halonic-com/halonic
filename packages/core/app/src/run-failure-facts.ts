@@ -8,6 +8,7 @@ import type { RunFailureCause } from "@halonicjs/events";
 import { assertNever } from "@halonicjs/std";
 import type { FailedModel, FailedStart, RunFailedEvent } from "./failed-model.ts";
 import { budgetStopOf, nextMonthStart } from "./run-failure-budget.ts";
+import { type ProxyFailure, proxyFailureOf } from "./run-failure-proxy.ts";
 
 /** What both key failures name: the provider, the secret that holds its key, and the alias that uses it. */
 interface KeyFacts {
@@ -56,6 +57,7 @@ export type RunFailure =
       /** A model on this computer, such as Ollama, rather than a cloud provider. */
       readonly local: boolean;
     }
+  | ProxyFailure
   | {
       readonly reason: "model-missing";
       readonly provider: string;
@@ -151,6 +153,11 @@ export type RunFailure =
       readonly alias: string;
       /** The id of the run's hub, such as "notes". */
       readonly hub: string;
+    }
+  | {
+      readonly reason: "secrets-file-readable";
+      /** The secrets file group or others can read, as the run log names it. */
+      readonly file: string;
     }
   | {
       readonly reason: "model-no-tools";
@@ -324,10 +331,20 @@ function keyFailure(failed: RunFailedEvent, model: FailedModel | undefined): Run
   };
 }
 
-/** `model-unreachable` at the host the engine names, or else at the provider's own address. */
+/**
+ * `model-unreachable`: the proxy's facts when the engine logged a proxy cause,
+ * otherwise at the host the engine names, or else at the provider's own address.
+ */
 function unreachableFailure(failed: RunFailedEvent, model: FailedModel | undefined): RunFailure {
-  const address = failed.host ?? model?.address;
-  if (model === undefined || address === undefined) {
+  if (model === undefined) {
+    return generalFailure(failed);
+  }
+  const viaProxy = proxyFailureOf(failed.cause, providerName(model));
+  if (viaProxy !== undefined) {
+    return viaProxy;
+  }
+  const address = failed.host ?? model.address;
+  if (address === undefined) {
     return generalFailure(failed);
   }
   return {
@@ -355,11 +372,11 @@ function timeoutFailure(failed: RunFailedEvent, model: FailedModel | undefined):
 
 /**
  * The failure an `error` names by its cause's code, when it has facts of
- * its own. These are the workspace's own setup, not a bug: a provider file
- * whose type Halonic can't call (HAL-12342), and a model alias the hub
- * doesn't have, such as `default` in a workspace made with plain
- * `halonic init` (HAL-12377). A cause without the names its facts need is
- * `error`.
+ * its own. These are the setup of the workspace or of this computer, not a
+ * bug: a provider file whose type Halonic can't call (HAL-12342), a model
+ * alias the hub doesn't have, such as `default` in a workspace made with
+ * plain `halonic init` (HAL-12377), and a secrets file other users can read
+ * (HAL-12569). A cause without the names its facts need is `error`.
  */
 function setupFailureOf(cause: RunFailureCause | undefined): RunFailure | undefined {
   const { code, detail = {} } = cause ?? {};
@@ -376,16 +393,21 @@ function setupFailureOf(cause: RunFailureCause | undefined): RunFailure | undefi
         ? undefined
         : { reason: "unknown-model-alias", alias, hub };
     }
+    case "secrets.file-readable": {
+      const { file } = detail;
+      return file === undefined ? undefined : { reason: "secrets-file-readable", file };
+    }
     default:
       return undefined;
   }
 }
 
 /**
- * Whether a failed run's cause is one of the workspace's setup problems with
- * facts of its own, so a client can treat the run by the cause's own kind,
- * the kind `--json` shows in the run's `cause`, rather than as a broken run
- * (HAL-12377).
+ * Whether a failed run's cause is one of the setup problems with facts of
+ * its own, so a client can treat the run by the cause's own kind, the kind
+ * `--json` shows in the run's `cause`, rather than as a broken run
+ * (HAL-12377): `not_found` for a missing model alias, `denied` for a secrets
+ * file other users can read (HAL-12569).
  */
 export function isSetupCause(cause: RunFailureCause | undefined): cause is RunFailureCause {
   return setupFailureOf(cause) !== undefined;

@@ -37,6 +37,11 @@ export const doctorMessages = defineMessages("doctor", {
   harnessesLabel: () => phrase`Harnesses`,
   nodeLabel: () => phrase`Node.js`,
   diskLabel: () => phrase`Disk`,
+  /**
+   * Any line whose check ran over its limit (HAL-13405): "didn't answer in 5 seconds".
+   * A warning: `doctor` couldn't tell, so it names no fix.
+   */
+  didntAnswer: (seconds: number) => phrase`didn't answer in ${seconds} seconds`,
 
   /** Workspace ✓. */
   trusted: (workspace: string) =>

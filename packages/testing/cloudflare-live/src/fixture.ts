@@ -1,5 +1,6 @@
 import {
   type CloudflareApi,
+  definitionsBucketFor,
   provision,
   resourcesFor,
   type UploadAndSwitchOptions,
@@ -77,7 +78,7 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
   const worker = fixtureWorkerName(prefix);
   const database = resourcesFor(worker)[0]?.name ?? "";
   const blobs = `${worker}-blobs`;
-  const definitions = `${worker}-defs`;
+  const definitions = definitionsBucketFor(worker);
   const written: (readonly [string, string])[] = [];
   const destroy = teardownFor({
     api,
@@ -93,7 +94,6 @@ export async function deployWebhookFixture(options: FixtureOptions): Promise<Dep
     const subdomain = await rest.workersSubdomain(accountId);
     const host = `${worker}.${subdomain}.workers.dev`;
     await provision(api, { accountId, worker });
-    await api.createResource(accountId, { kind: "bucket", name: definitions, markedIn: database });
     const databaseId = await rest.d1DatabaseId(accountId, database);
 
     await writeWorkspaceSnapshot(

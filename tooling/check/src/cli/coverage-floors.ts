@@ -23,17 +23,43 @@ function git(...args: string[]): string {
   return execFileSync("git", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 }
 
-/** Compares the floors the pull request changed with those at its merge base. */
+/**
+ * Compares the floors the pull request changed with those at its merge base.
+ * A moved manifest is compared with its floors at its old path, so a floor
+ * lowered in the same move is caught.
+ */
 export function loweredSinceBranchPoint(base: string, head: string): LoweredFloor[] {
   const mergeBase = git("merge-base", base, head).trim();
-  const changed = new Set(
-    git("diff", "--name-only", `${mergeBase}...${head}`)
-      .split("\n")
-      .filter((file) => file !== ""),
+  const oldPaths = changedSince(mergeBase, head);
+  const before = floorsAt(mergeBase);
+  const baseFloors: FloorsByManifest = new Map(
+    [...oldPaths].flatMap(([file, oldPath]) => {
+      const floor = before.get(oldPath);
+      return floor === undefined ? [] : [[file, floor] as const];
+    }),
   );
-  const only = (floors: FloorsByManifest): FloorsByManifest =>
-    new Map([...floors].filter(([file]) => changed.has(file)));
-  return loweredFloors(only(floorsAt(mergeBase)), only(floorsAt(head)));
+  const headFloors = new Map([...floorsAt(head)].filter(([file]) => oldPaths.has(file)));
+  return loweredFloors(baseFloors, headFloors);
+}
+
+/** Each file `head` changes since `mergeBase`, mapped to its path at `mergeBase`. */
+function changedSince(mergeBase: string, head: string): Map<string, string> {
+  const fields = git("diff", "--name-status", "--find-renames", "-z", `${mergeBase}...${head}`)
+    .split("\0")
+    .filter((field) => field !== "");
+  const oldPaths = new Map<string, string>();
+  for (let index = 0; index < fields.length; ) {
+    const status = fields[index] ?? "";
+    if (/^[RC]/.test(status)) {
+      oldPaths.set(fields[index + 2] ?? "", fields[index + 1] ?? "");
+      index += 3;
+    } else {
+      const file = fields[index + 1] ?? "";
+      oldPaths.set(file, file);
+      index += 2;
+    }
+  }
+  return oldPaths;
 }
 
 function floorsAt(commit: string): FloorsByManifest {

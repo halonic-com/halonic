@@ -1,6 +1,6 @@
 import type { CloudflareApi, ResourceRef } from "./api.ts";
 import { DeployError, DeployLockedError } from "./errors.ts";
-import { resourcesFor } from "./provision.ts";
+import { definitionsBucketFor, resourcesFor } from "./provision.ts";
 
 /** One line of the destroy plan. */
 export interface DestroyStep {
@@ -69,7 +69,7 @@ async function deleteSteps(
   lock: { readonly database: string; readonly id: string; readonly leaseMs: number } | undefined,
 ): Promise<void> {
   for (const step of steps) {
-    const ref = refs.find((r) => r.kind === step.kind);
+    const ref = refs.find((r) => r.kind === step.kind && r.name === step.name);
     if (step.action !== "delete" || !ref) continue;
     if (options.signal?.aborted) {
       throw new DeployError("deploy-aborted", "The destroy was interrupted.");
@@ -88,21 +88,26 @@ async function deleteSteps(
         );
       }
     }
+    // The definitions are a copy of a git commit, so they can go; the blobs bucket is never emptied.
+    if (ref.kind === "bucket" && ref.name === definitionsBucketFor(options.worker)) {
+      await api.emptyBucket(options.accountId, ref.name);
+    }
     await api.deleteResource(options.accountId, ref);
     options.onProgress?.({ step: "deleted", kind: step.kind, name: step.name });
   }
 }
 
 /**
- * Removes what a deploy created: the Worker first (so it stops serving), then the bucket, then
- * the database, because the bucket's marker lives in the database. It deletes only resources
+ * Removes what a deploy created: the Worker first (so it stops serving), then the buckets, then
+ * the database, because the buckets' markers live in the database. It empties the definitions
+ * bucket first, since its files are a copy of git, but never the blobs. It deletes only resources
  * marked as Halonic's and refuses everything else before deleting anything. It holds the
  * deploy lock while it works, so it never runs under a deploy. Running it again after a failure
  * finishes the job.
  *
  * @throws DeployError `destroy-refused` when a resource exists but isn't marked as ours
  * @throws DeployError `destroy-changed` when a resource appeared or went away while the user confirmed
- * @throws DeployError `bucket-not-empty` when the bucket still holds files
+ * @throws DeployError `bucket-not-empty` when the blobs bucket still holds files
  */
 export async function destroy(api: CloudflareApi, options: DestroyOptions): Promise<DestroyResult> {
   const { accountId } = options;

@@ -17,7 +17,7 @@ export const listWords = {
   noMatch: (query: string) => `No routines match "${query}".`,
   more: (name: string) => `More actions for ${name}`,
   off: "Off",
-  needsSignIn: "Needs sign-in",
+  needsSignIn: "Needs sign-in again",
   needsYou: "Needs you",
   pausedUntilTrusted: "Paused until trusted",
 } as const;

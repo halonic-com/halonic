@@ -5,8 +5,9 @@
  * the live test run against a Cloudflare account (HAL-198).
  */
 export { buildCoveredTestWorker, buildTestWorker } from "./node/build-test-worker.ts";
+export { edgeAttempts, edgeWaitMs, isEdgeNotFound } from "./node/edge-not-found.ts";
 export { missingShimApis } from "./node/matcher-check.ts";
-export { RemoteRunner } from "./node/remote-runner.ts";
+export { RemoteRunner, type RemoteRunnerOptions } from "./node/remote-runner.ts";
 export {
   type CaseRunner,
   mirrorCases,

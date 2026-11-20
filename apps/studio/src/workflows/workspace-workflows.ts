@@ -300,6 +300,51 @@ export class WorkspaceWorkflows implements WorkflowsHost {
     this.#parts.files.change(`Saved a run as the test ${name}`, { [path]: edited.value.text });
   }
 
+  /**
+   * Adds the step at the end of the file's steps, with its place in `layout`, as one undoable
+   * change; the file keeps its comments and the order of its keys.
+   */
+  async addStep(
+    ref: WorkflowRef,
+    type: "task" | "wait",
+    at: { readonly x: number; readonly y: number },
+  ): Promise<string> {
+    const { file, text } = await this.#fileOf(ref);
+    const id = uniqueName(type === "wait" ? "wait" : "step", Object.keys(file.value.states));
+    const edited = editYaml(text, [
+      { kind: "set", path: ["states", id], value: type === "wait" ? { type: "wait" } : {} },
+      { kind: "set", path: ["layout", id], value: { x: at.x, y: at.y } },
+    ]);
+    if (!edited.ok) throw cantChange();
+    this.#parts.files.change(`Added step ${id} to workflow ${file.value.name}`, {
+      [file.path]: edited.value.text,
+    });
+    return id;
+  }
+
+  /** Takes `layout` out of the workflow's file, as one undoable change; writes nothing when it has none. */
+  async resetLayout(ref: WorkflowRef): Promise<void> {
+    const { file, text } = await this.#fileOf(ref);
+    if (Object.keys(file.value.layout).length === 0) return;
+    const edited = editYaml(text, [{ kind: "delete", path: ["layout"] }]);
+    if (!edited.ok) throw cantChange();
+    this.#parts.files.change(`Laid out workflow ${file.value.name} again`, {
+      [file.path]: edited.value.text,
+    });
+  }
+
+  /** The workflow's file, as read and as text; throws `not_found` when the hub has no such workflow. */
+  async #fileOf({ hubId, id }: WorkflowRef) {
+    const workspace = await this.#load();
+    const file = filesOf(workspace, "workflow").find(
+      (one) => one.hub === hubId && one.value.id === id,
+    );
+    if (file === undefined) throw workflowGone();
+    const text = await this.#parts.files.read(file.path);
+    if (text === null) throw workflowGone();
+    return { file, text };
+  }
+
   subscribe(listener: () => void): () => void {
     this.#nameListeners.add(listener);
     const stops = [this.#parts.onChange(listener), this.#parts.runs.subscribe(listener)];
@@ -372,6 +417,14 @@ export class WorkspaceWorkflows implements WorkflowsHost {
 /** What a read of a workflow the workspace doesn't have rejects with: Studio shows the item-gone state for it. */
 function workflowGone(): KindedError {
   return new KindedError("not_found", "This workflow isn't in this workspace any more.");
+}
+
+/** What an edit of a workflow's file rejects with when the file is written in a way it can't change. */
+function cantChange(): KindedError {
+  return new KindedError(
+    "invalid_input",
+    "This workflow's file couldn't be changed as it is written.",
+  );
 }
 
 /**

@@ -2,6 +2,7 @@ import type { SetupEdit, SetupRecord, SetupService } from "@halonicjs/google-set
 import type { SecretText } from "@halonicjs/studio-kit";
 import type {
   CheckAgainAnswer,
+  CheckAgainEntry,
   DisconnectAnswer,
   GoogleSetupAccount,
   GoogleSetupAccounts,
@@ -87,6 +88,8 @@ export function fakeAccounts(
     readonly entry?: SecretEntry;
     /** Whether this window can sign in; the computer that runs Halonic unless a test says otherwise. */
     readonly signInEntry?: SignInEntry;
+    /** Whether Check again can run; it can unless a test says otherwise. */
+    readonly checkAgainEntry?: CheckAgainEntry;
     readonly saveSecret?: (accountRef: string, value: string) => Promise<void>;
     /** What replacing a secret answers, and may reject. It gets the value, a fake in a test. */
     readonly replaceSecret?: (accountRef: string, value: string) => Promise<SecretReplaceAnswer>;
@@ -120,6 +123,7 @@ export function fakeAccounts(
   const source: GoogleSetupAccounts = {
     secretEntry: options.entry ?? desktopEntry,
     signInEntry: options.signInEntry ?? { kind: "here" },
+    checkAgainEntry: options.checkAgainEntry ?? { kind: "here" },
     saveClientSecret: async (accountRef: string, secret: SecretText) => {
       const value = secret.reveal();
       await options.saveSecret?.(accountRef, value);

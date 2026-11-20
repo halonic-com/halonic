@@ -62,10 +62,10 @@ describe("sandbox words", () => {
 verifies("runs.run-view.sandbox-panel", () => {
   it("builds the line from the event, in order, naming allowed sites by count", () => {
     expect(sandboxLineText({ ...view, allowedSites: [] })).toBe(
-      "In a sandbox · writes only in its working folder · reaches only Halonic",
+      "In a sandbox · writes only in its working folder and its own temp and settings folders · reaches only Halonic",
     );
     expect(sandboxLineText({ ...view, allowedSites: ["a.example"] })).toBe(
-      "In a sandbox · writes only in its working folder · reaches Halonic and 1 site",
+      "In a sandbox · writes only in its working folder and its own temp and settings folders · reaches Halonic and 1 site",
     );
     expect(sandboxLineText(view)).toContain("reaches Halonic and 2 sites");
     expect(sandboxLineText({ ...view, strength: "vm" })).toMatch(/^In a virtual machine/);
@@ -101,12 +101,12 @@ verifies("runs.run-view.sandbox-panel", () => {
     );
     expect(container.querySelector("h3")?.textContent).toBe("What this step could do");
     const labels = [...container.querySelectorAll("dt")].map((el) => el.textContent);
-    expect(labels).toEqual(["Writes in", "Reads only", "Can't open", "Reaches", "Time limit"]);
+    expect(labels).toEqual(["Writes in", "Can't change", "Can't open", "Reaches", "Time limit"]);
     const text = container.textContent ?? "";
     expect(text).toContain("~/work/acme");
-    expect(text).toContain("and its own temporary folder");
+    expect(text).toContain("and its own temp and settings folders");
     expect(text).toContain("Your SSH keys · Browser data");
-    expect(text).toContain("You added: ~/finance");
+    expect(text).toContain("Also: ~/finance");
     expect(text).not.toContain(".ssh");
     expect(text).toContain("Stops after 30 minutes");
     expect(text).toContain("A process sandbox on this computer, not a virtual machine.");
@@ -170,7 +170,9 @@ verifies("runs.run-view.sandbox-panel", () => {
       <SandboxPanel view={view} agent="Writer" live={false} place="phone" />,
     );
     expect(container.textContent).toContain("A process sandbox on your computer");
-    expect(container.textContent).toContain("Change this on your computer, in Writer's file.");
+    expect(container.textContent).toContain(
+      "To change its folder or sites, edit workingFolder or allowedSites in Writer's file on your computer.",
+    );
     expect(container.querySelector("button[class*=accent]")).toBeNull();
   });
 

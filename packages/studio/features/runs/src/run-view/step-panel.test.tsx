@@ -253,7 +253,7 @@ verifies("runs.run-view.blocked-sites", () => {
     const rows = [...(blocked?.querySelectorAll("li") ?? [])].map((row) => row.textContent);
     expect(rows).toEqual(["registry.npmjs.org, 12 tries", "objects.githubusercontent.com, 1 try"]);
     expect(blocked?.textContent).toContain(
-      "These sites aren't in Writer's allowed sites. To allow one, add it to Writer's allowed sites.",
+      "These sites aren't in Writer's allowed sites. To allow one, add it to allowedSites in Writer's file.",
     );
   });
 

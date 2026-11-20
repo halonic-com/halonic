@@ -2,6 +2,11 @@
 //! file. Requirement `folder-reader`; these tests' names start with
 //! `folder_reader_`. Links and pipes are made on Unix, where CI can make them.
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
+
 mod support;
 
 use halonic_workspace_files::{EntryKind, Fence, FileError, FolderEntry, FolderReader};

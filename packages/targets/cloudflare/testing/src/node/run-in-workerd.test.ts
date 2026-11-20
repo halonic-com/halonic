@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { runSuitesInWorkerd } from "./run-in-workerd.ts";
+import { afterEach, describe, expect, it } from "vitest";
+import { mirrorCases, runSuitesInWorkerd } from "./run-in-workerd.ts";
 
 let wrapped = false;
 
@@ -9,6 +9,18 @@ await runSuitesInWorkerd([new URL("../worker/suites/clock.ts", import.meta.url)]
     wrapped = true;
     describe("registered through wrap", register);
   },
+});
+
+describe("a mirrored case", () => {
+  // Read after the test, as `verifies()` reads it: the three checks made in workerd and the one
+  // on the result in Node.
+  afterEach(() => {
+    const count = expect.getState().assertionCalls;
+    expect(count, "the test's own expect count").toBe(4);
+  });
+  mirrorCases([{ kind: "case", id: "c1", name: "counts the checks it made in workerd" }], {
+    run: () => Promise.resolve({ status: "passed", assertions: 3 }),
+  });
 });
 
 describe("runSuitesInWorkerd", () => {

@@ -23,6 +23,7 @@ export function googleCommandWith(
       {
         name: "allow-sending",
         usage: "<connection> on|off [--dir <folder>]",
+        takesArguments: true,
         summary: googleMessages.allowSendingSummary(),
         action: () => googleMessages.allowSendingAction(),
         options: { dir: dirOption },
@@ -31,6 +32,7 @@ export function googleCommandWith(
       {
         name: "secret",
         usage: "<account>",
+        takesArguments: true,
         summary: googleMessages.secretSummary(),
         action: () => googleMessages.secretAction(),
         options: {},
@@ -39,6 +41,7 @@ export function googleCommandWith(
       {
         name: "sign-in",
         usage: "<account> [--connection <id>] [--dir <folder>]",
+        takesArguments: true,
         summary: googleMessages.signInSummary(),
         action: () => googleMessages.signInAction(),
         options: {

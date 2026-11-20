@@ -1,3 +1,4 @@
+import { type SignInTrustFacts, signInTokenHostDiffers } from "@halonicjs/app";
 import { approvedSignIns, backendSheet, type Plugin } from "@halonicjs/format";
 
 /**
@@ -5,19 +6,11 @@ import { approvedSignIns, backendSheet, type Plugin } from "@halonicjs/format";
  * filled in: where the person signs in, where Halonic gets the tokens, why
  * each scope is asked for and where the token may go.
  */
-export interface SignInFacts {
+export interface SignInFacts extends SignInTrustFacts {
   /** The sign-in's name, as the sheet writes it. */
   readonly signIn: string;
   /** What the sign-in is for, in the sheet's words. Plugin text: show it as plain text. */
   readonly purpose: string;
-  /** The host of the page the person signs in on. */
-  readonly authorizeHost: string;
-  /** The host Halonic asks for the tokens. */
-  readonly tokenHost: string;
-  /** Why each scope is asked for, in the sheet's words and order. Plugin text. */
-  readonly scopeReasons: readonly string[];
-  /** The hosts the access token may go to. */
-  readonly accessHosts: readonly string[];
 }
 
 /**
@@ -79,21 +72,10 @@ export function signInFacts(
 }
 
 /**
- * Sign-in pages whose tokens come from another host of the same provider by
- * design, so the token host warning would only worry the person. Google signs
- * in on accounts.google.com and gives tokens from oauth2.googleapis.com.
- */
-const knownHostPairs: readonly (readonly [authorize: string, token: string])[] = [
-  ["accounts.google.com", "oauth2.googleapis.com"],
-];
-
-/**
  * Whether the sign-in page and the token address are different services
- * the person should know about: different hosts that aren't a known pair.
+ * the person should know about: different hosts that aren't a known pair
+ * (core's `signInTokenHostDiffers`).
  */
 export function tokenHostDiffers(facts: SignInFacts): boolean {
-  if (facts.authorizeHost === facts.tokenHost) return false;
-  return !knownHostPairs.some(
-    ([authorize, token]) => facts.authorizeHost === authorize && facts.tokenHost === token,
-  );
+  return signInTokenHostDiffers(facts);
 }

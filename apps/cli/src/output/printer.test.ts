@@ -21,6 +21,7 @@ const findMessages = defineMessages("find", {
 const findCommand: CliCommand = {
   name: "find",
   usage: "<what>",
+  takesArguments: true,
   summary: findMessages.summary(),
   action: (input) => findMessages.action(input.positionals[0] ?? ""),
   options: {},

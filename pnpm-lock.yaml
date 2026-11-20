@@ -609,6 +609,9 @@ importers:
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../packages/core/events
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../packages/core/format
       '@halonicjs/google-setup':
         specifier: workspace:*
         version: link:../../packages/core/google-setup
@@ -691,9 +694,6 @@ importers:
       '@halonicjs/app-agent-host':
         specifier: workspace:*
         version: link:../agent-host
-      '@halonicjs/format':
-        specifier: workspace:*
-        version: link:../../packages/core/format
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../packages/studio/kit
@@ -1893,6 +1893,9 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../core/std
     devDependencies:
       '@halonicjs/testing-contracts':
         specifier: workspace:*
@@ -2607,6 +2610,9 @@ importers:
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../core/app
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../../core/events
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../core/format
@@ -2776,6 +2782,9 @@ importers:
 
   packages/studio/features/first-run:
     dependencies:
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../../core/app
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../../core/events

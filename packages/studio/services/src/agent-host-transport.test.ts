@@ -12,8 +12,8 @@ verifies("services.agent-host-transport", () => {
   describe("TauriAgentHostTransport.securityUpdates", () => {
     it("reads the shell's answer, null for a host beside the shell, and refuses another shape", async () => {
       const answers: unknown[] = [
-        { overdue: true, last: "2026-11-01T00:00:00Z" },
-        { overdue: false },
+        { overdue: true, last: "2026-11-01T00:00:00Z", isDefaultDistro: true },
+        { overdue: false, isDefaultDistro: "yes" },
         null,
         { overdue: 1 },
       ];
@@ -23,8 +23,13 @@ verifies("services.agent-host-transport", () => {
       await expect(transport.securityUpdates()).resolves.toEqual({
         overdue: true,
         last: "2026-11-01T00:00:00Z",
+        isDefaultDistro: true,
       });
-      await expect(transport.securityUpdates()).resolves.toEqual({ overdue: false, last: null });
+      await expect(transport.securityUpdates()).resolves.toEqual({
+        overdue: false,
+        last: null,
+        isDefaultDistro: false,
+      });
       await expect(transport.securityUpdates()).resolves.toBeNull();
       await expect(transport.securityUpdates()).rejects.toMatchObject({ kind: "answer_invalid" });
     });

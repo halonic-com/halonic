@@ -5,8 +5,8 @@ import { isAliasName, modelAliasesOf } from "./model-aliases.ts";
 
 type Agent = LoadedFileOf<"agent">;
 
-/** A list of shared items an agent names, and the kind of file each item is. */
-interface LibraryList {
+/** A list of shared items an agent or a hub's `uses` names, and the kind of file each item is. */
+export interface LibraryList {
   /** The agent's key, which is also the key in a hub's `uses`. */
   readonly key: keyof HubUses;
   readonly kind: "skill" | "knowledge" | "collection" | "connector";
@@ -14,7 +14,7 @@ interface LibraryList {
   readonly noun: string;
 }
 
-const libraryLists: readonly LibraryList[] = [
+export const libraryLists: readonly LibraryList[] = [
   { key: "skills", kind: "skill", noun: "skill" },
   { key: "knowledge", kind: "knowledge", noun: "knowledge" },
   { key: "collections", kind: "collection", noun: "collection" },

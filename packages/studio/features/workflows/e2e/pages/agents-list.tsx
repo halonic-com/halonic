@@ -48,7 +48,9 @@ const host: AgentsHost = {
     if (found === undefined) throw new Error("not found");
     return {
       instructions: "",
+      output: { type: "text" },
       maxSteps: 6,
+      params: {},
       harness: "halonic",
       skills: [],
       knowledge: [],

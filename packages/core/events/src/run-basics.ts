@@ -78,7 +78,8 @@ export interface Usage {
 
 /** What started a run. Absent for runs started by hand from a workflow. */
 export interface RunTrigger {
-  type: "manual" | "schedule" | "every" | "mail" | "signal" | "webhook";
+  /** `inbox`: the person started it from the Inbox's request form; `manual`: with Run, or a routine's Run now. */
+  type: "manual" | "inbox" | "schedule" | "every" | "mail" | "signal" | "webhook";
   /** Routine key: "<hubId>/<routineId>" or "@workspace/<routineId>". */
   routineId?: string;
   /** ISO time the run was due (the scheduled time, not when it actually started). */

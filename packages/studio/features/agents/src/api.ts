@@ -38,12 +38,56 @@ export type HarnessReadiness =
   | { readonly status: "unsupported"; readonly version: string; readonly supported: string }
   | { readonly status: "failed"; readonly error: string };
 
+/**
+ * The shape of the agent's replies (the file's `output`): free text, exactly one of a list of
+ * options, or JSON that a schema checks.
+ */
+export type AgentOutput =
+  | { readonly type: "text" }
+  | { readonly type: "choice"; readonly options: readonly string[] }
+  | {
+      readonly type: "json";
+      /** The JSON Schema each reply must satisfy; absent when the file gives none. */
+      readonly schema?: Readonly<Record<string, unknown>> | undefined;
+    };
+
+/** How hard a model that can reason thinks before it replies (the file's `params.reasoningEffort`). */
+export type AgentReasoningEffort = "low" | "medium" | "high";
+
+/** The efforts in the order the Model page lists them. */
+export const agentReasoningEfforts: readonly AgentReasoningEffort[] = ["low", "medium", "high"];
+
+/**
+ * How the model is tuned for this agent (the file's `params`). A setting left out uses the
+ * model's own default.
+ */
+export interface AgentModelParams {
+  /** From 0 to 2. */
+  readonly temperature?: number | undefined;
+  /** From 0 to 1. */
+  readonly topP?: number | undefined;
+  /** The longest reply, in tokens: a whole number above 0. */
+  readonly maxTokens?: number | undefined;
+  /** Where a reply ends: none of these is in it. */
+  readonly stop?: readonly string[] | undefined;
+  readonly reasoningEffort?: AgentReasoningEffort | undefined;
+}
+
+/** A change to some of the model settings: a value sets it, `null` takes it out of the file. */
+export type AgentModelParamsChange = {
+  readonly [Key in keyof AgentModelParams]?: Exclude<AgentModelParams[Key], undefined> | null;
+};
+
 /** What the Configuration pages show of an agent. */
 export interface AgentSettings extends AgentListing {
   /** What the agent is told to do; empty before anyone writes it. */
   readonly instructions: string;
+  /** The shape of its replies; text when the file says none. */
+  readonly output: AgentOutput;
   /** The most model calls in one step of the agent (its model call limit); 6 when the file says none. */
   readonly maxSteps: number;
+  /** The model settings the file sets; none when it sets none. */
+  readonly params: AgentModelParams;
   /** The program the agent runs in; `halonic` when its file names none. */
   readonly harness: AgentHarnessId;
   /** The ids of the skills it uses, in the file's order. */
@@ -153,10 +197,14 @@ export interface AgentChange {
   readonly name?: string | undefined;
   readonly description?: string | undefined;
   readonly instructions?: string | undefined;
+  /** The whole `output`; a list of options needs at least one. */
+  readonly output?: AgentOutput | undefined;
   /** The model alias, or `provider/model`. */
   readonly model?: string | undefined;
   /** The model call limit, a whole number from 1 to 200. */
   readonly maxSteps?: number | undefined;
+  /** Only the model settings named; the others, and the file's provider extras, stay. */
+  readonly params?: AgentModelParamsChange | undefined;
   /** The program the agent runs in. */
   readonly harness?: AgentHarnessId | undefined;
   /** The whole list of skill ids. */
@@ -219,9 +267,9 @@ export interface AgentsHost {
   /**
    * Saves a change to an agent's file and keeps every comment and line of it that the change
    * doesn't touch. Typing in one field is one undo step. Rejects with `not_found` when the agent
-   * isn't there, with `invalid_input` when the name is empty, with `conflict` when a new subagent
-   * would close a loop (its message names who already hands work to whom), and with the reason it
-   * couldn't write.
+   * isn't there, with `invalid_input` when the name or the output's list of options is empty or a
+   * model setting is out of its range, with `conflict` when a new subagent would close a loop (its
+   * message names who already hands work to whom), and with the reason it couldn't write.
    */
   update(ref: AgentRef, change: AgentChange): Promise<void>;
   /** The model aliases the agent's hub can use, by name, in the order the Models pages list them; empty when there are none. */

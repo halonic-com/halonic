@@ -172,14 +172,17 @@ verifies("source-control.changes-phone", () => {
       );
       fake.setHistory(versions);
       const root = await openPhonePage(fake);
-      act(() => historyRow(root, "Version 2").click());
+      await act(async () => {
+        historyRow(root, "Version 2").click();
+        await settle();
+      });
       const heading = root.querySelector("h1");
       expect(heading?.textContent).toBe("Version 2");
       expect(document.activeElement).toBe(heading);
       expect(root.textContent).toContain("Sam Lee · ");
       expect(root.textContent).toContain("Sorter replies in Dutch");
-      expect(root.textContent).toContain("What's in it · 1 file");
-      expect(root.textContent).toContain("agents/sorter.yaml");
+      expect(root.textContent).toContain("What's in it · 1 item");
+      expect(root.textContent).toContain("sorter.yaml");
       expect(root.textContent).not.toContain("Create version");
       act(() => buttonsNamed(root, "Back to History")[0]?.click());
       expect(root.querySelector("h1")?.textContent).toBe("Changes");

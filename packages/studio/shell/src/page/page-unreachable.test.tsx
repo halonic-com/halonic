@@ -6,9 +6,12 @@ import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { StudioHost } from "../engine/engine-words.ts";
 import { StudioHostContext } from "../engine/studio-host-context.ts";
+import { SectionView } from "../settings/settings-dialog.tsx";
+import { focusPageHeading } from "../tabs/history-moves.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import type { ViewRef } from "../view.ts";
 import { LoadedView } from "../view-loading.tsx";
+import type { WorkspaceContext } from "../workspace-context.ts";
 import { PageErrorBoundary } from "./page-error-boundary.tsx";
 import { asUnreachable, UnreachableViewBoundary } from "./page-unreachable.tsx";
 
@@ -98,6 +101,35 @@ verifies("shell.page-unreachable", () => {
     },
   );
 
+  it("moves focus to its title when the page fails as the user opens it", async () => {
+    const container = render(
+      <nav>
+        <button type="button">Inbox</button>
+      </nav>,
+    );
+    const inbox = button(container, "Inbox");
+    inbox?.focus();
+    await act(async () => {
+      render(
+        <StudioHostContext value="served">
+          <main>
+            <PageErrorBoundary pageKey="inbox" pageName="Inbox">
+              <LoadedView view={inboxView().view} name="Inbox" props={{}} />
+            </PageErrorBoundary>
+          </main>
+        </StudioHostContext>,
+      );
+      // The sidebar asks for focus on the page's `h1` as it opens the page.
+      focusPageHeading();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const title = document.querySelector("main h2");
+    expect(title?.textContent).toBe("Couldn't load this page");
+    expect(document.activeElement).toBe(title);
+  });
+
   it("imports the page's code again in place on Try again and moves focus to its h1", async () => {
     const inbox = inboxView();
     const container = await renderInbox("served", inbox.view);
@@ -148,6 +180,38 @@ verifies("shell.page-unreachable", () => {
       "Couldn't load this pageHalonic couldn't reach the computer to show the Appearance settings.Try again",
     );
   });
+
+  it.each([
+    { page: false, level: "H4" },
+    { page: true, level: "H2" },
+  ])(
+    "says Couldn't load these settings in a Settings section, page $page",
+    async ({ page, level }) => {
+      const appearance = { id: "appearance", title: "Appearance", scope: "display" as const };
+      let container = document.body;
+      await act(async () => {
+        container = render(
+          <StudioHostContext value="served">
+            <SectionView
+              section={{ ...appearance, order: 10, featureId: "appearance", ...inboxView().view }}
+              context={{} as WorkspaceContext}
+              closeSettings={() => undefined}
+              place="served"
+              surface={page ? "phone" : "window"}
+              page={page}
+            />
+          </StudioHostContext>,
+        );
+      });
+      const title = [...container.querySelectorAll("h2, h4")].find(
+        (heading) => heading.textContent === "Couldn't load these settings",
+      );
+      expect(title?.tagName).toBe(level);
+      expect(container.textContent).toContain(
+        "Halonic couldn't reach the computer to show the Appearance settings.",
+      );
+    },
+  );
 
   it("words a Home card's failed load as the computer that can't be reached", () => {
     const error = asUnreachable("phone", offline(), "show Recent runs");

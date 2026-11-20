@@ -1,0 +1,8 @@
+# A release shell on Windows is a GUI program with no console. A console
+# program it starts without CREATE_NO_WINDOW opens a console window of its
+# own, which flashes up and closes on every call (HAL-13197). So each crate
+# makes its commands in one function that sets the flag, and only that
+# function, a Unix-only one or a test may call `Command::new`.
+disallowed-methods = [
+  { path = "std::process::Command::new", reason = "on Windows it opens a console window: use the crate's command function, which sets CREATE_NO_WINDOW (HAL-13197)" },
+]

@@ -256,6 +256,37 @@ verifies("kit.callout", () => {
     );
   });
 
+  it("describes a focused action by the title, then the text", () => {
+    const { container } = render(
+      <Callout
+        tone="attention"
+        title="The code ran out"
+        action={{ label: "Make a new code", onClick: () => undefined, focus: true }}
+      >
+        A code works once and for 5 minutes.
+      </Callout>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(document.activeElement).toBe(button);
+    expect(textOf(button.getAttribute("aria-describedby"))).toBe(
+      "The code ran out | A code works once and for 5 minutes.",
+    );
+  });
+
+  it("describes a focused action by the title alone when there's no text", () => {
+    const { container } = render(
+      <Callout
+        tone="danger"
+        title="Couldn't make a code"
+        action={{ label: "Try again", onClick: () => undefined, focus: true }}
+      >
+        {null}
+      </Callout>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(textOf(button.getAttribute("aria-describedby"))).toBe("Couldn't make a code");
+  });
+
   it("leaves focus alone and adds no description without focus", () => {
     const { container } = render(
       <Callout tone="warning" action={{ label: "Undo", onClick: () => undefined }}>

@@ -5,6 +5,7 @@ import { failureLine } from "@halonicjs/studio-shell";
 import { type ReactNode, type Ref, useEffect, useId, useRef, useState } from "react";
 import type {
   CheckAgainAnswer,
+  CheckAgainEntry,
   GoogleSetupAccount,
   SecretEntry,
   SecretReplaceAnswer,
@@ -32,6 +33,8 @@ export interface ChecklistProps {
   readonly secretEntry: SecretEntry;
   /** Whether this window can sign in, or says where to. */
   readonly signInEntry: SignInEntry;
+  /** Whether **Check again** can run here, or says where to sign in again instead. */
+  readonly checkAgainEntry: CheckAgainEntry;
   /** Sends the client secret to the secret store. It rejects when it can't be saved. */
   readonly onSaveSecret: (secret: SecretText) => Promise<void>;
   /** Sends a new client secret to be checked and swapped in, and answers what Google said. */
@@ -260,6 +263,8 @@ export function Checklist(props: ChecklistProps) {
                     ticked: account.services.length,
                     lines: currentResultLines(account.services, account.record),
                     onCheckAgain: props.onCheckAgain,
+                    checkAgainEntry: props.checkAgainEntry,
+                    accountRef: account.record.accountRef,
                     answering,
                   }}
                   signInEnded={{ ending: account.record.lastSignInEnded?.kind ?? null }}

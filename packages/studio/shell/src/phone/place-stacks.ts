@@ -147,6 +147,24 @@ export function openPhonePageIn(
 }
 
 /**
+ * Shows the page a desktop tab had open, as the window narrows to the phone width (HAL-13726): the
+ * page opens where it lives on the phone, so Back leads to its parent as if the user had gone
+ * there. A sidebar place opens as {@link openPhonePage} opens it; any other page opens above
+ * `parent`, the place that lists it (an item's kind names one), or above Home. The other places
+ * stay where the user left them, and the page shown already changes nothing.
+ */
+export function showPhonePage(
+  stacks: PlaceStacks,
+  location: TabLocation,
+  parent: SidebarPlace = "home",
+): PlaceStacks {
+  if (currentPhonePage(stacks).location.key === location.key || isMoreTopLevel(location.key)) {
+    return openPhonePage(stacks, location);
+  }
+  return openPhonePage(openSidebarPlace(stacks, parent), location);
+}
+
+/**
  * Back, from the top bar or Android's back once the close stack has nothing open (phone layout
  * 2). It goes one page up in the place's stack, or back to the place a link came from. At the top
  * of Inbox, Runs or More it goes to Home; at the top of Home there is nowhere to go, and it

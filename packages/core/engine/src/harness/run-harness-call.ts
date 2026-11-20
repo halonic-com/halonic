@@ -242,8 +242,10 @@ async function runInBridge(
   const { options, call, agent, harness, log, stop } = started;
   const { effect } = call;
   const model = await programModelOf(options, call);
-  const bridge = await unlessStopped(stop, options.bridges.open(agent, recorder), (late) =>
-    late.close(),
+  const bridge = await unlessStopped(
+    stop,
+    options.bridges.open(agent, recorder, placement.runsOn),
+    (late) => late.close(),
   );
   let instructions: OpenInstructions | null = null;
   try {
@@ -258,6 +260,7 @@ async function runInBridge(
       sandbox,
       bridge,
       instructions?.folder ?? null,
+      model,
     );
     const blocked = new BlockedAccesses(
       log,

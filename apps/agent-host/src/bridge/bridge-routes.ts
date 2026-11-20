@@ -12,6 +12,7 @@ import {
   openBridgeBody,
   priceIn,
 } from "./bridge-schemas.ts";
+import { failureNoteOf } from "./failure-note.ts";
 import {
   type ApprovalObserver,
   studioFailureReport,
@@ -131,7 +132,8 @@ export class BridgeTable {
  * - `POST /v1/bridge/open` with `{ runId, agentId, providers, prices }`
  *   answers with an NDJSON stream. Its first line is
  *   `{ type: "opened", bridge, url, token }`, with `socketPath` for a bridge on
- *   a Unix socket (or `{ type: "failed", message }`),
+ *   a Unix socket (or `{ type: "failed", message }`, with the error's `kind`
+ *   and `failureCause` when it has them; see {@link failureNoteOf}),
  *   then come the channel's `call` and `cancel` lines, until the bridge closes.
  *   It answers 429 `too_many_bridges` instead when the bridge table is full.
  * - `POST /v1/bridge/answer` with `{ bridge, call, result }` or
@@ -236,6 +238,7 @@ async function openBridge(
     stream.send({
       type: "failed",
       message: error instanceof Error ? error.message : String(error),
+      ...failureNoteOf(error),
     });
     stream.end();
     return undefined;

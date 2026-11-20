@@ -31,8 +31,11 @@ on:
 
 permissions: {}
 
+# A merge group's run is keyed on its own commit, never its branch: when the
+# queue rebuilds a group on the same main commit, the branch name repeats, and
+# the new run sat "pending" behind the old one (20 Nov, HAL-14115).
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -48,6 +51,20 @@ env:
   # package, and the merge queue and main test everything. "off" tests every
   # package again (HAL-12539).
   AFFECTED_TESTS: "on"
+  # The build job's shards (HAL-14115), for every event:
+  # one line per shard, its name, then the Turbo folder or package filters
+  # it runs every task of. Each package belongs to exactly one shard; the
+  # first shard checks that with a dry run. Balanced by the merge-queue task
+  # timings of 20 Nov (about 2,100-2,500 task-seconds each).
+  # adapter-password-scrypt, the slowest test, sits with the lighter apps
+  # and tooling tests: beside only heavy tests, one scrypt test ran past its
+  # 180 s limit (HAL-9808). A new shard name also goes into the build job's
+  # matrix.
+  BUILD_SHARDS: |
+    adapters ./packages/adapters/* !@halonicjs/adapter-password-scrypt
+    studio-features ./packages/studio/features/*
+    core-studio ./packages/core/* ./packages/studio/*
+    apps-tooling ./apps/* ./tooling/* ./packages/host/* ./packages/targets/*/* ./packages/testing/* @halonicjs/adapter-password-scrypt
 
 jobs:
   changes:
@@ -120,7 +137,7 @@ jobs:
           changed=""
           by_area=false
           if [ "$EVENT" = "pull_request" ]; then
-            changed=$(git diff --name-only "$BASE...HEAD")
+            changed=$(git diff --name-only --no-renames "$BASE...HEAD")
             by_area=true
           elif [ "$EVENT" = "merge_group" ]; then
             # The group against the commit it is built on: main, or the head
@@ -131,7 +148,7 @@ jobs:
             # in the area rules still shows on main. An empty diff or a diff
             # that can't be read runs every job. macOS and Windows jobs skip
             # in merge groups whatever the areas say (see the top of this file).
-            if changed=$(git diff --name-only "$BASE...HEAD") && [ -n "$changed" ]; then
+            if changed=$(git diff --name-only --no-renames "$BASE...HEAD") && [ -n "$changed" ]; then
               by_area=true
             fi
             echo "::notice title=Changed areas::Filtered by area: $by_area ($(grep -c . <<< "$changed") files)"
@@ -414,12 +431,21 @@ jobs:
           "$RUNNER_TEMP/zizmor/bin/zizmor" --format=github --min-severity=low .github/
 
   build:
-    name: Typecheck, lint, test, build
+    name: Typecheck, lint, test, build (${{ matrix.shard }})
     # Trial (HAL-13578): with the repo variable CF_RUNNER_TRIAL set to `merge-queue`, the merge
     # queue and pushes to main run this job on a one-job Cloudflare container
     # (infra/cf-runner). Unset, everything runs on GitHub's runners as before.
     runs-on: ${{ vars.CF_RUNNER_TRIAL == 'merge-queue' && (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'cf-linux' || github.event_name == 'merge_group' && vars.MERGE_QUEUE_RUNNER || 'ubuntu-24.04' }}
-    timeout-minutes: 25
+    # The longest shard since the split took 7.3 minutes (20 Nov, 244 runs).
+    timeout-minutes: 15
+    # One job took 14-17 minutes in the merge queue and up to 24 on a cold
+    # pull request (HAL-9808, HAL-14115), so every event spreads the work over
+    # the shards in BUILD_SHARDS. On a pull request the guard job reads every
+    # shard's test results; in the merge queue and on a push, the trace job.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [adapters, studio-features, core-studio, apps-tooling]
     # The key that signs the remote cache's entries lives in the environment
     # `turbo-cache-write`, which only `main` and the merge queue may use
     # (deployment branch rule). Only a push to `main` gets a token that can
@@ -437,6 +463,7 @@ jobs:
       # Turbo's own default folder (gitignored). actions/cache refuses a path
       # with "..", so the earlier ../turbo-cache was never saved.
       TURBO_CACHE_DIR: ${{ github.workspace }}/.turbo/cache
+      SHARD: ${{ matrix.shard }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -444,15 +471,50 @@ jobs:
           # A pull request's merge ref with its parents, for affected-tests.
           fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
       - uses: $/.github/actions/setup
+      # The shards together must run exactly what one job would: every
+      # package in exactly one shard, and one shard per line of BUILD_SHARDS.
+      # Turbo's dry run lists the packages without running anything. `read`
+      # doesn't expand the filters' `*`; the shell would.
+      - name: The shards cover every package once
+        if: strategy.job-index == 0
+        env:
+          JOBS: ${{ strategy.job-total }}
+        run: |
+          packages() { pnpm exec turbo run typecheck lint test build --dry=json "$@" | jq -r '.packages[]' | sort; }
+          all=$(packages)
+          shards=0 each=""
+          while read -r name rest; do
+            [ -n "$name" ] || continue
+            read -ra words <<< "$rest"
+            mine=$(packages "${words[@]/#/--filter=}")
+            if [ -z "$mine" ]; then
+              echo "::error::The $name shard has no package."
+              exit 1
+            fi
+            echo "$name: $(wc -l <<< "$mine") packages"
+            each+="$mine"$'\n'
+            shards=$((shards + 1))
+          done <<< "$BUILD_SHARDS"
+          if [ "$shards" != "$JOBS" ]; then
+            echo "::error::BUILD_SHARDS has $shards shards, the build job's matrix $JOBS."
+            exit 1
+          fi
+          if [ "$(sort <<< "${each%$'\n'}")" != "$all" ]; then
+            echo "::error::The shards don't hold every package exactly once (< missing, > in two shards):"
+            diff <(echo "$all") <(sort <<< "${each%$'\n'}") || true
+            exit 1
+          fi
+          echo "all: $(wc -l <<< "$all") packages"
       # Every task runs; unchanged packages are cache hits. The
       # cache is GitHub's own, scoped per branch, so a pull request can read
       # main's cache but never write to it. The save is the job's last step.
+      # One cache per shard: each holds only its own packages' tasks.
       - id: turbo-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.TURBO_CACHE_DIR }}
-          key: turbo-${{ runner.os }}-${{ github.sha }}
-          restore-keys: turbo-${{ runner.os }}-
+          key: turbo-${{ runner.os }}-${{ matrix.shard }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-${{ matrix.shard }}-
       # Remote cache (Cloudflare, infra/turbo-cache). Only main and the merge
       # queue hold the signing key, and only main gets a write token; the
       # merge queue gets a read token, so the queued change's own code can't
@@ -518,38 +580,44 @@ jobs:
             cache=local:rw,remote:r
           fi
           flags=(--continue --output-logs=new-only --summarize --cache="$cache")
+          rest=$(awk -v shard="$SHARD" '$1 == shard { $1 = ""; print; found = 1 } END { exit !found }' <<< "$BUILD_SHARDS") || {
+            echo "::error::Unknown shard $SHARD: it has no line in BUILD_SHARDS."
+            exit 1
+          }
+          read -ra words <<< "$rest"
+          shard=("${words[@]/#/--filter=}")
           if [ "$AFFECTED" != true ]; then
-            pnpm exec turbo run typecheck lint test build "${flags[@]}"
+            pnpm exec turbo run typecheck lint test build "${shard[@]}" "${flags[@]}"
             exit 0
           fi
+          # With affected tests, the shard tests only its affected packages.
           status=0
-          pnpm exec turbo run typecheck lint build "${flags[@]}" || status=$?
+          pnpm exec turbo run typecheck lint build "${shard[@]}" "${flags[@]}" || status=$?
+          mine=" $(pnpm exec turbo run test --dry=json "${shard[@]}" | jq -r '.packages[]' | tr '\n' ' ') "
           read -ra filters <<< "$TEST_FILTERS"
-          if [ "${#filters[@]}" -gt 0 ]; then
-            pnpm exec turbo run test "${filters[@]}" "${flags[@]}" || status=$?
+          tests=()
+          for filter in "${filters[@]}"; do
+            if [[ "$mine" == *" ${filter#--filter=} "* ]]; then tests+=("$filter"); fi
+          done
+          if [ "${#tests[@]}" -gt 0 ]; then
+            pnpm exec turbo run test "${tests[@]}" "${flags[@]}" || status=$?
           else
-            echo "::notice title=Affected tests::No package's tests are needed for this change."
+            echo "::notice title=Affected tests::No package's tests in this shard are needed for this change."
           fi
           exit "$status"
-      # On main and in the merge queue, the change checks itself: it reads
-      # the result files the tests just wrote, even when a task failed (a
-      # missing result file fails the check anyway). A queued change already
-      # passed the merge base's copy on its pull request, and was reviewed. On
-      # a pull request, the guard job runs trace from the merge base's copy.
-      - name: Requirements and their tests (trace)
-        if: always() && github.event_name != 'pull_request'
-        run: pnpm check trace --report
-      # The guard job reads these. They come from the pull request's own
-      # code, so they are only ever compared, never trusted to judge.
-      - name: Pack the test results for the guard job
-        if: always() && github.event_name == 'pull_request'
+      # The guard job (pull requests) and the trace job (merge queue and
+      # pushes) read these, one archive per shard. They come from the
+      # change's own code: the guard only compares them, never trusts them to
+      # judge.
+      - name: Pack the test results
+        if: always()
         run: |
           find . -name node_modules -prune -o -path '*/test-results/vitest.json' -type f -print \
             | sed 's|^\./||' | sort | tar -cf "$RUNNER_TEMP/test-results.tar" -T -
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always() && github.event_name == 'pull_request'
+        if: always()
         with:
-          name: pull-request-test-results
+          name: test-results-${{ matrix.shard }}
           path: ${{ runner.temp }}/test-results.tar
           if-no-files-found: error
           retention-days: 1
@@ -567,7 +635,7 @@ jobs:
         timeout-minutes: 3
         continue-on-error: true
         with:
-          name: scenario-test-state
+          name: scenario-test-state-${{ matrix.shard }}
           path: |
             packages/*/*/test-results/scenarios/**
             packages/*/*/*/test-results/scenarios/**
@@ -575,7 +643,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
           overwrite: true
-      # Time per task type, to balance the planned test shards (HAL-9808).
+      # Time per task type, to balance the test shards (HAL-9808).
       # The uploaded file keeps only names, cache status and times: Turbo's
       # full summary also holds the runner's user, git details and hashed
       # environment variables, which nobody needs for this.
@@ -603,7 +671,7 @@ jobs:
         if: always()
         continue-on-error: true
         with:
-          name: turbo-task-timings
+          name: turbo-task-timings-${{ matrix.shard }}
           path: ${{ runner.temp }}/task-timings.json
           if-no-files-found: ignore
           retention-days: 30
@@ -619,6 +687,41 @@ jobs:
         with:
           path: ${{ env.TURBO_CACHE_DIR }}
           key: ${{ steps.turbo-cache.outputs.cache-primary-key }}
+
+  # In the merge queue and on a push the change checks itself: trace reads
+  # the result files every shard's tests wrote, also when a test failed (a
+  # missing result file fails the check anyway). A queued change already
+  # passed the merge base's copy on its pull request, and was reviewed. On a
+  # pull request, the guard job runs trace from the merge base's copy.
+  trace:
+    name: Requirements and their tests (trace)
+    needs: build
+    if: ${{ !cancelled() && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: test-results-*
+          path: ${{ runner.temp }}/results
+      - name: Unpack every shard's test results
+        run: |
+          for shard in $(awk '{ print $1 }' <<< "$BUILD_SHARDS"); do
+            archive="$RUNNER_TEMP/results/test-results-$shard/test-results.tar"
+            if [ ! -f "$archive" ]; then
+              echo "::error::The $shard shard uploaded no test results."
+              exit 1
+            fi
+            tar -xf "$archive" --no-same-owner --no-same-permissions
+          done
+      - name: Requirements and their tests (trace)
+        run: pnpm check trace --report
 
   # A pull request can't weaken the checks that judge it. The
   # merge base's test results are the guard's baseline, so they come from a
@@ -719,15 +822,22 @@ jobs:
       # testing more here is harmless and testing fewer fails it. So when
       # the merge base's copy fails (an older copy without --head, say),
       # every package is tested; the later lines win in $GITHUB_OUTPUT.
+      # After the lockfile walk-back above, an older commit's copy would
+      # choose, so every package is tested then too, as after the test
+      # walk-back below.
       - id: affected
         name: Choose the packages to test
         if: env.AFFECTED_TESTS == 'on'
         env:
           MERGE_BASE: ${{ steps.merge-base.outputs.sha }}
           MERGE_REF: ${{ steps.merge-base.outputs.merge-ref }}
+          INSTALLED: ${{ steps.install.outputs.sha }}
         run: |
           cli=tooling/check/src/cli/affected-tests.ts
-          if [ -n "$MERGE_REF" ] && [ -f "$cli" ]; then
+          if [ "$INSTALLED" != "$MERGE_BASE" ]; then
+            echo "::notice title=Affected tests::The merge base's lockfile doesn't install, so every package is tested."
+            echo "all=true" >> "$GITHUB_OUTPUT"
+          elif [ -n "$MERGE_REF" ] && [ -f "$cli" ]; then
             if ! pnpm exec node "$cli" --base "$MERGE_BASE" --head "$MERGE_REF"; then
               echo "::notice title=Affected tests::The merge base's affected-tests failed, so every package is tested."
               printf 'all=true\nfilters=\nfolders=\n' >> "$GITHUB_OUTPUT"
@@ -760,8 +870,8 @@ jobs:
       # then fail) and use its tests as the baseline. As with the lockfile, the
       # baseline is always a commit on main, and the guard installs and
       # compares against exactly this commit. API and network errors fail.
-      # It runs every package's tests: the guard compares only the affected
-      # ones, and a red main is rare.
+      # Like the lockfile walk-back, it runs every package's tests: the guard
+      # compares only the affected ones, and a red main is rare.
       - id: walk-back
         name: Walk back to main's newest green commit
         if: steps.base-test-run.outcome == 'failure'
@@ -845,7 +955,14 @@ jobs:
           BUILT_ON_SHA: ${{ needs.base-tests.outputs.built-on }}
           RESULTS_ID: ${{ needs.base-tests.outputs.results-id }}
           RESULTS_SHA256: ${{ needs.base-tests.outputs.results-sha256 }}
+          BUILD_RESULT: ${{ needs.build.result }}
         run: |
+          # A failed test still leaves its shard's results to compare; a
+          # skipped or cancelled shard may have left none.
+          if [ "$BUILD_RESULT" != success ] && [ "$BUILD_RESULT" != failure ]; then
+            echo "::error::The build job's shards ended as $BUILD_RESULT, so their test results may be missing."
+            exit 1
+          fi
           if [ -z "$BASE_SHA" ] || [ -z "$BUILT_ON_SHA" ]; then
             echo "::error::The merge base's tests job didn't report which commit it tested and which one the merge ref was built on."
             exit 1
@@ -884,9 +1001,12 @@ jobs:
       - name: Install the merge base's dependencies
         working-directory: base
         run: pnpm install --frozen-lockfile
+      # One archive per shard, each in a folder named after its artifact.
+      # The unpack step reads them by the shard names in BUILD_SHARDS, so a
+      # missing one fails there.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: pull-request-test-results
+          pattern: test-results-*
           path: ${{ runner.temp }}/head-results
       # By the ID its own job reported, then checked against its sha256: an
       # artifact a pull request uploads under the same name is never read.
@@ -921,7 +1041,20 @@ jobs:
             done < <(tar -tf "$archive")
             tar -xf "$archive" -C "$into" --no-same-owner --no-same-permissions
           }
-          unpack "$RUNNER_TEMP/head-results/test-results.tar" "$HEAD_DIR"
+          # With affected tests on, a shard may have had no test to run, and
+          # the guard fails each affected package that has no result file.
+          for shard in $(awk '{ print $1 }' <<< "$BUILD_SHARDS"); do
+            archive="$RUNNER_TEMP/head-results/test-results-$shard/test-results.tar"
+            if [ ! -f "$archive" ]; then
+              echo "::error::The $shard shard uploaded no test results."
+              exit 1
+            fi
+            if [ "$AFFECTED_TESTS" != on ] && [ -z "$(tar -tf "$archive")" ]; then
+              echo "::error::The $shard shard's archive holds no test results."
+              exit 1
+            fi
+            unpack "$archive" "$HEAD_DIR"
+          done
           unpack "$RUNNER_TEMP/base-results/test-results.tar" "$BASE_DIR"
       # Runs the merge base's files with the merge base's Node (devEngines
       # gives a Node that runs TypeScript). Calling pnpm in the pull
@@ -1104,7 +1237,8 @@ jobs:
         working-directory: apps/studio
         run: pnpm exec vite build --mode studio
       # Tauri builds against the system web view: WebKitGTK on Linux. The
-      # keychain crate links libdbus for the Secret Service.
+      # keychain crate links libdbus for the Secret Service. The tray icon
+      # (Tauri's tray-icon feature, HAL-14220) needs the app-indicator library.
       # Every install step has its own time limit, so a hung mirror fails the
       # step in minutes instead of holding the job, and the merge queue, until
       # the job's limit (HAL-5958). 8 minutes covers one full apt attempt (3 +
@@ -1113,7 +1247,7 @@ jobs:
         timeout-minutes: 8
         uses: $/.github/actions/apt-install
         with:
-          packages: libwebkit2gtk-4.1-dev libxdo-dev libdbus-1-dev gnome-keyring dbus-daemon
+          packages: libwebkit2gtk-4.1-dev libxdo-dev libdbus-1-dev libayatana-appindicator3-dev gnome-keyring dbus-daemon
       - name: Formatting (rustfmt)
         run: cargo fmt --all --check
       # --workspace: the shell is the root package, so without it Cargo
@@ -1193,6 +1327,17 @@ jobs:
           pnpm check:sbom --name halonic-studio --version 0.0.0-ci
           --out "$RUNNER_TEMP/notices" --notices
           --cargo apps/studio/src-tauri --cargo-target x86_64-pc-windows-msvc
+      # The same for the Android app's targets (HAL-12585), whose crates
+      # (jni, ndk and others) the Windows file doesn't list. The Gradle
+      # libraries are only known inside the Android build, so the Android
+      # Play build checks them.
+      - name: Licence notices (Rust crates, Android)
+        working-directory: .
+        run: >-
+          pnpm check:sbom --name halonic-studio-android --version 0.0.0-ci
+          --out "$RUNNER_TEMP/notices-android" --notices
+          --cargo apps/studio/src-tauri --cargo-target aarch64-linux-android
+          --cargo-target armv7-linux-androideabi --cargo-target x86_64-linux-android
       # snow and its crates are compiled into the noise.wasm the agent host
       # ships (HAL-12451). The notices above walk every workspace member, so
       # they list them through the Windows target. A crate that only the
@@ -1845,7 +1990,7 @@ jobs:
             echo "Push to main: the whole list and the integration and parity test kits."
           else
             picked="$list"
-            if [ -n "$BASE" ] && ! git diff --name-only "$BASE...HEAD" | grep -qE '^(\.github/workflows/ci\.yml$|\.github/actions/)'; then
+            if [ -n "$BASE" ] && ! git diff --name-only --no-renames "$BASE...HEAD" | grep -qE '^(\.github/workflows/ci\.yml$|\.github/actions/)'; then
               if changed=$(pnpm exec turbo ls --filter="...[$BASE]" --output=json | node -e '
                 const out = JSON.parse(require("fs").readFileSync(0, "utf8"));
                 console.log(out.packages.items.map((p) => p.name).join(" "));
@@ -2325,8 +2470,8 @@ jobs:
       # not by the generated Gradle files. Without Cargo.lock in the key, a new
       # plugin keeps an exact hit on the old cache, so every run downloads the
       # plugin's packages from Maven Central and nothing saves them (HAL-13164).
-      # Restore and save are separate so the save can run after a failed
-      # build: what was downloaded before the failure is kept.
+      # Restore and save are separate so the save can check how the build
+      # went (see the save step).
       - name: Restore the Gradle cache
         id: gradle-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -2366,7 +2511,10 @@ jobs:
           restore-keys: rust-android-${{ runner.os }}-
       # One retry for a download that still fails after Gradle's own retries.
       # It also reruns a real compile error, so it stays at 2 attempts to keep
-      # a broken build well inside the job timeout.
+      # a broken build well inside the job timeout. Before the retry it stops
+      # the Gradle daemon and deletes the configuration cache: a broken cache
+      # entry (AGP's navigation task failing to serialize, HAL-13669) otherwise
+      # fails the retry the same way within a second.
       - name: Build the debug APK
         working-directory: apps/studio
         run: |
@@ -2375,7 +2523,11 @@ jobs:
           for attempt in 1 2; do
             pnpm exec tauri android build --debug --apk --target aarch64 --target x86_64 && exit 0
             echo "::warning title=android::Build attempt $attempt failed."
-            [ "$attempt" -lt 2 ] && sleep 20
+            if [ "$attempt" -lt 2 ]; then
+              sleep 20
+              (cd src-tauri/gen/android && ./gradlew --stop)
+              rm -rf src-tauri/gen/android/.gradle/configuration-cache
+            fi
           done
           exit 1
       # For trying a pull request's build on a phone or an emulator.
@@ -2385,12 +2537,15 @@ jobs:
           path: apps/studio/src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
           if-no-files-found: error
           retention-days: 7
-      # Even when the build failed, but not on an exact key hit (nothing new).
+      # Only after a good build, and not on an exact key hit (nothing new).
+      # A failed build can leave Gradle's record that a module was not found
+      # (a passing 404 from Maven Central), which Gradle trusts for 24 hours:
+      # saved, it would fail every run that restores it (HAL-13594).
       # Reuses the restore step's key: the build generates more *.gradle* files,
       # so hashing again here would give a different key. Only main saves:
       # every branch and queue entry reads main's copy.
       - name: Save the Gradle cache
-        if: ${{ always() && github.ref == 'refs/heads/main' && steps.gradle-cache.outputs.cache-hit != 'true' }}
+        if: ${{ success() && github.ref == 'refs/heads/main' && steps.gradle-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -2583,9 +2738,13 @@ jobs:
   # Merge queue only: a queue entry that has already failed keeps its place,
   # and everything behind it waits, until the slowest job ends (HAL-4253). This
   # job watches the run's other jobs and cancels the run as soon as one fails,
-  # so ci-ok fails within a minute. Pull requests don't use it: the author
-  # should see every failure at once. It runs no repository code (no
-  # checkout), so the write permission below is only used by the `gh` calls here.
+  # so ci-ok fails within a minute. It also cancels the run once its merge
+  # group is gone (HAL-14067): when a pull request jumps the queue or a group
+  # fails, GitHub rebuilds every group behind it under new refs and deletes
+  # the old ones, but the old groups' runs keep going and hold runners.
+  # Pull requests don't use it: the author should see every failure at once.
+  # It runs no repository code (no checkout), so the write permission below
+  # is only used by the `gh` calls here.
   fail-fast:
     name: Cancel the run on the first failure
     if: github.event_name == 'merge_group'
@@ -2593,10 +2752,12 @@ jobs:
     timeout-minutes: 90 # costs nothing when the run ends early; ci-ok doesn't wait for it
     permissions:
       actions: write # to list the run's jobs and cancel the run
+      contents: read # to check that the group's ref still exists
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
       RUN_ID: ${{ github.run_id }}
+      HEAD_REF: ${{ github.event.merge_group.head_ref }} # refs/heads/gh-readonly-queue/main/pr-N-<sha>
     steps:
       - name: Watch the other jobs
         shell: bash
@@ -2607,7 +2768,6 @@ jobs:
           pause=30
           while true; do
             jobs=$(gh api --paginate "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" --jq '.jobs[]' | jq -s .) || { sleep "$pause"; pause=$((pause * 2 > 300 ? 300 : pause * 2)); continue; }
-            pause=30
             # Our own job and ci-ok don't count; a job that hasn't finished yet has no conclusion.
             failed=$(echo "$jobs" | jq -r '[.[] | select(.name != "ci-ok" and (.name | startswith("Cancel the run") | not)) | select(.conclusion == "failure" or .conclusion == "timed_out") | .name] | join(", ")')
             if [ -n "$failed" ]; then
@@ -2617,6 +2777,18 @@ jobs:
             fi
             open=$(echo "$jobs" | jq '[.[] | select(.name != "ci-ok" and (.name | startswith("Cancel the run") | not)) | select(.status != "completed")] | length')
             [ "$open" = "0" ] && exit 0
+            # A job is still open, so ci-ok hasn't run and the group can't have
+            # merged: a missing ref means GitHub dropped or rebuilt the group.
+            # Only a 404 counts as gone; any other error takes the backoff.
+            if ! err=$(gh api --silent "repos/$REPO/git/ref/${HEAD_REF#refs/}" 2>&1); then
+              if grep -q 'HTTP 404' <<< "$err"; then
+                echo "::warning::The merge group's ref $HEAD_REF is gone (rebuilt or removed from the queue). Cancelling the run to free its runners."
+                gh run cancel "$RUN_ID" --repo "$REPO"
+                exit 0
+              fi
+              sleep "$pause"; pause=$((pause * 2 > 300 ? 300 : pause * 2)); continue
+            fi
+            pause=30
             sleep 30
           done
 
@@ -2712,6 +2884,7 @@ jobs:
         gitleaks,
         zizmor,
         build,
+        trace,
         base-tests,
         guard,
         scaffold,

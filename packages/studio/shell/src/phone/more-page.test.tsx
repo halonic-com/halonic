@@ -82,6 +82,22 @@ verifies("shell.more-page", () => {
     expect(workspacePicks()).toBe(1);
   });
 
+  it("cuts a long folder in the middle, so the row ends in the folder's own name", () => {
+    const folder = "C:\\Users\\Sam Jansen\\OneDrive - Acme BV\\Documents\\Acme sample"; // leak-guard: allow absolute-path made-up Windows paths for the test
+    const container = render(
+      <MorePage
+        switcher={{ workspace: { name: "Acme", folder }, onChange: () => undefined }}
+        places={places}
+        onOpen={() => undefined}
+      />,
+    );
+    const switcher = container.querySelector("button") as HTMLButtonElement;
+
+    expect(switcher.textContent).toBe(`AAcme${folder}`);
+    const end = switcher.querySelector(".shrink-0.whitespace-pre-wrap");
+    expect(end?.textContent).toBe("\\Documents\\Acme sample");
+  });
+
   it("lists only the places under More that were added, in the sidebar's order", () => {
     const { rows, container } = renderMore();
 
@@ -109,16 +125,16 @@ verifies("shell.more-page", () => {
   });
 
   it("shows a header badge on its own line, outside the switcher's button", () => {
-    const { container } = renderMore(places, "Sample · test model");
+    const { container } = renderMore(places, "Sample answers");
     const [switcher, badge] = [...container.querySelectorAll("button")];
 
-    expect(badge?.textContent).toBe("Sample · test model");
+    expect(badge?.textContent).toBe("Sample answers");
     expect(switcher?.contains(badge as Node)).toBe(false);
   });
 
   it("stretches each badge line across the page, so its divider runs full width like the rest", () => {
     // jsdom has no layout: a column with the default stretch is what gives the line its width.
-    const { container } = renderMore(places, "Sample · test model");
+    const { container } = renderMore(places, "Sample answers");
     const line = [...container.querySelectorAll("button")][1]?.parentElement;
 
     expect(line?.classList.contains("flex-col")).toBe(true);

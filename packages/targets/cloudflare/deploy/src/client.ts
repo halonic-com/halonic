@@ -11,6 +11,7 @@ import type {
   WorkerUpload,
 } from "./api.ts";
 import { manageCalls } from "./client-manage-calls.ts";
+import { objectCalls } from "./client-object-calls.ts";
 import { DeployError, redact } from "./errors.ts";
 import { deploymentBody, oneMigration, uploadForm } from "./upload-form.ts";
 
@@ -180,7 +181,7 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
     method: string,
     path: string,
     json?: unknown,
-    form?: FormData,
+    form?: FormData | Blob,
   ): Promise<Response> {
     const where = `${method} ${path}`;
     const init = requestInit(method, options.token, json, form);
@@ -250,6 +251,7 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
 
   return {
     ...manage,
+    ...objectCalls({ send, failed }),
     async listAccounts() {
       const accounts: CloudflareAccount[] = [];
       for (let page = 1; page <= maxAccountPages; page += 1) {
@@ -436,8 +438,13 @@ export function createCloudflareClient(options: CloudflareClientOptions): Cloudf
   }
 }
 
-/** The method, headers and body of one request: a form as multipart, JSON otherwise. */
-function requestInit(method: string, token: string, json?: unknown, form?: FormData): RequestInit {
+/** The method, headers and body of one request: a form as multipart, a blob as its bytes, JSON otherwise. */
+function requestInit(
+  method: string,
+  token: string,
+  json?: unknown,
+  form?: FormData | Blob,
+): RequestInit {
   const headers: Record<string, string> = { authorization: `Bearer ${token}` };
   if (form) return { method, headers, body: form };
   if (json === undefined) return { method, headers };

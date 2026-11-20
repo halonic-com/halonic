@@ -307,13 +307,3 @@ verifies("plugins.plugin-list", () => {
     expect(document.querySelector("img")).toBeNull();
   });
 });
-
-verifies("plugins.plugin-list-no-installer", () => {
-  it("shows the command line instead of a missing Add plugin when the app has no installer", () => {
-    show([], { noAdd: true });
-    expect(text()).toContain("No plugins yet");
-    expect(text()).not.toContain("Add plugin");
-    expect(text()).toContain("Studio can't add a plugin yet.");
-    expect(text()).toContain("halonic plugin add <folder or git address>");
-  });
-});

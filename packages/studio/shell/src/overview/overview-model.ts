@@ -11,6 +11,11 @@ export interface OverviewItem {
   readonly detail?: string;
   /** What uses the item, on the row's right: "Used by 2 agents"; a node when a glyph needs words for a screen reader. The search doesn't read it. */
   readonly usedBy?: ReactNode;
+  /**
+   * On a phone, give `usedBy` a line of its own under the detail instead of the end of the detail's
+   * line: for a long one, such as a workflow's Last run, so the detail keeps the row's width.
+   */
+  readonly usedByOwnLine?: boolean;
   /** Pinned items come first in their section. */
   readonly pinned?: boolean;
   /** A 28px avatar before the name, such as a workflow's letter. Screen readers skip it. */

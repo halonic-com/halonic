@@ -116,7 +116,7 @@ verifies("cli.commands.secret.set", () => {
   it("asks the sign-in password twice at a terminal and saves only its hash", async () => {
     const { terminal, stdin } = typing("correct horse", "correct horse");
 
-    const { code } = await secret(
+    const { code, io } = await secret(
       fixture.folder,
       { ...fixture.setup, stdin },
       ["set", "serve-password"],
@@ -124,6 +124,10 @@ verifies("cli.commands.secret.set", () => {
     );
 
     expect(code).toBe(exitCode.ok);
+    expect(io.stdout).toEqual([
+      "✓ Saved serve-password.",
+      "  Every browser and phone that was signed in has to sign in again.",
+    ]);
     expect(await fixture.store().get("serve-password")).toBe("hash-of(13)");
   });
 

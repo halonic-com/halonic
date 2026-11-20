@@ -3,6 +3,9 @@ import type {
   AgentHarnessId,
   AgentHub,
   AgentListing,
+  AgentModelParams,
+  AgentModelParamsChange,
+  AgentOutput,
   AgentRef,
   AgentSettings,
   AgentStep,
@@ -21,7 +24,9 @@ export interface MemoryAgentsHostOptions {
   readonly agents?:
     | readonly (AgentListing & {
         readonly instructions?: string;
+        readonly output?: AgentOutput;
         readonly maxSteps?: number;
+        readonly params?: AgentModelParams;
         readonly harness?: AgentHarnessId;
         readonly skills?: readonly string[];
         readonly knowledge?: readonly string[];
@@ -52,7 +57,9 @@ function keyOf(ref: AgentRef): string {
 /** What a row shows of an agent: its settings without the instructions. */
 function listingOf({
   instructions: _instructions,
+  output: _output,
   maxSteps: _maxSteps,
+  params: _params,
   harness: _harness,
   skills: _skills,
   knowledge: _knowledge,
@@ -64,10 +71,22 @@ function listingOf({
   return listing;
 }
 
+/** The model settings after a change: a value sets one, `null` takes it out. */
+function changedParams(params: AgentModelParams, change: AgentModelParamsChange): AgentModelParams {
+  const next: Record<string, unknown> = { ...params };
+  for (const [key, value] of Object.entries(change)) {
+    if (value === null) delete next[key];
+    else if (value !== undefined) next[key] = value;
+  }
+  return next;
+}
+
 /** The settings an agent has before anyone changes them. */
 const fresh = {
   instructions: "",
+  output: { type: "text" },
   maxSteps: 6,
+  params: {},
   harness: "halonic",
   skills: [],
   knowledge: [],
@@ -97,6 +116,18 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       .map((each) => ({ ...listingOf(each), subagents: each.subagents }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
+  /** Rejects a new subagent that already hands work back to this agent, as the app's host does. */
+  const refuseLoops = (ref: AgentRef, before: readonly string[], after: readonly string[]) => {
+    const team = teamOf(ref.hubId);
+    for (const id of after.filter((each) => !before.includes(each))) {
+      const path = handOffPath(team, id, ref.id);
+      if (path !== undefined) {
+        const names = path.map((each) => team.find((member) => member.id === each)?.name ?? each);
+        throw new KindedError("conflict", `${alreadyHandsWork(names)}; that would be a loop.`);
+      }
+    }
+  };
+
   return {
     hubs: () => options.hubs,
     list: async () => [...agents.values()].map(listingOf),
@@ -107,20 +138,17 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       if (change.name !== undefined && change.name.trim() === "") {
         throw new KindedError("invalid_input", "An agent needs a name.");
       }
-      if (change.subagents !== undefined) {
-        const team = teamOf(ref.hubId);
-        for (const id of change.subagents.filter((each) => !agent.subagents.includes(each))) {
-          const path = handOffPath(team, id, ref.id);
-          if (path !== undefined) {
-            const names = path.map(
-              (each) => team.find((member) => member.id === each)?.name ?? each,
-            );
-            throw new KindedError("conflict", `${alreadyHandsWork(names)}; that would be a loop.`);
-          }
-        }
+      if (change.subagents !== undefined) refuseLoops(ref, agent.subagents, change.subagents);
+      if (change.output?.type === "choice" && change.output.options.length === 0) {
+        throw new KindedError("invalid_input", "A list of options needs at least one.");
       }
-      const definite = Object.entries(change).filter(([, value]) => value !== undefined);
-      agents.set(keyOf(ref), { ...agent, ...Object.fromEntries(definite) });
+      const { params, ...fields } = change;
+      const definite = Object.entries(fields).filter(([, value]) => value !== undefined);
+      agents.set(keyOf(ref), {
+        ...agent,
+        ...Object.fromEntries(definite),
+        params: params === undefined ? agent.params : changedParams(agent.params, params),
+      });
       for (const listener of listeners) listener();
     },
     modelAliases: async (ref) => {

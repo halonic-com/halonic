@@ -24,6 +24,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `ConnectorClient` | `connector-client.ts` | 1 | connector tools (MCP over HTTP or stdio, built-in Google), and their factory | `connector-client` |
 | `Coordination` | `coordination.ts` | 1 | leases, compare-and-set values, counters and windowed counts | `coordination` |
 | `DefinitionStore` | `definition-store.ts` | 2 | the workspace files; `DefinitionSource` is its read-only side | `definition-store` |
+| `DeployTarget` | `deploy-target.ts` | 1 | deploys a workspace to a host such as Cloudflare: plan, deploy with step events, status, rollback, export and import, unlock, sign everyone out, destroy; `halonic deploy` loads a target by name through its `DeployTargetEntry` (planned, not in 0.1.0) | `deploy-target` (with the fake target) |
 | `Digest` | `digest.ts` | 1 | SHA-256 from the platform's WebCrypto | `digest` (with first adapter) |
 | `FolderReader` | `folder-reader.ts` | 1 | every entry and byte of a folder, links listed but never followed; the plugin service hashes plugins | `folder-reader` |
 | `Harness` | `harness.ts` | 3 | what drives an agent (Halonic, Claude Code, Codex): detect it, sign in, start, answer, cancel it | `harness` (with first adapter) |

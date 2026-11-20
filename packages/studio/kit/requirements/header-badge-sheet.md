@@ -8,9 +8,9 @@ While on a phone, the kit's `HeaderBadgeSheet` shall be what the header badge's 
 
 ## Examples
 
-- Given the sheet for "Sample · test model" with the description "Runs on the built-in test model, with scripted replies. No key, no cost." and the items Use a real model…, About the sample and Remove the sample (danger),
+- Given the sheet for "Sample answers" with the description "Runs on the built-in test model, with scripted replies. No key, no cost." and the items Use a real model…, About the sample and Remove the sample (danger),
   when it opens,
-  then its title is "Sample · test model", its first body line is the description, and the rows are Use a real model…, About the sample and Remove the sample, in that order.
+  then its title is "Sample answers", its first body line is the description, and the rows are Use a real model…, About the sample and Remove the sample, in that order.
 - Given that sheet,
   when the user taps Use a real model…,
   then its `onSelect` is called once.
@@ -20,6 +20,6 @@ While on a phone, the kit's `HeaderBadgeSheet` shall be what the header badge's 
 - Given that sheet,
   when the user taps Back,
   then `onClose` is called.
-- Given the sheet for "Sample · test model" with the description and the note "To start your own workspace, use Halonic on your computer." and no items,
+- Given the sheet for "Sample answers" with the description and the note "To start your own workspace, use Halonic on your computer." and no items,
   when it opens,
   then its body shows the description, then the note, and no list.

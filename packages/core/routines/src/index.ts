@@ -26,6 +26,13 @@ export {
   routineStart,
   type TriggerFacts,
 } from "./routine-start.ts";
+export {
+  MAX_SIGNAL_CHAIN,
+  type ReadRun,
+  type RunLinks,
+  type SignalLoop,
+  signalLoop,
+} from "./signal-loop.ts";
 export { checkTimeZone, type WallTime, wallTime } from "./time-zone.ts";
 export { triggerError } from "./trigger-error.ts";
 export { type TriggerKind, triggerKind } from "./trigger-kind.ts";

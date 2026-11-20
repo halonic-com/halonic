@@ -61,6 +61,8 @@ verifies("events.run-log-contract", () => {
       | "sandbox.blocked"
       // Added after the reference by events.connector-started (HAL-1728).
       | "connector.started"
+      // Added after the reference by events.connector-listing-failed (HAL-13670).
+      | "connector.listing-failed"
       // Added after the reference by events.effect-requested (HAL-1532).
       | "effect.requested"
       | "knowledge.searched"
@@ -194,6 +196,8 @@ verifies("events.run-log-contract", () => {
       model: string;
       // Added after the reference by engine.llm-request-alias (HAL-1308).
       alias?: string;
+      // Added after the reference by engine.llm-event-address (HAL-13404).
+      address?: string;
       messages: number;
     }>();
     expectTypeOf<EventOf<"llm.response">>().toEqualTypeOf<{
@@ -219,6 +223,11 @@ verifies("events.run-log-contract", () => {
       agent: string;
       from: string;
       to: string;
+      // Added after the reference by engine.llm-event-address (HAL-13404).
+      provider?: string;
+      model?: string;
+      alias?: string;
+      address?: string;
       error: string;
       // Added after the reference by events.provider-text (HAL-3119).
       providerText?: ProviderText;
@@ -341,8 +350,9 @@ verifies("events.run-log-contract", () => {
       cacheWrite1hTokens?: number;
     }>();
     expectTypeOf<RunTrigger>().toEqualTypeOf<{
-      // "webhook" and `deliveryId` added after the reference by events.trigger-webhook (HAL-195).
-      type: "manual" | "schedule" | "every" | "mail" | "signal" | "webhook";
+      // "webhook" and `deliveryId` added after the reference by events.trigger-webhook (HAL-195),
+      // "inbox" by events.trigger-inbox (HAL-12727).
+      type: "manual" | "inbox" | "schedule" | "every" | "mail" | "signal" | "webhook";
       routineId?: string;
       at: string;
       messageId?: string;

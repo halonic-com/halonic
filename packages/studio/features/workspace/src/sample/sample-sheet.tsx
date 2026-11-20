@@ -8,7 +8,7 @@ export interface SampleSheetProps {
 
 /**
  * What the sample chip's menu is on a phone (`workspace.try-sample`, flow-first-run 7.2): the
- * kit's panel sheet titled "Sample · test model", with the cost line and one sentence, instead
+ * kit's panel sheet titled "Sample answers", with the cost line and one sentence, instead
  * of the desktop's New workspace and Fresh copy, which both write folders on the computer. It
  * covers the window, as a page on the phone's stack does.
  *

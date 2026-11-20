@@ -1,6 +1,10 @@
 //! Starts stand-in login shells: small scripts that act as an rc file
 //! would (print, set a variable, hang) and then run the real `/bin/sh`.
 #![cfg(unix)]
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
 
 use halonic_login_shell::{LoginShellError, RESOLVING_VARIABLE, login_variables};
 use std::collections::BTreeMap;

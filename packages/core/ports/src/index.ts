@@ -76,6 +76,8 @@ export {
   type WriteOptions,
   type WriteResult,
 } from "./definition-store.ts";
+// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
+export * from "./deploy-target.ts";
 export { type Digest, digestVersion } from "./digest.ts";
 export {
   type FolderEntriesOptions,
@@ -128,6 +130,7 @@ export {
   readSavedHostSettings,
   type SavedHostSettingsChange,
 } from "./host-settings-store.ts";
+export { HostTooOld, isHostTooOld } from "./host-too-old.ts";
 export { type HttpClient, httpClientVersion } from "./http-client.ts";
 export { type IdGenerator, idGeneratorVersion } from "./id-generator.ts";
 export {
@@ -267,6 +270,7 @@ export {
   type GatewayCleartextFrame,
   type GatewayFrameKind,
   gatewayFallbackHostName,
+  gatewayFallbackPhoneName,
   gatewayFrameKinds,
   gatewayHostName,
   gatewayMaxFrameBytes,
@@ -274,6 +278,7 @@ export {
   gatewayMaxNameBytes,
   gatewayNoisePrologue,
   gatewayPairingPattern,
+  gatewayReadableName,
   gatewayReconnectPattern,
   gatewaySessionLimits,
   noiseMaxMessageBytes,

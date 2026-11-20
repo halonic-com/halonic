@@ -1,4 +1,8 @@
-import { type NewConnectorTransport, newLibraryFile } from "@halonicjs/app";
+import {
+  type NewConnectorTransport,
+  type NewLibraryItemError,
+  newLibraryFile,
+} from "@halonicjs/app";
 import { KindedError } from "@halonicjs/std";
 import type {
   ConnectorRef,
@@ -30,13 +34,17 @@ export const googleAskFirst: readonly string[] = [
   "drive_move_file",
 ];
 
-/** The words of each reason core gives for making no file; a sentence, as the dialog shows it. */
-const refusals = {
+/**
+ * The words of each reason core gives a connector for making no file; a sentence, as the dialog
+ * shows it. A skill's `description_missing` never comes for a connector, so it falls back to
+ * {@link cantMake}.
+ */
+const refusals: Partial<Record<NewLibraryItemError, string>> = {
   name_missing: "Give it a name.",
-  description_missing: "Give it a name.",
   connection_missing: "Say how it connects.",
   secret_invalid: "Use a secret's name, not its value.",
-} as const;
+};
+const cantMake = "Check the fields, then try again.";
 
 function transportOf(draft: NewConnectorDraft): NewConnectorTransport {
   switch (draft.way) {
@@ -110,7 +118,7 @@ export class WorkspaceNewConnector implements NewConnectorHost {
       transport: transportOf(draft),
       ...(draft.secret === "" || draft.way === "google" ? {} : { secret: draft.secret }),
     });
-    if (!made.ok) throw new KindedError("invalid_input", refusals[made.error]);
+    if (!made.ok) throw new KindedError("invalid_input", refusals[made.error] ?? cantMake);
     const { id, path, text } = made.value;
     this.#parts.files.change(`Added connector ${id}`, { [path]: text });
     this.#made?.({ hub: draft.hub, id }, draft.name.trim());

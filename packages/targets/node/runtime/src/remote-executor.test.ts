@@ -148,7 +148,8 @@ verifies("executor-remote.stream", () => {
         };
         executor.subscribe(run.id, 1, listener);
       });
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      // Ending the run before the host's stream reaches the engine would leave the stream open for good.
+      await waitUntil("the host to follow the run", () => engine.followers(run.id) > 0);
       engine.append(run.id, { seq: 4, type: "run.completed" } as unknown as RunEvent);
       engine.end(run.id);
 

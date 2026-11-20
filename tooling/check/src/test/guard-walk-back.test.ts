@@ -93,4 +93,17 @@ verifies("check.guard-base-after-walk-back", () => {
     );
     expect(workflow).toContain('--base "$BASE_DIR" "${built_on[@]}"');
   });
+
+  test("CI tests every package after either walk-back, not an older commit's choice", () => {
+    const workflow = readFileSync(
+      join(import.meta.dirname, "../../../../.github/workflows/ci.yml"),
+      "utf8",
+    );
+    expect(workflow).toMatch(
+      /if \[ "\$INSTALLED" != "\$MERGE_BASE" \]; then\n.*\n\s+echo "all=true" >> "\$GITHUB_OUTPUT"/,
+    );
+    expect(workflow).toMatch(
+      /echo "sha=\$green" >> "\$GITHUB_OUTPUT"\n\s+pnpm exec turbo run test --force --continue/,
+    );
+  });
 });

@@ -34,6 +34,9 @@ export const serveMessages = defineMessages("serve", {
   /** The line under {@link serving} when the Studio page isn't built, so the address shows no page. */
   studioNotBuilt: () =>
     phrase`The Studio page isn't built, so the address shows no page yet. Build it with: pnpm --filter @halonicjs/app-studio build`,
+  /** The line under {@link serving} when the built Studio page is older than its sources, such as after `git pull`. */
+  studioOutdated: () =>
+    phrase`The Studio page was built before its code last changed, so the address may show an older page. Build it again with: pnpm --filter @halonicjs/app-studio build`,
   /** A request failed in a way the caller isn't told about; the cause goes to `--debug`. */
   requestFailed: (reason: string) => phrase`A request failed: ${reason}`,
   /** The workspace is trusted on this computer, as it is now. */

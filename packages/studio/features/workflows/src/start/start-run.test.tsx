@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 
 import { KindedError } from "@halonicjs/std";
+import { ShownRuns } from "@halonicjs/studio-feature-inbox/api";
 import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { EngineNotAnswering, type WorkflowView } from "../api.ts";
+import { EngineNotAnswering, StartInTerminal, type WorkflowView } from "../api.ts";
 import { WorkflowScreen } from "../page/workflow-page.tsx";
 import {
   buttonNamed,
@@ -340,6 +341,27 @@ verifies("workflows.start.start-run", () => {
     );
   });
 
+  it("shows the command that starts it in a terminal, with no Try again, when only a terminal can", async () => {
+    const { page } = await open(async () => {
+      throw new StartInTerminal({
+        reason: "Reporter uses a connector, which Studio can't start yet.",
+        lead: "To start it, run this in a terminal:",
+        command: "halonic run reply",
+      });
+    });
+
+    await click(runButton(page));
+    await click(buttonNamed(page, "Start run"));
+
+    expect(page.textContent).toContain(
+      "Couldn't start the run: Reporter uses a connector, which Studio can't start yet.",
+    );
+    expect(page.textContent).toContain("To start it, run this in a terminal:");
+    expect(page.textContent).not.toContain("terminal:.");
+    expect(page.querySelector("aside code")?.textContent).toBe("halonic run reply");
+    expect(page.textContent).not.toContain("Try again");
+  });
+
   it("starts nothing when the input isn't a JSON object", async () => {
     const started = vi.fn(async () => ({ runId: "x" }));
     const { page } = await open(started);
@@ -422,5 +444,38 @@ verifies("workflows.start.start-run", () => {
       runs.change([runSummary({ status: "running", state: "draft" })]);
     });
     expect(capped(page, "Run 01jd8q")).toContain("max-w-full");
+  });
+});
+
+verifies("inbox.needs-you-news", () => {
+  it("notes the docked card's run in the Inbox while the card shows", async () => {
+    const shownRuns = new ShownRuns();
+    const runs = memoryRuns();
+    const { host } = memoryHost([], [], [reply], [], {
+      startRun: async () => ({ runId: "run_mfx3k2a1_01jd8q" }),
+    });
+    const page = await show(
+      <WorkflowScreen
+        host={host}
+        runs={runs.source}
+        hubId="acme"
+        id="reply"
+        shownRuns={shownRuns}
+      />,
+    );
+    const workflowPage = { item: { kind: "workflow", hub: "acme", id: "reply" } };
+
+    await click(runButton(page));
+    await click(buttonNamed(page, "Start run"));
+    await act(async () => {
+      runs.change([runSummary({ status: "waiting", state: "draft" })]);
+    });
+    expect(shownRuns.saidOn("run_mfx3k2a1_01jd8q", workflowPage)).toBe(true);
+    await click(
+      page.querySelector<HTMLButtonElement>("button[aria-label='Stop showing this run']") ??
+        undefined,
+    );
+
+    expect(shownRuns.saidOn("run_mfx3k2a1_01jd8q", workflowPage)).toBe(false);
   });
 });

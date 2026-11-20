@@ -1,7 +1,7 @@
 # files.ui.file-tab-try-again
 
 - Status: active
-- Since: 0.1.0
+- Since: unreleased
 - Source: HAL-11642 (states audit gap 4); microcopy 1.4 and 22 F13
 
 When a file's tab can't read the file, the Files view shall show "Couldn't open this file" with a reason that is the error's own sentence only when the error has a kind, and otherwise "Halonic ran into a problem it can't explain yet.", and **Try again**, which reads the file again in the same tab.

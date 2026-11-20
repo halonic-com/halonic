@@ -2,7 +2,7 @@ import { Button } from "@halonicjs/studio-kit";
 import { useId } from "react";
 import { cantOpenWords } from "./cant-open.ts";
 
-/** Why the Acme sample couldn't be created: the folder it goes in, as the user knows it, and the reason. */
+/** Why the demo couldn't be copied: the folder it goes in, as the user knows it, and the reason. */
 export interface WelcomeSampleProblem {
   /** Where the sample was meant to go, such as "Documents". */
   readonly folder: string;
@@ -12,42 +12,42 @@ export interface WelcomeSampleProblem {
   readonly unavailable?: true;
 }
 
-/** The sample action and its cost line (microcopy 5, flow-first-run 2.1). */
+/** The demo action and its cost line (microcopy 5, flow-first-run 2.1, first-run-flow 8a). */
 export const trySampleWords = {
-  action: "Try the Acme sample",
-  creating: "Creating the sample…",
-  /** What a screen reader hears while it is busy (microcopy 19); the sample always goes in Documents. */
-  creatingName: "Creating the Acme sample in Documents…",
+  action: "Open demo",
+  creating: "Copying the demo…",
+  /** What a screen reader hears while it is busy (microcopy 19); the demo always goes in Documents. */
+  creatingName: "Copying the demo to Documents…",
   cost: "Runs on the built-in test model, with scripted replies. No key, no cost.",
 } as const;
 
-/** The sentence under Welcome's text when the sample couldn't be created, with a closing full stop. */
+/** The sentence under Welcome's text when the demo couldn't be copied, with a closing full stop. */
 export function cantCreateSampleLine(problem: WelcomeSampleProblem): string {
   if (problem.unavailable === true) {
-    return `Can't create the sample in ${problem.folder}: ${cantOpenWords.silent}`;
+    return `Can't copy the demo to ${problem.folder}: ${cantOpenWords.silent}`;
   }
   const reason = problem.reason.endsWith(".") ? problem.reason : `${problem.reason}.`;
-  return `Can't create the sample in ${problem.folder}: ${reason}`;
+  return `Can't copy the demo to ${problem.folder}: ${reason}`;
 }
 
 /** Props for {@link TrySample}. */
 export interface TrySampleProps {
   /** True once Recent has entries: the action is then a quiet link without the cost line. */
   readonly quiet: boolean;
-  /** True while the sample is being written. */
+  /** True while the demo is being copied. */
   readonly busy: boolean;
   readonly onPress: () => void;
 }
 
 /**
- * **Try the Acme sample** on the Welcome screen (`shell.welcome-sample`). While Recent is
+ * **Open demo** on the Welcome screen (`shell.welcome-sample`). While Recent is
  * empty it is a secondary button with the cost line under it; once Recent has entries it is a
  * ghost button under the list, without the cost line. The cost line is the button's description
- * (accessibility pass 1.3). While busy it reads "Creating the sample…",
+ * (accessibility pass 1.3). While busy it reads "Copying the demo…",
  * keeps focus and ignores presses.
  *
  * @example
- * <TrySample quiet={false} busy={false} onPress={createSample} />
+ * <TrySample quiet={false} busy={false} onPress={copyDemo} />
  */
 export function TrySample({ quiet, busy, onPress }: TrySampleProps) {
   const costId = useId();

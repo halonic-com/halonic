@@ -77,9 +77,7 @@ verifies("workspace.trusted-sources", () => {
     expect(rows[0]).toContain("pdf-tools");
     expect(rows[0]).toContain("Trusted on 5 Nov 2026");
     expect(rows[1]).toContain("inbox-helper");
-    expect(element.textContent).toContain(
-      "Trust given with the halonic command is kept separately.",
-    );
+    expect(element.textContent).toContain("Trust given with the halonic command shows here too.");
     expect(element.querySelector("p code")?.textContent).toBe("halonic");
   });
 
@@ -90,7 +88,8 @@ verifies("workspace.trusted-sources", () => {
 
   it("says so when nothing is trusted", async () => {
     await show(hostOf([]));
-    expect(element.textContent).toContain("Nothing trusted yet. Halonic asks before running");
+    expect(element.textContent).toContain("Nothing trusted yet.");
+    expect(element.textContent).not.toContain("Halonic asks before running");
   });
 
   it("removes a source after the dialog is confirmed, and says so", async () => {

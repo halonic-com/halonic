@@ -5,6 +5,7 @@ import {
   RunStartHostService,
   RunsSourceService,
   SampleHintService,
+  VersionHistoryHostService,
 } from "./api.ts";
 import { searchWords } from "./home-words.ts";
 import { listRows } from "./list/list-rows.ts";
@@ -28,6 +29,7 @@ export const runsFeature = defineFeature({
     RunStartHostService,
     SampleHintService,
     sandboxStartCheckKey,
+    VersionHistoryHostService,
   ],
   provides: [RunsListService],
   register(studio) {

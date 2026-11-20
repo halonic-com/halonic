@@ -10,6 +10,7 @@ import type {
 import { type Infer, parse, s } from "@halonicjs/schema-kit";
 import { isPlainObject } from "@halonicjs/std";
 import { answerBridgeCall, type BridgeCallServices } from "./bridge-calls.ts";
+import { BridgeFailedError, failedLineSchema } from "./bridge-failed.ts";
 import { hostBridgeRecorder } from "./bridge-failures.ts";
 import { AgentHostError, type AgentHostTransport, answerError, checked } from "./transport.ts";
 
@@ -79,7 +80,7 @@ const firstLineSchema = s.discriminatedUnion("type", [
       socketPath: s.string().min(1).optional(),
     })
     .strict(),
-  s.object({ type: s.literal("failed"), message: s.string() }).strict(),
+  failedLineSchema,
 ]);
 
 // Not strict: a field the host adds later mustn't make Studio drop every call.
@@ -124,7 +125,8 @@ export class AgentHostBridges {
    * Opens the agent's bridge in the host.
    *
    * @throws {@link AgentHostError} when the host refuses (`too_many_bridges`)
-   *   or the bridge can't listen (`bridge_failed`)
+   *   or the bridge can't listen (`bridge_failed`, or the kind of the host's
+   *   error with its `failureCause`; see {@link BridgeFailedError})
    */
   async open(agent: OpeningAgent, recorder: BridgeRecorder): Promise<OpenHarnessBridge> {
     const services = await this.#servicesFor(bridgeAgentOf(agent));
@@ -149,8 +151,8 @@ export class AgentHostBridges {
     }
     if (opened?.type !== "opened") {
       hangUp.abort();
-      const message =
-        opened?.message ?? "The agent host ended the bridge's stream before it opened.";
+      if (opened !== undefined) throw new BridgeFailedError(opened);
+      const message = "The agent host ended the bridge's stream before it opened.";
       throw new AgentHostError(200, "bridge_failed", message);
     }
     this.#ids.set(opened.token, opened.bridge);

@@ -31,7 +31,7 @@ export class AgentHostChat {
 
   /**
    * @returns the provider's answer
-   * @throws {@link AgentHostError} when the host can't be reached or refuses (`provider_not_on_this_machine`, `unknown_provider`, `provider_type_unsupported`, `request_too_large`, `too_many_chats`, `model_failed`), or answers something else
+   * @throws {@link AgentHostError} when the host can't be reached or refuses (`provider_not_on_this_machine`, `workspace_not_trusted`, `unknown_provider`, `provider_type_unsupported`, `request_too_large`, `too_many_chats`, `model_failed`), or answers something else
    */
   async chat(provider: string, request: ChatRequest): Promise<ChatResponse> {
     const route = "POST /v1/models/chat";

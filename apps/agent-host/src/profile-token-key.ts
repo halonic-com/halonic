@@ -1,13 +1,17 @@
 import { EnvSecrets, firstSecret } from "@halonicjs/adapter-env-secrets";
+import { FileRecordStore } from "@halonicjs/adapter-fs-node";
 import { FileSecretStore } from "@halonicjs/adapter-secrets-file";
+import { madeTokenKey } from "@halonicjs/adapter-token-store";
 import type { Digest, Secrets } from "@halonicjs/ports";
-import { type ProfileFolder, secretsFile } from "@halonicjs/profile";
+import { type ProfileFolder, secretsFile, tokenFolders } from "@halonicjs/profile";
 
 /**
- * The secrets the token key (`HALONIC_SECRET_TOKEN_KEY`) is read from: the
+ * The secrets the token key is read from: `HALONIC_SECRET_TOKEN_KEY` in the
  * environment first, then the profile's secrets file, as the CLI reads them,
- * so the host opens what the CLI sealed. The file is opened on the first name
- * the environment doesn't have.
+ * so the host opens what the CLI sealed. When neither has one and no token
+ * is sealed yet, the key is made and saved in the secrets file the first
+ * time a token is sealed (`madeTokenKey`), the same way the CLI makes it.
+ * The file is opened on the first name the environment doesn't have.
  *
  * @param env - the host's own environment
  */
@@ -16,11 +20,17 @@ export function tokenKeySecrets(
   env: Readonly<Record<string, string | undefined>>,
 ): Secrets {
   let file: FileSecretStore | undefined;
-  return firstSecret(new EnvSecrets(env), {
-    get: (name) => {
-      file ??= new FileSecretStore(secretsFile(profile));
-      return file.get(name);
-    },
+  const secretStore = () => {
+    file ??= new FileSecretStore(secretsFile(profile));
+    return file;
+  };
+  const folders = tokenFolders(profile);
+  return madeTokenKey({
+    secrets: firstSecret(new EnvSecrets(env), { get: (name) => secretStore().get(name) }),
+    store: { setIfMissing: (name, value) => secretStore().setIfMissing(name, value) },
+    tokenRecords: [folders.google, folders.integrationSignIns].map(
+      (folder) => new FileRecordStore(folder),
+    ),
   });
 }
 

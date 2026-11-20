@@ -11,6 +11,7 @@ import {
   type PluginHostContent,
   type PluginLocalToolContent,
   type PluginSecretContent,
+  type PluginSignInContent,
   type PluginToolContent,
   type PluginTrustContent,
   partKey,
@@ -46,6 +47,8 @@ export type PluginTrustChanges =
       plugin: string[];
       hosts: PluginItemChanges<PluginHostContent>;
       secrets: PluginItemChanges<PluginSecretContent>;
+      /** By name. A record from before sign-ins were shown has none, so its plugin had none. */
+      signIns: PluginItemChanges<PluginSignInContent>;
       tools: PluginItemChanges<PluginToolContent>;
       localTools: PluginItemChanges<PluginLocalToolContent>;
       files: PluginFileChanges;
@@ -78,6 +81,7 @@ export function pluginTrustChanges(
     plugin: changedFields(trusted.plugin, current.plugin),
     hosts: itemChanges(trusted.hosts, current.hosts, hostKey),
     secrets: itemChanges(trusted.secrets, current.secrets, partKey),
+    signIns: itemChanges(trusted.signIns ?? [], current.signIns ?? [], (signIn) => signIn.name),
     tools: itemChanges(trusted.tools, current.tools, partKey),
     localTools: itemChanges(trusted.localTools, current.localTools, (tool) => tool.id),
     files: fileChanges(trusted.files, current.files),
@@ -145,6 +149,7 @@ function isPluginTrustContent(value: unknown): value is PluginTrustContent {
     everyItemHas(value["hosts"], ["part"]) &&
     everyItemHas(value["secrets"], ["part", "name"]) &&
     everyItemHas(value["tools"], ["part", "name"]) &&
+    (value["signIns"] === undefined || everyItemHas(value["signIns"], ["name"])) &&
     everyItemHas(value["localTools"], ["id"]) &&
     everyItemHas(value["files"], ["path", "sha256"])
   );

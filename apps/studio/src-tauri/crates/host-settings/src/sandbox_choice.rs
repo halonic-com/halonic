@@ -26,15 +26,37 @@ pub const SANDBOX_BACKENDS: [&str; 6] = ["srt", "srt-wsl", "mxc", "docker-sbx", 
 
 /// A saved choice: the backend it names and the file's text, checked to be
 /// exactly a choice, so a copy of it is one too.
+///
+/// The fields are private, so a choice is only ever made by
+/// [`SandboxSetting::new`] or [`read_sandbox_setting`], which both check it,
+/// and [`save_sandbox_setting`] never writes anything else. Other code can't
+/// put its own text in one:
+///
+/// ```compile_fail
+/// let setting = halonic_host_settings::SandboxSetting {
+///     backend: "srt",
+///     text: String::from("{\"backend\":\"srt\",\"command\":\"sh\"}"),
+/// };
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SandboxSetting {
     /// One of [`SANDBOX_BACKENDS`].
-    pub backend: &'static str,
+    backend: &'static str,
     /// The whole file, as saved.
-    pub text: String,
+    text: String,
 }
 
 impl SandboxSetting {
+    /// The backend the choice names, one of [`SANDBOX_BACKENDS`].
+    pub fn backend(&self) -> &'static str {
+        self.backend
+    }
+
+    /// The whole file, as saved.
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
     /// A new choice of `backend`, chosen at `chosen_at` (an ISO 8601 time).
     /// `app_version` is kept only for `none`, as the port's `SandboxSetting`
     /// says: turning the sandbox off is asked again after an update.
@@ -70,7 +92,7 @@ impl SandboxSetting {
 ///
 /// As [`read_sandbox_setting`].
 pub fn read_sandbox_backend(folder: &Path) -> Result<Option<&'static str>, HostSettingsError> {
-    Ok(read_sandbox_setting(folder)?.map(|setting| setting.backend))
+    Ok(read_sandbox_setting(folder)?.map(|setting| setting.backend()))
 }
 
 /// The choice in `folder`, `None` when there is no choice.

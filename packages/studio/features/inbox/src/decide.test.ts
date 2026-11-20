@@ -2,7 +2,7 @@ import type { RunSummary } from "@halonicjs/events";
 import type { SendOptions } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { inboxDecisions } from "./decide.ts";
+import { afterAnswer, inboxDecisions } from "./decide.ts";
 import { inboxItems } from "./inbox-items.ts";
 import { pendingApproval, waitingRun } from "./test-runs.test-helper.ts";
 
@@ -75,5 +75,13 @@ verifies("inbox.decisions", () => {
     expect(executor.sent).toEqual([
       { runId: "r2", event: "escalate", payload: undefined, options: waitOptions },
     ]);
+  });
+
+  it("tells from the run send returned whether it goes on, finished or ended (HAL-13919)", () => {
+    expect(afterAnswer({ status: "running" })).toBe("continues");
+    expect(afterAnswer({ status: "waiting" })).toBe("continues");
+    expect(afterAnswer({ status: "completed" })).toBe("finished");
+    expect(afterAnswer({ status: "failed" })).toBe("ended");
+    expect(afterAnswer({ status: "cant-try" })).toBe("ended");
   });
 });

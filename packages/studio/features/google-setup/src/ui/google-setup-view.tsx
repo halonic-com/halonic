@@ -179,6 +179,7 @@ function GoogleSetupBody({ item, answering, close, accounts, focus }: GoogleSetu
           focus={focus}
           secretEntry={accounts.secretEntry}
           signInEntry={accounts.signInEntry}
+          checkAgainEntry={accounts.checkAgainEntry}
           onSaveSecret={(secret) => accounts.saveClientSecret(account.record.accountRef, secret)}
           onReplaceSecret={(secret) =>
             accounts.replaceClientSecret(account.record.accountRef, secret)

@@ -18,14 +18,8 @@ import type {
   HarnessRunsOptions,
   RunProposalFolders,
 } from "@halonicjs/engine";
-import type {
-  AgentPlacementStore,
-  Clock,
-  DefinitionStore,
-  Digest,
-  HarnessBridgeServer,
-} from "@halonicjs/ports";
-import { type BridgeServicesSource, LocalBridgeHost } from "./bridge-host.ts";
+import type { AgentPlacementStore, Clock, DefinitionStore, Digest } from "@halonicjs/ports";
+import { type BridgeServers, type BridgeServicesSource, LocalBridgeHost } from "./bridge-host.ts";
 import { HistoryProposalFolders } from "./history-proposal-folders.ts";
 import { type AgentFiles, FilePlacementPolicy } from "./placement-policy.ts";
 
@@ -35,8 +29,8 @@ export interface HarnessHostInput {
   readonly sandboxes: HarnessRunsOptions["sandboxes"];
   /** The harnesses the host offers, by their `id`. */
   readonly harnesses: HarnessRunsOptions["harnesses"];
-  /** Opens each run's bridge on loopback. */
-  readonly bridgeServer: HarnessBridgeServer;
+  /** Opens each run's bridge, on the server for the run's placement. */
+  readonly bridgeServers: BridgeServers;
   /** What each agent's bridge serves: its providers, prices, tools and approvals. */
   readonly services: BridgeServicesSource;
   /** Hears of a bridge failure the run log couldn't record (requirement `harness-host.bridge-failures`); it must not throw. */
@@ -53,6 +47,12 @@ export interface HarnessHostInput {
    * harnesses gives it.
    */
   readonly instructionTrust?: HarnessRunsOptions["instructionTrust"];
+  /**
+   * Turns an agent file's `model` alias into its provider's model id
+   * (requirement `engine.harness-model-alias`). Without it, every name goes
+   * to the program as written.
+   */
+  readonly models?: HarnessRunsOptions["models"];
   /** Where each agent runs, as a person chose. */
   readonly placement: {
     /** The choices in the person's profile. */
@@ -108,7 +108,7 @@ export interface HarnessHost {
  * The engine's harness runs and proposal folders, built from the host's ports.
  *
  * @example
- * const host = harnessHostOf({ sandboxes, harnesses, bridgeServer, services, ... });
+ * const host = harnessHostOf({ sandboxes, harnesses, bridgeServers, services, ... });
  * const engine = assembleEngine({
  *   ...options,
  *   executor: { ...options.executor, harnesses: host.harnesses, proposalFolders: host.proposalFolders },
@@ -130,7 +130,7 @@ export function harnessHostOf(input: HarnessHostInput): HarnessHost {
     sandboxes: input.sandboxes,
     harnesses: input.harnesses,
     bridges: new LocalBridgeHost({
-      server: input.bridgeServer,
+      servers: input.bridgeServers,
       services: input.services,
       reportError: input.reportError,
     }),
@@ -138,6 +138,7 @@ export function harnessHostOf(input: HarnessHostInput): HarnessHost {
     home: input.home,
     ...(input.instructions === undefined ? {} : { instructions: input.instructions }),
     ...(input.instructionTrust === undefined ? {} : { instructionTrust: input.instructionTrust }),
+    ...(input.models === undefined ? {} : { models: input.models }),
     ...(input.startTimeoutsMs === undefined ? {} : { startTimeoutsMs: input.startTimeoutsMs }),
   };
 

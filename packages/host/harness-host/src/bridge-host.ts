@@ -4,7 +4,7 @@
 // that agent. Same shape as the Studio's `AgentHostBridges`, so one
 // `servicesFor` serves either.
 
-import type { HarnessAgent, HarnessBridgeHost } from "@halonicjs/engine";
+import type { HarnessAgent, HarnessBridgeHost, Placement, ProgramHarness } from "@halonicjs/engine";
 import type {
   BridgeApprovals,
   BridgeProvider,
@@ -20,6 +20,11 @@ import type {
 export interface BridgeAgent {
   readonly runId: string;
   readonly agentId: string;
+  /**
+   * The harness the agent's call runs in, so a host that resolves its model
+   * gives only a provider that harness's program can speak.
+   */
+  readonly harness: ProgramHarness;
   /** The hub whose workspace the agent's file is in, where the host resolves its model. */
   readonly hubId?: string;
   /**
@@ -49,19 +54,31 @@ export interface BridgeServicesSource {
 }
 
 /**
- * Opens each harness run's bridge on this computer, with the services the
- * host gives for its agent.
+ * The bridge server for each placement (requirement
+ * `harness-host.bridge-placement`): the fenced sandbox's may serve a Unix
+ * socket its proxy reaches, while the launcher's unfenced program has no
+ * proxy, so its server serves loopback only.
+ */
+export type BridgeServers = Readonly<Record<Placement, HarnessBridgeServer>>;
+
+/**
+ * Opens each harness run's bridge on this computer, on the server for the
+ * run's placement, with the services the host gives for its agent.
  *
  * A request the bridge failed without naming the reason to the program goes
  * to the run log as a `bridge.failed`, and to `reportError` when the run log
  * can't take it.
  *
  * @example
- * const bridges = new LocalBridgeHost({ server, services, reportError });
- * const bridge = await bridges.open(agent, recorder);
+ * const bridges = new LocalBridgeHost({
+ *   servers: { sandbox: onSocket, "this-computer": onLoopback },
+ *   services,
+ *   reportError,
+ * });
+ * const bridge = await bridges.open(agent, recorder, "sandbox");
  */
 export class LocalBridgeHost implements HarnessBridgeHost {
-  readonly #server: HarnessBridgeServer;
+  readonly #servers: BridgeServers;
   readonly #services: BridgeServicesSource;
   readonly #reportError: (error: unknown) => void;
 
@@ -69,24 +86,29 @@ export class LocalBridgeHost implements HarnessBridgeHost {
    * @param options.reportError - hears of a bridge failure the run log couldn't record; it must not throw
    */
   constructor(options: {
-    server: HarnessBridgeServer;
+    servers: BridgeServers;
     services: BridgeServicesSource;
     reportError: (error: unknown) => void;
   }) {
-    this.#server = options.server;
+    this.#servers = options.servers;
     this.#services = options.services;
     this.#reportError = options.reportError;
   }
 
   /** @throws what `servicesFor` throws, or the server's `open` when it can't listen */
-  async open(agent: HarnessAgent, recorder: BridgeRecorder): Promise<OpenHarnessBridge> {
+  async open(
+    agent: HarnessAgent,
+    recorder: BridgeRecorder,
+    runsOn: Placement,
+  ): Promise<OpenHarnessBridge> {
     const services = await this.#services.servicesFor({
       runId: agent.runId,
       agentId: agent.agentId,
+      harness: agent.harness,
       hubId: agent.hubId,
       ...(agent.file.model === undefined ? {} : { model: agent.file.model }),
     });
-    return await this.#server.open({
+    return await this.#servers[runsOn].open({
       runId: agent.runId,
       agentId: agent.agentId,
       providers: services.providers,

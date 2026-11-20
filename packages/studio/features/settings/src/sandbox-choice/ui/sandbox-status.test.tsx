@@ -117,7 +117,7 @@ verifies("settings.sandbox-status-ui", () => {
     const root = render(<SandboxBadgeButton badge={view.badge} onOpen={onOpen} />);
     const badge = button(root, "Sandbox: on");
     expect(badge.querySelector(".sr-only")?.textContent).toBe(
-      "Sandbox status: ready. Opens sandbox settings.",
+      "Sandbox: on. Opens sandbox settings.",
     );
     // The icon is hidden too, so look for the short words among every hidden part.
     const hidden = [...badge.querySelectorAll('[aria-hidden="true"]')].map(

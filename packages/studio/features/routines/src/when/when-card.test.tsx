@@ -111,7 +111,7 @@ verifies("routines.when.when-card", () => {
     expect(nextTime("2026-11-06T06:30:00Z", undefined, "Europe/Amsterdam")).toBe("Fri 6 Nov 07:30");
   });
 
-  it("shows no times while the routine is off, and none for a manual one", async () => {
+  it("shows no times while the routine is off, and no times or switch for a manual one", async () => {
     const { host } = hostWith(times("2026-11-06T06:30:00Z"));
     const off = await show(
       <WhenCard host={host} routine={{ ...daily, enabled: false }} announce={() => {}} />,
@@ -129,6 +129,7 @@ verifies("routines.when.when-card", () => {
     );
     expect(manual.textContent).toContain("Starts only with Run now.");
     expect(manual.textContent).not.toContain("Next");
+    expect(toggle(manual)).toBeNull();
   });
 
   it("says an every routine that never ran starts at the next check", async () => {
@@ -204,6 +205,21 @@ verifies("routines.when.when-card", () => {
     expect(saved).toEqual([]);
     expect(page.textContent).toContain("Make this routine live first to turn it on.");
     expect(toggle(page).getAttribute("aria-disabled")).toBe("true");
+
+    const manual = await show(
+      <WhenCard
+        host={host}
+        routine={{
+          ...daily,
+          enabled: false,
+          everLive: false,
+          trigger: { kind: "manual" },
+          triggerSentence: "Manual only",
+        }}
+        announce={() => {}}
+      />,
+    );
+    expect(manual.textContent).not.toContain("Make this routine live first");
   });
 
   it("says what still runs while the saved schedule isn't live", async () => {

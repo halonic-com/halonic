@@ -50,13 +50,22 @@ Halonic never goes around a proxy it can't use. If the setting is unusable
 (for example `socks5://…`, or no `http://` in front), or the proxy refuses or
 drops the tunnel, or the provider's address starts with `http://` and isn't
 `localhost` or an IP address on your network while a proxy is set (see
-"Refused when a proxy is set" above), each request that
-needs it fails, and nothing goes directly instead. For now the command line
-doesn't give the reason: a model call that fails this way says only that
-Halonic couldn't reach the provider and to check your internet connection, in
-the run log and with `--debug` too. If you see that with a proxy set, check
-the variable, the proxy and the provider's address first. Fix the setting and
-restart Halonic.
+"Refused when a proxy is set" above), each request that needs it fails and
+says why, and nothing goes directly instead. A run that fails this way names
+the proxy and the variable it came from, not your internet connection, and
+its second line gives the fix:
+
+| What happened | The fix |
+| --- | --- |
+| The setting isn't `http://host:port` (`socks5://`, `https://`, no `http://`) | Set the variable to `http://host:port` |
+| The proxy isn't running, or didn't answer in time | Start the proxy, or point the variable at one that runs |
+| The proxy refused the host (for example status 403) | Ask whoever runs the proxy to allow the host |
+| The proxy refused the user name and password (407) | Fix them in the variable |
+| A public host over plain `http://` | Use `https://`, or add the host to `NO_PROXY` |
+| The connection failed its security check | If the proxy re-signs HTTPS, set `NODE_EXTRA_CA_CERTS` (see below) |
+
+Add `--debug` to `halonic run` to see the proxy's own message. Fix the
+setting and restart Halonic.
 
 ## Good to know
 

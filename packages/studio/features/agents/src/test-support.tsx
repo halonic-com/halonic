@@ -49,6 +49,15 @@ export async function typeIntoArea(area: HTMLTextAreaElement, value: string): Pr
   });
 }
 
+/** A window's save state that keeps each count of fields not saved it hears; the last is the toolbar's. */
+export function notSavedCounts() {
+  const counts: number[] = [];
+  return {
+    counts,
+    saving: { setFieldsNotSaved: (_item: unknown, count: number) => counts.push(count) },
+  };
+}
+
 /** jsdom has `<dialog>` but no `showModal()`; opening it is all the dialog tests need. */
 export function openDialogsInJsdom(): void {
   Object.assign(HTMLDialogElement.prototype, {

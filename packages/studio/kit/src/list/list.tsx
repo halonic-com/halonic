@@ -276,7 +276,11 @@ function Section<Id extends string>({
       {heading === undefined ? null : (
         <tr>
           <td colSpan={columns} className="p-0">
-            <ListHeading id={headingId} {...heading} headingLevel={headingLevel} />
+            <ListHeading
+              id={headingId}
+              {...heading}
+              headingLevel={heading.headingLevel ?? headingLevel}
+            />
           </td>
         </tr>
       )}

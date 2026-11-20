@@ -378,7 +378,7 @@ verifies("shell.welcome-recent", () => {
     const row = root.querySelector("li button");
     expect(row?.getAttribute("aria-label")).toBe(`Q3, ${location}`);
     expect(row?.textContent).toContain(location);
-    expect(row?.querySelector(".shrink-0")?.textContent).toBe("/Halonic Workspaces/Q3 Renewals");
+    expect(row?.querySelector(".shrink-0")?.textContent).toBe("/Q3 Renewals");
   });
 
   it("says a row's folder is gone, offers Remove from Recent and keeps the row", async () => {

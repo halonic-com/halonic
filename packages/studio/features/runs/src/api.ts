@@ -21,6 +21,15 @@ export { RunCardReceipt, type RunCardReceiptProps } from "./run-view/card-receip
 export { type RunLogRead, useRunLog } from "./run-view/every-step.tsx";
 export { RunView } from "./run-view/run-page.tsx";
 export { RunsList, RunsListService, type RunsListState } from "./runs-list.ts";
+export {
+  SandboxCantRunCallout,
+  type SandboxCantRunCalloutProps,
+} from "./sandbox-cant-run/sandbox-cant-run-callout.tsx";
+export {
+  type CheckOutcome,
+  type SandboxStart,
+  useSandboxStart,
+} from "./sandbox-cant-run/use-sandbox-start.ts";
 
 /** One run as the Runs list reads it: its summary. */
 export interface SourcedRun {
@@ -69,6 +78,16 @@ export interface RunRoutine {
   readonly schedule: string | undefined;
 }
 
+/** A workflow the empty lines name, to say how to start a run (HAL-10128, HAL-12371). */
+export interface RunnableWorkflow {
+  readonly hubId: string;
+  readonly id: string;
+  /** Its name as its file says: "Weekly report". */
+  readonly name: string;
+  /** The name `halonic run` takes: `weekly-report`, or `acme/weekly-report` when two hubs have it. */
+  readonly command: string;
+}
+
 /** Where a model provider runs: on this computer, or elsewhere. */
 export type ProviderKind = "local" | "cloud";
 
@@ -94,11 +113,10 @@ export interface RunsSource {
    */
   readonly routine: (key: string) => RunRoutine | undefined;
   /**
-   * The workflows the workspace has, each as the name `halonic run` takes (`support-reply`, or
-   * `support/reply` when two hubs have a `reply`), in the Workflows list's order. Empty when the
-   * workspace has none. Rejects when the files can't be read.
+   * The workflows the workspace has, in the Workflows list's order. Empty when the workspace has
+   * none. Rejects when the files can't be read.
    */
-  readonly runnableWorkflows: () => Promise<readonly string[]>;
+  readonly runnableWorkflows: () => Promise<readonly RunnableWorkflow[]>;
   /**
    * Whether the provider with this id runs on this computer (`local`) or reaches past it
    * (`cloud`), as its file says; the mock model counts as local. `undefined` when the workspace
@@ -174,3 +192,16 @@ export interface RunStartHost {
 /** The open workspace's way to start a run. Absent where there is no engine to start it. */
 export const RunStartHostService: ServiceKey<RunStartHost> =
   serviceKey<RunStartHost>("runs.start-host");
+
+/**
+ * Whether the open workspace keeps versions, for the run page's Ran on row: a workspace with no
+ * version history leaves it out rather than say "Version not recorded." on every run (HAL-12727).
+ */
+export interface VersionHistoryHost {
+  /** Whether the workspace has at least one version. Rejects when its history can't be read. */
+  readonly hasVersions: () => Promise<boolean>;
+}
+
+/** The open workspace's version history. Absent where the app can't read it; Ran on then shows. */
+export const VersionHistoryHostService: ServiceKey<VersionHistoryHost> =
+  serviceKey<VersionHistoryHost>("runs.version-history-host");

@@ -33,11 +33,12 @@ const savedFilesRun: ProposalRun = {
 
 function inputOf(overrides: Partial<HarnessHostInput> = {}) {
   const bridgeServer = new RecordingBridgeServer();
+  const unfencedBridgeServer = new RecordingBridgeServer();
   const records = new MemoryDefinitionStore();
   const input: HarnessHostInput = {
     sandboxes: { sandbox: fenced, "this-computer": unfenced },
     harnesses: { "claude-code": claudeCode },
-    bridgeServer,
+    bridgeServers: { sandbox: bridgeServer, "this-computer": unfencedBridgeServer },
     services: {
       servicesFor: () => ({ providers: {}, prices: {}, tools: noTools, approvals: approveAll }),
     },
@@ -61,7 +62,7 @@ function inputOf(overrides: Partial<HarnessHostInput> = {}) {
     },
     ...overrides,
   };
-  return { input, bridgeServer, records };
+  return { input, bridgeServer, unfencedBridgeServer, records };
 }
 
 verifies("harness-host.builder", () => {
@@ -99,14 +100,16 @@ verifies("harness-host.builder", () => {
     expect(await harnesses.placement.where(writer)).toEqual({ runsOn: "sandbox" });
   });
 
-  it("opens each run's bridge on the host's bridge server", async () => {
-    const { input, bridgeServer } = inputOf();
+  it("opens each run's bridge on the host's bridge server for its placement", async () => {
+    const { input, bridgeServer, unfencedBridgeServer } = inputOf();
 
-    await harnessHostOf(input).harnesses.bridges.open(writer, { record: async () => {} });
+    const { bridges } = harnessHostOf(input).harnesses;
+    await bridges.open(writer, { record: async () => {} }, "sandbox");
 
     expect(bridgeServer.opened.map(({ runId, agentId }) => ({ runId, agentId }))).toEqual([
       { runId: "01JD8Q", agentId: "writer" },
     ]);
+    expect(unfencedBridgeServer.opened).toEqual([]);
   });
 
   it("refuses a history-off run when its folder opens, when the host has no run copies", async () => {
@@ -130,6 +133,15 @@ verifies("harness-host.builder", () => {
 
   it("starts with nothing to clear", async () => {
     await expect(harnessHostOf(inputOf().input).start(new Set())).resolves.toBeUndefined();
+  });
+});
+
+verifies("harness-host.model-names", () => {
+  it("passes the host's model names on as they are, and gives none when the host has none", () => {
+    const models = { providerModelOf: async () => "glm-5.3" };
+
+    expect(harnessHostOf(inputOf({ models }).input).harnesses.models).toBe(models);
+    expect(harnessHostOf(inputOf().input).harnesses).not.toHaveProperty("models");
   });
 });
 

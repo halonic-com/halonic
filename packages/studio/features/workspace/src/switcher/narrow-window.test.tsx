@@ -89,7 +89,9 @@ async function start(trust?: WorkspaceTrustControl) {
         services: services as never,
         name,
       });
-      return { name, workspace, saving: undefined, trust, dispose: async () => {} };
+      // The remembered demo still runs on the test model, so its chip shows.
+      const testModel = { onTestModel: true, subscribe: () => () => {} };
+      return { name, workspace, saving: undefined, trust, testModel, dispose: async () => {} };
     },
     recent: new RecentWorkspaces({
       getItem: (key) => storage.get(key) ?? null,
@@ -125,8 +127,7 @@ async function start(trust?: WorkspaceTrustControl) {
 
 const workspaceRow = () =>
   element.querySelector<HTMLButtonElement>('button[aria-label^="Workspace: "]');
-const chip = () =>
-  element.querySelector<HTMLButtonElement>('button[aria-label="Sample, test model"]');
+const chip = () => element.querySelector<HTMLButtonElement>('button[aria-label="Sample answers"]');
 const sheetTitle = () => element.querySelector("dialog[open] h2")?.textContent;
 
 async function pressSheetRow(label: string): Promise<void> {
@@ -165,9 +166,9 @@ verifies("workspace.narrow-window", () => {
     const { create } = await start();
 
     await act(async () => chip()?.click());
-    expect(sheetTitle()).toBe("Sample · test model");
+    expect(sheetTitle()).toBe("Sample answers");
     expect(element.querySelector("dialog[open]")?.textContent).toContain("New workspace…");
-    await pressSheetRow("Fresh copy of the sample");
+    await pressSheetRow("Fresh copy of the demo");
 
     expect(sheetTitle()).toBeUndefined();
     expect(create).toHaveBeenCalledWith([]);
@@ -183,7 +184,7 @@ async function pressEscape(): Promise<void> {
 verifies("workspace.narrow-window-sheet-focus", () => {
   it.each([
     ["the workspace row", "Workspace", workspaceRow],
-    ["the sample chip", "Sample · test model", chip],
+    ["the sample chip", "Sample answers", chip],
   ])("opens %s's sheet as a modal, so nothing behind it takes focus", async (_, title, opener) => {
     await start();
     opener()?.focus();

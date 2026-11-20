@@ -6,6 +6,12 @@ Deploys the Halonic Worker to Cloudflare: provision, migrate, upload, smoke test
 `cloudflareSweeper` lists and deletes `hlt-` names for the live-test sweeper, through the same `deleteResource` call `destroy` uses. It first empties a bucket (`emptyBucket`: list and delete objects, page by page), because a run killed before its teardown leaves objects behind; `destroy` never does.
 The deviations from ADR 5.6 are in `requirements/orchestrate.md`.
 
+Each upload is pinned to the definitions snapshot the deploy wrote just before it, through the plain
+variable `HALONIC_DEFINITIONS_VERSION`, so the live version keeps its own snapshot until traffic
+switches, even when the new version's self-test fails. A `rollback` brings back the older version's
+snapshot only while that snapshot is still in `<worker>-defs`: nothing prunes snapshots today, and any
+future pruning must keep the snapshots of every version that can still be rolled back to.
+
 - **Layer:** targets
 - **Owner:** mateo
 - **Public API:** `@halonicjs/target-cloudflare-deploy`

@@ -4,7 +4,8 @@ import { decodeBase64url } from "@halonicjs/std";
 /** The configured secret that holds the key. Under the environment adapter it is `HALONIC_SECRET_TOKEN_KEY`. */
 export const tokenKeySecret = "token-key";
 
-const keyLength = 32;
+/** How many bytes the key has. */
+export const keyLength = 32;
 const keyIdLength = 4;
 const keyIdLabel = new TextEncoder().encode("halonic-token-key-id\0");
 

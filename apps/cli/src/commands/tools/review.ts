@@ -60,7 +60,7 @@ export async function reviewTools(
   const json = reviewDocument(review);
   const shownTools = review.toReview.length + review.refused.length + review.keepsChanging.length;
   if (shownTools === 0) {
-    return done([lastLine(review, source, [])], json);
+    return done(lastLines(review, source, []), json);
   }
 
   const shown = new ShownLines(context);
@@ -86,7 +86,7 @@ export async function reviewTools(
       failure: noTerminalFailure(review.toReview.length, source),
     };
   }
-  return done([...shown.lines, [], lastLine(review, source, asked.approved)], json);
+  return done([...shown.lines, [], ...lastLines(review, source, asked.approved)], json);
 }
 
 /**
@@ -211,31 +211,42 @@ function refusedLines(review: ListedToolReview): Phrase[] {
   return [[], toolsMessages.refusedHeading().phrase, ...columns(rows)];
 }
 
-/** A tool its server keeps changing: its block, then why it isn't asked about, and how to approve it on purpose. */
+/**
+ * A tool its server keeps changing: its block, then why it isn't asked
+ * about, and when it will be. No `approve --fingerprint` command: `approve`
+ * lists the tools again, and the server has a new version by then (HAL-13715).
+ */
 function keepsChangingBlock(reviewed: ReviewedTool, source: ToolSource): Phrase[] {
   const name = printable(reviewed.waiting.listedName);
-  const command = toolsCommand(
-    "approve",
-    source,
-    `${name} --fingerprint ${reviewed.waiting.fingerprint}`,
-  );
   return [
     [],
     ...toolBlock(reviewed, source),
     phrase`${markPart("needsYou")} ${toolsMessages.keepsChangingLine(source.shown, name).phrase}`,
-    phrase`  ${toolsMessages.approveOnPurpose(command).phrase}`,
+    phrase`  ${toolsMessages.askedAgainLater(source.shown, toolsCommand("review", source)).phrase}`,
   ];
 }
 
-/** The review's last line, with how many tools are on, dimmed, when any are. */
-function lastLine(
+/**
+ * The review's last line, with how many tools are on, dimmed, when any are.
+ * The tools their server keeps changing stay off, so a line names them
+ * first, or in place of "Nothing … is waiting" when nothing else was asked about.
+ */
+function lastLines(
   review: ListedToolReview,
   source: ToolSource,
   approved: readonly string[],
-): Phrase {
+): Phrase[] {
   const on = review.on.length + approved.length;
   const onCount = on === 0 ? [] : phrase` ${dimmed(toolsMessages.toolsOn(on).phrase)}`;
-  return phrase`${outcomeLine(review, source, approved)}${onCount}`;
+  if (review.keepsChanging.length === 0) {
+    return [phrase`${outcomeLine(review, source, approved)}${onCount}`];
+  }
+  const off = review.keepsChanging.map((reviewed) => printable(reviewed.waiting.listedName));
+  const offLine = phrase`${markPart("needsYou")} ${toolsMessages.keepsChangingOff(source.shown, off).phrase}`;
+  if (review.toReview.length === 0) {
+    return [phrase`${offLine}${onCount}`];
+  }
+  return [offLine, phrase`${outcomeLine(review, source, approved)}${onCount}`];
 }
 
 function outcomeLine(

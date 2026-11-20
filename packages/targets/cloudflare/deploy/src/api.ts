@@ -214,7 +214,15 @@ export interface CloudflareApi {
   deleteResource(accountId: string, ref: ResourceRef): Promise<void>;
   /**
    * Deletes every object in a bucket, listing and deleting page by page; nothing happens when the
-   * bucket is already gone. Only the live-test sweeper calls this, and only for its own prefix.
+   * bucket is already gone. The live-test sweeper calls this for its own prefix, and `destroy` only
+   * for the definitions bucket, whose files are a copy of a git commit.
    */
   emptyBucket(accountId: string, name: string): Promise<void>;
+  /** Writes one object into an R2 bucket, replacing what the key held. */
+  putObject(
+    accountId: string,
+    bucket: string,
+    key: string,
+    value: string | Uint8Array,
+  ): Promise<void>;
 }

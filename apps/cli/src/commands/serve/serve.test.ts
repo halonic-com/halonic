@@ -1,4 +1,4 @@
-import { rm } from "node:fs/promises";
+import { rm, utimes } from "node:fs/promises";
 import { join } from "node:path";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -225,5 +225,28 @@ verifies("cli.commands.serve.serve", () => {
     expect(await serving).toBe(2);
     running = undefined;
     expect(io.stderr.join("\n")).toContain("halonic secret set serve-password");
+  });
+});
+
+verifies("cli.commands.serve.studio-page-age", () => {
+  it("serves a page older than its sources and says to build it again", async () => {
+    await trustAcme();
+    const studioApp = join(acmeRuns.folder, "studio-app");
+    const studioFolder = join(studioApp, "dist/studio");
+    await writeFiles(studioApp, {
+      "package.json": JSON.stringify({ name: "made-up" }),
+      "dist/studio/studio.html": "<title>Halonic</title>",
+      "src/main.ts": "export {};",
+    });
+    const builtAt = new Date("2026-11-18T13:52:00Z");
+    await utimes(join(studioFolder, "studio.html"), builtAt, builtAt);
+    const setup = { ...acmeRunsSetup(acmeRuns), studioFolder, studioApp };
+    const { io } = startServeWith(setup, "--port", "0");
+    await waitUntil("the server to print three lines", () => io.stdout.length >= 3, slowStart);
+    const address = addressOf(io.stdout[0]);
+
+    expect(io.stdout[2]).toContain("The Studio page was built before its code last changed");
+    expect(io.stdout[2]).toContain("pnpm --filter @halonicjs/app-studio build");
+    expect((await fetch(`${address}/`)).status).toBe(200);
   });
 });

@@ -9,6 +9,8 @@ import {
   type RunStartHost,
   RunStartHostService,
   type SourcedRun,
+  type VersionHistoryHost,
+  VersionHistoryHostService,
 } from "../api.ts";
 import { runPageWords } from "../run-words.ts";
 import { type RunsList, RunsListService } from "../runs-list.ts";
@@ -16,6 +18,7 @@ import { Details, type DetailsProps, DetailsRow } from "./details.tsx";
 import { detailRows } from "./details-model.ts";
 import { EveryStep, useRunLog } from "./every-step.tsx";
 import { entryIdOfStep, everyStep, type StepEntry } from "./every-step-model.ts";
+import { useHasVersions } from "./has-versions.ts";
 import { PageBanner } from "./page-banner.tsx";
 import { AgentSays, Receipt } from "./receipt.tsx";
 import {
@@ -39,6 +42,9 @@ import { useRunChanges } from "./use-run-changes.ts";
 /** The command that opens the workspace page at Models (`features/workspace`). */
 const openModelsCommand = "workspace.open-models";
 
+/** The command that opens the workspace page at its Budget block (`features/workspace`). */
+const openBudgetCommand = "workspace.open-budget";
+
 /** The `run` item kind's page: one run of the open workspace, from `RunsListService`. */
 export function RunPage({ item, context, step, asked }: ItemViewProps) {
   const { openPlace, openItem } = context;
@@ -46,6 +52,7 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
   const sandboxStartCheck = context.services.find(sandboxStartCheckKey);
   const runStart = context.services.find(RunStartHostService);
   const list = context.services.get(RunsListService);
+  const versionHistory = context.services.find(VersionHistoryHostService);
   return (
     <RunView
       list={list}
@@ -59,8 +66,12 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
       announceState={(key, text) => context.announcer.announceState(key, text)}
       {...(context.runCommand === undefined
         ? {}
-        : { openModels: () => void context.runCommand?.(openModelsCommand) })}
+        : {
+            openModels: () => void context.runCommand?.(openModelsCommand),
+            openBudget: () => void context.runCommand?.(openBudgetCommand),
+          })}
       {...(runStart === undefined ? {} : { runStart })}
+      {...(versionHistory === undefined ? {} : { versionHistory })}
       {...(openPlace === undefined
         ? {}
         : {
@@ -103,8 +114,12 @@ export interface RunViewProps {
   readonly announceState?: (key: string, text: string) => void;
   /** Starts a run, for Run again; absent where there is no engine, and the button isn't there. */
   readonly runStart?: RunStartHost;
+  /** Whether the workspace keeps versions; without it, the Details' Ran on shows as before. */
+  readonly versionHistory?: VersionHistoryHost;
   /** Opens the workspace page at Models, for **Open Models** on a failed banner; without it the button isn't there. */
   readonly openModels?: () => void;
+  /** Opens the workspace page at its Budget block, for **Change budget** on a budget banner; without it the button isn't there. */
+  readonly openBudget?: () => void;
   /** Opens the Runs list, for a run that isn't there any more. */
   readonly goToRuns?: () => void;
   /** Opens the Inbox on what the run waits on, for Review in Inbox; without it the button isn't there. */
@@ -152,7 +167,9 @@ export function RunView({
   announce,
   announceState,
   runStart,
+  versionHistory,
   openModels,
+  openBudget,
   goToRuns,
   reviewInInbox,
   openRun,
@@ -178,6 +195,7 @@ export function RunView({
     (shown) => pageContext(list, state.runs, shown, now()),
     announceState,
   );
+  const hasVersions = useHasVersions(versionHistory);
 
   if (run !== undefined) {
     const context = pageContext(list, state.runs, run, now());
@@ -209,6 +227,7 @@ export function RunView({
             announce={announce}
             runAgain={runAgain}
             openModels={openModels}
+            openBudget={openBudget}
             phone={phone}
             onSeeStep={setOpenEntry}
           />
@@ -244,6 +263,7 @@ export function RunView({
               rows={detailRows(run, context, routineOf(list, run))}
               version={startedVersion(log)}
               logRead={log !== undefined}
+              hasVersions={hasVersions}
               runId={run.summary.id}
               now={context.now}
             />

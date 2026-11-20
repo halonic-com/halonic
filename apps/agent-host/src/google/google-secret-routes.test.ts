@@ -364,7 +364,12 @@ verifies("agent-host.google-secret-routes", () => {
     });
 
     it("answers 502 with fixed text and logs only the error's name when it can't finish", async () => {
-      // No key to seal the secret with, so keeping it fails inside the handler.
+      // A secret sealed with a key the host no longer has, so no key is made and keeping it
+      // fails inside the handler.
+      await openGoogleSetup({
+        profile: { platform: "linux", root: profileRoot },
+        env: { HALONIC_SECRET_TOKEN_KEY: tokenKey },
+      }).clientSecrets.saveClientSecret(oldSecret);
       const { url, google } = await started({});
       const { accountRef } = await google.setups.start({
         route,

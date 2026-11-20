@@ -8,6 +8,7 @@ import { defineMessages, type Message } from "./define.ts";
 import { errorMessages, issuesLink } from "./general.ts";
 import { harnessNames } from "./harness-names.ts";
 import { type Phrase, phrase } from "./phrase.ts";
+import { proxyFixInWords, proxyProblemInWords } from "./proxy-failures.ts";
 import { sandboxMessages } from "./sandbox.ts";
 import { suggestedCommand } from "./suggested-command.ts";
 
@@ -66,6 +67,7 @@ const lineOne = {
       run,
       phrase`Halonic couldn't reach ${failure.provider} at ${failure.address} for the model alias ${failure.alias}.`,
     ),
+  "proxy-failed": (run, failure) => failedIn(run, proxyProblemInWords(failure)),
   "model-missing": (run, failure) =>
     failedIn(
       run,
@@ -122,6 +124,9 @@ const lineOne = {
     ),
   "unknown-model-alias": (run, failure) =>
     failedIn(run, phrase`hub ${failure.hub} has no model alias ${failure.alias}.`),
+  // The same words as `halonic secret list` for the same file (HAL-12569).
+  "secrets-file-readable": (run, failure) =>
+    failedIn(run, phrase`the secrets file ${failure.file} can be read by other users.`),
   "model-no-tools": (run, failure) =>
     failedIn(
       run,
@@ -191,6 +196,7 @@ const lineTwo = {
     failure.local
       ? phrase`Start ${failure.provider}, then run again.`
       : phrase`Check your internet connection, then run again.`,
+  "proxy-failed": (_run, failure) => proxyFixInWords(failure),
   "model-missing": (_run, failure) =>
     phrase`${
       failure.server === "ollama"
@@ -219,6 +225,8 @@ const lineTwo = {
   // says where a model that needs no key comes from (HAL-12377).
   "unknown-model-alias": (_run, failure) =>
     phrase`Add ${failure.alias} to models.yaml, or set a model on the agent. For a test model with no key, copy models.yaml and providers/mock.yaml from the Acme example.`,
+  "secrets-file-readable": (_run, failure) =>
+    phrase`Run chmod 600 ${failure.file}, then run again.`,
   // "In models.yaml" first, so it can't read as where the tools are.
   "model-no-tools": (_run, failure) =>
     phrase`In models.yaml, point the model alias ${failure.alias} at a model that can use tools.`,

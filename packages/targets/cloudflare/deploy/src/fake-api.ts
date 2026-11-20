@@ -9,6 +9,7 @@ import type {
   ResourceRef,
   TokenStatus,
   VersionInfo,
+  WorkerBinding,
 } from "./api.ts";
 import { DeployError } from "./errors.ts";
 
@@ -64,11 +65,18 @@ export interface FakeCloudflareState {
 export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
   calls: string[];
   messages: (string | undefined)[];
+  /** The object keys a bucket holds now. */
+  objects(bucket: string): readonly string[];
+  /** What `putObject` wrote, as text, by `bucket/key`. */
+  written: Record<string, string>;
+  /** The bindings of each upload, in order. */
+  bindings: (readonly WorkerBinding[])[];
   /** The names of the Workers secrets set through `setWorkerSecret` and not removed. */
   workerSecretNames(): string[];
 } {
   const calls: string[] = [];
   const messages: (string | undefined)[] = [];
+  const bindings: (readonly WorkerBinding[])[] = [];
   const answer = (value: TokenStatus | Error | undefined): TokenStatus => {
     if (value instanceof Error) throw value;
     return value ?? { active: true };
@@ -81,6 +89,7 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
     resources[key(ref)] = { marked };
   };
   const held: Record<string, readonly string[]> = { ...state.objects };
+  const written: Record<string, string> = {};
   const applied = [...(state.applied ?? [])];
   let lock = state.lock;
   const lockWrite = (call: string) => {
@@ -104,6 +113,7 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
   return {
     calls,
     messages,
+    bindings,
     async currentDeployment() {
       calls.push("currentDeployment");
       return history[0];
@@ -132,6 +142,15 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
       calls.push(`emptyBucket ${name}`);
       held[name] = [];
     },
+    async putObject(_accountId, bucket, key, value) {
+      if (state.failOnWrite) throw new Error(`unexpected write: putObject ${bucket} ${key}`);
+      calls.push(`putObject ${bucket} ${key}`);
+      held[bucket] = [...(held[bucket] ?? []).filter((k) => k !== key), key];
+      written[`${bucket}/${key}`] =
+        typeof value === "string" ? value : new TextDecoder().decode(value);
+    },
+    objects: (bucket) => held[bucket] ?? [],
+    written,
     async deleteResource(_accountId, ref) {
       if (state.failOnWrite) throw new Error(`unexpected write: deleteResource ${key(ref)}`);
       if (
@@ -147,6 +166,7 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
       lockWrite(`uploadVersion ${worker}`);
       versions += 1;
       messages.push(upload.message);
+      bindings.push(upload.bindings);
       calls.push(`secrets ${Object.keys(upload.secrets).sort().join(",")}`);
       return `v${versions}`;
     },
@@ -154,6 +174,7 @@ export function fakeCloudflareApi(state: FakeCloudflareState): CloudflareApi & {
       lockWrite(`uploadWorkerLive ${worker} ${migrations.map((m) => m.tag).join(",")}`);
       calls.push(`secrets ${Object.keys(upload.secrets).sort().join(",")}`);
       messages.push(upload.message);
+      bindings.push(upload.bindings);
       versions += 1;
       deploy([{ id: `v${versions}`, percentage: 100 }]);
     },

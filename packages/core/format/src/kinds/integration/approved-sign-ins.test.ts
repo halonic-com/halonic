@@ -19,7 +19,7 @@ function sheet(tokenUrl = '"https://auth.example.com/oauth/token"', hosts = "[ap
     "    flow: oauth-code",
     '    authorizeUrl: "https://auth.example.com/oauth/authorize?audience=api"',
     `    tokenUrl: ${tokenUrl}`,
-    '    revokeUrl: "https://revoke.example.com/oauth/revoke"',
+    '    revokeUrl: "https://auth.example.com/oauth/revoke"',
     "    clientId: { fromSetting: clientId }",
     "    clientSecret: example-client",
     "    clientAuth: basic",
@@ -39,7 +39,7 @@ verifies("format.integration-approved-sign-ins", () => {
       flow: "oauth-code",
       authorizeUrl: "https://auth.example.com/oauth/authorize?audience=api",
       tokenUrl: "https://auth.example.com/oauth/token",
-      revokeUrl: "https://revoke.example.com/oauth/revoke",
+      revokeUrl: "https://auth.example.com/oauth/revoke",
       clientId: "abc123",
       clientAuth: "basic",
       clientSecretName: "example-client",
@@ -51,8 +51,8 @@ verifies("format.integration-approved-sign-ins", () => {
 
   it("carries revokeEndsClientGrants when the sheet says so and leaves the key out otherwise", () => {
     const text = sheet().replace(
-      '    revokeUrl: "https://revoke.example.com/oauth/revoke"',
-      '    revokeUrl: "https://revoke.example.com/oauth/revoke"\n    revokeEndsClientGrants: true',
+      '    revokeUrl: "https://auth.example.com/oauth/revoke"',
+      '    revokeUrl: "https://auth.example.com/oauth/revoke"\n    revokeEndsClientGrants: true',
     );
     expect(approved(text, { clientId: "abc123" })).toMatchObject({ revokeEndsClientGrants: true });
     expect(approved(sheet(), { clientId: "abc123" })).not.toHaveProperty("revokeEndsClientGrants");

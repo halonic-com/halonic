@@ -1,4 +1,5 @@
-import { ConnectorToolError } from "@halonicjs/ports";
+import type { Connector } from "@halonicjs/format";
+import { type ConnectorTool, ConnectorToolError } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { ApprovalDesk, reviewedTools } from "../agent/listed-tool-approval.test-helper.ts";
@@ -9,6 +10,11 @@ import { ScriptedConnector } from "../testing/scripted-model.ts";
 import { makeConnectorCall } from "./connector-calls.ts";
 
 const sendingOn: EffectBoundary = { checkSending: async () => ({ allowed: true }) };
+
+type Lists = Readonly<Record<string, Connector["tools"]>>;
+
+/** `mail`'s file, with no `allow`: every tool its server lists is offered. */
+const allMail: Lists = { mail: { approve: [] } };
 
 function sendMail(args: unknown): CallToolEffect {
   return {
@@ -45,6 +51,7 @@ verifies("engine.run-connector-calls", () => {
 
     const result = await makeConnectorCall(
       [mail],
+      allMail,
       sendingOn,
       sendMail({ to: "support" }),
       reviewedTools,
@@ -58,7 +65,13 @@ verifies("engine.run-connector-calls", () => {
   it("doesn't make a call whose arguments aren't an object", async () => {
     const mail = mailConnector();
 
-    const result = await makeConnectorCall([mail], sendingOn, sendMail(["support"]), reviewedTools);
+    const result = await makeConnectorCall(
+      [mail],
+      allMail,
+      sendingOn,
+      sendMail(["support"]),
+      reviewedTools,
+    );
 
     expect(result).toEqual({
       type: "tool",
@@ -75,6 +88,7 @@ verifies("engine.run-connector-calls", () => {
 
     const result = await makeConnectorCall(
       [mail],
+      allMail,
       sendingOn,
       sendMail({ to: "support" }),
       desk.gate,
@@ -96,6 +110,7 @@ verifies("engine.run-connector-calls", () => {
 
     const result = await makeConnectorCall(
       [mail],
+      allMail,
       sendingOn,
       sendMail({ to: "support" }),
       desk.gate,
@@ -112,6 +127,7 @@ verifies("engine.run-connector-calls", () => {
 
     const result = await makeConnectorCall(
       [mail],
+      allMail,
       sendingOn,
       sendMail({ to: "support" }),
       reviewedTools,
@@ -133,6 +149,7 @@ verifies("engine.run-connector-calls", () => {
 
     const result = await makeConnectorCall(
       [mail],
+      allMail,
       sendingOn,
       sendMail({ to: "support" }),
       reviewedTools,
@@ -144,5 +161,86 @@ verifies("engine.run-connector-calls", () => {
       outcome: "unknown",
       risk: "send",
     });
+  });
+});
+
+verifies("engine.run-connector-allow", () => {
+  function fileTool(name: string): ConnectorTool {
+    return {
+      name,
+      description: `Does ${name}`,
+      parameters: { type: "object", properties: {} },
+      risk: "read",
+    };
+  }
+
+  function readText(tool = "read_text_file"): CallToolEffect {
+    return { ...sendMail({ path: "handbook.md" }), connector: "handbook-files", tool };
+  }
+
+  /** The recipe's file: only `read_text_file` is offered to agents. */
+  const onlyReadText: Lists = { "handbook-files": { allow: ["read_text_file"], approve: [] } };
+
+  /** The handbook's server, with `read_text_file` approved and its other tools not. */
+  async function handbook(desk: ApprovalDesk) {
+    await desk.approveAll(new ScriptedConnector("handbook-files", [fileTool("read_text_file")]));
+    return new ScriptedConnector("handbook-files", [
+      fileTool("read_text_file"),
+      fileTool("read_file"),
+      fileTool("write_file"),
+    ]);
+  }
+
+  it("makes a call to an allowed tool without telling the person about tools `allow` leaves out", async () => {
+    const desk = new ApprovalDesk();
+    const files = await handbook(desk);
+
+    const result = await makeConnectorCall([files], onlyReadText, sendingOn, readText(), desk.gate);
+
+    expect(result).toMatchObject({ outcome: "ok" });
+    expect(files.calls).toEqual([{ name: "read_text_file", args: { path: "handbook.md" } }]);
+    expect(desk.heard).toEqual([]);
+  });
+
+  it("doesn't make a call to a tool `allow` leaves out, even once a person approved it", async () => {
+    const desk = new ApprovalDesk();
+    const files = await handbook(desk);
+    await desk.approveAll(files);
+
+    const result = await makeConnectorCall(
+      [files],
+      onlyReadText,
+      sendingOn,
+      readText("write_file"),
+      desk.gate,
+    );
+
+    expect(result).toEqual({
+      type: "tool",
+      result: 'The call wasn\'t made: the connector "handbook-files" no longer offers write_file.',
+      outcome: "error",
+      cause: { code: "not-made", why: "tool-gone" },
+    });
+    expect(files.calls).toEqual([]);
+  });
+
+  it("doesn't make a call to a connector whose file isn't in the run's kept definitions", async () => {
+    const mail = mailConnector();
+
+    const result = await makeConnectorCall(
+      [mail],
+      {},
+      sendingOn,
+      sendMail({ to: "support" }),
+      reviewedTools,
+    );
+
+    expect(result).toEqual({
+      type: "tool",
+      result: "The call wasn't made: the connector \"mail\" isn't connected.",
+      outcome: "error",
+      cause: { code: "not-made", why: "not-connected" },
+    });
+    expect(mail.calls).toEqual([]);
   });
 });

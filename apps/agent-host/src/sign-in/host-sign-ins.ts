@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import { FileRecordStore } from "@halonicjs/adapter-fs-node";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import { createTokenStore } from "@halonicjs/adapter-token-store";
@@ -9,7 +8,7 @@ import {
 } from "@halonicjs/host-integration-sign-in";
 import { createSignInGrants, tokenRequestTimeoutMs } from "@halonicjs/oauth-sign-in";
 import type { HttpClient } from "@halonicjs/ports";
-import type { ProfileFolder } from "@halonicjs/profile";
+import { type ProfileFolder, tokenFolders } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { tokenKeySecrets, webCryptoDigest } from "../profile-token-key.ts";
 import { proxySetting } from "../proxy-setting.ts";
@@ -50,7 +49,7 @@ export const noSignInIntegrations = (): undefined => undefined;
 export function openHostSignIns(options: HostSignInsOptions): SignInHost {
   const clock = systemClock;
   const tokens = createTokenStore({
-    records: new FileRecordStore(join(options.profile.root, "integration-sign-ins", "tokens")),
+    records: new FileRecordStore(tokenFolders(options.profile).integrationSignIns),
     secrets: tokenKeySecrets(options.profile, options.env),
     clock,
   });

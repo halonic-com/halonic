@@ -30,6 +30,8 @@ export class FakeMcpServers implements ProgramStarter {
   tools: ListedMcpTool[];
   /** The programs that aren't on this computer: starting one fails as the real starter does. */
   readonly missing = new Set<string>();
+  /** When true, a program ends at its first message, before it answers it (HAL-13714). */
+  stopsWithoutAnswering = false;
 
   constructor(tools: ListedMcpTool[]) {
     this.tools = tools;
@@ -54,6 +56,10 @@ export class FakeMcpServers implements ProgramStarter {
     };
     return {
       write: async (text) => {
+        if (this.stopsWithoutAnswering) {
+          end();
+          return;
+        }
         for (const line of text.split("\n").filter((part) => part !== "")) {
           const answer = this.answerTo(JSON.parse(line) as { id?: number; method?: string });
           if (answer !== undefined) stdout.write(`${JSON.stringify(answer)}\n`);

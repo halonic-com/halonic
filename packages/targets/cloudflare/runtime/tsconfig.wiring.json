@@ -3,6 +3,7 @@
   "extends": "./tsconfig.json",
   "include": [
     "src/runtime.node.test.ts",
+    "src/definitions-version.node.test.ts",
     "src/worker.node.test.ts",
     "src/scheduled.test.ts",
     "src/password-limit.test.ts",

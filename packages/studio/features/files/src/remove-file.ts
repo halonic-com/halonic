@@ -10,6 +10,18 @@ function reasonOf(error: unknown): string | undefined {
   return reason === "" ? undefined : reason;
 }
 
+/**
+ * The refusal of a delete that trying again can't help: a kinded error with a `fix`, the next step
+ * that does help. Its sentence stands alone, with the step under it (rule N6, HAL-12363).
+ */
+function refusalOf(error: unknown): { readonly reason: string; readonly fix: string } | undefined {
+  const reason = reasonOf(error);
+  const fix = (error as { fix?: unknown } | null)?.fix;
+  return reason === undefined || typeof fix !== "string" || fix === ""
+    ? undefined
+    : { reason, fix };
+}
+
 /** Where focus goes in the tree around a delete: the row after the deleted one, and the restored row. */
 export interface RemoveFocus {
   /** The file is in the trash; focus goes to the row that follows. */
@@ -43,7 +55,7 @@ async function putBack(
 
 /**
  * Deletes a file with no dialog: a toast with Undo says it (and, when other files name the file by
- * its id, a second line) with the file's full path, and an open tab of the file says so too. When it can't be deleted, a toast that stays says why and offers Try again.
+ * its id, a second line) with the file's full path, and an open tab of the file says so too. When it can't be deleted, a toast that stays says why and offers Try again, or, when trying again can't help, says what does instead.
  */
 export async function removeFile(
   host: Pick<FilesHost, "remove">,
@@ -69,6 +81,11 @@ export async function removeFile(
       },
     });
   } catch (error) {
+    const refusal = refusalOf(error);
+    if (refusal !== undefined) {
+      toasts?.show({ tone: "danger", title: refusal.reason, text: refusal.fix, sticky: true });
+      return;
+    }
     const reason = reasonOf(error);
     toasts?.show({
       tone: "danger",

@@ -330,13 +330,20 @@ export class WorkspaceFilesHost implements FilesHost {
       return;
     }
     const others = (await this.#parts.files.list(folder)).filter((path) => path !== from);
-    if (others.length > 0) {
-      const verb = to === undefined ? "deleted" : "renamed";
+    if (others.length === 0) return;
+    if (to === undefined) {
+      // Deleting again can't help, so the refusal says what does (rule N6, HAL-12363).
+      const skill = folder.slice(folder.lastIndexOf("/") + 1);
       throw new KindedError(
-        "conflict",
-        `This skill has other files in its folder, so it can't be ${verb} here yet.`,
+        "unavailable",
+        "Studio can't delete a skill that has other files in its folder yet.",
+        { fix: `To delete ${skill}, delete the folder ${folder} in File Explorer.` },
       );
     }
+    throw new KindedError(
+      "conflict",
+      "This skill has other files in its folder, so it can't be renamed here yet.",
+    );
   }
 
   /**

@@ -13,6 +13,14 @@ export const pageWords = {
   zoomOut: "Zoom out",
   fit: "Fit to screen",
   startChip: "Start",
+  /** The canvas's toolbar (flow-workflows 3.2, UX checklist 10.4). */
+  toolbar: {
+    label: "Flow tools",
+    step: "Step",
+    wait: "Wait",
+    autoLayout: "Auto layout",
+    couldntChange: (name: string) => `Couldn't change ${name}`,
+  },
   noAgent: "No agent",
   /**
    * Where a card leads, read out after its name, since a screen reader doesn't see the arrows

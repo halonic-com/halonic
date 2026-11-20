@@ -92,6 +92,13 @@ class ConnectPage {
       void this.connect("connect-screen", this.connectButton);
     });
     this.input.addEventListener("input", () => this.clearFieldError());
+    // The keyboard opening shrinks the window. With an error showing, the
+    // form is taller than what's left, so Connect is brought back into view.
+    this.document.defaultView?.addEventListener("resize", () => {
+      if (!this.fieldError.hidden) {
+        this.keepConnectInView();
+      }
+    });
     for (const button of this.findAll<HTMLButtonElement>('[data-action="try-again"]')) {
       button.addEventListener("click", () => void this.connect("elsewhere", button));
     }
@@ -247,6 +254,18 @@ class ConnectPage {
     this.fieldError.replaceChildren(...pieces.map((piece) => this.render(piece)));
     this.fieldError.hidden = false;
     this.input.setAttribute("aria-invalid", "true");
+    this.keepConnectInView();
+  }
+
+  /**
+   * Brings Connect into view, above the keyboard (phone check 19, HAL-14133).
+   * The WebView keeps only the focused field in view, and the error makes
+   * the form taller, so Connect would otherwise sit under the keyboard.
+   * "nearest" scrolls no further than needed, so the field and the error
+   * stay in view above Connect.
+   */
+  private keepConnectInView(): void {
+    this.connectButton.scrollIntoView({ block: "nearest" });
   }
 
   /** The error stays until the field changes or Connect is pressed again. */

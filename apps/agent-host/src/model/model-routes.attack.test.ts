@@ -171,3 +171,59 @@ verifies("agent-host.model-routes", () => {
     });
   });
 });
+
+verifies("agent-host.model-trust", () => {
+  describe("the model route's own trust check", () => {
+    async function refused(provider: string): Promise<void> {
+      const response = await post(
+        setup?.url ?? "",
+        chatBody(setup?.folders.workspace ?? "", provider),
+      );
+      expect(response.status, provider).toBe(403);
+      expect(await response.json()).toMatchObject({ error: { kind: "workspace_not_trusted" } });
+    }
+
+    it("refuses a provider file saved after the workspace was trusted", async () => {
+      const { model } = await started();
+      await setup?.provider(
+        "added",
+        { type: "ollama", local: "true", baseUrl: model.url },
+        undefined,
+        false,
+      );
+      await refused("added");
+      expect(model.asked).toEqual([]);
+    });
+
+    it("refuses a trusted provider whose file changed since, and calls it as trusted", async () => {
+      const { url, folders, model } = await started();
+      await setup?.provider(
+        "ollama",
+        { type: "lmstudio", local: "true", baseUrl: model.url },
+        undefined,
+        false,
+      );
+      await refused("ollama");
+      await setup?.provider("ollama", { type: "ollama", local: "true", baseUrl: model.url });
+      expect((await post(url, chatBody(folders.workspace))).status).toBe(200);
+      expect(model.asked).toHaveLength(1);
+    });
+
+    it("refuses every provider without a record, and with one it can't read", async () => {
+      const { folders, model, trust } = await started();
+      trust.damage(folders.workspace);
+      await refused("ollama");
+      await trust.revoke(folders.workspace);
+      await refused("ollama");
+      expect(model.asked).toEqual([]);
+    });
+
+    it("calls the test model without a record, as it reaches nothing", async () => {
+      setup = await startRoutes();
+      const { url, folders } = setup;
+      await setup.provider("mock", { type: "mock", local: "true" }, undefined, false);
+      expect(await setup.trust.get(folders.workspace)).toBeNull();
+      expect((await post(url, chatBody(folders.workspace, "mock"))).status).toBe(200);
+    });
+  });
+});

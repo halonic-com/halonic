@@ -23,9 +23,9 @@ export const blockedSitesWords = {
   "sandbox.blocked-sites.hint.why.many": "These sites aren't in {agent}'s allowed sites.",
   "sandbox.blocked-sites.no-connection": "No connection was made.",
   "sandbox.blocked-sites.hint.allow.one":
-    "To allow it, add it to {agent}'s allowed sites. {agent} can then send that site anything it can read.",
+    "To allow it, add it to allowedSites in {agent}'s file. {agent} can then send that site anything it can read.",
   "sandbox.blocked-sites.hint.allow.many":
-    "To allow one, add it to {agent}'s allowed sites. {agent} can then send that site anything it can read.",
+    "To allow one, add it to allowedSites in {agent}'s file. {agent} can then send that site anything it can read.",
   "sandbox.blocked-sites.action": "Open {agent}'s allowed sites",
   "sandbox.blocked-sites.phone-fix": "Fix this on your computer, in {agent}'s file.",
   "sandbox.blocked-sites.log-line": "Blocked: {site} ({tries})",

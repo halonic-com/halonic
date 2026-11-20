@@ -1,13 +1,17 @@
 // @vitest-environment jsdom
 
+import { FieldAnnounceProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import type { RoutineChanges, RoutinesHost, RoutineTrigger, RoutineView } from "../api.ts";
 import { show, unmount } from "../test-support.tsx";
 import { WhenCard } from "./when-card.tsx";
 
-afterEach(unmount);
+afterEach(() => {
+  unmount();
+  vi.useRealTimers();
+});
 
 function routineWith(trigger: RoutineTrigger): RoutineView {
   return {
@@ -30,7 +34,7 @@ function routineWith(trigger: RoutineTrigger): RoutineView {
   };
 }
 
-async function card(trigger: RoutineTrigger) {
+async function card(trigger: RoutineTrigger, announced: string[] = []) {
   const saved: RoutineChanges[] = [];
   const host = {
     mailboxes: async () => [],
@@ -40,7 +44,9 @@ async function card(trigger: RoutineTrigger) {
     },
   } as unknown as RoutinesHost;
   const page = await show(
-    <WhenCard host={host} routine={routineWith(trigger)} announce={() => {}} />,
+    <FieldAnnounceProvider announce={(text) => announced.push(text)}>
+      <WhenCard host={host} routine={routineWith(trigger)} announce={() => {}} />
+    </FieldAnnounceProvider>,
   );
   return { page, saved };
 }
@@ -106,6 +112,25 @@ verifies("routines.when.advanced", () => {
     expect(page.textContent).toContain(
       "Still runs on the last valid schedule until the cron is fixed.",
     );
+  });
+
+  it("reads a refused line's message once when it shows after the pause, and not again on leaving", async () => {
+    vi.useFakeTimers();
+    const announced: string[] = [];
+    const { page } = await card(weekdays, announced);
+    const cron = control(page, "Schedule (cron)");
+    cron.focus();
+    await type(cron, "0 8 *");
+    await act(async () => vi.advanceTimersByTime(600));
+    await act(async () => vi.advanceTimersToNextFrame());
+    expect(announced).toEqual([
+      "Schedule (cron): Cron needs 5 fields (minute hour day month weekday), got 3.",
+    ]);
+
+    await leave(cron);
+    cron.blur();
+    await act(async () => vi.advanceTimersToNextFrame());
+    expect(announced).toHaveLength(1);
   });
 
   it("opens Advanced by itself for a schedule the chips can't show", async () => {

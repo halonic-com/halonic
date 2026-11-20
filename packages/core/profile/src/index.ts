@@ -12,6 +12,8 @@ export {
   secretsFile,
   settingsFolder,
   sharedRunnerTempFolder,
+  type TokenFolders,
+  tokenFolders,
   toolApprovalFolder,
   trustFolder,
   unfencedRunsFolder,

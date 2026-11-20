@@ -33,7 +33,6 @@ import { nodeSchedulerFactory, type SetTimer } from "@halonicjs/adapter-schedule
 import {
   routineStateCollection,
   runTimerCollection,
-  startsAProgram,
   type WorkflowRef,
   workflowAgentsOf,
   workspaceBudget,
@@ -53,7 +52,7 @@ import {
   type HttpClient,
   type IdGenerator,
   isAgentRunsNotAvailable,
-  noKeyOrigins,
+  type KeyOrigins,
   type RunExecutor,
   type Secrets,
 } from "@halonicjs/ports";
@@ -66,6 +65,12 @@ import {
   loadWorkspace,
   runDefinitionsOf,
 } from "@halonicjs/workspace";
+import {
+  type PageRefusal,
+  runCommandOf,
+  startRefusal,
+  whyThePageCantStart,
+} from "./page-refusal.ts";
 import type { EngineDecisions, StudioHarnessHost } from "./studio-harness-host.ts";
 
 /** What a routine starts, with its placeholders filled in: what the routine scheduler would start. */
@@ -105,6 +110,11 @@ export interface EngineServiceOptions {
   readonly definitions: DefinitionStore;
   /** The keychain, as `Secrets`. */
   readonly secrets: Secrets;
+  /**
+   * The origins each key in the keychain may be sent to (HAL-11887). Asked on every model call
+   * with a key; a key with a list goes only to those origins, a key without one keeps the trust rule.
+   */
+  readonly keyOrigins: KeyOrigins;
   /** What the model providers call their servers with. */
   readonly http: HttpClient;
   readonly clock: Clock;
@@ -212,14 +222,17 @@ export class EngineService {
    * an agent that lists a connector, or an agent in a harness when no agent
    * host runs.
    *
-   * @throws KindedError `unavailable` naming the agent
+   * @throws KindedError `unavailable` naming the agent in a harness, with its Harness page step
+   * @throws StartInTerminal naming the agent with a connector, with the command that starts the
+   *   run in a terminal
    * @throws RangeError when the hub or the workflow doesn't exist
    */
   async check(run: WorkflowRef): Promise<void> {
     const workspace = await loadWorkspace(this.#options.definitions);
     runDefinitionsOf(workspace, run.hubId, run.workflowId);
     for (const { value: agent } of workflowAgentsOf(workspace, run)) {
-      this.#refuseWhatThePageCantStart(agent);
+      const refusal = this.#whyThePageCantStart(agent);
+      if (refusal !== undefined) throw startRefusal(refusal, runCommandOf(workspace, run));
     }
   }
 
@@ -238,14 +251,17 @@ export class EngineService {
     if (file === undefined) {
       throw new RangeError(`The hub "${hubId}" has no agent "${agentId}".`);
     }
-    this.#refuseWhatThePageCantStart(file.value);
+    const refusal = this.#whyThePageCantStart(file.value);
+    if (refusal !== undefined) throw new KindedError("unavailable", refusal.reason);
   }
 
   /**
    * Starts a run of the workflow with `input`, on the workspace's files as they are saved: refuses
    * what the page can't run ({@link EngineService.check}), opens the engine, and returns once the
-   * run has started, not when it ends. The run records a manual trigger.
+   * run has started, not when it ends. The run records a manual trigger, or an `inbox` one for a
+   * request from the Inbox's form.
    *
+   * @param from where the person started it: with Run (`manual`, the default) or from the Inbox
    * @returns the new run's id
    * @throws what {@link EngineService.check} and {@link EngineService.open} throw, or the
    *   executor's refusal of the input
@@ -253,12 +269,13 @@ export class EngineService {
   async startRun(
     run: WorkflowRef,
     input: Record<string, unknown>,
+    from: "manual" | "inbox" = "manual",
   ): Promise<{ readonly id: string }> {
     await this.check(run);
     const engine = await this.#forStart();
-    // A run started from the window is the person's own, so it names a manual trigger: with none,
-    // the Runs list says it was started in the terminal.
-    const trigger = { type: "manual" as const, at: this.#options.clock.now().toISOString() };
+    // A run started from the window is the person's own, so it names a trigger: with none, the
+    // Runs list says it was started in the terminal.
+    const trigger = { type: from, at: this.#options.clock.now().toISOString() };
     const { id } = await engine.executor.start({ ...run, input, trigger });
     return { id };
   }
@@ -297,10 +314,7 @@ export class EngineService {
     }
   }
 
-  /**
-   * Answers a waiting run (an Inbox card's Approve or Reject) as `halonic runs send` does, after a
-   * start's checks (`denied` for a workspace that may start nothing).
-   */
+  /** Answers a waiting run (an Inbox Approve or Reject) as `halonic runs send` does, with a start's checks. */
   async send(...args: Parameters<LocalExecutor["send"]>): ReturnType<LocalExecutor["send"]> {
     return (await this.#forStart()).executor.send(...args);
   }
@@ -339,20 +353,11 @@ export class EngineService {
   }
 
   /**
-   * Refuses an agent the page can't start: one that lists a connector, or one in a harness
-   * program when no agent host runs.
+   * Why the page can't start an agent: it lists a connector, or it runs in a harness program
+   * when no agent host runs. `undefined` when the page can start it.
    */
-  #refuseWhatThePageCantStart(agent: Agent): void {
-    if (startsAProgram(agent.harness) && this.#options.openHarnessHost === undefined) {
-      throw unavailable(
-        agent.name,
-        "runs in a harness program",
-        `Set ${agent.name} to Halonic on its Harness page to run it now.`,
-      );
-    }
-    if (agent.connectors.length > 0) {
-      throw unavailable(agent.name, "uses a connector", "Run this workflow from the command line.");
-    }
+  #whyThePageCantStart(agent: Agent): PageRefusal | undefined {
+    return whyThePageCantStart(agent, this.#options.openHarnessHost !== undefined);
   }
 
   /**
@@ -419,8 +424,7 @@ export class EngineService {
             http: this.#options.http,
             clock,
             isTrusted: () => this.#options.isTrusted(workspace),
-            // The desktop keychain keeps no origin list yet, so its keys stay on the trust rule.
-            keyOrigins: noKeyOrigins,
+            keyOrigins: this.#options.keyOrigins,
             // Until Studio has its approval store (HAL-850 step 6), no listed tool is offered.
             listedToolApproval: noListedToolApproval,
           }),
@@ -491,10 +495,4 @@ function pidOf(refusal: unknown): number | undefined {
   if (typeof refusal !== "object" || refusal === null) return undefined;
   const { pid } = refusal as Record<string, unknown>;
   return typeof pid === "number" ? pid : undefined;
-}
-
-function unavailable(agentName: string, why: string, fix: string): KindedError {
-  return new KindedError("unavailable", `${agentName} ${why}, which this window can't start yet.`, {
-    fix,
-  });
 }

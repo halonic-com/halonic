@@ -24,7 +24,20 @@ verifies("cli.duration", () => {
     expect(duration(0)).toBe("1 s");
   });
 
-  it("has no unit larger than minutes", () => {
-    expect(duration(75 * 60_000)).toBe("75 min");
+  it("writes hours and minutes from an hour on, rounded down", () => {
+    expect(duration(59 * 60_000 + 59_999)).toBe("59 min 59 s");
+    expect(duration(60 * 60_000)).toBe("1 h");
+    expect(duration(75 * 60_000)).toBe("1 h 15 min");
+    expect(duration(2 * 3_600_000)).toBe("2 h");
+    expect(duration(23 * 3_600_000 + 59 * 60_000 + 59_999)).toBe("23 h 59 min");
+  });
+
+  it("writes days and hours from 24 hours on, rounded down", () => {
+    expect(duration(24 * 3_600_000)).toBe("1 day");
+    expect(duration((2158 * 60 + 32) * 1000)).toBe("1 day 11 h");
+    expect(duration(47 * 3_600_000 + 59 * 60_000)).toBe("1 day 23 h");
+    expect(duration(48 * 3_600_000)).toBe("2 days");
+    expect(duration(52 * 3_600_000 + 59 * 60_000)).toBe("2 days 4 h");
+    expect(duration(10 * 24 * 3_600_000 + 3_600_000)).toBe("10 days 1 h");
   });
 });

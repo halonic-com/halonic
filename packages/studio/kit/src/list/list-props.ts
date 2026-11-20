@@ -178,8 +178,15 @@ export interface ListGroup<Id extends string = string, Row extends AnyListRow<Id
    * next to the rows' ids, so no row's id may start with `group-heading:`.
    */
   readonly id: string;
-  /** Drawn with ListHeading, between the boxes. ↑ ↓ pass over it. */
-  readonly heading: { readonly name: string; readonly detail?: ReactNode };
+  /**
+   * Drawn with ListHeading, between the boxes. ↑ ↓ pass over it. Its level is the List's
+   * `groupHeadingLevel` unless it names its own, as a group that sits inside the one above it.
+   */
+  readonly heading: {
+    readonly name: string;
+    readonly detail?: ReactNode;
+    readonly headingLevel?: 2 | 3 | 4;
+  };
   /** A group with no rows isn't drawn, heading and all. */
   readonly rows: readonly Row[];
 }

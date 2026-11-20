@@ -1,10 +1,11 @@
 // The one way a command opens the Google setup of this computer: the setup
 // records and the client secrets, kept in a `google` folder of the profile,
-// with the secrets sealed by the profile's `token-key` secret.
+// with the secrets sealed by the profile's `token-key` secret, which is made
+// the first time one is sealed.
 
 import { join } from "node:path";
 import { FileRecordStore } from "@halonicjs/adapter-fs-node";
-import { createTokenStore, tokenKeySecret } from "@halonicjs/adapter-token-store";
+import { createTokenStore, madeTokenKey, tokenKeySecret } from "@halonicjs/adapter-token-store";
 import {
   type ClientSecretStore,
   clientSecretStore,
@@ -12,9 +13,9 @@ import {
   setupRecords,
 } from "@halonicjs/google-setup";
 import type { IdGenerator, Secrets, TokenStore } from "@halonicjs/ports";
-import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
+import { type ProfileEnvironment, profileFolder, tokenFolders } from "@halonicjs/profile";
 import { type Clock, randomIds, systemClock } from "@halonicjs/std";
-import { chainedSecrets } from "./secret-host.ts";
+import { chainedSecrets, openSecretStore } from "./secret-host.ts";
 import { nodeProfileEnvironment } from "./workspace-runs.ts";
 
 /** What the Google commands use on this computer, so tests can fix the profile folder, the clock and the ids. */
@@ -25,7 +26,11 @@ export interface GoogleSetup {
   readonly clock?: Clock;
   /** Makes the account and client refs; random by default. */
   readonly ids?: IdGenerator;
-  /** Where `token-key` is read from; the environment, then the profile's secrets file, by default. */
+  /**
+   * Where `token-key` is read from; the environment, then the profile's
+   * secrets file, by default. Without a key there, one is made in the
+   * profile's secrets file while no token is sealed yet.
+   */
   readonly secrets?: Secrets;
 }
 
@@ -37,8 +42,13 @@ export interface GoogleHost {
   readonly clientSecrets: ClientSecretStore;
   /** The sealed token store: client secrets and refresh tokens. Only the sign-in reads from it. */
   readonly tokens: TokenStore;
-  /** Whether `token-key` is set, so a secret can be sealed. Never reads the value out. */
-  tokenKeyIsSet(): Promise<boolean>;
+  /**
+   * Makes sure a secret can be sealed: finds `token-key`, or makes it while
+   * no token is sealed yet. Never reads the value out.
+   *
+   * @throws TokenKeyMissingError when the key is gone but sealed tokens remain
+   */
+  prepareTokenKey(): Promise<void>;
 }
 
 /**
@@ -52,10 +62,18 @@ export function openGoogleHost(setup: GoogleSetup): GoogleHost {
   const clock = setup.clock ?? systemClock;
   const ids =
     setup.ids ?? randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), clock);
-  const secrets = setup.secrets ?? chainedSecrets(profile.variables, () => profile);
-  const googleFolder = join(profileFolder(profile).root, "google");
+  const folder = profileFolder(profile);
+  const folders = tokenFolders(folder);
+  const secrets = madeTokenKey({
+    secrets: setup.secrets ?? chainedSecrets(profile.variables, () => profile),
+    store: { setIfMissing: (name, value) => openSecretStore(profile).setIfMissing(name, value) },
+    tokenRecords: [folders.google, folders.integrationSignIns].map(
+      (tokenFolder) => new FileRecordStore(tokenFolder),
+    ),
+  });
+  const googleFolder = join(folder.root, "google");
   const tokens = createTokenStore({
-    records: new FileRecordStore(join(googleFolder, "tokens")),
+    records: new FileRecordStore(folders.google),
     secrets,
     clock,
   });
@@ -67,6 +85,8 @@ export function openGoogleHost(setup: GoogleSetup): GoogleHost {
     }),
     clientSecrets: clientSecretStore(tokens, ids),
     tokens,
-    tokenKeyIsSet: async () => (await secrets.get(tokenKeySecret)) !== null,
+    prepareTokenKey: async () => {
+      await secrets.get(tokenKeySecret);
+    },
   };
 }

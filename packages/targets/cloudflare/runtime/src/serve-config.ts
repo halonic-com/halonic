@@ -10,6 +10,12 @@ export const deploymentIdVariable = "HALONIC_DEPLOYMENT_ID";
 /** The Worker variable with `limits.dailyRequests`. Without it nothing is capped. */
 export const dailyRequestsVariable = "HALONIC_DAILY_REQUESTS";
 
+/**
+ * The Worker variable with the definitions snapshot this Worker version serves. `halonic deploy`
+ * sets it to the version it wrote; without it the runtime serves the one `current` names.
+ */
+export const definitionsVersionVariable = "HALONIC_DEFINITIONS_VERSION";
+
 /** The version `GET /api/hello` reports, and the oldest Android app this Worker works with. */
 const serverVersion = "0.1.0";
 

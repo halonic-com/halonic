@@ -3,6 +3,7 @@ import {
   type ChatTurnRequest,
   type ChatTurnResponse,
   type EngineConnection,
+  HostTooOld,
   type RunEventListener,
   type RunExecutor,
   type RunSubscription,
@@ -196,7 +197,7 @@ export function createRemoteExecutor(options: RemoteExecutorOptions): RunExecuto
       const wait = sendOptions?.wait;
       if (wait !== undefined && (await readHostRunExecutorVersion(client)) < runExecutorVersion) {
         // An older host would drop `wait` without a word and let a stale card answer the next step.
-        throw new RangeError(
+        throw new HostTooOld(
           "This host is too old to check which wait step an answer is for, so the answer isn't sent. Update the host.",
         );
       }

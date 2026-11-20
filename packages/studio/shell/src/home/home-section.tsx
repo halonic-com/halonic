@@ -32,12 +32,16 @@ import { SectionSkeleton } from "./home-loading.tsx";
 export interface HomeCardProps {
   readonly context: WorkspaceContext;
   /**
-   * How many times the section's Try again was pressed, `0` at first. A view that keeps a failed
-   * load across renders, so React's retries throw the same error rather than load again, loads
-   * again when this changes.
+   * `0` at first, and after each press of the section's Try again a number no section on Home has
+   * had before. A view that keeps a failed load across renders, so React's retries throw the same
+   * error rather than load again, loads again when this changes. Sections share their first load
+   * but never a later one, so one section's failed Try again isn't another's (HAL-13446).
    */
   readonly attempt: number;
 }
+
+/** The last attempt handed out by any section's Try again; see {@link HomeCardProps.attempt}. */
+let lastAttempt = 0;
 
 /** The heading of each section's error when its card can't load (microcopy 3.3). */
 export const homeSectionErrors: Readonly<Record<HomeSection, string>> = {
@@ -98,7 +102,8 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
   // again each time its Suspense shows it again, so a flag that stayed set would move focus again.
   const [focusPending, setFocusPending] = useState(false);
   const retry = () => {
-    setAttempt((count) => count + 1);
+    lastAttempt += 1;
+    setAttempt(lastAttempt);
     setFocusPending(true);
   };
   const focusMoved = useCallback(() => setFocusPending(false), []);

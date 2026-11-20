@@ -215,7 +215,8 @@ export const BADGE_NONE = "No sandbox";
 export const BADGE_UNFINISHED = "Sandbox: setup unfinished";
 export const BADGE_CHECK_FAILED = "Sandbox: check failed";
 export const BADGE_TOOLTIP = "Open sandbox settings";
-export const badgeName = (state: string) => `Sandbox status: ${state}. Opens sandbox settings.`;
+/** The badge's screen-reader name starts with its visible words, so voice control finds it (WCAG 2.5.3). */
+export const badgeName = (label: string) => `${label}. Opens sandbox settings.`;
 
 export const ROW_READY = "Ready";
 export const ROW_CHECKING = "Checking";
@@ -224,7 +225,6 @@ export const ROW_RESTART = "Restart needed";
 export const ROW_NEEDS_SETUP = "Needs setting up";
 export const ROW_NOT_READY = "Needs repair";
 export const ROW_COULDNT_CHECK = "Not checked";
-export const NO_SANDBOX_LINE = "No sandbox.";
 export const NO_SANDBOX_ASKS =
   "No sandbox. Agents ask before running commands or touching files outside the project.";
 export const RESTART_LINE = "Windows needs to restart to finish setting up the sandbox.";
@@ -232,9 +232,32 @@ export const RESTART_LINE = "Windows needs to restart to finish setting up the s
 export const notReadyLine = (reason: string) =>
   reason.trim() === ""
     ? "The sandbox isn't ready."
-    : `The sandbox isn't ready: ${reason.replace(/\.$/, "")}.`;
+    : `The sandbox isn't ready: ${afterColon(reason).replace(/\.$/, "")}.`;
 export const couldntCheckLine = (reason: string) =>
-  `Couldn't check the sandbox: ${reason.replace(/\.$/, "")}.`;
+  `Couldn't check the sandbox: ${afterColon(reason).replace(/\.$/, "")}.`;
+
+/** First words that are names or abbreviations, so they keep their capitals after a colon. */
+const names = new Set([
+  "WSL",
+  "Windows",
+  "Linux",
+  "macOS",
+  "Docker",
+  "Halonic",
+  "MXC",
+  "Microsoft",
+  "Ubuntu",
+]);
+
+/**
+ * A sentence as it reads on after a colon: lower case, unless its first word is a name or an
+ * abbreviation, which keeps its capitals ("WSL isn't installed yet.", "Windows needs to restart").
+ */
+export function afterColon(sentence: string): string {
+  const first = sentence.split(/[\s,.:;]/u, 1)[0] ?? "";
+  const keeps = names.has(first) || /\p{Lu}/u.test(first.slice(1));
+  return keeps ? sentence : sentence.charAt(0).toLowerCase() + sentence.slice(1);
+}
 export const readyLine = (name: string, checked: string | null) =>
   checked === null ? name : `${name} · Last check passed ${checked}`;
 export const CHANGE = "Change";

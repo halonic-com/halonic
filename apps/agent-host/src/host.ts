@@ -381,6 +381,7 @@ function hostServices(
       hostModelRoutes({
         workspaceRoots: connectors.workspaceRoots,
         profile,
+        trustStore: connectors.trustStore,
         env: process.env,
         ownPorts: () => [...listeningPorts, ...bridges.ports()],
         log: logToError,

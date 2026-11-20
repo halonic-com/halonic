@@ -8,21 +8,25 @@ import {
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
 import { PluginService, TrustService } from "@halonicjs/app";
+import type { Secrets } from "@halonicjs/ports";
 import { systemClock } from "@halonicjs/std";
 import type { PluginsHost } from "@halonicjs/studio-feature-plugins/api";
 import { halonicVersion } from "../studio/open-trusts.ts";
 import { desktopPluginInstaller } from "./desktop-plugin-installer.ts";
 import { desktopPluginActions } from "./plugin-actions.ts";
 import { PluginFeed } from "./plugin-feed.ts";
+import { type PluginSecretHandOver, secretHandingCaller } from "./secret-handing-caller.ts";
 
 /** What the desktop's plugins host is made of. */
 export interface DesktopPluginsParts {
   /** The shell's IPC: the plugins folder, the plugins' records, the trust records and the keychain. */
   readonly ipc: TauriShell;
   /** The keychain, where a plugin's secrets live: `TauriSecrets`, or the window's `secrets` service. */
-  readonly secrets: PluginsHost["secrets"];
+  readonly secrets: PluginsHost["secrets"] & Secrets;
   /** Calls a trusted plugin's tools through the agent host; it fails closed where plugins can't run fenced. */
   readonly caller: PluginsHost["caller"];
+  /** Hands a plugin's secrets to the agent host before each call: `AgentHostPluginSecrets`. */
+  readonly handOver: PluginSecretHandOver;
   /** Told when a change was saved but reading the plugins folder again failed. */
   readonly onReloadFailed: (error: unknown) => void;
 }
@@ -40,16 +44,18 @@ export interface DesktopPluginsHost {
  * `PluginService` over the shell's plugins folder, the profile's plugin records and the trust
  * records the CLI shares, the keychain for secrets (given in `secrets`), and one feed that every action reads again.
  * Its installer adds a plugin from a folder the person picks or a git repository, not trusted
- * (`desktopPluginInstaller`). It never runs plugin code: tool calls go through `caller`.
+ * (`desktopPluginInstaller`). It never runs plugin code: tool calls go through `caller`, each
+ * after `handOver` gave the agent host the plugin's own secrets (`secretHandingCaller`).
  *
  * @example
- * const { host, reload } = desktopPluginsHost({ ipc, secrets, caller, onReloadFailed });
+ * const { host, reload } = desktopPluginsHost({ ipc, secrets, caller, handOver, onReloadFailed });
  * await reload();
  */
 export function desktopPluginsHost({
   ipc,
   secrets,
   caller,
+  handOver,
   onReloadFailed,
 }: DesktopPluginsParts): DesktopPluginsHost {
   const service = new PluginService({
@@ -77,7 +83,15 @@ export function desktopPluginsHost({
     reload: actions.reload,
     host: {
       feed,
-      caller,
+      caller: secretHandingCaller({
+        caller,
+        handOver,
+        keychain: secrets,
+        secretNames: (plugin) => {
+          const manifest = feed.current().find((each) => each.plugin === plugin)?.manifest;
+          return manifest === undefined ? {} : service.secretNames(manifest);
+        },
+      }),
       settings: service,
       secrets,
       actions,

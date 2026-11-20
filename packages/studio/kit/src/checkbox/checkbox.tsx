@@ -27,6 +27,8 @@ interface CheckboxBase {
    * 23, A1).
    */
   readonly unavailable?: CheckboxUnavailable | undefined;
+  /** The `id` of visible text that says more about it: "Deleted" beside a version's item. */
+  readonly describedBy?: string | undefined;
   /** `-1` only inside a grid, which moves focus with the arrow keys (a List row's checkbox). */
   readonly tabIndex?: 0 | -1;
   readonly onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
@@ -108,7 +110,16 @@ function boxState(
  * <Checkbox label="Select Sorter" checked={selected.has("sorter")} onChange={() => toggle("sorter")} />
  */
 export function Checkbox(props: CheckboxProps) {
-  const { checked, onChange, indeterminate = false, unavailable, tabIndex, onFocus, ref } = props;
+  const {
+    checked,
+    onChange,
+    indeterminate = false,
+    unavailable,
+    describedBy: description,
+    tabIndex,
+    onFocus,
+    ref,
+  } = props;
   const field = useFieldControl();
   const input = useRef<HTMLInputElement | null>(null);
   const isUnavailable = unavailable !== undefined;
@@ -135,7 +146,7 @@ export function Checkbox(props: CheckboxProps) {
         aria-label={props.label}
         aria-disabled={isUnavailable ? true : undefined}
         aria-invalid={field?.invalid === true ? true : undefined}
-        aria-describedby={describedBy(unavailable?.reason, field?.describedBy)}
+        aria-describedby={describedBy(description, unavailable?.reason, field?.describedBy)}
         tabIndex={tabIndex}
         className={`${boxShared} ${boxStateClasses[boxState(isUnavailable, field?.invalid === true, checked || indeterminate)]}`}
         // Space and a click on the box or its words both arrive here, and the browser has already

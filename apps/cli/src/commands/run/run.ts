@@ -25,6 +25,7 @@ import {
   type StoppedResult,
   UsageError,
 } from "../../command.ts";
+import { connectorFileOf } from "../../connector-file.ts";
 import { followUntilStopped } from "../../follow-run.ts";
 import { type HarnessProgram, nodeHarnessPrograms } from "../../harness-programs.ts";
 import type { LocalEngine } from "../../local-engine-host.ts";
@@ -53,6 +54,7 @@ import {
 } from "../../workspace-engine.ts";
 import { refuseFileProblems } from "../../workspace-problems.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
+import { connectorWarnings } from "./connector-warnings.ts";
 import { eventLines } from "./event-lines.ts";
 import { runHarnessOf } from "./harness.ts";
 import { runInputOf } from "./input.ts";
@@ -147,6 +149,10 @@ export async function runWorkflow(
   // `--json --follow`: the events are printed as they happen, so the result holds only the run.
   const streaming = input.options["follow"] === true;
   let followed: FollowedRun | StoppedResult;
+  const printEvent = streaming ? eventLines(context) : live.onEvent;
+  const warnConnectors = connectorWarnings(context, typedDir, (id) =>
+    connectorFileOf(workspace, id),
+  );
   try {
     const events = eventsOf(input);
     const place = { workspace, name: workspaceName, dir: typedDir };
@@ -156,7 +162,10 @@ export async function runWorkflow(
       (signal) =>
         followWithEvents(engine, place, { workflow, input: runInput, version }, events, {
           signal,
-          onEvent: streaming ? eventLines(context) : live.onEvent,
+          onEvent: (event, events) => {
+            warnConnectors(event);
+            printEvent(event, events);
+          },
         }),
       typedDir,
     );

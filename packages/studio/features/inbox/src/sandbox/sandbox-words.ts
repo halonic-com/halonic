@@ -13,8 +13,7 @@ export const sandboxInboxWords = {
    * `sandbox-inbox.footer` (mc 23.3): the card's last line, and the fixed card's only line. True
    * for a scheduled routine too, unlike "Nothing ran again by itself".
    */
-  footer:
-    "Routines start again at their next time once the sandbox works. To let one agent run without the sandbox, change it in that agent's settings.",
+  footer: "Routines start again at their next time once the sandbox works.",
   /** `sandbox-inbox.check-again` */
   checkAgain: "Check again",
   /**

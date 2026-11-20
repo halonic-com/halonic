@@ -5,9 +5,10 @@ import {
   Callout,
   type CalloutHandle,
   CommandBox,
+  usePresentation,
 } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWords } from "@halonicjs/studio-shell";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { wasDecidedElsewhere } from "../decide.ts";
 import { PlainValue } from "./plain-value.tsx";
 
@@ -100,9 +101,11 @@ export function CardHeader({
   startedBy,
   onOpenRun,
 }: CardHeaderProps) {
+  // The title asks for 10rem next to **Open run**. In a narrower card (a phone, or 400 % zoom)
+  // the button goes on a line under it, on the right, so the title keeps the whole width.
   return (
-    <header className="flex items-start gap-3">
-      <div className="min-w-0 flex-1">
+    <header className="flex flex-wrap items-start gap-x-3 gap-y-2">
+      <div className="min-w-0 flex-1 basis-40">
         <h2
           id={titleId}
           ref={heading}
@@ -117,9 +120,11 @@ export function CardHeader({
         )}
       </div>
       {onOpenRun === undefined ? null : (
-        <Button size="sm" onClick={onOpenRun}>
-          Open run
-        </Button>
+        <div className="ml-auto">
+          <Button size="sm" onClick={onOpenRun}>
+            Open run
+          </Button>
+        </div>
       )}
     </header>
   );
@@ -138,10 +143,25 @@ interface DecidedBarProps {
  * The bar once decided: the decided Callout, which takes focus, then the way back, secondary,
  * and **Next** (flow-inbox 5.3). The way back stays when nothing else waits, so you're never
  * left without one.
+ *
+ * The Callout takes focus without scrolling, so the bar brings itself into view when it appears:
+ * in a short window, where the whole column scrolls, the shorter bar would otherwise leave the
+ * line below the window (HAL-13918). It scrolls whichever element scrolls the card, only as far
+ * as it must: the whole bar when it fits, else from its top, so the line shows whole. It does so
+ * before the bar is drawn, so the window never shows it out of view first. The effect returns
+ * nothing: Chromium's `scrollIntoView` returns a promise, which React would take for a clean-up
+ * and fail on when the bar goes away.
  */
 export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps) {
+  // On a phone Next takes the card's width and its label wraps, so a long title grows it taller,
+  // never past the screen's edge (HAL-13801 IN1).
+  const phone = usePresentation() === "phone";
+  const bar = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    bar.current?.scrollIntoView?.({ block: "nearest" });
+  }, []);
   return (
-    <div className="flex flex-col gap-3 border-t border-border p-4">
+    <div ref={bar} className="flex flex-col gap-3 border-t border-border p-4">
       <Callout tone="info" announce="focus" ref={callout}>
         {text}
         {note === undefined ? null : (
@@ -156,7 +176,7 @@ export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps)
         {next === null ? (
           <p className="text-small text-fg-muted">Nothing else is waiting for you.</p>
         ) : (
-          <Button variant="primary" onClick={next.open}>
+          <Button variant="primary" size={phone ? "touch" : "md"} block={phone} onClick={next.open}>
             {`Next: ${next.title}`}
             <span aria-hidden="true">{` · ${next.left} left`}</span>
             <span className="sr-only">{`, ${next.left} left`}</span>
@@ -195,10 +215,17 @@ interface FailedLineProps {
   readonly manual?: ManualAnswer | null;
   /** Shows "This is no longer waiting for you." with **Open run**, in place of **Try again**, when set. */
   readonly elsewhere?: DecidedElsewhere | null;
+  /** Shows this sentence, the host's {@link EngineWords.tooOldToAnswer}, with no **Try again**, when set. */
+  readonly tooOld?: string | null;
 }
 
 /** The bar's always-mounted alert slot, above its buttons (a11y 8.3). */
-export function FailedLine({ onRetry, manual = null, elsewhere = null }: FailedLineProps) {
+export function FailedLine({
+  onRetry,
+  manual = null,
+  elsewhere = null,
+  tooOld = null,
+}: FailedLineProps) {
   return (
     <div role="alert" className="text-small text-fg">
       {manual === null ? null : (
@@ -217,7 +244,8 @@ export function FailedLine({ onRetry, manual = null, elsewhere = null }: FailedL
           {decidedElsewhereText}
         </Callout>
       )}
-      {manual !== null || elsewhere !== null || onRetry === null ? null : (
+      {tooOld}
+      {manual !== null || elsewhere !== null || tooOld !== null || onRetry === null ? null : (
         <span className="flex flex-wrap items-center gap-2">
           {failedText}
           <Button variant="ghost" size="sm" onClick={onRetry}>
@@ -260,27 +288,37 @@ export function StaleBar({
   );
 }
 
+/** The line over a card's bar when the served Studio's sign-in ended, as the computer's refusal words it. */
+export const signedOutText = "Sign in again to send your answer.";
+
 /** What a card's bar takes to know the engine isn't answering (UX check item 9). */
 export interface EngineState {
   /** `false` while the engine isn't answering: the buttons stay, but don't act. */
   readonly answering?: boolean;
+  /**
+   * Whether the list stopped loading because the sign-in ended (a served Studio): the engine
+   * still answers, so the line says to sign in again rather than that it isn't answering.
+   */
+  readonly signedOut?: boolean;
   /** The host's words for it; the desktop app's when left out. */
   readonly words?: EngineWords;
 }
 
 /**
- * The line over a card's bar while the engine isn't answering, "showing what it said last",
- * which the decision buttons point at as their reason. Nothing while it answers.
+ * The line over a card's bar while the engine isn't answering, "showing what it said last", or,
+ * signed out, "Sign in again to send your answer.", which the decision buttons point at as their
+ * reason. Nothing while it answers.
  */
 export function NotAnsweringLine({
   id,
   answering = true,
+  signedOut = false,
   words = engineWords["desktop-app"],
 }: EngineState & { readonly id: string }) {
   if (answering) return null;
   return (
     <p id={id} className="text-small text-fg-muted">
-      {words.showingLast}
+      {signedOut ? signedOutText : words.showingLast}
     </p>
   );
 }

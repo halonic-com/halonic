@@ -38,6 +38,15 @@ the person's sign-in), `CLAUDE_CONFIG_DIR`, `CLAUDE_CODE_TMPDIR` (the
 session's own temp folder) and `HALONIC_RUN_TOKEN`. It throws when the profile
 has no settings folder. The run token is removed from every event and error.
 
+`claudeCodeEnvironment(bridge, folders, model)` also points Claude Code's own
+model choices at the task's model when the agent's file named a `models.yaml`
+alias (`modelForEveryCall`): `ANTHROPIC_DEFAULT_HAIKU_MODEL`,
+`ANTHROPIC_DEFAULT_SONNET_MODEL`, `ANTHROPIC_DEFAULT_OPUS_MODEL`,
+`ANTHROPIC_SMALL_FAST_MODEL` and `CLAUDE_CODE_SUBAGENT_MODEL`. A compatible
+provider such as Z.ai has none of Claude's models, so its background and
+subagent calls must ask for the agent's model too. For a name Claude Code knows
+itself, such as `sonnet`, it sets none of them.
+
 Studio runs harnesses in the agent host but computes the environment on its
 own page, so `claudeCodeEnvironment`, its `ClaudeCodeFolders` type and
 `claudeCodeRunTokenVariable` (`HALONIC_RUN_TOKEN`) are also their own entry

@@ -105,6 +105,11 @@ export {
   signedOutAgents,
 } from "./doctor-sign-ins.ts";
 export {
+  doctorCheckLimitMs,
+  type LimitedCheck,
+  type TimedOutLine,
+} from "./doctor-time-limit.ts";
+export {
   EventBus,
   type EventListener,
   type EventMap,
@@ -162,6 +167,8 @@ export {
   ollamaDownloadedModelSource,
   ollamaDownloadedModels,
 } from "./local-models.ts";
+// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
+export * from "./model-choice-exports.ts";
 export { defaultCurrency, type MoneyAmountOptions, moneyAmount } from "./money-amount.ts";
 export { lastMonths, type MonthSpend, monthOf, monthStartOf, spendByMonth } from "./month-spend.ts";
 export {
@@ -179,12 +186,6 @@ export {
 } from "./new-library-item.ts";
 // biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
 export * from "./no-sandbox/index.ts";
-export {
-  type OpenWorkspaceOptions,
-  openWorkspace,
-  reviewServiceKey,
-  workspaceFilesKey,
-} from "./open-workspace.ts";
 export {
   checkOutsideRunCall,
   type OutsideRunCall,
@@ -218,6 +219,14 @@ export {
   type TrustPluginCommand,
 } from "./plugin-commands.ts";
 export {
+  PluginConnector,
+  type PluginConnectorOptions,
+  type PluginConnectorPart,
+  type PluginPartUnavailable,
+  type PluginPartUnavailableReason,
+  pluginPartUnavailableReason,
+} from "./plugin-connector.ts";
+export {
   type PluginToolSet,
   type PluginUiContribution,
   trustedPluginTools,
@@ -239,6 +248,7 @@ export {
 export {
   type LocalToolConfigInput,
   type LocalToolSettingsNotSet,
+  LocalToolSettingsNotSetError,
   localToolConnectorConfig,
 } from "./plugin-local-tool-config.ts";
 export {
@@ -274,6 +284,17 @@ export {
   pluginSettingsCollection,
 } from "./plugin-settings.ts";
 export {
+  declaredSignInTrustFacts,
+  type PluginDeclaredHost,
+  pluginClientSecretHosts,
+  pluginClientSecretNames,
+  type SignInTrustFacts,
+  signInScopesLine,
+  signInTokenHostDiffers,
+  signInTokenHostWarning,
+  signInTrustLine,
+} from "./plugin-sign-in-trust.ts";
+export {
   checkPluginTrustNow,
   type PluginStartTrustOptions,
   type PluginStartTrustReason,
@@ -293,6 +314,7 @@ export {
   type PluginLocalToolContent,
   type PluginPart,
   type PluginSecretContent,
+  type PluginSignInContent,
   type PluginToolContent,
   type PluginTrustContent,
   type PluginTrustInput,
@@ -337,48 +359,12 @@ export {
   type ResourceReportOptions,
   type Resources,
 } from "./resource-report.ts";
-export type { ReviewCard, ReviewRecord } from "./review-record.ts";
-export type { DroppedReviewRecord } from "./review-records.ts";
-export { ReviewService, type ReviewServiceOptions } from "./review-service.ts";
-export type {
-  FileReview,
-  ItemToReview,
-  LeftOut,
-  LeftOutFile,
-  ProposedDelete,
-  ProposedWrite,
-  ProposeOutcome,
-  ReviewCheck,
-  ReviewedFile,
-  ReviewOutcome,
-  ReviewStep,
-  ReviewTarget,
-  Trash,
-  TryItSource,
-} from "./review-types.ts";
-export { ReviewingDefinitionStore } from "./reviewing-store.ts";
-export { type RunEventRefusal, RunEventRefused, RunEvents } from "./run-events.ts";
-export {
-  defaultRunListLimit,
-  type RunDetail,
-  RunHistory,
-  type RunList,
-  type RunListFilter,
-  type RunLookup,
-  shortRunId,
-  shortRunIdLength,
-} from "./run-history.ts";
+// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
+export * from "./review-exports.ts";
+// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
+export * from "./run-exports.ts";
 // biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
 export * from "./run-proposal-exports.ts";
-export {
-  type RunSource,
-  type RunSourceInput,
-  type RunStartedBy,
-  runSourceFor,
-  runVersionOf,
-} from "./run-source.ts";
-export { type RunStanding, type RunWait, runStanding, runWait } from "./run-standing.ts";
-export { type RunStep, runSteps, type StepEnd } from "./run-steps.ts";
 // biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
 export * from "./sandbox-exports.ts";
 export {
@@ -455,31 +441,5 @@ export {
   type Usage,
   whoUses,
 } from "./who-uses.ts";
-export {
-  type FollowOptions,
-  RunFollowStopped,
-  type StartedRun,
-  type StartRunOptions,
-  WorkflowRuns,
-} from "./workflow-runs.ts";
 // biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
-export * from "./workspace-compare.ts";
-export {
-  ChangedOnDiskError,
-  type ChangeOptions,
-  type HeldFile,
-  type PendingChanges,
-  WorkspaceFiles,
-} from "./workspace-files.ts";
-export {
-  placedRoutines,
-  startOfDueRun,
-  type WorkspaceRoutineSchedulerOptions,
-  workspaceRoutineScheduler,
-} from "./workspace-routines.ts";
-export {
-  type AppCommands,
-  type AppEvents,
-  WorkspaceScope,
-  type WorkspaceScopeOptions,
-} from "./workspace-scope.ts";
+export * from "./workspace-exports.ts";

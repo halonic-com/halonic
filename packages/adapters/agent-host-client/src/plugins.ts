@@ -45,10 +45,18 @@ export class AgentHostPluginToolCaller {
     try {
       return readAnswer(route, answer, answerSchema).text;
     } catch (error) {
-      if (!(error instanceof AgentHostError)) throw error;
-      const message = refusalMessages[error.kind];
-      if (message === undefined || error.status === 200) throw error;
-      throw new AgentHostError(error.status, error.kind, message);
+      throw inPlainWords(error);
     }
   }
+}
+
+/**
+ * The host's refusal of a plugin route with the page's own message for its
+ * kind; any other error, and a kind that isn't listed, as it is.
+ */
+export function inPlainWords(error: unknown): unknown {
+  if (!(error instanceof AgentHostError)) return error;
+  const message = refusalMessages[error.kind];
+  if (message === undefined || error.status === 200) return error;
+  return new AgentHostError(error.status, error.kind, message);
 }

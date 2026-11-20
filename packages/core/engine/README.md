@@ -128,7 +128,8 @@ A run's model call is offered a connector's tools only as its kept file allows (
 `engine.run-connector-allow`): the tools its `allow` list names, under the name its server lists
 them under, or every tool the server lists when the file has no `allow`. A connector whose file
 isn't in the kept definitions offers none, and a call to a tool that wasn't offered reaches no
-connector.
+connector. The call itself (`makeConnectorCall`) looks its tool up among the same allowed tools, so
+the approval check never sees, or reports as waiting, a tool `allow` leaves out.
 
 A step that picks data (`gets`) and has no `input` sends only the `## Data` section, not the run's
 input before it. `task` states and `parallel` branches both build their prompt through
@@ -308,13 +309,13 @@ folder adapter that throws can't keep a waiting parent from hearing that its chi
 ## Where the engine runs, and when timers fire
 
 `assembleEngine` builds the engine inside the process that opens it: the CLI's `halonic run`,
-`halonic routines watch` and `halonic serve` on Node, and the desktop Studio in its page, with the
-shell's Tauri stores (HAL-6602). Each holds the workspace's `engine.lock`, so one engine at a time
+`halonic runs send`, `halonic routines watch` and `halonic serve` on Node, and the desktop Studio in
+its page, with the shell's Tauri stores (HAL-6602). Each holds the workspace's `engine.lock`, so one engine at a time
 writes the runs. There is no engine in the background: the scheduler's timers live in that process,
 so a routine's schedule, a `wait` state's `after` timer and the next step of a run only fire while
 the Studio window or one of those commands is open. A run that is due while nothing is open goes on
 when an engine opens again; a run that was `running` when its engine stopped (the window closed or
-the page reloaded) ends as `interrupted` then, and never runs twice
+the page reloaded) ends as failed (`interrupted`) then, and never runs twice
 (`engine.end-interrupted-runs`).
 
 ## Harness runs

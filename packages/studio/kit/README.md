@@ -265,6 +265,10 @@ change. Icon buttons become 40px squares on a touch screen, beside the 40px text
 48px squares with a 20px icon on a phone. A `touch` button's label wraps between
 words, so at large text it grows taller, never wider than its column.
 
+**In a narrow box** (a status box at 400 % zoom), a `sm`, `md` or `lg` button is never wider than
+the box: its label wraps between words, centred, and the button grows taller. On one line nothing
+changes. An `xs` button stays on one line, so the status bar keeps its height.
+
 ## Card
 
 A self-contained summary on a page: a routine, a model provider, a stat. Never a card inside a
@@ -555,6 +559,22 @@ hold no chat logic: each feature turns its `ChatService` answer into these rows 
     </ChatEndLine>
   </ChatMessage>
 </ChatTranscript>;
+<ChatComposer
+  label="Message Sorter"
+  placeholder="Message Sorter…"
+  value={draft}
+  onChange={setDraft}
+  onSend={send}
+  onStop={stop}
+  answering={answering}
+  line={
+    noKey ? (
+      <ChatBoxLine tone="warning" actions={[{ label: "Set the key ›", onClick: openKey, look: "link" }]}>
+        Sorter has no model it can use: <code>smart</code> needs an API key for Anthropic.
+      </ChatBoxLine>
+    ) : undefined
+  }
+/>;
 ```
 
 | Part | What it is |
@@ -564,8 +584,10 @@ hold no chat logic: each feature turns its `ChatService` answer into these rows 
 | `ChatText` | A text step of a reply, in `text-reading`, keeping its line breaks |
 | `ChatToolLine` | One quiet line per tool call: spinner while `running`, tick when `done`, alert mark in `danger` when `failed` |
 | `ChatEndLine` | The line that ends a reply: `danger` for a failure, `plain` for "Stopped by you." and the like, with its actions (a `button`, or a `link` for a way to another place) |
+| `ChatComposer` | The message box and its button. Enter sends, Shift Enter adds a line; while `answering` the button is **Stop**, the same button, so focus stays. `sendUnavailable` makes Send wait with a visible reason. `line` goes under the box |
+| `ChatBoxLine` | The line under the box: `warning` (triangle) for what stops a message, such as no key or a key in the message, `muted` for a calm fact; its actions follow the sentence |
 
-Nothing here is a live region: a reply isn't read while it streams in. The feature announces the
+Nothing in the transcript is a live region: a reply isn't read while it streams in. The composer's line under the box sits in a status region, so it's read once when it appears. The feature announces the
 end of a reply ("Sorter replied.") through the shell's announcer, once.
 
 ## StatusChip
@@ -1622,7 +1644,7 @@ it reads as a state but can be clicked. The slot holds one at a time; the trust 
   ]}
   onOpenSheet={openSampleSheet}
 >
-  Sample · test model
+  Sample answers
 </HeaderBadge>;
 
 <HeaderBadge as="button" action="Review" onClick={openTrustCheck}>
@@ -1633,7 +1655,7 @@ it reads as a state but can be clicked. The slot holds one at a time; the trust 
 | Prop | What it is |
 | --- | --- |
 | `as` | `menu`: opens a Menu. `button`: does one thing, such as opening the trust check |
-| `children` | The words: "Sample · test model", "Not trusted yet" |
+| `children` | The words: "Sample answers", "Not trusted yet" |
 | `description` | `menu` only: the Menu's description line |
 | `entries` | `menu` only: the Menu's items |
 | `onOpenSheet` | `menu` only: on a phone, opens the panel sheet with the same line and items |
@@ -1669,7 +1691,7 @@ same `description` and `entries`, and `onClose` for Back:
 
 ```tsx
 <HeaderBadgeSheet
-  title="Sample · test model"
+  title="Sample answers"
   description="Runs on the built-in test model, with scripted replies. No key, no cost."
   entries={sampleEntries}
   onClose={back}
@@ -2260,6 +2282,7 @@ The promise `openExternal` returns rejects only when a pending address fails; th
 | Default | `accent-text`, like every inline link, underlined in a softer line (`accent-text` at 50%) |
 | Hover | The underline in full `accent-text` |
 | Focus | The standard focus ring |
+| High contrast | The system's link colour (`LinkText`), still underlined |
 | Phone | At least 48px high (`min-h-touch`), so the whole line is the target |
 
 ## WindowBar and Window
@@ -2375,7 +2398,8 @@ A problem with what you're doing in the dialog goes in the dialog (a Field error
 never in a toast.
 
 **When the focused toast closes,** focus goes to the newest toast left, else back to where it was
-before F6.
+before F6 while that place is still in the page, else (focus came by Tab or a click, or that place
+is gone) to the shown page's `h1`, never the body.
 
 **On a phone** the region spans the width less 16px each side, 8px above the bar at the bottom,
 with nothing measured. One toast shows at a time and the rest wait in order. The close button is
@@ -2391,7 +2415,7 @@ the place icons) and `WarningIcon` are outline icons in `currentColor`, hidden f
 they sit in gives them their size.
 `useOpenExternal()` reads the `openExternal` service in force, and `placeIconNames` lists the
 names a `PlaceIcon` knows. `inlineLinkClasses` is the inline link style (accent text, underlined: a
-softer line at rest so a link in a sentence isn't told by colour alone, a full one on hover), for a button that must look like a link, such as Welcome's **Copy details**. `packageName` is `"@halonicjs/studio-kit"`. The timings and counts the
+softer line at rest so a link in a sentence isn't told by colour alone, a full one on hover, and the link colour in high contrast, also on a button), for a button that must look like a link, such as Welcome's **Copy details**. `packageName` is `"@halonicjs/studio-kit"`. The timings and counts the
 components share are exported, so a test reads them instead of copying the number:
 
 | Export | Value | What it is |

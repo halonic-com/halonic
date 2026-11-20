@@ -57,7 +57,8 @@ export function runsOf(
 
 export function startedByOf(summary: RunSummary): RoutineRun["startedBy"] {
   const type = summary.trigger?.type;
-  return type === undefined || type === "manual" ? "run-now" : type;
+  // An Inbox request never names a routine, so its run isn't one of a routine's; read it as Run now.
+  return type === undefined || type === "manual" || type === "inbox" ? "run-now" : type;
 }
 
 export function skipOf(stored: StoredSkip): RoutineSkip {
@@ -84,6 +85,7 @@ export function targetsOf(workspace: LoadedWorkspace, hubId: string | null): Rou
         hubId: file.hub as string,
         id: file.value.id,
         name: file.value.name,
+        start: file.value.start && { label: file.value.start.label, field: file.value.start.field },
       })),
     ...filesOf(workspace, "agent")
       .filter(inHub)

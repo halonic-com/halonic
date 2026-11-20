@@ -91,7 +91,7 @@ First, check that it really is one. If it is:
 - **An absolute path** that has to stay (for example, a doc that explains
   where an operating system keeps its files): add
   `leak-guard: allow absolute-path <reason>` in a comment on the same line.
-- **Anything else except a personal term**: add a line to
+- **Anything else**: add a line to
   `tooling/check/leak-allow.txt`, which needs review from its code owner
   (see `.github/CODEOWNERS`):
 
@@ -105,11 +105,16 @@ First, check that it really is one. If it is:
   as `/tmp/`) or `commit:<hash>` (the commit that added the path, at least 7
   characters), so it excuses that one kind of path or that one commit in the
   file, never any path added there later. A
+  `personal-term` entry is for old commits only (see below). A
   glob's `*` matches within a folder, and `**` matches across folders, but
   an entry must start with a named folder or file, never a glob. File
   rules (`env-file`, `key-file`, `credential-file`) need the exact path.
 
-A personal term can't be allowed. Reword the text instead. Technical
+A personal term in new text can't be allowed. Reword the text instead.
+Only an old commit that can't be reworded any more, and that the repo
+owners accept in history, gets a `personal-term` entry: it names the exact
+file and `commit:<hash>`, so it excuses that one commit in that one file
+and the same term added anywhere later is still refused. Technical
 phrases that happen to contain a term, such as a CSS property name, go in
 `tooling/check/terms-allowed-phrases.txt`. A term is let through only where
 it lies wholly inside such a phrase; the same term elsewhere on the line is
@@ -121,4 +126,5 @@ common technical phrases that say nothing about who the terms are.
 
 If a secret was pushed anywhere, treat it as leaked. Rotate it first, then
 remove it. For a personal term or a path, tell the repo owners straight
-away: rewriting public history needs them.
+away: only they decide whether public history is rewritten or accepted
+as it is (then with a `personal-term` entry per old commit, as above).

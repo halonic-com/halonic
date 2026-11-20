@@ -8,6 +8,7 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import { exitCode } from "../../exit-code.ts";
 import { type GoogleSetup, openGoogleHost } from "../../google-host.ts";
 import { runCli, type Terminal } from "../../run-cli.ts";
+import { openSecretStore } from "../../secret-host.ts";
 import { captureIo } from "../../test/capture-io.ts";
 import { typing } from "../../test/secret-setup.ts";
 import { googleCommandWith } from "./command.ts";
@@ -156,16 +157,37 @@ verifies("cli.commands.google.secret", () => {
     expect((await openGoogleHost(setup).setups.read(accountRef))?.clientSecret).toBeNull();
   });
 
-  it("stops before the prompt when token-key isn't set", async () => {
+  it("makes the token key in a fresh profile, and seals the secret with it", async () => {
+    const { secrets: _givenKey, ...fromProfile } = setup;
+    setup = fromProfile;
     const accountRef = await newAccount();
+
+    const { code, printed } = await googleSecret([accountRef], typing(fakeSecret).terminal);
+
+    expect(code).toBe(exitCode.ok);
+    const made = await openSecretStore(setup.profile).get(tokenKeySecret);
+    expect(made).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(printed).not.toContain(made);
+    const host = openGoogleHost(setup);
+    const record = await host.setups.read(accountRef);
+    expect(await host.clientSecrets.readClientSecret(record?.clientSecret?.clientRef ?? "")).toBe(
+      fakeSecret,
+    );
+  });
+
+  it("stops before the prompt when the token key is gone but sealed secrets remain", async () => {
+    await googleSecret([await newAccount()], typing(fakeSecret).terminal);
     setup = { ...setup, secrets: withTokenKey(false) };
-    const { terminal, written } = typing(fakeSecret);
+    const accountRef = await newAccount();
+    const { terminal, written } = typing(otherSecret);
 
     const { code, io } = await googleSecret([accountRef], terminal);
 
-    expect(code).toBe(exitCode.usage);
+    expect(code).toBe(exitCode.conflict);
     expect(written()).toBe("");
-    expect(io.stderr.join("\n")).toContain("token-key");
+    expect(io.stderr.join("\n")).toContain("HALONIC_SECRET_TOKEN_KEY");
+    expect(await openSecretStore(setup.profile).get(tokenKeySecret)).toBeNull();
+    expect((await openGoogleHost(setup).setups.read(accountRef))?.clientSecret).toBeNull();
   });
 
   it("saves nothing and says nothing of the value when it is only spaces", async () => {

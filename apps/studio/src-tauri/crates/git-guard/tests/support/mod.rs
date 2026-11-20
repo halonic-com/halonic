@@ -1,5 +1,9 @@
 //! Temporary folders and a ready runner for the tests that run real git.
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "a test's programs share its console"
+)]
 // Each test file is its own crate and uses only part of this module.
 #![allow(dead_code)]
 

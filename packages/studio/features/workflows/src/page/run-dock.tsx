@@ -1,3 +1,4 @@
+import type { ShownRuns } from "@halonicjs/studio-feature-inbox/api";
 import type { RunRow, RunsSource } from "@halonicjs/studio-feature-runs/api";
 import { Button, CloseIcon } from "@halonicjs/studio-kit";
 import { useEffect, useMemo, useRef } from "react";
@@ -58,11 +59,15 @@ interface RunDockProps {
   readonly workflowName: string;
   readonly notAnswering: string;
   readonly shown: ReturnType<typeof useShownRun>;
+  /** Where the run card notes its run, so the Inbox leaves it out of its news; see `ShownRuns`. */
+  readonly shownRuns?: ShownRuns | undefined;
   readonly onDock: (next: Dock) => void;
   readonly onStarted: (runId: string) => void;
   readonly openRun: ((runId: string, step?: string) => void) | undefined;
   /** Opens the workspace page at Models, for **Open Models** on the run card's banner. */
   readonly openModels: (() => void) | undefined;
+  /** Opens the workspace page at its Budget block, for **Change budget** on the run card's banner. */
+  readonly openBudget: (() => void) | undefined;
   /** Says a line to a screen reader, for why the run card's **Run again** didn't start. */
   readonly announce: ((line: string) => void) | undefined;
   readonly saveAsTest: (row: RunRow) => SaveAsTestProps | undefined;
@@ -118,10 +123,12 @@ export function RunDock({
   workflowName,
   notAnswering,
   shown,
+  shownRuns,
   onDock,
   onStarted,
   openRun,
   openModels,
+  openBudget,
   announce,
   saveAsTest,
   pickedStep,
@@ -132,6 +139,13 @@ export function RunDock({
     onStarted(runId);
     onDock({ runId });
   };
+  // The run card says when its run needs you, so the Inbox doesn't say it too while it shows.
+  const cardRunId =
+    typeof dock === "object" && shown && pickedStep === undefined ? shown.row.id : undefined;
+  useEffect(() => {
+    if (shownRuns === undefined || cardRunId === undefined) return undefined;
+    return shownRuns.add(cardRunId, { kind: "workflow", hub: workflow.hubId, id: workflow.id });
+  }, [shownRuns, cardRunId, workflow.hubId, workflow.id]);
   if (shown && pickedStep !== undefined && dock !== "start") {
     return (
       <StepInRunCard
@@ -181,6 +195,7 @@ export function RunDock({
           },
         })}
         openModels={openModels}
+        openBudget={openBudget}
       />
     );
   }

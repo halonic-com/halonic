@@ -4,6 +4,7 @@
 // and are listed on HAL-8613 (HAL-2282 rule). The plugin's own text
 // (its name, a purpose, a scope's reason) is only ever a value here.
 
+import { signInTokenHostWarning, signInTrustLine } from "@halonicjs/app";
 import type { SignInFacts } from "./sign-in-facts.ts";
 
 /** The section's heading on the plugin page, next to Settings. */
@@ -20,27 +21,18 @@ const list = new Intl.ListFormat("en-GB", { type: "conjunction" });
  * The trust check line, shown before **Sign in**: "Signs in to your Acme
  * account at auth.example.com. Halonic gets the tokens from
  * auth.example.com. It can: read your projects. The sign-in is used only
- * with api.example.com."
- *
- * A sign-in that asks for no scopes leaves out "It can: …".
+ * with api.example.com." The trust check shows the same line (core's
+ * `signInTrustLine`).
  *
  * @param service - the plugin's name
  */
 export function trustLine(service: string, facts: SignInFacts): string {
-  const can = facts.scopeReasons.length === 0 ? "" : ` It can: ${facts.scopeReasons.join("; ")}.`;
-  return (
-    `Signs in to your ${service} account at ${facts.authorizeHost}. ` +
-    `Halonic gets the tokens from ${facts.tokenHost}.${can} ` +
-    `The sign-in is used only with ${list.format(facts.accessHosts)}.`
-  );
+  return signInTrustLine(service, facts);
 }
 
 /** The token host warning, when the sign-in page and the token address are different services. */
 export function tokenHostWarning(facts: SignInFacts): string {
-  return (
-    `The sign-in page and the token address are different services: ` +
-    `${facts.authorizeHost} and ${facts.tokenHost}. Only continue if you expect that.`
-  );
+  return signInTokenHostWarning(facts);
 }
 
 /** Why **Sign in again** shows: the saved sign-in is for one the person no longer sees. */
@@ -57,6 +49,27 @@ export const SETTINGS_NEEDED = "Fill in this sign-in's settings first.";
  */
 export function signedOutNotConfirmed(service: string): string {
   return `You're signed out here. ${service} didn't confirm, so the token may still work there until it expires.`;
+}
+
+/** The client secret a sign-in needs isn't set (team wording). */
+export const CLIENT_SECRET_NOT_SET = "The client secret isn't set. Set it in Settings.";
+
+/** The host can't take a sign-in's callback where it runs now, such as inside WSL (team wording). */
+export const SIGN_IN_UNAVAILABLE_HERE = "Signing in doesn't work in this setup yet.";
+
+/** Reading where the sign-ins stand failed, in the shape of `settingsNotLoadedTitle` (team wording). */
+export function signInsNotLoaded(name: string, reason: string): string {
+  return `Couldn't load ${name}'s sign-ins: ${reason}`;
+}
+
+/** **Sign in** failed before the browser opened (team wording, microcopy 1.1 "Action failed"). */
+export function signInNotStarted(reason: string): string {
+  return `Couldn't start the sign-in: ${reason}`;
+}
+
+/** **Sign out** failed; nothing was removed (team wording, microcopy 1.1 "Action failed"). */
+export function signOutFailed(reason: string): string {
+  return `Couldn't sign out: ${reason}`;
 }
 
 /**
@@ -109,7 +122,7 @@ export function outcomeLine(service: string, outcome: SignInOutcome): string | u
     case "signInChanged":
       return SIGN_IN_CHANGED;
     case "clientSecretMissing":
-      return "The client secret isn't set. Set it in Settings.";
+      return CLIENT_SECRET_NOT_SET;
     case "incompleteCallback":
     case "linkNoLongerValid":
       return "The sign-in didn't finish. Try again.";

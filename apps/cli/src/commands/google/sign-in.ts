@@ -41,6 +41,7 @@ import { proxySetting } from "../../proxy-setting.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts";
 import { workspaceIntegrations, workspaceNameOf } from "../../workspace-trust.ts";
+import { prepareTokenKey } from "./prepare-token-key.ts";
 import { readSetup } from "./read-setup.ts";
 
 /** How long the sign-in waits for the browser: the sign-in's own lifetime, 10 minutes. */
@@ -104,13 +105,7 @@ export async function signInGoogle(
       googleMessages.signInNoSecretFix(),
     );
   }
-  if (!(await host.tokenKeyIsSet())) {
-    throw new OwnLineError(
-      "invalid_input",
-      googleMessages.secretNeedsTokenKey(),
-      googleMessages.secretNeedsTokenKeyFix(),
-    );
-  }
+  await prepareTokenKey(host);
 
   const dir = await openWorkspaceDir(input, context);
   const workspace = await loadWorkspace(dir.store);

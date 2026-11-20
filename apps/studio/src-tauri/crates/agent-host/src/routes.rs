@@ -233,11 +233,49 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/google/sign-in/cancel",
         route(Method::Post, "/v1/google/sign-in/cancel", Answer::Json),
     ),
+    // An integration's sign-ins (HAL-8613): the host runs the sign-in and
+    // keeps the grant; the page sends only the integration's and the
+    // sign-in's names.
+    (
+        "POST /v1/integrations/sign-in/status",
+        route(
+            Method::Post,
+            "/v1/integrations/sign-in/status",
+            Answer::Json,
+        ),
+    ),
+    (
+        "POST /v1/integrations/sign-in/start",
+        route(Method::Post, "/v1/integrations/sign-in/start", Answer::Json),
+    ),
+    (
+        "POST /v1/integrations/sign-in/cancel",
+        route(
+            Method::Post,
+            "/v1/integrations/sign-in/cancel",
+            Answer::Json,
+        ),
+    ),
+    (
+        "POST /v1/integrations/sign-in/sign-out",
+        route(
+            Method::Post,
+            "/v1/integrations/sign-in/sign-out",
+            Answer::Json,
+        ),
+    ),
     // A trusted plugin's tool call (HAL-9389): the host checks the trust and
     // runs the backend in its own sandbox; the page sends only the plugin's id.
     (
         "POST /v1/plugins/call",
         route(Method::Post, "/v1/plugins/call", Answer::Json),
+    ),
+    // A trusted plugin's own secrets, handed over right before a use
+    // (HAL-13652): the host checks the trust, builds each name itself and
+    // keeps the values in memory only.
+    (
+        "POST /v1/plugins/secrets",
+        route(Method::Post, "/v1/plugins/secrets", Answer::Json),
     ),
 ];
 

@@ -27,6 +27,7 @@ function addCommandWith(setup: PluginSetup): CliCommand {
   return {
     name: "add",
     usage: "<folder|git-address>[@commit] [--yes --fingerprint <fingerprint>]",
+    takesArguments: true,
     summary: pluginMessages.addSummary(),
     action: () => pluginMessages.addAction(),
     options: {
@@ -61,6 +62,7 @@ function removeCommandWith(setup: PluginSetup): CliCommand {
   return {
     name: "remove",
     usage: "<id> [--yes]",
+    takesArguments: true,
     summary: pluginMessages.removeHelp(),
     action: () => pluginMessages.removeAction(),
     options: {

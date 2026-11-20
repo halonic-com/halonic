@@ -27,7 +27,7 @@ stdout:
     \e[2mAsks you before each use.\e[22m
     \e[2mhtl1:748e39a5ffa221f22c3b3c01e5988c8c4bf9ec29a92c8a7ce7e85c81641e40be\e[22m
   \e[33m!\e[39m notes-mcp keeps changing search, so it stays off and isn't asked about.
-    To approve this version on purpose: halonic tools approve notes-mcp search --fingerprint htl1:748e39a5ffa221f22c3b3c01e5988c8c4bf9ec29a92c8a7ce7e85c81641e40be
+    Once notes-mcp stops changing it, review asks about it again within a day: halonic tools review notes-mcp
 stderr:
   \e[33m!\e[39m 2 tools from notes-mcp stay off: there's no terminal to ask you.
     Approve the ones you've read: halonic tools approve notes-mcp <tool> --fingerprint <fingerprint>
@@ -61,7 +61,7 @@ stdout:
     Asks you before each use.
     htl1:748e39a5ffa221f22c3b3c01e5988c8c4bf9ec29a92c8a7ce7e85c81641e40be
   ! notes-mcp keeps changing search, so it stays off and isn't asked about.
-    To approve this version on purpose: halonic tools approve notes-mcp search --fingerprint htl1:748e39a5ffa221f22c3b3c01e5988c8c4bf9ec29a92c8a7ce7e85c81641e40be
+    Once notes-mcp stops changing it, review asks about it again within a day: halonic tools review notes-mcp
 stderr:
   ! 2 tools from notes-mcp stay off: there's no terminal to ask you.
     Approve the ones you've read: halonic tools approve notes-mcp <tool> --fingerprint <fingerprint>

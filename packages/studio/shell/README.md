@@ -68,7 +68,8 @@ skeleton (none for Get set up), says "Loading Home" once for the page, and puts 
 says each reason once, each ending in a full stop (one that has none gets one, so two reasons aren't
 read as one sentence), so when the engine isn't answering, screen readers hear it once, not once per
 section, and the reasons take the place of "Loading Home" while other sections still load
-(`shell.home-states`). `HomeCardProps.attempt` counts the section's Try again presses; a card that
+(`shell.home-states`). `HomeCardProps.attempt` is `0` at first and new across Home after each Try again, so two
+sections on one source share their first load but not a Try again; a card that
 waits for its data's first load passes it to `firstLoad(source, attempt)`, which keeps a failed load
 for that attempt, so React's renders after the failure throw it rather than load again, and only
 Try again loads again. Get set up's card
@@ -81,6 +82,11 @@ Contributions are app-wide and added once, in `register`. Their callbacks (an ex
 `items`, an item action's `run`) get a `WorkspaceContext` for the open workspace; the layout builds
 it with `shell.services.contextFor(featureId, registry)`. The layout reads everything back from
 `shell.contributions`, for example `shell.contributions.itemPage.sectionsFor("agent")`.
+
+The window's context also says what it shows: `context.shown()` is the page on view, the active
+tab's on the desktop and the phone's own page on a phone, as `{ place }` for a place's page, such as
+`{ place: "inbox" }`, `{ item }` for an item's page, or `{}` otherwise (`shell.shown-page`). A feature
+reads it to leave out what that page says already.
 
 ## Window tabs
 
@@ -682,7 +688,13 @@ The states every page shares, so no feature words them on its own:
   page** and the link **Copy details** (microcopy 22 F14); the sidebar and the other tabs keep
   working. Focus goes to the title only if it was lost, and to this page's own `h1` after a Reload
   page that works. The error's message goes only into Copy details. When `pageKey` changes, such as
-  when the tab opens another item, the boundary starts fresh.
+  when the tab opens another item, the boundary starts fresh. In the served Studio and on the
+  phone, a page whose code can't load because the computer can't be reached shows "Couldn't load
+  this page" instead, with the reason "Halonic couldn't reach the computer to show the _page_." and
+  only **Try again**, which imports the code again in place, without Copy details or Reload page
+  (`shell.page-unreachable`). A Settings section shows it too, and a Home card says the same reason
+  under its own title, with Try again. The desktop app, whose code is on the computer itself, still
+  shows "This page stopped working" there.
 - **Copy details.** `useCopyDetails()` copies `detailsOf(what, error)` through the frame's
   clipboard and says "Copied. Paste it into a bug report." or "Couldn't copy." in a toast (22 F13b).
   Outside React, such as in a toast's action, `copyDetails(details, toasts)` does the same.
@@ -837,7 +849,7 @@ The phone's own section pages (HAL-7919) and chips under a summary come later.
 
 `usePhonePlaces()` keeps the place stacks and gives what the bars need (`shell.phone-back`): the
 top bar's title and Back (only under a place's top), the bottom navigation's props (or `undefined`
-on an opened item, where it hides), and `open`, `openPlace`, `openIn` and `back`. Every move that
+on an opened item, where it hides), and `open`, `openPlace`, `openIn`, `show` and `back`. Every move that
 changes the page takes focus to the new page's `h1`, as on the desktop.
 
 `usePhoneBackButton(enabled, closeStack, places)` handles Android's back, and the browser's when
@@ -897,7 +909,7 @@ checklist 1.10). The feature owns the item; the shell draws the header and keeps
   goes on to the close stack.
 - **One view at a time,** remembered for the window tab and the item, even when the tab's page was
   unmounted (`TabPages` keeps it). A tab that shows the item for the first time starts on the first
-  view. A page that draws its own header can use `ItemHeader` and `useRememberedView` itself.
+  view. A page that draws its own header can use `ItemHeader` itself.
 - **Badges** are the kit tabs' `count` (`danger` errors, `warning` waiting for a person) and
   `running` dot.
 - **The chat** (`shell.item-page-chat`): when a feature provides a `chat` for the kind, the chat
@@ -999,10 +1011,11 @@ feature added, which gets `ItemViewProps`: the item and the context of that feat
 only once, however often it's mounted again. While a page's, a sidebar view's or a Settings
 section's view loads, `LoadedView` shows nothing for 300 ms, then skeleton rows read as "Loading
 _page_", and after 10 s "Still loading" with **Try again**. A view whose import failed is imported
-again on the next mount, so **Reload page** can fix a page that couldn't load
-(`shell.view-loading-state`). The window also draws the features' dialog hosts
-(`FeatureDialogs`), and the context it gives views and commands has `openItem(item)`, which opens
-an item as Ctrl K opens a found one, its tab named by the kind's `tab.describe`, else the item's id
+again on the next mount, so in the desktop app **Reload page** can fix a page that couldn't load
+(`shell.view-loading-state`); in the served Studio and on the phone, **Try again** on "Couldn't load
+this page" imports it again in place (`shell.page-unreachable`). The window also draws the
+features' dialog hosts (`FeatureDialogs`), and the context it gives views and commands has
+`openItem(item)`, which opens an item as Ctrl K opens a found one, its tab named by the kind's `tab.describe`, else the item's id
 (`shell.open-item`). On the desktop it also has `showSidebarView(viewId)`, which shows a sidebar view
 as picking its tab does (`studio` shows the places again; an id no feature added changes nothing).
 The window keeps the picked tab in memory only. A phone's context has none
@@ -1034,7 +1047,11 @@ On a phone the same window shows the phone's layout (`shell.studio-phone`): `Stu
 sheet), `StudioPhonePage` (Home or a place's view, as on the desktop, or the `MorePage` at the top
 of More, with its switcher row once the app passes `phoneSwitcher`), and the `BottomNavigation`.
 Android's back goes through `usePhoneBackButton`. The phone keeps its own places next to the
-desktop's tabs, so a window that crosses the phone width comes back to where each layout was. Ctrl
+desktop's tabs, and a window that crosses the phone width keeps the page that's open, with the focus
+on its title (`useOpenPageAcrossLayouts`): narrowed, the phone shows the active tab's page above the
+place that lists it (`showPhonePage`); widened, the active tab shows the phone's page. A list a
+place pushed opens its place, Settings' pages open the Settings dialog, and More, which the desktop
+doesn't have, leaves the desktop's tab as it was (`desktopPageOf`). Ctrl
 K's palette is the desktop's; a phone searches in its Search sheet. `shownPlaces` reads the places
 with their signals for the sidebar, the bottom navigation and the More page alike.
 
@@ -1105,7 +1122,7 @@ The rest of `src/index.ts`, by area; the types are what the parts above take and
 - **Errors:** `ErrorContext`, `ErrorMessage`, `ErrorAction`, `RulePlace`.
 - **Features:** `Feature`, `FeatureDefinition`, `Shell`, `ShellOptions`, `Studio`, `ServiceKey`,
   `ServiceTarget`, `ServiceFactory`, `ServiceLookup`, `FeatureServices`, `WorkspaceContext`,
-  `SettingsSectionName`, `ViewRef`, `ShellError`.
+  `ShownPage`, `SettingsSectionName`, `ViewRef`, `ShellError`.
 - **Points:** `FramePoints`, `FrameContributions`, `LayoutPoints`, `LayoutContributions`,
   `CommandPoints`, `CommandContributions`, `ContextFor`, `Point`, `Ordered`, `Contributed`, `Registered`,
   `KeyboardPlatform`, and the contribution types: `CardContribution`, `PanelWindowContribution`,

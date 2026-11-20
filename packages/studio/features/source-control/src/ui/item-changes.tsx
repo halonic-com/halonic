@@ -62,6 +62,8 @@ function FileChanges({
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string>();
   const discarding = useDiscardToasts();
+  // Headings in the file sit under its path, or straight under the page's h1 without one (a11y C3).
+  const level = showPath ? 3 : 2;
 
   async function discardFile() {
     setBusy(true);
@@ -89,7 +91,7 @@ function FileChanges({
         </span>
       )}
       {fields === undefined ? (
-        <ChangedItemLines list={list} file={file} level={showPath ? 3 : 2} />
+        <ChangedItemLines list={list} file={file} level={level} />
       ) : (
         <NewItemFields file={file} fields={fields} />
       )}
@@ -99,6 +101,7 @@ function FileChanges({
           file={file}
           hunks={hunks}
           newItem={fields !== undefined}
+          level={level}
           discarding={developer ? discarding : undefined}
         />
       ) : null}
@@ -115,12 +118,15 @@ function Advanced({
   file,
   hunks,
   newItem,
+  level,
   discarding,
 }: {
   readonly list: ChangesList;
   readonly file: ChangedFile;
   readonly hunks: readonly LineChange[];
   readonly newItem: boolean;
+  /** The level of the line diff's part headings, as the file's groups' headings. */
+  readonly level: 2 | 3;
   readonly discarding: DiscardToasts | undefined;
 }) {
   const [open, setOpen] = useState(!file.description.described && !newItem);
@@ -134,7 +140,7 @@ function Advanced({
       </span>
       {open && newItem ? <WholeFile file={file} /> : null}
       {open && !newItem ? (
-        <LineDiff list={list} file={file} hunks={hunks} discarding={discarding} />
+        <LineDiff list={list} file={file} hunks={hunks} level={level} discarding={discarding} />
       ) : null}
     </div>
   );
@@ -298,13 +304,17 @@ function LineDiff({
   list,
   file,
   hunks,
+  level,
   discarding,
 }: {
   readonly list: ChangesList;
   readonly file: ChangedFile;
   readonly hunks: readonly LineChange[];
+  /** The level of each part's heading, "Line 3": as the file's groups' headings. */
+  readonly level: 2 | 3;
   readonly discarding: DiscardToasts | undefined;
 }) {
+  const PartHeading = level === 2 ? "h2" : "h3";
   const [failure, setFailure] = useState<string>();
   // The part being discarded: a second press on it, or on another part, would find the file changed.
   const [busyPart, setBusyPart] = useState<string>();
@@ -331,7 +341,7 @@ function LineDiff({
       {hunks.map((part) => (
         <div key={partKey(part)} className="flex items-start gap-3">
           <div className="flex-1">
-            <h3 className="text-small text-fg-muted">{partHeading(part)}</h3>
+            <PartHeading className="text-small text-fg-muted">{partHeading(part)}</PartHeading>
             <pre className="text-small overflow-x-auto rounded-md border border-border p-2">
               {part.removed.map((line, index) => (
                 <span key={`-${index}`} className="block text-danger">

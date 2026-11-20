@@ -127,6 +127,16 @@ verifies("app.plugin-local-tools", () => {
     expect(sandbox?.sessions).toHaveLength(1);
   });
 
+  it("still closes the session when closing its connector throws", async () => {
+    const { local, factory, sandbox } = setUp();
+    const connector = local.connector(lister);
+    await connector.callTool("list-files", {});
+    factory.closeFails = true;
+    await expect(connector.close()).rejects.toThrow("didn't close");
+    expect(factory.closed).toBe(1);
+    expect(sandbox?.sessions[0]?.fence).toEqual({ state: "stopped" });
+  });
+
   it("refuses a local tool the host prepared under another connector id", async () => {
     const sandbox = new TestSandbox();
     const local = new PluginLocalTools({

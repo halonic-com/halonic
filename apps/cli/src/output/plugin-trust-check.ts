@@ -2,27 +2,31 @@
 // before it asks (cli-output 3.6): the same sections, headings and order as
 // Studio's trust check (microcopy 24 T6-T9, CHECK P8), taken from the shared
 // `pluginTrustSections` (app.plugin-trust-sections): Tools for agents,
-// Programs, Secrets, Addresses, then the last line. Studio's
+// Programs, Secrets, Sign-ins, Addresses, then the last line. Studio's
 // "In Studio" section is left out: 0.1 has no Studio to draw the plugin's
 // settings, commands, cards or panel, and that part carries no code
 // (HAL-6417). Every word comes from the catalogue; this file only decides
 // which sentence goes where.
 
 import {
+  declaredSignInTrustFacts,
   type PluginTrustContent,
   type PluginTrustSection,
   pluginProgramSecretText,
   pluginTrustFiles,
   pluginTrustSections,
+  signInTokenHostDiffers,
+  signInTokenHostWarning,
+  signInTrustLine,
 } from "@halonicjs/app";
 import { withHomeAsTilde } from "@halonicjs/profile";
 import type { Message } from "../messages/define.ts";
-import { type Phrase, phrase, plainText } from "../messages/phrase.ts";
+import { markPart, type Phrase, phrase, plainText } from "../messages/phrase.ts";
 import { pluginMessages } from "../messages/plugin.ts";
 import { trustMessages } from "../messages/trust.ts";
 import { nodeProfileEnvironment } from "../workspace-runs.ts";
 import { printable } from "./printable.ts";
-import { row, rowIndent } from "./trust-check-rows.ts";
+import { row, rowIndent, underRow } from "./trust-check-rows.ts";
 
 /** The tool risks in the order the check lists them, each with its group's heading. */
 const riskGroups: readonly { readonly risk: string; readonly heading: () => Message }[] = [
@@ -82,6 +86,7 @@ const cliSections: Readonly<
   tools: { heading: pluginMessages.toolsHeading, rows: toolRows },
   programs: { heading: pluginMessages.programsHeading, rows: programRows },
   secrets: { heading: pluginMessages.secretsHeading, rows: secretRows },
+  "sign-ins": { heading: pluginMessages.signInsHeading, rows: signInRows },
   addresses: { heading: pluginMessages.addressesHeading, rows: addressRows },
 };
 
@@ -167,6 +172,31 @@ function secretRows(content: PluginTrustContent): Phrase[] {
         ? pluginMessages.secretGoesTo(secret.hosts.map(shownHost).join(", ")).phrase
         : phrase`${printable(pluginProgramSecretText(program, secret.name))}`;
     return row(printable(secret.name), where);
+  });
+}
+
+/**
+ * Each sign-in with its purpose, then the trust check line Studio shows
+ * before **Sign in**, and the token host warning when the hosts differ. A
+ * host a setting holds is named by that setting, as under Addresses. The
+ * name, the purpose and the scope reasons are the plugin's text, so the
+ * whole line is escaped.
+ */
+function signInRows(content: PluginTrustContent): Phrase[] {
+  const service = content.plugin.name;
+  return (content.signIns ?? []).flatMap((signIn) => {
+    const facts = declaredSignInTrustFacts(signIn, shownHost);
+    const line = pluginMessages.signInTrustLine(printable(signInTrustLine(service, facts)));
+    const warning = signInTokenHostDiffers(facts)
+      ? [
+          phrase`${underRow}${markPart("needsYou")} ${pluginMessages.signInTokenHostWarning(printable(signInTokenHostWarning(facts))).phrase}`,
+        ]
+      : [];
+    return [
+      row(printable(signIn.name), phrase`${printable(signIn.purpose)}`),
+      phrase`${underRow}${line.phrase}`,
+      ...warning,
+    ];
   });
 }
 

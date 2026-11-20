@@ -202,6 +202,57 @@ verifies("runs.run-view.receipt-approvals", () => {
       ).map((e) => e.text),
     ).toEqual(["Send an email with Gmail: not answered"]);
   });
+
+  const waitStep = (title?: string): RunEventBody => ({
+    type: "run.waiting",
+    state: "review",
+    events: ["approve", "reject", "escalate"],
+    ...(title === undefined ? {} : { title }),
+  });
+  const received = (event: string): RunEventBody => ({ type: "event.received", event });
+
+  it("lists a wait step's answer by its title, among the tool approvals in the order asked (HAL-12727)", () => {
+    const events = logOf(id, [
+      [1, asked("c1", "gmail_send")],
+      [2, { type: "run.waiting", state: "draft", events: ["approve", "reject"] }],
+      [3, answered("c1", "gmail_send", true, "person")],
+      [4, waitStep("Approve this reply?")],
+      [5, received("approve")],
+      [6, waitStep()],
+      [7, received("escalate")],
+    ]);
+    expect(approvalLines(events).map((entry) => entry.text)).toEqual([
+      "Send an email with Gmail: approved by you at 10:43",
+      "Approve this reply?: approved by you at 10:45",
+      "Review: answered escalate by you at 10:47",
+    ]);
+  });
+
+  it("says a wait step is waiting, or not answered once the run ended or a timer moved it on", () => {
+    const texts = (bodies: RunEventBody[]) =>
+      approvalLines(
+        logOf(
+          id,
+          bodies.map((body, index) => [index + 1, body] as const),
+        ),
+      ).map((entry) => entry.text);
+    const failed: RunEventBody = { type: "run.failed", reason: "cancelled" } as never;
+    const timer: RunEventBody = { type: "timer.fired", state: "review", after: "1h" };
+    expect(texts([waitStep("Approve this reply?")])).toEqual([
+      "Approve this reply?: waiting for your answer",
+    ]);
+    expect(texts([waitStep("Approve this reply?"), failed])).toEqual([
+      "Approve this reply?: not answered",
+    ]);
+    expect(texts([waitStep("Approve this reply?"), timer])).toEqual([
+      "Approve this reply?: not answered",
+    ]);
+  });
+
+  it("has no line for a run that waits on a child run", () => {
+    const child: RunEventBody = { type: "run.waiting", state: "sub", events: [], child: "run_2" };
+    expect(approvalLines(logOf(id, [[1, child]]))).toEqual([]);
+  });
 });
 
 verifies("runs.run-view.receipt-messages-read", () => {
@@ -318,6 +369,15 @@ verifies("runs.run-view.receipt-models-cost", () => {
     );
   });
 
+  it("escapes a model name's hidden characters, so the line keeps its order (HAL-13822)", () => {
+    expect(
+      lines([modelCall("claude-next\u202e-5", { cost: 0.0083 })], {
+        cost: 0.0083,
+        unpricedCalls: 0,
+      })[0],
+    ).toBe("claude-next\\u202e-5 · 1 call · 1,000 in · 300 out · €0.008");
+  });
+
   it("says a subscription paid for a call", () => {
     expect(
       lines([modelCall("sonnet", { paidBy: "subscription", cost: 0 })], {
@@ -327,11 +387,13 @@ verifies("runs.run-view.receipt-models-cost", () => {
     ).toEqual(["sonnet · 1 call · 1,000 in · 300 out · on your subscription"]);
   });
 
-  it("says the built-in test model costs nothing, with no amount and no Cost total (#2429)", () => {
+  it("names the built-in test model, not its model id, and says it costs nothing (#2429, HAL-12727)", () => {
     const free = { cost: 0, unpricedCalls: 0 };
-    expect(
-      lines([{ ...modelCall("scripted", { cost: 0 }), provider: "mock" } as RunEventBody], free),
-    ).toEqual(["scripted · 1 call · 1,000 in · 300 out · built-in test model, no cost"]);
+    const testModel = (model: string) =>
+      ({ ...modelCall(model, { cost: 0 }), provider: "mock" }) as RunEventBody;
+    expect(lines([testModel("echo"), testModel("scripted")], free)).toEqual([
+      "Built-in test model · 2 calls · 2,000 in · 600 out · no cost",
+    ]);
     expect(lines([modelCall("scripted", { cost: 0 })], free)).toEqual([
       "scripted · 1 call · 1,000 in · 300 out · no cost",
     ]);

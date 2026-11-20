@@ -1,4 +1,5 @@
 import type { AgentResume } from "./agent-resume.ts";
+import type { ConnectorListingFailedEvent } from "./connector-listing-failed.ts";
 import type {
   ApprovalResolver,
   CantTryStep,
@@ -87,13 +88,21 @@ export type RunEventBody =
   | { type: "state.entered"; state: string }
   /** `parent`: the agent that delegated this one (subagents); absent for the state's own agent. */
   | { type: "agent.started"; state: string; agent: string; prompt: string; parent?: string }
-  /** `alias`: the model alias the call went to, such as `fast`; absent in older logs and when the model has none (requirement `engine.llm-request-alias`). */
+  /**
+   * `alias`: the model alias the call went to, such as `fast`; absent in
+   * older logs and when the model has none (requirement
+   * `engine.llm-request-alias`). `address`: the `host:port` of a provider on
+   * this computer, such as `localhost:11434`, never a URL, path or user
+   * name; absent for any other provider and in older logs (requirement
+   * `engine.llm-event-address`).
+   */
   | {
       type: "llm.request";
       agent: string;
       provider: string;
       model: string;
       alias?: string;
+      address?: string;
       messages: number;
     }
   | {
@@ -144,12 +153,20 @@ export type RunEventBody =
    * The call moved on to the next model. `providerText`: the provider's own
    * error text, for `--debug` and Copy details only (requirement
    * `events.provider-text`); absent in older logs and when it gave none.
+   * `provider`, `model`, `alias` and `address` name the model it moved to,
+   * as `llm.request` does, so a reader stops naming the one that failed
+   * (requirement `engine.llm-event-address`); absent in older logs, and
+   * `alias` and `address` as in `llm.request`.
    */
   | {
       type: "llm.fallback";
       agent: string;
       from: string;
       to: string;
+      provider?: string;
+      model?: string;
+      alias?: string;
+      address?: string;
       error: string;
       providerText?: ProviderText;
     }
@@ -270,6 +287,7 @@ export type RunEventBody =
       connector: string;
       timeoutMs: number;
     }
+  | ConnectorListingFailedEvent
   /**
    * A step is about to make a connector call that can change things
    * (requirement `events.effect-requested`). Written before the call, so a

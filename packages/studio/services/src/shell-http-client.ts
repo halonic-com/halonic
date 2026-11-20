@@ -30,7 +30,9 @@ const noBodyStatuses = new Set([101, 204, 205, 304]);
  * streamed answer arrives all at once. A shell refusal throws an `Error`
  * whose `message` starts with the refusal's kind (`address_refused`,
  * `timeout`, ...) and whose `cause` is the shell's answer. Neither holds the
- * address or a header, which the shell keeps out of its messages.
+ * address or a header, which the shell keeps out of its messages. A proxy
+ * refusal throws a {@link ShellProxyError} instead, so the run reads it as
+ * the CLI's proxy failure.
  */
 export class ShellHttpClient implements HttpClient {
   readonly #ipc: TauriIpc;
@@ -127,7 +129,63 @@ function raceAbort<T>(call: Promise<T>, signal: AbortSignal | undefined): Promis
 /** A shell refusal (`{ kind, message }`) as an `Error`; anything else as it is. */
 function refusalError(error: unknown): unknown {
   if (typeof error === "object" && error !== null && "kind" in error && "message" in error) {
-    return new Error(`${String(error.kind)}: ${String(error.message)}`, { cause: error });
+    const kind = String(error.kind);
+    const message = String(error.message);
+    return isProxyRefusal(kind)
+      ? new ShellProxyError(kind, message, error)
+      : new Error(`${kind}: ${message}`, { cause: error });
   }
   return error;
+}
+
+/**
+ * The shell's proxy refusals (`apps/studio/src-tauri/src/http_fetch.rs`), by
+ * the CLI's proxy problem each one is (`ProxyError` in
+ * `@halonicjs/http-node`), with that problem's kit kind:
+ * - `proxy_refused`: the proxy setting isn't one Halonic can use;
+ * - `plain_http_proxied`: the host is plain `http://` and a proxy is set;
+ * - `proxy`: the proxy couldn't be reached, or didn't take the connection.
+ */
+const proxyRefusals = {
+  proxy_refused: { problem: "setting", kind: "invalid_input" },
+  plain_http_proxied: { problem: "plain-http", kind: "denied" },
+  proxy: { problem: "unreachable", kind: "unavailable" },
+} as const;
+
+type ProxyRefusalKind = keyof typeof proxyRefusals;
+
+function isProxyRefusal(kind: string): kind is ProxyRefusalKind {
+  return Object.hasOwn(proxyRefusals, kind);
+}
+
+/**
+ * Thrown when the shell refused a call at the proxy. Like the CLI's
+ * `ProxyError`, it carries a `kind` and a `failureCause` (`proxy.setting`,
+ * `proxy.plain-http` or `proxy.unreachable`), so a model adapter passes them
+ * on and the run page can say it was the proxy, not the internet. The
+ * `message` is the shell's own sentence, written for the person and without
+ * the proxy's user name or password; the cause's `detail` keeps it as
+ * `message`, as the run page shows it.
+ *
+ * @example
+ * new ShellProxyError("proxy", "couldn't reach the host through the proxy: check HTTPS_PROXY and the proxy", answer);
+ * // failureCause: { code: "proxy.unreachable", detail: { message: "couldn't reach the host…" } }
+ */
+class ShellProxyError extends Error {
+  /** The same stable code as the CLI's `ProxyError`. */
+  readonly code = "proxy-failed";
+  /** The shell's refusal kind, such as `proxy_refused`. */
+  readonly refusal: ProxyRefusalKind;
+  readonly problem: (typeof proxyRefusals)[ProxyRefusalKind]["problem"];
+  readonly kind: (typeof proxyRefusals)[ProxyRefusalKind]["kind"];
+  readonly failureCause: { readonly code: string; readonly detail: Record<string, string> };
+
+  constructor(refusal: ProxyRefusalKind, message: string, answer: unknown) {
+    super(message, { cause: answer });
+    this.name = "ShellProxyError";
+    this.refusal = refusal;
+    this.problem = proxyRefusals[refusal].problem;
+    this.kind = proxyRefusals[refusal].kind;
+    this.failureCause = { code: `proxy.${this.problem}`, detail: { message } };
+  }
 }

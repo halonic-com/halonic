@@ -8,6 +8,7 @@ import {
   TauriRunStore,
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
+import { workspaceProvider } from "@halonicjs/adapter-workspace-models";
 import {
   AgentPlacement,
   InstructionTrustService,
@@ -18,6 +19,7 @@ import {
 import { randomIds, systemClock } from "@halonicjs/std";
 import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
+import { ModelChoiceHostService } from "@halonicjs/studio-feature-first-run/api";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import {
   InboxNoticesService,
@@ -37,6 +39,7 @@ import {
   SkillHostService,
 } from "@halonicjs/studio-feature-library/api";
 import {
+  type ModelKeys,
   ModelKeysService,
   ModelsFilesService,
   NoLimitMemoryService,
@@ -47,6 +50,7 @@ import {
   InstructionTrustHostService,
   RunStartHostService,
   RunsSourceService,
+  VersionHistoryHostService,
 } from "@halonicjs/studio-feature-runs/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import {
@@ -57,12 +61,14 @@ import { WorkflowsHostService } from "@halonicjs/studio-feature-workflows/api";
 import {
   ShellHttpClient,
   shellKeychain,
+  shellKeyOrigins,
   type TauriIpc,
   tauriAgentHostTransport,
 } from "@halonicjs/studio-services";
 import { EngineNotAnswering } from "@halonicjs/studio-shell";
 import { agentHostHarnessDetect } from "../agents/agent-host-harness-detect.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
+import { versionHistoryOf } from "../changes/version-history.ts";
 import { type GitAnswer, WorkspaceChanges } from "../changes/workspace-changes.ts";
 import { choicesMemory } from "../changes/workspace-merge.ts";
 import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
@@ -81,6 +87,7 @@ import { WorkspaceNewCollection } from "../library/workspace-new-collection.ts";
 import { WorkspaceNewConnector } from "../library/workspace-new-connector.ts";
 import { WorkspaceNewSkill } from "../library/workspace-new-skill.ts";
 import { WorkspaceSkills } from "../library/workspace-skills.ts";
+import { FirstRunModelChoice } from "../models/first-run-model-choice.ts";
 import { WorkspaceModelKeys } from "../models/workspace-model-keys.ts";
 import { WorkspaceModelsFiles } from "../models/workspace-models-files.ts";
 import { WorkspaceNoLimit } from "../models/workspace-no-limit.ts";
@@ -150,7 +157,8 @@ export function provideFolderServices(
       },
     }),
   );
-  services.provide(ModelKeysService, new WorkspaceModelKeys(shellKeychain(ipc)));
+  const keys = services.provide(ModelKeysService, new WorkspaceModelKeys(shellKeychain(ipc)));
+  provideModelChoice(services, { ipc, trust, keys, ...(settle === undefined ? {} : { settle }) });
   services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
   services.provide(ProviderCheckService, new WorkspaceProviderCheck(new ShellHttpClient(ipc)));
   provideWorkspaceRuns(services, { ipc, files, window }, location);
@@ -163,20 +171,19 @@ export function provideFolderServices(
     InstructionTrustHostService,
     new WorkspaceInstructionTrust(instructionTrust, location),
   );
-  services.provide(
-    ChangesSourceService,
-    new WorkspaceChanges({
-      git: async (args) =>
-        (await ipc.invoke("git", { root: location, args: [...args] })) as GitAnswer,
-      files: new TauriDefinitionStore(files, location),
-      // `.studio/discarded`, which the folder's own store refuses as private.
-      copies: new TauriDefinitionStore(files, location, { folder: "discarded" }),
-      choices: choicesMemory(storageOf(window), location),
-      digest: webCryptoDigest,
-      onFocus: (listener) => focusOf(window, listener),
-      onFilesChanged: (listener) => scope.events.on("files.changed", listener),
-    }),
-  );
+  const changes = new WorkspaceChanges({
+    git: async (args) =>
+      (await ipc.invoke("git", { root: location, args: [...args] })) as GitAnswer,
+    files: new TauriDefinitionStore(files, location),
+    // `.studio/discarded`, which the folder's own store refuses as private.
+    copies: new TauriDefinitionStore(files, location, { folder: "discarded" }),
+    choices: choicesMemory(storageOf(window), location),
+    digest: webCryptoDigest,
+    onFocus: (listener) => focusOf(window, listener),
+    onFilesChanged: (listener) => scope.events.on("files.changed", listener),
+  });
+  services.provide(ChangesSourceService, changes);
+  services.provide(VersionHistoryHostService, versionHistoryOf(changes));
   const transport = tauriAgentHostTransport(window);
   const engine = services.provide(
     engineServiceKey,
@@ -187,6 +194,7 @@ export function provideFolderServices(
       name,
       definitions: new TauriDefinitionStore(files, location),
       secrets: shellKeychain(ipc),
+      keyOrigins: shellKeyOrigins(ipc),
       http: new ShellHttpClient(ipc),
       clock: systemClock,
       isTrusted: async (workspace) => (await trust.checkLoaded(workspace)).status === "trusted",
@@ -376,6 +384,34 @@ export function provideFolderServices(
     location,
     onFocus: (listener) => focusOf(window, listener),
   });
+}
+
+/** Gives the first run's model choice: its test call goes the way a run's calls go. */
+function provideModelChoice(
+  services: ServiceRegistry,
+  parts: Pick<FolderServiceParts, "ipc" | "trust" | "settle"> & { keys: ModelKeys },
+): void {
+  const { ipc, trust, keys, settle } = parts;
+  services.provide(
+    ModelChoiceHostService,
+    new FirstRunModelChoice({
+      files: services.get(ModelsFilesService),
+      change: (label, changes) => services.get(workspaceFilesKey).change(label, changes),
+      // Without a save to wait for, the trust check reads the old files and trusts nothing.
+      settle: settle ?? (async () => {}),
+      keys,
+      trust,
+      digest: webCryptoDigest,
+      // The test call goes the way a run's calls go, with only the pasted key as its secrets.
+      provider: (file, secrets) =>
+        workspaceProvider(file, { secrets, http: new ShellHttpClient(ipc) }),
+      setTimer: (callback, delayMs) => {
+        const timer = setTimeout(callback, delayMs);
+        return () => clearTimeout(timer);
+      },
+      newTestId: () => crypto.randomUUID(),
+    }),
+  );
 }
 
 /**

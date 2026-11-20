@@ -320,6 +320,25 @@ affected; a version bump would cost something and protect nobody. A
 separate cloud-only port was rejected too: it would be the same interface
 twice, and the host would handle two port types for one job.
 
+## Added after the freeze: `DeployTarget`
+
+_2026-11-19, decided by Liam on HAL-13512, built in HAL-6702 (Cloud track 1d)._
+A new port keeps every other port's version (see "The freeze").
+
+- **`DeployTarget`, version 1:** `login`, `plan`, `deploy`, `status`,
+  `rollback`, `export`, `import`, `unlock`, `revokeSessions` and `destroy`
+  for one deployment on a host such as Cloudflare (ADR 5.6). A deploy
+  reports typed step events and ends in a result that is data, including
+  every warning after the switch. Failures carry one of the kit's error kinds, so
+  `halonic deploy` needs no new exit code. A target package exports a
+  `DeployTargetEntry` as `deployTarget`, and the command line loads it by
+  name and checks it, because it may never import a target
+  (`check.cli-never-uses-deploy-targets`).
+- **Why a port, not an interface in `apps/cli`:** a target that only
+  matches an interface by shape is never checked against it when the
+  target is compiled. In `core/ports`, the Cloudflare target implements it
+  and its typecheck fails when the two drift.
+
 ## Consequences
 
 - Adapters for Node and Cloudflare implement the same interfaces, and a

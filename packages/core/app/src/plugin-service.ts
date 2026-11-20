@@ -9,15 +9,14 @@
 // records and the setting values only through ports.
 
 import type { Plugin } from "@halonicjs/format";
-import {
-  type Clock,
-  checkPluginFiles,
-  type Digest,
-  type FolderEntry,
-  type FolderReader,
-  type PluginFolderWriter,
-  type RecordStore,
-  type TrustGrant,
+import type {
+  Clock,
+  Digest,
+  FolderEntry,
+  FolderReader,
+  PluginFolderWriter,
+  RecordStore,
+  TrustGrant,
 } from "@halonicjs/ports";
 import { err, ok, type Result } from "@halonicjs/std";
 import {
@@ -30,11 +29,16 @@ import { type PluginProblem, readPluginFolder } from "./plugin-folder.ts";
 import { type PluginInstall, PluginInstalls, type PluginSource } from "./plugin-installs.ts";
 import { pluginSecretNames } from "./plugin-secret-names.ts";
 import {
+  notAFolderProblem,
+  readFailedProblem,
+  unsafeNameProblem,
+} from "./plugin-service-problems.ts";
+import {
   type PluginSettingProblem,
   PluginSettings,
   type PluginSettingValues,
 } from "./plugin-settings.ts";
-import { PluginSourceSnapshot, sourceFolder } from "./plugin-source.ts";
+import { overlapsHalonicData, PluginSourceSnapshot, sourceFolder } from "./plugin-source.ts";
 import type { PluginTrustCheck } from "./plugin-trust.ts";
 import type { PersonTrustOrigin, TrustRefusal } from "./trust-record.ts";
 import type { TrustService } from "./trust-service.ts";
@@ -75,7 +79,9 @@ export type PluginTrustRefusal =
  */
 export type PluginAddRefusal =
   | { readonly kind: "broken"; readonly problems: readonly PluginProblem[] }
-  | { readonly kind: "taken"; readonly id: string; readonly name: string };
+  | { readonly kind: "taken"; readonly id: string; readonly name: string }
+  /** The source is, holds or is inside Halonic's own data (see `overlapsHalonicData`). */
+  | { readonly kind: "halonic-data" };
 
 /** How {@link PluginService.add} adds a plugin. */
 export interface AddPluginOptions {
@@ -123,6 +129,14 @@ export interface PluginServiceOptions {
   readonly records: RecordStore;
   /** Dates each saved setting value. */
   readonly clock: Clock;
+  /**
+   * Halonic's own data folders on this computer that a plugin's source must
+   * stay clear of, each absolute and in every spelling the host knows (as
+   * written, with links resolved): the profile folder, and the open
+   * workspace's `.studio` data. Any workspace's `.studio` is refused
+   * without being named here. None by default.
+   */
+  readonly halonicData?: readonly string[];
 }
 
 /**
@@ -174,6 +188,10 @@ export class PluginService {
    * or checked is refused before anything is written. A new copy that
    * can't be read back is taken out again and refused the same way.
    *
+   * A source whose real location is, holds or is inside Halonic's own data
+   * (`halonicData`, or any workspace's `.studio`) is refused as
+   * `halonic-data` before anything in it is read.
+   *
    * It doesn't trust the plugin: the entry it gives is new, or changed when
    * it replaced one, until a person trusts it with {@link trust}.
    *
@@ -184,6 +202,7 @@ export class PluginService {
     source: FolderReader,
     options: AddPluginOptions,
   ): Promise<Result<PluginEntry, PluginAddRefusal>> {
+    if (await this.#overlapsHalonicData(source)) return err({ kind: "halonic-data" });
     const snapshot = new PluginSourceSnapshot(source);
     let read: Awaited<ReturnType<typeof readPluginFolder>>;
     try {
@@ -222,6 +241,16 @@ export class PluginService {
       return err({ kind: "broken", problems: entry.problems });
     }
     return ok(entry);
+  }
+
+  /**
+   * Whether the source's real location overlaps Halonic's own data. A
+   * source with no location, or whose reader fails, is left to the read,
+   * which refuses it with its reason.
+   */
+  async #overlapsHalonicData(source: FolderReader): Promise<boolean> {
+    const real = await source.locationOf().catch(() => null);
+    return real !== null && overlapsHalonicData(real, this.#options.halonicData ?? []);
   }
 
   /**
@@ -442,58 +471,4 @@ function pluginFolderOf(id: string): string {
 
 function broken(folder: string, problems: readonly PluginProblem[]): BrokenPlugin {
   return { status: "broken", folder, problems };
-}
-
-/** A link or special file where a plugin folder should be, with the codes `readPluginFolder` uses inside one. */
-function notAFolderProblem(entry: FolderEntry): PluginProblem {
-  if (entry.kind === "link") {
-    return {
-      code: "link",
-      file: "",
-      path: [],
-      message: `${entry.path} is a link, not a folder. Each plugin is a folder of its own, so a link can't point Halonic at files it didn't check.`,
-    };
-  }
-  return {
-    code: "special-file",
-    file: "",
-    path: [],
-    message: `${entry.path} is a special file, such as a pipe or a socket. Each plugin is a folder of its own.`,
-  };
-}
-
-/**
- * A problem when the id or a file's name is one some system would open as
- * another entry, such as `con` or `notes.`, or two names are the same file
- * on a disk that ignores case, so the plugin can't be placed as it was
- * checked; `null` when every name is safe.
- */
-function unsafeNameProblem(
-  id: string,
-  files: ReadonlyMap<string, Uint8Array>,
-): PluginProblem | null {
-  try {
-    checkPluginFiles(id, files);
-    return null;
-  } catch (error) {
-    if (!(error instanceof RangeError)) throw error;
-    return {
-      code: "unsafe-name",
-      file: "",
-      path: [],
-      message: `${error.message} Rename it in the plugin's source and add it again.`,
-    };
-  }
-}
-
-/** What the reader, the digest or the trust check threw, for this one plugin. */
-function readFailedProblem(error: unknown): PluginProblem {
-  // A reason that ends a sentence already isn't given a second full stop.
-  const reason = (error instanceof Error ? error.message : String(error)).replace(/\.$/u, "");
-  return {
-    code: "read-failed",
-    file: "",
-    path: [],
-    message: `Halonic couldn't read the plugin: ${reason}. Load it again; if it keeps failing, remove the plugin and install it again.`,
-  };
 }

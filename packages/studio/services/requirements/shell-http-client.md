@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-10348, HAL-10372
+- Source: HAL-10348, HAL-10372; HAL-13725 (proxy refusals as the CLI's typed causes, decided by the team)
 
-While the Studio runs in the desktop shell, a `ShellHttpClient` shall make its outbound HTTP calls through the shell's `http_fetch` command, so the shell's address checks apply and a key never goes through the webview's network layer. It shall be an `HttpClient`: a call that gets an answer resolves with a `Response` for any status; `redirect: "error"` throws on a redirect, `"manual"` returns it and the default follows it in the shell; a signal that is aborted, before or during the call, rejects and tells the shell to stop the call; a refusal from the shell throws an error that names its kind and never holds the address or a header. Each call has its own id on the page. A body that isn't a string is refused before any call. Outside the shell there is no client.
+While the Studio runs in the desktop shell, a `ShellHttpClient` shall make its outbound HTTP calls through the shell's `http_fetch` command, so the shell's address checks apply and a key never goes through the webview's network layer. It shall be an `HttpClient`: a call that gets an answer resolves with a `Response` for any status; `redirect: "error"` throws on a redirect, `"manual"` returns it and the default follows it in the shell; a signal that is aborted, before or during the call, rejects and tells the shell to stop the call; a refusal from the shell throws an error that names its kind and never holds the address or a header. A proxy refusal carries the CLI's typed proxy cause instead, with the shell's sentence as its message: `proxy_refused` is `proxy.setting` (`invalid_input`), `plain_http_proxied` is `proxy.plain-http` (`denied`) and `proxy` is `proxy.unreachable` (`unavailable`), so a run that failed at the proxy says so rather than that the computer may be offline. Each call has its own id on the page. A body that isn't a string is refused before any call. Outside the shell there is no client.
 
 ## Examples
 
@@ -20,3 +20,6 @@ While the Studio runs in the desktop shell, a `ShellHttpClient` shall make its o
 - Given the shell refuses the address,
   when the adapter calls `fetch`,
   then it gets an error with kind `address_refused`.
+- Given a proxy is set and the shell refuses a call with `proxy_refused`,
+  when the adapter calls `fetch`,
+  then it gets an error with kind `invalid_input`, the cause `proxy.setting` and the shell's sentence as its message.

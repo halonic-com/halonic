@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1289, HAL-1563, HAL-8421 (`xs`), HAL-13102 (`danger-outline`); base component specs 1, 0.2 and 23.5
+- Source: HAL-1289, HAL-1563, HAL-8421 (`xs`), HAL-13102 (`danger-outline`), HAL-14010 (labels wrap); base component specs 1, 0.2 and 23.5
 
-The kit shall render a `Button` as a native `<button>` of type `button` unless it is given `type="submit"`, in one of five variants (`primary`, `secondary`, `ghost`, `danger-outline`, `danger`) and five sizes (`xs`, `sm`, `md`, `lg`, `touch`), with the variant and size written once as class lists in the kit. An `xs` button shall be 20px high, so it fits in the 24px status bar with its line, in the caption type, and is meant only for the status bar; the other sizes shall use the body's strong type. When a `Button` has an `icon` and a `label` and no children, the kit shall render a square icon button named by its `label`, with the icon hidden from screen readers. While the layout is the phone's or the pointer is coarse, the kit shall render `xs`, `sm` and `md` buttons at `lg` with a 48px hit area. While the pointer is coarse, an icon button shall be a 40px square with a 48px hit area; while the layout is the phone's, a 48px square, also when the pointer is coarse.
+The kit shall render a `Button` as a native `<button>` of type `button` unless it is given `type="submit"`, in one of five variants (`primary`, `secondary`, `ghost`, `danger-outline`, `danger`) and five sizes (`xs`, `sm`, `md`, `lg`, `touch`), with the variant and size written once as class lists in the kit. An `xs` button shall be 20px high, so it fits in the 24px status bar with its line, in the caption type, and is meant only for the status bar; the other sizes shall use the body's strong type. A `sm`, `md` or `lg` button with words shall never be wider than the box it's in: when its label doesn't fit on one line, the label shall wrap between words, centred, and the button grow taller; an `xs` button shall stay on one line. When a `Button` has an `icon` and a `label` and no children, the kit shall render a square icon button named by its `label`, with the icon hidden from screen readers. While the layout is the phone's or the pointer is coarse, the kit shall render `xs`, `sm` and `md` buttons at `lg` with a 48px hit area. While the pointer is coarse, an icon button shall be a 40px square with a 48px hit area; while the layout is the phone's, a 48px square, also when the pointer is coarse.
 
 ## Examples
 
@@ -20,6 +20,9 @@ The kit shall render a `Button` as a native `<button>` of type `button` unless i
 - Given a `md` button,
   when it renders,
   then its classes include `phone:min-h-control-lg`, `touch:min-h-control-lg`, `phone:hit-touch` and `touch:hit-touch`.
+- Given a `sm` button "Check for updates" in a status box 115px wide, at 400 % zoom,
+  when it renders,
+  then its label wraps onto two lines inside the box and the page doesn't scroll sideways.
 - Given a `xs` button,
   when it renders,
   then its classes include `min-h-5` and `text-caption`, and not `text-body-strong`.
