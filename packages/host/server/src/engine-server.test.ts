@@ -1,6 +1,8 @@
 import { launchTokenRefusalContract } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { chatTurnPath } from "./chat-turn-routes.ts";
+import { connectorCallPath } from "./connector-routes.ts";
 import { type EngineRoutePorts, engineRoutes } from "./engine-routes.ts";
 import {
   enginePort,
@@ -11,7 +13,11 @@ import {
   testEngine,
 } from "./engine-server.test-helper.ts";
 import { createEngineServer } from "./engine-server.ts";
+import { googlePathPrefix } from "./google-routes.ts";
+import { googleCallbackPath } from "./google-sign-in-routes.ts";
 import { bearerMatches } from "./launch-token-check.ts";
+import { providerKeyPathPrefix } from "./provider-key-routes.ts";
+import { webhookPathPrefix } from "./webhooks.ts";
 
 /** Every route the engine role serves. A new one is a security review's business, not a quiet addition. */
 const expectedRoutes = [
@@ -70,17 +76,19 @@ verifies("server.engine-server", () => {
 
     it("answers 404 with the token to every route `serve` has and the engine doesn't", async () => {
       const { server } = testEngine();
+      // Built from `serve`'s own path constants where it has them, so a renamed route can't leave this list testing nothing.
       const others = [
         "GET /api/trust",
         "GET /api/session",
         "POST /api/login",
+        "POST /api/logout",
         "GET /api/workspace",
-        "POST /api/webhooks/acme/digest",
-        "POST /api/chat-turns",
-        "POST /api/connector-calls",
-        "GET /api/secrets",
-        "GET /api/google/setups",
-        "GET /api/google/callback",
+        `POST ${webhookPathPrefix}acme/digest`,
+        `POST ${chatTurnPath}`,
+        `POST ${connectorCallPath}`,
+        `GET ${providerKeyPathPrefix}ACME_API_KEY`,
+        `GET ${googlePathPrefix}setups`,
+        `GET ${googleCallbackPath}`,
         "GET /",
       ];
       for (const route of others) {

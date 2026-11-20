@@ -37,6 +37,11 @@ export type RoutineRoutePorts = Pick<ServerPorts, "runs" | "trust" | "clock"> & 
 /** One part of a routine's key, as a webhook address takes it. */
 const keySegment = /^[@A-Za-z0-9._-]{1,128}$/;
 
+/**
+ * Builds the engine role's routine routes. They don't check the launch token
+ * themselves: `createEngineServer` does that before any route runs. Run now asks
+ * the trust gate on every call, before it reads a routine.
+ */
 export function createRoutineRoutes(ports: RoutineRoutePorts): RoutineRoutes {
   const { routines, runs, trust, clock } = ports;
 

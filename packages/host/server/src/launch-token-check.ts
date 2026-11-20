@@ -34,7 +34,8 @@ export function bearerMatches(authorization: string | undefined, token: string):
  * token can't learn which paths exist.
  *
  * @param token the launch's token, or `undefined` only for a route the host
- *   serves without it (the agent host's sign-in redirect)
+ *   serves without it (the agent host's sign-in redirect). The engine role
+ *   serves no such route, so it always passes its token.
  * @returns `undefined` when the request may go on
  */
 export function launchRequestRefusal(

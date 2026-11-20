@@ -10,7 +10,7 @@ Rationale: another program or OS user on the computer can reach the loopback por
 
 ## Examples
 
-- Given a request to `/api/trust`, `/api/hello`, `/api/webhooks/acme/digest` or `/` with the token, then it answers 404.
+- Given a request to `/api/trust`, `/api/logout`, `/api/webhooks/acme/digest` or `/` with the token, then it answers 404.
 - Given a request to any engine route without the token, then it answers 401, and nothing is started or read.
 - Given the engine's route list, then it is exactly the eleven routes above.
 - Given `GET /api/hello` with the token, then it answers only the run executor version.
