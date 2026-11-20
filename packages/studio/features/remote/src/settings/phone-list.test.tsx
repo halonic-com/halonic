@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type { SettingsSurface } from "@halonicjs/studio-shell";
 import { FakeRemoteControl } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -31,14 +32,14 @@ async function twoPhones(on = true) {
   return remote;
 }
 
-async function renderSection(remote: FakeRemoteControl) {
+async function renderSection(remote: FakeRemoteControl, surface: SettingsSurface = "window") {
   const announced: string[] = [];
   const view = render(
     <RemoteSection
       context={remoteContext(remote, announced)}
       closeSettings={() => undefined}
       place="app"
-      surface="window"
+      surface={surface}
     />,
   );
   await settle();
@@ -62,7 +63,7 @@ verifies("remote.paired-phones", () => {
   it("lists each phone with what it can do and whether it is connected", async () => {
     const { view, button } = await renderSection(await twoPhones());
 
-    expect(view.querySelector("h3")?.textContent).toBe("Paired phones · 2");
+    expect(view.querySelector("h4")?.textContent).toBe("Paired phones · 2");
     const rows = [...view.querySelectorAll("li")].map((row) => row.textContent);
     expect(rows[0]).toContain("Pixel 8");
     expect(rows[0]).toMatch(/Android · Paired \d+ [A-Z][a-z]{2}/u);
@@ -72,6 +73,21 @@ verifies("remote.paired-phones", () => {
     expect(button("Revoke Pixel 8")).toBeDefined();
     expect(button("Revoke all")).toBeDefined();
     expect(view.textContent).not.toContain("No phones paired");
+  });
+
+  it("puts the list heading one level under the section's name, in the dialog and on a phone", async () => {
+    // h4 under the dialog's h3, h2 under the phone page's h1 (HAL-13401).
+    const { view } = await renderSection(await twoPhones());
+    expect([...view.querySelectorAll("h2, h3, h4")].map(({ tagName }) => tagName)).toEqual(["H4"]);
+    unmountAll();
+
+    const phone = await renderSection(await twoPhones(), "phone");
+    expect(phone.view.querySelector("h2")?.textContent).toBe("Paired phones · 2");
+    expect([...phone.view.querySelectorAll("h3, h4")]).toEqual([]);
+    unmountAll();
+
+    const empty = await renderSection(new FakeRemoteControl(), "phone");
+    expect(empty.view.querySelector("h2")?.textContent).toBe("No phones paired");
   });
 
   it("says Remote is off on every row while it is, and Revoke still works", async () => {

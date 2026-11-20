@@ -72,6 +72,17 @@ verifies("settings.ai-agent-section", () => {
     );
   });
 
+  it("gives its groups as h4 under the dialog's h3, and as h2 under the phone page's h1", async () => {
+    const { view, settings } = await setup();
+    const levels = (within: HTMLElement) =>
+      [...within.querySelectorAll("h2, h3, h4, h5")].map(({ tagName }) => tagName);
+    expect(levels(view)).toEqual(["H4", "H4"]);
+    const phone = render(
+      <AssistantView settings={settings} announce={vi.fn()} place="app" surface="phone" />,
+    );
+    expect(levels(phone)).toEqual(["H2", "H2"]);
+  });
+
   it("does not repeat the first line in its body", async () => {
     const { view } = await setup();
     expect(view.textContent).not.toContain("Halonic can't open assistant chats yet");

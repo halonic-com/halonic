@@ -7,7 +7,7 @@ import {
   Switch,
   ViewOnlyLine,
 } from "@halonicjs/studio-kit";
-import type { SettingsSectionProps } from "@halonicjs/studio-shell";
+import type { SettingsSectionProps, SettingsSurface } from "@halonicjs/studio-shell";
 import { HalonicVersionService, type UpdaterHost, UpdaterService } from "../api.ts";
 import { type AboutAction, type AboutProgress, aboutView } from "./about-state.ts";
 import * as text from "./about-text.ts";
@@ -24,17 +24,28 @@ const actionVariants: Record<AboutAction, "primary" | "secondary" | "ghost"> = {
   "try-again": "secondary",
 };
 
+/**
+ * The level of the version's heading: `h3` in the dialog, as it has always been, and `h2` under
+ * the phone page's `h1`, so no level is skipped there. The Scoop heading sits one under it.
+ */
+function versionLevel(surface: SettingsSurface | undefined): 2 | 3 {
+  return surface === "phone" ? 2 : 3;
+}
+
 /** Settings › About Halonic as the settings container shows it. Without an updater it only says so. */
-export function AboutSection({ context }: SettingsSectionProps) {
+export function AboutSection({ context, surface }: SettingsSectionProps) {
   const host = hostOf(context);
   if (host === undefined)
-    return <ViewOnlyAbout version={context.services.find(HalonicVersionService)} />;
+    return (
+      <ViewOnlyAbout version={context.services.find(HalonicVersionService)} surface={surface} />
+    );
   const flow = context.services.find(RestartFlowService);
   return (
     <AboutHostView
       host={host}
       announce={(line) => context.announcer.announce(line)}
       onRestart={flow === undefined ? undefined : () => flow.request()}
+      surface={surface}
     />
   );
 }
@@ -46,11 +57,14 @@ export interface AboutHostViewProps {
   readonly announce: (line: string) => void;
   /** Opens the restart flow; without it, a ready update offers no Restart to update button. */
   readonly onRestart?: (() => void) | undefined;
+  /** `phone` on the phone's Settings page, where the headings sit under the page's `h1`. */
+  readonly surface?: SettingsSurface | undefined;
 }
 
 /** The section over an updater: the status line, its buttons, the automatic switch and the links. */
-export function AboutHostView({ host, announce, onRestart }: AboutHostViewProps) {
+export function AboutHostView({ host, announce, onRestart, surface }: AboutHostViewProps) {
   const updater = useUpdater(host, announce);
+  const Version = `h${versionLevel(surface)}` as const;
   const { status } = updater;
   if (status === null)
     return (
@@ -78,7 +92,7 @@ export function AboutHostView({ host, announce, onRestart }: AboutHostViewProps)
     <div className="flex max-w-120 flex-col gap-5">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
-          <h3 className="text-body font-medium">{text.versionHeading(status.current)}</h3>
+          <Version className="text-body font-medium">{text.versionHeading(status.current)}</Version>
           {updater.unanswered ? <NoAnswer onRetry={updater.retry} /> : null}
           {updater.unanswered || view.callout ? null : (
             <p className="text-small text-fg-muted">{view.line}</p>
@@ -121,7 +135,9 @@ export function AboutHostView({ host, announce, onRestart }: AboutHostViewProps)
           )}
         </div>
       )}
-      {status.managed === null ? null : <ManagedBlock command={status.managed.command} />}
+      {status.managed === null ? null : (
+        <ManagedBlock command={status.managed.command} surface={surface} />
+      )}
       <CheckSwitch
         on={status.automatic}
         managed={status.managed !== null}
@@ -167,10 +183,18 @@ function NoAnswer({ onRetry }: { readonly onRetry: () => void }) {
 }
 
 /** Scoop keeps Halonic up to date: the command to run, with Copy, in every state. */
-function ManagedBlock({ command }: { readonly command: string }) {
+function ManagedBlock({
+  command,
+  surface,
+}: {
+  readonly command: string;
+  readonly surface: SettingsSurface | undefined;
+}) {
+  // One level under the version's heading.
+  const Heading = versionLevel(surface) === 2 ? "h3" : "h4";
   return (
     <div className="flex flex-col gap-2">
-      <h4 className="text-body font-medium">{text.MANAGED_HEADING}</h4>
+      <Heading className="text-body font-medium">{text.MANAGED_HEADING}</Heading>
       <p className="text-small text-fg-muted">{text.MANAGED_SENTENCE}</p>
       <CommandBox command={command} />
     </div>
@@ -224,11 +248,18 @@ function AboutLinks({ heading }: { readonly heading: string | null }) {
   );
 }
 
-function ViewOnlyAbout({ version }: { readonly version: string | undefined }) {
+function ViewOnlyAbout({
+  version,
+  surface,
+}: {
+  readonly version: string | undefined;
+  readonly surface: SettingsSurface;
+}) {
+  const Version = `h${versionLevel(surface)}` as const;
   return (
     <div className="flex max-w-120 flex-col gap-5">
       {version === undefined ? null : (
-        <h3 className="text-body font-medium">{text.versionHeading(version)}</h3>
+        <Version className="text-body font-medium">{text.versionHeading(version)}</Version>
       )}
       <ViewOnlyLine>{text.VIEW_ONLY}</ViewOnlyLine>
       <AboutLinks heading={null} />

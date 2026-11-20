@@ -244,7 +244,7 @@ export {
   type ServiceTarget,
 } from "./service-catalog.ts";
 export { type ServiceKey, serviceKey } from "./service-key.ts";
-export { focusSectionHeading, sectionHeading } from "./settings/section-heading.ts";
+export { focusSectionHeading, sectionHeading, sectionHeadingLevel } from "./settings/headings.ts";
 export {
   SettingsDialog,
   type SettingsDialogProps,

@@ -42,7 +42,7 @@ verifies("remote.settings-section", () => {
     expect(switchNamed("Let phones reach this computer").checked).toBe(false);
     expect(view.textContent).toContain("Nothing reaches this computer");
     expect(view.textContent).toContain("Off");
-    expect(view.querySelector("h3")?.textContent).toBe("No phones paired");
+    expect(view.querySelector("h4")?.textContent).toBe("No phones paired");
     expect(view.textContent).toContain(
       "Remote is off. Pair a phone to see your agents, approve and send prompts from it.",
     );

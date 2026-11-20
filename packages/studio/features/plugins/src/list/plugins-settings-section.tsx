@@ -1,4 +1,8 @@
-import { focusSectionHeading, type SettingsSectionProps } from "@halonicjs/studio-shell";
+import {
+  focusSectionHeading,
+  type SettingsSectionProps,
+  sectionHeadingLevel,
+} from "@halonicjs/studio-shell";
 import { type RefObject, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AddPluginDialog } from "../add/add-plugin-dialog.tsx";
 import { PluginsService } from "../api.ts";
@@ -64,7 +68,12 @@ function useFirstRead(
  * the plugin's trust check opens at once (checklist 3 and 4.5): **Trust and turn on** says it is
  * on, **Not now** says it is added but off, and either way the plugin's page opens.
  */
-export function PluginsSettingsSection({ context, closeSettings, place }: SettingsSectionProps) {
+export function PluginsSettingsSection({
+  context,
+  closeSettings,
+  place,
+  surface,
+}: SettingsSectionProps) {
   const plugins = context.services.get(PluginsService);
   const installed = useSyncExternalStore(plugins.feed.subscribe, plugins.feed.current);
   const [adding, setAdding] = useState(false);
@@ -104,7 +113,7 @@ export function PluginsSettingsSection({ context, closeSettings, place }: Settin
         {...(plugins.installer === undefined ? {} : { onAdd: () => setAdding(true) })}
         onRetry={tryAgain}
         place={place === "served" || plugins.place === "served" ? "served" : "app"}
-        headingLevel={4}
+        headingLevel={sectionHeadingLevel(surface)}
       />
       {adding && plugins.installer !== undefined ? (
         <AddPluginDialog
