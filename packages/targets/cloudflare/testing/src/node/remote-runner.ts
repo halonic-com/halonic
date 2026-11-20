@@ -1,24 +1,12 @@
 import { type CaseResult, type SuiteNode, workerPaths } from "../worker/protocol.ts";
+import { edgeAttempts, edgeWaitMs, isEdgeNotFound } from "./edge-not-found.ts";
 
 /** One call's whole budget, tries included: a case waits on real R2, D1 and Durable Object round trips. */
 const callBudgetMs = 55_000;
-/** Tries while Cloudflare's edge answers not found: waits of 1, 2, 4 and then 8 s, about 40 s. */
-const edgeAttempts = 8;
-const longestWaitMs = 8_000;
 
 /** How a {@link RemoteRunner} waits; tests inject `sleep`. */
 export interface RemoteRunnerOptions {
   readonly sleep?: (ms: number) => Promise<void>;
-}
-
-/**
- * Whether the answer is Cloudflare's own HTML "Page not found" rather than the Worker's: an edge
- * server that doesn't route the new workers.dev address yet. The test Worker never answers HTML.
- */
-function isEdgeNotFound(response: Response): boolean {
-  return (
-    response.status === 404 && (response.headers.get("content-type") ?? "").includes("text/html")
-  );
 }
 
 /**
@@ -65,9 +53,8 @@ export class RemoteRunner {
   }
 
   /**
-   * Right after a deploy, Cloudflare's edge servers learn a new workers.dev address one by one, so
-   * for a while some requests get the edge's not-found page while others reach the Worker
-   * (HAL-14022). Such a request never reached the Worker, so asking again can't run a case twice.
+   * Asks again while Cloudflare's edge answers its own not-found page (see `edge-not-found.ts`).
+   * Such a request never reached the Worker, so asking again can't run a case twice.
    */
   async #call(pathname: string, method: string, body?: string): Promise<unknown> {
     const signal = AbortSignal.timeout(callBudgetMs);
@@ -83,7 +70,7 @@ export class RemoteRunner {
         `The test Worker answered ${method} ${pathname} with ${response.status}: ${(await response.text()).slice(0, 500)}`,
       );
       if (!isEdgeNotFound(response) || attempt >= edgeAttempts) throw error;
-      await this.#sleep(Math.min(1000 * 2 ** (attempt - 1), longestWaitMs));
+      await this.#sleep(edgeWaitMs(attempt));
       if (signal.aborted) throw error;
     }
   }

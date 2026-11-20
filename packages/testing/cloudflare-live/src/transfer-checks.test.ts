@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, describe, expect, it } from "vitest";
 import { eventually } from "./eventually.ts";
-import { readAsNode, roundTrip, type WorkerTarget, workerChecks } from "./transfer-checks.ts";
+import { readAsNode, roundTrip, workerChecks } from "./transfer-checks.ts";
+import { EdgeNotRouted, edgeBudgetMs, type WorkerTarget } from "./worker-call.ts";
 
 const example = fileURLToPath(
   new URL("../../../core/format/src/runtime-export/fixtures/example", import.meta.url),
@@ -151,8 +152,56 @@ verifies("cloudflare-live.transfer", () => {
         },
         sleep: async () => undefined,
       };
-      await expect(workerChecks.smoke(target)).rejects.toThrow(/answered 404, expected 200/);
+      await expect(workerChecks.smoke(target)).rejects.toThrow(
+        /GET \/health was answered 404 by Cloudflare's edge/,
+      );
       expect(calls).toBe(8);
+    });
+    // HAL-14054: the waits of all a check's calls share one budget below the 60 s test timeout,
+    // so an edge that keeps refusing ends the check with its own error, not a Vitest timeout.
+    it("stops at the budget when the edge keeps refusing, and never takes its page for the closed 404", async () => {
+      let calls = 0;
+      const waits: number[] = [];
+      const target: WorkerTarget = {
+        baseUrl: base,
+        fetch: async () => {
+          calls++;
+          return edgeNotFound();
+        },
+        sleep: async (ms) => void waits.push(ms),
+      };
+      await expect(workerChecks.adminClosed(target, key)).rejects.toThrow(EdgeNotRouted);
+      expect(calls).toBe(8);
+      expect(waits.reduce((sum, ms) => sum + ms, 0)).toBeLessThanOrEqual(edgeBudgetMs);
+    });
+    it("shares the budget across a check's calls when the edge refuses some of each", async () => {
+      const inner = fakeWorker({ closed: true }).target;
+      let calls = 0;
+      const waits: number[] = [];
+      const target: WorkerTarget = {
+        baseUrl: base,
+        // Three refusals before every answer: 7 s of waits per call, 84 s over the check's 12 calls.
+        fetch: async (input, init) =>
+          ++calls % 4 === 0 ? (inner.fetch as typeof fetch)(input, init) : edgeNotFound(),
+        sleep: async (ms) => void waits.push(ms),
+      };
+      await expect(workerChecks.adminClosed(target, key)).rejects.toThrow(EdgeNotRouted);
+      expect(waits.reduce((sum, ms) => sum + ms, 0)).toBeLessThanOrEqual(edgeBudgetMs);
+    });
+    it("never names the key from a URL the edge refused", async () => {
+      const target: WorkerTarget = {
+        baseUrl: base,
+        fetch: async (input) =>
+          new URL(String(input)).search === ""
+            ? Response.json({}, { status: 401 })
+            : edgeNotFound(),
+        sleep: async () => undefined,
+      };
+      const error = await workerChecks
+        .adminRefusesBadKeys(target, key)
+        .catch((caught: unknown) => caught);
+      expect(error).toBeInstanceOf(EdgeNotRouted);
+      expect(String(error)).not.toContain(key);
     });
     it("fails when /admin answers anything else", async () => {
       await expect(workerChecks.adminClosed(fakeWorker().target, key)).rejects.toThrow(/401/);
