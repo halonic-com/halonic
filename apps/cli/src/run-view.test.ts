@@ -410,6 +410,50 @@ verifies("cli.run-view", () => {
   });
 });
 
+verifies("cli.run-step-connector-mark", () => {
+  const notStarted: RunEventBody = {
+    type: "connector.listing-failed",
+    agent: "writer",
+    connector: "handbook",
+    cause: { code: "connector-not-started", why: "program-missing", name: "npx-nope" },
+  };
+
+  it("marks a step that ended while its agent's connector hadn't started with a !", () => {
+    const events = logOf([
+      ["14:00:00", entered("read")],
+      ["14:00:00", agentStarted("read", "writer")],
+      ["14:00:00", notStarted],
+      ["14:00:01", entered("draft")],
+      ["14:00:01", agentStarted("draft", "writer")],
+      ...finishedAt("14:00:10"),
+    ]);
+    expect(linesOf(events)).toEqual([
+      "! Read the email Writer · smart 1 s",
+      "✓ Draft a reply Writer · smart 9 s",
+    ]);
+  });
+
+  it("keeps the ✕ of a step that failed, and the ◌ of one still running", () => {
+    const failed = logOf([
+      ["14:00:00", entered("read")],
+      ["14:00:00", agentStarted("read", "writer")],
+      ["14:00:00", notStarted],
+      [
+        "14:00:01",
+        { type: "run.failed", state: "read", error: "no tools", reason: "model-no-tools" },
+      ],
+    ]);
+    expect(linesOf(failed)).toEqual(["✕ Read the email Writer · smart 1 s"]);
+
+    const running = logOf([
+      ["10:53:00", entered("read")],
+      ["10:53:00", agentStarted("read", "writer")],
+      ["10:53:00", notStarted],
+    ]);
+    expect(linesOf(running)).toEqual(["◌ Read the email Writer · smart · running since 10:53"]);
+  });
+});
+
 /** The run's summary; every test log starts with `run.started`. */
 function summarizeOrThrow(events: readonly RunEvent[]): RunSummary {
   const summary = summarize(events);
