@@ -120,6 +120,11 @@ export interface RunsSource {
    */
   readonly runnableWorkflows: () => Promise<readonly RunnableWorkflow[]>;
   /**
+   * The workspace folder's absolute path, which the commands to copy name with `--dir` (D1,
+   * HAL-12725); absent where the app gives none, and the commands then name no folder.
+   */
+  readonly folder?: string | undefined;
+  /**
    * Whether the provider with this id runs on this computer (`local`) or reaches past it
    * (`cloud`), as its file says; the mock model counts as local. `undefined` when the workspace
    * has no such provider. The run page's banners read it to tell a local model from a cloud one.

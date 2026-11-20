@@ -1,3 +1,4 @@
+import { startRunCommand } from "@halonicjs/app";
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import {
   openModelsOf,
@@ -8,7 +9,6 @@ import {
 import {
   Button,
   CloseIcon,
-  CommandBox,
   EmptyState,
   LetterTile,
   SkeletonBar,
@@ -36,6 +36,7 @@ import { goneState } from "./gone-state.tsx";
 import { firstTestsPick, firstView, panelClass } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
 import { dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
+import { StartCommand } from "./start-command.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
 import { useCanvasEdit } from "./use-canvas-edit.ts";
 import { useRename } from "./use-rename.ts";
@@ -164,7 +165,7 @@ export function WorkflowScreen({
   const inSeveralHubs =
     everyWorkflow.load.kind === "ready" &&
     everyWorkflow.load.value.some((one) => one.id === id && one.hubId !== hubId);
-  const startCommand = inSeveralHubs ? `halonic run ${hubId}/${id}` : `halonic run ${id}`;
+  const startCommand = startRunCommand(host.folder, inSeveralHubs ? `${hubId}/${id}` : id);
   const needYou = runCount(runsRead.load, { hubId, id }, runs);
   const views = workflowTabs(errors, needYou);
   const shown = useShownRun(runsRead.load, { hubId, id }, runs, shownId);
@@ -236,13 +237,7 @@ export function WorkflowScreen({
       </header>
       {/* With a Run button, the page starts it itself, so the terminal line would only repeat it. */}
       {!startRun && settings.load.kind === "ready" && errors === 0 && (
-        <div
-          data-testid="start-command"
-          className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-6 py-2 text-small text-fg-muted"
-        >
-          <p>{pageWords.startIt}</p>
-          <CommandBox command={startCommand} />
-        </div>
+        <StartCommand command={startCommand} />
       )}
       <div className="flex min-h-0 flex-1">
         <TabPanel

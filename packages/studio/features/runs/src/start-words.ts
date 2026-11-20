@@ -1,15 +1,21 @@
 // How the Runs feature's empty lines say to start a run: on Home's Recent runs and under the Runs
 // list's "No runs yet" (HAL-10128, HAL-12371).
 
+import { startRunCommand } from "@halonicjs/app";
 import type { RunnableWorkflow } from "./api.ts";
 
 /**
- * The command the empty lines show: `halonic run support-reply` with the first workflow's name,
- * and `halonic run` while the names aren't known (HAL-10128).
+ * The command the empty lines show: `halonic run --dir "/acme/Acme sample" support-reply` with the
+ * workspace's folder and the first workflow's name, and without a name while the names aren't
+ * known (HAL-10128, D1 of HAL-12725). `undefined` for a Windows folder, whose run Studio wouldn't
+ * list, and the lines then show no command and don't say runs show up here (D-A2, HAL-12847).
  */
-export function runCommand(workflows: readonly RunnableWorkflow[] | undefined): string {
+export function runCommand(
+  workflows: readonly RunnableWorkflow[] | undefined,
+  folder: string | undefined,
+): string | undefined {
   const [first] = workflows ?? [];
-  return first === undefined ? "halonic run" : `halonic run ${first.command}`;
+  return startRunCommand(folder, first?.command);
 }
 
 /**

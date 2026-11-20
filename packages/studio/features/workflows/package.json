@@ -38,6 +38,7 @@
     }
   },
   "dependencies": {
+    "@halonicjs/app": "workspace:*",
     "@halonicjs/std": "workspace:*",
     "@halonicjs/studio-feature-agents": "workspace:*",
     "@halonicjs/studio-feature-models": "workspace:*",

@@ -44,6 +44,7 @@ export { type Err, err, mapResult, type Ok, ok, type Result, unwrap } from "./re
 export { SecretScrubber, secretRemoved, secretTextForms } from "./secret-scrubber.ts";
 export { findSecretShape, type SecretShape } from "./secret-shape.ts";
 export { isSecretVariableName } from "./secret-variable-name.ts";
+export { shellWord } from "./shell-word.ts";
 export { type SiteName, siteName, siteNameMaxLength } from "./site-name.ts";
 export { type StopSignal, StopSource } from "./stop-signal.ts";
 export { slugify, uniqueName } from "./text.ts";

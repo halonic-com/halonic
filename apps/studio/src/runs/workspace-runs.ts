@@ -1,7 +1,9 @@
 import {
   defaultCurrency,
   type HubWorkflow,
+  halonicCommand,
   hubWorkflows,
+  isWindowsFolder,
   lookUpWorkflow,
   shortRunId,
   workflowIn,
@@ -15,8 +17,7 @@ import type {
   RunStore,
   SendOptions,
 } from "@halonicjs/ports";
-import { KindedError } from "@halonicjs/std";
-import type { InboxRuns } from "@halonicjs/studio-feature-inbox/api";
+import { AnswerElsewhere, type InboxRuns } from "@halonicjs/studio-feature-inbox/api";
 import type {
   ProviderKind,
   RunnableWorkflow,
@@ -44,9 +45,11 @@ export interface WorkspaceRunsOptions {
   readonly definitions: DefinitionStore;
   /**
    * Sends an event to a waiting run through the window's engine (`EngineService.send`). Left out,
-   * {@link WorkspaceRuns.send} fails as `unavailable` with the CLI line to copy.
+   * {@link WorkspaceRuns.send} fails as `AnswerElsewhere` with the CLI line to copy.
    */
   readonly send?: RunExecutor["send"];
+  /** The workspace folder's absolute path, which the commands to copy name (D1, HAL-12725). */
+  readonly folder?: string;
   /** Defaults to `setInterval`. */
   readonly timer?: PollTimer;
   /**
@@ -113,6 +116,10 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
 
   constructor(options: WorkspaceRunsOptions) {
     this.#options = options;
+  }
+
+  get folder(): string | undefined {
+    return this.#options.folder;
   }
 
   async list(): Promise<SourcedRun[]> {
@@ -196,8 +203,7 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
 
   /**
    * Sends the answer through the window's engine, then reads the runs again so the Inbox and the
-   * Runs list show the run moved on. Without an engine, the error gives the CLI line to copy as its
-   * `fix`; the CLI takes the short id, as Studio shows it.
+   * Runs list show the run moved on. Without an engine, it fails as {@link AnswerElsewhere}.
    */
   async send(
     runId: string,
@@ -206,17 +212,27 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     options?: SendOptions,
   ): Promise<RunSummary> {
     const { send } = this.#options;
-    if (send === undefined) {
-      throw new KindedError(
-        "unavailable",
-        "Studio can't answer runs yet. To answer this one, run this in a terminal:",
-        { fix: `halonic runs send ${shortRunId(runId)} ${event}` },
-      );
-    }
+    if (send === undefined) throw this.#answerElsewhere(runId, event);
     const run = await send(runId, event, payload, options);
     // Only while someone listens: the first poll of a watch reads what the runs are then.
     if (this.#stopPolling !== undefined) void this.#poll();
     return run;
+  }
+
+  // No engine in this window, so the error gives the CLI line to copy. The CLI takes the short id,
+  // as Studio shows it, and the folder, as a new terminal needs it. A Windows folder gets no line:
+  // Studio keeps its runs in the Windows profile, which the CLI in WSL can't see (D-A, HAL-12822).
+  #answerElsewhere(runId: string, event: string): AnswerElsewhere {
+    const { folder } = this.#options;
+    const command = isWindowsFolder(folder)
+      ? undefined
+      : halonicCommand(folder, "runs send", [shortRunId(runId), event]);
+    if (command === undefined)
+      return new AnswerElsewhere("Studio can't answer runs yet.", undefined);
+    return new AnswerElsewhere(
+      "Studio can't answer runs yet. To answer this one, run this in a terminal:",
+      command,
+    );
   }
 
   /** Stops reading the runs and closes the watch on the files. Disposing twice is fine. */

@@ -200,6 +200,11 @@ export interface NewWorkflow {
  * a run needs the engine.
  */
 export interface WorkflowsHost {
+  /**
+   * The workspace folder's absolute path, which the commands to copy name with `--dir` (D1,
+   * HAL-12725); absent where the app gives none, and the commands then name no folder.
+   */
+  readonly folder?: string | undefined;
   /** The hubs a workflow can be created in, in the workspace's order. */
   hubs(): readonly WorkflowHub[];
   /** Every workflow in the workspace's hubs. Rejects with the reason it couldn't read them. */
@@ -212,7 +217,8 @@ export interface WorkflowsHost {
   tests(ref: WorkflowRef): Promise<WorkflowTests>;
   /**
    * Runs the workflow's tests on what's saved, and calls `onResult` with each case's name as its
-   * result comes in. Absent while the app can't run them, so the page shows no **Run tests**.
+   * result comes in. Absent while the app can't run them, so the page shows the command that
+   * runs them in a terminal in place of **Run tests**.
    * Rejects with the reason they couldn't run.
    */
   runTests?(

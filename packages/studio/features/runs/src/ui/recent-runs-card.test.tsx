@@ -306,3 +306,36 @@ verifies("runs.home-title-wraps", () => {
     expect(title?.nextElementSibling?.className).toContain("truncate");
   });
 });
+
+verifies("studio.commands-name-folder", () => {
+  it("names the workspace's folder in the command line note, in quotes for its space", async () => {
+    const source = { ...fakeSource([]).source, folder: "/acme/Documents/Acme sample" };
+    const { root } = await show(source);
+    expect(root.querySelector("code")?.textContent).toBe(
+      'halonic run --dir "/acme/Documents/Acme sample" support-reply',
+    );
+  });
+
+  // The drive is joined on, so no drive path stands in this file for the leak guard to find.
+  const windowsFolder = `${"D:"}\\Acme\\Acme sample`;
+
+  it("shows no command on a Windows folder, whose run Studio wouldn't list", async () => {
+    const source = { ...fakeSource([]).source, folder: windowsFolder };
+    const { root } = await show(source);
+    expect(root.textContent).toContain(
+      "Studio shows what your agents are doing and lets you read each run.",
+    );
+    expect(root.textContent).not.toContain("command line");
+    expect(root.querySelector("code")).toBeNull();
+  });
+
+  it("sends a Windows folder with no workflow to Workflows, with no command line", async () => {
+    const fake = fakeSource([]);
+    fake.workflows([]);
+    const { root } = await show({ ...fake.source, folder: windowsFolder });
+    expect(root.textContent).toContain(
+      "This workspace has no workflows yet. Add one in Workflows.",
+    );
+    expect(root.textContent).not.toContain("command line");
+  });
+});

@@ -248,3 +248,36 @@ verifies("workflows.tests.page", () => {
     );
   });
 });
+
+verifies("workflows.tests.run-in-terminal", () => {
+  it("says how to run the tests in a terminal while the app can't run them", async () => {
+    const { page } = await open({
+      tests: async () => afterRun,
+      folder: "/acme/Documents/Acme sample",
+    });
+
+    expect(buttonNamed(page, "Run tests")).toBeUndefined();
+    expect(page.textContent).toContain(
+      "Studio can't run tests yet. To run them, run this in a terminal:",
+    );
+    expect(page.querySelector("[data-testid=run-tests-command] code")?.textContent).toBe(
+      'halonic test --dir "/acme/Documents/Acme sample" --filter acme/reply/',
+    );
+    expect(page.querySelector("button[aria-label='Copy command']")).not.toBeNull();
+  });
+
+  it("says only that Studio can't run them where no terminal reaches the folder", async () => {
+    const { page } = await open({ tests: async () => afterRun, folder: "\\\\acme\\Acme sample" });
+
+    expect(page.textContent).toContain("Studio can't run tests yet.");
+    expect(page.textContent).not.toContain("run this in a terminal");
+    expect(page.querySelector("[data-testid=run-tests-command]")).toBeNull();
+  });
+
+  it("shows Run tests and no command once the app can run them", async () => {
+    const { page } = await open({ tests: async () => afterRun, runTests: async () => afterRun });
+
+    expect(buttonNamed(page, "Run tests")).toBeDefined();
+    expect(page.querySelector("[data-testid=run-tests-command]")).toBeNull();
+  });
+});

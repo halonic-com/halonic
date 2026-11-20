@@ -3,6 +3,7 @@ import { engineWords } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AnswerElsewhere } from "../answer-elsewhere.ts";
 import type { ApprovalItem } from "../inbox-items.ts";
 import { inboxItems } from "../inbox-items.ts";
 import { pendingApproval, waitingRun } from "../test-runs.test-helper.ts";
@@ -434,5 +435,24 @@ verifies("inbox.approval-card", () => {
       await press(button(root, "Approve"));
       expect(sent).toEqual(["approve"]);
     });
+  });
+});
+
+verifies("studio.commands-name-folder", () => {
+  it("shows the refusal alone, with no command and no Try again, where no terminal can answer", async () => {
+    const { root, later } = openCard({
+      decisions: {
+        approve: async () => {
+          throw new AnswerElsewhere("Studio can't answer runs yet.", undefined);
+        },
+        reject: async () => waitingRun("r47"),
+        askForChanges: async () => waitingRun("r47"),
+      },
+    });
+    later(2);
+    await press(button(root, "Approve"));
+    expect(root.querySelector("[role='alert']")?.textContent).toBe("Studio can't answer runs yet.");
+    expect(root.querySelector("button[aria-label='Copy command']")).toBeNull();
+    expect(root.textContent).not.toContain("Try again");
   });
 });

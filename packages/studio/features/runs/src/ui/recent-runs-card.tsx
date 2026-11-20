@@ -98,6 +98,7 @@ export function RecentRunsView({
         <p className="m-0 px-4 text-fg-muted">
           <StartNote
             workflows={state.workflows}
+            folder={state.folder}
             canRun={canRun}
             {...(openWorkflow === undefined ? {} : { openWorkflow })}
           />
@@ -115,32 +116,56 @@ export function RecentRunsView({
 /**
  * The note under "No runs yet": with **Run**, "Studio shows what your agents are doing and lets
  * you read each run. To start one, open *Weekly report* in Workflows and press **Run**."; without
- * it, the same with `halonic run weekly-report`. A workspace with no workflow is told to add one.
+ * it, the same with `halonic run --dir <folder> weekly-report`. A workspace with no workflow is
+ * told to add one. On a Windows folder without **Run** there is no command, so the note keeps only
+ * what it can say there (D-A2, HAL-12847).
  */
 function StartNote({
   workflows,
+  folder,
   canRun,
   openWorkflow,
 }: PressRun & {
   readonly workflows: readonly RunnableWorkflow[] | undefined;
+  readonly folder: string | undefined;
   readonly canRun: boolean;
 }) {
-  if (workflows?.length === 0) return canRun ? <NoWorkflowSentence /> : homeWords.noWorkflowNote;
+  if (canRun) {
+    return (
+      <PressRunNote
+        workflows={workflows}
+        {...(openWorkflow === undefined ? {} : { openWorkflow })}
+      />
+    );
+  }
+  const command = runCommand(workflows, folder);
+  if (workflows?.length === 0) {
+    return command === undefined ? homeWords.noWorkflowNoCommandNote : homeWords.noWorkflowNote;
+  }
+  if (command === undefined) return homeWords.about.trimEnd();
   return (
     <>
       {homeWords.about}
-      {canRun ? (
-        <PressRunSentence
-          workflows={workflows}
-          {...(openWorkflow === undefined ? {} : { openWorkflow })}
-        />
-      ) : (
-        <>
-          {homeWords.startNote[0]}
-          <code className="font-mono">{runCommand(workflows)}</code>
-          {homeWords.startNote[2]}
-        </>
-      )}
+      {homeWords.startNote[0]}
+      <code className="font-mono">{command}</code>
+      {homeWords.startNote[2]}
+    </>
+  );
+}
+
+/** The note where a workflow's page has **Run** (HAL-12371): no command, so the folder plays no part. */
+function PressRunNote({
+  workflows,
+  openWorkflow,
+}: PressRun & { readonly workflows: readonly RunnableWorkflow[] | undefined }) {
+  if (workflows?.length === 0) return <NoWorkflowSentence />;
+  return (
+    <>
+      {homeWords.about}
+      <PressRunSentence
+        workflows={workflows}
+        {...(openWorkflow === undefined ? {} : { openWorkflow })}
+      />
     </>
   );
 }

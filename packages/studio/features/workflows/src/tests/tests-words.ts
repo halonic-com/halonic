@@ -1,6 +1,10 @@
 /** The Tests page's words (microcopy 9.5; states F11 to F15). `cantRun` takes a reason that ends in a full stop. */
 export const testsWords = {
   run: "Run tests",
+  /** In place of **Run tests** while the app can't run them, over the command (D2, HAL-12725). */
+  runInTerminal: "Studio can't run tests yet. To run them, run this in a terminal:",
+  /** The same line where no terminal can reach the folder, so there is no command (HAL-12822). */
+  cantRunYet: "Studio can't run tests yet.",
   running: "Running…",
   emptyTitle: "No tests yet",
   emptyBefore:

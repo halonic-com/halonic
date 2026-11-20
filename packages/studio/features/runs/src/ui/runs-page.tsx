@@ -207,7 +207,7 @@ function PageBody({
   }
   const empty = state.loaded ? emptyList(rows, filters) : undefined;
   if (empty?.kind === "no-runs") {
-    return <NoRuns workflows={state.workflows} {...noRuns} />;
+    return <NoRuns workflows={state.workflows} folder={state.folder} {...noRuns} />;
   }
   return (
     <>

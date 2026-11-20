@@ -28,6 +28,8 @@ export interface WorkspaceWorkflowsParts {
    * Absent where nothing is saved by itself: the run then starts at once.
    */
   readonly settle?: () => Promise<void>;
+  /** The workspace folder's absolute path, which the commands to copy name (D1, HAL-12725). */
+  readonly folder?: string;
   /** Calls `listener` after every change of the workspace's files; returns the way to stop. */
   readonly onChange: (listener: () => void) => () => void;
   /** The workspace's runs, which the rows count, and the way to hear one start, move on or end. */
@@ -96,6 +98,8 @@ export class WorkspaceWorkflows implements WorkflowsHost {
   /** Who hears that a name was learned or changed, so a tab opened before the read follows it. */
   readonly #nameListeners = new Set<() => void>();
 
+  readonly folder: string | undefined;
+
   /** Present only when the page has an engine; see {@link WorkflowsHost.startRun}. */
   startRun?: NonNullable<WorkflowsHost["startRun"]>;
   /** Present only when the app can show the trust check; see {@link WorkflowsHost.askTrust}. */
@@ -103,6 +107,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
 
   constructor(parts: WorkspaceWorkflowsParts) {
     this.#parts = parts;
+    this.folder = parts.folder;
     const { engine, askTrust } = parts;
     if (askTrust !== undefined) {
       this.askTrust = askTrust;
@@ -240,7 +245,7 @@ export class WorkspaceWorkflows implements WorkflowsHost {
 
   /**
    * The cases of the workflow's test files, with no results: the app doesn't run tests yet, so
-   * there is no `runTests` and the page shows no **Run tests**.
+   * there is no `runTests` and the page shows the command that runs them in a terminal instead.
    */
   async tests({ hubId, id }: WorkflowRef): Promise<WorkflowTests> {
     const workspace = await this.#load();

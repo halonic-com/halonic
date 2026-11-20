@@ -89,7 +89,10 @@ const rejectOnlyText = "The command sends Reject without your note.";
 
 /** The note dialog's alert text: the command-line sentence, the plain failure, or nothing. */
 function noteError(form: NoteForm): string | undefined {
-  if (form.manual !== null) return `${form.manual.message} ${rejectOnlyText}`;
+  if (form.manual !== null) {
+    if (form.manual.command === undefined) return form.manual.message;
+    return `${form.manual.message} ${rejectOnlyText}`;
+  }
   return form.failed ? failedText : undefined;
 }
 

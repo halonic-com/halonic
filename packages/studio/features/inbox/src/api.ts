@@ -9,6 +9,7 @@ import type { InboxNotices } from "./notices/inbox-notices.ts";
 import type { InboxRequests } from "./request/inbox-requests.ts";
 import type { SandboxPasses, SandboxRefusals } from "./sandbox/sandbox-setup-source.ts";
 
+export { AnswerElsewhere } from "./answer-elsewhere.ts";
 export { type InboxDecisions, inboxDecisions } from "./decide.ts";
 export type {
   Inbox,

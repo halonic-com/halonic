@@ -333,3 +333,35 @@ verifies("studio.run-log", () => {
     expect(log.at(-1)?.seq).toBe(listed[0]?.summary.lastSeq);
   });
 });
+
+verifies("studio.commands-name-folder", () => {
+  it("names the folder, in quotes for its space, in the command that answers a run", async () => {
+    const { engine, runId } = await waitingRun();
+    const runs = new WorkspaceRuns({
+      runs: engine.stores.store,
+      definitions: acmeFiles(),
+      folder: "/acme/Documents/Acme sample",
+    });
+
+    await expect(runs.send(runId, "approve")).rejects.toMatchObject({
+      kind: "unavailable",
+      fix: `halonic runs send --dir "/acme/Documents/Acme sample" ${shortRunId(runId)} approve`,
+    });
+  });
+
+  // The drive is joined on, so no drive path stands in this file for the leak guard to find.
+  const drive = "D:";
+  it.each([
+    ["a drive", `${drive}\\Acme\\Acme sample`],
+    ["a network share", "\\\\acme\\Acme sample"],
+  ])("gives no command to answer a run of a Windows folder on %s", async (_, folder) => {
+    const { engine, runId } = await waitingRun();
+    const runs = new WorkspaceRuns({ runs: engine.stores.store, definitions: acmeFiles(), folder });
+
+    await expect(runs.send(runId, "approve")).rejects.toMatchObject({
+      kind: "unavailable",
+      message: "Studio can't answer runs yet.",
+      fix: undefined,
+    });
+  });
+});
