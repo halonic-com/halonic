@@ -227,6 +227,25 @@ verifies("engine.foreach-state", () => {
     const { log } = play(workflow, [start]);
     expect(log.at(-1)).toMatchObject({ type: "run.failed", state: "triage", error });
   });
+
+  it.each([
+    ["a text", { subject: "Refunds" }, "text"],
+    ["nothing", {}, "nothing"],
+  ])(
+    "names items that give %s as the input's mistake, for a host to word (HAL-14301)",
+    (_name, input, gives) => {
+      const workflow = triageWorkflow({ items: "{{input.subject}}" });
+      const { log } = play(workflow, [{ ...start, input }]);
+      expect(log.at(-1)).toMatchObject({
+        type: "run.failed",
+        cause: {
+          kind: "invalid_input",
+          code: "workflow.items-not-a-list",
+          detail: { state: "triage", items: "{{input.subject}}", gives },
+        },
+      });
+    },
+  );
 });
 
 /** The `labeler` agent, whose output is a `choice` of `refunds` and `billing`. */
@@ -307,6 +326,7 @@ verifies("engine.task-json-answer", () => {
           "which isn't the JSON its output asks for. " +
           "Tighten the agent's instructions or use a larger model.",
         reason: "error",
+        cause: { kind: "invalid_input", code: "answer.not-json", detail: { agent: "labeler" } },
       },
     ]);
   });

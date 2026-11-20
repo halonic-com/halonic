@@ -8,6 +8,7 @@ import type { RunFailureCause } from "@halonicjs/events";
 import { assertNever } from "@halonicjs/std";
 import type { FailedModel, FailedStart, RunFailedEvent } from "./failed-model.ts";
 import { budgetStopOf, nextMonthStart } from "./run-failure-budget.ts";
+import { type ConfigFailure, configFailureOf } from "./run-failure-config.ts";
 import { type ProxyFailure, proxyFailureOf } from "./run-failure-proxy.ts";
 
 /** What both key failures name: the provider, the secret that holds its key, and the model or alias that uses it. */
@@ -38,7 +39,8 @@ const modelFirstAnswerMs = 5 * 60_000;
  *
  * - `disk-full`, `interrupted` and `answer-not-an-option` are `error` with
  *   `causeKnown`, as is an `error` whose cause is a bridge socket path that
- *   is too long (HAL-13862), and `harness-unavailable` is `error` (HAL-6451);
+ *   is too long (HAL-13862) or an answer that isn't the JSON its step asks
+ *   for (HAL-14301), and `harness-unavailable` is `error` (HAL-6451);
  * - `instructions-not-trusted` is `error` when the log doesn't name the agent,
  *   as for a parallel branch or a log from before the engine named it;
  * - `cancelled` isn't a failure, so {@link runFailureOf} gives it none.
@@ -167,6 +169,7 @@ export type RunFailure =
       /** The id of the run's hub, such as "notes". */
       readonly hub: string;
     }
+  | ConfigFailure
   | {
       readonly reason: "secrets-file-readable";
       /** The secrets file group or others can read, as the run log names it. */
@@ -402,10 +405,12 @@ function timeoutFailure(failed: RunFailedEvent, model: FailedModel | undefined):
  * its own. These are the setup of the workspace or of this computer, not a
  * bug: a provider file whose type Halonic can't call (HAL-12342), a model
  * alias the hub doesn't have, such as `default` in a workspace made with
- * plain `halonic init` (HAL-12377), and a secrets file other users can read
- * (HAL-12569). A cause without the names its facts need is `error`. Studio
- * reads its run summary's cause with it, so both word the same facts
- * (HAL-14324).
+ * plain `halonic init` (HAL-12377), a secrets file other users can read
+ * (HAL-12569), a provider a model names that the workspace doesn't have, and
+ * a workflow step the run can't go on from: for-each items that aren't a
+ * list, an event with no transition, a task with no agent (HAL-14301). A
+ * cause without the names its facts need is `error`. Studio reads its run
+ * summary's cause with it, so both word the same facts (HAL-14324).
  *
  * @returns `undefined` for a cause that isn't one of these, or misses a name
  */
@@ -429,16 +434,20 @@ export function setupFailureOf(cause: RunFailureCause | undefined): RunFailure |
       return file === undefined ? undefined : { reason: "secrets-file-readable", file };
     }
     default:
-      return undefined;
+      return configFailureOf(code, detail);
   }
 }
 
 /**
  * The cause codes of an `error` whose message already says what went wrong
  * and how to fix it, so a bug report wouldn't help: a bridge socket path
- * longer than the system takes (HAL-13862).
+ * longer than the system takes (HAL-13862), and an answer that isn't the
+ * JSON its step asks for (HAL-14301).
  */
-const knownCauseCodes: ReadonlySet<string> = new Set(["harness-bridge.socket-path-too-long"]);
+const knownCauseCodes: ReadonlySet<string> = new Set([
+  "harness-bridge.socket-path-too-long",
+  "answer.not-json",
+]);
 
 /** An `error` whose cause code is in {@link knownCauseCodes}: the engine's message, with its cause known. */
 function knownCauseFailureOf(failed: RunFailedEvent): RunFailure | undefined {
