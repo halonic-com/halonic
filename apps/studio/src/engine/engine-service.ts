@@ -296,14 +296,9 @@ export class EngineService {
   }
 
   /**
-   * Sends `event` to a run waiting for a person, such as an Inbox card's Approve or Reject, as
-   * `halonic runs send` does, with the executor's `payload` and `options` (the call or wait step it
-   * answers): opens the engine, with the checks of a start, since the run goes on
-   * from here, and returns once the event is recorded, not when the run ends.
-   *
-   * @returns the run as it is after the event
-   * @throws what {@link EngineService.open} throws, KindedError `denied` for a workspace that may
-   *   start nothing, or the executor's refusal when the run doesn't take the event now
+   * Sends `event` to a run waiting for a person (an Inbox card's Approve or Reject) as `halonic runs
+   * send` does: opens the engine with a start's checks (KindedError `denied` for a workspace that may
+   * start nothing) and returns the run once the executor records the event, not when the run ends.
    */
   async send(
     runId: string,
