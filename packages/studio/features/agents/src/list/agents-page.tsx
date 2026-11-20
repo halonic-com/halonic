@@ -10,7 +10,7 @@ import {
   targetAfterRemoving,
   visibleRowIds,
 } from "@halonicjs/studio-shell";
-import { defaultHub } from "@halonicjs/workspace";
+import { defaultHubId, defaultHubName } from "@halonicjs/workspace";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type AgentListing, type AgentRef, type AgentsHost, AgentsHostService } from "../api.ts";
 import { NewAgentDialog } from "../new/new-agent-dialog.tsx";
@@ -218,7 +218,8 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
   // An agent needs a hub to live in, and the hubs are known only once the first read is done. A
   // workspace with no hub gets the Default hub with its first agent (`agents.new.first-hub`).
   const canCreate = load.kind === "ready";
-  const hubsForNew = host.hubs().length > 0 ? host.hubs() : [defaultHub];
+  const hubsForNew =
+    host.hubs().length > 0 ? host.hubs() : [{ id: defaultHubId, name: defaultHubName }];
   // Ctrl K's New agent waits until the dialog can open.
   useEffect(
     () => (canCreate ? takeNewAgentRequests(() => setCreating(true)) : undefined),

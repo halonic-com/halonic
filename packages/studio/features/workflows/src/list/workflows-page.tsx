@@ -10,7 +10,7 @@ import {
   type PlaceViewProps,
   useCopyDetails,
 } from "@halonicjs/studio-shell";
-import { defaultHub } from "@halonicjs/workspace";
+import { defaultHubId, defaultHubName } from "@halonicjs/workspace";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type WorkflowListing,
@@ -144,7 +144,8 @@ export function WorkflowsView({ host, open, openInNewTab, engine }: WorkflowsVie
   // A workflow needs a hub to live in, and the hubs are known only once the first read is done. A
   // workspace with no hub gets the Default hub with its first workflow (`workflows.new.first-hub`).
   const canCreate = load.kind === "ready";
-  const hubsForNew = host.hubs().length > 0 ? host.hubs() : [defaultHub];
+  const hubsForNew =
+    host.hubs().length > 0 ? host.hubs() : [{ id: defaultHubId, name: defaultHubName }];
   // A phone doesn't edit workflows, so its list has no New workflow (UX 10.15).
   const offersNew = canCreate && !phone;
   // Ctrl K's New workflow waits until the dialog can open.

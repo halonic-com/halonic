@@ -1,11 +1,19 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { defaultHub, defaultHubPath, defaultHubText, loadWorkspace, placeOf } from "./index.ts";
+import {
+  defaultHubId,
+  defaultHubName,
+  defaultHubPath,
+  defaultHubText,
+  loadWorkspace,
+  placeOf,
+} from "./index.ts";
 import { MemoryStore } from "./test/memory-store.ts";
 
 verifies("workspace.default-hub", () => {
   it("is the hub `default`, named Default, in hubs/default/hub.yaml", () => {
-    expect(defaultHub).toEqual({ id: "default", name: "Default" });
+    expect(defaultHubId).toBe("default");
+    expect(defaultHubName).toBe("Default");
     expect(defaultHubPath).toBe("hubs/default/hub.yaml");
     expect(placeOf(defaultHubPath)).toMatchObject({ kind: "hub", hub: "default" });
     expect(defaultHubText()).toBe("id: default\nname: Default\n");
