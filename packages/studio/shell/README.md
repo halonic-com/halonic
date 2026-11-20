@@ -68,7 +68,8 @@ skeleton (none for Get set up), says "Loading Home" once for the page, and puts 
 says each reason once, each ending in a full stop (one that has none gets one, so two reasons aren't
 read as one sentence), so when the engine isn't answering, screen readers hear it once, not once per
 section, and the reasons take the place of "Loading Home" while other sections still load
-(`shell.home-states`). `HomeCardProps.attempt` counts the section's Try again presses; a card that
+(`shell.home-states`). `HomeCardProps.attempt` is `0` at first and new across Home after each Try again, so two
+sections on one source share their first load but not a Try again; a card that
 waits for its data's first load passes it to `firstLoad(source, attempt)`, which keeps a failed load
 for that attempt, so React's renders after the failure throw it rather than load again, and only
 Try again loads again. Get set up's card
