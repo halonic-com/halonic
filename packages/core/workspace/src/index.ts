@@ -13,6 +13,7 @@ export {
   type DeclaredToolsByConnector,
   declaredToolsOf,
 } from "./declared-tools.ts";
+export { defaultHub, defaultHubPath, defaultHubText } from "./default-hub.ts";
 export {
   connectorToolsOf,
   definitionsOf,

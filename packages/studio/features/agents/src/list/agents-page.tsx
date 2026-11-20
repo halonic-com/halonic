@@ -10,6 +10,7 @@ import {
   targetAfterRemoving,
   visibleRowIds,
 } from "@halonicjs/studio-shell";
+import { defaultHub } from "@halonicjs/workspace";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type AgentListing, type AgentRef, type AgentsHost, AgentsHostService } from "../api.ts";
 import { NewAgentDialog } from "../new/new-agent-dialog.tsx";
@@ -19,7 +20,7 @@ import { fileItemOf } from "../trash/file-item.ts";
 import { trashAgent } from "../trash/trash-agent.ts";
 import { agentHubs, rowId } from "./agent-rows.tsx";
 import { listWords } from "./list-words.ts";
-import { dropNewAgentRequest, takeNewAgentRequests } from "./new-request.ts";
+import { takeNewAgentRequests } from "./new-request.ts";
 
 /**
  * Whether the agents have loaded: the skeleton, a first read that failed, or the list. A list
@@ -214,14 +215,15 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
     });
   };
   const startCreating = () => setCreating(true);
-  // An agent needs a hub to live in, and the hubs are known only once the first read is done.
-  const canCreate = load.kind === "ready" && host.hubs().length > 0;
-  // Ctrl K's New agent waits until the dialog can open; with no hub to put one in, it is dropped.
-  const noHubs = load.kind === "ready" && host.hubs().length === 0;
-  useEffect(() => {
-    if (noHubs) dropNewAgentRequest();
-    return canCreate ? takeNewAgentRequests(() => setCreating(true)) : undefined;
-  }, [canCreate, noHubs]);
+  // An agent needs a hub to live in, and the hubs are known only once the first read is done. A
+  // workspace with no hub gets the Default hub with its first agent (`agents.new.first-hub`).
+  const canCreate = load.kind === "ready";
+  const hubsForNew = host.hubs().length > 0 ? host.hubs() : [defaultHub];
+  // Ctrl K's New agent waits until the dialog can open.
+  useEffect(
+    () => (canCreate ? takeNewAgentRequests(() => setCreating(true)) : undefined),
+    [canCreate],
+  );
 
   return (
     <div ref={page} className="flex w-full flex-col gap-4 px-6 py-5">
@@ -314,7 +316,7 @@ export function AgentsView({ host, open, openInNewTab, openFile, engine }: Agent
       )}
       {creating && (
         <NewAgentDialog
-          hubs={host.hubs()}
+          hubs={hubsForNew}
           takenIds={(hubId) =>
             listings.filter((listing) => listing.hubId === hubId).map((listing) => listing.id)
           }
