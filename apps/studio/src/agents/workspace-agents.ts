@@ -21,16 +21,19 @@ import type {
   TrashedAgent,
 } from "@halonicjs/studio-feature-agents/api";
 import { alreadyHandsWork, handOffPath } from "@halonicjs/studio-feature-agents/api";
-import {
-  filesOf,
-  loadWorkspace,
-  modelAliases,
-  resolveModel,
-  settingsPath,
-} from "@halonicjs/workspace";
+import { filesOf, loadWorkspace, modelAliases, settingsPath } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
-import { agentGone, changeProblem, listingOf, outputValue } from "./agent-file.ts";
+import {
+  agentGone,
+  agentSuffix,
+  changeProblem,
+  listingOf,
+  newAgentText,
+  outputValue,
+  trashAgentFile,
+} from "./agent-file.ts";
 import { paramsEdits, paramsOf } from "./agent-params.ts";
+import { agentUsersOf, defaultModelOf } from "./agent-reads.ts";
 
 /** What {@link WorkspaceAgents} needs of the workspace's files. */
 export interface WorkspaceAgentsParts {
@@ -92,19 +95,6 @@ const sharedLibraryFolder = "library";
 
 /** The workspace's model aliases, which every hub can use. */
 const modelsFile = "models.yaml";
-
-const agentSuffix = ".agent.yaml";
-
-/** The text of a new agent: its id, its name and, when the person wrote any, its instructions. */
-function newAgentText(id: string, name: string, instructions: string): string {
-  return [
-    `id: ${id}`,
-    // A JSON string is a YAML double-quoted one, so any text a person types is safe.
-    `name: ${JSON.stringify(name)}`,
-    ...(instructions === "" ? [] : [`instructions: ${JSON.stringify(instructions)}`]),
-    "",
-  ].join("\n");
-}
 
 /**
  * The Agents feature's host (`agents.host`), over the workspace's files: the list reads the files
@@ -354,26 +344,10 @@ export class WorkspaceAgents implements AgentsHost {
     return (await this.#find(ref)).path;
   }
 
-  /**
-   * Moves the agent's file to the trash as one change. Undo is the workspace's undo, so it puts the
-   * agent back only while the delete is still the newest step: after any other change it rejects
-   * and undoes nothing.
-   */
+  /** Moves the agent's file to the trash as one change, with the undo {@link trashAgentFile} gives. */
   async trash(ref: AgentRef): Promise<TrashedAgent> {
-    const { files } = this.#parts;
     const { agent, path } = await this.#find(ref);
-    files.change(`Deleted agent ${agent.name}`, { [path]: null });
-    const afterDelete = files.step;
-    return {
-      undo: async () => {
-        if (files.step !== afterDelete || !files.undo()) {
-          throw new KindedError(
-            "conflict",
-            `${agent.name} can't be put back, because the workspace changed after it was deleted.`,
-          );
-        }
-      },
-    };
+    return trashAgentFile(this.#parts.files, path, agent.name);
   }
 
   /** The aliases of `models.yaml` and of the agent's hub; throws `not_found` when the agent isn't there. */
@@ -391,35 +365,14 @@ export class WorkspaceAgents implements AgentsHost {
     return { agent: file.value, path: file.path };
   }
 
-  /**
-   * The hub's default model, else the workspace's; `undefined` when neither names one, or the one
-   * named is neither an alias nor a `provider/model` name.
-   */
+  /** The default model of {@link defaultModelOf}, on the workspace as it is now. */
   async defaultModel(hubId: string): Promise<string | undefined> {
-    const workspace = await this.#load();
-    const hub = filesOf(workspace, "hub").find((file) => file.hub === hubId)?.value;
-    const settings = filesOf(workspace, "workspace")[0]?.value;
-    const name = hub?.defaults.model ?? settings?.defaults.model;
-    return name !== undefined && resolveModel(workspace, hubId, name) !== undefined
-      ? name
-      : undefined;
+    return defaultModelOf(await this.#load(), hubId);
   }
 
-  /** The workflows of the agent's hub that run it in a step, with how many steps; throws `not_found` when the agent isn't there. */
-  async referencesTo({ hubId, id }: AgentRef): Promise<readonly AgentUser[]> {
-    const workspace = await this.#load();
-    if (!filesOf(workspace, "agent").some((one) => one.hub === hubId && one.value.id === id)) {
-      throw agentGone();
-    }
-    return filesOf(workspace, "workflow")
-      .filter((file) => file.hub === hubId)
-      .map((file) => ({
-        hubId,
-        id: file.value.id,
-        name: file.value.name,
-        steps: Object.values(file.value.states).filter((state) => state.agent === id).length,
-      }))
-      .filter((user) => user.steps > 0);
+  /** The workflows that run the agent, as {@link agentUsersOf} finds them. */
+  async referencesTo(ref: AgentRef): Promise<readonly AgentUser[]> {
+    return agentUsersOf(await this.#load(), ref);
   }
 
   subscribe(listener: () => void): () => void {

@@ -2,7 +2,6 @@ import { EmptyState, ExternalLink, List, usePresentation } from "@halonicjs/stud
 import type { ItemRef, PlaceViewProps } from "@halonicjs/studio-shell";
 import {
   type ReactNode,
-  type RefObject,
   useCallback,
   useEffect,
   useRef,
@@ -19,12 +18,8 @@ import { ChangeList, orderItems } from "./change-list.tsx";
 import { GetUpdates } from "./get-updates.tsx";
 import { History } from "./history.tsx";
 import { MergeChoices, MergeStrip } from "./merge-choices.tsx";
-import {
-  CouldntCheckStrip,
-  NotSharedStrip,
-  SharingStrip,
-  UpToDateStrip,
-} from "./sharing-strip.tsx";
+import { SharingLine } from "./sharing-line.tsx";
+import { useFocusNewVersion } from "./use-focus-new-version.ts";
 import { type OpenItem, useOpenItem } from "./use-open-item.ts";
 import { type OpenVersion, useOpenVersion } from "./use-open-version.ts";
 import { VersionDialogs } from "./version-dialogs.tsx";
@@ -199,31 +194,6 @@ function pushedPage({
   return undefined;
 }
 
-/**
- * The sharing strip's state now: no address, versions the shared copy lacks, the shared copy
- * couldn't be asked, or everything shared and up to date; else none. On the phone only the
- * no-address line shows.
- */
-function SharingLine({
-  list,
-  phone,
-  onAdd,
-}: {
-  readonly list: ChangesList;
-  readonly phone: boolean;
-  readonly onAdd: () => void;
-}) {
-  const { read, hasRemote, merge, unshared, sharing, sharedCheck } = list.state;
-  if (read?.kind === "ready" && !hasRemote) return <SharingStrip onAdd={onAdd} phone={phone} />;
-  const notShared = unshared > 0 || sharing;
-  if (!hasRemote || merge !== undefined || phone) return null;
-  if (notShared) return <NotSharedStrip list={list} />;
-  if (sharedCheck.kind === "failed")
-    return <CouldntCheckStrip list={list} reason={sharedCheck.reason} />;
-  if (sharedCheck.kind === "checked" && sharedCheck.waiting === 0) return <UpToDateStrip />;
-  return null;
-}
-
 /** What comes under the heading, by what the last read said. */
 function PageBody({
   list,
@@ -329,28 +299,6 @@ function ReadBody({
       />
     </>
   );
-}
-
-/**
- * Creating a version closes its dialog, and focus goes back to the Create version button. With
- * nothing left to version that button is gone a moment later, and focus would drop to the page
- * (WCAG 2.4.3). So focus moves on to what the person just made: History's first row, the new
- * version, once the page has read again. When that read failed, the first row isn't the new
- * version, so focus stays where the dialog put it, and the failure's alert says why.
- */
-function useFocusNewVersion(list: ChangesList, page: RefObject<HTMLElement | null>): () => void {
-  const [pending, setPending] = useState(false);
-  useEffect(() => {
-    if (!pending) return;
-    setPending(false);
-    page.current
-      ?.querySelector<HTMLElement>('[data-part="history-list"] [data-row-id] [role="gridcell"]')
-      ?.focus();
-  }, [pending, page]);
-  return () => {
-    const { error, history } = list.state;
-    if (error === undefined && history.error === undefined) setPending(true);
-  };
 }
 
 /** Whether the developer view is on, read again when it is turned on or off. */

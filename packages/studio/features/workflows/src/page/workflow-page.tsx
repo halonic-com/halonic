@@ -17,8 +17,8 @@ import {
   usePresentation,
   useTabIds,
 } from "@halonicjs/studio-kit";
-import { engineWordsOf, ItemGone, type ItemViewProps } from "@halonicjs/studio-shell";
-import { type ReactNode, useCallback, useRef, useState } from "react";
+import { engineWordsOf, type ItemViewProps } from "@halonicjs/studio-shell";
+import { useCallback, useRef, useState } from "react";
 import { type WorkflowsHost, WorkflowsHostService } from "../api.ts";
 import type { View } from "../canvas/geometry.ts";
 import { Configuration } from "../configuration/configuration-page.tsx";
@@ -32,6 +32,8 @@ import { useAnnounceDockedRun } from "../start/run-announcement.ts";
 import type { ShownRun } from "../start/run-strip.ts";
 import { startWords } from "../start/start-words.ts";
 import { TestsPage } from "../tests/tests-page.tsx";
+import { goneState } from "./gone-state.tsx";
+import { firstTestsPick, firstView, panelClass } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
 import { dockHasCard, RunDock, useDock, useShownRun } from "./run-dock.tsx";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
@@ -45,16 +47,6 @@ import { type WorkflowView, workflowTabs } from "./workflow-tabs.ts";
 
 /** The command that opens the workspace page at its Budget block (`features/workspace`). */
 const openBudgetCommand = "workspace.open-budget";
-
-/** The tab a page opens on: Configuration when asked for its Tests, else Flow. */
-function firstView(startOnTests: boolean | undefined): WorkflowView {
-  return startOnTests ? "configuration" : "flow";
-}
-
-/** What Configuration starts with: Tests with no test picked when asked for them, else General. */
-function firstTestsPick(startOnTests: boolean | undefined) {
-  return startOnTests ? { name: undefined, n: 0 } : undefined;
-}
 
 /** The workflow's page in its tab: `item` names the workflow, the host gives its steps. */
 export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
@@ -351,38 +343,6 @@ export function WorkflowScreen({
       </div>
     </div>
   );
-}
-
-/**
- * The tab panel's layout: Flow fills it with the canvas, Runs with its list and a run's card side by
- * side (each scrolls and keeps its own inset), and Configuration scrolls. On a phone a docked card
- * takes the page's body, so the panel hides behind it: beside the card it would have no room.
- */
-function panelClass(
-  view: WorkflowView,
-  { phone, docked }: { readonly phone: boolean; readonly docked: boolean },
-): string {
-  if (phone && docked) return "hidden";
-  switch (view) {
-    case "flow":
-      return "flex min-h-0 min-w-0 flex-1 flex-col";
-    case "runs":
-      return "flex min-h-0 min-w-0 flex-1";
-    case "configuration":
-      return "min-w-0 flex-1 overflow-auto";
-  }
-}
-
-/**
- * A workflow deleted or renamed outside, or a link to one that never was: the item-gone state
- * instead of an error, since Try again can't bring it back (microcopy 2 "Item gone").
- */
-function goneState(
-  load: ReturnType<typeof useWorkflow>["load"],
-  goToWorkflows: (() => void) | undefined,
-): ReactNode {
-  if (load.kind !== "failed" || load.gone !== true || goToWorkflows === undefined) return undefined;
-  return <ItemGone kindName="workflow" place="Workflows" onGoTo={goToWorkflows} />;
 }
 
 interface FlowViewProps {

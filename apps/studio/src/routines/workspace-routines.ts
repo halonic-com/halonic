@@ -1,15 +1,7 @@
 import { shortRunId } from "@halonicjs/app";
 import type { RunSummary } from "@halonicjs/events";
 import type { DefinitionSource } from "@halonicjs/ports";
-import {
-  CronError,
-  describeCron,
-  describeTrigger,
-  nextRun,
-  occurrences,
-  routineKey,
-  routineStart,
-} from "@halonicjs/routines";
+import { CronError, describeTrigger, nextRun, routineKey, routineStart } from "@halonicjs/routines";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import {
   EngineNotAnswering,
@@ -64,6 +56,7 @@ import {
   targetName,
   targetsOf,
 } from "./routine-reads.ts";
+import { nextTimesOf, triggerProblems } from "./routine-times.ts";
 
 /** What {@link WorkspaceRoutines} needs of the workspace's files, runs, clock and engine. */
 export interface WorkspaceRoutinesParts {
@@ -125,9 +118,6 @@ export interface WorkspaceRoutinesParts {
 
 /** How many of a routine's newest runs the Runs view lists. */
 const RUNS_SHOWN = 20;
-
-/** How far ahead the next times of a schedule are looked for. */
-const LOOK_AHEAD_MS = 366 * 24 * 60 * 60 * 1000;
 
 /**
  * The Routines feature's host (`studio.workspace-routines`), over the workspace's files: every
@@ -234,7 +224,7 @@ export class WorkspaceRoutines implements RoutinesHost {
         ...workspace.issues
           .filter((issue) => issue.file === file.path)
           .map((issue) => issue.message),
-        ...this.#triggerProblems(file),
+        ...triggerProblems(file, this.#parts),
       ],
     };
   }
@@ -270,34 +260,7 @@ export class WorkspaceRoutines implements RoutinesHost {
   async nextTimes(ref: RoutineRef, count: number): Promise<RoutineNextTimes> {
     const workspace = await this.#load();
     const { value } = this.#find(workspace, ref);
-    const none = { times: [], atNextCheck: false };
-    if (!value.enabled) return none;
-    const now = this.#parts.now();
-    try {
-      if ("schedule" in value.trigger) {
-        const to = new Date(now.getTime() + LOOK_AHEAD_MS);
-        const times = occurrences(value.trigger, now, to, count, this.#parts.timeZone);
-        return { times: times.map((time) => time.toISOString()), atNextCheck: false };
-      }
-      if (!("every" in value.trigger)) return none;
-      const ran = runsOf(
-        await this.#parts.runs.list(),
-        routineKey({ hub: ref.hubId, routine: value }),
-      );
-      if (ran.length === 0) return { times: [], atNextCheck: true };
-      const times: string[] = [];
-      for (let after = now; times.length < count; ) {
-        const next = nextRun(value.trigger, after, this.#parts.timeZone);
-        if (next === null) break;
-        times.push(next.toISOString());
-        after = next;
-      }
-      return { times, atNextCheck: false };
-    } catch (error) {
-      // A cron or an interval that doesn't parse has no times; `read` lists it among the problems.
-      if (error instanceof CronError) return none;
-      throw error;
-    }
+    return nextTimesOf(ref.hubId, value, count, this.#parts);
   }
 
   async runs(ref: RoutineRef): Promise<RoutineRuns> {
@@ -440,19 +403,6 @@ export class WorkspaceRoutines implements RoutinesHost {
       return nextRun(file.value.trigger, now, this.#parts.timeZone)?.toISOString();
     } catch (error) {
       if (error instanceof CronError) return undefined;
-      throw error;
-    }
-  }
-
-  /** What the checks of the schedule or interval say, which the file's own checks don't. */
-  #triggerProblems(file: PlacedFile): string[] {
-    try {
-      const { trigger } = file.value;
-      if ("schedule" in trigger) describeCron(trigger.schedule);
-      nextRun(trigger, this.#parts.now(), this.#parts.timeZone);
-      return [];
-    } catch (error) {
-      if (error instanceof CronError) return [error.message];
       throw error;
     }
   }
