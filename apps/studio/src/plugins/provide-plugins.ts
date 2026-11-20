@@ -1,4 +1,5 @@
 import {
+  AgentHostPluginSecrets,
   AgentHostPluginToolCaller,
   type AgentHostTransport,
 } from "@halonicjs/adapter-agent-host-client";
@@ -46,6 +47,7 @@ export function providePlugins(
     ipc: parts.ipc,
     secrets: shellKeychain(parts.ipc),
     caller: new AgentHostPluginToolCaller(transport),
+    handOver: new AgentHostPluginSecrets(transport),
     onReloadFailed: parts.onReloadFailed,
   });
   hosts.set(parts.window, plugins);
