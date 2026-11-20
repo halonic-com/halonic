@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { constantTimeEqual, encodeBase64url, encodeUtf8 } from "@halonicjs/std";
+import { encodeBase64url } from "@halonicjs/std";
 
 /** 32 random bytes: as strong as a provider key, and short enough for a header. */
 const launchTokenBytes = 32;
@@ -11,14 +11,4 @@ const launchTokenBytes = 32;
  */
 export function randomLaunchToken(): string {
   return encodeBase64url(randomBytes(launchTokenBytes));
-}
-
-/**
- * True when a request's `Authorization` header is exactly `Bearer <token>`.
- * The comparison takes the same time wherever the two first differ, so a
- * program can't guess the token byte by byte. A missing header never matches.
- */
-export function bearerMatches(authorization: string | undefined, token: string): boolean {
-  if (authorization === undefined) return false;
-  return constantTimeEqual(encodeUtf8(authorization), encodeUtf8(`Bearer ${token}`));
 }

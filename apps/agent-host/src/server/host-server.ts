@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { type LaunchRefusal, launchRequestRefusal } from "@halonicjs/host-server";
 import { demuxFrames, type FrameStreams } from "../stdio/frame-demuxer.ts";
-import { bearerMatches } from "./launch-token.ts";
 
 /** Only this computer can reach the host: never another machine on the network. */
 const loopbackHost = "127.0.0.1";
@@ -65,7 +65,7 @@ export const defaultHostServerLimits: HostServerLimits = {
 };
 
 /** Why the host turned a request away, as the error's `kind` in the answer. */
-type Refusal = "wrong_host" | "browser_origin" | "unauthenticated" | "not_found";
+type Refusal = LaunchRefusal | "not_found";
 
 const refusalStatus: Record<Refusal, number> = {
   wrong_host: 421,
@@ -197,13 +197,8 @@ function refusalOf(
   port: number,
   token: string | undefined,
 ): Refusal | undefined {
-  const host = request.headers.host?.toLowerCase();
-  if (host !== `${loopbackHost}:${port}` && host !== `localhost:${port}`) return "wrong_host";
-  if (request.headers.origin !== undefined) return "browser_origin";
-  if (token !== undefined && !bearerMatches(request.headers.authorization, token)) {
-    return "unauthenticated";
-  }
-  return undefined;
+  const { host, origin, authorization } = request.headers;
+  return launchRequestRefusal({ host, origin, authorization }, port, token);
 }
 
 /** Whether `route` is served without the launch token: only a GET route can be. */

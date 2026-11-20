@@ -101,6 +101,12 @@ export {
   unknownKnowledgeRefs,
 } from "./knowledge-provider.ts";
 export {
+  type LaunchTokenRequest,
+  type LaunchTokenServerHarness,
+  type LaunchTokenServerUnderTest,
+  launchTokenRefusalContract,
+} from "./launch-token-refusal.ts";
+export {
   chatRequest,
   cutOffAnswer,
   reasonedAnswer,

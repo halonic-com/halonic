@@ -19,6 +19,11 @@ export const serverErrors = {
     message: "The request isn't what this address expects.",
   },
   notSignedIn: { status: 401, code: "not_signed_in", message: "Sign in first." },
+  launchTokenRequired: {
+    status: 401,
+    code: "launch_token_required",
+    message: "The request doesn't carry this launch's token.",
+  },
   wrongPassword: { status: 401, code: "wrong_password", message: "The password is wrong." },
   tooManyAttempts: {
     status: 429,
@@ -57,6 +62,16 @@ export const serverErrors = {
     message: "This address takes only a JSON body, sent as application/json.",
   },
   runNotFound: { status: 404, code: "run_not_found", message: "There is no such run." },
+  routineNotFound: {
+    status: 404,
+    code: "routine_not_found",
+    message: "There is no such routine.",
+  },
+  routineOff: {
+    status: 409,
+    code: "routine_off",
+    message: "This routine is switched off. Switch it on to run it.",
+  },
   eventNotAccepted: {
     status: 409,
     code: "event_not_accepted",

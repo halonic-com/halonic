@@ -3,6 +3,7 @@ import { isAgentRunsNotAvailable, workspaceSecrets } from "@halonicjs/ports";
 import { type PlacedRoutine, routineStart, webhookFacts } from "@halonicjs/routines";
 import type { ServerPorts } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
+import { startRoutineRun } from "./routine-run-start.ts";
 import { refuseUnlessTrusted } from "./trust-routes.ts";
 
 /** Every webhook address starts with this, then `<hubId or @workspace>/<routineId>`. */
@@ -143,7 +144,7 @@ export function createWebhookRoutes(ports: WebhookPorts): WebhookRoutes {
       // The same delivery always gets the same run id, so the executor itself starts nothing twice.
       const runId = `webhook-${delivery}`;
       try {
-        const summary = await startRoutine(runs, start.hub, start, runTrigger, runId);
+        const summary = await startRoutineRun(runs, start.hub, start, runTrigger, runId);
         return Response.json({ runId: summary.id }, { status: 202 });
       } catch (error) {
         // A start that failed must not use up the delivery: the sender's retry should get through.
@@ -154,19 +155,6 @@ export function createWebhookRoutes(ports: WebhookPorts): WebhookRoutes {
       }
     },
   };
-}
-
-/** Starts the workflow or the agent the routine names, with the run id this delivery always gets. */
-function startRoutine(
-  runs: WebhookPorts["runs"],
-  hubId: string,
-  start: ReturnType<typeof routineStart>,
-  trigger: NonNullable<Parameters<WebhookPorts["runs"]["start"]>[0]["trigger"]>,
-  runId: string,
-) {
-  return "workflow" in start
-    ? runs.start({ hubId, workflowId: start.workflow, input: start.input, trigger, runId })
-    : runs.startAgent({ hubId, agentId: start.agent, prompt: start.prompt, trigger, runId });
 }
 
 /**
