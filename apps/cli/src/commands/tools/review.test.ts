@@ -42,9 +42,10 @@ verifies("cli.commands.tools.review", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(written).toEqual(["Approve this version of lookup? [y/N] ", "Approve archive? [y/N] "]);
-    expect(stdout.at(-1)).toBe(
+    expect(stdout.slice(-2)).toEqual([
+      "! 1 tool from notes-mcp stays off because notes-mcp keeps changing it: search.",
       "✓ Approved 1 tool from notes-mcp. 1 stays off: lookup. 2 tools are on.",
-    );
+    ]);
     const after = await kit.reviewJson();
     expect(after.on).toEqual(["send", "archive"]);
     expect(after.waiting.map((tool) => tool.name)).toEqual(["lookup", "search"]);
@@ -60,8 +61,9 @@ verifies("cli.commands.tools.review", () => {
     expect(all.stdout.at(-1)).toBe("✓ Approved 2 tools from notes-mcp. 3 tools are on.");
     const again = await kit.tools(["review", "notes-mcp"], terminalTyping().terminal);
     expect(again.code).toBe(exitCode.ok);
+    // HAL-13715: search stays off, so the last line says so rather than that nothing waits.
     expect(again.stdout.at(-1)).toBe(
-      "✓ Nothing from notes-mcp is waiting for your approval. 3 tools are on.",
+      "! 1 tool from notes-mcp stays off because notes-mcp keeps changing it: search. 3 tools are on.",
     );
   });
 

@@ -59,7 +59,12 @@ export const toolsMessages = defineMessages("tools", {
   askChanged: (tool: string) => phrase`Approve this version of ${tool}?`,
   keepsChangingLine: (source: string, tool: string) =>
     phrase`${source} keeps changing ${tool}, so it stays off and isn't asked about.`,
-  approveOnPurpose: (command: string) => phrase`To approve this version on purpose: ${command}`,
+  /**
+   * HAL-13715: no `approve --fingerprint` command here. The server lists a new
+   * version each time, so the fingerprint shown is gone by the time it runs.
+   */
+  askedAgainLater: (source: string, command: string) =>
+    phrase`Once ${source} stops changing it, review asks about it again within a day: ${command}`,
 
   // `review`: the last line.
   approvedAllAsked: (count: number, source: string) =>
@@ -68,6 +73,9 @@ export const toolsMessages = defineMessages("tools", {
     phrase`Approved ${counted(count, "tool", "tools")} from ${source}. ${off.length} ${off.length === 1 ? "stays" : "stay"} off: ${off.join(", ")}.`,
   approvedNothing: (source: string, off: readonly string[]) =>
     phrase`Approved nothing. ${counted(off.length, "tool", "tools")} from ${source} ${off.length === 1 ? "stays" : "stay"} off: ${off.join(", ")}.`,
+  /** HAL-13715: so the last line doesn't read as if all is well while these are off. */
+  keepsChangingOff: (source: string, off: readonly string[]) =>
+    phrase`${counted(off.length, "tool", "tools")} from ${source} ${off.length === 1 ? "stays" : "stay"} off because ${source} keeps changing ${off.length === 1 ? "it" : "them"}: ${off.join(", ")}.`,
   toolsOn: (count: number) =>
     phrase`${counted(count, "tool", "tools")} ${count === 1 ? "is" : "are"} on.`,
   /** N8: what Ctrl C during a question meant, after "Stopped.". */
