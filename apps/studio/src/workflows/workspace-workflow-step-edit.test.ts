@@ -103,6 +103,18 @@ verifies("studio.workspace-workflow-step-edit", () => {
     expect((await host.read(reply)).steps[0]).toMatchObject({ type: "task", agent: "sorter" });
   });
 
+  it("writes a kind as the step's first key, and takes it out for an agent step", async () => {
+    const { host, store } = setup();
+    store[path] = twoSteps;
+    const reply = { hubId: "acme", id: "reply" };
+
+    await host.changeStep(reply, "draft", { type: "wait" });
+    expect(store[path]).toContain("  draft:\n    type: wait\n    # Writes the answer.\n");
+
+    await host.changeStep(reply, "draft", { type: "task" });
+    expect(store[path]).toBe(twoSteps);
+  });
+
   it("refuses a kind the format doesn't have, writing nothing", async () => {
     const { host, store, changes } = setup();
     store[path] = twoSteps;
