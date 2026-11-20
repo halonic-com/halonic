@@ -101,6 +101,22 @@ verifies("remote.pair-a-phone", () => {
     expect(text).toContain("Reached through Tailscale");
   });
 
+  it("puts the steps below the QR code when the dialog is too narrow for both (C306 PP3)", async () => {
+    await openDialog();
+    const steps = dialog()?.querySelector("ol");
+    const row = steps?.parentElement;
+
+    expect(row?.querySelector('[role="img"]')).not.toBeNull();
+    expect(row?.className.split(" ")).toContain("flex-wrap");
+    // At least 12rem beside the code, or a line of its own that may shrink to the dialog.
+    expect(steps?.className.split(" ")).toEqual(
+      expect.arrayContaining(["flex-[1_1_12rem]", "min-w-0"]),
+    );
+    expect(buttonIn(dialog(), "New code")?.parentElement?.className.split(" ")).toContain(
+      "flex-wrap",
+    );
+  });
+
   it("counts the time down as text, once a second", async () => {
     vi.useFakeTimers();
     let now = Date.parse("2026-11-16T08:00:00.000Z");
@@ -246,6 +262,8 @@ verifies("remote.pair-a-phone-problems", () => {
     const top = scrolled.mock.contexts.at(-1) as Element | undefined;
     expect(top?.textContent).toMatch(/^Pairing was not allowed/);
     expect(scrolled).toHaveBeenLastCalledWith({ block: "start" });
+    // With room above it for the top of its focus ring (HAL-14085).
+    expect(top?.className.split(" ")).toContain("scroll-mt-2");
     expect(typedCode()).toBeDefined();
   });
 

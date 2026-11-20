@@ -52,22 +52,23 @@ export function CodeStep({
       // At 195 px the group is taller than the dialog's scroller: show its title first (C306 PP2).
       refusalTop.current?.scrollIntoView?.({ block: "start" });
       refusal.current?.focus();
-    }
-    else if (focusLost()) newCodeButton.current?.focus();
+    } else if (focusLost()) newCodeButton.current?.focus();
   }, [refused]);
   const left = Date.parse(code.expiresAt) - now();
   return (
     <div className="flex flex-col gap-4">
       {refused ? (
-        <div ref={refusalTop}>
+        // The margin keeps the whole focus ring (offset and ring, up to 5px) inside the scroller.
+        <div ref={refusalTop} className="scroll-mt-2">
           <Callout tone="attention" title={words.NOT_ALLOWED_TITLE} announce="focus" ref={refusal}>
             {words.NOT_ALLOWED_LINE}
           </Callout>
         </div>
       ) : null}
-      <div className="flex items-center gap-6">
+      {/* Too narrow for both side by side, the steps go below the tile, at full width (C306 PP3). */}
+      <div className="flex flex-wrap items-center gap-6">
         <QrTile value={code.qr} label={words.QR_LABEL} />
-        <ol className="m-0 flex flex-1 list-decimal flex-col gap-4 pl-5 text-fg">
+        <ol className="m-0 flex min-w-0 flex-[1_1_12rem] list-decimal flex-col gap-4 pl-5 text-fg">
           <li>{words.STEP_OPEN}</li>
           <li>{words.STEP_SCAN}</li>
           <li>{words.STEP_CHECK}</li>
@@ -75,7 +76,7 @@ export function CodeStep({
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-small text-fg-muted">{words.endsIn(left)}</p>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           <Button
             variant="ghost"
             size="sm"
