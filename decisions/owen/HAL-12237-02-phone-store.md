@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14072 (Liam, CTO; the B2 plan for HAL-12237), security review on HAL-14084
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BpQnKiQjnA8Pad47e/F85G4fGNliFB6wD7Pwy+0QYC3cATxBjtpRZORcG4K+u8gyg8Y9aU9T82Pqv1FebCvwAQ==
 - Task: HAL-12237
 
 ## What changes
