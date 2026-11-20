@@ -2,6 +2,7 @@
 
 - Approval: HAL-14268
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oA8maQHKNZtlLQbJMOMSsILq/npOGPzOJdlw7olQRtxe60oeLwrjzm3WhfsQCHx3TtTcAIbH9bgqfPxlU4IWCA==
 
 ## What changes
 
