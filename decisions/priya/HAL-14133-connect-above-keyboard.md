@@ -3,6 +3,7 @@
 - Task: HAL-14133
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14133 (phone check 19 on HAL-1375; a small layout detail of the approved connect screen, decided by the team with Sofia on HAL-14141; Liam reviews)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:OxYdxcneGoL/tZGDi3W53R+NV1Fa3JUOtNyQlvPO+QMJaEixJnKDQMlgcwKzPUCUcTR/DjbyJN+2zfMfQ+e/AA==
 
 ## What changes
 
