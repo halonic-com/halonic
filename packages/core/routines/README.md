@@ -68,6 +68,11 @@ mail trigger is due for a check, and `mailQuery` builds the query for it, going
 back `MAIL_OVERLAP_MS` (ten minutes) before the last check so a message that
 arrived during it is not missed.
 
+`signalLoop` says whether a signal starting a routine would make a loop: a
+signal from the routine's own run (a child run counts as its parent's) never
+starts it again, and a chain of more than `MAX_SIGNAL_CHAIN` (4) signal starts
+is refused. It follows the chain back through the runs, one read per step.
+
 Each behaviour has a requirement in [`requirements/`](requirements/).
 
 ## Example
