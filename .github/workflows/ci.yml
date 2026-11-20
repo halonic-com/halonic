@@ -2723,9 +2723,13 @@ jobs:
   # Merge queue only: a queue entry that has already failed keeps its place,
   # and everything behind it waits, until the slowest job ends (HAL-4253). This
   # job watches the run's other jobs and cancels the run as soon as one fails,
-  # so ci-ok fails within a minute. Pull requests don't use it: the author
-  # should see every failure at once. It runs no repository code (no
-  # checkout), so the write permission below is only used by the `gh` calls here.
+  # so ci-ok fails within a minute. It also cancels the run once its merge
+  # group is gone (HAL-14067): when a pull request jumps the queue or a group
+  # fails, GitHub rebuilds every group behind it under new refs and deletes
+  # the old ones, but the old groups' runs keep going and hold runners.
+  # Pull requests don't use it: the author should see every failure at once.
+  # It runs no repository code (no checkout), so the write permission below
+  # is only used by the `gh` calls here.
   fail-fast:
     name: Cancel the run on the first failure
     if: github.event_name == 'merge_group'
@@ -2733,10 +2737,12 @@ jobs:
     timeout-minutes: 90 # costs nothing when the run ends early; ci-ok doesn't wait for it
     permissions:
       actions: write # to list the run's jobs and cancel the run
+      contents: read # to check that the group's ref still exists
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
       RUN_ID: ${{ github.run_id }}
+      HEAD_REF: ${{ github.event.merge_group.head_ref }} # refs/heads/gh-readonly-queue/main/pr-N-<sha>
     steps:
       - name: Watch the other jobs
         shell: bash
@@ -2747,7 +2753,6 @@ jobs:
           pause=30
           while true; do
             jobs=$(gh api --paginate "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" --jq '.jobs[]' | jq -s .) || { sleep "$pause"; pause=$((pause * 2 > 300 ? 300 : pause * 2)); continue; }
-            pause=30
             # Our own job and ci-ok don't count; a job that hasn't finished yet has no conclusion.
             failed=$(echo "$jobs" | jq -r '[.[] | select(.name != "ci-ok" and (.name | startswith("Cancel the run") | not)) | select(.conclusion == "failure" or .conclusion == "timed_out") | .name] | join(", ")')
             if [ -n "$failed" ]; then
@@ -2757,6 +2762,18 @@ jobs:
             fi
             open=$(echo "$jobs" | jq '[.[] | select(.name != "ci-ok" and (.name | startswith("Cancel the run") | not)) | select(.status != "completed")] | length')
             [ "$open" = "0" ] && exit 0
+            # A job is still open, so ci-ok hasn't run and the group can't have
+            # merged: a missing ref means GitHub dropped or rebuilt the group.
+            # Only a 404 counts as gone; any other error takes the backoff.
+            if ! err=$(gh api --silent "repos/$REPO/git/ref/${HEAD_REF#refs/}" 2>&1); then
+              if grep -q 'HTTP 404' <<< "$err"; then
+                echo "::warning::The merge group's ref $HEAD_REF is gone (rebuilt or removed from the queue). Cancelling the run to free its runners."
+                gh run cancel "$RUN_ID" --repo "$REPO"
+                exit 0
+              fi
+              sleep "$pause"; pause=$((pause * 2 > 300 ? 300 : pause * 2)); continue
+            fi
+            pause=30
             sleep 30
           done
 
