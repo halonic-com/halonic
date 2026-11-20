@@ -26,7 +26,8 @@ export type WorkflowIssueCode =
   | "unguarded-shadow"
   | "unknown-gets"
   | "unknown-template-name"
-  | "not-a-choice";
+  | "not-a-choice"
+  | "unread-start-field";
 
 /** The keys and list indexes to a value in a workflow file; `[]` for the whole file. */
 export type WorkflowPath = FileProblem["path"];
@@ -52,6 +53,12 @@ export interface ValidateOptions {
   workflows?: readonly string[];
   /** The options of each agent whose reply is a choice, by agent id; when given, `when` values are checked. */
   choices?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * The input fields the workflow is started with besides `start.field`, such
+   * as its tests' and routines' input; the `input.<name>` steps read are
+   * checked against them.
+   */
+  inputFields?: readonly string[];
 }
 
 /** A {@link WorkflowIssue}, with `state` only when it is in one. */

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: the `unknown-gets` check of `validateWorkflow` in the old workflow package (`packages/core/workflow/src/validate.ts`) at 784f78d
 
-If a step picks a `context.<key>` path and `<key>` is neither in the initial context nor written by a state that can run before the step, then the workflow rules shall report the error `unknown-gets` with the message `"<step>" gets <path>, but no earlier step writes context.<key>`. Only the first part after `context.` is checked; `input` paths are not checked.
+If a step picks a `context.<key>` path and `<key>` is neither in the initial context nor written by a state that can run before the step, then the workflow rules shall report the error `unknown-gets` with the message `"<step>" gets <path>, but no earlier step writes context.<key>`. Only the first part after `context.` is checked; `input` paths are checked by `workflow.validate-input`.
 
 ## Examples
 

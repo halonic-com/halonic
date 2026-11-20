@@ -96,4 +96,37 @@ verifies("workspace.workflows", () => {
       ["states.check.agent", '"check" uses unknown agent "clerk"'],
     ]);
   });
+
+  it("counts the keys of the workflow's tests' inputs as its input fields", async () => {
+    const workspace = await loadWorkspace(
+      new MemorySource({
+        "workspace.yaml": "id: acme\nname: Acme\n",
+        "agents/writer.agent.yaml": "name: Writer\n",
+        "workflows/reply.workflow.yaml": [
+          "name: Reply",
+          "initial: read",
+          "states:",
+          "  read:",
+          "    agent: writer",
+          "    gets: [input.from, input.order]",
+          "    on: [{ to: done }]",
+          "  done: { type: final }",
+          "",
+        ].join("\n"),
+        "workflows/reply.test.yaml": [
+          "workflow: reply",
+          "cases:",
+          "  - name: A question",
+          "    input: { mail: Hi, from: sam@example.com }",
+          "",
+        ].join("\n"),
+      }),
+    );
+    expect(workspace.issues.map((issue) => [issue.code, issue.path.join("."), issue.line])).toEqual(
+      [["unknown-gets", "states.read.gets.1", 6]],
+    );
+    expect(workspace.issues[0]?.message).toBe(
+      "\"read\" gets input.order, but the workflow's input has no field order. It has only mail and from: read one of those, or add order to the input of the workflow's tests.",
+    );
+  });
 });

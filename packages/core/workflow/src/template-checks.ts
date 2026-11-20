@@ -11,7 +11,7 @@ import { issue, stateKey, type WorkflowIssue } from "./workflow-issue.ts";
 // branch or shows an empty card without saying why.
 
 /** A key of a state whose value is a template or a condition, and the paths it reads. */
-interface TemplatePlace {
+export interface TemplatePlace {
   readonly keys: readonly (string | number)[];
   readonly paths: readonly string[];
   /** A transition's `when`: it is checked after the state wrote its own keys. */
@@ -19,7 +19,7 @@ interface TemplatePlace {
 }
 
 /** The keys of a state that are rendered as templates or checked as conditions. */
-function templatePlaces(state: WorkflowState): TemplatePlace[] {
+export function templatePlaces(state: WorkflowState): TemplatePlace[] {
   const template = (keys: (string | number)[], value: unknown): TemplatePlace[] =>
     value === undefined ? [] : [{ keys, paths: placeholderPaths(value), condition: false }];
   const branches = Object.entries(state.branches ?? {}).flatMap(([name, branch]) => [
